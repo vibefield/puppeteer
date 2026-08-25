@@ -13,7 +13,7 @@
  *
  * There is NO PTY here: the structured driver observes and drives via the
  * protocol. `observationLevel()` is honestly `'structured'`. Hosting the native
- * TUI beside it (via `codex --remote`) is the workbench's job (C6);
+ * TUI beside it (via `codex --remote`) is the desktop host's job (C6);
  * Native-TUI automation is owned by the host's ordered semantic input path.
  */
 

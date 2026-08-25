@@ -1,15 +1,15 @@
 /**
- * AgentHost — the terminal/process capability an application (the workbench, a
- * CLI, …) lends to an adapter so the adapter can own its FULL native-TUI launch
- * recipe without owning PTY infrastructure. The normal path asks the host to
- * spawn it; split-phase preparation can instead bind the recipe to an existing
- * caller-owned terminal before an external shim execs it. This lifts the
- * Claude adapter's `ports` shape (DESIGN §16) into core so every adapter shares
- * ONE injection point. It is what lets the Codex app-server + `codex --remote`
- * and Grok leader + `grok --leader` recipes move out of the app and into their
- * adapters (ADR-007: process lifecycle belongs to the host; the adapter only
- * asks the host to spawn/automate, or binds an existing terminal, and
- * observes/controls the result).
+ * AgentHost — the terminal/process capability an application host (desktop
+ * app, CLI, …) lends to an adapter so the adapter can own its FULL native-TUI
+ * launch recipe without owning PTY infrastructure. The normal path asks the
+ * host to spawn it; split-phase preparation can instead bind the recipe to an
+ * existing caller-owned terminal before an external shim execs it. This lifts
+ * the Claude adapter's `ports` shape (DESIGN §16) into core so every adapter
+ * shares ONE injection point. It is what lets the Codex app-server +
+ * `codex --remote` and Grok leader + `grok --leader` recipes move out of the
+ * app and into their adapters (ADR-007: process lifecycle belongs to the host;
+ * the adapter only asks the host to spawn/automate, or binds an existing
+ * terminal, and observes/controls the result).
  */
 
 /** An authoritative native terminal recipe for a host spawn or caller-owned exec. */

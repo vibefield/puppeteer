@@ -26,7 +26,7 @@ const invokedAs = shimPath.split('/').at(-1)!;
  *
  * The real `ai` still has to exist on PATH for this to run at all: the shim
  * execs it, and falls back to it when Godview declines. The package manager
- * puts it there — `pnpm ai:link`, and nothing of ours (IMPOSTER.md §11.1).
+ * puts it there — `pnpm ai:link`, and nothing of ours (docs/archive/IMPOSTER.md §11.1).
  */
 const imposter = invokedAs === 'ai';
 const originalArgv = process.argv.slice(2);

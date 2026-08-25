@@ -1,5 +1,5 @@
 /**
- * Persona selection and vendor argv parsing (draft/IMPOSTER.md §6).
+ * Persona selection and vendor argv parsing (docs/archive/IMPOSTER.md §6).
  *
  * Resolution order is argv0 → `--<vendor>` → `AI_PERSONA`. `ai --claude` is
  * the form to reach for; the other two exist because an adapter owns argv and

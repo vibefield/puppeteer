@@ -23,7 +23,7 @@ The observed turn order was user message, user-prompt hook, optional thought chu
 
 The supplemental public source names `auto_compact_started`, `auto_compact_completed`, `auto_compact_failed`, `auto_compact_cancelled`, the persist-only `compaction_checkpoint`, and `subagent_spawned` / `subagent_progress` / `subagent_finished`. Newer public source also contains workflow and goal updates. They are represented in the native behavior graph, not normalized here.
 
-Those nodes remain `unverified`: the installed artifact was not forced through those paths, and its binary-reported revision is absent from the public mirror. Emulator Control may exercise the raw scenarios, but that is emulation coverage—not evidence promotion.
+Those nodes remain `unverified`: the installed artifact was not forced through those paths, and its binary-reported revision is absent from the public mirror. Imposter Control may exercise the raw scenarios, but that is emulation coverage—not evidence promotion.
 
 ## Promotion status
 

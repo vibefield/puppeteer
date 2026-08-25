@@ -7,11 +7,11 @@
  *    the rollout materializes. Used by live tests that drive a separate
  *    `createCodexSession`.
  *
- * 2. **Controller-owned (workbench default):** this connection
+ * 2. **Controller-owned (desktop-host default):** this connection
  *    `thread/start`s (or resumes a known id), materializes with an empty
  *    `thread/inject_items` so resume/TUI work without a user prompt, then
  *    opens the live stream. Proven 2026-07-15
- *    (`probe/codex/controller-owned-thread-probe3.mjs`): empty inject writes
+ *    (`packages/surface/vendors/codex/probes/codex@0.147.0/controller-owned-thread-probe.mjs`): empty inject writes
  *    the rollout without a model turn, so the panel can go `ready` immediately
  *    and the TUI joins via `codex resume <id> --remote`.
  *

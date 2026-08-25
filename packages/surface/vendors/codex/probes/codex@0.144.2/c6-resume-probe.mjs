@@ -1,10 +1,10 @@
-// Verify Codex resume for the workbench: materialize a thread in one app-server,
+// Verify Codex resume for a desktop host: materialize a thread in one app-server,
 // tear down, then `codex resume <id> --remote` against a FRESH app-server and
 // confirm the thread comes back (loaded, with its prior turn).
 import { spawn } from 'node:child_process';
 import { createRequire } from 'node:module';
 import { appendFileSync } from 'node:fs';
-const require = createRequire(new URL('../../packages/node/', import.meta.url));
+const require = createRequire(import.meta.url);
 const pty = require('node-pty');
 const LOG = new URL('./c6-resume.log', import.meta.url).pathname;
 appendFileSync(LOG, '\n==== ' + new Date().toISOString() + ' ====\n');

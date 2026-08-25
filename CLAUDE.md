@@ -9,8 +9,8 @@ state from native side channels, never by reading the screen.
 it). `draft/IMPLEMENTATION-PLAN.md` records what was scoped, deferred, and rejected, and why.
 `draft/SURFACE-ADAPTATION-REFACTOR.md` is the live ownership, package-structure, and continuous
 adaptation spec. `draft/ADAPTING-AN-AGENT.md` is the canonical start-to-finish developer workflow.
-`draft/EMULATOR.md` and `draft/IMPOSTER.md` retain historical rationale but are superseded where
-they assign truth to adapters. One executable (`ai`)
+`docs/archive/EMULATOR.md` and `docs/archive/IMPOSTER.md` retain historical rationale but are
+superseded where they assign truth to adapters. One executable (`ai`)
 impersonates every vendor from a persona; there are no per-adapter bins.
 
 ## Sibling repos (this is layer 2 of 3)
@@ -59,7 +59,7 @@ packages/
   surface/       neutral real-vendor evidence: vendors/<vendor>/{upstream.json,findings.md,captures,
                  model,audit.mjs} + the ASM runtime (loadModel, validatePayload, drift) and sanitiser.
                  SELF-CONTAINED and `erasableSyntaxOnly` — surface .mjs scripts import it under node
-                 type stripping, which is why it owns a package (draft/IMPOSTER.md §7.1)
+                 type stripping, which is why it owns a package (docs/archive/IMPOSTER.md §7.1)
   imposter/      `ai` — one executable that impersonates every vendor from its captured ASM.
                  personas/<vendor>/ (ops, boot, behavior, scenarios), session + channels, op timeline,
                  session/scenario-driver.ts (the xstate lifecycle over the op vocabulary — DESCRIPTIVE, it
@@ -69,7 +69,7 @@ packages/
                  append-only sink). Relative imports end in `.ts` here, NOT `.js` — see
                  packages/imposter/src/index.ts for why. `ai` reaches PATH through the package
                  manager (`pnpm ai:link`) and has NO subcommands — two install commands were built
-                 and deleted the same day (draft/IMPOSTER.md §6); a vendor name reaching the imposter
+                 and deleted the same day (docs/archive/IMPOSTER.md §6); a vendor name reaching the imposter
                  is one `ln -s`, and an app does it per session via `agentOptions.executable`
 
 Real-vendor truth lives only under `packages/surface/vendors/<vendor>/`: protected raw captures,
@@ -84,7 +84,7 @@ apps/
   imposter-control/  Agent adaptation devkit (`pnpm agent-devkit`; legacy `pnpm imposter-control`).
                  Owns the native control plane: one UDS at `~/.chopsticks/imposter.sock` that
                  imposters dial into, plus a loopback HTTP+SSE console. Liveness is socket close —
-                 there is no discovery file and nothing polls (draft/IMPOSTER.md §5). The generic
+                 there is no discovery file and nothing polls (docs/archive/IMPOSTER.md §5). The generic
                  plane stays adapter/Core-free. The app composes an optional downstream
                  normalization projection and presents native evidence → folding decisions → Core
                  state facets with correlated time travel (draft/NORMALIZATION-DEVKIT.md). The

@@ -1,6 +1,6 @@
 /**
  * Which fork `ai` takes comes from argv, not from the persona owning a serve
- * table (draft/IMPOSTER.md §6, §9.3).
+ * table (docs/archive/IMPOSTER.md §6, §9.3).
  *
  * The real vendor works this way — `codex` opens a screen, `codex app-server`
  * speaks the protocol — and an imposter that always served would fail the most

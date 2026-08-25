@@ -1,5 +1,5 @@
 /**
- * The not-a-real-vendor contract check (draft/IMPOSTER.md §7.4).
+ * The not-a-real-vendor contract check (docs/archive/IMPOSTER.md §7.4).
  *
  * A persona contract validated against one vendor comes out shaped like that
  * vendor. `synthetic` exists to make that failure loud: its ASM is invented, and

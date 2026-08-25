@@ -9,7 +9,7 @@ import {
 import { CodexNotificationNormalizer, type CodexServerNotification } from './normalizer.js';
 
 // Real identifiers + payloads from the C1 live capture
-// (probe/codex/c1-appserver-capture.jsonl).
+// (packages/surface/vendors/codex/captures/codex@0.144.2/c1-appserver-capture.jsonl).
 const THREAD = '019f5d86-423a-7083-ab79-2deb044599c1';
 const TURN = '019f5d86-42e2-7a03-844c-0de529f5ae8d';
 const USER_ITEM = '019f5d86-46ef-7db2-bde0-eac915e62d86';

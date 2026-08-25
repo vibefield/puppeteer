@@ -1,6 +1,6 @@
 /**
  * The control plane: one socket for imposters, one loopback HTTP server for the
- * console, push instead of poll (draft/IMPOSTER.md §5).
+ * console, push instead of poll (docs/archive/IMPOSTER.md §5).
  *
  * The imposter side is exercised through the REAL client, not a hand-rolled
  * stub, so the two halves of the protocol cannot drift apart in this suite.

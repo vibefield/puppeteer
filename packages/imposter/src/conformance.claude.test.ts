@@ -1,5 +1,5 @@
 /**
- * Phase I1 exit criterion (draft/IMPOSTER.md §8): the SHARED conformance suite,
+ * Phase I1 exit criterion (docs/archive/IMPOSTER.md §8): the SHARED conformance suite,
  * green against `ai` instead of the PoC's per-adapter `bin.mjs`.
  *
  * This runs the whole chain hermetically — settings generation → settings

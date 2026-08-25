@@ -1,5 +1,5 @@
 /**
- * Control-channel message shapes (draft/IMPOSTER.md §5.1), shared by the
+ * Control-channel message shapes (docs/archive/IMPOSTER.md §5.1), shared by the
  * imposter's client and the control center's plane.
  *
  * Zero I/O — types, validation, and the two well-known paths. Framing lives in

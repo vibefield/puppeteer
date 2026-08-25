@@ -1,5 +1,5 @@
 /**
- * Registry renderer (draft/EMULATOR.md §2, ADAPTING-AN-AGENT step 4):
+ * Registry renderer (docs/archive/EMULATOR.md §2, ADAPTING-AN-AGENT step 4):
  * registry.ts is GENERATED from the Surface-owned Claude model — the model is
  * canonical, this is the projection. Consumed by scripts/generate-registry.mjs
  * (CLI write) and src/generated/registry.test.ts (byte-parity freshness check).

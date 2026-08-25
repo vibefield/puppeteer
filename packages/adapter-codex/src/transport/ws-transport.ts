@@ -3,7 +3,7 @@
  *
  * The app-server's socket transports (unix AND tcp) frame JSON-RPC as
  * WebSocket; only stdio:// is NDJSON (CODEX-SURFACE-FINDINGS §8). For the
- * workbench we run one `codex app-server --listen unix://<sock>` and connect a
+ * desktop host we run one `codex app-server --listen unix://<sock>` and connect a
  * controller over it — UDS is preferred (no port, filesystem-scoped, not
  * network-exposed). Node's built-in WebSocket is TCP-only, so this is a small
  * hand-rolled WS client (handshake + RFC-6455 framing) exposed as a `Transport`,
@@ -375,7 +375,7 @@ export function spawnAppServer(opts?: {
    * This child is private to the recipe — a caller has no other way to reach
    * it, since it is not the terminal and carries no launch spec. That matters
    * for anything the binary reads from the environment rather than argv, which
-   * is how the chopsticks imposter is told which vendor to be (IMPOSTER.md §6).
+   * is how the chopsticks imposter is told which vendor to be (docs/archive/IMPOSTER.md §6).
    */
   env?: Record<string, string>;
 }): AppServerHandle {

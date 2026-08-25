@@ -38,7 +38,7 @@ describe('createOpTimeline', () => {
     rmSync(dir, { recursive: true, force: true });
   });
 
-  it('fans one op out to BOTH projections (IMPOSTER.md §2)', async () => {
+  it('fans one op out to BOTH projections (docs/archive/IMPOSTER.md §2)', async () => {
     const timeline = build();
     await timeline.run({ op: 'turn.start', with: { text: 'refactor the parser' } });
     // Semantic projection: the hook, carrying the op's argument.

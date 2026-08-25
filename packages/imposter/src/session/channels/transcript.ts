@@ -4,7 +4,7 @@
  *
  * The imposter's transcript root is NEVER the vendor's real one (`~/.claude`),
  * so imposted sessions stay out of the user's spaghetti index
- * (draft/IMPOSTER.md §7.3 item 5). Choosing that root is the session's job;
+ * (docs/archive/IMPOSTER.md §7.3 item 5). Choosing that root is the session's job;
  * this module only writes where it is told.
  */
 

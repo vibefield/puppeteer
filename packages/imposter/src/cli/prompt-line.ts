@@ -1,5 +1,5 @@
 /**
- * The imposter's one input path (draft/IMPOSTER.md §4.1.1).
+ * The imposter's one input path (docs/archive/IMPOSTER.md §4.1.1).
  *
  * The adapter injects prompts as a guarded bracketed paste, and this is the
  * ONLY place stdin is read: the TUI never reads it, so TTY and pipe modes

@@ -636,7 +636,7 @@ After adapter-against-Imposter conformance is green:
 
 - register `hermes` behind `AgentProvider` in `packages/runtime` (never
   branch inside `runtime.ts`);
-- add Godview / Workbench selector, shim, and spawn-through entries only
+- add Godview selector, shim, and spawn-through entries only
   after the native launch topology works end to end;
 - add Imposter Control `SpawnablePersona` and, if a pure normalizer exists,
   a `createNormalizer` case; otherwise leave the projection `unsupported`;
@@ -703,7 +703,7 @@ After adapter-against-Imposter conformance is green:
 - [x] Shared `AgentSession` conformance.
 - [x] Real adapter-against-Imposter lane.
 - [x] Runtime `AgentProvider` entry (no `runtime.ts` branching).
-- [ ] Godview / Workbench selector and Imposter Control projection.
+- [ ] Godview selector and Imposter Control projection.
 - [ ] `support/agents.json` candidate (`baseline-pending` only).
 - [ ] Opt-in `HERMES_LIVE` / pinned-real lane on the declared platform
       matrix.

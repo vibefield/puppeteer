@@ -5,8 +5,8 @@
 - **Last updated:** 2026-08-24
 - **Owners:** Chopsticks runtime and adapter maintainers
 - **Target:** Chopsticks runtime v2 observation architecture
-- **Related:** [`001-implementation-plan.md`](./001-implementation-plan.md); [`draft/MONITOR.md`](../../draft/MONITOR.md); Spaghetti RFC 012A, 012C, and 012D
-- **If ratified, supersedes:** [`draft/MONITOR.md`](../../draft/MONITOR.md) and the observation, runtime identity, reducer, and Spaghetti-integration portions of [`draft/DESIGN.md`](../../draft/DESIGN.md)
+- **Related:** [`001-implementation-plan.md`](./001-implementation-plan.md); [`docs/archive/MONITOR.md`](../../docs/archive/MONITOR.md); Spaghetti RFC 012A, 012C, and 012D
+- **Supersedes:** [`docs/archive/MONITOR.md`](../../docs/archive/MONITOR.md) and the observation, runtime identity, reducer, and Spaghetti-integration portions of [`draft/DESIGN.md`](../../draft/DESIGN.md)
 
 ## 1. Abstract
 
@@ -81,9 +81,9 @@ A single `source` priority and a single `lastSequence` cannot express these cond
 This RFC incorporates three sets of requirements:
 
 1. The Agent Runtime Observation Checklist in section 4.
-2. The three-state product model described in [`draft/MONITOR.md`](../../draft/MONITOR.md).
-3. The contribution ownership and claim model described in [`p008/draft/dicussion1.md`](../../../draft/dicussion1.md).
-4. The cross-topology identity, resync, provenance, finalization, and completeness requirements described in [`p008/draft/dicussion2.md`](../../../draft/dicussion2.md).
+2. The three-state product model described in [`docs/archive/MONITOR.md`](../../docs/archive/MONITOR.md).
+3. The contribution ownership and claim model described in [`p008/draft/dicussion1.md`](../../../p008/draft/dicussion1.md).
+4. The cross-topology identity, resync, provenance, finalization, and completeness requirements described in [`p008/draft/dicussion2.md`](../../../p008/draft/dicussion2.md).
 
 It consumes the semantic contracts proposed by:
 
@@ -91,9 +91,9 @@ It consumes the semantic contracts proposed by:
 - Spaghetti RFC 012C: runtime semantics and usage v2.
 - Spaghetti RFC 012D: session-scoped live observation.
 
-### 3.4 Reconciliation with `MONITOR.md`
+### 3.4 Reconciliation with `docs/archive/MONITOR.md`
 
-This RFC adopts `MONITOR.md`'s product boundary: Chopsticks is a live monitor, the native TUI remains the full interaction surface, and the published monitor has only three headline states. It refines four implementation details in that draft:
+This RFC adopts `docs/archive/MONITOR.md`'s product boundary: Chopsticks is a live monitor, the native TUI remains the full interaction surface, and the published monitor has only three headline states. It refines four implementation details in that draft:
 
 1. Corrected cumulative usage may move downward. The displayed burn rate remains non-negative, but consumers cannot assume the current cumulative estimate is monotonic.
 2. One global freshness timestamp is insufficient when hooks remain healthy but usage or plan observation has failed. The public monitor therefore adds compact per-family readiness and `asOf` timestamps, not per-facet state machines.
@@ -300,7 +300,7 @@ Conflicts are resolved inside the reducer for the affected fact family. A confli
  workspace manager + Git observation ──────┘                │
                                                             ├──▶ projectAgentMonitorState
                                                             │       └──▶ AgentMonitorState
-                                                            │              └──▶ Godview/workbench
+                                                            │              └──▶ Godview
                                                             ├──▶ MonitorNotification stream
                                                             └──▶ devkit evidence view
 
@@ -448,7 +448,7 @@ interface MonitorAccumulatorState {
 
 ### 8.5 Published `AgentMonitorState`
 
-Godview and Workbench consume one provider-neutral, JSON-plain monitor state:
+Godview consumes one provider-neutral, JSON-plain monitor state:
 
 ```ts
 type AgentMonitorStatus = 'idle' | 'working' | 'blocked';
@@ -1089,7 +1089,7 @@ The current `SessionRuntimeState` remains as private bookkeeping and a deprecate
 
 ## 14. Godview contract
 
-Godview and Workbench consume only `AgentMonitorState`, `MonitorNotification`, and runtime control APIs. They do not import `SessionRuntimeState`, provider payload types, or Spaghetti reducer types.
+Godview consumes only `AgentMonitorState`, `MonitorNotification`, and runtime control APIs. It does not import provider payload types or Spaghetti reducer types; `SessionRuntimeState` remains isolated to the rollback bridge until cutover.
 
 The board bubble displays exactly:
 
@@ -1248,11 +1248,11 @@ Cutover requires released SDK support and all gates in section 17.
 
 ### Phase 6: Godview v2
 
-- Move Godview and Workbench to full `AgentMonitorState` revisions and `MonitorNotification`.
+- Move Godview to full `AgentMonitorState` revisions and `MonitorNotification`.
 - Render only `idle`, `working`, and `blocked` as headline states.
 - Add compact subagent/team/workflow and checklist detail views.
 - Add family staleness and unsupported rendering without inventing new statuses.
-- Delete duplicate state serializers, classifiers, labels, and tone derivations from both apps.
+- Delete the legacy state serializer, classifier, and detail derivation after the rollback window.
 - Keep the v1 serialized-state bridge available for rollback.
 
 ### Phase 7: VibeField contribution integration
@@ -1277,7 +1277,6 @@ Cutover requires released SDK support and all gates in section 17.
 | `packages/workspaces/`            | Add stable workspace identity, baseline/finalization, isolation, interference, and worktree topology observations.                                                                                                                 |
 | `packages/record/`                | Add schema-versioned runtime/workspace own-action records and stable IDs; keep sensitive bodies and raw diffs out by default.                                                                                                      |
 | `apps/godview/`                   | Replace serialized `SessionRuntimeState` with `AgentMonitorState`; delete app-local status/detail derivation and drive toasts/feed from `MonitorNotification`.                                                                     |
-| `apps/workbench/`                 | Consume the same monitor state; delete its duplicate serializer, live label, and status-tone state machine.                                                                                                                        |
 | Devkit/imposter control           | Retain raw/native evidence and private-ledger inspection as a diagnostic stage, then show the exact public monitor projection as the final stage.                                                                                  |
 
 ## 17. Verification and rollout gates
@@ -1347,7 +1346,7 @@ Cutover requires released SDK support and all gates in section 17.
 The new projection becomes the default only when:
 
 1. Core property and replay tests pass.
-2. Godview and Workbench render identical three-state classifications from the same monitor state.
+2. Godview renders the core-projected three-state classification without reclassifying it.
 3. Claude TUI and user statusline behavior remain unchanged.
 4. Spaghetti scope-epoch replacement passes overflow tests.
 5. Shadow comparison shows no unexplained duplicate usage or persistent entities.
@@ -1451,7 +1450,7 @@ Rejected. A flat monitor alone cannot safely deduplicate durable/live observatio
 This RFC is implemented when all of the following are true:
 
 1. A runtime run has a stable identity distinct from the provider-native session and terminal routing identity.
-2. Godview and Workbench receive the same epoch-aware `AgentMonitorState` without parsing native payloads, and its headline status is exactly `idle | working | blocked`.
+2. Godview receives the epoch-aware `AgentMonitorState` without parsing native payloads, and its headline status is exactly `idle | working | blocked`.
 3. Root usage, burn rate, context, model, and effort are visible with freshness and evidence quality.
 4. Child actor usage, burn rate, model, effort, context, and activity appear where capability coverage permits.
 5. Model, effort, and provider mode changes produce revisioned observed state.
@@ -1472,12 +1471,12 @@ This RFC is implemented when all of the following are true:
 - [`RFC-001 implementation plan`](./001-implementation-plan.md)
 - [`draft/DESIGN.md`](../../draft/DESIGN.md)
 - [`draft/IMPLEMENTATION-PLAN.md`](../../draft/IMPLEMENTATION-PLAN.md)
-- [`draft/MONITOR.md`](../../draft/MONITOR.md)
-- [`p008/draft/dicussion1.md`](../../../draft/dicussion1.md)
-- [`p008/draft/dicussion2.md`](../../../draft/dicussion2.md)
-- [Spaghetti RFC 012](../../../spaghetti/docs/rfcs/012-evidence-backed-adapters-and-progressive-readiness.md)
-- [Spaghetti RFC 012C](../../../spaghetti/docs/rfcs/012c-runtime-semantics-and-usage-v2.md)
-- [Spaghetti RFC 012D](../../../spaghetti/docs/rfcs/012d-session-scoped-observation.md)
+- [`docs/archive/MONITOR.md`](../../docs/archive/MONITOR.md)
+- [`p008/draft/dicussion1.md`](../../../p008/draft/dicussion1.md)
+- [`p008/draft/dicussion2.md`](../../../p008/draft/dicussion2.md)
+- [Spaghetti RFC 012](../../../p008/spaghetti/docs/rfcs/012-evidence-backed-adapters-and-progressive-readiness.md)
+- [Spaghetti RFC 012C](../../../p008/spaghetti/docs/rfcs/012c-runtime-semantics-and-usage-v2.md)
+- [Spaghetti RFC 012D](../../../p008/spaghetti/docs/rfcs/012d-session-scoped-observation.md)
 - [Claude Code statusline documentation](https://code.claude.com/docs/en/statusline)
 - [Claude Code hooks documentation](https://code.claude.com/docs/en/hooks)
 - [Claude Code permission modes](https://code.claude.com/docs/en/permission-modes)

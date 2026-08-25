@@ -3,7 +3,7 @@
  *
  * The one thing worth naming here: `sun_path` is ~103 bytes and the macOS
  * TMPDIR alone eats half of that, so tests dig a short root of their own rather
- * than nesting a socket under `os.tmpdir()` (draft/IMPOSTER.md §5.2).
+ * than nesting a socket under `os.tmpdir()` (docs/archive/IMPOSTER.md §5.2).
  */
 import { randomUUID } from 'node:crypto';
 import { mkdtempSync } from 'node:fs';

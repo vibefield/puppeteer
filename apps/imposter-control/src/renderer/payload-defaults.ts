@@ -8,7 +8,7 @@ const defaults: Record<string, () => unknown> = {
   message_id: () => `msg_${uuid().replaceAll('-', '').slice(0, 12)}`,
   turn_id: uuid,
   turnId: uuid,
-  message: () => 'hello from emulator control',
+  message: () => 'hello from imposter control',
   notification_type: () => 'emulator',
   tool_name: () => 'Bash',
   tool_input: () => ({ command: 'echo hi' }),

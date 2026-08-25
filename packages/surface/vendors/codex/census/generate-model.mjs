@@ -2,7 +2,7 @@
 /**
  * Generate `packages/surface/vendors/codex/model/codex@<version>/` — the ASM.
  *
- * **Shape from the schema, confidence from the census** (IMPOSTER.md §9.2).
+ * **Shape from the schema, confidence from the census** (docs/archive/IMPOSTER.md §9.2).
  * Codex emits its own protocol schema (`codex app-server generate-json-schema`),
  * so the payload shapes are the vendor's own statement about itself rather than
  * anything inferred from captures — which matters because the captures cover a
@@ -14,7 +14,7 @@
  * census: a method observed in a hermetic capture is `verified-headless`, and
  * everything else is `unverified` and says so.
  *
- * This is the rule EMULATOR.md §1 exists to protect. The model must never be
+ * This is the rule docs/archive/EMULATOR.md §1 exists to protect. The model must never be
  * derived from `normalizer.ts` — the adapter and the model would then be wrong
  * together and no test could see it. That is not hypothetical: the audit found
  * four real adapter defects that a model built this way immediately exposes.

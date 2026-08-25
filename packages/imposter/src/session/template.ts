@@ -4,7 +4,7 @@
  * It lives in one module on purpose: ops and scenarios both emit onto the same
  * channels, so if they substituted differently the same template string would
  * mean two things depending on which layer ran it — the kind of quiet
- * divergence draft/IMPOSTER.md §2 exists to prevent.
+ * divergence docs/archive/IMPOSTER.md §2 exists to prevent.
  *
  * Supported forms:
  *   "$<scope>.<field>"  scoped lookup — `$op.tool`, `$stimulus.text`

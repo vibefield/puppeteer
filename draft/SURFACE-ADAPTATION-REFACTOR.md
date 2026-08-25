@@ -6,7 +6,7 @@
 
 **Scope:** the complete `packages/` topology, `packages/surface`, vendor evidence and models, adapter and imposter boundaries, upstream release reconciliation, support metadata, and README agent-version badges
 
-**Companions:** `draft/EMULATOR.md`, `draft/IMPOSTER.md`, `draft/ADAPTING-AN-AGENT.md`, `draft/NORMALIZATION-DEVKIT.md`, `draft/DESIGN.md`
+**Companions:** `docs/archive/EMULATOR.md`, `docs/archive/IMPOSTER.md`, `draft/ADAPTING-AN-AGENT.md`, `draft/NORMALIZATION-DEVKIT.md`, `draft/DESIGN.md`
 
 This spec starts the next refactoring round. Where the companion drafts say that captures or the Agent Surface Model (ASM) are adapter-owned, this document supersedes them. Their implementation history remains useful; their ownership rule does not.
 
@@ -48,7 +48,7 @@ The existing `packages/surface` boundary is the correct neutral home. This refac
                     Agent Surface Model (native truth)
                          /                         \
                         v                           v
-       real artifact / Imposter native wire    Emulator Control
+       real artifact / Imposter native wire    Imposter Control
                         |                       model + raw log
                         v                       (no reducer)
                  adapter projection
@@ -291,16 +291,16 @@ Exact sanitized native replay fixtures belong to Surface because they are eviden
 
 ### 5.3 Package audit and disposition
 
-The tracked package graph has eleven real packages. Most are small because their boundaries are doing useful work, not because they are abandoned.
+The tracked package graph has fourteen real packages. Most are small because their boundaries are doing useful work, not because they are abandoned.
 
 | Path                                                 | Decision                         | Reason                                                                                                                                                                              |
 | ---------------------------------------------------- | -------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `packages/core`                                      | **keep**                         | Pure, zero-I/O contract boundary used by every adapter, runtime, and testing. Remove the stale comment that still sends I/O to the retired `chopsticks-node`.                       |
 | `packages/surface`                                   | **keep and expand**              | Neutral owner selected by this spec; receives real-vendor evidence, models, and reconciliation tooling.                                                                             |
-| `packages/adapter-{acp,claude,codex,grok}`           | **keep and slim**                | Each has live production consumers and an independent protocol boundary. Remove Surface-owned data from Claude/Codex; do not merge vendors into runtime.                            |
+| `packages/adapter-*`                                 | **keep and slim**                | The seven adapters have live production consumers and independent protocol boundaries. Remove Surface-owned data from Claude/Codex; do not merge vendors into runtime.             |
 | `packages/imposter`                                  | **keep**                         | Live executable, control protocol, persona engine, and synthetic adversarial system. Its existing `src/{cli,control,persona,session,tui}` structure is healthy.                     |
-| `packages/record`                                    | **keep**                         | Independent append-only I/O capability used directly by runtime, Godview, and Workbench. Small is appropriate here.                                                                 |
-| `packages/workspaces`                                | **keep**                         | Independent workspace-isolation capability used directly by runtime and both desktop apps.                                                                                          |
+| `packages/record`                                    | **keep**                         | Independent append-only I/O capability used directly by runtime and Godview. Small is appropriate here.                                                                            |
+| `packages/workspaces`                                | **keep**                         | Independent workspace-isolation capability used directly by runtime and Godview.                                                                                                   |
 | `packages/testing`                                   | **keep and make vendor-neutral** | The terminal fake and shared conformance suite are valid public utilities; real Claude fixtures and Claude-specific builders are misplaced.                                         |
 | `packages/runtime`                                   | **keep**                         | Public composition facade; its broad dependency fan-in is intentional and belongs at the top of the library graph.                                                                  |
 | `packages/node`                                      | **remove local residue**         | No manifest or tracked files remain. Git history shows the package retired when terminal ownership moved to Ghosttea; the directory now holds only ignored build/dependency output. |
@@ -322,7 +322,7 @@ The flat layout has useful invariants:
 - moving a module between responsibilities is visible as a package-boundary change;
 - adding a category directory cannot accidentally look like a publishable package.
 
-Eleven packages do not justify another directory level. Reconsider grouping only after adapter count makes navigation measurably difficult or package families acquire different build/release policies.
+Fourteen packages do not justify another directory level. Reconsider grouping only after adapter count makes navigation measurably difficult or package families acquire different build/release policies.
 
 Every direct child directory of `packages/` must contain a valid `package.json`; no allowlist of orphan directories is permitted. Conversely, every public package manifest must appear in release-please's lockstep version list, packing, trust, and publishing. `packages:check` enforces both directions.
 
@@ -412,7 +412,7 @@ The existing fixture loader and Claude-builder exports are public in `0.1.8`. If
 
 `@vibecook/chopsticks-testing/conformance` imports Vitest. The package must declare the supported Vitest range as a peer dependency (and a development dependency for its own tests), or make the conformance runner framework-neutral. Leaving a runtime import satisfied only by an undeclared dev dependency is not acceptable packaging.
 
-The fake terminal agent remains separate from Imposter for the reasons already established in `IMPOSTER.md §7.4`: one exercises PTY/process failure modes; the other simulates native semantic channels.
+The fake terminal agent remains separate from Imposter for the reasons already established in `docs/archive/IMPOSTER.md §7.4`: one exercises PTY/process failure modes; the other simulates native semantic channels.
 
 ### 5.8 Versions, manifests, and release discovery
 

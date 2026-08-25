@@ -6,7 +6,7 @@
  * transcript. Where the Claude normalizer parses hook payloads, this one maps
  * `ServerNotification`s (`{ method, params }`) from `codex app-server` onto the
  * same core `AgentEvent` union. The mapping was grounded on a live C1 capture
- * (`probe/codex/c1-appserver-capture.jsonl`).
+ * (`packages/surface/vendors/codex/captures/codex@0.144.2/c1-appserver-capture.jsonl`).
  *
  * Notable shape differences from Claude, and how they're reconciled:
  * - Codex splits the turn boundary (`turn/started`, carrying the turn id) from

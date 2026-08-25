@@ -52,7 +52,7 @@ export interface MonitorShadowMismatchReport {
 export interface MonitorHostFeatureFlags {
   monitorV2: boolean;
   shadowComparison: boolean;
-  /** Coordinated Godview + Workbench renderer cutover; false is the rollback path. */
+  /** Godview renderer cutover; false is the rollback path. */
   godviewMonitorV2: boolean;
   /** Explicit canary-only JSONL trace of the public monitor revision stream. */
   canaryTrace: boolean;

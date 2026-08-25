@@ -802,7 +802,7 @@ per tool call in the agentic loop (<code>PreToolUse</code>, <code>PostToolUse</c
       <a class="hook-anchor" href="#hook-TeammateIdle"><code>TeammateIdle</code></a>
       <span class="tag t-registry">Wired · native if unprojected</span>
     </div>
-    <p class="hook-when">When an [agent team](/docs/en/agent-teams) teammate is about to go idle</p>
+    <p class="hook-when">When an <a href="https://code.claude.com/docs/en/agent-teams">agent team</a> teammate is about to go idle</p>
   </header>
   <div class="hook-card-body">
     <p>Runs when an agent team teammate is about to go idle after finishing its turn. Use this to enforce quality gates before a teammate stops working, such as requiring passing lint checks or verifying that output files exist.</p>
@@ -1059,7 +1059,7 @@ per tool call in the agentic loop (<code>PreToolUse</code>, <code>PostToolUse</c
               <h3>How chopsticks uses this surface</h3>
               <p>Composition path, wiring gate, normalizer map, and secondary sources. Code ground truth:
                 <code>registry.ts</code>, <code>settings.ts</code>, <code>prepare.ts</code>, <code>hook-bridge.ts</code>,
-                <code>normalizer.ts</code>, <code>driver.ts</code>, <code>prompt.ts</code>, <code>statusline.ts</code>,
+                <code>normalizer.ts</code>, <code>driver.ts</code>, <code>prompt.ts</code>, <code>status-channel.ts</code>,
                 <code>transcript-observer.ts</code>.</p>
             </div>
           </div>
@@ -1380,7 +1380,7 @@ flowchart LR
           <thead><tr><th>Source</th><th>Emits</th><th>Visual effect</th></tr></thead>
           <tbody>
             <tr>
-              <td class="m">statusline.ts</td>
+              <td class="m">status-channel.ts</td>
               <td class="m">context-window.updated / .invalidated<br />session.environment.updated</td>
               <td>CTX badge, swarm bubble fill height, rain tail length. <strong>Claude's only context source</strong> — with no statusline configured it shows <code>CTX:--%</code> forever</td>
             </tr>

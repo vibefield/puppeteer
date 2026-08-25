@@ -4,7 +4,7 @@
  *
  * Delivery failures are logged, never thrown: a hook the bridge rejects (or a
  * forwarder that can't spawn) must not kill the imposted process — the real
- * vendor's hooks fail the same soft way (draft/IMPOSTER.md §7.3 item 6).
+ * vendor's hooks fail the same soft way (docs/archive/IMPOSTER.md §7.3 item 6).
  */
 
 import { spawn } from 'node:child_process';
@@ -44,7 +44,7 @@ function resolveEnvRefs(value: string, env: Record<string, string | undefined>, 
  * and body. The observable contract at the bridge is byte-identical, but the
  * shortcut works where `sh` is absent (Windows dev machines); unrecognized
  * command handlers still run through the platform shell with the payload on
- * stdin (draft/IMPOSTER.md §7.3 item 4).
+ * stdin (docs/archive/IMPOSTER.md §7.3 item 4).
  */
 const FORWARDER_SHAPE =
   /curl -s -m (\d+) -X POST -H "Content-Type: application\/json" -H "Authorization: Bearer \$([A-Z_][A-Z0-9_]*)" --data-binary @- ([^\s']+)/;

@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 /**
- * surface audit (draft/EMULATOR.md §7): diff the ASM model against the
+ * surface audit (docs/archive/EMULATOR.md §7): diff the ASM model against the
  * captured surface. Clean exit means the model exactly covers the captures.
  *
  * Usage: node surface/audit.mjs [--write-report]

@@ -1,5 +1,5 @@
 /**
- * A prompt typed in the PANE, observed by the adapter (draft/IMPOSTER.md §11.5).
+ * A prompt typed in the PANE, observed by the adapter (docs/archive/IMPOSTER.md §11.5).
  *
  * This is the claim the other two codex suites do not make. `codex-socket`
  * proves the transport and `codex-pane` proves the recipe, but both drive the

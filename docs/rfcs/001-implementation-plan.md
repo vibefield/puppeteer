@@ -4,7 +4,7 @@
 - **Created:** 2026-08-16
 - **Last updated:** 2026-08-24
 - **Companion RFC:** [`001-evidence-backed-runtime-observation.md`](./001-evidence-backed-runtime-observation.md)
-- **Primary target:** Godview and Workbench beside native provider TUIs
+- **Primary target:** Godview beside native provider TUIs
 - **Compatibility target:** one release with the v1 state and IPC bridges available
 
 ## Current implementation status
@@ -14,7 +14,7 @@ opt-in flags and has passed local canary validation; monitor v2 is not the
 default. Deterministic
 Claude Imposter runs and the installed native Claude have exercised the native
 Electron terminal, spawn-through shim, real Claude adapter, runtime
-accumulator, v1/v2 shadow comparison, both renderer hosts, and strict terminal
+accumulator, v1/v2 shadow comparison, the Godview renderer, and strict terminal
 removal. Independently, the local `SPAGHETTI-01` cutover is complete: the scoped
 RFC-012D observer is Claude's sole transcript-derived source, and the legacy
 tail, shadow/primary wrappers, and rollout flags have been removed. Typed team
@@ -38,7 +38,7 @@ because `claude auth status` reported `loggedIn: false` in the current shell.
 | `CLAUDE-01`, `CLAUDE-02`     | Landed; all locally executable native matrix rows green with explicit Haiku/Sonnet guards            | Repeat in release cycles; team/workflow correlation remains under `SPAGHETTI-01`     |
 | `WORKSPACE-01`               | Landed; workspace/record/runtime provenance soak green                                               | Repeat against release candidates                                                    |
 | `APP-01`                     | Landed; shadow mode green in deterministic canaries                                                  | Accumulate native canary evidence                                                    |
-| `APP-02`                     | Landed behind `godviewMonitorV2`; native matrix and two independent local cycles green in both hosts | Two canary release cycles                                                            |
+| `APP-02`                     | Landed behind `godviewMonitorV2`; native matrix and two independent local cycles green in Godview    | Two canary release cycles                                                            |
 | `ADAPTER-01`                 | Telemetry landed; native Codex/Grok/Kimi spot checks green                                           | Exact provider/version gates remain independent; OpenCode/Hermes unavailable locally |
 | `SPAGHETTI-01`               | Scoped observer authoritative against sibling 0.7.0; legacy source and rollout wrappers removed      | Typed message visibility, bounded artifact API, and native team/workflow validation  |
 | `CUTOVER-01`                 | Semantic-source cleanup landed; monitor/UI compatibility cleanup remains                             | Requires Stage D and downstream handoff fixtures                                     |
@@ -68,9 +68,9 @@ Latest local Stage C verification on 2026-08-18:
   authoritative. Value-free shadow traces report family counts/digests,
   correction counts, hashed actor-set counts/digests, readiness, and the
   runtime-run join key. Fake-contract tests and a real
-  sibling-native-addon bootstrap/live-question-resolution test pass. Both
-  Electron apps declare the existing exact `0.5.16` package edge and externalize
-  it from their main bundles, allowing the root override to execute the sibling
+  sibling-native-addon bootstrap/live-question-resolution test pass. The
+  Electron host declares the existing exact `0.5.16` package edge and externalizes
+  it from its main bundle, allowing the root override to execute the sibling
   SDK from its own native-addon resolution context without changing the
   production pin. A real Godview spawn-through canary constrained to Haiku/low/
   Manual emitted a complete bootstrap barrier, live mode/model/usage batches,
@@ -79,11 +79,11 @@ Latest local Stage C verification on 2026-08-18:
   released-package negotiation remain unavailable.
 
 - `pnpm test` and `pnpm build` pass.
-- Godview and Workbench typechecks, tests, and bundles pass.
-- Both hosts complete `ai --claude` spawn-through canaries with monotonic
+- Godview typechecks, tests, and bundles pass.
+- Godview completes `ai --claude` spawn-through canaries with monotonic
   monitor revisions, no shadow mismatch, one clean end notification, and one
   terminal removal.
-- Workbench also passes with the real Claude executable deliberately configured
+- Godview also passes with the real Claude executable deliberately configured
   as missing, proving the credential-free canary does not fall through to it.
 - Installed Claude `2.1.234` is authenticated in the native host context. The
   credential probe remains read-only and no credential material is written to
@@ -106,7 +106,7 @@ Latest local Stage C verification on 2026-08-18:
   label `Manual`; shadow comparison tolerates bounded one-way projection lag
   but is strict at removal; and Claude's `PermissionRequest` record for
   `AskUserQuestion` no longer creates a false permission blocker.
-- Pinned-Haiku task canaries pass in both hosts. A stable native task ID
+- Pinned-Haiku task canaries pass in Godview. A stable native task ID
   progresses through `proposed`, `pending`, `in-progress`, and `completed`,
   with one created and one completed notification. Sparse updates that omit the
   description remain correlated by that ID.
@@ -175,8 +175,8 @@ Latest local Stage C verification on 2026-08-18:
   `allowMultiple`, and `allowFreeForm` are visible while blocked. Multi-select
   automation follows Claude 2.1.234's separate review/submit confirmation;
   free-form navigation opens the editor immediately and preserves the typed
-  response. Multi-select and free-form paths pass in both Godview and
-  Workbench, returning to working/idle with the exact sentinel reply. The
+  response. Multi-select and free-form paths pass in Godview, returning to
+  working/idle with the exact sentinel reply. The
   harness now gates completion on removal of the matching question blocker, so
   a stale blocked projection cannot produce a false pass.
 - The 2026-08-18 Spaghetti release audit found npm `latest` at 0.7.0, but that
@@ -235,7 +235,7 @@ Latest local Stage C verification on 2026-08-18:
 - Workspace, recorder, and runtime provenance suites pass together, including
   Git topology/rewrite cases, concurrent claims, privacy-safe persisted facts,
   retained dirty worktrees, failed finalization, and repeated disposal. Two
-  fresh local canary cycles also pass in both Godview and Workbench with
+  fresh local canary cycles also pass in Godview with
   explicit Haiku/low/Plan configuration. These four local runs establish
   repeatability but are not counted as the two required canary release cycles.
 - Godview's restart/corruption smoke again proves two fsynced restore
@@ -262,7 +262,7 @@ provider side channels
   -> runtime-owned monitor accumulator
   -> one core status/activity projection
   -> full AgentMonitorState revisions
-  -> Godview and Workbench render the same idle | working | blocked result
+  -> Godview renders the idle | working | blocked result
 ```
 
 The first vertical slice does not depend on the unreleased Spaghetti scoped-observer API. The current typed Claude transcript tail remains the compatibility semantic provider until the new observer passes its own shadow gates.
@@ -271,8 +271,8 @@ The first vertical slice does not depend on the unreleased Spaghetti scoped-obse
 
 The refactor is complete when:
 
-1. `AgentMonitorState` is the only live application state contract used by Godview and Workbench.
-2. `status` is exactly `idle | working | blocked`, and both apps render the status and activity already projected by core.
+1. `AgentMonitorState` is the only live application state contract used by Godview.
+2. `status` is exactly `idle | working | blocked`, and Godview renders the status and activity already projected by core.
 3. All eleven runtime-observation checklist families are either populated from evidence or explicitly marked degraded/unsupported.
 4. Claude observation continues to run beside the original TUI, preserves user statusline commands, and never parses screen text as semantic truth.
 5. Runtime-run, native-session, terminal-session, actor, workspace, and external identities are not conflated.
@@ -286,15 +286,15 @@ The refactor is complete when:
 The implementation must account for these current facts rather than assuming a greenfield system:
 
 - `packages/core` is a zero-I/O package and owns `AgentEvent`, `AgentSession`, and the sequence-based `SessionRuntimeState` reducer.
-- Every adapter depends on core. Runtime depends on core, all adapters, record, and workspaces. Both apps depend on runtime and core. The safe dependency order is therefore core, adapters/runtime, then apps.
+- Every adapter depends on core. Runtime depends on core, all adapters, record, and workspaces. Godview depends on runtime and core. The safe dependency order is therefore core, adapters/runtime, then apps.
 - Runtime currently keys live sessions by `runtimeSessionId`, mutates `AgentSessionInfo.sessionId` when a native ID changes, and restamps provider envelopes with a new local sequence.
 - `closeManaged()` removes the session before publishing a final reduced state. There is no lightweight terminal monitor after process resources are released.
-- Godview and Workbench each serialize `SessionRuntimeState` themselves. Godview has `classifyAgentStatus()`/`agentDetail()`; Workbench has separate `liveLabel`/`statusTone` logic.
+- Godview serializes `SessionRuntimeState` and has `classifyAgentStatus()`/`agentDetail()` on the rollback path.
 - Claude combines hooks, root/child status channels, and Spaghetti's typed `observeSession()` stream. Questions, usage, effective state, actors, affiliations, plans, tasks, and conversation replay are projected without a second transcript parser.
 - Claude `AskUserQuestion` is a typed pending interaction distinct from permission approval.
 - Workspaces expose a short random `id` and best-effort final diff metadata, but not a normative repository baseline, isolation/interference evidence, or finalization completeness.
 - Own-action JSONL records have no schema version, stable record ID, runtime-run identity, workspace identity, correction relation, or completeness. Injection records currently persist full prompt text.
-- The Claude adapter and both Electron hosts declare `@vibecook/spaghetti-sdk@0.7.0`; local development resolves that exact edge to the sibling workspace through the root override.
+- The Claude adapter, runtime, and Godview declare `@vibecook/spaghetti-sdk@0.7.0`; local development resolves that exact edge to the sibling workspace through the root override.
 
 ## 4. Execution decisions
 
@@ -318,7 +318,7 @@ The private accumulator is private from product consumers, not physically hidden
 - `terminalSessionId` replaces the routing concept currently called `runtimeSessionId`.
 - `runtimeSessionId` remains a deprecated alias for one compatibility release.
 - `nativeSession` is a correctable claim. Updating it never changes `runtimeRunId`.
-- `creationRequestId` is optional for old callers and required for new Godview/Workbench creation flows.
+- `creationRequestId` is optional for old callers and required for new Godview creation flows.
 - Request IDs are capped at 256 UTF-8 bytes. External refs are capped at 32 entries per run, with 64-byte namespace/kind and 256-byte ID limits; Chopsticks validates and transports them but never interprets project/contributor semantics.
 - In-memory requests share one in-flight promise, while an atomic durable creation-request registry preserves the request-to-run allocation across runtime-host restarts. A retry never spawns a second run merely because the original host disappeared.
 - If a durable retry names a run that is not yet restored into the new host, runtime returns the same `runtimeRunId` plus `CREATION_REQUEST_RECOVERY_REQUIRED`; the caller may restore/adopt its known terminal. A terminal prior run returns its recorded terminal result. Creating genuinely new work requires a new request ID.
@@ -408,7 +408,7 @@ interface RuntimeFeatureFlags {
 
 `createAgentRuntime()` accepts `features?: Partial<RuntimeFeatureFlags>` and resolves omitted values to rollout defaults, so current callers do not break. Godview has one host-level `godviewMonitorV2` selection for renderer cutover. Shadow comparison is configured separately and cannot emit user notifications.
 
-### 4.9 Resolution of `MONITOR.md` open questions
+### 4.9 Resolution of `docs/archive/MONITOR.md` open questions
 
 1. Burn rate initially uses a 60-second window. Canonical response boundaries and compatible low-latency samples carry their boundary type; sampling density is source-driven, not fake per-token streaming.
 2. Claude transcript response/sidechain usage is canonical when actor identity is joinable. `subagentStatusLine` is a low-latency sample/cross-check. Hook `agent_id` proves actor activity/correlation but contributes no token count by itself.
@@ -593,7 +593,7 @@ Estimates are engineering ranges for review, implementation, and focused tests; 
 | `CLAUDE-02`    | Root/child telemetry and typed transcript usage   | `CORE-02`,`CLAUDE-01`       | 4-7 days        |
 | `WORKSPACE-01` | Baseline, finalization, isolation, interference   | `RUN-01`,`REC-01`           | 4-7 days        |
 | `APP-01`       | New IPC in shadow mode                            | `RUN-02`                    | 2-4 days        |
-| `APP-02`       | Both apps use one three-state monitor             | `APP-01`,`CLAUDE-02`        | 4-6 days        |
+| `APP-02`       | Godview uses the shared three-state monitor       | `APP-01`,`CLAUDE-02`        | 4-6 days        |
 | `ADAPTER-01`   | Verified coverage in non-Claude adapters          | `CORE-02`,`RUN-02`          | 5-10 days total |
 | `SPAGHETTI-01` | RFC-012D observer shadow and cutover              | `CLAUDE-02`, released SDK   | 5-8 days        |
 | `CUTOVER-01`   | Defaults, compatibility removal, handoff fixtures | all required slices         | 2-3 days        |
@@ -795,7 +795,8 @@ The likely total is 48-78 engineer-days, with substantial parallelism. The criti
 
 **Files**
 
-- Refactor `packages/adapter-claude/src/observation/statusline.ts` and launch settings into a generic root/child status channel.
+- Refactor the former status-line module and launch settings into
+  `packages/adapter-claude/src/observation/status-channel.ts`, a generic root/child status channel.
 - Add `semantic-provider.ts`, `spaghetti-scoped.ts`, `spaghetti-conversation.ts`, and `monitor-evidence.ts`.
 - Update preparation/settings/forwarder generation and tests.
 
@@ -810,7 +811,7 @@ The likely total is 48-78 engineer-days, with substantial parallelism. The criti
 7. Mark history replay as bootstrap so it sets a baseline without burn spikes or toasts.
 8. Keep one `SemanticObservationProvider`: `SpaghettiScopedObservationProvider` is the default and sole transcript-derived source; unsupported artifact reads remain explicit.
 9. Keep actor/team/workflow attribution unknown unless a verified native identifier joins it.
-10. Keep the exact 0.7.0 Spaghetti dependency edge aligned across the adapter and both hosts; the local root override may resolve it to the sibling workspace.
+10. Keep the exact 0.7.0 Spaghetti dependency edge aligned across the adapter, runtime, and Godview; the local root override may resolve it to the sibling workspace.
 
 **Tests and exit gate**
 
@@ -868,19 +869,19 @@ The likely total is 48-78 engineer-days, with substantial parallelism. The criti
 
 **Tests and exit gate**
 
-- JSON round-trip and IPC contract tests pass in both apps.
+- JSON round-trip and IPC contract tests pass in Godview.
 - An out-of-order/duplicate state is ignored by epoch/revision.
 - Reconnect installs one current full state without replaying old toasts.
 - Removal targets a run and its terminal mapping deterministically.
 - Artifact IPC rejects unknown IDs, paths, oversize requests, and unsupported families without revealing private locators.
 - v1 behavior remains unchanged when flags are off.
 
-### 8.10 `APP-02`: coordinated Godview and Workbench cutover
+### 8.10 `APP-02`: Godview cutover
 
 **Files**
 
-- Refactor Godview monitor hooks/components and Workbench agent panel/sidebar.
-- Delete both `serializeState()` copies and app-local classification/label/tone helpers after the rollback bridge is isolated.
+- Refactor Godview monitor hooks/components.
+- Delete the legacy serializer and app-local classification/detail helpers after the rollback bridge is isolated.
 
 **Work**
 
@@ -891,17 +892,17 @@ The likely total is 48-78 engineer-days, with substantial parallelism. The criti
 5. Drive toasts/feed only from `MonitorNotification`.
 6. Use the shared distinct-run team aggregator; do not add subagent breakdown to the already inclusive root total.
 7. Keep native TUI panes as the place where users answer/approve unless a provider exposes an explicit host-control operation.
-8. Switch both apps in one coordinated slice so there is no period with two product status definitions.
+8. Switch the renderer in one coordinated slice so there is no period with two product status definitions.
 9. Retain the isolated v1 bridge behind `godviewMonitorV2=false` for one release.
 
 **Tests and exit gate**
 
-- The same monitor fixtures produce identical headline status/activity in both apps.
+- Monitor fixtures produce the projected headline status/activity without app-local reclassification.
 - UI covers simultaneous blockers, question choices, child usage, team aggregation, stale families, unsupported families, and dead failure retention.
 - A plan/task at rest does not animate as working.
 - Clean end leaves the board; crash remains blocked until acknowledgment/removal.
 - App code no longer imports `SessionRuntimeState` outside the isolated rollback bridge.
-- Godview/Workbench typecheck, unit tests, bundles, and smoke tests pass.
+- Godview typecheck, unit tests, bundle, and smoke tests pass.
 
 ### 8.11 `ADAPTER-01`: verified non-Claude coverage
 
@@ -1017,7 +1018,7 @@ its SDK/N-API contract and behavioral fixtures provide:
 | Actor joins                 | `CORE-01/02`, provider slices                | Root/child lineage survives replay, correction, unknown attribution, and late affiliation    |
 | Contribution evidence       | `REC-01`, `WORKSPACE-01`                     | Failed spawn, resumed session/new run, isolation/interference, complete/partial finalization |
 | Privacy and boundedness     | `REC-01`, `SPAGHETTI-01`, `APP-01`           | Default records/IPC omit bodies, secrets, raw diffs, native paths, unbounded artifacts       |
-| Three-state product         | `CORE-02`, `RUN-02`, `APP-02`                | Shared fixture yields only idle/working/blocked in both apps                                 |
+| Three-state product         | `CORE-02`, `RUN-02`, `APP-02`                | Shared fixture yields only idle/working/blocked in Godview                                   |
 | Native-TUI side observation | all adapter/app slices                       | No screen parser, shadow model, behavior-replacing worktree hook, or renderer source access  |
 
 ## 10. Rollout stages
@@ -1082,11 +1083,6 @@ pnpm godview:typecheck
 pnpm godview:test
 pnpm godview:bundle
 pnpm godview:smoke
-
-pnpm workbench:typecheck
-pnpm workbench:test
-pnpm workbench:bundle
-pnpm workbench:smoke
 ```
 
 Before every merge that changes public contracts or provider support:

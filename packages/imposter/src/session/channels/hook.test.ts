@@ -100,7 +100,7 @@ describe('createHookEmitter', () => {
     expect(received.map((r) => JSON.parse(r.body).n)).toEqual([1, 2]);
   });
 
-  it('a rejecting bridge is logged, never thrown (IMPOSTER.md §7.3 item 6)', async () => {
+  it('a rejecting bridge is logged, never thrown (docs/archive/IMPOSTER.md §7.3 item 6)', async () => {
     const logged: string[] = [];
     const emitter = createHookEmitter({
       settings: { hooks: { Stop: [{ hooks: [{ type: 'http', url: 'http://127.0.0.1:1/nope', timeout: 1 }] }] } },

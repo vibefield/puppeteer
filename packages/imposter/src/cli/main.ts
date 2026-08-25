@@ -1,5 +1,5 @@
 /**
- * The `ai` entry point (draft/IMPOSTER.md §6).
+ * The `ai` entry point (docs/archive/IMPOSTER.md §6).
  *
  * Answers the vendor's detection surface from the ASM (`--version`, `--help`),
  * then brings up a session on the vendor's real channels. The TUI is not here:

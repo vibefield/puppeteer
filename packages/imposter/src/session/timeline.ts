@@ -1,5 +1,5 @@
 /**
- * The op timeline — one truth, two projections (draft/IMPOSTER.md §2).
+ * The op timeline — one truth, two projections (docs/archive/IMPOSTER.md §2).
  *
  * A turn is a sequence of semantic ops. Each op fans out to BOTH a semantic
  * projection (hook / transcript / statusline / JSON-RPC, per the persona's

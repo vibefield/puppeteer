@@ -1,15 +1,15 @@
 # Chopsticks Agent Emulator & Surface Model — v0.1
 
-**Status:** Draft for review
+**Status:** Archived historical design; active ownership lives in `packages/surface`, `packages/imposter`, and `draft/SURFACE-ADAPTATION-REFACTOR.md`
 **Created:** 2026-08-07
 **Companion:** `draft/DESIGN.md` (canonical architecture; this extends §26 Testing Strategy), `draft/ADAPTING-AN-AGENT.md` (the per-adapter workflow this spec enables)
-**Supersedes:** nothing yet — `probe/` was the spike; this is the pipeline it graduates into
+**Historical basis:** the former root probe tree was the spike this pipeline graduated into
 
 > **Ownership update (2026-08-08):** `draft/SURFACE-ADAPTATION-REFACTOR.md` supersedes this document wherever it assigns real-vendor captures, models, or reconciliation tooling to adapter packages. The evidence-to-ASM rule remains; its neutral owner is now `packages/surface`.
 
-> ### Superseded in part by `draft/IMPOSTER.md` (I4, 2026-08-08)
+> ### Superseded in part by `docs/archive/IMPOSTER.md` (I4, 2026-08-08)
 >
-> **§1 (the one rule), §2 (the ASM), and §7 (reconciliation) still stand and are still canonical.**
+> **§1 (the one rule), §2 (the ASM), and §7 (reconciliation) remain useful rationale.** The active contract is implemented and documented by Surface and the adaptation workflow.
 >
 > Everything about _how_ the stand-in is built and driven has moved:
 >
@@ -177,7 +177,7 @@ L1 exists only because chopsticks never parses terminal text (ADR-003/-004/-005)
 
 ## 4. Historical emulator-bin contract
 
-This section records the retired P2 proof-of-concept contract. The live design uses the shared Imposter executable and Surface-owned real-vendor models; adapters no longer own emulator bins or model data. See `draft/IMPOSTER.md` and `draft/SURFACE-ADAPTATION-REFACTOR.md`.
+This section records the retired P2 proof-of-concept contract. The live design uses the shared Imposter executable and Surface-owned real-vendor models; adapters no longer own emulator bins or model data. See `docs/archive/IMPOSTER.md` and `draft/SURFACE-ADAPTATION-REFACTOR.md`.
 
 The retired design gave each adapter a `surface/emulator/bin.mjs` executable that the adapter spawned **in place of the vendor CLI**, resolved through the existing seams: `CHOPSTICKS_{CLAUDE,CODEX,GROK}_BIN` or `BuiltinProviderOptions.executables`. Script recipes used a resolved real Node binary so the same `.mjs` worked on POSIX and Windows without shell or `.cmd` quoting.
 
@@ -315,7 +315,7 @@ Godview/workbench may grow a `--emulate` convenience flag that sets `executables
 
 ## 7. Reconciliation — the nightly lane
 
-`audit.mjs` per Surface vendor is the productized census (what `probe/` did by hand):
+`audit.mjs` per Surface vendor is the productized census (what the retired root probes did by hand):
 
 1. Run the census against the installed vendor binary → `surface-report.json`.
 2. Diff against `packages/surface/vendors/<vendor>/model/<vendor>@<version>/`: unobserved model entries, observed-but-unmodeled events, payload-shape changes.
@@ -358,7 +358,7 @@ Scheduling begins with `.github/workflows/upstream-agents.yml`, which polls ever
 
 | Phase  | Contents                                                                                                                                                                | Exit                                                                              | Status                                                                                                                                                           |
 | ------ | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| **P1** | ASM format + validator in `packages/emulator`; adapter-claude as reference: distill `probe/captures` into `surface/model/claude@2.1.207`, migrate captures, `audit.mjs` | `registry.ts` generated from the model; audit diff clean against 2.1.207 captures | **substantially delivered 2026-08-07** (hook model/captures/registry audit complete; capture-backed transcript and statusline schemas remain)                    |
+| **P1** | ASM format + validator in `packages/emulator`; adapter-claude as reference: distill the initial captures into `surface/model/claude@2.1.207`, migrate captures, `audit.mjs` | `registry.ts` generated from the model; audit diff clean against 2.1.207 captures | **substantially delivered 2026-08-07** (hook model/captures/registry audit complete; capture-backed transcript and statusline schemas remain)                    |
 | **P2** | Channel simulators + scenario runner + claude `bin.mjs` (hooks + transcript first — they feed the reducer); conformance suite gains emulator mode                       | `adapter-claude` conformance green hermetically in CI                             | **substantially delivered 2026-08-07** (engine + bin + full starter scenario set + `conformance.emulator.test.ts`; captured-session replay/diff remains P4 work) |
 | **P3** | control center (now `apps/imposter-control`) + registration/control channel + godview emulator-mode flow                                                                | the §6.4 five-step flow works by hand                                             | **substantially delivered 2026-08-07** (named/inline play with speed and stimulus; pause/step and a recorded manual §6.4 run remain)                             |
 | **P4** | Codex behavior pack (fake app-server promoted from the existing in-memory transport to a real subprocess) + the nightly reconciliation workflow; then grok/acp packs    | nightly lane files (or doesn't) its first drift issue                             |                                                                                                                                                                  |

@@ -1,6 +1,6 @@
 /**
  * Every persona's boot table, checked against the portable scenario phase it
- * is supposed to produce (scenario-driver.ts, draft/IMPOSTER.md §11).
+ * is supposed to produce (scenario-driver.ts, docs/archive/IMPOSTER.md §11).
  *
  * This exists because `ai --codex` shipped with `"boot": []` and therefore sat
  * in `starting` forever — no op reached the driver, so its graph never moved

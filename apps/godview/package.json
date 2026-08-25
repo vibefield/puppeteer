@@ -3,7 +3,7 @@
   "version": "0.0.0",
   "private": true,
   "type": "module",
-  "description": "Ghosttea desktop Godview for terminal sessions without the agent panel.",
+  "description": "Ghosttea desktop Godview for terminal and coding-agent sessions.",
   "license": "MIT",
   "author": "James Yong",
   "main": "./dist/main.cjs",
@@ -23,9 +23,7 @@
     "@vibecook/chopsticks-runtime": "workspace:*",
     "@vibecook/chopsticks-workspaces": "workspace:*",
     "@vibecook/spaghetti-sdk": "0.7.0",
-    "@vibecook/ghosttea": "0.9.3",
     "@vibecook/ghosttea-electron": "0.9.3",
-    "@vibecook/ghosttea-frame": "0.9.3",
     "@vibecook/ghosttea-native-tabs": "0.9.3",
     "@vibecook/ghosttea-protocol": "0.9.3",
     "@vibecook/ghosttea-react": "0.9.3",
@@ -42,7 +40,6 @@
     "@vibecook/truffle": "0.7.12",
     "electron": "^43.1.0",
     "esbuild": "^0.24.0",
-    "tsx": "^4.19.2",
     "typescript": "^5.6.0"
   }
 }

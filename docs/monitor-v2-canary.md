@@ -8,8 +8,8 @@ monitor revision stream beside it.
 
 - `--chopsticks-monitor-shadow` enables v2 accumulation and v1/v2 comparison
   while leaving the legacy renderer authoritative.
-- `--chopsticks-godview-monitor-v2` enables the v2 renderer in both Godview and
-  Workbench and also enables v2 accumulation.
+- `--chopsticks-godview-monitor-v2` enables the Godview v2 renderer and v2
+  accumulation.
 - `--chopsticks-monitor-canary-trace` writes one prefixed JSON record to stderr
   for every accepted state, notification, removal, and shadow mismatch. It
   enables v2 accumulation but does not switch the renderer by itself.
@@ -24,9 +24,8 @@ pnpm --filter godview exec electron . \
   2>/tmp/chopsticks-monitor-canary.log
 ```
 
-Use `workbench` in place of `godview` to exercise the other host. Lines that
-begin with `[monitor-canary] ` contain the trace. Other stderr lines are normal
-host and provider diagnostics.
+Lines that begin with `[monitor-canary] ` contain the trace. Other stderr lines
+are normal host and provider diagnostics.
 
 The trace contains only public monitor and IPC contracts, never private source
 records, hook secrets, transcript paths, or artifact bodies. Public monitor
@@ -51,9 +50,6 @@ replace the supported-version native Claude matrix. The command does not
 require a real Claude executable or Claude credentials; if it succeeds with a
 real executable absent, that is useful evidence that the host did not silently
 fall through to the vendor binary.
-
-Run the same command with `workbench` in place of `godview`. Both hosts are part
-of the coordinated APP-02 gate.
 
 When exercising configuration propagation, pin every Claude model explicitly
 and assert the resulting monitor state before sending a prompt. For example:
@@ -132,10 +128,9 @@ pnpm --filter godview exec electron . \
   2>/tmp/chopsticks-monitor-canary.log
 ```
 
-Repeat with `workbench`, and substitute `sonnet` only for matrix cases assigned
-to Sonnet. The explicit CLI option is the execution guard; the expectation
-variables independently verify that Chopsticks observed the intended runtime
-configuration.
+Substitute `sonnet` only for matrix cases assigned to Sonnet. The explicit CLI
+option is the execution guard; the expectation variables independently verify
+that Chopsticks observed the intended runtime configuration.
 
 Claude's `--setting-sources` option must also flow through spawn-through. The
 adapter uses the same selected `user`, `project`, and `local` layers when it

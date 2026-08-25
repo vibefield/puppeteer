@@ -1,5 +1,5 @@
 /**
- * What the TUI renders (draft/IMPOSTER.md §4), as an external store.
+ * What the TUI renders (docs/archive/IMPOSTER.md §4), as an external store.
  *
  * The session pushes into this from outside React; the Ink component only
  * subscribes. Keeping the state here rather than in a component is what lets

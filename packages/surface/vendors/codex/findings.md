@@ -160,7 +160,7 @@ Raw v1+v2 JSON Schema was dumped during this probe (regenerable via §5); not co
 
 ## 7. C1 live spike — CONFIRMED (2026-07-13)
 
-Drove `codex app-server` (stdio JSON-RPC) end-to-end against live Codex, read-only sandbox: `initialize` → `initialized` → `thread/start` → `turn/start("reply pong")` → `turn/completed`. **2.8 s, model replied `pong`, zero approval requests.** Capture + distilled shapes: `probe/codex/c1-appserver-capture.jsonl`, `probe/codex/c1-notification-shapes.json`.
+Drove `codex app-server` (stdio JSON-RPC) end-to-end against live Codex, read-only sandbox: `initialize` → `initialized` → `thread/start` → `turn/start("reply pong")` → `turn/completed`. **2.8 s, model replied `pong`, zero approval requests.** Capture + distilled shapes: `packages/surface/vendors/codex/captures/codex@0.144.2/c1-appserver-capture.jsonl`, `packages/surface/vendors/codex/captures/codex@0.144.2/c1-notification-shapes.json`.
 
 **Verdicts (flips §6 deferrals #1, #4; partial #2):**
 
@@ -196,7 +196,7 @@ Drove `codex app-server` (stdio JSON-RPC) end-to-end against live Codex, read-on
 
 ## 8. C6a — native-TUI coexistence probe (`--remote` over WebSocket)
 
-Resolves §6 deferral #3, live against codex 0.144.2. Probes: `probe/codex/c6-ws-probe.mjs`, `c6-pty-attach-probe.mjs`.
+Resolves §6 deferral #3, live against codex 0.144.2. Versioned method probes are retained under `packages/surface/vendors/codex/probes/codex@0.144.2/`.
 
 **The socket transport is WebSocket, not NDJSON — on BOTH unix and TCP.** `codex app-server --listen` accepts `stdio://` (NDJSON), `unix://<sock>`, and `ws://IP:PORT`. Every _socket_ transport (unix **and** TCP) frames JSON-RPC as **WebSocket**; only `stdio://` is NDJSON. Raw NDJSON/`Content-Length` to a socket gets silence (it's waiting for a WS upgrade). **WebSocket-over-UDS is verified** (`c6-ws-uds` probe: `HTTP/1.1 101 Switching Protocols` over the unix socket, then `initialize`/`thread/start`). **UDS is the preferred C6 transport** — no port allocation/collision, filesystem-permission scoped, not network-exposed. Gotchas: `--listen unix://` needs a **real path** (macOS `/tmp` is a symlink → the app-server's `lstat` rejects it with "not a directory"); the server logs "binds localhost only" and exposes `/readyz` + `/healthz`. **Localhost/UDS needs NO auth token** (the `--remote-auth-token-env` bearer is for remote/pairing access). Client note: Node's **built-in `WebSocket` is TCP-only**, so WS-over-UDS needs either the `ws` package (`ws+unix://`) or a ~70-line hand-rolled WS client (the probe proves it's small).
 
@@ -217,7 +217,7 @@ Resolves §6 deferral #3, live against codex 0.144.2. Probes: `probe/codex/c6-ws
 # C1b — Re-probe at 0.147.0 (2026-08-07)
 
 **Probed:** 2026-08-07, `codex-cli` **0.147.0**, macOS 26.5.2 arm64. Live app-server sessions this
-time (C0 was read-only). Design consequences live in `IMPOSTER.md §9`.
+time (C0 was read-only). Design consequences live in `docs/archive/IMPOSTER.md §9`.
 
 C0 already established the important architecture — `generate-json-schema`/`generate-ts`,
 approvals as JSON-RPC ServerRequests with real request-ids, the structured-driver recommendation.
@@ -240,7 +240,7 @@ Additive, despite ~2 alpha tags/day.
 
 1. **Generation is deterministic** — a pure function of `(version, --experimental)`. Repeated runs
    byte-identical; fresh `CODEX_HOME` and explicit `--enable` of feature flags change nothing. So
-   `EMULATOR.md §2.1`'s `git diff`-as-changelog promise holds for codex.
+   `docs/archive/EMULATOR.md §2.1`'s `git diff`-as-changelog promise holds for codex.
 2. **`--experimental` is NOT purely additive.** 25 of the 285 shared files differ in _content_ — it
    adds fields to stable methods. `CommandExecutionRequestApprovalParams` goes 13 → 15 properties,
    gaining `additionalPermissions` and **`availableDecisions`** (the vendor enumerating which
@@ -282,12 +282,12 @@ C0's protocol reading was sound; the adapter built from it has since drifted.
   sound — but the round-trip was never exercised, and `driver.ts:239` returns `confirmed` on the
   `turn/start` promise alone without reading it.
 
-## Privacy — `probe/codex/c1-appserver-capture.jsonl`
+## Privacy — the legacy C1 app-server capture
 
 That capture is **committed raw to a public repo** (`origin/main` + 4 branches). It contains
 `/Users/<user>/.codex`, hostname `<hostname>.local`, `installationId`, the prompt and
-reply, and a `userAgent` carrying OS version and terminal emulator. No credentials. `.gitignore`
-covers `packages/surface/vendors/*/captures-raw/` but not `probe/`.
+reply, and a `userAgent` carrying OS version and terminal emulator. No credentials. At the time,
+`.gitignore` covered `packages/surface/vendors/*/captures-raw/` but not the root probe directory.
 
 Worse, the claude sanitizer **passes it clean** while leaving all of the above intact, because
 `idKey` misses `threadId`/`itemId`/`callId` and codex has no `sensitiveContainer` equivalent. Two
@@ -358,7 +358,7 @@ call is being silently discarded specifically in non-message item parsing.
 
 **Consequence for the plan:** the hermetic lane can capture a full turn, token
 usage and rate limits today, which is most of a behaviour census. Approvals and
-tool items — the highest-value scenarios (IMPOSTER.md §9.7) — remain blocked on
+tool items — the highest-value scenarios (docs/archive/IMPOSTER.md §9.7) — remain blocked on
 the above. Recommended next move, and it is a BOOTSTRAP rather than a fallback: run ONE
 credentialed turn that uses a tool, and record the provider's exact SSE bytes.
 That yields the ground truth for the fake provider, after which the hermetic
@@ -484,7 +484,7 @@ matching numeric values to `REDACTED_EPOCH_MS` (2026-01-01T00:00:00Z, not 0, so
 fixtures stay shape-faithful), and the detector reports an unpinned clock.
 
 Turning the detector on immediately failed the repo's capture gate with **20
-real leaks in `probe/codex/c1-appserver-capture.jsonl` and
+real leaks in the legacy C1 app-server capture and
 `c1-notification-shapes.json`** — the files C1b flagged as committed raw to a
 public repo. Both are now sanitized and the gate is clean. That is twice this
 capture has been found leaking by a rule written for something else, which is

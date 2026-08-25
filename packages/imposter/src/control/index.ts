@@ -1,5 +1,5 @@
 /**
- * The control channel (draft/IMPOSTER.md §5). `protocol` is the shared
+ * The control channel (docs/archive/IMPOSTER.md §5). `protocol` is the shared
  * vocabulary, `peer` the codec both ends run, and `client` the imposter's
  * dialer. The plane that answers lives in `apps/imposter-control` — it is the sole
  * consumer and not published API (§7.2).

@@ -1,6 +1,6 @@
 /**
- * The pre-normalization Control flow, over one socket (draft/EMULATOR.md §6.4,
- * IMPOSTER.md §5).
+ * The pre-normalization Control flow, over one socket (docs/archive/EMULATOR.md §6.4,
+ * docs/archive/IMPOSTER.md §5).
  *
  * A real driver spawns `ai`, the Imposter dials the plane, and controls issued
  * at the HTTP edge travel console → socket → Imposter → native channel. The
@@ -65,7 +65,7 @@ const logFor = (sessionId: string): Promise<Array<{ event: string; payload?: Rec
  *
  * These are the tests that spawn `ai` and wait for it to dial back into the
  * control plane. The in-process plane suite still runs on Windows; spawned
- * named-pipe discovery remains unverified there (draft/IMPOSTER.md §11.4).
+ * named-pipe discovery remains unverified there (docs/archive/IMPOSTER.md §11.4).
  */
 const posix = process.platform !== 'win32';
 

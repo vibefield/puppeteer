@@ -3,7 +3,7 @@
  * Claude capture sanitiser — a thin CLI over the shared engine in
  * `@vibecook/chopsticks-surface/sanitize`.
  *
- * The engine moved out of this file on 2026-08-07 (draft/IMPOSTER.md §9.6).
+ * The engine moved out of this file on 2026-08-07 (docs/archive/IMPOSTER.md §9.6).
  * The rules are vendor-specific, but the MECHANISM is not, and keeping one copy
  * means a hole closed for one vendor is closed for every vendor. The move was
  * prompted by finding that this file's own predecessor passed a real codex

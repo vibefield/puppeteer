@@ -4,7 +4,7 @@
 
 **Audience:** Developers adding a new built-in agent or adapting a new version of an existing agent
 
-**Companions:** `draft/SURFACE-ADAPTATION-REFACTOR.md` defines ownership and promotion; `draft/EMULATOR.md` defines the Agent Surface Model; `draft/IMPOSTER.md` defines personas and native emulation; `draft/NORMALIZATION-DEVKIT.md` defines the normalization workbench; `draft/DESIGN.md` defines the runtime contract.
+**Companions:** `draft/SURFACE-ADAPTATION-REFACTOR.md` defines ownership and promotion; `docs/archive/EMULATOR.md` defines the Agent Surface Model; `docs/archive/IMPOSTER.md` defines personas and native emulation; `draft/NORMALIZATION-DEVKIT.md` defines the normalization workbench; `draft/DESIGN.md` defines the runtime contract.
 
 This guide is the operational path from an unknown vendor binary to a supported Chopsticks agent. It tells you what to investigate, which artifacts to create, where each fact belongs, how to use the adaptation devkit, what to test, and what must be true before support is promoted.
 
@@ -915,8 +915,6 @@ For Godview, review and update the applicable seams under `apps/godview/src/`:
 - renderer labels, status presentation, icons, and account-usage presentation where the new agent needs explicit UI treatment;
 - adjacent tests for every changed list or launch rule.
 
-For Workbench, review the corresponding `src/main/main.ts`, `src/main/spawn-through.ts`, `src/shim/agent-shim.ts`, and renderer agent selector. Preserve the real executable fallback whenever a shim cannot safely retain the user’s argv.
-
 Do not add an Imposter agent to a product’s native-pane allowlist until its real adapter-against-Imposter launch topology has passed conformance. Codex and Grok need more than a persona that can print events: their attach/leader compositions must work end to end.
 
 ### 9.5 Wire publication and release policy
@@ -1093,7 +1091,6 @@ Run targeted checks while iterating, then the full matrix before review.
 | Devkit                | `pnpm --filter imposter-control typecheck`, `test`, and `bundle`                        | spawner, native plane, projection, and browser bundle agree                                     |
 | Devkit smoke          | `pnpm agent-devkit:smoke`                                                               | Electron main process starts and shuts down correctly                                           |
 | Godview, when wired   | `pnpm godview:typecheck`, `godview:test`, `godview:bundle`, and `godview:smoke`         | built-in selection, shim/spawn-through, restore, renderer, bundle, and native launch are usable |
-| Workbench, when wired | `pnpm workbench:typecheck`, `workbench:test`, `workbench:bundle`, and `workbench:smoke` | the secondary development app exposes the same built-in agent safely                            |
 | Package policy        | `pnpm packages:check`                                                                   | topology, manifests, ownership, release coverage, and dependencies are valid                    |
 | Support policy        | `pnpm support:check`                                                                    | ledger, persona, candidate/current manifest, evidence, and badge agree                          |
 | Full repository       | `pnpm test`                                                                             | all typechecks, script tests, package tests, and app tests pass                                 |
@@ -1151,7 +1148,6 @@ This is the review checklist for files commonly missed during a first adaptation
 ### Product applications
 
 - [ ] Godview built-in/restorable lists, shim, spawn-through, and relevant renderer/account-usage seams
-- [ ] Workbench built-in list, selector, shim, and spawn-through seams when the agent is exposed there
 - [ ] product-app typecheck, tests, bundle, and smoke for every app changed
 
 ### Automation

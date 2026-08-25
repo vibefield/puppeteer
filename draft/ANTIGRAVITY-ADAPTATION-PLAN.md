@@ -617,7 +617,7 @@ runtime's common session logic.
 After the adapter-against-Imposter topology passes:
 
 - Godview built-in agent list and spawn/restore wiring;
-- Workbench built-in agent list, shim/spawn-through wiring, and restore;
+- Godview built-in agent list, shim/spawn-through wiring, and restore;
 - app tests proving both surfaces invoke the runtime provider rather than
   reconstructing an Antigravity launch recipe.
 
@@ -753,7 +753,7 @@ At minimum, require:
 - shared conformance lifecycle, reply, sequence, resume-history, and cleanup;
 - real adapter-against-Imposter transport tests;
 - runtime provider registration and option pass-through tests;
-- Godview, Workbench, and Imposter Control spawn/restore tests;
+- Godview and Imposter Control spawn/restore tests;
 - package-layout, publication, support-rendering, and workflow checks;
 - protected pinned-real smoke tests for `darwin-arm64`, `darwin-x64`,
   `linux-x64`, and `windows-x64`.

@@ -44,15 +44,9 @@ importers:
       '@vibecook/chopsticks-workspaces':
         specifier: workspace:*
         version: link:../../packages/workspaces
-      '@vibecook/ghosttea':
-        specifier: 0.9.3
-        version: 0.9.3
       '@vibecook/ghosttea-electron':
         specifier: 0.9.3
         version: 0.9.3(electron@43.1.0)
-      '@vibecook/ghosttea-frame':
-        specifier: 0.9.3
-        version: 0.9.3
       '@vibecook/ghosttea-native-tabs':
         specifier: 0.9.3
         version: 0.9.3
@@ -99,9 +93,6 @@ importers:
       esbuild:
         specifier: ^0.24.0
         version: 0.24.2
-      tsx:
-        specifier: ^4.19.2
-        version: 4.23.0
       typescript:
         specifier: ^5.6.0
         version: 5.9.3
@@ -2341,6 +2332,7 @@ snapshots:
       esbuild: 0.28.1
     optionalDependencies:
       fsevents: 2.3.3
+    optional: true
 
   type-fest@5.8.0:
     dependencies:

@@ -1,5 +1,5 @@
 /**
- * The chrome, rendered (draft/IMPOSTER.md §4).
+ * The chrome, rendered (docs/archive/IMPOSTER.md §4).
  *
  * Ink is pointed at a PassThrough rather than a pty, which is enough because
  * everything asserted here is layout and content.

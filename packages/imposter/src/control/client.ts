@@ -1,5 +1,5 @@
 /**
- * The imposter's control client (draft/IMPOSTER.md §5): dial the plane's one
+ * The imposter's control client (docs/archive/IMPOSTER.md §5): dial the plane's one
  * socket and hold the connection.
  *
  * The direction is inverted from the PoC on purpose. An imposter that dials out

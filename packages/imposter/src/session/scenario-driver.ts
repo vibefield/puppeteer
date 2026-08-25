@@ -1,6 +1,6 @@
 /**
  * The portable scenario driver, as a state machine over the op vocabulary
- * (draft/IMPOSTER.md §2, §11).
+ * (docs/archive/IMPOSTER.md §2, §11).
  *
  * This is authoring intent, NOT a vendor lifecycle or a normalized runtime
  * projection. Vendor-native truth lives in Surface's versioned behavior graph;

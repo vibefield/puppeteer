@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 /**
- * The `ai` executable (draft/IMPOSTER.md §6). Kept as a thin `.mjs` shim so
+ * The `ai` executable (docs/archive/IMPOSTER.md §6). Kept as a thin `.mjs` shim so
  * node's type stripping enters the TypeScript sources directly — no build step
  * in development, ordinary ESM once published.
  */

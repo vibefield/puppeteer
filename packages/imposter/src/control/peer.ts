@@ -1,5 +1,5 @@
 /**
- * Newline-delimited JSON-RPC 2.0 over a duplex stream (draft/IMPOSTER.md §5.1).
+ * Newline-delimited JSON-RPC 2.0 over a duplex stream (docs/archive/IMPOSTER.md §5.1).
  *
  * One codec, both ends: the imposter's client and the control center's plane
  * build their halves from this, so there is a single place where framing,

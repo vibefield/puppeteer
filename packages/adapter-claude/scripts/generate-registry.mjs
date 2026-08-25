@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 /**
- * Registry generation (draft/EMULATOR.md §2, ADAPTING-AN-AGENT step 4):
+ * Registry generation (docs/archive/EMULATOR.md §2, ADAPTING-AN-AGENT step 4):
  * Adapter runtime projections are GENERATED from the Surface-owned Claude
  * model. The evidence is canonical; these files are disposable projections.
  *

@@ -41,13 +41,13 @@ update the support ledger and these badges.
 ## Packages
 
 - `@vibecook/chopsticks-runtime` — unified runtime and built-in Claude, Codex,
-  ACP, and Grok providers.
+  ACP, Grok, Kimi, OpenCode, and Hermes integrations.
 - `@vibecook/chopsticks-core` — zero-I/O event, state, session, and host
   contracts.
 - `@vibecook/chopsticks-workspaces` — direct, exclusive, worktree, and copy
   workspace modes.
-- `@vibecook/chopsticks-adapter-{claude,codex,acp,grok}` — provider-specific
-  observation and control.
+- `@vibecook/chopsticks-adapter-{claude,codex,acp,grok,kimi,opencode,hermes}` —
+  provider-specific observation and control.
 - `@vibecook/chopsticks-record` — append-only records of runtime-owned actions.
 - `@vibecook/chopsticks-surface` — promoted vendor evidence models and their
   validation/diff runtime.
@@ -113,8 +113,8 @@ when absent, structured adapters deny approval requests by default.
 
 ## Caller-owned terminal adoption
 
-Claude, Codex, and Grok support split-phase launch for PATH shims and other
-callers that already own the terminal pane:
+Claude, Codex, Grok, Kimi, OpenCode, and Hermes support split-phase launch for
+PATH shims and other callers that already own the terminal pane:
 
 ```ts
 const prepared = await runtime.prepareSession({

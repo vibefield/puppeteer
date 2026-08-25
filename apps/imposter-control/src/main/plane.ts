@@ -1,5 +1,5 @@
 /**
- * The Imposter control plane (draft/IMPOSTER.md §5).
+ * The Imposter control plane (docs/archive/IMPOSTER.md §5).
  *
  * One socket, dialed by imposters; one loopback HTTP server, for the browser
  * console. The plane translates between them: browser ⇄ HTTP ⇄ plane ⇄ UDS ⇄
@@ -56,7 +56,7 @@ const PROJECTION_RECONCILE_MS = 150;
 
 /**
  * A vendor spawn binding supplied by the control center. The plane stays
- * vendor-neutral; wiring lives in the app (EMULATOR.md §6).
+ * vendor-neutral; wiring lives in the app (docs/archive/EMULATOR.md §6).
  */
 export interface EmulatorSpawner {
   vendor: string;

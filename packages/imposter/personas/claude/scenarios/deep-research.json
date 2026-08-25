@@ -181,7 +181,7 @@
             "tool_name": "Read",
             "tool_input": { "file_path": "$cwd" },
             "tool_response": {
-              "files": ["README.md", "draft/IMPOSTER.md", "packages/imposter/src/session/scenario.ts"]
+              "files": ["README.md", "docs/archive/IMPOSTER.md", "packages/imposter/src/session/scenario.ts"]
             },
             "tool_use_id": "$uuid:read",
             "duration_ms": 175

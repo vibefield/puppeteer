@@ -2,7 +2,7 @@ Native TUI Coding Agent Runtime
 
 Architecture Design · v0.2 Draft · July 12, 2026 · Revised after Spaghetti-integration review
 
-Status: Proposed
+Status: Canonical architecture baseline; runtime-observation and monitor sections are superseded by `docs/rfcs/001-evidence-backed-runtime-observation.md`
 Primary language: TypeScript
 Initial host: Electron
 Initial agent integration: Claude Code
@@ -820,7 +820,7 @@ raw hidden thought text. Codex and ACP map their explicit reasoning signals;
 Claude remains on the shared active-turn `working` fallback until a verified
 native reasoning signal exists. Raw protocol payloads remain available to
 library consumers through `AgentEventEnvelope.nativeEvent`, but are not sent to
-the workbench renderer.
+the application renderer.
 
 ⸻
 

@@ -1,5 +1,5 @@
 /**
- * Phase I2's exit criterion (draft/IMPOSTER.md §8): the codex family, driven by
+ * Phase I2's exit criterion (docs/archive/IMPOSTER.md §8): the codex family, driven by
  * the REAL `adapter-codex` driver against `ai --codex app-server` as a spawned
  * process. No codex binary, no account, no tokens.
  *

@@ -1,5 +1,5 @@
 /**
- * The app-server channel (draft/IMPOSTER.md §9.3) — the imposter as a server.
+ * The app-server channel (docs/archive/IMPOSTER.md §9.3) — the imposter as a server.
  *
  * A hook imposter only emits; a JSON-RPC imposter must also SERVE. This is the
  * inbound half of that: NDJSON over stdio, the transport `adapter-codex` spawns

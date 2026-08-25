@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 /**
- * The codex surface audit (EMULATOR.md §7, ADAPTING-AN-AGENT step 6).
+ * The codex surface audit (docs/archive/EMULATOR.md §7, ADAPTING-AN-AGENT step 6).
  *
  * Three checks, in increasing order of what they can catch:
  *

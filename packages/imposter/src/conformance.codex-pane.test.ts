@@ -1,6 +1,6 @@
 /**
  * The codex recipe with `ai` as the vendor binary — what a Godview pane does
- * when someone types `ai --codex` (draft/IMPOSTER.md §11.2).
+ * when someone types `ai --codex` (docs/archive/IMPOSTER.md §11.2).
  *
  * `conformance.codex-socket.test.ts` proves the transport. This proves the
  * RECIPE on top of it: `prepareCodexTuiSession` spawns a private app-server,

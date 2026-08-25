@@ -1,5 +1,5 @@
 /**
- * Terminal channel — input side (draft/IMPOSTER.md §4.1.1).
+ * Terminal channel — input side (docs/archive/IMPOSTER.md §4.1.1).
  *
  * The adapter injects prompts as a guarded bracketed paste through
  * `AgentHost.automateTerminal`, so decoding that byte sequence is the single

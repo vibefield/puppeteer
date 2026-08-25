@@ -32,7 +32,7 @@ afterEach(async () => {
  * Windows — where pretending otherwise, or deleting the Windows job to make the
  * red go away, would hide it. `plane.test.ts` still runs there and covers the
  * plane's own HTTP and socket surface in-process; what is not covered is a
- * spawned imposter finding it. Tracked in draft/IMPOSTER.md §11.4.
+ * spawned imposter finding it. Tracked in docs/archive/IMPOSTER.md §11.4.
  */
 const posix = process.platform !== 'win32';
 

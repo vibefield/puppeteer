@@ -10,14 +10,9 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 
 const require = createRequire(import.meta.url);
-let pty;
-try {
-  pty = require('../../packages/node/node_modules/node-pty');
-} catch {
-  pty = require('node-pty');
-}
+const pty = require('node-pty');
 
-const LOG = new URL('./controller-owned-thread-probe3.log', import.meta.url).pathname;
+const LOG = new URL('./controller-owned-thread-probe.log', import.meta.url).pathname;
 appendFileSync(LOG, `\n==== ${new Date().toISOString()} ====\n`);
 const log = (...a) => {
   const line = a.map((x) => (typeof x === 'string' ? x : JSON.stringify(x))).join(' ');

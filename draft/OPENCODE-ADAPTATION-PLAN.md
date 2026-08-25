@@ -410,7 +410,7 @@ real-adapter-vs-Imposter conformance pass.
 Implementation status (2026-08-11): complete. Runtime exposes `opencode` as a
 typed built-in provider, resolves `CHOPSTICKS_OPENCODE_BIN`, and forwards the
 private-backend, model, permission, context, timeout, and reconnect options to
-both create and prepare paths. Godview and Workbench discover and shim the real
+both create and prepare paths. Godview discovers and shims the real
 binary, accept exact `-s`/`--session` resume selection, and expose OpenCode in
 their application labels/selectors. Godview additionally routes `ai
 --opencode` through one isolated durable store shared by the Imposter backend
@@ -421,7 +421,7 @@ duplicate-id, reconnect, REST hydration, prompt-receipt, and attach behavior to
 adapter conformance.
 
 The full repository test command passes, including 38 runtime tests, 86
-Godview tests, 13 Workbench tests, 46 adaptation-devkit tests, all 239 Imposter
+Godview tests, 46 adaptation-devkit tests, all 239 Imposter
 tests, and the OpenCode adapter's 34 default tests (with its pinned-real test
 remaining opt-in). Workspace typecheck/build, all three app bundles,
 package-layout, upstream-config, support-ledger, and OpenCode-scoped formatting

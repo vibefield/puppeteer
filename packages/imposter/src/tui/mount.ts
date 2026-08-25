@@ -1,6 +1,6 @@
 /**
  * Presentation: the same four lines of information, rendered two ways
- * (draft/IMPOSTER.md §4.2).
+ * (docs/archive/IMPOSTER.md §4.2).
  *
  * Headless is not a fallback — CI runs it, and so does the control centre's
  * spawner, because Ink's pinned layout needs a real TTY and neither has one.

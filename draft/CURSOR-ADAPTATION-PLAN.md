@@ -763,7 +763,7 @@ be a production dependency.
 | 2. Model | ASM v2 + `surface:audit:cursor` | evidence digests after captures freeze |
 | 3. Emulate | persona, scenarios, exact replay | new channel implementation if needed |
 | 4. Adapt | adapter + focused tests + honest devkit projection | no fake full coverage |
-| 5. Integrate | conformance, Imposter E2E, runtime provider, packaging | Godview/Workbench only after E2E |
+| 5. Integrate | conformance, Imposter E2E, runtime provider, packaging | Godview only after E2E |
 | 6. Promote | `baseline-pending` then protected four-platform attestation | do not hand-edit `currentManifest` |
 
 Do these in order. Never derive Surface from adapter code. Never derive the

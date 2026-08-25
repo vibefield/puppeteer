@@ -1,6 +1,6 @@
 /**
  * WebSocket-over-unix-socket transport for the app-server channel
- * (draft/IMPOSTER.md §9.3).
+ * (docs/archive/IMPOSTER.md §9.3).
  *
  * Codex frames JSON-RPC as WebSocket on every socket transport; ONLY stdio is
  * NDJSON (CODEX-SURFACE-FINDINGS §8). Since `adapter-codex` runs

@@ -7,7 +7,7 @@
  * audit needs the `codex` binary and belongs to the nightly reconciliation lane
  * (`pnpm --filter @vibecook/chopsticks-surface run surface:audit:codex`).
  *
- * The point of this file is EMULATOR.md §1: the model is captured truth, never
+ * The point of this file is docs/archive/EMULATOR.md §1: the model is captured truth, never
  * derived from `normalizer.ts`. If someone "fixes" a schema to match the
  * adapter, the fixtures stop validating here.
  */
@@ -57,7 +57,7 @@ describe('the codex ASM', () => {
     const verified = model.events.filter((event) => event.confidence !== 'unverified');
     // Shape comes from the vendor schema for the whole bidirectional surface;
     // only what the hermetic
-    // census actually observed may claim to be verified (IMPOSTER.md §9.2).
+    // census actually observed may claim to be verified (docs/archive/IMPOSTER.md §9.2).
     expect(verified.length).toBeGreaterThan(0);
     expect(verified.length).toBeLessThan(model.events.length);
     for (const event of verified) {

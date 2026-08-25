@@ -1,5 +1,5 @@
 /**
- * Persona loading (draft/IMPOSTER.md §3.2).
+ * Persona loading (docs/archive/IMPOSTER.md §3.2).
  *
  * Reads the persona's own documents from `personas/<vendor>/`, then resolves
  * its captured ASM out of the neutral Surface package. The ASM is NOT vendored

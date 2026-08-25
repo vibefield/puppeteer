@@ -1,6 +1,6 @@
 # The Runtime Monitor Model
 
-Status: Proposed · 2026-08-11 · Supersedes the five-layer STATE-LAYERS.md draft (2026-08-10)
+Status: Archived · superseded by [RFC-001](../rfcs/001-evidence-backed-runtime-observation.md) · 2026-08-24
 
 ## 1. Positioning
 

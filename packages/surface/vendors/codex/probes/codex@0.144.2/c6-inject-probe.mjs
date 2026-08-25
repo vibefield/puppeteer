@@ -4,7 +4,7 @@
 import { spawn } from 'node:child_process';
 import { createRequire } from 'node:module';
 import { appendFileSync } from 'node:fs';
-const require = createRequire(new URL('../../packages/node/', import.meta.url));
+const require = createRequire(import.meta.url);
 const pty = require('node-pty');
 const LOG = new URL('./c6-inject.log', import.meta.url).pathname;
 appendFileSync(LOG, '\n==== ' + new Date().toISOString() + ' ====\n');

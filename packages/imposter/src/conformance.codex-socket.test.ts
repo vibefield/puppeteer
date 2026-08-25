@@ -1,6 +1,6 @@
 /**
  * The codex imposter on a unix socket — the transport every REAL codex session
- * uses (draft/IMPOSTER.md §9.3, CODEX-SURFACE-FINDINGS §8).
+ * uses (docs/archive/IMPOSTER.md §9.3, CODEX-SURFACE-FINDINGS §8).
  *
  * `conformance.codex.test.ts` drives the same persona over stdio NDJSON, which
  * is the path almost nothing takes: `adapter-codex` runs

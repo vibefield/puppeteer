@@ -1,5 +1,5 @@
 /**
- * The app-server channel and the serve table (draft/IMPOSTER.md §9.3).
+ * The app-server channel and the serve table (docs/archive/IMPOSTER.md §9.3).
  *
  * These are the two things the hook family never needed: a server that answers,
  * and a state machine in front of it. Both are exercised here against a pair of

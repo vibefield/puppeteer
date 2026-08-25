@@ -11,9 +11,15 @@ import {
   type HookEventSpec,
 } from '../generated/registry.js';
 
-// The probe fixtures are the exact settings shapes Claude 2.1.207 accepted live.
+// Surface owns the exact settings shapes Claude 2.1.207 accepted live.
 const repoRoot = join(dirname(fileURLToPath(import.meta.url)), '../../../../');
-const probe = (file: string) => JSON.parse(readFileSync(join(repoRoot, 'probe', file), 'utf8'));
+const reference = (file: string) =>
+  JSON.parse(
+    readFileSync(
+      join(repoRoot, 'packages', 'surface', 'vendors', 'claude', 'references', 'claude@2.1.207', file),
+      'utf8',
+    ),
+  );
 
 const OPTS = {
   endpoint: 'http://127.0.0.1:59999/hooks',
@@ -63,7 +69,7 @@ describe('generateHookSettings', () => {
   });
 
   it('http handler is byte-identical to the live-accepted probe shape', () => {
-    const probeHandler: HttpHookHandler = probe('http-probe-settings.json').hooks.UserPromptSubmit[0].hooks[0];
+    const probeHandler: HttpHookHandler = reference('http-probe-settings.json').hooks.UserPromptSubmit[0].hooks[0];
     const spec: HookEventSpec = {
       event: 'UserPromptSubmit',
       transport: 'http',
@@ -80,7 +86,7 @@ describe('generateHookSettings', () => {
   });
 
   it('command handler nests exactly like the census structure', () => {
-    const censusBlock = probe('census-settings.json').hooks.SessionStart;
+    const censusBlock = reference('census-settings.json').hooks.SessionStart;
     const spec: HookEventSpec = {
       event: 'SessionStart',
       transport: 'command',

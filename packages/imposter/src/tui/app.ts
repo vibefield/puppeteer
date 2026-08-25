@@ -1,5 +1,5 @@
 /**
- * The imposter's chrome (draft/IMPOSTER.md §4) — one screen for every persona.
+ * The imposter's chrome (docs/archive/IMPOSTER.md §4) — one screen for every persona.
  *
  * It announces which agent is being impostered, the portable scenario intent,
  * and the ops as they run. It is deliberately NOT a clone of any vendor's
@@ -10,7 +10,7 @@
  *
  * The state on screen is not vendor truth. It is the same scenario-driver
  * snapshot the control console exposes as a secondary debugging aid; the
- * versioned native behavior graph lives in Surface and leads Emulator Control.
+ * versioned native behavior graph lives in Surface and leads Imposter Control.
  *
  * `createElement`, not JSX, because this file is loaded by node's type
  * stripping straight from source and node rejects `.tsx`

@@ -1,5 +1,5 @@
 /**
- * The persona contract (draft/IMPOSTER.md §3.2).
+ * The persona contract (docs/archive/IMPOSTER.md §3.2).
  *
  * A persona is deliberately thin, because most of what the imposter needs is
  * already captured truth: `detection.json` supplies binary names and the argv

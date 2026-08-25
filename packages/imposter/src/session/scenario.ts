@@ -1,5 +1,5 @@
 /**
- * Scenario runner — the raw layer beneath the op timeline (draft/IMPOSTER.md §2).
+ * Scenario runner — the raw layer beneath the op timeline (docs/archive/IMPOSTER.md §2).
  *
  * Ops describe organic turns; scenarios describe everything adversarial that
  * ops cannot express by definition — faults, duplicates, out-of-order arrival,
@@ -71,7 +71,7 @@ export interface ScenarioRunnerOptions {
 }
 
 /**
- * The pause/step gate (draft/IMPOSTER.md §5.1). The runner awaits this between
+ * The pause/step gate (docs/archive/IMPOSTER.md §5.1). The runner awaits this between
  * prepared steps, which is the whole mechanism behind `scenario.control` — a
  * held control connection can release one step at a time and watch the emitted
  * traffic arrive between them.

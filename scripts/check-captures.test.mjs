@@ -7,14 +7,13 @@
  * It exists because on 2026-08-07 three leaks were found at once:
  * `packages/testing/fixtures/hooks` shipped home paths and raw session UUIDs
  * inside the PUBLISHED `@vibecook/chopsticks-testing@0.1.8` tarball;
- * `probe/codex/` held a raw JSON-RPC transcript on a public repo; and the
- * sanitiser of the day passed both as clean. Nothing was watching, so nothing
+ * the former root `probe/codex/` held a raw JSON-RPC transcript on a public
+ * repo; and the sanitiser of the day passed both as clean. Nothing was watching, so nothing
  * complained. This is the thing that watches.
  *
  * Scope: files GIT TRACKS under a capture root. Tracked, because the job is to
- * stop a leak reaching a commit — a gitignored local artefact (probe's own
- * `http-received.json` carries an Authorization header) failing the build is
- * noise. Capture roots rather than every `*.jsonl`, because captures are the
+ * stop a leak reaching a commit. A gitignored local capture failing the build
+ * is noise. Capture roots rather than every `*.jsonl`, because captures are the
  * only files copied verbatim out of a real session. Both `.json` and `.jsonl`,
  * because one leak hid in a `*-shapes.json` companion a `.jsonl`-only scan
  * never opened.
@@ -32,7 +31,6 @@ const repoRoot = dirname(dirname(fileURLToPath(import.meta.url)));
 /** Directories whose contents came from observing a real agent. */
 const vendorsRoot = join(repoRoot, 'packages', 'surface', 'vendors');
 const captureRoots = [
-  'probe',
   ...readdirSync(vendorsRoot, { withFileTypes: true })
     .filter((entry) => entry.isDirectory() && existsSync(join(vendorsRoot, entry.name, 'captures')))
     .map((entry) => `packages/surface/vendors/${entry.name}/captures`),

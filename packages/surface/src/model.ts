@@ -1,6 +1,6 @@
 /**
  * Agent Surface Model (ASM) runtime — validate, load, report, diff
- * (draft/EMULATOR.md §2, §7).
+ * (docs/archive/EMULATOR.md §2, §7).
  *
  * This module is SELF-CONTAINED by design: no relative imports, erasable
  * syntax only. Surface-owned audit scripts and adapter projection generators
@@ -10,7 +10,7 @@
  * this one file. It is therefore the package root export, not a barrel.
  *
  * That constraint is why this owns a package rather than living beside the
- * imposter (draft/IMPOSTER.md §7.1): `erasableSyntaxOnly` is set package-wide
+ * imposter (docs/archive/IMPOSTER.md §7.1): `erasableSyntaxOnly` is set package-wide
  * here, so the compiler enforces it. A package that also carried a TUI could
  * not set that flag, and a relative import added years from now would surface
  * as a baffling `audit.mjs` failure instead of a type error.
@@ -24,7 +24,7 @@ import { readdirSync, readFileSync, statSync } from 'node:fs';
 import { basename, join, relative } from 'node:path';
 
 // ---------------------------------------------------------------------------
-// Model documents (draft/EMULATOR.md §2)
+// Model documents (docs/archive/EMULATOR.md §2)
 // ---------------------------------------------------------------------------
 
 export interface SurfaceManifest {
@@ -58,7 +58,7 @@ export interface SurfaceChannels {
 }
 
 /**
- * Deliberately small, recursive JSON-Schema subset (EMULATOR.md §2.2).
+ * Deliberately small, recursive JSON-Schema subset (docs/archive/EMULATOR.md §2.2).
  *
  * ACP-style agents put their meaningful discriminants below `params.update`,
  * while hook-style agents mostly use a flat envelope. A top-level-only schema
@@ -234,7 +234,7 @@ export interface SurfaceModel {
   evidenceIndex?: SurfaceEvidenceIndex;
   /** Sorted by event name for deterministic output. */
   events: SurfaceEventFile[];
-  /** Versioned, vendor-native event topology rendered by Emulator Control. */
+  /** Versioned, vendor-native event topology rendered by Imposter Control. */
   behavior: SurfaceBehavior;
 }
 
@@ -1218,7 +1218,7 @@ export function buildReport(capturesDir: string, model?: SurfaceModel): SurfaceR
 }
 
 // ---------------------------------------------------------------------------
-// Diff — the drift equation (EMULATOR.md §7)
+// Diff — the drift equation (docs/archive/EMULATOR.md §7)
 // ---------------------------------------------------------------------------
 
 /**

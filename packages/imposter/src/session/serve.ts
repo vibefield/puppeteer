@@ -1,5 +1,5 @@
 /**
- * The serve table (draft/IMPOSTER.md §9.3): what the imposter answers, as data.
+ * The serve table (docs/archive/IMPOSTER.md §9.3): what the imposter answers, as data.
  *
  * A JSON-RPC vendor has ~95 client-request methods, but the imposter only has
  * to be a good enough app-server for OUR adapter — 8 methods, all discoverable

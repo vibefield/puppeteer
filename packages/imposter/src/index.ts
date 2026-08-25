@@ -1,6 +1,6 @@
 /**
  * @vibecook/chopsticks-imposter — one executable that impersonates every
- * coding agent (draft/IMPOSTER.md).
+ * coding agent (docs/archive/IMPOSTER.md).
  *
  * The imposter speaks each vendor's real machine surfaces — hooks, transcript
  * JSONL, statusline, JSON-RPC, HTTP, and SSE — projected from that vendor's

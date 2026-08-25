@@ -2,7 +2,7 @@
  * The claude persona's scenario pack is executable, schema-valid data.
  *
  * This lived in `adapter-claude` while the stand-in was a per-adapter bin. The
- * scenarios are persona-owned now (draft/IMPOSTER.md §3.1), and validating them
+ * scenarios are persona-owned now (docs/archive/IMPOSTER.md §3.1), and validating them
  * through `persona.validate` rather than a hand-rolled schema lookup means the
  * check runs against exactly the model the imposter would refuse them with.
  */

@@ -212,7 +212,7 @@ Kimi now has an acquisition definition, a hermetic census harness, eleven
 sanitized runtime scenarios, a 63-event ASM v2/evidence v2 candidate with 26
 runtime-verified and 37 source-only surfaces, exact
 pre-normalization replay, a wire-first adapter, an Imposter persona, shared
-AgentSession conformance, and runtime/workbench/Godview/devkit composition.
+AgentSession conformance, and runtime/Godview/devkit composition.
 These are candidate implementation facts, not a promotion claim.
 
 The remaining gates are the interactive scenarios listed above, automatic

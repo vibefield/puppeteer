@@ -1,5 +1,5 @@
 /**
- * How `ai` is reached at all (draft/IMPOSTER.md §6).
+ * How `ai` is reached at all (docs/archive/IMPOSTER.md §6).
  *
  * There is no install command here, and that is the design. Two bespoke ones
  * shipped and were deleted on 2026-08-08 — `ai link`, which reimplemented the

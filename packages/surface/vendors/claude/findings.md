@@ -67,7 +67,7 @@ linux-x64, and windows-x64 before `currentManifest` can move.
 > **Compatibility status (2026-08-09):** this historical ASM/evidence v1 baseline is `legacy-verified`. Its original darwin-arm64 census did not retain the exact binary digest, and the other three required platform artifacts were not acquired. It remains the current compatibility projection, but the guarded promotion path will not label it unqualified `verified`; a future Claude candidate must be rebuilt as claim-addressable ASM v2 and pass the complete platform matrix.
 
 **Probed:** 2026-07-12, Claude Code **2.1.207**, macOS (darwin)
-**Method:** `probe/generate-settings.mjs` → per-event command-hook captures under `probe/captures/`, plus a live loopback HTTP listener (`probe/http-listener.mjs`). Six headless (`-p`) sessions, runs A–F.
+**Historical method:** generated per-event command-hook settings plus a live loopback HTTP listener. The exact accepted settings are retained under `packages/surface/vendors/claude/references/claude@2.1.207/`; the productized equivalent is `packages/surface/vendors/claude/census/harness.mjs`. Six headless (`-p`) sessions, runs A–F.
 **Plan reference:** `IMPLEMENTATION-PLAN.md` §5.
 
 ---

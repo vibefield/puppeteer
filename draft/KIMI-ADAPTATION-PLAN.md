@@ -278,7 +278,7 @@ abrupt-exit fact; it must not be fabricated as successful completion.
 - [x] Run shared AgentSession conformance through the adapter against both a
       deterministic durable store and the real Kimi Imposter subprocess.
 - [ ] Add pinned-real hermetic tests against the acquired 0.34.0 binary.
-- [x] Wire runtime composition, package layout, root scripts, workbench,
+- [x] Wire runtime composition, package layout, root scripts, Godview,
       Godview, and Imposter Control.
 - [x] Add support-ledger entry as `baseline-pending`.
 - [x] Run repository typecheck, package/support/upstream checks, unit tests,

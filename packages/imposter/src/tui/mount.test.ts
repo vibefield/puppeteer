@@ -1,5 +1,5 @@
 /**
- * The two presentation modes (draft/IMPOSTER.md §4.2). The Ink path needs a
+ * The two presentation modes (docs/archive/IMPOSTER.md §4.2). The Ink path needs a
  * real TTY and is exercised by driving `ai` under a pty; what is checked here
  * is the contract both modes share, and the headless path CI actually runs.
  */

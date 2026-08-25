@@ -1,5 +1,5 @@
 /**
- * One palette, shared by the TUI and the control console (draft/IMPOSTER.md §4).
+ * One palette, shared by the TUI and the control console (docs/archive/IMPOSTER.md §4).
  *
  * Purple and blue, because the imposter must never be mistaken for the vendor
  * it is impersonating. Claude Code is orange, Codex is green — a chopsticks

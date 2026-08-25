@@ -120,7 +120,7 @@ describe('createCodexObserver controller-owned bootstrap', () => {
     });
 
     // Bootstrap completes before createCodexObserver resolves — ready immediately,
-    // no user prompt required (the workbench panel "preparing" fix).
+    // no user prompt required (the desktop panel "preparing" fix).
     expect(obs.sessionId).toBe('th-owned');
     expect(obs.threadPath()).toBe('/tmp/rollout-th-owned.jsonl');
     expect(obs.state().lifecycle).toBe('ready');

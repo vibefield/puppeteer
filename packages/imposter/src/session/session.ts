@@ -4,7 +4,7 @@
  * This is the only module that knows what an "envelope" is. Every delivery
  * path uses the same wire builder, ASM validator, and recorder before reaching
  * its native channel, so there is exactly one policy boundary that can refuse
- * an off-model emission (draft/IMPOSTER.md §7.3 item 3).
+ * an off-model emission (docs/archive/IMPOSTER.md §7.3 item 3).
  */
 
 import { mkdtempSync, readFileSync, rmSync } from 'node:fs';

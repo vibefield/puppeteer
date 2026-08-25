@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 /**
- * The codex census harness (draft/EMULATOR.md §2, IMPOSTER.md §9; findings C1d).
+ * The codex census harness (docs/archive/EMULATOR.md §2, docs/archive/IMPOSTER.md §9; findings C1d).
  *
  * Drives a real `codex app-server` against a FAKE local model provider and
  * records every app-server message. No account, no network, no tokens — so the
