@@ -119,10 +119,14 @@ async function codexHarness(resume?: string): Promise<AgentSessionHarness> {
     resume: () => codexHarness(session.sessionId),
     assertNoOrphans: async () => {
       if (!server.closed()) throw new Error('Codex app-server transport survived dispose()');
-      const lastSequence = session.state().lastSequence;
+      let observedLateEvent = false;
+      const off = session.onEvent(() => {
+        observedLateEvent = true;
+      });
       server.deliver({ method: 'turn/started', params: { threadId: THREAD, turn: { id: 'late' } } });
       await tick();
-      if (session.state().lastSequence !== lastSequence) {
+      off();
+      if (observedLateEvent) {
         throw new Error('Codex adapter observed a buffered notification after dispose()');
       }
     },

@@ -8,7 +8,7 @@
  *   initialize → newSession (or loadSession, resume)   (identity: the ACP
  *                                                        sessionId is the
  *                                                        spaghetti join key)
- *     → sessionUpdate → normalizer → envelope stamping → session reducer
+ *     → sessionUpdate → normalizer → normalized event stream
  *     → requestPermission → structured approvals (observe + answer)
  *     → submitPrompt = session/prompt (deterministic — no `uncertain` receipt)
  *
@@ -25,12 +25,11 @@
 
 import { performance } from 'node:perf_hooks';
 import {
+  BufferedAgentEventSource,
   createEnvelopeStamper,
-  createInitialSessionState,
-  reduceSessionState,
   type AgentEvent,
   type AgentEventEnvelope,
-  type AgentSession,
+  type AgentAdapterSession,
   type AgentStructuredQuestion,
   type ObservationLevel,
   type PromptReceipt,
@@ -95,7 +94,7 @@ export interface CreateAcpSessionOptions {
 }
 
 /** No adapter-specific extras yet; the shared contract is the whole surface. */
-export type AcpSession = AgentSession;
+export type AcpSession = AgentAdapterSession;
 
 /** Pick the ACP permission option matching an approve/deny decision. */
 function decideOutcome(decision: AcpApprovalDecision, options: PermissionOption[]): RequestPermissionResponse {
@@ -109,8 +108,8 @@ function decideOutcome(decision: AcpApprovalDecision, options: PermissionOption[
 export async function createAcpSession(options: CreateAcpSessionOptions): Promise<AcpSession> {
   const normalizer = new AcpNotificationNormalizer();
   const stamper = createEnvelopeStamper();
+  const events = new BufferedAgentEventSource();
 
-  let state = createInitialSessionState();
   let sessionId = options.resume ?? '';
   let currentTurnId: string | undefined;
   let turnCounter = 0;
@@ -120,28 +119,12 @@ export async function createAcpSession(options: CreateAcpSessionOptions): Promis
   let controlDegraded = false;
   let elicitationCounter = 0;
   let observation: ObservationLevel = 'structured';
-  const listeners = new Set<(e: AgentEventEnvelope) => void>();
-  const monitorListeners = new Set<(batch: AdapterMonitorObservationBatch) => void>();
-  const pendingMonitorBatches: AdapterMonitorObservationBatch[] = [];
   const urlElicitations = new Map<string, string>();
   const monitorEvidence = new AcpMonitorEvidence({ nativeSessionId: () => sessionId || undefined });
 
   function emitMonitorBatch(batch: AdapterMonitorObservationBatch | null): void {
     if (!batch || disposed) return;
-    if (monitorListeners.size === 0) {
-      pendingMonitorBatches.push(batch);
-      if (pendingMonitorBatches.length > 512) {
-        pendingMonitorBatches.splice(0, pendingMonitorBatches.length - 512);
-      }
-      return;
-    }
-    for (const listener of monitorListeners) {
-      try {
-        listener(batch);
-      } catch {
-        // Monitor consumers cannot affect protocol observation.
-      }
-    }
+    apply({ type: 'monitor.batch', batch }, 'native-protocol', { nativeEvent: batch });
   }
 
   const capabilitiesBatch = monitorEvidence.capabilitiesBatch(new Date().toISOString());
@@ -164,14 +147,7 @@ export async function createAcpSession(options: CreateAcpSessionOptions): Promis
       event,
       nativeEvent: meta.nativeEvent,
     });
-    state = reduceSessionState(state, envelope);
-    for (const listener of listeners) {
-      try {
-        listener(envelope);
-      } catch {
-        /* listener faults stay out of the pipeline */
-      }
-    }
+    events.emit(envelope);
   }
 
   function settleUrlElicitations(outcome: 'failed' | 'superseded', nativeEvent: unknown): void {
@@ -186,18 +162,17 @@ export async function createAcpSession(options: CreateAcpSessionOptions): Promis
       const observedAt = new Date().toISOString();
       emitMonitorBatch(monitorEvidence.sessionUpdateBatch(params, observedAt, bootstrapping ? 'bootstrap' : 'live'));
       const { events } = normalizer.normalize(params);
-      if (
-        state.activeReasoning &&
-        events.some((event) =>
-          ['assistant.message', 'tool.requested', 'tool.started', 'tool.completed', 'tool.failed'].includes(event.type),
-        )
-      ) {
-        const reasoningId = state.activeReasoning.reasoningId;
-        normalizer.completeReasoning();
-        apply({ type: 'reasoning.completed', reasoningId }, 'native-hook', {
-          confidence: 'derived',
-          nativeEvent: params,
-        });
+      const closesReasoning = events.some((event) =>
+        ['assistant.message', 'tool.requested', 'tool.started', 'tool.completed', 'tool.failed'].includes(event.type),
+      );
+      if (closesReasoning) {
+        const reasoning = normalizer.completeReasoning();
+        if (reasoning.active) {
+          apply({ type: 'reasoning.completed', reasoningId: reasoning.reasoningId }, 'native-hook', {
+            confidence: 'derived',
+            nativeEvent: params,
+          });
+        }
       }
       for (const event of events) {
         // Track the running assistant text so turn.completed can seal
@@ -391,32 +366,10 @@ export async function createAcpSession(options: CreateAcpSessionOptions): Promis
   return {
     sessionId,
     runtimeSessionId: sessionId,
-    state: () => state,
     observationLevel: () => observation,
     onEvent(listener) {
       if (disposed) return () => undefined;
-      listeners.add(listener);
-      return () => listeners.delete(listener);
-    },
-    onMonitorBatch(listener) {
-      if (disposed) return () => undefined;
-      monitorListeners.add(listener);
-      const pending = pendingMonitorBatches.splice(0);
-      if (!pending.includes(capabilitiesBatch)) {
-        try {
-          listener(capabilitiesBatch);
-        } catch {
-          // Initial delivery has the same isolation guarantee as live fan-out.
-        }
-      }
-      for (const batch of pending) {
-        try {
-          listener(batch);
-        } catch {
-          // Initial delivery has the same isolation guarantee as live fan-out.
-        }
-      }
-      return () => monitorListeners.delete(listener);
+      return events.onEvent(listener);
     },
     async submitPrompt(submission: PromptSubmission): Promise<PromptReceipt> {
       const turnId = `acp-turn-${++turnCounter}`;
@@ -428,10 +381,9 @@ export async function createAcpSession(options: CreateAcpSessionOptions): Promis
       // (`prompt` returns MaybePromise — normalize with Promise.resolve.)
       void Promise.resolve(conn.agent.prompt({ sessionId, prompt: [{ type: 'text', text: submission.text }] }))
         .then((res: PromptResponse) => {
-          if (state.activeReasoning) {
-            const reasoningId = state.activeReasoning.reasoningId;
-            normalizer.completeReasoning();
-            apply({ type: 'reasoning.completed', reasoningId }, 'native-hook', {
+          const reasoning = normalizer.completeReasoning();
+          if (reasoning.active) {
+            apply({ type: 'reasoning.completed', reasoningId: reasoning.reasoningId }, 'native-hook', {
               confidence: 'derived',
               nativeEvent: res,
             });
@@ -452,10 +404,11 @@ export async function createAcpSession(options: CreateAcpSessionOptions): Promis
           );
         })
         .catch((err: unknown) => {
-          if (state.activeReasoning) {
-            const reasoningId = state.activeReasoning.reasoningId;
-            normalizer.completeReasoning();
-            apply({ type: 'reasoning.completed', reasoningId }, 'native-hook', { confidence: 'derived' });
+          const reasoning = normalizer.completeReasoning();
+          if (reasoning.active) {
+            apply({ type: 'reasoning.completed', reasoningId: reasoning.reasoningId }, 'native-hook', {
+              confidence: 'derived',
+            });
           }
           settleUrlElicitations('failed', { method: 'session/prompt', outcome: 'failed' });
           apply(
@@ -469,6 +422,7 @@ export async function createAcpSession(options: CreateAcpSessionOptions): Promis
     async dispose() {
       if (disposed) return;
       disposed = true;
+      events.close();
       conn.close();
     },
   };

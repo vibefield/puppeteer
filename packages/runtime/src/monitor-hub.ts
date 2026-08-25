@@ -3,7 +3,7 @@ import type {
   AgentExecutionMode,
   AgentMonitorHandle,
   AgentMonitorState,
-  AgentSession,
+  AgentAdapterSession,
   MonitorArtifactReadResult,
   MonitorNotification,
   NativeSessionRef,
@@ -109,8 +109,7 @@ export class RuntimeMonitorHub implements MonitorHandleSource {
   private rateTask: MonitorScheduledTask | undefined;
   private freshnessTask: MonitorScheduledTask | undefined;
   private readonly publishedFreshnessBoundaries = new Set<string>();
-  private unsubscribeSemantic: (() => void) | undefined;
-  private artifactSession: AgentSession | undefined;
+  private artifactSession: AgentAdapterSession | undefined;
   private runtimeInputSequence = 0;
   private started = false;
   private frozen = false;
@@ -194,34 +193,14 @@ export class RuntimeMonitorHub implements MonitorHandleSource {
     this.scheduleFlush();
   }
 
-  attachSession(session: AgentSession): void {
+  attachSession(session: AgentAdapterSession): void {
     if (this.closed || this.frozen) return;
     this.detachSession();
     this.artifactSession = session;
-    if (!session.onMonitorBatch) return;
-    try {
-      this.unsubscribeSemantic = session.onMonitorBatch((batch) => {
-        const observationLevel = session.observationLevel();
-        if (this.accumulator.observationLevel !== observationLevel) {
-          this.accumulator = { ...this.accumulator, observationLevel };
-        }
-        this.acceptSemantic(batch);
-      });
-    } catch (error) {
-      this.report(error);
-    }
   }
 
   detachSession(): void {
-    const unsubscribe = this.unsubscribeSemantic;
-    this.unsubscribeSemantic = undefined;
     this.artifactSession = undefined;
-    if (!unsubscribe) return;
-    try {
-      unsubscribe();
-    } catch (error) {
-      this.report(error);
-    }
   }
 
   acceptAgentEvent(envelope: RuntimeAgentEventEnvelope, options: { hostProcessEvidence?: boolean } = {}): boolean {

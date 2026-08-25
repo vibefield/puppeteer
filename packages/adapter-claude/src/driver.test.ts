@@ -11,7 +11,7 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import type { AgentEventEnvelope, TerminalAutomationOperation } from '@vibecook/chopsticks-core';
-import type { AdapterMonitorObservationBatch } from '@vibecook/chopsticks-core/monitor-spi';
+import { projectAgentSession } from '@vibecook/chopsticks-testing';
 import { createClaudeSession, prepareClaudeTuiSession, type ClaudeSession } from './driver.js';
 import type { PreparedClaudeSession } from './launch/prepare.js';
 import type { ClaudeHookDiagnostic } from './normalizer.js';
@@ -68,6 +68,7 @@ async function startSession(
     },
   });
   sessions.push(session);
+  const projection = projectAgentSession(session);
 
   const settings = JSON.parse(readFileSync(prepared!.settingsPath, 'utf8')) as {
     hooks: Record<string, Array<{ hooks: Array<{ type: string; url?: string }> }>>;
@@ -75,8 +76,7 @@ async function startSession(
   const endpoint = settings.hooks.UserPromptSubmit[0].hooks[0].url!;
   const token = prepared!.env.CHOPSTICKS_HOOK_TOKEN;
 
-  const events: AgentEventEnvelope[] = [];
-  session.onEvent((e) => events.push(e));
+  const events = projection.envelopes;
 
   const hook = async (name: string, fields: Record<string, unknown> = {}) => {
     const res = await fetch(endpoint, {
@@ -111,7 +111,18 @@ async function startSession(
     expect(res.status).toBe(200);
   };
 
-  return { session, prepared: prepared!, automations, events, hook, statusLine, subagentStatusLine, endpoint, token };
+  return {
+    session,
+    projection,
+    prepared: prepared!,
+    automations,
+    events,
+    hook,
+    statusLine,
+    subagentStatusLine,
+    endpoint,
+    token,
+  };
 }
 
 describe('createClaudeSession (full loop, test-as-Claude)', () => {
@@ -192,18 +203,18 @@ describe('createClaudeSession (full loop, test-as-Claude)', () => {
   });
 
   it('spawns via the prepared join contract and tracks the hook lifecycle in reducer state', async () => {
-    const { session, prepared, hook } = await startSession();
+    const { session, projection, prepared, hook } = await startSession();
     expect(prepared.sessionId).toBe(session.sessionId);
     expect(prepared.args).toContain('--session-id');
     expect(session.observationLevel()).toBe('terminal-only');
 
     await hook('SessionStart', { source: 'startup', session_title: 'driver-test' });
     expect(session.observationLevel()).toBe('native-hooks');
-    expect(session.state().lifecycle).toBe('ready');
+    expect(projection.state.lifecycle).toBe('ready');
 
     await hook('UserPromptSubmit', { prompt: 'do something', prompt_id: 'p-1' });
-    expect(session.state().lifecycle).toBe('running');
-    expect(session.state().activeTurn?.id).toBe('p-1');
+    expect(projection.state.lifecycle).toBe('running');
+    expect(projection.state.activeTurn?.id).toBe('p-1');
 
     await hook('PreToolUse', {
       tool_name: 'Bash',
@@ -211,7 +222,7 @@ describe('createClaudeSession (full loop, test-as-Claude)', () => {
       tool_use_id: 'toolu_1',
       prompt_id: 'p-1',
     });
-    expect(session.state().tools.size).toBe(1);
+    expect(projection.state.tools.size).toBe(1);
 
     await hook('PostToolUse', {
       tool_name: 'Bash',
@@ -220,17 +231,17 @@ describe('createClaudeSession (full loop, test-as-Claude)', () => {
       duration_ms: 3,
       prompt_id: 'p-1',
     });
-    expect(session.state().tools.size).toBe(0);
-    expect(session.state().counters.toolsCompleted).toBe(1);
+    expect(projection.state.tools.size).toBe(0);
+    expect(projection.state.counters.toolsCompleted).toBe(1);
 
     await hook('Stop', { prompt_id: 'p-1', last_assistant_message: 'done!' });
-    expect(session.state().lifecycle).toBe('ready');
-    expect(session.state().lastAssistantMessage).toBe('done!');
+    expect(projection.state.lifecycle).toBe('ready');
+    expect(projection.state.lastAssistantMessage).toBe('done!');
   });
 
   it('retains malformed known hooks and reports diagnostics without interrupting the bridge', async () => {
     const diagnostics: ClaudeHookDiagnostic[] = [];
-    const { session, prepared, events, hook } = await startSession({
+    const { projection, prepared, events, hook } = await startSession({
       fileChangeMatcher: '.env',
       onDiagnostic: (diagnostic) => diagnostics.push(diagnostic),
     });
@@ -254,7 +265,7 @@ describe('createClaudeSession (full loop, test-as-Claude)', () => {
       adapter: 'claude-code',
       nativeType: 'PreToolUse',
     });
-    expect(session.state().tools.size).toBe(0);
+    expect(projection.state.tools.size).toBe(0);
   });
 
   it('confirms injected prompts through the real bridge round-trip', async () => {
@@ -269,7 +280,7 @@ describe('createClaudeSession (full loop, test-as-Claude)', () => {
   });
 
   it('gates injection for the current PreToolUse → PermissionRequest path, releasing after execution', async () => {
-    const { session, hook } = await startSession();
+    const { session, projection, hook } = await startSession();
     await hook('SessionStart', {});
     await hook('UserPromptSubmit', { prompt: 'risky', prompt_id: 'p-2' });
     await hook('PreToolUse', {
@@ -281,7 +292,7 @@ describe('createClaudeSession (full loop, test-as-Claude)', () => {
     await hook('PermissionRequest', { prompt_id: 'p-2', tool_name: 'Bash', tool_input: { command: 'rm x' } });
 
     expect((await session.submitPrompt({ text: 'nope' })).status).toBe('rejected');
-    expect(session.state().permissions.size).toBe(1);
+    expect(projection.state.permissions.size).toBe(1);
 
     await hook('PostToolUse', {
       prompt_id: 'p-2',
@@ -290,7 +301,7 @@ describe('createClaudeSession (full loop, test-as-Claude)', () => {
       tool_use_id: 'toolu_2',
       tool_response: { output: '' },
     });
-    expect(session.state().permissions.size).toBe(0);
+    expect(projection.state.permissions.size).toBe(0);
 
     const receipt = session.submitPrompt({ text: 'now fine' });
     await hook('UserPromptSubmit', { prompt: 'now fine', prompt_id: 'p-3' });
@@ -306,7 +317,10 @@ describe('createClaudeSession (full loop, test-as-Claude)', () => {
       providerVersion: '2.1.226',
       onObservationPollHint: (hint) => hints.push(hint),
     });
-    expect(events[0]).toMatchObject({
+    const configured = events.find(
+      (envelope) => envelope.event.type === 'session.environment.updated' && envelope.event.intent === 'configured',
+    );
+    expect(configured).toMatchObject({
       source: 'runtime',
       providerVersion: '2.1.226',
       event: {
@@ -394,9 +408,8 @@ describe('createClaudeSession (full loop, test-as-Claude)', () => {
   });
 
   it('feeds authoritative assistant text and usage from the typed scoped observer', async () => {
-    const { session, events, hook } = await startSession();
-    const batches: AdapterMonitorObservationBatch[] = [];
-    session.onMonitorBatch((batch) => batches.push(batch));
+    const { session, projection, events, hook } = await startSession();
+    const batches = projection.monitorBatches;
     const dir = mkdtempSync(join(tmpdir(), 'driver-transcript-'));
     const project = join(dir, '.claude', 'projects', '-driver-test');
     mkdirSync(project, { recursive: true });
@@ -447,7 +460,7 @@ describe('createClaudeSession (full loop, test-as-Claude)', () => {
           text: 'authoritative answer',
           displayOnly: false,
         });
-        expect(session.state().lastAssistantMessage).toBe('authoritative answer');
+        expect(projection.state.lastAssistantMessage).toBe('authoritative answer');
         const scoped = JSON.stringify(batches.filter(({ producer }) => producer.id === 'claude:spaghetti-scoped'));
         expect(scoped).toContain('"canonical":true');
         expect(scoped).toContain('"inputTokens":12');
@@ -502,9 +515,8 @@ describe('createClaudeSession (full loop, test-as-Claude)', () => {
   });
 
   it('tracks Claude context from status-line JSON and retracts both projections after compaction', async () => {
-    const { session, events, hook, statusLine } = await startSession();
-    const monitorBatches: AdapterMonitorObservationBatch[] = [];
-    session.onMonitorBatch((batch) => monitorBatches.push(batch));
+    const { projection, events, hook, statusLine } = await startSession();
+    const monitorBatches = projection.monitorBatches;
     await statusLine({
       model: { id: 'claude-fable-5', display_name: 'Fable 5' },
       context_window: {
@@ -518,7 +530,7 @@ describe('createClaudeSession (full loop, test-as-Claude)', () => {
       },
     });
 
-    expect(session.state().contextWindow).toMatchObject({
+    expect(projection.state.contextWindow).toMatchObject({
       usedTokens: 15_500,
       capacityTokens: 200_000,
       usedPercent: 7.75,
@@ -528,7 +540,7 @@ describe('createClaudeSession (full loop, test-as-Claude)', () => {
     expect(events.filter(({ event }) => event.type === 'context-window.updated')).toHaveLength(1);
 
     await statusLine({ context_window: { context_window_size: 200_000, current_usage: null } });
-    expect(session.state().contextWindow).toBeUndefined();
+    expect(projection.state.contextWindow).toBeUndefined();
     expect(events.at(-1)?.event).toEqual({ type: 'context-window.invalidated', reason: 'provider-reset' });
 
     await statusLine({
@@ -537,11 +549,11 @@ describe('createClaudeSession (full loop, test-as-Claude)', () => {
         current_usage: { input_tokens: 11_000, cache_creation_input_tokens: 2_000, cache_read_input_tokens: 3_000 },
       },
     });
-    expect(session.state().contextWindow?.usedTokens).toBe(16_000);
+    expect(projection.state.contextWindow?.usedTokens).toBe(16_000);
 
     await hook('PostCompact', { trigger: 'manual', compact_summary: 'Synthetic summary.' });
 
-    expect(session.state().contextWindow).toBeUndefined();
+    expect(projection.state.contextWindow).toBeUndefined();
     expect(events.at(-1)?.event).toEqual({ type: 'context-window.invalidated', reason: 'compacted' });
     const rootBatches = monitorBatches.filter(({ producer }) => producer.id === 'claude:status-root');
     expect(rootBatches.at(-1)).toMatchObject({
@@ -552,9 +564,8 @@ describe('createClaudeSession (full loop, test-as-Claude)', () => {
   });
 
   it('publishes root and correlated child status evidence through the monitor SPI', async () => {
-    const { session, hook, statusLine, subagentStatusLine } = await startSession();
-    const batches: AdapterMonitorObservationBatch[] = [];
-    session.onMonitorBatch((batch) => batches.push(batch));
+    const { projection, hook, statusLine, subagentStatusLine } = await startSession();
+    const batches = projection.monitorBatches;
     await hook('SubagentStart', { agent_id: 'agent-7', agent_type: 'Explore' });
     await statusLine({
       model: { id: 'claude-opus-5', display_name: 'Opus 5' },
@@ -633,17 +644,17 @@ describe('createClaudeSession (full loop, test-as-Claude)', () => {
   });
 
   it('/clear rebinds native identity while keeping the same terminal runtime alive', async () => {
-    const { session, events, hook, endpoint, token } = await startSession();
+    const { session, projection, events, hook, endpoint, token } = await startSession();
     const before = session.sessionId;
     const after = '64a61b19-f4d8-4f96-ba56-07024b4708aa';
     await hook('SessionStart', { source: 'startup' });
     await hook('SessionEnd', { reason: 'clear' });
-    expect(session.state().lifecycle).toBe('exited');
+    expect(projection.state.lifecycle).toBe('exited');
 
     await hook('SessionStart', { session_id: after, source: 'clear' });
     expect(session.runtimeSessionId).toBe('rt-1');
     expect(session.sessionId).toBe(after);
-    expect(session.state().lifecycle).toBe('ready');
+    expect(projection.state.lifecycle).toBe('ready');
     expect(
       events.find(({ event }) => event.type === 'session.started' && event.nativeSessionId === after)?.event,
     ).toMatchObject({
@@ -696,10 +707,9 @@ describe('createClaudeSession (full loop, test-as-Claude)', () => {
     });
     const session = await prepared.adopt('rail-pane');
     sessions.push(session);
-    const events: AgentEventEnvelope[] = [];
-    const monitorBatches: AdapterMonitorObservationBatch[] = [];
-    session.onEvent((event) => events.push(event));
-    session.onMonitorBatch?.((batch) => monitorBatches.push(batch));
+    const projection = projectAgentSession(session);
+    const events = projection.envelopes;
+    const monitorBatches = projection.monitorBatches;
     hookListener?.({
       requestId: 'hook-start',
       receivedAt: '2026-08-16T20:00:00.000Z',
@@ -711,11 +721,11 @@ describe('createClaudeSession (full loop, test-as-Claude)', () => {
       },
     });
     expect(session.observationLevel()).toBe('native-hooks');
-    expect(session.state().lifecycle).toBe('ready');
+    expect(projection.state.lifecycle).toBe('ready');
 
     unavailableListener?.('listener failed');
     expect(session.observationLevel()).toBe('terminal-only');
-    expect(session.state().lifecycle).toBe('ready');
+    expect(projection.state.lifecycle).toBe('ready');
     expect(events.at(-1)).toMatchObject({
       source: 'runtime',
       event: { type: 'adapter.native-event', nativeType: 'hook-bridge.unavailable' },
@@ -730,17 +740,18 @@ describe('createClaudeSession (full loop, test-as-Claude)', () => {
   });
 
   it('closes the real hook listener for an explicit canary fault without ending the session', async () => {
-    const { session, hook, endpoint, token, events } = await startSession({
+    const { session, projection, hook, endpoint, token, events } = await startSession({
       hookRailFaultInjection: {
         afterHookEvent: 'Stop',
         reason: 'test canary rail fault',
       },
     });
-    const monitorBatches: AdapterMonitorObservationBatch[] = [];
+    const monitorBatches = projection.monitorBatches;
     const degradedObservationLevels: string[] = [];
-    session.onMonitorBatch((batch) => {
-      monitorBatches.push(batch);
-      if (batch.readiness === 'degraded') degradedObservationLevels.push(session.observationLevel());
+    session.onEvent(({ event }) => {
+      if (event.type === 'monitor.batch' && event.batch.readiness === 'degraded') {
+        degradedObservationLevels.push(session.observationLevel());
+      }
     });
 
     await hook('SessionStart', { source: 'startup' });
@@ -751,7 +762,7 @@ describe('createClaudeSession (full loop, test-as-Claude)', () => {
 
     expect(session.observationLevel()).toBe('terminal-only');
     expect(degradedObservationLevels.at(-1)).toBe('terminal-only');
-    expect(session.state().lifecycle).toBe('ready');
+    expect(projection.state.lifecycle).toBe('ready');
     expect(monitorBatches.at(-1)).toMatchObject({ readiness: 'degraded', completeness: 'unavailable' });
     expect(events.at(-1)).toMatchObject({
       event: { type: 'adapter.native-event', nativeType: 'hook-bridge.unavailable' },
@@ -885,6 +896,7 @@ describe('createClaudeSession (full loop, test-as-Claude)', () => {
     expect(prepared.launch.args).not.toContain('--session-id');
     const provisionalId = prepared.sessionId;
     const session = await prepared.adopt('resume-picker-pane');
+    const projection = projectAgentSession(session);
     expect(session.sessionId).toBe(provisionalId);
 
     const settings = JSON.parse(readFileSync(prepared.launch.settingsPath, 'utf8')) as {
@@ -929,7 +941,7 @@ describe('createClaudeSession (full loop, test-as-Claude)', () => {
     });
     expect(response.status).toBe(200);
     expect(session.sessionId).toBe(selectedId);
-    expect(session.state().lifecycle).toBe('ready');
+    expect(projection.state.lifecycle).toBe('ready');
 
     const selectedStatus = await fetch(prepared.launch.env.CHOPSTICKS_STATUSLINE_ENDPOINT, {
       method: 'POST',
@@ -944,11 +956,11 @@ describe('createClaudeSession (full loop, test-as-Claude)', () => {
       }),
     });
     expect(selectedStatus.status).toBe(200);
-    expect(session.state().environment.model?.value).toMatchObject({
+    expect(projection.state.environment.model?.value).toMatchObject({
       id: 'claude-haiku-4-5-20251001',
       displayName: 'Haiku 4.5',
     });
-    expect(session.state().contextWindow?.usedPercent).toBe(16);
+    expect(projection.state.contextWindow?.usedPercent).toBe(16);
 
     const selectedTranscriptDirectory = mkdtempSync(join(tmpdir(), 'driver-picker-history-'));
     const selectedTranscript = join(selectedTranscriptDirectory, `${selectedId}.jsonl`);
@@ -1012,7 +1024,7 @@ describe('createClaudeSession (full loop, test-as-Claude)', () => {
     });
     expect(clearedStart.status).toBe(200);
     expect(session.sessionId).toBe(clearedId);
-    expect(session.state().lifecycle).toBe('ready');
+    expect(projection.state.lifecycle).toBe('ready');
 
     const staleSelected = await fetch(endpoint, {
       method: 'POST',
@@ -1023,6 +1035,7 @@ describe('createClaudeSession (full loop, test-as-Claude)', () => {
       body: JSON.stringify({ session_id: selectedId, cwd: '/tmp', hook_event_name: 'Stop' }),
     });
     expect(staleSelected.status).toBe(403);
+    projection.dispose();
     await session.dispose();
   });
 });

@@ -3,7 +3,7 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import type { AgentHost, TerminalSpec } from '@vibecook/chopsticks-core';
-import type { AdapterMonitorObservationBatch } from '@vibecook/chopsticks-core/monitor-spi';
+import { projectAgentSession } from '@vibecook/chopsticks-testing';
 import { encodeKimiWorkDirKey, kimiMainWirePath } from './session-store.js';
 import { buildKimiTuiArgs, createKimiTuiSession, prepareKimiTuiSession } from './tui-session.js';
 
@@ -110,8 +110,8 @@ describe('Kimi native TUI session', () => {
       permissionMode: 'manual',
       pollIntervalMs: 60_000,
     });
-    const monitor: AdapterMonitorObservationBatch[] = [];
-    session.onMonitorBatch?.((batch) => monitor.push(batch));
+    const projection = projectAgentSession(session);
+    const monitor = projection.monitorBatches;
     expect(launched).toEqual([
       { command: '/opt/kimi', args: ['--model', 'kimi-k2'], cwd, env: { KIMI_CODE_HOME: home } },
     ]);
@@ -121,7 +121,7 @@ describe('Kimi native TUI session', () => {
     });
     expect(wroteTurn).toBe(true);
     expect(session.sessionId).toBe('session-native-1');
-    expect(session.state()).toMatchObject({ lifecycle: 'ready', lastAssistantMessage: 'pong', activeTurn: undefined });
+    expect(projection.state).toMatchObject({ lifecycle: 'ready', lastAssistantMessage: 'pong', activeTurn: undefined });
     expect(session.observationLevel()).toBe('native-log');
     expect(monitor.flatMap((batch) => batch.capabilities ?? [])).toHaveLength(11);
     expect(monitor).toEqual(
@@ -147,6 +147,7 @@ describe('Kimi native TUI session', () => {
         }),
       ]),
     );
+    projection.dispose();
     await session.dispose();
     await session.dispose();
   });
@@ -179,8 +180,9 @@ describe('Kimi native TUI session', () => {
     expect(prepared.sessionId).toBe(sessionId);
     expect(prepared.launch.args).toEqual(['--session', sessionId]);
     const session = await prepared.adopt('runtime-resume');
+    const projection = projectAgentSession(session);
     await new Promise((resolve) => setTimeout(resolve, 20));
-    expect(session.state()).toMatchObject({ lifecycle: 'ready', lastAssistantMessage: 'old reply' });
+    expect(projection.state).toMatchObject({ lifecycle: 'ready', lastAssistantMessage: 'old reply' });
     await expect(session.submitPrompt({ text: 'staged', mode: 'paste-only' })).resolves.toEqual({
       status: 'uncertain',
       reason: 'prompt text was staged but not submitted',
@@ -202,6 +204,7 @@ describe('Kimi native TUI session', () => {
         .join('\n')}\n`,
     );
     await prepared.dispose();
-    expect(session.state()).toMatchObject({ lifecycle: 'ready', lastAssistantMessage: 'final reply' });
+    expect(projection.state).toMatchObject({ lifecycle: 'ready', lastAssistantMessage: 'final reply' });
+    projection.dispose();
   });
 });

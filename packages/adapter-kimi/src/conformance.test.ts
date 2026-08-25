@@ -1,4 +1,4 @@
-/** Shared AgentSession contract over a deterministic Kimi durable-wire host. */
+/** Shared adapter-session contract over a deterministic Kimi durable-wire host. */
 
 import { appendFileSync, mkdirSync, mkdtempSync, realpathSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
@@ -163,8 +163,6 @@ async function createHarness(existing?: DurableStore): Promise<AgentSessionHarne
     await dispose();
     disposed = true;
   };
-  if (existing) await waitFor(() => session.state().lastAssistantMessage === REPLY, 'resumed Kimi history');
-
   return {
     session,
     reply: REPLY,
@@ -214,16 +212,16 @@ async function createMonitorHarness(): Promise<AgentMonitorSessionHarness> {
     resume: store.sessionId,
     pollIntervalMs: 10,
   });
-  let degraded = false;
-  session.onMonitorBatch?.((batch) => {
-    if (batch.readiness === 'degraded') degraded = true;
-  });
-  await waitFor(() => session.state().lifecycle === 'ready', 'Kimi monitor bootstrap');
   return {
     session,
     async closeObservationRail() {
+      let degraded = false;
+      const off = session.onEvent(({ event }) => {
+        if (event.type === 'monitor.batch' && event.batch.readiness === 'degraded') degraded = true;
+      });
       appendFileSync(join(store.sessionDir, 'agents', 'main', 'wire.jsonl'), '{invalid-monitor-record}\n');
       await waitFor(() => degraded, 'Kimi observation degradation');
+      off();
     },
   };
 }

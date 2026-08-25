@@ -1,7 +1,7 @@
 import { rmSync } from 'node:fs';
 import { afterEach, describe, expect, it } from 'vitest';
 import type { AgentEventEnvelope, AgentHost, TerminalSpec } from '@vibecook/chopsticks-core';
-import type { AdapterMonitorObservationBatch } from '@vibecook/chopsticks-core/monitor-spi';
+import { projectAgentSession } from '@vibecook/chopsticks-testing';
 import { createOpenCodeTuiSession, type OpenCodeTuiSession } from './driver.js';
 import { createOpenCodeImposterFixture } from './test-support/imposter.js';
 
@@ -46,9 +46,10 @@ describe('OpenCode native-TUI session composition', () => {
       promptConfirmationTimeoutMs: 2_000,
     });
     sessions.add(session);
+    const projection = projectAgentSession(session);
 
     expect(session.observationLevel()).toBe('structured');
-    expect(session.state().lifecycle).toBe('ready');
+    expect(projection.state.lifecycle).toBe('ready');
     expect(launch?.command).toBe(fixture.executable);
     expect(launch?.args).toEqual([
       'attach',
@@ -63,9 +64,8 @@ describe('OpenCode native-TUI session composition', () => {
     expect(launch?.env?.OPENCODE_SERVER_PASSWORD).toBeTruthy();
 
     const observed: AgentEventEnvelope[] = [];
-    const monitor: AdapterMonitorObservationBatch[] = [];
+    const monitor = projection.monitorBatches;
     const off = session.onEvent((event) => observed.push(event));
-    const offMonitor = session.onMonitorBatch?.((batch) => monitor.push(batch));
     expect(monitor.length).toBeGreaterThan(0);
     expect(monitor.every((batch) => batch.phase === 'bootstrap')).toBe(true);
     expect(monitor.flatMap((batch) => batch.capabilities ?? [])).toEqual(
@@ -76,13 +76,12 @@ describe('OpenCode native-TUI session composition', () => {
     const confirmedTurnID = receipt.status === 'confirmed' ? receipt.turnId : undefined;
     expect(confirmedTurnID).toMatch(/^msg_chopsticks_/);
     await waitFor(
-      () => session.state().activeTurn === undefined && session.state().lastAssistantMessage !== undefined,
+      () => projection.state.activeTurn === undefined && projection.state.lastAssistantMessage !== undefined,
       'turn completion',
     );
     off();
-    offMonitor?.();
 
-    expect(session.state().lastAssistantMessage).toBe('imposter: ok');
+    expect(projection.state.lastAssistantMessage).toBe('imposter: ok');
     expect(observed.some((event) => event.event.type === 'turn.started' && event.promptId === confirmedTurnID)).toBe(
       true,
     );
@@ -104,8 +103,9 @@ describe('OpenCode native-TUI session composition', () => {
       expect(observed[index]!.sequence).toBeGreaterThan(observed[index - 1]!.sequence);
     }
 
-    const sequence = session.state().lastSequence;
+    const sequence = projection.state.lastSequence;
     await session.reconcile();
-    expect(session.state().lastSequence).toBe(sequence);
+    expect(projection.state.lastSequence).toBe(sequence);
+    projection.dispose();
   });
 });

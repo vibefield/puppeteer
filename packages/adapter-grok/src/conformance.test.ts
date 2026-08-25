@@ -1,4 +1,4 @@
-import type { AgentSession } from '@vibecook/chopsticks-core';
+import type { AgentAdapterSession } from '@vibecook/chopsticks-core';
 import { runAgentMonitorConformance } from '@vibecook/chopsticks-testing/conformance';
 import { createPendingControlSession } from './backend.js';
 
@@ -11,7 +11,7 @@ function deferred<T>() {
 }
 
 runAgentMonitorConformance('grok', async () => {
-  const control = deferred<AgentSession>();
+  const control = deferred<AgentAdapterSession>();
   const session = createPendingControlSession('grok-conformance', 'runtime-conformance', () => control.promise);
   return {
     session,

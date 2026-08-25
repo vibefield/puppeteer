@@ -12,3 +12,5 @@ const packageRoot = join(dirname(fileURLToPath(import.meta.url)), '..');
 
 /** Absolute path to the fake agent executable; spawn with process.execPath. */
 export const fakeAgentBin = join(packageRoot, 'bin', 'fake-agent.mjs');
+
+export * from './session-projection.js';

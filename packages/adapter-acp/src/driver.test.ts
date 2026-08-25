@@ -1,5 +1,6 @@
 import { describe, it, expect, vi } from 'vitest';
 import type { AgentEventEnvelope } from '@vibecook/chopsticks-core';
+import { projectAgentSession } from '@vibecook/chopsticks-testing';
 import { PROTOCOL_VERSION } from '@agentclientprotocol/sdk';
 import type { Agent, Client, ClientCapabilities, RequestPermissionResponse } from '@agentclientprotocol/sdk';
 import type { AcpConnector } from './connection.js';
@@ -28,12 +29,14 @@ describe('createAcpSession', () => {
       cwd: '/x',
       connector: scriptedAcpConnector({ sessionId: SID, reply: 'pong' }),
     });
+    const projection = projectAgentSession(session);
     try {
       expect(session.sessionId).toBe(SID);
       expect(session.runtimeSessionId).toBe(SID);
       expect(session.observationLevel()).toBe('structured');
-      expect(session.state().environment.currentCwd?.value).toBe('/x');
+      expect(projection.state.environment.currentCwd?.value).toBe('/x');
     } finally {
+      projection.dispose();
       await session.dispose();
     }
   });
@@ -56,9 +59,11 @@ describe('createAcpSession', () => {
         ],
       }),
     });
+    const projection = projectAgentSession(session);
     try {
-      expect(session.state().environment.model?.value).toEqual({ id: 'grok-4.5', displayName: 'Grok 4.5' });
+      expect(projection.state.environment.model?.value).toEqual({ id: 'grok-4.5', displayName: 'Grok 4.5' });
     } finally {
+      projection.dispose();
       await session.dispose();
     }
   });
@@ -68,12 +73,9 @@ describe('createAcpSession', () => {
       cwd: '/x',
       connector: scriptedAcpConnector({ sessionId: SID, reply: 'pong' }),
     });
-    const lifecycles = new Set<string>([session.state().lifecycle]);
-    const seqs: number[] = [];
-    const off = session.onEvent((e: AgentEventEnvelope) => {
-      lifecycles.add(session.state().lifecycle);
-      seqs.push(e.sequence);
-    });
+    const lifecycles = new Set<string>();
+    const projection = projectAgentSession(session, (state) => lifecycles.add(state.lifecycle));
+    lifecycles.add(projection.state.lifecycle);
     try {
       const receipt = await session.submitPrompt({ text: 'say pong' });
       expect(receipt.status).toBe('confirmed');
@@ -90,12 +92,13 @@ describe('createAcpSession', () => {
       });
 
       expect(lifecycles.has('running')).toBe(true);
-      expect(session.state().lifecycle).toBe('ready');
-      expect(session.state().activeTurn).toBeUndefined();
-      expect(session.state().lastAssistantMessage).toBe('pong');
+      expect(projection.state.lifecycle).toBe('ready');
+      expect(projection.state.activeTurn).toBeUndefined();
+      expect(projection.state.lastAssistantMessage).toBe('pong');
+      const seqs = projection.envelopes.map(({ sequence }) => sequence);
       for (let i = 1; i < seqs.length; i++) expect(seqs[i]!).toBeGreaterThan(seqs[i - 1]!);
     } finally {
-      off();
+      projection.dispose();
       await session.dispose();
     }
   });
@@ -105,12 +108,14 @@ describe('createAcpSession', () => {
       cwd: '/x',
       connector: scriptedAcpConnector({ sessionId: SID, reply: 'done', toolTurn: true }),
     });
+    const projection = projectAgentSession(session);
     try {
       await driveTurn(session, 'use a tool');
-      expect(session.state().counters.toolsCompleted).toBe(1);
-      expect(session.state().tools.size).toBe(0);
-      expect(session.state().lastAssistantMessage).toBe('done');
+      expect(projection.state.counters.toolsCompleted).toBe(1);
+      expect(projection.state.tools.size).toBe(0);
+      expect(projection.state.lastAssistantMessage).toBe('done');
     } finally {
+      projection.dispose();
       await session.dispose();
     }
   });
@@ -120,6 +125,7 @@ describe('createAcpSession', () => {
       cwd: '/x',
       connector: scriptedAcpConnector({ sessionId: SID, reply: 'done', thought: 'private thought text' }),
     });
+    const projection = projectAgentSession(session);
     const envelopes: AgentEventEnvelope[] = [];
     const off = session.onEvent((envelope) => envelopes.push(envelope));
     try {
@@ -134,9 +140,10 @@ describe('createAcpSession', () => {
       expect(completed?.confidence).toBe('derived');
       expect(completed!.sequence).toBeLessThan(answer!.sequence);
       expect(JSON.stringify(started?.event)).not.toContain('private thought text');
-      expect(session.state().activeReasoning).toBeUndefined();
+      expect(projection.state.activeReasoning).toBeUndefined();
     } finally {
       off();
+      projection.dispose();
       await session.dispose();
     }
   });

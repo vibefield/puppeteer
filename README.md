@@ -70,12 +70,14 @@ Node.js 22.18 or newer is required.
 
 ## Built-in launch options
 
-The selected agent discriminates the available launch options:
+`runtime.spawn()` creates one runtime-owned `Agent` for each provider spawn.
+State, context-window, conversation, usage, environment, workspace, process,
+notification, monitor, and adapter events share that agent's typed event bus:
 
 ```ts
 const onApproval = async () => 'denied' as const;
 
-await runtime.createSession({
+const claude = await runtime.spawn({
   agent: 'claude',
   workspace: { mode: 'worktree', path: process.cwd() },
   agentOptions: {
@@ -83,8 +85,16 @@ await runtime.createSession({
     permissionMode: 'plan',
   },
 });
+if ('error' in claude) throw new Error(claude.error.message);
 
-await runtime.createSession({
+claude.on('state:*', ({ type }) => console.log(type));
+claude.on('context-window:updated', ({ event }) => {
+  console.log(`${event.usedTokens}/${event.capacityTokens}`);
+});
+claude.on('conversation:*', ({ event }) => console.log(event.text));
+await claude.submitPrompt({ text: 'Review this repository' });
+
+const codex = await runtime.spawn({
   agent: 'codex',
   agentOptions: {
     model: 'gpt-5.6-sol',
@@ -93,8 +103,9 @@ await runtime.createSession({
     onApproval,
   },
 });
+if ('error' in codex) throw new Error(codex.error.message);
 
-await runtime.createSession({
+const grok = await runtime.spawn({
   agent: 'grok',
   agentOptions: {
     model: 'grok-code-fast',
@@ -103,7 +114,14 @@ await runtime.createSession({
     onApproval,
   },
 });
+if ('error' in grok) throw new Error(grok.error.message);
 ```
+
+Public envelope routes are namespaced (`state:turn-started`,
+`context-window:updated`, `conversation:assistant-message`, `monitor:batch`,
+and so on). The nested `event` is the normalized provider-neutral payload.
+Adapters expose only this normalized stream and control operations; reducers
+and projections live on the runtime-owned `Agent`.
 
 Generic ACP sessions accept `clientCapabilities`, `onApproval`, and either a
 per-session `connector` or the runtime's default `acpConnector`. Codex model and
@@ -131,6 +149,9 @@ const adopted = await runtime.adoptPrepared(prepared.preparationId, {
 });
 if ('error' in adopted) throw new Error(adopted.error.message);
 
+const agent = runtime.agent(adopted.terminalSessionId)!;
+agent.on('state:*', ({ type }) => console.log(type));
+
 // The shim now chdirs, merges the env delta, and execs command + args exactly.
 await shim.exec(prepared.launch);
 ```
@@ -148,8 +169,9 @@ The configured built-in executable should resolve to the real vendor binary,
 not the PATH shim, to avoid recursion. Generic ACP has no universal external
 attachment transport and returns `PREPARATION_UNSUPPORTED`. Callers should also
 fall through to the untouched command when they cannot safely preserve custom
-user arguments. Existing `createSession` behavior is unchanged and now shares
-the same adapter preparation primitives.
+user arguments. `createSession`, `sessionState`, and runtime-wide `onEvent`
+remain compatibility/IPC surfaces; new application code should use `spawn()`
+and the returned `Agent`.
 
 ## Development
 

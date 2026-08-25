@@ -3,6 +3,7 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { afterEach, describe, expect, it } from 'vitest';
 import type { AgentHost } from '@vibecook/chopsticks-core';
+import { projectAgentSession } from '@vibecook/chopsticks-testing';
 import { createOpenCodeTuiSession, type OpenCodeTuiSession } from './driver.js';
 
 const roots = new Set<string>();
@@ -29,8 +30,10 @@ describe.runIf(process.env.OPENCODE_LIVE === '1')('pinned real OpenCode smoke', 
     };
     const session = await createOpenCodeTuiSession({ cwd, host });
     sessions.add(session);
+    const projection = projectAgentSession(session);
     expect(session.sessionId).toMatch(/^ses_/);
-    expect(session.state().lifecycle).toBe('ready');
+    expect(projection.state.lifecycle).toBe('ready');
     expect(session.observationLevel()).toBe('structured');
+    projection.dispose();
   });
 });

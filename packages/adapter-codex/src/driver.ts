@@ -7,7 +7,7 @@
  *   initialize → initialized → thread/start   (identity: thread.sessionId is the
  *                                              spaghetti join key; thread.path is
  *                                              the rollout file)
- *     → onNotification → normalizer → envelope stamping → session reducer
+ *     → onNotification → normalizer → normalized event stream
  *     → onServerRequest → structured approvals (observe + answer)
  *     → submitPrompt = turn/start + exact echoed client id confirmation
  *
@@ -19,13 +19,12 @@
 
 import { performance } from 'node:perf_hooks';
 import {
+  BufferedAgentEventSource,
   createEnvelopeStamper,
-  createInitialSessionState,
   CHOPSTICKS_VERSION,
-  reduceSessionState,
   type AgentEvent,
   type AgentEventEnvelope,
-  type AgentSession,
+  type AgentAdapterSession,
   type ObservationLevel,
   type PromptReceipt,
   type PromptSubmission,
@@ -70,7 +69,7 @@ export interface CreateCodexSessionOptions {
   onApproval?: (req: CodexApprovalRequest) => CodexApprovalDecision | Promise<CodexApprovalDecision>;
 }
 
-export interface CodexSession extends AgentSession {
+export interface CodexSession extends AgentAdapterSession {
   /** Absolute path to this session's rollout JSONL (the Codex transcript analog). */
   threadPath(): string | undefined;
 }
@@ -95,7 +94,7 @@ export async function createCodexSession(options: CreateCodexSessionOptions): Pr
   });
   const stamper = createEnvelopeStamper();
 
-  let state = createInitialSessionState();
+  const events = new BufferedAgentEventSource();
   let sessionId = '';
   let runtimeSessionId = '';
   let threadPath: string | undefined;
@@ -104,25 +103,11 @@ export async function createCodexSession(options: CreateCodexSessionOptions): Pr
   let disposed = false;
   let bootstrapping = true;
   let observation: ObservationLevel = 'structured';
-  const listeners = new Set<(e: AgentEventEnvelope) => void>();
-  const monitorListeners = new Set<(batch: AdapterMonitorObservationBatch) => void>();
-  const pendingMonitorBatches: AdapterMonitorObservationBatch[] = [];
   const pendingInjections = new Map<string, PendingInjection>();
 
   function emitMonitorBatch(batch: AdapterMonitorObservationBatch | null): void {
     if (!batch) return;
-    if (monitorListeners.size === 0) {
-      pendingMonitorBatches.push(batch);
-      if (pendingMonitorBatches.length > 512) pendingMonitorBatches.splice(0, pendingMonitorBatches.length - 512);
-      return;
-    }
-    for (const listener of monitorListeners) {
-      try {
-        listener(batch);
-      } catch {
-        // Monitor consumers cannot affect provider observation.
-      }
-    }
+    apply({ type: 'monitor.batch', batch }, 'native-protocol', batch);
   }
 
   const capabilitiesBatch = monitorEvidence.capabilitiesBatch(new Date().toISOString());
@@ -149,14 +134,7 @@ export async function createCodexSession(options: CreateCodexSessionOptions): Pr
       event,
       nativeEvent,
     });
-    state = reduceSessionState(state, envelope);
-    for (const listener of listeners) {
-      try {
-        listener(envelope);
-      } catch {
-        /* listener faults stay out of the pipeline */
-      }
-    }
+    events.emit(envelope);
   }
 
   client.onNotification((method, params) => {
@@ -315,33 +293,11 @@ export async function createCodexSession(options: CreateCodexSessionOptions): Pr
   return {
     sessionId,
     runtimeSessionId,
-    state: () => state,
     observationLevel: () => observation,
     threadPath: () => threadPath,
     onEvent(listener) {
       if (disposed) return () => undefined;
-      listeners.add(listener);
-      return () => listeners.delete(listener);
-    },
-    onMonitorBatch(listener) {
-      if (disposed) return () => undefined;
-      monitorListeners.add(listener);
-      const pending = pendingMonitorBatches.splice(0);
-      if (!pending.includes(capabilitiesBatch)) {
-        try {
-          listener(capabilitiesBatch);
-        } catch {
-          // Initial delivery has the same isolation guarantee as live fan-out.
-        }
-      }
-      for (const batch of pending) {
-        try {
-          listener(batch);
-        } catch {
-          // Initial delivery has the same isolation guarantee as live fan-out.
-        }
-      }
-      return () => monitorListeners.delete(listener);
+      return events.onEvent(listener);
     },
     async submitPrompt(submission: PromptSubmission): Promise<PromptReceipt> {
       if (disposed) return { status: 'rejected', reason: 'codex session is disposed' };
@@ -395,9 +351,7 @@ export async function createCodexSession(options: CreateCodexSessionOptions): Pr
           reason: 'codex session disposed before matching clientUserMessageId arrived',
         });
       }
-      listeners.clear();
-      monitorListeners.clear();
-      pendingMonitorBatches.length = 0;
+      events.close();
       await client.close();
     },
   };

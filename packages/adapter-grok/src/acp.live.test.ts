@@ -13,7 +13,8 @@ import { spawn, type ChildProcess } from 'node:child_process';
 import { mkdtempSync, realpathSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import type { AgentEventEnvelope, AgentHost, TerminalSpec } from '@vibecook/chopsticks-core';
+import type { AgentHost, TerminalSpec } from '@vibecook/chopsticks-core';
+import { projectAgentSession } from '@vibecook/chopsticks-testing';
 import { describe, expect, it } from 'vitest';
 import { createGrokBackend } from './backend.js';
 
@@ -81,8 +82,8 @@ describe.skipIf(!live || process.platform !== 'darwin')('Grok native composition
 
     try {
       const session = await backend.createSession({ cwd, permissionMode: 'default' });
-      const events: AgentEventEnvelope[] = [];
-      session.onEvent((event) => events.push(event));
+      const projection = projectAgentSession(session);
+      const events = projection.envelopes;
       const originalId = session.sessionId;
 
       expect(launches).toHaveLength(1);
@@ -94,21 +95,24 @@ describe.skipIf(!live || process.platform !== 'darwin')('Grok native composition
       });
       expect(receipt.status).toBe('confirmed');
       await waitFor(() => events.some(({ event }) => event.type === 'turn.completed'), 'durable turn completion');
-      expect(session.state().lastAssistantMessage?.toLowerCase()).toContain('pong');
+      expect(projection.state.lastAssistantMessage?.toLowerCase()).toContain('pong');
       expect(events.some(({ source }) => source === 'native-transcript')).toBe(true);
       await session.dispose();
       await Promise.all([...children].map(reap));
       children.clear();
 
       const resumed = await backend.createSession({ cwd, resume: originalId });
+      const resumedProjection = projectAgentSession(resumed);
       expect(resumed.sessionId).toBe(originalId);
       expect(launches).toHaveLength(2);
       await waitFor(
-        () => (resumed.state().lastAssistantMessage ?? '').toLowerCase().includes('pong'),
+        () => (resumedProjection.state.lastAssistantMessage ?? '').toLowerCase().includes('pong'),
         'resumed durable history',
       );
       expect(resumed.observationLevel()).toBe('native-log');
+      resumedProjection.dispose();
       await resumed.dispose();
+      projection.dispose();
     } finally {
       backend.dispose();
       await Promise.all([...children].map(reap));

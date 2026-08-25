@@ -1,5 +1,17 @@
 # Testing package migration
 
+## Next
+
+Adapter handles no longer expose reducer state or a separate monitor callback.
+Use `projectAgentSession(session)` in low-level adapter tests to consume the one
+normalized event stream and inspect its derived `state`, `states`, `envelopes`,
+and `monitorBatches`. Product code should use the runtime-owned `Agent` instead.
+
+Live conformance harnesses that must await startup may attach that projection
+themselves and return it as `AgentSessionHarness.projection`; the shared suite
+then reuses the same first consumer so buffered bootstrap events are reduced
+exactly once.
+
 ## 0.2.0
 
 `@vibecook/chopsticks-testing` is now provider-neutral. The following

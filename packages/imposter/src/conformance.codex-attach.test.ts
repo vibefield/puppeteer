@@ -20,13 +20,13 @@ import { tmpdir } from 'node:os';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { afterEach, describe, expect, it } from 'vitest';
-import type { AgentEventEnvelope } from '@vibecook/chopsticks-core';
 import {
   createCodexSession,
   spawnAppServer,
   wsOverUnixTransport,
   type CodexSession,
 } from '@vibecook/chopsticks-adapter-codex';
+import { projectAgentSession } from '@vibecook/chopsticks-testing';
 
 const AI = join(dirname(dirname(fileURLToPath(import.meta.url))), 'bin', 'ai.mjs');
 
@@ -64,9 +64,9 @@ describe.skipIf(process.platform === 'win32')('a prompt typed in an attached pan
     disposers.add(() => server.dispose());
     await server.ready();
 
-    const events: AgentEventEnvelope[] = [];
     session = await createCodexSession({ cwd, transport: wsOverUnixTransport(server.socketPath) });
-    session.onEvent((envelope) => events.push(envelope));
+    const projection = projectAgentSession(session);
+    const events = projection.envelopes;
     const threadId = session.sessionId;
 
     // The pane, launched with the argv `prepareCodexTuiSession` hands back, and
@@ -102,7 +102,6 @@ describe.skipIf(process.platform === 'win32')('a prompt typed in an attached pan
 
     // And the prompt itself survived the trip, which is what proves the pane
     // and the adapter are on one thread rather than two.
-    const state = session.state();
-    expect(state.lastAssistantMessage).toBe('imposter: ok');
+    expect(projection.state.lastAssistantMessage).toBe('imposter: ok');
   });
 });

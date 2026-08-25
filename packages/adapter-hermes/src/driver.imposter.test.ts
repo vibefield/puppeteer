@@ -1,6 +1,7 @@
 import { rmSync } from 'node:fs';
 import { afterEach, describe, expect, it } from 'vitest';
 import type { AgentEventEnvelope, AgentHost } from '@vibecook/chopsticks-core';
+import { projectAgentSession } from '@vibecook/chopsticks-testing';
 import { createHermesTuiSession, type HermesTuiSession } from './driver.js';
 import { createHermesImposterFixture } from './test-support/imposter.js';
 import type { HermesStdioClient } from './transport/stdio.js';
@@ -38,9 +39,10 @@ describe('Hermes adapter against Imposter', () => {
       promptConfirmationTimeoutMs: 5_000,
     });
     sessions.add(session);
+    const projection = projectAgentSession(session);
 
     expect(session.observationLevel()).toBe('structured');
-    expect(session.state().lifecycle).toBe('ready');
+    expect(projection.state.lifecycle).toBe('ready');
     expect(session.storedSessionId()).toBeTruthy();
 
     const observed: AgentEventEnvelope[] = [];
@@ -51,14 +53,15 @@ describe('Hermes adapter against Imposter', () => {
       throw new Error(`expected confirmed, got ${JSON.stringify(receipt)}; stderr=${stderr}`);
     }
     const deadline = Date.now() + 5_000;
-    while (Date.now() < deadline && session.state().lastAssistantMessage === undefined) {
+    while (Date.now() < deadline && projection.state.lastAssistantMessage === undefined) {
       await new Promise((resolve) => setTimeout(resolve, 20));
     }
     off();
 
-    expect(session.state().lastAssistantMessage).toBe('SURFACE_HERMES_OK');
+    expect(projection.state.lastAssistantMessage).toBe('SURFACE_HERMES_OK');
     expect(observed.some((event) => event.event.type === 'turn.started')).toBe(true);
     expect(observed.some((event) => event.event.type === 'turn.completed')).toBe(true);
-    expect(session.state().lifecycle).toBe('ready');
+    expect(projection.state.lifecycle).toBe('ready');
+    projection.dispose();
   }, 20_000);
 });

@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import type { AgentEvent, AgentEventEnvelope } from '@vibecook/chopsticks-core';
-import type { AdapterMonitorObservationBatch } from '@vibecook/chopsticks-core/monitor-spi';
+import { projectAgentSession } from '@vibecook/chopsticks-testing';
 import { createCodexSession } from './driver.js';
 import type { Transport } from './transport/app-server-client.js';
 
@@ -161,32 +161,35 @@ describe('createCodexSession', () => {
   it('establishes identity and structured observation from thread/start', async () => {
     const s = scriptedAppServer();
     const session = await createCodexSession({ cwd: '/x', transport: s.transport, model: 'gpt-5.6-sol' });
+    const projection = projectAgentSession(session);
     expect(session.sessionId).toBe(THREAD);
     expect(session.runtimeSessionId).toBe(THREAD);
     expect(session.threadPath()).toBe(ROLLOUT);
     expect(session.observationLevel()).toBe('structured');
     await flush();
-    expect(session.state().lifecycle).toBe('ready'); // thread/started -> session.started
-    expect(session.state().environment).toMatchObject({
+    expect(projection.state.lifecycle).toBe('ready'); // thread/started -> session.started
+    expect(projection.state.environment).toMatchObject({
       currentCwd: { value: '/x' },
       model: { value: { id: 'gpt-5.6-sol', displayName: 'GPT-5.6-Codex' } },
     });
     expect(s.sent.find((message) => message.method === 'thread/start')?.params).toMatchObject({
       model: 'gpt-5.6-sol',
     });
-    const monitorBatches: AdapterMonitorObservationBatch[] = [];
-    session.onMonitorBatch?.((batch) => monitorBatches.push(batch));
+    const monitorBatches = projection.monitorBatches;
     expect(monitorBatches[0]).toMatchObject({ phase: 'bootstrap', capabilities: expect.any(Array) });
     expect(monitorBatches.flatMap(({ updates }) => updates).find(({ family }) => family === 'model')).toMatchObject({
       family: 'model',
       operation: 'upsert',
     });
     expect(monitorBatches.every(({ phase }) => phase === 'bootstrap')).toBe(true);
+    projection.dispose();
+    await session.dispose();
   });
 
   it('submitPrompt drives a turn and reduces to a coherent state', async () => {
     const s = scriptedAppServer();
     const session = await createCodexSession({ cwd: '/x', transport: s.transport });
+    const projection = projectAgentSession(session);
     const events: AgentEvent[] = [];
     const envelopes: AgentEventEnvelope[] = [];
     session.onEvent((e) => {
@@ -198,13 +201,13 @@ describe('createCodexSession', () => {
     expect(receipt.status).toBe('confirmed'); // exact echoed client id, not request acceptance alone
     await flush();
 
-    expect(session.state().lifecycle).toBe('ready');
-    expect(session.state().lastAssistantMessage).toBe('pong');
+    expect(projection.state.lifecycle).toBe('ready');
+    expect(projection.state.lastAssistantMessage).toBe('pong');
     expect(events.some((e) => e.type === 'assistant.message' && e.final === true && e.text === 'pong')).toBe(true);
     expect(events.some((e) => e.type === 'turn.completed')).toBe(true);
     expect(events.some((e) => e.type === 'reasoning.started')).toBe(true);
     expect(events.some((e) => e.type === 'reasoning.summary' && e.text === 'Checked the request.')).toBe(true);
-    expect(session.state().activeReasoning).toBeUndefined();
+    expect(projection.state.activeReasoning).toBeUndefined();
     const rawThought = envelopes.find((e) => e.event.type === 'reasoning.progress');
     expect(rawThought?.nativeEvent).toMatchObject({
       method: 'item/reasoning/textDelta',
@@ -216,15 +219,17 @@ describe('createCodexSession', () => {
     const ts = s.sent.find((m) => m.method === 'turn/start');
     expect((ts?.params as Record<string, unknown>).input).toEqual([{ type: 'text', text: PROMPT }]);
     expect(typeof (ts?.params as Record<string, unknown>).clientUserMessageId).toBe('string');
+    projection.dispose();
+    await session.dispose();
   });
 
   it('keeps collaboration child notifications off the root reducer while publishing actor evidence', async () => {
     const s = scriptedAppServer();
     const session = await createCodexSession({ cwd: '/x', transport: s.transport });
+    const projection = projectAgentSession(session);
     const events: AgentEvent[] = [];
-    const monitorBatches: AdapterMonitorObservationBatch[] = [];
+    const monitorBatches = projection.monitorBatches;
     session.onEvent(({ event }) => events.push(event));
-    session.onMonitorBatch?.((batch) => monitorBatches.push(batch));
 
     const child = 'child-thread-1';
     s.deliver({
@@ -249,7 +254,7 @@ describe('createCodexSession', () => {
     await flush();
 
     expect(events.some((event) => event.type === 'turn.started' && event.turnId === 'child-turn')).toBe(false);
-    expect(session.state().activeTurn).toBeUndefined();
+    expect(projection.state.activeTurn).toBeUndefined();
     expect(
       monitorBatches
         .flatMap(({ updates }) => updates)
@@ -260,7 +265,8 @@ describe('createCodexSession', () => {
     ).toBe(true);
 
     await expect(session.submitPrompt({ text: PROMPT })).resolves.toMatchObject({ status: 'confirmed' });
-    expect(session.state().lastAssistantMessage).toBe('pong');
+    expect(projection.state.lastAssistantMessage).toBe('pong');
+    projection.dispose();
     await session.dispose();
   });
 
@@ -303,18 +309,20 @@ describe('createCodexSession', () => {
           resolveApproval = resolve;
         }),
     });
+    const projection = projectAgentSession(session);
 
     await session.submitPrompt({ text: 'run ls' });
     await flush();
-    expect(session.state().permissions.size).toBe(1);
-    const lastSequence = session.state().lastSequence;
+    expect(projection.state.permissions.size).toBe(1);
+    const lastSequence = projection.state.lastSequence;
 
     await session.dispose();
     resolveApproval('approved');
     await flush();
 
-    expect(session.state().lastSequence).toBe(lastSequence);
+    expect(projection.state.lastSequence).toBe(lastSequence);
     expect(s.sent.some((message) => message.id === 999 && ('result' in message || 'error' in message))).toBe(false);
+    projection.dispose();
   });
 
   it('rejects submitPrompt when turn/start errors (no uncertain)', async () => {
@@ -367,14 +375,14 @@ describe('createCodexSession', () => {
   it('degrades monitor observation without claiming host-process death when the transport closes', async () => {
     const s = scriptedAppServer();
     const session = await createCodexSession({ cwd: '/x', transport: s.transport });
+    const projection = projectAgentSession(session);
     const events: AgentEvent[] = [];
-    const monitorBatches: AdapterMonitorObservationBatch[] = [];
+    const monitorBatches = projection.monitorBatches;
     session.onEvent((e) => events.push(e.event));
-    session.onMonitorBatch?.((batch) => monitorBatches.push(batch));
     s.fireClose();
     await flush();
     expect(session.observationLevel()).toBe('terminal-only');
-    expect(session.state().lifecycle).toBe('ready');
+    expect(projection.state.lifecycle).toBe('ready');
     expect(events.some((e) => e.type === 'process.exited' || e.type === 'session.exited')).toBe(false);
     expect(events.at(-1)).toEqual({
       type: 'adapter.native-event',
@@ -386,6 +394,7 @@ describe('createCodexSession', () => {
       completeness: 'unavailable',
       updates: [],
     });
+    projection.dispose();
     await session.dispose();
   });
 });

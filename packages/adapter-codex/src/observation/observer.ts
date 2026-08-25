@@ -1,6 +1,6 @@
 /**
  * Codex thread observer (M5 C6) — attach to a thread and feed the shared
- * normalizer + reducer. Two attach modes:
+ * normalizer and publish one normalized stream. Two attach modes:
  *
  * 1. **Passive (legacy Model B):** wait for `thread/started` from another
  *    connection (e.g. a bare `codex --remote` TUI), then `thread/resume` until
@@ -22,14 +22,12 @@
 
 import { performance } from 'node:perf_hooks';
 import {
+  BufferedAgentEventSource,
   createEnvelopeStamper,
-  createInitialSessionState,
   CHOPSTICKS_VERSION,
-  reduceSessionState,
   type AgentEvent,
   type AgentEventEnvelope,
   type ObservationLevel,
-  type SessionRuntimeState,
 } from '@vibecook/chopsticks-core';
 import type { AdapterMonitorObservationBatch } from '@vibecook/chopsticks-core/monitor-spi';
 import { AppServerClient, type Transport } from '../transport/app-server-client.js';
@@ -80,11 +78,9 @@ export interface CodexThreadInfo {
 export interface CodexObserver {
   /** The observed thread's id / spaghetti join key (undefined until one attaches). */
   readonly sessionId: string | undefined;
-  state(): SessionRuntimeState;
   observationLevel(): ObservationLevel;
   threadPath(): string | undefined;
   onEvent(listener: (envelope: AgentEventEnvelope) => void): () => void;
-  onMonitorBatch(listener: (batch: AdapterMonitorObservationBatch) => void): () => void;
   /** Fires once a thread is picked up and its live stream is open. */
   onThread(listener: (info: CodexThreadInfo) => void): () => void;
   /** Bind a thread discovered by a native TUI resume request. */
@@ -105,8 +101,8 @@ export async function createCodexObserver(opts: CreateCodexObserverOptions): Pro
     modelDisplayName: (modelId) => modelNames.get(modelId),
   });
   const stamper = createEnvelopeStamper();
+  const events = new BufferedAgentEventSource();
 
-  let state = createInitialSessionState();
   let sessionId: string | undefined;
   let threadPath: string | undefined;
   let currentTurnId: string | undefined;
@@ -114,34 +110,22 @@ export async function createCodexObserver(opts: CreateCodexObserverOptions): Pro
   let attaching = false;
   let disposed = false;
   let railClosed = false;
+  let contextWindowObserved = false;
   let observation: ObservationLevel = 'structured';
-  const listeners = new Set<(e: AgentEventEnvelope) => void>();
-  const monitorListeners = new Set<(batch: AdapterMonitorObservationBatch) => void>();
-  const pendingMonitorBatches: AdapterMonitorObservationBatch[] = [];
   const threadListeners = new Set<(info: CodexThreadInfo) => void>();
-  const pendingEvents: AgentEventEnvelope[] = [];
   const queuedLiveNotifications: Array<{ method: string; params: Record<string, unknown> }> = [];
 
   function emitMonitorBatch(batch: AdapterMonitorObservationBatch | null): void {
     if (!batch) return;
-    if (monitorListeners.size === 0) {
-      pendingMonitorBatches.push(batch);
-      if (pendingMonitorBatches.length > 512) pendingMonitorBatches.splice(0, pendingMonitorBatches.length - 512);
-      return;
-    }
-    for (const listener of monitorListeners) {
-      try {
-        listener(batch);
-      } catch {
-        // Monitor consumers cannot affect provider observation.
-      }
-    }
+    apply({ type: 'monitor.batch', batch }, 'native-protocol', batch);
   }
 
   const capabilitiesBatch = monitorEvidence.capabilitiesBatch(new Date().toISOString());
   emitMonitorBatch(capabilitiesBatch);
 
   function apply(event: AgentEvent, source: AgentEventEnvelope['source'], nativeEvent?: unknown, replay = false): void {
+    if (event.type === 'context-window.updated') contextWindowObserved = true;
+    if (event.type === 'context-window.invalidated') contextWindowObserved = false;
     const envelope = stamper.next({
       sessionId: sessionId ?? '',
       nativeSessionId: sessionId,
@@ -154,15 +138,7 @@ export async function createCodexObserver(opts: CreateCodexObserverOptions): Pro
       nativeEvent,
       ...(replay ? { replay: true } : {}),
     });
-    state = reduceSessionState(state, envelope);
-    if (listeners.size === 0) pendingEvents.push(envelope);
-    for (const l of listeners) {
-      try {
-        l(envelope);
-      } catch {
-        /* listener faults stay out of the pipeline */
-      }
-    }
+    events.emit(envelope);
   }
 
   function consumeNotification(method: string, params: Record<string, unknown>, replayed = false): void {
@@ -289,7 +265,7 @@ export async function createCodexObserver(opts: CreateCodexObserverOptions): Pro
         const replayedTurnIds = replayCompletedTurns(history);
 
         // thread/resume opens the live stream before thread/read resolves. Keep
-        // live traffic behind this replay barrier so the stateful normalizer
+        // live traffic behind this replay barrier so the normalizer
         // always sees old turns first. If thread/read already contains a turn
         // that completed while it was in flight, discard that turn's queued
         // protocol notifications rather than reducing it twice.
@@ -310,9 +286,9 @@ export async function createCodexObserver(opts: CreateCodexObserverOptions): Pro
       attaching = false; // disposed before the thread ever materialized
       return;
     }
-    if (threadPath && !state.contextWindow) {
+    if (threadPath && !contextWindowObserved) {
       const contextWindow = await readLastCodexContextWindow(threadPath);
-      if (contextWindow && !state.contextWindow) {
+      if (contextWindow && !contextWindowObserved) {
         emitMonitorBatch(
           monitorEvidence.contextBootstrapBatch(contextWindow, new Date().toISOString(), 'rollout-token-count'),
         );
@@ -338,7 +314,7 @@ export async function createCodexObserver(opts: CreateCodexObserverOptions): Pro
       }
       return; // ignore everything until we've attached to a thread
     }
-    // Only our thread's notifications drive state (avoid cross-thread bleed).
+    // Only our thread's notifications drive the normalized stream (avoid cross-thread bleed).
     consumeNotification(method, params ?? {});
   });
 
@@ -435,39 +411,10 @@ export async function createCodexObserver(opts: CreateCodexObserverOptions): Pro
     get sessionId() {
       return sessionId;
     },
-    state: () => state,
     observationLevel: () => observation,
     threadPath: () => threadPath,
     onEvent(listener) {
-      listeners.add(listener);
-      for (const envelope of pendingEvents.splice(0)) {
-        try {
-          listener(envelope);
-        } catch {
-          // Listener faults stay out of buffered-history delivery too.
-        }
-      }
-      return () => listeners.delete(listener);
-    },
-    onMonitorBatch(listener) {
-      if (disposed) return () => undefined;
-      monitorListeners.add(listener);
-      const pending = pendingMonitorBatches.splice(0);
-      if (!pending.includes(capabilitiesBatch)) {
-        try {
-          listener(capabilitiesBatch);
-        } catch {
-          // Initial delivery has the same isolation guarantee as live fan-out.
-        }
-      }
-      for (const batch of pending) {
-        try {
-          listener(batch);
-        } catch {
-          // Initial delivery has the same isolation guarantee as live fan-out.
-        }
-      }
-      return () => monitorListeners.delete(listener);
+      return events.onEvent(listener);
     },
     onThread(listener) {
       threadListeners.add(listener);
@@ -476,8 +423,7 @@ export async function createCodexObserver(opts: CreateCodexObserverOptions): Pro
     attachThread: (threadId) => attach(threadId, undefined),
     async dispose() {
       disposed = true; // stop the attach retry loop if it is still running
-      monitorListeners.clear();
-      pendingMonitorBatches.length = 0;
+      events.close();
       await client.close();
     },
   };

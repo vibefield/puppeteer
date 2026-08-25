@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import { createInitialSessionState, type AgentHost, type AgentSession } from '@vibecook/chopsticks-core';
+import type { AgentAdapterSession, AgentHost } from '@vibecook/chopsticks-core';
 import type { AcpConnector } from '@vibecook/chopsticks-adapter-acp';
 import type { CreateClaudeSessionOptions } from '@vibecook/chopsticks-adapter-claude';
 
@@ -73,11 +73,10 @@ const host: AgentHost = {
   },
 };
 
-function fakeSession(kind: string): AgentSession {
+function fakeSession(kind: string): AgentAdapterSession {
   return {
     sessionId: `${kind}-session`,
     runtimeSessionId: `${kind}-runtime`,
-    state: createInitialSessionState,
     observationLevel: () => 'structured',
     onEvent: () => () => undefined,
     async submitPrompt() {

@@ -1,5 +1,5 @@
 import { describe, it, expect, vi } from 'vitest';
-import type { AdapterMonitorObservationBatch } from '@vibecook/chopsticks-core/monitor-spi';
+import { projectAgentEvents } from '@vibecook/chopsticks-testing';
 import { createCodexObserver } from './observer.js';
 import type { Transport } from '../transport/app-server-client.js';
 
@@ -82,22 +82,25 @@ describe('createCodexObserver attach resilience', () => {
   it('keeps retrying thread/resume until it succeeds, then attaches (no one-shot give-up)', async () => {
     const t = controllable(4); // rollout only materializes on the 5th resume
     const obs = await createCodexObserver({ transport: t.transport });
+    const projection = projectAgentEvents(obs);
     const seen: string[] = [];
     obs.onEvent((e) => seen.push(e.event.type));
 
-    expect(obs.state().lifecycle).toBe('preparing');
+    expect(projection.state.lifecycle).toBe('preparing');
     t.deliver(threadStarted); // the TUI created a thread
 
-    await vi.waitFor(() => expect(obs.state().lifecycle).toBe('ready'), { timeout: 5000 });
+    await vi.waitFor(() => expect(projection.state.lifecycle).toBe('ready'), { timeout: 5000 });
     expect(obs.sessionId).toBe('th-1');
     expect(seen).toContain('session.started');
     expect(t.resumeAttempts()).toBeGreaterThan(4);
+    projection.dispose();
     await obs.dispose();
   });
 
   it('stops retrying when disposed before the thread ever materializes', async () => {
     const t = controllable(Number.POSITIVE_INFINITY); // resume never succeeds
     const obs = await createCodexObserver({ transport: t.transport });
+    const projection = projectAgentEvents(obs);
     t.deliver(threadStarted);
 
     await vi.waitFor(() => expect(t.resumeAttempts()).toBeGreaterThan(1), { timeout: 2000 });
@@ -105,9 +108,10 @@ describe('createCodexObserver attach resilience', () => {
     const attemptsAtDispose = t.resumeAttempts();
 
     await new Promise((r) => setTimeout(r, 600)); // longer than the backoff cap
-    expect(obs.state().lifecycle).toBe('preparing');
+    expect(projection.state.lifecycle).toBe('preparing');
     // The loop has stopped: no further resume attempts after dispose (allow one in-flight).
     expect(t.resumeAttempts()).toBeLessThanOrEqual(attemptsAtDispose + 1);
+    projection.dispose();
   });
 });
 
@@ -118,12 +122,13 @@ describe('createCodexObserver controller-owned bootstrap', () => {
       transport: t.transport,
       start: { cwd: '/tmp/ws', model: 'gpt-5.6-sol', sandbox: 'read-only', approvalPolicy: 'never' },
     });
+    const projection = projectAgentEvents(obs);
 
     // Bootstrap completes before createCodexObserver resolves — ready immediately,
     // no user prompt required (the desktop panel "preparing" fix).
     expect(obs.sessionId).toBe('th-owned');
     expect(obs.threadPath()).toBe('/tmp/rollout-th-owned.jsonl');
-    expect(obs.state().lifecycle).toBe('ready');
+    expect(projection.state.lifecycle).toBe('ready');
 
     const methods = t.calls().map((c) => c.method);
     expect(methods).toContain('thread/start');
@@ -144,42 +149,43 @@ describe('createCodexObserver controller-owned bootstrap', () => {
       approvalPolicy: 'never',
     });
 
-    const monitorBatches: AdapterMonitorObservationBatch[] = [];
-    obs.onMonitorBatch((batch) => monitorBatches.push(batch));
+    const monitorBatches = projection.monitorBatches;
     expect(monitorBatches[0]).toMatchObject({ phase: 'bootstrap', capabilities: expect.any(Array) });
     expect(monitorBatches.every(({ phase }) => phase === 'bootstrap')).toBe(true);
 
+    projection.dispose();
     await obs.dispose();
   });
 
   it('keeps the observed TUI run alive and degrades monitor readiness when its app-server rail closes', async () => {
     const t = controllable(0);
     const obs = await createCodexObserver({ transport: t.transport, start: { cwd: '/tmp/ws' } });
+    const projection = projectAgentEvents(obs);
     const events: Array<{ type: string }> = [];
-    const monitorBatches: AdapterMonitorObservationBatch[] = [];
+    const monitorBatches = projection.monitorBatches;
     obs.onEvent(({ event }) => events.push(event));
-    obs.onMonitorBatch((batch) => monitorBatches.push(batch));
 
     t.fireClose();
 
     expect(obs.observationLevel()).toBe('terminal-only');
-    expect(obs.state().lifecycle).toBe('ready');
+    expect(projection.state.lifecycle).toBe('ready');
     expect(events.some(({ type }) => type === 'process.exited' || type === 'session.exited')).toBe(false);
     expect(events.at(-1)).toMatchObject({
       type: 'adapter.native-event',
       nativeType: 'app-server.transport.closed',
     });
     expect(monitorBatches.at(-1)).toMatchObject({ readiness: 'degraded', completeness: 'unavailable', updates: [] });
+    projection.dispose();
     await obs.dispose();
   });
 
   it('observes multiplexed child-thread metrics without reducing them as root TUI events', async () => {
     const t = controllable(0);
     const obs = await createCodexObserver({ transport: t.transport, start: { cwd: '/tmp/ws' } });
+    const projection = projectAgentEvents(obs);
     const events: string[] = [];
-    const monitorBatches: AdapterMonitorObservationBatch[] = [];
+    const monitorBatches = projection.monitorBatches;
     obs.onEvent(({ event }) => events.push(event.type));
-    obs.onMonitorBatch((batch) => monitorBatches.push(batch));
     events.length = 0;
 
     t.deliver({
@@ -198,7 +204,7 @@ describe('createCodexObserver controller-owned bootstrap', () => {
     });
 
     expect(events).toEqual([]);
-    expect(obs.state().activeTurn).toBeUndefined();
+    expect(projection.state.activeTurn).toBeUndefined();
     expect(
       monitorBatches
         .flatMap(({ updates }) => updates)
@@ -209,6 +215,7 @@ describe('createCodexObserver controller-owned bootstrap', () => {
             update.value.actor?.nativeSessionId === 'th-child',
         ),
     ).toBe(true);
+    projection.dispose();
     await obs.dispose();
   });
 
@@ -220,6 +227,7 @@ describe('createCodexObserver controller-owned bootstrap', () => {
       start: { cwd: '/tmp/ws' },
       onApproval,
     });
+    const projection = projectAgentEvents(obs);
     const events: string[] = [];
     obs.onEvent((envelope) => events.push(envelope.event.type));
 
@@ -250,10 +258,12 @@ describe('createCodexObserver controller-owned bootstrap', () => {
       transport: t.transport,
       threadId: 'th-resume-me',
     });
+    const projection = projectAgentEvents(obs);
     expect(obs.sessionId).toBe('th-resume-me');
-    expect(obs.state().lifecycle).toBe('ready');
+    expect(projection.state.lifecycle).toBe('ready');
     expect(t.calls().some((c) => c.method === 'thread/start')).toBe(false);
     expect(t.calls().some((c) => c.method === 'thread/resume')).toBe(true);
+    projection.dispose();
     await obs.dispose();
   });
 
@@ -281,8 +291,10 @@ describe('createCodexObserver controller-owned bootstrap', () => {
       },
     });
     const obs = await createCodexObserver({ transport: t.transport, threadId: 'th-history' });
-    const events: unknown[] = [];
-    obs.onEvent((envelope) => events.push(envelope.event));
+    const projection = projectAgentEvents(obs);
+    const events: unknown[] = projection.envelopes
+      .filter(({ event }) => event.type !== 'monitor.batch' && event.type !== 'session.environment.updated')
+      .map(({ event }) => event);
 
     expect(events).toEqual([
       { type: 'session.started', nativeSessionId: 'th-history' },
@@ -297,12 +309,13 @@ describe('createCodexObserver controller-owned bootstrap', () => {
       },
       { type: 'turn.completed', turnId: 'turn-history' },
     ]);
-    expect(obs.state().lastAssistantMessage).toBe('Use the native resume path.');
+    expect(projection.state.lastAssistantMessage).toBe('Use the native resume path.');
     expect(t.calls().find((call) => call.method === 'thread/resume')?.params).toEqual({ threadId: 'th-history' });
     expect(t.calls().find((call) => call.method === 'thread/read')?.params).toEqual({
       threadId: 'th-history',
       includeTurns: true,
     });
+    projection.dispose();
     await obs.dispose();
   });
 

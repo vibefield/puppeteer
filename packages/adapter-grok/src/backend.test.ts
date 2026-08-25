@@ -1,11 +1,13 @@
 import { describe, expect, it, vi } from 'vitest';
 import {
-  createInitialSessionState,
+  agentEventService,
+  agentServiceEventType,
+  type AgentEvent,
   type AgentEventEnvelope,
   type AgentHost,
-  type AgentSession,
+  type AgentAdapterSession,
 } from '@vibecook/chopsticks-core';
-import type { AdapterMonitorObservationBatch } from '@vibecook/chopsticks-core/monitor-spi';
+import { projectAgentSession } from '@vibecook/chopsticks-testing';
 import {
   buildGrokTuiArgs,
   createGrokBackend,
@@ -16,16 +18,16 @@ import type { GrokObservedEvent, GrokSessionObserver } from './session-observer.
 
 const tick = (): Promise<void> => new Promise((resolve) => setTimeout(resolve, 0));
 
-function fakeControl() {
+function fakeControl(bootstrap: AgentEventEnvelope[] = []) {
   const listeners = new Set<(event: AgentEventEnvelope) => void>();
   let disposed = false;
-  const session: AgentSession = {
+  const session: AgentAdapterSession = {
     sessionId: 'ctl',
     runtimeSessionId: 'ctl-rt',
-    state: () => ({ ...createInitialSessionState(), lifecycle: 'ready' }),
     observationLevel: () => 'structured',
     onEvent: (listener) => {
       listeners.add(listener);
+      for (const envelope of bootstrap.splice(0)) listener(envelope);
       return () => listeners.delete(listener);
     },
     submitPrompt: async () => ({ status: 'confirmed', turnId: 't1' }),
@@ -43,6 +45,8 @@ function fakeControl() {
 }
 
 const ENVELOPE: AgentEventEnvelope = {
+  type: 'state:session-ready',
+  service: 'state',
   sequence: 1,
   sessionId: 'sid',
   timestamp: '2026-07-14T00:00:00.000Z',
@@ -51,6 +55,16 @@ const ENVELOPE: AgentEventEnvelope = {
   confidence: 'authoritative',
   event: { type: 'session.ready' },
 };
+
+function envelope(event: AgentEvent, source: AgentEventEnvelope['source'] = 'native-hook'): AgentEventEnvelope {
+  return {
+    ...ENVELOPE,
+    type: agentServiceEventType(event),
+    service: agentEventService(event),
+    source,
+    event,
+  };
+}
 
 function deferred<T>() {
   let resolve!: (value: T) => void;
@@ -87,19 +101,24 @@ function fakeObserver() {
 
 describe('createPendingControlSession', () => {
   it('exposes id + terminal immediately and initial state before attach', () => {
-    const session = createPendingControlSession('sid', 'rt', () => new Promise<AgentSession>(() => {}));
+    const session = createPendingControlSession('sid', 'rt', () => new Promise<AgentAdapterSession>(() => {}));
+    const projection = projectAgentSession(session);
     expect(session.sessionId).toBe('sid');
     expect(session.runtimeSessionId).toBe('rt');
     expect(session.observationLevel()).toBe('structured');
-    expect(session.state().lifecycle).toBe('preparing');
+    expect(projection.state.lifecycle).toBe('preparing');
+    projection.dispose();
   });
 
   it('forwards buffered listeners once control attaches', async () => {
     const control = fakeControl();
-    const pending = deferred<AgentSession>();
+    const pending = deferred<AgentAdapterSession>();
     const session = createPendingControlSession('sid', 'rt', () => pending.promise);
+    const projection = projectAgentSession(session);
     const received: AgentEventEnvelope[] = [];
-    session.onEvent((event) => received.push(event));
+    session.onEvent((event) => {
+      if (event.event.type !== 'monitor.batch') received.push(event);
+    });
 
     control.emit(ENVELOPE);
     expect(received).toHaveLength(0);
@@ -109,12 +128,13 @@ describe('createPendingControlSession', () => {
 
     expect(received).toHaveLength(2);
     expect(received.map(({ event }) => event.type)).toEqual(['session.ready', 'session.ready']);
-    expect(session.state().lifecycle).toBe('ready');
+    expect(projection.state.lifecycle).toBe('ready');
+    projection.dispose();
   });
 
   it('waits for attach before delegating prompt submission', async () => {
     const control = fakeControl();
-    const pending = deferred<AgentSession>();
+    const pending = deferred<AgentAdapterSession>();
     const session = createPendingControlSession('sid', 'rt', () => pending.promise);
 
     const receiptPending = session.submitPrompt({ text: 'hi' });
@@ -124,28 +144,28 @@ describe('createPendingControlSession', () => {
 
   it('rejects prompt submission when control does not attach', async () => {
     const session = createPendingControlSession('sid', 'rt', () => Promise.reject(new Error('nope')));
-    const events: AgentEventEnvelope[] = [];
-    const monitor: AdapterMonitorObservationBatch[] = [];
-    session.onEvent((event) => events.push(event));
-    session.onMonitorBatch?.((batch) => monitor.push(batch));
+    const projection = projectAgentSession(session);
+    const events = projection.envelopes;
+    const monitor = projection.monitorBatches;
     await expect(session.submitPrompt({ text: 'hi' })).resolves.toMatchObject({ status: 'rejected' });
-    expect(session.state()).toMatchObject({
+    expect(projection.state).toMatchObject({
       lifecycle: 'preparing',
       diagnostics: [expect.objectContaining({ code: 'grok-control-attach-failed', message: 'nope' })],
     });
     expect(session.observationLevel()).toBe('terminal-only');
     expect(events.some(({ event }) => event.type === 'process.exited' || event.type === 'session.exited')).toBe(false);
-    expect(events.at(-1)?.event).toEqual({
+    expect(events.find(({ event }) => event.type === 'adapter.native-event')?.event).toMatchObject({
       type: 'adapter.native-event',
       adapter: 'grok',
       nativeType: 'control.unavailable',
     });
     expect(monitor.at(-1)).toMatchObject({ readiness: 'degraded', completeness: 'unavailable', updates: [] });
+    projection.dispose();
   });
 
   it('disposes a control client that arrives after the TUI session closed', async () => {
     const control = fakeControl();
-    const pending = deferred<AgentSession>();
+    const pending = deferred<AgentAdapterSession>();
     const session = createPendingControlSession('sid', 'rt', () => pending.promise);
 
     await session.dispose();
@@ -166,10 +186,11 @@ describe('createPendingControlSession', () => {
     const control = fakeControl();
     const observed = fakeObserver();
     const session = createPendingControlSession('sid', 'rt', () => control.session, observed.observer);
+    const projection = projectAgentSession(session);
     const envelopes: AgentEventEnvelope[] = [];
     session.onEvent((event) => envelopes.push(event));
 
-    expect(session.state().lifecycle).toBe('ready');
+    expect(projection.state.lifecycle).toBe('ready');
     expect(session.observationLevel()).toBe('native-log');
     observed.emit({
       event: { type: 'turn.started', turnId: 'prompt-1', prompt: 'hello' },
@@ -183,39 +204,30 @@ describe('createPendingControlSession', () => {
     });
 
     expect(envelopes.map(({ event }) => event.type)).toEqual(['turn.started', 'turn.completed']);
-    expect(session.state()).toMatchObject({ lifecycle: 'ready', activeTurn: undefined, lastAssistantMessage: 'hi' });
+    expect(projection.state).toMatchObject({ lifecycle: 'ready', activeTurn: undefined, lastAssistantMessage: 'hi' });
+    projection.dispose();
     await session.dispose();
     expect(observed.stopped).toBe(true);
   });
 
   it('bootstraps the model card and cwd already negotiated by ACP control', async () => {
-    const control = fakeControl();
-    const controlWithEnvironment: AgentSession = {
-      ...control.session,
-      state: () => ({
-        ...createInitialSessionState(),
-        lifecycle: 'ready',
-        environment: {
-          currentCwd: {
-            value: '/repo',
-            updatedAt: 'now',
-            source: 'native-protocol',
-            confidence: 'authoritative',
-          },
-          model: {
-            value: { id: 'grok-4.5', displayName: 'Grok 4.5' },
-            updatedAt: 'now',
-            source: 'native-protocol',
-            confidence: 'authoritative',
-          },
+    const control = fakeControl([
+      envelope(
+        {
+          type: 'session.environment.updated',
+          currentCwd: '/repo',
+          model: { id: 'grok-4.5', displayName: 'Grok 4.5' },
         },
-      }),
-    };
-    const session = createPendingControlSession('sid', 'rt', () => controlWithEnvironment);
-    expect(session.state().environment).toMatchObject({
+        'native-protocol',
+      ),
+    ]);
+    const session = createPendingControlSession('sid', 'rt', () => control.session);
+    const projection = projectAgentSession(session);
+    expect(projection.state.environment).toMatchObject({
       currentCwd: { value: '/repo' },
       model: { value: { id: 'grok-4.5', displayName: 'Grok 4.5' } },
     });
+    projection.dispose();
     await session.dispose();
   });
 
@@ -223,6 +235,7 @@ describe('createPendingControlSession', () => {
     const control = fakeControl();
     const observed = fakeObserver();
     const session = createPendingControlSession('sid', 'rt', () => control.session, observed.observer);
+    const projection = projectAgentSession(session);
 
     observed.emit({
       event: { type: 'context-window.updated', usedTokens: 10, capacityTokens: 100, modelId: 'fallback' },
@@ -230,11 +243,12 @@ describe('createPendingControlSession', () => {
       confidence: 'authoritative',
       nativeEvent: {},
     });
-    control.emit({
-      ...ENVELOPE,
-      source: 'native-protocol',
-      event: { type: 'context-window.updated', usedTokens: 40, capacityTokens: 100, modelId: 'protocol' },
-    });
+    control.emit(
+      envelope(
+        { type: 'context-window.updated', usedTokens: 40, capacityTokens: 100, modelId: 'protocol' },
+        'native-protocol',
+      ),
+    );
     observed.emit({
       event: { type: 'context-window.updated', usedTokens: 50, capacityTokens: 100, modelId: 'fallback' },
       source: 'native-log',
@@ -242,12 +256,13 @@ describe('createPendingControlSession', () => {
       nativeEvent: {},
     });
 
-    expect(session.state().contextWindow).toMatchObject({
+    expect(projection.state.contextWindow).toMatchObject({
       usedTokens: 40,
       capacityTokens: 100,
       modelId: 'protocol',
       source: 'native-protocol',
     });
+    projection.dispose();
     await session.dispose();
   });
 
@@ -258,16 +273,16 @@ describe('createPendingControlSession', () => {
     const envelopes: AgentEventEnvelope[] = [];
     session.onEvent((event) => envelopes.push(event));
 
-    control.emit({
-      ...ENVELOPE,
-      source: 'native-protocol',
-      event: { type: 'adapter.native-event', adapter: 'grok', nativeType: 'auto_compact_started' },
-    });
-    control.emit({
-      ...ENVELOPE,
-      source: 'native-protocol',
-      event: { type: 'adapter.native-event', adapter: 'grok', nativeType: 'subagent_progress' },
-    });
+    envelopes.length = 0;
+    control.emit(
+      envelope(
+        { type: 'adapter.native-event', adapter: 'grok', nativeType: 'auto_compact_started' },
+        'native-protocol',
+      ),
+    );
+    control.emit(
+      envelope({ type: 'adapter.native-event', adapter: 'grok', nativeType: 'subagent_progress' }, 'native-protocol'),
+    );
 
     expect(envelopes.map(({ event }) => event)).toEqual([
       { type: 'adapter.native-event', adapter: 'grok', nativeType: 'auto_compact_started' },
@@ -280,30 +295,29 @@ describe('createPendingControlSession', () => {
     const control = fakeControl();
     const observed = fakeObserver();
     const session = createPendingControlSession('sid', 'rt', () => control.session, observed.observer);
+    const projection = projectAgentSession(session);
     const envelopes: AgentEventEnvelope[] = [];
-    const monitor: AdapterMonitorObservationBatch[] = [];
+    const monitor = projection.monitorBatches;
     session.onEvent((event) => envelopes.push(event));
-    session.onMonitorBatch?.((batch) => monitor.push(batch));
 
     control.emit({
-      ...ENVELOPE,
-      source: 'runtime',
-      event: { type: 'adapter.native-event', adapter: 'acp', nativeType: 'transport.closed' },
+      ...envelope({ type: 'adapter.native-event', adapter: 'acp', nativeType: 'transport.closed' }, 'runtime'),
       nativeEvent: { code: 1 },
     });
 
-    expect(session.state().lifecycle).toBe('ready');
+    expect(projection.state.lifecycle).toBe('ready');
     expect(session.observationLevel()).toBe('native-log');
     expect(envelopes.some(({ event }) => event.type === 'process.exited' || event.type === 'session.exited')).toBe(
       false,
     );
-    expect(envelopes.at(-1)?.event).toEqual({
+    expect(envelopes.find(({ event }) => event.type === 'adapter.native-event')?.event).toMatchObject({
       type: 'adapter.native-event',
       adapter: 'grok',
       nativeType: 'control.unavailable',
     });
-    expect(session.state().diagnostics.at(-1)).toMatchObject({ code: 'grok-control-closed' });
+    expect(projection.state.diagnostics.at(-1)).toMatchObject({ code: 'grok-control-closed' });
     expect(monitor.at(-1)).toMatchObject({ readiness: 'degraded', completeness: 'partial', updates: [] });
+    projection.dispose();
     await session.dispose();
   });
 });
@@ -385,7 +399,7 @@ describe('Grok TUI preparation', () => {
     const prepared = createPreparedGrokSession(
       'grok-session',
       { command: '/opt/grok', args: ['--resume', 'grok-session'], cwd: '/work/repo' },
-      () => new Promise<AgentSession>(() => undefined),
+      () => new Promise<AgentAdapterSession>(() => undefined),
       disposeUnadopted,
     );
 

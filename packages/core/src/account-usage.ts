@@ -1,7 +1,7 @@
 /**
  * Provider-neutral account usage and quota contracts.
  *
- * Account limits are deliberately separate from AgentSession: subscription
+ * Account limits are deliberately separate from Agent: subscription
  * quotas are normally shared by every process and conversation authenticated as
  * the same provider account.
  */

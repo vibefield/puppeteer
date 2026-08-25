@@ -9,6 +9,8 @@
  * - Stop carries the final assistant text, surfaced on turn.completed.
  */
 
+import type { AdapterMonitorObservationBatch } from './monitor/internal-types.js';
+
 /** DESIGN ADR-001 — native-tui is a first-class mode, not a fallback. */
 export type AgentExecutionMode = 'native-tui' | 'structured' | 'acp';
 
@@ -57,6 +59,10 @@ export type ProcessExitReason =
   | 'unknown';
 
 export interface AgentEventEnvelope<T extends AgentEvent = AgentEvent> {
+  /** Namespaced event-bus route. Consumers subscribe to this field, never native event names. */
+  type: AgentServiceEventType<T>;
+  /** Top-level service that owns projection of this event. */
+  service: AgentEventServiceOf<T>;
   /** Stable source identity when the producer has one; sequence remains delivery order only. */
   eventId?: string;
   /** Complete upstream identity/revision reference, when supplied by the producer. */
@@ -423,6 +429,14 @@ export interface UnknownNativeEvent {
   type: 'adapter.native-event';
   adapter: string;
   nativeType?: string;
+  /** Normalized adapter degradation detail retained by the runtime state projection. */
+  diagnostic?: { code: string; message: string };
+}
+
+/** Atomic semantic observations share the same adapter event rail as every other normalized fact. */
+export interface MonitorObservationBatchEvent {
+  type: 'monitor.batch';
+  batch: AdapterMonitorObservationBatch;
 }
 
 export type AgentEvent =
@@ -462,14 +476,126 @@ export type AgentEvent =
   | ContextWindowUpdatedEvent
   | ContextWindowInvalidatedEvent
   | SessionEnvironmentUpdatedEvent
+  | MonitorObservationBatchEvent
   | UnknownNativeEvent;
+
+// ---------------------------------------------------------------------------
+// Service routing
+// ---------------------------------------------------------------------------
+
+/** Top-level services consume disjoint portions of one normalized event bus. */
+export type AgentEventService =
+  | 'state'
+  | 'context-window'
+  | 'conversation'
+  | 'usage'
+  | 'environment'
+  | 'workspace'
+  | 'process'
+  | 'notification'
+  | 'monitor'
+  | 'adapter';
+
+type DotsToDashes<Value extends string> = Value extends `${infer Head}.${infer Tail}`
+  ? `${Head}-${DotsToDashes<Tail>}`
+  : Value;
+
+export type AgentEventServiceOf<T extends AgentEvent = AgentEvent> = T extends
+  ContextWindowUpdatedEvent | ContextWindowInvalidatedEvent
+  ? 'context-window'
+  : T extends AssistantMessageEvent
+    ? 'conversation'
+    : T extends TokensUsedEvent
+      ? 'usage'
+      : T extends SessionEnvironmentUpdatedEvent
+        ? 'environment'
+        : T extends WorkspaceChangedEvent
+          ? 'workspace'
+          : T extends ProcessStartedEvent | ProcessExitedEvent
+            ? 'process'
+            : T extends NativeNotificationEvent
+              ? 'notification'
+              : T extends MonitorObservationBatchEvent
+                ? 'monitor'
+                : T extends UnknownNativeEvent
+                  ? 'adapter'
+                  : 'state';
+
+/** Public event names are stable service routes; legacy payload names stay private to each service reducer. */
+export type AgentServiceEventType<T extends AgentEvent = AgentEvent> = T extends ContextWindowUpdatedEvent
+  ? 'context-window:updated'
+  : T extends ContextWindowInvalidatedEvent
+    ? 'context-window:invalidated'
+    : T extends AssistantMessageEvent
+      ? 'conversation:assistant-message'
+      : T extends TokensUsedEvent
+        ? 'usage:tokens-used'
+        : T extends SessionEnvironmentUpdatedEvent
+          ? 'environment:updated'
+          : T extends WorkspaceChangedEvent
+            ? 'workspace:changed'
+            : T extends ProcessStartedEvent
+              ? 'process:started'
+              : T extends ProcessExitedEvent
+                ? 'process:exited'
+                : T extends NativeNotificationEvent
+                  ? 'notification:received'
+                  : T extends MonitorObservationBatchEvent
+                    ? 'monitor:batch'
+                    : T extends UnknownNativeEvent
+                      ? 'adapter:native-event'
+                      : T extends AgentEvent
+                        ? `state:${DotsToDashes<T['type']>}`
+                        : never;
+
+export function agentEventService<T extends AgentEvent>(event: T): AgentEventServiceOf<T> {
+  const type = event.type;
+  if (type.startsWith('context-window.')) return 'context-window' as AgentEventServiceOf<T>;
+  if (type === 'assistant.message') return 'conversation' as AgentEventServiceOf<T>;
+  if (type === 'tokens.used') return 'usage' as AgentEventServiceOf<T>;
+  if (type === 'session.environment.updated') return 'environment' as AgentEventServiceOf<T>;
+  if (type === 'workspace.changed') return 'workspace' as AgentEventServiceOf<T>;
+  if (type.startsWith('process.')) return 'process' as AgentEventServiceOf<T>;
+  if (type === 'notification') return 'notification' as AgentEventServiceOf<T>;
+  if (type === 'monitor.batch') return 'monitor' as AgentEventServiceOf<T>;
+  if (type === 'adapter.native-event') return 'adapter' as AgentEventServiceOf<T>;
+  return 'state' as AgentEventServiceOf<T>;
+}
+
+export function agentServiceEventType<T extends AgentEvent>(event: T): AgentServiceEventType<T> {
+  const service = agentEventService(event);
+  switch (service) {
+    case 'context-window':
+      return `context-window:${event.type.slice('context-window.'.length)}` as AgentServiceEventType<T>;
+    case 'conversation':
+      return 'conversation:assistant-message' as AgentServiceEventType<T>;
+    case 'usage':
+      return 'usage:tokens-used' as AgentServiceEventType<T>;
+    case 'environment':
+      return 'environment:updated' as AgentServiceEventType<T>;
+    case 'workspace':
+      return 'workspace:changed' as AgentServiceEventType<T>;
+    case 'process':
+      return `process:${event.type.slice('process.'.length)}` as AgentServiceEventType<T>;
+    case 'notification':
+      return 'notification:received' as AgentServiceEventType<T>;
+    case 'monitor':
+      return 'monitor:batch' as AgentServiceEventType<T>;
+    case 'adapter':
+      return 'adapter:native-event' as AgentServiceEventType<T>;
+    case 'state':
+      return `state:${event.type.replaceAll('.', '-')}` as AgentServiceEventType<T>;
+  }
+}
 
 // ---------------------------------------------------------------------------
 // Envelope stamping
 // ---------------------------------------------------------------------------
 
 export interface EnvelopeStamper {
-  next<T extends AgentEvent>(fields: Omit<AgentEventEnvelope<T>, 'sequence'>): AgentEventEnvelope<T>;
+  next<T extends AgentEvent>(
+    fields: Omit<AgentEventEnvelope<T>, 'sequence' | 'type' | 'service'>,
+  ): AgentEventEnvelope<T>;
 }
 
 /**
@@ -482,7 +608,12 @@ export function createEnvelopeStamper(initialSequence = 0): EnvelopeStamper {
   return {
     next(fields) {
       sequence += 1;
-      return { sequence, ...fields };
+      return {
+        sequence,
+        type: agentServiceEventType(fields.event),
+        service: agentEventService(fields.event),
+        ...fields,
+      };
     },
   };
 }

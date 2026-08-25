@@ -1,5 +1,10 @@
 import { describe, expect, it } from 'vitest';
-import type { AgentEvent, AgentEventEnvelope } from '@vibecook/chopsticks-core';
+import {
+  agentEventService,
+  agentServiceEventType,
+  type AgentEvent,
+  type AgentEventEnvelope,
+} from '@vibecook/chopsticks-core';
 import { GROK_MONITOR_CAPABILITIES, GrokMonitorEvidence } from './monitor-evidence.js';
 import type { GrokObservedEvent } from './session-observer.js';
 
@@ -27,7 +32,14 @@ function observed(event: AgentEvent, nativeEvent: unknown, promptId?: string): G
 }
 
 function envelope(update: Record<string, unknown>, event?: AgentEvent): AgentEventEnvelope {
+  const normalized = event ?? {
+    type: 'adapter.native-event',
+    adapter: 'grok',
+    nativeType: String(update.sessionUpdate),
+  };
   return {
+    type: agentServiceEventType(normalized),
+    service: agentEventService(normalized),
     sequence: 1,
     sessionId: SESSION,
     nativeSessionId: SESSION,
@@ -35,7 +47,7 @@ function envelope(update: Record<string, unknown>, event?: AgentEvent): AgentEve
     monotonicTime: 0,
     source: 'native-protocol',
     confidence: 'authoritative',
-    event: event ?? { type: 'adapter.native-event', adapter: 'grok', nativeType: String(update.sessionUpdate) },
+    event: normalized,
     nativeEvent: { method: '_x.ai/session_notification', params: { sessionId: SESSION, update } },
   };
 }

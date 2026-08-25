@@ -1,6 +1,6 @@
 /**
  * createCodexTuiSession — the full Codex native-TUI session recipe as one
- * `AgentSession` (the host integration, lifted out of the app).
+ * `AgentAdapterSession` (the host integration, lifted out of the app).
  *
  * A Codex TUI session is three things the adapter owns end to end:
  *   1. a private `codex app-server` on a unix socket (backing service),
@@ -23,11 +23,10 @@ import { randomUUID } from 'node:crypto';
 import type {
   AgentEventEnvelope,
   AgentHost,
-  AgentSession,
+  AgentAdapterSession,
   AgentTuiSessionOptions,
   PromptReceipt,
   PromptSubmission,
-  SessionRuntimeState,
   TerminalSpec,
 } from '@vibecook/chopsticks-core';
 import { createCodexObserver } from '../observation/observer.js';
@@ -58,8 +57,8 @@ export interface CreateCodexTuiSessionOptions extends AgentTuiSessionOptions {
   resumeInvocation?: string[];
 }
 
-/** A Codex native-TUI session — {@link AgentSession} plus the rollout path. */
-export interface CodexTuiSession extends AgentSession {
+/** A Codex native-TUI session — {@link AgentAdapterSession} plus the rollout path. */
+export interface CodexTuiSession extends AgentAdapterSession {
   /** Absolute path to the observed thread's rollout JSONL, once attached. */
   threadPath(): string | undefined;
 }
@@ -172,11 +171,9 @@ export async function prepareCodexTuiSession(opts: CreateCodexTuiSessionOptions)
           return observer.sessionId ?? threadId;
         },
         runtimeSessionId,
-        state: (): SessionRuntimeState => observer.state(),
         observationLevel: () => observer.observationLevel(),
         threadPath: () => observer.threadPath(),
         onEvent: (listener: (e: AgentEventEnvelope) => void) => observer.onEvent(listener),
-        onMonitorBatch: (listener) => observer.onMonitorBatch(listener),
         async submitPrompt(submission: PromptSubmission): Promise<PromptReceipt> {
           const result = await host.automateTerminal(runtimeSessionId, {
             kind: 'paste',

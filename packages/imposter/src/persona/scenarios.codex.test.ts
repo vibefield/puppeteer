@@ -12,6 +12,7 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { afterEach, describe, expect, it } from 'vitest';
 import { createCodexSession, type Transport } from '@vibecook/chopsticks-adapter-codex';
+import { projectAgentSession } from '@vibecook/chopsticks-testing';
 import { createTranscriptWriter } from '../session/channels/transcript.ts';
 import { createScenarioRunner, scenarioSteps } from '../session/scenario.ts';
 import { loadPersona, personaDirectory } from './load.ts';
@@ -76,6 +77,7 @@ async function scenarioAdapter(directory: string): Promise<{
 async function runScenarioThroughAdapter(name: string, directory: string) {
   const document = JSON.parse(readFileSync(join(scenarioDir, `${name}.json`), 'utf8')) as { name: string };
   const adapter = await scenarioAdapter(directory);
+  const projection = projectAgentSession(adapter.session);
   const runner = createScenarioRunner({
     emit: async (event, payload) => adapter.emit(event, payload),
     transcript: createTranscriptWriter(join(directory, `${name}.jsonl`)),
@@ -88,7 +90,7 @@ async function runScenarioThroughAdapter(name: string, directory: string) {
     },
   });
   await runner.run(scenarioSteps(document), { text: 'test prompt' }, { speed: 100 });
-  return adapter.session;
+  return { session: adapter.session, projection };
 }
 
 afterEach(() => {
@@ -247,13 +249,14 @@ describe('codex persona scenarios', () => {
   it('keeps state terminal when the late-after-exit scenario reaches the real adapter', async () => {
     const directory = mkdtempSync(join(tmpdir(), 'chopsticks-codex-late-adapter-'));
     temporaries.push(directory);
-    const session = await runScenarioThroughAdapter('late-after-exit', directory);
+    const { session, projection } = await runScenarioThroughAdapter('late-after-exit', directory);
     try {
-      expect(session.state().lifecycle).toBe('exited');
-      expect(session.state().tools.size).toBe(0);
-      expect(session.state().permissions.size).toBe(0);
-      expect(session.state().diagnostics.map((diagnostic) => diagnostic.code)).toContain('resource-after-exit');
+      expect(projection.state.lifecycle).toBe('exited');
+      expect(projection.state.tools.size).toBe(0);
+      expect(projection.state.permissions.size).toBe(0);
+      expect(projection.state.diagnostics.map((diagnostic) => diagnostic.code)).toContain('resource-after-exit');
     } finally {
+      projection.dispose();
       await session.dispose();
     }
   });
@@ -261,13 +264,14 @@ describe('codex persona scenarios', () => {
   it('reduces duplicate and out-of-order tool events exactly once through the real adapter', async () => {
     const directory = mkdtempSync(join(tmpdir(), 'chopsticks-codex-order-adapter-'));
     temporaries.push(directory);
-    const session = await runScenarioThroughAdapter('duplicate-out-of-order', directory);
+    const { session, projection } = await runScenarioThroughAdapter('duplicate-out-of-order', directory);
     try {
-      expect(session.state().tools.size).toBe(0);
-      expect(session.state().counters.toolsCompleted).toBe(1);
-      expect(session.state().settledTools.size).toBe(1);
-      expect(session.state().diagnostics.map((diagnostic) => diagnostic.code)).toContain('tool-after-terminal');
+      expect(projection.state.tools.size).toBe(0);
+      expect(projection.state.counters.toolsCompleted).toBe(1);
+      expect(projection.state.settledTools.size).toBe(1);
+      expect(projection.state.diagnostics.map((diagnostic) => diagnostic.code)).toContain('tool-after-terminal');
     } finally {
+      projection.dispose();
       await session.dispose();
     }
   });

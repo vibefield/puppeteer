@@ -638,6 +638,9 @@ export function reduceSessionState(state: SessionRuntimeState, envelope: AgentEv
 
     case 'adapter.native-event': {
       next = { ...next, counters: { ...next.counters, unknownEvents: next.counters.unknownEvents + 1 } };
+      if (event.diagnostic) {
+        next = withDiagnostic(next, seq, event.diagnostic.code, event.diagnostic.message);
+      }
       break;
     }
 

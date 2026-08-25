@@ -9,8 +9,9 @@ import { tmpdir } from 'node:os';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { afterEach, describe, expect, it } from 'vitest';
-import type { AgentEventEnvelope, AgentHost, TerminalSpec } from '@vibecook/chopsticks-core';
+import type { AgentHost, TerminalSpec } from '@vibecook/chopsticks-core';
 import { createGrokBackend, type GrokBackend } from '@vibecook/chopsticks-adapter-grok';
+import { projectAgentSession } from '@vibecook/chopsticks-testing';
 
 const AI = join(dirname(dirname(fileURLToPath(import.meta.url))), 'bin', 'ai.mjs');
 const children = new Set<ChildProcess>();
@@ -85,8 +86,8 @@ describe.skipIf(process.platform === 'win32')('the Grok native recipe against `a
         setTimeout(() => reject(new Error('timed out creating the Grok leader/ACP/TUI composition')), 12_000),
       ),
     ]);
-    const events: AgentEventEnvelope[] = [];
-    session.onEvent((event) => events.push(event));
+    const projection = projectAgentSession(session);
+    const events = projection.envelopes;
 
     expect(session.sessionId).toMatch(/^[0-9a-f-]{36}$/);
     expect(launched).toHaveLength(1);
@@ -112,9 +113,7 @@ describe.skipIf(process.platform === 'win32')('the Grok native recipe against `a
     );
 
     const types = events.map((event) => event.event.type);
-    // Control materializes before createSession resolves, so readiness is
-    // already in the state snapshot before this test can subscribe.
-    expect(session.state().lifecycle).toBe('ready');
+    expect(projection.state.lifecycle).toBe('ready');
     expect(types).toContain('turn.started');
     expect(types).toContain('assistant.message');
     expect(types).toContain('turn.completed');

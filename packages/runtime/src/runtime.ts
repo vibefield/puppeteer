@@ -1,14 +1,15 @@
 import { createHash, randomUUID } from 'node:crypto';
 import { performance } from 'node:perf_hooks';
 import {
-  reduceSessionState,
+  agentEventService,
+  agentServiceEventType,
   type AccountUsageFetchResult,
   type AgentEvent,
   type AgentEventConfidence,
   type AgentEventEnvelope,
   type AgentEventSource,
   type AgentMonitorState,
-  type AgentSession,
+  type AgentAdapterSession,
   type ExternalRef,
   type MonitorNotification,
   type PromptReceipt,
@@ -59,7 +60,7 @@ import type {
   RuntimeRunInfo,
 } from './types.js';
 import { DEFAULT_RUNTIME_FEATURE_FLAGS } from './types.js';
-import { AgentConversationProjector } from './conversation.js';
+import { createAgentController, type Agent, type AgentController } from './agent.js';
 import { createGitStateObserver, type GitStateObserver } from './git-observer.js';
 import {
   allocateRuntimeRunIdentity,
@@ -80,15 +81,15 @@ import { createSystemMonitorClock } from './monitor-clock.js';
 import { RuntimeMonitorHub, type MonitorArtifactAudit } from './monitor-hub.js';
 
 interface ManagedSession {
-  session: AgentSession;
+  session: AgentAdapterSession;
+  agent: Agent;
+  agentController: AgentController;
   run: ManagedRun;
   info: AgentSessionInfo;
   workspace: Workspace;
   unsubscribe: () => void;
   releaseClaim: () => void;
   currentConcurrentClaims: () => number;
-  conversation: AgentConversationProjector;
-  state: SessionRuntimeState;
   gitObserver?: GitStateObserver;
   preparationId?: string;
   dispatch(event: AgentEvent, source: AgentEventSource, confidence: AgentEventConfidence, nativeEvent?: unknown): void;
@@ -173,7 +174,7 @@ interface InflightCreation {
  * have to know that. Prefer the live stream when the session reports one, while
  * retaining transcript messages for native-log-only providers.
  */
-function isCanonicalApplicationEvent(session: AgentSession, envelope: AgentEventEnvelope): boolean {
+function isCanonicalApplicationEvent(session: AgentAdapterSession, envelope: AgentEventEnvelope): boolean {
   if (envelope.event.type !== 'assistant.message' || envelope.source !== 'native-transcript') return true;
   if (envelope.replay) return true;
   const level = session.observationLevel();
@@ -1325,7 +1326,7 @@ export function createAgentRuntime(options: AgentRuntimeOptions): AgentRuntime {
       });
     }
 
-    await managed.session.dispose().catch(report);
+    await managed.agentController.dispose().catch(report);
     await terminalClaim;
     let final: AgentWorkspaceFinal | undefined;
     try {
@@ -1441,7 +1442,7 @@ export function createAgentRuntime(options: AgentRuntimeOptions): AgentRuntime {
 
   function manageSession(
     provider: AgentProvider,
-    session: AgentSession,
+    session: AgentAdapterSession,
     lease: WorkspaceLease,
     run: ManagedRun,
     extras: { preparationId?: string; processId?: number; restored?: boolean } = {},
@@ -1469,7 +1470,8 @@ export function createAgentRuntime(options: AgentRuntimeOptions): AgentRuntime {
     };
     if (extras.preparationId !== undefined) info.preparationId = extras.preparationId;
     if (extras.processId !== undefined) info.processId = extras.processId;
-    const providerState = session.state();
+    const agentController = createAgentController({ adapter: session, info, onListenerError: report });
+    const agent = agentController.agent;
     void recordProcessSpawned(run, session.runtimeSessionId, extras.processId, extras.restored);
     void recordNativeSessionCorrelation(run);
     run.monitor?.updateSessionMetadata({
@@ -1477,14 +1479,11 @@ export function createAgentRuntime(options: AgentRuntimeOptions): AgentRuntime {
       observationLevel: session.observationLevel(),
       terminalSessionId: session.runtimeSessionId,
     });
-    run.monitor?.updateRun(activeMonitorLifecycle(providerState.lifecycle), {
+    run.monitor?.updateRun(activeMonitorLifecycle(agent.state.lifecycle), {
       alive: true,
       nativeSession: initialNativeClaim.value,
     });
     run.monitor?.attachSession(session);
-    const conversation = new AgentConversationProjector();
-    const providerSnapshotSequence = providerState.lastSequence;
-    let state: SessionRuntimeState = { ...providerState, lastSequence: 0 };
     let deliverySequence = 0;
     let gitObserver: GitStateObserver | undefined;
 
@@ -1505,7 +1504,7 @@ export function createAgentRuntime(options: AgentRuntimeOptions): AgentRuntime {
       info.nativeSession = { ...next.value };
       info.nativeSessionRevision = next.revision;
       info.sessionId = next.value.id;
-      run.monitor?.updateRun(activeMonitorLifecycle(state.lifecycle), { alive: true, nativeSession: next.value });
+      run.monitor?.updateRun(activeMonitorLifecycle(agent.state.lifecycle), { alive: true, nativeSession: next.value });
       void recordNativeSessionCorrelation(run, effectiveAt, evidence);
     };
 
@@ -1525,6 +1524,8 @@ export function createAgentRuntime(options: AgentRuntimeOptions): AgentRuntime {
         eventId: sourceEventRef
           ? sourceDerivedEventId(run.identity.runtimeRunId, sourceEventRef.namespace, sourceEventRef.eventId)
           : randomUUID(),
+        type: agentServiceEventType(event),
+        service: agentEventService(event),
         runtimeRunId: run.identity.runtimeRunId,
         runtimeEpoch: run.identity.runtimeEpoch,
         sequence: ++deliverySequence,
@@ -1560,16 +1561,25 @@ export function createAgentRuntime(options: AgentRuntimeOptions): AgentRuntime {
               },
         );
       }
-      if (reduceIntoState) {
-        const previousCwd = state.environment.currentCwd?.value;
-        state = reduceSessionState(state, envelope);
-        managed.state = state;
-        const currentCwd = state.environment.currentCwd?.value;
+      const previousCwd = agent.state.environment.currentCwd?.value;
+      if (!isCanonicalApplicationEvent(session, envelope)) {
+        const projected = agentController.accept(envelope, {
+          projectState: reduceIntoState,
+          projectConversation: false,
+          publish: false,
+        });
+        const currentCwd = projected.state.environment.currentCwd?.value;
         if (currentCwd && currentCwd !== previousCwd) gitObserver?.setCwd(currentCwd);
+        return;
       }
-      if (!isCanonicalApplicationEvent(session, envelope)) return;
-      run.monitor?.acceptAgentEvent(envelope, { hostProcessEvidence });
-      conversation.consume(envelope);
+      if (envelope.event.type === 'monitor.batch') {
+        run.monitor?.acceptSemantic(envelope.event.batch);
+      } else {
+        run.monitor?.acceptAgentEvent(envelope, { hostProcessEvidence });
+      }
+      const projected = agentController.accept(envelope, { projectState: reduceIntoState });
+      const currentCwd = projected.state.environment.currentCwd?.value;
+      if (currentCwd && currentCwd !== previousCwd) gitObserver?.setCwd(currentCwd);
       for (const listener of listeners) {
         try {
           listener(info.terminalSessionId, envelope);
@@ -1581,14 +1591,14 @@ export function createAgentRuntime(options: AgentRuntimeOptions): AgentRuntime {
 
     const managed: ManagedSession = {
       session,
+      agent,
+      agentController,
       run,
       info,
       workspace: lease.workspace,
       unsubscribe: () => undefined,
       releaseClaim: lease.releaseClaim,
       currentConcurrentClaims: lease.currentConcurrentClaims,
-      conversation,
-      state,
       preparationId: extras.preparationId,
       dispatch: (event, source, confidence, nativeEvent) =>
         dispatch(event, source, confidence, nativeEvent, undefined, true, true),
@@ -1611,19 +1621,7 @@ export function createAgentRuntime(options: AgentRuntimeOptions): AgentRuntime {
         ) {
           return;
         }
-        // Some providers synchronously replay buffered history from `onEvent`.
-        // Their `state()` snapshot already contains every envelope up to its
-        // lastSequence, so project those events to consumers without reducing
-        // them into managed state a second time.
-        const alreadyInSnapshot = envelope.sequence <= providerSnapshotSequence;
-        dispatch(
-          envelope.event,
-          envelope.source,
-          envelope.confidence,
-          envelope.nativeEvent,
-          envelope,
-          !alreadyInSnapshot,
-        );
+        dispatch(envelope.event, envelope.source, envelope.confidence, envelope.nativeEvent, envelope, true);
       });
     } catch (error) {
       sessionsByRunId.delete(run.identity.runtimeRunId);
@@ -1632,11 +1630,11 @@ export function createAgentRuntime(options: AgentRuntimeOptions): AgentRuntime {
       throw error;
     }
 
-    if (!state.environment.currentCwd) {
+    if (!agent.state.environment.currentCwd) {
       dispatch({ type: 'session.environment.updated', currentCwd: lease.workspace.root }, 'runtime', 'derived');
     }
     gitObserver = createGitStateObserver({
-      cwd: state.environment.currentCwd?.value ?? lease.workspace.root,
+      cwd: agent.state.environment.currentCwd?.value ?? lease.workspace.root,
       onChange: (git) => dispatch({ type: 'session.environment.updated', git }, 'runtime', 'derived'),
       onError: report,
     });
@@ -1719,7 +1717,25 @@ export function createAgentRuntime(options: AgentRuntimeOptions): AgentRuntime {
     return { cancelled: true };
   }
 
-  return {
+  const runtime: AgentRuntime = {
+    async spawn(request) {
+      const created = await runtime.createSession(request);
+      if ('error' in created) return created;
+      const agent = sessionsByTerminalId.get(created.terminalSessionId)?.agent;
+      if (!agent) {
+        return sessionFailure(
+          runs.get(created.runtimeRunId)!,
+          'AGENT_SESSION_CREATE_FAILED',
+          'agent session was created without a runtime Agent instance',
+        );
+      }
+      return agent;
+    },
+
+    agent(id) {
+      return sessionsByTerminalId.get(id)?.agent ?? sessionsByRunId.get(id)?.agent;
+    },
+
     async accountUsage(agent): Promise<AccountUsageFetchResult> {
       if (disposed) throw new Error('agent runtime is disposed');
       const existing = accountUsageInflight.get(agent);
@@ -1787,7 +1803,7 @@ export function createAgentRuntime(options: AgentRuntimeOptions): AgentRuntime {
           return sessionFailure(run, lease.error.code, lease.error.message);
         }
 
-        let session: AgentSession;
+        let session: AgentAdapterSession;
         try {
           session = await provider.createSession({
             runtimeRunId: run.identity.runtimeRunId,
@@ -2270,9 +2286,9 @@ export function createAgentRuntime(options: AgentRuntimeOptions): AgentRuntime {
       return options.recorder?.onStatus(listener) ?? (() => undefined);
     },
     sessionInfo: (id) => sessionsByTerminalId.get(id)?.info,
-    sessionState: (id) => sessionsByTerminalId.get(id)?.state,
-    observationLevel: (id) => sessionsByTerminalId.get(id)?.session.observationLevel(),
-    conversationSnapshot: (id) => sessionsByTerminalId.get(id)?.conversation.snapshot(),
+    sessionState: (id) => sessionsByTerminalId.get(id)?.agent.state,
+    observationLevel: (id) => sessionsByTerminalId.get(id)?.agent.observationLevel,
+    conversationSnapshot: (id) => sessionsByTerminalId.get(id)?.agent.conversation,
 
     onEvent(listener) {
       listeners.add(listener);
@@ -2288,7 +2304,7 @@ export function createAgentRuntime(options: AgentRuntimeOptions): AgentRuntime {
       const managed = sessionsByTerminalId.get(runtimeSessionId);
       if (!managed) return { status: 'rejected', reason: 'agent session not found' };
       const injectionId = randomUUID();
-      const receipt = await managed.session.submitPrompt(submission);
+      const receipt = await managed.agent.submitPrompt(submission);
       managed.run.monitor?.recordPromptReceipt(injectionId, monitorClock.now().toISOString());
       try {
         await options.recorder?.recordInjection({
@@ -2350,4 +2366,5 @@ export function createAgentRuntime(options: AgentRuntimeOptions): AgentRuntime {
       return finals.filter((value): value is AgentWorkspaceFinal => value !== undefined);
     },
   };
+  return runtime;
 }

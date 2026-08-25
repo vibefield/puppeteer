@@ -78,7 +78,7 @@ export interface PrepareSpawnThroughDependencies {
  * `conformance.kimi.test.ts`.
  * OpenCode is gated by its private HTTP server + SSE stream + exact attach
  * composition in `conformance.opencode.test.ts` and the adapter's shared
- * AgentSession conformance suite.
+ * adapter-session conformance suite.
  *
  * A vendor listed here without that suite would be worse than a refusal: the
  * pane would look like it worked while the session was bound to nothing.

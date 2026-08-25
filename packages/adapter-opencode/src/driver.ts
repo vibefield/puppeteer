@@ -4,16 +4,14 @@ import { randomUUID } from 'node:crypto';
 import { resolve } from 'node:path';
 import { performance } from 'node:perf_hooks';
 import {
+  BufferedAgentEventSource,
   createEnvelopeStamper,
-  createInitialSessionState,
-  reduceSessionState,
   type AgentEvent,
   type AgentEventEnvelope,
-  type AgentSession,
+  type AgentAdapterSession,
   type AgentTuiSessionOptions,
   type PromptReceipt,
   type PromptSubmission,
-  type SessionRuntimeState,
   type TerminalSpec,
 } from '@vibecook/chopsticks-core';
 import type { AdapterMonitorObservationBatch } from '@vibecook/chopsticks-core/monitor-spi';
@@ -54,7 +52,7 @@ export interface CreateOpenCodeTuiSessionOptions extends AgentTuiSessionOptions 
   reconnectDelayMs?: number;
 }
 
-export interface OpenCodeTuiSession extends AgentSession {
+export interface OpenCodeTuiSession extends AgentAdapterSession {
   backendOrigin(): string;
   backendPid(): number | undefined;
   backendRunning(): boolean;
@@ -202,12 +200,9 @@ export async function prepareOpenCodeTuiSession(
       password: backend.password,
     });
     const stamper = createEnvelopeStamper();
-    const listeners = new Set<(event: AgentEventEnvelope) => void>();
-    const monitorListeners = new Set<(batch: AdapterMonitorObservationBatch) => void>();
-    const pendingMonitorBatches: AdapterMonitorObservationBatch[] = [];
+    const events = new BufferedAgentEventSource();
     const confirmationGate = new OpenCodePromptConfirmationGate();
     const provisionalSessionID = `opencode-pending-${randomUUID()}`;
-    let state = createInitialSessionState();
     let sessionInfo: OpenCodeSessionInfo | undefined;
     let normalizer: OpenCodeNormalizer | undefined;
     let liveReady = false;
@@ -224,20 +219,19 @@ export async function prepareOpenCodeTuiSession(
 
     const emitMonitorBatch = (batch: AdapterMonitorObservationBatch | null): void => {
       if (!batch || disposed) return;
-      if (monitorListeners.size === 0) {
-        pendingMonitorBatches.push(batch);
-        if (pendingMonitorBatches.length > 512) {
-          pendingMonitorBatches.splice(0, pendingMonitorBatches.length - 512);
-        }
-        return;
-      }
-      for (const listener of monitorListeners) {
-        try {
-          listener(batch);
-        } catch {
-          // Monitor consumers cannot affect native observation.
-        }
-      }
+      const nativeSessionID = sessionInfo?.id;
+      publishEnvelope(
+        stamper.next({
+          sessionId: nativeSessionID ?? provisionalSessionID,
+          ...(nativeSessionID ? { nativeSessionId: nativeSessionID } : {}),
+          timestamp: batch.observedAt,
+          monotonicTime: performance.now(),
+          source: 'native-protocol',
+          confidence: 'authoritative',
+          event: { type: 'monitor.batch', batch },
+          nativeEvent: batch,
+        }),
+      );
     };
 
     const capabilitiesBatch = monitorEvidence.capabilitiesBatch(new Date().toISOString());
@@ -249,20 +243,13 @@ export async function prepareOpenCodeTuiSession(
       ),
     );
 
-    const publishEnvelope = (envelope: AgentEventEnvelope): void => {
+    function publishEnvelope(envelope: AgentEventEnvelope): void {
       if (disposed) return;
-      state = reduceSessionState(state, envelope);
       if (envelope.event.type === 'turn.started' && envelope.promptId) {
         confirmationGate.confirm(envelope.promptId, envelope.turnId ?? envelope.promptId);
       }
-      for (const listener of listeners) {
-        try {
-          listener(envelope);
-        } catch {
-          // Listener failures cannot break native observation or Core reduction.
-        }
-      }
-    };
+      events.emit(envelope);
+    }
 
     const publishNormalized = (normalized: OpenCodeNormalizedEvent): void => {
       const nativeSessionID = sessionInfo?.id;
@@ -502,9 +489,7 @@ export async function prepareOpenCodeTuiSession(
       confirmationGate.rejectAll('OpenCode session observation was disposed');
       await stream?.stop();
       await backend?.dispose();
-      listeners.clear();
-      monitorListeners.clear();
-      pendingMonitorBatches.length = 0;
+      events.close();
     };
 
     return {
@@ -520,31 +505,10 @@ export async function prepareOpenCodeTuiSession(
         adoptedSession = {
           sessionId: sessionID,
           runtimeSessionId,
-          state: (): SessionRuntimeState => state,
           observationLevel: () => 'structured',
           onEvent(listener) {
-            listeners.add(listener);
-            return () => listeners.delete(listener);
-          },
-          onMonitorBatch(listener) {
             if (disposed) return () => undefined;
-            monitorListeners.add(listener);
-            const pending = pendingMonitorBatches.splice(0);
-            if (!pending.includes(capabilitiesBatch)) {
-              try {
-                listener(capabilitiesBatch);
-              } catch {
-                // Initial delivery has the same isolation guarantee as live fan-out.
-              }
-            }
-            for (const batch of pending) {
-              try {
-                listener(batch);
-              } catch {
-                // Initial delivery has the same isolation guarantee as live fan-out.
-              }
-            }
-            return () => monitorListeners.delete(listener);
+            return events.onEvent(listener);
           },
           async submitPrompt(submission: PromptSubmission): Promise<PromptReceipt> {
             if (disposed) return { status: 'rejected', reason: 'OpenCode session observation is disposed' };

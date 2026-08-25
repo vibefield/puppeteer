@@ -6,13 +6,14 @@ import { join } from 'node:path';
 import { promisify } from 'node:util';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import {
+  agentEventService,
+  agentServiceEventType,
   createEnvelopeStamper,
-  createInitialSessionState,
-  reduceSessionState,
   type AccountUsageFetchResult,
+  type AgentEvent,
   type AgentEventEnvelope,
   type AgentHost,
-  type AgentSession,
+  type AgentAdapterSession,
   type ObservationLevel,
 } from '@vibecook/chopsticks-core';
 import type { AdapterMonitorObservationBatch } from '@vibecook/chopsticks-core/monitor-spi';
@@ -32,6 +33,24 @@ const host: AgentHost = {
 };
 
 const execFileAsync = promisify(execFile);
+
+function testEnvelope(
+  event: AgentEvent,
+  fields: Partial<Omit<AgentEventEnvelope, 'type' | 'service' | 'event'>> = {},
+): AgentEventEnvelope {
+  return {
+    sequence: 1,
+    sessionId: 'test-native',
+    timestamp: new Date().toISOString(),
+    monotonicTime: 1,
+    source: 'native-protocol',
+    confidence: 'authoritative',
+    ...fields,
+    type: agentServiceEventType(event),
+    service: agentEventService(event),
+    event,
+  };
+}
 
 afterEach(() => {
   vi.useRealTimers();
@@ -55,7 +74,7 @@ function fakeProvider(
   let counter = 0;
   return {
     kind,
-    async createSession(): Promise<AgentSession> {
+    async createSession(): Promise<AgentAdapterSession> {
       const n = ++counter;
       const runtimeSessionId = `${kind}-runtime-${n}`;
       const listeners = new Set<(event: AgentEventEnvelope) => void>();
@@ -65,7 +84,6 @@ function fakeProvider(
       return {
         sessionId: `${kind}-native-${n}`,
         runtimeSessionId,
-        state: createInitialSessionState,
         observationLevel: () => observation,
         onEvent(listener) {
           listeners.add(listener);
@@ -101,7 +119,7 @@ function preparableProvider(
       hooks.preparedRuntimeRunId = options.runtimeRunId;
       const sessionId = `${kind}-prepared-${hooks.prepareCount}`;
       let disposed = false;
-      let adopted: AgentSession | undefined;
+      let adopted: AgentAdapterSession | undefined;
       return {
         sessionId,
         launch: {
@@ -118,7 +136,6 @@ function preparableProvider(
           adopted = {
             sessionId,
             runtimeSessionId,
-            state: createInitialSessionState,
             observationLevel: () => 'structured',
             onEvent(listener) {
               listeners.add(listener);
@@ -133,7 +150,7 @@ function preparableProvider(
               hooks.disposeCount += 1;
             },
           };
-          return adopted;
+          return adopted!;
         },
         async dispose() {
           if (disposed) return;
@@ -149,7 +166,7 @@ function sessionHarness(
   sessionId: string,
   runtimeSessionId: string,
 ): {
-  session: AgentSession;
+  session: AgentAdapterSession;
   emit: (event: AgentEventEnvelope) => void;
 } {
   const listeners = new Set<(event: AgentEventEnvelope) => void>();
@@ -157,7 +174,6 @@ function sessionHarness(
     session: {
       sessionId,
       runtimeSessionId,
-      state: createInitialSessionState,
       observationLevel: () => 'structured',
       onEvent(listener) {
         listeners.add(listener);
@@ -172,11 +188,60 @@ function sessionHarness(
   };
 }
 
-function standaloneSession(sessionId: string, runtimeSessionId: string): AgentSession {
+function standaloneSession(sessionId: string, runtimeSessionId: string): AgentAdapterSession {
   return sessionHarness(sessionId, runtimeSessionId).session;
 }
 
 describe('createAgentRuntime', () => {
+  it('spawns one Agent instance and observes namespaced service events through Agent.on()', async () => {
+    const root = await mkdtemp(join(tmpdir(), 'chopsticks-runtime-agent-api-'));
+    const handles = new Map<string, { emit: (event: AgentEventEnvelope) => void }>();
+    const runtime = createAgentRuntime({ host, defaultCwd: root, providers: [fakeProvider('one', handles)] });
+
+    const spawned = await runtime.spawn({ agent: 'one', cwd: root });
+    if ('error' in spawned) throw new Error(spawned.error.message);
+
+    expect(runtime.agent(spawned.terminalSessionId)).toBe(spawned);
+    expect(runtime.agent(spawned.runtimeRunId)).toBe(spawned);
+    expect('accept' in spawned).toBe(false);
+    expect('dispose' in spawned).toBe(false);
+
+    const stateEvents: string[] = [];
+    const contextEvents: number[] = [];
+    const conversationEvents: string[] = [];
+    spawned.on('state:*', (envelope) => stateEvents.push(envelope.type));
+    spawned.on('context-window:updated', (envelope) => contextEvents.push(envelope.event.usedTokens));
+    spawned.on('conversation:*', (envelope) => conversationEvents.push(envelope.event.text));
+
+    const source = handles.get(spawned.terminalSessionId);
+    source?.emit(testEnvelope({ type: 'turn.started', turnId: 'turn-1', prompt: 'hello' }));
+    source?.emit(testEnvelope({ type: 'context-window.updated', usedTokens: 25, capacityTokens: 100 }));
+    source?.emit(
+      testEnvelope({
+        type: 'assistant.message',
+        turnId: 'turn-1',
+        text: 'hi',
+        final: true,
+        displayOnly: false,
+      }),
+    );
+    source?.emit(testEnvelope({ type: 'turn.completed', turnId: 'turn-1' }));
+
+    expect(stateEvents).toEqual(['state:turn-started', 'state:turn-completed']);
+    expect(contextEvents).toEqual([25]);
+    expect(conversationEvents).toEqual(['hi']);
+    expect(spawned.state).toMatchObject({ lifecycle: 'ready', lastAssistantMessage: 'hi' });
+    expect(spawned.conversation.items).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ kind: 'user', text: 'hello' }),
+        expect.objectContaining({ kind: 'assistant', markdown: 'hi', streaming: false }),
+      ]),
+    );
+    await expect(spawned.submitPrompt({ text: 'again' })).resolves.toMatchObject({ status: 'confirmed' });
+
+    await runtime.dispose();
+  });
+
   it('fetches provider-level account usage without a session and coalesces concurrent reads', async () => {
     const root = await mkdtemp(join(tmpdir(), 'chopsticks-runtime-usage-'));
     const handles = new Map<string, { emit: (event: AgentEventEnvelope) => void }>();
@@ -295,7 +360,7 @@ describe('createAgentRuntime', () => {
     await runtime.dispose();
   });
 
-  it('projects provider replay history without reducing its snapshot twice', async () => {
+  it('projects provider replay history from the normalized stream exactly once', async () => {
     const root = await mkdtemp(join(tmpdir(), 'chopsticks-runtime-replay-'));
     const sessionId = 'replay-native';
     const runtimeSessionId = 'replay-runtime';
@@ -343,14 +408,12 @@ describe('createAgentRuntime', () => {
       ),
       stamp({ type: 'turn.completed', turnId: 'history-turn' }),
     ];
-    const snapshot = replay.reduce(reduceSessionState, createInitialSessionState());
     const provider: AgentProvider = {
       kind: 'replay',
       async createSession() {
         return {
           sessionId,
           runtimeSessionId,
-          state: () => snapshot,
           observationLevel: () => 'structured',
           onEvent(listener) {
             for (const envelope of replay) listener(envelope);
@@ -408,19 +471,16 @@ describe('createAgentRuntime', () => {
       expect(runtime.sessionState(created.runtimeSessionId)?.environment.git?.value).toMatchObject({ branch: 'main' });
     });
 
-    handles.get(created.runtimeSessionId)!.emit({
-      sequence: 1,
-      sessionId: created.sessionId,
-      timestamp: new Date().toISOString(),
-      monotonicTime: 1,
-      source: 'native-protocol',
-      confidence: 'authoritative',
-      event: {
-        type: 'session.environment.updated',
-        currentCwd: second,
-        model: { id: 'model-2', displayName: 'Model Two' },
-      },
-    });
+    handles.get(created.runtimeSessionId)!.emit(
+      testEnvelope(
+        {
+          type: 'session.environment.updated',
+          currentCwd: second,
+          model: { id: 'model-2', displayName: 'Model Two' },
+        },
+        { sequence: 1, sessionId: created.sessionId },
+      ),
+    );
     expect(runtime.sessionState(created.runtimeSessionId)?.environment.git).toBeUndefined();
     await vi.waitFor(() => {
       expect(runtime.sessionState(created.runtimeSessionId)?.environment).toMatchObject({
@@ -443,18 +503,16 @@ describe('createAgentRuntime', () => {
     const created = await runtime.createSession({ agent: 'grok-like' });
     if ('error' in created) throw new Error('unexpected create failure');
     const emit = handles.get(created.runtimeSessionId)!.emit;
-    const envelope = (sequence: number, event: AgentEventEnvelope['event']): AgentEventEnvelope => ({
-      sequence,
-      sessionId: created.sessionId,
-      nativeSessionId: 'selected-native-session',
-      promptId: 'prompt-1',
-      turnId: 'prompt-1',
-      timestamp: new Date().toISOString(),
-      monotonicTime: sequence,
-      source: 'native-transcript',
-      confidence: 'authoritative',
-      event,
-    });
+    const envelope = (sequence: number, event: AgentEventEnvelope['event']): AgentEventEnvelope =>
+      testEnvelope(event, {
+        sequence,
+        sessionId: created.sessionId,
+        nativeSessionId: 'selected-native-session',
+        promptId: 'prompt-1',
+        turnId: 'prompt-1',
+        monotonicTime: sequence,
+        source: 'native-transcript',
+      });
 
     emit(envelope(1, { type: 'turn.started', turnId: 'prompt-1', prompt: 'hello' }));
     emit(
@@ -501,17 +559,19 @@ describe('createAgentRuntime', () => {
     if ('error' in created) throw new Error('unexpected create failure');
     const initialNativeSessionId = created.nativeSession.id;
 
-    handles.get(created.terminalSessionId)!.emit({
-      eventId: 'native-session-rotated',
-      sequence: 1,
-      sessionId: created.sessionId,
-      nativeSessionId: 'one-native-corrected',
-      timestamp: '2026-08-16T20:00:00.000Z',
-      monotonicTime: 1,
-      source: 'native-protocol',
-      confidence: 'authoritative',
-      event: { type: 'session.started', nativeSessionId: 'one-native-corrected' },
-    });
+    handles.get(created.terminalSessionId)!.emit(
+      testEnvelope(
+        { type: 'session.started', nativeSessionId: 'one-native-corrected' },
+        {
+          eventId: 'native-session-rotated',
+          sequence: 1,
+          sessionId: created.sessionId,
+          nativeSessionId: 'one-native-corrected',
+          timestamp: '2026-08-16T20:00:00.000Z',
+          monotonicTime: 1,
+        },
+      ),
+    );
 
     const correlations = (await recorder.read()).filter(
       (action) => isOwnActionV2(action) && action.type === 'native-session.correlated',
@@ -564,47 +624,44 @@ describe('createAgentRuntime', () => {
 
     const observed: string[] = [];
     runtime.onEvent((id, envelope) => observed.push(`${id}:${envelope.event.type}`));
-    handles.get(first.runtimeSessionId)!.emit({
-      sequence: 1,
-      sessionId: first.sessionId,
-      timestamp: new Date().toISOString(),
-      monotonicTime: 1,
-      source: 'runtime',
-      confidence: 'authoritative',
-      event: { type: 'session.ready' },
-    });
+    handles
+      .get(first.runtimeSessionId)!
+      .emit(testEnvelope({ type: 'session.ready' }, { sequence: 1, sessionId: first.sessionId, source: 'runtime' }));
     expect(observed).toEqual(['one-runtime-1:session.ready']);
-    handles.get(first.runtimeSessionId)!.emit({
-      sequence: 2,
-      sessionId: first.sessionId,
-      timestamp: new Date().toISOString(),
-      monotonicTime: 2,
-      source: 'native-transcript',
-      confidence: 'authoritative',
-      event: { type: 'assistant.message', text: 'duplicate transcript copy' },
-    });
+    handles
+      .get(first.runtimeSessionId)!
+      .emit(
+        testEnvelope(
+          { type: 'assistant.message', text: 'duplicate transcript copy' },
+          { sequence: 2, sessionId: first.sessionId, monotonicTime: 2, source: 'native-transcript' },
+        ),
+      );
     expect(observed).toEqual(['one-runtime-1:session.ready']);
 
-    handles.get(first.runtimeSessionId)!.emit({
-      sequence: 3,
-      sessionId: first.sessionId,
-      turnId: 'one-turn',
-      timestamp: new Date().toISOString(),
-      monotonicTime: 3,
-      source: 'native-hook',
-      confidence: 'authoritative',
-      event: { type: 'turn.started', turnId: 'one-turn', prompt: 'hello' },
-    });
-    handles.get(first.runtimeSessionId)!.emit({
-      sequence: 4,
-      sessionId: first.sessionId,
-      turnId: 'one-turn',
-      timestamp: new Date().toISOString(),
-      monotonicTime: 4,
-      source: 'native-hook',
-      confidence: 'authoritative',
-      event: { type: 'assistant.message', messageId: 'm1', text: '**hi**', final: false },
-    });
+    handles.get(first.runtimeSessionId)!.emit(
+      testEnvelope(
+        { type: 'turn.started', turnId: 'one-turn', prompt: 'hello' },
+        {
+          sequence: 3,
+          sessionId: first.sessionId,
+          turnId: 'one-turn',
+          monotonicTime: 3,
+          source: 'native-hook',
+        },
+      ),
+    );
+    handles.get(first.runtimeSessionId)!.emit(
+      testEnvelope(
+        { type: 'assistant.message', messageId: 'm1', text: '**hi**', final: false },
+        {
+          sequence: 4,
+          sessionId: first.sessionId,
+          turnId: 'one-turn',
+          monotonicTime: 4,
+          source: 'native-hook',
+        },
+      ),
+    );
     expect(runtime.conversationSnapshot(first.runtimeSessionId)).toMatchObject({
       responding: true,
       items: [
@@ -1328,24 +1385,26 @@ describe('createAgentRuntime', () => {
     expect(runtime.runtimeRunInfo(created.runtimeRunId)?.terminalSessionId).toBe(created.terminalSessionId);
     expect(runtime.runtimeRunInfo(created.terminalSessionId)).toBeUndefined();
 
-    handles.get(created.terminalSessionId)!.emit({
-      eventId: 'provider-event-1',
-      sourceEventRef: {
-        namespace: 'spaghetti',
-        eventId: 'provider-event-1',
-        revisionKey: 'response-1:4',
-        sourceGeneration: 3,
-        cursorStart: 100,
-        cursorEnd: 144,
-      },
-      sequence: 99,
-      sessionId: created.sessionId,
-      timestamp: '2026-08-16T18:00:00.000Z',
-      monotonicTime: 99,
-      source: 'native-protocol',
-      confidence: 'authoritative',
-      event: { type: 'session.ready' },
-    });
+    handles.get(created.terminalSessionId)!.emit(
+      testEnvelope(
+        { type: 'session.ready' },
+        {
+          eventId: 'provider-event-1',
+          sourceEventRef: {
+            namespace: 'spaghetti',
+            eventId: 'provider-event-1',
+            revisionKey: 'response-1:4',
+            sourceGeneration: 3,
+            cursorStart: 100,
+            cursorEnd: 144,
+          },
+          sequence: 99,
+          sessionId: created.sessionId,
+          timestamp: '2026-08-16T18:00:00.000Z',
+          monotonicTime: 99,
+        },
+      ),
+    );
     expect(observed.at(-1)).toEqual({
       terminalSessionId: created.terminalSessionId,
       eventId: expect.stringMatching(/^source:[0-9a-f]{64}$/),
@@ -1471,28 +1530,34 @@ describe('createAgentRuntime', () => {
     });
     expect(observed[0]).toEqual({ epoch: 2, sequence: 1 });
     restoredHarness.emit({
-      eventId: 'old-runtime-event',
+      ...testEnvelope(
+        { type: 'session.ready' },
+        {
+          eventId: 'old-runtime-event',
+          sequence: 99,
+          sessionId: original.nativeSession.id,
+          timestamp: '2026-08-16T18:00:00.000Z',
+          monotonicTime: 99,
+          source: 'runtime',
+          confidence: 'derived',
+        },
+      ),
       runtimeRunId: original.runtimeRunId,
       runtimeEpoch: 1,
-      sequence: 99,
-      sessionId: original.nativeSession.id,
-      timestamp: '2026-08-16T18:00:00.000Z',
-      monotonicTime: 99,
-      source: 'runtime',
-      confidence: 'derived',
-      event: { type: 'session.ready' },
     } as AgentEventEnvelope);
     expect(observed).toEqual([{ epoch: 2, sequence: 1 }]);
-    restoredHarness.emit({
-      eventId: 'current-provider-event',
-      sequence: 1,
-      sessionId: original.nativeSession.id,
-      timestamp: '2026-08-16T18:00:01.000Z',
-      monotonicTime: 100,
-      source: 'native-protocol',
-      confidence: 'authoritative',
-      event: { type: 'session.ready' },
-    });
+    restoredHarness.emit(
+      testEnvelope(
+        { type: 'session.ready' },
+        {
+          eventId: 'current-provider-event',
+          sequence: 1,
+          sessionId: original.nativeSession.id,
+          timestamp: '2026-08-16T18:00:01.000Z',
+          monotonicTime: 100,
+        },
+      ),
+    );
     expect(observed.at(-1)).toEqual({ epoch: 2, sequence: 2 });
     expect(
       await restoredRuntime.restoreSession({
@@ -1829,7 +1894,6 @@ describe('createAgentRuntime', () => {
         return {
           sessionId: 'monitor-clean-native',
           runtimeSessionId: 'monitor-clean-terminal',
-          state: createInitialSessionState,
           observationLevel: () => 'native-hooks',
           onEvent: () => () => undefined,
           async submitPrompt() {
@@ -1990,16 +2054,14 @@ describe('createAgentRuntime', () => {
       alive: true,
     });
 
-    handles.get(created.terminalSessionId)!.emit({
-      eventId: 'provider-ready',
-      sequence: 1,
-      sessionId: created.sessionId,
-      timestamp: new Date().toISOString(),
-      monotonicTime: 1,
-      source: 'native-protocol',
-      confidence: 'authoritative',
-      event: { type: 'session.ready' },
-    });
+    handles
+      .get(created.terminalSessionId)!
+      .emit(
+        testEnvelope(
+          { type: 'session.ready' },
+          { eventId: 'provider-ready', sequence: 1, sessionId: created.sessionId },
+        ),
+      );
     await vi.waitFor(() => expect(runtime.monitorState(created.runtimeRunId)?.status).toBe('idle'));
     expect(runtime.sessionState(created.terminalSessionId)?.lifecycle).toBe('ready');
     await runtime.dispose();
@@ -2014,7 +2076,6 @@ describe('createAgentRuntime', () => {
         return {
           sessionId: 'monitor-crash-native',
           runtimeSessionId: 'monitor-crash-terminal',
-          state: createInitialSessionState,
           observationLevel: () => 'terminal-only',
           onEvent: () => () => undefined,
           async submitPrompt() {
@@ -2067,7 +2128,6 @@ describe('createAgentRuntime', () => {
         return {
           sessionId: `monitor-retention-native-${id}`,
           runtimeSessionId: `monitor-retention-terminal-${id}`,
-          state: createInitialSessionState,
           observationLevel: () => 'terminal-only',
           onEvent: () => () => undefined,
           async submitPrompt() {
@@ -2108,8 +2168,8 @@ describe('createAgentRuntime', () => {
     const recordRoot = await mkdtemp(join(tmpdir(), 'chopsticks-runtime-monitor-artifact-record-'));
     const path = join(recordRoot, 'actions.jsonl');
     const recorder = createActionRecorder({ path });
-    const semanticListeners = new Set<(batch: AdapterMonitorObservationBatch) => void>();
-    let semanticSubscriptions = 0;
+    const eventListeners = new Set<(envelope: AgentEventEnvelope) => void>();
+    let eventSubscriptions = 0;
     let artifactReads = 0;
     const provider: AgentProvider = {
       kind: 'monitor-artifact',
@@ -2117,13 +2177,11 @@ describe('createAgentRuntime', () => {
         return {
           sessionId: 'monitor-artifact-native',
           runtimeSessionId: 'monitor-artifact-terminal',
-          state: createInitialSessionState,
           observationLevel: () => 'native-log',
-          onEvent: () => () => undefined,
-          onMonitorBatch(listener) {
-            semanticSubscriptions += 1;
-            semanticListeners.add(listener);
-            return () => semanticListeners.delete(listener);
+          onEvent(listener) {
+            eventSubscriptions += 1;
+            eventListeners.add(listener);
+            return () => eventListeners.delete(listener);
           },
           async readMonitorArtifact(artifactId) {
             artifactReads += 1;
@@ -2152,7 +2210,7 @@ describe('createAgentRuntime', () => {
     if ('error' in created) throw new Error('unexpected create failure');
     runtime.observeMonitor(created.runtimeRunId);
     runtime.observeMonitor(created.runtimeRunId);
-    expect(semanticSubscriptions).toBe(1);
+    expect(eventSubscriptions).toBe(1);
 
     const observation: AdapterMonitorObservationBatch = {
       schemaVersion: 1,
@@ -2187,7 +2245,11 @@ describe('createAgentRuntime', () => {
       sourceWatermarks: [],
       evidence: [],
     };
-    for (const listener of semanticListeners) listener(observation);
+    const semanticEnvelope = testEnvelope(
+      { type: 'monitor.batch', batch: observation },
+      { sessionId: 'monitor-artifact-native' },
+    );
+    for (const listener of eventListeners) listener(semanticEnvelope);
 
     await expect(runtime.readMonitorArtifact(created.runtimeRunId, '/tmp/not-an-opaque-id')).resolves.toMatchObject({
       status: 'unavailable',

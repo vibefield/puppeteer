@@ -74,15 +74,13 @@ async function createHarness(existing?: {
       const openCode = session as OpenCodeTuiSession;
       const pid = openCode.backendPid();
       if (pid === undefined) throw new Error('OpenCode backend has no pid');
-      const subscribe = session.onMonitorBatch;
-      if (!subscribe) throw new Error('OpenCode session has no monitor observation hook');
       const degraded = new Promise<void>((resolve, reject) => {
         const timer = setTimeout(() => {
           off();
           reject(new Error('timed out waiting for OpenCode observation rail degradation'));
         }, 5_000);
-        const off = subscribe((batch) => {
-          if (batch.readiness !== 'degraded') return;
+        const off = session.onEvent(({ event }) => {
+          if (event.type !== 'monitor.batch' || event.batch.readiness !== 'degraded') return;
           clearTimeout(timer);
           off?.();
           resolve();

@@ -11,6 +11,7 @@ import { describe, it, expect } from 'vitest';
 import { mkdtempSync, realpathSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
+import { projectAgentSession } from '@vibecook/chopsticks-testing';
 import { createCodexSession } from '../driver.js';
 import { spawnAppServer, wsOverUnixTransport } from './ws-transport.js';
 
@@ -28,6 +29,7 @@ describe.skipIf(!live)('createCodexSession over WS-over-UDS (live app-server)', 
       approvalPolicy: 'never',
       transport: wsOverUnixTransport(server.socketPath),
     });
+    const projection = projectAgentSession(session);
     try {
       expect(session.sessionId).toMatch(/[0-9a-f-]{36}/);
       expect(session.observationLevel()).toBe('structured');
@@ -48,8 +50,9 @@ describe.skipIf(!live)('createCodexSession over WS-over-UDS (live app-server)', 
         });
       });
 
-      expect(session.state().lastAssistantMessage?.toLowerCase()).toContain('pong');
+      expect(projection.state.lastAssistantMessage?.toLowerCase()).toContain('pong');
     } finally {
+      projection.dispose();
       await session.dispose();
       server.dispose();
     }

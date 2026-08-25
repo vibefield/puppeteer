@@ -1,18 +1,16 @@
 /**
  * The agent-agnostic session contract (DESIGN §9), lifted into core once a
  * second driver existed to test it against (M5: Claude's hook+PTY driver and
- * Codex's structured app-server driver). Before that, `AgentSession` lived as a
+ * Codex's structured app-server driver). Before that, the adapter session lived as a
  * concrete `ClaudeSession` in the Claude adapter — lifting off one example
  * would have baked in Claude's shape.
  *
  * Zero I/O by design (like the rest of core): interfaces only. Concrete drivers
- * (`createClaudeSession`, the forthcoming `createCodexSession`) implement these.
+ * (`createClaudeSession`, `createCodexSession`, and peers) implement these.
  */
 
 import type { AgentEventEnvelope, ObservationLevel } from './events.js';
 import type { MonitorArtifactReadResult } from './monitor/types.js';
-import type { AdapterMonitorObservationBatch } from './monitor-spi.js';
-import type { SessionRuntimeState } from './state.js';
 
 /**
  * A programmatic prompt submission (generalized from the Claude guarded
@@ -41,32 +39,29 @@ export type PromptReceipt =
   | { status: 'uncertain'; reason: string };
 
 /**
- * The handle every driver returns for one live agent process/thread — observed
- * and controlled. Process lifecycle (spawn/terminate) belongs to the host, not
- * this handle (ADR-007); `dispose()` tears down observation/control only. For
- * an adopted process inside a longer-lived shell PTY, the caller reports the
- * vendor process exit separately while keeping the terminal alive.
+ * The low-level handle every adapter returns for one live agent process/thread.
+ * It produces only normalized events plus explicit control operations. Derived
+ * state, context, conversation, and monitor projections belong to the runtime's
+ * per-spawn Agent instance, never to an adapter.
  *
- * Adapters MAY extend this with native extras, but applications should normally
- * consume the provider-neutral AgentRuntime surface from chopsticks-runtime.
+ * Process lifecycle (spawn/terminate) belongs to the host, not this handle;
+ * `dispose()` tears down observation/control only. Adapters MAY extend the
+ * handle with native diagnostics, but applications consume runtime Agent.
  */
-export interface AgentSession {
+export interface AgentAdapterSession {
   /** Native/join id — the chopsticks ↔ spaghetti correlation key. */
   readonly sessionId: string;
   /** The host's id for the terminal session (attach/write/kill routing). */
   readonly runtimeSessionId: string;
-  state(): SessionRuntimeState;
   /** Honest, current observation level — never overstated (DESIGN §19.2). */
   observationLevel(): ObservationLevel;
   onEvent(listener: (envelope: AgentEventEnvelope) => void): () => void;
-  /**
-   * Optional atomic semantic-observation rail. Existing adapters remain valid
-   * while correction/replacement-aware adapters migrate onto the monitor SPI.
-   */
-  onMonitorBatch?(listener: (batch: AdapterMonitorObservationBatch) => void): () => void;
   /** Optional resolution of adapter-issued opaque artifact references. */
   readMonitorArtifact?(artifactId: string, options: { maxBytes: number }): Promise<MonitorArtifactReadResult>;
   submitPrompt(submission: PromptSubmission): Promise<PromptReceipt>;
   /** Tear down observation/control. Process lifecycle stays with the host. */
   dispose(): Promise<void>;
 }
+
+/** @deprecated Low-level compatibility name. Prefer AgentAdapterSession. */
+export type AgentSession = AgentAdapterSession;

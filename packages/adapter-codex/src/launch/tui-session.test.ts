@@ -1,9 +1,9 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import { createInitialSessionState, type AgentHost } from '@vibecook/chopsticks-core';
+import type { AgentHost } from '@vibecook/chopsticks-core';
 
 const fakes = vi.hoisted(() => ({
   createObserver: vi.fn(),
-  observerOnMonitorBatch: vi.fn(() => () => undefined),
+  observerOnEvent: vi.fn(() => () => undefined),
   observerDispose: vi.fn(),
   serverDispose: vi.fn(),
   serverReady: vi.fn(),
@@ -49,11 +49,9 @@ describe('Codex TUI preparation', () => {
     });
     fakes.createObserver.mockResolvedValue({
       sessionId: 'thread-1',
-      state: createInitialSessionState,
       observationLevel: () => 'structured',
       threadPath: () => '/tmp/thread.jsonl',
-      onEvent: () => () => undefined,
-      onMonitorBatch: fakes.observerOnMonitorBatch,
+      onEvent: fakes.observerOnEvent,
       attachThread: vi.fn(),
       dispose: fakes.observerDispose,
     });
@@ -89,8 +87,8 @@ describe('Codex TUI preparation', () => {
     const first = await prepared.adopt('existing-pane');
     expect(first.runtimeSessionId).toBe('existing-pane');
     expect(await prepared.adopt('existing-pane')).toBe(first);
-    first.onMonitorBatch?.(() => undefined);
-    expect(fakes.observerOnMonitorBatch).toHaveBeenCalledOnce();
+    first.onEvent(() => undefined);
+    expect(fakes.observerOnEvent).toHaveBeenCalledOnce();
     await expect(prepared.adopt('other-pane')).rejects.toThrow('already adopted');
 
     await first.submitPrompt({ text: 'hello' });
@@ -126,11 +124,9 @@ describe('Codex TUI preparation', () => {
       get sessionId() {
         return selectedThread;
       },
-      state: createInitialSessionState,
       observationLevel: () => 'structured',
       threadPath: () => undefined,
-      onEvent: () => () => undefined,
-      onMonitorBatch: fakes.observerOnMonitorBatch,
+      onEvent: fakes.observerOnEvent,
       attachThread,
       dispose: fakes.observerDispose,
     });

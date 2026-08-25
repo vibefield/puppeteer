@@ -24,6 +24,7 @@ import { fileURLToPath } from 'node:url';
 import { afterEach, describe, expect, it } from 'vitest';
 import type { AgentEventEnvelope } from '@vibecook/chopsticks-core';
 import { createCodexSession, type CodexSession } from '@vibecook/chopsticks-adapter-codex';
+import { projectAgentSession, type TestAgentProjection } from '@vibecook/chopsticks-testing';
 import { runAgentSessionConformance, type AgentSessionHarness } from '@vibecook/chopsticks-testing/conformance';
 
 const AI = join(dirname(dirname(fileURLToPath(import.meta.url))), 'bin', 'ai.mjs');
@@ -89,6 +90,7 @@ interface Started {
   child: ChildProcess;
   root: string;
   events: AgentEventEnvelope[];
+  projection: TestAgentProjection;
   /** Approval decisions the adapter was asked for, in order. */
   approvals: string[];
 }
@@ -158,9 +160,8 @@ async function imposterSession(
       return decision;
     },
   });
-  const events: AgentEventEnvelope[] = [];
-  live.onEvent((envelope) => events.push(envelope));
-  return { session: live, child, root: cwd, events, approvals };
+  const projection = projectAgentSession(live);
+  return { session: live, child, root: cwd, events: projection.envelopes, projection, approvals };
 }
 
 async function codexImposterHarness(resume?: string, existingRoot?: string): Promise<AgentSessionHarness> {
@@ -168,12 +169,13 @@ async function codexImposterHarness(resume?: string, existingRoot?: string): Pro
   await waitFor(() => started.events.some((event) => event.event.type === 'session.started'), 'session.started');
   if (resume) {
     await waitFor(
-      () => started.session.state().lastAssistantMessage === 'imposter: ok',
+      () => started.projection.state.lastAssistantMessage === 'imposter: ok',
       'resumed Codex app-server history',
     );
   }
   return {
     session: started.session,
+    projection: started.projection,
     reply: 'imposter: ok',
     resume: () => codexImposterHarness(started.session.sessionId, started.root),
     assertNoOrphans: async () => {
@@ -231,8 +233,8 @@ describe('the codex imposter, driven by the real adapter', () => {
 
     // The reducer reaches `ready` on turn.completed, because codex has no
     // boot-ready notification and the persona does not invent one.
-    expect(session.state().lifecycle).toBe('ready');
-    expect(session.state().lastAssistantMessage).toBe('imposter: ok');
+    expect(started.projection.state.lifecycle).toBe('ready');
+    expect(started.projection.state.lastAssistantMessage).toBe('imposter: ok');
   });
 
   it('completes an approval round-trip when the client allows it', async () => {
@@ -252,7 +254,7 @@ describe('the codex imposter, driven by the real adapter', () => {
       .map((envelope) => (envelope.event as { outcome: string }).outcome);
     expect(outcomes).toEqual(['allowed']);
     // The turn ran ON past the approval, which is the whole point of awaiting.
-    expect(session.state().lastAssistantMessage).toBe('imposter: command finished');
+    expect(started.projection.state.lastAssistantMessage).toBe('imposter: command finished');
   });
 
   it('completes the same round-trip when the client denies it', async () => {
@@ -269,7 +271,7 @@ describe('the codex imposter, driven by the real adapter', () => {
     // `decline` rather than `cancel`: both are accepted by the real vendor, but
     // cancel ends the turn and decline lets the agent continue (findings C1d).
     expect(outcomes).toEqual(['denied']);
-    expect(session.state().lifecycle).toBe('ready');
+    expect(started.projection.state.lifecycle).toBe('ready');
   });
 
   it('keeps the reply ahead of the notifications it triggers', async () => {

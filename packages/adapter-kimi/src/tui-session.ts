@@ -4,16 +4,14 @@ import { randomUUID } from 'node:crypto';
 import { resolve } from 'node:path';
 import { performance } from 'node:perf_hooks';
 import {
+  BufferedAgentEventSource,
   createEnvelopeStamper,
-  createInitialSessionState,
-  reduceSessionState,
-  type AgentEventEnvelope,
+  type AgentEvent,
   type AgentHost,
-  type AgentSession,
+  type AgentAdapterSession,
   type AgentTuiSessionOptions,
   type PromptReceipt,
   type PromptSubmission,
-  type SessionRuntimeState,
   type TerminalSpec,
 } from '@vibecook/chopsticks-core';
 import type { AdapterMonitorObservationBatch } from '@vibecook/chopsticks-core/monitor-spi';
@@ -48,7 +46,7 @@ export interface CreateKimiTuiSessionOptions extends AgentTuiSessionOptions {
   promptConfirmationTimeoutMs?: number;
 }
 
-export interface KimiTuiSession extends AgentSession {
+export interface KimiTuiSession extends AgentAdapterSession {
   /** Absolute native session directory once Kimi lazily creates and binds it. */
   sessionDirectory(): string | undefined;
 }
@@ -143,33 +141,45 @@ export async function prepareKimiTuiSession(options: CreateKimiTuiSessionOptions
         pollIntervalMs: options.pollIntervalMs,
         maxReplayBytes: options.maxReplayBytes,
       });
-      const listeners = new Set<(event: AgentEventEnvelope) => void>();
-      const monitorListeners = new Set<(batch: AdapterMonitorObservationBatch) => void>();
-      const pendingMonitorBatches: AdapterMonitorObservationBatch[] = [];
+      const events = new BufferedAgentEventSource();
       const stamper = createEnvelopeStamper();
       const monitorEvidence = new KimiMonitorEvidence({
         nativeSessionId: () => observer.sessionId() ?? provisionalSessionId,
       });
-      let state = createInitialSessionState();
       let sessionDisposed = false;
       let promptInFlight = false;
 
+      const publishEvent = (
+        event: AgentEvent,
+        meta: Pick<KimiObservedEvent, 'promptId' | 'turnId' | 'timestamp' | 'source' | 'confidence' | 'replay'> & {
+          nativeEvent?: unknown;
+        },
+      ): void => {
+        if (sessionDisposed) return;
+        const nativeSessionId = observer.sessionId();
+        events.emit(
+          stamper.next({
+            sessionId: nativeSessionId ?? provisionalSessionId,
+            ...(nativeSessionId ? { nativeSessionId } : {}),
+            ...(meta.promptId ? { promptId: meta.promptId } : {}),
+            ...(meta.turnId ? { turnId: meta.turnId } : {}),
+            timestamp: meta.timestamp ?? new Date().toISOString(),
+            monotonicTime: performance.now(),
+            source: meta.source,
+            confidence: meta.confidence,
+            ...(meta.replay !== undefined ? { replay: meta.replay } : {}),
+            event,
+            nativeEvent: meta.nativeEvent,
+          }),
+        );
+      };
+
       const emitMonitorBatch = (batch: AdapterMonitorObservationBatch | null): void => {
         if (!batch || sessionDisposed) return;
-        if (monitorListeners.size === 0) {
-          pendingMonitorBatches.push(batch);
-          if (pendingMonitorBatches.length > 512) {
-            pendingMonitorBatches.splice(0, pendingMonitorBatches.length - 512);
-          }
-          return;
-        }
-        for (const listener of monitorListeners) {
-          try {
-            listener(batch);
-          } catch {
-            // Monitor consumers cannot affect native observation.
-          }
-        }
+        publishEvent(
+          { type: 'monitor.batch', batch },
+          { timestamp: batch.observedAt, source: 'native-log', confidence: 'authoritative' },
+        );
       };
 
       const capabilitiesBatch = monitorEvidence.capabilitiesBatch(new Date().toISOString());
@@ -190,28 +200,7 @@ export async function prepareKimiTuiSession(options: CreateKimiTuiSessionOptions
       const publish = (observed: KimiObservedEvent): void => {
         if (sessionDisposed) return;
         emitMonitorBatch(monitorEvidence.observerEventBatch(observed, new Date().toISOString()));
-        const nativeSessionId = observer.sessionId();
-        const envelope = stamper.next({
-          sessionId: nativeSessionId ?? provisionalSessionId,
-          ...(nativeSessionId ? { nativeSessionId } : {}),
-          ...(observed.promptId ? { promptId: observed.promptId } : {}),
-          ...(observed.turnId ? { turnId: observed.turnId } : {}),
-          timestamp: observed.timestamp ?? new Date().toISOString(),
-          monotonicTime: performance.now(),
-          source: observed.source,
-          confidence: observed.confidence,
-          ...(observed.replay !== undefined ? { replay: observed.replay } : {}),
-          event: observed.event,
-          nativeEvent: observed.nativeEvent,
-        });
-        state = reduceSessionState(state, envelope);
-        for (const listener of listeners) {
-          try {
-            listener(envelope);
-          } catch {
-            // Listener failure cannot break the observer/reducer pipeline.
-          }
-        }
+        publishEvent(observed.event, observed);
       };
 
       const unsubscribeEvent = observer.onEvent(publish);
@@ -235,32 +224,11 @@ export async function prepareKimiTuiSession(options: CreateKimiTuiSessionOptions
           return observer.sessionId() ?? provisionalSessionId;
         },
         runtimeSessionId,
-        state: (): SessionRuntimeState => state,
         observationLevel: () => 'native-log',
         sessionDirectory: () => observer.sessionDirectory(),
         onEvent(listener) {
-          listeners.add(listener);
-          return () => listeners.delete(listener);
-        },
-        onMonitorBatch(listener) {
           if (sessionDisposed) return () => undefined;
-          monitorListeners.add(listener);
-          const pending = pendingMonitorBatches.splice(0);
-          if (!pending.includes(capabilitiesBatch)) {
-            try {
-              listener(capabilitiesBatch);
-            } catch {
-              // Initial delivery has the same isolation guarantee as live fan-out.
-            }
-          }
-          for (const batch of pending) {
-            try {
-              listener(batch);
-            } catch {
-              // Initial delivery has the same isolation guarantee as live fan-out.
-            }
-          }
-          return () => monitorListeners.delete(listener);
+          return events.onEvent(listener);
         },
         async submitPrompt(submission: PromptSubmission): Promise<PromptReceipt> {
           if (sessionDisposed) return { status: 'rejected', reason: 'Kimi session observation is disposed' };
@@ -303,22 +271,20 @@ export async function prepareKimiTuiSession(options: CreateKimiTuiSessionOptions
         },
         async dispose() {
           if (sessionDisposed) return;
-          // Keep the reducer subscribed through the observer's final bounded
-          // poll so records already durable at host teardown are not lost.
+          // Keep the normalized event stream connected through the observer's
+          // final bounded poll so durable records at host teardown are not lost.
           await observer.stop();
           sessionDisposed = true;
           unsubscribeEvent();
           unsubscribeRecord();
           unsubscribeBind();
           unsubscribeError();
-          listeners.clear();
-          monitorListeners.clear();
-          pendingMonitorBatches.length = 0;
+          events.close();
         },
       };
       adoptedSession = session;
       // Listener wiring precedes the first read so replay and a fast native
-      // launch cannot race past Core state ingestion.
+      // launch cannot race past normalized event ingestion.
       void observer.poll();
       return session;
     },

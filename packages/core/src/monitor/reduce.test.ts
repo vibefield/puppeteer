@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import fc from 'fast-check';
-import type { AgentEvent, AgentEventEnvelope } from '../events.js';
+import { agentEventService, agentServiceEventType, type AgentEvent, type AgentEventEnvelope } from '../events.js';
 import type {
   MonitorFamilyUpdate,
   MonitorAccumulatorState,
@@ -32,8 +32,10 @@ function envelope(event: AgentEvent, sequence: number, options: Partial<AgentEve
     monotonicTime: sequence,
     source: 'native-hook',
     confidence: 'authoritative',
-    event,
     ...options,
+    type: agentServiceEventType(event),
+    service: agentEventService(event),
+    event,
   };
 }
 

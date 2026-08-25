@@ -1,6 +1,6 @@
 import type {
   AgentMonitorState,
-  AgentSession,
+  AgentAdapterSession,
   MonitorArtifactReadResult,
   MonitorNotification,
   ObservationLevel,
@@ -94,33 +94,21 @@ function semanticSession(
     observationLevel?: () => ObservationLevel;
   } = {},
 ) {
-  const listeners = new Set<(value: AdapterMonitorObservationBatch) => void>();
-  let subscriptions = 0;
   let reads = 0;
   const session = {
     sessionId: 'native-1',
     runtimeSessionId: 'terminal-1',
     observationLevel: options.observationLevel ?? (() => 'native-log' as const),
-    onMonitorBatch(listener: (value: AdapterMonitorObservationBatch) => void) {
-      subscriptions += 1;
-      listeners.add(listener);
-      return () => listeners.delete(listener);
-    },
     async readMonitorArtifact(artifactId: string, readOptions: { maxBytes: number }) {
       reads += 1;
       return options.onRead?.(artifactId, readOptions.maxBytes) ?? Promise.resolve({ status: 'unavailable' as const });
     },
-    state: () => ({}) as ReturnType<AgentSession['state']>,
     onEvent: () => () => undefined,
     submitPrompt: async () => ({ status: 'confirmed' as const }),
     dispose: async () => undefined,
-  } satisfies AgentSession;
+  } satisfies AgentAdapterSession;
   return {
     session,
-    emit(value: AdapterMonitorObservationBatch) {
-      for (const listener of listeners) listener(value);
-    },
-    subscriptions: () => subscriptions,
     reads: () => reads,
   };
 }
@@ -155,9 +143,7 @@ describe('RuntimeMonitorHub', () => {
     monitor.attachSession(source.session);
     const first = monitor.observe();
     const second = monitor.observe();
-    expect(source.subscriptions()).toBe(1);
-
-    source.emit(
+    monitor.acceptSemantic(
       batch('batch-1', [
         {
           family: 'model',
@@ -245,12 +231,22 @@ describe('RuntimeMonitorHub', () => {
     monitor.attachSession(source.session);
 
     level = 'native-log';
-    source.emit(batch('batch-1', []));
+    monitor.updateSessionMetadata({
+      executionMode: 'native-tui',
+      observationLevel: level,
+      terminalSessionId: 'terminal-1',
+    });
+    monitor.acceptSemantic(batch('batch-1', []));
     clock.advance(100);
     expect(monitor.current().freshness.level).toBe('native-log');
 
     level = 'terminal-only';
-    source.emit(batch('batch-2', []));
+    monitor.updateSessionMetadata({
+      executionMode: 'native-tui',
+      observationLevel: level,
+      terminalSessionId: 'terminal-1',
+    });
+    monitor.acceptSemantic(batch('batch-2', []));
     clock.advance(100);
     expect(monitor.current().freshness.level).toBe('terminal-only');
   });
@@ -298,6 +294,8 @@ describe('RuntimeMonitorHub', () => {
     const { hub: monitor } = hub();
     monitor.updateRun('running', { alive: true });
     const envelope = {
+      type: 'process:exited' as const,
+      service: 'process' as const,
       eventId: 'exit-1',
       runtimeRunId: 'run-1',
       runtimeEpoch: 1,

@@ -5,15 +5,14 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { performance } from 'node:perf_hooks';
 import {
+  BufferedAgentEventSource,
   createEnvelopeStamper,
-  createInitialSessionState,
-  reduceSessionState,
+  type AgentEvent,
   type AgentEventEnvelope,
-  type AgentSession,
+  type AgentAdapterSession,
   type AgentTuiSessionOptions,
   type PromptReceipt,
   type PromptSubmission,
-  type SessionRuntimeState,
   type TerminalSpec,
 } from '@vibecook/chopsticks-core';
 import type { AdapterMonitorObservationBatch } from '@vibecook/chopsticks-core/monitor-spi';
@@ -41,7 +40,7 @@ export interface CreateHermesTuiSessionOptions extends AgentTuiSessionOptions {
   promptConfirmationTimeoutMs?: number;
 }
 
-export interface HermesTuiSession extends AgentSession {
+export interface HermesTuiSession extends AgentAdapterSession {
   gatewayUrl(): string | undefined;
   liveSessionId(): string | undefined;
   storedSessionId(): string | undefined;
@@ -152,34 +151,56 @@ export async function prepareHermesTuiSession(
         const normalizer = new HermesGatewayNormalizer();
         normalizer.bindStoredSession(liveSessionId, storedSessionId);
         const stamper = createEnvelopeStamper();
-        const listeners = new Set<(event: AgentEventEnvelope) => void>();
-        const monitorListeners = new Set<(batch: AdapterMonitorObservationBatch) => void>();
-        const pendingMonitorBatches: AdapterMonitorObservationBatch[] = [];
-        let state = createInitialSessionState();
+        const events = new BufferedAgentEventSource();
         let sessionDisposed = false;
         let promptInFlight = false;
         let railAvailable = true;
+        let promptStartWaiter: ((turnId: string | undefined) => void) | undefined;
         const monitorEvidence = new HermesMonitorEvidence({
           nativeSessionId: () => storedSessionId,
           liveSessionId: () => liveSessionId,
         });
 
+        const publishEvent = (
+          event: AgentEvent,
+          meta: {
+            nativeSessionId?: string;
+            turnId?: string;
+            timestamp: string;
+            source: AgentEventEnvelope['source'];
+            confidence: AgentEventEnvelope['confidence'];
+            replay?: boolean;
+            nativeEvent?: unknown;
+          },
+        ): void => {
+          if (sessionDisposed) return;
+          const envelope = stamper.next({
+            sessionId: storedSessionId,
+            nativeSessionId: meta.nativeSessionId ?? storedSessionId,
+            ...(meta.turnId ? { turnId: meta.turnId } : {}),
+            timestamp: meta.timestamp,
+            monotonicTime: performance.now(),
+            source: meta.source,
+            confidence: meta.confidence,
+            ...(meta.replay ? { replay: true } : {}),
+            event,
+            nativeEvent: meta.nativeEvent,
+          });
+          if (event.type === 'turn.started') promptStartWaiter?.(event.turnId ?? envelope.turnId);
+          events.emit(envelope);
+        };
+
         const emitMonitorBatch = (batch: AdapterMonitorObservationBatch | null): void => {
           if (!batch || sessionDisposed) return;
-          if (monitorListeners.size === 0) {
-            pendingMonitorBatches.push(batch);
-            if (pendingMonitorBatches.length > 512) {
-              pendingMonitorBatches.splice(0, pendingMonitorBatches.length - 512);
-            }
-            return;
-          }
-          for (const listener of monitorListeners) {
-            try {
-              listener(batch);
-            } catch {
-              // Monitor consumers cannot affect native observation.
-            }
-          }
+          publishEvent(
+            { type: 'monitor.batch', batch },
+            {
+              timestamp: batch.observedAt,
+              source: 'native-protocol',
+              confidence: 'authoritative',
+              nativeEvent: batch,
+            },
+          );
         };
 
         const capabilitiesBatch = monitorEvidence.capabilitiesBatch(new Date().toISOString());
@@ -194,26 +215,15 @@ export async function prepareHermesTuiSession(
         const publish = (observed: ReturnType<HermesGatewayNormalizer['normalize']>, replay = false): void => {
           if (sessionDisposed) return;
           for (const event of observed.events) {
-            const envelope = stamper.next({
-              sessionId: storedSessionId,
-              nativeSessionId: observed.nativeSessionId ?? storedSessionId,
-              ...(observed.turnId ? { turnId: observed.turnId } : {}),
+            publishEvent(event, {
+              nativeSessionId: observed.nativeSessionId,
+              turnId: observed.turnId,
               timestamp: new Date().toISOString(),
-              monotonicTime: performance.now(),
               source: observed.source,
               confidence: observed.confidence,
-              ...(replay ? { replay: true } : {}),
-              event,
+              replay,
               nativeEvent: observed.nativeEvent,
             });
-            state = reduceSessionState(state, envelope);
-            for (const listener of listeners) {
-              try {
-                listener(envelope);
-              } catch {
-                // Listener failure cannot break ingestion.
-              }
-            }
           }
         };
         const publishFrame = (
@@ -280,35 +290,14 @@ export async function prepareHermesTuiSession(
             return storedSessionId;
           },
           runtimeSessionId,
-          state: (): SessionRuntimeState => state,
           observationLevel: () =>
             sessionDisposed || !railAvailable ? 'terminal-only' : HERMES_ADAPTER_CAPABILITIES.observationLevel,
           gatewayUrl: () => gatewayUrl,
           liveSessionId: () => liveSessionId,
           storedSessionId: () => storedSessionId,
           onEvent(listener) {
-            listeners.add(listener);
-            return () => listeners.delete(listener);
-          },
-          onMonitorBatch(listener) {
             if (sessionDisposed) return () => undefined;
-            monitorListeners.add(listener);
-            const pending = pendingMonitorBatches.splice(0);
-            if (!pending.includes(capabilitiesBatch)) {
-              try {
-                listener(capabilitiesBatch);
-              } catch {
-                // Initial delivery has the same isolation guarantee as live fan-out.
-              }
-            }
-            for (const batch of pending) {
-              try {
-                listener(batch);
-              } catch {
-                // Initial delivery has the same isolation guarantee as live fan-out.
-              }
-            }
-            return () => monitorListeners.delete(listener);
+            return events.onEvent(listener);
           },
           async submitPrompt(submission: PromptSubmission): Promise<PromptReceipt> {
             if (sessionDisposed) return { status: 'rejected', reason: 'Hermes session is disposed' };
@@ -318,15 +307,21 @@ export async function prepareHermesTuiSession(
             if (promptInFlight) return { status: 'rejected', reason: 'another Hermes prompt submission is in flight' };
             promptInFlight = true;
             const timeoutMs = submission.confirmationTimeoutMs ?? options.promptConfirmationTimeoutMs ?? 15_000;
-            const sawStart = new Promise<boolean>((resolve) => {
-              const timer = setTimeout(() => resolve(false), timeoutMs);
-              const unsub = handle.onEvent((envelope) => {
-                if (envelope.event.type === 'turn.started') {
-                  clearTimeout(timer);
-                  unsub();
-                  resolve(true);
-                }
-              });
+            let cancelStartWait = (): void => undefined;
+            const sawStart = new Promise<{ turnId?: string } | undefined>((resolve) => {
+              let settled = false;
+              const finish = (result: { turnId?: string } | undefined): void => {
+                if (settled) return;
+                settled = true;
+                clearTimeout(timer);
+                promptStartWaiter = undefined;
+                resolve(result);
+              };
+              const timer = setTimeout(() => finish(undefined), timeoutMs);
+              promptStartWaiter = (turnId) => {
+                finish(turnId ? { turnId } : {});
+              };
+              cancelStartWait = () => finish(undefined);
             });
             try {
               const result = await transport!.request('prompt.submit', {
@@ -340,21 +335,21 @@ export async function prepareHermesTuiSession(
               if (!started) {
                 return { status: 'uncertain', reason: `no message.start within ${timeoutMs}ms` };
               }
-              return { status: 'confirmed', turnId: state.activeTurn?.id };
+              return { status: 'confirmed', ...started };
             } catch (error) {
               return { status: 'rejected', reason: error instanceof Error ? error.message : String(error) };
             } finally {
+              cancelStartWait();
               promptInFlight = false;
             }
           },
           async dispose() {
             if (sessionDisposed) return;
             sessionDisposed = true;
+            promptStartWaiter = undefined;
             off();
             offStatus?.();
-            listeners.clear();
-            monitorListeners.clear();
-            pendingMonitorBatches.length = 0;
+            events.close();
             await transport?.close();
             await host?.close();
           },

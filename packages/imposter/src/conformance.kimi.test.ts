@@ -8,6 +8,7 @@ import { fileURLToPath } from 'node:url';
 import { afterEach } from 'vitest';
 import type { AgentEventEnvelope, AgentHost } from '@vibecook/chopsticks-core';
 import { createKimiTuiSession, type KimiTuiSession } from '@vibecook/chopsticks-adapter-kimi';
+import { projectAgentSession, type TestAgentProjection } from '@vibecook/chopsticks-testing';
 import { runAgentSessionConformance, type AgentSessionHarness } from '@vibecook/chopsticks-testing/conformance';
 
 const AI = join(dirname(dirname(fileURLToPath(import.meta.url))), 'bin', 'ai.mjs');
@@ -49,6 +50,7 @@ async function waitFor(predicate: () => boolean, label: string, timeoutMs = 10_0
 
 interface KimiImposterHarness extends AgentSessionHarness {
   session: KimiTuiSession;
+  projection: TestAgentProjection;
   cwd: string;
   home: string;
 }
@@ -107,12 +109,14 @@ async function kimiImposterHarness(
     pollIntervalMs: 25,
     promptConfirmationTimeoutMs: 5_000,
   });
+  const projection = projectAgentSession(session);
   if (resume) {
-    await waitFor(() => session.state().lastAssistantMessage === REPLY, 'resumed Kimi wire history');
+    await waitFor(() => projection.state.lastAssistantMessage === REPLY, 'resumed Kimi wire history');
   }
 
   return {
     session,
+    projection,
     cwd,
     home,
     reply: REPLY,

@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import type { AgentHost } from '@vibecook/chopsticks-core';
-import type { AdapterMonitorObservationBatch } from '@vibecook/chopsticks-core/monitor-spi';
+import { projectAgentSession } from '@vibecook/chopsticks-testing';
 import { createHermesTuiSession } from './driver.js';
 import { FakeHermesGateway } from './test-support/fake-gateway.js';
 
@@ -23,16 +23,18 @@ describe('Hermes TUI session driver', () => {
       host: host(),
       transport: gateway,
     });
+    const projection = projectAgentSession(session);
     try {
       expect(session.sessionId).toMatch(/^20260812_/);
       expect(session.observationLevel()).toBe('structured');
-      expect(session.state().lifecycle).toBe('ready');
+      expect(projection.state.lifecycle).toBe('ready');
       const receipt = await session.submitPrompt({ text: 'hello' });
       expect(receipt.status).toBe('confirmed');
       await new Promise((resolve) => setTimeout(resolve, 0));
-      expect(session.state().lastAssistantMessage).toBe('SURFACE_HERMES_OK');
-      expect(session.state().lifecycle).toBe('ready');
+      expect(projection.state.lastAssistantMessage).toBe('SURFACE_HERMES_OK');
+      expect(projection.state.lifecycle).toBe('ready');
     } finally {
+      projection.dispose();
       await session.dispose();
       await session.dispose();
       expect(gateway.closed).toBe(true);
@@ -45,10 +47,12 @@ describe('Hermes TUI session driver', () => {
       host: host(),
       transport: new FakeHermesGateway({ announceSession: false }),
     });
+    const projection = projectAgentSession(session);
     try {
-      expect(session.state().lifecycle).toBe('ready');
+      expect(projection.state.lifecycle).toBe('ready');
       expect(session.storedSessionId()).toMatch(/^20260812_/);
     } finally {
+      projection.dispose();
       await session.dispose();
     }
   });
@@ -74,9 +78,9 @@ describe('Hermes TUI session driver', () => {
       host: host(),
       transport: gateway,
     });
-    const batches: AdapterMonitorObservationBatch[] = [];
+    const projection = projectAgentSession(session);
+    const batches = projection.monitorBatches;
     const events: string[] = [];
-    const offMonitor = session.onMonitorBatch?.((batch) => batches.push(batch));
     const offEvent = session.onEvent(({ event }) => events.push(event.type));
     try {
       expect(batches.length).toBeGreaterThan(1);
@@ -98,10 +102,10 @@ describe('Hermes TUI session driver', () => {
           ),
       ).toBeDefined();
 
-      const lifecycle = session.state().lifecycle;
+      const lifecycle = projection.state.lifecycle;
       gateway.disconnect('test rail loss');
       expect(session.observationLevel()).toBe('terminal-only');
-      expect(session.state().lifecycle).toBe(lifecycle);
+      expect(projection.state.lifecycle).toBe(lifecycle);
       expect(events).not.toContain('session.exited');
       expect(events).not.toContain('process.exited');
       expect(batches.at(-1)).toMatchObject({ readiness: 'degraded', completeness: 'unavailable' });
@@ -110,8 +114,8 @@ describe('Hermes TUI session driver', () => {
       expect(session.observationLevel()).toBe('structured');
       expect(batches.at(-1)).toMatchObject({ phase: 'live', readiness: 'ready', completeness: 'partial' });
     } finally {
-      offMonitor?.();
       offEvent();
+      projection.dispose();
       await session.dispose();
     }
   });

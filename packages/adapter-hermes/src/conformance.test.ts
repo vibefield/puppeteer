@@ -1,4 +1,4 @@
-/** Shared AgentSession contract over a fake owned tui_gateway. */
+/** Shared adapter-session contract over a fake owned tui_gateway. */
 
 import { expect } from 'vitest';
 import type { AgentHost } from '@vibecook/chopsticks-core';
@@ -27,12 +27,11 @@ function host(): AgentHost {
   };
 }
 
-async function waitForReady(session: HermesTuiSession): Promise<void> {
-  if (session.state().lifecycle === 'ready' && !session.state().activeTurn) return;
-  await new Promise<void>((resolve, reject) => {
+function waitForTurnSettlement(session: Awaited<ReturnType<typeof createHermesTuiSession>>): Promise<void> {
+  return new Promise<void>((resolve, reject) => {
     const timer = setTimeout(() => reject(new Error('turn did not settle')), 2_000);
-    const off = session.onEvent(() => {
-      if (session.state().lifecycle === 'ready' && !session.state().activeTurn) {
+    const off = session.onEvent(({ event }) => {
+      if (event.type === 'turn.completed' || event.type === 'turn.failed') {
         clearTimeout(timer);
         off();
         resolve();
@@ -55,9 +54,10 @@ async function createHarness(
     session,
     reply: REPLY,
     async driveTurn(prompt: string) {
+      const settled = waitForTurnSettlement(session);
       const receipt = await session.submitPrompt({ text: prompt });
       if (receipt.status === 'rejected') throw new Error(receipt.reason);
-      await waitForReady(session);
+      await settled;
     },
     async resume() {
       const stored = session.storedSessionId() ?? session.sessionId;

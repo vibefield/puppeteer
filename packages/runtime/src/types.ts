@@ -7,7 +7,7 @@ import type {
   AgentHost,
   AgentMonitorHandle,
   AgentMonitorState,
-  AgentSession,
+  AgentAdapterSession,
   ExternalRef,
   MonitorArtifactReadResult,
   MonitorNotification,
@@ -43,6 +43,7 @@ import type {
 } from './creation-registry.js';
 import type { RuntimeCreationOperation } from './identity.js';
 import type { MonitorClock } from './monitor-clock.js';
+import type { Agent } from './agent.js';
 
 /** Built-in provider ids. Applications select one; implementation stays here. */
 export type BuiltinAgentKind = 'claude' | 'codex' | 'acp' | 'grok' | 'kimi' | 'opencode' | 'hermes';
@@ -112,7 +113,7 @@ export type HermesAgentOptions = Omit<CreateHermesTuiSessionOptions, 'cwd' | 're
 export interface PreparedProviderSession {
   readonly sessionId: string;
   readonly launch: TerminalSpec;
-  adopt(runtimeSessionId: string): Promise<AgentSession>;
+  adopt(runtimeSessionId: string): Promise<AgentAdapterSession>;
   dispose(): void | Promise<void>;
 }
 
@@ -132,7 +133,7 @@ export interface AgentProvider {
   readonly kind: string;
   /** Provider topology; defaults to native-tui for compatibility providers. */
   readonly executionMode?: AgentExecutionMode;
-  createSession(options: AgentProviderSessionOptions): Promise<AgentSession>;
+  createSession(options: AgentProviderSessionOptions): Promise<AgentAdapterSession>;
   /** Fetch account-wide subscription/API quota state, independent of any session. */
   fetchAccountUsage?(): Promise<AccountUsageFetchResult>;
   /**
@@ -238,6 +239,9 @@ export interface AgentSessionFailure {
 }
 
 export type CreateAgentSessionResult = AgentSessionInfo | AgentSessionFailure;
+
+/** Primary object-oriented spawn result. Failures remain data so callers can render them safely. */
+export type SpawnAgentResult = Agent | AgentSessionFailure;
 
 export type PreparationErrorCode =
   | WorkspaceErrorCode
@@ -395,15 +399,20 @@ export interface RestoreAgentSessionOptions {
   runtimeRunId: RuntimeRunId;
   expectedRuntimeEpoch: number;
   agent: string;
-  session: AgentSession;
+  session: AgentAdapterSession;
   workspace: Workspace;
   externalRefs?: readonly ExternalRef[];
 }
 
 /** The single application-facing surface for every agent provider. */
 export interface AgentRuntime {
+  /** Primary API: spawn one provider and receive its per-run Agent event surface. */
+  spawn(options: CreateAgentSessionOptions): Promise<SpawnAgentResult>;
+  /** Resolve a live Agent by terminal-session id or runtime-run id. */
+  agent(id: string): Agent | undefined;
   /** Fetch account-wide usage for a provider; concurrent calls for one provider are coalesced. */
   accountUsage(agent: string): Promise<AccountUsageFetchResult>;
+  /** @deprecated Compatibility/IPC surface. Use spawn() to receive an Agent. */
   createSession(options: CreateAgentSessionOptions): Promise<CreateAgentSessionResult>;
   prepareSession(options: CreateAgentSessionOptions): Promise<PrepareAgentSessionResult>;
   adoptPrepared(preparationId: string, options: AdoptPreparedSessionOptions): Promise<AdoptPreparedSessionResult>;
@@ -425,15 +434,20 @@ export interface AgentRuntime {
   recordingStatus(): ActionRecorderStatus | undefined;
   onRecordingStatus(listener: (status: ActionRecorderStatus) => void): () => void;
   sessionInfo(terminalSessionId: string): AgentSessionInfo | undefined;
+  /** @deprecated Read agent(id)?.state. */
   sessionState(terminalSessionId: string): SessionRuntimeState | undefined;
+  /** @deprecated Read agent(id)?.observationLevel. */
   observationLevel(terminalSessionId: string): ObservationLevel | undefined;
+  /** @deprecated Read agent(id)?.conversation. */
   conversationSnapshot(terminalSessionId: string): AgentConversationSnapshot | undefined;
+  /** @deprecated Subscribe with agent.on(selector, listener). */
   onEvent(listener: (terminalSessionId: string, envelope: RuntimeAgentEventEnvelope) => void): () => void;
   /**
    * Subscribe to push-style account-usage updates from providers that support them.
    * Independent of session events; account quotas are usually process-global.
    */
   onAccountUsage(listener: (agent: string, result: AccountUsageFetchResult) => void): () => void;
+  /** @deprecated Call agent(id)?.submitPrompt(submission). */
   submitPrompt(terminalSessionId: string, submission: PromptSubmission): Promise<PromptReceipt>;
   workspaceDiff(terminalSessionId: string): Promise<WorkspaceDiff | null>;
   handleProcessExit(terminalSessionId: string, exit: AgentProcessExit): Promise<AgentWorkspaceFinal | undefined>;
@@ -441,7 +455,8 @@ export interface AgentRuntime {
 }
 
 /** Built-in runtime facade whose selected agent discriminates its launch options. */
-export type BuiltinAgentRuntime = Omit<AgentRuntime, 'createSession' | 'prepareSession'> & {
+export type BuiltinAgentRuntime = Omit<AgentRuntime, 'spawn' | 'createSession' | 'prepareSession'> & {
+  spawn(options: BuiltinCreateAgentSessionOptions): Promise<SpawnAgentResult>;
   createSession(options: BuiltinCreateAgentSessionOptions): Promise<CreateAgentSessionResult>;
   prepareSession(options: BuiltinCreateAgentSessionOptions): Promise<PrepareAgentSessionResult>;
 };

@@ -11,6 +11,7 @@ import { describe, it, expect } from 'vitest';
 import { mkdtempSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
+import { projectAgentSession } from '@vibecook/chopsticks-testing';
 import { createCodexSession } from './driver.js';
 
 const live = process.env.CODEX_LIVE === '1';
@@ -19,6 +20,7 @@ describe.skipIf(!live)('createCodexSession (live codex app-server)', () => {
   it('drives a real turn and observes the assistant reply', async () => {
     const cwd = mkdtempSync(join(tmpdir(), 'codex-live-'));
     const session = await createCodexSession({ cwd, sandbox: 'read-only', approvalPolicy: 'never' });
+    const projection = projectAgentSession(session);
     try {
       expect(session.sessionId).toMatch(/[0-9a-f-]{36}/);
       expect(session.observationLevel()).toBe('structured');
@@ -39,9 +41,10 @@ describe.skipIf(!live)('createCodexSession (live codex app-server)', () => {
         });
       });
 
-      expect(session.state().lastAssistantMessage?.toLowerCase()).toContain('pong');
+      expect(projection.state.lastAssistantMessage?.toLowerCase()).toContain('pong');
       expect(session.threadPath()).toContain('.codex/sessions/');
     } finally {
+      projection.dispose();
       await session.dispose();
     }
   }, 70_000);

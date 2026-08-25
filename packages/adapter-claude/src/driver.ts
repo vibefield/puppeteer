@@ -9,7 +9,7 @@
  *   prepare (settings + UUID join contract)
  *     → ports.spawn (the host carries the hook token in its explicit env grant)
  *     → hook bridge (loopback HTTP; the ONLY session it accepts is ours)
- *     → normalizer → envelope stamping → session reducer state
+ *     → normalizer → envelope stamping → normalized event stream
  *     → semantic provider (lazy: attached at the first hook envelope whose
  *       payload hands us transcript_path; every envelope supplies a poll hint)
  *     → prompt injector (uses ports.automate; confirmation and
@@ -22,13 +22,12 @@
 import { randomUUID } from 'node:crypto';
 import { performance } from 'node:perf_hooks';
 import {
+  BufferedAgentEventSource,
   createEnvelopeStamper,
-  createInitialSessionState,
-  reduceSessionState,
   type AgentEvent,
   type AgentEventConfidence,
   type AgentEventEnvelope,
-  type AgentSession,
+  type AgentAdapterSession,
   type MonitorArtifactReadResult,
   type ObservationLevel,
   type TerminalAutomationOperation,
@@ -159,15 +158,14 @@ export interface ClaudeObservationPollHint {
 }
 
 /**
- * The core `AgentSession` handle (sessionId is the `--session-id` UUID = the
+ * The core adapter handle (sessionId is the `--session-id` UUID = the
  * chopsticks ↔ spaghetti join contract) plus Claude-specific transcript extras.
  */
-export interface ClaudeSession extends AgentSession {
+export interface ClaudeSession extends AgentAdapterSession {
   /** Absolute path to this session's transcript JSONL (handed to us by hooks). */
   transcriptPath(): string | undefined;
   /** Force a transcript delta parse now (tests, explicit refresh). */
   pollTranscript(): Promise<void>;
-  onMonitorBatch(listener: (batch: AdapterMonitorObservationBatch) => void): () => void;
   readMonitorArtifact(artifactId: string, options: { maxBytes: number }): Promise<MonitorArtifactReadResult>;
 }
 
@@ -279,7 +277,7 @@ function createPreparedClaudeSession(
 ): PreparedClaudeTuiSession {
   const normalizer = new ClaudeHookNormalizer();
   const stamper = createEnvelopeStamper();
-  let state = createInitialSessionState();
+  const events = new BufferedAgentEventSource();
   let observation: ObservationLevel = 'terminal-only';
   let transcriptPath: string | undefined;
   const semanticProvider =
@@ -297,9 +295,6 @@ function createPreparedClaudeSession(
   let adoptedRuntimeSessionId: string | undefined;
   let adoptedSession: ClaudeSession | undefined;
   let disposed = false;
-  const eventListeners = new Set<(e: AgentEventEnvelope) => void>();
-  const monitorListeners = new Set<(batch: AdapterMonitorObservationBatch) => void>();
-  const pendingMonitorBatches: AdapterMonitorObservationBatch[] = [];
   let capabilitiesBatch = monitorEvidence.capabilitiesBatch(new Date().toISOString());
   let semanticCapabilitiesPublished = false;
   let hookRailAvailable = true;
@@ -309,7 +304,8 @@ function createPreparedClaudeSession(
   const pendingPermissionIds = new Set<string>();
   const pendingQuestionIds = new Set<string>();
   let configuredIntentPublished = false;
-  let observedStatusEffort: string | undefined;
+  let observedStatusEnvironmentKey: string | undefined;
+  let observedStatusContextKey: string | undefined;
 
   const injector: PromptInjector = createPromptInjector({
     automate: (operation) => {
@@ -321,18 +317,14 @@ function createPreparedClaudeSession(
   });
 
   function emitMonitorBatch(batch: AdapterMonitorObservationBatch): void {
-    if (monitorListeners.size === 0) {
-      pendingMonitorBatches.push(batch);
-      if (pendingMonitorBatches.length > 256) pendingMonitorBatches.splice(0, pendingMonitorBatches.length - 256);
-      return;
-    }
-    for (const listener of monitorListeners) {
-      try {
-        listener(batch);
-      } catch {
-        // Monitor consumers cannot affect provider observation.
-      }
-    }
+    apply(
+      { type: 'monitor.batch', batch },
+      {
+        source: 'native-protocol',
+        timestamp: batch.observedAt,
+        confidence: 'authoritative',
+      },
+    );
   }
 
   emitMonitorBatch(capabilitiesBatch);
@@ -392,8 +384,6 @@ function createPreparedClaudeSession(
       event,
       nativeEvent: meta.native,
     });
-    state = reduceSessionState(state, envelope);
-
     // Injector wiring rides the normalized stream, not raw payloads.
     switch (event.type) {
       case 'turn.started':
@@ -434,13 +424,7 @@ function createPreparedClaudeSession(
         break;
     }
 
-    for (const listener of eventListeners) {
-      try {
-        listener(envelope);
-      } catch {
-        /* listener faults stay out of the pipeline */
-      }
-    }
+    events.emit(envelope);
     return envelope;
   }
 
@@ -686,17 +670,9 @@ function createPreparedClaudeSession(
 
     const environment = claudeEnvironmentEvent(statusEnvelope.body);
     if (environment) {
-      const current = state.environment;
-      const unchangedCwd = environment.currentCwd === undefined || environment.currentCwd === current.currentCwd?.value;
-      const unchangedModel =
-        environment.model === undefined ||
-        (environment.model !== null &&
-          environment.model.id === current.model?.value.id &&
-          environment.model.displayName === current.model?.value.displayName);
-      const nextEffort = environment.effort ?? undefined;
-      const unchangedEffort = environment.effort === undefined || nextEffort === observedStatusEffort;
-      if (!unchangedCwd || !unchangedModel || !unchangedEffort) {
-        if (environment.effort !== undefined) observedStatusEffort = nextEffort;
+      const environmentKey = JSON.stringify(environment);
+      if (environmentKey !== observedStatusEnvironmentKey) {
+        observedStatusEnvironmentKey = environmentKey;
         apply(environment, {
           source: 'native-statusline',
           timestamp: statusEnvelope.receivedAt,
@@ -708,18 +684,13 @@ function createPreparedClaudeSession(
 
     const contextEvent = claudeContextWindowEvent(statusEnvelope.body);
     if (!contextEvent) return;
-    const currentContext = state.contextWindow;
     if (contextEvent.type === 'context-window.invalidated') {
-      if (!currentContext) return;
-    } else if (
-      currentContext?.usedTokens === contextEvent.usedTokens &&
-      currentContext.capacityTokens === contextEvent.capacityTokens &&
-      currentContext.modelId === contextEvent.modelId &&
-      currentContext.usedPercent ===
-        (contextEvent.usedPercentage ?? (contextEvent.usedTokens / contextEvent.capacityTokens) * 100) &&
-      currentContext.percentageSource === (contextEvent.percentageSource ?? 'derived')
-    ) {
-      return;
+      if (!observedStatusContextKey) return;
+      observedStatusContextKey = undefined;
+    } else {
+      const contextKey = JSON.stringify(contextEvent);
+      if (contextKey === observedStatusContextKey) return;
+      observedStatusContextKey = contextKey;
     }
     apply(contextEvent, {
       source: 'native-statusline',
@@ -743,9 +714,7 @@ function createPreparedClaudeSession(
   async function dispose(): Promise<void> {
     if (disposed) return;
     disposed = true;
-    eventListeners.clear();
-    monitorListeners.clear();
-    pendingMonitorBatches.length = 0;
+    events.close();
     const attached = await semanticAttachment?.catch(() => undefined);
     await attached?.dispose();
     await bridge.dispose();
@@ -767,28 +736,13 @@ function createPreparedClaudeSession(
           return nativeSessionId();
         },
         runtimeSessionId,
-        state: () => state,
         observationLevel: () => observation,
         transcriptPath: () => transcriptPath,
         onEvent(listener) {
-          eventListeners.add(listener);
+          const unsubscribe = events.onEvent(listener);
           publishConfiguredIntent();
-          return () => eventListeners.delete(listener);
-        },
-        onMonitorBatch(listener) {
-          monitorListeners.add(listener);
-          const pending = pendingMonitorBatches.splice(0);
-          const deliver = (batch: AdapterMonitorObservationBatch): void => {
-            try {
-              listener(batch);
-            } catch {
-              // Initial replay has the same isolation guarantee as live fan-out.
-            }
-          };
-          if (!pending.includes(capabilitiesBatch)) deliver(capabilitiesBatch);
-          for (const batch of pending) deliver(batch);
           void publishCapabilities();
-          return () => monitorListeners.delete(listener);
+          return unsubscribe;
         },
         readMonitorArtifact: async (artifactId, artifactOptions) => {
           const handle = await semanticAttachment;

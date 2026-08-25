@@ -2,12 +2,20 @@
 
 - **Status:** In progress — Stage C monitor validation; local scoped-observer cutover complete
 - **Created:** 2026-08-16
-- **Last updated:** 2026-08-24
+- **Last updated:** 2026-08-25
 - **Companion RFC:** [`001-evidence-backed-runtime-observation.md`](./001-evidence-backed-runtime-observation.md)
 - **Primary target:** Godview beside native provider TUIs
 - **Compatibility target:** one release with the v1 state and IPC bridges available
 
 ## Current implementation status
+
+> **2026-08-25 architecture update:** adapter handles now publish only one
+> normalized event stream. Every envelope has a top-level service route such as
+> `state:*`, `context-window:*`, or `monitor:*`; atomic monitor batches travel as
+> `monitor:batch` on that same stream. The runtime creates one `Agent` per spawn,
+> owns all reducers/projections there, and exposes typed observation through
+> `agent.on(...)`. The separate `onMonitorBatch()` rail and adapter-owned state
+> snapshots described in the original slice plan have been removed.
 
 Stages A and B are implemented. The Stage C monitor code is implemented behind
 opt-in flags and has passed local canary validation; monitor v2 is not the
@@ -31,17 +39,17 @@ Deterministic adapter/core/renderer coverage is green. The native
 Haiku/Sonnet-only team canary is implemented but could not run on 2026-08-24
 because `claude auth status` reported `loggedIn: false` in the current shell.
 
-| Slice                        | State                                                                                                | Remaining gate                                                                       |
-| ---------------------------- | ---------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------ |
-| `CORE-01`, `CORE-02`         | Landed                                                                                               | Default-soak findings only                                                           |
-| `RUN-01`, `REC-01`, `RUN-02` | Landed                                                                                               | Default-soak findings only                                                           |
-| `CLAUDE-01`, `CLAUDE-02`     | Landed; all locally executable native matrix rows green with explicit Haiku/Sonnet guards            | Repeat in release cycles; team/workflow correlation remains under `SPAGHETTI-01`     |
-| `WORKSPACE-01`               | Landed; workspace/record/runtime provenance soak green                                               | Repeat against release candidates                                                    |
-| `APP-01`                     | Landed; shadow mode green in deterministic canaries                                                  | Accumulate native canary evidence                                                    |
-| `APP-02`                     | Landed behind `godviewMonitorV2`; native matrix and two independent local cycles green in Godview    | Two canary release cycles                                                            |
-| `ADAPTER-01`                 | Telemetry landed; native Codex/Grok/Kimi spot checks green                                           | Exact provider/version gates remain independent; OpenCode/Hermes unavailable locally |
-| `SPAGHETTI-01`               | Scoped observer authoritative against sibling 0.7.0; legacy source and rollout wrappers removed      | Typed message visibility, bounded artifact API, and native team/workflow validation  |
-| `CUTOVER-01`                 | Semantic-source cleanup landed; monitor/UI compatibility cleanup remains                             | Requires Stage D and downstream handoff fixtures                                     |
+| Slice                        | State                                                                                             | Remaining gate                                                                       |
+| ---------------------------- | ------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------ |
+| `CORE-01`, `CORE-02`         | Landed                                                                                            | Default-soak findings only                                                           |
+| `RUN-01`, `REC-01`, `RUN-02` | Landed                                                                                            | Default-soak findings only                                                           |
+| `CLAUDE-01`, `CLAUDE-02`     | Landed; all locally executable native matrix rows green with explicit Haiku/Sonnet guards         | Repeat in release cycles; team/workflow correlation remains under `SPAGHETTI-01`     |
+| `WORKSPACE-01`               | Landed; workspace/record/runtime provenance soak green                                            | Repeat against release candidates                                                    |
+| `APP-01`                     | Landed; shadow mode green in deterministic canaries                                               | Accumulate native canary evidence                                                    |
+| `APP-02`                     | Landed behind `godviewMonitorV2`; native matrix and two independent local cycles green in Godview | Two canary release cycles                                                            |
+| `ADAPTER-01`                 | Telemetry landed; native Codex/Grok/Kimi spot checks green                                        | Exact provider/version gates remain independent; OpenCode/Hermes unavailable locally |
+| `SPAGHETTI-01`               | Scoped observer authoritative against sibling 0.7.0; legacy source and rollout wrappers removed   | Typed message visibility, bounded artifact API, and native team/workflow validation  |
+| `CUTOVER-01`                 | Semantic-source cleanup landed; monitor/UI compatibility cleanup remains                          | Requires Stage D and downstream handoff fixtures                                     |
 
 Latest local Stage C verification on 2026-08-18:
 
@@ -285,7 +293,7 @@ The refactor is complete when:
 
 The implementation must account for these current facts rather than assuming a greenfield system:
 
-- `packages/core` is a zero-I/O package and owns `AgentEvent`, `AgentSession`, and the sequence-based `SessionRuntimeState` reducer.
+- `packages/core` is a zero-I/O package and owns `AgentEvent`, `AgentAdapterSession`, `AgentEventBus`, and the sequence-based `SessionRuntimeState` reducer.
 - Every adapter depends on core. Runtime depends on core, all adapters, record, and workspaces. Godview depends on runtime and core. The safe dependency order is therefore core, adapters/runtime, then apps.
 - Runtime currently keys live sessions by `runtimeSessionId`, mutates `AgentSessionInfo.sessionId` when a native ID changes, and restamps provider envelopes with a new local sequence.
 - `closeManaged()` removes the session before publishing a final reduced state. There is no lightweight terminal monitor after process resources are released.
@@ -460,14 +468,17 @@ packages/record/src/
 
 ### 5.1 Adapter-to-runtime seam
 
-Existing `AgentEvent` remains the low-latency compatibility stream. `AgentSession` gains one optional SPI callback for atomic semantic batches:
+`AgentAdapterSession` is now a low-level normalized producer. Atomic semantic
+batches use the same event stream as every other adapter observation:
 
 ```ts
-interface AgentSession {
-  // Existing members remain during migration.
-  onMonitorBatch?(listener: (batch: AdapterMonitorObservationBatch) => void): () => void;
+interface AgentAdapterSession {
+  onEvent(listener: (event: AgentEventEnvelope) => void): () => void;
   readMonitorArtifact?(artifactId: string, options: { maxBytes: number }): Promise<MonitorArtifactReadResult>;
+  submitPrompt(submission: PromptSubmission): Promise<PromptReceipt>;
 }
+
+type MonitorEvent = { type: 'monitor.batch'; batch: AdapterMonitorObservationBatch };
 ```
 
 An adapter batch has source-local identity. Runtime attaches the managed run identity:
@@ -501,6 +512,8 @@ Runtime translates existing `AgentEventEnvelope`s into monitor inputs. Semantic 
 
 ```ts
 interface AgentRuntime {
+  spawn(options: CreateAgentSessionOptions): Promise<Agent | AgentSessionFailure>;
+  agent(id: string): Agent | undefined;
   monitorState(runtimeRunId: string): AgentMonitorState | undefined;
   observeMonitor(runtimeRunId: string): AgentMonitorHandle;
   onMonitorState(listener: (state: AgentMonitorState) => void): () => void;
@@ -515,6 +528,13 @@ interface AgentRuntime {
 
   /** @deprecated compatibility only */
   sessionState(terminalSessionId: string): SessionRuntimeState | undefined;
+}
+
+interface Agent {
+  readonly state: SessionRuntimeState;
+  readonly conversation: AgentConversationSnapshot;
+  on(selector: AgentEventSelector, listener: AgentEventListener): () => void;
+  submitPrompt(submission: PromptSubmission): Promise<PromptReceipt>;
 }
 ```
 
@@ -608,7 +628,7 @@ The likely total is 48-78 engineer-days, with substantial parallelism. The criti
 
 - Add `packages/core/src/monitor/types.ts`, `freshness.ts`, `team.ts`, and `monitor-spi.ts`.
 - Update `packages/core/src/index.ts` and `packages/core/package.json` exports/publish exports.
-- Extend `packages/core/src/session.ts` with optional `onMonitorBatch()` and `readMonitorArtifact()`.
+- Define the normalized `AgentAdapterSession` seam with `onEvent()` and optional `readMonitorArtifact()`.
 - Add compile-time fixtures under `packages/core/src/monitor/`.
 
 **Work**
@@ -736,7 +756,7 @@ The likely total is 48-78 engineer-days, with substantial parallelism. The criti
 **Work**
 
 1. Create one monitor hub per run before workspace/provider evidence arrives.
-2. Feed it allocation, current `AgentEventEnvelope`, optional adapter batches, Git/workspace observations, prompt receipts, and actual host process exit.
+2. Feed it allocation, namespaced `AgentEventEnvelope`s (including `monitor:batch`), Git/workspace observations, prompt receipts, and actual host process exit.
 3. Preserve the v1 session reducer in parallel behind `agentMonitorStateV2`.
 4. Add readiness: subscribers attach first, the hub installs bootstrap evidence, and `ready` resolves to the first complete public snapshot.
 5. Implement full-state revisions, latest-state conflation, bounded notifications, and global host callbacks.

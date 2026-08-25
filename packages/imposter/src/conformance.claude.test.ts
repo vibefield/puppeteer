@@ -20,6 +20,7 @@ import { fileURLToPath } from 'node:url';
 import { afterEach, describe, expect, it } from 'vitest';
 import type { AgentEventEnvelope } from '@vibecook/chopsticks-core';
 import { createClaudeSession, type ClaudeSession } from '@vibecook/chopsticks-adapter-claude';
+import { projectAgentSession, type TestAgentProjection } from '@vibecook/chopsticks-testing';
 import { runAgentSessionConformance, type AgentSessionHarness } from '@vibecook/chopsticks-testing/conformance';
 
 const packageRoot = dirname(dirname(fileURLToPath(import.meta.url)));
@@ -92,6 +93,7 @@ async function waitFor(predicate: () => boolean, label: string, timeoutMs = 1500
 
 interface ImposterHarness extends AgentSessionHarness {
   session: ClaudeSession;
+  projection: TestAgentProjection;
   imposterHome: string;
   cwd: string;
 }
@@ -143,13 +145,15 @@ async function imposterHarness(
       },
     },
   });
+  const projection = projectAgentSession(session);
 
-  await waitFor(() => session.state().lifecycle === 'ready', 'imposter boot (SessionStart + InstructionsLoaded)');
+  await waitFor(() => projection.state.lifecycle === 'ready', 'imposter boot (SessionStart + InstructionsLoaded)');
   if (resume) {
-    await waitFor(() => session.state().lastAssistantMessage === BEHAVIOR.reply, 'resumed Claude transcript history');
+    await waitFor(() => projection.state.lastAssistantMessage === BEHAVIOR.reply, 'resumed Claude transcript history');
   }
   return {
     session,
+    projection,
     imposterHome,
     cwd,
     reply: BEHAVIOR.reply,
@@ -231,17 +235,17 @@ describe('claude imposter channels', () => {
   it('reports statusline telemetry: known-empty window at boot, usage after a turn', async () => {
     const harness = await imposterHarness();
     try {
-      await waitFor(() => harness.session.state().contextWindow !== undefined, 'boot context-window telemetry');
-      expect(harness.session.state().contextWindow).toMatchObject({
+      await waitFor(() => harness.projection.state.contextWindow !== undefined, 'boot context-window telemetry');
+      expect(harness.projection.state.contextWindow).toMatchObject({
         usedTokens: 0,
         capacityTokens: BEHAVIOR.statusLine.capacityTokens,
         modelId: BEHAVIOR.statusLine.modelId,
       });
-      expect(harness.session.state().environment.currentCwd?.value).toBe(harness.cwd);
+      expect(harness.projection.state.environment.currentCwd?.value).toBe(harness.cwd);
 
       await harness.driveTurn('burn some tokens');
       await waitFor(
-        () => harness.session.state().contextWindow?.usedTokens === BEHAVIOR.statusLine.tokensPerTurn,
+        () => harness.projection.state.contextWindow?.usedTokens === BEHAVIOR.statusLine.tokensPerTurn,
         'post-turn context-window telemetry',
       );
     } finally {

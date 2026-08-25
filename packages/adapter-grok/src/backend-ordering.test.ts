@@ -1,5 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import { createInitialSessionState, type AgentHost, type AgentSession } from '@vibecook/chopsticks-core';
+import type { AgentAdapterSession, AgentHost } from '@vibecook/chopsticks-core';
+import { projectAgentSession } from '@vibecook/chopsticks-testing';
 
 const mocks = vi.hoisted(() => ({
   spawn: vi.fn(),
@@ -25,11 +26,10 @@ vi.mock('@vibecook/chopsticks-adapter-acp', async (importOriginal) => ({
 
 import { createGrokBackend } from './backend.js';
 
-function controlSession(sessionId: string): AgentSession {
+function controlSession(sessionId: string): AgentAdapterSession {
   return {
     sessionId,
     runtimeSessionId: `control-${sessionId}`,
-    state: () => ({ ...createInitialSessionState(), lifecycle: 'ready' }),
     observationLevel: () => 'structured',
     onEvent: () => () => undefined,
     submitPrompt: async () => ({ status: 'confirmed', turnId: 'turn-1' }),
@@ -69,7 +69,9 @@ describe('Grok leader session materialization ordering', () => {
     expect(prepared.launch.args).not.toContain('--session-id');
 
     const adopted = await prepared.adopt('terminal-1');
-    await vi.waitFor(() => expect(adopted.state().lifecycle).toBe('ready'));
+    const projection = projectAgentSession(adopted);
+    await vi.waitFor(() => expect(projection.state.lifecycle).toBe('ready'));
+    projection.dispose();
     await prepared.dispose();
     backend.dispose();
   });
@@ -78,6 +80,7 @@ describe('Grok leader session materialization ordering', () => {
     const terminalHost = host();
     const backend = createGrokBackend({ executable: '/real/grok', host: terminalHost });
     const session = await backend.createSession({ cwd: '/repo' });
+    const projection = projectAgentSession(session);
 
     expect(mocks.createAcpSession.mock.invocationCallOrder[0]).toBeLessThan(
       terminalHost.spawnTerminal.mock.invocationCallOrder[0]!,
@@ -85,7 +88,8 @@ describe('Grok leader session materialization ordering', () => {
     expect(terminalHost.spawnTerminal).toHaveBeenCalledWith(
       expect.objectContaining({ args: expect.arrayContaining(['--resume', 'materialized-session']) }),
     );
-    await vi.waitFor(() => expect(session.state().lifecycle).toBe('ready'));
+    await vi.waitFor(() => expect(projection.state.lifecycle).toBe('ready'));
+    projection.dispose();
     await session.dispose();
     backend.dispose();
   });

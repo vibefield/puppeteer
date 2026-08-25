@@ -100,6 +100,7 @@ export class AcpNotificationNormalizer {
   /** Accumulated assistant text keyed by ACP messageId (deltas are additive). */
   private messageBuffers = new Map<string, string>();
   private reasoningActive = false;
+  private reasoningId: string | undefined;
 
   normalize(notif: SessionNotification): NormalizedUpdate {
     const update = notif.update;
@@ -127,6 +128,7 @@ export class AcpNotificationNormalizer {
         break;
 
       case 'agent_thought_chunk':
+        this.reasoningId = update.messageId ?? this.reasoningId;
         events.push({
           type: this.reasoningActive ? 'reasoning.progress' : 'reasoning.started',
           reasoningId: update.messageId ?? undefined,
@@ -221,7 +223,13 @@ export class AcpNotificationNormalizer {
     return last;
   }
 
-  completeReasoning(): void {
+  completeReasoning(): { active: boolean; reasoningId?: string } {
+    const result = {
+      active: this.reasoningActive,
+      ...(this.reasoningId ? { reasoningId: this.reasoningId } : {}),
+    };
     this.reasoningActive = false;
+    this.reasoningId = undefined;
+    return result;
   }
 }
