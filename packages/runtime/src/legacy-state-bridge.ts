@@ -3,7 +3,7 @@ import type {
   SessionEnvironmentRuntimeState,
   SessionRuntimeState,
   ToolPresentation,
-} from '@vibecook/chopsticks-core';
+} from '@vibecook/puppeteer-core';
 
 /**
  * JSON-plain v1 renderer contract retained for the one-release rollback path.

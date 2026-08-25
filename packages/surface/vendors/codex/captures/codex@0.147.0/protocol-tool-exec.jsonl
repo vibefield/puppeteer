@@ -1,4 +1,4 @@
-{"direction":"client-to-agent","message":{"id":1,"method":"initialize","params":{"clientInfo":{"name":"chopsticks-census","version":"0.0.0"}}}}
+{"direction":"client-to-agent","message":{"id":1,"method":"initialize","params":{"clientInfo":{"name":"puppeteer-census","version":"0.0.0"}}}}
 {"direction":"agent-to-client","message":{"id":1,"result":{"userAgent":"<redacted:userAgent>","codexHome":"/workspace/redacted-file","platformFamily":"unix","platformOs":"macos"}}}
 {"direction":"agent-to-client","message":{"method":"remoteControl/status/changed","params":{"status":"disabled","serverName":"<redacted:serverName>","installationId":"a11a5ed0-ff6a-4369-ae1e-f7106326c2ac","environmentId":null},"emittedAtMs":1767225600000}}
 {"direction":"client-to-agent","message":{"method":"initialized"}}

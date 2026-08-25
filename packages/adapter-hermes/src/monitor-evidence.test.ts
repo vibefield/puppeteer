@@ -1,10 +1,10 @@
 import { describe, expect, it } from 'vitest';
-import type { AdapterMonitorObservationBatch } from '@vibecook/chopsticks-core/monitor-spi';
+import type { AdapterMonitorObservationBatch } from '@vibecook/puppeteer-core/monitor-spi';
 import {
   createMonitorAccumulatorState,
   projectAgentMonitorState,
   reduceMonitorAccumulator,
-} from '@vibecook/chopsticks-core/monitor-spi';
+} from '@vibecook/puppeteer-core/monitor-spi';
 import { HERMES_MONITOR_CAPABILITIES, HermesMonitorEvidence } from './monitor-evidence.js';
 import { hermesStructuredQuestions } from './questions.js';
 import type { HermesGatewayFrame } from './transport/jsonrpc.js';

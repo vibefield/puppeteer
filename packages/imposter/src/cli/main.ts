@@ -309,7 +309,7 @@ async function runAttached(
     staged: (text) => screen.staged(text),
     // The same request the adapter's own driver sends, field for field: the
     // server cannot tell the two apart, which is what makes a prompt typed in
-    // the pane and one injected by chopsticks the same event.
+    // the pane and one injected by puppeteer the same event.
     submit: (text) => {
       log(`turn/start on ${threadId} (${text.length} chars)`);
       void channel
@@ -369,7 +369,7 @@ export async function main(argv: readonly string[], argv0?: string): Promise<num
 
   const behaviorName = flagValue(rest, ['--behavior']) ?? 'happy-turn';
   const log = (message: string): void => {
-    if (process.env.CHOPSTICKS_IMPOSTER_DEBUG) process.stderr.write(`[imposter] ${message}\n`);
+    if (process.env.PUPPETEER_IMPOSTER_DEBUG) process.stderr.write(`[imposter] ${message}\n`);
   };
 
   const httpServer = persona.httpServe?.$server;

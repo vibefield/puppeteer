@@ -26,12 +26,12 @@ describe('Hermes native persona', () => {
   });
 
   it('boots to ready and emits gateway.ready then session.info', async () => {
-    const home = mkdtempSync(join(tmpdir(), 'chopsticks-hermes-persona-'));
+    const home = mkdtempSync(join(tmpdir(), 'puppeteer-hermes-persona-'));
     roots.push(home);
     const session = createImposterSession({
       persona,
       argv: [],
-      env: { CHOPSTICKS_IMPOSTER_HOME: home },
+      env: { PUPPETEER_IMPOSTER_HOME: home },
       cwd: home,
       behavior: {},
     });

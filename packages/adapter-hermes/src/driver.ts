@@ -14,8 +14,8 @@ import {
   type PromptReceipt,
   type PromptSubmission,
   type TerminalSpec,
-} from '@vibecook/chopsticks-core';
-import type { AdapterMonitorObservationBatch } from '@vibecook/chopsticks-core/monitor-spi';
+} from '@vibecook/puppeteer-core';
+import type { AdapterMonitorObservationBatch } from '@vibecook/puppeteer-core/monitor-spi';
 import { HERMES_ADAPTER_CAPABILITIES } from './detection.js';
 import { startHermesGatewayHost, type HermesGatewayHost } from './launch/gateway-host.js';
 import { buildHermesAttachLaunch } from './launch/recipe.js';
@@ -68,8 +68,7 @@ function isRecord(value: unknown): value is Record<string, unknown> {
 export async function prepareHermesTuiSession(
   options: CreateHermesTuiSessionOptions,
 ): Promise<PreparedHermesTuiSession> {
-  const hermesHome =
-    options.hermesHome ?? options.env?.HERMES_HOME ?? mkdtempSync(join(tmpdir(), 'chopsticks-hermes-'));
+  const hermesHome = options.hermesHome ?? options.env?.HERMES_HOME ?? mkdtempSync(join(tmpdir(), 'puppeteer-hermes-'));
   let host: HermesGatewayHost | undefined;
   let transport = options.transport;
   let gatewayUrl = options.gatewayUrl;

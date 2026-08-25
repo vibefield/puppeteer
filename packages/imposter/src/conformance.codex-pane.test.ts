@@ -19,8 +19,8 @@ import { tmpdir } from 'node:os';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { afterEach, describe, expect, it } from 'vitest';
-import type { AgentHost, TerminalSpec } from '@vibecook/chopsticks-core';
-import { prepareCodexTuiSession } from '@vibecook/chopsticks-adapter-codex';
+import type { AgentHost, TerminalSpec } from '@vibecook/puppeteer-core';
+import { prepareCodexTuiSession } from '@vibecook/puppeteer-adapter-codex';
 
 const AI = join(dirname(dirname(fileURLToPath(import.meta.url))), 'bin', 'ai.mjs');
 
@@ -35,7 +35,7 @@ afterEach(async () => {
 });
 
 function workspace(): string {
-  const cwd = realpathSync(mkdtempSync(join(tmpdir(), 'chopsticks-codex-pane-')));
+  const cwd = realpathSync(mkdtempSync(join(tmpdir(), 'puppeteer-codex-pane-')));
   temporaries.add(cwd);
   return cwd;
 }

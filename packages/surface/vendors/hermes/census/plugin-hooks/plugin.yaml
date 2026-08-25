@@ -1,7 +1,7 @@
 name: census-hooks
 version: 0.1.0
-description: Isolated-home census observer. Writes hook kwargs to CHOPSTICKS_HERMES_HOOK_LOG.
-author: chopsticks
+description: Isolated-home census observer. Writes hook kwargs to PUPPETEER_HERMES_HOOK_LOG.
+author: puppeteer
 hooks:
   - on_session_start
   - on_session_end

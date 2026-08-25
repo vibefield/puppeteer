@@ -31,12 +31,12 @@ describe('Hermes census contract', () => {
   it('redacts install directories and host paths from version output and process trees', () => {
     expect(
       sanitizeVersionOutput(
-        'Hermes Agent v0.20.0 (2026.8.3)\nInstall directory: /private/tmp/chopsticks-hermes-v0.20.0\n',
+        'Hermes Agent v0.20.0 (2026.8.3)\nInstall directory: /private/tmp/puppeteer-hermes-v0.20.0\n',
       ),
     ).toContain('Install directory: <redacted:install-directory>');
     expect(
       sanitizeProcessTree(
-        '82714\t82713\t/Users/ada/.nvm/versions/node/v26.5.0/bin/node --expose-gc /tmp/chopsticks-hermes-v0.20.0/ui-tui/dist/entry.js\n',
+        '82714\t82713\t/Users/ada/.nvm/versions/node/v26.5.0/bin/node --expose-gc /tmp/puppeteer-hermes-v0.20.0/ui-tui/dist/entry.js\n',
       ),
     ).toMatch(/<pid>\t<ppid>\t<node> --expose-gc <redacted:path>/);
   });

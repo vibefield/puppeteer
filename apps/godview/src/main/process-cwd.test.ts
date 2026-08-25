@@ -3,8 +3,8 @@ import { parseLsofCwd, resolveProcessCwd } from './process-cwd.js';
 
 describe('Godview process cwd lookup', () => {
   it('parses the null-delimited lsof cwd field', () => {
-    expect(parseLsofCwd('p123\0\nfcwd\0n/Users/james/Projects/chopsticks\0\n')).toBe(
-      '/Users/james/Projects/chopsticks',
+    expect(parseLsofCwd('p123\0\nfcwd\0n/Users/james/Projects/puppeteer\0\n')).toBe(
+      '/Users/james/Projects/puppeteer',
     );
   });
 

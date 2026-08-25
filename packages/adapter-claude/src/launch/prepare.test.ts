@@ -46,7 +46,7 @@ function runExecutable(command: string, args: string[], input: string, env: Reco
 const BASE = {
   cwd: '/work/repo',
   endpoint: 'http://127.0.0.1:4100/hooks',
-  tokenEnvVar: 'CHOPSTICKS_HOOK_TOKEN',
+  tokenEnvVar: 'PUPPETEER_HOOK_TOKEN',
   token: 'super-secret-token-value',
 };
 
@@ -115,9 +115,9 @@ describe('prepareClaudeSession', () => {
     const p = await prepare({ settingsDir: dir });
     const text = readFileSync(p.settingsPath, 'utf8');
     expect(text).not.toContain(BASE.token);
-    expect(text).toContain('$CHOPSTICKS_HOOK_TOKEN');
+    expect(text).toContain('$PUPPETEER_HOOK_TOKEN');
     expect(readFileSync(p.hookForwarderPath, 'utf8')).not.toContain(BASE.token);
-    expect(p.env).toEqual({ CHOPSTICKS_HOOK_TOKEN: BASE.token });
+    expect(p.env).toEqual({ PUPPETEER_HOOK_TOKEN: BASE.token });
   });
 
   it('posts command-only hooks through the generated Node forwarder', async () => {
@@ -198,7 +198,7 @@ describe('prepareClaudeSession', () => {
         statusLineEndpoint: 'http://127.0.0.1:1/statusline',
       });
       expect(p.args).toEqual(expect.arrayContaining(['--setting-sources', 'project']));
-      expect(p.env.CHOPSTICKS_STATUSLINE_DELEGATE).toBe('project-line');
+      expect(p.env.PUPPETEER_STATUSLINE_DELEGATE).toBe('project-line');
     } finally {
       rmSync(root, { recursive: true, force: true });
     }
@@ -220,7 +220,7 @@ describe('prepareClaudeSession', () => {
         statusLineEndpoint: 'http://127.0.0.1:1/statusline',
       });
       expect(p.env.CLAUDE_CONFIG_DIR).toBe(configDir);
-      expect(p.env.CHOPSTICKS_STATUSLINE_DELEGATE).toBe('relocated-user-line');
+      expect(p.env.PUPPETEER_STATUSLINE_DELEGATE).toBe('relocated-user-line');
     } finally {
       rmSync(root, { recursive: true, force: true });
     }
@@ -372,9 +372,9 @@ describe('prepareClaudeSession', () => {
     });
     expect(settings.statusLine.command).not.toContain(delegate);
     expect(p.env).toMatchObject({
-      CHOPSTICKS_STATUSLINE_ENDPOINT: 'http://127.0.0.1:1/statusline',
-      CHOPSTICKS_STATUSLINE_DELEGATE: delegate,
-      CHOPSTICKS_STATUSLINE_TOKEN_ENV_VAR: BASE.tokenEnvVar,
+      PUPPETEER_STATUSLINE_ENDPOINT: 'http://127.0.0.1:1/statusline',
+      PUPPETEER_STATUSLINE_DELEGATE: delegate,
+      PUPPETEER_STATUSLINE_TOKEN_ENV_VAR: BASE.tokenEnvVar,
     });
     expect(readFileSync(p.statusLineForwarderPath!, 'utf8')).not.toContain(BASE.token);
 

@@ -47,7 +47,7 @@ async function fetchArtifact(spec, fetchImpl) {
       for (let redirects = 0; redirects <= 5; redirects += 1) {
         response = await fetchImpl(currentUrl, {
           redirect: 'manual',
-          headers: { 'user-agent': 'vibecook-chopsticks-artifact-acquisition' },
+          headers: { 'user-agent': 'vibecook-puppeteer-artifact-acquisition' },
         });
         if (![301, 302, 303, 307, 308].includes(response.status)) break;
         if (redirects === 5) throw new Error('artifact redirect limit exceeded');

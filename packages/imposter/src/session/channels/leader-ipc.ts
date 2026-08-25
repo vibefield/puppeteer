@@ -13,7 +13,7 @@ import { createConnection, createServer, type Server, type Socket } from 'node:n
 import { PassThrough, Writable, type Readable } from 'node:stream';
 
 const MAX_FRAME_BYTES = 64 * 1024 * 1024;
-const CLIENT_PREFIX = 'chopsticks-imposter';
+const CLIENT_PREFIX = 'puppeteer-imposter';
 
 type LeaderRole = 'controller' | 'viewer';
 

@@ -1,4 +1,4 @@
-# Adapting Any Coding Agent to Chopsticks
+# Adapting Any Coding Agent to Puppeteer
 
 **Status:** Canonical end-to-end developer workflow, 2026-08-09
 
@@ -6,11 +6,11 @@
 
 **Companions:** `draft/SURFACE-ADAPTATION-REFACTOR.md` defines ownership and promotion; `docs/archive/EMULATOR.md` defines the Agent Surface Model; `docs/archive/IMPOSTER.md` defines personas and native emulation; `draft/NORMALIZATION-DEVKIT.md` defines the normalization workbench; `draft/DESIGN.md` defines the runtime contract.
 
-This guide is the operational path from an unknown vendor binary to a supported Chopsticks agent. It tells you what to investigate, which artifacts to create, where each fact belongs, how to use the adaptation devkit, what to test, and what must be true before support is promoted.
+This guide is the operational path from an unknown vendor binary to a supported Puppeteer agent. It tells you what to investigate, which artifacts to create, where each fact belongs, how to use the adaptation devkit, what to test, and what must be true before support is promoted.
 
 The invariant to remember is:
 
-> **Surface records native evidence. Adapters normalize it. Imposter simulates it. Conformance cross-checks both. Promotion alone declares what Chopsticks supports.**
+> **Surface records native evidence. Adapters normalize it. Imposter simulates it. Conformance cross-checks both. Promotion alone declares what Puppeteer supports.**
 
 All values written as `<vendor>`, `<version>`, `<manifest>`, `<platform>`, or similar are placeholders. Replace them before running a command; do not type the angle brackets literally.
 
@@ -39,7 +39,7 @@ All values written as `<vendor>`, `<version>`, `<manifest>`, `<platform>`, or si
 An agent is not adapted merely because its process launches or one happy-path turn works. A complete adaptation has all of these properties:
 
 1. A pinned vendor artifact and its platform-specific bytes are identifiable.
-2. Every native channel Chopsticks relies on is backed by sanitized evidence and explicit provenance.
+2. Every native channel Puppeteer relies on is backed by sanitized evidence and explicit provenance.
 3. A versioned Agent Surface Model (ASM) describes the native names, shapes, directions, channels, variants, and partial ordering without normalized interpretation.
 4. The `ai` Imposter can reproduce that native contract from a persona and execute realistic and adversarial scenarios.
 5. An adapter observes and controls the real agent, maps native facts into the portable `AgentEvent` contract, and retains unknown native events.
@@ -98,7 +98,7 @@ release metadata + shipped artifacts + exact source/schema + official docs
 | Devkit         | independent native view plus an optional downstream normalization projection                                                     | mutation of native records, a second production state API                                    |
 | Core           | portable event/session contracts and a pure reducer                                                                              | vendor-specific I/O or terminal scraping                                                     |
 | Runtime        | provider composition and application-facing lifecycle                                                                            | vendor-specific branches in `runtime.ts`                                                     |
-| Support ledger | the exact baseline Chopsticks currently promotes                                                                                 | “latest upstream” versions that have not passed promotion                                    |
+| Support ledger | the exact baseline Puppeteer currently promotes                                                                                 | “latest upstream” versions that have not passed promotion                                    |
 
 ### Keep the four graphs distinct
 
@@ -124,11 +124,11 @@ Choose these once and use them consistently:
 | `<vendor>`          | lowercase letters, digits, and hyphens; stable product identity | `claude`, `codex`, `grok`           |
 | `<version>`         | exact normalized vendor artifact version                        | `2.1.226`                           |
 | display name        | user-facing vendor/product name                                 | `Claude Code`                       |
-| adapter package     | `@vibecook/chopsticks-adapter-<vendor>`                         | `@vibecook/chopsticks-adapter-grok` |
-| executable override | `CHOPSTICKS_<VENDOR>_BIN`                                       | `CHOPSTICKS_GROK_BIN`               |
+| adapter package     | `@vibecook/puppeteer-adapter-<vendor>`                         | `@vibecook/puppeteer-adapter-grok` |
+| executable override | `PUPPETEER_<VENDOR>_BIN`                                       | `PUPPETEER_GROK_BIN`               |
 | persona selector    | `ai --<vendor>` and a vendor-named shim                         | `ai --codex`                        |
 
-Track the vendor artifact version, artifact SHA-256/protocol identity, ASM format version, and Chopsticks package version separately. They answer different questions and must never be collapsed into one “version.”
+Track the vendor artifact version, artifact SHA-256/protocol identity, ASM format version, and Puppeteer package version separately. They answer different questions and must never be collapsed into one “version.”
 
 ### 3.2 Choose the integration family from observation, not branding
 
@@ -263,7 +263,7 @@ packages/surface/vendors/<vendor>/
 
 The wildcard for `captures-raw` is already in `.gitignore`. Never commit prompts, responses, account identifiers, home paths, repository contents, bearer tokens, API keys, or raw authenticated state.
 
-Use the shared sanitizer in `@vibecook/chopsticks-surface/sanitize` and extend its rules for vendor-specific fields. Redaction and leak detection must remain paired. Sanitization must preserve types, identifier formats, and cross-record correlation; a fixture whose request and response IDs no longer join is not useful evidence.
+Use the shared sanitizer in `@vibecook/puppeteer-surface/sanitize` and extend its rules for vendor-specific fields. Redaction and leak detection must remain paired. Sanitization must preserve types, identifier formats, and cross-record correlation; a fixture whose request and response IDs no longer join is not useful evidence.
 
 After sanitizing, inspect the result manually and run the detector. Treat a privacy failure as a release blocker, not a test to waive.
 
@@ -408,7 +408,7 @@ Runtime capture and binary probe claims include the record, artifact, platform, 
 Refresh record digests only after the tracked model/capture content is final:
 
 ```sh
-pnpm --filter @vibecook/chopsticks-surface surface:evidence:write
+pnpm --filter @vibecook/puppeteer-surface surface:evidence:write
 ```
 
 Do not use that command to legitimize an unexplained change. Review the changed tree first, then refresh its digest.
@@ -447,9 +447,9 @@ Add a package script in `packages/surface/package.json` named `surface:audit:<ve
 Run:
 
 ```sh
-pnpm --filter @vibecook/chopsticks-surface typecheck
-pnpm --filter @vibecook/chopsticks-surface test
-pnpm --filter @vibecook/chopsticks-surface run surface:audit:<vendor>
+pnpm --filter @vibecook/puppeteer-surface typecheck
+pnpm --filter @vibecook/puppeteer-surface test
+pnpm --filter @vibecook/puppeteer-surface run surface:audit:<vendor>
 pnpm surface:audit
 ```
 
@@ -495,7 +495,7 @@ The persona points to Surface; it does not copy the model:
 {
   "vendor": "<vendor>",
   "asm": {
-    "package": "@vibecook/chopsticks-surface",
+    "package": "@vibecook/puppeteer-surface",
     "path": "vendors/<vendor>/model/<vendor>@<version>"
   },
   "shimNames": ["<vendor-binary>"],
@@ -620,8 +620,8 @@ Run:
 
 ```sh
 node packages/imposter/bin/ai.mjs --<vendor> --version
-pnpm --filter @vibecook/chopsticks-imposter typecheck
-pnpm --filter @vibecook/chopsticks-imposter test
+pnpm --filter @vibecook/puppeteer-imposter typecheck
+pnpm --filter @vibecook/puppeteer-imposter test
 pnpm surface:replay --vendor <vendor> --manifest packages/surface/vendors/<vendor>/model/<vendor>@<version>/manifest.json
 pnpm agent-devkit
 ```
@@ -878,7 +878,7 @@ Exercise:
 - terminal/controller/leader coexistence if applicable;
 - cleanup of processes, sockets, generated settings, and temporary stores.
 
-This lane protects Chopsticks from its own regressions without a vendor binary, credentials, or network. It does not prove the upstream artifact still behaves the same; pinned-real testing does that.
+This lane protects Puppeteer from its own regressions without a vendor binary, credentials, or network. It does not prove the upstream artifact still behaves the same; pinned-real testing does that.
 
 Add the new adapter as an Imposter **development** dependency when the E2E test imports it. It must never become an Imposter production dependency.
 
@@ -893,7 +893,7 @@ Update:
   - `<Vendor>AgentOptions`;
   - `BuiltinCreateAgentSessionOptions` discriminated variant;
 - `packages/runtime/src/providers.ts`:
-  - executable resolution from `CHOPSTICKS_<VENDOR>_BIN`;
+  - executable resolution from `PUPPETEER_<VENDOR>_BIN`;
   - one `AgentProvider` entry;
   - optional account usage;
   - `createSession` and optional `prepareSession`;
@@ -969,7 +969,7 @@ For the first vendor, add a reviewed entry to `support/agents.json`:
   "id": "<vendor>",
   "displayName": "<Display Name>",
   "kind": "vendor",
-  "adapterPackage": "@vibecook/chopsticks-adapter-<vendor>",
+  "adapterPackage": "@vibecook/puppeteer-adapter-<vendor>",
   "persona": "<vendor>",
   "candidateManifest": "packages/surface/vendors/<vendor>/model/<vendor>@<version>/manifest.json",
   "status": "baseline-pending"
@@ -995,7 +995,7 @@ Once all reviewed platform artifacts have been acquired:
 
 ```sh
 pnpm surface:evidence:artifacts --manifest <manifest> --artifacts <acquisition.json>
-pnpm --filter @vibecook/chopsticks-surface surface:evidence:write
+pnpm --filter @vibecook/puppeteer-surface surface:evidence:write
 pnpm surface:replay --vendor <vendor> --manifest <manifest>
 pnpm surface:reconcile --vendor <vendor> --manifest <manifest> --artifacts <acquisition.json>
 ```
@@ -1081,13 +1081,13 @@ Run targeted checks while iterating, then the full matrix before review.
 | Area                  | Command                                                                                 | What it proves                                                                                  |
 | --------------------- | --------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------- |
 | Detector config       | `pnpm upstream:check`                                                                   | every `upstream.json` satisfies policy                                                          |
-| Surface types/tests   | `pnpm --filter @vibecook/chopsticks-surface typecheck` and `test`                       | model/sanitizer runtime and vendor fixtures are sound                                           |
-| Vendor audit          | `pnpm --filter @vibecook/chopsticks-surface run surface:audit:<vendor>`                 | selected candidate matches evidence and vendor-specific checks                                  |
+| Surface types/tests   | `pnpm --filter @vibecook/puppeteer-surface typecheck` and `test`                       | model/sanitizer runtime and vendor fixtures are sound                                           |
+| Vendor audit          | `pnpm --filter @vibecook/puppeteer-surface run surface:audit:<vendor>`                 | selected candidate matches evidence and vendor-specific checks                                  |
 | All Surface           | `pnpm surface:audit`                                                                    | every current/candidate surface remains clean                                                   |
 | Exact replay          | `pnpm surface:replay --vendor <vendor> --manifest <manifest>`                           | captures, model, persona, carriers, directions, and results agree pre-normalization             |
-| Adapter               | `pnpm --filter @vibecook/chopsticks-adapter-<vendor> typecheck` and `test`              | normalization, driver, transport, and shared conformance pass                                   |
-| Imposter              | `pnpm --filter @vibecook/chopsticks-imposter typecheck` and `test`                      | persona/scenarios and adapter-against-Imposter pass                                             |
-| Runtime               | `pnpm --filter @vibecook/chopsticks-runtime typecheck` and `test`                       | provider and typed options are integrated                                                       |
+| Adapter               | `pnpm --filter @vibecook/puppeteer-adapter-<vendor> typecheck` and `test`              | normalization, driver, transport, and shared conformance pass                                   |
+| Imposter              | `pnpm --filter @vibecook/puppeteer-imposter typecheck` and `test`                      | persona/scenarios and adapter-against-Imposter pass                                             |
+| Runtime               | `pnpm --filter @vibecook/puppeteer-runtime typecheck` and `test`                       | provider and typed options are integrated                                                       |
 | Devkit                | `pnpm --filter imposter-control typecheck`, `test`, and `bundle`                        | spawner, native plane, projection, and browser bundle agree                                     |
 | Devkit smoke          | `pnpm agent-devkit:smoke`                                                               | Electron main process starts and shuts down correctly                                           |
 | Godview, when wired   | `pnpm godview:typecheck`, `godview:test`, `godview:bundle`, and `godview:smoke`         | built-in selection, shim/spawn-through, restore, renderer, bundle, and native launch are usable |
@@ -1096,7 +1096,7 @@ Run targeted checks while iterating, then the full matrix before review.
 | Full repository       | `pnpm test`                                                                             | all typechecks, script tests, package tests, and app tests pass                                 |
 | Published shape       | `pnpm pack:check`                                                                       | all public packages build and tarballs contain only allowed files                               |
 
-Run live tests only against an explicitly selected artifact in an isolated environment. Existing examples use `CHOPSTICKS_REAL_CLAUDE=1`, `CODEX_LIVE=1`, and `GROK_LIVE=1`; define and document the equivalent for a new vendor.
+Run live tests only against an explicitly selected artifact in an isolated environment. Existing examples use `PUPPETEER_REAL_CLAUDE=1`, `CODEX_LIVE=1`, and `GROK_LIVE=1`; define and document the equivalent for a new vendor.
 
 For a local Godview smoke run without a Tailscale login, set `GHOSTTEA_TRUFFLE_ENABLED=false`.
 
@@ -1286,4 +1286,4 @@ Use this structure so reviewers can verify the adaptation without reconstructing
 - Promotion status:
 ```
 
-This workflow intentionally makes native evidence, authored simulation, normalized semantics, and support promotion separate reviewable decisions. That separation is what lets Chopsticks add new agents without slowly turning one vendor’s behavior into the universal contract.
+This workflow intentionally makes native evidence, authored simulation, normalized semantics, and support promotion separate reviewable decisions. That separation is what lets Puppeteer add new agents without slowly turning one vendor’s behavior into the universal contract.

@@ -1,6 +1,6 @@
 {
   "executables": ["kimi"],
-  "envVar": "CHOPSTICKS_KIMI_BIN",
+  "envVar": "PUPPETEER_KIMI_BIN",
   "versionFlag": "--version",
   "versionOutput": "0.34.0",
   "versionPattern": "^(\\d+\\.\\d+\\.\\d+)$",

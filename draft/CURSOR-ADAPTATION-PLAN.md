@@ -181,11 +181,11 @@ Closest implementation precedents:
 | Display name | Cursor Agent |
 | User-facing command | `agent` (primary); `cursor-agent` is the legacy shim |
 | TUI launch | `agent` with no subcommand |
-| Adapter package | `@vibecook/chopsticks-adapter-cursor` |
+| Adapter package | `@vibecook/puppeteer-adapter-cursor` |
 | Adapter directory | `packages/adapter-cursor` |
 | Surface directory | `packages/surface/vendors/cursor` |
 | Imposter persona | `packages/imposter/personas/cursor` |
-| Binary override | `CHOPSTICKS_CURSOR_BIN` |
+| Binary override | `PUPPETEER_CURSOR_BIN` |
 | Isolated config | `CURSOR_CONFIG_DIR` |
 | Isolated data | `CURSOR_DATA_DIR` |
 | Live-test opt-in | `CURSOR_LIVE=1` |
@@ -195,8 +195,8 @@ Closest implementation precedents:
 | Resume key | native chat UUID |
 
 Track separately: vendor artifact version (`2026.08.11-e8db854`), platform
-archive SHA-256, bundled Node identity, ASM format version, and Chopsticks
-package version. The date-hash string is not semver and is not a Chopsticks
+archive SHA-256, bundled Node identity, ASM format version, and Puppeteer
+package version. The date-hash string is not semver and is not a Puppeteer
 version.
 
 Account/quota reporting is out of scope unless a native, evidence-backed
@@ -250,7 +250,7 @@ The in-binary `install` fallback uses
 Do not curl `https://cursor.com/install` as the acquisition strategy; the
 script always points at “current latest.”
 
-The usual Chopsticks matrix is `darwin-arm64`, `darwin-x64`, `linux-x64`,
+The usual Puppeteer matrix is `darwin-arm64`, `darwin-x64`, `linux-x64`,
 `windows-x64`. Linux arm64 and Windows arm64 exist and should be recorded as
 optional extra platforms, not silently dropped, and not invented as required
 if promotion runners cannot execute them.
@@ -504,7 +504,7 @@ not the runtime resume API.
 2. Install launch-scoped hooks that POST stdin JSON to a loopback collector.
    Prefer command hooks with `failClosed: false` except for the specific
    gating experiments.
-3. Resolve `CHOPSTICKS_CURSOR_BIN` then `agent` / `cursor-agent`.
+3. Resolve `PUPPETEER_CURSOR_BIN` then `agent` / `cursor-agent`.
 4. If `create-chat` yields a durable UUID, pass `--resume <uuid> --trust
    --disable-auto-update`.
 5. Ask `AgentHost` for one interactive `agent` process. No `-p`, no `acp`.

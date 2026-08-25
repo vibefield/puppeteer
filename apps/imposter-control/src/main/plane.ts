@@ -38,8 +38,8 @@ import {
   type EmittedEntry,
   type Peer,
   type SessionView,
-} from '@vibecook/chopsticks-imposter/control';
-import { describeScenarioDriver } from '@vibecook/chopsticks-imposter/scenario-driver';
+} from '@vibecook/puppeteer-imposter/control';
+import { describeScenarioDriver } from '@vibecook/puppeteer-imposter/scenario-driver';
 
 /** A connection that has not introduced itself by then is not an imposter. */
 const HELLO_GRACE_MS = 5_000;
@@ -604,7 +604,7 @@ export function createControlPlane(options: ControlPlaneOptions = {}): ControlPl
     }
 
     if (path === '/' && req.method === 'GET') {
-      const html = options.uiHtml ?? '<h1>chopsticks imposter control</h1>';
+      const html = options.uiHtml ?? '<h1>puppeteer imposter control</h1>';
       res
         .writeHead(200, {
           'content-type': 'text/html; charset=utf-8',

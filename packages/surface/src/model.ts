@@ -4,7 +4,7 @@
  *
  * This module is SELF-CONTAINED by design: no relative imports, erasable
  * syntax only. Surface-owned audit scripts and adapter projection generators
- * import it as `@vibecook/chopsticks-surface`, which node (≥22.18, type
+ * import it as `@vibecook/puppeteer-surface`, which node (≥22.18, type
  * stripping) can execute — node does not remap the repo's `.js`-suffixed
  * relative imports, so anything reachable from those scripts must live in
  * this one file. It is therefore the package root export, not a barrel.

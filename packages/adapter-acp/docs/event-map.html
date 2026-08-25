@@ -250,7 +250,7 @@
           <div>
             <p class="gt-kicker">Vendor surface · Agent Client Protocol</p>
             <h2>Ground truth</h2>
-            <p class="sub">Full ACP v1 catalog with <strong>input/output field tables</strong> from the official schema, then how chopsticks uses them. Retrieved <time datetime="2026-08-03">2026-08-03</time>.</p>
+            <p class="sub">Full ACP v1 catalog with <strong>input/output field tables</strong> from the official schema, then how puppeteer uses them. Retrieved <time datetime="2026-08-03">2026-08-03</time>.</p>
           </div>
           <nav class="gt-toc">
             <a href="#gt-official">1. Official surface</a>
@@ -274,7 +274,7 @@
             <span class="part-num">1</span>
             <div>
               <h3>Official surface — full definitions &amp; fields</h3>
-              <p>Each method lists Input and Output properties. Each update kind lists payload fields. Badges mark chopsticks adoption.</p>
+              <p>Each method lists Input and Output properties. Each update kind lists payload fields. Badges mark puppeteer adoption.</p>
             </div>
           </div>
           <div class="stat-row">
@@ -556,7 +556,7 @@
   </header>
   <div class="hook-card-body">
     <p>Agent requests structured user input (form or URL modes).</p>
-    <h5>Input (union)</h5><div class="scroll"><table class="def-table"><thead><tr><th>Field</th><th>Type / shape</th><th>Notes</th></tr></thead><tbody><tr><td class="m">message</td><td>string (required)</td><td></td></tr><tr><td class="m">mode</td><td>string (required)</td><td>form | url | extension</td></tr><tr><td class="m">requestedSchema</td><td>ElicitationSchema</td><td>form mode</td></tr><tr><td class="m">url</td><td>uri string</td><td>url mode</td></tr><tr><td class="m">elicitationId</td><td>ElicitationId</td><td>url mode</td></tr></tbody></table></div><h5>Output (union)</h5><div class="scroll"><table class="def-table"><thead><tr><th>Field</th><th>Type / shape</th><th>Notes</th></tr></thead><tbody><tr><td class="m">action</td><td>string (required)</td><td>accept | decline | cancel</td></tr><tr><td class="m">content</td><td>object | null</td><td>accept: schema values</td></tr></tbody></table></div><h5>Chopsticks</h5><p class="hook-usage"><strong>Chopsticks:</strong> typed form schema → question.requested; callback response or URL completion → question.resolved. Supplying a callback automatically advertises the capability.</p>
+    <h5>Input (union)</h5><div class="scroll"><table class="def-table"><thead><tr><th>Field</th><th>Type / shape</th><th>Notes</th></tr></thead><tbody><tr><td class="m">message</td><td>string (required)</td><td></td></tr><tr><td class="m">mode</td><td>string (required)</td><td>form | url | extension</td></tr><tr><td class="m">requestedSchema</td><td>ElicitationSchema</td><td>form mode</td></tr><tr><td class="m">url</td><td>uri string</td><td>url mode</td></tr><tr><td class="m">elicitationId</td><td>ElicitationId</td><td>url mode</td></tr></tbody></table></div><h5>Output (union)</h5><div class="scroll"><table class="def-table"><thead><tr><th>Field</th><th>Type / shape</th><th>Notes</th></tr></thead><tbody><tr><td class="m">action</td><td>string (required)</td><td>accept | decline | cancel</td></tr><tr><td class="m">content</td><td>object | null</td><td>accept: schema values</td></tr></tbody></table></div><h5>Puppeteer</h5><p class="hook-usage"><strong>Puppeteer:</strong> typed form schema → question.requested; callback response or URL completion → question.resolved. Supplying a callback automatically advertises the capability.</p>
   </div>
 </article>
 <article class="hook-card use-used" id="acp-c-elicit-complete">
@@ -583,7 +583,7 @@
   </header>
   <div class="hook-card-body">
     <p>A chunk of the user's message being streamed.</p>
-    <h5>Payload fields (update object)</h5><div class="scroll"><table class="def-table"><thead><tr><th>Field</th><th>Type / shape</th><th>Notes</th></tr></thead><tbody><tr><td class="m">sessionUpdate</td><td>string (required)</td><td>Must be "user_message_chunk"</td></tr><tr><td class="m">content</td><td>ContentBlock (required)</td><td>Single content item</td></tr><tr><td class="m">messageId</td><td>MessageId | null</td><td>Same id = same message</td></tr><tr><td class="m">_meta</td><td>object | null</td><td></td></tr></tbody></table></div><h5>Chopsticks</h5><p class="hook-usage"><strong>Chopsticks:</strong> Dropped — driver already emitted turn.started with our prompt text.</p>
+    <h5>Payload fields (update object)</h5><div class="scroll"><table class="def-table"><thead><tr><th>Field</th><th>Type / shape</th><th>Notes</th></tr></thead><tbody><tr><td class="m">sessionUpdate</td><td>string (required)</td><td>Must be "user_message_chunk"</td></tr><tr><td class="m">content</td><td>ContentBlock (required)</td><td>Single content item</td></tr><tr><td class="m">messageId</td><td>MessageId | null</td><td>Same id = same message</td></tr><tr><td class="m">_meta</td><td>object | null</td><td></td></tr></tbody></table></div><h5>Puppeteer</h5><p class="hook-usage"><strong>Puppeteer:</strong> Dropped — driver already emitted turn.started with our prompt text.</p>
   </div>
 </article>
 <article class="hook-card use-used" id="acp-u-agent_message_chunk">
@@ -595,7 +595,7 @@
   </header>
   <div class="hook-card-body">
     <p>A chunk of the agent's response being streamed.</p>
-    <h5>Payload fields</h5><div class="scroll"><table class="def-table"><thead><tr><th>Field</th><th>Type / shape</th><th>Notes</th></tr></thead><tbody><tr><td class="m">sessionUpdate</td><td>string (required)</td><td>"agent_message_chunk"</td></tr><tr><td class="m">content</td><td>ContentBlock (required)</td><td>Usually type text</td></tr><tr><td class="m">messageId</td><td>MessageId | null</td><td>Chunks with same id = one message</td></tr><tr><td class="m">_meta</td><td>object | null</td><td></td></tr></tbody></table></div><h5>Chopsticks</h5><p class="hook-usage"><strong>Chopsticks:</strong> Accumulate content.text → assistant.message (final:false).</p>
+    <h5>Payload fields</h5><div class="scroll"><table class="def-table"><thead><tr><th>Field</th><th>Type / shape</th><th>Notes</th></tr></thead><tbody><tr><td class="m">sessionUpdate</td><td>string (required)</td><td>"agent_message_chunk"</td></tr><tr><td class="m">content</td><td>ContentBlock (required)</td><td>Usually type text</td></tr><tr><td class="m">messageId</td><td>MessageId | null</td><td>Chunks with same id = one message</td></tr><tr><td class="m">_meta</td><td>object | null</td><td></td></tr></tbody></table></div><h5>Puppeteer</h5><p class="hook-usage"><strong>Puppeteer:</strong> Accumulate content.text → assistant.message (final:false).</p>
   </div>
 </article>
 <article class="hook-card use-used" id="acp-u-agent_thought_chunk">
@@ -607,7 +607,7 @@
   </header>
   <div class="hook-card-body">
     <p>A chunk of the agent's internal reasoning being streamed.</p>
-    <h5>Payload fields</h5><div class="scroll"><table class="def-table"><thead><tr><th>Field</th><th>Type / shape</th><th>Notes</th></tr></thead><tbody><tr><td class="m">sessionUpdate</td><td>string (required)</td><td>"agent_thought_chunk"</td></tr><tr><td class="m">content</td><td>ContentBlock (required)</td><td>Thought text</td></tr><tr><td class="m">messageId</td><td>MessageId | null</td><td></td></tr><tr><td class="m">_meta</td><td>object | null</td><td></td></tr></tbody></table></div><h5>Chopsticks</h5><p class="hook-usage"><strong>Chopsticks:</strong> reasoning.started then reasoning.progress; raw content on envelope only.</p>
+    <h5>Payload fields</h5><div class="scroll"><table class="def-table"><thead><tr><th>Field</th><th>Type / shape</th><th>Notes</th></tr></thead><tbody><tr><td class="m">sessionUpdate</td><td>string (required)</td><td>"agent_thought_chunk"</td></tr><tr><td class="m">content</td><td>ContentBlock (required)</td><td>Thought text</td></tr><tr><td class="m">messageId</td><td>MessageId | null</td><td></td></tr><tr><td class="m">_meta</td><td>object | null</td><td></td></tr></tbody></table></div><h5>Puppeteer</h5><p class="hook-usage"><strong>Puppeteer:</strong> reasoning.started then reasoning.progress; raw content on envelope only.</p>
   </div>
 </article>
 <article class="hook-card use-used" id="acp-u-tool_call">
@@ -619,7 +619,7 @@
   </header>
   <div class="hook-card-body">
     <p>Agent reports a new tool call.</p>
-    <h5>Payload fields</h5><div class="scroll"><table class="def-table"><thead><tr><th>Field</th><th>Type / shape</th><th>Notes</th></tr></thead><tbody><tr><td class="m">sessionUpdate</td><td>string (required)</td><td>"tool_call"</td></tr><tr><td class="m">toolCallId</td><td>ToolCallId (required)</td><td>Unique within session</td></tr><tr><td class="m">title</td><td>string (required)</td><td>Human-readable title</td></tr><tr><td class="m">kind</td><td>ToolKind</td><td>read|edit|delete|move|search|execute|think|fetch|other</td></tr><tr><td class="m">status</td><td>ToolCallStatus</td><td>pending (default)|in_progress|completed|failed</td></tr><tr><td class="m">content</td><td>ToolCallContent[]</td><td>content | diff | terminal</td></tr><tr><td class="m">locations</td><td>ToolCallLocation[]</td><td>path + optional line</td></tr><tr><td class="m">rawInput</td><td>object</td><td>Raw tool parameters</td></tr><tr><td class="m">rawOutput</td><td>object</td><td>Raw tool result</td></tr><tr><td class="m">_meta</td><td>object | null</td><td></td></tr></tbody></table></div><h5>Chopsticks</h5><p class="hook-usage"><strong>Chopsticks:</strong> tool.started; also tool.completed/failed if status already terminal.</p>
+    <h5>Payload fields</h5><div class="scroll"><table class="def-table"><thead><tr><th>Field</th><th>Type / shape</th><th>Notes</th></tr></thead><tbody><tr><td class="m">sessionUpdate</td><td>string (required)</td><td>"tool_call"</td></tr><tr><td class="m">toolCallId</td><td>ToolCallId (required)</td><td>Unique within session</td></tr><tr><td class="m">title</td><td>string (required)</td><td>Human-readable title</td></tr><tr><td class="m">kind</td><td>ToolKind</td><td>read|edit|delete|move|search|execute|think|fetch|other</td></tr><tr><td class="m">status</td><td>ToolCallStatus</td><td>pending (default)|in_progress|completed|failed</td></tr><tr><td class="m">content</td><td>ToolCallContent[]</td><td>content | diff | terminal</td></tr><tr><td class="m">locations</td><td>ToolCallLocation[]</td><td>path + optional line</td></tr><tr><td class="m">rawInput</td><td>object</td><td>Raw tool parameters</td></tr><tr><td class="m">rawOutput</td><td>object</td><td>Raw tool result</td></tr><tr><td class="m">_meta</td><td>object | null</td><td></td></tr></tbody></table></div><h5>Puppeteer</h5><p class="hook-usage"><strong>Puppeteer:</strong> tool.started; also tool.completed/failed if status already terminal.</p>
   </div>
 </article>
 <article class="hook-card use-used" id="acp-u-tool_call_update">
@@ -631,7 +631,7 @@
   </header>
   <div class="hook-card-body">
     <p>Partial update on a tool call. All fields except toolCallId optional.</p>
-    <h5>Payload fields</h5><div class="scroll"><table class="def-table"><thead><tr><th>Field</th><th>Type / shape</th><th>Notes</th></tr></thead><tbody><tr><td class="m">sessionUpdate</td><td>string (required)</td><td>"tool_call_update"</td></tr><tr><td class="m">toolCallId</td><td>ToolCallId (required)</td><td></td></tr><tr><td class="m">title</td><td>string | null</td><td></td></tr><tr><td class="m">kind</td><td>ToolKind | null</td><td></td></tr><tr><td class="m">status</td><td>ToolCallStatus | null</td><td>pending|in_progress|completed|failed</td></tr><tr><td class="m">content</td><td>ToolCallContent[] | null</td><td>Replace content collection</td></tr><tr><td class="m">locations</td><td>ToolCallLocation[] | null</td><td></td></tr><tr><td class="m">rawInput</td><td>object | null</td><td></td></tr><tr><td class="m">rawOutput</td><td>object | null</td><td></td></tr><tr><td class="m">_meta</td><td>object | null</td><td></td></tr></tbody></table></div><h5>Chopsticks</h5><p class="hook-usage"><strong>Chopsticks:</strong> tool.completed / tool.failed on terminal status; pending/in_progress ignored.</p>
+    <h5>Payload fields</h5><div class="scroll"><table class="def-table"><thead><tr><th>Field</th><th>Type / shape</th><th>Notes</th></tr></thead><tbody><tr><td class="m">sessionUpdate</td><td>string (required)</td><td>"tool_call_update"</td></tr><tr><td class="m">toolCallId</td><td>ToolCallId (required)</td><td></td></tr><tr><td class="m">title</td><td>string | null</td><td></td></tr><tr><td class="m">kind</td><td>ToolKind | null</td><td></td></tr><tr><td class="m">status</td><td>ToolCallStatus | null</td><td>pending|in_progress|completed|failed</td></tr><tr><td class="m">content</td><td>ToolCallContent[] | null</td><td>Replace content collection</td></tr><tr><td class="m">locations</td><td>ToolCallLocation[] | null</td><td></td></tr><tr><td class="m">rawInput</td><td>object | null</td><td></td></tr><tr><td class="m">rawOutput</td><td>object | null</td><td></td></tr><tr><td class="m">_meta</td><td>object | null</td><td></td></tr></tbody></table></div><h5>Puppeteer</h5><p class="hook-usage"><strong>Puppeteer:</strong> tool.completed / tool.failed on terminal status; pending/in_progress ignored.</p>
   </div>
 </article>
 <article class="hook-card use-used" id="acp-u-plan">
@@ -643,7 +643,7 @@
   </header>
   <div class="hook-card-body">
     <p>Agent execution plan entries.</p>
-    <h5>Payload fields</h5><div class="scroll"><table class="def-table"><thead><tr><th>Field</th><th>Type / shape</th><th>Notes</th></tr></thead><tbody><tr><td class="m">sessionUpdate</td><td>string (required)</td><td>"plan"</td></tr><tr><td class="m">entries</td><td>PlanEntry[] (required)</td><td>content, priority, status (pending|in_progress|completed)</td></tr><tr><td class="m">_meta</td><td>object | null</td><td></td></tr></tbody></table></div><h5>Chopsticks</h5><p class="hook-usage"><strong>Chopsticks:</strong> complete snapshot → monitor plan replacement. Entries are not promoted to independently identified tasks.</p>
+    <h5>Payload fields</h5><div class="scroll"><table class="def-table"><thead><tr><th>Field</th><th>Type / shape</th><th>Notes</th></tr></thead><tbody><tr><td class="m">sessionUpdate</td><td>string (required)</td><td>"plan"</td></tr><tr><td class="m">entries</td><td>PlanEntry[] (required)</td><td>content, priority, status (pending|in_progress|completed)</td></tr><tr><td class="m">_meta</td><td>object | null</td><td></td></tr></tbody></table></div><h5>Puppeteer</h5><p class="hook-usage"><strong>Puppeteer:</strong> complete snapshot → monitor plan replacement. Entries are not promoted to independently identified tasks.</p>
   </div>
 </article>
 <article class="hook-card use-unused" id="acp-u-available_commands_update">
@@ -667,7 +667,7 @@
   </header>
   <div class="hook-card-body">
     <p>Agent changed session mode autonomously.</p>
-    <h5>Payload fields</h5><div class="scroll"><table class="def-table"><thead><tr><th>Field</th><th>Type / shape</th><th>Notes</th></tr></thead><tbody><tr><td class="m">sessionUpdate</td><td>string (required)</td><td>"current_mode_update"</td></tr><tr><td class="m">currentModeId</td><td>SessionModeId (required)</td><td></td></tr><tr><td class="m">_meta</td><td>object | null</td><td></td></tr></tbody></table></div><h5>Chopsticks</h5><p class="hook-usage"><strong>Chopsticks:</strong> provider-session mode update; raw open-string ID retained.</p>
+    <h5>Payload fields</h5><div class="scroll"><table class="def-table"><thead><tr><th>Field</th><th>Type / shape</th><th>Notes</th></tr></thead><tbody><tr><td class="m">sessionUpdate</td><td>string (required)</td><td>"current_mode_update"</td></tr><tr><td class="m">currentModeId</td><td>SessionModeId (required)</td><td></td></tr><tr><td class="m">_meta</td><td>object | null</td><td></td></tr></tbody></table></div><h5>Puppeteer</h5><p class="hook-usage"><strong>Puppeteer:</strong> provider-session mode update; raw open-string ID retained.</p>
   </div>
 </article>
 <article class="hook-card use-used" id="acp-u-config_option_update">
@@ -679,7 +679,7 @@
   </header>
   <div class="hook-card-body">
     <p>Session configuration options updated.</p>
-    <h5>Payload fields</h5><div class="scroll"><table class="def-table"><thead><tr><th>Field</th><th>Type / shape</th><th>Notes</th></tr></thead><tbody><tr><td class="m">sessionUpdate</td><td>string (required)</td><td>"config_option_update"</td></tr><tr><td class="m">configOptions</td><td>SessionConfigOption[] (required)</td><td>Full set and current values</td></tr><tr><td class="m">_meta</td><td>object | null</td><td></td></tr></tbody></table></div><h5>Chopsticks</h5><p class="hook-usage"><strong>Chopsticks:</strong> standard model, thought_level, and mode categories → monitor model, effort, and provider-session mode. Provider labels alone never prove a model.</p>
+    <h5>Payload fields</h5><div class="scroll"><table class="def-table"><thead><tr><th>Field</th><th>Type / shape</th><th>Notes</th></tr></thead><tbody><tr><td class="m">sessionUpdate</td><td>string (required)</td><td>"config_option_update"</td></tr><tr><td class="m">configOptions</td><td>SessionConfigOption[] (required)</td><td>Full set and current values</td></tr><tr><td class="m">_meta</td><td>object | null</td><td></td></tr></tbody></table></div><h5>Puppeteer</h5><p class="hook-usage"><strong>Puppeteer:</strong> standard model, thought_level, and mode categories → monitor model, effort, and provider-session mode. Provider labels alone never prove a model.</p>
   </div>
 </article>
 <article class="hook-card use-unused" id="acp-u-session_info_update">
@@ -703,7 +703,7 @@
   </header>
   <div class="hook-card-body">
     <p>Context window and cost update for the session.</p>
-    <h5>Payload fields</h5><div class="scroll"><table class="def-table"><thead><tr><th>Field</th><th>Type / shape</th><th>Notes</th></tr></thead><tbody><tr><td class="m">sessionUpdate</td><td>string (required)</td><td>"usage_update"</td></tr><tr><td class="m">used</td><td>number (required)</td><td>Non-null tokens used in current context</td></tr><tr><td class="m">size</td><td>number (required)</td><td>Non-null effective context capacity</td></tr><tr><td class="m">cost</td><td>Cost | null</td><td>Optional { amount, currency } ISO 4217</td></tr><tr><td class="m">_meta</td><td>object | null</td><td></td></tr></tbody></table></div><h5>Chopsticks</h5><p class="hook-usage"><strong>Chopsticks:</strong> context-window.updated plus monitor context percentage. It is never treated as token burn. No invalidated event exists in plain ACP.</p>
+    <h5>Payload fields</h5><div class="scroll"><table class="def-table"><thead><tr><th>Field</th><th>Type / shape</th><th>Notes</th></tr></thead><tbody><tr><td class="m">sessionUpdate</td><td>string (required)</td><td>"usage_update"</td></tr><tr><td class="m">used</td><td>number (required)</td><td>Non-null tokens used in current context</td></tr><tr><td class="m">size</td><td>number (required)</td><td>Non-null effective context capacity</td></tr><tr><td class="m">cost</td><td>Cost | null</td><td>Optional { amount, currency } ISO 4217</td></tr><tr><td class="m">_meta</td><td>object | null</td><td></td></tr></tbody></table></div><h5>Puppeteer</h5><p class="hook-usage"><strong>Puppeteer:</strong> context-window.updated plus monitor context percentage. It is never treated as token burn. No invalidated event exists in plain ACP.</p>
   </div>
 </article></div>
           <h4>ContentBlock &amp; StopReason</h4>
@@ -716,7 +716,7 @@
           <div class="gt-part-head part-ours">
             <span class="part-num">2</span>
             <div>
-              <h3>How chopsticks uses this surface</h3>
+              <h3>How puppeteer uses this surface</h3>
               <p><code>connection.ts</code> · <code>driver.ts</code> · <code>normalizer.ts</code></p>
             </div>
           </div>
@@ -893,7 +893,7 @@ flowchart LR
       </div>
 
       <h2>Tracked: derived from our own calls (driver)</h2>
-      <p>These are not the agent telling us anything. They are chopsticks narrating its own actions.</p>
+      <p>These are not the agent telling us anything. They are puppeteer narrating its own actions.</p>
       <div class="scroll">
         <table>
           <thead><tr><th>Trigger</th><th>Normalized</th><th>Fold</th><th>Visual status</th><th>Honesty note</th></tr></thead>

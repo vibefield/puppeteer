@@ -160,18 +160,18 @@ export function createImposterSession(options: ImposterSessionOptions): Imposter
   const declaredNativeRoot = persona.document.nativeStore?.rootEnv
     ? env[persona.document.nativeStore.rootEnv]
     : undefined;
-  const configuredRoot = env.CHOPSTICKS_IMPOSTER_HOME ?? declaredNativeRoot;
-  const transcriptRoot = configuredRoot ?? mkdtempSync(join(tmpdir(), `chopsticks-imposter-${persona.vendor}-`));
+  const configuredRoot = env.PUPPETEER_IMPOSTER_HOME ?? declaredNativeRoot;
+  const transcriptRoot = configuredRoot ?? mkdtempSync(join(tmpdir(), `puppeteer-imposter-${persona.vendor}-`));
   if (!configuredRoot) {
     process.once('exit', () => rmSync(transcriptRoot, { recursive: true, force: true }));
   }
   if (
-    env.CHOPSTICKS_IMPOSTER_HOME &&
+    env.PUPPETEER_IMPOSTER_HOME &&
     declaredNativeRoot &&
-    resolve(env.CHOPSTICKS_IMPOSTER_HOME) !== resolve(declaredNativeRoot)
+    resolve(env.PUPPETEER_IMPOSTER_HOME) !== resolve(declaredNativeRoot)
   ) {
     throw new Error(
-      `imposter ${persona.vendor} requires CHOPSTICKS_IMPOSTER_HOME and ${persona.document.nativeStore?.rootEnv} to name the same isolated root`,
+      `imposter ${persona.vendor} requires PUPPETEER_IMPOSTER_HOME and ${persona.document.nativeStore?.rootEnv} to name the same isolated root`,
     );
   }
   const slug = cwd.replace(/[^a-zA-Z0-9]/g, '-');

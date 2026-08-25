@@ -3,7 +3,7 @@
   "vendor": "hermes",
   "vendorVersion": "0.20.0",
   "platform": "darwin-arm64",
-  "artifact": "$CHOPSTICKS_HERMES_BIN",
+  "artifact": "$PUPPETEER_HERMES_BIN",
   "identity": "source-revision-and-lockfile",
   "note": "hermes is a Python console script; product identity is the pinned checkout, not the wrapper bytes.",
   "versionArgs": ["--version"],

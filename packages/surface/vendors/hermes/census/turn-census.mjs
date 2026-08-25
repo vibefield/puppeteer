@@ -62,7 +62,7 @@ export const SCENARIOS = {
     waitFor: ['tool.start', 'message.complete'],
   },
   'permission-deny': {
-    prompt: 'Use the terminal tool to run rm -rf /tmp/chopsticks-hermes-census-scratch.',
+    prompt: 'Use the terminal tool to run rm -rf /tmp/puppeteer-hermes-census-scratch.',
     responses: [
       [
         { delta: { role: 'assistant' } },
@@ -73,7 +73,7 @@ export const SCENARIOS = {
                 index: 0,
                 id: 'call_census_rm',
                 type: 'function',
-                function: { name: 'terminal', arguments: '{"command":"rm -rf /tmp/chopsticks-hermes-census-scratch"}' },
+                function: { name: 'terminal', arguments: '{"command":"rm -rf /tmp/puppeteer-hermes-census-scratch"}' },
               },
             ],
           },
@@ -130,10 +130,10 @@ function sleep(ms) {
 
 function openAiChunk(responseIndex, chunkIndex, chunk) {
   return {
-    id: `chatcmpl-chopsticks-hermes-${responseIndex + 1}`,
+    id: `chatcmpl-puppeteer-hermes-${responseIndex + 1}`,
     object: 'chat.completion.chunk',
     created: 1_786_339_200 + responseIndex,
-    model: 'chopsticks-hermes-census',
+    model: 'puppeteer-hermes-census',
     choices: [
       {
         index: 0,
@@ -168,7 +168,7 @@ async function startFakeProvider(scenario) {
         response.end(
           JSON.stringify({
             object: 'list',
-            data: [{ id: 'chopsticks-hermes-census', object: 'model', owned_by: 'chopsticks' }],
+            data: [{ id: 'puppeteer-hermes-census', object: 'model', owned_by: 'puppeteer' }],
           }),
         );
         return;
@@ -250,7 +250,7 @@ function writeHome(home, { providerUrl, webhookUrl, workspace }) {
     join(home, 'config.yaml'),
     [
       'model:',
-      '  default: chopsticks-hermes-census',
+      '  default: puppeteer-hermes-census',
       '  provider: custom',
       `  base_url: ${JSON.stringify(providerUrl)}`,
       '  api_key: census-placeholder',
@@ -296,7 +296,7 @@ function createGateway({ python, checkout, home, workspace, logPath, hookLog }) 
       PYTHONPATH: checkout,
       HERMES_ACCEPT_HOOKS: '1',
       OPENAI_API_KEY: 'census-placeholder',
-      CHOPSTICKS_HERMES_HOOK_LOG: hookLog,
+      PUPPETEER_HERMES_HOOK_LOG: hookLog,
       TERM: 'dumb',
       LANG: 'C',
     },
@@ -400,7 +400,7 @@ export async function runScenario({ name, python, checkout, outputRoot, previous
   const provider = await startFakeProvider(scenario);
   const webhooks = await startWebhookCollector();
   const reused = scenario.resumeAfter ? previous?.[scenario.resumeAfter] : undefined;
-  const home = reused?.home ?? mkdtempSync(join(tmpdir(), `chopsticks-hermes-census-${name}-`));
+  const home = reused?.home ?? mkdtempSync(join(tmpdir(), `puppeteer-hermes-census-${name}-`));
   const workspace = join(home, 'workspace');
   writeHome(home, { providerUrl: provider.baseUrl, webhookUrl: webhooks.url, workspace });
   const gateway = createGateway({

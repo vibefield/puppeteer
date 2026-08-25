@@ -57,7 +57,7 @@ describe('claude persona scenarios', () => {
     for (const name of available) {
       const document = JSON.parse(readFileSync(join(scenarioDir, `${name}.json`), 'utf8')) as { name: string };
       expect(document.name).toBe(name);
-      const directory = mkdtempSync(join(tmpdir(), `chopsticks-${name}-`));
+      const directory = mkdtempSync(join(tmpdir(), `puppeteer-${name}-`));
       temporaryDirectories.push(directory);
       const transcriptPath = join(directory, 'transcript.jsonl');
       const faults: string[] = [];

@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import type { AdapterMonitorObservationBatch, MonitorFamilyUpdate } from '@vibecook/chopsticks-core/monitor-spi';
+import type { AdapterMonitorObservationBatch, MonitorFamilyUpdate } from '@vibecook/puppeteer-core/monitor-spi';
 import { ClaudeMonitorEvidence } from './monitor-evidence.js';
 
 const SESSION_ID = '00000000-0000-4000-8000-0000000000b2';

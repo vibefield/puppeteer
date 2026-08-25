@@ -1,5 +1,5 @@
 {
-  "name": "@vibecook/chopsticks-adapter-claude",
+  "name": "@vibecook/puppeteer-adapter-claude",
   "version": "0.1.8",
   "type": "module",
   "description": "Claude Code native adapter: hook registry, loopback hook bridge, event normalizer, settings generation.",
@@ -7,7 +7,7 @@
   "author": "James Yong",
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/vibecook-dev/chopsticks.git",
+    "url": "git+https://github.com/vibecook-dev/puppeteer.git",
     "directory": "packages/adapter-claude"
   },
   "main": "./src/index.ts",
@@ -45,11 +45,11 @@
     "node": ">=22.18.0"
   },
   "dependencies": {
-    "@vibecook/chopsticks-core": "workspace:*",
+    "@vibecook/puppeteer-core": "workspace:*",
     "@vibecook/spaghetti-sdk": "0.7.0"
   },
   "devDependencies": {
-    "@vibecook/chopsticks-surface": "workspace:*",
-    "@vibecook/chopsticks-testing": "workspace:*"
+    "@vibecook/puppeteer-surface": "workspace:*",
+    "@vibecook/puppeteer-testing": "workspace:*"
   }
 }

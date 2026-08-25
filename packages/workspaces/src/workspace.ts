@@ -32,13 +32,13 @@ export interface WorkspaceRequest {
   mode: WorkspaceMode;
   /** New worktree: ref to branch from; default HEAD. */
   baseRef?: string;
-  /** New worktree: branch name; default chopsticks/<id>. */
+  /** New worktree: branch name; default puppeteer/<id>. */
   branchName?: string;
   /** Resume a previously created worktree branch. */
   resumeBranch?: string;
   /** Adopt a retained worktree instead of materializing it again. */
   resumeRoot?: string;
-  /** Where worktrees/copies materialize; default ~/.chopsticks/workspaces. */
+  /** Where worktrees/copies materialize; default ~/.puppeteer/workspaces. */
   workspacesRoot?: string;
   /** Stable identity supplied only when reconstructing an already allocated workspace. */
   workspaceInstanceId?: string;
@@ -109,7 +109,7 @@ export class WorkspaceError extends Error {
   }
 }
 
-const DEFAULT_WORKSPACES_ROOT = path.join(homedir(), '.chopsticks', 'workspaces');
+const DEFAULT_WORKSPACES_ROOT = path.join(homedir(), '.puppeteer', 'workspaces');
 
 /**
  * Canonical cooperative-lock identity. Paths inside the same checkout (and
@@ -279,7 +279,7 @@ async function createWorktree(
   }
 
   const sourcePath = await workspaceIdentity(request.path);
-  const branch = request.resumeBranch ?? request.branchName ?? `chopsticks/${workspaceInstanceId}`;
+  const branch = request.resumeBranch ?? request.branchName ?? `puppeteer/${workspaceInstanceId}`;
   let root = path.join(workspacesRoot, workspaceInstanceId);
   if (request.resumeRoot) {
     try {

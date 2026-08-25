@@ -1,11 +1,11 @@
 import { describe, expect, it } from 'vitest';
-import { AGENT_MONITOR_SCHEMA_VERSION, type AgentMonitorState } from '@vibecook/chopsticks-core';
+import { AGENT_MONITOR_SCHEMA_VERSION, type AgentMonitorState } from '@vibecook/puppeteer-core';
 import type {
   AcknowledgeAgentFailureRequest,
   AgentMonitorNotificationMessage,
   AgentMonitorRemovedMessage,
   AgentMonitorStateMessage,
-  ChopsticksBridge,
+  PuppeteerBridge,
   ReadAgentMonitorArtifactRequest,
 } from './protocol.js';
 
@@ -65,7 +65,7 @@ describe('Godview monitor IPC protocol', () => {
       artifactId: 'workflow-1',
       maxBytes: 4096,
     };
-    const bridgeMethods: (keyof ChopsticksBridge)[] = [
+    const bridgeMethods: (keyof PuppeteerBridge)[] = [
       'agentMonitorConfiguration',
       'listAgentMonitors',
       'onAgentMonitorState',

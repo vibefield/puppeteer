@@ -18,7 +18,7 @@ afterEach(() => {
 
 describe('Kimi native persona', () => {
   it('materializes the real nested flat-wire layout and preserves native turn-id types and sequence', async () => {
-    const home = mkdtempSync(join(tmpdir(), 'chopsticks-kimi-persona-'));
+    const home = mkdtempSync(join(tmpdir(), 'puppeteer-kimi-persona-'));
     roots.push(home);
     const session = createImposterSession({
       persona,
@@ -107,7 +107,7 @@ describe('Kimi native persona', () => {
     ).toEqual(expect.arrayContaining(required));
 
     for (const name of required) {
-      const root = mkdtempSync(join(tmpdir(), `chopsticks-kimi-${name}-`));
+      const root = mkdtempSync(join(tmpdir(), `puppeteer-kimi-${name}-`));
       roots.push(root);
       const emitted: Array<{ event: string; channel?: string }> = [];
       const runner = createScenarioRunner({

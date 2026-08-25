@@ -1,5 +1,5 @@
 {
-  "name": "chopsticks",
+  "name": "puppeteer",
   "version": "0.1.8",
   "private": true,
   "type": "module",
@@ -8,11 +8,11 @@
   "author": "James Yong",
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/vibecook-dev/chopsticks.git"
+    "url": "git+https://github.com/vibecook-dev/puppeteer.git"
   },
-  "homepage": "https://github.com/vibecook-dev/chopsticks#readme",
+  "homepage": "https://github.com/vibecook-dev/puppeteer#readme",
   "bugs": {
-    "url": "https://github.com/vibecook-dev/chopsticks/issues"
+    "url": "https://github.com/vibecook-dev/puppeteer/issues"
   },
   "scripts": {
     "build": "pnpm -r build",
@@ -32,7 +32,7 @@
     "emulator": "pnpm agent-devkit",
     "emulator:smoke": "pnpm agent-devkit:smoke",
     "ai:link": "pnpm add --global ./packages/imposter",
-    "surface:audit": "pnpm --filter @vibecook/chopsticks-surface run surface:audit",
+    "surface:audit": "pnpm --filter @vibecook/puppeteer-surface run surface:audit",
     "packages:check": "node scripts/check-package-layout.mjs",
     "packages:clean": "node scripts/clean-packages.mjs",
     "support:check": "node scripts/render-agent-support.mjs --check",
@@ -61,6 +61,6 @@
     "prettier": "^3.3.0",
     "typescript": "^5.5.0",
     "vitest": "^3.0.0",
-    "@vibecook/chopsticks-surface": "workspace:*"
+    "@vibecook/puppeteer-surface": "workspace:*"
   }
 }

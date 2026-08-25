@@ -39,7 +39,7 @@
  * session.
  */
 
-import type { AgentEvent, AgentModelIdentity, ToolActivityKind, ToolPresentation } from '@vibecook/chopsticks-core';
+import type { AgentEvent, AgentModelIdentity, ToolActivityKind, ToolPresentation } from '@vibecook/puppeteer-core';
 import type { ContentBlock, SessionConfigOption, SessionNotification, SessionUpdate } from '@agentclientprotocol/sdk';
 
 export interface NormalizedUpdate {

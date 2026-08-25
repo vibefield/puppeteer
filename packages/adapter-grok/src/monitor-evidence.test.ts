@@ -4,7 +4,7 @@ import {
   agentServiceEventType,
   type AgentEvent,
   type AgentEventEnvelope,
-} from '@vibecook/chopsticks-core';
+} from '@vibecook/puppeteer-core';
 import { GROK_MONITOR_CAPABILITIES, GrokMonitorEvidence } from './monitor-evidence.js';
 import type { GrokObservedEvent } from './session-observer.js';
 

@@ -1,11 +1,11 @@
 /**
  * Own-action record (DESIGN §22.1, rescoped 2026-07-13).
  *
- * The append-only log of what the chopsticks RUNTIME itself did — the one
+ * The append-only log of what the puppeteer RUNTIME itself did — the one
  * class of data with no other emitter. Injection receipts, workspace finals,
  * exit classifications, and policy conflicts exist nowhere in an agent's
  * transcript (the agent never knew about them), so per the emitter-writes-a-
- * file rule chopsticks writes them down; Spaghetti can index the file later
+ * file rule puppeteer writes them down; Spaghetti can index the file later
  * if search is ever wanted. This is NOT a mirror of agent history and never
  * grows into one.
  */

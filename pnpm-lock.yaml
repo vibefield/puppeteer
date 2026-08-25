@@ -14,7 +14,7 @@ importers:
       '@types/node':
         specifier: ^22.0.0
         version: 22.20.1
-      '@vibecook/chopsticks-surface':
+      '@vibecook/puppeteer-surface':
         specifier: workspace:*
         version: link:packages/surface
       prettier:
@@ -32,16 +32,16 @@ importers:
       '@parcel/watcher':
         specifier: ^2.5.0
         version: 2.5.6
-      '@vibecook/chopsticks-core':
+      '@vibecook/puppeteer-core':
         specifier: workspace:*
         version: link:../../packages/core
-      '@vibecook/chopsticks-record':
+      '@vibecook/puppeteer-record':
         specifier: workspace:*
         version: link:../../packages/record
-      '@vibecook/chopsticks-runtime':
+      '@vibecook/puppeteer-runtime':
         specifier: workspace:*
         version: link:../../packages/runtime
-      '@vibecook/chopsticks-workspaces':
+      '@vibecook/puppeteer-workspaces':
         specifier: workspace:*
         version: link:../../packages/workspaces
       '@vibecook/ghosttea-electron':
@@ -102,25 +102,25 @@ importers:
       '@parcel/watcher':
         specifier: ^2.5.0
         version: 2.5.6
-      '@vibecook/chopsticks-adapter-claude':
+      '@vibecook/puppeteer-adapter-claude':
         specifier: workspace:*
         version: link:../../packages/adapter-claude
-      '@vibecook/chopsticks-adapter-codex':
+      '@vibecook/puppeteer-adapter-codex':
         specifier: workspace:*
         version: link:../../packages/adapter-codex
-      '@vibecook/chopsticks-adapter-hermes':
+      '@vibecook/puppeteer-adapter-hermes':
         specifier: workspace:*
         version: link:../../packages/adapter-hermes
-      '@vibecook/chopsticks-adapter-kimi':
+      '@vibecook/puppeteer-adapter-kimi':
         specifier: workspace:*
         version: link:../../packages/adapter-kimi
-      '@vibecook/chopsticks-adapter-opencode':
+      '@vibecook/puppeteer-adapter-opencode':
         specifier: workspace:*
         version: link:../../packages/adapter-opencode
-      '@vibecook/chopsticks-core':
+      '@vibecook/puppeteer-core':
         specifier: workspace:*
         version: link:../../packages/core
-      '@vibecook/chopsticks-imposter':
+      '@vibecook/puppeteer-imposter':
         specifier: workspace:*
         version: link:../../packages/imposter
       react:
@@ -154,66 +154,66 @@ importers:
       '@agentclientprotocol/sdk':
         specifier: 1.2.1
         version: 1.2.1(zod@4.4.3)
-      '@vibecook/chopsticks-core':
+      '@vibecook/puppeteer-core':
         specifier: workspace:*
         version: link:../core
     devDependencies:
-      '@vibecook/chopsticks-testing':
+      '@vibecook/puppeteer-testing':
         specifier: workspace:*
         version: link:../testing
 
   packages/adapter-claude:
     dependencies:
-      '@vibecook/chopsticks-core':
+      '@vibecook/puppeteer-core':
         specifier: workspace:*
         version: link:../core
       '@vibecook/spaghetti-sdk':
         specifier: link:../../../p008/spaghetti/packages/sdk
         version: link:../../../p008/spaghetti/packages/sdk
     devDependencies:
-      '@vibecook/chopsticks-surface':
+      '@vibecook/puppeteer-surface':
         specifier: workspace:*
         version: link:../surface
-      '@vibecook/chopsticks-testing':
+      '@vibecook/puppeteer-testing':
         specifier: workspace:*
         version: link:../testing
 
   packages/adapter-codex:
     dependencies:
-      '@vibecook/chopsticks-core':
+      '@vibecook/puppeteer-core':
         specifier: workspace:*
         version: link:../core
     devDependencies:
-      '@vibecook/chopsticks-surface':
+      '@vibecook/puppeteer-surface':
         specifier: workspace:*
         version: link:../surface
-      '@vibecook/chopsticks-testing':
+      '@vibecook/puppeteer-testing':
         specifier: workspace:*
         version: link:../testing
 
   packages/adapter-grok:
     dependencies:
-      '@vibecook/chopsticks-adapter-acp':
+      '@vibecook/puppeteer-adapter-acp':
         specifier: workspace:*
         version: link:../adapter-acp
-      '@vibecook/chopsticks-core':
+      '@vibecook/puppeteer-core':
         specifier: workspace:*
         version: link:../core
     devDependencies:
-      '@vibecook/chopsticks-testing':
+      '@vibecook/puppeteer-testing':
         specifier: workspace:*
         version: link:../testing
 
   packages/adapter-hermes:
     dependencies:
-      '@vibecook/chopsticks-core':
+      '@vibecook/puppeteer-core':
         specifier: workspace:*
         version: link:../core
     devDependencies:
-      '@vibecook/chopsticks-surface':
+      '@vibecook/puppeteer-surface':
         specifier: workspace:*
         version: link:../surface
-      '@vibecook/chopsticks-testing':
+      '@vibecook/puppeteer-testing':
         specifier: workspace:*
         version: link:../testing
       vitest:
@@ -222,11 +222,11 @@ importers:
 
   packages/adapter-kimi:
     dependencies:
-      '@vibecook/chopsticks-core':
+      '@vibecook/puppeteer-core':
         specifier: workspace:*
         version: link:../core
     devDependencies:
-      '@vibecook/chopsticks-testing':
+      '@vibecook/puppeteer-testing':
         specifier: workspace:*
         version: link:../testing
       vitest:
@@ -235,14 +235,14 @@ importers:
 
   packages/adapter-opencode:
     dependencies:
-      '@vibecook/chopsticks-core':
+      '@vibecook/puppeteer-core':
         specifier: workspace:*
         version: link:../core
     devDependencies:
-      '@vibecook/chopsticks-surface':
+      '@vibecook/puppeteer-surface':
         specifier: workspace:*
         version: link:../surface
-      '@vibecook/chopsticks-testing':
+      '@vibecook/puppeteer-testing':
         specifier: workspace:*
         version: link:../testing
       vitest:
@@ -257,7 +257,7 @@ importers:
 
   packages/imposter:
     dependencies:
-      '@vibecook/chopsticks-surface':
+      '@vibecook/puppeteer-surface':
         specifier: workspace:*
         version: link:../surface
       ink:
@@ -273,61 +273,61 @@ importers:
       '@types/react':
         specifier: ^19.2.17
         version: 19.2.17
-      '@vibecook/chopsticks-adapter-claude':
+      '@vibecook/puppeteer-adapter-claude':
         specifier: workspace:*
         version: link:../adapter-claude
-      '@vibecook/chopsticks-adapter-codex':
+      '@vibecook/puppeteer-adapter-codex':
         specifier: workspace:*
         version: link:../adapter-codex
-      '@vibecook/chopsticks-adapter-grok':
+      '@vibecook/puppeteer-adapter-grok':
         specifier: workspace:*
         version: link:../adapter-grok
-      '@vibecook/chopsticks-adapter-kimi':
+      '@vibecook/puppeteer-adapter-kimi':
         specifier: workspace:*
         version: link:../adapter-kimi
-      '@vibecook/chopsticks-core':
+      '@vibecook/puppeteer-core':
         specifier: workspace:*
         version: link:../core
-      '@vibecook/chopsticks-testing':
+      '@vibecook/puppeteer-testing':
         specifier: workspace:*
         version: link:../testing
 
   packages/record:
     dependencies:
-      '@vibecook/chopsticks-core':
+      '@vibecook/puppeteer-core':
         specifier: workspace:*
         version: link:../core
 
   packages/runtime:
     dependencies:
-      '@vibecook/chopsticks-adapter-acp':
+      '@vibecook/puppeteer-adapter-acp':
         specifier: workspace:*
         version: link:../adapter-acp
-      '@vibecook/chopsticks-adapter-claude':
+      '@vibecook/puppeteer-adapter-claude':
         specifier: workspace:*
         version: link:../adapter-claude
-      '@vibecook/chopsticks-adapter-codex':
+      '@vibecook/puppeteer-adapter-codex':
         specifier: workspace:*
         version: link:../adapter-codex
-      '@vibecook/chopsticks-adapter-grok':
+      '@vibecook/puppeteer-adapter-grok':
         specifier: workspace:*
         version: link:../adapter-grok
-      '@vibecook/chopsticks-adapter-hermes':
+      '@vibecook/puppeteer-adapter-hermes':
         specifier: workspace:*
         version: link:../adapter-hermes
-      '@vibecook/chopsticks-adapter-kimi':
+      '@vibecook/puppeteer-adapter-kimi':
         specifier: workspace:*
         version: link:../adapter-kimi
-      '@vibecook/chopsticks-adapter-opencode':
+      '@vibecook/puppeteer-adapter-opencode':
         specifier: workspace:*
         version: link:../adapter-opencode
-      '@vibecook/chopsticks-core':
+      '@vibecook/puppeteer-core':
         specifier: workspace:*
         version: link:../core
-      '@vibecook/chopsticks-record':
+      '@vibecook/puppeteer-record':
         specifier: workspace:*
         version: link:../record
-      '@vibecook/chopsticks-workspaces':
+      '@vibecook/puppeteer-workspaces':
         specifier: workspace:*
         version: link:../workspaces
     devDependencies:
@@ -339,7 +339,7 @@ importers:
 
   packages/testing:
     dependencies:
-      '@vibecook/chopsticks-core':
+      '@vibecook/puppeteer-core':
         specifier: workspace:*
         version: link:../core
     devDependencies:

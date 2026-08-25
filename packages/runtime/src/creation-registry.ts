@@ -1,7 +1,7 @@
 import { createHmac, randomBytes, randomUUID } from 'node:crypto';
 import { link, mkdir, open, readFile, rename, rmdir, stat, unlink } from 'node:fs/promises';
 import { basename, join } from 'node:path';
-import type { RuntimeRunId } from '@vibecook/chopsticks-core';
+import type { RuntimeRunId } from '@vibecook/puppeteer-core';
 import { validateCreationRequestId, type RuntimeCreationOperation } from './identity.js';
 
 const CLAIM_SCHEMA_VERSION = 1 as const;

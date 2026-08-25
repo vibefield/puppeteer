@@ -1,5 +1,5 @@
 /**
- * Serialized, best-effort JSONL writer for Chopsticks-owned evidence.
+ * Serialized, best-effort JSONL writer for Puppeteer-owned evidence.
  * V2 records are logically idempotent by stable recordId; v1 remains readable.
  */
 
@@ -18,7 +18,7 @@ import {
   type OwnActionV2Input,
 } from './actions-v2.js';
 
-const DEFAULT_PATH = path.join(homedir(), '.chopsticks', 'own-actions.jsonl');
+const DEFAULT_PATH = path.join(homedir(), '.puppeteer', 'own-actions.jsonl');
 
 export type InjectionPersistencePolicy =
   { mode: 'metadata-only' } | { mode: 'keyed-digest'; key: Uint8Array } | { mode: 'body'; maxBytes: number };
@@ -31,7 +31,7 @@ export interface ActionRecorderStatus {
 }
 
 export interface ActionRecorderOptions {
-  /** Override the log path (tests). Default ~/.chopsticks/own-actions.jsonl. */
+  /** Override the log path (tests). Default ~/.puppeteer/own-actions.jsonl. */
   path?: string;
   onError?: (error: Error) => void;
   onStatus?: (status: ActionRecorderStatus) => void;
@@ -349,7 +349,7 @@ export function createActionRecorder(options: ActionRecorderOptions = {}): Actio
       }
       const key = await installationKey();
       return createHmac('sha256', key)
-        .update('chopsticks-own-action-v2\0')
+        .update('puppeteer-own-action-v2\0')
         .update(namespace)
         .update('\0')
         .update(canonicalValue)

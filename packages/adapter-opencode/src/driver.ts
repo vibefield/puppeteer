@@ -13,8 +13,8 @@ import {
   type PromptReceipt,
   type PromptSubmission,
   type TerminalSpec,
-} from '@vibecook/chopsticks-core';
-import type { AdapterMonitorObservationBatch } from '@vibecook/chopsticks-core/monitor-spi';
+} from '@vibecook/puppeteer-core';
+import type { AdapterMonitorObservationBatch } from '@vibecook/puppeteer-core/monitor-spi';
 import { startOpenCodeBackend, type OpenCodeBackend } from './backend.js';
 import {
   OpenCodeClient,
@@ -37,7 +37,7 @@ import { OpenCodeNormalizer, type NormalizeOpenCodeOptions, type OpenCodeNormali
 import { OpenCodeMonitorEvidence } from './monitor-evidence.js';
 
 export interface CreateOpenCodeTuiSessionOptions extends AgentTuiSessionOptions {
-  /** OpenCode executable (default `CHOPSTICKS_OPENCODE_BIN`, then `opencode`). */
+  /** OpenCode executable (default `PUPPETEER_OPENCODE_BIN`, then `opencode`). */
   executable?: string;
   /** Extra environment shared by the private backend and attached native TUI. */
   env?: Record<string, string>;
@@ -516,7 +516,7 @@ export async function prepareOpenCodeTuiSession(
               return { status: 'rejected', reason: 'another OpenCode prompt is awaiting exact message-ID echo' };
             }
             promptInFlight = true;
-            const messageID = `msg_chopsticks_${randomUUID().replaceAll('-', '')}`;
+            const messageID = `msg_puppeteer_${randomUUID().replaceAll('-', '')}`;
             const expectation = confirmationGate.expect(
               messageID,
               submission.confirmationTimeoutMs ?? options.promptConfirmationTimeoutMs ?? 10_000,

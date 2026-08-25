@@ -438,10 +438,10 @@ async function sha256File(path) {
 
 function openAiChunk(responseIndex, chunkIndex, chunk) {
   return {
-    id: `chatcmpl-chopsticks-kimi-census-${responseIndex + 1}`,
+    id: `chatcmpl-puppeteer-kimi-census-${responseIndex + 1}`,
     object: 'chat.completion.chunk',
     created: 1_786_339_200 + responseIndex,
-    model: 'chopsticks-kimi-census',
+    model: 'puppeteer-kimi-census',
     choices: [
       {
         index: 0,
@@ -586,7 +586,7 @@ function censusEnv(temporary, home, providerBaseUrl) {
     KIMI_DISABLE_TELEMETRY: '1',
     KIMI_CODE_NO_AUTO_UPDATE: '1',
     KIMI_CODE_BUILTIN_PRODUCT_SKILLS: '0',
-    KIMI_MODEL_NAME: 'chopsticks-kimi-census',
+    KIMI_MODEL_NAME: 'puppeteer-kimi-census',
     KIMI_MODEL_API_KEY: 'sk-not-a-real-key',
     KIMI_MODEL_PROVIDER_TYPE: 'openai',
     KIMI_MODEL_BASE_URL: providerBaseUrl,
@@ -647,7 +647,7 @@ export async function runKimiCensus({ artifact, expectedVersion, outputRoot, nam
   for (const name of names) {
     const scenario = SCENARIOS[name];
     if (!scenario) throw new Error(`unknown scenario ${name}`);
-    const temporary = mkdtempSync(join(tmpdir(), 'chopsticks-kimi-census-'));
+    const temporary = mkdtempSync(join(tmpdir(), 'puppeteer-kimi-census-'));
     const home = join(temporary, 'home');
     const workspace = join(temporary, 'workspace');
     const skills = join(temporary, 'skills');
@@ -779,7 +779,7 @@ const invokedDirectly = process.argv[1] && fileURLToPath(import.meta.url) === re
 if (invokedDirectly && process.argv.includes('--collect')) {
   await collectHook(flag('--collect'), flag('--scenario', 'basic-turn'));
 } else if (invokedDirectly) {
-  const artifactFlag = flag('--artifact', process.env.CHOPSTICKS_KIMI_BIN ?? 'kimi');
+  const artifactFlag = flag('--artifact', process.env.PUPPETEER_KIMI_BIN ?? 'kimi');
   const artifact = isAbsolute(artifactFlag) || artifactFlag.includes('/') ? resolve(artifactFlag) : artifactFlag;
   const expectedVersion = flag('--version', KIMI_CANDIDATE_VERSION);
   const outputRoot = resolve(flag('--output', join(vendorRoot, 'captures-raw', `kimi@${expectedVersion}`)));

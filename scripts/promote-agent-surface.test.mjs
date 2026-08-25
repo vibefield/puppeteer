@@ -27,7 +27,7 @@ test('promotion atomically replaces a candidate pointer instead of leaving stale
   assert.equal(agent.candidateManifest, undefined);
   assert.equal(agent.legacyEvidence, undefined);
   assert.equal(agent.verification, verification);
-  assert.equal(agent.introducedInChopsticks, '0.2.0');
+  assert.equal(agent.introducedInPuppeteer, '0.2.0');
 });
 
 test('promotion retains the verification identity after workflow artifacts expire', () => {
@@ -38,8 +38,8 @@ test('promotion retains the verification identity after workflow artifacts expir
     platformReports: [{ platform: 'linux-x64', artifactSha256: `sha256:${'c'.repeat(64)}` }],
     attestation: {
       provider: 'github-actions',
-      repository: 'vibecook-dev/chopsticks',
-      workflowRef: 'vibecook-dev/chopsticks/.github/workflows/promote.yml@refs/heads/main',
+      repository: 'vibecook-dev/puppeteer',
+      workflowRef: 'vibecook-dev/puppeteer/.github/workflows/promote.yml@refs/heads/main',
       runId: '123',
       runAttempt: '2',
       evidenceDigest: 'd'.repeat(64),
@@ -70,9 +70,9 @@ test('promotion binds the report, model digest, commit, workflow, and run attemp
     commit,
     attestation: {
       provider: 'github-actions',
-      repository: 'vibecook-dev/chopsticks',
+      repository: 'vibecook-dev/puppeteer',
       workflow: 'Upstream adaptation',
-      workflowRef: 'vibecook-dev/chopsticks/.github/workflows/adapt.yml@refs/heads/main',
+      workflowRef: 'vibecook-dev/puppeteer/.github/workflows/adapt.yml@refs/heads/main',
       runId: '123',
       runAttempt: '2',
       evidenceDigest: digest,
@@ -83,9 +83,9 @@ test('promotion binds the report, model digest, commit, workflow, and run attemp
     GITHUB_SHA: commit,
     GITHUB_RUN_ID: '123',
     GITHUB_RUN_ATTEMPT: '2',
-    GITHUB_REPOSITORY: 'vibecook-dev/chopsticks',
+    GITHUB_REPOSITORY: 'vibecook-dev/puppeteer',
     GITHUB_WORKFLOW: 'Upstream adaptation',
-    GITHUB_WORKFLOW_REF: 'vibecook-dev/chopsticks/.github/workflows/adapt.yml@refs/heads/main',
+    GITHUB_WORKFLOW_REF: 'vibecook-dev/puppeteer/.github/workflows/adapt.yml@refs/heads/main',
   };
   assert.deepEqual(
     validateVerificationAttestation({

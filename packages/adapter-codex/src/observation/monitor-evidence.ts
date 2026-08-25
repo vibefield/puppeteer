@@ -1,7 +1,7 @@
 /** Codex app-server facts projected onto the correction-aware monitor SPI. */
 
 import { randomUUID } from 'node:crypto';
-import type { ActorRunRef, ContextWindowUpdatedEvent, MonitorMetricFamily } from '@vibecook/chopsticks-core';
+import type { ActorRunRef, ContextWindowUpdatedEvent, MonitorMetricFamily } from '@vibecook/puppeteer-core';
 import type {
   AdapterMonitorObservationBatch,
   EvidenceRef,
@@ -9,7 +9,7 @@ import type {
   MonitorFamilyValueMap,
   ObservationCapability,
   ObservationCoverage,
-} from '@vibecook/chopsticks-core/monitor-spi';
+} from '@vibecook/puppeteer-core/monitor-spi';
 import type { CodexServerNotification } from '../normalizer.js';
 
 const CODEX_CONTRACT = 'codex-app-server@0.147.0';

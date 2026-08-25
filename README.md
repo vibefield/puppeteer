@@ -1,10 +1,10 @@
-# Chopsticks
+# Puppeteer
 
-Chopsticks hosts coding agents' native terminal interfaces while providing a
+Puppeteer hosts coding agents' native terminal interfaces while providing a
 provider-neutral TypeScript runtime for lifecycle, observation, prompt control,
 workspace isolation, and operational receipts.
 
-The agent owns its terminal UI. Chopsticks owns the process environment around
+The agent owns its terminal UI. Puppeteer owns the process environment around
 that UI and derives semantic state from native hooks or structured protocols,
 never by scraping terminal text.
 
@@ -40,20 +40,20 @@ update the support ledger and these badges.
 
 ## Packages
 
-- `@vibecook/chopsticks-runtime` — unified runtime and built-in Claude, Codex,
+- `@vibecook/puppeteer-runtime` — unified runtime and built-in Claude, Codex,
   ACP, Grok, Kimi, OpenCode, and Hermes integrations.
-- `@vibecook/chopsticks-core` — zero-I/O event, state, session, and host
+- `@vibecook/puppeteer-core` — zero-I/O event, state, session, and host
   contracts.
-- `@vibecook/chopsticks-workspaces` — direct, exclusive, worktree, and copy
+- `@vibecook/puppeteer-workspaces` — direct, exclusive, worktree, and copy
   workspace modes.
-- `@vibecook/chopsticks-adapter-{claude,codex,acp,grok,kimi,opencode,hermes}` —
+- `@vibecook/puppeteer-adapter-{claude,codex,acp,grok,kimi,opencode,hermes}` —
   provider-specific observation and control.
-- `@vibecook/chopsticks-record` — append-only records of runtime-owned actions.
-- `@vibecook/chopsticks-surface` — promoted vendor evidence models and their
+- `@vibecook/puppeteer-record` — append-only records of runtime-owned actions.
+- `@vibecook/puppeteer-surface` — promoted vendor evidence models and their
   validation/diff runtime.
-- `@vibecook/chopsticks-imposter` — local replacement-agent personas and
+- `@vibecook/puppeteer-imposter` — local replacement-agent personas and
   scenario engine.
-- `@vibecook/chopsticks-testing` — vendor-neutral fake agent and adapter
+- `@vibecook/puppeteer-testing` — vendor-neutral fake agent and adapter
   conformance helpers.
 
 The private Electron applications are development tools, not part of the
@@ -63,7 +63,7 @@ terminal service.
 ## Install
 
 ```sh
-pnpm add @vibecook/chopsticks-runtime@0.1.8
+pnpm add @vibecook/puppeteer-runtime@0.1.8
 ```
 
 Node.js 22.18 or newer is required.
@@ -188,13 +188,13 @@ native evidence, Surface modeling, Imposter personas and runflows,
 normalization, conformance, runtime integration, and protected promotion.
 
 Live adapter probes are opt-in with `CODEX_LIVE=1`, `GROK_LIVE=1`, or
-`CHOPSTICKS_REAL_CLAUDE=1`.
+`PUPPETEER_REAL_CLAUDE=1`.
 
 ## Versioning
 
-All public Chopsticks packages release in lockstep. Internal `workspace:*`
+All public Puppeteer packages release in lockstep. Internal `workspace:*`
 dependencies are rewritten by pnpm to that exact version in published
-tarballs. Applications should pin `@vibecook/chopsticks-runtime` exactly and
+tarballs. Applications should pin `@vibecook/puppeteer-runtime` exactly and
 upgrade it as a deliberate integration event.
 
 The initial `0.1.0` publication is bootstrapped from the tagged release commit:
@@ -206,7 +206,7 @@ pnpm release:trust
 
 `release:publish` verifies, builds, and publishes the public packages in
 dependency order, skipping versions already present in the registry.
-`release:trust` configures each package to trust `vibecook-dev/chopsticks`'s
+`release:trust` configures each package to trust `vibecook-dev/puppeteer`'s
 `release.yml` GitHub Actions workflow for `npm publish`; it requires npm 11.15
 or newer, npm account 2FA, and an authenticated interactive npm session.
 

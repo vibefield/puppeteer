@@ -5,7 +5,7 @@
  * loads, its verified events cite fixtures the schemas actually accept, and the
  * committed captures survive the sanitiser's detector. The drift half of the
  * audit needs the `codex` binary and belongs to the nightly reconciliation lane
- * (`pnpm --filter @vibecook/chopsticks-surface run surface:audit:codex`).
+ * (`pnpm --filter @vibecook/puppeteer-surface run surface:audit:codex`).
  *
  * The point of this file is docs/archive/EMULATOR.md §1: the model is captured truth, never
  * derived from `normalizer.ts`. If someone "fixes" a schema to match the
@@ -14,8 +14,8 @@
 import { readFileSync, readdirSync } from 'node:fs';
 import { join } from 'node:path';
 import { describe, expect, it } from 'vitest';
-import { loadModel, validatePayload } from '@vibecook/chopsticks-surface';
-import { checkCaptureDirectory, defaultRules } from '@vibecook/chopsticks-surface/sanitize';
+import { loadModel, validatePayload } from '@vibecook/puppeteer-surface';
+import { checkCaptureDirectory, defaultRules } from '@vibecook/puppeteer-surface/sanitize';
 import { resolveAgentModel } from '../../../../scripts/agent-model-selection.mjs';
 
 const selected = resolveAgentModel({ vendor: 'codex' });

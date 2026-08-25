@@ -2,7 +2,7 @@
   "executables": [
     "opencode"
   ],
-  "envVar": "CHOPSTICKS_OPENCODE_BIN",
+  "envVar": "PUPPETEER_OPENCODE_BIN",
   "versionFlag": "--version",
   "versionOutput": "1.18.16",
   "versionPattern": "^(\\d+\\.\\d+\\.\\d+)$",

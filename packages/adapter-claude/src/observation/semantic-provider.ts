@@ -6,9 +6,9 @@
  * cross this boundary.
  */
 
-import type { AgentEvent } from '@vibecook/chopsticks-core';
-import type { MonitorArtifactReadResult } from '@vibecook/chopsticks-core';
-import type { AdapterMonitorObservationBatch, ObservationCapability } from '@vibecook/chopsticks-core/monitor-spi';
+import type { AgentEvent } from '@vibecook/puppeteer-core';
+import type { MonitorArtifactReadResult } from '@vibecook/puppeteer-core';
+import type { AdapterMonitorObservationBatch, ObservationCapability } from '@vibecook/puppeteer-core/monitor-spi';
 
 export interface SemanticObservationPollHint {
   hookEventName?: string;

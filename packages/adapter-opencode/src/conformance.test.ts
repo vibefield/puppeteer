@@ -1,11 +1,11 @@
 import { rmSync } from 'node:fs';
 import { afterEach, expect } from 'vitest';
-import type { AgentEventEnvelope, AgentHost } from '@vibecook/chopsticks-core';
+import type { AgentEventEnvelope, AgentHost } from '@vibecook/puppeteer-core';
 import {
   runAgentMonitorConformance,
   runAgentSessionConformance,
   type AgentSessionHarness,
-} from '@vibecook/chopsticks-testing/conformance';
+} from '@vibecook/puppeteer-testing/conformance';
 import { createOpenCodeTuiSession, type OpenCodeTuiSession } from './driver.js';
 import { createOpenCodeImposterFixture, type OpenCodeImposterFixture } from './test-support/imposter.js';
 

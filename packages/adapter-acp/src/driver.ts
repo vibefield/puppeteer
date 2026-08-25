@@ -34,8 +34,8 @@ import {
   type ObservationLevel,
   type PromptReceipt,
   type PromptSubmission,
-} from '@vibecook/chopsticks-core';
-import type { AdapterMonitorObservationBatch } from '@vibecook/chopsticks-core/monitor-spi';
+} from '@vibecook/puppeteer-core';
+import type { AdapterMonitorObservationBatch } from '@vibecook/puppeteer-core/monitor-spi';
 import { PROTOCOL_VERSION } from '@agentclientprotocol/sdk';
 import type {
   Agent,

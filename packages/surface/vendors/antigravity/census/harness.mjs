@@ -324,7 +324,7 @@ export function probeOffline({
     throw new Error('caller-supplied executable does not match the reviewed release archive member');
   }
 
-  const isolationRoot = mkdtempSync(join(tmpdir(), 'chopsticks-antigravity-offline-'));
+  const isolationRoot = mkdtempSync(join(tmpdir(), 'puppeteer-antigravity-offline-'));
   const home = join(isolationRoot, 'home');
   const isolatedTmp = join(isolationRoot, 'tmp');
   mkdirSync(home, { recursive: true, mode: 0o700 });
@@ -405,7 +405,7 @@ export function probeOffline({
     vendor: 'antigravity',
     vendorVersion: VERSION,
     platform,
-    artifact: '$CHOPSTICKS_ANTIGRAVITY_BIN',
+    artifact: '$PUPPETEER_ANTIGRAVITY_BIN',
     bytes: artifactBytes.length,
     sha256: artifactDigest,
     fileDescription: fileDescription(artifactPath),
@@ -467,7 +467,7 @@ export function probeArchiveOnly({ archive, platform, output, probedAt = new Dat
   const memberBytes = archiveMemberBytes(archivePath, matches[0], asset.format, listing.command);
   const memberDigest = sha256(memberBytes);
 
-  const inspectionRoot = mkdtempSync(join(tmpdir(), 'chopsticks-antigravity-member-'));
+  const inspectionRoot = mkdtempSync(join(tmpdir(), 'puppeteer-antigravity-member-'));
   const memberPath = join(inspectionRoot, basename(matches[0]));
   let description;
   let signature;
@@ -541,7 +541,7 @@ export function probeOfflineExtras({
     throw new Error('extras artifact does not match the reviewed executable identity');
   }
 
-  const isolationRoot = mkdtempSync(join(tmpdir(), 'chopsticks-antigravity-extras-'));
+  const isolationRoot = mkdtempSync(join(tmpdir(), 'puppeteer-antigravity-extras-'));
   const home = join(isolationRoot, 'home');
   const isolatedTmp = join(isolationRoot, 'tmp');
   mkdirSync(home, { recursive: true, mode: 0o700 });
@@ -626,7 +626,7 @@ if (invokedDirectly) {
   const archiveOnly = process.argv.includes('--archive-only');
   const result = extras
     ? probeOfflineExtras({
-        artifact: flag('--artifact', process.env.CHOPSTICKS_ANTIGRAVITY_BIN),
+        artifact: flag('--artifact', process.env.PUPPETEER_ANTIGRAVITY_BIN),
         platform: flag('--platform', canonicalPlatform()),
         output: flag('--output'),
       })
@@ -638,7 +638,7 @@ if (invokedDirectly) {
           replace: process.argv.includes('--replace'),
         })
       : probeOffline({
-          artifact: flag('--artifact', process.env.CHOPSTICKS_ANTIGRAVITY_BIN),
+          artifact: flag('--artifact', process.env.PUPPETEER_ANTIGRAVITY_BIN),
           archive: flag('--archive'),
           platform: flag('--platform', canonicalPlatform()),
           output: flag('--output'),

@@ -56,7 +56,7 @@ function agent(runtimeSessionId: string, nativeSessionId = `native-${runtimeSess
       mode: 'worktree',
       root: `/worktrees/${runtimeSessionId}`,
       sourcePath: '/repo',
-      branch: `chopsticks/${runtimeSessionId}`,
+      branch: `puppeteer/${runtimeSessionId}`,
     },
     session: session(runtimeSessionId),
   };

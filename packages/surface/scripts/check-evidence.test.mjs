@@ -10,7 +10,7 @@ describe('Surface evidence indexes', () => {
   });
 
   it('bind paths and bytes into deterministic tree digests', () => {
-    const directory = mkdtempSync(join(tmpdir(), 'chopsticks-evidence-'));
+    const directory = mkdtempSync(join(tmpdir(), 'puppeteer-evidence-'));
     writeFileSync(join(directory, 'a.txt'), 'same');
     const first = digestTree(directory);
     writeFileSync(join(directory, 'a.txt'), 'changed');

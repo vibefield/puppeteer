@@ -1,6 +1,6 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "https://github.com/vibecook-dev/chopsticks/support/verification.schema.json",
+  "$id": "https://github.com/vibecook-dev/puppeteer/support/verification.schema.json",
   "title": "Agent adaptation promotion verification",
   "type": "object",
   "additionalProperties": false,

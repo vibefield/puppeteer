@@ -6,7 +6,7 @@ import test from 'node:test';
 import { resolveAgentModel } from './agent-model-selection.mjs';
 
 test('active selection prefers a candidate while current remains explicit', () => {
-  const repoRoot = mkdtempSync(join(tmpdir(), 'chopsticks-selection-'));
+  const repoRoot = mkdtempSync(join(tmpdir(), 'puppeteer-selection-'));
   mkdirSync(join(repoRoot, 'support'), { recursive: true });
   const current = 'packages/surface/vendors/fake/model/fake@1.0.0/manifest.json';
   const candidate = 'packages/surface/vendors/fake/model/fake@1.1.0/manifest.json';
@@ -27,7 +27,7 @@ test('active selection prefers a candidate while current remains explicit', () =
 });
 
 test('selection rejects a manifest-shaped file outside the canonical vendor model tree', () => {
-  const repoRoot = mkdtempSync(join(tmpdir(), 'chopsticks-selection-path-'));
+  const repoRoot = mkdtempSync(join(tmpdir(), 'puppeteer-selection-path-'));
   mkdirSync(join(repoRoot, 'support'), { recursive: true });
   const manifest = 'review-output/fake@1.0.0/manifest.json';
   mkdirSync(join(repoRoot, manifest, '..'), { recursive: true });

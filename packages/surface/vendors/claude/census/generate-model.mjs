@@ -502,7 +502,7 @@ export function generateClaudeModel({ artifact, version, capturedAt, retrievedAt
   });
   writeJson(join(modelRoot, 'detection.json'), {
     executables: ['claude'],
-    envVar: 'CHOPSTICKS_CLAUDE_BIN',
+    envVar: 'PUPPETEER_CLAUDE_BIN',
     versionFlag: '--version',
     versionOutput,
     versionPattern: '(\\d+\\.\\d+\\.\\d+(?:[-.][0-9A-Za-z]+)*)',
@@ -738,7 +738,7 @@ export function generateClaudeModel({ artifact, version, capturedAt, retrievedAt
 const invokedDirectly = process.argv[1] && fileURLToPath(import.meta.url) === resolve(process.argv[1]);
 if (invokedDirectly) {
   const result = generateClaudeModel({
-    artifact: flag('--artifact') ?? process.env.CHOPSTICKS_CLAUDE_BIN,
+    artifact: flag('--artifact') ?? process.env.PUPPETEER_CLAUDE_BIN,
     version: flag('--version'),
     capturedAt: flag('--captured-at'),
     retrievedAt: flag('--retrieved-at'),

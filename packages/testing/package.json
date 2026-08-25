@@ -1,13 +1,13 @@
 {
-  "name": "@vibecook/chopsticks-testing",
+  "name": "@vibecook/puppeteer-testing",
   "version": "0.1.8",
   "type": "module",
-  "description": "Vendor-neutral test harness and AgentSession conformance suite for Chopsticks adapters.",
+  "description": "Vendor-neutral test harness and AgentSession conformance suite for Puppeteer adapters.",
   "license": "MIT",
   "author": "James Yong",
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/vibecook-dev/chopsticks.git",
+    "url": "git+https://github.com/vibecook-dev/puppeteer.git",
     "directory": "packages/testing"
   },
   "main": "./src/index.ts",
@@ -48,7 +48,7 @@
     "node": ">=22.18.0"
   },
   "dependencies": {
-    "@vibecook/chopsticks-core": "workspace:*"
+    "@vibecook/puppeteer-core": "workspace:*"
   },
   "peerDependencies": {
     "vitest": ">=3 <4"

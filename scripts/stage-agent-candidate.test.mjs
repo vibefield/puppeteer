@@ -13,7 +13,7 @@ test('staging changes only the candidate pointer and persona ASM projection', ()
       },
     ],
   };
-  const persona = { id: 'fake', asm: { package: '@vibecook/chopsticks-surface', path: 'old' }, boot: [] };
+  const persona = { id: 'fake', asm: { package: '@vibecook/puppeteer-surface', path: 'old' }, boot: [] };
   stageCandidateDocuments({
     ledger,
     persona,
@@ -29,7 +29,7 @@ test('staging changes only the candidate pointer and persona ASM projection', ()
     persona: 'fake',
   });
   assert.deepEqual(persona.asm, {
-    package: '@vibecook/chopsticks-surface',
+    package: '@vibecook/puppeteer-surface',
     path: 'vendors/fake/model/fake@2.0.0',
   });
 });

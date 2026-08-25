@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from 'vitest';
-import type { AccountUsageFetchResult } from '@vibecook/chopsticks-core';
+import type { AccountUsageFetchResult } from '@vibecook/puppeteer-core';
 import { createAccountUsageMonitor } from './account-usage-monitor.js';
 
 const available = (provider: string): AccountUsageFetchResult => ({

@@ -1,6 +1,6 @@
 import { renderToStaticMarkup } from 'react-dom/server';
 import { describe, expect, it } from 'vitest';
-import { AGENT_MONITOR_SCHEMA_VERSION, type AgentMonitorState } from '@vibecook/chopsticks-core';
+import { AGENT_MONITOR_SCHEMA_VERSION, type AgentMonitorState } from '@vibecook/puppeteer-core';
 import { AgentMonitorInspector } from './AgentMonitorInspector.js';
 
 const OBSERVED_AT = '2026-08-17T00:00:00.000Z';
@@ -151,7 +151,7 @@ describe('AgentMonitorInspector', () => {
         },
       ],
       compaction: { active: true, count: 2 },
-      environment: { cwd: '/project/chopsticks', worktrees: ['/project/worktree-1'] },
+      environment: { cwd: '/project/puppeteer', worktrees: ['/project/worktree-1'] },
       freshness: {
         lastEvidenceAt: OBSERVED_AT,
         level: 'native-hooks',
@@ -200,7 +200,7 @@ describe('AgentMonitorInspector', () => {
       'Local reviewer active · Reviewing runtime code · 2,000 tokens · 50 tok/min · 20% ctx · claude-sonnet-5 · effort medium',
     );
     expect(content).toContain('Observation audit · active actor-child-1 READ workflow-definition');
-    expect(content).toContain('compaction active · 2 cwd /project/chopsticks worktrees /project/worktree-1');
+    expect(content).toContain('compaction active · 2 cwd /project/puppeteer worktrees /project/worktree-1');
     expect(content).toContain('status loading');
     expect(content).toContain('context partial');
     expect(content).toContain('workflow unsupported');

@@ -2,7 +2,7 @@ import type {
   AccountUsageBudget,
   AccountUsageLimit,
   AccountUsageWindow,
-} from '@vibecook/chopsticks-core';
+} from '@vibecook/puppeteer-core';
 import type { AccountUsageAgent, AgentAccountUsage } from '../protocol.js';
 
 export type AccountUsageViewState =

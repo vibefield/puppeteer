@@ -39,7 +39,7 @@ describe('worktree mode', () => {
     const repo = await makeRepo();
     const ws = await createWorkspace({ path: repo, mode: 'worktree', workspacesRoot: workspacesRoot() });
 
-    expect(ws.branch).toBe(`chopsticks/${ws.id}`);
+    expect(ws.branch).toBe(`puppeteer/${ws.id}`);
     expect(ws.root).not.toBe(repo);
     expect(existsSync(join(ws.root, 'README.md'))).toBe(true);
 

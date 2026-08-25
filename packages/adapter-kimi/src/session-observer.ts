@@ -2,7 +2,7 @@
 
 import { open, readFile, stat } from 'node:fs/promises';
 import { basename, join } from 'node:path';
-import type { AgentEvent, AgentEventConfidence, AgentEventSource } from '@vibecook/chopsticks-core';
+import type { AgentEvent, AgentEventConfidence, AgentEventSource } from '@vibecook/puppeteer-core';
 import { KimiWireNormalizer } from './normalizer.js';
 import {
   findKimiAgentJournals,

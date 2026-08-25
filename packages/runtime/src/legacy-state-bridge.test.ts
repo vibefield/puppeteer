@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { createInitialSessionState } from '@vibecook/chopsticks-core';
+import { createInitialSessionState } from '@vibecook/puppeteer-core';
 import { serializeLegacySessionState } from './legacy-state-bridge.js';
 
 describe('legacy renderer state bridge', () => {

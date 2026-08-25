@@ -1,5 +1,5 @@
 import { basename } from 'node:path';
-import type { AgentEventEnvelope } from '@vibecook/chopsticks-core';
+import type { AgentEventEnvelope } from '@vibecook/puppeteer-core';
 import type { ScenarioRecordingStatus } from '../protocol.js';
 
 const DEFAULT_MAX_EVENTS = 10_000;

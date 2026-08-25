@@ -184,7 +184,7 @@ export function runClaudeCensus({ artifact, expectedVersion, outputRoot }) {
   }
   mkdirSync(outputRoot, { recursive: true, mode: 0o700 });
 
-  const temporary = mkdtempSync(join(tmpdir(), 'chopsticks-claude-census-'));
+  const temporary = mkdtempSync(join(tmpdir(), 'puppeteer-claude-census-'));
   const workspace = join(temporary, 'workspace');
   const configDir = join(temporary, 'config');
   mkdirSync(workspace, { recursive: true });
@@ -203,7 +203,7 @@ export function runClaudeCensus({ artifact, expectedVersion, outputRoot }) {
         '--session-id',
         randomUUID(),
         '--name',
-        `chopsticks-surface-${mode}`,
+        `puppeteer-surface-${mode}`,
       ];
       const args =
         mode === 'init'
@@ -245,7 +245,7 @@ const invokedDirectly = process.argv[1] && fileURLToPath(import.meta.url) === re
 if (invokedDirectly && process.argv.includes('--collect')) {
   await collect(flag('--collect'), flag('--mode', 'headless'));
 } else if (invokedDirectly) {
-  const artifactFlag = flag('--artifact', process.env.CHOPSTICKS_CLAUDE_BIN ?? 'claude');
+  const artifactFlag = flag('--artifact', process.env.PUPPETEER_CLAUDE_BIN ?? 'claude');
   const artifact = isAbsolute(artifactFlag) || artifactFlag.includes('/') ? resolve(artifactFlag) : artifactFlag;
   const expectedVersion = flag('--version');
   if (!expectedVersion) throw new Error('--version is required');

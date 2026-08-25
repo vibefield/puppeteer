@@ -5,7 +5,7 @@ import type {
   MonitorArtifactReadResult,
   ObservationLevel,
   PromptReceipt as CorePromptReceipt,
-} from '@vibecook/chopsticks-core';
+} from '@vibecook/puppeteer-core';
 import type {
   AgentSessionFailure as RuntimeAgentSessionFailure,
   AgentSessionInfo as RuntimeAgentSessionInfo,
@@ -19,10 +19,10 @@ import type {
   BuiltinAgentKind,
   LegacySerializedSessionState,
   ReadAgentMonitorArtifactRequest,
-} from '@vibecook/chopsticks-runtime';
-import type { WorkspaceDiff } from '@vibecook/chopsticks-workspaces';
+} from '@vibecook/puppeteer-runtime';
+import type { WorkspaceDiff } from '@vibecook/puppeteer-workspaces';
 
-export type { WorkspaceDiff } from '@vibecook/chopsticks-workspaces';
+export type { WorkspaceDiff } from '@vibecook/puppeteer-workspaces';
 export type AgentKind = BuiltinAgentKind;
 export type WorkspaceInfo = AgentWorkspaceInfo;
 export type PromptReceipt = CorePromptReceipt;
@@ -34,7 +34,7 @@ export type {
   AgentMonitorRendererConfiguration,
   AgentMonitorStateMessage,
   ReadAgentMonitorArtifactRequest,
-} from '@vibecook/chopsticks-runtime';
+} from '@vibecook/puppeteer-runtime';
 export const ACCOUNT_USAGE_AGENTS = ['claude', 'codex', 'grok'] as const;
 export type AccountUsageAgent = (typeof ACCOUNT_USAGE_AGENTS)[number];
 
@@ -66,7 +66,7 @@ export interface CreateAgentSessionOptions {
 
 export interface AgentSessionInfo extends Omit<RuntimeAgentSessionInfo, 'agent'> {
   agent: AgentKind;
-  /** True only when Godview deliberately launched the Chopsticks Imposter for this pane. */
+  /** True only when Godview deliberately launched the Puppeteer Imposter for this pane. */
   emulated?: boolean;
   session: SessionSummary;
 }
@@ -129,7 +129,7 @@ export interface TerminalSessionHandoff {
   session: SessionSummary;
 }
 
-export interface ChopsticksBridge {
+export interface PuppeteerBridge {
   createAgentSession(opts: CreateAgentSessionOptions): Promise<CreateAgentSessionResult>;
   listAgentSessions(): Promise<AgentSessionSnapshot[]>;
   /** Answers Ghosttea's rehydration request for a persisted pane whose session is gone. */

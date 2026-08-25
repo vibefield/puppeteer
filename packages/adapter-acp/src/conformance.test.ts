@@ -2,7 +2,7 @@ import {
   runAgentMonitorConformance,
   runAgentSessionConformance,
   type AgentSessionHarness,
-} from '@vibecook/chopsticks-testing/conformance';
+} from '@vibecook/puppeteer-testing/conformance';
 import { createAcpSession } from './driver.js';
 import { scriptedAcpConnector } from './scripted-connector.js';
 import type { AcpConnector } from './connection.js';

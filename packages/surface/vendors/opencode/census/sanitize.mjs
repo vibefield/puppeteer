@@ -16,7 +16,7 @@
 import { mkdirSync, renameSync, rmSync, writeFileSync } from 'node:fs';
 import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { checkCaptureDirectory, sanitizeCaptureDirectory } from '@vibecook/chopsticks-surface/sanitize';
+import { checkCaptureDirectory, sanitizeCaptureDirectory } from '@vibecook/puppeteer-surface/sanitize';
 import { opencodeRules } from '../privacy.mjs';
 
 const surfaceRoot = join(dirname(fileURLToPath(import.meta.url)), '..');
@@ -28,7 +28,7 @@ const flag = (name) => {
 
 const invokedDirectly = process.argv[1] && fileURLToPath(import.meta.url) === resolve(process.argv[1]);
 if (invokedDirectly) {
-  const version = flag('--version') ?? process.env.CHOPSTICKS_OPENCODE_VERSION;
+  const version = flag('--version') ?? process.env.PUPPETEER_OPENCODE_VERSION;
   if (!version || !/^\d+\.\d+\.\d+$/.test(version)) {
     throw new Error('--version <semver> is required');
   }

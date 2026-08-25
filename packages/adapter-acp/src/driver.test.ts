@@ -1,6 +1,6 @@
 import { describe, it, expect, vi } from 'vitest';
-import type { AgentEventEnvelope } from '@vibecook/chopsticks-core';
-import { projectAgentSession } from '@vibecook/chopsticks-testing';
+import type { AgentEventEnvelope } from '@vibecook/puppeteer-core';
+import { projectAgentSession } from '@vibecook/puppeteer-testing';
 import { PROTOCOL_VERSION } from '@agentclientprotocol/sdk';
 import type { Agent, Client, ClientCapabilities, RequestPermissionResponse } from '@agentclientprotocol/sdk';
 import type { AcpConnector } from './connection.js';

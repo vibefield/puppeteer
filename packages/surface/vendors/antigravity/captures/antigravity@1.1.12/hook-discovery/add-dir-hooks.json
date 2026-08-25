@@ -20,7 +20,7 @@
       "data": {
         "hooks": [
           {
-            "name": "chopsticks-census",
+            "name": "puppeteer-census",
             "enabled": true,
             "actionEvents": [
               "PreInvocation",

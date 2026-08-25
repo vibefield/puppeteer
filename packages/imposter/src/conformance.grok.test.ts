@@ -9,9 +9,9 @@ import { tmpdir } from 'node:os';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { afterEach, describe, expect, it } from 'vitest';
-import type { AgentHost, TerminalSpec } from '@vibecook/chopsticks-core';
-import { createGrokBackend, type GrokBackend } from '@vibecook/chopsticks-adapter-grok';
-import { projectAgentSession } from '@vibecook/chopsticks-testing';
+import type { AgentHost, TerminalSpec } from '@vibecook/puppeteer-core';
+import { createGrokBackend, type GrokBackend } from '@vibecook/puppeteer-adapter-grok';
+import { projectAgentSession } from '@vibecook/puppeteer-testing';
 
 const AI = join(dirname(dirname(fileURLToPath(import.meta.url))), 'bin', 'ai.mjs');
 const children = new Set<ChildProcess>();
@@ -68,16 +68,16 @@ function spawningHost(launched: TerminalSpec[], terminals: ChildProcess[]): Agen
 
 describe.skipIf(process.platform === 'win32')('the Grok native recipe against `ai`', () => {
   it('converges leader, ACP, terminal, and persisted-log observation on one session', async () => {
-    const cwd = realpathSync(mkdtempSync(join(tmpdir(), 'chopsticks-grok-imposter-')));
+    const cwd = realpathSync(mkdtempSync(join(tmpdir(), 'puppeteer-grok-imposter-')));
     roots.add(cwd);
     const launched: TerminalSpec[] = [];
     const terminals: ChildProcess[] = [];
     backend = createGrokBackend({
       executable: AI,
       host: spawningHost(launched, terminals),
-      // The backend expands this into one isolated CHOPSTICKS_IMPOSTER_HOME /
+      // The backend expands this into one isolated PUPPETEER_IMPOSTER_HOME /
       // GROK_HOME shared by every child and the observer.
-      appServerEnv: { AI_PERSONA: 'grok', CHOPSTICKS_IMPOSTER_TUI: 'off' },
+      appServerEnv: { AI_PERSONA: 'grok', PUPPETEER_IMPOSTER_TUI: 'off' },
     });
 
     const session = await Promise.race([
@@ -97,9 +97,9 @@ describe.skipIf(process.platform === 'win32')('the Grok native recipe against `a
     expect(launched[0]?.env).toMatchObject({
       AI_PERSONA: 'grok',
       GROK_HOME: expect.any(String),
-      CHOPSTICKS_IMPOSTER_HOME: expect.any(String),
+      PUPPETEER_IMPOSTER_HOME: expect.any(String),
     });
-    expect(launched[0]?.env?.GROK_HOME).toBe(launched[0]?.env?.CHOPSTICKS_IMPOSTER_HOME);
+    expect(launched[0]?.env?.GROK_HOME).toBe(launched[0]?.env?.PUPPETEER_IMPOSTER_HOME);
 
     expect(terminals).toHaveLength(1);
     terminals[0]!.stdin!.write('\x1b[200~typed in the native terminal\x1b[201~\r');

@@ -2,9 +2,9 @@
  * Version-locked adapter/runtime monitor SPI.
  *
  * Applications import monitor state from the package root. This subpath exists
- * because Chopsticks adapters and runtime publish as separate packages while
+ * because Puppeteer adapters and runtime publish as separate packages while
  * sharing correction/replacement semantics. All participating packages must
- * use the exact same Chopsticks release.
+ * use the exact same Puppeteer release.
  */
 
 export * from './monitor/internal-types.js';

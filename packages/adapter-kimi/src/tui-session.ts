@@ -13,8 +13,8 @@ import {
   type PromptReceipt,
   type PromptSubmission,
   type TerminalSpec,
-} from '@vibecook/chopsticks-core';
-import type { AdapterMonitorObservationBatch } from '@vibecook/chopsticks-core/monitor-spi';
+} from '@vibecook/puppeteer-core';
+import type { AdapterMonitorObservationBatch } from '@vibecook/puppeteer-core/monitor-spi';
 import { KimiMonitorEvidence, type KimiConfiguredIntent } from './monitor-evidence.js';
 import { createKimiSessionObserver, type KimiObservedEvent, type KimiObservedRecord } from './session-observer.js';
 import {

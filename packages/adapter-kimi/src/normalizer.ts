@@ -14,7 +14,7 @@ import type {
   AgentEventSource,
   ToolActivityKind,
   ToolPresentation,
-} from '@vibecook/chopsticks-core';
+} from '@vibecook/puppeteer-core';
 
 export interface KimiWireRecord {
   type?: unknown;

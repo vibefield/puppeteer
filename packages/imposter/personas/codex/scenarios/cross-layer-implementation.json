@@ -244,11 +244,11 @@
             "item": {
               "type": "commandExecution",
               "id": "$uuid:baseline-test",
-              "command": "pnpm --filter @vibecook/chopsticks-imposter test -- scenarios.codex",
+              "command": "pnpm --filter @vibecook/puppeteer-imposter test -- scenarios.codex",
               "cwd": "$threadCwd",
               "status": "inProgress",
               "commandActions": [
-                { "type": "run", "command": "pnpm --filter @vibecook/chopsticks-imposter test -- scenarios.codex" }
+                { "type": "run", "command": "pnpm --filter @vibecook/puppeteer-imposter test -- scenarios.codex" }
               ]
             }
           }
@@ -267,11 +267,11 @@
             "item": {
               "type": "commandExecution",
               "id": "$uuid:baseline-test",
-              "command": "pnpm --filter @vibecook/chopsticks-imposter test -- scenarios.codex",
+              "command": "pnpm --filter @vibecook/puppeteer-imposter test -- scenarios.codex",
               "cwd": "$threadCwd",
               "status": "failed",
               "commandActions": [
-                { "type": "run", "command": "pnpm --filter @vibecook/chopsticks-imposter test -- scenarios.codex" }
+                { "type": "run", "command": "pnpm --filter @vibecook/puppeteer-imposter test -- scenarios.codex" }
               ],
               "aggregatedOutput": "Expected long-form runflow contract is not implemented yet.",
               "exitCode": 1,
@@ -339,10 +339,10 @@
             "item": {
               "type": "commandExecution",
               "id": "$uuid:approved-test",
-              "command": "pnpm --filter @vibecook/chopsticks-imposter test",
+              "command": "pnpm --filter @vibecook/puppeteer-imposter test",
               "cwd": "$threadCwd",
               "status": "inProgress",
-              "commandActions": [{ "type": "run", "command": "pnpm --filter @vibecook/chopsticks-imposter test" }]
+              "commandActions": [{ "type": "run", "command": "pnpm --filter @vibecook/puppeteer-imposter test" }]
             }
           }
         }
@@ -359,9 +359,9 @@
             "turnId": "$uuid:turn",
             "itemId": "$uuid:approved-test",
             "startedAtMs": "$nowMs",
-            "command": "pnpm --filter @vibecook/chopsticks-imposter test",
+            "command": "pnpm --filter @vibecook/puppeteer-imposter test",
             "cwd": "$threadCwd",
-            "commandActions": [{ "type": "run", "command": "pnpm --filter @vibecook/chopsticks-imposter test" }],
+            "commandActions": [{ "type": "run", "command": "pnpm --filter @vibecook/puppeteer-imposter test" }],
             "availableDecisions": ["accept", "cancel"]
           }
         }
@@ -379,10 +379,10 @@
             "item": {
               "type": "commandExecution",
               "id": "$uuid:approved-test",
-              "command": "pnpm --filter @vibecook/chopsticks-imposter test",
+              "command": "pnpm --filter @vibecook/puppeteer-imposter test",
               "cwd": "$threadCwd",
               "status": "completed",
-              "commandActions": [{ "type": "run", "command": "pnpm --filter @vibecook/chopsticks-imposter test" }],
+              "commandActions": [{ "type": "run", "command": "pnpm --filter @vibecook/puppeteer-imposter test" }],
               "aggregatedOutput": "Scenario, normalizer, and control-plane tests passed.",
               "exitCode": 0,
               "durationMs": 265

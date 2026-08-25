@@ -63,7 +63,7 @@
         "evidence.json"
       ],
       "digestAlgorithm": "sha256-path-content-v1",
-      "sha256": "9babc56af1d9bdfb478af275804680c5f1b0b180efb465bf15b469a8ee77c1cd"
+      "sha256": "42e41093dc48ce8941670dc29756ffb44c01cb406e09f0c9ea13e1bbb95c32c1"
     }
   ],
   "limitations": [

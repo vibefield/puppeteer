@@ -1,4 +1,4 @@
-import type { AgentProviderMode } from '@vibecook/chopsticks-core';
+import type { AgentProviderMode } from '@vibecook/puppeteer-core';
 
 const CLAUDE_PERMISSION_LABELS: Readonly<Record<string, string>> = {
   // Claude 2.1.234 accepts `manual` at launch but reports and persists the

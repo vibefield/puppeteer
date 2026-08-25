@@ -1,13 +1,13 @@
 {
-  "name": "@vibecook/chopsticks-core",
+  "name": "@vibecook/puppeteer-core",
   "version": "0.1.8",
   "type": "module",
-  "description": "Core contracts for the chopsticks agent runtime: events, session state reducer, adapter interfaces. Zero I/O.",
+  "description": "Core contracts for the puppeteer agent runtime: events, session state reducer, adapter interfaces. Zero I/O.",
   "license": "MIT",
   "author": "James Yong",
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/vibecook-dev/chopsticks.git",
+    "url": "git+https://github.com/vibecook-dev/puppeteer.git",
     "directory": "packages/core"
   },
   "main": "./src/index.ts",

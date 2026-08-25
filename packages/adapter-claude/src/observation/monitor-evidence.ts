@@ -1,6 +1,6 @@
 /** Claude-local status and hook evidence for the correction-aware monitor SPI. */
 
-import type { ActorRunRef } from '@vibecook/chopsticks-core';
+import type { ActorRunRef } from '@vibecook/puppeteer-core';
 import type {
   AdapterMonitorObservationBatch,
   EvidenceRef,
@@ -9,8 +9,8 @@ import type {
   MonitorUsageFamilyValue,
   ObservationCapability,
   ObservationCoverage,
-} from '@vibecook/chopsticks-core/monitor-spi';
-import type { MonitorMetricFamily } from '@vibecook/chopsticks-core';
+} from '@vibecook/puppeteer-core/monitor-spi';
+import type { MonitorMetricFamily } from '@vibecook/puppeteer-core';
 import {
   claudeContextWindowEvent,
   claudeEnvironmentEvent,
@@ -97,7 +97,9 @@ export const CLAUDE_MONITOR_CAPABILITIES: readonly ObservationCapability[] = [
     actorScope: 'session',
     latency: 'historical',
     source: 'claude-hooks-and-status',
-    limitations: ['Hooks and status channels do not expose workflow membership; semantic capability is merged separately.'],
+    limitations: [
+      'Hooks and status channels do not expose workflow membership; semantic capability is merged separately.',
+    ],
   },
   {
     family: 'compaction',

@@ -40,7 +40,7 @@ async function fakePlane(options: { acceptHello?: boolean } = {}): Promise<FakeP
   const root = shortRoot();
   roots.push(root);
   const socketPath =
-    process.platform === 'win32' ? `\\\\.\\pipe\\chopsticks-test-${randomUUID()}` : join(root, 'p.sock');
+    process.platform === 'win32' ? `\\\\.\\pipe\\puppeteer-test-${randomUUID()}` : join(root, 'p.sock');
   const tokenPath = join(root, 'p.token');
   const token = randomUUID();
   writeFileSync(tokenPath, token, { mode: 0o600 });

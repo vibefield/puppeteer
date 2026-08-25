@@ -1,7 +1,7 @@
 {
   "vendor": "hermes",
   "asm": {
-    "package": "@vibecook/chopsticks-surface",
+    "package": "@vibecook/puppeteer-surface",
     "path": "vendors/hermes/model/hermes@0.20.0"
   },
   "shimNames": ["hermes"],

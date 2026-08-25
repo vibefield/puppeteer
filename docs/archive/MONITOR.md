@@ -4,13 +4,13 @@ Status: Archived · superseded by [RFC-001](../rfcs/001-evidence-backed-runtime-
 
 ## 1. Positioning
 
-Three things exist; chopsticks should stop trying to be all of them:
+Three things exist; puppeteer should stop trying to be all of them:
 
-- **The native TUI** already gives the user the full original experience. Chopsticks hosts it and
+- **The native TUI** already gives the user the full original experience. Puppeteer hosts it and
   must not re-narrate it.
 - **spaghetti** already ingests everything durable — transcripts, todos, plans, settings. History
   and search live there.
-- **chopsticks** is the _live runtime monitor_ (plus the lifecycle it already owns: spawn,
+- **puppeteer** is the _live runtime monitor_ (plus the lifecycle it already owns: spawn,
   isolation, guarded control, receipts). Its observation product is exactly the runtime facts a
   user cannot get by glancing at N terminal panes or grepping transcripts after the fact.
 
@@ -136,8 +136,8 @@ team name; per-session rollup of subagent deltas is core's job via envelope attr
 Several metrics (burn, plan snapshots) come from vendor files spaghetti already knows how to parse.
 The dependency shape:
 
-- **Code flows down; bytes flow up.** Chopsticks adapters import spaghetti's SDK (layer 2 → layer
-  1); spaghetti never imports chopsticks — it ingests chopsticks' record files as one more file
+- **Code flows down; bytes flow up.** Puppeteer adapters import spaghetti's SDK (layer 2 → layer
+  1); spaghetti never imports puppeteer — it ingests puppeteer' record files as one more file
   source. One direction is code, the other is data, so there is no cycle.
 - **Pairwise, direct, no middle layer.** Each adapter consumes its own vendor's scoped typed
   observer — Claude uses Spaghetti's `observeSession()` epoch/replacement contract with the rule
@@ -151,20 +151,20 @@ The dependency shape:
 - **One Rust core, two frontends.** With spaghetti's runtime moving to a Rust daemon, the parser +
   tail engine (fs watch, partial-line JSONL, rotation/rewrite detection, cursor replay, per-vendor
   typed records) lives in the Rust crates and is exposed two ways: an **N-API package** (the
-  `spaghetti-sdk-native` lineage) that chopsticks adapters link **in-process**, and the **daemon**
+  `spaghetti-sdk-native` lineage) that puppeteer adapters link **in-process**, and the **daemon**
   that applications query for history, search, and analytics. Adapters bind the napi frontend,
   never the daemon: a published library must not require a running service, and failure domains
   stay per-session (a daemon restart must not dark every session's transcript rail at once).
   N-API's ABI stability means no Electron rebuild pain, and napi-rs generates the TS types, so the
   record contract stays in lockstep with the parser by construction. This also retires the old
-  concern about the TS SDK's UI-heavy root entry — chopsticks stops touching it entirely. The
+  concern about the TS SDK's UI-heavy root entry — puppeteer stops touching it entirely. The
   Ghosttea precedent marks the line: a daemon is justified where a daemon is _necessary_ (PTY
   ownership surviving renderer reloads); file tailing needs only fs access, so don't buy daemon
   coupling for it. Two read-only tails on one file (daemon indexing live, adapter monitoring live)
   are fine.
 - **Live truth vs durable truth — never double-source.** The daemon makes it possible for godview
-  to fetch transcript-derived numbers directly, bypassing chopsticks. Don't: **live operational
-  metrics (status, activity, burn rate, context %) come only from chopsticks'
+  to fetch transcript-derived numbers directly, bypassing puppeteer. Don't: **live operational
+  metrics (status, activity, burn rate, context %) come only from puppeteer'
   `AgentMonitorState`; the daemon serves history, search, and cross-session analytics** (e.g. burn
   charts over past sessions). One fact, one owner — otherwise the board and the history disagree
   and neither can be trusted.
@@ -249,5 +249,5 @@ still complete (ADR-008) — nothing is lost, it is just not _modeled_.
    WorktreeCreate hook (behavior-replacing).
 6. The napi live-watch frontend: prebuild coverage for the three target platforms, exact-pin
    discipline in adapters, and whether the poke/cursor API surfaces per vendor or as one scoped
-   tail with vendor-typed payloads — settled in the spaghetti Rust refactor; chopsticks requires
+   tail with vendor-typed payloads — settled in the spaghetti Rust refactor; puppeteer requires
    only that it is in-process, headless, and shares the daemon's parser.

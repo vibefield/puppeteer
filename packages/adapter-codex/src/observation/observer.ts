@@ -24,12 +24,12 @@ import { performance } from 'node:perf_hooks';
 import {
   BufferedAgentEventSource,
   createEnvelopeStamper,
-  CHOPSTICKS_VERSION,
+  PUPPETEER_VERSION,
   type AgentEvent,
   type AgentEventEnvelope,
   type ObservationLevel,
-} from '@vibecook/chopsticks-core';
-import type { AdapterMonitorObservationBatch } from '@vibecook/chopsticks-core/monitor-spi';
+} from '@vibecook/puppeteer-core';
+import type { AdapterMonitorObservationBatch } from '@vibecook/puppeteer-core/monitor-spi';
 import { AppServerClient, type Transport } from '../transport/app-server-client.js';
 import { approvalResponse } from '../control/approvals.js';
 import type { CodexApprovalDecision, CodexApprovalRequest } from '../driver.js';
@@ -37,7 +37,7 @@ import { CodexNotificationNormalizer } from '../normalizer.js';
 import { readLastCodexContextWindow } from './rollout-context.js';
 import { CodexMonitorEvidence, type CodexConfiguredIntent } from './monitor-evidence.js';
 
-const CLIENT_INFO = { name: 'chopsticks-observer', version: CHOPSTICKS_VERSION } as const;
+const CLIENT_INFO = { name: 'puppeteer-observer', version: PUPPETEER_VERSION } as const;
 
 /** Empty inject materializes a rollout without a model turn (probe 3). */
 const MATERIALIZE_ITEMS = [{ type: 'text', text: '' }] as const;

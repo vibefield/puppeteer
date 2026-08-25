@@ -6,8 +6,8 @@ import { existsSync, mkdtempSync, readFileSync, readdirSync, rmSync } from 'node
 import { tmpdir } from 'node:os';
 import { dirname, join, relative, resolve, sep } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { loadModel, validatePayload } from '@vibecook/chopsticks-surface';
-import { checkCaptureDirectory, defaultRules } from '@vibecook/chopsticks-surface/sanitize';
+import { loadModel, validatePayload } from '@vibecook/puppeteer-surface';
+import { checkCaptureDirectory, defaultRules } from '@vibecook/puppeteer-surface/sanitize';
 import { digestTree } from '../../scripts/check-evidence.mjs';
 import { opencodeRules } from './privacy.mjs';
 

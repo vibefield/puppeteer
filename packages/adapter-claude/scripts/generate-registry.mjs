@@ -11,7 +11,7 @@
 import { readFileSync, writeFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { loadModel } from '@vibecook/chopsticks-surface';
+import { loadModel } from '@vibecook/puppeteer-surface';
 import { resolveAgentModel } from '../../../scripts/agent-model-selection.mjs';
 import { renderDetectionSurface, renderRegistry } from '../src/generated/registry-render.ts';
 

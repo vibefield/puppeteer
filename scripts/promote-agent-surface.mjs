@@ -4,7 +4,7 @@ import { existsSync, readFileSync, writeFileSync } from 'node:fs';
 import { execFileSync } from 'node:child_process';
 import { dirname, relative, resolve, sep } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { loadModel } from '@vibecook/chopsticks-surface';
+import { loadModel } from '@vibecook/puppeteer-surface';
 import { auditEvidence } from '../packages/surface/scripts/check-evidence.mjs';
 import { renderSupportBlock, updateReadme, validateSupportLedger } from './render-agent-support.mjs';
 
@@ -199,7 +199,7 @@ export function validatePromotion({
     const personaPath = resolve(root, 'packages', 'imposter', 'personas', agent.persona, 'persona.json');
     const persona = existsSync(personaPath) ? json(personaPath) : undefined;
     const expectedModel = relative(resolve(root, 'packages/surface'), dirname(manifestAbsolute)).split(sep).join('/');
-    if (persona?.asm?.package !== '@vibecook/chopsticks-surface' || persona?.asm?.path !== expectedModel) {
+    if (persona?.asm?.package !== '@vibecook/puppeteer-surface' || persona?.asm?.path !== expectedModel) {
       issues.push('Imposter persona must target the candidate before promotion');
     }
   }
@@ -221,7 +221,7 @@ export function supportVerificationFromReport(verification) {
   };
 }
 
-export function promoteLedgerAgent(ledger, vendor, manifest, chopsticksVersion, verification) {
+export function promoteLedgerAgent(ledger, vendor, manifest, puppeteerVersion, verification) {
   const agent = ledger.agents.find((entry) => entry.id === vendor);
   if (!agent) throw new Error(`support ledger has no ${vendor} entry`);
   if (!verification) throw new Error('promotion requires a durable verification attestation');
@@ -230,7 +230,7 @@ export function promoteLedgerAgent(ledger, vendor, manifest, chopsticksVersion, 
   delete agent.legacyEvidence;
   agent.status = 'verified';
   agent.verification = verification;
-  agent.introducedInChopsticks ??= chopsticksVersion;
+  agent.introducedInPuppeteer ??= puppeteerVersion;
   return agent;
 }
 

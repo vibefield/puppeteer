@@ -1,4 +1,4 @@
-# Chopsticks Agent Imposter — v0.1
+# Puppeteer Agent Imposter — v0.1
 
 **Status:** Archived implementation rationale; active behavior lives in `packages/imposter` and Surface-owned vendor models
 **Created:** 2026-08-07
@@ -29,11 +29,11 @@ The proof of concept proved the semantic model works. It did so with **N per-ada
 
 ### 1.1 The invariant (do not relitigate)
 
-**Chopsticks never derives semantics from terminal text** (ADR-003/-004/-005). Introducing a real TUI is safe _only_ because nothing downstream consumes it: godview renders those bytes for a human, and the reducer's inputs remain hooks, transcript, statusline, and JSON-RPC.
+**Puppeteer never derives semantics from terminal text** (ADR-003/-004/-005). Introducing a real TUI is safe _only_ because nothing downstream consumes it: godview renders those bytes for a human, and the reducer's inputs remain hooks, transcript, statusline, and JSON-RPC.
 
 Therefore:
 
-- The imposter's TUI is an **output-only channel**. The imposter's own tests may diff its frames; **no chopsticks package may assert on them**.
+- The imposter's TUI is an **output-only channel**. The imposter's own tests may diff its frames; **no puppeteer package may assert on them**.
 - The TUI is explicitly **not** a clone of any vendor's interface (§4). Vendor-interface parity is a stated non-goal, not a deferred phase.
 - A test that proves a semantic by reading imposter screen text has crossed the line the emulator exists to defend. Treat it as a build failure, not a style nit.
 
@@ -92,10 +92,10 @@ This is the first thing the codex persona proves that the claude persona alone n
 ### 3.1 Layout
 
 ```
-packages/surface/                       @vibecook/chopsticks-surface   (ASM runtime — §7.1)
+packages/surface/                       @vibecook/puppeteer-surface   (ASM runtime — §7.1)
   src/model.ts                          self-contained; erasableSyntaxOnly package-wide
 
-packages/imposter/                      @vibecook/chopsticks-imposter
+packages/imposter/                      @vibecook/puppeteer-imposter
   bin/ai.mjs                            entry; resolves persona, then delegates
   src/
     cli/argv.ts                         persona from argv0 | --<vendor> | AI_PERSONA
@@ -134,13 +134,13 @@ A new agent therefore costs: the ASM the adapter needs anyway, plus an ops map a
 ```json
 {
   "vendor": "claude",
-  "asm": { "package": "@vibecook/chopsticks-surface", "path": "vendors/claude/model/claude@2.1.207" },
+  "asm": { "package": "@vibecook/puppeteer-surface", "path": "vendors/claude/model/claude@2.1.207" },
   "shimNames": ["claude"],
   "boot": ["session.start", "instructions.loaded", "statusline.refresh"]
 }
 ```
 
-Surface publishes `files: ["dist", "vendors/*/model"]`, so a published Imposter can resolve a promoted ASM. The loader resolves `@vibecook/chopsticks-surface/package.json` and joins the declared model path; it does not deep-import JSON through package exports.
+Surface publishes `files: ["dist", "vendors/*/model"]`, so a published Imposter can resolve a promoted ASM. The loader resolves `@vibecook/puppeteer-surface/package.json` and joins the declared model path; it does not deep-import JSON through package exports.
 
 ### 3.3 Ownership split
 
@@ -152,7 +152,7 @@ Surface publishes `files: ["dist", "vendors/*/model"]`, so a published Imposter 
 
 **One chrome for every persona.** It conveys which agent is being impostered and enough operational readout to debug by. It is not themed per vendor and there is no fidelity ladder.
 
-This is a goal, not a compromise. Cloning vendor interfaces would burn effort on the one surface chopsticks is forbidden to read, and would produce a screen convincing enough to invite exactly the mistake §1.1 prohibits. A screen that plainly announces itself as an imposter is the safer artifact _and_ the cheaper one.
+This is a goal, not a compromise. Cloning vendor interfaces would burn effort on the one surface puppeteer is forbidden to read, and would produce a screen convincing enough to invite exactly the mistake §1.1 prohibits. A screen that plainly announces itself as an imposter is the safer artifact _and_ the cheaper one.
 
 Content:
 
@@ -214,7 +214,7 @@ So Ink costs **~40 MB per process**. One imposter does not care; the swarm demo 
 Two things follow, both implemented:
 
 1. **Ink is a dynamic import**, reached only after the TTY check, so a piped run — CI, and the control centre's own spawner — never loads React at all. A resolve-hook test asserts this rather than trusting it.
-2. **`CHOPSTICKS_IMPOSTER_TUI=off`** forces the append-only sink even on a TTY. That is the contained retreat this section reserved, available without a code change.
+2. **`PUPPETEER_IMPOSTER_TUI=off`** forces the append-only sink even on a TTY. That is the contained retreat this section reserved, available without a code change.
 
 `react-devtools-core` turns out to be an _optional_ peer of Ink, so its 15 MB is not paid. Ink itself is 557 KB unpacked.
 
@@ -287,10 +287,10 @@ The browser console keeps HTTP; it has to. The plane translates. Browser ⇄ HTT
 
 ### 5.2 Two constraints worth writing down
 
-- **Path length.** `sun_path` is ~103 bytes on macOS, ~107 on Linux. The socket must live at a short fixed path (`~/.chopsticks/imposter.sock`), never a nested per-session one.
+- **Path length.** `sun_path` is ~103 bytes on macOS, ~107 on Linux. The socket must live at a short fixed path (`~/.puppeteer/imposter.sock`), never a nested per-session one.
 - **Windows auth.** A 0700 directory gives POSIX a filesystem capability that named pipes do not expose through Node. **Keep a bearer token anyway** so both platforms behave identically; the token costs ~10 lines and the real win is that the endpoint was never network-reachable to begin with.
 
-**Where the token lives (settled at I3).** Deleting the state file removed the only place a shared secret was published, so the plane writes one at `~/.chopsticks/imposter.token`, mode 0600, in the same 0700 directory as the socket. This is not the state file returning: it carries no URL, no pid, and nothing to infer liveness from, so there is no discovery parse surface and no ownership contention. The socket path is fixed, and socket close is liveness. The plane keeps a **second, separate** token for the browser console — two doors, two secrets, and the one on disk never reaches a URL.
+**Where the token lives (settled at I3).** Deleting the state file removed the only place a shared secret was published, so the plane writes one at `~/.puppeteer/imposter.token`, mode 0600, in the same 0700 directory as the socket. This is not the state file returning: it carries no URL, no pid, and nothing to infer liveness from, so there is no discovery parse surface and no ownership contention. The socket path is fixed, and socket close is liveness. The plane keeps a **second, separate** token for the browser console — two doors, two secrets, and the one on disk never reaches a URL.
 
 **Stale sockets.** A socket file outlives an ungraceful exit, so existence is not ownership. The plane dials its own path first: something answers → another plane owns it, refuse to start; nothing answers → unlink and bind. This replaces `livePlaneInStateFile`.
 
@@ -314,7 +314,7 @@ Link `bin/ai.mjs` itself, **not** `$(command -v ai)`. A package manager's global
 
 Two install commands existed for these and both were deleted on 2026-08-08 (§11.1). `ai link` reimplemented the package manager. `ai shims install` wrote the symlink above into a managed directory, with conflict detection, idempotency, a Windows wrapper, `--force`, and a `list` subcommand — a hundred lines and its own test file to save one `ln -s`, in service of a "product apps need no changes" claim that §11.2 retired: an app that wants an imposted session now passes `executable` per session, which is finer-grained, needs no PATH manipulation at all, and cannot leak into a shell the user did not intend.
 
-**Naming.** `ai` collides with the npm package `ai` and is a common shell alias. Publish as `@vibecook/chopsticks-imposter` with `bin: { "ai": …, "imposter": … }`, and let anyone who dislikes the name alias it themselves.
+**Naming.** `ai` collides with the npm package `ai` and is a common shell alias. Publish as `@vibecook/puppeteer-imposter` with `bin: { "ai": …, "imposter": … }`, and let anyone who dislikes the name alias it themselves.
 
 ---
 
@@ -324,7 +324,7 @@ Two install commands existed for these and both were deleted on 2026-08-08 (§11
 
 ### 7.1 Why the ASM runtime does not move into the imposter
 
-`model.ts` has consumers that are not the imposter: Surface audits and model tooling use it directly, while adapter projection generators import its types and validator. Claude and Codex carry `@vibecook/chopsticks-surface` only as a **devDependency**; their published runtimes do not depend on the evidence package.
+`model.ts` has consumers that are not the imposter: Surface audits and model tooling use it directly, while adapter projection generators import its types and validator. Claude and Codex carry `@vibecook/puppeteer-surface` only as a **devDependency**; their published runtimes do not depend on the evidence package.
 
 It must also stay **self-contained** — no relative imports, erasable syntax only — because `.mjs` Surface scripts import it under Node type stripping. `packages/surface/tsconfig.json` enforces that constraint. An imposter package containing Ink and JSX cannot set that flag, so moving the model runtime there would degrade a compiler-enforced boundary into convention.
 
@@ -334,7 +334,7 @@ It must also stay **self-contained** — no relative imports, erasable syntax on
 
 | From `packages/emulator`                                                              | Goes to                                                 | Notes                                                                                                            |
 | ------------------------------------------------------------------------------------- | ------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------- |
-| `model.ts` (whole file)                                                               | **`packages/surface`** — `@vibecook/chopsticks-surface` | Renamed package, same contents, same `erasableSyntaxOnly`. Adapters devDepend on it; the imposter depends on it. |
+| `model.ts` (whole file)                                                               | **`packages/surface`** — `@vibecook/puppeteer-surface` | Renamed package, same contents, same `erasableSyntaxOnly`. Adapters devDepend on it; the imposter depends on it. |
 | `engine.ts` → paste decoder, hook emitter, transcript writer, statusline invoker      | `packages/imposter/src/session/channels/`               | May now import each other normally — the `validate`-injection existed only to keep the file self-contained.      |
 | `engine.ts` → scenario runner                                                         | `packages/imposter/src/session/scenario.ts`             | Becomes the raw/adversarial layer beneath the op layer (§2, §2.1).                                               |
 | `control.ts` → `createControlPlane`                                                   | `apps/imposter-control/src/main/plane.ts`               | Sole consumer; not published API.                                                                                |
@@ -344,7 +344,7 @@ It must also stay **self-contained** — no relative imports, erasable syntax on
 
 **Deleted outright**, superseded by the UDS inversion (§5): `createEmulatorControlServer` (the bin-side HTTP server — imposters dial out and serve nothing), `defaultControlStateFile` / `parseStateFile` / `livePlaneInStateFile` (no state file), `registrationChannels` / `prune` (liveness is socket close), and the imposter-side bearer dance (the plane keeps a token for the browser).
 
-`packages/emulator` is listed in `scripts/public-packages.mjs` at `0.1.8`, but it has **never been published**: it is new on the unmerged `feat/agent-emulator` branch, and `@vibecook/chopsticks-emulator` returns 404 from the registry (verified 2026-08-07). Retiring it is therefore free — no deprecation, no successor notice, no breaking change for any consumer.
+`packages/emulator` is listed in `scripts/public-packages.mjs` at `0.1.8`, but it has **never been published**: it is new on the unmerged `feat/agent-emulator` branch, and `@vibecook/puppeteer-emulator` returns 404 from the registry (verified 2026-08-07). Retiring it is therefore free — no deprecation, no successor notice, no breaking change for any consumer.
 
 The same holds for every rearrangement in this document. **Nothing described here has shipped**, so the usual constraints on moving published API do not apply, and the sequencing in §8 is chosen purely for bisectability rather than for compatibility.
 
@@ -369,7 +369,7 @@ These are the non-obvious parts of the PoC. They are cheap to lose in a rewrite 
 
 **Revised at I4 (2026-08-08).** The `synthetic` persona exists and earns its keep; folding `fake-agent.mjs` into it does not.
 
-Two reasons. `fakeAgentBin` is exported API of `@vibecook/chopsticks-testing@0.1.8`, which **is** published — removing it is a breaking change for no gain. And the two do different jobs: the fake agent exercises the **terminal spine** (alt-screen, bad UTF-8, byte floods, ignored SIGINT, child process trees) for the PTY layer, while the imposter's TUI is cosmetic by §4 and deliberately does none of that. Merging them would conflate a terminal fixture with a machine-surface stand-in.
+Two reasons. `fakeAgentBin` is exported API of `@vibecook/puppeteer-testing@0.1.8`, which **is** published — removing it is a breaking change for no gain. And the two do different jobs: the fake agent exercises the **terminal spine** (alt-screen, bad UTF-8, byte floods, ignored SIGINT, child process trees) for the PTY layer, while the imposter's TUI is cosmetic by §4 and deliberately does none of that. Merging them would conflate a terminal fixture with a machine-surface stand-in.
 
 What §7.4 actually wanted — a not-a-real-vendor check on the persona contract — is delivered by `personas/synthetic/` alone, and it paid for itself immediately. Writing a second persona found three places the contract had quietly become claude-shaped:
 
@@ -675,7 +675,7 @@ Two changes make `ai` a command you can actually run.
 
 **`ai` reaches PATH through the package manager, not through us.** `pnpm add --global ./packages/imposter` from a checkout — it resolves the `workspace:*` dependencies because the global install symlinks back into the repo, so edits stay live — or an ordinary global install once published. Both work off the `bin` field the package already declares.
 
-An `ai link` command lived here for a few hours and was deleted. It wrote symlinks into `~/.chopsticks/bin`, reasoning that a directory of our own shadows nothing — correct constraint, wrong conclusion, since `ai` and `imposter` shadow nothing _wherever_ they live. The shadowing `~/.chopsticks/shims` exists to contain is a property of the VENDOR names. So the isolation bought nothing and cost the only thing that mattered: `ai: command not found` immediately followed a successful link (reported 2026-08-08). Rewriting it to guess a directory already on PATH only made it worse — it squatted in pnpm's global bin behind pnpm's back. The lesson is narrow and worth keeping: **do not reimplement the package manager**; a `bin` field and one install command already solve this.
+An `ai link` command lived here for a few hours and was deleted. It wrote symlinks into `~/.puppeteer/bin`, reasoning that a directory of our own shadows nothing — correct constraint, wrong conclusion, since `ai` and `imposter` shadow nothing _wherever_ they live. The shadowing `~/.puppeteer/shims` exists to contain is a property of the VENDOR names. So the isolation bought nothing and cost the only thing that mattered: `ai: command not found` immediately followed a successful link (reported 2026-08-08). Rewriting it to guess a directory already on PATH only made it worse — it squatted in pnpm's global bin behind pnpm's back. The lesson is narrow and worth keeping: **do not reimplement the package manager**; a `bin` field and one install command already solve this.
 
 `ai shims install` went the same way an hour later, for the same reason applied one level up: it existed to put VENDOR names on PATH so an unmodified app would launch the imposter, and §11.2's per-session `executable` override does that better — per session rather than per shell, with no PATH manipulation to leak. What remains of the capability is argv0 dispatch and one `ln -s` (§6).
 
@@ -684,8 +684,8 @@ An `ai link` command lived here for a few hours and was deleted. It wrote symlin
 `ai --claude` typed in a Godview pane now produces a session Godview recognises as claude, rendering the imposter's own chrome. The pieces:
 
 - Godview's shim directory gains an `ai` entry. The shim reads its own name, takes the vendor from `--<vendor>`, strips that flag, and marks the request `imposter: true`.
-- `ClaudeAgentOptions.executable` overrides the binary **for one session**, so every other pane still launches the user's real Claude Code. `CHOPSTICKS_CLAUDE_BIN` is the same capability applied to the whole process, which is exactly what makes it unusable here.
-- The gateway resolves the imposter itself (PATH, or `CHOPSTICKS_IMPOSTER_BIN`) and merges `AI_PERSONA` into the launch env. A request can choose emulation; it can never choose what gets executed.
+- `ClaudeAgentOptions.executable` overrides the binary **for one session**, so every other pane still launches the user's real Claude Code. `PUPPETEER_CLAUDE_BIN` is the same capability applied to the whole process, which is exactly what makes it unusable here.
+- The gateway resolves the imposter itself (PATH, or `PUPPETEER_IMPOSTER_BIN`) and merges `AI_PERSONA` into the launch env. A request can choose emulation; it can never choose what gets executed.
 
 **Only claude, and for a specific reason.** The codex adapter's TUI recipe spawns `codex app-server --listen unix://…` and attaches a second process over a WebSocket on that socket, while the codex persona serves NDJSON on stdio. Until the persona speaks that listen/attach pair, `ai --codex` in a pane is refused with a message saying so — an honest refusal beats a session bound to nothing, which would look like it worked.
 
@@ -715,7 +715,7 @@ What is still covered on Windows: `plane.test.ts`, which exercises the plane's H
 
 The alternative was deleting the Windows job, which would have taken godview's and workbench's Windows coverage with it to hide one app's gap. Skipping two suites states the limitation; deleting the job would have concealed it.
 
-**To close it**, the first thing to check is whether the imposter's `connectControl` reaches `createConnection({ path })` with the pipe name intact — `CHOPSTICKS_IMPOSTER_SOCKET` crosses a process boundary as an environment variable, and a `\\.\pipe\…` value survives that differently than a filesystem path does.
+**To close it**, the first thing to check is whether the imposter's `connectControl` reaches `createConnection({ path })` with the pipe name intact — `PUPPETEER_IMPOSTER_SOCKET` crosses a process boundary as an environment variable, and a `\\.\pipe\…` value survives that differently than a filesystem path does.
 
 ### 11.5 The codex pane: a transport, and a second role
 

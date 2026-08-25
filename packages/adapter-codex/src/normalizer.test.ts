@@ -5,7 +5,7 @@ import {
   reduceSessionState,
   type AgentEvent,
   type SessionRuntimeState,
-} from '@vibecook/chopsticks-core';
+} from '@vibecook/puppeteer-core';
 import { CodexNotificationNormalizer, type CodexServerNotification } from './normalizer.js';
 
 // Real identifiers + payloads from the C1 live capture

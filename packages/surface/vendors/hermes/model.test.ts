@@ -1,7 +1,7 @@
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { describe, expect, it } from 'vitest';
-import { loadModel } from '@vibecook/chopsticks-surface';
+import { loadModel } from '@vibecook/puppeteer-surface';
 
 const version = '0.20.0';
 const vendorRoot = dirname(fileURLToPath(import.meta.url));

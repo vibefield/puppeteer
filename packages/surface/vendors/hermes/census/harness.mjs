@@ -49,7 +49,7 @@ function sha256(bytes) {
 export function sanitizeVersionOutput(text) {
   return String(text ?? '')
     .replace(/^Install directory:.*$/m, 'Install directory: <redacted:install-directory>')
-    .replace(/\/(?:private\/)?tmp\/chopsticks-hermes-[^\s]+/g, '<redacted:path>')
+    .replace(/\/(?:private\/)?tmp\/puppeteer-hermes-[^\s]+/g, '<redacted:path>')
     .replace(new RegExp(homedir().replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'g'), '<redacted:home>');
 }
 
@@ -178,7 +178,7 @@ function main() {
     vendor: 'hermes',
     vendorVersion: VERSION,
     platform,
-    artifact: '$CHOPSTICKS_HERMES_BIN',
+    artifact: '$PUPPETEER_HERMES_BIN',
     identity: 'source-revision-and-lockfile',
     note: 'hermes is a Python console script; product identity is the pinned checkout, not the wrapper bytes.',
     versionArgs: ['--version'],

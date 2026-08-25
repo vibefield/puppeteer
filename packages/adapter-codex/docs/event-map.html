@@ -3,8 +3,8 @@
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <meta name="chopsticks-surface-manifest" content="packages/surface/vendors/codex/model/codex@0.147.0/manifest.json" />
-    <meta name="chopsticks-last-verified" content="0.147.0" />
+    <meta name="puppeteer-surface-manifest" content="packages/surface/vendors/codex/model/codex@0.147.0/manifest.json" />
+    <meta name="puppeteer-last-verified" content="0.147.0" />
     <title>Codex adapter — event map</title>
     <style>
       :root {
@@ -258,7 +258,7 @@
             <p class="sub">
               <strong>Complete catalog</strong> from OpenAI’s published Codex App Server documentation:
               every API method, event notification, ThreadItem type, and approval flow gets a deep card
-              (definition + official detail). Badges mark chopsticks adoption only — they do not omit entries.
+              (definition + official detail). Badges mark puppeteer adoption only — they do not omit entries.
               Retrieved <time datetime="2026-08-03">2026-08-03</time>.
             </p>
           </div>
@@ -309,7 +309,7 @@
             <span class="tag t-partial">Partial</span>
             <span class="tag t-ambient">Ambient / dropped</span>
             <span class="tag t-unused">Not used</span>
-            — adoption by chopsticks only; all official entries still listed in full.
+            — adoption by puppeteer only; all official entries still listed in full.
           </p>
 
           <h4 id="gt-cx-connect">Connect, protocol, primitives, lifecycle, initialization</h4>
@@ -412,7 +412,7 @@ codex app-server generate-json-schema --out ./schemas</code></pre>
       <span class="tag t-used">Used</span>
     </div>
   </header>
-  <div class="hook-card-body"><p><strong>Official:</strong> Required handshake per connection; then send <code>initialized</code> notification (see Initialization section).</p><p class="muted-p">Full request/response types: run <code>codex app-server generate-ts</code> for this Codex version, or see the official App Server page API overview.</p><h5>Chopsticks</h5><p class="hook-usage"><strong>Chopsticks:</strong> Called / handled for agent session lifecycle.</p></div>
+  <div class="hook-card-body"><p><strong>Official:</strong> Required handshake per connection; then send <code>initialized</code> notification (see Initialization section).</p><p class="muted-p">Full request/response types: run <code>codex app-server generate-ts</code> for this Codex version, or see the official App Server page API overview.</p><h5>Puppeteer</h5><p class="hook-usage"><strong>Puppeteer:</strong> Called / handled for agent session lifecycle.</p></div>
 </article>
 <article class="hook-card use-used" id="cx-m-thread-start">
   <header class="hook-card-h">
@@ -455,7 +455,7 @@ codex app-server generate-json-schema --out ./schemas</code></pre>
 <p>Resuming a thread doesn&#x27;t update <code>thread.updatedAt</code> (or the rollout file&#x27;s modified time) by itself. The timestamp updates when you start a turn.</p>
 <p>If you mark an enabled MCP server as <code>required</code> in config and that server fails to initialize, <code>thread/start</code> and <code>thread/resume</code> fail instead of continuing without it.</p>
 <p><code>dynamicTools</code> on <code>thread/start</code> is an experimental field (requires <code>capabilities.experimentalApi = true</code>). Codex persists these dynamic tools in the thread rollout metadata and restores them on <code>thread/resume</code> when you don&#x27;t supply new dynamic tools.</p>
-<p>If you resume with a different model than the one recorded in the rollout, Codex emits a warning and applies a one-time model-switch instruction on the next turn.</p><h5>Source section</h5><p class="muted-p">Official docs § Start or resume a thread</p><h5>Chopsticks</h5><p class="hook-usage"><strong>Chopsticks:</strong> Called / handled for agent session lifecycle.</p></div>
+<p>If you resume with a different model than the one recorded in the rollout, Codex emits a warning and applies a one-time model-switch instruction on the next turn.</p><h5>Source section</h5><p class="muted-p">Official docs § Start or resume a thread</p><h5>Puppeteer</h5><p class="hook-usage"><strong>Puppeteer:</strong> Called / handled for agent session lifecycle.</p></div>
 </article>
 <article class="hook-card use-used" id="cx-m-thread-resume">
   <header class="hook-card-h">
@@ -498,7 +498,7 @@ codex app-server generate-json-schema --out ./schemas</code></pre>
 <p>Resuming a thread doesn&#x27;t update <code>thread.updatedAt</code> (or the rollout file&#x27;s modified time) by itself. The timestamp updates when you start a turn.</p>
 <p>If you mark an enabled MCP server as <code>required</code> in config and that server fails to initialize, <code>thread/start</code> and <code>thread/resume</code> fail instead of continuing without it.</p>
 <p><code>dynamicTools</code> on <code>thread/start</code> is an experimental field (requires <code>capabilities.experimentalApi = true</code>). Codex persists these dynamic tools in the thread rollout metadata and restores them on <code>thread/resume</code> when you don&#x27;t supply new dynamic tools.</p>
-<p>If you resume with a different model than the one recorded in the rollout, Codex emits a warning and applies a one-time model-switch instruction on the next turn.</p><h5>Source section</h5><p class="muted-p">Official docs § Start or resume a thread</p><h5>Chopsticks</h5><p class="hook-usage"><strong>Chopsticks:</strong> Called / handled for agent session lifecycle.</p></div>
+<p>If you resume with a different model than the one recorded in the rollout, Codex emits a warning and applies a one-time model-switch instruction on the next turn.</p><h5>Source section</h5><p class="muted-p">Official docs § Start or resume a thread</p><h5>Puppeteer</h5><p class="hook-usage"><strong>Puppeteer:</strong> Called / handled for agent session lifecycle.</p></div>
 </article>
 <article class="hook-card use-unused" id="cx-m-thread-fork">
   <header class="hook-card-h">
@@ -584,7 +584,7 @@ codex app-server generate-json-schema --out ./schemas</code></pre>
 <p>Resuming a thread doesn&#x27;t update <code>thread.updatedAt</code> (or the rollout file&#x27;s modified time) by itself. The timestamp updates when you start a turn.</p>
 <p>If you mark an enabled MCP server as <code>required</code> in config and that server fails to initialize, <code>thread/start</code> and <code>thread/resume</code> fail instead of continuing without it.</p>
 <p><code>dynamicTools</code> on <code>thread/start</code> is an experimental field (requires <code>capabilities.experimentalApi = true</code>). Codex persists these dynamic tools in the thread rollout metadata and restores them on <code>thread/resume</code> when you don&#x27;t supply new dynamic tools.</p>
-<p>If you resume with a different model than the one recorded in the rollout, Codex emits a warning and applies a one-time model-switch instruction on the next turn.</p><h5>Source section</h5><p class="muted-p">Official docs § Start or resume a thread</p><h5>Chopsticks</h5><p class="hook-usage"><strong>Chopsticks:</strong> Called / handled for agent session lifecycle.</p></div>
+<p>If you resume with a different model than the one recorded in the rollout, Codex emits a warning and applies a one-time model-switch instruction on the next turn.</p><h5>Source section</h5><p class="muted-p">Official docs § Start or resume a thread</p><h5>Puppeteer</h5><p class="hook-usage"><strong>Puppeteer:</strong> Called / handled for agent session lifecycle.</p></div>
 </article>
 <article class="hook-card use-unused" id="cx-m-thread-list">
   <header class="hook-card-h">
@@ -960,7 +960,7 @@ codex app-server generate-json-schema --out ./schemas</code></pre>
     &quot;threadId&quot;: &quot;thr_123&quot;,
     &quot;status&quot;: { &quot;type&quot;: &quot;notLoaded&quot; }
 } }
-{ &quot;method&quot;: &quot;thread/closed&quot;, &quot;params&quot;: { &quot;threadId&quot;: &quot;thr_123&quot; } }</code></pre><h5>Source section</h5><p class="muted-p">Official docs § Unsubscribe from a loaded thread</p><h5>Chopsticks</h5><p class="hook-usage"><strong>Chopsticks:</strong> Available on edge paths or partially wired.</p></div>
+{ &quot;method&quot;: &quot;thread/closed&quot;, &quot;params&quot;: { &quot;threadId&quot;: &quot;thr_123&quot; } }</code></pre><h5>Source section</h5><p class="muted-p">Official docs § Unsubscribe from a loaded thread</p><h5>Puppeteer</h5><p class="hook-usage"><strong>Puppeteer:</strong> Available on edge paths or partially wired.</p></div>
 </article>
 <article class="hook-card use-unused" id="cx-m-thread-unarchive">
   <header class="hook-card-h">
@@ -988,7 +988,7 @@ codex app-server generate-json-schema --out ./schemas</code></pre>
     &quot;threadId&quot;: &quot;thr_123&quot;,
     &quot;status&quot;: { &quot;type&quot;: &quot;active&quot;, &quot;activeFlags&quot;: [&quot;waitingOnApproval&quot;] }
   }
-}</code></pre><h5>Source section</h5><p class="muted-p">Official docs § Track thread status changes</p><h5>Chopsticks</h5><p class="hook-usage"><strong>Chopsticks:</strong> Received but dropped/ambient (not agent semantics for views).</p></div>
+}</code></pre><h5>Source section</h5><p class="muted-p">Official docs § Track thread status changes</p><h5>Puppeteer</h5><p class="hook-usage"><strong>Puppeteer:</strong> Received but dropped/ambient (not agent semantics for views).</p></div>
 </article>
 <article class="hook-card use-unused" id="cx-m-thread-compact-start">
   <header class="hook-card-h">
@@ -1135,7 +1135,7 @@ codex app-server generate-json-schema --out ./schemas</code></pre>
     &quot;additionalProperties&quot;: false
   }
 } }
-{ &quot;id&quot;: 30, &quot;result&quot;: { &quot;turn&quot;: { &quot;id&quot;: &quot;turn_456&quot;, &quot;status&quot;: &quot;inProgress&quot;, &quot;items&quot;: [], &quot;error&quot;: null } } }</code></pre><h5>Source section</h5><p class="muted-p">Official docs § Start a turn</p><h5>Chopsticks</h5><p class="hook-usage"><strong>Chopsticks:</strong> Called / handled for agent session lifecycle.</p></div>
+{ &quot;id&quot;: 30, &quot;result&quot;: { &quot;turn&quot;: { &quot;id&quot;: &quot;turn_456&quot;, &quot;status&quot;: &quot;inProgress&quot;, &quot;items&quot;: [], &quot;error&quot;: null } } }</code></pre><h5>Source section</h5><p class="muted-p">Official docs § Start a turn</p><h5>Puppeteer</h5><p class="hook-usage"><strong>Puppeteer:</strong> Called / handled for agent session lifecycle.</p></div>
 </article>
 <article class="hook-card use-used" id="cx-m-thread-inject-items">
   <header class="hook-card-h">
@@ -1155,7 +1155,7 @@ codex app-server generate-json-schema --out ./schemas</code></pre>
     }
   ]
 } }
-{ &quot;id&quot;: 31, &quot;result&quot;: {} }</code></pre><h5>Source section</h5><p class="muted-p">Official docs § Inject items into a thread</p><h5>Chopsticks</h5><p class="hook-usage"><strong>Chopsticks:</strong> Called / handled for agent session lifecycle.</p></div>
+{ &quot;id&quot;: 31, &quot;result&quot;: {} }</code></pre><h5>Source section</h5><p class="muted-p">Official docs § Inject items into a thread</p><h5>Puppeteer</h5><p class="hook-usage"><strong>Puppeteer:</strong> Called / handled for agent session lifecycle.</p></div>
 </article>
 <article class="hook-card use-unused" id="cx-m-turn-steer">
   <header class="hook-card-h">
@@ -1182,7 +1182,7 @@ codex app-server generate-json-schema --out ./schemas</code></pre>
   </header>
   <div class="hook-card-body"><p><strong>Official:</strong> request cancellation of an in-flight turn; success is <code>{}</code> and the turn ends with <code>status: &quot;interrupted&quot;</code>.</p><pre class="snippet"><code>{ &quot;method&quot;: &quot;turn/interrupt&quot;, &quot;id&quot;: 31, &quot;params&quot;: { &quot;threadId&quot;: &quot;thr_123&quot;, &quot;turnId&quot;: &quot;turn_456&quot; } }
 { &quot;id&quot;: 31, &quot;result&quot;: {} }</code></pre>
-<p>On success, the turn finishes with <code>status: &quot;interrupted&quot;</code>.</p><h5>Source section</h5><p class="muted-p">Official docs § Interrupt a turn</p><h5>Chopsticks</h5><p class="hook-usage"><strong>Chopsticks:</strong> Available on edge paths or partially wired.</p></div>
+<p>On success, the turn finishes with <code>status: &quot;interrupted&quot;</code>.</p><h5>Source section</h5><p class="muted-p">Official docs § Interrupt a turn</p><h5>Puppeteer</h5><p class="hook-usage"><strong>Puppeteer:</strong> Available on edge paths or partially wired.</p></div>
 </article>
 <article class="hook-card use-unused" id="cx-m-review-start">
   <header class="hook-card-h">
@@ -1306,7 +1306,7 @@ codex app-server generate-json-schema --out ./schemas</code></pre>
 <p>Each model entry can include:</p>
 <ul><li><code>supportedReasoningEfforts</code> - supported effort options for the model.</li><li><code>defaultReasoningEffort</code> - suggested default effort for clients.</li><li><code>upgrade</code> - optional recommended upgrade model id for migration prompts in clients.</li><li><code>upgradeInfo</code> - optional upgrade metadata for migration prompts in clients.</li><li><code>hidden</code> - whether the model is hidden from the default picker list.</li><li><code>inputModalities</code> - supported input types for the model (for example <code>text</code>, <code>image</code>).</li><li><code>supportsPersonality</code> - whether the model supports personality-specific instructions such as <code>/personality</code>.</li><li><code>isDefault</code> - whether the model is the recommended default.</li></ul>
 <p>By default, <code>model/list</code> returns picker-visible models only. Set <code>includeHidden: true</code> if you need the full list and want to filter on the client side using <code>hidden</code>.</p>
-<p>When <code>inputModalities</code> is missing (older model catalogs), treat it as <code>[&quot;text&quot;, &quot;image&quot;]</code> for backward compatibility.</p><h5>Source section</h5><p class="muted-p">Official docs § List models (`model/list`)</p><h5>Chopsticks</h5><p class="hook-usage"><strong>Chopsticks:</strong> Available on edge paths or partially wired.</p></div>
+<p>When <code>inputModalities</code> is missing (older model catalogs), treat it as <code>[&quot;text&quot;, &quot;image&quot;]</code> for backward compatibility.</p><h5>Source section</h5><p class="muted-p">Official docs § List models (`model/list`)</p><h5>Puppeteer</h5><p class="hook-usage"><strong>Puppeteer:</strong> Available on edge paths or partially wired.</p></div>
 </article>
 <article class="hook-card use-unused" id="cx-m-modelprovider-capabilities-read">
   <header class="hook-card-h">
@@ -1401,7 +1401,7 @@ codex app-server generate-json-schema --out ./schemas</code></pre>
       <span class="tag t-ambient">Ambient / dropped</span>
     </div>
   </header>
-  <div class="hook-card-body"><p><strong>Official:</strong> emitted when watched local skill files change.</p><p class="muted-p">Full request/response types: run <code>codex app-server generate-ts</code> for this Codex version, or see the official App Server page API overview.</p><h5>Chopsticks</h5><p class="hook-usage"><strong>Chopsticks:</strong> Received but dropped/ambient (not agent semantics for views).</p></div>
+  <div class="hook-card-body"><p><strong>Official:</strong> emitted when watched local skill files change.</p><p class="muted-p">Full request/response types: run <code>codex app-server generate-ts</code> for this Codex version, or see the official App Server page API overview.</p><h5>Puppeteer</h5><p class="hook-usage"><strong>Puppeteer:</strong> Received but dropped/ambient (not agent semantics for views).</p></div>
 </article>
 <article class="hook-card use-unused" id="cx-m-hooks-list">
   <header class="hook-card-h">
@@ -1600,7 +1600,7 @@ codex app-server generate-json-schema --out ./schemas</code></pre>
       <span class="tag t-ambient">Ambient / dropped</span>
     </div>
   </header>
-  <div class="hook-card-body"><p><strong>Official:</strong> emitted when a configured MCP server&#x27;s startup status changes for a loaded thread.</p><p class="muted-p">Full request/response types: run <code>codex app-server generate-ts</code> for this Codex version, or see the official App Server page API overview.</p><h5>Chopsticks</h5><p class="hook-usage"><strong>Chopsticks:</strong> Received but dropped/ambient (not agent semantics for views).</p></div>
+  <div class="hook-card-body"><p><strong>Official:</strong> emitted when a configured MCP server&#x27;s startup status changes for a loaded thread.</p><p class="muted-p">Full request/response types: run <code>codex app-server generate-ts</code> for this Codex version, or see the official App Server page API overview.</p><h5>Puppeteer</h5><p class="hook-usage"><strong>Puppeteer:</strong> Received but dropped/ambient (not agent semantics for views).</p></div>
 </article>
 <article class="hook-card use-unused" id="cx-m-windowssandbox-setupstart">
   <header class="hook-card-h">
@@ -2058,7 +2058,7 @@ codex app-server generate-json-schema --out ./schemas</code></pre>
       <span class="tag t-ambient">Ambient / dropped</span>
     </div>
   </header>
-  <div class="hook-card-body"><p><strong>Official:</strong> Notification when login completes (Auth endpoints section).</p><p class="muted-p">Full request/response types: run <code>codex app-server generate-ts</code> for this Codex version, or see the official App Server page API overview.</p><h5>Chopsticks</h5><p class="hook-usage"><strong>Chopsticks:</strong> Received but dropped/ambient (not agent semantics for views).</p></div>
+  <div class="hook-card-body"><p><strong>Official:</strong> Notification when login completes (Auth endpoints section).</p><p class="muted-p">Full request/response types: run <code>codex app-server generate-ts</code> for this Codex version, or see the official App Server page API overview.</p><h5>Puppeteer</h5><p class="hook-usage"><strong>Puppeteer:</strong> Received but dropped/ambient (not agent semantics for views).</p></div>
 </article>
 <article class="hook-card use-unused" id="cx-m-account-logout">
   <header class="hook-card-h">
@@ -2132,7 +2132,7 @@ codex app-server generate-json-schema --out ./schemas</code></pre>
       <span class="tag t-ambient">Ambient / dropped</span>
     </div>
   </header>
-  <div class="hook-card-body"><p><strong>Official:</strong> Notification when rate limits update (Auth endpoints section).</p><p class="muted-p">Full request/response types: run <code>codex app-server generate-ts</code> for this Codex version, or see the official App Server page API overview.</p><h5>Chopsticks</h5><p class="hook-usage"><strong>Chopsticks:</strong> Received but dropped/ambient (not agent semantics for views).</p></div>
+  <div class="hook-card-body"><p><strong>Official:</strong> Notification when rate limits update (Auth endpoints section).</p><p class="muted-p">Full request/response types: run <code>codex app-server generate-ts</code> for this Codex version, or see the official App Server page API overview.</p><h5>Puppeteer</h5><p class="hook-usage"><strong>Puppeteer:</strong> Received but dropped/ambient (not agent semantics for views).</p></div>
 </article>
 <article class="hook-card use-unused" id="cx-m-account-usage-read">
   <header class="hook-card-h">
@@ -2214,7 +2214,7 @@ codex app-server generate-json-schema --out ./schemas</code></pre>
       <span class="tag t-ambient">Ambient / dropped</span>
     </div>
   </header>
-  <div class="hook-card-body"><p><strong>Official:</strong> Notification when account updates (Auth endpoints section).</p><p class="muted-p">Full request/response types: run <code>codex app-server generate-ts</code> for this Codex version, or see the official App Server page API overview.</p><h5>Chopsticks</h5><p class="hook-usage"><strong>Chopsticks:</strong> Received but dropped/ambient (not agent semantics for views).</p></div>
+  <div class="hook-card-body"><p><strong>Official:</strong> Notification when account updates (Auth endpoints section).</p><p class="muted-p">Full request/response types: run <code>codex app-server generate-ts</code> for this Codex version, or see the official App Server page API overview.</p><h5>Puppeteer</h5><p class="hook-usage"><strong>Puppeteer:</strong> Received but dropped/ambient (not agent semantics for views).</p></div>
 </article>
 <article class="hook-card use-used" id="cx-m-item-commandexecution-requestapproval">
   <header class="hook-card-h">
@@ -2412,7 +2412,7 @@ codex app-server generate-json-schema --out ./schemas</code></pre>
       <span class="tag t-used">Used</span>
     </div>
   </header>
-  <div class="hook-card-body"><p><strong>Official:</strong> appends streamed text for the agent message.</p><ul><li><code>item/agentMessage/delta</code> - appends streamed text for the agent message.</li><li><code>item/plan/delta</code> - streams proposed plan text. The final <code>plan</code> item may not exactly equal the concatenated deltas.</li><li><code>item/reasoning/summaryTextDelta</code> - streams readable reasoning summaries; <code>summaryIndex</code> increments when a new summary section opens.</li><li><code>item/reasoning/summaryPartAdded</code> - marks a boundary between reasoning summary sections.</li><li><code>item/reasoning/textDelta</code> - streams raw reasoning text (when supported by the model).</li><li><code>item/commandExecution/outputDelta</code> - streams stdout/stderr for a command; append deltas in order.</li><li><code>item/fileChange/outputDelta</code> - deprecated compatibility notification for legacy <code>apply_patch</code> text output. Current app-server versions no longer emit it; use <code>fileChange</code> items and <code>turn/diff/updated</code> instead.</li></ul><h5>Chopsticks</h5><p class="hook-usage"><strong>Chopsticks:</strong> Normalized into AgentEvent / state.</p></div>
+  <div class="hook-card-body"><p><strong>Official:</strong> appends streamed text for the agent message.</p><ul><li><code>item/agentMessage/delta</code> - appends streamed text for the agent message.</li><li><code>item/plan/delta</code> - streams proposed plan text. The final <code>plan</code> item may not exactly equal the concatenated deltas.</li><li><code>item/reasoning/summaryTextDelta</code> - streams readable reasoning summaries; <code>summaryIndex</code> increments when a new summary section opens.</li><li><code>item/reasoning/summaryPartAdded</code> - marks a boundary between reasoning summary sections.</li><li><code>item/reasoning/textDelta</code> - streams raw reasoning text (when supported by the model).</li><li><code>item/commandExecution/outputDelta</code> - streams stdout/stderr for a command; append deltas in order.</li><li><code>item/fileChange/outputDelta</code> - deprecated compatibility notification for legacy <code>apply_patch</code> text output. Current app-server versions no longer emit it; use <code>fileChange</code> items and <code>turn/diff/updated</code> instead.</li></ul><h5>Puppeteer</h5><p class="hook-usage"><strong>Puppeteer:</strong> Normalized into AgentEvent / state.</p></div>
 </article>
 <article class="hook-card use-unused" id="cx-n-item-commandexecution-outputdelta">
   <header class="hook-card-h">
@@ -2436,7 +2436,7 @@ codex app-server generate-json-schema --out ./schemas</code></pre>
   <div class="hook-card-body"><p><strong>Official:</strong> sends the final <code>item</code> once work finishes; treat this as the authoritative state.</p><p><code>ThreadItem</code> is the tagged union carried in turn responses and <code>item/*</code> notifications. Common item types include:</p>
 <ul><li><code>userMessage</code> - <code>{id, content}</code> where <code>content</code> is a list of user inputs (<code>text</code>, <code>image</code>, or <code>localImage</code>).</li><li><code>agentMessage</code> - <code>{id, text, phase?}</code> containing the accumulated agent reply. When present, <code>phase</code> uses Responses API wire values (<code>commentary</code>, <code>final_answer</code>).</li><li><code>plan</code> - <code>{id, text}</code> containing proposed plan text in plan mode. Treat the final <code>plan</code> item from <code>item/completed</code> as authoritative.</li><li><code>reasoning</code> - <code>{id, summary, content}</code> where <code>summary</code> holds streamed reasoning summaries and <code>content</code> holds raw reasoning blocks.</li><li><code>commandExecution</code> - <code>{id, command, cwd, status, commandActions, aggregatedOutput?, exitCode?, durationMs?}</code>.</li><li><code>fileChange</code> - <code>{id, changes, status}</code> describing proposed edits; <code>changes</code> list <code>{path, kind, diff}</code>.</li><li><code>mcpToolCall</code> - <code>{id, server, tool, status, arguments, appContext?, pluginId?, result?, error?}</code>. For trusted MCP apps, <code>appContext</code> can include <code>connectorId</code>, <code>linkId</code>, <code>resourceUri</code>, <code>appName</code>, <code>templateId</code>, and the stable connector <code>actionName</code>. Older persisted items can omit newer metadata. Use <code>appContext.resourceUri</code> instead of the deprecated top-level <code>mcpAppResourceUri</code>.</li><li><code>dynamicToolCall</code> - <code>{id, tool, arguments, status, contentItems?, success?, durationMs?}</code> for client-executed dynamic tool invocations.</li><li><code>collabToolCall</code> - <code>{id, tool, status, senderThreadId, receiverThreadId?, newThreadId?, prompt?, agentStatus?}</code>.</li><li><code>webSearch</code> - <code>{id, query, action?}</code> for web search requests issued by the agent.</li><li><code>imageView</code> - <code>{id, path}</code> emitted when the agent invokes the image viewer tool.</li><li><code>enteredReviewMode</code> - <code>{id, review}</code> sent when the reviewer starts.</li><li><code>exitedReviewMode</code> - <code>{id, review}</code> emitted when the reviewer finishes.</li><li><code>contextCompaction</code> - <code>{id}</code> emitted when Codex compacts the conversation history.</li></ul>
 <p>For <code>webSearch.action</code>, the action <code>type</code> can be <code>search</code> (<code>query?</code>, <code>queries?</code>), `openP</p>
-<p>… (truncated; see official docs for remainder)</p><h5>Chopsticks</h5><p class="hook-usage"><strong>Chopsticks:</strong> Normalized into AgentEvent / state.</p></div>
+<p>… (truncated; see official docs for remainder)</p><h5>Puppeteer</h5><p class="hook-usage"><strong>Puppeteer:</strong> Normalized into AgentEvent / state.</p></div>
 </article>
 <article class="hook-card use-unused" id="cx-n-item-filechange-outputdelta">
   <header class="hook-card-h">
@@ -2469,7 +2469,7 @@ codex app-server generate-json-schema --out ./schemas</code></pre>
   <div class="hook-card-body"><p><strong>Official:</strong> marks a boundary between reasoning summary sections.</p><p><code>ThreadItem</code> is the tagged union carried in turn responses and <code>item/*</code> notifications. Common item types include:</p>
 <ul><li><code>userMessage</code> - <code>{id, content}</code> where <code>content</code> is a list of user inputs (<code>text</code>, <code>image</code>, or <code>localImage</code>).</li><li><code>agentMessage</code> - <code>{id, text, phase?}</code> containing the accumulated agent reply. When present, <code>phase</code> uses Responses API wire values (<code>commentary</code>, <code>final_answer</code>).</li><li><code>plan</code> - <code>{id, text}</code> containing proposed plan text in plan mode. Treat the final <code>plan</code> item from <code>item/completed</code> as authoritative.</li><li><code>reasoning</code> - <code>{id, summary, content}</code> where <code>summary</code> holds streamed reasoning summaries and <code>content</code> holds raw reasoning blocks.</li><li><code>commandExecution</code> - <code>{id, command, cwd, status, commandActions, aggregatedOutput?, exitCode?, durationMs?}</code>.</li><li><code>fileChange</code> - <code>{id, changes, status}</code> describing proposed edits; <code>changes</code> list <code>{path, kind, diff}</code>.</li><li><code>mcpToolCall</code> - <code>{id, server, tool, status, arguments, appContext?, pluginId?, result?, error?}</code>. For trusted MCP apps, <code>appContext</code> can include <code>connectorId</code>, <code>linkId</code>, <code>resourceUri</code>, <code>appName</code>, <code>templateId</code>, and the stable connector <code>actionName</code>. Older persisted items can omit newer metadata. Use <code>appContext.resourceUri</code> instead of the deprecated top-level <code>mcpAppResourceUri</code>.</li><li><code>dynamicToolCall</code> - <code>{id, tool, arguments, status, contentItems?, success?, durationMs?}</code> for client-executed dynamic tool invocations.</li><li><code>collabToolCall</code> - <code>{id, tool, status, senderThreadId, receiverThreadId?, newThreadId?, prompt?, agentStatus?}</code>.</li><li><code>webSearch</code> - <code>{id, query, action?}</code> for web search requests issued by the agent.</li><li><code>imageView</code> - <code>{id, path}</code> emitted when the agent invokes the image viewer tool.</li><li><code>enteredReviewMode</code> - <code>{id, review}</code> sent when the reviewer starts.</li><li><code>exitedReviewMode</code> - <code>{id, review}</code> emitted when the reviewer finishes.</li><li><code>contextCompaction</code> - <code>{id}</code> emitted when Codex compacts the conversation history.</li></ul>
 <p>For <code>webSearch.action</code>, the action <code>type</code> can be <code>search</code> (<code>query?</code>, <code>queries?</code>), `openP</p>
-<p>… (truncated; see official docs for remainder)</p><h5>Chopsticks</h5><p class="hook-usage"><strong>Chopsticks:</strong> Normalized into AgentEvent / state.</p></div>
+<p>… (truncated; see official docs for remainder)</p><h5>Puppeteer</h5><p class="hook-usage"><strong>Puppeteer:</strong> Normalized into AgentEvent / state.</p></div>
 </article>
 <article class="hook-card use-used" id="cx-n-item-reasoning-summarytextdelta">
   <header class="hook-card-h">
@@ -2481,7 +2481,7 @@ codex app-server generate-json-schema --out ./schemas</code></pre>
   <div class="hook-card-body"><p><strong>Official:</strong> streams readable reasoning summaries; <code>summaryIndex</code> increments when a new summary section opens.</p><p><code>ThreadItem</code> is the tagged union carried in turn responses and <code>item/*</code> notifications. Common item types include:</p>
 <ul><li><code>userMessage</code> - <code>{id, content}</code> where <code>content</code> is a list of user inputs (<code>text</code>, <code>image</code>, or <code>localImage</code>).</li><li><code>agentMessage</code> - <code>{id, text, phase?}</code> containing the accumulated agent reply. When present, <code>phase</code> uses Responses API wire values (<code>commentary</code>, <code>final_answer</code>).</li><li><code>plan</code> - <code>{id, text}</code> containing proposed plan text in plan mode. Treat the final <code>plan</code> item from <code>item/completed</code> as authoritative.</li><li><code>reasoning</code> - <code>{id, summary, content}</code> where <code>summary</code> holds streamed reasoning summaries and <code>content</code> holds raw reasoning blocks.</li><li><code>commandExecution</code> - <code>{id, command, cwd, status, commandActions, aggregatedOutput?, exitCode?, durationMs?}</code>.</li><li><code>fileChange</code> - <code>{id, changes, status}</code> describing proposed edits; <code>changes</code> list <code>{path, kind, diff}</code>.</li><li><code>mcpToolCall</code> - <code>{id, server, tool, status, arguments, appContext?, pluginId?, result?, error?}</code>. For trusted MCP apps, <code>appContext</code> can include <code>connectorId</code>, <code>linkId</code>, <code>resourceUri</code>, <code>appName</code>, <code>templateId</code>, and the stable connector <code>actionName</code>. Older persisted items can omit newer metadata. Use <code>appContext.resourceUri</code> instead of the deprecated top-level <code>mcpAppResourceUri</code>.</li><li><code>dynamicToolCall</code> - <code>{id, tool, arguments, status, contentItems?, success?, durationMs?}</code> for client-executed dynamic tool invocations.</li><li><code>collabToolCall</code> - <code>{id, tool, status, senderThreadId, receiverThreadId?, newThreadId?, prompt?, agentStatus?}</code>.</li><li><code>webSearch</code> - <code>{id, query, action?}</code> for web search requests issued by the agent.</li><li><code>imageView</code> - <code>{id, path}</code> emitted when the agent invokes the image viewer tool.</li><li><code>enteredReviewMode</code> - <code>{id, review}</code> sent when the reviewer starts.</li><li><code>exitedReviewMode</code> - <code>{id, review}</code> emitted when the reviewer finishes.</li><li><code>contextCompaction</code> - <code>{id}</code> emitted when Codex compacts the conversation history.</li></ul>
 <p>For <code>webSearch.action</code>, the action <code>type</code> can be <code>search</code> (<code>query?</code>, <code>queries?</code>), `openP</p>
-<p>… (truncated; see official docs for remainder)</p><h5>Chopsticks</h5><p class="hook-usage"><strong>Chopsticks:</strong> Normalized into AgentEvent / state.</p></div>
+<p>… (truncated; see official docs for remainder)</p><h5>Puppeteer</h5><p class="hook-usage"><strong>Puppeteer:</strong> Normalized into AgentEvent / state.</p></div>
 </article>
 <article class="hook-card use-used" id="cx-n-item-reasoning-textdelta">
   <header class="hook-card-h">
@@ -2493,7 +2493,7 @@ codex app-server generate-json-schema --out ./schemas</code></pre>
   <div class="hook-card-body"><p><strong>Official:</strong> streams raw reasoning text (when supported by the model).</p><p><code>ThreadItem</code> is the tagged union carried in turn responses and <code>item/*</code> notifications. Common item types include:</p>
 <ul><li><code>userMessage</code> - <code>{id, content}</code> where <code>content</code> is a list of user inputs (<code>text</code>, <code>image</code>, or <code>localImage</code>).</li><li><code>agentMessage</code> - <code>{id, text, phase?}</code> containing the accumulated agent reply. When present, <code>phase</code> uses Responses API wire values (<code>commentary</code>, <code>final_answer</code>).</li><li><code>plan</code> - <code>{id, text}</code> containing proposed plan text in plan mode. Treat the final <code>plan</code> item from <code>item/completed</code> as authoritative.</li><li><code>reasoning</code> - <code>{id, summary, content}</code> where <code>summary</code> holds streamed reasoning summaries and <code>content</code> holds raw reasoning blocks.</li><li><code>commandExecution</code> - <code>{id, command, cwd, status, commandActions, aggregatedOutput?, exitCode?, durationMs?}</code>.</li><li><code>fileChange</code> - <code>{id, changes, status}</code> describing proposed edits; <code>changes</code> list <code>{path, kind, diff}</code>.</li><li><code>mcpToolCall</code> - <code>{id, server, tool, status, arguments, appContext?, pluginId?, result?, error?}</code>. For trusted MCP apps, <code>appContext</code> can include <code>connectorId</code>, <code>linkId</code>, <code>resourceUri</code>, <code>appName</code>, <code>templateId</code>, and the stable connector <code>actionName</code>. Older persisted items can omit newer metadata. Use <code>appContext.resourceUri</code> instead of the deprecated top-level <code>mcpAppResourceUri</code>.</li><li><code>dynamicToolCall</code> - <code>{id, tool, arguments, status, contentItems?, success?, durationMs?}</code> for client-executed dynamic tool invocations.</li><li><code>collabToolCall</code> - <code>{id, tool, status, senderThreadId, receiverThreadId?, newThreadId?, prompt?, agentStatus?}</code>.</li><li><code>webSearch</code> - <code>{id, query, action?}</code> for web search requests issued by the agent.</li><li><code>imageView</code> - <code>{id, path}</code> emitted when the agent invokes the image viewer tool.</li><li><code>enteredReviewMode</code> - <code>{id, review}</code> sent when the reviewer starts.</li><li><code>exitedReviewMode</code> - <code>{id, review}</code> emitted when the reviewer finishes.</li><li><code>contextCompaction</code> - <code>{id}</code> emitted when Codex compacts the conversation history.</li></ul>
 <p>For <code>webSearch.action</code>, the action <code>type</code> can be <code>search</code> (<code>query?</code>, <code>queries?</code>), `openP</p>
-<p>… (truncated; see official docs for remainder)</p><h5>Chopsticks</h5><p class="hook-usage"><strong>Chopsticks:</strong> Normalized into AgentEvent / state.</p></div>
+<p>… (truncated; see official docs for remainder)</p><h5>Puppeteer</h5><p class="hook-usage"><strong>Puppeteer:</strong> Normalized into AgentEvent / state.</p></div>
 </article>
 <article class="hook-card use-used" id="cx-n-item-started">
   <header class="hook-card-h">
@@ -2505,7 +2505,7 @@ codex app-server generate-json-schema --out ./schemas</code></pre>
   <div class="hook-card-body"><p><strong>Official:</strong> emits the full <code>item</code> when a new unit of work begins; the <code>item.id</code> matches the <code>itemId</code> used by deltas.</p><p><code>ThreadItem</code> is the tagged union carried in turn responses and <code>item/*</code> notifications. Common item types include:</p>
 <ul><li><code>userMessage</code> - <code>{id, content}</code> where <code>content</code> is a list of user inputs (<code>text</code>, <code>image</code>, or <code>localImage</code>).</li><li><code>agentMessage</code> - <code>{id, text, phase?}</code> containing the accumulated agent reply. When present, <code>phase</code> uses Responses API wire values (<code>commentary</code>, <code>final_answer</code>).</li><li><code>plan</code> - <code>{id, text}</code> containing proposed plan text in plan mode. Treat the final <code>plan</code> item from <code>item/completed</code> as authoritative.</li><li><code>reasoning</code> - <code>{id, summary, content}</code> where <code>summary</code> holds streamed reasoning summaries and <code>content</code> holds raw reasoning blocks.</li><li><code>commandExecution</code> - <code>{id, command, cwd, status, commandActions, aggregatedOutput?, exitCode?, durationMs?}</code>.</li><li><code>fileChange</code> - <code>{id, changes, status}</code> describing proposed edits; <code>changes</code> list <code>{path, kind, diff}</code>.</li><li><code>mcpToolCall</code> - <code>{id, server, tool, status, arguments, appContext?, pluginId?, result?, error?}</code>. For trusted MCP apps, <code>appContext</code> can include <code>connectorId</code>, <code>linkId</code>, <code>resourceUri</code>, <code>appName</code>, <code>templateId</code>, and the stable connector <code>actionName</code>. Older persisted items can omit newer metadata. Use <code>appContext.resourceUri</code> instead of the deprecated top-level <code>mcpAppResourceUri</code>.</li><li><code>dynamicToolCall</code> - <code>{id, tool, arguments, status, contentItems?, success?, durationMs?}</code> for client-executed dynamic tool invocations.</li><li><code>collabToolCall</code> - <code>{id, tool, status, senderThreadId, receiverThreadId?, newThreadId?, prompt?, agentStatus?}</code>.</li><li><code>webSearch</code> - <code>{id, query, action?}</code> for web search requests issued by the agent.</li><li><code>imageView</code> - <code>{id, path}</code> emitted when the agent invokes the image viewer tool.</li><li><code>enteredReviewMode</code> - <code>{id, review}</code> sent when the reviewer starts.</li><li><code>exitedReviewMode</code> - <code>{id, review}</code> emitted when the reviewer finishes.</li><li><code>contextCompaction</code> - <code>{id}</code> emitted when Codex compacts the conversation history.</li></ul>
 <p>For <code>webSearch.action</code>, the action <code>type</code> can be <code>search</code> (<code>query?</code>, <code>queries?</code>), `openP</p>
-<p>… (truncated; see official docs for remainder)</p><h5>Chopsticks</h5><p class="hook-usage"><strong>Chopsticks:</strong> Normalized into AgentEvent / state.</p></div>
+<p>… (truncated; see official docs for remainder)</p><h5>Puppeteer</h5><p class="hook-usage"><strong>Puppeteer:</strong> Normalized into AgentEvent / state.</p></div>
 </article>
 <article class="hook-card use-unused" id="cx-n-mcptoolcall">
   <header class="hook-card-h">
@@ -2524,7 +2524,7 @@ codex app-server generate-json-schema --out ./schemas</code></pre>
     </div>
   </header>
   <div class="hook-card-body"><p><strong>Official:</strong> <code>{ threadId, turnId, fromModel, toModel, reason }</code> when the service routes a request to another model.</p><ul><li><code>turn/started</code> - <code>{ turn }</code> with the turn id, empty <code>items</code>, and <code>status: &quot;inProgress&quot;</code>.</li><li><code>turn/completed</code> - <code>{ turn }</code> where <code>turn.status</code> is <code>completed</code>, <code>interrupted</code>, or <code>failed</code>; failures carry <code>{ error: { message, codexErrorInfo?, additionalDetails? } }</code>.</li><li><code>turn/diff/updated</code> - <code>{ threadId, turnId, diff }</code> with the latest aggregated unified diff across every file change in the turn.</li><li><code>turn/plan/updated</code> - <code>{ turnId, explanation?, plan }</code> whenever the agent shares or changes its plan; each <code>plan</code> entry is <code>{ step, status }</code> with <code>status</code> in <code>pending</code>, <code>inProgress</code>, or <code>completed</code>.</li><li><code>hook/started</code> and <code>hook/completed</code> - <code>{ threadId, turnId?, run }</code> when a lifecycle hook starts and when its final run summary is available.</li><li><code>model/safetyBuffering/updated</code> - <code>{ threadId, turnId, model, useCases, reasons, showBufferingUi, fasterModel }</code> when a response enters transient safety buffering.</li><li><code>model/rerouted</code> - <code>{ threadId, turnId, fromModel, toModel, reason }</code> when the service routes a request to another model.</li><li><code>model/verification</code> - <code>{ threadId, turnId, verifications }</code> when the service requires additional account verification.</li><li><code>thread/tokenUsage/updated</code> - usage updates for the active thread.</li></ul>
-<p><code>turn/diff/updated</code> and <code>turn/plan/updated</code> currently include empty <code>items</code> arrays even when item events stream. Use <code>item/*</code> notifications as the source of truth for turn items.</p><h5>Chopsticks</h5><p class="hook-usage"><strong>Chopsticks:</strong> Normalized into AgentEvent / state.</p></div>
+<p><code>turn/diff/updated</code> and <code>turn/plan/updated</code> currently include empty <code>items</code> arrays even when item events stream. Use <code>item/*</code> notifications as the source of truth for turn items.</p><h5>Puppeteer</h5><p class="hook-usage"><strong>Puppeteer:</strong> Normalized into AgentEvent / state.</p></div>
 </article>
 <article class="hook-card use-unused" id="cx-n-model-safetybuffering-updated">
   <header class="hook-card-h">
@@ -2571,7 +2571,7 @@ codex app-server generate-json-schema --out ./schemas</code></pre>
       <span class="tag t-used">Used</span>
     </div>
   </header>
-  <div class="hook-card-body"><p><strong>Official:</strong> See Events section in official Codex App Server docs.</p><h5>Chopsticks</h5><p class="hook-usage"><strong>Chopsticks:</strong> Normalized into AgentEvent / state.</p></div>
+  <div class="hook-card-body"><p><strong>Official:</strong> See Events section in official Codex App Server docs.</p><h5>Puppeteer</h5><p class="hook-usage"><strong>Puppeteer:</strong> Normalized into AgentEvent / state.</p></div>
 </article>
 <article class="hook-card use-unused" id="cx-n-thread-archived">
   <header class="hook-card-h">
@@ -2607,7 +2607,7 @@ codex app-server generate-json-schema --out ./schemas</code></pre>
       <span class="tag t-used">Used</span>
     </div>
   </header>
-  <div class="hook-card-body"><p><strong>Official:</strong> See Events section in official Codex App Server docs.</p><h5>Chopsticks</h5><p class="hook-usage"><strong>Chopsticks:</strong> Normalized into AgentEvent / state.</p></div>
+  <div class="hook-card-body"><p><strong>Official:</strong> See Events section in official Codex App Server docs.</p><h5>Puppeteer</h5><p class="hook-usage"><strong>Puppeteer:</strong> Normalized into AgentEvent / state.</p></div>
 </article>
 <article class="hook-card use-ambient" id="cx-n-thread-status-changed">
   <header class="hook-card-h">
@@ -2623,7 +2623,7 @@ codex app-server generate-json-schema --out ./schemas</code></pre>
     &quot;threadId&quot;: &quot;thr_123&quot;,
     &quot;status&quot;: { &quot;type&quot;: &quot;active&quot;, &quot;activeFlags&quot;: [&quot;waitingOnApproval&quot;] }
   }
-}</code></pre><h5>Chopsticks</h5><p class="hook-usage"><strong>Chopsticks:</strong> Ambient — dropped or not used for visual status.</p></div>
+}</code></pre><h5>Puppeteer</h5><p class="hook-usage"><strong>Puppeteer:</strong> Ambient — dropped or not used for visual status.</p></div>
 </article>
 <article class="hook-card use-used" id="cx-n-thread-tokenusage-updated">
   <header class="hook-card-h">
@@ -2632,7 +2632,7 @@ codex app-server generate-json-schema --out ./schemas</code></pre>
       <span class="tag t-used">Used</span>
     </div>
   </header>
-  <div class="hook-card-body"><p><strong>Official:</strong> usage updates for the active thread.</p><h5>Chopsticks</h5><p class="hook-usage"><strong>Chopsticks:</strong> Normalized into AgentEvent / state.</p></div>
+  <div class="hook-card-body"><p><strong>Official:</strong> usage updates for the active thread.</p><h5>Puppeteer</h5><p class="hook-usage"><strong>Puppeteer:</strong> Normalized into AgentEvent / state.</p></div>
 </article>
 <article class="hook-card use-unused" id="cx-n-thread-unarchived">
   <header class="hook-card-h">
@@ -2651,7 +2651,7 @@ codex app-server generate-json-schema --out ./schemas</code></pre>
     </div>
   </header>
   <div class="hook-card-body"><p><strong>Official:</strong> <code>{ turn }</code> where <code>turn.status</code> is <code>completed</code>, <code>interrupted</code>, or <code>failed</code>; failures carry <code>{ error: { message, codexErrorInfo?, additionalDetails? } }</code>.</p><ul><li><code>turn/started</code> - <code>{ turn }</code> with the turn id, empty <code>items</code>, and <code>status: &quot;inProgress&quot;</code>.</li><li><code>turn/completed</code> - <code>{ turn }</code> where <code>turn.status</code> is <code>completed</code>, <code>interrupted</code>, or <code>failed</code>; failures carry <code>{ error: { message, codexErrorInfo?, additionalDetails? } }</code>.</li><li><code>turn/diff/updated</code> - <code>{ threadId, turnId, diff }</code> with the latest aggregated unified diff across every file change in the turn.</li><li><code>turn/plan/updated</code> - <code>{ turnId, explanation?, plan }</code> whenever the agent shares or changes its plan; each <code>plan</code> entry is <code>{ step, status }</code> with <code>status</code> in <code>pending</code>, <code>inProgress</code>, or <code>completed</code>.</li><li><code>hook/started</code> and <code>hook/completed</code> - <code>{ threadId, turnId?, run }</code> when a lifecycle hook starts and when its final run summary is available.</li><li><code>model/safetyBuffering/updated</code> - <code>{ threadId, turnId, model, useCases, reasons, showBufferingUi, fasterModel }</code> when a response enters transient safety buffering.</li><li><code>model/rerouted</code> - <code>{ threadId, turnId, fromModel, toModel, reason }</code> when the service routes a request to another model.</li><li><code>model/verification</code> - <code>{ threadId, turnId, verifications }</code> when the service requires additional account verification.</li><li><code>thread/tokenUsage/updated</code> - usage updates for the active thread.</li></ul>
-<p><code>turn/diff/updated</code> and <code>turn/plan/updated</code> currently include empty <code>items</code> arrays even when item events stream. Use <code>item/*</code> notifications as the source of truth for turn items.</p><h5>Chopsticks</h5><p class="hook-usage"><strong>Chopsticks:</strong> Normalized into AgentEvent / state.</p></div>
+<p><code>turn/diff/updated</code> and <code>turn/plan/updated</code> currently include empty <code>items</code> arrays even when item events stream. Use <code>item/*</code> notifications as the source of truth for turn items.</p><h5>Puppeteer</h5><p class="hook-usage"><strong>Puppeteer:</strong> Normalized into AgentEvent / state.</p></div>
 </article>
 <article class="hook-card use-unused" id="cx-n-turn-diff-updated">
   <header class="hook-card-h">
@@ -2681,7 +2681,7 @@ codex app-server generate-json-schema --out ./schemas</code></pre>
     </div>
   </header>
   <div class="hook-card-body"><p><strong>Official:</strong> <code>{ turn }</code> with the turn id, empty <code>items</code>, and <code>status: &quot;inProgress&quot;</code>.</p><ul><li><code>turn/started</code> - <code>{ turn }</code> with the turn id, empty <code>items</code>, and <code>status: &quot;inProgress&quot;</code>.</li><li><code>turn/completed</code> - <code>{ turn }</code> where <code>turn.status</code> is <code>completed</code>, <code>interrupted</code>, or <code>failed</code>; failures carry <code>{ error: { message, codexErrorInfo?, additionalDetails? } }</code>.</li><li><code>turn/diff/updated</code> - <code>{ threadId, turnId, diff }</code> with the latest aggregated unified diff across every file change in the turn.</li><li><code>turn/plan/updated</code> - <code>{ turnId, explanation?, plan }</code> whenever the agent shares or changes its plan; each <code>plan</code> entry is <code>{ step, status }</code> with <code>status</code> in <code>pending</code>, <code>inProgress</code>, or <code>completed</code>.</li><li><code>hook/started</code> and <code>hook/completed</code> - <code>{ threadId, turnId?, run }</code> when a lifecycle hook starts and when its final run summary is available.</li><li><code>model/safetyBuffering/updated</code> - <code>{ threadId, turnId, model, useCases, reasons, showBufferingUi, fasterModel }</code> when a response enters transient safety buffering.</li><li><code>model/rerouted</code> - <code>{ threadId, turnId, fromModel, toModel, reason }</code> when the service routes a request to another model.</li><li><code>model/verification</code> - <code>{ threadId, turnId, verifications }</code> when the service requires additional account verification.</li><li><code>thread/tokenUsage/updated</code> - usage updates for the active thread.</li></ul>
-<p><code>turn/diff/updated</code> and <code>turn/plan/updated</code> currently include empty <code>items</code> arrays even when item events stream. Use <code>item/*</code> notifications as the source of truth for turn items.</p><h5>Chopsticks</h5><p class="hook-usage"><strong>Chopsticks:</strong> Normalized into AgentEvent / state.</p></div>
+<p><code>turn/diff/updated</code> and <code>turn/plan/updated</code> currently include empty <code>items</code> arrays even when item events stream. Use <code>item/*</code> notifications as the source of truth for turn items.</p><h5>Puppeteer</h5><p class="hook-usage"><strong>Puppeteer:</strong> Normalized into AgentEvent / state.</p></div>
 </article>
 <article class="hook-card use-unused" id="cx-n-usermessage">
   <header class="hook-card-h">
@@ -2731,7 +2731,7 @@ codex app-server generate-json-schema --out ./schemas</code></pre>
       <span class="tag t-used">Used</span>
     </div>
   </header>
-  <div class="hook-card-body"><ul><li><code>userMessage</code> - <code>{id, content}</code> where <code>content</code> is a list of user inputs (<code>text</code>, <code>image</code>, or <code>localImage</code>).</li></ul><h5>Chopsticks</h5><p class="hook-usage"><strong>Chopsticks:</strong> item.type <code>userMessage</code> mapped in normalizer.</p></div>
+  <div class="hook-card-body"><ul><li><code>userMessage</code> - <code>{id, content}</code> where <code>content</code> is a list of user inputs (<code>text</code>, <code>image</code>, or <code>localImage</code>).</li></ul><h5>Puppeteer</h5><p class="hook-usage"><strong>Puppeteer:</strong> item.type <code>userMessage</code> mapped in normalizer.</p></div>
 </article>
 <article class="hook-card use-used" id="cx-i-agentmessage">
   <header class="hook-card-h">
@@ -2740,7 +2740,7 @@ codex app-server generate-json-schema --out ./schemas</code></pre>
       <span class="tag t-used">Used</span>
     </div>
   </header>
-  <div class="hook-card-body"><ul><li><code>agentMessage</code> - <code>{id, text, phase?}</code> containing the accumulated agent reply. When present, <code>phase</code> uses Responses API wire values (<code>commentary</code>, <code>final_answer</code>).</li></ul><h5>Chopsticks</h5><p class="hook-usage"><strong>Chopsticks:</strong> item.type <code>agentMessage</code> mapped in normalizer.</p></div>
+  <div class="hook-card-body"><ul><li><code>agentMessage</code> - <code>{id, text, phase?}</code> containing the accumulated agent reply. When present, <code>phase</code> uses Responses API wire values (<code>commentary</code>, <code>final_answer</code>).</li></ul><h5>Puppeteer</h5><p class="hook-usage"><strong>Puppeteer:</strong> item.type <code>agentMessage</code> mapped in normalizer.</p></div>
 </article>
 <article class="hook-card use-unused" id="cx-i-plan">
   <header class="hook-card-h">
@@ -2758,7 +2758,7 @@ codex app-server generate-json-schema --out ./schemas</code></pre>
       <span class="tag t-used">Used</span>
     </div>
   </header>
-  <div class="hook-card-body"><ul><li><code>reasoning</code> - <code>{id, summary, content}</code> where <code>summary</code> holds streamed reasoning summaries and <code>content</code> holds raw reasoning blocks.</li></ul><h5>Chopsticks</h5><p class="hook-usage"><strong>Chopsticks:</strong> item.type <code>reasoning</code> mapped in normalizer.</p></div>
+  <div class="hook-card-body"><ul><li><code>reasoning</code> - <code>{id, summary, content}</code> where <code>summary</code> holds streamed reasoning summaries and <code>content</code> holds raw reasoning blocks.</li></ul><h5>Puppeteer</h5><p class="hook-usage"><strong>Puppeteer:</strong> item.type <code>reasoning</code> mapped in normalizer.</p></div>
 </article>
 <article class="hook-card use-used" id="cx-i-commandexecution">
   <header class="hook-card-h">
@@ -2767,7 +2767,7 @@ codex app-server generate-json-schema --out ./schemas</code></pre>
       <span class="tag t-used">Used</span>
     </div>
   </header>
-  <div class="hook-card-body"><ul><li><code>commandExecution</code> - <code>{id, command, cwd, status, commandActions, aggregatedOutput?, exitCode?, durationMs?}</code>.</li></ul><h5>Chopsticks</h5><p class="hook-usage"><strong>Chopsticks:</strong> item.type <code>commandExecution</code> mapped in normalizer.</p></div>
+  <div class="hook-card-body"><ul><li><code>commandExecution</code> - <code>{id, command, cwd, status, commandActions, aggregatedOutput?, exitCode?, durationMs?}</code>.</li></ul><h5>Puppeteer</h5><p class="hook-usage"><strong>Puppeteer:</strong> item.type <code>commandExecution</code> mapped in normalizer.</p></div>
 </article>
 <article class="hook-card use-used" id="cx-i-filechange">
   <header class="hook-card-h">
@@ -2776,7 +2776,7 @@ codex app-server generate-json-schema --out ./schemas</code></pre>
       <span class="tag t-used">Used</span>
     </div>
   </header>
-  <div class="hook-card-body"><ul><li><code>fileChange</code> - <code>{id, changes, status}</code> describing proposed edits; <code>changes</code> list <code>{path, kind, diff}</code>.</li></ul><h5>Chopsticks</h5><p class="hook-usage"><strong>Chopsticks:</strong> item.type <code>fileChange</code> mapped in normalizer.</p></div>
+  <div class="hook-card-body"><ul><li><code>fileChange</code> - <code>{id, changes, status}</code> describing proposed edits; <code>changes</code> list <code>{path, kind, diff}</code>.</li></ul><h5>Puppeteer</h5><p class="hook-usage"><strong>Puppeteer:</strong> item.type <code>fileChange</code> mapped in normalizer.</p></div>
 </article>
 <article class="hook-card use-used" id="cx-i-mcptoolcall">
   <header class="hook-card-h">
@@ -2785,7 +2785,7 @@ codex app-server generate-json-schema --out ./schemas</code></pre>
       <span class="tag t-used">Used</span>
     </div>
   </header>
-  <div class="hook-card-body"><ul><li><code>mcpToolCall</code> - <code>{id, server, tool, status, arguments, appContext?, pluginId?, result?, error?}</code>. For trusted MCP apps, <code>appContext</code> can include <code>connectorId</code>, <code>linkId</code>, <code>resourceUri</code>, <code>appName</code>, <code>templateId</code>, and the stable connector <code>actionName</code>. Older persisted items can omit newer metadata. Use <code>appContext.resourceUri</code> instead of the deprecated top-level <code>mcpAppResourceUri</code>.</li></ul><h5>Chopsticks</h5><p class="hook-usage"><strong>Chopsticks:</strong> item.type <code>mcpToolCall</code> mapped in normalizer.</p></div>
+  <div class="hook-card-body"><ul><li><code>mcpToolCall</code> - <code>{id, server, tool, status, arguments, appContext?, pluginId?, result?, error?}</code>. For trusted MCP apps, <code>appContext</code> can include <code>connectorId</code>, <code>linkId</code>, <code>resourceUri</code>, <code>appName</code>, <code>templateId</code>, and the stable connector <code>actionName</code>. Older persisted items can omit newer metadata. Use <code>appContext.resourceUri</code> instead of the deprecated top-level <code>mcpAppResourceUri</code>.</li></ul><h5>Puppeteer</h5><p class="hook-usage"><strong>Puppeteer:</strong> item.type <code>mcpToolCall</code> mapped in normalizer.</p></div>
 </article>
 <article class="hook-card use-unused" id="cx-i-dynamictoolcall">
   <header class="hook-card-h">
@@ -2812,7 +2812,7 @@ codex app-server generate-json-schema --out ./schemas</code></pre>
       <span class="tag t-used">Used</span>
     </div>
   </header>
-  <div class="hook-card-body"><ul><li><code>webSearch</code> - <code>{id, query, action?}</code> for web search requests issued by the agent.</li></ul><h5>Chopsticks</h5><p class="hook-usage"><strong>Chopsticks:</strong> item.type <code>webSearch</code> mapped in normalizer.</p></div>
+  <div class="hook-card-body"><ul><li><code>webSearch</code> - <code>{id, query, action?}</code> for web search requests issued by the agent.</li></ul><h5>Puppeteer</h5><p class="hook-usage"><strong>Puppeteer:</strong> item.type <code>webSearch</code> mapped in normalizer.</p></div>
 </article>
 <article class="hook-card use-unused" id="cx-i-imageview">
   <header class="hook-card-h">
@@ -2851,7 +2851,7 @@ codex app-server generate-json-schema --out ./schemas</code></pre>
   <div class="hook-card-body"><ul><li><code>contextCompaction</code> - <code>{id}</code> emitted when Codex compacts the conversation history.</li></ul>
 <p>For <code>webSearch.action</code>, the action <code>type</code> can be <code>search</code> (<code>query?</code>, <code>queries?</code>), <code>openPage</code> (<code>url?</code>), or <code>findInPage</code> (<code>url?</code>, <code>pattern?</code>).</p>
 <p>The app server deprecates the legacy <code>thread/compacted</code> notification; use the <code>contextCompaction</code> item instead.</p>
-<p>All items emit two shared lifecycle events:</p><h5>Chopsticks</h5><p class="hook-usage"><strong>Chopsticks:</strong> item.type <code>contextCompaction</code> mapped in normalizer.</p></div>
+<p>All items emit two shared lifecycle events:</p><h5>Puppeteer</h5><p class="hook-usage"><strong>Puppeteer:</strong> item.type <code>contextCompaction</code> mapped in normalizer.</p></div>
 </article>
 <article class="hook-card use-used" id="cx-i-localshell">
   <header class="hook-card-h">
@@ -2860,7 +2860,7 @@ codex app-server generate-json-schema --out ./schemas</code></pre>
       <span class="tag t-used">Used</span>
     </div>
   </header>
-  <div class="hook-card-body"><p><strong>Official ThreadItem list</strong> on the App Server page does not always enumerate this name; open-source schema / live streams may include a local shell variant. Chopsticks maps it like <code>commandExecution</code>.</p><h5>Chopsticks</h5><p class="hook-usage"><strong>Chopsticks:</strong> tool.started / tool.completed as command.</p></div>
+  <div class="hook-card-body"><p><strong>Official ThreadItem list</strong> on the App Server page does not always enumerate this name; open-source schema / live streams may include a local shell variant. Puppeteer maps it like <code>commandExecution</code>.</p><h5>Puppeteer</h5><p class="hook-usage"><strong>Puppeteer:</strong> tool.started / tool.completed as command.</p></div>
 </article></div>
 
           <h4 id="gt-cx-approvals">Approvals &amp; server requests — full set</h4>
@@ -2875,7 +2875,7 @@ codex app-server generate-json-schema --out ./schemas</code></pre>
   <div class="hook-card-body"><p>Order of messages:</p>
 <ol><li><code>item/started</code> shows the pending <code>commandExecution</code> item with <code>command</code>, <code>cwd</code>, and other fields.</li><li><code>item/commandExecution/requestApproval</code> includes <code>itemId</code>, <code>threadId</code>, <code>turnId</code>, optional <code>reason</code>, optional <code>command</code>, optional <code>cwd</code>, optional <code>commandActions</code>, optional <code>proposedExecpolicyAmendment</code>, optional <code>networkApprovalContext</code>, and optional <code>availableDecisions</code>. When <code>initialize.params.capabilities.experimentalApi = true</code>, the payload can also include experimental <code>additionalPermissions</code> describing requested per-command sandbox access. Any filesystem paths inside <code>additionalPermissions</code> are absolute on the wire.</li><li>Client responds with one of the command execution approval decisions above.</li><li><code>serverRequest/resolved</code> confirms that the pending request has been answered or cleared.</li><li><code>item/completed</code> returns the final <code>commandExecution</code> item with <code>status: completed | failed | declined</code>.</li></ol>
 <p>When <code>networkApprovalContext</code> is present, the prompt is for managed network access (not a general shell-command approval). The current v2 schema exposes the target <code>host</code> and <code>protocol</code>; clients should render a network-specific prompt and not rely on <code>command</code> being a user-meaningful shell command preview.</p>
-<p>Codex groups concurrent network approval prompts by destination (<code>host</code>, protocol, and port). The app-server may therefore send one prompt that unblocks multiple queued requests to the same destination, while different ports on the same host are treated separately.</p><p class="hook-usage"><strong>Chopsticks:</strong> ServerRequest → permission.requested / .resolved.</p></div>
+<p>Codex groups concurrent network approval prompts by destination (<code>host</code>, protocol, and port). The app-server may therefore send one prompt that unblocks multiple queued requests to the same destination, while different ports on the same host are treated separately.</p><p class="hook-usage"><strong>Puppeteer:</strong> ServerRequest → permission.requested / .resolved.</p></div>
 </article>
 <article class="hook-card use-used" id="cx-a-file">
   <header class="hook-card-h">
@@ -2885,7 +2885,7 @@ codex app-server generate-json-schema --out ./schemas</code></pre>
     </div>
   </header>
   <div class="hook-card-body"><p>Order of messages:</p>
-<ol><li><code>item/started</code> emits a <code>fileChange</code> item with proposed <code>changes</code> and <code>status: &quot;inProgress&quot;</code>.</li><li><code>item/fileChange/requestApproval</code> includes <code>itemId</code>, <code>threadId</code>, <code>turnId</code>, optional <code>reason</code>, and optional <code>grantRoot</code>.</li><li>Client responds with one of the file change approval decisions above.</li><li><code>serverRequest/resolved</code> confirms that the pending request has been answered or cleared.</li><li><code>item/completed</code> returns the final <code>fileChange</code> item with <code>status: completed | failed | declined</code>.</li></ol><p class="hook-usage"><strong>Chopsticks:</strong> ServerRequest → permission.requested / .resolved.</p></div>
+<ol><li><code>item/started</code> emits a <code>fileChange</code> item with proposed <code>changes</code> and <code>status: &quot;inProgress&quot;</code>.</li><li><code>item/fileChange/requestApproval</code> includes <code>itemId</code>, <code>threadId</code>, <code>turnId</code>, optional <code>reason</code>, and optional <code>grantRoot</code>.</li><li>Client responds with one of the file change approval decisions above.</li><li><code>serverRequest/resolved</code> confirms that the pending request has been answered or cleared.</li><li><code>item/completed</code> returns the final <code>fileChange</code> item with <code>status: completed | failed | declined</code>.</li></ol><p class="hook-usage"><strong>Puppeteer:</strong> ServerRequest → permission.requested / .resolved.</p></div>
 </article>
 <article class="hook-card use-partial" id="cx-a-input">
   <header class="hook-card-h">
@@ -2952,7 +2952,7 @@ codex app-server generate-json-schema --out ./schemas</code></pre>
           <div class="gt-part-head part-ours">
             <span class="part-num">2</span>
             <div>
-              <h3>How chopsticks uses this surface</h3>
+              <h3>How puppeteer uses this surface</h3>
               <p>Only the <span class="tag t-used">Used</span> / <span class="tag t-partial">Partial</span> entries above are wired.
               Code: <code>app-server-client.ts</code>, <code>ws-transport.ts</code>, <code>driver.ts</code>,
               <code>tui-session.ts</code>, <code>observer.ts</code>, <code>normalizer.ts</code>.</p>
@@ -2960,7 +2960,7 @@ codex app-server generate-json-schema --out ./schemas</code></pre>
           </div>
           <pre class="flow">// Official getting-started + remote TUI
 codex app-server --listen unix://&lt;sock&gt;
-  → initialize { clientInfo.name: "chopsticks", ... }
+  → initialize { clientInfo.name: "puppeteer", ... }
   → initialized
   → thread/start | thread/resume
   → thread/inject_items { items: [] }

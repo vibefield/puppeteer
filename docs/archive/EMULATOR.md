@@ -1,4 +1,4 @@
-# Chopsticks Agent Emulator & Surface Model — v0.1
+# Puppeteer Agent Emulator & Surface Model — v0.1
 
 **Status:** Archived historical design; active ownership lives in `packages/surface`, `packages/imposter`, and `draft/SURFACE-ADAPTATION-REFACTOR.md`
 **Created:** 2026-08-07
@@ -18,7 +18,7 @@
 > | §4 — each adapter owns `surface/emulator/bin.mjs`          | One executable, `ai`, driven by a persona per vendor (IMPOSTER §3). The per-adapter bins are deleted.                              |
 > | §5 — scenarios live beside the bin                         | `packages/imposter/personas/<vendor>/scenarios/`                                                                                   |
 > | §6.1–§6.2 — a state file and a control server per emulator | One UDS the plane owns; imposters dial in and hold it (IMPOSTER §5). No state file, no per-imposter server, no `prune()`, no poll. |
-> | §8 — `packages/emulator` ships the engine                  | Deleted. The ASM runtime is `@vibecook/chopsticks-surface`; the engine is `@vibecook/chopsticks-imposter`.                         |
+> | §8 — `packages/emulator` ships the engine                  | Deleted. The ASM runtime is `@vibecook/puppeteer-surface`; the engine is `@vibecook/puppeteer-imposter`.                         |
 >
 > §6.3 and §6.4 still describe the shape of the thing; only the spawned process changed.
 
@@ -26,7 +26,7 @@
 
 ## 0. Charter
 
-> Fact-checking chopsticks today requires running real agent CLIs: slow, nondeterministic, token-burning, and incapable of eliciting most failure paths on demand. Make the **captured surface** of each vendor a first-class, versioned artifact, project it into a **scriptable emulator** of that vendor, and run the entire product — conformance suite, apps, manual QA — against emulators, with a nightly reconciliation lane that re-verifies the emulators against the real binaries.
+> Fact-checking puppeteer today requires running real agent CLIs: slow, nondeterministic, token-burning, and incapable of eliciting most failure paths on demand. Make the **captured surface** of each vendor a first-class, versioned artifact, project it into a **scriptable emulator** of that vendor, and run the entire product — conformance suite, apps, manual QA — against emulators, with a nightly reconciliation lane that re-verifies the emulators against the real binaries.
 
 ---
 
@@ -57,7 +57,7 @@ Corollaries (do not relitigate):
 
 ## 2. Agent Surface Model (ASM) — the formal contract
 
-The ASM is the canonical, machine-readable description of everything a vendor exposes that an adapter depends on. It lives in the neutral `@vibecook/chopsticks-surface` package, is **JSON canonical** (diffable, tool-consumable, no build step), and is **versioned per vendor version**.
+The ASM is the canonical, machine-readable description of everything a vendor exposes that an adapter depends on. It lives in the neutral `@vibecook/puppeteer-surface` package, is **JSON canonical** (diffable, tool-consumable, no build step), and is **versioned per vendor version**.
 
 ### 2.1 Layout
 
@@ -171,7 +171,7 @@ Three levels; each is validated against the one above.
 | **L1 — behavioral emulator** | A real subprocess speaking the vendor's real channels, driven by the behavior pack; scenario-scriptable | this spec                                                                             |
 | **L2 — recorded replay**     | Real captured sessions replayed verbatim (hook timings, transcript bytes, notification sequences)       | this spec; scenarios of kind `replay`                                                 |
 
-L1 exists only because chopsticks never parses terminal text (ADR-003/-004/-005): the entire semantic surface to reproduce faithfully is hooks, transcripts, statusline, and JSON-RPC — all file- or socket-based, all scriptable. The terminal channel is a stub by design. **Consequence (accepted):** in emulator mode an app's terminal pane shows the stub TUI, not the vendor's real interface; the implemented semantic paths (state, events, panes, usage) remain testable without terminal scraping.
+L1 exists only because puppeteer never parses terminal text (ADR-003/-004/-005): the entire semantic surface to reproduce faithfully is hooks, transcripts, statusline, and JSON-RPC — all file- or socket-based, all scriptable. The terminal channel is a stub by design. **Consequence (accepted):** in emulator mode an app's terminal pane shows the stub TUI, not the vendor's real interface; the implemented semantic paths (state, events, panes, usage) remain testable without terminal scraping.
 
 ---
 
@@ -179,14 +179,14 @@ L1 exists only because chopsticks never parses terminal text (ADR-003/-004/-005)
 
 This section records the retired P2 proof-of-concept contract. The live design uses the shared Imposter executable and Surface-owned real-vendor models; adapters no longer own emulator bins or model data. See `docs/archive/IMPOSTER.md` and `draft/SURFACE-ADAPTATION-REFACTOR.md`.
 
-The retired design gave each adapter a `surface/emulator/bin.mjs` executable that the adapter spawned **in place of the vendor CLI**, resolved through the existing seams: `CHOPSTICKS_{CLAUDE,CODEX,GROK}_BIN` or `BuiltinProviderOptions.executables`. Script recipes used a resolved real Node binary so the same `.mjs` worked on POSIX and Windows without shell or `.cmd` quoting.
+The retired design gave each adapter a `surface/emulator/bin.mjs` executable that the adapter spawned **in place of the vendor CLI**, resolved through the existing seams: `PUPPETEER_{CLAUDE,CODEX,GROK}_BIN` or `BuiltinProviderOptions.executables`. Script recipes used a resolved real Node binary so the same `.mjs` worked on POSIX and Windows without shell or `.cmd` quoting.
 
 The bin MUST:
 
 1. **Branch on argv the way the vendor does.** e.g. codex: `app-server` subcommand → JSON-RPC daemon; bare invocation → TUI stub that attaches via `--remote`. grok: `--leader` backend vs TUI.
 2. **Implement the detection surface** from `detection.json` (`--version` shape, probed flags) so adapter detection behaves as against the real binary.
 3. **Bring up every channel** declared in `channels.json`, using the engine's simulators, driven by `behavior/`.
-4. **Read `~/.chopsticks/emulator-control.json`** (written by the control center, §6); if present and reachable, register and serve the control API; if absent, run standalone on default behavior (still fully usable in CI).
+4. **Read `~/.puppeteer/emulator-control.json`** (written by the control center, §6); if present and reachable, register and serve the control API; if absent, run standalone on default behavior (still fully usable in CI).
 5. **Never require network or vendor credentials.**
 
 The bin SHOULD treat unknown argv/env the way the real vendor does (claude silently tolerates unknown hook names; mirror that) — the ASM is where such quirks live, as data.
@@ -266,7 +266,7 @@ The generic control plane is a **pre-normalization native-surface console**. It 
 
 ### 6.1 Plane and registration
 
-- The plane owns one short UDS (`~/.chopsticks/imposter.sock`; a named pipe on Windows) plus a token file. Imposters dial it and hold a bidirectional JSON-RPC connection. If no plane is available, Imposter remains fully standalone.
+- The plane owns one short UDS (`~/.puppeteer/imposter.sock`; a named pipe on Windows) plus a token file. Imposters dial it and hold a bidirectional JSON-RPC connection. If no plane is available, Imposter remains fully standalone.
 - `session.hello` carries identity, channels, the versioned `nativeBehavior`, exact `nativeEvents` descriptors, persona op bindings, curated runflows, and a separately named `scenarioDriver` snapshot.
 - `session.emitted` pushes each raw native event and payload; `session.channels`, `session.scenario-driver`, and `session.scenario-run` update non-overlapping liveness, intent, and automation views. Socket close is liveness.
 - The plane serves a token-protected loopback console and SSE stream. There is no discovery state file, per-Imposter HTTP server, polling, or pruning.

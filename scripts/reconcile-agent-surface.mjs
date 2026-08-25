@@ -3,7 +3,7 @@
 import { existsSync, readFileSync, writeFileSync } from 'node:fs';
 import { dirname, join, relative, resolve, sep } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { loadModel } from '@vibecook/chopsticks-surface';
+import { loadModel } from '@vibecook/puppeteer-surface';
 import { replayAgentSurface } from './replay-agent-surface.mjs';
 
 const root = dirname(dirname(fileURLToPath(import.meta.url)));

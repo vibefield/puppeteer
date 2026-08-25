@@ -14,7 +14,7 @@ export interface HermesImposterFixture {
 
 /** Drive the real Hermes Imposter persona as a stdio tui_gateway. */
 export function createHermesImposterFixture(): HermesImposterFixture {
-  const root = realpathSync(mkdtempSync(join(tmpdir(), 'chopsticks-hermes-adapter-')));
+  const root = realpathSync(mkdtempSync(join(tmpdir(), 'puppeteer-hermes-adapter-')));
   const cwd = join(root, 'workspace');
   const home = join(root, 'imposter-home');
   mkdirSync(cwd, { recursive: true });
@@ -24,8 +24,8 @@ export function createHermesImposterFixture(): HermesImposterFixture {
     process.execPath,
     [imposter, '--hermes', 'tui-gateway'],
     {
-      CHOPSTICKS_IMPOSTER_HOME: home,
-      CHOPSTICKS_IMPOSTER_TOKEN_FILE: join(home, 'absent.token'),
+      PUPPETEER_IMPOSTER_HOME: home,
+      PUPPETEER_IMPOSTER_TOKEN_FILE: join(home, 'absent.token'),
     },
     cwd,
   );

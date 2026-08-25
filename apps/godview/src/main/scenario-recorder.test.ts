@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import type { AgentEventEnvelope } from '@vibecook/chopsticks-core';
+import type { AgentEventEnvelope } from '@vibecook/puppeteer-core';
 import { createClaudeScenarioRecorder } from './scenario-recorder.js';
 
 function envelope(

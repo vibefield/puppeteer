@@ -5,7 +5,7 @@ import {
   createInitialSessionState,
   reduceSessionState,
   type AgentEventEnvelope,
-} from '@vibecook/chopsticks-core';
+} from '@vibecook/puppeteer-core';
 import { describe, expect, it } from 'vitest';
 import type { OpenCodeSseRecord } from './event-stream.js';
 import { OpenCodeNormalizer, type OpenCodeNormalizedEvent } from './normalizer.js';

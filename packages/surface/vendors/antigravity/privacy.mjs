@@ -1,5 +1,5 @@
 /** Conservative Antigravity hook/transcript/status-line privacy rules. */
-import { defaultRules, extendRules } from '@vibecook/chopsticks-surface/sanitize';
+import { defaultRules, extendRules } from '@vibecook/puppeteer-surface/sanitize';
 
 const extended = extendRules(
   {
@@ -17,7 +17,7 @@ const extended = extendRules(
       /\b(?:Bearer|Basic)\s+[A-Za-z0-9+/=_-]{12,}\b/i,
       /\/Users\/[^\s"'\\]+/,
       /\/(?:private\/)?var\/folders\/[^\s"'\\]+/,
-      /\/(?:private\/)?tmp\/chopsticks-agy-[^\s"'\\]+/,
+      /\/(?:private\/)?tmp\/puppeteer-agy-[^\s"'\\]+/,
     ],
   },
   defaultRules,

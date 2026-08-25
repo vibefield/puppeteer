@@ -67,9 +67,9 @@ Latest local Stage C verification on 2026-08-18:
   sibling-native-addon bootstrap/live test, Claude driver resume tests, and the
   complete adapter/runtime suites pass.
 
-- On 2026-08-23, Chopsticks linked the exact local Spaghetti 0.7.0 workspace
+- On 2026-08-23, Puppeteer linked the exact local Spaghetti 0.7.0 workspace
   through a root-only pnpm override and implemented the RFC-012D scoped
-  observer behind `--chopsticks-spaghetti-scoped-shadow`. The adapter stages
+  observer behind `--puppeteer-spaghetti-scoped-shadow`. The adapter stages
   bootstrap/resync epochs atomically, handles overflow and retractions, follows
   descendants, maps questions/plans/tasks/effective state/actors/
   affiliations/usage/native markers, and keeps the legacy tail solely
@@ -121,7 +121,7 @@ Latest local Stage C verification on 2026-08-18:
 - Claude 2.1.234 did not expose `TodoWrite` in the live session's tool catalog,
   even though the implementation string exists in the binary. Current Plan
   Mode instead writes Markdown and injects it into the `ExitPlanMode` hook.
-  Chopsticks now projects bounded steps from that evidence while keeping the
+  Puppeteer now projects bounded steps from that evidence while keeping the
   native plan path out of monitor plan state.
 - An explicitly pinned Sonnet Plan Mode canary observes the exact
   `claude-sonnet-5` model card, two provisional plan steps, and the native
@@ -148,7 +148,7 @@ Latest local Stage C verification on 2026-08-18:
 - An explicitly pinned Haiku `/compact` cancellation canary passes across a
   normal pre-command turn, the local command, and a normal post-command turn.
   Claude emits `PreCompact` and then reports that the short conversation cannot
-  be compacted without emitting `PostCompact`. Chopsticks now treats the start
+  be compacted without emitting `PostCompact`. Puppeteer now treats the start
   as provisional, seals it at the next accepted prompt with
   `lastOutcome: unknown`, and emits no false completion notification. The
   final trace has no shadow mismatch and removes cleanly.
@@ -165,7 +165,7 @@ Latest local Stage C verification on 2026-08-18:
 - A live configuration canary starts on exact `claude-sonnet-5` with low
   effort, observes `/effort max`, then observes `/model haiku` as exact
   `claude-haiku-4-5-20251001`. When Haiku's complete statusline omits effort,
-  Chopsticks retracts the stale observed `max` value and falls back to the
+  Puppeteer retracts the stale observed `max` value and falls back to the
   launch `low` value with `intent: configured`; both renderers label that
   distinction instead of presenting launch intent as effective evidence. The
   public projection now does the same for model and provider modes, retaining
@@ -176,7 +176,7 @@ Latest local Stage C verification on 2026-08-18:
   transitions at the next `UserPromptSubmit` hook. The idle keystroke itself is
   not observable because Claude's statusline omits permission mode. The Plan
   run remained inside the allowed model set when Claude changed the effective
-  pinned-Haiku session to Sonnet; Chopsticks reported the effective card rather
+  pinned-Haiku session to Sonnet; Puppeteer reported the effective card rather
   than assuming the launch alias remained active.
 - Structured-question canaries now cover single choice, `multiSelect: true`,
   and Claude's built-in free-form path. Prompt, per-question option labels,
@@ -191,8 +191,8 @@ Latest local Stage C verification on 2026-08-18:
   published package exports only `.` and `./react`, with no scoped-observation
   entry point. The local Spaghetti 0.7.0 development tree has substantial
   crate-private RFC-012D kernel work, while its own roadmap still marks Claude
-  scope composition (`D2`) and SDK/Chopsticks migration (`D4`) not started.
-  Chopsticks therefore remains exactly pinned to 0.5.16 and keeps team/workflow
+  scope composition (`D2`) and SDK/Puppeteer migration (`D4`) not started.
+  Puppeteer therefore remains exactly pinned to 0.5.16 and keeps team/workflow
   telemetry fail-closed until a released package satisfies section 8.12.
 - A fresh, explicitly pinned Haiku session generated two synthetic long-form
   turns without tools or file reads, then emitted authoritative `PreCompact`
@@ -206,7 +206,7 @@ Latest local Stage C verification on 2026-08-18:
   isolated project-only native Haiku canary excludes the user statusline and
   passes with the exact model, effort, mode, reply, and final convergence.
   Separate root-plus-child canaries require both user delegate marker files to
-  grow, proving that Chopsticks observes and delegates rather than replacing
+  grow, proving that Puppeteer observes and delegates rather than replacing
   either native status command. Delegate discovery mirrors Claude's cwd-only
   project/local settings roots and relocates user settings with
   `CLAUDE_CONFIG_DIR`; it does not inherit unrelated ancestor commands. The
@@ -286,7 +286,7 @@ The refactor is complete when:
 5. Runtime-run, native-session, terminal-session, actor, workspace, and external identities are not conflated.
 6. Corrected and replaced semantic observations do not double count usage or leave vanished entities behind.
 7. Clean termination publishes one end notification and removes the run; unexpected death retains a lightweight `blocked` failure monitor until acknowledgment/removal.
-8. Workspace baseline/finalization and Chopsticks-owned actions are durable, idempotent, completeness-qualified, and usable by VibeField without Chopsticks making contribution claims.
+8. Workspace baseline/finalization and Puppeteer-owned actions are durable, idempotent, completeness-qualified, and usable by VibeField without Puppeteer making contribution claims.
 9. The old serialized `SessionRuntimeState` path can be selected for one release, then is removed.
 
 ## 3. Current baseline
@@ -310,12 +310,12 @@ These choices make the RFC implementable. They should be treated as part of the 
 
 ### 4.1 Stable API versus version-locked monitor SPI
 
-`@vibecook/chopsticks-core` will have two export surfaces:
+`@vibecook/puppeteer-core` will have two export surfaces:
 
 - The package root exports stable application contracts: `AgentMonitorState`, `MonitorNotification`, `AgentMonitorHandle`, freshness helpers, and public identity types.
-- `@vibecook/chopsticks-core/monitor-spi` exports version-locked adapter/runtime contracts: observation batches, source epochs, accumulator types, reducers, and projectors.
+- `@vibecook/puppeteer-core/monitor-spi` exports version-locked adapter/runtime contracts: observation batches, source epochs, accumulator types, reducers, and projectors.
 
-The SPI is published because adapters and runtime are separate packages. It is not an application API. All Chopsticks packages using it must remain on the exact same workspace/release version. Provider-native records never appear on either surface.
+The SPI is published because adapters and runtime are separate packages. It is not an application API. All Puppeteer packages using it must remain on the exact same workspace/release version. Provider-native records never appear on either surface.
 
 The private accumulator is private from product consumers, not physically hidden from the version-locked runtime package.
 
@@ -327,7 +327,7 @@ The private accumulator is private from product consumers, not physically hidden
 - `runtimeSessionId` remains a deprecated alias for one compatibility release.
 - `nativeSession` is a correctable claim. Updating it never changes `runtimeRunId`.
 - `creationRequestId` is optional for old callers and required for new Godview creation flows.
-- Request IDs are capped at 256 UTF-8 bytes. External refs are capped at 32 entries per run, with 64-byte namespace/kind and 256-byte ID limits; Chopsticks validates and transports them but never interprets project/contributor semantics.
+- Request IDs are capped at 256 UTF-8 bytes. External refs are capped at 32 entries per run, with 64-byte namespace/kind and 256-byte ID limits; Puppeteer validates and transports them but never interprets project/contributor semantics.
 - In-memory requests share one in-flight promise, while an atomic durable creation-request registry preserves the request-to-run allocation across runtime-host restarts. A retry never spawns a second run merely because the original host disappeared.
 - If a durable retry names a run that is not yet restored into the new host, runtime returns the same `runtimeRunId` plus `CREATION_REQUEST_RECOVERY_REQUIRED`; the caller may restore/adopt its known terminal. A terminal prior run returns its recorded terminal result. Creating genuinely new work requires a new request ID.
 - A prepared session gets its `runtimeRunId` at prepare time; adoption later supplies `terminalSessionId` without creating a second run.
@@ -648,7 +648,7 @@ The likely total is 48-78 engineer-days, with substantial parallelism. The criti
 - Unknown provider mode and effort strings round-trip.
 - Oversized public collections sort deterministically, report exact omitted counts, and leave complete-set aggregates unchanged.
 - Package source and publish subpath exports both resolve.
-- `pnpm --filter @vibecook/chopsticks-core test`, `typecheck`, `pnpm packages:check`, and `pnpm pack:check` pass.
+- `pnpm --filter @vibecook/puppeteer-core test`, `typecheck`, `pnpm packages:check`, and `pnpm pack:check` pass.
 - No runtime or app behavior changes in this slice.
 
 ### 8.2 `CORE-02`: accumulator, projection, and notification semantics
@@ -719,7 +719,7 @@ The likely total is 48-78 engineer-days, with substantial parallelism. The criti
 - Native-session rotation leaves run/terminal identities unchanged.
 - Provider event IDs survive runtime restamping.
 
-### 8.4 `REC-01`: durable Chopsticks-owned evidence
+### 8.4 `REC-01`: durable Puppeteer-owned evidence
 
 **Files**
 
@@ -825,7 +825,7 @@ The likely total is 48-78 engineer-days, with substantial parallelism. The criti
 1. Preserve provider `used_percentage` directly, with `percentageSource: 'provider'`; derive only when the percentage is absent and compatible counts exist.
 2. Capture root model card ID/display name, effort, context, usage sample, and provider modes where the payload/version exposes them.
 3. Add `subagentStatusLine` observation with stable child/task correlation when supplied.
-4. Refactor forwarding so Chopsticks observes and then delegates both root and child payloads to any user-configured commands. One delegate's failure must not stop the other path.
+4. Refactor forwarding so Puppeteer observes and then delegates both root and child payloads to any user-configured commands. One delegate's failure must not stop the other path.
 5. Use typed RFC-012D message, content-block, usage, and actor facts to project conversation and response usage. Do not add a second JSON transcript parser.
 6. Key canonical usage by response/actor identity and use root/child statusline values only as low-latency compatible samples/cross-checks.
 7. Mark history replay as bootstrap so it sets a baseline without burn spikes or toasts.
@@ -1084,14 +1084,14 @@ its SDK/N-API contract and behavioral fixtures provide:
 Run the changed package first:
 
 ```sh
-pnpm --filter @vibecook/chopsticks-core typecheck
-pnpm --filter @vibecook/chopsticks-core test
+pnpm --filter @vibecook/puppeteer-core typecheck
+pnpm --filter @vibecook/puppeteer-core test
 
-pnpm --filter @vibecook/chopsticks-runtime typecheck
-pnpm --filter @vibecook/chopsticks-runtime test
+pnpm --filter @vibecook/puppeteer-runtime typecheck
+pnpm --filter @vibecook/puppeteer-runtime test
 
-pnpm --filter @vibecook/chopsticks-adapter-claude typecheck
-pnpm --filter @vibecook/chopsticks-adapter-claude test
+pnpm --filter @vibecook/puppeteer-adapter-claude typecheck
+pnpm --filter @vibecook/puppeteer-adapter-claude test
 ```
 
 Use the equivalent filter for workspaces, record, and each provider adapter.
@@ -1158,7 +1158,7 @@ Run each supported Claude version/configuration through:
 13. Observation rail failure while the TUI remains alive.
 14. Clean exit, crash, and host termination.
 
-For every case, capture the monitor revision stream and verify the TUI behavior/output is unchanged by Chopsticks observation.
+For every case, capture the monitor revision stream and verify the TUI behavior/output is unchanged by Puppeteer observation.
 
 ## 12. Runtime diagnostics needed during rollout
 
@@ -1183,7 +1183,7 @@ Every diagnostic includes `runtimeRunId`; terminal/native IDs are additional fie
 - New provider facts require a sanitized fixture or cited surface evidence; a guessed mapping remains unsupported.
 - Update support/capability tables in the same PR that changes coverage.
 - Changes to public monitor types require JSON fixture updates, package export checks, and both app typechecks.
-- Changes to the monitor SPI require exact-version updates across all Chopsticks packages in one release train.
+- Changes to the monitor SPI require exact-version updates across all Puppeteer packages in one release train.
 - Do not delete v1 code in the same PR that first enables v2 by default.
 - Do not enable the Spaghetti scoped observer and app monitor cutover in the same release decision.
 

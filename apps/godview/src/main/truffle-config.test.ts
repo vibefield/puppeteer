@@ -3,7 +3,7 @@ import { describe, expect, it } from 'vitest';
 import { godviewTruffleConfig } from './truffle-config.js';
 
 const base = {
-  appRoot: '/project/p008/chopsticks/apps/godview',
+  appRoot: '/project/p008/puppeteer/apps/godview',
   isPackaged: false,
   resourcesPath: '/application/resources',
   userDataPath: '/user/godview',

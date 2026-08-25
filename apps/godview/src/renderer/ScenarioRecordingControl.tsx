@@ -16,8 +16,8 @@ export function ScenarioRecordingControl({ agent }: { agent: MonitorAgent | unde
       if (!alive) return;
       setRecordings((current) => new Map(current).set(next.runtimeSessionId, next));
     };
-    const unsubscribe = window.chopsticks.onScenarioRecording(remember);
-    void window.chopsticks
+    const unsubscribe = window.puppeteer.onScenarioRecording(remember);
+    void window.puppeteer
       .scenarioRecordings()
       .then((active) => {
         if (!alive) return;
@@ -50,11 +50,11 @@ export function ScenarioRecordingControl({ agent }: { agent: MonitorAgent | unde
     setMessage('');
     try {
       if (status?.active) {
-        const stopped = await window.chopsticks.stopScenarioRecording(runtimeSessionId);
+        const stopped = await window.puppeteer.stopScenarioRecording(runtimeSessionId);
         setRecordings((current) => new Map(current).set(runtimeSessionId, stopped));
         setMessage(stopped.eventCount > 0 ? `saved ${stopped.fileName}` : `saved empty ${stopped.fileName}`);
       } else {
-        const result = await window.chopsticks.startScenarioRecording(runtimeSessionId);
+        const result = await window.puppeteer.startScenarioRecording(runtimeSessionId);
         if (result.cancelled) return;
         setRecordings((current) => new Map(current).set(runtimeSessionId, result.status));
         setMessage(`writing ${result.status.fileName}`);

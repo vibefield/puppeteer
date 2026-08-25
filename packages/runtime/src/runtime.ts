@@ -16,7 +16,7 @@ import {
   type ProcessExitReason,
   type SessionRuntimeState,
   type TerminalSpec,
-} from '@vibecook/chopsticks-core';
+} from '@vibecook/puppeteer-core';
 import {
   createOwnActionRecordId,
   type ActionRecorderStatus,
@@ -24,7 +24,7 @@ import {
   type OwnActionV2InputFor,
   type WorkspaceCleanupOutcomeV2,
   type WorkspaceFinalizationTriggerV2,
-} from '@vibecook/chopsticks-record';
+} from '@vibecook/puppeteer-record';
 import {
   createWorkspace,
   workspaceIdentity,
@@ -35,8 +35,8 @@ import {
   type WorkspaceRequest,
   type WorkspaceFinalizationRecord,
   type WorkspaceSessionMetadata,
-} from '@vibecook/chopsticks-workspaces';
-import type { MonitorWorkspaceProvenanceState } from '@vibecook/chopsticks-core/monitor-spi';
+} from '@vibecook/puppeteer-workspaces';
+import type { MonitorWorkspaceProvenanceState } from '@vibecook/puppeteer-core/monitor-spi';
 import type {
   AdoptPreparedSessionOptions,
   AdoptPreparedSessionResult,

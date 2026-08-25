@@ -14,7 +14,7 @@
  */
 
 import { describe, it, expect } from 'vitest';
-import { type AgentAdapterSession, type MonitorMetricFamily, type ObservationLevel } from '@vibecook/chopsticks-core';
+import { type AgentAdapterSession, type MonitorMetricFamily, type ObservationLevel } from '@vibecook/puppeteer-core';
 import { projectAgentSession, type TestAgentProjection } from './session-projection.js';
 
 const OBSERVATION_LEVELS: ObservationLevel[] = [

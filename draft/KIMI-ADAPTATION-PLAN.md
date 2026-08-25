@@ -259,7 +259,7 @@ abrupt-exit fact; it must not be fabricated as successful completion.
 
 ### D. Adapter
 
-- [x] Scaffold `@vibecook/chopsticks-adapter-kimi`.
+- [x] Scaffold `@vibecook/puppeteer-adapter-kimi`.
 - [x] Implement binary/version detection and explicit capability reporting.
 - [x] Implement exact workdir/session discovery and append-safe multi-journal
       tailing with bounded replay and record sizes.

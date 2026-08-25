@@ -384,7 +384,7 @@ function Godview() {
   // Main owns the durable descriptors, so the answer to "what was this pane?"
   // is a lookup there; the saved session id is the key both sides already share.
   const rehydratePane = useCallback(
-    (request: GhostteaPaneRehydration): Promise<SessionSummary | null> => window.chopsticks.rehydratePane(request),
+    (request: GhostteaPaneRehydration): Promise<SessionSummary | null> => window.puppeteer.rehydratePane(request),
     [],
   );
 

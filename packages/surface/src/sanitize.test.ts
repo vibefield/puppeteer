@@ -98,7 +98,7 @@ describe('regressions from the real codex capture (2026-08-07)', () => {
 describe('redactor and detector stay in lockstep', () => {
   let dir: string;
   beforeEach(() => {
-    dir = mkdtempSync(join(tmpdir(), 'chopsticks-sanitize-'));
+    dir = mkdtempSync(join(tmpdir(), 'puppeteer-sanitize-'));
   });
   afterEach(() => {
     rmSync(dir, { recursive: true, force: true });

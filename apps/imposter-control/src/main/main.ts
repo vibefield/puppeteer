@@ -93,7 +93,7 @@ if (process.type === 'browser') {
       mainWindow = new BrowserWindow({
         width: 1440,
         height: 900,
-        title: 'chopsticks — agent adaptation devkit',
+        title: 'puppeteer — agent adaptation devkit',
       });
       mainWindow.on('closed', () => {
         mainWindow = undefined;

@@ -16,7 +16,7 @@ import {
   defaultRules,
   extendRules,
   sanitizeRecord,
-} from '@vibecook/chopsticks-surface/sanitize';
+} from '@vibecook/puppeteer-surface/sanitize';
 import { KIMI_CANDIDATE_VERSION } from './census/harness.mjs';
 
 const vendorRoot = dirname(fileURLToPath(import.meta.url));
@@ -30,7 +30,7 @@ export const kimiRules = extendRules(
     sensitiveContainer: /^(?:args|environmentDisclosure|tool_output)$/,
     unsafeTextPatterns: [
       /\/private\/var\/folders\/[^\s"']+/,
-      /\/private\/tmp\/chopsticks-kimi-census-[^\s"']+/,
+      /\/private\/tmp\/puppeteer-kimi-census-[^\s"']+/,
       /\bsk-not-a-real-key\b/,
     ],
   },

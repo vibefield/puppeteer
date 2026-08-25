@@ -6,7 +6,7 @@ import test from 'node:test';
 import { acquireAgentArtifacts, assignmentMap } from './acquire-agent-artifacts.mjs';
 
 function fixture() {
-  const repoRoot = mkdtempSync(join(tmpdir(), 'chopsticks-acquire-'));
+  const repoRoot = mkdtempSync(join(tmpdir(), 'puppeteer-acquire-'));
   const vendorRoot = join(repoRoot, 'packages/surface/vendors/fake');
   mkdirSync(join(vendorRoot, 'model/fake@1.2.3'), { recursive: true });
   writeFileSync(join(vendorRoot, 'upstream.json'), JSON.stringify({ platforms: ['darwin-arm64', 'linux-x64'] }));

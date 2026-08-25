@@ -2,7 +2,7 @@
   "channels": {
     "argv": {
       "kind": "argv-env",
-      "notes": "--session-id dictated at spawn is the chopsticks/spaghetti join contract; --settings carries the generated hooks; --resume continues a session in place (never combined with --session-id)."
+      "notes": "--session-id dictated at spawn is the puppeteer/spaghetti join contract; --settings carries the generated hooks; --resume continues a session in place (never combined with --session-id)."
     },
     "hook": {
       "kind": "hook-http",

@@ -69,13 +69,13 @@ function execEnvironment(extra: Record<string, string> = {}): Record<string, str
   }
   Object.assign(environment, extra);
   environment.PATH = cleanPath();
-  const originalZDotDirectory = environment.CHOPSTICKS_ORIGINAL_ZDOTDIR;
+  const originalZDotDirectory = environment.PUPPETEER_ORIGINAL_ZDOTDIR;
   if (originalZDotDirectory) environment.ZDOTDIR = originalZDotDirectory;
   else delete environment.ZDOTDIR;
-  delete environment.CHOPSTICKS_SPAWN_PORT;
-  delete environment.CHOPSTICKS_SPAWN_TOKEN;
-  delete environment.CHOPSTICKS_SHIM_DIR;
-  delete environment.CHOPSTICKS_ORIGINAL_ZDOTDIR;
+  delete environment.PUPPETEER_SPAWN_PORT;
+  delete environment.PUPPETEER_SPAWN_TOKEN;
+  delete environment.PUPPETEER_SHIM_DIR;
+  delete environment.PUPPETEER_ORIGINAL_ZDOTDIR;
   return environment;
 }
 
@@ -94,15 +94,15 @@ function fallback(realExecutable: string): never {
     exec(realExecutable, originalArgv, originalCwd);
   } catch (error) {
     process.stderr.write(
-      `chopsticks: could not launch ${agent}: ${error instanceof Error ? error.message : String(error)}\n`,
+      `puppeteer: could not launch ${agent}: ${error instanceof Error ? error.message : String(error)}\n`,
     );
     process.exit(127);
   }
 }
 
 function request(payload: object): Promise<Response> {
-  const port = Number(process.env.CHOPSTICKS_SPAWN_PORT);
-  const token = process.env.CHOPSTICKS_SPAWN_TOKEN;
+  const port = Number(process.env.PUPPETEER_SPAWN_PORT);
+  const token = process.env.PUPPETEER_SPAWN_TOKEN;
   if (!Number.isSafeInteger(port) || port <= 0 || !token) return Promise.reject(new Error('gateway unavailable'));
   return new Promise<Response>((resolveResponse, reject) => {
     const socket = createConnection({ host: '127.0.0.1', port });
@@ -138,7 +138,7 @@ function request(payload: object): Promise<Response> {
 async function main(): Promise<never> {
   const realExecutable = executableOnPath(invokedAs, cleanPath());
   if (!realExecutable) {
-    process.stderr.write(`chopsticks: ${invokedAs} is not installed outside the Godview shim path\n`);
+    process.stderr.write(`puppeteer: ${invokedAs} is not installed outside the Godview shim path\n`);
     process.exit(127);
   }
   // `ai` with no persona flag is the imposter's own error to report, not

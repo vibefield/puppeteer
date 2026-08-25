@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1" />
-<title>Archived · Chopsticks Claude-centric parity matrix</title>
+<title>Archived · Puppeteer Claude-centric parity matrix</title>
 <style>
   :root {
     --bg: #0f1115;
@@ -245,12 +245,12 @@
     <p><strong>Archived snapshot:</strong> this four-adapter brainstorming matrix is retained for historical context. Current vendor truth lives under <code>packages/surface/vendors/</code>.</p>
     <h1><span class="gold">Claude</span> as golden standard · cross-adapter parity matrix</h1>
     <p>
-      Column 1 lists every Claude Code hook and statusline data field (the observation surface chopsticks
+      Column 1 lists every Claude Code hook and statusline data field (the observation surface puppeteer
       treats as the reference model). Columns 2–4 show the closest Codex App Server, ACP, and Grok
       equivalents. Empty cells mean no credible parity — leave blank for brainstorming, do not invent matches.
     </p>
     <div class="meta">
-      <span><strong>Scope</strong> official surfaces + chopsticks mapping notes</span>
+      <span><strong>Scope</strong> official surfaces + puppeteer mapping notes</span>
       <span><strong>Date</strong> 2026-08-03</span>
       <span><strong>Sources</strong>
         <a href="../../packages/adapter-claude/docs/event-map.html">Claude event-map</a> ·
@@ -286,7 +286,7 @@
     </div>
     <div class="legend-card">
       <h3>Claude (gold)</h3>
-      <p>Hooks are HTTP/command callbacks with JSON stdin/body. Status line is a separate command fed a JSON payload on a refresh cadence — chopsticks’ only live CTX source for Claude.</p>
+      <p>Hooks are HTTP/command callbacks with JSON stdin/body. Status line is a separate command fed a JSON payload on a refresh cadence — puppeteer’ only live CTX source for Claude.</p>
     </div>
     <div class="legend-card">
       <h3>Codex</h3>
@@ -484,7 +484,7 @@
             <th class="row-key cell-claude">
               <span class="name">SessionStart</span>
               <span class="desc">New or resumed session. Fields: source, session_title, model, cwd, …</span>
-              <div class="maps">chopsticks → <code>session.started</code> (+ env)</div>
+              <div class="maps">puppeteer → <code>session.started</code> (+ env)</div>
             </th>
             <td data-p="full">
               <span class="pill match">full</span>
@@ -567,7 +567,7 @@
             <td data-p="partial">
               <span class="pill partial">partial</span>
               <span class="name">skills/changed</span>
-              <div class="desc">Ambient in chopsticks (dropped); not instruction-load parity</div>
+              <div class="desc">Ambient in puppeteer (dropped); not instruction-load parity</div>
             </td>
             <td data-p="none"><span class="blank">—</span></td>
             <td data-p="none"><span class="blank">—</span></td>
@@ -1152,7 +1152,7 @@
       </table>
     </div>
     <div class="note">
-      Reasoning streams (Codex <code>item/reasoning/*</code>, ACP <code>agent_thought_chunk</code>) are <strong>not</strong> Claude hooks — Claude has no MessageDisplay-style “thought” hook in the official catalog. They map to chopsticks <code>reasoning.*</code>, which Claude does not produce from hooks.
+      Reasoning streams (Codex <code>item/reasoning/*</code>, ACP <code>agent_thought_chunk</code>) are <strong>not</strong> Claude hooks — Claude has no MessageDisplay-style “thought” hook in the official catalog. They map to puppeteer <code>reasoning.*</code>, which Claude does not produce from hooks.
     </div>
   </section>
 
@@ -1288,7 +1288,7 @@
       </table>
     </div>
     <div class="note">
-      Chopsticks worktree isolation lives in <code>packages/workspaces</code> (host-owned), not as a peer of Claude’s WorktreeCreate hook. That is orchestration, not agent-surface parity.
+      Puppeteer worktree isolation lives in <code>packages/workspaces</code> (host-owned), not as a peer of Claude’s WorktreeCreate hook. That is orchestration, not agent-surface parity.
     </div>
   </section>
 
@@ -1408,7 +1408,7 @@
     <p class="sub">
       Full official statusline stdin JSON from
       <a href="https://code.claude.com/docs/en/statusline" rel="noopener">code.claude.com/docs/en/statusline</a>
-      (fetched 2026-08-03). Chopsticks only consumes a subset today (model/cwd/context_window + rate_limits for account-usage).
+      (fetched 2026-08-03). Puppeteer only consumes a subset today (model/cwd/context_window + rate_limits for account-usage).
       Peers expose equivalent <em>jobs</em> via protocol events, not a statusline binary.
     </p>
     <div class="table-scroll">
@@ -1969,7 +1969,7 @@
   <section class="block" id="nonhook">
     <h2>9 · Non-hook Claude sources (still golden-standard rows)</h2>
     <p class="sub">
-      Surfaces chopsticks uses for Claude that are <em>not</em> hooks, but still part of the Claude observation model.
+      Surfaces puppeteer uses for Claude that are <em>not</em> hooks, but still part of the Claude observation model.
       Useful when asking “what would peers need to match Claude completeness?”
     </p>
     <div class="table-scroll">
@@ -1986,7 +1986,7 @@
           <tr>
             <th class="row-key cell-claude">
               <span class="name">statusLine command (telemetry forwarder)</span>
-              <span class="desc">settings.statusLine → stdin JSON → chopsticks /statusline endpoint</span>
+              <span class="desc">settings.statusLine → stdin JSON → puppeteer /statusline endpoint</span>
               <div class="maps">environment + context-window + account rate_limits</div>
             </th>
             <td data-p="full">
@@ -2007,7 +2007,7 @@
             <th class="row-key cell-claude">
               <span class="name">subagentStatusLine</span>
               <span class="desc">Official settings key; stdin = tasks[] for agent-panel rows</span>
-              <div class="maps">not wired in chopsticks today</div>
+              <div class="maps">not wired in puppeteer today</div>
             </th>
             <td data-p="none"><span class="blank">—</span></td>
             <td data-p="none"><span class="blank">—</span></td>
@@ -2067,7 +2067,7 @@
             <th class="row-key cell-claude">
               <span class="name">Hook output / control plane</span>
               <span class="desc">JSON stdout can block/modify tools, inject context, decide permissions (official hooks)</span>
-              <div class="maps">chopsticks mostly observes; permission path is FIFO correlate + native TUI</div>
+              <div class="maps">puppeteer mostly observes; permission path is FIFO correlate + native TUI</div>
             </th>
             <td data-p="full">
               <span class="pill match">full</span>
@@ -2108,7 +2108,7 @@
   </section>
 
   <footer>
-    Generated for chopsticks brainstorming. Empty cells are intentional gaps — fill them only when a real vendor surface exists.
+    Generated for puppeteer brainstorming. Empty cells are intentional gaps — fill them only when a real vendor surface exists.
     Per-adapter deep cards remain in <code>packages/adapter-*/docs/event-map.html</code>.
     Statusline field list synced to official docs 2026-08-03 (full Available data table).
   </footer>

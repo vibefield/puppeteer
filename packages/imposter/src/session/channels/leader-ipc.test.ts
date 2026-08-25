@@ -48,7 +48,7 @@ async function waitFor(predicate: () => boolean): Promise<void> {
 
 describe.skipIf(process.platform === 'win32')('Grok leader IPC', () => {
   it('namespaces viewer requests, restores responses, and broadcasts controller notifications', async () => {
-    const root = mkdtempSync(join(tmpdir(), 'chopsticks-leader-ipc-'));
+    const root = mkdtempSync(join(tmpdir(), 'puppeteer-leader-ipc-'));
     roots.push(root);
     const relay = await listenLeaderRelay(join(root, 'leader.sock'), '1.0.0');
     relays.push(relay);
@@ -77,7 +77,7 @@ describe.skipIf(process.platform === 'win32')('Grok leader IPC', () => {
   });
 
   it('does not cross session boundaries', async () => {
-    const root = mkdtempSync(join(tmpdir(), 'chopsticks-leader-isolation-'));
+    const root = mkdtempSync(join(tmpdir(), 'puppeteer-leader-isolation-'));
     roots.push(root);
     const relay = await listenLeaderRelay(join(root, 'leader.sock'), '1.0.0');
     relays.push(relay);
@@ -94,7 +94,7 @@ describe.skipIf(process.platform === 'win32')('Grok leader IPC', () => {
   });
 
   it('makes a native viewer fail instead of pretending to attach without a controller', async () => {
-    const root = mkdtempSync(join(tmpdir(), 'chopsticks-leader-viewer-'));
+    const root = mkdtempSync(join(tmpdir(), 'puppeteer-leader-viewer-'));
     roots.push(root);
     const relay = await listenLeaderRelay(join(root, 'leader.sock'), '1.0.0');
     relays.push(relay);
@@ -106,10 +106,10 @@ describe.skipIf(process.platform === 'win32')('Grok leader IPC', () => {
         stdio: ['pipe', 'pipe', 'pipe'],
         env: {
           ...process.env,
-          CHOPSTICKS_IMPOSTER_DEBUG: '1',
-          CHOPSTICKS_IMPOSTER_HOME: root,
-          CHOPSTICKS_IMPOSTER_TOKEN_FILE: join(root, 'absent.token'),
-          CHOPSTICKS_IMPOSTER_TUI: 'off',
+          PUPPETEER_IMPOSTER_DEBUG: '1',
+          PUPPETEER_IMPOSTER_HOME: root,
+          PUPPETEER_IMPOSTER_TOKEN_FILE: join(root, 'absent.token'),
+          PUPPETEER_IMPOSTER_TUI: 'off',
           GROK_HOME: root,
         },
       },

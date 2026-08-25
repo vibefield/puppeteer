@@ -4,8 +4,8 @@ import type {
   MonitorArtifactReadResult,
   MonitorNotification,
   ObservationLevel,
-} from '@vibecook/chopsticks-core';
-import type { AdapterMonitorObservationBatch, MonitorFamilyUpdate } from '@vibecook/chopsticks-core/monitor-spi';
+} from '@vibecook/puppeteer-core';
+import type { AdapterMonitorObservationBatch, MonitorFamilyUpdate } from '@vibecook/puppeteer-core/monitor-spi';
 import { describe, expect, it, vi } from 'vitest';
 import type { MonitorClock, MonitorScheduledTask } from './monitor-clock.js';
 import { MONITOR_ARTIFACT_HARD_MAX_BYTES, RuntimeMonitorHub, type MonitorArtifactAudit } from './monitor-hub.js';

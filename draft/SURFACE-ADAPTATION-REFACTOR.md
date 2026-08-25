@@ -16,7 +16,7 @@ Implementation has completed the ownership move and clean-house refactor. The re
 
 ## 1. Why refactor again
 
-The repository has already separated the ASM runtime into `@vibecook/chopsticks-surface`, but the data still reflects the older architecture:
+The repository has already separated the ASM runtime into `@vibecook/puppeteer-surface`, but the data still reflects the older architecture:
 
 - Claude and Codex captures, census tools, audits, and models live in their adapter packages.
 - Imposter resolves a real persona's ASM through that adapter's package manifest.
@@ -26,9 +26,9 @@ The repository has already separated the ASM runtime into `@vibecook/chopsticks-
 - There is no standing workflow that detects a new stable agent release, analyzes it, and prepares an adaptation.
 - `packages/node` remains on disk even though the tracked package was retired when terminal ownership moved to Ghosttea; it now contains only ignored `dist` and `node_modules` residue.
 - Real Claude captures are duplicated as a second, published fixture set under `packages/testing`, making two packages appear to own the same vendor evidence.
-- Package and client versions are repeated manually: the repository is `0.1.8`, while the README and one Codex client still identify Chopsticks as `0.1.3`.
+- Package and client versions are repeated manually: the repository is `0.1.8`, while the README and one Codex client still identify Puppeteer as `0.1.3`.
 
-That layout conflates an **integration workflow** with an **adapter component**. The adapter is a projection: it accepts human or product control requests, translates them to a vendor's native control surface, and normalizes native observations into Chopsticks' unified `AgentEvent` contract. Evidence about the native surface exists before that projection and is also consumed by Imposter. It therefore cannot belong to either consumer.
+That layout conflates an **integration workflow** with an **adapter component**. The adapter is a projection: it accepts human or product control requests, translates them to a vendor's native control surface, and normalizes native observations into Puppeteer' unified `AgentEvent` contract. Evidence about the native surface exists before that projection and is also consumed by Imposter. It therefore cannot belong to either consumer.
 
 Moving the truth layer into Imposter would repeat the same error in the other direction. It would let the test double own the oracle against which it validates itself, pull private capture machinery into an emulation package, and make Survey and Model depend on Emulate even though the workflow runs in the opposite order.
 
@@ -74,7 +74,7 @@ The dependency rules are strict:
 | **Adapter**        | detection integration, launch/attach policy, native observation, native control, native-to-`AgentEvent` normalization, human-input reconciliation                                                     | real-vendor captures or ASM copies, Imposter scenarios, claims inferred from adapter code |
 | **Imposter**       | persona boot, op-to-native bindings, deterministic behavior, fault injection, authored scenarios, shared cosmetic TUI                                                                                 | real-vendor evidence or model copies, native-to-`AgentEvent` normalization                |
 | **Testing**        | cross-projection conformance, product-contract expectations, hermetic and real-artifact lanes                                                                                                         | a second copy of vendor truth                                                             |
-| **Support ledger** | which exact Surface baseline Chopsticks currently promotes for each agent                                                                                                                             | upstream-latest values that have not passed promotion                                     |
+| **Support ledger** | which exact Surface baseline Puppeteer currently promotes for each agent                                                                                                                             | upstream-latest values that have not passed promotion                                     |
 
 The synthetic persona remains the sole exception: its model stays local to Imposter because it describes an invented test protocol, not a real vendor.
 
@@ -185,14 +185,14 @@ The system tracks four distinct identities:
 | **Vendor artifact version**    | Claude Code `2.1.207`, Codex `0.147.0`                                | Upstream; names the released artifact being modeled                                        |
 | **Artifact/protocol identity** | platform SHA-256, generated-schema digest, optional protocol revision | Surface evidence; detects republishing and protocol changes hidden behind a version string |
 | **ASM format version**         | `asmVersion: 1` or `2`                                                | Surface runtime; versions the model document contract                                      |
-| **Chopsticks version**         | `0.1.8`                                                               | This monorepo's lockstep npm release containing adapters, Imposter, and Surface            |
+| **Puppeteer version**         | `0.1.8`                                                               | This monorepo's lockstep npm release containing adapters, Imposter, and Surface            |
 
-There is deliberately no independent adapter-version counter. The **adapted version** shown to users is the `vendorVersion` in that agent's currently promoted Surface manifest. If Chopsticks changes its adapter for the same vendor artifact, the Chopsticks release version identifies that implementation change.
+There is deliberately no independent adapter-version counter. The **adapted version** shown to users is the `vendorVersion` in that agent's currently promoted Surface manifest. If Puppeteer changes its adapter for the same vendor artifact, the Puppeteer release version identifies that implementation change.
 
-The support ledger may record `introducedInChopsticks` so a consumer can answer both questions:
+The support ledger may record `introducedInPuppeteer` so a consumer can answer both questions:
 
 - “Which upstream artifact was verified?”
-- “Which Chopsticks release first shipped that verification?”
+- “Which Puppeteer release first shipped that verification?”
 
 An exact verified version is not a claim that all later semver-compatible releases work. Runtime detection should report one of `verified`, `unverified-newer`, `unverified-older`, `known-incompatible`, or `unknown`. The default runtime may warn and continue for an unverified version; strict CI may require `verified`. Known-incompatible versions may be blocked explicitly.
 
@@ -249,7 +249,7 @@ scripts/
 
 ### 5.1 Publication boundary
 
-`@vibecook/chopsticks-surface` publishes:
+`@vibecook/puppeteer-surface` publishes:
 
 - its compiled runtime;
 - promoted real-vendor model directories;
@@ -262,7 +262,7 @@ Adapters stop publishing `surface/model`. Built-in Imposter personas change from
 ```json
 {
   "asm": {
-    "package": "@vibecook/chopsticks-adapter-claude",
+    "package": "@vibecook/puppeteer-adapter-claude",
     "path": "surface/model/claude@2.1.207"
   }
 }
@@ -273,7 +273,7 @@ to the neutral owner:
 ```json
 {
   "asm": {
-    "package": "@vibecook/chopsticks-surface",
+    "package": "@vibecook/puppeteer-surface",
     "path": "vendors/claude/model/claude@2.1.207"
   }
 }
@@ -295,7 +295,7 @@ The tracked package graph has fourteen real packages. Most are small because the
 
 | Path                                                 | Decision                         | Reason                                                                                                                                                                              |
 | ---------------------------------------------------- | -------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `packages/core`                                      | **keep**                         | Pure, zero-I/O contract boundary used by every adapter, runtime, and testing. Remove the stale comment that still sends I/O to the retired `chopsticks-node`.                       |
+| `packages/core`                                      | **keep**                         | Pure, zero-I/O contract boundary used by every adapter, runtime, and testing. Remove the stale comment that still sends I/O to the retired `puppeteer-node`.                       |
 | `packages/surface`                                   | **keep and expand**              | Neutral owner selected by this spec; receives real-vendor evidence, models, and reconciliation tooling.                                                                             |
 | `packages/adapter-*`                                 | **keep and slim**                | The seven adapters have live production consumers and independent protocol boundaries. Remove Surface-owned data from Claude/Codex; do not merge vendors into runtime.             |
 | `packages/imposter`                                  | **keep**                         | Live executable, control protocol, persona engine, and synthetic adversarial system. Its existing `src/{cli,control,persona,session,tui}` structure is healthy.                     |
@@ -316,7 +316,7 @@ Keep publishable packages one level below `packages/`; do not introduce `package
 
 The flat layout has useful invariants:
 
-- directory names match npm name suffixes (`adapter-codex` → `@vibecook/chopsticks-adapter-codex`);
+- directory names match npm name suffixes (`adapter-codex` → `@vibecook/puppeteer-adapter-codex`);
 - `packages/*` discovers every package without recursive exceptions;
 - repository metadata and release paths stay obvious;
 - moving a module between responsibilities is visible as a package-boundary change;
@@ -355,9 +355,9 @@ testing  --> core
 
 Additional rules:
 
-1. `core`, `surface`, `record`, and `workspaces` have no production dependency on another Chopsticks package.
+1. `core`, `surface`, `record`, and `workspaces` have no production dependency on another Puppeteer package.
 2. Every adapter depends on `core`; a vendor adapter may compose a protocol adapter, as Grok composes ACP.
-3. Imposter's only production Chopsticks dependency is Surface. Adapter/testing dependencies are development-only conformance fixtures and may not leak into its tarball.
+3. Imposter's only production Puppeteer dependency is Surface. Adapter/testing dependencies are development-only conformance fixtures and may not leak into its tarball.
 4. Testing depends on Core and declares its test-runner integration honestly; it never becomes a dependency of production runtime code.
 5. Runtime composes adapters and capabilities but does not own their implementations or depend on Imposter.
 6. Cycles fail `packages:check`, including cycles that are hidden by a dependency being placed in the wrong manifest section.
@@ -394,7 +394,7 @@ Applied to the current tree:
 
 ### 5.7 Testing package cleanup
 
-`@vibecook/chopsticks-testing` currently mixes three different things:
+`@vibecook/puppeteer-testing` currently mixes three different things:
 
 1. the provider-neutral terminal-spine fake (`fakeAgentBin`);
 2. the provider-neutral `AgentSession` conformance suite;
@@ -410,7 +410,7 @@ Keep the first two. Move the third:
 
 The existing fixture loader and Claude-builder exports are public in `0.1.8`. If another `0.1.x` ships before this refactor, mark them deprecated there. Land the structural removal as the declared `0.2.0` break with migration notes, rather than silently changing what their filesystem paths mean. Do not preserve them by making a generated second copy of Surface evidence.
 
-`@vibecook/chopsticks-testing/conformance` imports Vitest. The package must declare the supported Vitest range as a peer dependency (and a development dependency for its own tests), or make the conformance runner framework-neutral. Leaving a runtime import satisfied only by an undeclared dev dependency is not acceptable packaging.
+`@vibecook/puppeteer-testing/conformance` imports Vitest. The package must declare the supported Vitest range as a peer dependency (and a development dependency for its own tests), or make the conformance runner framework-neutral. Leaving a runtime import satisfied only by an undeclared dev dependency is not acceptable packaging.
 
 The fake terminal agent remains separate from Imposter for the reasons already established in `docs/archive/IMPOSTER.md §7.4`: one exercises PTY/process failure modes; the other simulates native semantic channels.
 
@@ -420,8 +420,8 @@ Lockstep package versions still appear in package manifests because npm and rele
 
 ```text
 packages/core/src/version.ts
-  CHOPSTICKS_VERSION
-  CHOPSTICKS_CORE_VERSION   deprecated compatibility alias
+  PUPPETEER_VERSION
+  PUPPETEER_CORE_VERSION   deprecated compatibility alias
 ```
 
 Codex driver, observer, and account-usage client metadata import that constant instead of carrying three release-please literals. This removes the current `account-usage.ts` `0.1.3` drift. Package policy checks the README installation text against the root manifest, removing its independent `0.1.3` drift. Vendor versions continue to come only from promoted Surface manifests.
@@ -527,17 +527,17 @@ If the same vendor version later resolves to a different artifact digest, that i
       "id": "claude",
       "displayName": "Claude Code",
       "kind": "vendor",
-      "adapterPackage": "@vibecook/chopsticks-adapter-claude",
+      "adapterPackage": "@vibecook/puppeteer-adapter-claude",
       "persona": "claude",
       "currentManifest": "packages/surface/vendors/claude/model/claude@2.1.207/manifest.json",
       "status": "verified",
-      "introducedInChopsticks": "0.1.8"
+      "introducedInPuppeteer": "0.1.8"
     },
     {
       "id": "grok",
       "displayName": "Grok Build",
       "kind": "vendor",
-      "adapterPackage": "@vibecook/chopsticks-adapter-grok",
+      "adapterPackage": "@vibecook/puppeteer-adapter-grok",
       "status": "baseline-pending"
     }
   ]
@@ -579,7 +579,7 @@ restored before each scheduled run; workflow artifacts provide the detailed
 per-run report. A cache is only an acceleration path, not the historical source
 of record.
 
-Chopsticks does not promise to promote every upstream patch. It promises to notice each release and make the decision auditable.
+Puppeteer does not promise to promote every upstream patch. It promises to notice each release and make the decision auditable.
 
 ### 7.2 Acquisition and analysis
 
@@ -680,7 +680,7 @@ semantic op ----> Imposter ----> native channel ----> adapter ----> conformance
 pinned/latest real artifact ------------------------> adapter ----> reconciliation
 ```
 
-The hermetic lane protects Chopsticks from its own regressions. The pinned real-artifact lane proves the adaptation. The latest lane detects upstream drift. None can replace the other two.
+The hermetic lane protects Puppeteer from its own regressions. The pinned real-artifact lane proves the adaptation. The latest lane detects upstream drift. None can replace the other two.
 
 ## 9. README support badges
 
@@ -708,7 +708,7 @@ CI runs `node scripts/render-agent-support.mjs --check`. A hand-edited or stale 
 
 The upstream watcher reports newer candidates through workflow summaries, issues, and candidate PRs. It does not mutate a green support badge merely because a vendor published something.
 
-While adding generated README metadata, fix the existing manually stale install example (`0.1.3` while the repository is `0.1.8`) or derive that snippet from the root package version. Vendor support and Chopsticks package versions remain visually distinct.
+While adding generated README metadata, fix the existing manually stale install example (`0.1.3` while the repository is `0.1.8`) or derive that snippet from the root package version. Vendor support and Puppeteer package versions remain visually distinct.
 
 ## 10. Refactoring sequence
 
@@ -718,7 +718,7 @@ Each phase is independently reviewable. R1 is intentionally a filesystem/ownersh
 | ------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | **R0 — freeze and inventory**                     | Record current model/package digests, inventory Surface paths, package directories, exports, release lists, version literals, and imports; make root `surface:audit` run every existing vendor audit; keep tests and packs green.                                                                                                                                       | The old layout is reproducible; Codex cannot be skipped; every later deletion has an explicit owner/consumer report.                                                                        | **Delivered 2026-08-08.** Baselines were audited before the move and root audit now discovers all vendor audits.                                                                                                                                                                                                                                                                                                                                                                                                                                          |
 | **R1 — physical cleanup and ownership move**      | Verify and remove the exact orphan `packages/node` and empty emulator remnant; move real-vendor Surface trees/findings under `packages/surface/vendors/`; update paths, package files, personas, privacy/ignore rules, and publication without changing behavior.                                                                                                       | Every `packages/*` directory is a real package; no real-vendor capture/model remains under an adapter or Imposter; model content is unchanged.                                              | **Delivered 2026-08-08.** The orphan and empty remnants were removed recoverably; Claude/Codex truth has one physical owner.                                                                                                                                                                                                                                                                                                                                                                                                                              |
-| **R2 — package contracts and internal structure** | Add `packages:check`/`packages:clean`; migrate and remove vendor-specific Testing exports as the `0.2.0` break; group the populated Claude/Codex source responsibilities; centralize Chopsticks runtime version metadata; normalize manifests, dependency sections, docs freshness, pack checks, and release-list coverage; rename the live app to `imposter-control`.  | The flat graph is intentional and acyclic, Testing is vendor-neutral, generated/version drift fails CI, and every published tarball matches its role.                                       | **Delivered 2026-08-08.** The Testing migration is documented in `packages/testing/MIGRATION.md`; legacy root `emulator` commands remain temporary aliases.                                                                                                                                                                                                                                                                                                                                                                                               |
+| **R2 — package contracts and internal structure** | Add `packages:check`/`packages:clean`; migrate and remove vendor-specific Testing exports as the `0.2.0` break; group the populated Claude/Codex source responsibilities; centralize Puppeteer runtime version metadata; normalize manifests, dependency sections, docs freshness, pack checks, and release-list coverage; rename the live app to `imposter-control`.  | The flat graph is intentional and acyclic, Testing is vendor-neutral, generated/version drift fails CI, and every published tarball matches its role.                                       | **Delivered 2026-08-08.** The Testing migration is documented in `packages/testing/MIGRATION.md`; legacy root `emulator` commands remain temporary aliases.                                                                                                                                                                                                                                                                                                                                                                                               |
 | **R3 — provenance and ASM v2**                    | Add `upstream.json`, evidence indexes, artifact/source identities, per-claim evidence maps, backward-compatible ASM v1 loading, and v2 validation/generation.                                                                                                                                                                                                           | Every promoted native claim traces to an artifact and admissible evidence; no free-form `source` string is the sole provenance.                                                             | **Promotion contract delivered 2026-08-09.** The loader remains compatible with ASM/evidence v1; Codex and Grok are claim-addressable ASM/evidence v2 with artifact identities, event/variant/behavior evidence, and deterministic tree digests. Claude remains a grandfathered ASM v1 baseline. Unqualified `verified` now requires ASM/evidence v2 plus an immutable digest for every declared platform; incomplete current baselines are labeled `legacy-verified`, never silently upgraded.                                                           |
 | **R4 — independent projections**                  | Update adapter fixture tests, Imposter validation, exact replay ownership, replay-diff, import-boundary tests, and the pre-normalization Control boundary. Add a vendor-native behavior graph to each Surface; transmit it with raw native event metadata; demote the portable op machine to an explicitly named scenario driver; remove adapter reducers from the native plane. | Adapter and Imposter consume one Surface model without importing or deriving from each other; the native plane cannot assign normalized meaning; Godview receives production normalization only through adapters. | **Delivered 2026-08-09.** Generated adapter projections, Surface fixtures, persona pointers, dependency rules, native behavior graphs, direct Imposter spawning, conformance tests, and a vendor-neutral exact replay runner are in place. Replay validates request params, results, durable carriers, channel attribution, and raw sanitized bytes before normalization. The later devkit composes an explicitly downstream, non-production normalization projection without changing these boundaries. |
 | **R5 — support ledger and badges**                | Add schemas, promotion/check commands, README generated block, runtime compatibility classification, and packaging checks.                                                                                                                                                                                                                                              | One pointer determines each public adapted version; manual duplicates fail CI.                                                                                                              | **Delivered 2026-08-09.** `support/agents.json` is authoritative; promotion requires a machine-readable all-gates-passed report, exact artifact/model digest, matching Git commit, and the actual GitHub Actions workflow/run attempt. It updates badges transactionally. Rich drift classification belongs to R7 analysis.                                                                                                                                                                                                                               |
@@ -779,7 +779,7 @@ The direct seams found before implementation are preserved below as the migratio
 | Empty emulator remnant  | `packages/adapter-claude/surface/emulator/scenarios` is empty                                                                           | remove it; Imposter owns scenarios                                                                                                           |
 | Surface publication     | `packages/surface/package.json` publishes `dist` only                                                                                   | add promoted `vendors/*/model` and minimal provenance metadata                                                                               |
 | Adapter publication     | Claude publishes `surface/model`; Codex does not                                                                                        | remove all adapter model publication                                                                                                         |
-| Imposter resolution     | Claude/Codex `persona.json` point at adapter packages; loader errors and tests say adapter-owned                                        | point at `@vibecook/chopsticks-surface`, update loader contract text/tests, and remove adapter dev dependencies used only for ASM resolution |
+| Imposter resolution     | Claude/Codex `persona.json` point at adapter packages; loader errors and tests say adapter-owned                                        | point at `@vibecook/puppeteer-surface`, update loader contract text/tests, and remove adapter dev dependencies used only for ASM resolution |
 | Claude runtime          | `src/detection.ts` imports adapter-local `detection.json`; `registry.ts` is generated from the local model                              | generate checked adapter projection modules from the promoted Surface manifest                                                               |
 | Claude tooling          | audit, sanitizer, registry generator, tests, and package scripts assume adapter-relative paths and `2.1.207`                            | move tooling and resolve the explicit candidate or support-ledger baseline                                                                   |
 | Codex tooling           | census, sanitizer, model generator, audit, and `surface-model.test.ts` share hard-coded `CODEX_VERSION` and adapter-relative paths      | move under Surface and take version/artifact identity from candidate metadata                                                                |
@@ -787,7 +787,7 @@ The direct seams found before implementation are preserved below as the migratio
 | Ignore rules            | `.gitignore` ignores `packages/adapter-*/surface/captures-raw/`                                                                         | ignore `packages/surface/vendors/*/captures-raw/` before moving or capturing                                                                 |
 | Testing ownership       | `packages/testing/fixtures/hooks`, its loader API, and `fakeClaudeHookPayload` duplicate/vendorize Claude evidence in a general package | move evidence/loaders to Surface, synthetic builder to Claude test support, deprecate then remove public exports                             |
 | Testing peer contract   | exported conformance code imports Vitest while Vitest is only a development dependency                                                  | declare Vitest as a peer plus dev dependency, or make the runner framework-neutral                                                           |
-| Runtime version         | Codex driver/observer carry release literals and account usage still reports `0.1.3`; Core has a separate literal                       | export one generated `CHOPSTICKS_VERSION` from Core and make all client metadata consume it                                                  |
+| Runtime version         | Codex driver/observer carry release literals and account usage still reports `0.1.3`; Core has a separate literal                       | export one generated `PUPPETEER_VERSION` from Core and make all client metadata consume it                                                  |
 | README package catalog  | the public package list omits Surface and Imposter, and its install example is still `0.1.3`                                            | list packages by the roles in §5.5 and generate the install version from the root manifest                                                   |
 | Package inventory       | `scripts/public-packages.mjs` and release-please separately enumerate public manifests                                                  | retain required order/config but cross-check both against manifest discovery                                                                 |
 | Package manifests       | Node engines, `package.json` exports, dependency sections, and common scripts are inconsistent                                          | enforce the manifest contract in `packages:check` and verify tarball contents                                                                |
@@ -810,7 +810,7 @@ This refactor is complete when:
 - [x] Portable op state is named and displayed only as `scenarioDriver`; compaction and team status are not inferred before the adapter boundary.
 - [x] `packages/testing` exposes provider-neutral terminal/conformance utilities and no real-vendor evidence; the removed Claude fixture APIs have `0.2.0` migration notes.
 - [x] Record and Workspaces remain independent capability packages because their direct consumers and I/O boundaries are documented, not merged merely for being small.
-- [x] One release-managed `CHOPSTICKS_VERSION` supplies runtime client metadata; package policy checks reject disagreement with the root and README install versions.
+- [x] One release-managed `PUPPETEER_VERSION` supplies runtime client metadata; package policy checks reject disagreement with the root and README install versions.
 - [x] Exported test-runner integration declares its peer dependency, and all workspace imports are present in the correct manifest section.
 - [x] `packages:check` and safe generated-output cleanup run in CI or its preflight, and broad deletion of unknown package paths is impossible.
 - [ ] Every current support model identifies exact vendor artifacts, platform coverage, source correspondence, and claim evidence. Claude is ASM/evidence v1 with no retained binary digest; Codex is ASM/evidence v2 with an exact darwin-arm64 digest but lacks the other three platforms. Both are explicitly `legacy-verified`; future unqualified promotion rejects either gap.
@@ -829,4 +829,4 @@ This refactor is complete when:
 
 The architectural invariant is concise enough to test and remember:
 
-> **Surface records native evidence. Adapters normalize it. Imposter simulates it. Conformance cross-checks both. Promotion alone declares what Chopsticks currently supports.**
+> **Surface records native evidence. Adapters normalize it. Imposter simulates it. Conformance cross-checks both. Promotion alone declares what Puppeteer currently supports.**

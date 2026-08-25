@@ -197,7 +197,7 @@ describe('claudeSubagentStatusTasks', () => {
 
 describe('resolveClaudeStatusLine', () => {
   it('uses cwd-only project settings and does not inherit status commands from ancestors', async () => {
-    const directory = await mkdtemp(join(tmpdir(), 'chopsticks-claude-statusline-'));
+    const directory = await mkdtemp(join(tmpdir(), 'puppeteer-claude-statusline-'));
     const home = join(directory, 'home');
     const project = join(directory, 'project');
     const nested = join(project, 'packages', 'app');
@@ -242,7 +242,7 @@ describe('resolveClaudeStatusLine', () => {
   });
 
   it('reads user status commands from an explicit Claude config directory', async () => {
-    const directory = await mkdtemp(join(tmpdir(), 'chopsticks-claude-config-dir-'));
+    const directory = await mkdtemp(join(tmpdir(), 'puppeteer-claude-config-dir-'));
     const home = join(directory, 'home');
     const configDir = join(directory, 'claude-work');
     await mkdir(join(home, '.claude'), { recursive: true });
@@ -266,7 +266,7 @@ describe('resolveClaudeStatusLine', () => {
   });
 
   it('loads only selected native setting sources while retaining native precedence', async () => {
-    const directory = await mkdtemp(join(tmpdir(), 'chopsticks-claude-status-sources-'));
+    const directory = await mkdtemp(join(tmpdir(), 'puppeteer-claude-status-sources-'));
     const home = join(directory, 'home');
     const project = join(directory, 'project');
     await mkdir(join(home, '.claude'), { recursive: true });

@@ -73,7 +73,7 @@ describe('createActionRecorder', () => {
       type: 'workspace-final',
       sessionId: 's-1',
       mode: 'worktree',
-      branch: 'chopsticks/ab12',
+      branch: 'puppeteer/ab12',
       filesTouched: ['a.ts', 'b.ts'],
       retained: true,
     });

@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import type { AccountUsageFetchResult } from '@vibecook/chopsticks-core';
+import type { AccountUsageFetchResult } from '@vibecook/puppeteer-core';
 import type { AgentAccountUsage } from '../protocol.js';
 import { formatUsageReset, providerAccountUsageView } from './account-usage.js';
 

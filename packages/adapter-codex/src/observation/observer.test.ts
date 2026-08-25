@@ -1,5 +1,5 @@
 import { describe, it, expect, vi } from 'vitest';
-import { projectAgentEvents } from '@vibecook/chopsticks-testing';
+import { projectAgentEvents } from '@vibecook/puppeteer-testing';
 import { createCodexObserver } from './observer.js';
 import type { Transport } from '../transport/app-server-client.js';
 
@@ -203,7 +203,7 @@ describe('createCodexObserver controller-owned bootstrap', () => {
       },
     });
 
-    expect(events).toEqual([]);
+    expect(events).toEqual(['monitor.batch', 'monitor.batch']);
     expect(projection.state.activeTurn).toBeUndefined();
     expect(
       monitorBatches

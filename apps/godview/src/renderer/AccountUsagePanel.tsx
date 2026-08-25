@@ -31,10 +31,10 @@ export function AccountUsagePanel() {
 
   useEffect(() => {
     let alive = true;
-    const unsubscribe = window.chopsticks.onAccountUsage((next) => {
+    const unsubscribe = window.puppeteer.onAccountUsage((next) => {
       if (alive) setBatch(next);
     });
-    void window.chopsticks.accountUsage().then(
+    void window.puppeteer.accountUsage().then(
       (next) => {
         if (alive) setBatch(next);
       },

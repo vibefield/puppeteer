@@ -4,13 +4,13 @@ import { appendFileSync, mkdirSync, mkdtempSync, realpathSync, rmSync, writeFile
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { afterEach } from 'vitest';
-import type { AgentEventEnvelope, AgentHost } from '@vibecook/chopsticks-core';
+import type { AgentEventEnvelope, AgentHost } from '@vibecook/puppeteer-core';
 import {
   runAgentMonitorConformance,
   runAgentSessionConformance,
   type AgentMonitorSessionHarness,
   type AgentSessionHarness,
-} from '@vibecook/chopsticks-testing/conformance';
+} from '@vibecook/puppeteer-testing/conformance';
 import { encodeKimiWorkDirKey } from './session-store.js';
 import { createKimiTuiSession, type KimiTuiSession } from './tui-session.js';
 
@@ -132,8 +132,8 @@ async function waitFor(predicate: () => boolean, label: string, timeoutMs = 5_00
 }
 
 async function createHarness(existing?: DurableStore): Promise<AgentSessionHarness> {
-  const cwd = existing?.cwd ?? temporaryDirectory('chopsticks-kimi-conformance-cwd-');
-  const home = existing?.home ?? temporaryDirectory('chopsticks-kimi-conformance-home-');
+  const cwd = existing?.cwd ?? temporaryDirectory('puppeteer-kimi-conformance-cwd-');
+  const home = existing?.home ?? temporaryDirectory('puppeteer-kimi-conformance-home-');
   let store = existing;
   const host: AgentHost = {
     async spawnTerminal() {
@@ -194,8 +194,8 @@ async function createHarness(existing?: DurableStore): Promise<AgentSessionHarne
 runAgentSessionConformance('kimi-durable-wire', () => createHarness());
 
 async function createMonitorHarness(): Promise<AgentMonitorSessionHarness> {
-  const cwd = temporaryDirectory('chopsticks-kimi-monitor-cwd-');
-  const home = temporaryDirectory('chopsticks-kimi-monitor-home-');
+  const cwd = temporaryDirectory('puppeteer-kimi-monitor-cwd-');
+  const home = temporaryDirectory('puppeteer-kimi-monitor-home-');
   const store = createStore(cwd, home);
   const host: AgentHost = {
     async spawnTerminal() {

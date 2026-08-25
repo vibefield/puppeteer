@@ -38,7 +38,7 @@ export class FakeHermesGateway implements HermesGatewayTransport {
   private sessionInfo(running: boolean): Record<string, unknown> {
     const total = this.inputTokens + this.outputTokens;
     return {
-      model: 'chopsticks-hermes-census',
+      model: 'puppeteer-hermes-census',
       provider: 'custom',
       reasoning_effort: 'medium',
       approval_mode: 'manual',

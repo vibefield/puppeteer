@@ -39,11 +39,11 @@ function start(args: string[], root: string): Run {
     stdio: ['pipe', 'pipe', 'pipe'],
     env: {
       ...process.env,
-      CHOPSTICKS_IMPOSTER_HOME: root,
-      CHOPSTICKS_IMPOSTER_TOKEN_FILE: join(root, 'absent.token'),
+      PUPPETEER_IMPOSTER_HOME: root,
+      PUPPETEER_IMPOSTER_TOKEN_FILE: join(root, 'absent.token'),
       OPENCODE_SERVER_USERNAME: 'opencode',
       OPENCODE_SERVER_PASSWORD: password,
-      CHOPSTICKS_IMPOSTER_TUI: 'off',
+      PUPPETEER_IMPOSTER_TUI: 'off',
     },
   });
   children.add(child);
@@ -87,7 +87,7 @@ async function createSession(origin: string, root: string): Promise<{ id: string
 
 describe('OpenCode CLI mode', () => {
   it('matches the native serve invocation and reserves stdout for readiness', async () => {
-    const root = mkdtempSync(join(tmpdir(), 'chopsticks-opencode-cli-'));
+    const root = mkdtempSync(join(tmpdir(), 'puppeteer-opencode-cli-'));
     roots.add(root);
     const { run, origin } = await startServer(root);
     expect(run.stdout().trim()).toBe(`opencode server listening on ${origin}`);
@@ -97,7 +97,7 @@ describe('OpenCode CLI mode', () => {
   });
 
   it('attaches the shared TUI to an exact session and submits over prompt_async', async () => {
-    const root = mkdtempSync(join(tmpdir(), 'chopsticks-opencode-attach-'));
+    const root = mkdtempSync(join(tmpdir(), 'puppeteer-opencode-attach-'));
     roots.add(root);
     const { origin } = await startServer(root);
     const session = await createSession(origin, root);

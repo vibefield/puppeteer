@@ -100,7 +100,7 @@ describe('loadPersona', () => {
 describe('loadPersona validation', () => {
   let dir: string;
   beforeEach(() => {
-    dir = mkdtempSync(join(tmpdir(), 'chopsticks-persona-'));
+    dir = mkdtempSync(join(tmpdir(), 'puppeteer-persona-'));
     mkdirSync(join(dir, 'broken'), { recursive: true });
   });
   afterEach(() => {
@@ -116,7 +116,7 @@ describe('loadPersona validation', () => {
   const validPersona = {
     vendor: 'broken',
     asm: {
-      package: '@vibecook/chopsticks-surface',
+      package: '@vibecook/puppeteer-surface',
       path: 'vendors/claude/model/claude@2.1.207',
     },
     shimNames: ['broken'],

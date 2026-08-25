@@ -1,7 +1,7 @@
 /** Kimi wire 1.5 facts projected onto the evidence-backed monitor SPI. */
 
 import { randomUUID } from 'node:crypto';
-import type { ActorRunRef, MonitorMetricFamily, MonitorStructuredQuestion } from '@vibecook/chopsticks-core';
+import type { ActorRunRef, MonitorMetricFamily, MonitorStructuredQuestion } from '@vibecook/puppeteer-core';
 import type {
   AdapterMonitorObservationBatch,
   EvidenceRef,
@@ -9,7 +9,7 @@ import type {
   MonitorFamilyValueMap,
   ObservationCapability,
   ObservationCoverage,
-} from '@vibecook/chopsticks-core/monitor-spi';
+} from '@vibecook/puppeteer-core/monitor-spi';
 import type { KimiObservedEvent, KimiObservedRecord } from './session-observer.js';
 
 const KIMI_CONTRACT = 'kimi-wire@1.5+surface@0.34.0';

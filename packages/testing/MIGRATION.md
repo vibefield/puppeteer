@@ -14,7 +14,7 @@ exactly once.
 
 ## 0.2.0
 
-`@vibecook/chopsticks-testing` is now provider-neutral. The following
+`@vibecook/puppeteer-testing` is now provider-neutral. The following
 Claude-specific exports from 0.1.8 are removed:
 
 - `hookFixturesDir`
@@ -24,7 +24,7 @@ Claude-specific exports from 0.1.8 are removed:
 - `CapturedHookRecord`
 
 Real-vendor captures are repository evidence, not a reusable test-package API.
-Chopsticks' canonical sanitized Claude captures now live under
+Puppeteer' canonical sanitized Claude captures now live under
 `packages/surface/vendors/claude/captures/`; they are deliberately excluded
 from published tarballs. Tests inside this repository should load those files
 from Surface, as the Claude adapter's `src/test-support/claude-fixtures.ts`
@@ -34,7 +34,7 @@ package.
 
 Synthetic Claude payload construction is adapter-specific. Keep a small local
 builder in Claude adapter test support. The provider-neutral `fakeAgentBin` and
-the `@vibecook/chopsticks-testing/conformance` export are unchanged.
+the `@vibecook/puppeteer-testing/conformance` export are unchanged.
 
 The `AgentSessionHarness` accepted by that conformance export now includes
 `resume()` and `assertNoOrphans()`. Adapter harnesses must exercise their native

@@ -18,10 +18,10 @@ import { tmpdir } from 'node:os';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { afterEach, describe, expect, it } from 'vitest';
-import type { AgentEventEnvelope } from '@vibecook/chopsticks-core';
-import { createClaudeSession, type ClaudeSession } from '@vibecook/chopsticks-adapter-claude';
-import { projectAgentSession, type TestAgentProjection } from '@vibecook/chopsticks-testing';
-import { runAgentSessionConformance, type AgentSessionHarness } from '@vibecook/chopsticks-testing/conformance';
+import type { AgentEventEnvelope } from '@vibecook/puppeteer-core';
+import { createClaudeSession, type ClaudeSession } from '@vibecook/puppeteer-adapter-claude';
+import { projectAgentSession, type TestAgentProjection } from '@vibecook/puppeteer-testing';
+import { runAgentSessionConformance, type AgentSessionHarness } from '@vibecook/puppeteer-testing/conformance';
 
 const packageRoot = dirname(dirname(fileURLToPath(import.meta.url)));
 const AI = join(packageRoot, 'bin', 'ai.mjs');
@@ -110,8 +110,8 @@ async function imposterHarness(
   resume?: string,
   existing?: { cwd: string; imposterHome: string },
 ): Promise<ImposterHarness> {
-  const cwd = existing?.cwd ?? temporaryDirectory('chopsticks-imposter-cwd-');
-  const imposterHome = existing?.imposterHome ?? temporaryDirectory('chopsticks-imposter-home-');
+  const cwd = existing?.cwd ?? temporaryDirectory('puppeteer-imposter-cwd-');
+  const imposterHome = existing?.imposterHome ?? temporaryDirectory('puppeteer-imposter-home-');
   let child: ChildProcess | undefined;
 
   const session = await createClaudeSession({
@@ -126,7 +126,7 @@ async function imposterHarness(
         // self-contained; spawn it exactly as built.
         child = spawn(prepared.command, prepared.args, {
           cwd: prepared.cwd,
-          env: { ...process.env, ...prepared.env, AI_PERSONA: 'claude', CHOPSTICKS_IMPOSTER_HOME: imposterHome },
+          env: { ...process.env, ...prepared.env, AI_PERSONA: 'claude', PUPPETEER_IMPOSTER_HOME: imposterHome },
           stdio: ['pipe', 'pipe', 'inherit'],
         });
         children.add(child);
@@ -256,7 +256,7 @@ describe('claude imposter channels', () => {
 
 describe.skipIf(process.platform === 'win32')('argv0 shim dispatch', () => {
   it('selects the persona from the shim name, so godview needs no changes (§6)', async () => {
-    const shims = temporaryDirectory('chopsticks-imposter-shims-');
+    const shims = temporaryDirectory('puppeteer-imposter-shims-');
     const shim = join(shims, 'claude');
     symlinkSync(AI, shim);
     chmodSync(AI, 0o755);

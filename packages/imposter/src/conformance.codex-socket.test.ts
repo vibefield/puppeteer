@@ -21,13 +21,13 @@ import { tmpdir } from 'node:os';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { afterEach, describe, expect, it } from 'vitest';
-import type { AgentEventEnvelope } from '@vibecook/chopsticks-core';
+import type { AgentEventEnvelope } from '@vibecook/puppeteer-core';
 import {
   createCodexSession,
   spawnAppServer,
   wsOverUnixTransport,
   type CodexSession,
-} from '@vibecook/chopsticks-adapter-codex';
+} from '@vibecook/puppeteer-adapter-codex';
 
 const AI = join(dirname(dirname(fileURLToPath(import.meta.url))), 'bin', 'ai.mjs');
 
@@ -58,7 +58,7 @@ async function waitFor(predicate: () => boolean, label: string, timeoutMs = 1500
 
 /** A `codex`-named symlink to `ai`, which is all an app has to do to reach it. */
 function codexShim(): string {
-  const directory = realpathSync(mkdtempSync(join(tmpdir(), 'chopsticks-codex-shim-')));
+  const directory = realpathSync(mkdtempSync(join(tmpdir(), 'puppeteer-codex-shim-')));
   temporaries.add(directory);
   chmodSync(AI, 0o755);
   const shim = join(directory, 'codex');
@@ -70,7 +70,7 @@ function codexShim(): string {
 // on this side too (§11.4). The stdio conformance suite covers both platforms.
 describe.skipIf(process.platform === 'win32')('the codex imposter, served over a unix socket', () => {
   it('answers the adapter’s own transport, spawned exactly as it spawns the vendor', async () => {
-    const cwd = realpathSync(mkdtempSync(join(tmpdir(), 'chopsticks-codex-socket-')));
+    const cwd = realpathSync(mkdtempSync(join(tmpdir(), 'puppeteer-codex-socket-')));
     temporaries.add(cwd);
 
     // The adapter's spawn helper, unmodified: it appends
@@ -100,7 +100,7 @@ describe.skipIf(process.platform === 'win32')('the codex imposter, served over a
   });
 
   it('serves several clients at once, because the TUI joins beside the controller', async () => {
-    const cwd = realpathSync(mkdtempSync(join(tmpdir(), 'chopsticks-codex-socket-')));
+    const cwd = realpathSync(mkdtempSync(join(tmpdir(), 'puppeteer-codex-socket-')));
     temporaries.add(cwd);
     const server = spawnAppServer({ executable: codexShim() });
     disposers.add(() => server.dispose());

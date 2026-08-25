@@ -6,7 +6,7 @@ import {
   type MonitorArtifactReadResult,
   type MonitorNotification,
   type SessionRuntimeState,
-} from '@vibecook/chopsticks-core';
+} from '@vibecook/puppeteer-core';
 import { DEFAULT_MONITOR_COALESCE_MS, MONITOR_ARTIFACT_HARD_MAX_BYTES } from './monitor-hub.js';
 import { compareLegacyAndMonitorState, type MonitorShadowMismatch } from './monitor-shadow.js';
 
@@ -80,11 +80,11 @@ export function isAgentMonitorStateAfterRemoval(
 
 /** One typed command-line boundary shared by both Electron hosts. */
 export function resolveMonitorHostFeatureFlags(argv: readonly string[]): MonitorHostFeatureFlags {
-  const shadowComparison = argv.includes('--chopsticks-monitor-shadow');
-  const godviewMonitorV2 = argv.includes('--chopsticks-godview-monitor-v2');
-  const canaryTrace = argv.includes('--chopsticks-monitor-canary-trace');
+  const shadowComparison = argv.includes('--puppeteer-monitor-shadow');
+  const godviewMonitorV2 = argv.includes('--puppeteer-godview-monitor-v2');
+  const canaryTrace = argv.includes('--puppeteer-monitor-canary-trace');
   return {
-    monitorV2: shadowComparison || godviewMonitorV2 || canaryTrace || argv.includes('--chopsticks-monitor-v2'),
+    monitorV2: shadowComparison || godviewMonitorV2 || canaryTrace || argv.includes('--puppeteer-monitor-v2'),
     shadowComparison,
     godviewMonitorV2,
     canaryTrace,

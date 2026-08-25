@@ -20,7 +20,7 @@ read the operator's `~/.hermes`.
 
 Hermes is a Python source checkout plus `uv`, not four platform binaries.
 `upstream.json` therefore uses `source-revision`: one GitHub source archive
-URL templated on `${tag}`, with the usual Chopsticks platforms listed as
+URL templated on `${tag}`, with the usual Puppeteer platforms listed as
 **execution environments** for that same archive. Per-platform artifact
 maps are forbidden for this vendor.
 
@@ -83,7 +83,7 @@ attached the Node TUI to that host and **did not** spawn
 This is the dashboard's documented internal seam, not a public CLI flag.
 It is stable enough to model: the TUI client reads `HERMES_TUI_GATEWAY_URL`
 in `ui-tui/src/gatewayClient.ts`, and `handle_ws` is the same dispatcher
-as stdio. Chopsticks may own a tiny loopback host of `handle_ws`; the TUI
+as stdio. Puppeteer may own a tiny loopback host of `handle_ws`; the TUI
 is then a viewer of that process's `AIAgent`.
 
 Two WebSocket clients can share the module-global session table. Approvals
@@ -103,13 +103,13 @@ second `AIAgent`. Forbidden as the native-TUI control plane.
 | ----------------------------- | ------------------------------------------------------------------ |
 | Default process tree          | Proven: wrapper → Node TUI → `tui_gateway.entry`                   |
 | Who owns stdio JSON-RPC       | Node TUI ↔ `tui_gateway.entry`                                     |
-| Same-session attach           | Proven via Chopsticks-owned `handle_ws` + `HERMES_TUI_GATEWAY_URL` |
+| Same-session attach           | Proven via Puppeteer-owned `handle_ws` + `HERMES_TUI_GATEWAY_URL` |
 | Official public attach API    | No. Dashboard/Desktop internal only                                |
 | Second client races approvals | Yes, if both call `approval.respond`                               |
 | Does ACP join the TUI session | No evidence it does; treat as a separate host                      |
 
 **First adapter rail:** structured observation/control through a
-Chopsticks-owned loopback `handle_ws` host, with `hermes --tui` attached as
+Puppeteer-owned loopback `handle_ws` host, with `hermes --tui` attached as
 the native viewer. Prompt submission may use `prompt.submit` on that host.
 Approvals stay native-TUI for the first slice.
 
@@ -197,7 +197,7 @@ empty for those two events; the stored id is `extra.session_key`.
 `post_approval_response.choice` was `deny`.
 
 Hooks remain a fallback observer. They are not live on an unmodified
-`--tui` tree unless Chopsticks registers them in the owned gateway process
+`--tui` tree unless Puppeteer registers them in the owned gateway process
 or enables a user plugin in the isolated home.
 
 ## Isolated home side effects
@@ -222,7 +222,7 @@ side effect of detection.
 - whether `--in <dir>` appears on this exact CLI.
 
 The stdio event map is modeled in `model/hermes@0.20.0/` (28 events).
-`@vibecook/chopsticks-adapter-hermes` now owns a TUI-gateway client, a
+`@vibecook/puppeteer-adapter-hermes` now owns a TUI-gateway client, a
 stateful normalizer, and an attach recipe (`hermes --tui` +
 `HERMES_TUI_GATEWAY_URL`). Approvals stay `native-tui`. Prompt receipts
 confirm only a following `message.start` on that live session; otherwise

@@ -23,8 +23,8 @@ const reference = (file: string) =>
 
 const OPTS = {
   endpoint: 'http://127.0.0.1:59999/hooks',
-  tokenEnvVar: 'CHOPSTICKS_HOOK_TOKEN',
-  commandForwarderPath: '/tmp/chopsticks hooks.mjs',
+  tokenEnvVar: 'PUPPETEER_HOOK_TOKEN',
+  commandForwarderPath: '/tmp/puppeteer hooks.mjs',
   commandExecutable: '/opt/Node Runtime/bin/node',
 };
 

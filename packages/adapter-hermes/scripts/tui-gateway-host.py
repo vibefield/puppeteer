@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Chopsticks-owned Hermes tui_gateway WebSocket host.
+"""Puppeteer-owned Hermes tui_gateway WebSocket host.
 
 The native TUI attaches with HERMES_TUI_GATEWAY_URL. This process owns the
 one AIAgent for the session; it is not a second agent beside hermes --tui.

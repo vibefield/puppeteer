@@ -5,7 +5,7 @@ import { describe, expect, it } from 'vitest';
 import { createFileCreationRequestRegistry } from './creation-registry.js';
 
 async function registryDirectory(): Promise<string> {
-  return mkdtemp(join(tmpdir(), 'chopsticks-creation-registry-'));
+  return mkdtemp(join(tmpdir(), 'puppeteer-creation-registry-'));
 }
 
 describe('file creation request registry', () => {

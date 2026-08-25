@@ -1,5 +1,5 @@
 import type { SessionActivity } from '@vibecook/ghosttea-protocol';
-import type { AgentMonitorStatus } from '@vibecook/chopsticks-core';
+import type { AgentMonitorStatus } from '@vibecook/puppeteer-core';
 import type { AgentSessionInfo } from '../protocol.js';
 import { folderName } from './folder-name.js';
 

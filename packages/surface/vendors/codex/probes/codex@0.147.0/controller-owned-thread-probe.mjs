@@ -67,7 +67,7 @@ function wsClient(port) {
 }
 
 const PORT = 8950 + Math.floor(Math.random() * 40);
-const CWD = join(realpathSync(tmpdir()), `chopsticks-codex-p3-${process.pid}`);
+const CWD = join(realpathSync(tmpdir()), `puppeteer-codex-p3-${process.pid}`);
 mkdirSync(CWD, { recursive: true });
 
 const server = spawn('codex', ['app-server', '--listen', `ws://127.0.0.1:${PORT}`], { stdio: 'ignore' });

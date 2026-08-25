@@ -28,8 +28,8 @@ import type {
   TaskUpdatedEvent,
   ToolActivityKind,
   ToolPresentation,
-} from '@vibecook/chopsticks-core';
-import { AGENT_MONITOR_COLLECTION_LIMITS } from '@vibecook/chopsticks-core';
+} from '@vibecook/puppeteer-core';
+import { AGENT_MONITOR_COLLECTION_LIMITS } from '@vibecook/puppeteer-core';
 import { claudePermissionMode } from './provider-modes.js';
 
 export interface ClaudeHookPayload {

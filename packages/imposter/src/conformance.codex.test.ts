@@ -22,10 +22,10 @@ import { tmpdir } from 'node:os';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { afterEach, describe, expect, it } from 'vitest';
-import type { AgentEventEnvelope } from '@vibecook/chopsticks-core';
-import { createCodexSession, type CodexSession } from '@vibecook/chopsticks-adapter-codex';
-import { projectAgentSession, type TestAgentProjection } from '@vibecook/chopsticks-testing';
-import { runAgentSessionConformance, type AgentSessionHarness } from '@vibecook/chopsticks-testing/conformance';
+import type { AgentEventEnvelope } from '@vibecook/puppeteer-core';
+import { createCodexSession, type CodexSession } from '@vibecook/puppeteer-adapter-codex';
+import { projectAgentSession, type TestAgentProjection } from '@vibecook/puppeteer-testing';
+import { runAgentSessionConformance, type AgentSessionHarness } from '@vibecook/puppeteer-testing/conformance';
 
 const AI = join(dirname(dirname(fileURLToPath(import.meta.url))), 'bin', 'ai.mjs');
 
@@ -102,7 +102,7 @@ async function imposterSession(
   resume?: string,
   existingRoot?: string,
 ): Promise<Started> {
-  const cwd = existingRoot ?? realpathSync(mkdtempSync(join(tmpdir(), 'chopsticks-codex-imposter-')));
+  const cwd = existingRoot ?? realpathSync(mkdtempSync(join(tmpdir(), 'puppeteer-codex-imposter-')));
   temporaries.add(cwd);
 
   // The adapter's own transport, pointed at `ai`: it appends `app-server` and
@@ -110,7 +110,7 @@ async function imposterSession(
   const child = spawn(process.execPath, [AI, '--codex', 'app-server', '--behavior', behavior], {
     cwd,
     stdio: ['pipe', 'pipe', 'pipe'],
-    env: { ...process.env, CHOPSTICKS_IMPOSTER_HOME: cwd },
+    env: { ...process.env, PUPPETEER_IMPOSTER_HOME: cwd },
   });
   children.add(child);
 

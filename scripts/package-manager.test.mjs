@@ -7,7 +7,7 @@ import test from 'node:test';
 import { packageManagerInvocation } from './package-manager.mjs';
 
 test('resolves Windows-style npm and pnpm JavaScript entry points without a shell', () => {
-  const directory = mkdtempSync(join(tmpdir(), 'chopsticks-package-manager-'));
+  const directory = mkdtempSync(join(tmpdir(), 'puppeteer-package-manager-'));
   try {
     const node = join(directory, 'bin', 'node.exe');
     const npm = join(directory, 'bin', 'node_modules', 'npm', 'bin', 'npm-cli.js');
@@ -25,11 +25,11 @@ test('resolves Windows-style npm and pnpm JavaScript entry points without a shel
 });
 
 test('supports an explicit CLI entry override', () => {
-  const directory = mkdtempSync(join(tmpdir(), 'chopsticks-package-manager-'));
+  const directory = mkdtempSync(join(tmpdir(), 'puppeteer-package-manager-'));
   try {
     const cli = join(directory, 'pnpm.mjs');
     writeFileSync(cli, '');
-    assert.deepEqual(packageManagerInvocation('pnpm', { CHOPSTICKS_PNPM_CLI: cli }, '/node'), {
+    assert.deepEqual(packageManagerInvocation('pnpm', { PUPPETEER_PNPM_CLI: cli }, '/node'), {
       command: '/node',
       prefixArgs: [cli],
     });
@@ -39,7 +39,7 @@ test('supports an explicit CLI entry override', () => {
 });
 
 test('does not mistake the pnpm lifecycle CLI for npm', () => {
-  const directory = mkdtempSync(join(tmpdir(), 'chopsticks-package-manager-'));
+  const directory = mkdtempSync(join(tmpdir(), 'puppeteer-package-manager-'));
   try {
     const node = join(directory, 'bin', 'node');
     const npm = join(directory, 'bin', 'node_modules', 'npm', 'bin', 'npm-cli.js');
@@ -65,7 +65,7 @@ test('finds pnpm where pnpm/action-setup puts it, with no npm_execpath', () => {
   // The exact layout CI uses, and the one that broke the pack-check step:
   // PNPM_HOME points at `node_modules/.bin`, one level BELOW the package, so
   // the CLI is only reachable by looking UP from it.
-  const directory = mkdtempSync(join(tmpdir(), 'chopsticks-package-manager-'));
+  const directory = mkdtempSync(join(tmpdir(), 'puppeteer-package-manager-'));
   try {
     const home = join(directory, 'setup-pnpm', 'node_modules', '.bin');
     const cli = join(directory, 'setup-pnpm', 'node_modules', 'pnpm', 'bin', 'pnpm.cjs');
@@ -86,7 +86,7 @@ test('finds pnpm where pnpm/action-setup puts it, with no npm_execpath', () => {
 });
 
 test('still reports a missing CLI rather than guessing', () => {
-  const directory = mkdtempSync(join(tmpdir(), 'chopsticks-package-manager-'));
+  const directory = mkdtempSync(join(tmpdir(), 'puppeteer-package-manager-'));
   try {
     const node = join(directory, 'node');
     writeFileSync(node, '');

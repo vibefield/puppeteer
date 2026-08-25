@@ -9,9 +9,9 @@ import { appendFileSync, mkdirSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 
 const event = process.argv[2];
-const dir = process.env.CHOPSTICKS_AGY_HOOK_DIR;
+const dir = process.env.PUPPETEER_AGY_HOOK_DIR;
 if (!event || !dir) {
-  process.stderr.write('hook-forwarder requires <event> and CHOPSTICKS_AGY_HOOK_DIR\n');
+  process.stderr.write('hook-forwarder requires <event> and PUPPETEER_AGY_HOOK_DIR\n');
   process.exit(2);
 }
 

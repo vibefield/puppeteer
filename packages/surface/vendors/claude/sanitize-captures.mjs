@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 /**
  * Claude capture sanitiser — a thin CLI over the shared engine in
- * `@vibecook/chopsticks-surface/sanitize`.
+ * `@vibecook/puppeteer-surface/sanitize`.
  *
  * The engine moved out of this file on 2026-08-07 (docs/archive/IMPOSTER.md §9.6).
  * The rules are vendor-specific, but the MECHANISM is not, and keeping one copy
@@ -19,7 +19,7 @@
  */
 import { join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { checkCaptureDirectory, sanitizeCaptureDirectory } from '@vibecook/chopsticks-surface/sanitize';
+import { checkCaptureDirectory, sanitizeCaptureDirectory } from '@vibecook/puppeteer-surface/sanitize';
 import { resolveAgentModel } from '../../../../scripts/agent-model-selection.mjs';
 
 export { checkCaptureDirectory, sanitizeCaptureDirectory };

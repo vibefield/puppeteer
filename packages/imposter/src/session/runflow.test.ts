@@ -22,13 +22,13 @@ async function waitFor(predicate: () => boolean, label: string): Promise<void> {
 
 describe('session runflow lifecycle', () => {
   it('locks overlapping scenarios and reports step and native-sequence boundaries', async () => {
-    const root = mkdtempSync(join(tmpdir(), 'chopsticks-runflow-'));
+    const root = mkdtempSync(join(tmpdir(), 'puppeteer-runflow-'));
     roots.push(root);
     const updates: ScenarioRunProgressView[] = [];
     const session = createImposterSession({
       persona: loadPersona('claude'),
       argv: [],
-      env: { CHOPSTICKS_IMPOSTER_HOME: root },
+      env: { PUPPETEER_IMPOSTER_HOME: root },
       cwd: root,
       behavior: {},
       onScenarioRun: (update) => updates.push(update),
@@ -72,13 +72,13 @@ describe('session runflow lifecycle', () => {
   });
 
   it('reports a runtime failure with the partial native sequence window', async () => {
-    const root = mkdtempSync(join(tmpdir(), 'chopsticks-runflow-failure-'));
+    const root = mkdtempSync(join(tmpdir(), 'puppeteer-runflow-failure-'));
     roots.push(root);
     const updates: ScenarioRunProgressView[] = [];
     const session = createImposterSession({
       persona: loadPersona('codex'),
       argv: [],
-      env: { CHOPSTICKS_IMPOSTER_HOME: root },
+      env: { PUPPETEER_IMPOSTER_HOME: root },
       cwd: root,
       behavior: {},
       onScenarioRun: (update) => updates.push(update),

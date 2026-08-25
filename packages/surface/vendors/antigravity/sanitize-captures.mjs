@@ -8,7 +8,7 @@
 import { existsSync, mkdirSync, readFileSync, readdirSync, renameSync, rmSync, writeFileSync } from 'node:fs';
 import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { checkCaptureDirectory, sanitizeRecord } from '@vibecook/chopsticks-surface/sanitize';
+import { checkCaptureDirectory, sanitizeRecord } from '@vibecook/puppeteer-surface/sanitize';
 import { AUTHORIZED_SCENARIOS } from './census/authorized-census.mjs';
 import { VERSION } from './census/harness.mjs';
 import { antigravityRules } from './privacy.mjs';

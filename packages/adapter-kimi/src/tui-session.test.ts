@@ -2,8 +2,8 @@ import { appendFile, mkdir, mkdtemp, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import type { AgentHost, TerminalSpec } from '@vibecook/chopsticks-core';
-import { projectAgentSession } from '@vibecook/chopsticks-testing';
+import type { AgentHost, TerminalSpec } from '@vibecook/puppeteer-core';
+import { projectAgentSession } from '@vibecook/puppeteer-testing';
 import { encodeKimiWorkDirKey, kimiMainWirePath } from './session-store.js';
 import { buildKimiTuiArgs, createKimiTuiSession, prepareKimiTuiSession } from './tui-session.js';
 
@@ -14,7 +14,7 @@ afterEach(async () => {
 });
 
 async function root(): Promise<string> {
-  const value = await mkdtemp(join(tmpdir(), 'chopsticks-kimi-tui-'));
+  const value = await mkdtemp(join(tmpdir(), 'puppeteer-kimi-tui-'));
   roots.push(value);
   return value;
 }

@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import type { AgentAdapterSession, AgentHost } from '@vibecook/chopsticks-core';
-import { projectAgentSession } from '@vibecook/chopsticks-testing';
+import type { AgentAdapterSession, AgentHost } from '@vibecook/puppeteer-core';
+import { projectAgentSession } from '@vibecook/puppeteer-testing';
 
 const mocks = vi.hoisted(() => ({
   spawn: vi.fn(),
@@ -18,8 +18,8 @@ vi.mock('node:fs', async (importOriginal) => {
       (String(path).endsWith('leader.sock') && mocks.socketReady) || actual.existsSync(path),
   };
 });
-vi.mock('@vibecook/chopsticks-adapter-acp', async (importOriginal) => ({
-  ...(await importOriginal<typeof import('@vibecook/chopsticks-adapter-acp')>()),
+vi.mock('@vibecook/puppeteer-adapter-acp', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@vibecook/puppeteer-adapter-acp')>()),
   createAcpSession: mocks.createAcpSession,
   createStdioAcpConnector: mocks.createStdioAcpConnector,
 }));

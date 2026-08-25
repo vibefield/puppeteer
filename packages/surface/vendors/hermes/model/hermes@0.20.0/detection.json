@@ -1,6 +1,6 @@
 {
   "executables": ["hermes"],
-  "envVar": "CHOPSTICKS_HERMES_BIN",
+  "envVar": "PUPPETEER_HERMES_BIN",
   "versionFlag": "--version",
   "versionOutput": "Hermes Agent v0.20.0 (2026.8.3)",
   "versionPattern": "^Hermes Agent v(\\d+\\.\\d+\\.\\d+) \\((\\d{4}\\.\\d{1,2}\\.\\d{1,2})\\)$",

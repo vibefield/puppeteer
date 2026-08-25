@@ -9,7 +9,7 @@ import { promisify } from 'node:util';
 
 const execFileAsync = promisify(execFile);
 
-export const OPENCODE_EXECUTABLE_ENV = 'CHOPSTICKS_OPENCODE_BIN';
+export const OPENCODE_EXECUTABLE_ENV = 'PUPPETEER_OPENCODE_BIN';
 export const OPENCODE_DEFAULT_EXECUTABLE = 'opencode';
 export const OPENCODE_VERSION_FLAG = '--version';
 export const OPENCODE_VERSION_PATTERN = /^(\d+\.\d+\.\d+)$/;

@@ -272,7 +272,7 @@ describe('Godview spawn-through', () => {
         command: '/opt/ai',
         args: ['--leader', '--leader-socket', '/tmp/g.sock', '--resume', 'grok-1'],
         cwd: '/repo',
-        env: { GROK_HOME: '/tmp/grok-home', CHOPSTICKS_IMPOSTER_HOME: '/tmp/grok-home' },
+        env: { GROK_HOME: '/tmp/grok-home', PUPPETEER_IMPOSTER_HOME: '/tmp/grok-home' },
       },
       workspace: { mode: 'direct', root: '/repo', sourcePath: '/repo' },
       expiresAt: new Date(Date.now() + 30_000).toISOString(),
@@ -309,7 +309,7 @@ describe('Godview spawn-through', () => {
     expect(result).toMatchObject({
       action: 'exec',
       launch: {
-        env: { AI_PERSONA: 'grok', GROK_HOME: '/tmp/grok-home', CHOPSTICKS_IMPOSTER_HOME: '/tmp/grok-home' },
+        env: { AI_PERSONA: 'grok', GROK_HOME: '/tmp/grok-home', PUPPETEER_IMPOSTER_HOME: '/tmp/grok-home' },
       },
     });
   });
@@ -327,7 +327,7 @@ describe('Godview spawn-through', () => {
         env: {
           AI_PERSONA: 'kimi',
           KIMI_CODE_HOME: home,
-          CHOPSTICKS_IMPOSTER_HOME: home,
+          PUPPETEER_IMPOSTER_HOME: home,
         },
       },
       workspace: { mode: 'direct', root: '/repo', sourcePath: '/repo' },
@@ -367,7 +367,7 @@ describe('Godview spawn-through', () => {
         env: {
           AI_PERSONA: 'kimi',
           KIMI_CODE_HOME: home,
-          CHOPSTICKS_IMPOSTER_HOME: home,
+          PUPPETEER_IMPOSTER_HOME: home,
         },
       },
     });
@@ -377,7 +377,7 @@ describe('Godview spawn-through', () => {
         env: {
           AI_PERSONA: 'kimi',
           KIMI_CODE_HOME: home,
-          CHOPSTICKS_IMPOSTER_HOME: home,
+          PUPPETEER_IMPOSTER_HOME: home,
         },
       },
     });
@@ -395,7 +395,7 @@ describe('Godview spawn-through', () => {
         cwd: '/repo',
         env: {
           AI_PERSONA: 'opencode',
-          CHOPSTICKS_IMPOSTER_HOME: home,
+          PUPPETEER_IMPOSTER_HOME: home,
           OPENCODE_SERVER_USERNAME: 'opencode',
           OPENCODE_SERVER_PASSWORD: 'private-secret',
         },
@@ -435,7 +435,7 @@ describe('Godview spawn-through', () => {
         executable: '/opt/ai',
         env: {
           AI_PERSONA: 'opencode',
-          CHOPSTICKS_IMPOSTER_HOME: home,
+          PUPPETEER_IMPOSTER_HOME: home,
         },
       },
     });
@@ -445,7 +445,7 @@ describe('Godview spawn-through', () => {
         args: ['attach', 'http://127.0.0.1:43210', '--dir', '/repo', '--session', 'ses_a11a5ed0', '--pure'],
         env: {
           AI_PERSONA: 'opencode',
-          CHOPSTICKS_IMPOSTER_HOME: home,
+          PUPPETEER_IMPOSTER_HOME: home,
           OPENCODE_SERVER_USERNAME: 'opencode',
           OPENCODE_SERVER_PASSWORD: 'private-secret',
         },

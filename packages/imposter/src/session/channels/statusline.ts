@@ -2,7 +2,7 @@
  * Statusline channel — the vendor invokes the configured command with session
  * JSON on stdin.
  *
- * For the chopsticks recipe that command is the adapter's own forwarder
+ * For the puppeteer recipe that command is the adapter's own forwarder
  * script, so invoking it exactly as configured exercises the real
  * forwarder → bridge path end to end. Cadence is the caller's choice: how
  * often a vendor refreshes is behavior-pack data, not a property of the

@@ -5,8 +5,8 @@ import type {
   AccountUsageLimit,
   AccountUsageSnapshot,
   AccountUsageWindow,
-} from '@vibecook/chopsticks-core';
-import { CHOPSTICKS_VERSION } from '@vibecook/chopsticks-core';
+} from '@vibecook/puppeteer-core';
+import { PUPPETEER_VERSION } from '@vibecook/puppeteer-core';
 import {
   AppServerClient,
   AppServerError,
@@ -14,7 +14,7 @@ import {
   type Transport,
 } from '../transport/app-server-client.js';
 
-const CLIENT_INFO = { name: 'chopsticks-account-usage', version: CHOPSTICKS_VERSION } as const;
+const CLIENT_INFO = { name: 'puppeteer-account-usage', version: PUPPETEER_VERSION } as const;
 
 const rec = (value: unknown): Record<string, unknown> | undefined =>
   value !== null && typeof value === 'object' && !Array.isArray(value) ? (value as Record<string, unknown>) : undefined;

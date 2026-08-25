@@ -14,7 +14,7 @@ import type {
   AgentEventSource,
   ToolActivityKind,
   ToolPresentation,
-} from '@vibecook/chopsticks-core';
+} from '@vibecook/puppeteer-core';
 import { hermesStructuredQuestions } from './questions.js';
 
 export type HermesNormalizationDisposition = 'mapped' | 'retained-native' | 'buffered' | 'no-output';

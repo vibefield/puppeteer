@@ -4,7 +4,7 @@ import { createHash } from 'node:crypto';
 import { existsSync, readFileSync, readdirSync, statSync, writeFileSync } from 'node:fs';
 import { basename, dirname, join, relative, resolve, sep } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { loadModel, validatePayload } from '@vibecook/chopsticks-surface';
+import { loadModel, validatePayload } from '@vibecook/puppeteer-surface';
 import { loadPersona } from '../packages/imposter/src/persona/load.ts';
 
 const root = dirname(dirname(fileURLToPath(import.meta.url)));

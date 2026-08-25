@@ -5,9 +5,9 @@
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <meta
       name="description"
-      content="Complete reference for the Chopsticks runtime Agent API, event bus, event envelopes, projections, and every normalized event route."
+      content="Complete reference for the Puppeteer runtime Agent API, event bus, event envelopes, projections, and every normalized event route."
     />
-    <title>Chopsticks Agent API &amp; Event Catalog</title>
+    <title>Puppeteer Agent API &amp; Event Catalog</title>
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link
@@ -901,7 +901,7 @@
       <header class="hero" id="top">
         <div class="hero-top">
           <div>
-            <div class="eyebrow">chopsticks · runtime agent · canonical reference</div>
+            <div class="eyebrow">puppeteer · runtime agent · canonical reference</div>
             <h1>Agent API &amp; Event Catalog</h1>
             <p class="subtitle">
               One runtime-owned object per provider spawn. Adapters normalize native evidence into a single event rail;
@@ -1212,7 +1212,7 @@
               Create through the runtime; do not construct <span class="mono">Agent</span> directly. Spawn failures are
               returned as data, so narrow the result before subscribing.
             </p>
-            <pre><code>import { createBuiltinAgentRuntime } from '@vibecook/chopsticks-runtime';
+            <pre><code>import { createBuiltinAgentRuntime } from '@vibecook/puppeteer-runtime';
 
 const runtime = createBuiltinAgentRuntime({ host, defaultCwd: process.cwd() });
 
@@ -3049,7 +3049,7 @@ type MonitorFamilyUpdate =
         const themeButton = document.getElementById('theme-toggle');
         let storedTheme;
         try {
-          storedTheme = localStorage.getItem('chopsticks-agent-api-theme');
+          storedTheme = localStorage.getItem('puppeteer-agent-api-theme');
         } catch {
           storedTheme = undefined;
         }
@@ -3061,7 +3061,7 @@ type MonitorFamilyUpdate =
           const next = current === 'dark' || (!current && systemDark) ? 'light' : 'dark';
           root.dataset.theme = next;
           try {
-            localStorage.setItem('chopsticks-agent-api-theme', next);
+            localStorage.setItem('puppeteer-agent-api-theme', next);
           } catch {
             // File URLs may not expose persistent storage; the in-page theme still changes.
           }

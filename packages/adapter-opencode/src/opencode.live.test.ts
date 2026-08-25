@@ -2,8 +2,8 @@ import { mkdtempSync, realpathSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { afterEach, describe, expect, it } from 'vitest';
-import type { AgentHost } from '@vibecook/chopsticks-core';
-import { projectAgentSession } from '@vibecook/chopsticks-testing';
+import type { AgentHost } from '@vibecook/puppeteer-core';
+import { projectAgentSession } from '@vibecook/puppeteer-testing';
 import { createOpenCodeTuiSession, type OpenCodeTuiSession } from './driver.js';
 
 const roots = new Set<string>();
@@ -18,7 +18,7 @@ afterEach(async () => {
 
 describe.runIf(process.env.OPENCODE_LIVE === '1')('pinned real OpenCode smoke', () => {
   it('starts a private backend, creates an exact session, and prepares native attach', async () => {
-    const cwd = realpathSync(mkdtempSync(join(realpathSync(tmpdir()), 'chopsticks-opencode-live-')));
+    const cwd = realpathSync(mkdtempSync(join(realpathSync(tmpdir()), 'puppeteer-opencode-live-')));
     roots.add(cwd);
     const host: AgentHost = {
       async spawnTerminal() {

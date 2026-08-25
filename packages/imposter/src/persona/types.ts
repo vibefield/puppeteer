@@ -11,7 +11,7 @@
  * to which channel emissions, and what a session emits at boot.
  */
 
-import type { PayloadSchema, SurfaceModel } from '@vibecook/chopsticks-surface';
+import type { PayloadSchema, SurfaceModel } from '@vibecook/puppeteer-surface';
 import type { ServeDocument } from '../session/serve.ts';
 
 /**

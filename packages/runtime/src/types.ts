@@ -18,8 +18,8 @@ import type {
   RuntimeRunId,
   SessionRuntimeState,
   TerminalSpec,
-} from '@vibecook/chopsticks-core';
-import type { ActionRecorder, ActionRecorderStatus } from '@vibecook/chopsticks-record';
+} from '@vibecook/puppeteer-core';
+import type { ActionRecorder, ActionRecorderStatus } from '@vibecook/puppeteer-record';
 import type {
   WorkspaceDiff,
   WorkspaceErrorCode,
@@ -27,14 +27,14 @@ import type {
   WorkspaceMode,
   Workspace,
   WorkspaceSessionMetadata,
-} from '@vibecook/chopsticks-workspaces';
-import type { CreateAcpSessionOptions } from '@vibecook/chopsticks-adapter-acp';
-import type { ClaudeHookDiagnostic, ClaudeSettingSource } from '@vibecook/chopsticks-adapter-claude';
-import type { CreateCodexTuiSessionOptions } from '@vibecook/chopsticks-adapter-codex';
-import type { CreateGrokSessionOptions } from '@vibecook/chopsticks-adapter-grok';
-import type { CreateKimiTuiSessionOptions } from '@vibecook/chopsticks-adapter-kimi';
-import type { CreateOpenCodeTuiSessionOptions } from '@vibecook/chopsticks-adapter-opencode';
-import type { CreateHermesTuiSessionOptions } from '@vibecook/chopsticks-adapter-hermes';
+} from '@vibecook/puppeteer-workspaces';
+import type { CreateAcpSessionOptions } from '@vibecook/puppeteer-adapter-acp';
+import type { ClaudeHookDiagnostic, ClaudeSettingSource } from '@vibecook/puppeteer-adapter-claude';
+import type { CreateCodexTuiSessionOptions } from '@vibecook/puppeteer-adapter-codex';
+import type { CreateGrokSessionOptions } from '@vibecook/puppeteer-adapter-grok';
+import type { CreateKimiTuiSessionOptions } from '@vibecook/puppeteer-adapter-kimi';
+import type { CreateOpenCodeTuiSessionOptions } from '@vibecook/puppeteer-adapter-opencode';
+import type { CreateHermesTuiSessionOptions } from '@vibecook/puppeteer-adapter-hermes';
 import type { AgentConversationSnapshot } from './conversation.js';
 import type {
   CreationRequestClaimRef,
@@ -70,8 +70,8 @@ export interface ClaudeAgentOptions {
    * Binary for this session only, overriding the runtime's configured one.
    *
    * The case this exists for is an emulated session beside real ones: an app
-   * points a single session at the chopsticks imposter while every other
-   * session still launches the user's real Claude Code. `CHOPSTICKS_CLAUDE_BIN`
+   * points a single session at the puppeteer imposter while every other
+   * session still launches the user's real Claude Code. `PUPPETEER_CLAUDE_BIN`
    * is the same capability applied to the whole process, which is exactly what
    * makes it unusable for that.
    */

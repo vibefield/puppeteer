@@ -1,5 +1,5 @@
 {
-  "name": "@vibecook/chopsticks-adapter-acp",
+  "name": "@vibecook/puppeteer-adapter-acp",
   "version": "0.1.8",
   "type": "module",
   "description": "Generic Agent Client Protocol (ACP) adapter: transport connectors, session/update normalization, lifecycle, permissions, and deterministic prompt injection.",
@@ -7,7 +7,7 @@
   "author": "James Yong",
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/vibecook-dev/chopsticks.git",
+    "url": "git+https://github.com/vibecook-dev/puppeteer.git",
     "directory": "packages/adapter-acp"
   },
   "main": "./src/index.ts",
@@ -42,9 +42,9 @@
   },
   "dependencies": {
     "@agentclientprotocol/sdk": "1.2.1",
-    "@vibecook/chopsticks-core": "workspace:*"
+    "@vibecook/puppeteer-core": "workspace:*"
   },
   "devDependencies": {
-    "@vibecook/chopsticks-testing": "workspace:*"
+    "@vibecook/puppeteer-testing": "workspace:*"
   }
 }

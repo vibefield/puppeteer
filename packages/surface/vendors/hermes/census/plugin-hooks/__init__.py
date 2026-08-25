@@ -36,7 +36,7 @@ def _jsonable(value: Any) -> Any:
 
 
 def _record(event: str, **kwargs: Any) -> None:
-    path = os.environ.get("CHOPSTICKS_HERMES_HOOK_LOG")
+    path = os.environ.get("PUPPETEER_HERMES_HOOK_LOG")
     if not path:
         return
     record = {

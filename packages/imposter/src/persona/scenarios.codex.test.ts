@@ -11,8 +11,8 @@ import { mkdtempSync, readdirSync, readFileSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { afterEach, describe, expect, it } from 'vitest';
-import { createCodexSession, type Transport } from '@vibecook/chopsticks-adapter-codex';
-import { projectAgentSession } from '@vibecook/chopsticks-testing';
+import { createCodexSession, type Transport } from '@vibecook/puppeteer-adapter-codex';
+import { projectAgentSession } from '@vibecook/puppeteer-testing';
 import { createTranscriptWriter } from '../session/channels/transcript.ts';
 import { createScenarioRunner, scenarioSteps } from '../session/scenario.ts';
 import { loadPersona, personaDirectory } from './load.ts';
@@ -121,7 +121,7 @@ describe('codex persona scenarios', () => {
     for (const name of available) {
       const document = JSON.parse(readFileSync(join(scenarioDir, `${name}.json`), 'utf8')) as { name: string };
       expect(document.name).toBe(name);
-      const directory = mkdtempSync(join(tmpdir(), `chopsticks-codex-${name}-`));
+      const directory = mkdtempSync(join(tmpdir(), `puppeteer-codex-${name}-`));
       temporaries.push(directory);
 
       const notified: string[] = [];
@@ -247,7 +247,7 @@ describe('codex persona scenarios', () => {
   });
 
   it('keeps state terminal when the late-after-exit scenario reaches the real adapter', async () => {
-    const directory = mkdtempSync(join(tmpdir(), 'chopsticks-codex-late-adapter-'));
+    const directory = mkdtempSync(join(tmpdir(), 'puppeteer-codex-late-adapter-'));
     temporaries.push(directory);
     const { session, projection } = await runScenarioThroughAdapter('late-after-exit', directory);
     try {
@@ -262,7 +262,7 @@ describe('codex persona scenarios', () => {
   });
 
   it('reduces duplicate and out-of-order tool events exactly once through the real adapter', async () => {
-    const directory = mkdtempSync(join(tmpdir(), 'chopsticks-codex-order-adapter-'));
+    const directory = mkdtempSync(join(tmpdir(), 'puppeteer-codex-order-adapter-'));
     temporaries.push(directory);
     const { session, projection } = await runScenarioThroughAdapter('duplicate-out-of-order', directory);
     try {

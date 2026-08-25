@@ -61,13 +61,13 @@ interface Run {
 }
 
 function start(args: string[]): Run {
-  const cwd = mkdtempSync(join(tmpdir(), 'chopsticks-serve-mode-'));
+  const cwd = mkdtempSync(join(tmpdir(), 'puppeteer-serve-mode-'));
   temporaries.add(cwd);
   const child = spawn(process.execPath, [AI, ...args], {
     cwd,
     stdio: ['pipe', 'pipe', 'pipe'],
     // No control plane, no token: this is the standalone mode CI runs.
-    env: { ...process.env, CHOPSTICKS_IMPOSTER_HOME: cwd, CHOPSTICKS_IMPOSTER_TOKEN_FILE: join(cwd, 'absent.token') },
+    env: { ...process.env, PUPPETEER_IMPOSTER_HOME: cwd, PUPPETEER_IMPOSTER_TOKEN_FILE: join(cwd, 'absent.token') },
   });
   children.add(child);
   let out = '';

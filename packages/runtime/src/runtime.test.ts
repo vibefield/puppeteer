@@ -15,10 +15,10 @@ import {
   type AgentHost,
   type AgentAdapterSession,
   type ObservationLevel,
-} from '@vibecook/chopsticks-core';
-import type { AdapterMonitorObservationBatch } from '@vibecook/chopsticks-core/monitor-spi';
-import { createActionRecorder, isOwnActionV2 } from '@vibecook/chopsticks-record';
-import { createWorkspace } from '@vibecook/chopsticks-workspaces';
+} from '@vibecook/puppeteer-core';
+import type { AdapterMonitorObservationBatch } from '@vibecook/puppeteer-core/monitor-spi';
+import { createActionRecorder, isOwnActionV2 } from '@vibecook/puppeteer-record';
+import { createWorkspace } from '@vibecook/puppeteer-workspaces';
 import { createFileCreationRequestRegistry, type CreationRequestRegistry } from './creation-registry.js';
 import { createAgentRuntime } from './runtime.js';
 import type { AgentProvider } from './types.js';
@@ -57,7 +57,7 @@ afterEach(() => {
 });
 
 async function makeRepo(): Promise<string> {
-  const repo = await mkdtemp(join(tmpdir(), 'chopsticks-runtime-repo-'));
+  const repo = await mkdtemp(join(tmpdir(), 'puppeteer-runtime-repo-'));
   const run = (...args: string[]) => execFileAsync('git', ['-C', repo, ...args]);
   await run('init', '-b', 'main');
   await writeFile(join(repo, 'README.md'), 'hello\n');
@@ -194,7 +194,7 @@ function standaloneSession(sessionId: string, runtimeSessionId: string): AgentAd
 
 describe('createAgentRuntime', () => {
   it('spawns one Agent instance and observes namespaced service events through Agent.on()', async () => {
-    const root = await mkdtemp(join(tmpdir(), 'chopsticks-runtime-agent-api-'));
+    const root = await mkdtemp(join(tmpdir(), 'puppeteer-runtime-agent-api-'));
     const handles = new Map<string, { emit: (event: AgentEventEnvelope) => void }>();
     const runtime = createAgentRuntime({ host, defaultCwd: root, providers: [fakeProvider('one', handles)] });
 
@@ -243,7 +243,7 @@ describe('createAgentRuntime', () => {
   });
 
   it('fetches provider-level account usage without a session and coalesces concurrent reads', async () => {
-    const root = await mkdtemp(join(tmpdir(), 'chopsticks-runtime-usage-'));
+    const root = await mkdtemp(join(tmpdir(), 'puppeteer-runtime-usage-'));
     const handles = new Map<string, { emit: (event: AgentEventEnvelope) => void }>();
     const provider = fakeProvider('codex', handles);
     let release: (() => void) | undefined;
@@ -278,7 +278,7 @@ describe('createAgentRuntime', () => {
   });
 
   it('returns typed unsupported and sanitized unavailable results', async () => {
-    const root = await mkdtemp(join(tmpdir(), 'chopsticks-runtime-usage-errors-'));
+    const root = await mkdtemp(join(tmpdir(), 'puppeteer-runtime-usage-errors-'));
     const handles = new Map<string, { emit: (event: AgentEventEnvelope) => void }>();
     const unsupported = fakeProvider('acp', handles);
     const broken = fakeProvider('broken', handles);
@@ -315,7 +315,7 @@ describe('createAgentRuntime', () => {
   });
 
   it('forwards provider push account-usage updates', async () => {
-    const root = await mkdtemp(join(tmpdir(), 'chopsticks-runtime-usage-push-'));
+    const root = await mkdtemp(join(tmpdir(), 'puppeteer-runtime-usage-push-'));
     const handles = new Map<string, { emit: (event: AgentEventEnvelope) => void }>();
     const provider = fakeProvider('claude', handles);
     const pushListeners = new Set<(result: AccountUsageFetchResult) => void>();
@@ -361,7 +361,7 @@ describe('createAgentRuntime', () => {
   });
 
   it('projects provider replay history from the normalized stream exactly once', async () => {
-    const root = await mkdtemp(join(tmpdir(), 'chopsticks-runtime-replay-'));
+    const root = await mkdtemp(join(tmpdir(), 'puppeteer-runtime-replay-'));
     const sessionId = 'replay-native';
     const runtimeSessionId = 'replay-runtime';
     const stamper = createEnvelopeStamper();
@@ -493,7 +493,7 @@ describe('createAgentRuntime', () => {
   });
 
   it('projects native-log assistant messages instead of filtering them as structured duplicates', async () => {
-    const root = await mkdtemp(join(tmpdir(), 'chopsticks-runtime-native-log-'));
+    const root = await mkdtemp(join(tmpdir(), 'puppeteer-runtime-native-log-'));
     const handles = new Map<string, { emit: (event: AgentEventEnvelope) => void }>();
     const runtime = createAgentRuntime({
       host,
@@ -544,8 +544,8 @@ describe('createAgentRuntime', () => {
   });
 
   it('records native-session corrections without changing run or terminal identity', async () => {
-    const root = await mkdtemp(join(tmpdir(), 'chopsticks-runtime-native-correction-'));
-    const recordRoot = await mkdtemp(join(tmpdir(), 'chopsticks-runtime-native-correction-records-'));
+    const root = await mkdtemp(join(tmpdir(), 'puppeteer-runtime-native-correction-'));
+    const recordRoot = await mkdtemp(join(tmpdir(), 'puppeteer-runtime-native-correction-records-'));
     const recorder = createActionRecorder({ path: join(recordRoot, 'own-actions.jsonl') });
     const handles = new Map<string, { emit: (event: AgentEventEnvelope) => void }>();
     const runtime = createAgentRuntime({
@@ -602,9 +602,9 @@ describe('createAgentRuntime', () => {
   });
 
   it('drives different providers through one create/observe/control/exit surface', async () => {
-    const root = await mkdtemp(join(tmpdir(), 'chopsticks-runtime-'));
-    const one = await mkdtemp(join(tmpdir(), 'chopsticks-runtime-one-'));
-    const two = await mkdtemp(join(tmpdir(), 'chopsticks-runtime-two-'));
+    const root = await mkdtemp(join(tmpdir(), 'puppeteer-runtime-'));
+    const one = await mkdtemp(join(tmpdir(), 'puppeteer-runtime-one-'));
+    const two = await mkdtemp(join(tmpdir(), 'puppeteer-runtime-two-'));
     const recorder = createActionRecorder({ path: join(root, 'actions.jsonl') });
     const handles = new Map<string, { emit: (event: AgentEventEnvelope) => void }>();
     const runtime = createAgentRuntime({
@@ -700,7 +700,7 @@ describe('createAgentRuntime', () => {
 
   it('keeps v2 records private while preserving lifecycle evidence', async () => {
     const root = await makeRepo();
-    const recordRoot = await mkdtemp(join(tmpdir(), 'chopsticks-runtime-private-records-'));
+    const recordRoot = await mkdtemp(join(tmpdir(), 'puppeteer-runtime-private-records-'));
     const path = join(recordRoot, 'own-actions.jsonl');
     const recorder = createActionRecorder({ path });
     const runtime = createAgentRuntime({
@@ -746,8 +746,8 @@ describe('createAgentRuntime', () => {
 
   it('persists policy-safe workspace provenance with reachable commits and no local paths', async () => {
     const root = await makeRepo();
-    const workspacesRoot = await mkdtemp(join(tmpdir(), 'chopsticks-runtime-provenance-worktrees-'));
-    const recordRoot = await mkdtemp(join(tmpdir(), 'chopsticks-runtime-provenance-records-'));
+    const workspacesRoot = await mkdtemp(join(tmpdir(), 'puppeteer-runtime-provenance-worktrees-'));
+    const recordRoot = await mkdtemp(join(tmpdir(), 'puppeteer-runtime-provenance-records-'));
     const path = join(recordRoot, 'own-actions.jsonl');
     const recorder = createActionRecorder({ path });
     const runtime = createAgentRuntime({
@@ -799,7 +799,7 @@ describe('createAgentRuntime', () => {
     });
     expect(records.find((record) => record.type === 'workspace.baseline')).toMatchObject({
       capturedAt: expect.any(String),
-      git: { state: 'attached', headRef: expect.stringContaining('refs/heads/chopsticks/') },
+      git: { state: 'attached', headRef: expect.stringContaining('refs/heads/puppeteer/') },
     });
     expect(records.find((record) => record.type === 'workspace.finalized')).toMatchObject({
       quality: 'strong',
@@ -827,7 +827,7 @@ describe('createAgentRuntime', () => {
 
   it('carries cooperative concurrency into shared-workspace quality and interference', async () => {
     const root = await makeRepo();
-    const recordRoot = await mkdtemp(join(tmpdir(), 'chopsticks-runtime-concurrency-records-'));
+    const recordRoot = await mkdtemp(join(tmpdir(), 'puppeteer-runtime-concurrency-records-'));
     const recorder = createActionRecorder({ path: join(recordRoot, 'own-actions.jsonl') });
     const runtime = createAgentRuntime({
       host,
@@ -858,7 +858,7 @@ describe('createAgentRuntime', () => {
   });
 
   it('does not let recorder degradation reject prompts or process cleanup', async () => {
-    const root = await mkdtemp(join(tmpdir(), 'chopsticks-runtime-recorder-failure-'));
+    const root = await mkdtemp(join(tmpdir(), 'puppeteer-runtime-recorder-failure-'));
     const fileAsParent = join(root, 'not-a-directory');
     await writeFile(fileAsParent, 'file');
     const recorder = createActionRecorder({ path: join(fileAsParent, 'own-actions.jsonl') });
@@ -888,7 +888,7 @@ describe('createAgentRuntime', () => {
 
   it('allows direct concurrency and enforces exclusive claims independently of provider', async () => {
     const root = await makeRepo();
-    const roots = await mkdtemp(join(tmpdir(), 'chopsticks-runtime-worktrees-'));
+    const roots = await mkdtemp(join(tmpdir(), 'puppeteer-runtime-worktrees-'));
     const nested = join(root, 'nested');
     await mkdir(nested);
     const handles = new Map<string, { emit: (event: AgentEventEnvelope) => void }>();
@@ -937,7 +937,7 @@ describe('createAgentRuntime', () => {
   }, 20_000);
 
   it('reserves an exclusive claim before asynchronous provider creation', async () => {
-    const root = await mkdtemp(join(tmpdir(), 'chopsticks-runtime-atomic-'));
+    const root = await mkdtemp(join(tmpdir(), 'puppeteer-runtime-atomic-'));
     const handles = new Map<string, { emit: (event: AgentEventEnvelope) => void; input: number[] }>();
     const inner = fakeProvider('one', handles);
     let signalStarted!: () => void;
@@ -966,7 +966,7 @@ describe('createAgentRuntime', () => {
   });
 
   it('passes provider-owned launch options through without interpreting them', async () => {
-    const root = await mkdtemp(join(tmpdir(), 'chopsticks-runtime-options-'));
+    const root = await mkdtemp(join(tmpdir(), 'puppeteer-runtime-options-'));
     let received: unknown;
     const provider: AgentProvider = {
       kind: 'one',
@@ -988,10 +988,10 @@ describe('createAgentRuntime', () => {
   });
 
   it('coalesces concurrent idempotent creation into one workspace and provider invocation', async () => {
-    const root = await mkdtemp(join(tmpdir(), 'chopsticks-runtime-idempotent-source-'));
+    const root = await mkdtemp(join(tmpdir(), 'puppeteer-runtime-idempotent-source-'));
     await writeFile(join(root, 'file.txt'), 'source');
-    const workspacesRoot = await mkdtemp(join(tmpdir(), 'chopsticks-runtime-idempotent-copies-'));
-    const registryDirectory = await mkdtemp(join(tmpdir(), 'chopsticks-runtime-idempotent-registry-'));
+    const workspacesRoot = await mkdtemp(join(tmpdir(), 'puppeteer-runtime-idempotent-copies-'));
+    const registryDirectory = await mkdtemp(join(tmpdir(), 'puppeteer-runtime-idempotent-registry-'));
     const inner = fakeProvider('one', new Map());
     let calls = 0;
     let signalStarted!: () => void;
@@ -1039,9 +1039,9 @@ describe('createAgentRuntime', () => {
   });
 
   it('links run allocation evidence to the winning durable creation claim', async () => {
-    const root = await mkdtemp(join(tmpdir(), 'chopsticks-runtime-claim-evidence-'));
-    const registryDirectory = await mkdtemp(join(tmpdir(), 'chopsticks-runtime-claim-evidence-registry-'));
-    const recordDirectory = await mkdtemp(join(tmpdir(), 'chopsticks-runtime-claim-evidence-records-'));
+    const root = await mkdtemp(join(tmpdir(), 'puppeteer-runtime-claim-evidence-'));
+    const registryDirectory = await mkdtemp(join(tmpdir(), 'puppeteer-runtime-claim-evidence-registry-'));
+    const recordDirectory = await mkdtemp(join(tmpdir(), 'puppeteer-runtime-claim-evidence-records-'));
     const recordPath = join(recordDirectory, 'own-actions.jsonl');
     const backingRegistry = createFileCreationRequestRegistry({ directory: registryDirectory });
     let winningRef: Awaited<ReturnType<CreationRequestRegistry['claim']>>['claim']['ref'] | undefined;
@@ -1095,10 +1095,10 @@ describe('createAgentRuntime', () => {
   });
 
   it('rejects a conflicting in-flight request id without another workspace or provider side effect', async () => {
-    const root = await mkdtemp(join(tmpdir(), 'chopsticks-runtime-conflict-source-'));
+    const root = await mkdtemp(join(tmpdir(), 'puppeteer-runtime-conflict-source-'));
     await writeFile(join(root, 'file.txt'), 'source');
-    const workspacesRoot = await mkdtemp(join(tmpdir(), 'chopsticks-runtime-conflict-copies-'));
-    const registryDirectory = await mkdtemp(join(tmpdir(), 'chopsticks-runtime-conflict-registry-'));
+    const workspacesRoot = await mkdtemp(join(tmpdir(), 'puppeteer-runtime-conflict-copies-'));
+    const registryDirectory = await mkdtemp(join(tmpdir(), 'puppeteer-runtime-conflict-registry-'));
     const inner = fakeProvider('one', new Map());
     let calls = 0;
     let signalStarted!: () => void;
@@ -1140,8 +1140,8 @@ describe('createAgentRuntime', () => {
   });
 
   it('returns the persisted run allocation on a new host without spawning it again', async () => {
-    const root = await mkdtemp(join(tmpdir(), 'chopsticks-runtime-recovery-'));
-    const registryDirectory = await mkdtemp(join(tmpdir(), 'chopsticks-runtime-recovery-registry-'));
+    const root = await mkdtemp(join(tmpdir(), 'puppeteer-runtime-recovery-'));
+    const registryDirectory = await mkdtemp(join(tmpdir(), 'puppeteer-runtime-recovery-registry-'));
     let firstCalls = 0;
     let secondCalls = 0;
     const firstInner = fakeProvider('one', new Map());
@@ -1189,8 +1189,8 @@ describe('createAgentRuntime', () => {
   });
 
   it('returns the persisted terminal outcome instead of recreating completed work', async () => {
-    const root = await mkdtemp(join(tmpdir(), 'chopsticks-runtime-terminal-retry-'));
-    const registryDirectory = await mkdtemp(join(tmpdir(), 'chopsticks-runtime-terminal-registry-'));
+    const root = await mkdtemp(join(tmpdir(), 'puppeteer-runtime-terminal-retry-'));
+    const registryDirectory = await mkdtemp(join(tmpdir(), 'puppeteer-runtime-terminal-registry-'));
     const request = { agent: 'one', creationRequestId: 'terminal-one' };
     const firstRuntime = createAgentRuntime({
       host,
@@ -1260,8 +1260,8 @@ describe('createAgentRuntime', () => {
   });
 
   it('rejects non-JSON provider options only when idempotency requires a deterministic fingerprint', async () => {
-    const root = await mkdtemp(join(tmpdir(), 'chopsticks-runtime-fingerprint-'));
-    const registryDirectory = await mkdtemp(join(tmpdir(), 'chopsticks-runtime-fingerprint-registry-'));
+    const root = await mkdtemp(join(tmpdir(), 'puppeteer-runtime-fingerprint-'));
+    const registryDirectory = await mkdtemp(join(tmpdir(), 'puppeteer-runtime-fingerprint-registry-'));
     let calls = 0;
     const inner = fakeProvider('one', new Map());
     const provider: AgentProvider = {
@@ -1289,8 +1289,8 @@ describe('createAgentRuntime', () => {
   });
 
   it('returns stable run identity for workspace and provider creation failures', async () => {
-    const root = await mkdtemp(join(tmpdir(), 'chopsticks-runtime-failures-'));
-    const recordRoot = await mkdtemp(join(tmpdir(), 'chopsticks-runtime-failure-records-'));
+    const root = await mkdtemp(join(tmpdir(), 'puppeteer-runtime-failures-'));
+    const recordRoot = await mkdtemp(join(tmpdir(), 'puppeteer-runtime-failure-records-'));
     const recorder = createActionRecorder({ path: join(recordRoot, 'own-actions.jsonl') });
     let calls = 0;
     const runtime = createAgentRuntime({
@@ -1356,7 +1356,7 @@ describe('createAgentRuntime', () => {
   });
 
   it('keeps run and terminal registries distinct and preserves provider event identity while restamping', async () => {
-    const root = await mkdtemp(join(tmpdir(), 'chopsticks-runtime-event-identity-'));
+    const root = await mkdtemp(join(tmpdir(), 'puppeteer-runtime-event-identity-'));
     const handles = new Map<string, { emit: (event: AgentEventEnvelope) => void }>();
     const runtime = createAgentRuntime({ host, defaultCwd: root, providers: [fakeProvider('one', handles)] });
     const observed: Array<{
@@ -1425,8 +1425,8 @@ describe('createAgentRuntime', () => {
   });
 
   it('does not alias run and terminal registries even when their opaque ids are equal', async () => {
-    const root = await mkdtemp(join(tmpdir(), 'chopsticks-runtime-equal-identities-'));
-    const registryDirectory = await mkdtemp(join(tmpdir(), 'chopsticks-runtime-equal-registry-'));
+    const root = await mkdtemp(join(tmpdir(), 'puppeteer-runtime-equal-identities-'));
+    const registryDirectory = await mkdtemp(join(tmpdir(), 'puppeteer-runtime-equal-registry-'));
     const creationRegistry = createFileCreationRequestRegistry({ directory: registryDirectory });
     await creationRegistry.claim({
       creationRequestId: 'equal-identities',
@@ -1462,7 +1462,7 @@ describe('createAgentRuntime', () => {
   });
 
   it('keeps two resumed runs distinct while joining them through one native session claim', async () => {
-    const root = await mkdtemp(join(tmpdir(), 'chopsticks-runtime-resume-identity-'));
+    const root = await mkdtemp(join(tmpdir(), 'puppeteer-runtime-resume-identity-'));
     let counter = 0;
     const provider: AgentProvider = {
       kind: 'one',
@@ -1483,8 +1483,8 @@ describe('createAgentRuntime', () => {
   });
 
   it('restores an allocated run with one epoch increment and restarts local delivery order', async () => {
-    const root = await mkdtemp(join(tmpdir(), 'chopsticks-runtime-restore-'));
-    const registryDirectory = await mkdtemp(join(tmpdir(), 'chopsticks-runtime-restore-registry-'));
+    const root = await mkdtemp(join(tmpdir(), 'puppeteer-runtime-restore-'));
+    const registryDirectory = await mkdtemp(join(tmpdir(), 'puppeteer-runtime-restore-registry-'));
     const request = {
       agent: 'one',
       creationRequestId: 'restore-run-one',
@@ -1576,8 +1576,8 @@ describe('createAgentRuntime', () => {
   });
 
   it('prepares without spawning, binds before exec, and adopts the same pane idempotently', async () => {
-    const root = await mkdtemp(join(tmpdir(), 'chopsticks-runtime-prepare-'));
-    const registryDirectory = await mkdtemp(join(tmpdir(), 'chopsticks-runtime-prepare-registry-'));
+    const root = await mkdtemp(join(tmpdir(), 'puppeteer-runtime-prepare-'));
+    const registryDirectory = await mkdtemp(join(tmpdir(), 'puppeteer-runtime-prepare-registry-'));
     const hooks: {
       prepareCount: number;
       adoptCount: number;
@@ -1645,7 +1645,7 @@ describe('createAgentRuntime', () => {
   });
 
   it('reports unsupported providers and terminal conflicts without consuming the preparation', async () => {
-    const root = await mkdtemp(join(tmpdir(), 'chopsticks-runtime-unsupported-'));
+    const root = await mkdtemp(join(tmpdir(), 'puppeteer-runtime-unsupported-'));
     const handles = new Map<string, { emit: (event: AgentEventEnvelope) => void }>();
     const hooks = { prepareCount: 0, adoptCount: 0, disposeCount: 0 };
     const runtime = createAgentRuntime({
@@ -1671,9 +1671,9 @@ describe('createAgentRuntime', () => {
 
   it('expires unused preparations, cleans their copy workspace, and returns a typed error', async () => {
     vi.useFakeTimers();
-    const root = await mkdtemp(join(tmpdir(), 'chopsticks-runtime-expiry-'));
+    const root = await mkdtemp(join(tmpdir(), 'puppeteer-runtime-expiry-'));
     await writeFile(join(root, 'file.txt'), 'source');
-    const workspacesRoot = await mkdtemp(join(tmpdir(), 'chopsticks-runtime-expiry-copies-'));
+    const workspacesRoot = await mkdtemp(join(tmpdir(), 'puppeteer-runtime-expiry-copies-'));
     const hooks = { prepareCount: 0, adoptCount: 0, disposeCount: 0 };
     const runtime = createAgentRuntime({
       host,
@@ -1700,10 +1700,10 @@ describe('createAgentRuntime', () => {
   });
 
   it('finalizes a cancelled preparation once before removing its workspace', async () => {
-    const root = await mkdtemp(join(tmpdir(), 'chopsticks-runtime-cancel-provenance-'));
+    const root = await mkdtemp(join(tmpdir(), 'puppeteer-runtime-cancel-provenance-'));
     await writeFile(join(root, 'file.txt'), 'source');
-    const workspacesRoot = await mkdtemp(join(tmpdir(), 'chopsticks-runtime-cancel-copies-'));
-    const recordRoot = await mkdtemp(join(tmpdir(), 'chopsticks-runtime-cancel-records-'));
+    const workspacesRoot = await mkdtemp(join(tmpdir(), 'puppeteer-runtime-cancel-copies-'));
+    const recordRoot = await mkdtemp(join(tmpdir(), 'puppeteer-runtime-cancel-records-'));
     const recorder = createActionRecorder({ path: join(recordRoot, 'own-actions.jsonl') });
     const hooks = { prepareCount: 0, adoptCount: 0, disposeCount: 0 };
     const runtime = createAgentRuntime({
@@ -1741,7 +1741,7 @@ describe('createAgentRuntime', () => {
   });
 
   it('linearizes concurrent adoption and lets the shim cancel after an exec failure', async () => {
-    const root = await mkdtemp(join(tmpdir(), 'chopsticks-runtime-adopt-race-'));
+    const root = await mkdtemp(join(tmpdir(), 'puppeteer-runtime-adopt-race-'));
     let releaseAdoption!: () => void;
     const adoptionGate = new Promise<void>((resolve) => (releaseAdoption = resolve));
     const hooks = { prepareCount: 0, adoptCount: 0, disposeCount: 0, adoptionGate };
@@ -1771,8 +1771,8 @@ describe('createAgentRuntime', () => {
 
   it('retains a dirty worktree with one complete finalization record', async () => {
     const root = await makeRepo();
-    const workspacesRoot = await mkdtemp(join(tmpdir(), 'chopsticks-runtime-retained-worktrees-'));
-    const recordRoot = await mkdtemp(join(tmpdir(), 'chopsticks-runtime-retained-records-'));
+    const workspacesRoot = await mkdtemp(join(tmpdir(), 'puppeteer-runtime-retained-worktrees-'));
+    const recordRoot = await mkdtemp(join(tmpdir(), 'puppeteer-runtime-retained-records-'));
     const path = join(recordRoot, 'own-actions.jsonl');
     const recorder = createActionRecorder({ path });
     const runtime = createAgentRuntime({
@@ -1818,8 +1818,8 @@ describe('createAgentRuntime', () => {
 
   it('records one failed finalization when crash-time workspace evidence is unavailable', async () => {
     const root = await makeRepo();
-    const workspacesRoot = await mkdtemp(join(tmpdir(), 'chopsticks-runtime-failed-final-worktrees-'));
-    const recordRoot = await mkdtemp(join(tmpdir(), 'chopsticks-runtime-failed-final-records-'));
+    const workspacesRoot = await mkdtemp(join(tmpdir(), 'puppeteer-runtime-failed-final-worktrees-'));
+    const recordRoot = await mkdtemp(join(tmpdir(), 'puppeteer-runtime-failed-final-records-'));
     const recorder = createActionRecorder({ path: join(recordRoot, 'own-actions.jsonl') });
     const runtime = createAgentRuntime({
       host,
@@ -1859,7 +1859,7 @@ describe('createAgentRuntime', () => {
 
   it('finalizes an active workspace once when the runtime is disposed repeatedly', async () => {
     const root = await makeRepo();
-    const recordRoot = await mkdtemp(join(tmpdir(), 'chopsticks-runtime-disposal-records-'));
+    const recordRoot = await mkdtemp(join(tmpdir(), 'puppeteer-runtime-disposal-records-'));
     const recorder = createActionRecorder({ path: join(recordRoot, 'own-actions.jsonl') });
     const runtime = createAgentRuntime({
       host,
@@ -1885,7 +1885,7 @@ describe('createAgentRuntime', () => {
   });
 
   it('publishes the host exit before cleanup and removes a clean monitor last', async () => {
-    const root = await mkdtemp(join(tmpdir(), 'chopsticks-runtime-monitor-clean-'));
+    const root = await mkdtemp(join(tmpdir(), 'puppeteer-runtime-monitor-clean-'));
     const timeline: string[] = [];
     const provider: AgentProvider = {
       kind: 'monitor-clean',
@@ -1939,7 +1939,7 @@ describe('createAgentRuntime', () => {
   });
 
   it('normalizes host terminal outcomes before deciding whether to retain a failure', async () => {
-    const root = await mkdtemp(join(tmpdir(), 'chopsticks-runtime-monitor-host-exit-'));
+    const root = await mkdtemp(join(tmpdir(), 'puppeteer-runtime-monitor-host-exit-'));
     const runtime = createAgentRuntime({
       host,
       defaultCwd: root,
@@ -1970,7 +1970,7 @@ describe('createAgentRuntime', () => {
 
   it('closes an adopted process disappearance without inventing a failure', async () => {
     const root = await makeRepo();
-    const recordRoot = await mkdtemp(join(tmpdir(), 'chopsticks-runtime-unclassified-exit-records-'));
+    const recordRoot = await mkdtemp(join(tmpdir(), 'puppeteer-runtime-unclassified-exit-records-'));
     const recorder = createActionRecorder({ path: join(recordRoot, 'own-actions.jsonl') });
     const runtime = createAgentRuntime({
       host,
@@ -2007,7 +2007,7 @@ describe('createAgentRuntime', () => {
   });
 
   it('uses concrete exit data when a terminal host supplies no semantic reason', async () => {
-    const root = await mkdtemp(join(tmpdir(), 'chopsticks-runtime-monitor-derived-crash-'));
+    const root = await mkdtemp(join(tmpdir(), 'puppeteer-runtime-monitor-derived-crash-'));
     const runtime = createAgentRuntime({
       host,
       defaultCwd: root,
@@ -2036,7 +2036,7 @@ describe('createAgentRuntime', () => {
   });
 
   it('keeps an adopted provider in starting state until provider readiness evidence arrives', async () => {
-    const root = await mkdtemp(join(tmpdir(), 'chopsticks-runtime-monitor-starting-'));
+    const root = await mkdtemp(join(tmpdir(), 'puppeteer-runtime-monitor-starting-'));
     const handles = new Map<string, { emit: (event: AgentEventEnvelope) => void }>();
     const runtime = createAgentRuntime({
       host,
@@ -2068,7 +2068,7 @@ describe('createAgentRuntime', () => {
   });
 
   it('retains an unexpected-death failure monitor until idempotent acknowledgment', async () => {
-    const root = await mkdtemp(join(tmpdir(), 'chopsticks-runtime-monitor-crash-'));
+    const root = await mkdtemp(join(tmpdir(), 'puppeteer-runtime-monitor-crash-'));
     const timeline: string[] = [];
     const provider: AgentProvider = {
       kind: 'monitor-crash',
@@ -2119,7 +2119,7 @@ describe('createAgentRuntime', () => {
   });
 
   it('bounds retained failure monitors and preserves terminal run summaries after eviction', async () => {
-    const root = await mkdtemp(join(tmpdir(), 'chopsticks-runtime-monitor-retention-'));
+    const root = await mkdtemp(join(tmpdir(), 'puppeteer-runtime-monitor-retention-'));
     let sequence = 0;
     const provider: AgentProvider = {
       kind: 'monitor-retention',
@@ -2164,8 +2164,8 @@ describe('createAgentRuntime', () => {
   });
 
   it('routes one semantic observer and audits successful artifact content reads without persisting content', async () => {
-    const root = await mkdtemp(join(tmpdir(), 'chopsticks-runtime-monitor-artifact-'));
-    const recordRoot = await mkdtemp(join(tmpdir(), 'chopsticks-runtime-monitor-artifact-record-'));
+    const root = await mkdtemp(join(tmpdir(), 'puppeteer-runtime-monitor-artifact-'));
+    const recordRoot = await mkdtemp(join(tmpdir(), 'puppeteer-runtime-monitor-artifact-record-'));
     const path = join(recordRoot, 'actions.jsonl');
     const recorder = createActionRecorder({ path });
     const eventListeners = new Set<(envelope: AgentEventEnvelope) => void>();
@@ -2279,7 +2279,7 @@ describe('createAgentRuntime', () => {
   });
 
   it('keeps the v1-only behavior when monitor v2 is disabled', async () => {
-    const root = await mkdtemp(join(tmpdir(), 'chopsticks-runtime-monitor-disabled-'));
+    const root = await mkdtemp(join(tmpdir(), 'puppeteer-runtime-monitor-disabled-'));
     const runtime = createAgentRuntime({
       host,
       defaultCwd: root,
@@ -2293,7 +2293,7 @@ describe('createAgentRuntime', () => {
   });
 
   it('creates and retains the monitor before provider lookup can fail', async () => {
-    const root = await mkdtemp(join(tmpdir(), 'chopsticks-runtime-monitor-start-failure-'));
+    const root = await mkdtemp(join(tmpdir(), 'puppeteer-runtime-monitor-start-failure-'));
     const states: Array<{ status: string; alive: boolean }> = [];
     const runtime = createAgentRuntime({
       host,

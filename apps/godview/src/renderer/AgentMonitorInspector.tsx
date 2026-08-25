@@ -7,7 +7,7 @@ import {
   type AgentMonitorState,
   type MonitorArtifactReadResult,
   type MonitorMetricFamily,
-} from '@vibecook/chopsticks-core';
+} from '@vibecook/puppeteer-core';
 
 const DETAIL_FAMILIES: readonly MonitorMetricFamily[] = [
   'status',
@@ -91,7 +91,7 @@ export function AgentMonitorInspector({
   const readArtifact = async (artifactId: string): Promise<void> => {
     setBusyArtifact(artifactId);
     try {
-      const result = await window.chopsticks.readAgentMonitorArtifact({
+      const result = await window.puppeteer.readAgentMonitorArtifact({
         runtimeRunId: state.runtimeRunId,
         artifactId,
         maxBytes: ARTIFACT_PREVIEW_MAX_BYTES,
@@ -206,7 +206,7 @@ export function AgentMonitorInspector({
                 <button
                   type="button"
                   onClick={() =>
-                    void window.chopsticks.acknowledgeAgentFailure({
+                    void window.puppeteer.acknowledgeAgentFailure({
                       runtimeRunId: state.runtimeRunId,
                       blockerId: blocker.id,
                     })

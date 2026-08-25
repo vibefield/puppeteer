@@ -4,7 +4,7 @@ import {
   classifyMonitorRecency,
   presentAgentMonitorHeadline,
   type AgentMonitorState,
-} from '@vibecook/chopsticks-core';
+} from '@vibecook/puppeteer-core';
 import type { AgentMonitorStateMessage, AgentSessionInfo, AgentStateMessage } from '../../protocol.js';
 import {
   agentColor,

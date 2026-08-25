@@ -13,7 +13,7 @@ async function run(cwd: string, ...args: string[]): Promise<void> {
 }
 
 async function repo(commit = true): Promise<string> {
-  const cwd = await mkdtemp(join(tmpdir(), 'chopsticks-git-observer-'));
+  const cwd = await mkdtemp(join(tmpdir(), 'puppeteer-git-observer-'));
   await run(cwd, 'init', '-b', 'main');
   if (commit) {
     await writeFile(join(cwd, 'README.md'), 'hello\n');
@@ -35,7 +35,7 @@ describe('resolveGitState', () => {
     await run(cwd, 'checkout', '--detach');
     expect(await resolveGitState(cwd)).toMatchObject({ root: await realpath(cwd), branch: null, detached: true });
 
-    const outside = await mkdtemp(join(tmpdir(), 'chopsticks-not-git-'));
+    const outside = await mkdtemp(join(tmpdir(), 'puppeteer-not-git-'));
     expect(await resolveGitState(outside)).toBeNull();
   });
 
@@ -51,7 +51,7 @@ describe('resolveGitState', () => {
 
   it('identifies linked worktrees while resolving their own root and branch', async () => {
     const main = await repo();
-    const worktrees = await mkdtemp(join(tmpdir(), 'chopsticks-git-worktrees-'));
+    const worktrees = await mkdtemp(join(tmpdir(), 'puppeteer-git-worktrees-'));
     const linked = join(worktrees, 'linked');
     await run(main, 'worktree', 'add', '-b', 'feature/linked', linked);
 

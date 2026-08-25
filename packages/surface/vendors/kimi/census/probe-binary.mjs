@@ -36,7 +36,7 @@ function json(path, value) {
   writeFileSync(path, `${JSON.stringify(value, null, 2)}\n`);
 }
 
-const artifactFlag = flag('--artifact', process.env.CHOPSTICKS_KIMI_BIN ?? 'kimi');
+const artifactFlag = flag('--artifact', process.env.PUPPETEER_KIMI_BIN ?? 'kimi');
 const artifact = isAbsolute(artifactFlag) || artifactFlag.includes('/') ? resolve(artifactFlag) : artifactFlag;
 const outputRoot = resolve(flag('--output', defaultOutput));
 const rawRoot = resolve(flag('--raw', defaultRaw));
@@ -69,7 +69,7 @@ writeFileSync(join(outputRoot, 'help.txt'), `${helpProbe.stdout.trimEnd()}\n`);
 json(join(outputRoot, 'artifact.json'), {
   vendor: 'kimi',
   vendorVersion: VERSION,
-  artifact: '$CHOPSTICKS_KIMI_BIN',
+  artifact: '$PUPPETEER_KIMI_BIN',
   platform: `${process.platform}-${process.arch}`,
   bytes: artifactStat.size,
   fileDescription: fileProbe.status === 0 ? fileProbe.stdout.trim() : undefined,

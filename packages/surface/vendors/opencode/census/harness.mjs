@@ -1109,7 +1109,7 @@ async function runScenario(name, options) {
   if (!scenario) throw new Error(`unknown scenario ${name} (have: ${Object.keys(SCENARIOS).join(', ')})`);
 
   const captureRoot = outputDirectory(options.output);
-  const temporary = mkdtempSync(join(tmpdir(), 'chopsticks-opencode-census-'));
+  const temporary = mkdtempSync(join(tmpdir(), 'puppeteer-opencode-census-'));
   const workspace = join(temporary, 'workspace');
   const password = randomBytes(32).toString('base64url');
   mkdirSync(workspace, { recursive: true });
@@ -1783,7 +1783,7 @@ async function runScenario(name, options) {
 
 const invokedDirectly = process.argv[1] && scriptPath === resolve(process.argv[1]);
 if (invokedDirectly) {
-  const artifact = binaryPath(flag('--artifact', process.env.CHOPSTICKS_OPENCODE_BIN ?? 'opencode'));
+  const artifact = binaryPath(flag('--artifact', process.env.PUPPETEER_OPENCODE_BIN ?? 'opencode'));
   const expectedVersion = flag('--version');
   const only = flag('--scenario');
   const names = only ? [only] : Object.keys(SCENARIOS);

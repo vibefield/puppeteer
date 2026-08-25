@@ -1,13 +1,13 @@
 {
-  "name": "@vibecook/chopsticks-runtime",
+  "name": "@vibecook/puppeteer-runtime",
   "version": "0.1.8",
   "type": "module",
-  "description": "Unified Chopsticks agent runtime: provider registry, session lifecycle, workspace isolation, events, and action recording.",
+  "description": "Unified Puppeteer agent runtime: provider registry, session lifecycle, workspace isolation, events, and action recording.",
   "license": "MIT",
   "author": "James Yong",
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/vibecook-dev/chopsticks.git",
+    "url": "git+https://github.com/vibecook-dev/puppeteer.git",
     "directory": "packages/runtime"
   },
   "main": "./src/index.ts",
@@ -41,16 +41,16 @@
     "node": ">=22.18.0"
   },
   "dependencies": {
-    "@vibecook/chopsticks-adapter-acp": "workspace:*",
-    "@vibecook/chopsticks-adapter-claude": "workspace:*",
-    "@vibecook/chopsticks-adapter-codex": "workspace:*",
-    "@vibecook/chopsticks-adapter-grok": "workspace:*",
-    "@vibecook/chopsticks-adapter-kimi": "workspace:*",
-    "@vibecook/chopsticks-adapter-opencode": "workspace:*",
-    "@vibecook/chopsticks-adapter-hermes": "workspace:*",
-    "@vibecook/chopsticks-core": "workspace:*",
-    "@vibecook/chopsticks-record": "workspace:*",
-    "@vibecook/chopsticks-workspaces": "workspace:*"
+    "@vibecook/puppeteer-adapter-acp": "workspace:*",
+    "@vibecook/puppeteer-adapter-claude": "workspace:*",
+    "@vibecook/puppeteer-adapter-codex": "workspace:*",
+    "@vibecook/puppeteer-adapter-grok": "workspace:*",
+    "@vibecook/puppeteer-adapter-kimi": "workspace:*",
+    "@vibecook/puppeteer-adapter-opencode": "workspace:*",
+    "@vibecook/puppeteer-adapter-hermes": "workspace:*",
+    "@vibecook/puppeteer-core": "workspace:*",
+    "@vibecook/puppeteer-record": "workspace:*",
+    "@vibecook/puppeteer-workspaces": "workspace:*"
   },
   "devDependencies": {
     "vitest": "^3.0.0"

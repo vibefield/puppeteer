@@ -1,7 +1,7 @@
 import { readFileSync, readdirSync } from 'node:fs';
 import { join } from 'node:path';
 import { describe, expect, it } from 'vitest';
-import { checkCaptureDirectory, defaultRules } from '@vibecook/chopsticks-surface/sanitize';
+import { checkCaptureDirectory, defaultRules } from '@vibecook/puppeteer-surface/sanitize';
 import { kimiRules } from './sanitize-captures.mjs';
 
 const capturesRoot = join(import.meta.dirname, 'captures', 'kimi@0.34.0');

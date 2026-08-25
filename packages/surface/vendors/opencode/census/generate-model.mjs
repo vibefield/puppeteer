@@ -456,7 +456,7 @@ writeJson(join(out, 'manifest.json'), {
 
 writeJson(join(out, 'detection.json'), {
   executables: ['opencode'],
-  envVar: 'CHOPSTICKS_OPENCODE_BIN',
+  envVar: 'PUPPETEER_OPENCODE_BIN',
   versionFlag: '--version',
   versionOutput: VERSION,
   versionPattern: '^(\\d+\\.\\d+\\.\\d+)$',
@@ -478,7 +478,7 @@ writeJson(join(out, 'channels.json'), {
     argv: {
       kind: 'argv-env',
       notes:
-        'Chopsticks launches one loopback `opencode serve` backend with an environment-only Basic-auth password, then launches `opencode attach` for the exact native session ID.',
+        'Puppeteer launches one loopback `opencode serve` backend with an environment-only Basic-auth password, then launches `opencode attach` for the exact native session ID.',
     },
     http: {
       kind: 'http',

@@ -7,11 +7,11 @@
  * are folded once across a persistent logical state; snapshots and live
  * delivery converge through revisioned, gap-aware authoritative-log sync.
  */
-import { ClaudeHookNormalizer, type ClaudeHookPayload } from '@vibecook/chopsticks-adapter-claude';
-import { CodexNotificationNormalizer, type CodexServerNotification } from '@vibecook/chopsticks-adapter-codex';
-import { KimiWireNormalizer } from '@vibecook/chopsticks-adapter-kimi';
-import { HermesGatewayNormalizer } from '@vibecook/chopsticks-adapter-hermes';
-import { OpenCodeNormalizer, type OpenCodeSseRecord } from '@vibecook/chopsticks-adapter-opencode';
+import { ClaudeHookNormalizer, type ClaudeHookPayload } from '@vibecook/puppeteer-adapter-claude';
+import { CodexNotificationNormalizer, type CodexServerNotification } from '@vibecook/puppeteer-adapter-codex';
+import { KimiWireNormalizer } from '@vibecook/puppeteer-adapter-kimi';
+import { HermesGatewayNormalizer } from '@vibecook/puppeteer-adapter-hermes';
+import { OpenCodeNormalizer, type OpenCodeSseRecord } from '@vibecook/puppeteer-adapter-opencode';
 import {
   createEnvelopeStamper,
   createInitialSessionState,
@@ -22,8 +22,8 @@ import {
   type AgentEventSource,
   type EnvelopeStamper,
   type SessionRuntimeState,
-} from '@vibecook/chopsticks-core';
-import type { EmittedEntry, SessionView } from '@vibecook/chopsticks-imposter/control';
+} from '@vibecook/puppeteer-core';
+import type { EmittedEntry, SessionView } from '@vibecook/puppeteer-imposter/control';
 import type { ControlPlaneProjection } from './plane.js';
 
 /** One shared presentation window for native evidence and normalized traces. */

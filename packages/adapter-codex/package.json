@@ -1,5 +1,5 @@
 {
-  "name": "@vibecook/chopsticks-adapter-codex",
+  "name": "@vibecook/puppeteer-adapter-codex",
   "version": "0.1.8",
   "type": "module",
   "description": "Codex native adapter: app-server (JSON-RPC) structured driver — notification normalizer, session driver, structured injection.",
@@ -7,7 +7,7 @@
   "author": "James Yong",
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/vibecook-dev/chopsticks.git",
+    "url": "git+https://github.com/vibecook-dev/puppeteer.git",
     "directory": "packages/adapter-codex"
   },
   "main": "./src/index.ts",
@@ -43,10 +43,10 @@
     "node": ">=22.18.0"
   },
   "dependencies": {
-    "@vibecook/chopsticks-core": "workspace:*"
+    "@vibecook/puppeteer-core": "workspace:*"
   },
   "devDependencies": {
-    "@vibecook/chopsticks-surface": "workspace:*",
-    "@vibecook/chopsticks-testing": "workspace:*"
+    "@vibecook/puppeteer-surface": "workspace:*",
+    "@vibecook/puppeteer-testing": "workspace:*"
   }
 }

@@ -8,7 +8,7 @@ import { createScenarioGate, createScenarioRunner } from './scenario.ts';
 describe('createScenarioRunner', () => {
   let dir: string;
   beforeEach(() => {
-    dir = mkdtempSync(join(tmpdir(), 'chopsticks-imposter-'));
+    dir = mkdtempSync(join(tmpdir(), 'puppeteer-imposter-'));
   });
   afterEach(() => {
     rmSync(dir, { recursive: true, force: true });
@@ -141,7 +141,7 @@ describe('createScenarioRunner', () => {
 describe('createScenarioGate', () => {
   let dir: string;
   beforeEach(() => {
-    dir = mkdtempSync(join(tmpdir(), 'chopsticks-imposter-gate-'));
+    dir = mkdtempSync(join(tmpdir(), 'puppeteer-imposter-gate-'));
   });
   afterEach(() => {
     rmSync(dir, { recursive: true, force: true });

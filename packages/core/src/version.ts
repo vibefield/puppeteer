@@ -1,5 +1,5 @@
-/** One protocol/client version shared by every Chopsticks package projection. */
-export const CHOPSTICKS_VERSION = '0.1.8'; // x-release-please-version
+/** One protocol/client version shared by every Puppeteer package projection. */
+export const PUPPETEER_VERSION = '0.1.8'; // x-release-please-version
 
-/** @deprecated Use CHOPSTICKS_VERSION. */
-export const CHOPSTICKS_CORE_VERSION = CHOPSTICKS_VERSION;
+/** @deprecated Use PUPPETEER_VERSION. */
+export const PUPPETEER_CORE_VERSION = PUPPETEER_VERSION;

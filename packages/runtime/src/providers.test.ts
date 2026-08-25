@@ -1,7 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import type { AgentAdapterSession, AgentHost } from '@vibecook/chopsticks-core';
-import type { AcpConnector } from '@vibecook/chopsticks-adapter-acp';
-import type { CreateClaudeSessionOptions } from '@vibecook/chopsticks-adapter-claude';
+import type { AgentAdapterSession, AgentHost } from '@vibecook/puppeteer-core';
+import type { AcpConnector } from '@vibecook/puppeteer-adapter-acp';
+import type { CreateClaudeSessionOptions } from '@vibecook/puppeteer-adapter-claude';
 
 const adapters = vi.hoisted(() => ({
   createAcpSession: vi.fn(),
@@ -23,11 +23,11 @@ const adapters = vi.hoisted(() => ({
   prepareHermesTuiSession: vi.fn(),
 }));
 
-vi.mock('@vibecook/chopsticks-adapter-acp', () => ({
+vi.mock('@vibecook/puppeteer-adapter-acp', () => ({
   createAcpSession: adapters.createAcpSession,
 }));
 
-vi.mock('@vibecook/chopsticks-adapter-claude', () => ({
+vi.mock('@vibecook/puppeteer-adapter-claude', () => ({
   createClaudeSession: adapters.createClaudeSession,
   fetchClaudeAccountUsage: adapters.fetchClaudeAccountUsage,
   onClaudeAccountUsage: adapters.onClaudeAccountUsage,
@@ -35,28 +35,28 @@ vi.mock('@vibecook/chopsticks-adapter-claude', () => ({
   prepareClaudeTuiSession: adapters.prepareClaudeTuiSession,
 }));
 
-vi.mock('@vibecook/chopsticks-adapter-codex', () => ({
+vi.mock('@vibecook/puppeteer-adapter-codex', () => ({
   createCodexTuiSession: adapters.createCodexTuiSession,
   fetchCodexAccountUsage: adapters.fetchCodexAccountUsage,
   prepareCodexTuiSession: adapters.prepareCodexTuiSession,
 }));
 
-vi.mock('@vibecook/chopsticks-adapter-grok', () => ({
+vi.mock('@vibecook/puppeteer-adapter-grok', () => ({
   createGrokBackend: adapters.createGrokBackend,
   fetchGrokAccountUsage: adapters.fetchGrokAccountUsage,
 }));
 
-vi.mock('@vibecook/chopsticks-adapter-kimi', () => ({
+vi.mock('@vibecook/puppeteer-adapter-kimi', () => ({
   createKimiTuiSession: adapters.createKimiTuiSession,
   prepareKimiTuiSession: adapters.prepareKimiTuiSession,
 }));
 
-vi.mock('@vibecook/chopsticks-adapter-opencode', () => ({
+vi.mock('@vibecook/puppeteer-adapter-opencode', () => ({
   createOpenCodeTuiSession: adapters.createOpenCodeTuiSession,
   prepareOpenCodeTuiSession: adapters.prepareOpenCodeTuiSession,
 }));
 
-vi.mock('@vibecook/chopsticks-adapter-hermes', () => ({
+vi.mock('@vibecook/puppeteer-adapter-hermes', () => ({
   createHermesTuiSession: adapters.createHermesTuiSession,
   prepareHermesTuiSession: adapters.prepareHermesTuiSession,
 }));

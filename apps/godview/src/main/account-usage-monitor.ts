@@ -2,7 +2,7 @@ import type {
   AccountUsageAvailable,
   AccountUsageFailure,
   AccountUsageFetchResult,
-} from '@vibecook/chopsticks-core';
+} from '@vibecook/puppeteer-core';
 import {
   ACCOUNT_USAGE_AGENTS,
   type AccountUsageAgent,

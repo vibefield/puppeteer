@@ -14,7 +14,7 @@ import {
 const roots: string[] = [];
 
 async function temporaryRoot(): Promise<string> {
-  const root = await mkdtemp(join(tmpdir(), 'chopsticks-kimi-store-'));
+  const root = await mkdtemp(join(tmpdir(), 'puppeteer-kimi-store-'));
   roots.push(root);
   return root;
 }
@@ -26,8 +26,8 @@ afterEach(async () => {
 
 describe('Kimi session-store addressing', () => {
   it('matches Kimi 0.34.0 workdir keys and home precedence', () => {
-    expect(encodeKimiWorkDirKey('/Users/example/Projects/chopsticks')).toBe('wd_chopsticks_c7467a8233a4');
-    expect(encodeKimiWorkDirKey('/Users/example/Projects/chopsticks/')).toBe('wd_chopsticks_c7467a8233a4');
+    expect(encodeKimiWorkDirKey('/Users/example/Projects/puppeteer')).toBe('wd_puppeteer_8be84339a83f');
+    expect(encodeKimiWorkDirKey('/Users/example/Projects/puppeteer/')).toBe('wd_puppeteer_8be84339a83f');
     expect(encodeKimiWorkDirKey('/')).toBe('wd_workspace_8a5edab28263');
     expect(encodeKimiWorkDirKey('C:\\Repo')).toBe('wd_repo_99094984865d');
     expect(resolveKimiHome('/explicit', { KIMI_CODE_HOME: '/ambient' })).toBe('/explicit');

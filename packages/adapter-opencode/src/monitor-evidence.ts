@@ -1,7 +1,7 @@
 /** OpenCode 1.18.16 HTTP/SSE facts projected onto the evidence-backed monitor SPI. */
 
 import { createHash, randomUUID } from 'node:crypto';
-import type { ActorRunRef, AgentStructuredQuestion, MonitorMetricFamily } from '@vibecook/chopsticks-core';
+import type { ActorRunRef, AgentStructuredQuestion, MonitorMetricFamily } from '@vibecook/puppeteer-core';
 import type {
   AdapterMonitorObservationBatch,
   EvidenceRef,
@@ -9,7 +9,7 @@ import type {
   MonitorFamilyValueMap,
   ObservationCapability,
   ObservationCoverage,
-} from '@vibecook/chopsticks-core/monitor-spi';
+} from '@vibecook/puppeteer-core/monitor-spi';
 import type { OpenCodeMessage, OpenCodeModelSelection, OpenCodeSessionInfo } from './client.js';
 import type { OpenCodeSseRecord } from './event-stream.js';
 

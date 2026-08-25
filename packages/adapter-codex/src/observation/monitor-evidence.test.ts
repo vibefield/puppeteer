@@ -1,10 +1,10 @@
 import { describe, expect, it } from 'vitest';
-import type { AdapterMonitorObservationBatch, MonitorFamilyUpdate } from '@vibecook/chopsticks-core/monitor-spi';
+import type { AdapterMonitorObservationBatch, MonitorFamilyUpdate } from '@vibecook/puppeteer-core/monitor-spi';
 import {
   createMonitorAccumulatorState,
   projectAgentMonitorState,
   reduceMonitorAccumulator,
-} from '@vibecook/chopsticks-core/monitor-spi';
+} from '@vibecook/puppeteer-core/monitor-spi';
 import { CodexMonitorEvidence } from './monitor-evidence.js';
 
 const THREAD = 'a11a5ed0-838b-4c6d-b976-2f0ffe968c93';

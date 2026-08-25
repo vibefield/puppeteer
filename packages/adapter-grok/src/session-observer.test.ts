@@ -169,7 +169,7 @@ describe('GrokUpdateNormalizer', () => {
 
 describe('createGrokSessionObserver', () => {
   it('resolves bare --resume to the most recently updated cwd-scoped session', async () => {
-    const home = await mkdtemp(join(tmpdir(), 'chopsticks-grok-home-'));
+    const home = await mkdtemp(join(tmpdir(), 'puppeteer-grok-home-'));
     temporaryDirectories.push(home);
     const older = grokUpdatesPath('/work/repo', 'older-session', home);
     const newer = grokUpdatesPath('/work/repo', 'newer-session', home);
@@ -185,7 +185,7 @@ describe('createGrokSessionObserver', () => {
   });
 
   it('tails appended JSONL once and waits for a complete line', async () => {
-    const directory = await mkdtemp(join(tmpdir(), 'chopsticks-grok-observer-'));
+    const directory = await mkdtemp(join(tmpdir(), 'puppeteer-grok-observer-'));
     temporaryDirectories.push(directory);
     const path = join(directory, 'updates.jsonl');
     const [first, ...rest] = twoTurnRecords();
@@ -213,7 +213,7 @@ describe('createGrokSessionObserver', () => {
   });
 
   it('marks a log created after the initial observation boundary as live', async () => {
-    const directory = await mkdtemp(join(tmpdir(), 'chopsticks-grok-live-observer-'));
+    const directory = await mkdtemp(join(tmpdir(), 'puppeteer-grok-live-observer-'));
     temporaryDirectories.push(directory);
     const path = join(directory, 'updates.jsonl');
     const observer = createGrokSessionObserver(path, { pollIntervalMs: 60_000 });
@@ -237,7 +237,7 @@ describe('createGrokSessionObserver', () => {
   });
 
   it('reads historic logs in bounded chunks and skips an oversized record', async () => {
-    const directory = await mkdtemp(join(tmpdir(), 'chopsticks-grok-bounded-observer-'));
+    const directory = await mkdtemp(join(tmpdir(), 'puppeteer-grok-bounded-observer-'));
     temporaryDirectories.push(directory);
     const path = join(directory, 'updates.jsonl');
     const oversized = JSON.stringify({
@@ -267,7 +267,7 @@ describe('createGrokSessionObserver', () => {
   });
 
   it('reads exact context usage from signals.json, retries partial rewrites, and deduplicates', async () => {
-    const directory = await mkdtemp(join(tmpdir(), 'chopsticks-grok-signals-'));
+    const directory = await mkdtemp(join(tmpdir(), 'puppeteer-grok-signals-'));
     temporaryDirectories.push(directory);
     const updatesPath = join(directory, 'updates.jsonl');
     const signalsPath = join(directory, 'signals.json');
@@ -315,7 +315,7 @@ describe('createGrokSessionObserver', () => {
   });
 
   it('invalidates a compacted context when the replacement measurement is temporarily absent', async () => {
-    const directory = await mkdtemp(join(tmpdir(), 'chopsticks-grok-compaction-'));
+    const directory = await mkdtemp(join(tmpdir(), 'puppeteer-grok-compaction-'));
     temporaryDirectories.push(directory);
     const updatesPath = join(directory, 'updates.jsonl');
     const signalsPath = join(directory, 'signals.json');
@@ -340,7 +340,7 @@ describe('createGrokSessionObserver', () => {
   });
 
   it('reads authoritative cwd and current model from summary.json and deduplicates them', async () => {
-    const directory = await mkdtemp(join(tmpdir(), 'chopsticks-grok-summary-'));
+    const directory = await mkdtemp(join(tmpdir(), 'puppeteer-grok-summary-'));
     temporaryDirectories.push(directory);
     const updatesPath = join(directory, 'updates.jsonl');
     const summaryPath = join(directory, 'summary.json');

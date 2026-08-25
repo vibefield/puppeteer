@@ -1,4 +1,4 @@
-import type { AgentEventEnvelope, ToolActivityKind, ToolPresentation } from '@vibecook/chopsticks-core';
+import type { AgentEventEnvelope, ToolActivityKind, ToolPresentation } from '@vibecook/puppeteer-core';
 
 export interface ConversationUserMessage {
   id: string;

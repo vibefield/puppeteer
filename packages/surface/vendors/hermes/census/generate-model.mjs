@@ -134,7 +134,7 @@ writeJson(join(modelRoot, 'manifest.json'), {
 
 writeJson(join(modelRoot, 'detection.json'), {
   executables: ['hermes'],
-  envVar: 'CHOPSTICKS_HERMES_BIN',
+  envVar: 'PUPPETEER_HERMES_BIN',
   versionFlag: '--version',
   versionOutput,
   versionPattern: '^Hermes Agent v(\\d+\\.\\d+\\.\\d+) \\((\\d{4}\\.\\d{1,2}\\.\\d{1,2})\\)$',
@@ -159,7 +159,7 @@ writeJson(join(modelRoot, 'detection.json'), {
 
 writeJson(join(modelRoot, 'channels.json'), {
   channels: {
-    argv: { kind: 'argv-env', notes: 'hermes --tui launch, HERMES_HOME isolation, CHOPSTICKS_HERMES_BIN.' },
+    argv: { kind: 'argv-env', notes: 'hermes --tui launch, HERMES_HOME isolation, PUPPETEER_HERMES_BIN.' },
     terminal: {
       kind: 'terminal',
       notes: 'Native Node Ink TUI. Semantics are never derived from terminal text.',

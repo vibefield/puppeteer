@@ -3,27 +3,27 @@
 - **Status:** Accepted; implementation in progress (Stage C)
 - **Created:** 2026-08-16
 - **Last updated:** 2026-08-24
-- **Owners:** Chopsticks runtime and adapter maintainers
-- **Target:** Chopsticks runtime v2 observation architecture
+- **Owners:** Puppeteer runtime and adapter maintainers
+- **Target:** Puppeteer runtime v2 observation architecture
 - **Related:** [`001-implementation-plan.md`](./001-implementation-plan.md); [`docs/archive/MONITOR.md`](../../docs/archive/MONITOR.md); Spaghetti RFC 012A, 012C, and 012D
 - **Supersedes:** [`docs/archive/MONITOR.md`](../../docs/archive/MONITOR.md) and the observation, runtime identity, reducer, and Spaghetti-integration portions of [`draft/DESIGN.md`](../../draft/DESIGN.md)
 
 ## 1. Abstract
 
-Chopsticks needs to expose a substantially richer view of a running coding agent while preserving the agent's original terminal UI. Consumers such as Godview need to observe token usage and burn rate, context-window pressure, model and effort changes, provider modes, plans, tasks, questions, subagents, teams, workflows, and workspace outcomes. VibeField additionally needs durable runtime and workspace provenance that can be joined with transcript evidence and Git facts to produce contribution claims.
+Puppeteer needs to expose a substantially richer view of a running coding agent while preserving the agent's original terminal UI. Consumers such as Godview need to observe token usage and burn rate, context-window pressure, model and effort changes, provider modes, plans, tasks, questions, subagents, teams, workflows, and workspace outcomes. VibeField additionally needs durable runtime and workspace provenance that can be joined with transcript evidence and Git facts to produce contribution claims.
 
 The existing architecture reduces a single ordered `AgentEvent` stream into one mutable `SessionRuntimeState`. That is appropriate for simple lifecycle and hook events, but it cannot correctly represent independently owned evidence, replaceable transcript observations, corrections, retractions, observer resynchronization, resumed native sessions, or confidence-qualified workspace attribution.
 
 This RFC introduces three evidence planes and one derived projection:
 
-1. **Runtime signal plane**, owned by Chopsticks, for process, PTY, prompt, hook, and immediate provider-side signals.
+1. **Runtime signal plane**, owned by Puppeteer, for process, PTY, prompt, hook, and immediate provider-side signals.
 2. **Semantic observation plane**, owned by Spaghetti, for transcript-backed actors, usage, model and effort observations, plans, tasks, tools, questions, teams, workflows, and bounded artifacts.
-3. **Workspace provenance plane**, owned by Chopsticks and Git observations, for allocation, isolation, repository baselines, finalization, and interference evidence.
-4. **Monitor projection**, assembled by Chopsticks into one small, JSON-plain `AgentMonitorState` for Godview and other live consumers.
+3. **Workspace provenance plane**, owned by Puppeteer and Git observations, for allocation, isolation, repository baselines, finalization, and interference evidence.
+4. **Monitor projection**, assembled by Puppeteer into one small, JSON-plain `AgentMonitorState` for Godview and other live consumers.
 
 The evidence machinery is deliberately private. It exists to make corrections, deduplication, resynchronization, and attribution honest; it is not a second product-facing semantic state machine. The only headline states exposed to fleet applications are `idle`, `working`, and `blocked`, with staleness and process liveness modeled orthogonally. Detailed source evidence remains available to the devkit, recorder, and downstream evidence consumers without becoming Godview's application contract.
 
-The design is progressively adoptable. Chopsticks can introduce the new identities, private reducers, monitor projection, and Claude side-channel coverage before Spaghetti's RFC 012D observer is released. The current transcript watcher remains available behind a compatibility provider until a shadow migration proves parity.
+The design is progressively adoptable. Puppeteer can introduce the new identities, private reducers, monitor projection, and Claude side-channel coverage before Spaghetti's RFC 012D observer is released. The current transcript watcher remains available behind a compatibility provider until a shadow migration proves parity.
 
 ## 2. Decision summary
 
@@ -36,7 +36,7 @@ This RFC proposes the following decisions:
 5. Publish one `AgentMonitorState` whose headline status is exactly `idle | working | blocked`. Apps render it and do not reclassify lifecycle, tool, task, or permission state.
 6. Publish notification-worthy transitions separately from current monitor state.
 7. Treat real-time burn rate as a derived, freshness-qualified projection over usage observations, not as durable source truth.
-8. Treat provider permission mode, provider session mode, and Chopsticks execution mode as separate concepts.
+8. Treat provider permission mode, provider session mode, and Puppeteer execution mode as separate concepts.
 9. Model questions, plans, tasks, tools, actors, affiliations, and artifacts with enough private revision semantics to project the monitor correctly; do not expose the full semantic machinery as the fleet-board contract.
 10. Make workspace baseline and finalization durable runtime-owned evidence. Keep contribution percentages and project attribution in VibeField.
 11. Adopt Spaghetti's scoped observer only after version negotiation, epoch/replacement handling, and shadow comparison are available.
@@ -48,7 +48,7 @@ This RFC proposes the following decisions:
 The following decisions from [`draft/DESIGN.md`](../../draft/DESIGN.md) remain in force:
 
 - The agent owns its terminal UI.
-- Chopsticks owns the PTY, process, environment, lifecycle, and guarded input around that UI.
+- Puppeteer owns the PTY, process, environment, lifecycle, and guarded input around that UI.
 - PTY bytes are visually authoritative.
 - Semantic facts come from side channels, durable native data, process/workspace observation, or explicitly qualified inference.
 - Terminal screen content is not an authoritative semantic API.
@@ -58,7 +58,7 @@ The following decisions from [`draft/DESIGN.md`](../../draft/DESIGN.md) remain i
 
 The phrase "one native session has one agent process" is narrowed by this RFC. The actual invariant is:
 
-> A `RuntimeRun` owns at most one primary interactive agent process. Chopsticks never launches a shadow process to mirror that process. A provider-native conversation may be resumed by a later `RuntimeRun`.
+> A `RuntimeRun` owns at most one primary interactive agent process. Puppeteer never launches a shadow process to mirror that process. A provider-native conversation may be resumed by a later `RuntimeRun`.
 
 ### 3.2 Why the existing event model is insufficient
 
@@ -93,7 +93,7 @@ It consumes the semantic contracts proposed by:
 
 ### 3.4 Reconciliation with `docs/archive/MONITOR.md`
 
-This RFC adopts `docs/archive/MONITOR.md`'s product boundary: Chopsticks is a live monitor, the native TUI remains the full interaction surface, and the published monitor has only three headline states. It refines four implementation details in that draft:
+This RFC adopts `docs/archive/MONITOR.md`'s product boundary: Puppeteer is a live monitor, the native TUI remains the full interaction surface, and the published monitor has only three headline states. It refines four implementation details in that draft:
 
 1. Corrected cumulative usage may move downward. The displayed burn rate remains non-negative, but consumers cannot assume the current cumulative estimate is monotonic.
 2. One global freshness timestamp is insufficient when hooks remain healthy but usage or plan observation has failed. The public monitor therefore adds compact per-family readiness and `asOf` timestamps, not per-facet state machines.
@@ -113,7 +113,7 @@ These refinements preserve the small monitor surface while preventing it from re
 | OBS-003 | Model                        | Show stable provider model ID and display name. Detect mid-session changes at the first observable evidence boundary.                                                                                   |
 | OBS-004 | Effort                       | Show configured intent and observed effective effort separately. Detect changes at the first observable evidence boundary.                                                                              |
 | OBS-005 | Plan                         | Expose plan creation and revision in near real time, with actor attribution and evidence.                                                                                                               |
-| OBS-006 | Session and permission modes | Expose provider session mode, provider permission mode, and Chopsticks execution mode independently. Preserve raw provider values.                                                                      |
+| OBS-006 | Session and permission modes | Expose provider session mode, provider permission mode, and Puppeteer execution mode independently. Preserve raw provider values.                                                                      |
 | OBS-007 | Tasks                        | Expose task creation, updates, completion, failure, cancellation, and removal. Distinguish provisional transition signals from confirmed state.                                                         |
 | OBS-008 | Subagents                    | Expose child actor creation, lifecycle, current activity, model, effort, context, usage, tasks, and parentage as available.                                                                             |
 | OBS-009 | Agent teams                  | Expose team identity, membership revisions, member activity, and team aggregates without duplicating actor usage.                                                                                       |
@@ -122,20 +122,20 @@ These refinements preserve the small monitor surface while preventing it from re
 
 ### 4.2 Contribution and provenance requirements
 
-Chopsticks must provide enough runtime-owned evidence for VibeField to make contribution claims without making those claims itself:
+Puppeteer must provide enough runtime-owned evidence for VibeField to make contribution claims without making those claims itself:
 
 - Stable runtime-run and native-session correlation.
 - Stable actor correlation where the provider supplies actor lineage.
 - Machine-joinable caller and project references without imposing project policy.
 - Normative workspace identity, allocation, isolation, baseline, and finalization.
 - Explicit completeness and failure state for finalization.
-- Durable, idempotent records of Chopsticks-owned actions.
+- Durable, idempotent records of Puppeteer-owned actions.
 - No default persistence of secrets, full prompts, transcript bodies, or raw diffs.
 - Honest qualification when concurrent writers or external interference prevent exact attribution.
 
 ### 4.3 Bottom-line deployment constraint
 
-All required observation must work with Godview hosting the provider's native TUI and Chopsticks observing from the side. The design must not require:
+All required observation must work with Godview hosting the provider's native TUI and Puppeteer observing from the side. The design must not require:
 
 - Replacing Claude's interface with a generic chat interface.
 - Running Claude in `--print` or structured mode alongside the interactive process.
@@ -158,7 +158,7 @@ Detailed activity, metrics, actors, tasks, affiliations, liveness, and freshness
 
 ## 5. Non-goals
 
-This RFC does not require Chopsticks to:
+This RFC does not require Puppeteer to:
 
 - Guarantee equal observation coverage across providers or provider versions.
 - Provide exact per-token streaming when the native surface only updates at response or sample boundaries.
@@ -177,7 +177,7 @@ This RFC does not require Chopsticks to:
 
 ### 6.1 Runtime run
 
-A `RuntimeRun` is one Chopsticks-managed provider invocation. Its identity is allocated before workspace preparation and process spawn so failed starts are still recordable.
+A `RuntimeRun` is one Puppeteer-managed provider invocation. Its identity is allocated before workspace preparation and process spawn so failed starts are still recordable.
 
 ```ts
 type RuntimeRunId = string;
@@ -199,9 +199,9 @@ interface RuntimeRunRef {
 }
 ```
 
-`runtimeEpoch` is a Chopsticks-owned continuity generation. It increments when Chopsticks can no longer guarantee continuity of its own runtime signal stream for the same managed run, such as host recovery or explicit runtime-state reconstruction. A newly created runtime run starts at epoch 1.
+`runtimeEpoch` is a Puppeteer-owned continuity generation. It increments when Puppeteer can no longer guarantee continuity of its own runtime signal stream for the same managed run, such as host recovery or explicit runtime-state reconstruction. A newly created runtime run starts at epoch 1.
 
-Creation accepts a caller-scoped `creationRequestId` plus optional opaque `externalRefs`. Repeating a request ID with a compatible payload returns the same allocated run. Reusing it with a conflicting payload fails explicitly. Chopsticks persists and transports external references but does not interpret project or contributor policy from them.
+Creation accepts a caller-scoped `creationRequestId` plus optional opaque `externalRefs`. Repeating a request ID with a compatible payload returns the same allocated run. Reusing it with a conflicting payload fails explicitly. Puppeteer persists and transports external references but does not interpret project or contributor policy from them.
 
 ### 6.2 Native session
 
@@ -216,7 +216,7 @@ interface NativeSessionRef {
 }
 ```
 
-For Claude, the namespace is provider-scoped and stable, and the ID normally corresponds to Claude's session ID. Contract or source-format versioning is carried separately rather than changing the identity namespace. Chopsticks must not overwrite a runtime-run identity when the native-session identity becomes known.
+For Claude, the namespace is provider-scoped and stable, and the ID normally corresponds to Claude's session ID. Contract or source-format versioning is carried separately rather than changing the identity namespace. Puppeteer must not overwrite a runtime-run identity when the native-session identity becomes known.
 
 ### 6.3 Terminal session
 
@@ -238,7 +238,7 @@ interface ActorRunRef {
 }
 ```
 
-This shape mirrors Spaghetti's actor-run contract. `runKey` identifies an evidence-backed native actor lineage; it is not a Chopsticks `runtimeRunId` or an operating-system process ID. Team and workflow membership are affiliations over an actor, not new copies of the actor.
+This shape mirrors Spaghetti's actor-run contract. `runKey` identifies an evidence-backed native actor lineage; it is not a Puppeteer `runtimeRunId` or an operating-system process ID. Team and workflow membership are affiliations over an actor, not new copies of the actor.
 
 ### 6.5 Observation attachment
 
@@ -253,7 +253,7 @@ interface ObservationAttachmentRef {
 }
 ```
 
-The Spaghetti scope epoch is not the Chopsticks runtime epoch. Both must be retained.
+The Spaghetti scope epoch is not the Puppeteer runtime epoch. Both must be retained.
 
 ### 6.6 Workspace instance
 
@@ -265,17 +265,17 @@ No source is globally highest priority. Authority is defined per fact family.
 
 | Fact family                                         | Primary owner                                                                | Fast or corroborating sources                           | Explicitly not authoritative  |
 | --------------------------------------------------- | ---------------------------------------------------------------------------- | ------------------------------------------------------- | ----------------------------- |
-| Process and PTY lifecycle                           | Chopsticks runtime                                                           | OS process observation                                  | Transcript inference          |
-| Runtime execution mode and configured launch intent | Chopsticks runtime                                                           | Provider launch acknowledgement                         | Assistant response metadata   |
-| Provider permission/session state                   | Native hooks or native transition evidence                                   | Statusline-triggered poll, transcript response evidence | Chopsticks execution mode     |
+| Process and PTY lifecycle                           | Puppeteer runtime                                                           | OS process observation                                  | Transcript inference          |
+| Runtime execution mode and configured launch intent | Puppeteer runtime                                                           | Provider launch acknowledgement                         | Assistant response metadata   |
+| Provider permission/session state                   | Native hooks or native transition evidence                                   | Statusline-triggered poll, transcript response evidence | Puppeteer execution mode     |
 | Messages and response usage                         | Spaghetti semantic observer                                                  | Provider status samples                                 | PTY text                      |
 | Model, effort, and context                          | Provider statusline for low latency; Spaghetti for durable response evidence | Launch intent                                           | Display text in the TUI       |
 | Plans, tasks, tools, questions                      | Spaghetti semantic observer                                                  | Native hooks as provisional low-latency signals         | Terminal-screen inference     |
 | Actor lineage and affiliations                      | Spaghetti semantic observer                                                  | Provider task status samples                            | OS process tree alone         |
 | Workflow/team artifacts                             | Spaghetti bounded artifact API                                               | Provider configuration references                       | Arbitrary renderer file reads |
-| Workspace allocation and isolation                  | Chopsticks workspace manager                                                 | OS/filesystem checks                                    | Transcript Git commands       |
+| Workspace allocation and isolation                  | Puppeteer workspace manager                                                 | OS/filesystem checks                                    | Transcript Git commands       |
 | Commits, refs, trees, and diffs                     | Git/workspace facts                                                          | Transcript commands as supporting evidence              | Model statements              |
-| Contribution claims and percentages                 | VibeField `ContributionService`                                              | Runtime, semantic, and Git evidence                     | Chopsticks or Spaghetti alone |
+| Contribution claims and percentages                 | VibeField `ContributionService`                                              | Runtime, semantic, and Git evidence                     | Puppeteer or Spaghetti alone |
 
 Conflicts are resolved inside the reducer for the affected fact family. A conflict must never be hidden by assigning one blanket priority to hooks, transcripts, or status lines.
 
@@ -309,7 +309,7 @@ Conflicts are resolved inside the reducer for the affected fact family. A confli
 
 ### 8.1 Plane A: runtime signals
 
-The runtime signal plane records facts whose lifecycle Chopsticks directly owns or observes immediately:
+The runtime signal plane records facts whose lifecycle Puppeteer directly owns or observes immediately:
 
 - Run allocated, preparing, spawned, running, stopping, exited, or failed.
 - PTY attached, resized, detached, or terminated.
@@ -343,7 +343,7 @@ interface RuntimeSignalEnvelope<TSignal extends RuntimeSignal> {
 
 ### 8.2 Plane B: semantic observations
 
-Spaghetti events remain source-owned records inside the adapter's evidence join. Chopsticks may wrap them for internal transport, but it must preserve at least:
+Spaghetti events remain source-owned records inside the adapter's evidence join. Puppeteer may wrap them for internal transport, but it must preserve at least:
 
 - Contract version.
 - Source event ID.
@@ -356,7 +356,7 @@ Spaghetti events remain source-owned records inside the adapter's evidence join.
 - Evidence and native evidence references.
 - Coverage and capability status.
 
-A Chopsticks delivery ID may be added, but it never replaces the upstream identity. Provider-specific Spaghetti record types do not cross the adapter boundary. The adapter publishes provider-neutral monitor-family revisions or an atomic `MonitorObservationBatch`, retaining generic evidence references for diagnostics and durable correlation.
+A Puppeteer delivery ID may be added, but it never replaces the upstream identity. Provider-specific Spaghetti record types do not cross the adapter boundary. The adapter publishes provider-neutral monitor-family revisions or an atomic `MonitorObservationBatch`, retaining generic evidence references for diagnostics and durable correlation.
 
 Semantic observation state is reduced by the family semantics negotiated with Spaghetti:
 
@@ -721,7 +721,7 @@ type ObservedValue<T> =
     });
 ```
 
-`observedAt` answers when Chopsticks learned the value. `effectiveAt` answers when the source says it became effective. They must not be collapsed. These types belong to the private evidence and diagnostic contracts; the public monitor projects only the compact value, `asOf`, and family readiness needed by the operator.
+`observedAt` answers when Puppeteer learned the value. `effectiveAt` answers when the source says it became effective. They must not be collapsed. These types belong to the private evidence and diagnostic contracts; the public monitor projects only the compact value, `asOf`, and family readiness needed by the operator.
 
 ### 9.2 Capability and coverage
 
@@ -840,7 +840,7 @@ The same configured-versus-observed rule applies to effort.
 
 The generic name `sessionMode` must not conflate three state machines:
 
-- `executionMode`: Chopsticks driver mode such as `native-tui`, `structured`, or `acp`.
+- `executionMode`: Puppeteer driver mode such as `native-tui`, `structured`, or `acp`.
 - `providerSessionMode`: provider-native high-level operating state when exposed.
 - `providerPermissionMode`: provider-native permission policy.
 
@@ -916,7 +916,7 @@ Team and workflow aggregates are views over distinct actors. The same actor appe
 
 Team projection reconciles durable canonical affiliation identities with explicit provider-native aliases from low-latency hooks. Display names are never identity keys. Membership presence and member activity are independent claims: a provisional idle hook may update activity without replacing a durable actor join, and a durable removal still wins over stale activity. Joined actor usage, burn rate, context, observed model, observed effort, and current activity are projected directly onto the teammate row. Membership and activity provisionality remain separately visible.
 
-Full configured-roster coverage remains fail-closed until the semantic observer exposes a policy-safe, revisioned team-definition surface. The minimum upstream payload is canonical and native team/member identity, lead identity, member name/type, configured model/backend when present, membership operation/completeness, and an effective boundary. It must not copy team prompts, cwd values, terminal pane IDs, inbox text, or other native configuration bodies into monitor state. A bounded artifact API alone is sufficient for drill-down only if a typed revision/invalidation event still tells the live observer when to reread it. Chopsticks does not bypass this contract by tailing Claude's team files directly.
+Full configured-roster coverage remains fail-closed until the semantic observer exposes a policy-safe, revisioned team-definition surface. The minimum upstream payload is canonical and native team/member identity, lead identity, member name/type, configured model/backend when present, membership operation/completeness, and an effective boundary. It must not copy team prompts, cwd values, terminal pane IDs, inbox text, or other native configuration bodies into monitor state. A bounded artifact API alone is sufficient for drill-down only if a typed revision/invalidation event still tells the live observer when to reread it. Puppeteer does not bypass this contract by tailing Claude's team files directly.
 
 Team and workflow definitions are themselves revisioned affiliation entities. Their first supported observation establishes `firstObservedAt`; it is not presented as an exact creation time unless native evidence supplies one. Absence from partial coverage is not deletion. Absence from a complete owned-set replacement is.
 
@@ -948,7 +948,7 @@ type MonitorArtifactReadResult =
     };
 ```
 
-Content is read only through an explicit bounded `readArtifact` operation using an opaque adapter-issued ID. The operation rejects oversize content instead of returning an ambiguous truncation, and records metadata rather than content in the audit log. Godview must not submit or receive arbitrary native paths, and Chopsticks must not recursively scan provider directories to satisfy this feature.
+Content is read only through an explicit bounded `readArtifact` operation using an opaque adapter-issued ID. The operation rejects oversize content instead of returning an ambiguous truncation, and records metadata rather than content in the audit log. Godview must not submit or receive arbitrary native paths, and Puppeteer must not recursively scan provider directories to satisfy this feature.
 
 ## 11. Claude adapter design
 
@@ -961,7 +961,7 @@ The Claude native-TUI adapter will combine four side channels:
 3. `subagentStatusLine` for visible child task/actor model, effort, context, usage samples, and status where supported.
 4. Spaghetti's scoped observer for revisioned transcript-backed semantics and bounded artifacts.
 
-The adapter continues to forward the user's configured statusline and subagent-statusline commands. Chopsticks observes the same payload and delegates without taking ownership of the user's presentation.
+The adapter continues to forward the user's configured statusline and subagent-statusline commands. Puppeteer observes the same payload and delegates without taking ownership of the user's presentation.
 
 ### 11.2 Normalization rules
 
@@ -1120,7 +1120,7 @@ Provider-specific rendering may enhance a generic view, but it may not become th
 
 ### 15.1 Workspace baseline
 
-Before the agent can write, Chopsticks records:
+Before the agent can write, Puppeteer records:
 
 - `workspaceInstanceId` and `runtimeRunId`.
 - Policy-safe repository identity.
@@ -1133,7 +1133,7 @@ Before the agent can write, Chopsticks records:
 
 ### 15.2 Workspace finalization
 
-On normal or abnormal termination, Chopsticks attempts to record:
+On normal or abnormal termination, Puppeteer attempts to record:
 
 - Final HEAD and ref.
 - Final index/worktree dirty-state fingerprints and summaries.
@@ -1169,12 +1169,12 @@ Every record includes:
 
 ### 15.4 VibeField ownership
 
-Chopsticks exports evidence; it does not emit contribution percentages.
+Puppeteer exports evidence; it does not emit contribution percentages.
 
 VibeField's `ContributionService` joins:
 
 - Spaghetti durable semantic evidence.
-- Chopsticks run, actor-correlation, and workspace evidence.
+- Puppeteer run, actor-correlation, and workspace evidence.
 - Git facts for commits, refs, trees, diffs, files, and line metrics.
 - Application-owned project and contributor identity.
 
@@ -1369,7 +1369,7 @@ Suggested feature flags:
 - Unknown native payload retention follows the explicit recording policy and is never enabled implicitly by this RFC.
 - Artifact reads are explicit, family-scoped, size-bounded, and auditable.
 - Observation queues are bounded. Overflow produces degradation or epoch resync, never silent loss presented as complete state.
-- Stable external references are opaque strings with namespace and owner; Chopsticks does not interpret application secrets embedded in them.
+- Stable external references are opaque strings with namespace and owner; Puppeteer does not interpret application secrets embedded in them.
 - Repository identity should be joinable without exposing credentials or unredacted remote URLs.
 
 ## 19. Compatibility
@@ -1397,9 +1397,9 @@ Rejected. It would mix edge signals, revisioned entities, owned-set replacements
 
 ### 20.2 Make Spaghetti the whole live runtime state
 
-Rejected. Spaghetti does not own PTYs, process lifecycle, prompt receipts, workspace allocation, isolation, or finalization. It should not learn Chopsticks process semantics merely to simplify one consumer.
+Rejected. Spaghetti does not own PTYs, process lifecycle, prompt receipts, workspace allocation, isolation, or finalization. It should not learn Puppeteer process semantics merely to simplify one consumer.
 
-### 20.3 Make Chopsticks parse transcripts directly
+### 20.3 Make Puppeteer parse transcripts directly
 
 Rejected. This duplicates Spaghetti's native-data expertise and loses durable/live semantic revision identity.
 
@@ -1411,9 +1411,9 @@ Rejected as a semantic source. Terminal presentation is unstable, localized, los
 
 Rejected. Runtime identity, separate state planes, Claude status telemetry, structured questions, workspace provenance, and Godview contracts are useful independently. Waiting would force the eventual observer into the current inadequate reducer.
 
-### 20.6 Compute contribution directly in Chopsticks
+### 20.6 Compute contribution directly in Puppeteer
 
-Rejected. Chopsticks lacks project policy and Git-history ownership. Combining runtime lifecycle with attribution percentages would make evidence capture policy-dependent and difficult to audit.
+Rejected. Puppeteer lacks project policy and Git-history ownership. Combining runtime lifecycle with attribution percentages would make evidence capture policy-dependent and difficult to audit.
 
 ### 20.7 Publish the full evidence state to applications
 
@@ -1460,7 +1460,7 @@ This RFC is implemented when all of the following are true:
 9. Workflow artifacts can be listed and read through bounded references when supported.
 10. Observer overflow and resync replace semantic state without damaging runtime or workspace state.
 11. Workspace baseline and finalization produce durable completeness-qualified evidence.
-12. VibeField can join run, native session, actor, workspace, project, and Git evidence without Chopsticks assigning contribution percentages.
+12. VibeField can join run, native session, actor, workspace, project, and Git evidence without Puppeteer assigning contribution percentages.
 13. All functionality operates beside the original Claude TUI with no shadow model process.
 14. Unsupported or unavailable observations are rendered honestly rather than as zero or absence.
 15. Apps no longer serialize `SessionRuntimeState` or derive their own status/activity labels.

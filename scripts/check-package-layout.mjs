@@ -123,7 +123,7 @@ export function auditPackageLayout(root = scriptRoot) {
     const manifest = json(manifestPath);
     manifests.set(directory, manifest);
     const leaf = directory.slice('packages/'.length);
-    const expectedName = `@vibecook/chopsticks-${leaf}`;
+    const expectedName = `@vibecook/puppeteer-${leaf}`;
     if (manifest.name !== expectedName) issues.push(`${directory} name is ${manifest.name}; expected ${expectedName}`);
     if (manifest.version !== rootManifest.version) {
       issues.push(`${directory} version ${manifest.version} differs from root ${rootManifest.version}`);
@@ -180,14 +180,14 @@ export function auditPackageLayout(root = scriptRoot) {
   const versionSourcePath = join(root, 'packages', 'core', 'src', 'version.ts');
   if (!existsSync(versionSourcePath)) {
     issues.push('packages/core/src/version.ts is missing');
-  } else if (!readFileSync(versionSourcePath, 'utf8').includes(`CHOPSTICKS_VERSION = '${rootManifest.version}'`)) {
-    issues.push(`CHOPSTICKS_VERSION does not match root version ${rootManifest.version}`);
+  } else if (!readFileSync(versionSourcePath, 'utf8').includes(`PUPPETEER_VERSION = '${rootManifest.version}'`)) {
+    issues.push(`PUPPETEER_VERSION does not match root version ${rootManifest.version}`);
   }
   const readmePath = join(root, 'README.md');
   if (!existsSync(readmePath)) {
     issues.push('README.md is missing');
   } else if (
-    !readFileSync(readmePath, 'utf8').includes(`pnpm add @vibecook/chopsticks-runtime@${rootManifest.version}`)
+    !readFileSync(readmePath, 'utf8').includes(`pnpm add @vibecook/puppeteer-runtime@${rootManifest.version}`)
   ) {
     issues.push(`README install command does not match root version ${rootManifest.version}`);
   }
@@ -197,11 +197,11 @@ export function auditPackageLayout(root = scriptRoot) {
   issues.push(...cycleIssues(edges, nameToDirectory));
   issues.push(...spaghettiAdapterPinIssues(manifests));
   for (const [directory, dependencies] of edges) {
-    if (directory.startsWith('packages/adapter-') && dependencies.includes('@vibecook/chopsticks-surface')) {
+    if (directory.startsWith('packages/adapter-') && dependencies.includes('@vibecook/puppeteer-surface')) {
       issues.push(`${directory} must consume generated projections, not Surface at runtime`);
     }
     if (directory === 'packages/imposter') {
-      for (const dependency of dependencies.filter((name) => name.includes('chopsticks-adapter-'))) {
+      for (const dependency of dependencies.filter((name) => name.includes('puppeteer-adapter-'))) {
         issues.push(`${directory} must not depend on adapter package ${dependency}`);
       }
     }
@@ -245,10 +245,10 @@ export function auditPackageLayout(root = scriptRoot) {
       if (!existsSync(mapPath)) continue;
       const html = readFileSync(mapPath, 'utf8');
       const vendorVersion = json(join(root, agent.currentManifest)).vendorVersion;
-      if (!html.includes(`name="chopsticks-surface-manifest" content="${agent.currentManifest}"`)) {
+      if (!html.includes(`name="puppeteer-surface-manifest" content="${agent.currentManifest}"`)) {
         issues.push(`${directory}/docs/event-map.html does not name the promoted Surface manifest`);
       }
-      if (!html.includes(`name="chopsticks-last-verified" content="${vendorVersion}"`)) {
+      if (!html.includes(`name="puppeteer-last-verified" content="${vendorVersion}"`)) {
         issues.push(`${directory}/docs/event-map.html lastVerified does not match ${vendorVersion}`);
       }
     }

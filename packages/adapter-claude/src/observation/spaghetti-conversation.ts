@@ -1,4 +1,4 @@
-import type { AgentEvent, AssistantMessageEvent } from '@vibecook/chopsticks-core';
+import type { AgentEvent, AssistantMessageEvent } from '@vibecook/puppeteer-core';
 import type { SemanticObserverEvent } from '@vibecook/spaghetti-sdk';
 import type { SemanticObservationEvent } from './semantic-provider.js';
 
@@ -13,9 +13,7 @@ const SYNTHETIC_USER_PREFIXES = [
   '<ide_selection>',
 ] as const;
 
-const SYNTHETIC_USER_TEXT_PREFIXES = [
-  'this session is being continued from a previous conversation',
-] as const;
+const SYNTHETIC_USER_TEXT_PREFIXES = ['this session is being continued from a previous conversation'] as const;
 
 interface MessageEntry {
   factId: string;
@@ -68,8 +66,7 @@ function sourceOrder(left: SemanticObserverEvent, right: SemanticObserverEvent):
   return (
     left.source.object_path.localeCompare(right.source.object_path) ||
     left.source.generation - right.source.generation ||
-    (left.source.byte_start ?? Number.MAX_SAFE_INTEGER) -
-      (right.source.byte_start ?? Number.MAX_SAFE_INTEGER) ||
+    (left.source.byte_start ?? Number.MAX_SAFE_INTEGER) - (right.source.byte_start ?? Number.MAX_SAFE_INTEGER) ||
     left.sequence - right.sequence
   );
 }
@@ -102,9 +99,7 @@ function completeBlocks(
 
 function userPrompt(blocks: readonly ContentBlockEntry[]): string | undefined {
   if (blocks.some(({ value }) => value.content.kind === 'tool_result')) return undefined;
-  const text = blocks
-    .flatMap(({ value }) => (value.content.kind === 'text' ? [value.content.text] : []))
-    .join('\n');
+  const text = blocks.flatMap(({ value }) => (value.content.kind === 'text' ? [value.content.text] : [])).join('\n');
   return stripSyntheticUserPreamble(text);
 }
 
@@ -113,9 +108,7 @@ function assistantMessage(
   blocks: readonly ContentBlockEntry[],
   turnId?: string,
 ): SemanticObservationEvent | undefined {
-  const text = blocks
-    .flatMap(({ value }) => (value.content.kind === 'text' ? [value.content.text] : []))
-    .join('');
+  const text = blocks.flatMap(({ value }) => (value.content.kind === 'text' ? [value.content.text] : [])).join('');
   if (!text) return undefined;
   const event: AssistantMessageEvent = {
     type: 'assistant.message',
@@ -136,9 +129,7 @@ function assistantMessage(
  * so resume user prompts remain a degraded projection until that bit becomes
  * typed evidence; known synthetic forms are excluded conservatively here.
  */
-export function projectSpaghettiConversation(
-  facts: Iterable<SemanticObserverEvent>,
-): SpaghettiConversationProjection {
+export function projectSpaghettiConversation(facts: Iterable<SemanticObserverEvent>): SpaghettiConversationProjection {
   const events = [...facts];
   const rootRuns = new Set<string>();
   const messages: MessageEntry[] = [];

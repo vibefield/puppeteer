@@ -16,7 +16,7 @@ const document = {
 
 describe('vendor-native session store', () => {
   it('appends the vendor envelope and replaces state files beside it', () => {
-    const root = mkdtempSync(join(tmpdir(), 'chopsticks-native-store-'));
+    const root = mkdtempSync(join(tmpdir(), 'puppeteer-native-store-'));
     roots.push(root);
     const bindings: Record<string, unknown> = { $encodedCwd: '%2Fworkspace', $sessionId: 'session-one' };
     const store = createNativeSessionStore(root, document, bindings);
@@ -43,7 +43,7 @@ describe('vendor-native session store', () => {
   });
 
   it('rebinds its directory when session/new adopts the authoritative id', () => {
-    const root = mkdtempSync(join(tmpdir(), 'chopsticks-native-store-rebind-'));
+    const root = mkdtempSync(join(tmpdir(), 'puppeteer-native-store-rebind-'));
     roots.push(root);
     const bindings: Record<string, unknown> = { $encodedCwd: '%2Fworkspace', $sessionId: 'provisional' };
     const store = createNativeSessionStore(root, document, bindings);
@@ -53,7 +53,7 @@ describe('vendor-native session store', () => {
   });
 
   it('re-resolves encoded workspace bindings when session/load changes cwd', () => {
-    const root = mkdtempSync(join(tmpdir(), 'chopsticks-native-store-cwd-rebind-'));
+    const root = mkdtempSync(join(tmpdir(), 'puppeteer-native-store-cwd-rebind-'));
     roots.push(root);
     const bindings: Record<string, unknown> = { $threadCwd: '/first/workspace', $sessionId: 'session-one' };
     const store = createNativeSessionStore(
@@ -67,7 +67,7 @@ describe('vendor-native session store', () => {
   });
 
   it('reports an unmaterialized session without creating it', () => {
-    const root = mkdtempSync(join(tmpdir(), 'chopsticks-native-store-missing-'));
+    const root = mkdtempSync(join(tmpdir(), 'puppeteer-native-store-missing-'));
     roots.push(root);
     const store = createNativeSessionStore(root, document, {
       $encodedCwd: '%2Fworkspace',
@@ -80,7 +80,7 @@ describe('vendor-native session store', () => {
   });
 
   it('refuses a carrier before writing when the Surface contract rejects it', () => {
-    const root = mkdtempSync(join(tmpdir(), 'chopsticks-native-store-invalid-'));
+    const root = mkdtempSync(join(tmpdir(), 'puppeteer-native-store-invalid-'));
     roots.push(root);
     const store = createNativeSessionStore(
       root,
@@ -102,7 +102,7 @@ describe('vendor-native session store', () => {
   });
 
   it('writes Kimi-style flat records to a nested agent journal with one metadata header', () => {
-    const root = mkdtempSync(join(tmpdir(), 'chopsticks-native-store-flat-'));
+    const root = mkdtempSync(join(tmpdir(), 'puppeteer-native-store-flat-'));
     roots.push(root);
     const flatDocument = {
       sessionPath: ['sessions', '$workdirKey', '$sessionId'],

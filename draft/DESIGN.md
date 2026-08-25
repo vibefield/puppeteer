@@ -79,7 +79,7 @@ This runtime must solve both sides of the problem:
 This runtime is layer #2 of a three-part system:
 
 1. **Spaghetti** — static agent-data platform. Parses and indexes agent ground truth on disk (session transcripts, settings, todos, plans, subagents, workflows) into SQLite + FTS. Owns browsing, search, and historical timelines. Its index is a pure function of files on disk and is rebuildable at any time.
-2. **This runtime (chopsticks)** — agent lifecycle. Spawns agents, owns their processes and PTYs, observes live activity through side channels, and controls behavior through guarded input.
+2. **This runtime (puppeteer)** — agent lifecycle. Spawns agents, owns their processes and PTYs, observes live activity through side channels, and controls behavior through guarded input.
 3. **Application glue** — composes the two: fleet UI, pipelines, and agent-to-agent flows are app logic over runtime session handles plus Spaghetti queries.
 
 The persistence boundary that keeps both libraries honest:
@@ -1645,7 +1645,7 @@ This store is operational — replay, receipts, reconnection — not a search in
 
 **RESCOPED 2026-07-13.** The SQLite event store below is **rejected**, by the same invariant that removed runtime-event persistence from Spaghetti: hook events mirror transcript content, transcripts are the durable record, and Spaghetti indexes them — a hub-side event database would be a second write path duplicating truth that already exists on disk. What persistence remains is narrowed to:
 
-1. **The own-action record** — the one class of data whose only emitter is this runtime: prompt-injection receipts, workspace finalize metadata (files touched, retained-dirty worktrees), exit classifications, policy conflicts. Appended as plain JSONL under `~/.chopsticks/`; if it ever deserves search, Spaghetti indexes it as one more file source (emitter-writes-a-file rule).
+1. **The own-action record** — the one class of data whose only emitter is this runtime: prompt-injection receipts, workspace finalize metadata (files touched, retained-dirty worktrees), exit classifications, policy conflicts. Appended as plain JSONL under `~/.puppeteer/`; if it ever deserves search, Spaghetti indexes it as one more file source (emitter-writes-a-file rule).
 2. **Byte-exact terminal recording** (§22.3) — the only data with no other source (`--resume` continues a conversation; it does not replay what the screen showed). Stays opt-in (§23.3 `persistent-raw`) until a real consumer exists.
 3. **Session resumption** is the agent's native capability, not ours: the runtime holds every session's `--session-id` UUID, so resume is spawn configuration (`claude --resume <uuid>` through the normal prepared-spawn path), not storage.
 
@@ -2106,13 +2106,13 @@ transcript truth that Spaghetti already indexes); renderer reconnection
 shipped with the avocado adoption (M1.5). What remains, both thin:
 
 * Own-action JSONL record (injection receipts, workspace finals, exit
-  classifications, policy conflicts) under ~/.chopsticks/
+  classifications, policy conflicts) under ~/.puppeteer/
 * Native resume as spawn configuration (`claude --resume <session-id>`
   through the prepared-spawn path; a Resume affordance on exited sessions)
 
 Exit criteria:
 
-* Chopsticks' own actions are on disk and attributable per session.
+* Puppeteer' own actions are on disk and attributable per session.
 * An exited session can be resumed into a new terminal tab.
 
 Milestone 5 — Second native adapter

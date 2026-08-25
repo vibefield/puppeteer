@@ -1,5 +1,5 @@
 /**
- * @vibecook/chopsticks-core — contracts for the chopsticks agent runtime.
+ * @vibecook/puppeteer-core — contracts for the puppeteer agent runtime.
  *
  * Zero I/O by design (DESIGN §8, acceptance criterion 19): types, the session
  * state reducer, and pure helpers only. Anything touching a PTY, process,

@@ -1,7 +1,7 @@
 /** Grok native-store and ACP facts projected onto the monitor SPI. */
 
 import { randomUUID } from 'node:crypto';
-import type { ActorRunRef, AgentEventEnvelope, MonitorMetricFamily } from '@vibecook/chopsticks-core';
+import type { ActorRunRef, AgentEventEnvelope, MonitorMetricFamily } from '@vibecook/puppeteer-core';
 import type {
   AdapterMonitorObservationBatch,
   EvidenceRef,
@@ -9,7 +9,7 @@ import type {
   MonitorFamilyValueMap,
   ObservationCapability,
   ObservationCoverage,
-} from '@vibecook/chopsticks-core/monitor-spi';
+} from '@vibecook/puppeteer-core/monitor-spi';
 import type { GrokObservedEvent } from './session-observer.js';
 
 const GROK_CONTRACT = 'grok-native@1.0.0+acp@1.2.1';

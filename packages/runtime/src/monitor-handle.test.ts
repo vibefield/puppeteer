@@ -1,4 +1,4 @@
-import type { AgentMonitorState, MonitorNotification } from '@vibecook/chopsticks-core';
+import type { AgentMonitorState, MonitorNotification } from '@vibecook/puppeteer-core';
 import { describe, expect, it } from 'vitest';
 import {
   createMonitorHandle,

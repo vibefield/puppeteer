@@ -3,8 +3,8 @@ import type {
   NativeEventDescriptor,
   ScenarioRunProgressView,
   SessionView,
-} from '@vibecook/chopsticks-imposter/control';
-import type { ScenarioDriverDescription } from '@vibecook/chopsticks-imposter/scenario-driver';
+} from '@vibecook/puppeteer-imposter/control';
+import type { ScenarioDriverDescription } from '@vibecook/puppeteer-imposter/scenario-driver';
 import type {
   NormalizationCoverage,
   NormalizationSnapshot,

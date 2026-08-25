@@ -71,7 +71,7 @@ function filesUnder(root, current = root) {
 function hooksConfig() {
   const command = (event) => `${process.execPath} ${forwarderPath} ${event}`;
   return {
-    'chopsticks-census': {
+    'puppeteer-census': {
       PreToolUse: [{ matcher: '*', hooks: [{ type: 'command', command: command('PreToolUse'), timeout: 10 }] }],
       PostToolUse: [{ matcher: '*', hooks: [{ type: 'command', command: command('PostToolUse'), timeout: 10 }] }],
       PreInvocation: [{ type: 'command', command: command('PreInvocation'), timeout: 10 }],
@@ -108,7 +108,7 @@ function runAgy(bin, args, { cwd, env, timeout = 90_000 }) {
 function censusEnv(hookDir) {
   return {
     ...process.env,
-    CHOPSTICKS_AGY_HOOK_DIR: hookDir,
+    PUPPETEER_AGY_HOOK_DIR: hookDir,
     AGY_CLI_HIDE_ACCOUNT_INFO: '1',
     AGY_CLI_DISABLE_AUTO_UPDATE: '1',
     NO_COLOR: '1',
@@ -165,7 +165,7 @@ function writeProcess(outputRoot, name, result) {
   });
 }
 
-export function runAuthorizedCensus({ scenario, bin = process.env.CHOPSTICKS_ANTIGRAVITY_BIN, output }) {
+export function runAuthorizedCensus({ scenario, bin = process.env.PUPPETEER_ANTIGRAVITY_BIN, output }) {
   if (!AUTHORIZED_SCENARIOS.includes(scenario)) throw new Error(`unsupported scenario ${scenario}`);
   const artifact = resolve(bin);
   if (!existsSync(artifact)) throw new Error(`agy executable missing: ${artifact}`);
@@ -174,13 +174,13 @@ export function runAuthorizedCensus({ scenario, bin = process.env.CHOPSTICKS_ANT
 
   const outputRoot = resolve(output ?? join(vendorRoot, 'captures-raw', `antigravity@${VERSION}`, scenario));
   mkdirSync(outputRoot, { recursive: true, mode: 0o700 });
-  const isolation = mkdtempSync(join(tmpdir(), `chopsticks-agy-${scenario}-`));
+  const isolation = mkdtempSync(join(tmpdir(), `puppeteer-agy-${scenario}-`));
   const project = join(isolation, 'project');
   const extra = join(isolation, 'extra');
   const hookDir = join(isolation, 'hooks');
   mkdirSync(project, { recursive: true, mode: 0o755 });
   mkdirSync(extra, { recursive: true, mode: 0o755 });
-  writeFileSync(join(project, 'README.md'), 'Chopsticks Antigravity census workspace.\n');
+  writeFileSync(join(project, 'README.md'), 'Puppeteer Antigravity census workspace.\n');
   writeFileSync(join(project, 'note.txt'), 'SURFACE_AGY_NOTE\n');
 
   const before = snapshotCli();
@@ -284,7 +284,7 @@ const invokedDirectly = process.argv[1] && scriptPath === resolve(process.argv[1
 if (invokedDirectly) {
   const result = runAuthorizedCensus({
     scenario: flag('--scenario', 'readonly-print'),
-    bin: flag('--bin', process.env.CHOPSTICKS_ANTIGRAVITY_BIN),
+    bin: flag('--bin', process.env.PUPPETEER_ANTIGRAVITY_BIN),
     output: flag('--output'),
   });
   console.log(`wrote ${result.scenario} raw capture to ${result.outputRoot}`);

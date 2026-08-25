@@ -4,7 +4,7 @@
  * node's type stripping enters the TypeScript sources directly — no build step
  * in development, ordinary ESM once published.
  */
-import { main } from '@vibecook/chopsticks-imposter/cli';
+import { main } from '@vibecook/puppeteer-imposter/cli';
 
 main(process.argv.slice(2), process.argv[1]).then(
   (code) => {

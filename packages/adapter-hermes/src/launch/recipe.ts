@@ -1,4 +1,4 @@
-import type { TerminalSpec } from '@vibecook/chopsticks-core';
+import type { TerminalSpec } from '@vibecook/puppeteer-core';
 import { buildHermesTuiArgs, resolveHermesExecutable } from '../detection.js';
 import { HERMES_GATEWAY_URL_ENV, HERMES_HOME_ENV } from '../generated/detection.js';
 

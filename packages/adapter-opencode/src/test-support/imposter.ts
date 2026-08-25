@@ -17,7 +17,7 @@ function shellQuote(value: string): string {
 
 /** Present the real Imposter HTTP/SSE persona through an OpenCode-shaped executable. */
 export function createOpenCodeImposterFixture(): OpenCodeImposterFixture {
-  const root = realpathSync(mkdtempSync(join(realpathSync(tmpdir()), 'chopsticks-opencode-adapter-')));
+  const root = realpathSync(mkdtempSync(join(realpathSync(tmpdir()), 'puppeteer-opencode-adapter-')));
   const cwd = join(root, 'workspace');
   const home = join(root, 'imposter-home');
   const executable = join(root, 'opencode');
@@ -35,6 +35,6 @@ export function createOpenCodeImposterFixture(): OpenCodeImposterFixture {
     cwd,
     home,
     executable,
-    env: { CHOPSTICKS_IMPOSTER_HOME: home },
+    env: { PUPPETEER_IMPOSTER_HOME: home },
   };
 }

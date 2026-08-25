@@ -231,7 +231,7 @@
         "evidence.json"
       ],
       "digestAlgorithm": "sha256-path-content-v1",
-      "sha256": "b6558f4ae8b0713016fb52915663b39abb2e97bcdb0af2754c719201873db439"
+      "sha256": "7e8af1f26163ddc19f76059df56e98568a618f5bfc773145962e336e7cd284bb"
     }
   ],
   "claims": [

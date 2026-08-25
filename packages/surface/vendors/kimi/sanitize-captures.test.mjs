@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { checkRecord, sanitizeRecord } from '@vibecook/chopsticks-surface/sanitize';
+import { checkRecord, sanitizeRecord } from '@vibecook/puppeteer-surface/sanitize';
 import { kimiRules } from './sanitize-captures.mjs';
 
 describe('Kimi capture privacy', () => {

@@ -56,7 +56,7 @@ export interface HttpPersonaServerOptions {
   cwd: string;
   username: string;
   password?: string;
-  /** Defaults below CHOPSTICKS_IMPOSTER_HOME, or an owned temporary root. */
+  /** Defaults below PUPPETEER_IMPOSTER_HOME, or an owned temporary root. */
   storePath?: string;
   log?: (message: string) => void;
 }
@@ -131,9 +131,8 @@ export async function createHttpPersonaServer(options: HttpPersonaServerOptions)
   const document = persona.httpServe;
   if (!document) throw new Error(`persona ${persona.vendor} has no HTTP serve document`);
   const log = options.log ?? (() => {});
-  const ownedRoot = options.storePath === undefined && options.env.CHOPSTICKS_IMPOSTER_HOME === undefined;
-  const root =
-    options.env.CHOPSTICKS_IMPOSTER_HOME ?? mkdtempSync(join(tmpdir(), `chopsticks-${persona.vendor}-http-`));
+  const ownedRoot = options.storePath === undefined && options.env.PUPPETEER_IMPOSTER_HOME === undefined;
+  const root = options.env.PUPPETEER_IMPOSTER_HOME ?? mkdtempSync(join(tmpdir(), `puppeteer-${persona.vendor}-http-`));
   const storePath = options.storePath ?? join(root, 'http-session-store.json');
   const restored = loadStored(storePath);
   const sessions = new Map<string, StoredSession>();
@@ -243,7 +242,7 @@ export async function createHttpPersonaServer(options: HttpPersonaServerOptions)
     const runtime = createImposterSession({
       persona,
       argv: ['--session-id', sessionID, '--name', title, ...(model ? ['--model', model] : [])],
-      env: { ...options.env, CHOPSTICKS_IMPOSTER_HOME: root },
+      env: { ...options.env, PUPPETEER_IMPOSTER_HOME: root },
       cwd: directory,
       behavior: options.behavior,
       sse: {

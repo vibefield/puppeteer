@@ -1,7 +1,7 @@
 import { rmSync } from 'node:fs';
 import { afterEach, describe, expect, it } from 'vitest';
-import type { AgentEventEnvelope, AgentHost, TerminalSpec } from '@vibecook/chopsticks-core';
-import { projectAgentSession } from '@vibecook/chopsticks-testing';
+import type { AgentEventEnvelope, AgentHost, TerminalSpec } from '@vibecook/puppeteer-core';
+import { projectAgentSession } from '@vibecook/puppeteer-testing';
 import { createOpenCodeTuiSession, type OpenCodeTuiSession } from './driver.js';
 import { createOpenCodeImposterFixture } from './test-support/imposter.js';
 
@@ -74,7 +74,7 @@ describe('OpenCode native-TUI session composition', () => {
     const receipt = await session.submitPrompt({ text: 'hello from adapter' });
     expect(receipt.status).toBe('confirmed');
     const confirmedTurnID = receipt.status === 'confirmed' ? receipt.turnId : undefined;
-    expect(confirmedTurnID).toMatch(/^msg_chopsticks_/);
+    expect(confirmedTurnID).toMatch(/^msg_puppeteer_/);
     await waitFor(
       () => projection.state.activeTurn === undefined && projection.state.lastAssistantMessage !== undefined,
       'turn completion',

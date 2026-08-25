@@ -14,7 +14,7 @@ import {
 let dir: string;
 
 beforeEach(() => {
-  dir = mkdtempSync(join(tmpdir(), 'chopsticks-asm-'));
+  dir = mkdtempSync(join(tmpdir(), 'puppeteer-asm-'));
 });
 
 afterEach(() => {

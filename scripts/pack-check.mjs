@@ -8,7 +8,7 @@ import { publicPackages } from './public-packages.mjs';
 import { spawnPackageManager } from './package-manager.mjs';
 
 const root = fileURLToPath(new URL('..', import.meta.url));
-const destination = mkdtempSync(join(tmpdir(), 'chopsticks-packs-'));
+const destination = mkdtempSync(join(tmpdir(), 'puppeteer-packs-'));
 
 try {
   for (const [directory, packageName] of publicPackages) {

@@ -3,10 +3,10 @@ import { substitute } from './template.ts';
 
 describe('session template transforms', () => {
   it('derives the exact Kimi v2 workspace key from an absolute cwd', () => {
-    const bindings = { $cwd: '/Users/example/Projects/chopsticks' };
-    expect(substitute('$workdirKey:$cwd', { bindings })).toBe('wd_chopsticks_c7467a8233a4');
-    expect(substitute('$workdirKey:$cwd', { bindings: { $cwd: '/Users/example/Projects/chopsticks/' } })).toBe(
-      'wd_chopsticks_c7467a8233a4',
+    const bindings = { $cwd: '/Users/example/Projects/puppeteer' };
+    expect(substitute('$workdirKey:$cwd', { bindings })).toBe('wd_puppeteer_8be84339a83f');
+    expect(substitute('$workdirKey:$cwd', { bindings: { $cwd: '/Users/example/Projects/puppeteer/' } })).toBe(
+      'wd_puppeteer_8be84339a83f',
     );
     expect(substitute('$workdirKey:$cwd', { bindings: { $cwd: '/' } })).toBe('wd_workspace_8a5edab28263');
     expect(substitute('$workdirKey:$cwd', { bindings: { $cwd: 'C:\\Repo' } })).toBe('wd_repo_99094984865d');

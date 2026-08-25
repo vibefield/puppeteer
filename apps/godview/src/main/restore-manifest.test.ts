@@ -79,7 +79,7 @@ describe('buildRestoreManifest', () => {
         [
           't1',
           agent('t1', {
-            workspace: { mode: 'worktree', root: '/wt/feature', sourcePath: '/repo', branch: 'chopsticks/feature' },
+            workspace: { mode: 'worktree', root: '/wt/feature', sourcePath: '/repo', branch: 'puppeteer/feature' },
           }),
         ],
       ]),
@@ -90,7 +90,7 @@ describe('buildRestoreManifest', () => {
     expect(manifest.windows[0]!.panes[0]).toMatchObject({
       kind: 'agent',
       cwd: '/repo',
-      workspace: { mode: 'worktree', root: '/wt/feature', branch: 'chopsticks/feature' },
+      workspace: { mode: 'worktree', root: '/wt/feature', branch: 'puppeteer/feature' },
     });
   });
 

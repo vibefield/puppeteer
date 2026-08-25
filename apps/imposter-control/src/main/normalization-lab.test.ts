@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import type { EmittedEntry, SessionView } from '@vibecook/chopsticks-imposter/control';
+import type { EmittedEntry, SessionView } from '@vibecook/puppeteer-imposter/control';
 import { IDLE_SCENARIO_DRIVER } from './testing.js';
 import {
   createNormalizationLab,
@@ -436,7 +436,7 @@ describe('normalization lab projection', () => {
     const records = [
       emitted(1, 'gateway.ready'),
       emitted(2, 'session.info', {
-        model: 'chopsticks-hermes-census',
+        model: 'puppeteer-hermes-census',
         stored_session_id: '20260812_132919_ae981b',
         cwd: '/work',
         running: false,
@@ -466,7 +466,7 @@ describe('normalization lab projection', () => {
       environment: {
         currentCwd: { value: '/work', source: 'native-protocol', confidence: 'authoritative' },
         model: {
-          value: { id: 'chopsticks-hermes-census' },
+          value: { id: 'puppeteer-hermes-census' },
           source: 'native-protocol',
           confidence: 'authoritative',
         },

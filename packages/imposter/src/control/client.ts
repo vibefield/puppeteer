@@ -14,7 +14,7 @@
 
 import { readFileSync } from 'node:fs';
 import { createConnection, type Socket } from 'node:net';
-import type { SurfaceBehavior } from '@vibecook/chopsticks-surface';
+import type { SurfaceBehavior } from '@vibecook/puppeteer-surface';
 import { createPeer } from './peer.ts';
 import {
   ControlError,

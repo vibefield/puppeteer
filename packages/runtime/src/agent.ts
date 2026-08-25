@@ -11,7 +11,7 @@ import {
   type PromptReceipt,
   type PromptSubmission,
   type SessionRuntimeState,
-} from '@vibecook/chopsticks-core';
+} from '@vibecook/puppeteer-core';
 import { AgentConversationProjector, type AgentConversationSnapshot } from './conversation.js';
 import type { AgentSessionInfo } from './types.js';
 
@@ -26,7 +26,7 @@ export interface AgentIngestResult {
   state: SessionRuntimeState;
 }
 
-const RUNTIME_AGENT_CONSTRUCTOR = Symbol('chopsticks.runtime-agent-constructor');
+const RUNTIME_AGENT_CONSTRUCTOR = Symbol('puppeteer.runtime-agent-constructor');
 
 interface AgentInternals {
   adapter: AgentAdapterSession;

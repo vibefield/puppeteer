@@ -3,7 +3,7 @@ import { appendFileSync, mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'n
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import * as spaghettiSdk from '@vibecook/spaghetti-sdk';
-import type { AdapterMonitorObservationBatch } from '@vibecook/chopsticks-core/monitor-spi';
+import type { AdapterMonitorObservationBatch } from '@vibecook/puppeteer-core/monitor-spi';
 import type { SemanticObservationEvent } from './semantic-provider.js';
 import { SpaghettiScopedObservationProvider } from './spaghetti-scoped.js';
 
@@ -29,7 +29,7 @@ function record(value: Record<string, unknown>): string {
 }
 
 function fixture(): { agentRoot: string; transcriptPath: string } {
-  const root = mkdtempSync(join(tmpdir(), 'chopsticks-spaghetti-scoped-'));
+  const root = mkdtempSync(join(tmpdir(), 'puppeteer-spaghetti-scoped-'));
   roots.push(root);
   const agentRoot = join(root, '.claude');
   const project = join(agentRoot, 'projects', '-fixture');

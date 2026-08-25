@@ -1,4 +1,4 @@
-/** JSON-RPC client for a Chopsticks-owned Hermes tui_gateway WebSocket. */
+/** JSON-RPC client for a Puppeteer-owned Hermes tui_gateway WebSocket. */
 
 export interface HermesGatewayFrame {
   jsonrpc?: string;

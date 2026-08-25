@@ -11,7 +11,7 @@ afterEach(() => {
 });
 
 function temporaryDirectory() {
-  const directory = mkdtempSync(join(tmpdir(), 'chopsticks-capture-sanitizer-'));
+  const directory = mkdtempSync(join(tmpdir(), 'puppeteer-capture-sanitizer-'));
   temporaryDirectories.push(directory);
   return directory;
 }

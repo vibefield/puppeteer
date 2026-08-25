@@ -1,11 +1,11 @@
 /**
- * @vibecook/chopsticks-imposter — one executable that impersonates every
+ * @vibecook/puppeteer-imposter — one executable that impersonates every
  * coding agent (docs/archive/IMPOSTER.md).
  *
  * The imposter speaks each vendor's real machine surfaces — hooks, transcript
  * JSONL, statusline, JSON-RPC, HTTP, and SSE — projected from that vendor's
  * captured Agent Surface Model. What it deliberately does NOT reproduce is the vendor's
- * terminal interface: chopsticks never derives semantics from terminal text
+ * terminal interface: puppeteer never derives semantics from terminal text
  * (ADR-003/-004/-005), so a convincing fake screen would buy nothing and
  * invite the one mistake the whole design forbids (§1.1).
  *

@@ -1,7 +1,7 @@
-# Chopsticks
+# Puppeteer
 
 A provider-neutral TypeScript runtime that **hosts coding agents' own terminal UIs**. Claude Code
-looks like Claude Code; Codex looks like Codex. Chopsticks owns the process environment around that
+looks like Claude Code; Codex looks like Codex. Puppeteer owns the process environment around that
 UI — lifecycle, observation, guarded control, workspace isolation, receipts — and derives semantic
 state from native side channels, never by reading the screen.
 
@@ -18,10 +18,10 @@ impersonates every vendor from a persona; there are no per-adapter bins.
 | Repo                          | Role                                                                      | Boundary                             |
 | ----------------------------- | ------------------------------------------------------------------------- | ------------------------------------ |
 | `p008/spaghetti`              | Static agent-data plane: SQLite/FTS index of transcripts, settings, todos | Bytes left on disk                   |
-| **chopsticks**                | Live lifecycle: spawn, observe, control, isolate                          | A live handle to an agent process    |
+| **puppeteer**                | Live lifecycle: spawn, observe, control, isolate                          | A live handle to an agent process    |
 | `project100/electron-ghostty` | Ghosttea terminal stack (the PTY spine) — repo is `vibecook-dev/ghosttea` | Terminal rendering and PTY ownership |
 
-Chopsticks persists **operational state only**. It never grows browse or search features — if its
+Puppeteer persists **operational state only**. It never grows browse or search features — if its
 records become worth searching, spaghetti indexes them as one more file source.
 
 ## Invariants — do not break these without revisiting DESIGN
@@ -49,7 +49,7 @@ records become worth searching, spaghetti indexes them as one more file source.
 
 ```
 packages/
-  core/          AgentEvent union (29 members) + reduceSessionState + AgentHost + ObservationLevel
+  core/          AgentEvent union (38 members) + reduceSessionState + AgentHost + ObservationLevel
   runtime/       AgentRuntime — the single app-facing surface; providers, git observer, conversation
   adapter-claude/  hooks bridge, generated settings, transcript observer (spaghetti SDK), statusline usage
   adapter-codex/   app-server JSON-RPC over WS-in-UDS, structured driver, TUI attach via --remote
@@ -65,7 +65,7 @@ packages/
                  session/scenario-driver.ts (the xstate lifecycle over the op vocabulary — DESCRIPTIVE, it
                  never gates; off-model ops are counted, not refused), scenario runner, control/ (UDS
                  JSON-RPC client + shared protocol), tui/ (one shared Ink chrome, dynamically imported
-                 ONLY on a TTY — it costs ~40 MB of RSS, and `CHOPSTICKS_IMPOSTER_TUI=off` forces the
+                 ONLY on a TTY — it costs ~40 MB of RSS, and `PUPPETEER_IMPOSTER_TUI=off` forces the
                  append-only sink). Relative imports end in `.ts` here, NOT `.js` — see
                  packages/imposter/src/index.ts for why. `ai` reaches PATH through the package
                  manager (`pnpm ai:link`) and has NO subcommands — two install commands were built
@@ -82,7 +82,7 @@ promotion ledger; README badges are generated from it. Surface `.mjs` scripts ne
 apps/
   godview/       current focus — Electron swarm view (matter.js bubbles, panes, usage panel)
   imposter-control/  Agent adaptation devkit (`pnpm agent-devkit`; legacy `pnpm imposter-control`).
-                 Owns the native control plane: one UDS at `~/.chopsticks/imposter.sock` that
+                 Owns the native control plane: one UDS at `~/.puppeteer/imposter.sock` that
                  imposters dial into, plus a loopback HTTP+SSE console. Liveness is socket close —
                  there is no discovery file and nothing polls (docs/archive/IMPOSTER.md §5). The generic
                  plane stays adapter/Core-free. The app composes an optional downstream
@@ -123,7 +123,7 @@ the reacquired bytes. `legacy-verified` means an existing support baseline preda
 it remains readable and supported, but cannot be promoted again as unqualified `verified`.
 
 Live adapter probes are opt-in and skipped by default: `CODEX_LIVE=1`, `GROK_LIVE=1`,
-`CHOPSTICKS_REAL_CLAUDE=1`. Agent binaries resolve from PATH or `CHOPSTICKS_{CLAUDE,CODEX,GROK}_BIN`.
+`PUPPETEER_REAL_CLAUDE=1`. Agent binaries resolve from PATH or `PUPPETEER_{CLAUDE,CODEX,GROK}_BIN`.
 
 **CI covers `packages/**` and `apps/**` in separate jobs.** The apps consume everything Ghosttea
 from npm at an exact pinned version, including the two native artifacts that used to require the
@@ -161,5 +161,5 @@ lockstep from the root manifest, including the single `// x-release-please-versi
 trusted publishing in `.github/workflows/release.yml`. To retry a partial publish:
 `gh workflow run release.yml --ref main -f tag=vX.Y.Z`.
 
-Applications should pin `@vibecook/chopsticks-runtime` exactly and treat upgrades as deliberate
+Applications should pin `@vibecook/puppeteer-runtime` exactly and treat upgrades as deliberate
 integration events. Node.js 22.18+.

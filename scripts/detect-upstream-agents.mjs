@@ -220,7 +220,7 @@ async function fetchOnce(url, fetchImpl, cache) {
       fetchImpl(url, {
         headers: {
           accept: 'application/vnd.github+json, text/plain;q=0.9, */*;q=0.8',
-          'user-agent': 'vibecook-chopsticks-upstream-detector',
+          'user-agent': 'vibecook-puppeteer-upstream-detector',
           ...(githubToken ? { authorization: `Bearer ${githubToken}` } : {}),
         },
       }).then(async (response) => {

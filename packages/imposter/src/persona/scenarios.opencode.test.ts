@@ -42,7 +42,7 @@ describe('OpenCode persona scenarios', () => {
         name: string;
       };
       expect(document.name).toBe(name);
-      const root = mkdtempSync(join(tmpdir(), `chopsticks-opencode-${name}-`));
+      const root = mkdtempSync(join(tmpdir(), `puppeteer-opencode-${name}-`));
       temporaries.push(root);
       const emitted: Array<{ event: string; payload: Record<string, unknown>; channel?: string }> = [];
       const requested: string[] = [];
@@ -88,7 +88,7 @@ describe('OpenCode persona scenarios', () => {
 
   it('preserves duplicate, late, and out-of-order authoring exactly', async () => {
     const run = async (name: string): Promise<string[]> => {
-      const root = mkdtempSync(join(tmpdir(), `chopsticks-opencode-order-${name}-`));
+      const root = mkdtempSync(join(tmpdir(), `puppeteer-opencode-order-${name}-`));
       temporaries.push(root);
       const events: string[] = [];
       const document = JSON.parse(readFileSync(join(scenarioDirectory, `${name}.json`), 'utf8')) as unknown;

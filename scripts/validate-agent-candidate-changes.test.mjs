@@ -38,7 +38,7 @@ test('candidate ledger may add only the requested candidate pointer', () => {
 });
 
 test('changed paths include deletions so the publisher cannot bypass its allowlist', () => {
-  const repoRoot = mkdtempSync(join(tmpdir(), 'chopsticks-candidate-paths-'));
+  const repoRoot = mkdtempSync(join(tmpdir(), 'puppeteer-candidate-paths-'));
   const runtime = join(repoRoot, 'packages', 'adapter-fake', 'src', 'runtime.ts');
   execFileSync('git', ['init', '--quiet'], { cwd: repoRoot });
   mkdirSync(join(runtime, '..'), { recursive: true });
@@ -46,7 +46,7 @@ test('changed paths include deletions so the publisher cannot bypass its allowli
   execFileSync('git', ['add', '.'], { cwd: repoRoot });
   execFileSync(
     'git',
-    ['-c', 'user.name=Chopsticks Test', '-c', 'user.email=test@invalid', 'commit', '--quiet', '-m', 'fixture'],
+    ['-c', 'user.name=Puppeteer Test', '-c', 'user.email=test@invalid', 'commit', '--quiet', '-m', 'fixture'],
     { cwd: repoRoot },
   );
   rmSync(runtime);

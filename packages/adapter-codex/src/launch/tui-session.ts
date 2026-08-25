@@ -28,7 +28,7 @@ import type {
   PromptReceipt,
   PromptSubmission,
   TerminalSpec,
-} from '@vibecook/chopsticks-core';
+} from '@vibecook/puppeteer-core';
 import { createCodexObserver } from '../observation/observer.js';
 import type { CodexApprovalDecision, CodexApprovalRequest } from '../driver.js';
 import { createUnixWebSocketTapProxy, spawnAppServer, type UnixWebSocketTapProxy } from '../transport/ws-transport.js';

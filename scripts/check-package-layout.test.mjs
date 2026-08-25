@@ -10,7 +10,7 @@ test('the repository package layout satisfies its declared boundaries', () => {
 });
 
 test('the checker rejects a direct orphan package directory', () => {
-  const fixture = mkdtempSync(join(tmpdir(), 'chopsticks-layout-'));
+  const fixture = mkdtempSync(join(tmpdir(), 'puppeteer-layout-'));
   mkdirSync(join(fixture, 'packages', 'orphan'), { recursive: true });
   writeFileSync(join(fixture, 'package.json'), JSON.stringify({ version: '1.0.0' }));
   writeFileSync(

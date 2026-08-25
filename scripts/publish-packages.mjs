@@ -116,7 +116,7 @@ for (const [directory, expectedName] of publicPackages) {
     continue;
   }
 
-  const packDirectory = mkdtempSync(join(tmpdir(), 'chopsticks-publish-'));
+  const packDirectory = mkdtempSync(join(tmpdir(), 'puppeteer-publish-'));
   let result;
 
   try {

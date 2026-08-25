@@ -33,22 +33,24 @@
       "kind": "capture-set",
       "path": "packages/surface/vendors/hermes/captures/hermes@0.20.0",
       "digestAlgorithm": "sha256-path-content-v1",
-      "sha256": "e8b1fef65afb84d7a91016d29e4590ece39848e94590ad948ecf89c3400aca0d"
+      "sha256": "152321f47c2fde6f4645d52af984f3377cd307bd3d67bc8ab69efa39f2a6d2da"
     },
     {
       "id": "identity-probes",
       "kind": "probe-set",
       "path": "packages/surface/vendors/hermes/probes/hermes@0.20.0",
       "digestAlgorithm": "sha256-path-content-v1",
-      "sha256": "d4b908afd96cef9bdba1d100872dc2d0ebd9897f7bb6c7e221aef0d111a7ae6d"
+      "sha256": "e1efd4cad0a6478c2c7c54b401204edb672e48d10651f310c272fafb26d6d4ea"
     },
     {
       "id": "agent-surface-model",
       "kind": "model-tree",
       "path": "packages/surface/vendors/hermes/model/hermes@0.20.0",
-      "exclude": ["evidence.json"],
+      "exclude": [
+        "evidence.json"
+      ],
       "digestAlgorithm": "sha256-path-content-v1",
-      "sha256": "6d9c807277be9cb5e4cfe3e2c5e470cd85411440b604ce8ded5b301227868bb8"
+      "sha256": "c90ebff31409c0782a20373ca6d9b67414cf3f817078ba53da335bc563420324"
     }
   ],
   "claims": [

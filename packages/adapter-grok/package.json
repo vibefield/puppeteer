@@ -1,13 +1,13 @@
 {
-  "name": "@vibecook/chopsticks-adapter-grok",
+  "name": "@vibecook/puppeteer-adapter-grok",
   "version": "0.1.8",
   "type": "module",
-  "description": "Grok adapter for Chopsticks: native TUI, shared leader lifecycle, and ACP control composition.",
+  "description": "Grok adapter for Puppeteer: native TUI, shared leader lifecycle, and ACP control composition.",
   "license": "MIT",
   "author": "James Yong",
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/vibecook-dev/chopsticks.git",
+    "url": "git+https://github.com/vibecook-dev/puppeteer.git",
     "directory": "packages/adapter-grok"
   },
   "main": "./src/index.ts",
@@ -41,10 +41,10 @@
     "node": ">=22.18.0"
   },
   "dependencies": {
-    "@vibecook/chopsticks-adapter-acp": "workspace:*",
-    "@vibecook/chopsticks-core": "workspace:*"
+    "@vibecook/puppeteer-adapter-acp": "workspace:*",
+    "@vibecook/puppeteer-core": "workspace:*"
   },
   "devDependencies": {
-    "@vibecook/chopsticks-testing": "workspace:*"
+    "@vibecook/puppeteer-testing": "workspace:*"
   }
 }

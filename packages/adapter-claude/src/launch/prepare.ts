@@ -1,7 +1,7 @@
 /**
  * Native Claude session preparation (DESIGN §16.2 steps 4–5, 8; §11
  * PreparedNativeSession). Allocates the runtime session UUID — the
- * chopsticks ↔ spaghetti join contract (§2.1, §14.4): the same UUID keys the
+ * puppeteer ↔ spaghetti join contract (§2.1, §14.4): the same UUID keys the
  * transcript on disk and Spaghetti's index — writes the generated hook
  * settings to a per-session file, and builds the interactive spawn command.
  *
@@ -150,7 +150,7 @@ export async function prepareClaudeSession(options: PrepareClaudeSessionOptions)
   // the caller's to clean, so it stays out of filesToCleanup (§23: no
   // destroying state we didn't create).
   const ownsDir = options.settingsDir === undefined;
-  const dir = options.settingsDir ?? (await mkdtemp(join(tmpdir(), 'chopsticks-claude-')));
+  const dir = options.settingsDir ?? (await mkdtemp(join(tmpdir(), 'puppeteer-claude-')));
   const settingsPath = join(dir, `${sessionId}.settings.json`);
   const hookForwarderPath = join(dir, `${sessionId}.hooks.mjs`);
   const statusLineForwarderPath =
@@ -248,17 +248,17 @@ export async function prepareClaudeSession(options: PrepareClaudeSessionOptions)
       ...(electronAsNodeFallback ? { ELECTRON_RUN_AS_NODE: '1' } : {}),
       ...(options.statusLineEndpoint
         ? {
-            CHOPSTICKS_STATUSLINE_ENDPOINT: options.statusLineEndpoint,
-            CHOPSTICKS_STATUSLINE_DELEGATE: existingStatusLine?.command ?? '',
+            PUPPETEER_STATUSLINE_ENDPOINT: options.statusLineEndpoint,
+            PUPPETEER_STATUSLINE_DELEGATE: existingStatusLine?.command ?? '',
           }
         : {}),
       ...(options.subagentStatusLineEndpoint
         ? {
-            CHOPSTICKS_SUBAGENT_STATUSLINE_ENDPOINT: options.subagentStatusLineEndpoint,
-            CHOPSTICKS_SUBAGENT_STATUSLINE_DELEGATE: existingSubagentStatusLine?.command ?? '',
+            PUPPETEER_SUBAGENT_STATUSLINE_ENDPOINT: options.subagentStatusLineEndpoint,
+            PUPPETEER_SUBAGENT_STATUSLINE_DELEGATE: existingSubagentStatusLine?.command ?? '',
           }
         : {}),
-      ...(statusLineForwarderPath ? { CHOPSTICKS_STATUSLINE_TOKEN_ENV_VAR: options.tokenEnvVar } : {}),
+      ...(statusLineForwarderPath ? { PUPPETEER_STATUSLINE_TOKEN_ENV_VAR: options.tokenEnvVar } : {}),
     },
     settingsPath,
     hookForwarderPath,

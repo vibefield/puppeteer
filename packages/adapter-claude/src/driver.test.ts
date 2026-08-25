@@ -10,8 +10,8 @@ import { existsSync, mkdirSync, mkdtempSync, readFileSync, writeFileSync } from 
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import type { AgentEventEnvelope, TerminalAutomationOperation } from '@vibecook/chopsticks-core';
-import { projectAgentSession } from '@vibecook/chopsticks-testing';
+import type { AgentEventEnvelope, TerminalAutomationOperation } from '@vibecook/puppeteer-core';
+import { projectAgentSession } from '@vibecook/puppeteer-testing';
 import { createClaudeSession, prepareClaudeTuiSession, type ClaudeSession } from './driver.js';
 import type { PreparedClaudeSession } from './launch/prepare.js';
 import type { ClaudeHookDiagnostic } from './normalizer.js';
@@ -74,7 +74,7 @@ async function startSession(
     hooks: Record<string, Array<{ hooks: Array<{ type: string; url?: string }> }>>;
   };
   const endpoint = settings.hooks.UserPromptSubmit[0].hooks[0].url!;
-  const token = prepared!.env.CHOPSTICKS_HOOK_TOKEN;
+  const token = prepared!.env.PUPPETEER_HOOK_TOKEN;
 
   const events = projection.envelopes;
 
@@ -94,7 +94,7 @@ async function startSession(
   };
 
   const statusLine = async (fields: Record<string, unknown>) => {
-    const res = await fetch(prepared!.env.CHOPSTICKS_STATUSLINE_ENDPOINT, {
+    const res = await fetch(prepared!.env.PUPPETEER_STATUSLINE_ENDPOINT, {
       method: 'POST',
       headers: { 'content-type': 'application/json', authorization: `Bearer ${token}` },
       body: JSON.stringify({ session_id: session.sessionId, ...fields }),
@@ -103,7 +103,7 @@ async function startSession(
   };
 
   const subagentStatusLine = async (fields: Record<string, unknown>) => {
-    const res = await fetch(prepared!.env.CHOPSTICKS_SUBAGENT_STATUSLINE_ENDPOINT, {
+    const res = await fetch(prepared!.env.PUPPETEER_SUBAGENT_STATUSLINE_ENDPOINT, {
       method: 'POST',
       headers: { 'content-type': 'application/json', authorization: `Bearer ${token}` },
       body: JSON.stringify({ session_id: session.sessionId, ...fields }),
@@ -133,8 +133,8 @@ describe('createClaudeSession (full loop, test-as-Claude)', () => {
     };
 
     expect(settings.subagentStatusLine).toBeUndefined();
-    expect(prepared.env).not.toHaveProperty('CHOPSTICKS_SUBAGENT_STATUSLINE_ENDPOINT');
-    expect(prepared.env).not.toHaveProperty('CHOPSTICKS_SUBAGENT_STATUSLINE_DELEGATE');
+    expect(prepared.env).not.toHaveProperty('PUPPETEER_SUBAGENT_STATUSLINE_ENDPOINT');
+    expect(prepared.env).not.toHaveProperty('PUPPETEER_SUBAGENT_STATUSLINE_DELEGATE');
   });
 
   it('prepares launch wiring without spawning and adopts one existing terminal idempotently', async () => {
@@ -151,7 +151,7 @@ describe('createClaudeSession (full loop, test-as-Claude)', () => {
     expect(prepared.launch).toMatchObject({
       command: '/opt/claude',
       cwd: '/tmp',
-      env: { CHOPSTICKS_HOOK_TOKEN: expect.any(String) },
+      env: { PUPPETEER_HOOK_TOKEN: expect.any(String) },
     });
     expect(prepared.launch.args).toEqual(
       expect.arrayContaining([
@@ -184,7 +184,7 @@ describe('createClaudeSession (full loop, test-as-Claude)', () => {
       method: 'POST',
       headers: {
         'content-type': 'application/json',
-        authorization: `Bearer ${prepared.launch.env.CHOPSTICKS_HOOK_TOKEN}`,
+        authorization: `Bearer ${prepared.launch.env.PUPPETEER_HOOK_TOKEN}`,
       },
       body: JSON.stringify({
         session_id: prepared.sessionId,
@@ -855,7 +855,7 @@ describe('createClaudeSession (full loop, test-as-Claude)', () => {
     ).hooks.UserPromptSubmit[0].hooks[0].url!;
     const res = await fetch(endpoint, {
       method: 'POST',
-      headers: { 'content-type': 'application/json', authorization: `Bearer ${prepared!.env.CHOPSTICKS_HOOK_TOKEN}` },
+      headers: { 'content-type': 'application/json', authorization: `Bearer ${prepared!.env.PUPPETEER_HOOK_TOKEN}` },
       body: JSON.stringify({
         session_id: resumeId,
         transcript_path: transcript,
@@ -909,18 +909,18 @@ describe('createClaudeSession (full loop, test-as-Claude)', () => {
       method: 'POST',
       headers: {
         'content-type': 'application/json',
-        authorization: `Bearer ${prepared.launch.env.CHOPSTICKS_HOOK_TOKEN}`,
+        authorization: `Bearer ${prepared.launch.env.PUPPETEER_HOOK_TOKEN}`,
       },
       body: JSON.stringify({ session_id: previewId, cwd: '/preview', hook_event_name: 'SessionStart' }),
     });
     expect(previewStart.status).toBe(200);
     expect(session.sessionId).toBe(previewId);
 
-    const preview = await fetch(prepared.launch.env.CHOPSTICKS_STATUSLINE_ENDPOINT, {
+    const preview = await fetch(prepared.launch.env.PUPPETEER_STATUSLINE_ENDPOINT, {
       method: 'POST',
       headers: {
         'content-type': 'application/json',
-        authorization: `Bearer ${prepared.launch.env.CHOPSTICKS_HOOK_TOKEN}`,
+        authorization: `Bearer ${prepared.launch.env.PUPPETEER_HOOK_TOKEN}`,
       },
       body: JSON.stringify({
         session_id: previewId,
@@ -935,7 +935,7 @@ describe('createClaudeSession (full loop, test-as-Claude)', () => {
       method: 'POST',
       headers: {
         'content-type': 'application/json',
-        authorization: `Bearer ${prepared.launch.env.CHOPSTICKS_HOOK_TOKEN}`,
+        authorization: `Bearer ${prepared.launch.env.PUPPETEER_HOOK_TOKEN}`,
       },
       body: JSON.stringify({ session_id: selectedId, cwd: '/tmp', hook_event_name: 'SessionStart' }),
     });
@@ -943,11 +943,11 @@ describe('createClaudeSession (full loop, test-as-Claude)', () => {
     expect(session.sessionId).toBe(selectedId);
     expect(projection.state.lifecycle).toBe('ready');
 
-    const selectedStatus = await fetch(prepared.launch.env.CHOPSTICKS_STATUSLINE_ENDPOINT, {
+    const selectedStatus = await fetch(prepared.launch.env.PUPPETEER_STATUSLINE_ENDPOINT, {
       method: 'POST',
       headers: {
         'content-type': 'application/json',
-        authorization: `Bearer ${prepared.launch.env.CHOPSTICKS_HOOK_TOKEN}`,
+        authorization: `Bearer ${prepared.launch.env.PUPPETEER_HOOK_TOKEN}`,
       },
       body: JSON.stringify({
         session_id: selectedId,
@@ -969,7 +969,7 @@ describe('createClaudeSession (full loop, test-as-Claude)', () => {
       method: 'POST',
       headers: {
         'content-type': 'application/json',
-        authorization: `Bearer ${prepared.launch.env.CHOPSTICKS_HOOK_TOKEN}`,
+        authorization: `Bearer ${prepared.launch.env.PUPPETEER_HOOK_TOKEN}`,
       },
       body: JSON.stringify({
         session_id: selectedId,
@@ -986,18 +986,18 @@ describe('createClaudeSession (full loop, test-as-Claude)', () => {
       method: 'POST',
       headers: {
         'content-type': 'application/json',
-        authorization: `Bearer ${prepared.launch.env.CHOPSTICKS_HOOK_TOKEN}`,
+        authorization: `Bearer ${prepared.launch.env.PUPPETEER_HOOK_TOKEN}`,
       },
       body: JSON.stringify({ session_id: previewId, cwd: '/preview', hook_event_name: 'SessionStart' }),
     });
     expect(stalePreviewStart.status).toBe(403);
     expect(session.sessionId).toBe(selectedId);
 
-    const stalePreview = await fetch(prepared.launch.env.CHOPSTICKS_STATUSLINE_ENDPOINT, {
+    const stalePreview = await fetch(prepared.launch.env.PUPPETEER_STATUSLINE_ENDPOINT, {
       method: 'POST',
       headers: {
         'content-type': 'application/json',
-        authorization: `Bearer ${prepared.launch.env.CHOPSTICKS_HOOK_TOKEN}`,
+        authorization: `Bearer ${prepared.launch.env.PUPPETEER_HOOK_TOKEN}`,
       },
       body: JSON.stringify({ session_id: previewId }),
     });
@@ -1007,7 +1007,7 @@ describe('createClaudeSession (full loop, test-as-Claude)', () => {
       method: 'POST',
       headers: {
         'content-type': 'application/json',
-        authorization: `Bearer ${prepared.launch.env.CHOPSTICKS_HOOK_TOKEN}`,
+        authorization: `Bearer ${prepared.launch.env.PUPPETEER_HOOK_TOKEN}`,
       },
       body: JSON.stringify({ session_id: selectedId, cwd: '/tmp', hook_event_name: 'SessionEnd', reason: 'clear' }),
     });
@@ -1018,7 +1018,7 @@ describe('createClaudeSession (full loop, test-as-Claude)', () => {
       method: 'POST',
       headers: {
         'content-type': 'application/json',
-        authorization: `Bearer ${prepared.launch.env.CHOPSTICKS_HOOK_TOKEN}`,
+        authorization: `Bearer ${prepared.launch.env.PUPPETEER_HOOK_TOKEN}`,
       },
       body: JSON.stringify({ session_id: clearedId, cwd: '/tmp', hook_event_name: 'SessionStart', source: 'clear' }),
     });
@@ -1030,7 +1030,7 @@ describe('createClaudeSession (full loop, test-as-Claude)', () => {
       method: 'POST',
       headers: {
         'content-type': 'application/json',
-        authorization: `Bearer ${prepared.launch.env.CHOPSTICKS_HOOK_TOKEN}`,
+        authorization: `Bearer ${prepared.launch.env.PUPPETEER_HOOK_TOKEN}`,
       },
       body: JSON.stringify({ session_id: selectedId, cwd: '/tmp', hook_event_name: 'Stop' }),
     });

@@ -159,11 +159,11 @@ jobs:
           --manifest "$AGENT_MANIFEST"
 
       - name: Refresh and audit immutable evidence
-        run: pnpm --filter @vibecook/chopsticks-surface surface:evidence:write
+        run: pnpm --filter @vibecook/puppeteer-surface surface:evidence:write
 
-      - run: pnpm --filter @vibecook/chopsticks-surface run "surface:audit:${AGENT_VENDOR}"
-      - run: pnpm --filter "@vibecook/chopsticks-adapter-${AGENT_VENDOR}" test
-      - run: pnpm --filter @vibecook/chopsticks-imposter test
+      - run: pnpm --filter @vibecook/puppeteer-surface run "surface:audit:${AGENT_VENDOR}"
+      - run: pnpm --filter "@vibecook/puppeteer-adapter-${AGENT_VENDOR}" test
+      - run: pnpm --filter @vibecook/puppeteer-imposter test
       - run: pnpm packages:check
       - run: pnpm support:check
 

@@ -31,7 +31,7 @@ describe('buildAgentEnvironment', () => {
   });
 
   it('allowed variables still merge over the base', () => {
-    const env = buildAgentEnvironment({ platform: 'linux', allowed: { CHOPSTICKS_HOOK_TOKEN: 'tok' } });
-    expect(env.CHOPSTICKS_HOOK_TOKEN).toBe('tok');
+    const env = buildAgentEnvironment({ platform: 'linux', allowed: { PUPPETEER_HOOK_TOKEN: 'tok' } });
+    expect(env.PUPPETEER_HOOK_TOKEN).toBe('tok');
   });
 });

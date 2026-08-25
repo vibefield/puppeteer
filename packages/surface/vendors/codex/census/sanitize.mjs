@@ -20,7 +20,7 @@
 import { mkdirSync, rmSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { checkCaptureDirectory, defaultRules, extendRules, sanitizeCaptureDirectory } from '@vibecook/chopsticks-surface/sanitize';
+import { checkCaptureDirectory, defaultRules, extendRules, sanitizeCaptureDirectory } from '@vibecook/puppeteer-surface/sanitize';
 import { CODEX_VERSION } from './harness.mjs';
 
 const surfaceRoot = join(dirname(fileURLToPath(import.meta.url)), '..');

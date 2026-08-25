@@ -8,7 +8,7 @@
 import { randomUUID } from 'node:crypto';
 import { mkdtempSync } from 'node:fs';
 import { join } from 'node:path';
-import type { ScenarioDriverView } from '@vibecook/chopsticks-imposter/control';
+import type { ScenarioDriverView } from '@vibecook/puppeteer-imposter/control';
 
 /** Portable scenario intent for fixtures that join without driving a session. */
 export const IDLE_SCENARIO_DRIVER: ScenarioDriverView = {
@@ -33,7 +33,7 @@ export function controlPaths(): ControlPaths {
   const root = shortRoot();
   return {
     root,
-    socketPath: process.platform === 'win32' ? `\\\\.\\pipe\\chopsticks-test-${randomUUID()}` : join(root, 'p.sock'),
+    socketPath: process.platform === 'win32' ? `\\\\.\\pipe\\puppeteer-test-${randomUUID()}` : join(root, 'p.sock'),
     tokenPath: join(root, 'p.token'),
   };
 }

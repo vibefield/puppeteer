@@ -1,13 +1,13 @@
 {
-  "name": "@vibecook/chopsticks-adapter-opencode",
+  "name": "@vibecook/puppeteer-adapter-opencode",
   "version": "0.1.8",
   "type": "module",
-  "description": "OpenCode adapter for Chopsticks: private serve backend, HTTP/SSE observation and control, and exact-session native TUI attach.",
+  "description": "OpenCode adapter for Puppeteer: private serve backend, HTTP/SSE observation and control, and exact-session native TUI attach.",
   "license": "MIT",
   "author": "James Yong",
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/vibecook-dev/chopsticks.git",
+    "url": "git+https://github.com/vibecook-dev/puppeteer.git",
     "directory": "packages/adapter-opencode"
   },
   "main": "./src/index.ts",
@@ -41,11 +41,11 @@
     "node": ">=22.18.0"
   },
   "dependencies": {
-    "@vibecook/chopsticks-core": "workspace:*"
+    "@vibecook/puppeteer-core": "workspace:*"
   },
   "devDependencies": {
-    "@vibecook/chopsticks-surface": "workspace:*",
-    "@vibecook/chopsticks-testing": "workspace:*",
+    "@vibecook/puppeteer-surface": "workspace:*",
+    "@vibecook/puppeteer-testing": "workspace:*",
     "vitest": "^3.0.0"
   }
 }

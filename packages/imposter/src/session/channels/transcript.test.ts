@@ -7,7 +7,7 @@ import { createTranscriptWriter } from './transcript.ts';
 describe('createTranscriptWriter', () => {
   let dir: string;
   beforeEach(() => {
-    dir = mkdtempSync(join(tmpdir(), 'chopsticks-imposter-'));
+    dir = mkdtempSync(join(tmpdir(), 'puppeteer-imposter-'));
   });
   afterEach(() => {
     rmSync(dir, { recursive: true, force: true });

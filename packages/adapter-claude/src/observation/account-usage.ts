@@ -11,7 +11,7 @@ import type {
   AccountUsageSnapshot,
   AccountUsageSource,
   AccountUsageWindow,
-} from '@vibecook/chopsticks-core';
+} from '@vibecook/puppeteer-core';
 
 export const CLAUDE_USAGE_ENDPOINT = 'https://api.anthropic.com/api/oauth/usage';
 export const CLAUDE_OAUTH_BETA = 'oauth-2025-04-20';

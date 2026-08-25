@@ -2,7 +2,7 @@
   "executables": [
     "codex"
   ],
-  "envVar": "CHOPSTICKS_CODEX_BIN",
+  "envVar": "PUPPETEER_CODEX_BIN",
   "versionFlag": "--version",
   "versionOutput": "codex-cli 0.147.0",
   "versionPattern": "^codex-cli (\\d+\\.\\d+\\.\\d+)$",

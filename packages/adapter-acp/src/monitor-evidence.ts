@@ -1,7 +1,7 @@
 /** ACP 1.2.1 protocol facts projected onto the evidence-backed monitor SPI. */
 
 import { createHash, randomUUID } from 'node:crypto';
-import type { AgentStructuredQuestion, MonitorMetricFamily } from '@vibecook/chopsticks-core';
+import type { AgentStructuredQuestion, MonitorMetricFamily } from '@vibecook/puppeteer-core';
 import type {
   AdapterMonitorObservationBatch,
   EvidenceRef,
@@ -9,7 +9,7 @@ import type {
   MonitorFamilyValueMap,
   ObservationCapability,
   ObservationCoverage,
-} from '@vibecook/chopsticks-core/monitor-spi';
+} from '@vibecook/puppeteer-core/monitor-spi';
 import type {
   CreateElicitationRequest,
   SessionConfigOption,
@@ -95,7 +95,7 @@ export const ACP_MONITOR_CAPABILITIES: readonly ObservationCapability[] = [
     source: 'acp-session-mode',
     contractVersion: ACP_CONTRACT,
     limitations: [
-      'Provider session mode IDs remain open strings and are not conflated with Chopsticks execution mode.',
+      'Provider session mode IDs remain open strings and are not conflated with Puppeteer execution mode.',
       'Permission posture is visible through concrete permission requests, not a standardized ACP permission mode.',
     ],
   },

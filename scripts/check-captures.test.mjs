@@ -6,7 +6,7 @@
  *
  * It exists because on 2026-08-07 three leaks were found at once:
  * `packages/testing/fixtures/hooks` shipped home paths and raw session UUIDs
- * inside the PUBLISHED `@vibecook/chopsticks-testing@0.1.8` tarball;
+ * inside the PUBLISHED `@vibecook/puppeteer-testing@0.1.8` tarball;
  * the former root `probe/codex/` held a raw JSON-RPC transcript on a public
  * repo; and the sanitiser of the day passed both as clean. Nothing was watching, so nothing
  * complained. This is the thing that watches.
@@ -24,7 +24,7 @@ import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { checkCaptureFile } from '@vibecook/chopsticks-surface/sanitize';
+import { checkCaptureFile } from '@vibecook/puppeteer-surface/sanitize';
 
 const repoRoot = dirname(dirname(fileURLToPath(import.meta.url)));
 

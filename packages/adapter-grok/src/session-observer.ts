@@ -1,8 +1,8 @@
 import { open, readdir, readFile, stat } from 'node:fs/promises';
 import { homedir } from 'node:os';
 import { basename, dirname, join } from 'node:path';
-import type { AgentEvent, AgentEventConfidence, AgentEventSource } from '@vibecook/chopsticks-core';
-import { AcpNotificationNormalizer } from '@vibecook/chopsticks-adapter-acp';
+import type { AgentEvent, AgentEventConfidence, AgentEventSource } from '@vibecook/puppeteer-core';
+import { AcpNotificationNormalizer } from '@vibecook/puppeteer-adapter-acp';
 
 type GrokUpdateMeta = { promptId?: string; agentTimestampMs?: number };
 
@@ -126,7 +126,7 @@ function textContent(update: GrokUpdate): string {
  * Grok persists the TUI's complete structured event stream here. Unlike the
  * secondary ACP client, this stream includes externally typed user prompts and
  * Grok's turn_completed extension, so it is the authoritative observation
- * surface when Chopsticks adopts an existing terminal.
+ * surface when Puppeteer adopts an existing terminal.
  */
 export function grokUpdatesPath(cwd: string, sessionId: string, grokHome = process.env.GROK_HOME): string {
   return join(grokHome ?? join(homedir(), '.grok'), 'sessions', encodeURIComponent(cwd), sessionId, 'updates.jsonl');

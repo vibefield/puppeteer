@@ -1,5 +1,5 @@
 /**
- * @vibecook/chopsticks-workspaces — direct, exclusive, worktree, and copy
+ * @vibecook/puppeteer-workspaces — direct, exclusive, worktree, and copy
  * workspace providers plus canonical workspace identity and final metadata.
  */
 

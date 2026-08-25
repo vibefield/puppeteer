@@ -2,7 +2,7 @@
   "channels": {
     "argv": {
       "kind": "argv-env",
-      "notes": "Chopsticks launches one loopback `opencode serve` backend with an environment-only Basic-auth password, then launches `opencode attach` for the exact native session ID."
+      "notes": "Puppeteer launches one loopback `opencode serve` backend with an environment-only Basic-auth password, then launches `opencode attach` for the exact native session ID."
     },
     "http": {
       "kind": "http",

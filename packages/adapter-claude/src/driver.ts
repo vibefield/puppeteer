@@ -32,8 +32,8 @@ import {
   type ObservationLevel,
   type TerminalAutomationOperation,
   type TerminalAutomationResult,
-} from '@vibecook/chopsticks-core';
-import type { AdapterMonitorObservationBatch } from '@vibecook/chopsticks-core/monitor-spi';
+} from '@vibecook/puppeteer-core';
+import type { AdapterMonitorObservationBatch } from '@vibecook/puppeteer-core/monitor-spi';
 import { createHookBridge, type HookBridge, type HookBridgeOptions } from './observation/hook-bridge.js';
 import { ClaudeHookNormalizer, type ClaudeHookDiagnostic, type ClaudeHookPayload } from './normalizer.js';
 import { prepareClaudeSession, cleanupClaudeSession, type PreparedClaudeSession } from './launch/prepare.js';
@@ -52,7 +52,7 @@ import type {
   SemanticObservationProvider,
 } from './observation/semantic-provider.js';
 
-const TOKEN_ENV_VAR = 'CHOPSTICKS_HOOK_TOKEN';
+const TOKEN_ENV_VAR = 'PUPPETEER_HOOK_TOKEN';
 
 function hookEventConfidence(
   hookEventName: string,
@@ -159,7 +159,7 @@ export interface ClaudeObservationPollHint {
 
 /**
  * The core adapter handle (sessionId is the `--session-id` UUID = the
- * chopsticks ↔ spaghetti join contract) plus Claude-specific transcript extras.
+ * puppeteer ↔ spaghetti join contract) plus Claude-specific transcript extras.
  */
 export interface ClaudeSession extends AgentAdapterSession {
   /** Absolute path to this session's transcript JSONL (handed to us by hooks). */

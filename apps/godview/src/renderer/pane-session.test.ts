@@ -46,11 +46,11 @@ describe('Godview pane session launch source', () => {
 describe('Godview pane badge label', () => {
   it('shows only the current folder and never the terminal title or executable', () => {
     const terminal = {
-      ...session('terminal', '/Users/james/Projects/chopsticks/'),
-      title: 'user@host:/Users/user/Projects/chopsticks',
+      ...session('terminal', '/Users/james/Projects/puppeteer/'),
+      title: 'user@host:/Users/user/Projects/puppeteer',
       executable: '/bin/zsh',
     };
-    expect(paneBadgeLabel(terminal)).toBe('chopsticks');
+    expect(paneBadgeLabel(terminal)).toBe('puppeteer');
   });
 
   it('matches the agent-circle project and supports Windows paths', () => {

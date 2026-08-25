@@ -32,14 +32,14 @@
       "kind": "capture-set",
       "path": "packages/surface/vendors/kimi/captures/kimi@0.34.0",
       "digestAlgorithm": "sha256-path-content-v1",
-      "sha256": "1c280e42d10df206c788f54203d966bc3861a2c96f3669eb3957e73e63f496a2"
+      "sha256": "3ca0b1eda24d198e454ef95c7c07c21e4dcd0c712c02c9a42f5e702489f0347a"
     },
     {
       "id": "binary-probes",
       "kind": "probe-set",
       "path": "packages/surface/vendors/kimi/probes/kimi@0.34.0",
       "digestAlgorithm": "sha256-path-content-v1",
-      "sha256": "03233d5d0b58ab5eda11239febe716370c4064059fa634b2f0e0b890985b6904"
+      "sha256": "a3107754ab9d27f20ebdae800ebc6b8c2814f9428f38dbe1d973038e38250607"
     },
     {
       "id": "exact-source-reference",
@@ -52,9 +52,11 @@
       "id": "agent-surface-model",
       "kind": "model-tree",
       "path": "packages/surface/vendors/kimi/model/kimi@0.34.0",
-      "exclude": ["evidence.json"],
+      "exclude": [
+        "evidence.json"
+      ],
       "digestAlgorithm": "sha256-path-content-v1",
-      "sha256": "effba61ccd848a8e5a3d834686823fb9acdd7a3e08413bcbbeb039103934baff"
+      "sha256": "b85515cb0eb29b6e47f2d23684ab52bf6fa8400461f674c9b48b7afef5f9652f"
     }
   ],
   "claims": [

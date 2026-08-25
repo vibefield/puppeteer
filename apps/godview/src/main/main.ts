@@ -26,8 +26,8 @@ import {
   type SessionExitedEvent,
 } from '@vibecook/ghosttea-electron/main';
 import type { SessionSummary } from '@vibecook/ghosttea-protocol';
-import type { AgentHost } from '@vibecook/chopsticks-core';
-import { createActionRecorder } from '@vibecook/chopsticks-record';
+import type { AgentHost } from '@vibecook/puppeteer-core';
+import { createActionRecorder } from '@vibecook/puppeteer-record';
 import type { GodviewTheme } from '../appearance-themes.js';
 import {
   buildAgentEnvironment,
@@ -44,7 +44,7 @@ import {
   type AgentWorkspaceRequest,
   type BuiltinExecutableAgentKind,
   type MonitorShadowMismatchReport,
-} from '@vibecook/chopsticks-runtime';
+} from '@vibecook/puppeteer-runtime';
 import type {
   AgentAccountUsageBatch,
   AgentSessionInfo,
@@ -145,18 +145,18 @@ const RESTORE_SMOKE_ARGUMENT = process.argv.find(
 );
 const RESTORE_SMOKE = RESTORE_SMOKE_ARGUMENT !== undefined;
 const RESTORE_SMOKE_PHASE = RESTORE_SMOKE_ARGUMENT?.split('=', 2)[1];
-const AGENT_SMOKE = process.env.CHOPSTICKS_AGENT_SMOKE as BuiltinExecutableAgentKind | undefined;
+const AGENT_SMOKE = process.env.PUPPETEER_AGENT_SMOKE as BuiltinExecutableAgentKind | undefined;
 const SPAWN_THROUGH_SMOKE = process.argv
   .find((argument) => argument.startsWith('--spawn-through-smoke='))
   ?.slice('--spawn-through-smoke='.length) as BuiltinExecutableAgentKind | undefined;
 const CLAUDE_RAIL_FAILURE_SMOKE =
-  SPAWN_THROUGH_SMOKE === 'claude' && process.env.CHOPSTICKS_SPAWN_SMOKE_EXPECT_RAIL_FAILURE === '1';
+  SPAWN_THROUGH_SMOKE === 'claude' && process.env.PUPPETEER_SPAWN_SMOKE_EXPECT_RAIL_FAILURE === '1';
 const CLAUDE_RAIL_FAILURE_OCCURRENCE = (() => {
-  const raw = process.env.CHOPSTICKS_SPAWN_SMOKE_RAIL_FAILURE_OCCURRENCE?.trim();
+  const raw = process.env.PUPPETEER_SPAWN_SMOKE_RAIL_FAILURE_OCCURRENCE?.trim();
   if (!raw) return undefined;
   const occurrence = Number(raw);
   if (!Number.isSafeInteger(occurrence) || occurrence < 1 || occurrence > 100) {
-    throw new Error('CHOPSTICKS_SPAWN_SMOKE_RAIL_FAILURE_OCCURRENCE must be an integer from 1 through 100');
+    throw new Error('PUPPETEER_SPAWN_SMOKE_RAIL_FAILURE_OCCURRENCE must be an integer from 1 through 100');
   }
   return occurrence;
 })();
@@ -192,21 +192,21 @@ function executableOnOriginalPath(command: string): string | undefined {
 
 const realAgentExecutables: Partial<Record<BuiltinExecutableAgentKind, string>> = Object.fromEntries(
   (['claude', 'codex', 'grok', 'kimi', 'opencode'] as const).flatMap((agent) => {
-    const configured = process.env[`CHOPSTICKS_${agent.toUpperCase()}_BIN`] ?? agent;
+    const configured = process.env[`PUPPETEER_${agent.toUpperCase()}_BIN`] ?? agent;
     const executable = executableOnOriginalPath(configured);
     return executable ? [[agent, executable]] : [];
   }),
 );
 
 /**
- * The chopsticks imposter, found the same way the real agents are.
+ * The puppeteer imposter, found the same way the real agents are.
  *
  * Resolved off PATH rather than through a package dependency, so Godview and
  * the pane agree on which `ai` is in play — the one the package manager
  * installed (`pnpm ai:link`). A build with none simply cannot emulate, which is
  * reported as such rather than silently falling back to the real agent.
  */
-const imposterExecutable = executableOnOriginalPath(process.env.CHOPSTICKS_IMPOSTER_BIN ?? 'ai');
+const imposterExecutable = executableOnOriginalPath(process.env.PUPPETEER_IMPOSTER_BIN ?? 'ai');
 
 app.setName('Godview');
 nativeTheme.themeSource = 'light';
@@ -334,15 +334,15 @@ const monitorRelay = new MonitorIpcRelay({
   shadowComparison: monitorHostFeatures.shadowComparison,
   onState: (message) => {
     if (monitorHostFeatures.canaryTrace) process.stderr.write(formatMonitorCanaryTrace('state', message));
-    broadcast('chopsticks:agent-monitor-state', message);
+    broadcast('puppeteer:agent-monitor-state', message);
   },
   onNotification: (message) => {
     if (monitorHostFeatures.canaryTrace) process.stderr.write(formatMonitorCanaryTrace('notification', message));
-    broadcast('chopsticks:agent-monitor-notification', message);
+    broadcast('puppeteer:agent-monitor-notification', message);
   },
   onRemoved: (message) => {
     if (monitorHostFeatures.canaryTrace) process.stderr.write(formatMonitorCanaryTrace('removed', message));
-    broadcast('chopsticks:agent-monitor-removed', message);
+    broadcast('puppeteer:agent-monitor-removed', message);
     if (monitorHostFeatures.godviewMonitorV2 && message.terminalSessionId) {
       agentRecords.delete(message.terminalSessionId);
       discardAgentState(message.terminalSessionId);
@@ -372,7 +372,7 @@ function writeScenarioRecording(filePath: string, document: RecordedClaudeScenar
 }
 
 function publishScenarioRecording(status: ScenarioRecordingStatus): void {
-  broadcast('chopsticks:scenario-recording', status);
+  broadcast('puppeteer:scenario-recording', status);
 }
 
 function clearScenarioRecordingFlush(runtimeSessionId: string): void {
@@ -435,7 +435,7 @@ async function startScenarioRecording(
   const existing = scenarioRecorder.status(runtimeSessionId);
   if (existing) return { cancelled: false, status: existing };
 
-  const directory = join(app.getPath('documents'), 'Chopsticks Scenarios');
+  const directory = join(app.getPath('documents'), 'Puppeteer Scenarios');
   mkdirSync(directory, { recursive: true, mode: 0o700 });
   const stamp = new Date()
     .toISOString()
@@ -484,7 +484,7 @@ function flushAgentStateDelivery(window: BrowserWindow): void {
   const batch = delivery.queue.take();
   if (!batch) return;
   const message: AgentStateBatch = { sequence: batch.sequence, states: batch.values };
-  if (!safeSend(window, 'chopsticks:agent-states', message)) {
+  if (!safeSend(window, 'puppeteer:agent-states', message)) {
     delivery.queue.retryInFlight();
     delivery.paused = true;
   }
@@ -867,7 +867,7 @@ const agentRuntime: AgentRuntime = createBuiltinAgentRuntime({
   ...(CLAUDE_RAIL_FAILURE_SMOKE
     ? {
         claudeHookRailFaultInjection: {
-          afterHookEvent: process.env.CHOPSTICKS_SPAWN_SMOKE_RAIL_FAILURE_AFTER_HOOK?.trim() || 'Stop',
+          afterHookEvent: process.env.PUPPETEER_SPAWN_SMOKE_RAIL_FAILURE_AFTER_HOOK?.trim() || 'Stop',
           ...(CLAUDE_RAIL_FAILURE_OCCURRENCE === undefined ? {} : { occurrence: CLAUDE_RAIL_FAILURE_OCCURRENCE }),
           reason: 'Godview native canary observation-rail fault',
         },
@@ -886,7 +886,7 @@ const monitorConnection = connectMonitorIpcRelay(agentRuntime, monitorRelay, (er
 const accountUsageMonitor = createAccountUsageMonitor({
   fetchUsage: (agent) => agentRuntime.accountUsage(agent),
   publish: (batch: AgentAccountUsageBatch) => {
-    if (!quitting) broadcast('chopsticks:account-usage', batch);
+    if (!quitting) broadcast('puppeteer:account-usage', batch);
   },
   onError: (error) => process.stderr.write(`[main] account usage: ${error.message}\n`),
 });
@@ -902,7 +902,7 @@ agentRuntime.onEvent((runtimeSessionId, envelope) => {
   if (runtimeInfo && record && record.info.sessionId !== runtimeInfo.sessionId) {
     record.info = { ...record.info, sessionId: runtimeInfo.sessionId };
     scheduleRestoreCheckpoint(true);
-    broadcast('chopsticks:agent-session', record.info);
+    broadcast('puppeteer:agent-session', record.info);
   }
   const legacyState = agentRuntime.sessionState(runtimeSessionId);
   if (legacyState) monitorRelay.acceptLegacyState(runtimeSessionId, legacyState);
@@ -940,7 +940,7 @@ function pushWorkspaceFinal(final: AgentWorkspaceFinal): void {
   const record = agentRecords.get(final.runtimeSessionId);
   if (record) record.final = final;
   discardAgentState(final.runtimeSessionId);
-  broadcast('chopsticks:workspace-final', final);
+  broadcast('puppeteer:workspace-final', final);
   // A v2 crash remains a small blocked monitor until acknowledgment. Clean
   // completion has already emitted monitor removal and can leave the board.
   const retainedFailure =
@@ -1227,7 +1227,7 @@ async function openInitialWindows(): Promise<void> {
 function rememberAgent(info: AgentSessionInfo, session: SessionSummary, launch?: RestoreAgentLaunchProvenance): void {
   agentRecords.set(info.runtimeSessionId, { info, session, ...(launch ? { launch } : {}), agentProcessAlive: true });
   scheduleRestoreCheckpoint(true);
-  broadcast('chopsticks:agent-session', info);
+  broadcast('puppeteer:agent-session', info);
   if (monitorHostFeatures.monitorV2) {
     if (monitorConnection.start(info.runtimeRunId)) {
       monitorRelay.bindTerminal(info.runtimeRunId, info.runtimeSessionId);
@@ -1700,7 +1700,7 @@ async function handleSpawnThroughRequest(request: SpawnThroughRequest): Promise<
       managedTerminalIds.delete(runtimeSessionId);
       agentRecords.delete(runtimeSessionId);
       discardAgentState(runtimeSessionId);
-      broadcast('chopsticks:agent-removed', runtimeSessionId);
+      broadcast('puppeteer:agent-removed', runtimeSessionId);
     }
     process.stderr.write(`[main] spawn-through exec failed: ${request.message}\n`);
     return { action: 'ack' };
@@ -1755,33 +1755,33 @@ async function initializeSpawnThrough(): Promise<void> {
     writeFileSync(
       join(zDotDirectory, file),
       [
-        '_chopsticks_zdotdir="${CHOPSTICKS_ORIGINAL_ZDOTDIR:-$HOME}"',
-        `if [[ -r "$_chopsticks_zdotdir/${file}" ]]; then source "$_chopsticks_zdotdir/${file}"; fi`,
-        'export PATH="$CHOPSTICKS_SHIM_DIR:$PATH"',
-        'unset _chopsticks_zdotdir',
+        '_puppeteer_zdotdir="${PUPPETEER_ORIGINAL_ZDOTDIR:-$HOME}"',
+        `if [[ -r "$_puppeteer_zdotdir/${file}" ]]; then source "$_puppeteer_zdotdir/${file}"; fi`,
+        'export PATH="$PUPPETEER_SHIM_DIR:$PATH"',
+        'unset _puppeteer_zdotdir',
         '',
       ].join('\n'),
       { mode: 0o600 },
     );
   }
   spawnThroughEnvironment = {
-    CHOPSTICKS_SPAWN_PORT: String(spawnThroughGateway.port),
-    CHOPSTICKS_SPAWN_TOKEN: token,
-    CHOPSTICKS_SHIM_DIR: spawnThroughDirectory,
-    CHOPSTICKS_ORIGINAL_ZDOTDIR: process.env.ZDOTDIR ?? '',
+    PUPPETEER_SPAWN_PORT: String(spawnThroughGateway.port),
+    PUPPETEER_SPAWN_TOKEN: token,
+    PUPPETEER_SHIM_DIR: spawnThroughDirectory,
+    PUPPETEER_ORIGINAL_ZDOTDIR: process.env.ZDOTDIR ?? '',
     PATH: `${spawnThroughDirectory}${delimiter}${originalPath}`,
     ZDOTDIR: zDotDirectory,
   };
 }
 
 function registerIpc(): void {
-  ipcMain.handle('chopsticks:account-usage', () => accountUsageMonitor.snapshot());
-  ipcMain.handle('chopsticks:refresh-account-usage', () => accountUsageMonitor.refresh());
-  ipcMain.handle('chopsticks:create-agent-session', (event, options: CreateAgentSessionOptions) => {
+  ipcMain.handle('puppeteer:account-usage', () => accountUsageMonitor.snapshot());
+  ipcMain.handle('puppeteer:refresh-account-usage', () => accountUsageMonitor.refresh());
+  ipcMain.handle('puppeteer:create-agent-session', (event, options: CreateAgentSessionOptions) => {
     const owner = BrowserWindow.fromWebContents(event.sender);
     return createAgentSession(options, owner && tabs.get(owner) ? owner : undefined);
   });
-  ipcMain.handle('chopsticks:rehydrate-pane', (event, value: unknown): Promise<SessionSummary | null> => {
+  ipcMain.handle('puppeteer:rehydrate-pane', (event, value: unknown): Promise<SessionSummary | null> => {
     if (!value || typeof value !== 'object') return Promise.resolve(null);
     const candidate = value as Partial<PaneRehydrationRequest>;
     if (typeof candidate.sessionId !== 'string' || !candidate.sessionId) return Promise.resolve(null);
@@ -1798,45 +1798,45 @@ function registerIpc(): void {
     const owner = BrowserWindow.fromWebContents(event.sender);
     return owner ? tabs.takeRestoreWorkspace(owner) : undefined;
   });
-  ipcMain.handle('chopsticks:list-agent-sessions', (): AgentSessionSnapshot[] =>
+  ipcMain.handle('puppeteer:list-agent-sessions', (): AgentSessionSnapshot[] =>
     [...agentRecords.values()].map((record) => ({
       info: { ...record.info, session: record.session },
       state: stateSnapshot(record.info.runtimeSessionId),
       final: record.final,
     })),
   );
-  ipcMain.handle('chopsticks:list-agent-monitors', (event) => {
+  ipcMain.handle('puppeteer:list-agent-monitors', (event) => {
     const window = BrowserWindow.fromWebContents(event.sender);
     return window && tabs.get(window) ? monitorRelay.snapshot() : [];
   });
-  ipcMain.handle('chopsticks:agent-monitor-configuration', () => ({
+  ipcMain.handle('puppeteer:agent-monitor-configuration', () => ({
     godviewMonitorV2: monitorHostFeatures.godviewMonitorV2,
   }));
-  ipcMain.handle('chopsticks:acknowledge-agent-failure', (event, input: unknown): Promise<boolean> => {
+  ipcMain.handle('puppeteer:acknowledge-agent-failure', (event, input: unknown): Promise<boolean> => {
     const window = BrowserWindow.fromWebContents(event.sender);
     if (!window || !tabs.get(window)) return Promise.resolve(false);
     return acknowledgeAgentFailureForIpc(agentRuntime, monitorRelay, input);
   });
-  ipcMain.handle('chopsticks:read-agent-monitor-artifact', async (event, input: unknown) => {
+  ipcMain.handle('puppeteer:read-agent-monitor-artifact', async (event, input: unknown) => {
     const window = BrowserWindow.fromWebContents(event.sender);
     if (!window || !tabs.get(window)) return { status: 'denied' as const };
     return readAgentMonitorArtifactForIpc(agentRuntime, monitorRelay, input);
   });
-  ipcMain.handle('chopsticks:submit-prompt', (_event, options: SubmitPromptOptions): Promise<PromptReceipt> =>
+  ipcMain.handle('puppeteer:submit-prompt', (_event, options: SubmitPromptOptions): Promise<PromptReceipt> =>
     agentRuntime.submitPrompt(options.runtimeSessionId, { text: options.text }),
   );
-  ipcMain.handle('chopsticks:workspace-diff', (_event, runtimeSessionId: string) =>
+  ipcMain.handle('puppeteer:workspace-diff', (_event, runtimeSessionId: string) =>
     agentRuntime.workspaceDiff(runtimeSessionId),
   );
-  ipcMain.handle('chopsticks:scenario-recordings', (): ScenarioRecordingStatus[] => scenarioRecorder.statuses());
-  ipcMain.handle('chopsticks:start-scenario-recording', (event, runtimeSessionId: unknown) => {
+  ipcMain.handle('puppeteer:scenario-recordings', (): ScenarioRecordingStatus[] => scenarioRecorder.statuses());
+  ipcMain.handle('puppeteer:start-scenario-recording', (event, runtimeSessionId: unknown) => {
     if (typeof runtimeSessionId !== 'string' || !runtimeSessionId) {
       throw new Error('runtimeSessionId is required');
     }
     const owner = BrowserWindow.fromWebContents(event.sender);
     return startScenarioRecording(runtimeSessionId, owner && tabs.get(owner) ? owner : undefined);
   });
-  ipcMain.handle('chopsticks:stop-scenario-recording', (_event, runtimeSessionId: unknown) => {
+  ipcMain.handle('puppeteer:stop-scenario-recording', (_event, runtimeSessionId: unknown) => {
     if (typeof runtimeSessionId !== 'string' || !runtimeSessionId) {
       throw new Error('runtimeSessionId is required');
     }
@@ -1844,7 +1844,7 @@ function registerIpc(): void {
     if (!status) throw new Error('scenario recording is not active');
     return status;
   });
-  ipcMain.on('chopsticks:agent-states-ack', (event, sequence: unknown) => {
+  ipcMain.on('puppeteer:agent-states-ack', (event, sequence: unknown) => {
     if (typeof sequence !== 'number' || !Number.isSafeInteger(sequence)) return;
     const window = BrowserWindow.fromWebContents(event.sender);
     if (!window || !tabs.get(window)) return;
@@ -2581,7 +2581,7 @@ async function runRestoreSmoke(): Promise<void> {
 }
 
 /**
- * Direct agent-session smoke (CHOPSTICKS_AGENT_SMOKE=<agent>): exercises the
+ * Direct agent-session smoke (PUPPETEER_AGENT_SMOKE=<agent>): exercises the
  * runtime createSession path against the configured native executable. Use
  * `--spawn-through-smoke=<agent>` with `ai --<agent>` for Imposter integration;
  * that path owns the per-session persona environment as well as the binary.
@@ -2611,27 +2611,27 @@ async function runAgentSmoke(agent: BuiltinExecutableAgentKind): Promise<void> {
     throw new Error(`${agent} did not become ready (lifecycle=${lifecycle ?? 'none'}; ${exitInfo ?? 'process alive'})`);
   }
   console.log(`AGENT SMOKE OK ${agent} ${result.sessionId}`);
-  // Diagnostic hold (CHOPSTICKS_AGENT_SMOKE_HOLD_MS): keep the session alive
+  // Diagnostic hold (PUPPETEER_AGENT_SMOKE_HOLD_MS): keep the session alive
   // so external observers (e.g. the Imposter control plane) can see it.
-  const holdMs = Number(process.env.CHOPSTICKS_AGENT_SMOKE_HOLD_MS ?? 0);
+  const holdMs = Number(process.env.PUPPETEER_AGENT_SMOKE_HOLD_MS ?? 0);
   if (holdMs > 0) await new Promise((resolveDelay) => setTimeout(resolveDelay, holdMs));
 }
 
 async function runSpawnThroughSmoke(agent: BuiltinExecutableAgentKind): Promise<void> {
-  const launchCommand = process.env.CHOPSTICKS_SPAWN_SMOKE_COMMAND ?? agent;
+  const launchCommand = process.env.PUPPETEER_SPAWN_SMOKE_COMMAND ?? agent;
   const commandWords = launchCommand.trim().split(/\s+/u);
   const usesInstalledImposter =
     Boolean(imposterExecutable) && commandWords[0] === 'ai' && commandWords[1] === `--${agent}`;
   if (!realAgentExecutables[agent] && !usesInstalledImposter) throw new Error(`${agent} is not installed`);
-  const configuredCwd = process.env.CHOPSTICKS_SPAWN_SMOKE_CWD?.trim();
+  const configuredCwd = process.env.PUPPETEER_SPAWN_SMOKE_CWD?.trim();
   const smokeCwd = configuredCwd || repoRoot;
-  if (!isAbsolute(smokeCwd)) throw new Error('CHOPSTICKS_SPAWN_SMOKE_CWD must be absolute');
+  if (!isAbsolute(smokeCwd)) throw new Error('PUPPETEER_SPAWN_SMOKE_CWD must be absolute');
   try {
     accessSync(smokeCwd, constants.R_OK | constants.X_OK);
   } catch {
     throw new Error(`spawn-through smoke cwd is not an accessible directory: ${smokeCwd}`);
   }
-  const expectedDelegateMarkers = (process.env.CHOPSTICKS_SPAWN_SMOKE_EXPECT_DELEGATE_MARKERS ?? '')
+  const expectedDelegateMarkers = (process.env.PUPPETEER_SPAWN_SMOKE_EXPECT_DELEGATE_MARKERS ?? '')
     .split('|')
     .map((value) => value.trim())
     .filter(Boolean)
@@ -2664,7 +2664,7 @@ async function runSpawnThroughSmoke(agent: BuiltinExecutableAgentKind): Promise<
   });
   const submitted = await backend!.automation.pasteAndSubmit(session.id, launchCommand);
   if (!submitted.accepted) throw new Error(`spawn-through smoke input was rejected: ${submitted.reason}`);
-  const pickerDelayMs = Number(process.env.CHOPSTICKS_SPAWN_SMOKE_PICKER_ACCEPT_MS ?? 0);
+  const pickerDelayMs = Number(process.env.PUPPETEER_SPAWN_SMOKE_PICKER_ACCEPT_MS ?? 0);
   if (pickerDelayMs > 0) {
     await new Promise((resolveDelay) => setTimeout(resolveDelay, pickerDelayMs));
     const accepted = await backend!.automation.pasteAndSubmit(session.id, '');
@@ -2676,7 +2676,7 @@ async function runSpawnThroughSmoke(agent: BuiltinExecutableAgentKind): Promise<
   // and session.started record do not exist until the first prompt. Adoption
   // still has to complete before we proceed, and the scripted turn below must
   // then prove the durable bind and ready lifecycle.
-  const allowsLazyInitialIdentity = agent === 'kimi' && Boolean(process.env.CHOPSTICKS_SPAWN_SMOKE_PROMPT);
+  const allowsLazyInitialIdentity = agent === 'kimi' && Boolean(process.env.PUPPETEER_SPAWN_SMOKE_PROMPT);
   while (Date.now() < deadline) {
     lifecycle = stateSnapshot(session.id)?.state.lifecycle;
     if (
@@ -2755,18 +2755,18 @@ async function runSpawnThroughSmoke(agent: BuiltinExecutableAgentKind): Promise<
         break;
     }
   });
-  const expectedModel = process.env.CHOPSTICKS_SPAWN_SMOKE_EXPECT_MODEL?.trim().toLowerCase() || undefined;
-  const expectedEffort = process.env.CHOPSTICKS_SPAWN_SMOKE_EXPECT_EFFORT?.trim().toLowerCase() || undefined;
+  const expectedModel = process.env.PUPPETEER_SPAWN_SMOKE_EXPECT_MODEL?.trim().toLowerCase() || undefined;
+  const expectedEffort = process.env.PUPPETEER_SPAWN_SMOKE_EXPECT_EFFORT?.trim().toLowerCase() || undefined;
   const expectedPermission =
-    process.env.CHOPSTICKS_SPAWN_SMOKE_EXPECT_PERMISSION_MODE?.trim().toLowerCase() || undefined;
+    process.env.PUPPETEER_SPAWN_SMOKE_EXPECT_PERMISSION_MODE?.trim().toLowerCase() || undefined;
   const expectedModelIntent =
-    process.env.CHOPSTICKS_SPAWN_SMOKE_EXPECT_MODEL_INTENT?.trim().toLowerCase() ||
+    process.env.PUPPETEER_SPAWN_SMOKE_EXPECT_MODEL_INTENT?.trim().toLowerCase() ||
     (expectedModel ? 'observed' : undefined);
   const expectedEffortIntent =
-    process.env.CHOPSTICKS_SPAWN_SMOKE_EXPECT_EFFORT_INTENT?.trim().toLowerCase() ||
+    process.env.PUPPETEER_SPAWN_SMOKE_EXPECT_EFFORT_INTENT?.trim().toLowerCase() ||
     (expectedEffort ? 'configured' : undefined);
   const expectedPermissionIntent =
-    process.env.CHOPSTICKS_SPAWN_SMOKE_EXPECT_PERMISSION_MODE_INTENT?.trim().toLowerCase() ||
+    process.env.PUPPETEER_SPAWN_SMOKE_EXPECT_PERMISSION_MODE_INTENT?.trim().toLowerCase() ||
     (expectedPermission ? 'configured' : undefined);
   if (
     [expectedModelIntent, expectedEffortIntent, expectedPermissionIntent].some(
@@ -2851,11 +2851,11 @@ async function runSpawnThroughSmoke(agent: BuiltinExecutableAgentKind): Promise<
       `SPAWN-THROUGH CONFIG OK ${JSON.stringify({ model: monitor?.model, effort: monitor?.effort, modes: monitor?.modes })}`,
     );
   }
-  const configCommands = (process.env.CHOPSTICKS_SPAWN_SMOKE_CONFIG_COMMANDS ?? '')
+  const configCommands = (process.env.PUPPETEER_SPAWN_SMOKE_CONFIG_COMMANDS ?? '')
     .split('|')
     .map((value) => value.trim())
     .filter(Boolean);
-  const configExpectationSpecs = (process.env.CHOPSTICKS_SPAWN_SMOKE_CONFIG_EXPECTATIONS ?? '')
+  const configExpectationSpecs = (process.env.PUPPETEER_SPAWN_SMOKE_CONFIG_EXPECTATIONS ?? '')
     .split('|')
     .map((value) => value.trim())
     .filter(Boolean);
@@ -2863,9 +2863,9 @@ async function runSpawnThroughSmoke(agent: BuiltinExecutableAgentKind): Promise<
     throw new Error('config smoke commands and expectations must have the same length');
   }
   if (configCommands.length > 0) {
-    const configSettleMs = Number(process.env.CHOPSTICKS_SPAWN_SMOKE_CONFIG_SETTLE_MS ?? 8_000);
+    const configSettleMs = Number(process.env.PUPPETEER_SPAWN_SMOKE_CONFIG_SETTLE_MS ?? 8_000);
     if (!Number.isSafeInteger(configSettleMs) || configSettleMs < 0 || configSettleMs > 120_000) {
-      throw new Error('CHOPSTICKS_SPAWN_SMOKE_CONFIG_SETTLE_MS must be 0 through 120000');
+      throw new Error('PUPPETEER_SPAWN_SMOKE_CONFIG_SETTLE_MS must be 0 through 120000');
     }
     await new Promise((resolveDelay) => setTimeout(resolveDelay, configSettleMs));
   }
@@ -2914,7 +2914,7 @@ async function runSpawnThroughSmoke(agent: BuiltinExecutableAgentKind): Promise<
       `SPAWN-THROUGH CONFIG CHANGE OK ${JSON.stringify({ command, model: observed?.model, effort: observed?.effort, modes: observed?.modes })}`,
     );
   }
-  if (process.env.CHOPSTICKS_SPAWN_SMOKE_REQUIRE_HISTORY === '1') {
+  if (process.env.PUPPETEER_SPAWN_SMOKE_REQUIRE_HISTORY === '1') {
     const conversation = agentRuntime.conversationSnapshot(session.id);
     const hasUser = conversation?.items.some((item) => item.kind === 'user');
     const hasAssistant = conversation?.items.some((item) => item.kind === 'assistant');
@@ -2922,12 +2922,12 @@ async function runSpawnThroughSmoke(agent: BuiltinExecutableAgentKind): Promise<
       throw new Error(`${agent} resumed but did not project its existing conversation history`);
     }
   }
-  const prompt = process.env.CHOPSTICKS_SPAWN_SMOKE_PROMPT;
+  const prompt = process.env.PUPPETEER_SPAWN_SMOKE_PROMPT;
   if (prompt) {
     await new Promise((resolveDelay) => setTimeout(resolveDelay, 8_000));
-    const shiftTabCount = Number(process.env.CHOPSTICKS_SPAWN_SMOKE_SHIFT_TAB_COUNT ?? 0);
+    const shiftTabCount = Number(process.env.PUPPETEER_SPAWN_SMOKE_SHIFT_TAB_COUNT ?? 0);
     if (!Number.isSafeInteger(shiftTabCount) || shiftTabCount < 0 || shiftTabCount > 8) {
-      throw new Error('CHOPSTICKS_SPAWN_SMOKE_SHIFT_TAB_COUNT must be an integer from 0 through 8');
+      throw new Error('PUPPETEER_SPAWN_SMOKE_SHIFT_TAB_COUNT must be an integer from 0 through 8');
     }
     for (let count = 0; count < shiftTabCount; count += 1) {
       const cycled = await backend!.automation.sendText(session.id, '\x1b[Z');
@@ -2935,9 +2935,9 @@ async function runSpawnThroughSmoke(agent: BuiltinExecutableAgentKind): Promise<
       await new Promise((resolveDelay) => setTimeout(resolveDelay, 500));
     }
     const expectedPermissionAfterPrompt =
-      process.env.CHOPSTICKS_SPAWN_SMOKE_EXPECT_PERMISSION_MODE_AFTER_PROMPT?.trim().toLowerCase() || undefined;
-    const expectedQuestion = process.env.CHOPSTICKS_SPAWN_SMOKE_EXPECT_QUESTION?.trim() || undefined;
-    const expectedQuestionChoices = (process.env.CHOPSTICKS_SPAWN_SMOKE_EXPECT_QUESTION_CHOICES ?? '')
+      process.env.PUPPETEER_SPAWN_SMOKE_EXPECT_PERMISSION_MODE_AFTER_PROMPT?.trim().toLowerCase() || undefined;
+    const expectedQuestion = process.env.PUPPETEER_SPAWN_SMOKE_EXPECT_QUESTION?.trim() || undefined;
+    const expectedQuestionChoices = (process.env.PUPPETEER_SPAWN_SMOKE_EXPECT_QUESTION_CHOICES ?? '')
       .split('|')
       .map((choice) => choice.trim())
       .filter(Boolean);
@@ -2949,31 +2949,31 @@ async function runSpawnThroughSmoke(agent: BuiltinExecutableAgentKind): Promise<
       throw new Error(`${name} must be 0 or 1`);
     };
     const expectedQuestionAllowMultiple = optionalQuestionBoolean(
-      'CHOPSTICKS_SPAWN_SMOKE_EXPECT_QUESTION_ALLOW_MULTIPLE',
+      'PUPPETEER_SPAWN_SMOKE_EXPECT_QUESTION_ALLOW_MULTIPLE',
     );
     const expectedQuestionAllowFreeForm = optionalQuestionBoolean(
-      'CHOPSTICKS_SPAWN_SMOKE_EXPECT_QUESTION_ALLOW_FREE_FORM',
+      'PUPPETEER_SPAWN_SMOKE_EXPECT_QUESTION_ALLOW_FREE_FORM',
     );
-    const questionInput = process.env.CHOPSTICKS_SPAWN_SMOKE_QUESTION_INPUT?.trim() || undefined;
-    const questionSettleMs = Number(process.env.CHOPSTICKS_SPAWN_SMOKE_QUESTION_SETTLE_MS ?? 1_000);
+    const questionInput = process.env.PUPPETEER_SPAWN_SMOKE_QUESTION_INPUT?.trim() || undefined;
+    const questionSettleMs = Number(process.env.PUPPETEER_SPAWN_SMOKE_QUESTION_SETTLE_MS ?? 1_000);
     if (!Number.isSafeInteger(questionSettleMs) || questionSettleMs < 0 || questionSettleMs > 10_000) {
-      throw new Error('CHOPSTICKS_SPAWN_SMOKE_QUESTION_SETTLE_MS must be 0 through 10000');
+      throw new Error('PUPPETEER_SPAWN_SMOKE_QUESTION_SETTLE_MS must be 0 through 10000');
     }
-    const questionNavigationHoldMs = Number(process.env.CHOPSTICKS_SPAWN_SMOKE_QUESTION_NAVIGATION_HOLD_MS ?? 0);
+    const questionNavigationHoldMs = Number(process.env.PUPPETEER_SPAWN_SMOKE_QUESTION_NAVIGATION_HOLD_MS ?? 0);
     if (
       !Number.isSafeInteger(questionNavigationHoldMs) ||
       questionNavigationHoldMs < 0 ||
       questionNavigationHoldMs > 120_000
     ) {
-      throw new Error('CHOPSTICKS_SPAWN_SMOKE_QUESTION_NAVIGATION_HOLD_MS must be 0 through 120000');
+      throw new Error('PUPPETEER_SPAWN_SMOKE_QUESTION_NAVIGATION_HOLD_MS must be 0 through 120000');
     }
-    const questionKey = process.env.CHOPSTICKS_SPAWN_SMOKE_QUESTION_KEY ?? 'enter';
+    const questionKey = process.env.PUPPETEER_SPAWN_SMOKE_QUESTION_KEY ?? 'enter';
     const questionKeys = ['enter', 'down-enter', 'space-enter', 'multi-first-two', 'other-text'];
     if (expectedQuestion && !questionKeys.includes(questionKey)) {
       throw new Error(`unsupported spawn-through smoke question key ${questionKey}`);
     }
     if (expectedQuestion && questionKey === 'other-text' && !questionInput) {
-      throw new Error('other-text question smoke requires CHOPSTICKS_SPAWN_SMOKE_QUESTION_INPUT');
+      throw new Error('other-text question smoke requires PUPPETEER_SPAWN_SMOKE_QUESTION_INPUT');
     }
     let questionKeyView: { viewId: string; attachmentEpoch: number; inputSequence: number } | undefined;
     const sendQuestionKey = async (key: 'Space' | 'ArrowDown' | 'Tab' | 'Enter'): Promise<void> => {
@@ -3043,67 +3043,67 @@ async function runSpawnThroughSmoke(agent: BuiltinExecutableAgentKind): Promise<
     let questionBlockerId: string | undefined;
     const prompts = [
       prompt,
-      process.env.CHOPSTICKS_SPAWN_SMOKE_PROMPT_2,
-      process.env.CHOPSTICKS_SPAWN_SMOKE_PROMPT_3,
+      process.env.PUPPETEER_SPAWN_SMOKE_PROMPT_2,
+      process.env.PUPPETEER_SPAWN_SMOKE_PROMPT_3,
     ].filter((value): value is string => Boolean(value));
-    const interPromptSettleMs = Number(process.env.CHOPSTICKS_SPAWN_SMOKE_INTER_PROMPT_SETTLE_MS ?? 500);
+    const interPromptSettleMs = Number(process.env.PUPPETEER_SPAWN_SMOKE_INTER_PROMPT_SETTLE_MS ?? 500);
     if (!Number.isFinite(interPromptSettleMs) || interPromptSettleMs < 0 || interPromptSettleMs > 120_000) {
-      throw new Error('CHOPSTICKS_SPAWN_SMOKE_INTER_PROMPT_SETTLE_MS must be 0 through 120000');
+      throw new Error('PUPPETEER_SPAWN_SMOKE_INTER_PROMPT_SETTLE_MS must be 0 through 120000');
     }
     const expectedReplies = [
-      process.env.CHOPSTICKS_SPAWN_SMOKE_EXPECT_REPLY,
-      process.env.CHOPSTICKS_SPAWN_SMOKE_EXPECT_REPLY_2,
-      process.env.CHOPSTICKS_SPAWN_SMOKE_EXPECT_REPLY_3,
+      process.env.PUPPETEER_SPAWN_SMOKE_EXPECT_REPLY,
+      process.env.PUPPETEER_SPAWN_SMOKE_EXPECT_REPLY_2,
+      process.env.PUPPETEER_SPAWN_SMOKE_EXPECT_REPLY_3,
     ].map((value) => value?.trim() || undefined);
-    const expectedToolName = process.env.CHOPSTICKS_SPAWN_SMOKE_EXPECT_TOOL?.trim() || undefined;
+    const expectedToolName = process.env.PUPPETEER_SPAWN_SMOKE_EXPECT_TOOL?.trim() || undefined;
     const expectedToolCount = Number(
-      process.env.CHOPSTICKS_SPAWN_SMOKE_EXPECT_TOOL_COUNT ?? (expectedToolName ? '1' : '0'),
+      process.env.PUPPETEER_SPAWN_SMOKE_EXPECT_TOOL_COUNT ?? (expectedToolName ? '1' : '0'),
     );
     if (!Number.isSafeInteger(expectedToolCount) || expectedToolCount < 0 || expectedToolCount > 20) {
-      throw new Error('CHOPSTICKS_SPAWN_SMOKE_EXPECT_TOOL_COUNT must be an integer from 0 through 20');
+      throw new Error('PUPPETEER_SPAWN_SMOKE_EXPECT_TOOL_COUNT must be an integer from 0 through 20');
     }
-    const expectedToolOutcome = process.env.CHOPSTICKS_SPAWN_SMOKE_EXPECT_TOOL_OUTCOME?.trim().toLowerCase() as
+    const expectedToolOutcome = process.env.PUPPETEER_SPAWN_SMOKE_EXPECT_TOOL_OUTCOME?.trim().toLowerCase() as
       'completed' | 'failed' | 'denied' | undefined;
     if (expectedToolOutcome && !['completed', 'failed', 'denied'].includes(expectedToolOutcome)) {
-      throw new Error('CHOPSTICKS_SPAWN_SMOKE_EXPECT_TOOL_OUTCOME must be completed, failed, or denied');
+      throw new Error('PUPPETEER_SPAWN_SMOKE_EXPECT_TOOL_OUTCOME must be completed, failed, or denied');
     }
-    const allowHookDenial = process.env.CHOPSTICKS_SPAWN_SMOKE_ALLOW_HOOK_DENIAL === '1';
+    const allowHookDenial = process.env.PUPPETEER_SPAWN_SMOKE_ALLOW_HOOK_DENIAL === '1';
     if (allowHookDenial && expectedToolOutcome !== 'denied') {
-      throw new Error('CHOPSTICKS_SPAWN_SMOKE_ALLOW_HOOK_DENIAL requires a denied tool outcome');
+      throw new Error('PUPPETEER_SPAWN_SMOKE_ALLOW_HOOK_DENIAL requires a denied tool outcome');
     }
     if (expectedToolOutcome === 'denied' && !allowHookDenial) {
-      throw new Error('denied tool smoke requires CHOPSTICKS_SPAWN_SMOKE_ALLOW_HOOK_DENIAL=1');
+      throw new Error('denied tool smoke requires PUPPETEER_SPAWN_SMOKE_ALLOW_HOOK_DENIAL=1');
     }
     if ((expectedToolCount > 0 || expectedToolOutcome) && !expectedToolName) {
-      throw new Error('tool count/outcome expectations require CHOPSTICKS_SPAWN_SMOKE_EXPECT_TOOL');
+      throw new Error('tool count/outcome expectations require PUPPETEER_SPAWN_SMOKE_EXPECT_TOOL');
     }
-    const expectClear = process.env.CHOPSTICKS_SPAWN_SMOKE_EXPECT_CLEAR === '1';
-    const requirePostClearTranscript = process.env.CHOPSTICKS_SPAWN_SMOKE_REQUIRE_POST_CLEAR_TRANSCRIPT === '1';
+    const expectClear = process.env.PUPPETEER_SPAWN_SMOKE_EXPECT_CLEAR === '1';
+    const requirePostClearTranscript = process.env.PUPPETEER_SPAWN_SMOKE_REQUIRE_POST_CLEAR_TRANSCRIPT === '1';
     const clearPromptIndex = prompts.findIndex((value) => value.trim() === '/clear');
     if (expectClear && (clearPromptIndex < 0 || clearPromptIndex === prompts.length - 1)) {
       throw new Error('clear smoke requires /clear followed by another scripted prompt');
     }
     if (requirePostClearTranscript && !expectClear) {
-      throw new Error('post-clear transcript smoke requires CHOPSTICKS_SPAWN_SMOKE_EXPECT_CLEAR=1');
+      throw new Error('post-clear transcript smoke requires PUPPETEER_SPAWN_SMOKE_EXPECT_CLEAR=1');
     }
-    const expectedTask = process.env.CHOPSTICKS_SPAWN_SMOKE_EXPECT_TASK?.trim() || undefined;
-    const expectedTaskStatuses = (process.env.CHOPSTICKS_SPAWN_SMOKE_EXPECT_TASK_STATUSES ?? '')
+    const expectedTask = process.env.PUPPETEER_SPAWN_SMOKE_EXPECT_TASK?.trim() || undefined;
+    const expectedTaskStatuses = (process.env.PUPPETEER_SPAWN_SMOKE_EXPECT_TASK_STATUSES ?? '')
       .split('|')
       .map((status) => status.trim())
       .filter(Boolean);
-    const expectedPlanSteps = (process.env.CHOPSTICKS_SPAWN_SMOKE_EXPECT_PLAN_STEPS ?? '')
+    const expectedPlanSteps = (process.env.PUPPETEER_SPAWN_SMOKE_EXPECT_PLAN_STEPS ?? '')
       .split('|')
       .map((step) => step.trim())
       .filter(Boolean);
-    const expectedSubagentType = process.env.CHOPSTICKS_SPAWN_SMOKE_EXPECT_SUBAGENT_TYPE?.trim() || undefined;
-    const expectedSubagentModel = process.env.CHOPSTICKS_SPAWN_SMOKE_EXPECT_SUBAGENT_MODEL?.trim() || undefined;
-    const requireSubagentTelemetry = process.env.CHOPSTICKS_SPAWN_SMOKE_REQUIRE_SUBAGENT_TELEMETRY === '1';
-    const expectedTeamMember = process.env.CHOPSTICKS_SPAWN_SMOKE_EXPECT_TEAM_MEMBER?.trim() || undefined;
-    const expectedTeamMemberModel = process.env.CHOPSTICKS_SPAWN_SMOKE_EXPECT_TEAM_MEMBER_MODEL?.trim() || undefined;
-    const expectedTeamMemberEffort = process.env.CHOPSTICKS_SPAWN_SMOKE_EXPECT_TEAM_MEMBER_EFFORT?.trim() || undefined;
-    const requireTeamMemberTelemetry = process.env.CHOPSTICKS_SPAWN_SMOKE_REQUIRE_TEAM_MEMBER_TELEMETRY === '1';
-    const requireTeamMemberContext = process.env.CHOPSTICKS_SPAWN_SMOKE_REQUIRE_TEAM_MEMBER_CONTEXT === '1';
-    const expectTeamMemberIdle = process.env.CHOPSTICKS_SPAWN_SMOKE_EXPECT_TEAM_MEMBER_IDLE === '1';
+    const expectedSubagentType = process.env.PUPPETEER_SPAWN_SMOKE_EXPECT_SUBAGENT_TYPE?.trim() || undefined;
+    const expectedSubagentModel = process.env.PUPPETEER_SPAWN_SMOKE_EXPECT_SUBAGENT_MODEL?.trim() || undefined;
+    const requireSubagentTelemetry = process.env.PUPPETEER_SPAWN_SMOKE_REQUIRE_SUBAGENT_TELEMETRY === '1';
+    const expectedTeamMember = process.env.PUPPETEER_SPAWN_SMOKE_EXPECT_TEAM_MEMBER?.trim() || undefined;
+    const expectedTeamMemberModel = process.env.PUPPETEER_SPAWN_SMOKE_EXPECT_TEAM_MEMBER_MODEL?.trim() || undefined;
+    const expectedTeamMemberEffort = process.env.PUPPETEER_SPAWN_SMOKE_EXPECT_TEAM_MEMBER_EFFORT?.trim() || undefined;
+    const requireTeamMemberTelemetry = process.env.PUPPETEER_SPAWN_SMOKE_REQUIRE_TEAM_MEMBER_TELEMETRY === '1';
+    const requireTeamMemberContext = process.env.PUPPETEER_SPAWN_SMOKE_REQUIRE_TEAM_MEMBER_CONTEXT === '1';
+    const expectTeamMemberIdle = process.env.PUPPETEER_SPAWN_SMOKE_EXPECT_TEAM_MEMBER_IDLE === '1';
     if (
       !expectedTeamMember &&
       (expectedTeamMemberModel ||
@@ -3112,9 +3112,9 @@ async function runSpawnThroughSmoke(agent: BuiltinExecutableAgentKind): Promise<
         requireTeamMemberContext ||
         expectTeamMemberIdle)
     ) {
-      throw new Error('team-member smoke expectations require CHOPSTICKS_SPAWN_SMOKE_EXPECT_TEAM_MEMBER');
+      throw new Error('team-member smoke expectations require PUPPETEER_SPAWN_SMOKE_EXPECT_TEAM_MEMBER');
     }
-    const expectRailFailure = process.env.CHOPSTICKS_SPAWN_SMOKE_EXPECT_RAIL_FAILURE === '1';
+    const expectRailFailure = process.env.PUPPETEER_SPAWN_SMOKE_EXPECT_RAIL_FAILURE === '1';
     if (requirePostClearTranscript && !expectRailFailure) {
       throw new Error(
         'post-clear transcript smoke requires an observation-rail fault so canonical event filtering exposes the transcript copy',
@@ -3123,15 +3123,15 @@ async function runSpawnThroughSmoke(agent: BuiltinExecutableAgentKind): Promise<
     if (expectRailFailure && prompts.length < 2) {
       throw new Error('rail-failure smoke requires a second prompt proving the native TUI remains usable');
     }
-    const expectCompaction = process.env.CHOPSTICKS_SPAWN_SMOKE_EXPECT_COMPACTION === '1';
-    const expectedCompactionOutcome = process.env.CHOPSTICKS_SPAWN_SMOKE_EXPECT_COMPACTION_OUTCOME?.trim();
+    const expectCompaction = process.env.PUPPETEER_SPAWN_SMOKE_EXPECT_COMPACTION === '1';
+    const expectedCompactionOutcome = process.env.PUPPETEER_SPAWN_SMOKE_EXPECT_COMPACTION_OUTCOME?.trim();
     const allowCompactionBoundaryFallback =
-      process.env.CHOPSTICKS_SPAWN_SMOKE_ALLOW_COMPACTION_BOUNDARY_FALLBACK === '1';
+      process.env.PUPPETEER_SPAWN_SMOKE_ALLOW_COMPACTION_BOUNDARY_FALLBACK === '1';
     const compactionFallbackSettleMs = Number(
-      process.env.CHOPSTICKS_SPAWN_SMOKE_COMPACTION_FALLBACK_SETTLE_MS ?? 1_500,
+      process.env.PUPPETEER_SPAWN_SMOKE_COMPACTION_FALLBACK_SETTLE_MS ?? 1_500,
     );
-    const stopAfterPlan = process.env.CHOPSTICKS_SPAWN_SMOKE_STOP_AFTER_PLAN === '1';
-    const planSettleMs = Number(process.env.CHOPSTICKS_SPAWN_SMOKE_PLAN_SETTLE_MS ?? 1_000);
+    const stopAfterPlan = process.env.PUPPETEER_SPAWN_SMOKE_STOP_AFTER_PLAN === '1';
+    const planSettleMs = Number(process.env.PUPPETEER_SPAWN_SMOKE_PLAN_SETTLE_MS ?? 1_000);
     const observedTaskIds = new Set<string>();
     const observedTaskStatuses = new Set<string>();
     const observedSubagentIds = new Set<string>();
@@ -3190,7 +3190,7 @@ async function runSpawnThroughSmoke(agent: BuiltinExecutableAgentKind): Promise<
         ? await backend!.automation.sendText(session.id, `${smokePrompt}\r`)
         : await backend!.automation.pasteAndSubmit(session.id, smokePrompt);
       if (!promptResult.accepted) throw new Error(`spawn-through smoke prompt was rejected: ${promptResult.reason}`);
-      const observationMs = Number(process.env.CHOPSTICKS_SPAWN_SMOKE_WAIT_MS ?? 45_000);
+      const observationMs = Number(process.env.PUPPETEER_SPAWN_SMOKE_WAIT_MS ?? 45_000);
       const turnDeadline = Date.now() + observationMs;
       if (clearCommand) {
         if (!nativeBeforeClear) throw new Error(`${agent} lost runtime identity before /clear`);
@@ -3745,15 +3745,15 @@ async function runSpawnThroughSmoke(agent: BuiltinExecutableAgentKind): Promise<
     }
     console.log(`SPAWN-THROUGH STATUS DELEGATES OK ${JSON.stringify(expectedDelegateMarkers.map(({ path }) => path))}`);
   }
-  const exitMode = process.env.CHOPSTICKS_SPAWN_SMOKE_EXIT_MODE?.trim().toLowerCase() || 'host';
+  const exitMode = process.env.PUPPETEER_SPAWN_SMOKE_EXIT_MODE?.trim().toLowerCase() || 'host';
   if (!['host', 'clean', 'crash'].includes(exitMode)) {
-    throw new Error('CHOPSTICKS_SPAWN_SMOKE_EXIT_MODE must be host, clean, or crash');
+    throw new Error('PUPPETEER_SPAWN_SMOKE_EXIT_MODE must be host, clean, or crash');
   }
   const expectedExitReason = exitMode === 'host' ? 'runtime-terminated' : exitMode === 'clean' ? 'completed' : 'crash';
   if (exitMode === 'clean') {
-    const exitSettleMs = Number(process.env.CHOPSTICKS_SPAWN_SMOKE_EXIT_SETTLE_MS ?? 8_000);
+    const exitSettleMs = Number(process.env.PUPPETEER_SPAWN_SMOKE_EXIT_SETTLE_MS ?? 8_000);
     if (!Number.isSafeInteger(exitSettleMs) || exitSettleMs < 0 || exitSettleMs > 120_000) {
-      throw new Error('CHOPSTICKS_SPAWN_SMOKE_EXIT_SETTLE_MS must be 0 through 120000');
+      throw new Error('PUPPETEER_SPAWN_SMOKE_EXIT_SETTLE_MS must be 0 through 120000');
     }
     if (exitSettleMs > 0) await new Promise((resolveDelay) => setTimeout(resolveDelay, exitSettleMs));
     const submittedExit = await backend!.automation.pasteAndSubmit(session.id, '/exit');
@@ -3929,10 +3929,10 @@ app
     }
     accountUsageMonitor.start();
     await openInitialWindows();
-    // Emulator/dev flow: CHOPSTICKS_AUTOCREATE_AGENTS=claude[,codex,…] creates
+    // Emulator/dev flow: PUPPETEER_AUTOCREATE_AGENTS=claude[,codex,…] creates
     // agent sessions at startup. The shim spawn-through path is POSIX-only, so
     // on Windows this is the way to get an agent session in the swarm.
-    for (const agent of (process.env.CHOPSTICKS_AUTOCREATE_AGENTS ?? '')
+    for (const agent of (process.env.PUPPETEER_AUTOCREATE_AGENTS ?? '')
       .split(',')
       .map((value) => value.trim())
       .filter(Boolean)) {

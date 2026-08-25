@@ -1,13 +1,13 @@
 {
-  "name": "@vibecook/chopsticks-workspaces",
+  "name": "@vibecook/puppeteer-workspaces",
   "version": "0.1.8",
   "type": "module",
-  "description": "Workspace modes for chopsticks sessions: direct, exclusive, git-worktree, and copy providers with final metadata.",
+  "description": "Workspace modes for puppeteer sessions: direct, exclusive, git-worktree, and copy providers with final metadata.",
   "license": "MIT",
   "author": "James Yong",
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/vibecook-dev/chopsticks.git",
+    "url": "git+https://github.com/vibecook-dev/puppeteer.git",
     "directory": "packages/workspaces"
   },
   "main": "./src/index.ts",

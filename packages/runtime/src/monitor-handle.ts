@@ -3,7 +3,7 @@ import type {
   AgentMonitorState,
   MonitorArtifactReadResult,
   MonitorNotification,
-} from '@vibecook/chopsticks-core';
+} from '@vibecook/puppeteer-core';
 
 export class MonitorNotificationGapError extends Error {
   readonly code = 'MONITOR_NOTIFICATION_GAP';

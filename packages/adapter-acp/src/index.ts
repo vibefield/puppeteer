@@ -1,5 +1,5 @@
 /**
- * @vibecook/chopsticks-adapter-acp — generic Agent Client Protocol adapter.
+ * @vibecook/puppeteer-adapter-acp — generic Agent Client Protocol adapter.
  *
  * ACP (agentclientprotocol.com) is a standardized JSON-RPC surface adopted by a
  * growing agent ecosystem. Because it's structured, this

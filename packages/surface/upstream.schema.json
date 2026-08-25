@@ -1,6 +1,6 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "https://github.com/vibecook-dev/chopsticks/packages/surface/upstream.schema.json",
+  "$id": "https://github.com/vibecook-dev/puppeteer/packages/surface/upstream.schema.json",
   "title": "Coding-agent upstream release detector",
   "type": "object",
   "additionalProperties": false,

@@ -1,7 +1,7 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "https://github.com/vibecook-dev/chopsticks/support/agents.schema.json",
-  "title": "Chopsticks promoted agent support",
+  "$id": "https://github.com/vibecook-dev/puppeteer/support/agents.schema.json",
+  "title": "Puppeteer promoted agent support",
   "type": "object",
   "additionalProperties": false,
   "required": ["schemaVersion", "agents"],
@@ -18,7 +18,7 @@
           "id": { "type": "string", "pattern": "^[a-z][a-z0-9-]*$" },
           "displayName": { "type": "string", "minLength": 1 },
           "kind": { "enum": ["vendor", "protocol"] },
-          "adapterPackage": { "type": "string", "pattern": "^@vibecook/chopsticks-adapter-" },
+          "adapterPackage": { "type": "string", "pattern": "^@vibecook/puppeteer-adapter-" },
           "persona": { "type": "string" },
           "currentManifest": { "type": "string" },
           "candidateManifest": { "type": "string" },
@@ -76,12 +76,12 @@
           "status": {
             "enum": ["verified", "legacy-verified", "baseline-pending", "unsupported", "deprecated"]
           },
-          "introducedInChopsticks": { "type": "string" }
+          "introducedInPuppeteer": { "type": "string" }
         },
         "allOf": [
           {
             "if": { "properties": { "status": { "enum": ["verified", "legacy-verified"] } } },
-            "then": { "required": ["persona", "currentManifest", "introducedInChopsticks"] }
+            "then": { "required": ["persona", "currentManifest", "introducedInPuppeteer"] }
           },
           {
             "if": { "properties": { "status": { "const": "legacy-verified" } }, "required": ["status"] },

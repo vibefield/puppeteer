@@ -1,5 +1,5 @@
 import { randomUUID } from 'node:crypto';
-import type { ExternalRef, NativeSessionRef, RuntimeRunId } from '@vibecook/chopsticks-core';
+import type { ExternalRef, NativeSessionRef, RuntimeRunId } from '@vibecook/puppeteer-core';
 
 export const MAX_CREATION_REQUEST_ID_BYTES = 256;
 export const MAX_EXTERNAL_REFS = 32;

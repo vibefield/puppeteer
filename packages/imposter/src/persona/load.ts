@@ -11,7 +11,7 @@ import { existsSync, readdirSync, readFileSync } from 'node:fs';
 import { createRequire } from 'node:module';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { loadModel, validatePayload, type PayloadSchema } from '@vibecook/chopsticks-surface';
+import { loadModel, validatePayload, type PayloadSchema } from '@vibecook/puppeteer-surface';
 import {
   OP_NAMES,
   RUNFLOW_DANGERS,

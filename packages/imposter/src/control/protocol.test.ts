@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import type { SurfaceModel } from '@vibecook/chopsticks-surface';
+import type { SurfaceModel } from '@vibecook/puppeteer-surface';
 import {
   defaultSocketPath,
   defaultTokenPath,
@@ -278,8 +278,8 @@ describe('control protocol', () => {
   });
 
   it('honours the socket and token overrides so tests never touch the real home', () => {
-    expect(defaultSocketPath({ CHOPSTICKS_IMPOSTER_SOCKET: '/tmp/p/x.sock' })).toBe('/tmp/p/x.sock');
-    expect(defaultTokenPath({ CHOPSTICKS_IMPOSTER_TOKEN_FILE: '/tmp/p/x.token' })).toBe('/tmp/p/x.token');
-    expect(defaultSocketPath({})).toMatch(/imposter\.sock$|chopsticks-imposter$/);
+    expect(defaultSocketPath({ PUPPETEER_IMPOSTER_SOCKET: '/tmp/p/x.sock' })).toBe('/tmp/p/x.sock');
+    expect(defaultTokenPath({ PUPPETEER_IMPOSTER_TOKEN_FILE: '/tmp/p/x.token' })).toBe('/tmp/p/x.token');
+    expect(defaultSocketPath({})).toMatch(/imposter\.sock$|puppeteer-imposter$/);
   });
 });

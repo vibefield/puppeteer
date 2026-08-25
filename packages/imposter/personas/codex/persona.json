@@ -1,7 +1,7 @@
 {
   "vendor": "codex",
   "asm": {
-    "package": "@vibecook/chopsticks-surface",
+    "package": "@vibecook/puppeteer-surface",
     "path": "vendors/codex/model/codex@0.147.0"
   },
   "shimNames": ["codex"],

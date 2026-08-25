@@ -40,7 +40,7 @@ const flag = (name) => {
   return index >= 0 ? argv[index + 1] : undefined;
 };
 export const CODEX_VERSION =
-  process.env.CHOPSTICKS_CODEX_VERSION ?? flag('--version') ?? resolveAgentModel({ vendor: 'codex' }).version;
+  process.env.PUPPETEER_CODEX_VERSION ?? flag('--version') ?? resolveAgentModel({ vendor: 'codex' }).version;
 
 const surfaceRoot = join(dirname(fileURLToPath(import.meta.url)), '..');
 
@@ -147,7 +147,7 @@ export async function runScenario(name, options = {}) {
   await new Promise((resolve) => provider.listen(port, '127.0.0.1', resolve));
 
   const child = spawn(
-    options.bin ?? process.env.CHOPSTICKS_CODEX_BIN ?? 'codex',
+    options.bin ?? process.env.PUPPETEER_CODEX_BIN ?? 'codex',
     [
       'app-server',
       '-c', 'model_provider="fake"',
@@ -202,7 +202,7 @@ export async function runScenario(name, options = {}) {
   child.stderr.setEncoding('utf8');
   child.stderr.on('data', (chunk) => (log += chunk));
 
-  send({ id: 1, method: 'initialize', params: { clientInfo: { name: 'chopsticks-census', version: '0.0.0' } } });
+  send({ id: 1, method: 'initialize', params: { clientInfo: { name: 'puppeteer-census', version: '0.0.0' } } });
   await wait(1200);
   send({ method: 'initialized' });
   await wait(300);

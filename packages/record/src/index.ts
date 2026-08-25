@@ -1,7 +1,7 @@
 /**
- * @vibecook/chopsticks-record — the own-action record (DESIGN §22.1):
+ * @vibecook/puppeteer-record — the own-action record (DESIGN §22.1):
  * an append-only JSONL log of what the runtime itself did. Not a mirror of
- * agent history; Spaghetti indexes agent files, this holds only chopsticks'
+ * agent history; Spaghetti indexes agent files, this holds only puppeteer'
  * own actions.
  */
 

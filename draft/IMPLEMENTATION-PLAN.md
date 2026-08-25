@@ -1,4 +1,4 @@
-# Chopsticks Implementation Plan — v0.1
+# Puppeteer Implementation Plan — v0.1
 
 **Status:** Draft for review
 
@@ -7,7 +7,7 @@
 > `draft/ADAPTING-AN-AGENT.md` and current package scripts for live workflows.
 **Created:** 2026-07-12
 **Companion:** `draft/DESIGN.md` (Native TUI Coding Agent Runtime, v0.2 — canonical copy; the one in `~/Projects/project100/temp/` is superseded)
-**Sibling:** Spaghetti (`p008/spaghetti`) — the read-only data plane. Boundary: *reads bytes left on disk → spaghetti; holds a live handle to an agent process → chopsticks.*
+**Sibling:** Spaghetti (`p008/spaghetti`) — the read-only data plane. Boundary: *reads bytes left on disk → spaghetti; holds a live handle to an agent process → puppeteer.*
 
 ---
 
@@ -26,8 +26,8 @@ v0.1 = DESIGN §28 Milestones 0–2, per the scope guidance already in that doc.
 | One native session = one agent process; no shadow `--print` process | DESIGN ADR-002 |
 | Semantics from side channels (hooks → transcript → workspace/process → inference), never from VT parsing | DESIGN ADR-003/-004/-005 |
 | Transcript observer = thin wrapper over Spaghetti SDK live plane, not a new parser | DESIGN §2.1, §16.8 |
-| `--session-id` UUID generated at spawn = the chopsticks ↔ spaghetti join contract | DESIGN §2.1, §14.4 |
-| Chopsticks persists **operational** state only; browse/search stays in Spaghetti | DESIGN §2.1, §22.1 |
+| `--session-id` UUID generated at spawn = the puppeteer ↔ spaghetti join contract | DESIGN §2.1, §14.4 |
+| Puppeteer persists **operational** state only; browse/search stays in Spaghetti | DESIGN §2.1, §22.1 |
 | Recording default `memory-only`; `persistent-raw` opt-in; no redacted tier | DESIGN §23.3 |
 | Prompt injection = guarded bracketed paste, confirmed by **matching** UserPromptSubmit payload; `PromptReceipt` may be `uncertain` | DESIGN §17.2 |
 | Electron main owns PTYs; renderer is sandboxed; core package has zero Electron dependency | DESIGN ADR-007, §13 |
@@ -39,8 +39,8 @@ v0.1 = DESIGN §28 Milestones 0–2, per the scope guidance already in that doc.
 
 | Topic | Proposal | Notes |
 |---|---|---|
-| Repo | Standalone repo at `p008/chopsticks`, pnpm workspace | Mirrors spaghetti/truffle conventions (release-please, prettier, vitest, lock-step versioning) |
-| npm scope | `@vibecook/chopsticks-*` | DESIGN §8's `@native-agent/*` was a placeholder |
+| Repo | Standalone repo at `p008/puppeteer`, pnpm workspace | Mirrors spaghetti/truffle conventions (release-please, prettier, vitest, lock-step versioning) |
+| npm scope | `@vibecook/puppeteer-*` | DESIGN §8's `@native-agent/*` was a placeholder |
 | App location | `apps/workbench/` (Electron app, private) instead of DESIGN §8's `packages/electron` | Library/app split, same as spaghetti's `apps/playground`; the thin electron *bridge* helpers that are reusable live in `packages/electron-host` only if they prove reusable — start inside the app |
 | Platform | macOS first; Linux best-effort; **Windows deferred past v0.1** (Job Objects native helper is real work) | You develop on darwin |
 | Spaghetti dependency | Declare exact `@vibecook/spaghetti-sdk@0.7.0`; use the root sibling-workspace override for local iteration | Adapter plus both Electron hosts keep the same exact edge |
@@ -54,10 +54,10 @@ Bootstrap rule (global): no scaffolding tools in a directory with existing files
 ## 3. Repo layout — v0.1 trim of DESIGN §8
 
 ```text
-chopsticks/
+puppeteer/
   draft/                      # this plan + DESIGN.md (move to docs/ at bootstrap)
   packages/
-    core/                     # @vibecook/chopsticks-core — types, reducer, no I/O
+    core/                     # @vibecook/puppeteer-core — types, reducer, no I/O
       src/
         events.ts             #   AgentEvent union + AgentEventEnvelope (DESIGN §14)
         state.ts              #   SessionRuntimeState + reduceSessionState (DESIGN §15)
@@ -66,7 +66,7 @@ chopsticks/
         capabilities.ts       #   ObservationCapabilities/-Level (DESIGN §19)
         errors.ts             #   RuntimeError model (DESIGN §24)
         queue.ts              #   bounded async event queues
-    node/                     # @vibecook/chopsticks-node — PTY + processes + pipeline
+    node/                     # @vibecook/puppeteer-node — PTY + processes + pipeline
       src/
         pty.ts                #   node-pty transport → NativeProcessHandle
         process-tree.ts       #   POSIX process groups; escalation ladder (DESIGN §21.2)
@@ -74,7 +74,7 @@ chopsticks/
         ring-buffer.ts        #   RecentOutputRingBuffer
         headless-sink.ts      #   @xterm/headless mirror (DESIGN §12.3)
         session-manager.ts    #   runtime host: createSession/list/dispose
-    adapter-claude/           # @vibecook/chopsticks-adapter-claude
+    adapter-claude/           # @vibecook/puppeteer-adapter-claude
       src/
         registry.ts           #   hook-event registry AS DATA (fed by Phase 0 findings)
         detection.ts          #   executable + version + capability probe
@@ -84,7 +84,7 @@ chopsticks/
         normalizer.ts         #   normalizeClaudeHook (DESIGN §16.7)
         transcript-observer.ts#   wrapper over spaghetti SDK (DESIGN §16.8)
         prompt.ts             #   guarded injection + lease (DESIGN §17)
-    testing/                  # @vibecook/chopsticks-testing
+    testing/                  # @vibecook/puppeteer-testing
       src/
         fake-agent.ts         #   fixture TUI executable (DESIGN §26.1)
         fake-hook-source.ts
@@ -188,7 +188,7 @@ Exit = v0.1 acceptance (below).
 | S1 | Verify/export hook-event types (`HookEventName`, payload types) from the SDK barrel so `adapter-claude`'s registry can import rather than redeclare | tiny |
 | S2 | Delivered: scoped `observeSession()` stream with typed facts, readiness barriers, epochs, overflow/resync, and descendant following | complete |
 
-Both respect the settled charter: read-only, no new write paths, no chopsticks knowledge inside spaghetti — S2 is a generic API improvement.
+Both respect the settled charter: read-only, no new write paths, no puppeteer knowledge inside spaghetti — S2 is a generic API improvement.
 
 ---
 
@@ -222,14 +222,14 @@ Amended:
 | node-pty × Electron ABI drift | electron-rebuild in CI at M1-5; pin Electron; truffle release discipline applies |
 | Renderer floods / slow-sink stalls | Sink policies + desync-snapshot protocol (§12.4) are in the M1-3 PR, not an afterthought; fake-agent flood mode in CI |
 | Prompt injection breaks on TUI changes | Receipt semantics (`uncertain` is a valid answer) + conformance fixtures; never claim more certainty than the confirmation event provides |
-| Claude Code's own teams/orchestration eats the intra-Claude story | Product identity = heterogeneity + observability (the spaghetti index); chopsticks differentiates on hosting *any* agent's native TUI with real state |
+| Claude Code's own teams/orchestration eats the intra-Claude story | Product identity = heterogeneity + observability (the spaghetti index); puppeteer differentiates on hosting *any* agent's native TUI with real state |
 | Solo-dev scope creep | v0.1 gate is M2 exit, enforced by §28 scope guidance; deferred table above has explicit start-triggers |
 
 ---
 
 ## 13. Suggested first implementation session
 
-1. `git init` in `chopsticks/`, commit `draft/` as-is.
+1. `git init` in `puppeteer/`, commit `draft/` as-is.
 2. Run the Phase 0 flag + settings probes (an hour of shell work); start the event census capture.
 3. While captures accumulate: bootstrap the pnpm workspace (M0-1) copying spaghetti's configs.
 4. Write `HOOK-SURFACE-FINDINGS.md` from the census; land the go/no-go on HTTP hooks.
@@ -275,6 +275,6 @@ Rough effort at your cadence: C1 ~1–2 · C2 ~2 · C3 ~1–2 · C4 ~2 · C5 ~2 
 | Risk | Mitigation |
 |---|---|
 | app-server protocol is experimental, v1/v2 churns | Codegen from a pinned `generate-ts`; version-probe at detection; the normalizer isolates protocol drift to one file |
-| app-server lifecycle (daemon, pairing, token, socket) is more moving parts than a PTY | C1 spike owns exactly this; `remote-control pair`/bearer mirrors chopsticks' existing loopback+token discipline |
+| app-server lifecycle (daemon, pairing, token, socket) is more moving parts than a PTY | C1 spike owns exactly this; `remote-control pair`/bearer mirrors puppeteer' existing loopback+token discipline |
 | Native-TUI-via-`--remote` may conflict with protocol-side `TurnStart` (double-drive) | §6 deferral #3 verifies coexistence in C1 before C6 depends on it; fall back to structured-only or TUI-only if they don't compose |
 | Thread id ≠ rollout `session_id` would break the spaghetti join | §6 deferral #1 — the very first C1 assertion; if they differ, add an explicit id-map (still deterministic, just one hop) |

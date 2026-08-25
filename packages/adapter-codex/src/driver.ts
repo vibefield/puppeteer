@@ -21,15 +21,15 @@ import { performance } from 'node:perf_hooks';
 import {
   BufferedAgentEventSource,
   createEnvelopeStamper,
-  CHOPSTICKS_VERSION,
+  PUPPETEER_VERSION,
   type AgentEvent,
   type AgentEventEnvelope,
   type AgentAdapterSession,
   type ObservationLevel,
   type PromptReceipt,
   type PromptSubmission,
-} from '@vibecook/chopsticks-core';
-import type { AdapterMonitorObservationBatch } from '@vibecook/chopsticks-core/monitor-spi';
+} from '@vibecook/puppeteer-core';
+import type { AdapterMonitorObservationBatch } from '@vibecook/puppeteer-core/monitor-spi';
 import { approvalResponse } from './control/approvals.js';
 import {
   AppServerClient,
@@ -40,7 +40,7 @@ import {
 import { CodexNotificationNormalizer } from './normalizer.js';
 import { CodexMonitorEvidence } from './observation/monitor-evidence.js';
 
-const CLIENT_INFO = { name: 'chopsticks', version: CHOPSTICKS_VERSION } as const;
+const CLIENT_INFO = { name: 'puppeteer', version: PUPPETEER_VERSION } as const;
 
 export type CodexApprovalDecision = 'approved' | 'denied';
 
@@ -305,7 +305,7 @@ export async function createCodexSession(options: CreateCodexSessionOptions): Pr
       // exact clientUserMessageId echo is the deterministic confirmation that
       // this session observed OUR input. Do not claim another concurrent
       // prompt, or a server that accepted then lost the item, as confirmed.
-      const clientUserMessageId = `chopsticks-inj-${++injectionCounter}`;
+      const clientUserMessageId = `puppeteer-inj-${++injectionCounter}`;
       let resolveReceipt!: (receipt: PromptReceipt) => void;
       const receipt = new Promise<PromptReceipt>((resolve) => {
         resolveReceipt = resolve;

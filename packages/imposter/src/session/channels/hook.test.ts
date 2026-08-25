@@ -36,8 +36,8 @@ describe('createHookEmitter', () => {
                 {
                   type: 'http',
                   url: endpoint,
-                  headers: { Authorization: 'Bearer $CHOPSTICKS_HOOK_TOKEN', 'X-Hidden': '$UNGRANTED_SECRET' },
-                  allowedEnvVars: ['CHOPSTICKS_HOOK_TOKEN'],
+                  headers: { Authorization: 'Bearer $PUPPETEER_HOOK_TOKEN', 'X-Hidden': '$UNGRANTED_SECRET' },
+                  allowedEnvVars: ['PUPPETEER_HOOK_TOKEN'],
                   timeout: 5,
                 },
               ],
@@ -45,7 +45,7 @@ describe('createHookEmitter', () => {
           ],
         },
       },
-      env: { CHOPSTICKS_HOOK_TOKEN: 'sekrit', UNGRANTED_SECRET: 'must-not-leak' },
+      env: { PUPPETEER_HOOK_TOKEN: 'sekrit', UNGRANTED_SECRET: 'must-not-leak' },
     });
     await emitter.emit('Stop', { session_id: 'abc', stop_hook_active: false });
     expect(received).toHaveLength(1);
@@ -58,10 +58,10 @@ describe('createHookEmitter', () => {
   });
 
   it('delivers the repo curl-forwarder shape as a direct POST (no sh needed)', async () => {
-    const command = `sh -c 'curl -s -m 5 -X POST -H "Content-Type: application/json" -H "Authorization: Bearer $CHOPSTICKS_HOOK_TOKEN" --data-binary @- ${endpoint}'`;
+    const command = `sh -c 'curl -s -m 5 -X POST -H "Content-Type: application/json" -H "Authorization: Bearer $PUPPETEER_HOOK_TOKEN" --data-binary @- ${endpoint}'`;
     const emitter = createHookEmitter({
       settings: { hooks: { SessionStart: [{ hooks: [{ type: 'command', command }] }] } },
-      env: { CHOPSTICKS_HOOK_TOKEN: 'sekrit' },
+      env: { PUPPETEER_HOOK_TOKEN: 'sekrit' },
     });
     await emitter.emit('SessionStart', { session_id: 'abc', source: 'startup' });
     expect(received).toHaveLength(1);

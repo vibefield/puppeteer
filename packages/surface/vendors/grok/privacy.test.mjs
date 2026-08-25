@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { checkRecord, sanitizeRecord } from '@vibecook/chopsticks-surface/sanitize';
+import { checkRecord, sanitizeRecord } from '@vibecook/puppeteer-surface/sanitize';
 import { grokRules } from './privacy.mjs';
 
 describe('Grok capture privacy', () => {

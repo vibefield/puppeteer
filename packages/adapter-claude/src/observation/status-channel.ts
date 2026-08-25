@@ -7,7 +7,7 @@ import type {
   ContextWindowInvalidatedEvent,
   ContextWindowUpdatedEvent,
   SessionEnvironmentUpdatedEvent,
-} from '@vibecook/chopsticks-core';
+} from '@vibecook/puppeteer-core';
 
 export interface ClaudeStatusLineConfig {
   type: 'command';
@@ -318,12 +318,12 @@ for await (const chunk of process.stdin) input += chunk;
 
 const childChannel = process.argv[2] === 'subagent';
 const endpoint = process.env[childChannel
-  ? 'CHOPSTICKS_SUBAGENT_STATUSLINE_ENDPOINT'
-  : 'CHOPSTICKS_STATUSLINE_ENDPOINT'];
+  ? 'PUPPETEER_SUBAGENT_STATUSLINE_ENDPOINT'
+  : 'PUPPETEER_STATUSLINE_ENDPOINT'];
 const delegateCommand = process.env[childChannel
-  ? 'CHOPSTICKS_SUBAGENT_STATUSLINE_DELEGATE'
-  : 'CHOPSTICKS_STATUSLINE_DELEGATE'];
-const tokenEnvVar = process.env.CHOPSTICKS_STATUSLINE_TOKEN_ENV_VAR;
+  ? 'PUPPETEER_SUBAGENT_STATUSLINE_DELEGATE'
+  : 'PUPPETEER_STATUSLINE_DELEGATE'];
+const tokenEnvVar = process.env.PUPPETEER_STATUSLINE_TOKEN_ENV_VAR;
 const token = tokenEnvVar ? process.env[tokenEnvVar] : undefined;
 const telemetry = endpoint && token
   ? fetch(endpoint, {

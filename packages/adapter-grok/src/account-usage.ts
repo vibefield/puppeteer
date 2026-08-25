@@ -1,4 +1,4 @@
-import type { AccountUsageFetchResult } from '@vibecook/chopsticks-core';
+import type { AccountUsageFetchResult } from '@vibecook/puppeteer-core';
 
 /**
  * Grok Build fetches its weekly quota through an in-process

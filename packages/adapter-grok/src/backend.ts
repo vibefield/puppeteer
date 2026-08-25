@@ -13,8 +13,8 @@ import { existsSync, mkdtempSync, realpathSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join, resolve } from 'node:path';
 import { performance } from 'node:perf_hooks';
-import { createAcpSession, createStdioAcpConnector } from '@vibecook/chopsticks-adapter-acp';
-import type { CreateAcpSessionOptions } from '@vibecook/chopsticks-adapter-acp';
+import { createAcpSession, createStdioAcpConnector } from '@vibecook/puppeteer-adapter-acp';
+import type { CreateAcpSessionOptions } from '@vibecook/puppeteer-adapter-acp';
 import {
   BufferedAgentEventSource,
   createEnvelopeStamper,
@@ -25,8 +25,8 @@ import {
   type PromptReceipt,
   type PromptSubmission,
   type TerminalSpec,
-} from '@vibecook/chopsticks-core';
-import type { AdapterMonitorObservationBatch } from '@vibecook/chopsticks-core/monitor-spi';
+} from '@vibecook/puppeteer-core';
+import type { AdapterMonitorObservationBatch } from '@vibecook/puppeteer-core/monitor-spi';
 import {
   createGrokSessionObserver,
   grokExtensionEvents,
@@ -397,16 +397,16 @@ export function createGrokBackend(options: CreateGrokBackendOptions): GrokBacken
   // backend. Real Grok launches (no appServerEnv) retain normal GROK_HOME rules.
   if (childExtras?.AI_PERSONA === 'grok') {
     if (
-      childExtras.CHOPSTICKS_IMPOSTER_HOME &&
+      childExtras.PUPPETEER_IMPOSTER_HOME &&
       childExtras.GROK_HOME &&
-      resolve(childExtras.CHOPSTICKS_IMPOSTER_HOME) !== resolve(childExtras.GROK_HOME)
+      resolve(childExtras.PUPPETEER_IMPOSTER_HOME) !== resolve(childExtras.GROK_HOME)
     ) {
-      throw new Error('Grok Imposter requires CHOPSTICKS_IMPOSTER_HOME and GROK_HOME to name the same root');
+      throw new Error('Grok Imposter requires PUPPETEER_IMPOSTER_HOME and GROK_HOME to name the same root');
     }
-    const configured = childExtras.CHOPSTICKS_IMPOSTER_HOME ?? childExtras.GROK_HOME;
-    const imposterHome = configured ?? mkdtempSync(join(realpathSync(tmpdir()), 'chopsticks-grok-imposter-home-'));
+    const configured = childExtras.PUPPETEER_IMPOSTER_HOME ?? childExtras.GROK_HOME;
+    const imposterHome = configured ?? mkdtempSync(join(realpathSync(tmpdir()), 'puppeteer-grok-imposter-home-'));
     if (!configured) ownedImposterHome = imposterHome;
-    childExtras.CHOPSTICKS_IMPOSTER_HOME = imposterHome;
+    childExtras.PUPPETEER_IMPOSTER_HOME = imposterHome;
     childExtras.GROK_HOME = imposterHome;
   }
   const childEnv: NodeJS.ProcessEnv | undefined = childExtras ? { ...process.env, ...childExtras } : undefined;
@@ -437,7 +437,7 @@ export function createGrokBackend(options: CreateGrokBackendOptions): GrokBacken
     if (leader) stopLeader(leader);
 
     // macOS /tmp is a symlink the agent's socket bind rejects — use the real tmp.
-    const dir = mkdtempSync(join(realpathSync(tmpdir()), 'chopsticks-grok-'));
+    const dir = mkdtempSync(join(realpathSync(tmpdir()), 'puppeteer-grok-'));
     const socketPath = join(dir, 'leader.sock');
     const child = spawn(
       executable,

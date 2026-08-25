@@ -66,7 +66,7 @@ test('artifact URLs expand only the reviewed version field and host', () => {
 });
 
 test('downloader writes bounded bytes but never runs them', async () => {
-  const repoRoot = mkdtempSync(join(tmpdir(), 'chopsticks-download-'));
+  const repoRoot = mkdtempSync(join(tmpdir(), 'puppeteer-download-'));
   const upstream = join(repoRoot, 'packages', 'surface', 'vendors', 'fake');
   mkdirSync(upstream, { recursive: true });
   writeFileSync(join(upstream, 'upstream.json'), JSON.stringify(config));
@@ -93,7 +93,7 @@ test('downloader writes bounded bytes but never runs them', async () => {
 });
 
 test('downloader extracts one reviewed executable from a ZIP release', async () => {
-  const repoRoot = mkdtempSync(join(tmpdir(), 'chopsticks-download-zip-'));
+  const repoRoot = mkdtempSync(join(tmpdir(), 'puppeteer-download-zip-'));
   const upstream = join(repoRoot, 'packages', 'surface', 'vendors', 'fake');
   const zipConfig = structuredClone(config);
   zipConfig.acquisition.maxBytes = 1_000;
@@ -121,7 +121,7 @@ test('downloader extracts one reviewed executable from a ZIP release', async () 
 });
 
 test('ZIP extraction rejects unsafe archive paths', async () => {
-  const repoRoot = mkdtempSync(join(tmpdir(), 'chopsticks-download-zip-unsafe-'));
+  const repoRoot = mkdtempSync(join(tmpdir(), 'puppeteer-download-zip-unsafe-'));
   const upstream = join(repoRoot, 'packages', 'surface', 'vendors', 'fake');
   const zipConfig = structuredClone(config);
   zipConfig.acquisition.maxBytes = 1_000;
@@ -150,7 +150,7 @@ test('ZIP extraction rejects unsafe archive paths', async () => {
 });
 
 test('ZIP extraction rejects option-like archive entries', async () => {
-  const repoRoot = mkdtempSync(join(tmpdir(), 'chopsticks-download-zip-option-'));
+  const repoRoot = mkdtempSync(join(tmpdir(), 'puppeteer-download-zip-option-'));
   const upstream = join(repoRoot, 'packages', 'surface', 'vendors', 'fake');
   const zipConfig = structuredClone(config);
   zipConfig.acquisition.maxBytes = 1_000;
@@ -179,7 +179,7 @@ test('ZIP extraction rejects option-like archive entries', async () => {
 });
 
 test('downloader cancels an oversized response stream before buffering the artifact', async () => {
-  const repoRoot = mkdtempSync(join(tmpdir(), 'chopsticks-download-limit-'));
+  const repoRoot = mkdtempSync(join(tmpdir(), 'puppeteer-download-limit-'));
   const upstream = join(repoRoot, 'packages', 'surface', 'vendors', 'fake');
   mkdirSync(upstream, { recursive: true });
   writeFileSync(join(upstream, 'upstream.json'), JSON.stringify(config));
@@ -220,7 +220,7 @@ test('downloader cancels an oversized response stream before buffering the artif
 });
 
 test('downloader validates every redirect before contacting the next origin', async () => {
-  const repoRoot = mkdtempSync(join(tmpdir(), 'chopsticks-download-redirect-'));
+  const repoRoot = mkdtempSync(join(tmpdir(), 'puppeteer-download-redirect-'));
   const upstream = join(repoRoot, 'packages', 'surface', 'vendors', 'fake');
   mkdirSync(upstream, { recursive: true });
   writeFileSync(join(upstream, 'upstream.json'), JSON.stringify(config));

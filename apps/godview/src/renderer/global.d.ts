@@ -1,11 +1,11 @@
 import type { TerminalMenuAction } from '@vibecook/ghosttea-react';
 import type { GhostteaAppearanceUpdate, GhostteaConfigEditorBridge } from '@vibecook/ghosttea-react/workspace';
-import type { ChopsticksBridge } from '../protocol.js';
+import type { PuppeteerBridge } from '../protocol.js';
 import type { TerminalSessionHandoff } from '../protocol.js';
 
 declare global {
   interface Window {
-    chopsticks: ChopsticksBridge;
+    puppeteer: PuppeteerBridge;
     desktop: {
       platform: string;
       tabId: string;

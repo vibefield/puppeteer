@@ -39,7 +39,7 @@ describe('Claude account usage', () => {
   });
 
   it('reads file credentials and falls back to an injected Keychain reader', async () => {
-    const directory = await mkdtemp(join(tmpdir(), 'chopsticks-claude-credentials-'));
+    const directory = await mkdtemp(join(tmpdir(), 'puppeteer-claude-credentials-'));
     const credentialsPath = join(directory, '.credentials.json');
     await writeFile(credentialsPath, JSON.stringify({ claudeAiOauth: { accessToken: 'file-token' } }), 'utf8');
 
@@ -352,7 +352,7 @@ describe('Claude account usage', () => {
   });
 
   it('does not refresh or rewrite expired OAuth credentials', async () => {
-    const directory = await mkdtemp(join(tmpdir(), 'chopsticks-claude-read-only-'));
+    const directory = await mkdtemp(join(tmpdir(), 'puppeteer-claude-read-only-'));
     const credentialsPath = join(directory, '.credentials.json');
     const original = JSON.stringify({
       claudeAiOauth: {
@@ -377,7 +377,7 @@ describe('Claude account usage', () => {
   });
 
   it('does not rotate fresh credentials after the usage endpoint rejects them', async () => {
-    const directory = await mkdtemp(join(tmpdir(), 'chopsticks-claude-rejected-read-only-'));
+    const directory = await mkdtemp(join(tmpdir(), 'puppeteer-claude-rejected-read-only-'));
     const credentialsPath = join(directory, '.credentials.json');
     const original = JSON.stringify({
       claudeAiOauth: {

@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import type { GhostteaWorkspaceContext } from '@vibecook/ghosttea-react/workspace';
-import { isMonitorStateAfterRemoval, isNewerMonitorRevision } from '@vibecook/chopsticks-core';
+import { isMonitorStateAfterRemoval, isNewerMonitorRevision } from '@vibecook/puppeteer-core';
 import type {
   AgentMonitorNotificationMessage,
   AgentMonitorRemovedMessage,
@@ -143,16 +143,16 @@ export function useMonitorAgents({
       });
     };
 
-    const unsubscribeSession = window.chopsticks.onAgentSession(remember);
-    const unsubscribeState = window.chopsticks.onAgentState(updateState);
-    const unsubscribeRemoved = window.chopsticks.onAgentRemoved(forget);
-    const unsubscribeFinal = window.chopsticks.onWorkspaceFinal((event) => {
+    const unsubscribeSession = window.puppeteer.onAgentSession(remember);
+    const unsubscribeState = window.puppeteer.onAgentState(updateState);
+    const unsubscribeRemoved = window.puppeteer.onAgentRemoved(forget);
+    const unsubscribeFinal = window.puppeteer.onWorkspaceFinal((event) => {
       if (!configurationReady) pendingFinals.add(event.runtimeSessionId);
       else if (!rendererV2) forget(event.runtimeSessionId);
     });
-    const unsubscribeMonitorState = window.chopsticks.onAgentMonitorState(updateMonitor);
-    const unsubscribeMonitorRemoved = window.chopsticks.onAgentMonitorRemoved(removeMonitor);
-    const unsubscribeMonitorNotification = window.chopsticks.onAgentMonitorNotification((message) => {
+    const unsubscribeMonitorState = window.puppeteer.onAgentMonitorState(updateMonitor);
+    const unsubscribeMonitorRemoved = window.puppeteer.onAgentMonitorRemoved(removeMonitor);
+    const unsubscribeMonitorNotification = window.puppeteer.onAgentMonitorNotification((message) => {
       if (!configurationReady) {
         pendingNotifications.push(message);
         if (pendingNotifications.length > 4) pendingNotifications.shift();
@@ -160,7 +160,7 @@ export function useMonitorAgents({
     });
 
     void (async () => {
-      const configuration = await window.chopsticks
+      const configuration = await window.puppeteer
         .agentMonitorConfiguration()
         .catch(() => ({ godviewMonitorV2: false }));
       if (!alive) return;
@@ -176,8 +176,8 @@ export function useMonitorAgents({
       }
       pendingFinals.clear();
       const [snapshots, monitorSnapshots] = await Promise.all([
-        window.chopsticks.listAgentSessions(),
-        window.chopsticks.listAgentMonitors(),
+        window.puppeteer.listAgentSessions(),
+        window.puppeteer.listAgentMonitors(),
       ]);
       if (!alive) return;
       for (const monitor of monitorSnapshots) acceptMonitor(monitor);

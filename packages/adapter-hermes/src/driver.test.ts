@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
-import type { AgentHost } from '@vibecook/chopsticks-core';
-import { projectAgentSession } from '@vibecook/chopsticks-testing';
+import type { AgentHost } from '@vibecook/puppeteer-core';
+import { projectAgentSession } from '@vibecook/puppeteer-testing';
 import { createHermesTuiSession } from './driver.js';
 import { FakeHermesGateway } from './test-support/fake-gateway.js';
 

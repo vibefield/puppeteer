@@ -25,8 +25,8 @@ import { execFileSync } from 'node:child_process';
 import { mkdtempSync, readFileSync, readdirSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import { loadModel, validatePayload } from '@vibecook/chopsticks-surface';
-import { checkCaptureDirectory } from '@vibecook/chopsticks-surface/sanitize';
+import { loadModel, validatePayload } from '@vibecook/puppeteer-surface';
+import { checkCaptureDirectory } from '@vibecook/puppeteer-surface/sanitize';
 import { resolveAgentModel } from '../../../../scripts/agent-model-selection.mjs';
 import { codexRules } from './census/sanitize.mjs';
 
@@ -123,7 +123,7 @@ let temporary;
 if (!schemaDir) {
   try {
     temporary = mkdtempSync(join(tmpdir(), 'codex-audit-schema-'));
-    execFileSync(process.env.CHOPSTICKS_CODEX_BIN ?? 'codex', ['app-server', 'generate-json-schema', '--experimental', '--out', temporary], {
+    execFileSync(process.env.PUPPETEER_CODEX_BIN ?? 'codex', ['app-server', 'generate-json-schema', '--experimental', '--out', temporary], {
       stdio: 'ignore',
     });
     schemaDir = temporary;

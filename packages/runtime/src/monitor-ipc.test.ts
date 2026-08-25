@@ -6,7 +6,7 @@ import {
   type AgentMonitorState,
   type MonitorNotification,
   type SessionRuntimeState,
-} from '@vibecook/chopsticks-core';
+} from '@vibecook/puppeteer-core';
 import {
   acknowledgeAgentFailureForIpc,
   connectMonitorIpcRelay,
@@ -437,35 +437,32 @@ describe('monitor IPC request boundary', () => {
       godviewMonitorV2: false,
       canaryTrace: false,
     });
-    expect(resolveMonitorHostFeatureFlags(['--chopsticks-monitor-v2'])).toEqual({
+    expect(resolveMonitorHostFeatureFlags(['--puppeteer-monitor-v2'])).toEqual({
       monitorV2: true,
       shadowComparison: false,
       godviewMonitorV2: false,
       canaryTrace: false,
     });
-    expect(resolveMonitorHostFeatureFlags(['--chopsticks-monitor-shadow'])).toEqual({
+    expect(resolveMonitorHostFeatureFlags(['--puppeteer-monitor-shadow'])).toEqual({
       monitorV2: true,
       shadowComparison: true,
       godviewMonitorV2: false,
       canaryTrace: false,
     });
-    expect(resolveMonitorHostFeatureFlags(['--chopsticks-godview-monitor-v2'])).toEqual({
+    expect(resolveMonitorHostFeatureFlags(['--puppeteer-godview-monitor-v2'])).toEqual({
       monitorV2: true,
       shadowComparison: false,
       godviewMonitorV2: true,
       canaryTrace: false,
     });
-    expect(resolveMonitorHostFeatureFlags(['--chopsticks-monitor-canary-trace'])).toEqual({
+    expect(resolveMonitorHostFeatureFlags(['--puppeteer-monitor-canary-trace'])).toEqual({
       monitorV2: true,
       shadowComparison: false,
       godviewMonitorV2: false,
       canaryTrace: true,
     });
     expect(
-      resolveMonitorHostFeatureFlags([
-        '--chopsticks-spaghetti-scoped-shadow',
-        '--chopsticks-spaghetti-scoped-primary',
-      ]),
+      resolveMonitorHostFeatureFlags(['--puppeteer-spaghetti-scoped-shadow', '--puppeteer-spaghetti-scoped-primary']),
     ).toEqual({
       monitorV2: false,
       shadowComparison: false,

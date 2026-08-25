@@ -1,6 +1,6 @@
 /** Stateful OpenCode HTTP/SSE -> Core event normalization. */
 
-import type { AgentEvent, AgentEventConfidence, AgentEventSource, ToolPresentation } from '@vibecook/chopsticks-core';
+import type { AgentEvent, AgentEventConfidence, AgentEventSource, ToolPresentation } from '@vibecook/puppeteer-core';
 import type { OpenCodeSessionInfo } from './client.js';
 import type { OpenCodeSseRecord } from './event-stream.js';
 import { openCodeStructuredQuestions } from './monitor-evidence.js';

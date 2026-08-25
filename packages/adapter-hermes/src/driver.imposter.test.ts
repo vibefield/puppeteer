@@ -1,7 +1,7 @@
 import { rmSync } from 'node:fs';
 import { afterEach, describe, expect, it } from 'vitest';
-import type { AgentEventEnvelope, AgentHost } from '@vibecook/chopsticks-core';
-import { projectAgentSession } from '@vibecook/chopsticks-testing';
+import type { AgentEventEnvelope, AgentHost } from '@vibecook/puppeteer-core';
+import { projectAgentSession } from '@vibecook/puppeteer-testing';
 import { createHermesTuiSession, type HermesTuiSession } from './driver.js';
 import { createHermesImposterFixture } from './test-support/imposter.js';
 import type { HermesStdioClient } from './transport/stdio.js';

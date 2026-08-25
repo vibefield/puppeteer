@@ -95,7 +95,7 @@ describe('v2 own-action schema', () => {
       git: {
         state: 'attached',
         headCommit: 'b2',
-        headRef: 'refs/heads/chopsticks/workspace-one',
+        headRef: 'refs/heads/puppeteer/workspace-one',
         index: summary,
         worktree: summary,
         conflicts: 0,

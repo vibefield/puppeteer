@@ -2,11 +2,11 @@ import { describe, expect, it } from 'vitest';
 import type {
   AdapterMonitorObservationBatch,
   RuntimeMonitorObservationBatch,
-} from '@vibecook/chopsticks-core/monitor-spi';
+} from '@vibecook/puppeteer-core/monitor-spi';
 // @ts-expect-error version-locked SPI types must not leak from the application package root
-import type { AdapterMonitorObservationBatch as LeakedPublicBatch } from '@vibecook/chopsticks-core';
+import type { AdapterMonitorObservationBatch as LeakedPublicBatch } from '@vibecook/puppeteer-core';
 // @ts-expect-error accumulator implementation must remain on the version-locked SPI subpath
-type LeakedPublicReducer = (typeof import('@vibecook/chopsticks-core'))['reduceMonitorAccumulator'];
+type LeakedPublicReducer = (typeof import('@vibecook/puppeteer-core'))['reduceMonitorAccumulator'];
 
 void (undefined as unknown as LeakedPublicBatch);
 void (undefined as unknown as LeakedPublicReducer);

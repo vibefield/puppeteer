@@ -44,9 +44,9 @@ Use these identities consistently:
 | -------------------------- | --------------------------------------- |
 | Provider/vendor key        | `opencode`                              |
 | Display name               | `OpenCode`                              |
-| Adapter package            | `@vibecook/chopsticks-adapter-opencode` |
-| Binary override            | `CHOPSTICKS_OPENCODE_BIN`               |
-| Candidate version override | `CHOPSTICKS_OPENCODE_VERSION`           |
+| Adapter package            | `@vibecook/puppeteer-adapter-opencode` |
+| Binary override            | `PUPPETEER_OPENCODE_BIN`               |
+| Candidate version override | `PUPPETEER_OPENCODE_VERSION`           |
 | Live-test opt-in           | `OPENCODE_LIVE=1`                       |
 | Imposter selector          | `ai --opencode` / `AI_PERSONA=opencode` |
 | Imposter shim              | `opencode`                              |
@@ -85,7 +85,7 @@ second controller racing the native TUI.
 
 ## 5. Process, security, and ownership contract
 
-For the first implementation, use one backend per Chopsticks session. This
+For the first implementation, use one backend per Puppeteer session. This
 trades a small process cost for clear credential, directory, lifecycle, and
 failure isolation.
 
@@ -149,7 +149,7 @@ solely because event IDs exist.
 
 `submitPrompt` uses REST, not terminal paste:
 
-1. Mint `msg_chopsticks_<random>`.
+1. Mint `msg_puppeteer_<random>`.
 2. `POST /session/:id/prompt_async` with that `messageID`, model/agent, and one
    text part.
 3. A `204` means accepted, not confirmed.
@@ -399,7 +399,7 @@ Expected integration touches:
 
 - runtime package dependency/import/provider entry;
 - `BuiltinAgentKind`, executable kind, and typed `OpenCodeAgentOptions`;
-- executable resolution via `CHOPSTICKS_OPENCODE_BIN`;
+- executable resolution via `PUPPETEER_OPENCODE_BIN`;
 - app/provider selectors, labels/icons only where agents are enumerated;
 - adaptation devkit persona/runflow discovery;
 - restore/spawn-through tests for the `serve` + `attach` split lifecycle.
@@ -408,7 +408,7 @@ Gate: runtime provider tests, app typechecks/tests, prepare/adopt recovery, and
 real-adapter-vs-Imposter conformance pass.
 
 Implementation status (2026-08-11): complete. Runtime exposes `opencode` as a
-typed built-in provider, resolves `CHOPSTICKS_OPENCODE_BIN`, and forwards the
+typed built-in provider, resolves `PUPPETEER_OPENCODE_BIN`, and forwards the
 private-backend, model, permission, context, timeout, and reconnect options to
 both create and prepare paths. Godview discovers and shims the real
 binary, accept exact `-s`/`--session` resume selection, and expose OpenCode in
@@ -427,7 +427,7 @@ remaining opt-in). Workspace typecheck/build, all three app bundles,
 package-layout, upstream-config, support-ledger, and OpenCode-scoped formatting
 checks are clean. The explicit adaptation, promotion, and scheduled-live
 workflow seams now include OpenCode with `OPENCODE_LIVE=1` and
-`CHOPSTICKS_OPENCODE_BIN`; workflow regression tests keep those security-policy
+`PUPPETEER_OPENCODE_BIN`; workflow regression tests keep those security-policy
 choices visible.
 
 ### Stage 6 — reconcile and promote
@@ -504,7 +504,7 @@ Run proportionally after each slice:
 
 ```text
 node --check packages/surface/vendors/opencode/census/harness.mjs
-pnpm --filter @vibecook/chopsticks-surface exec vitest run \
+pnpm --filter @vibecook/puppeteer-surface exec vitest run \
   vendors/opencode/privacy.test.mjs vendors/opencode/captures.test.ts
 node packages/surface/vendors/opencode/census/sanitize.mjs \
   --version 1.18.16 --check-only

@@ -1,4 +1,4 @@
-{"dt":3,"dir":"send","msg":{"jsonrpc":"2.0","id":1,"method":"initialize","params":{"clientInfo":{"name":"chopsticks-c1-probe","version":"0.0.0"},"capabilities":{}}}}
+{"dt":3,"dir":"send","msg":{"jsonrpc":"2.0","id":1,"method":"initialize","params":{"clientInfo":{"name":"puppeteer-c1-probe","version":"0.0.0"},"capabilities":{}}}}
 {"dt":185,"dir":"recv","msg":{"id":1,"result":{"userAgent":"<redacted:userAgent>","codexHome":"/workspace/redacted-file","platformFamily":"unix","platformOs":"macos"}}}
 {"dt":186,"dir":"send-notif","msg":{"jsonrpc":"2.0","method":"initialized","params":{}}}
 {"dt":186,"dir":"send","msg":{"jsonrpc":"2.0","id":2,"method":"thread/start","params":{"cwd":"/workspace","approvalPolicy":"never","sandbox":"read-only"}}}

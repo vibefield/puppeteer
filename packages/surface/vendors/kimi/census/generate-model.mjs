@@ -216,7 +216,7 @@ writeJson(join(modelRoot, 'manifest.json'), {
 });
 writeJson(join(modelRoot, 'detection.json'), {
   executables: ['kimi'],
-  envVar: 'CHOPSTICKS_KIMI_BIN',
+  envVar: 'PUPPETEER_KIMI_BIN',
   versionFlag: '--version',
   versionOutput: VERSION,
   versionPattern: '^(\\d+\\.\\d+\\.\\d+)$',

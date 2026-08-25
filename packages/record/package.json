@@ -1,13 +1,13 @@
 {
-  "name": "@vibecook/chopsticks-record",
+  "name": "@vibecook/puppeteer-record",
   "version": "0.1.8",
   "type": "module",
-  "description": "Own-action record: the append-only JSONL log of what the chopsticks runtime itself did (injections, workspace finals, exits, policy conflicts).",
+  "description": "Own-action record: the append-only JSONL log of what the puppeteer runtime itself did (injections, workspace finals, exits, policy conflicts).",
   "license": "MIT",
   "author": "James Yong",
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/vibecook-dev/chopsticks.git",
+    "url": "git+https://github.com/vibecook-dev/puppeteer.git",
     "directory": "packages/record"
   },
   "main": "./src/index.ts",
@@ -41,6 +41,6 @@
     "node": ">=22.18.0"
   },
   "dependencies": {
-    "@vibecook/chopsticks-core": "workspace:*"
+    "@vibecook/puppeteer-core": "workspace:*"
   }
 }

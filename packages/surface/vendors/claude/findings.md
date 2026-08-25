@@ -167,6 +167,6 @@ The original raw headless and interactive probe captures were sanitized into the
 
 `claude --resume <session-id>` **continues the same session in place**: verified that the original transcript `<slug>/<id>.jsonl` GREW (28192 → 34366 bytes) with no new JSONL created, and the agent retained context across the resume (recalled a number from the pre-resume turn). Implications for the runtime:
 
-- Resume is spawn configuration, not storage: pass `--resume <id>` and **do NOT** also pass `--session-id` (the resumed session keeps its own id + transcript, so the chopsticks↔spaghetti join contract is preserved automatically).
+- Resume is spawn configuration, not storage: pass `--resume <id>` and **do NOT** also pass `--session-id` (the resumed session keeps its own id + transcript, so the puppeteer↔spaghetti join contract is preserved automatically).
 - `--settings` composes with `--resume` (the hook bridge still attaches to a resumed session) — the generated settings file is passed exactly as for a fresh spawn.
 - Gotcha: `-p --resume <id> "<prompt>"` warns "no stdin data received in 3s" before proceeding — a print-mode quirk; interactive (native-TUI) resume is unaffected.

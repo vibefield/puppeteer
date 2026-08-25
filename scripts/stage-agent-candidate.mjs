@@ -3,7 +3,7 @@
 import { existsSync, readFileSync, writeFileSync } from 'node:fs';
 import { dirname, relative, resolve, sep } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { loadModel } from '@vibecook/chopsticks-surface';
+import { loadModel } from '@vibecook/puppeteer-surface';
 
 const root = dirname(dirname(fileURLToPath(import.meta.url)));
 
@@ -22,7 +22,7 @@ export function stageCandidateDocuments({ ledger, persona, vendor, manifestRelat
   if (!agent) throw new Error(`support ledger has no ${vendor} entry`);
   if (agent.currentManifest === manifestRelative) throw new Error('current support cannot also be staged as a candidate');
   agent.candidateManifest = manifestRelative;
-  persona.asm = { package: '@vibecook/chopsticks-surface', path: surfaceModelPath };
+  persona.asm = { package: '@vibecook/puppeteer-surface', path: surfaceModelPath };
   return { ledger, persona, agent };
 }
 

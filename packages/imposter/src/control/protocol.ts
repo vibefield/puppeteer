@@ -19,7 +19,7 @@ import type {
   SurfaceBehaviorRelationKind,
   SurfaceConfidence,
   SurfaceModel,
-} from '@vibecook/chopsticks-surface';
+} from '@vibecook/puppeteer-surface';
 import type { Persona } from '../persona/types.ts';
 import type { RunflowDescriptor } from '../persona/types.ts';
 export type { RunflowDescriptor } from '../persona/types.ts';
@@ -68,13 +68,13 @@ export function httpStatusForCode(code: number): number {
 export const MAX_SOCKET_PATH_BYTES = 100;
 
 export function controlHome(): string {
-  return join(homedir(), '.chopsticks');
+  return join(homedir(), '.puppeteer');
 }
 
 export function defaultSocketPath(env: Record<string, string | undefined> = process.env): string {
-  const override = env.CHOPSTICKS_IMPOSTER_SOCKET;
+  const override = env.PUPPETEER_IMPOSTER_SOCKET;
   if (override) return override;
-  if (process.platform === 'win32') return '\\\\.\\pipe\\chopsticks-imposter';
+  if (process.platform === 'win32') return '\\\\.\\pipe\\puppeteer-imposter';
   return join(controlHome(), 'imposter.sock');
 }
 
@@ -88,7 +88,7 @@ export function defaultSocketPath(env: Record<string, string | undefined> = proc
  * and socket close is liveness (§5).
  */
 export function defaultTokenPath(env: Record<string, string | undefined> = process.env): string {
-  return env.CHOPSTICKS_IMPOSTER_TOKEN_FILE ?? join(controlHome(), 'imposter.token');
+  return env.PUPPETEER_IMPOSTER_TOKEN_FILE ?? join(controlHome(), 'imposter.token');
 }
 
 // ---------------------------------------------------------------------------

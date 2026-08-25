@@ -2,7 +2,7 @@
  * Opt-in live coverage of the complete Grok product recipe: shared leader,
  * native terminal viewer, ACP controller, durable-log observer, and resume.
  *
- *   GROK_LIVE=1 pnpm --filter @vibecook/chopsticks-adapter-grok test
+ *   GROK_LIVE=1 pnpm --filter @vibecook/puppeteer-adapter-grok test
  *
  * A self-hosted reconciliation runner should set GROK_LIVE_HOME to an isolated,
  * pre-authenticated Grok home. Without it the installed binary's normal home is
@@ -13,13 +13,13 @@ import { spawn, type ChildProcess } from 'node:child_process';
 import { mkdtempSync, realpathSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import type { AgentHost, TerminalSpec } from '@vibecook/chopsticks-core';
-import { projectAgentSession } from '@vibecook/chopsticks-testing';
+import type { AgentHost, TerminalSpec } from '@vibecook/puppeteer-core';
+import { projectAgentSession } from '@vibecook/puppeteer-testing';
 import { describe, expect, it } from 'vitest';
 import { createGrokBackend } from './backend.js';
 
 const live = process.env.GROK_LIVE === '1';
-const GROK_BIN = process.env.CHOPSTICKS_GROK_BIN ?? 'grok';
+const GROK_BIN = process.env.PUPPETEER_GROK_BIN ?? 'grok';
 
 async function waitFor(predicate: () => boolean, label: string, timeoutMs = 60_000): Promise<void> {
   const deadline = Date.now() + timeoutMs;

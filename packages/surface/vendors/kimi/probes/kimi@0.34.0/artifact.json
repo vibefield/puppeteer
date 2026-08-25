@@ -1,7 +1,7 @@
 {
   "vendor": "kimi",
   "vendorVersion": "0.34.0",
-  "artifact": "$CHOPSTICKS_KIMI_BIN",
+  "artifact": "$PUPPETEER_KIMI_BIN",
   "platform": "darwin-arm64",
   "bytes": 176894272,
   "fileDescription": "Mach-O 64-bit executable arm64",

@@ -6,8 +6,8 @@ import {
   type AgentEventEnvelope,
   type AgentHost,
   type AgentAdapterSession,
-} from '@vibecook/chopsticks-core';
-import { projectAgentSession } from '@vibecook/chopsticks-testing';
+} from '@vibecook/puppeteer-core';
+import { projectAgentSession } from '@vibecook/puppeteer-testing';
 import {
   buildGrokTuiArgs,
   createGrokBackend,
@@ -367,7 +367,7 @@ describe('Grok TUI preparation', () => {
         host,
         appServerEnv: {
           AI_PERSONA: 'grok',
-          CHOPSTICKS_IMPOSTER_HOME: '/tmp/imposter-one',
+          PUPPETEER_IMPOSTER_HOME: '/tmp/imposter-one',
           GROK_HOME: '/tmp/imposter-two',
         },
       }),

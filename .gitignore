@@ -5,6 +5,6 @@ dist/
 .env
 .env.*
 !.env.example
-.chopsticks/
+.puppeteer/
 .agent-adaptation/
 packages/surface/vendors/*/captures-raw/

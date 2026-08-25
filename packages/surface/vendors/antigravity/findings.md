@@ -26,7 +26,7 @@ The official GitHub release API returned stable release `1.1.12`, release ID
 `references/antigravity@1.1.12/release.json` with the official asset IDs,
 sizes, URLs, and GitHub-published SHA-256 digests.
 
-The required Chopsticks matrix maps to:
+The required Puppeteer matrix maps to:
 
 | Platform       | Asset                      | Published archive SHA-256                                          | Extracted executable SHA-256                                       |
 | -------------- | -------------------------- | ------------------------------------------------------------------ | ------------------------------------------------------------------ |

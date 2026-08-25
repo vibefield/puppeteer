@@ -106,7 +106,7 @@ Stage 1 must answer these with process evidence:
    `tui_gateway`, slash-worker)?
 2. Who owns the JSON-RPC stdio pipe, and can an adapter sit on it without
    becoming a second controller?
-3. Can Chopsticks spawn `tui_gateway` as a controller it owns and attach one
+3. Can Puppeteer spawn `tui_gateway` as a controller it owns and attach one
    TUI as a viewer of that same `AIAgent` / session id?
 4. If attach works only over the dashboard WebSocket, is that seam stable
    enough to model, or is it an unofficial implementation detail?
@@ -159,11 +159,11 @@ Closest implementation precedents:
 | Display name        | Hermes Agent                                 |
 | User-facing command | `hermes`                                     |
 | TUI launch          | `hermes --tui`                               |
-| Adapter package     | `@vibecook/chopsticks-adapter-hermes`        |
+| Adapter package     | `@vibecook/puppeteer-adapter-hermes`        |
 | Adapter directory   | `packages/adapter-hermes`                    |
 | Surface directory   | `packages/surface/vendors/hermes`            |
 | Imposter persona    | `packages/imposter/personas/hermes`          |
-| Binary override     | `CHOPSTICKS_HERMES_BIN`                      |
+| Binary override     | `PUPPETEER_HERMES_BIN`                      |
 | Isolated home       | `HERMES_HOME`                                |
 | Live-test opt-in    | `HERMES_LIVE=1`                              |
 | Imposter selector   | `ai --hermes` / `AI_PERSONA=hermes`          |
@@ -172,7 +172,7 @@ Closest implementation precedents:
 | Resume key          | native session id (`YYYYMMDD_HHMMSS_<6hex>`) |
 
 Track separately: vendor artifact version (`0.20.0`), git tag (`v2026.8.3`),
-source revision, ASM format version, and Chopsticks package version.
+source revision, ASM format version, and Puppeteer package version.
 
 Account/quota reporting is out of scope unless a native, evidence-backed
 account surface is found during survey. Nous Portal billing RPCs on the TUI
@@ -320,7 +320,7 @@ These algorithms are hypotheses until Gate 0 and the census rewrite them.
 
 1. Create a mode-`0700` disposable `HERMES_HOME` (or a reviewed overlay that
    does not mutate the user home).
-2. Resolve `CHOPSTICKS_HERMES_BIN` then `hermes`.
+2. Resolve `PUPPETEER_HERMES_BIN` then `hermes`.
 3. Start the owned `tui_gateway` / attach seam and wait for `gateway.ready`.
 4. `session.create` in the requested cwd; record the native session id.
 5. Ask `AgentHost` for one `hermes --tui --resume <id>` (or the proven
@@ -624,7 +624,7 @@ dependency. Production code consumes generated projections, not model
 files.
 
 Detection facts (executable names, version parsing, `--tui` / `--resume`
-flags, `HERMES_HOME`, `CHOPSTICKS_HERMES_BIN`) are generated from
+flags, `HERMES_HOME`, `PUPPETEER_HERMES_BIN`) are generated from
 `detection.json`.
 
 Prompt receipts stay honest. Observation level is computed from the rails
@@ -660,7 +660,7 @@ After adapter-against-Imposter conformance is green:
 ### B. Gate 0 and survey
 
 - [x] Capture the `hermes --tui` process tree and JSON-RPC owner.
-- [x] Prove same-session attach via Chopsticks-owned `handle_ws` +
+- [x] Prove same-session attach via Puppeteer-owned `handle_ws` +
       `HERMES_TUI_GATEWAY_URL` (TUI does not spawn a second gateway).
 - [x] Prove ACP is a separate process/host and does not join the TUI tree.
 - [x] Build an isolated-home identity census harness (loopback fake

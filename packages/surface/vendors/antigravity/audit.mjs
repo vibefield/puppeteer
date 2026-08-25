@@ -11,7 +11,7 @@ import {
   VERSION,
   validateReleaseContract,
 } from './census/harness.mjs';
-import { checkCaptureDirectory } from '@vibecook/chopsticks-surface/sanitize';
+import { checkCaptureDirectory } from '@vibecook/puppeteer-surface/sanitize';
 import { AUTHORIZED_SCENARIOS } from './census/authorized-census.mjs';
 import {
   REQUIRED_SUBCOMMAND_HELP,
@@ -159,7 +159,7 @@ export function auditAntigravity() {
     ) {
       problems.push(`${platform}: static auto-update candidate evidence drifted or overstates its status`);
     }
-    const expectedArtifactLabel = parserExecution ? '$CHOPSTICKS_ANTIGRAVITY_BIN' : '$RELEASE_ARCHIVE_MEMBER';
+    const expectedArtifactLabel = parserExecution ? '$PUPPETEER_ANTIGRAVITY_BIN' : '$RELEASE_ARCHIVE_MEMBER';
     if (artifact.artifact !== expectedArtifactLabel) problems.push(`${platform}: private artifact path leaked`);
     if (platform.startsWith('darwin-') && artifact.signature?.teamIdentifier !== 'EQHXZ8M8AV') {
       problems.push(`${platform}: macOS signing team drifted`);

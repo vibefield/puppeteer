@@ -1,13 +1,13 @@
 {
-  "name": "@vibecook/chopsticks-adapter-kimi",
+  "name": "@vibecook/puppeteer-adapter-kimi",
   "version": "0.1.8",
   "type": "module",
-  "description": "Kimi Code adapter for Chopsticks: native TUI launch, durable-wire observation, and guarded prompt control.",
+  "description": "Kimi Code adapter for Puppeteer: native TUI launch, durable-wire observation, and guarded prompt control.",
   "license": "MIT",
   "author": "James Yong",
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/vibecook-dev/chopsticks.git",
+    "url": "git+https://github.com/vibecook-dev/puppeteer.git",
     "directory": "packages/adapter-kimi"
   },
   "main": "./src/index.ts",
@@ -41,10 +41,10 @@
     "node": ">=22.18.0"
   },
   "dependencies": {
-    "@vibecook/chopsticks-core": "workspace:*"
+    "@vibecook/puppeteer-core": "workspace:*"
   },
   "devDependencies": {
-    "@vibecook/chopsticks-testing": "workspace:*",
+    "@vibecook/puppeteer-testing": "workspace:*",
     "vitest": "^3.0.0"
   }
 }

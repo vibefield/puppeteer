@@ -42,7 +42,7 @@ jobs:
           script: |
             const fs = require('node:fs');
             const zlib = require('node:zlib');
-            const marker = '<!-- chopsticks-upstream-candidates -->';
+            const marker = '<!-- puppeteer-upstream-candidates -->';
             const { data: issues } = await github.rest.issues.listForRepo({
               owner: context.repo.owner,
               repo: context.repo.repo,
@@ -50,7 +50,7 @@ jobs:
               per_page: 100,
             });
             const existing = issues.find((issue) => issue.body?.includes(marker));
-            const encoded = /<!-- chopsticks-upstream-state:([A-Za-z0-9+/=]+) -->/.exec(existing?.body ?? '')?.[1];
+            const encoded = /<!-- puppeteer-upstream-state:([A-Za-z0-9+/=]+) -->/.exec(existing?.body ?? '')?.[1];
             if (encoded) {
               const state = zlib.gunzipSync(Buffer.from(encoded, 'base64')).toString('utf8');
               const parsed = JSON.parse(state);
@@ -85,8 +85,8 @@ jobs:
             const zlib = require('node:zlib');
             const report = JSON.parse(fs.readFileSync('upstream-detection.json', 'utf8'));
             const state = JSON.parse(fs.readFileSync('.upstream-state.json', 'utf8'));
-            const marker = '<!-- chopsticks-upstream-candidates -->';
-            const stateMarker = `<!-- chopsticks-upstream-state:${zlib.gzipSync(JSON.stringify(state)).toString('base64')} -->`;
+            const marker = '<!-- puppeteer-upstream-candidates -->';
+            const stateMarker = `<!-- puppeteer-upstream-state:${zlib.gzipSync(JSON.stringify(state)).toString('base64')} -->`;
             const actionable = report.agents.filter((agent) => !['current', 'candidate-pending'].includes(agent.status));
             const rows = actionable
               .map((agent) => `| ${agent.vendor} | ${agent.promotedVersion ?? 'none'} | ${agent.detectedStableVersion ?? 'unknown'} | ${agent.status} | ${agent.workItems.map((item) => item.platform).join(', ')} |`)

@@ -13,13 +13,8 @@
 
 import { basename, dirname } from 'node:path';
 import { createHash } from 'node:crypto';
-import type {
-  ActorRunRef,
-  EvidenceCompleteness,
-  EvidenceQuality,
-  MonitorMetricFamily,
-} from '@vibecook/chopsticks-core';
-import type { MonitorArtifactReadResult } from '@vibecook/chopsticks-core';
+import type { ActorRunRef, EvidenceCompleteness, EvidenceQuality, MonitorMetricFamily } from '@vibecook/puppeteer-core';
+import type { MonitorArtifactReadResult } from '@vibecook/puppeteer-core';
 import type {
   AdapterMonitorObservationBatch,
   EvidenceRef,
@@ -29,7 +24,7 @@ import type {
   ObservationCapability,
   ObservationCoverage,
   SourceWatermark,
-} from '@vibecook/chopsticks-core/monitor-spi';
+} from '@vibecook/puppeteer-core/monitor-spi';
 import type {
   ActorRunRevisionFact,
   ObserveSessionRequest,

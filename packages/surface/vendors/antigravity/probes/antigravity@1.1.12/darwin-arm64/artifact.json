@@ -3,7 +3,7 @@
   "vendor": "antigravity",
   "vendorVersion": "1.1.12",
   "platform": "darwin-arm64",
-  "artifact": "$CHOPSTICKS_ANTIGRAVITY_BIN",
+  "artifact": "$PUPPETEER_ANTIGRAVITY_BIN",
   "bytes": 172267536,
   "sha256": "c8fd3c0016e101689f923f82da1c068b0e6dce3abcb0089e282742693ad4d344",
   "fileDescription": "Mach-O 64-bit executable arm64",

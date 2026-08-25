@@ -2,7 +2,7 @@
   "executables": [
     "claude"
   ],
-  "envVar": "CHOPSTICKS_CLAUDE_BIN",
+  "envVar": "PUPPETEER_CLAUDE_BIN",
   "versionFlag": "--version",
   "versionOutput": "2.1.226 (Claude Code)",
   "versionPattern": "(\\d+\\.\\d+\\.\\d+(?:[-.][0-9A-Za-z]+)*)",

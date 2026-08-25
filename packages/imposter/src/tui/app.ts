@@ -3,7 +3,7 @@
  *
  * It announces which agent is being impostered, the portable scenario intent,
  * and the ops as they run. It is deliberately NOT a clone of any vendor's
- * interface: cloning would spend effort on the one surface chopsticks is
+ * interface: cloning would spend effort on the one surface puppeteer is
  * forbidden to read, and would produce a screen convincing enough to invite
  * exactly the mistake §1.1 prohibits. The ghost and the violet frame exist to
  * make that unmistakable — this window is a stand-in, and looks like one.

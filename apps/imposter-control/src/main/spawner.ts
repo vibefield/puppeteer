@@ -22,7 +22,7 @@ export interface PersonaSpawnerOptions {
 
 export function imposterBin(): string {
   const require = createRequire(import.meta.url);
-  return join(dirname(require.resolve('@vibecook/chopsticks-imposter/package.json')), 'bin', 'ai.mjs');
+  return join(dirname(require.resolve('@vibecook/puppeteer-imposter/package.json')), 'bin', 'ai.mjs');
 }
 
 export type SpawnablePersona = 'claude' | 'codex' | 'grok' | 'kimi' | 'opencode' | 'hermes';
@@ -49,7 +49,7 @@ export function createPersonaSpawner(
     vendor,
     label,
     async spawn() {
-      const cwd = mkdtempSync(join(tmpdir(), 'chopsticks-emulator-spawn-'));
+      const cwd = mkdtempSync(join(tmpdir(), 'puppeteer-emulator-spawn-'));
       const sessionId = randomUUID();
       let child: ChildProcess | undefined;
       try {
@@ -59,13 +59,13 @@ export function createPersonaSpawner(
           env: {
             ...process.env,
             AI_PERSONA: vendor,
-            CHOPSTICKS_IMPOSTER_TUI: 'off',
-            CHOPSTICKS_IMPOSTER_HOME: cwd,
+            PUPPETEER_IMPOSTER_TUI: 'off',
+            PUPPETEER_IMPOSTER_HOME: cwd,
             ...(vendor === 'grok' ? { GROK_HOME: cwd } : {}),
             ...(vendor === 'kimi' ? { KIMI_CODE_HOME: cwd } : {}),
             ...(vendor === 'hermes' ? { HERMES_HOME: cwd } : {}),
-            ...(options.controlSocketPath ? { CHOPSTICKS_IMPOSTER_SOCKET: options.controlSocketPath } : {}),
-            ...(options.controlTokenPath ? { CHOPSTICKS_IMPOSTER_TOKEN_FILE: options.controlTokenPath } : {}),
+            ...(options.controlSocketPath ? { PUPPETEER_IMPOSTER_SOCKET: options.controlSocketPath } : {}),
+            ...(options.controlTokenPath ? { PUPPETEER_IMPOSTER_TOKEN_FILE: options.controlTokenPath } : {}),
           },
           stdio: ['pipe', 'ignore', 'inherit'],
         });

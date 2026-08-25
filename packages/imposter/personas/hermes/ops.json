@@ -23,7 +23,7 @@
       "channel": "jsonrpc",
       "event": "session.info",
       "with": {
-        "model": "chopsticks-hermes-census",
+        "model": "puppeteer-hermes-census",
         "provider": "custom",
         "approval_mode": "manual",
         "version": "0.20.0",
@@ -190,14 +190,14 @@
       "channel": "jsonrpc",
       "event": "session.info",
       "with": {
-        "model": "chopsticks-hermes-census",
+        "model": "puppeteer-hermes-census",
         "provider": "custom",
         "approval_mode": "manual",
         "version": "0.20.0",
         "cwd": "$cwd",
         "stored_session_id": "$storedSessionId",
         "running": false,
-        "usage": { "model": "chopsticks-hermes-census", "calls": 1, "hasTotals": true }
+        "usage": { "model": "puppeteer-hermes-census", "calls": 1, "hasTotals": true }
       }
     }
   ]

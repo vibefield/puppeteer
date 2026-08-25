@@ -12,7 +12,7 @@ describe('HermesGatewayNormalizer', () => {
     const events = [
       event('gateway.ready'),
       event('session.info', {
-        model: 'chopsticks-hermes-census',
+        model: 'puppeteer-hermes-census',
         stored_session_id: '20260812_132919_ae981b',
         cwd: '/workspace',
         running: false,
@@ -95,7 +95,7 @@ describe('HermesGatewayNormalizer', () => {
     expect(
       normalizer.normalize(
         event('session.info', {
-          model: 'chopsticks-hermes-census',
+          model: 'puppeteer-hermes-census',
           stored_session_id: '20260812_132919_ae981b',
           cwd: '/workspace',
           running: false,

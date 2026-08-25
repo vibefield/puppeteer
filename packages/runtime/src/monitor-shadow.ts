@@ -1,4 +1,4 @@
-import type { AgentMonitorState, MonitorMetricFamily, SessionRuntimeState } from '@vibecook/chopsticks-core';
+import type { AgentMonitorState, MonitorMetricFamily, SessionRuntimeState } from '@vibecook/puppeteer-core';
 
 export type MonitorShadowMismatchClassification = 'liveness' | 'headline-status' | 'presence' | 'value' | 'membership';
 

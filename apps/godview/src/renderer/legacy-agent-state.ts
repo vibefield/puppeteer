@@ -1,4 +1,4 @@
-import type { AgentMonitorStatus } from '@vibecook/chopsticks-core';
+import type { AgentMonitorStatus } from '@vibecook/puppeteer-core';
 import type { AgentStateMessage } from '../protocol.js';
 
 const terminalLifecycles = new Set(['exited', 'failed']);

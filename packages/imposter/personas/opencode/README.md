@@ -16,7 +16,7 @@ OPENCODE_SERVER_PASSWORD='<secret>' \
 Readiness is the native `opencode server listening on http://…` stdout line.
 The default username is `opencode`; setting no password disables authentication,
 matching the upstream server. Durable HTTP state is stored below
-`CHOPSTICKS_IMPOSTER_HOME` when that isolated root is supplied.
+`PUPPETEER_IMPOSTER_HOME` when that isolated root is supplied.
 
 The shared viewer attaches to the exact existing session without creating a
 second one:

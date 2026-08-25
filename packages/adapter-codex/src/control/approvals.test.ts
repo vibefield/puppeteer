@@ -18,7 +18,7 @@ describe('approvalResponse', () => {
       // Denial is an OBJECT here, with a required `rejection` — the bare string
       // 'denied' is not a member of ReviewDecision at all.
       expect(approvalResponse(method, 'denied')).toEqual({
-        decision: { denied: { rejection: 'denied by chopsticks policy' } },
+        decision: { denied: { rejection: 'denied by puppeteer policy' } },
       });
     }
   });

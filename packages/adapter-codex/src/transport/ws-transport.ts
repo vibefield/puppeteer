@@ -375,12 +375,12 @@ export function spawnAppServer(opts?: {
    * This child is private to the recipe — a caller has no other way to reach
    * it, since it is not the terminal and carries no launch spec. That matters
    * for anything the binary reads from the environment rather than argv, which
-   * is how the chopsticks imposter is told which vendor to be (docs/archive/IMPOSTER.md §6).
+   * is how the puppeteer imposter is told which vendor to be (docs/archive/IMPOSTER.md §6).
    */
   env?: Record<string, string>;
 }): AppServerHandle {
   const realTmp = realpathSync(tmpdir());
-  const socketPath = opts?.socketPath ?? join(realTmp, `chopsticks-codex-${process.pid}-${sockCounter++}.sock`);
+  const socketPath = opts?.socketPath ?? join(realTmp, `puppeteer-codex-${process.pid}-${sockCounter++}.sock`);
   const child = spawn(opts?.executable ?? 'codex', ['app-server', '--listen', `unix://${socketPath}`], {
     stdio: ['ignore', 'ignore', 'pipe'],
     ...(opts?.env ? { env: { ...process.env, ...opts.env } } : {}),

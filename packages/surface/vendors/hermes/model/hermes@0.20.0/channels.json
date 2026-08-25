@@ -2,7 +2,7 @@
   "channels": {
     "argv": {
       "kind": "argv-env",
-      "notes": "hermes --tui launch, HERMES_HOME isolation, CHOPSTICKS_HERMES_BIN."
+      "notes": "hermes --tui launch, HERMES_HOME isolation, PUPPETEER_HERMES_BIN."
     },
     "terminal": {
       "kind": "terminal",

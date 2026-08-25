@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest';
-import type { AgentEvent, AgentEventEnvelope } from '@vibecook/chopsticks-core';
-import { projectAgentSession } from '@vibecook/chopsticks-testing';
+import type { AgentEvent, AgentEventEnvelope } from '@vibecook/puppeteer-core';
+import { projectAgentSession } from '@vibecook/puppeteer-testing';
 import { createCodexSession } from './driver.js';
 import type { Transport } from './transport/app-server-client.js';
 

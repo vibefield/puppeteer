@@ -68,7 +68,7 @@ export function validateSupportLedger(repoRoot = root) {
           const persona = json(personaPath);
           const surfaceRoot = join(repoRoot, 'packages', 'surface');
           const expectedModel = relative(surfaceRoot, dirname(candidatePath)).split(sep).join('/');
-          if (persona.asm?.package !== '@vibecook/chopsticks-surface' || persona.asm?.path !== expectedModel) {
+          if (persona.asm?.package !== '@vibecook/puppeteer-surface' || persona.asm?.path !== expectedModel) {
             issues.push(`${agent.id}: candidate persona ASM does not match candidate manifest (${expectedModel})`);
           }
         }
@@ -172,7 +172,7 @@ export function validateSupportLedger(repoRoot = root) {
     const expectedModel = relative(surfaceRoot, dirname(manifestPath)).split(sep).join('/');
     if (
       !agent.candidateManifest &&
-      (persona.asm?.package !== '@vibecook/chopsticks-surface' || persona.asm?.path !== expectedModel)
+      (persona.asm?.package !== '@vibecook/puppeteer-surface' || persona.asm?.path !== expectedModel)
     ) {
       issues.push(`${agent.id}: persona ASM does not match promoted manifest (${expectedModel})`);
     }

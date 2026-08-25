@@ -133,7 +133,7 @@ The closest implementation precedents are:
 | Vendor ID | `antigravity` |
 | Display name | `Antigravity` |
 | User-facing command | `agy` |
-| Adapter package | `@vibecook/chopsticks-adapter-antigravity` |
+| Adapter package | `@vibecook/puppeteer-adapter-antigravity` |
 | Adapter directory | `packages/adapter-antigravity` |
 | Surface directory | `packages/surface/vendors/antigravity` |
 | Imposter persona | `packages/imposter/personas/antigravity` |
@@ -156,7 +156,7 @@ prompting, headless output, models, agents, and update commands.
 The initial release-policy target is the exact `1.1.12` assets for the
 repository's required platforms:
 
-| Chopsticks platform | Upstream release asset observed |
+| Puppeteer platform | Upstream release asset observed |
 | --- | --- |
 | `darwin-arm64` | `agy_cli_mac_arm64.tar.gz` |
 | `darwin-x64` | `agy_cli_mac_x64.tar.gz` |
@@ -216,7 +216,7 @@ Hook configuration may exist in workspace `.agents/hooks.json` or a global
 Gemini/Antigravity configuration location. Hook programs synchronously receive
 JSON on stdin and return JSON on stdout. Some replies can allow, deny, ask,
 inject work, terminate, or continue execution. The bridge therefore sits in a
-behavior-changing path even when Chopsticks intends only to observe it.
+behavior-changing path even when Puppeteer intends only to observe it.
 
 The separate [status-line documentation](https://antigravity.google/docs/cli/statusline)
 describes a structured snapshot callback, while the
@@ -300,7 +300,7 @@ global settings swap-and-restore.
 
 1. Resolve the exact `agy` executable and confirm supported version policy.
 2. Start the bridge and transcript observer in a temporary session directory.
-3. Generate a provisional Chopsticks session identity.
+3. Generate a provisional Puppeteer session identity.
 4. Ask `AgentHost` to spawn one native TUI in the requested cwd with the
    launch-scoped instrumentation arguments and environment.
 5. Emit process facts independently from semantic session facts.

@@ -41,12 +41,12 @@ export interface PresentationOptions {
 /**
  * Ink costs ~40 MB of RSS per process (77 MB headless vs 117 MB with Ink
  * loaded, node 26.5, measured 2026-08-08). One imposter does not care; twenty
- * of them in a swarm pane is 800 MB of chrome. `CHOPSTICKS_IMPOSTER_TUI=off`
+ * of them in a swarm pane is 800 MB of chrome. `PUPPETEER_IMPOSTER_TUI=off`
  * is the contained retreat §4.1.2 reserved — the append-only sink is a
  * first-class mode, so falling back to it costs nothing but the pinned layout.
  */
 function isInteractive(): boolean {
-  if (process.env.CHOPSTICKS_IMPOSTER_TUI === 'off') return false;
+  if (process.env.PUPPETEER_IMPOSTER_TUI === 'off') return false;
   return Boolean(process.stdin.isTTY && process.stdout.isTTY);
 }
 

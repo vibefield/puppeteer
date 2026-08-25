@@ -1,4 +1,4 @@
-import type { AgentStructuredQuestion } from '@vibecook/chopsticks-core';
+import type { AgentStructuredQuestion } from '@vibecook/puppeteer-core';
 
 const MAX_QUESTION_LENGTH = 4_096;
 const MAX_OPTIONS = 128;

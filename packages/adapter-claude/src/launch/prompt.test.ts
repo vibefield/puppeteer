@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { createPromptInjector, type PromptReceipt } from './prompt.js';
-import type { TerminalAutomationOperation } from '@vibecook/chopsticks-core';
+import type { TerminalAutomationOperation } from '@vibecook/puppeteer-core';
 
 function harness(defaults?: { defaultConfirmationTimeoutMs?: number; accepted?: boolean }) {
   const operations: TerminalAutomationOperation[] = [];

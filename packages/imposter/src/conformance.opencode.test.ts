@@ -22,14 +22,14 @@ function behavior(name: string): BehaviorDocument {
   ) as BehaviorDocument;
 }
 
-async function start(name = 'happy-turn', root = mkdtempSync(join(tmpdir(), 'chopsticks-opencode-imposter-'))) {
+async function start(name = 'happy-turn', root = mkdtempSync(join(tmpdir(), 'puppeteer-opencode-imposter-'))) {
   if (!roots.includes(root)) roots.push(root);
   const server = await createHttpPersonaServer({
     persona,
     behavior: behavior(name),
     hostname: '127.0.0.1',
     port: 0,
-    env: { CHOPSTICKS_IMPOSTER_HOME: root },
+    env: { PUPPETEER_IMPOSTER_HOME: root },
     cwd: root,
     username: 'opencode',
     password: 'test-password',

@@ -12,7 +12,7 @@ async function fixture(sessionId = 'session-1'): Promise<{
   cwd: string;
   location: KimiSessionLocation;
 }> {
-  const home = await mkdtemp(join(tmpdir(), 'chopsticks-kimi-observer-'));
+  const home = await mkdtemp(join(tmpdir(), 'puppeteer-kimi-observer-'));
   roots.push(home);
   const cwd = join(home, 'repo');
   const sessionDir = join(home, 'sessions', encodeKimiWorkDirKey(cwd), sessionId);
@@ -146,7 +146,7 @@ describe('Kimi session observer', () => {
   });
 
   it('binds a fresh lazy session only after one new candidate records the matching prompt', async () => {
-    const home = await mkdtemp(join(tmpdir(), 'chopsticks-kimi-observer-'));
+    const home = await mkdtemp(join(tmpdir(), 'puppeteer-kimi-observer-'));
     roots.push(home);
     const cwd = join(home, 'repo');
     const observer = createKimiSessionObserver({

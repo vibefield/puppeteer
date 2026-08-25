@@ -1,11 +1,11 @@
 import { readFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
-import type { AdapterMonitorObservationBatch } from '@vibecook/chopsticks-core/monitor-spi';
+import type { AdapterMonitorObservationBatch } from '@vibecook/puppeteer-core/monitor-spi';
 import {
   createMonitorAccumulatorState,
   projectAgentMonitorState,
   reduceMonitorAccumulator,
-} from '@vibecook/chopsticks-core/monitor-spi';
+} from '@vibecook/puppeteer-core/monitor-spi';
 import { KIMI_MONITOR_CAPABILITIES, KimiMonitorEvidence } from './monitor-evidence.js';
 import type { KimiObservedRecord } from './session-observer.js';
 
@@ -125,7 +125,7 @@ describe('KimiMonitorEvidence', () => {
         }),
         expect.objectContaining({
           family: 'model',
-          value: expect.objectContaining({ providerModelId: 'chopsticks-kimi-census', intent: 'observed' }),
+          value: expect.objectContaining({ providerModelId: 'puppeteer-kimi-census', intent: 'observed' }),
         }),
         expect.objectContaining({
           family: 'mode',

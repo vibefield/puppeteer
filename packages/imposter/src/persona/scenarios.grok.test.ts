@@ -64,7 +64,7 @@ describe('Grok native scenarios', () => {
     const document = JSON.parse(readFileSync(join(personaDirectory('grok'), 'scenarios', `${name}.json`), 'utf8')) as {
       then: unknown[];
     };
-    const root = mkdtempSync(join(tmpdir(), 'chopsticks-grok-scenario-'));
+    const root = mkdtempSync(join(tmpdir(), 'puppeteer-grok-scenario-'));
     roots.push(root);
     const emitted: Array<{ event: string; payload: Record<string, unknown> }> = [];
     const runner = createScenarioRunner({

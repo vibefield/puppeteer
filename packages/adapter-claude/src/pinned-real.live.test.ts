@@ -12,11 +12,11 @@ import { mkdtemp, mkdir, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { describe, expect, it } from 'vitest';
-import type { AgentEventEnvelope } from '@vibecook/chopsticks-core';
+import type { AgentEventEnvelope } from '@vibecook/puppeteer-core';
 import { prepareClaudeTuiSession } from './driver.js';
 import { CLAUDE_SURFACE_VERSION } from './generated/registry.js';
 
-const live = process.env.CHOPSTICKS_REAL_CLAUDE === '1';
+const live = process.env.PUPPETEER_REAL_CLAUDE === '1';
 
 function waitForExit(child: ChildProcess): Promise<{ code: number | null; stderr: string }> {
   return new Promise((resolve, reject) => {
@@ -37,18 +37,18 @@ function waitForExit(child: ChildProcess): Promise<{ code: number | null; stderr
 
 describe.skipIf(!live)('Claude pinned artifact (live)', () => {
   it('accepts generated settings and emits the init lifecycle over both hook transports', async () => {
-    const root = await mkdtemp(join(tmpdir(), 'chopsticks-claude-pinned-real-'));
+    const root = await mkdtemp(join(tmpdir(), 'puppeteer-claude-pinned-real-'));
     const cwd = join(root, 'workspace');
     const configDir = join(root, 'config');
     await mkdir(cwd);
     await mkdir(configDir);
     await writeFile(join(cwd, 'CLAUDE.md'), 'Pinned-real adapter fixture.\n', 'utf8');
 
-    const executable = process.env.CHOPSTICKS_CLAUDE_BIN ?? 'claude';
+    const executable = process.env.PUPPETEER_CLAUDE_BIN ?? 'claude';
     const prepared = await prepareClaudeTuiSession({
       cwd,
       executable,
-      title: `chopsticks-${CLAUDE_SURFACE_VERSION}`,
+      title: `puppeteer-${CLAUDE_SURFACE_VERSION}`,
       automate: async () => ({ accepted: false, reason: 'init-only has no prompt automation' }),
     });
     const session = await prepared.adopt('pinned-real-init');

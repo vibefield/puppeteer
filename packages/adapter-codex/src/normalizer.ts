@@ -33,7 +33,7 @@
  * normalizer instance per Codex session.
  */
 
-import type { AgentEvent, ToolActivityKind, ToolPresentation } from '@vibecook/chopsticks-core';
+import type { AgentEvent, ToolActivityKind, ToolPresentation } from '@vibecook/puppeteer-core';
 
 export interface CodexServerNotification {
   method: string;

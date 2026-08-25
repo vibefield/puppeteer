@@ -2,7 +2,7 @@ import { readFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { describe, expect, it } from 'vitest';
-import { checkCaptureDirectory } from '@vibecook/chopsticks-surface/sanitize';
+import { checkCaptureDirectory } from '@vibecook/puppeteer-surface/sanitize';
 import { VERSION } from './census/harness.mjs';
 import { antigravityRules } from './privacy.mjs';
 
@@ -31,7 +31,7 @@ describe('Antigravity authorized captures', () => {
     expect(cwd.body.command.data.hooks).toEqual([]);
     expect(addDir.body.command.data.hooks).toEqual([
       {
-        name: 'chopsticks-census',
+        name: 'puppeteer-census',
         enabled: true,
         actionEvents: ['PreInvocation', 'PostInvocation', 'PreToolUse', 'PostToolUse', 'Stop'],
         matchers: [null, null, '*', '*', null],

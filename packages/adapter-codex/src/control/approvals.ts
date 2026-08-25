@@ -71,7 +71,7 @@ export class UnsupportedServerRequestError extends Error {
 export function approvalResponse(
   method: string,
   decision: CodexApprovalDecision,
-  rejection = 'denied by chopsticks policy',
+  rejection = 'denied by puppeteer policy',
 ): Record<string, unknown> {
   if (REVIEW_DECISION_METHODS.has(method)) {
     return decision === 'approved' ? { decision: 'approved' } : { decision: { denied: { rejection } } };

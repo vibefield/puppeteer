@@ -6,10 +6,10 @@ import { tmpdir } from 'node:os';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { afterEach } from 'vitest';
-import type { AgentEventEnvelope, AgentHost } from '@vibecook/chopsticks-core';
-import { createKimiTuiSession, type KimiTuiSession } from '@vibecook/chopsticks-adapter-kimi';
-import { projectAgentSession, type TestAgentProjection } from '@vibecook/chopsticks-testing';
-import { runAgentSessionConformance, type AgentSessionHarness } from '@vibecook/chopsticks-testing/conformance';
+import type { AgentEventEnvelope, AgentHost } from '@vibecook/puppeteer-core';
+import { createKimiTuiSession, type KimiTuiSession } from '@vibecook/puppeteer-adapter-kimi';
+import { projectAgentSession, type TestAgentProjection } from '@vibecook/puppeteer-testing';
+import { runAgentSessionConformance, type AgentSessionHarness } from '@vibecook/puppeteer-testing/conformance';
 
 const AI = join(dirname(dirname(fileURLToPath(import.meta.url))), 'bin', 'ai.mjs');
 const REPLY = 'imposter: ok';
@@ -59,8 +59,8 @@ async function kimiImposterHarness(
   resume?: string,
   existing?: { cwd: string; home: string },
 ): Promise<KimiImposterHarness> {
-  const cwd = existing?.cwd ?? temporaryDirectory('chopsticks-kimi-imposter-cwd-');
-  const home = existing?.home ?? temporaryDirectory('chopsticks-kimi-imposter-home-');
+  const cwd = existing?.cwd ?? temporaryDirectory('puppeteer-kimi-imposter-cwd-');
+  const home = existing?.home ?? temporaryDirectory('puppeteer-kimi-imposter-home-');
   let child: ChildProcess | undefined;
   const host: AgentHost = {
     async spawnTerminal(spec) {
@@ -70,8 +70,8 @@ async function kimiImposterHarness(
           ...process.env,
           ...spec.env,
           AI_PERSONA: 'kimi',
-          CHOPSTICKS_IMPOSTER_HOME: home,
-          CHOPSTICKS_IMPOSTER_TUI: 'off',
+          PUPPETEER_IMPOSTER_HOME: home,
+          PUPPETEER_IMPOSTER_TUI: 'off',
         },
         stdio: ['pipe', 'ignore', 'pipe'],
       });
@@ -102,8 +102,8 @@ async function kimiImposterHarness(
     env: {
       AI_PERSONA: 'kimi',
       KIMI_CODE_HOME: home,
-      CHOPSTICKS_IMPOSTER_HOME: home,
-      CHOPSTICKS_IMPOSTER_TUI: 'off',
+      PUPPETEER_IMPOSTER_HOME: home,
+      PUPPETEER_IMPOSTER_TUI: 'off',
     },
     resume,
     pollIntervalMs: 25,

@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { REDACTED_EPOCH_MS, checkRecord, sanitizeRecord } from '@vibecook/chopsticks-surface/sanitize';
+import { REDACTED_EPOCH_MS, checkRecord, sanitizeRecord } from '@vibecook/puppeteer-surface/sanitize';
 import { opencodeRules } from './privacy.mjs';
 
 describe('OpenCode capture privacy', () => {

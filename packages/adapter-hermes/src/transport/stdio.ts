@@ -101,7 +101,7 @@ export function spawnHermesStdioGateway(
 ): HermesStdioClient {
   const child = spawn(command, args, {
     cwd,
-    env: { ...process.env, ...env, CHOPSTICKS_IMPOSTER_TUI: 'off' },
+    env: { ...process.env, ...env, PUPPETEER_IMPOSTER_TUI: 'off' },
     stdio: ['pipe', 'pipe', 'pipe'],
   });
   return new HermesStdioClient(child);

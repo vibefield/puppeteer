@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { createEnvelopeStamper, type AgentEvent } from '@vibecook/chopsticks-core';
+import { createEnvelopeStamper, type AgentEvent } from '@vibecook/puppeteer-core';
 import { AgentConversationProjector } from './conversation.js';
 
 function project(events: AgentEvent[]) {

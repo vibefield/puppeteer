@@ -3,8 +3,8 @@ import {
   reduceSessionState,
   type AgentEventEnvelope,
   type SessionRuntimeState,
-} from '@vibecook/chopsticks-core';
-import type { AdapterMonitorObservationBatch } from '@vibecook/chopsticks-core/monitor-spi';
+} from '@vibecook/puppeteer-core';
+import type { AdapterMonitorObservationBatch } from '@vibecook/puppeteer-core/monitor-spi';
 
 export interface TestAgentProjection {
   readonly state: SessionRuntimeState;

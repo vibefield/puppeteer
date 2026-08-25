@@ -38,9 +38,9 @@ test('opencode is an explicit reviewed workflow choice with isolated real-artifa
   assert.match(workflow, /options: \[claude, codex, grok, opencode\]/);
   assert.match(workflow, /if: \$\{\{ inputs\.vendor == 'opencode' \}\}/);
   assert.match(workflow, /OPENCODE_LIVE: '1'/);
-  assert.match(workflow, /CHOPSTICKS_OPENCODE_BIN:/);
-  assert.match(workflow, /@vibecook\/chopsticks-adapter-opencode test/);
+  assert.match(workflow, /PUPPETEER_OPENCODE_BIN:/);
+  assert.match(workflow, /@vibecook\/puppeteer-adapter-opencode test/);
   assert.match(live, /opencode-live:/);
   assert.match(live, /if: \$\{\{ vars\.OPENCODE_LIVE_ENABLED == 'true' \}\}/);
-  assert.match(live, /CHOPSTICKS_OPENCODE_BIN: \$\{\{ vars\.OPENCODE_BIN \}\}/);
+  assert.match(live, /PUPPETEER_OPENCODE_BIN: \$\{\{ vars\.OPENCODE_BIN \}\}/);
 });

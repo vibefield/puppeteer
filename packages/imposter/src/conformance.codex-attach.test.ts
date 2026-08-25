@@ -25,8 +25,8 @@ import {
   spawnAppServer,
   wsOverUnixTransport,
   type CodexSession,
-} from '@vibecook/chopsticks-adapter-codex';
-import { projectAgentSession } from '@vibecook/chopsticks-testing';
+} from '@vibecook/puppeteer-adapter-codex';
+import { projectAgentSession } from '@vibecook/puppeteer-testing';
 
 const AI = join(dirname(dirname(fileURLToPath(import.meta.url))), 'bin', 'ai.mjs');
 
@@ -57,7 +57,7 @@ async function waitFor(predicate: () => boolean, label: string, timeoutMs = 1500
 
 describe.skipIf(process.platform === 'win32')('a prompt typed in an attached pane', () => {
   it('reaches the adapter as a turn on the thread it is already observing', async () => {
-    const cwd = realpathSync(mkdtempSync(join(tmpdir(), 'chopsticks-codex-attach-')));
+    const cwd = realpathSync(mkdtempSync(join(tmpdir(), 'puppeteer-codex-attach-')));
     temporaries.add(cwd);
 
     const server = spawnAppServer({ executable: AI, env: { AI_PERSONA: 'codex' } });
@@ -74,7 +74,7 @@ describe.skipIf(process.platform === 'win32')('a prompt typed in an attached pan
     const pane = spawn(process.execPath, [AI, 'resume', threadId, '--remote', `unix://${server.socketPath}`], {
       cwd,
       stdio: ['pipe', 'pipe', 'pipe'],
-      env: { ...process.env, AI_PERSONA: 'codex', CHOPSTICKS_IMPOSTER_TUI: 'off' },
+      env: { ...process.env, AI_PERSONA: 'codex', PUPPETEER_IMPOSTER_TUI: 'off' },
     });
     children.add(pane);
     let paneOut = '';

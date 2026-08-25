@@ -138,22 +138,22 @@ describe('detectClaude', () => {
   });
 
   it('resolution order: explicit executable wins over the env override', async () => {
-    const prev = process.env.CHOPSTICKS_CLAUDE_BIN;
-    process.env.CHOPSTICKS_CLAUDE_BIN = '/env/claude';
+    const prev = process.env.PUPPETEER_CLAUDE_BIN;
+    process.env.PUPPETEER_CLAUDE_BIN = '/env/claude';
     try {
       const explicit = await detectClaude({ executable: '/opt/claude', exec: fakeExec() });
       expect(explicit.executable).toBe('/opt/claude');
       const fromEnv = await detectClaude({ exec: fakeExec() });
       expect(fromEnv.executable).toBe('/env/claude');
     } finally {
-      if (prev === undefined) delete process.env.CHOPSTICKS_CLAUDE_BIN;
-      else process.env.CHOPSTICKS_CLAUDE_BIN = prev;
+      if (prev === undefined) delete process.env.PUPPETEER_CLAUDE_BIN;
+      else process.env.PUPPETEER_CLAUDE_BIN = prev;
     }
   });
 });
 
 // Opt-in: probes the actually-installed Claude binary. Skipped unless asked.
-const realClaude = process.env.CHOPSTICKS_REAL_CLAUDE === '1';
+const realClaude = process.env.PUPPETEER_REAL_CLAUDE === '1';
 describe.skipIf(!realClaude)('detectClaude against the real binary', () => {
   it('is the exact Surface candidate and reports the required flags', async () => {
     const result = await detectClaude();

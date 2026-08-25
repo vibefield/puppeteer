@@ -1,4 +1,4 @@
-import { DEFAULT_MONITOR_FRESHNESS_POLICY } from '@vibecook/chopsticks-core';
+import { DEFAULT_MONITOR_FRESHNESS_POLICY } from '@vibecook/puppeteer-core';
 import type {
   AgentExecutionMode,
   AgentMonitorHandle,
@@ -8,7 +8,7 @@ import type {
   MonitorNotification,
   NativeSessionRef,
   ObservationLevel,
-} from '@vibecook/chopsticks-core';
+} from '@vibecook/puppeteer-core';
 import {
   createMonitorAccumulatorState,
   DEFAULT_MONITOR_BURN_RATE_WINDOW_MS,
@@ -22,7 +22,7 @@ import {
   type RuntimeMonitorInput,
   type RuntimeMonitorObservationBatch,
   type WorkspaceMonitorObservation,
-} from '@vibecook/chopsticks-core/monitor-spi';
+} from '@vibecook/puppeteer-core/monitor-spi';
 import type { RuntimeAgentEventEnvelope } from './types.js';
 import type { MonitorClock, MonitorScheduledTask } from './monitor-clock.js';
 import { createMonitorHandle, type MonitorHandleSource, type MonitorHandleSubscriber } from './monitor-handle.js';

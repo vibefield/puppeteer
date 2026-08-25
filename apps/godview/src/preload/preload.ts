@@ -12,7 +12,7 @@ import type {
   AgentSessionInfo,
   AgentStateBatch,
   AgentStateMessage,
-  ChopsticksBridge,
+  PuppeteerBridge,
   CreateAgentSessionOptions,
   CreateAgentSessionResult,
   PromptReceipt,
@@ -30,13 +30,13 @@ forwardGhostteaRendererPorts(ipcRenderer);
 const clipboardBridge = createGhostteaClipboardBridge(ipcRenderer);
 const agentStateListeners = new Set<(state: AgentStateMessage) => void>();
 
-ipcRenderer.on('chopsticks:agent-states', (_event, batch: AgentStateBatch) => {
+ipcRenderer.on('puppeteer:agent-states', (_event, batch: AgentStateBatch) => {
   try {
     for (const state of batch.states) {
       for (const listener of agentStateListeners) listener(state);
     }
   } finally {
-    ipcRenderer.send('chopsticks:agent-states-ack', batch.sequence);
+    ipcRenderer.send('puppeteer:agent-states-ack', batch.sequence);
   }
 });
 
@@ -64,68 +64,68 @@ try {
   initialCwd = undefined;
 }
 
-const chopsticks: ChopsticksBridge = {
-  accountUsage: (): Promise<AgentAccountUsageBatch> => ipcRenderer.invoke('chopsticks:account-usage'),
-  refreshAccountUsage: (): Promise<AgentAccountUsageBatch> => ipcRenderer.invoke('chopsticks:refresh-account-usage'),
+const puppeteer: PuppeteerBridge = {
+  accountUsage: (): Promise<AgentAccountUsageBatch> => ipcRenderer.invoke('puppeteer:account-usage'),
+  refreshAccountUsage: (): Promise<AgentAccountUsageBatch> => ipcRenderer.invoke('puppeteer:refresh-account-usage'),
   onAccountUsage: (callback: (batch: AgentAccountUsageBatch) => void): (() => void) => {
     const listener = (_event: Electron.IpcRendererEvent, batch: AgentAccountUsageBatch): void => callback(batch);
-    ipcRenderer.on('chopsticks:account-usage', listener);
-    return () => ipcRenderer.removeListener('chopsticks:account-usage', listener);
+    ipcRenderer.on('puppeteer:account-usage', listener);
+    return () => ipcRenderer.removeListener('puppeteer:account-usage', listener);
   },
   createAgentSession: (options: CreateAgentSessionOptions): Promise<CreateAgentSessionResult> =>
-    ipcRenderer.invoke('chopsticks:create-agent-session', options),
-  listAgentSessions: (): Promise<AgentSessionSnapshot[]> => ipcRenderer.invoke('chopsticks:list-agent-sessions'),
+    ipcRenderer.invoke('puppeteer:create-agent-session', options),
+  listAgentSessions: (): Promise<AgentSessionSnapshot[]> => ipcRenderer.invoke('puppeteer:list-agent-sessions'),
   rehydratePane: (request: PaneRehydrationRequest): Promise<SessionSummary | null> =>
-    ipcRenderer.invoke('chopsticks:rehydrate-pane', request),
+    ipcRenderer.invoke('puppeteer:rehydrate-pane', request),
   onAgentSession: (callback: (info: AgentSessionInfo) => void): (() => void) => {
     const listener = (_event: Electron.IpcRendererEvent, info: AgentSessionInfo): void => callback(info);
-    ipcRenderer.on('chopsticks:agent-session', listener);
-    return () => ipcRenderer.removeListener('chopsticks:agent-session', listener);
+    ipcRenderer.on('puppeteer:agent-session', listener);
+    return () => ipcRenderer.removeListener('puppeteer:agent-session', listener);
   },
   onAgentRemoved: (callback: (runtimeSessionId: string) => void): (() => void) => {
     const listener = (_event: Electron.IpcRendererEvent, runtimeSessionId: string): void => callback(runtimeSessionId);
-    ipcRenderer.on('chopsticks:agent-removed', listener);
-    return () => ipcRenderer.removeListener('chopsticks:agent-removed', listener);
+    ipcRenderer.on('puppeteer:agent-removed', listener);
+    return () => ipcRenderer.removeListener('puppeteer:agent-removed', listener);
   },
   submitPrompt: (options: SubmitPromptOptions): Promise<PromptReceipt> =>
-    ipcRenderer.invoke('chopsticks:submit-prompt', options),
+    ipcRenderer.invoke('puppeteer:submit-prompt', options),
   onAgentState: (callback: (state: AgentStateMessage) => void): (() => void) => {
     agentStateListeners.add(callback);
     return () => agentStateListeners.delete(callback);
   },
   agentMonitorConfiguration: (): Promise<AgentMonitorRendererConfiguration> =>
-    ipcRenderer.invoke('chopsticks:agent-monitor-configuration'),
-  listAgentMonitors: (): Promise<AgentMonitorStateMessage[]> => ipcRenderer.invoke('chopsticks:list-agent-monitors'),
+    ipcRenderer.invoke('puppeteer:agent-monitor-configuration'),
+  listAgentMonitors: (): Promise<AgentMonitorStateMessage[]> => ipcRenderer.invoke('puppeteer:list-agent-monitors'),
   onAgentMonitorState: (callback: (message: AgentMonitorStateMessage) => void): (() => void) =>
-    onIpcMessage('chopsticks:agent-monitor-state', callback),
+    onIpcMessage('puppeteer:agent-monitor-state', callback),
   onAgentMonitorNotification: (callback: (message: AgentMonitorNotificationMessage) => void): (() => void) =>
-    onIpcMessage('chopsticks:agent-monitor-notification', callback),
+    onIpcMessage('puppeteer:agent-monitor-notification', callback),
   onAgentMonitorRemoved: (callback: (message: AgentMonitorRemovedMessage) => void): (() => void) =>
-    onIpcMessage('chopsticks:agent-monitor-removed', callback),
+    onIpcMessage('puppeteer:agent-monitor-removed', callback),
   acknowledgeAgentFailure: (request: AcknowledgeAgentFailureRequest): Promise<boolean> =>
-    ipcRenderer.invoke('chopsticks:acknowledge-agent-failure', request),
+    ipcRenderer.invoke('puppeteer:acknowledge-agent-failure', request),
   readAgentMonitorArtifact: (request: ReadAgentMonitorArtifactRequest) =>
-    ipcRenderer.invoke('chopsticks:read-agent-monitor-artifact', request),
+    ipcRenderer.invoke('puppeteer:read-agent-monitor-artifact', request),
   workspaceDiff: (runtimeSessionId: string): Promise<WorkspaceDiff | null> =>
-    ipcRenderer.invoke('chopsticks:workspace-diff', runtimeSessionId),
+    ipcRenderer.invoke('puppeteer:workspace-diff', runtimeSessionId),
   onWorkspaceFinal: (callback: (event: WorkspaceFinalEvent) => void): (() => void) => {
     const listener = (_event: Electron.IpcRendererEvent, final: WorkspaceFinalEvent): void => callback(final);
-    ipcRenderer.on('chopsticks:workspace-final', listener);
-    return () => ipcRenderer.removeListener('chopsticks:workspace-final', listener);
+    ipcRenderer.on('puppeteer:workspace-final', listener);
+    return () => ipcRenderer.removeListener('puppeteer:workspace-final', listener);
   },
-  scenarioRecordings: (): Promise<ScenarioRecordingStatus[]> => ipcRenderer.invoke('chopsticks:scenario-recordings'),
+  scenarioRecordings: (): Promise<ScenarioRecordingStatus[]> => ipcRenderer.invoke('puppeteer:scenario-recordings'),
   startScenarioRecording: (runtimeSessionId: string): Promise<StartScenarioRecordingResult> =>
-    ipcRenderer.invoke('chopsticks:start-scenario-recording', runtimeSessionId),
+    ipcRenderer.invoke('puppeteer:start-scenario-recording', runtimeSessionId),
   stopScenarioRecording: (runtimeSessionId: string): Promise<ScenarioRecordingStatus> =>
-    ipcRenderer.invoke('chopsticks:stop-scenario-recording', runtimeSessionId),
+    ipcRenderer.invoke('puppeteer:stop-scenario-recording', runtimeSessionId),
   onScenarioRecording: (callback: (status: ScenarioRecordingStatus) => void): (() => void) => {
     const listener = (_event: Electron.IpcRendererEvent, status: ScenarioRecordingStatus): void => callback(status);
-    ipcRenderer.on('chopsticks:scenario-recording', listener);
-    return () => ipcRenderer.removeListener('chopsticks:scenario-recording', listener);
+    ipcRenderer.on('puppeteer:scenario-recording', listener);
+    return () => ipcRenderer.removeListener('puppeteer:scenario-recording', listener);
   },
 };
 
-contextBridge.exposeInMainWorld('chopsticks', chopsticks);
+contextBridge.exposeInMainWorld('puppeteer', puppeteer);
 contextBridge.exposeInMainWorld('desktop', {
   platform: process.platform,
   tabId,

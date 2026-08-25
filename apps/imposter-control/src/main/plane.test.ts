@@ -13,7 +13,7 @@ import {
   REFUSED,
   type ControlClientOptions,
   type ImposterControl,
-} from '@vibecook/chopsticks-imposter/control';
+} from '@vibecook/puppeteer-imposter/control';
 import { loadConsoleUi } from './main.js';
 import { createControlPlane, type ControlPlane, type ControlPlaneProjection } from './plane.js';
 import { collectEvents, controlPaths, IDLE_SCENARIO_DRIVER, waitFor, type EventCollector } from './testing.js';
@@ -168,7 +168,7 @@ describe('control plane', () => {
     expect((await fetch(`${plane.url}/assets/renderer.js`)).status).toBe(401);
     const response = await fetch(plane.consoleUrl);
     const html = await response.text();
-    expect(html).toContain('<title>chopsticks — agent adaptation devkit</title>');
+    expect(html).toContain('<title>puppeteer — agent adaptation devkit</title>');
     expect(html).toContain('<div id="root"></div>');
     expect(html).toContain('/assets/renderer.js');
     expect(html).toContain('/assets/renderer.css');

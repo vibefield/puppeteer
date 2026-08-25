@@ -4,7 +4,7 @@ import { spawnSync, execFileSync } from 'node:child_process';
 import { existsSync, readFileSync, writeFileSync } from 'node:fs';
 import { dirname, join, relative, resolve, sep } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { loadModel } from '@vibecook/chopsticks-surface';
+import { loadModel } from '@vibecook/puppeteer-surface';
 import { auditEvidence } from '../packages/surface/scripts/check-evidence.mjs';
 import { replayAgentSurface } from './replay-agent-surface.mjs';
 
@@ -130,9 +130,9 @@ export function verifyAgentSurface({
   const replay = replayAgentSurface({ repoRoot, vendor, manifestPath });
   const commandGates = runCommands
     ? {
-        surface: runGate('pnpm', ['--filter', '@vibecook/chopsticks-surface', 'run', `surface:audit:${vendor}`], repoRoot),
-        adapter: runGate('pnpm', ['--filter', `@vibecook/chopsticks-adapter-${vendor}`, 'test'], repoRoot),
-        imposter: runGate('pnpm', ['--filter', '@vibecook/chopsticks-imposter', 'test'], repoRoot),
+        surface: runGate('pnpm', ['--filter', '@vibecook/puppeteer-surface', 'run', `surface:audit:${vendor}`], repoRoot),
+        adapter: runGate('pnpm', ['--filter', `@vibecook/puppeteer-adapter-${vendor}`, 'test'], repoRoot),
+        imposter: runGate('pnpm', ['--filter', '@vibecook/puppeteer-imposter', 'test'], repoRoot),
         packages: runGate('pnpm', ['packages:check'], repoRoot),
         pack: runGate('pnpm', ['pack:check'], repoRoot),
         docs: runGate('pnpm', ['support:check'], repoRoot),

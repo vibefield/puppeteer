@@ -4,8 +4,8 @@
 import { existsSync, readFileSync, readdirSync } from 'node:fs';
 import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { loadModel, validatePayload } from '@vibecook/chopsticks-surface';
-import { checkCaptureDirectory } from '@vibecook/chopsticks-surface/sanitize';
+import { loadModel, validatePayload } from '@vibecook/puppeteer-surface';
+import { checkCaptureDirectory } from '@vibecook/puppeteer-surface/sanitize';
 import {
   RELEASE_TAG,
   REQUIRED_FLAGS,
@@ -21,7 +21,7 @@ const probesRoot = join(vendorRoot, 'probes', `hermes@${VERSION}`);
 const upstream = JSON.parse(readFileSync(join(vendorRoot, 'upstream.json'), 'utf8'));
 const unsafeProbeText = [
   /\/Users\//,
-  /\/(?:private\/)?tmp\/chopsticks-hermes-/,
+  /\/(?:private\/)?tmp\/puppeteer-hermes-/,
   /\/(?:private\/)?var\/folders\//,
   /\b[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}\b/i,
   /\bsk-[A-Za-z0-9_-]{16,}\b/,

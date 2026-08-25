@@ -27,14 +27,14 @@ afterEach(() => {
 });
 
 function booted(vendor: string) {
-  const home = mkdtempSync(join(tmpdir(), `chopsticks-boot-${vendor}-`));
+  const home = mkdtempSync(join(tmpdir(), `puppeteer-boot-${vendor}-`));
   temporaries.add(home);
   return createImposterSession({
     persona: loadPersona(vendor),
     argv: [],
     // No `jsonrpc` sink, which IS the interactive fork: a persona that binds
     // its boot ops to an app-server has no client to send them to.
-    env: { CHOPSTICKS_IMPOSTER_HOME: home },
+    env: { PUPPETEER_IMPOSTER_HOME: home },
     cwd: home,
     behavior: {},
   });
@@ -95,7 +95,7 @@ describe('persona boot', () => {
   });
 
   it('honours a persona native-root environment variable without requiring the shared override', () => {
-    const home = mkdtempSync(join(tmpdir(), 'chopsticks-grok-native-root-'));
+    const home = mkdtempSync(join(tmpdir(), 'puppeteer-grok-native-root-'));
     temporaries.add(home);
     const session = createImposterSession({
       persona: loadPersona('grok'),
@@ -115,7 +115,7 @@ describe('persona boot', () => {
   });
 
   it('replays Grok durable history on resume without appending it again', async () => {
-    const home = mkdtempSync(join(tmpdir(), 'chopsticks-grok-restore-'));
+    const home = mkdtempSync(join(tmpdir(), 'puppeteer-grok-restore-'));
     temporaries.add(home);
     const persona = loadPersona('grok');
     const behavior = {

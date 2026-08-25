@@ -175,7 +175,7 @@ if (!schemaDir) {
   // properties and experimental 15. A model built from stable would omit a
   // field the adapter is expected to read. Never mix the two variants (C1b).
   execFileSync(
-    process.env.CHOPSTICKS_CODEX_BIN ?? 'codex',
+    process.env.PUPPETEER_CODEX_BIN ?? 'codex',
     ['app-server', 'generate-json-schema', '--experimental', '--out', temporarySchema],
     { stdio: 'ignore' },
   );
@@ -292,7 +292,7 @@ writeFileSync(
   `${JSON.stringify(
     {
       executables: ['codex'],
-      envVar: 'CHOPSTICKS_CODEX_BIN',
+      envVar: 'PUPPETEER_CODEX_BIN',
       versionFlag: '--version',
       versionOutput: `codex-cli ${CODEX_VERSION}`,
       versionPattern: '^codex-cli (\\d+\\.\\d+\\.\\d+)$',

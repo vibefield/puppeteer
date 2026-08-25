@@ -6,7 +6,7 @@ import type {
   ContextWindowRuntimeState,
   MonitorContextState,
   MonitorRecency,
-} from '@vibecook/chopsticks-core';
+} from '@vibecook/puppeteer-core';
 import type { AgentKind, AgentSessionInfo, AgentStateMessage } from '../../protocol.js';
 import type { AgentVisualStatus } from '../agent-status.js';
 import type { PaneAttachment } from '../pane-attachments.js';

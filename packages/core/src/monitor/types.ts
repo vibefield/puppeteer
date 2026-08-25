@@ -3,13 +3,13 @@ import type { AgentExecutionMode, AgentGitState, ObservationLevel } from '../eve
 /** Current wire/schema generation for the JSON-plain monitor projection. */
 export const AGENT_MONITOR_SCHEMA_VERSION = 1 as const;
 
-/** One Chopsticks-managed provider invocation. */
+/** One Puppeteer-managed provider invocation. */
 export type RuntimeRunId = string;
 
 /** One allocated working area and its runtime-owned provenance lifecycle. */
 export type WorkspaceInstanceId = string;
 
-/** Opaque caller correlation. Chopsticks transports these values but does not interpret their policy. */
+/** Opaque caller correlation. Puppeteer transports these values but does not interpret their policy. */
 export interface ExternalRef {
   namespace: string;
   id: string;

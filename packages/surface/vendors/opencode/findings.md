@@ -34,7 +34,7 @@ detector and OpenCode-specific rules.
 ## 2. Verdict
 
 OpenCode is a structured native agent, not a terminal-scraping adaptation.
-The primary integration should own one `opencode serve` backend per Chopsticks
+The primary integration should own one `opencode serve` backend per Puppeteer
 session, observe it through `/event`, control it through its REST endpoints,
 and launch the real terminal through:
 
@@ -42,7 +42,7 @@ and launch the real terminal through:
 opencode attach <backend-url> --dir <cwd> --session <native-session-id>
 ```
 
-This preserves the native TUI and gives Chopsticks a correlated structured
+This preserves the native TUI and gives Puppeteer a correlated structured
 rail for session identity, prompts, messages, reasoning, tools, permissions,
 questions, status, durable history, and abort.
 

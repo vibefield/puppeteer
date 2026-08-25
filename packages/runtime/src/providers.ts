@@ -1,6 +1,6 @@
 import { basename } from 'node:path';
-import type { RuntimeRunId } from '@vibecook/chopsticks-core';
-import { createAcpSession, type AcpConnector } from '@vibecook/chopsticks-adapter-acp';
+import type { RuntimeRunId } from '@vibecook/puppeteer-core';
+import { createAcpSession, type AcpConnector } from '@vibecook/puppeteer-adapter-acp';
 import {
   createClaudeSession,
   fetchClaudeAccountUsage,
@@ -9,16 +9,16 @@ import {
   prepareClaudeTuiSession,
   type CreateClaudeSessionOptions,
   type ClaudeHookRailFaultInjection,
-} from '@vibecook/chopsticks-adapter-claude';
+} from '@vibecook/puppeteer-adapter-claude';
 import {
   createCodexTuiSession,
   fetchCodexAccountUsage,
   prepareCodexTuiSession,
-} from '@vibecook/chopsticks-adapter-codex';
-import { createGrokBackend, fetchGrokAccountUsage, type GrokBackend } from '@vibecook/chopsticks-adapter-grok';
-import { createKimiTuiSession, prepareKimiTuiSession } from '@vibecook/chopsticks-adapter-kimi';
-import { createOpenCodeTuiSession, prepareOpenCodeTuiSession } from '@vibecook/chopsticks-adapter-opencode';
-import { createHermesTuiSession, prepareHermesTuiSession } from '@vibecook/chopsticks-adapter-hermes';
+} from '@vibecook/puppeteer-adapter-codex';
+import { createGrokBackend, fetchGrokAccountUsage, type GrokBackend } from '@vibecook/puppeteer-adapter-grok';
+import { createKimiTuiSession, prepareKimiTuiSession } from '@vibecook/puppeteer-adapter-kimi';
+import { createOpenCodeTuiSession, prepareOpenCodeTuiSession } from '@vibecook/puppeteer-adapter-opencode';
+import { createHermesTuiSession, prepareHermesTuiSession } from '@vibecook/puppeteer-adapter-hermes';
 import type {
   AcpAgentOptions,
   AgentProvider,
@@ -72,12 +72,12 @@ function bindScopedObservationCallback<T>(
 export function createBuiltinProviders(options: BuiltinProviderOptions = {}): AgentProvider[] {
   const { executables = {}, acpConnector } = options;
   const resolved = {
-    claude: executables.claude ?? process.env.CHOPSTICKS_CLAUDE_BIN,
-    codex: executables.codex ?? process.env.CHOPSTICKS_CODEX_BIN,
-    grok: executables.grok ?? process.env.CHOPSTICKS_GROK_BIN,
-    kimi: executables.kimi ?? process.env.CHOPSTICKS_KIMI_BIN,
-    opencode: executables.opencode ?? process.env.CHOPSTICKS_OPENCODE_BIN,
-    hermes: executables.hermes ?? process.env.CHOPSTICKS_HERMES_BIN,
+    claude: executables.claude ?? process.env.PUPPETEER_CLAUDE_BIN,
+    codex: executables.codex ?? process.env.PUPPETEER_CODEX_BIN,
+    grok: executables.grok ?? process.env.PUPPETEER_GROK_BIN,
+    kimi: executables.kimi ?? process.env.PUPPETEER_KIMI_BIN,
+    opencode: executables.opencode ?? process.env.PUPPETEER_OPENCODE_BIN,
+    hermes: executables.hermes ?? process.env.PUPPETEER_HERMES_BIN,
   };
   const claudeLaunchFor = async (
     resume: string | undefined,

@@ -2,8 +2,8 @@
 /** Repo-local audit for the selected Grok candidate surface. */
 import { readFileSync, readdirSync } from 'node:fs';
 import { join } from 'node:path';
-import { loadModel, validatePayload } from '@vibecook/chopsticks-surface';
-import { checkCaptureDirectory } from '@vibecook/chopsticks-surface/sanitize';
+import { loadModel, validatePayload } from '@vibecook/puppeteer-surface';
+import { checkCaptureDirectory } from '@vibecook/puppeteer-surface/sanitize';
 import { resolveAgentModel } from '../../../../scripts/agent-model-selection.mjs';
 import { grokRules } from './privacy.mjs';
 

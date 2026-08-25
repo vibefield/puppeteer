@@ -45,7 +45,7 @@ describe('reaching `ai`', () => {
     // Note WHAT is linked: this file, not `$(command -v ai)`. A package
     // manager's global `ai` is a wrapper that resolves its payload relative to
     // itself, so linking the wrapper elsewhere breaks it (§6).
-    const dir = mkdtempSync(join(tmpdir(), 'chopsticks-argv0-'));
+    const dir = mkdtempSync(join(tmpdir(), 'puppeteer-argv0-'));
     temporaries.push(dir);
     const link = join(dir, 'claude');
     symlinkSync(AI, link);

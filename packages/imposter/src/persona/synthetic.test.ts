@@ -31,12 +31,12 @@ afterEach(() => {
 });
 
 function session(log?: (message: string) => void) {
-  const home = mkdtempSync(join(tmpdir(), 'chopsticks-synthetic-'));
+  const home = mkdtempSync(join(tmpdir(), 'puppeteer-synthetic-'));
   temporaries.push(home);
   return createImposterSession({
     persona,
     argv: ['--sid', 'synth-0001', '--label', 'contract-check'],
-    env: { CHOPSTICKS_IMPOSTER_HOME: home },
+    env: { PUPPETEER_IMPOSTER_HOME: home },
     cwd: '/work',
     behavior,
     ...(log ? { log } : {}),

@@ -4,7 +4,7 @@ Status: normalization workbench plus automated runflows, 2026-08-09
 
 ## Purpose
 
-Pre-normalization work answers, “What did this pinned vendor artifact actually expose?” Normalization work answers a different question: “Which of those native facts should become portable Chopsticks semantics, with what correlation, confidence, and state effect?”
+Pre-normalization work answers, “What did this pinned vendor artifact actually expose?” Normalization work answers a different question: “Which of those native facts should become portable Puppeteer semantics, with what correlation, confidence, and state effect?”
 
 The Agent Normalization Devkit turns the existing Imposter Control app into the place where that second question can be inspected. It does not weaken the Surface/Imposter boundary. The native control plane remains independently runnable and vendor-neutral; the Electron app composes an optional downstream projection that imports adapters and Core.
 

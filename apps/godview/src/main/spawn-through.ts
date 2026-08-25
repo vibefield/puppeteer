@@ -7,7 +7,7 @@ import type {
   BuiltinExecutableAgentKind,
   CreateAgentSessionOptions,
   PreparedAgentSessionInfo,
-} from '@vibecook/chopsticks-runtime';
+} from '@vibecook/puppeteer-runtime';
 
 const MAX_REQUEST_BYTES = 64 * 1024;
 
@@ -22,7 +22,7 @@ export interface SpawnThroughLaunchRequest {
   /** Resolved from the launching pane's `CLAUDE_CONFIG_DIR`; no other shell environment crosses the gateway. */
   claudeConfigDir?: string;
   /**
-   * The pane asked for the chopsticks imposter (`ai --claude`) rather than the
+   * The pane asked for the puppeteer imposter (`ai --claude`) rather than the
    * real agent. A FLAG, never a path: the gateway resolves the binary itself,
    * so a request can choose emulation but can never choose what gets executed.
    */
@@ -174,7 +174,7 @@ export function parseSpawnThroughInvocation(
 
   if (agent === 'codex' && argv[0] === 'resume') {
     if (argv.some((argument) => argument === '--remote' || argument === '--remote-auth-token-env')) {
-      return { error: 'Codex remote transport arguments are owned by Chopsticks' };
+      return { error: 'Codex remote transport arguments are owned by Puppeteer' };
     }
     if (argv.length === 2 && UUID.test(argv[1]!)) return { resume: argv[1] };
     return { agentOptions: { resumeInvocation: [...argv] } };
@@ -253,7 +253,7 @@ export async function prepareSpawnThroughLaunch(
       return { action: 'fallback', reason: `the imposter cannot stand in for ${request.agent} in a pane yet` };
     }
     executable = dependencies.imposterBin?.();
-    if (!executable) return { action: 'fallback', reason: 'the chopsticks imposter is not installed beside Godview' };
+    if (!executable) return { action: 'fallback', reason: 'the puppeteer imposter is not installed beside Godview' };
     if (request.agent === 'kimi' || request.agent === 'opencode') {
       isolatedImposterHome = dependencies.imposterHome?.(request.agent);
       if (!isolatedImposterHome) {
@@ -277,14 +277,14 @@ export async function prepareSpawnThroughLaunch(
                 env: {
                   AI_PERSONA: request.agent,
                   KIMI_CODE_HOME: isolatedImposterHome,
-                  CHOPSTICKS_IMPOSTER_HOME: isolatedImposterHome,
+                  PUPPETEER_IMPOSTER_HOME: isolatedImposterHome,
                 },
               }
             : request.agent === 'opencode' && isolatedImposterHome
               ? {
                   env: {
                     AI_PERSONA: request.agent,
-                    CHOPSTICKS_IMPOSTER_HOME: isolatedImposterHome,
+                    PUPPETEER_IMPOSTER_HOME: isolatedImposterHome,
                   },
                 }
               : { appServerEnv: { AI_PERSONA: request.agent } }),

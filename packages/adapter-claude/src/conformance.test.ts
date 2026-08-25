@@ -3,7 +3,7 @@ import {
   runAgentMonitorConformance,
   runAgentSessionConformance,
   type AgentSessionHarness,
-} from '@vibecook/chopsticks-testing/conformance';
+} from '@vibecook/puppeteer-testing/conformance';
 import { createClaudeSession } from './driver.js';
 import type { PreparedClaudeSession } from './launch/prepare.js';
 import { createHookBridge, type HookBridge } from './observation/hook-bridge.js';
@@ -57,7 +57,7 @@ async function claudeHarness(resume?: string): Promise<ClaudeConformanceHarness>
     hooks: Record<string, Array<{ hooks: Array<{ url?: string }> }>>;
   };
   const endpoint = settings.hooks.UserPromptSubmit[0].hooks[0].url!;
-  const token = prepared!.env.CHOPSTICKS_HOOK_TOKEN;
+  const token = prepared!.env.PUPPETEER_HOOK_TOKEN;
 
   const hook = async (name: string, fields: Record<string, unknown> = {}): Promise<void> => {
     const res = await fetch(endpoint, {

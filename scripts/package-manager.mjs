@@ -34,7 +34,7 @@ function findFile(root, names, depth) {
 export function packageManagerInvocation(manager, environment = process.env, nodeExecutable = process.execPath) {
   if (!['npm', 'pnpm'].includes(manager)) throw new Error(`unsupported package manager: ${manager}`);
   const nodeDirectory = dirname(nodeExecutable);
-  const override = environment[`CHOPSTICKS_${manager.toUpperCase()}_CLI`];
+  const override = environment[`PUPPETEER_${manager.toUpperCase()}_CLI`];
   const fileNames = new Set(manager === 'npm' ? ['npm-cli.js'] : ['pnpm.cjs', 'pnpm.mjs']);
   const lifecycleCli =
     environment.npm_execpath && fileNames.has(basename(environment.npm_execpath).toLowerCase())
@@ -75,7 +75,7 @@ export function packageManagerInvocation(manager, environment = process.env, nod
   const cli = firstExisting([override, lifecycleCli, ...conventional, ...homeCandidates]);
   if (!cli) {
     throw new Error(
-      `could not locate the ${manager} JavaScript CLI; set CHOPSTICKS_${manager.toUpperCase()}_CLI to its entry point`,
+      `could not locate the ${manager} JavaScript CLI; set PUPPETEER_${manager.toUpperCase()}_CLI to its entry point`,
     );
   }
   return { command: nodeExecutable, prefixArgs: [cli] };

@@ -29,7 +29,7 @@ describe('createOpTimeline', () => {
   };
 
   beforeEach(() => {
-    dir = mkdtempSync(join(tmpdir(), 'chopsticks-timeline-'));
+    dir = mkdtempSync(join(tmpdir(), 'puppeteer-timeline-'));
     hooks = [];
     frames = [];
     statuslineCalls = 0;

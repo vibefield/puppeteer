@@ -2,7 +2,7 @@
  * One palette, shared by the TUI and the control console (docs/archive/IMPOSTER.md §4).
  *
  * Purple and blue, because the imposter must never be mistaken for the vendor
- * it is impersonating. Claude Code is orange, Codex is green — a chopsticks
+ * it is impersonating. Claude Code is orange, Codex is green — a puppeteer
  * imposter that borrowed either would invite exactly the confusion §1.1 exists
  * to prevent. The chrome says "this is a stand-in" at a glance, from across the
  * room, in a pane you did not launch yourself.

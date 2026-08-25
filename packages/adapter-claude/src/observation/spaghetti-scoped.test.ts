@@ -7,7 +7,7 @@ import type {
   SessionObserver,
   SessionObserverStatus,
 } from '@vibecook/spaghetti-sdk';
-import type { AdapterMonitorObservationBatch, MonitorFamilyUpdate } from '@vibecook/chopsticks-core/monitor-spi';
+import type { AdapterMonitorObservationBatch, MonitorFamilyUpdate } from '@vibecook/puppeteer-core/monitor-spi';
 import type { SemanticObservationAttachRequest, SemanticObservationEvent } from './semantic-provider.js';
 import {
   SpaghettiScopedObservationError,

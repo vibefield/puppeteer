@@ -27,7 +27,7 @@ for (const [, packageName] of publicPackages) {
       '--file',
       'release.yml',
       '--repo',
-      'vibecook-dev/chopsticks',
+      'vibecook-dev/puppeteer',
       '--allow-publish',
       '--yes',
     ],

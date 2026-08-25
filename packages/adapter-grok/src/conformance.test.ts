@@ -1,5 +1,5 @@
-import type { AgentAdapterSession } from '@vibecook/chopsticks-core';
-import { runAgentMonitorConformance } from '@vibecook/chopsticks-testing/conformance';
+import type { AgentAdapterSession } from '@vibecook/puppeteer-core';
+import { runAgentMonitorConformance } from '@vibecook/puppeteer-testing/conformance';
 import { createPendingControlSession } from './backend.js';
 
 function deferred<T>() {

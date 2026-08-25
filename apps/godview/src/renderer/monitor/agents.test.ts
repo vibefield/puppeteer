@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import type { SessionActivity, SessionSummary } from '@vibecook/ghosttea-protocol';
-import type { AgentMonitorState, AgentMonitorStatus } from '@vibecook/chopsticks-core';
+import type { AgentMonitorState, AgentMonitorStatus } from '@vibecook/puppeteer-core';
 import type { AgentMonitorStateMessage, AgentSessionInfo, AgentStateMessage } from '../../protocol.js';
 import {
   assembleMonitorAgents,

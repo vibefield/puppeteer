@@ -50,7 +50,7 @@ describe('KimiWireNormalizer', () => {
         }),
         expect.objectContaining({
           intent: 'observed',
-          model: expect.objectContaining({ id: 'chopsticks-kimi-census' }),
+          model: expect.objectContaining({ id: 'puppeteer-kimi-census' }),
         }),
       ]),
     );

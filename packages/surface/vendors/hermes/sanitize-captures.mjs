@@ -9,7 +9,7 @@
 import { existsSync, mkdirSync, readFileSync, readdirSync, renameSync, rmSync, statSync, writeFileSync } from 'node:fs';
 import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { checkCaptureDirectory, sanitizeRecord } from '@vibecook/chopsticks-surface/sanitize';
+import { checkCaptureDirectory, sanitizeRecord } from '@vibecook/puppeteer-surface/sanitize';
 import { VERSION } from './census/harness.mjs';
 import { hermesRules } from './privacy.mjs';
 
