@@ -1,0 +1,3152 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta
+      name="description"
+      content="Complete reference for the Chopsticks runtime Agent API, event bus, event envelopes, projections, and every normalized event route."
+    />
+    <title>Chopsticks Agent API &amp; Event Catalog</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      rel="stylesheet"
+      href="https://fonts.googleapis.com/css2?family=Spectral:wght@500;600;700&amp;family=Source+Sans+3:ital,wght@0,400;0,500;0,600;0,700;1,400&amp;family=JetBrains+Mono:wght@400;500;600&amp;display=swap"
+    />
+    <style>
+      :root {
+        color-scheme: light;
+        --bg: #f7f6f2;
+        --paper: #ffffff;
+        --paper-2: #f1f0eb;
+        --ink: #202328;
+        --muted: #666c73;
+        --faint: #8c9197;
+        --line: #dcd9d1;
+        --line-strong: #c8c4ba;
+        --copper: #9f4c28;
+        --copper-bg: rgba(159, 76, 40, 0.09);
+        --teal: #176b61;
+        --teal-bg: rgba(23, 107, 97, 0.09);
+        --blue: #355b8c;
+        --blue-bg: rgba(53, 91, 140, 0.09);
+        --purple: #6b4f8f;
+        --purple-bg: rgba(107, 79, 143, 0.09);
+        --amber: #8a6418;
+        --amber-bg: rgba(138, 100, 24, 0.1);
+        --red: #a13f45;
+        --red-bg: rgba(161, 63, 69, 0.09);
+        --shadow: 0 10px 35px rgba(35, 38, 43, 0.055);
+        --code-bg: #20242a;
+        --code-ink: #e7e5df;
+        --code-muted: #aeb4bc;
+      }
+
+      :root[data-theme='dark'] {
+        color-scheme: dark;
+        --bg: #15171a;
+        --paper: #1d2024;
+        --paper-2: #25292e;
+        --ink: #e8e6e0;
+        --muted: #a1a6ad;
+        --faint: #838991;
+        --line: #34383e;
+        --line-strong: #464b52;
+        --copper: #da815a;
+        --copper-bg: rgba(218, 129, 90, 0.12);
+        --teal: #63b7a9;
+        --teal-bg: rgba(99, 183, 169, 0.12);
+        --blue: #83a8da;
+        --blue-bg: rgba(131, 168, 218, 0.12);
+        --purple: #b69adc;
+        --purple-bg: rgba(182, 154, 220, 0.12);
+        --amber: #d2ad58;
+        --amber-bg: rgba(210, 173, 88, 0.12);
+        --red: #df858a;
+        --red-bg: rgba(223, 133, 138, 0.12);
+        --shadow: 0 12px 40px rgba(0, 0, 0, 0.22);
+        --code-bg: #101216;
+        --code-ink: #e8e6df;
+        --code-muted: #9ca4ae;
+      }
+
+      @media (prefers-color-scheme: dark) {
+        :root:not([data-theme='light']) {
+          color-scheme: dark;
+          --bg: #15171a;
+          --paper: #1d2024;
+          --paper-2: #25292e;
+          --ink: #e8e6e0;
+          --muted: #a1a6ad;
+          --faint: #838991;
+          --line: #34383e;
+          --line-strong: #464b52;
+          --copper: #da815a;
+          --copper-bg: rgba(218, 129, 90, 0.12);
+          --teal: #63b7a9;
+          --teal-bg: rgba(99, 183, 169, 0.12);
+          --blue: #83a8da;
+          --blue-bg: rgba(131, 168, 218, 0.12);
+          --purple: #b69adc;
+          --purple-bg: rgba(182, 154, 220, 0.12);
+          --amber: #d2ad58;
+          --amber-bg: rgba(210, 173, 88, 0.12);
+          --red: #df858a;
+          --red-bg: rgba(223, 133, 138, 0.12);
+          --shadow: 0 12px 40px rgba(0, 0, 0, 0.22);
+          --code-bg: #101216;
+          --code-ink: #e8e6df;
+          --code-muted: #9ca4ae;
+        }
+      }
+
+      * {
+        box-sizing: border-box;
+      }
+
+      html {
+        scroll-behavior: smooth;
+        scroll-padding-top: 28px;
+      }
+
+      body {
+        margin: 0;
+        background: var(--bg);
+        color: var(--ink);
+        font-family: 'Source Sans 3', 'Segoe UI', system-ui, sans-serif;
+        font-size: 15.5px;
+        line-height: 1.58;
+      }
+
+      a {
+        color: var(--teal);
+        text-decoration-thickness: 1px;
+        text-underline-offset: 3px;
+      }
+
+      button,
+      input {
+        font: inherit;
+      }
+
+      code,
+      pre,
+      .mono {
+        font-family: 'JetBrains Mono', 'SFMono-Regular', Consolas, monospace;
+      }
+
+      code:not(pre code) {
+        padding: 0.08em 0.32em;
+        border: 1px solid var(--line);
+        border-radius: 4px;
+        background: var(--paper-2);
+        font-size: 0.84em;
+      }
+
+      .shell {
+        width: min(1460px, 100%);
+        margin: 0 auto;
+        padding: 42px 28px 90px;
+      }
+
+      .hero {
+        max-width: 1180px;
+        margin: 0 auto 26px;
+      }
+
+      .hero-top {
+        display: flex;
+        align-items: flex-start;
+        justify-content: space-between;
+        gap: 24px;
+      }
+
+      .eyebrow {
+        color: var(--copper);
+        font-family: 'JetBrains Mono', monospace;
+        font-size: 11px;
+        font-weight: 600;
+        letter-spacing: 0.14em;
+        text-transform: uppercase;
+      }
+
+      h1,
+      h2,
+      h3 {
+        text-wrap: balance;
+      }
+
+      h1 {
+        margin: 10px 0 9px;
+        font-family: Spectral, Georgia, serif;
+        font-size: clamp(36px, 5vw, 56px);
+        font-weight: 600;
+        letter-spacing: -0.025em;
+        line-height: 1.04;
+      }
+
+      .subtitle {
+        max-width: 76ch;
+        margin: 0;
+        color: var(--muted);
+        font-size: 17px;
+      }
+
+      .theme-button {
+        flex: none;
+        padding: 8px 11px;
+        border: 1px solid var(--line);
+        border-radius: 8px;
+        background: var(--paper);
+        color: var(--muted);
+        cursor: pointer;
+      }
+
+      .theme-button:hover {
+        border-color: var(--line-strong);
+        color: var(--ink);
+      }
+
+      .pipeline {
+        margin-top: 24px;
+        padding: 14px 17px;
+        overflow-x: auto;
+        border: 1px solid var(--line);
+        border-radius: 9px;
+        background: var(--paper);
+        box-shadow: var(--shadow);
+        color: var(--muted);
+        font-family: 'JetBrains Mono', monospace;
+        font-size: 12px;
+        white-space: nowrap;
+      }
+
+      .pipeline b {
+        color: var(--ink);
+        font-weight: 600;
+      }
+
+      .pipeline .adapter {
+        color: var(--copper);
+      }
+
+      .pipeline .agent {
+        color: var(--teal);
+      }
+
+      .stats {
+        display: grid;
+        grid-template-columns: repeat(4, minmax(0, 1fr));
+        gap: 12px;
+        margin-top: 18px;
+      }
+
+      .stat {
+        padding: 13px 15px;
+        border: 1px solid var(--line);
+        border-radius: 9px;
+        background: color-mix(in srgb, var(--paper) 76%, transparent);
+      }
+
+      .stat strong {
+        display: block;
+        font-family: Spectral, Georgia, serif;
+        font-size: 25px;
+        font-weight: 600;
+        line-height: 1;
+      }
+
+      .stat span {
+        color: var(--muted);
+        font-size: 12px;
+      }
+
+      .layout {
+        display: grid;
+        grid-template-columns: 210px minmax(0, 1fr);
+        gap: 34px;
+        align-items: start;
+      }
+
+      .toc {
+        position: sticky;
+        top: 20px;
+        max-height: calc(100vh - 40px);
+        padding: 16px;
+        overflow-y: auto;
+        border: 1px solid var(--line);
+        border-radius: 10px;
+        background: var(--paper);
+        box-shadow: var(--shadow);
+      }
+
+      .toc-title {
+        margin: 0 0 9px;
+        color: var(--faint);
+        font-family: 'JetBrains Mono', monospace;
+        font-size: 10px;
+        font-weight: 600;
+        letter-spacing: 0.12em;
+        text-transform: uppercase;
+      }
+
+      .toc a {
+        display: block;
+        padding: 5px 7px;
+        border-radius: 5px;
+        color: var(--muted);
+        font-size: 13px;
+        text-decoration: none;
+      }
+
+      .toc a:hover {
+        background: var(--paper-2);
+        color: var(--ink);
+      }
+
+      .toc .sub-link {
+        padding-left: 18px;
+        font-size: 12px;
+      }
+
+      main {
+        min-width: 0;
+      }
+
+      section {
+        margin-bottom: 64px;
+      }
+
+      h2 {
+        margin: 0 0 7px;
+        font-family: Spectral, Georgia, serif;
+        font-size: 30px;
+        font-weight: 600;
+        letter-spacing: -0.015em;
+      }
+
+      h3 {
+        margin: 26px 0 7px;
+        font-family: Spectral, Georgia, serif;
+        font-size: 20px;
+        font-weight: 600;
+      }
+
+      .section-note {
+        max-width: 82ch;
+        margin: 0 0 20px;
+        color: var(--muted);
+      }
+
+      .callout {
+        margin: 18px 0;
+        padding: 14px 16px;
+        border: 1px solid var(--line);
+        border-left: 3px solid var(--teal);
+        border-radius: 8px;
+        background: var(--teal-bg);
+        color: var(--muted);
+      }
+
+      .callout strong {
+        color: var(--ink);
+      }
+
+      .callout.warning {
+        border-left-color: var(--amber);
+        background: var(--amber-bg);
+      }
+
+      pre {
+        position: relative;
+        margin: 14px 0;
+        padding: 17px 19px;
+        overflow-x: auto;
+        border-radius: 9px;
+        background: var(--code-bg);
+        color: var(--code-ink);
+        font-size: 12.5px;
+        line-height: 1.65;
+        tab-size: 2;
+      }
+
+      pre .comment {
+        color: var(--code-muted);
+      }
+
+      .copy-button {
+        position: absolute;
+        top: 8px;
+        right: 8px;
+        padding: 4px 8px;
+        border: 1px solid rgba(255, 255, 255, 0.16);
+        border-radius: 5px;
+        background: rgba(255, 255, 255, 0.08);
+        color: #ccd2da;
+        font-family: 'Source Sans 3', sans-serif;
+        font-size: 11px;
+        cursor: pointer;
+      }
+
+      .copy-button:hover {
+        background: rgba(255, 255, 255, 0.14);
+      }
+
+      .diagram {
+        overflow-x: auto;
+        border: 1px solid var(--line);
+        border-radius: 11px;
+        background: var(--paper);
+        box-shadow: var(--shadow);
+      }
+
+      .diagram svg {
+        display: block;
+        width: 100%;
+        min-width: 880px;
+        height: auto;
+      }
+
+      figcaption {
+        margin-top: 10px;
+        color: var(--muted);
+        font-size: 13px;
+      }
+
+      .cards {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+        gap: 14px;
+      }
+
+      .card {
+        padding: 17px;
+        border: 1px solid var(--line);
+        border-radius: 10px;
+        background: var(--paper);
+        box-shadow: var(--shadow);
+      }
+
+      .card h3 {
+        margin: 0 0 6px;
+        font-family: 'JetBrains Mono', monospace;
+        font-size: 14px;
+      }
+
+      .card p {
+        margin: 0;
+        color: var(--muted);
+        font-size: 13px;
+      }
+
+      .signature {
+        margin: 8px 0 7px;
+        color: var(--teal);
+        font-family: 'JetBrains Mono', monospace;
+        font-size: 11.5px;
+        font-weight: 500;
+        overflow-wrap: anywhere;
+      }
+
+      .badge,
+      .chip {
+        display: inline-flex;
+        align-items: center;
+        border-radius: 4px;
+        font-family: 'JetBrains Mono', monospace;
+        font-size: 9.5px;
+        font-weight: 600;
+        line-height: 1.5;
+        white-space: nowrap;
+      }
+
+      .badge {
+        padding: 2px 7px;
+        letter-spacing: 0.08em;
+        text-transform: uppercase;
+      }
+
+      .chip {
+        padding: 2px 6px;
+        background: var(--paper-2);
+        color: var(--muted);
+      }
+
+      .service-state {
+        background: var(--copper-bg);
+        color: var(--copper);
+      }
+
+      .service-context-window {
+        background: var(--teal-bg);
+        color: var(--teal);
+      }
+
+      .service-conversation {
+        background: var(--purple-bg);
+        color: var(--purple);
+      }
+
+      .service-usage {
+        background: var(--amber-bg);
+        color: var(--amber);
+      }
+
+      .service-environment,
+      .service-workspace {
+        background: var(--blue-bg);
+        color: var(--blue);
+      }
+
+      .service-process,
+      .service-notification {
+        background: var(--red-bg);
+        color: var(--red);
+      }
+
+      .service-monitor {
+        background: var(--teal-bg);
+        color: var(--teal);
+      }
+
+      .service-adapter {
+        background: var(--paper-2);
+        color: var(--muted);
+      }
+
+      .table-wrap {
+        overflow-x: auto;
+        border: 1px solid var(--line);
+        border-radius: 10px;
+        background: var(--paper);
+        box-shadow: var(--shadow);
+      }
+
+      table {
+        width: 100%;
+        min-width: 720px;
+        border-collapse: collapse;
+        font-size: 13.5px;
+      }
+
+      th {
+        padding: 11px 14px;
+        border-bottom: 1px solid var(--line);
+        color: var(--faint);
+        font-family: 'JetBrains Mono', monospace;
+        font-size: 10px;
+        font-weight: 600;
+        letter-spacing: 0.09em;
+        text-align: left;
+        text-transform: uppercase;
+      }
+
+      td {
+        padding: 10px 14px;
+        border-bottom: 1px solid var(--line);
+        vertical-align: top;
+      }
+
+      tr:last-child td {
+        border-bottom: 0;
+      }
+
+      td:first-child {
+        white-space: nowrap;
+      }
+
+      td p {
+        margin: 0;
+        color: var(--muted);
+      }
+
+      .route {
+        color: var(--ink);
+        font-family: 'JetBrains Mono', monospace;
+        font-size: 12px;
+        font-weight: 600;
+      }
+
+      .native-type {
+        color: var(--muted);
+        font-family: 'JetBrains Mono', monospace;
+        font-size: 11px;
+      }
+
+      .filter-bar {
+        position: sticky;
+        top: 10px;
+        z-index: 5;
+        display: flex;
+        flex-wrap: wrap;
+        gap: 9px;
+        align-items: center;
+        margin: 18px 0;
+        padding: 11px;
+        border: 1px solid var(--line);
+        border-radius: 10px;
+        background: color-mix(in srgb, var(--paper) 94%, transparent);
+        box-shadow: var(--shadow);
+        backdrop-filter: blur(10px);
+      }
+
+      .search {
+        min-width: min(290px, 100%);
+        flex: 1;
+        padding: 8px 11px;
+        border: 1px solid var(--line);
+        border-radius: 7px;
+        outline: none;
+        background: var(--bg);
+        color: var(--ink);
+      }
+
+      .search:focus {
+        border-color: var(--teal);
+        box-shadow: 0 0 0 3px var(--teal-bg);
+      }
+
+      .filter-button,
+      .small-button {
+        padding: 6px 9px;
+        border: 1px solid var(--line);
+        border-radius: 6px;
+        background: var(--paper);
+        color: var(--muted);
+        font-size: 12px;
+        cursor: pointer;
+      }
+
+      .filter-button:hover,
+      .small-button:hover,
+      .filter-button.active {
+        border-color: var(--line-strong);
+        background: var(--paper-2);
+        color: var(--ink);
+      }
+
+      .result-count {
+        color: var(--faint);
+        font-family: 'JetBrains Mono', monospace;
+        font-size: 10.5px;
+        white-space: nowrap;
+      }
+
+      .service-section {
+        margin: 28px 0 42px;
+      }
+
+      .service-header {
+        display: flex;
+        align-items: baseline;
+        gap: 9px;
+        margin-bottom: 11px;
+      }
+
+      .service-header h3 {
+        margin: 0;
+      }
+
+      .service-header p {
+        margin: 0;
+        color: var(--muted);
+        font-size: 13px;
+      }
+
+      .event-list {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(360px, 1fr));
+        gap: 10px;
+      }
+
+      details.event-card {
+        align-self: start;
+        border: 1px solid var(--line);
+        border-radius: 9px;
+        background: var(--paper);
+        box-shadow: var(--shadow);
+      }
+
+      details.event-card[open] {
+        grid-column: span 1;
+        border-color: var(--line-strong);
+      }
+
+      details.event-card[hidden],
+      .service-section[hidden] {
+        display: none;
+      }
+
+      summary {
+        display: grid;
+        grid-template-columns: minmax(0, 1fr) auto;
+        gap: 10px;
+        align-items: center;
+        padding: 13px 14px;
+        cursor: pointer;
+        list-style: none;
+      }
+
+      summary::-webkit-details-marker {
+        display: none;
+      }
+
+      summary::after {
+        content: '+';
+        color: var(--faint);
+        font-family: 'JetBrains Mono', monospace;
+        font-size: 16px;
+      }
+
+      details[open] summary::after {
+        content: '−';
+      }
+
+      .event-title {
+        min-width: 0;
+      }
+
+      .event-title .route {
+        display: block;
+        overflow: hidden;
+        text-overflow: ellipsis;
+      }
+
+      .event-title .native-type {
+        display: block;
+        margin-top: 2px;
+      }
+
+      .event-body {
+        padding: 0 14px 14px;
+        border-top: 1px solid var(--line);
+      }
+
+      .event-body p {
+        margin: 11px 0 0;
+        color: var(--muted);
+        font-size: 13px;
+      }
+
+      .event-body pre {
+        margin-bottom: 0;
+        font-size: 11.5px;
+      }
+
+      .projection-row {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 5px;
+        margin-top: 10px;
+      }
+
+      .type-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(330px, 1fr));
+        gap: 14px;
+      }
+
+      .type-card {
+        min-width: 0;
+        padding: 16px;
+        border: 1px solid var(--line);
+        border-radius: 9px;
+        background: var(--paper);
+      }
+
+      .type-card h3 {
+        margin: 0;
+        font-family: 'JetBrains Mono', monospace;
+        font-size: 13px;
+      }
+
+      .type-card > p {
+        margin: 5px 0 0;
+        color: var(--muted);
+        font-size: 12.5px;
+      }
+
+      .type-card pre {
+        font-size: 11.5px;
+      }
+
+      .legend {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 8px 17px;
+        margin: 16px 0;
+        color: var(--muted);
+        font-size: 12.5px;
+      }
+
+      .legend-item {
+        display: inline-flex;
+        gap: 6px;
+        align-items: center;
+      }
+
+      footer {
+        max-width: 1180px;
+        margin: 0 auto;
+        padding-top: 19px;
+        border-top: 1px solid var(--line);
+        color: var(--muted);
+        font-size: 13px;
+      }
+
+      .no-results {
+        padding: 26px;
+        border: 1px dashed var(--line-strong);
+        border-radius: 9px;
+        color: var(--muted);
+        text-align: center;
+      }
+
+      @media (max-width: 980px) {
+        .layout {
+          display: block;
+        }
+
+        .toc {
+          position: relative;
+          top: auto;
+          display: flex;
+          gap: 3px;
+          margin-bottom: 32px;
+          overflow-x: auto;
+          white-space: nowrap;
+        }
+
+        .toc-title,
+        .toc .sub-link {
+          display: none;
+        }
+
+        .toc a {
+          flex: none;
+        }
+      }
+
+      @media (max-width: 680px) {
+        .shell {
+          padding: 28px 16px 64px;
+        }
+
+        .hero-top {
+          display: block;
+        }
+
+        .theme-button {
+          margin-top: 14px;
+        }
+
+        .stats {
+          grid-template-columns: repeat(2, minmax(0, 1fr));
+        }
+
+        .event-list {
+          grid-template-columns: 1fr;
+        }
+
+        .filter-bar {
+          position: relative;
+          top: auto;
+        }
+
+        h2 {
+          font-size: 26px;
+        }
+      }
+
+      @media print {
+        :root {
+          color-scheme: light;
+          --bg: #fff;
+          --paper: #fff;
+          --paper-2: #f5f5f2;
+          --ink: #16181b;
+          --muted: #51555b;
+          --line: #d3d0c8;
+          --shadow: none;
+        }
+
+        .theme-button,
+        .toc,
+        .filter-bar,
+        .copy-button {
+          display: none !important;
+        }
+
+        .layout {
+          display: block;
+        }
+
+        details.event-card {
+          break-inside: avoid;
+        }
+
+        details.event-card:not([open]) > .event-body {
+          display: block;
+        }
+
+        summary::after {
+          display: none;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <div class="shell">
+      <header class="hero" id="top">
+        <div class="hero-top">
+          <div>
+            <div class="eyebrow">chopsticks · runtime agent · canonical reference</div>
+            <h1>Agent API &amp; Event Catalog</h1>
+            <p class="subtitle">
+              One runtime-owned object per provider spawn. Adapters normalize native evidence into a single event rail;
+              the <span class="mono">Agent</span> projects state and conversation, then exposes typed exact, service,
+              and catch-all subscriptions through <span class="mono">.on(…)</span>.
+            </p>
+          </div>
+          <button class="theme-button" id="theme-toggle" type="button" aria-label="Toggle color theme">Theme</button>
+        </div>
+
+        <div class="pipeline" aria-label="Agent event pipeline">
+          provider-native evidence&nbsp; → &nbsp;<b class="adapter">adapter normalizer</b>&nbsp; →
+          &nbsp;<b>AgentEventEnvelope</b>&nbsp; → &nbsp;<b class="agent">runtime Agent</b>&nbsp; → &nbsp;state ·
+          conversation · monitor · <b>agent.on(…)</b>
+        </div>
+
+        <div class="stats" aria-label="API summary">
+          <div class="stat"><strong>1</strong><span>Agent object per runtime run</span></div>
+          <div class="stat"><strong>10</strong><span>top-level event services</span></div>
+          <div class="stat"><strong>38</strong><span>normalized event routes</span></div>
+          <div class="stat"><strong>3</strong><span>selector forms</span></div>
+        </div>
+      </header>
+
+      <div class="layout">
+        <nav class="toc" aria-label="Contents">
+          <p class="toc-title">Contents</p>
+          <a href="#architecture">Architecture</a>
+          <a href="#quick-start">Quick start</a>
+          <a href="#agent">Agent class</a>
+          <a href="#runtime">Runtime surface</a>
+          <a href="#subscriptions">Subscriptions</a>
+          <a href="#envelope">Event envelope</a>
+          <a href="#catalog">Event catalog</a>
+          <a class="sub-link" href="#service-state">state</a>
+          <a class="sub-link" href="#service-context-window">context-window</a>
+          <a class="sub-link" href="#service-conversation">conversation</a>
+          <a class="sub-link" href="#service-usage">usage</a>
+          <a class="sub-link" href="#service-environment">environment</a>
+          <a class="sub-link" href="#service-workspace">workspace</a>
+          <a class="sub-link" href="#service-process">process</a>
+          <a class="sub-link" href="#service-notification">notification</a>
+          <a class="sub-link" href="#service-monitor">monitor</a>
+          <a class="sub-link" href="#service-adapter">adapter</a>
+          <a href="#snapshots">Snapshots</a>
+          <a href="#shared-types">Shared types</a>
+          <a href="#semantics">Semantics</a>
+        </nav>
+
+        <main>
+          <section id="architecture">
+            <h2>Architecture</h2>
+            <p class="section-note">
+              Provider details end at the adapter boundary. Every downstream service consumes the same normalized,
+              ordered envelope, and each runtime run has exactly one owning <span class="mono">Agent</span> instance.
+            </p>
+
+            <figure>
+              <div class="diagram">
+                <svg
+                  viewBox="0 0 1080 430"
+                  role="img"
+                  aria-label="Provider adapters normalize native observations into one event stream. The runtime Agent projects state and conversation, sends monitor batches to the monitor reducer, and publishes typed events to exact, service, and catch-all listeners."
+                >
+                  <defs>
+                    <marker
+                      id="arrow-ink"
+                      viewBox="0 0 10 10"
+                      refX="9"
+                      refY="5"
+                      markerWidth="7"
+                      markerHeight="7"
+                      orient="auto-start-reverse"
+                    >
+                      <path d="M 0 0 L 10 5 L 0 10 z" fill="currentColor" />
+                    </marker>
+                    <marker
+                      id="arrow-teal"
+                      viewBox="0 0 10 10"
+                      refX="9"
+                      refY="5"
+                      markerWidth="7"
+                      markerHeight="7"
+                      orient="auto-start-reverse"
+                    >
+                      <path d="M 0 0 L 10 5 L 0 10 z" style="fill: var(--teal)" />
+                    </marker>
+                    <marker
+                      id="arrow-copper"
+                      viewBox="0 0 10 10"
+                      refX="9"
+                      refY="5"
+                      markerWidth="7"
+                      markerHeight="7"
+                      orient="auto-start-reverse"
+                    >
+                      <path d="M 0 0 L 10 5 L 0 10 z" style="fill: var(--copper)" />
+                    </marker>
+                  </defs>
+
+                  <rect x="24" y="45" width="190" height="320" rx="12" fill="var(--paper-2)" stroke="var(--line)" />
+                  <text
+                    x="119"
+                    y="77"
+                    text-anchor="middle"
+                    fill="var(--muted)"
+                    font-size="11"
+                    font-family="JetBrains Mono"
+                    letter-spacing="1.2"
+                  >
+                    ADAPTERS
+                  </text>
+                  <g font-family="Source Sans 3" font-size="14" fill="var(--ink)">
+                    <rect x="48" y="100" width="142" height="40" rx="7" fill="var(--paper)" stroke="var(--line)" />
+                    <text x="119" y="125" text-anchor="middle">Claude hooks + log</text>
+                    <rect x="48" y="153" width="142" height="40" rx="7" fill="var(--paper)" stroke="var(--line)" />
+                    <text x="119" y="178" text-anchor="middle">Codex protocol</text>
+                    <rect x="48" y="206" width="142" height="40" rx="7" fill="var(--paper)" stroke="var(--line)" />
+                    <text x="119" y="231" text-anchor="middle">ACP / Grok</text>
+                    <rect x="48" y="259" width="142" height="40" rx="7" fill="var(--paper)" stroke="var(--line)" />
+                    <text x="119" y="284" text-anchor="middle">Kimi / OpenCode</text>
+                    <rect x="48" y="312" width="142" height="40" rx="7" fill="var(--paper)" stroke="var(--line)" />
+                    <text x="119" y="337" text-anchor="middle">Hermes</text>
+                  </g>
+
+                  <line
+                    x1="214"
+                    y1="205"
+                    x2="335"
+                    y2="205"
+                    stroke="var(--copper)"
+                    stroke-width="2"
+                    marker-end="url(#arrow-copper)"
+                  />
+                  <text
+                    x="274"
+                    y="189"
+                    text-anchor="middle"
+                    fill="var(--copper)"
+                    font-size="11"
+                    font-family="JetBrains Mono"
+                  >
+                    normalize
+                  </text>
+
+                  <rect
+                    x="340"
+                    y="112"
+                    width="215"
+                    height="185"
+                    rx="12"
+                    fill="var(--paper)"
+                    stroke="var(--teal)"
+                    stroke-width="2"
+                  />
+                  <text
+                    x="447"
+                    y="144"
+                    text-anchor="middle"
+                    fill="var(--teal)"
+                    font-size="12"
+                    font-family="JetBrains Mono"
+                    font-weight="600"
+                  >
+                    RUNTIME AGENT
+                  </text>
+                  <text
+                    x="447"
+                    y="175"
+                    text-anchor="middle"
+                    fill="var(--ink)"
+                    font-size="16"
+                    font-family="Spectral"
+                    font-weight="600"
+                  >
+                    one per spawn
+                  </text>
+                  <rect x="366" y="196" width="162" height="34" rx="6" fill="var(--teal-bg)" />
+                  <text
+                    x="447"
+                    y="218"
+                    text-anchor="middle"
+                    fill="var(--teal)"
+                    font-size="12"
+                    font-family="JetBrains Mono"
+                  >
+                    ordered event bus
+                  </text>
+                  <rect x="366" y="244" width="76" height="30" rx="6" fill="var(--paper-2)" />
+                  <text
+                    x="404"
+                    y="264"
+                    text-anchor="middle"
+                    fill="var(--muted)"
+                    font-size="11"
+                    font-family="JetBrains Mono"
+                  >
+                    state
+                  </text>
+                  <rect x="451" y="244" width="77" height="30" rx="6" fill="var(--paper-2)" />
+                  <text
+                    x="489"
+                    y="264"
+                    text-anchor="middle"
+                    fill="var(--muted)"
+                    font-size="11"
+                    font-family="JetBrains Mono"
+                  >
+                    conversation
+                  </text>
+
+                  <line
+                    x1="555"
+                    y1="158"
+                    x2="680"
+                    y2="94"
+                    stroke="currentColor"
+                    stroke-width="1.5"
+                    marker-end="url(#arrow-ink)"
+                  />
+                  <line
+                    x1="555"
+                    y1="205"
+                    x2="680"
+                    y2="205"
+                    stroke="var(--teal)"
+                    stroke-width="2"
+                    marker-end="url(#arrow-teal)"
+                  />
+                  <line
+                    x1="555"
+                    y1="252"
+                    x2="680"
+                    y2="316"
+                    stroke="currentColor"
+                    stroke-width="1.5"
+                    marker-end="url(#arrow-ink)"
+                  />
+
+                  <rect x="685" y="49" width="365" height="92" rx="10" fill="var(--paper)" stroke="var(--line)" />
+                  <text
+                    x="709"
+                    y="78"
+                    fill="var(--copper)"
+                    font-size="11"
+                    font-family="JetBrains Mono"
+                    font-weight="600"
+                  >
+                    PROJECTIONS
+                  </text>
+                  <text x="709" y="105" fill="var(--ink)" font-size="14" font-family="Source Sans 3">
+                    agent.state · agent.conversation
+                  </text>
+                  <text x="709" y="124" fill="var(--muted)" font-size="12" font-family="Source Sans 3">
+                    updated before listeners receive the envelope
+                  </text>
+
+                  <rect x="685" y="159" width="365" height="92" rx="10" fill="var(--paper)" stroke="var(--teal)" />
+                  <text
+                    x="709"
+                    y="188"
+                    fill="var(--teal)"
+                    font-size="11"
+                    font-family="JetBrains Mono"
+                    font-weight="600"
+                  >
+                    OBSERVATION
+                  </text>
+                  <text x="709" y="215" fill="var(--ink)" font-size="14" font-family="JetBrains Mono">
+                    exact · service:* · *
+                  </text>
+                  <text x="709" y="234" fill="var(--muted)" font-size="12" font-family="Source Sans 3">
+                    typed, synchronous, listener-fault isolated
+                  </text>
+
+                  <rect x="685" y="269" width="365" height="112" rx="10" fill="var(--paper)" stroke="var(--line)" />
+                  <text
+                    x="709"
+                    y="298"
+                    fill="var(--purple)"
+                    font-size="11"
+                    font-family="JetBrains Mono"
+                    font-weight="600"
+                  >
+                    MONITOR + HOST
+                  </text>
+                  <text x="709" y="325" fill="var(--ink)" font-size="14" font-family="Source Sans 3">
+                    monitor:batch · workspace/process evidence
+                  </text>
+                  <text x="709" y="346" fill="var(--muted)" font-size="12" font-family="Source Sans 3">
+                    same rail; no adapter-side monitor callback
+                  </text>
+                  <text x="709" y="365" fill="var(--muted)" font-size="12" font-family="Source Sans 3">
+                    runtime correlation adds run id, epoch, and delivery order
+                  </text>
+                </svg>
+              </div>
+              <figcaption>
+                Adapter handles retain only control-local correlation and observation level. They do not expose a state
+                reducer or a second monitor subscription rail.
+              </figcaption>
+            </figure>
+          </section>
+
+          <section id="quick-start">
+            <h2>Quick start</h2>
+            <p class="section-note">
+              Create through the runtime; do not construct <span class="mono">Agent</span> directly. Spawn failures are
+              returned as data, so narrow the result before subscribing.
+            </p>
+            <pre><code>import { createBuiltinAgentRuntime } from '@vibecook/chopsticks-runtime';
+
+const runtime = createBuiltinAgentRuntime({ host, defaultCwd: process.cwd() });
+
+const result = await runtime.spawn({
+  agent: 'claude',
+  workspace: { mode: 'worktree', path: process.cwd() },
+  agentOptions: { model: 'sonnet', permissionMode: 'plan' },
+});
+
+if ('error' in result) throw new Error(result.error.message);
+const agent = result;
+
+const offState = agent.on('state:*', (envelope) =&gt; {
+  console.log(envelope.type, agent.state.lifecycle);
+});
+
+const offContext = agent.on('context-window:updated', ({ event }) =&gt; {
+  console.log(`${event.usedTokens}/${event.capacityTokens}`);
+});
+
+const offAll = agent.on('*', ({ service, type, sequence }) =&gt; {
+  console.log(sequence, service, type);
+});
+
+const receipt = await agent.submitPrompt({ text: 'Review this repository' });
+
+offState();
+offContext();
+offAll();</code></pre>
+            <div class="callout warning">
+              <strong>Subscription timing.</strong> Adapter bootstrap events are buffered until the runtime attaches the
+              owning Agent. Application listeners added after <span class="mono">spawn()</span> observe subsequent live
+              events; use <span class="mono">agent.state</span> and <span class="mono">agent.conversation</span> for the
+              already-projected current snapshot.
+            </div>
+          </section>
+
+          <section id="agent">
+            <h2>The public Agent class</h2>
+            <p class="section-note">
+              This is the intentionally small application-facing API. Ingress, disposal, and projection controls are
+              runtime-private.
+            </p>
+
+            <div class="cards">
+              <article class="card">
+                <span class="badge service-environment">identity</span>
+                <h3>agent.info</h3>
+                <div class="signature">Readonly&lt;AgentSessionInfo&gt;</div>
+                <p>Provider, runtime/native/terminal identities, external references, and workspace metadata.</p>
+              </article>
+              <article class="card">
+                <span class="badge service-environment">identity</span>
+                <h3>agent.runtimeRunId</h3>
+                <div class="signature">string</div>
+                <p>Stable runtime-owned identity for this provider invocation.</p>
+              </article>
+              <article class="card">
+                <span class="badge service-process">routing</span>
+                <h3>agent.terminalSessionId</h3>
+                <div class="signature">string</div>
+                <p>Host terminal/PTY routing identity for the live agent.</p>
+              </article>
+              <article class="card">
+                <span class="badge service-state">projection</span>
+                <h3>agent.state</h3>
+                <div class="signature">SessionRuntimeState</div>
+                <p>Current deterministic state projection after all accepted non-monitor envelopes.</p>
+              </article>
+              <article class="card">
+                <span class="badge service-conversation">projection</span>
+                <h3>agent.conversation</h3>
+                <div class="signature">AgentConversationSnapshot</div>
+                <p>Provider-neutral user, assistant, activity, and notice timeline.</p>
+              </article>
+              <article class="card">
+                <span class="badge service-adapter">capability</span>
+                <h3>agent.observationLevel</h3>
+                <div class="signature">ObservationLevel</div>
+                <p>Current honest fidelity of the adapter’s native evidence surface.</p>
+              </article>
+              <article class="card">
+                <span class="badge service-monitor">observation</span>
+                <h3>agent.on(selector, listener)</h3>
+                <div class="signature">() =&gt; void</div>
+                <p>
+                  Subscribe by exact route, service wildcard, or catch-all. Returns an idempotent unsubscribe function.
+                </p>
+              </article>
+              <article class="card">
+                <span class="badge service-conversation">control</span>
+                <h3>agent.submitPrompt(submission)</h3>
+                <div class="signature">Promise&lt;PromptReceipt&gt;</div>
+                <p>Submit through the adapter’s structured or guarded native-TUI control channel.</p>
+              </article>
+            </div>
+
+            <h3>Canonical declaration</h3>
+            <pre><code>class Agent {
+  get info(): Readonly&lt;AgentSessionInfo&gt;;
+  get runtimeRunId(): string;
+  get terminalSessionId(): string;
+  get state(): SessionRuntimeState;
+  get conversation(): AgentConversationSnapshot;
+  get observationLevel(): ObservationLevel;
+
+  on&lt;Selector extends AgentEventSelector&gt;(
+    selector: Selector,
+    listener: AgentEventListener&lt;AgentEnvelopeForSelector&lt;Selector&gt;&gt;,
+  ): () =&gt; void;
+
+  submitPrompt(submission: PromptSubmission): Promise&lt;PromptReceipt&gt;;
+}</code></pre>
+          </section>
+
+          <section id="runtime">
+            <h2>Runtime entry points</h2>
+            <p class="section-note">
+              <span class="mono">spawn()</span> and <span class="mono">agent()</span> are the primary object-oriented
+              entry points. The wider runtime also owns creation, host lifecycle, workspace, monitor, and compatibility
+              operations.
+            </p>
+
+            <div class="table-wrap">
+              <table>
+                <thead>
+                  <tr>
+                    <th>Member</th>
+                    <th>Return</th>
+                    <th>Role</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr>
+                    <td class="route">spawn(options)</td>
+                    <td class="native-type">Promise&lt;Agent | AgentSessionFailure&gt;</td>
+                    <td><p>Primary API. Starts one provider and returns its owning Agent.</p></td>
+                  </tr>
+                  <tr>
+                    <td class="route">agent(id)</td>
+                    <td class="native-type">Agent | undefined</td>
+                    <td><p>Looks up a live Agent by terminal-session id or runtime-run id.</p></td>
+                  </tr>
+                  <tr>
+                    <td class="route">accountUsage(provider)</td>
+                    <td class="native-type">Promise&lt;AccountUsageFetchResult&gt;</td>
+                    <td><p>Fetches provider account-wide quotas; deliberately separate from per-agent state.</p></td>
+                  </tr>
+                  <tr>
+                    <td class="route">prepareSession(options)</td>
+                    <td class="native-type">Promise&lt;PrepareAgentSessionResult&gt;</td>
+                    <td><p>Allocates a launch recipe for a caller-owned terminal.</p></td>
+                  </tr>
+                  <tr>
+                    <td class="route">adoptPrepared(id, options)</td>
+                    <td class="native-type">Promise&lt;AdoptPreparedSessionResult&gt;</td>
+                    <td><p>Binds a prepared provider to a terminal and creates the runtime-owned Agent.</p></td>
+                  </tr>
+                  <tr>
+                    <td class="route">restoreSession(options)</td>
+                    <td class="native-type">Promise&lt;CreateAgentSessionResult&gt;</td>
+                    <td><p>Explicit host reconstruction after runtime continuity is lost.</p></td>
+                  </tr>
+                  <tr>
+                    <td class="route">cancelPrepared(id)</td>
+                    <td class="native-type">Promise&lt;CancelPreparedSessionResult&gt;</td>
+                    <td><p>Cancels or cleans up an unused preparation.</p></td>
+                  </tr>
+                  <tr>
+                    <td class="route">runtimeRunInfo(id)</td>
+                    <td class="native-type">RuntimeRunInfo | undefined</td>
+                    <td><p>Reads allocation/preparation/active/terminal runtime identity state.</p></td>
+                  </tr>
+                  <tr>
+                    <td class="route">monitorState(id)</td>
+                    <td class="native-type">AgentMonitorState | undefined</td>
+                    <td><p>Reads the projected operational monitor snapshot.</p></td>
+                  </tr>
+                  <tr>
+                    <td class="route">observeMonitor(id)</td>
+                    <td class="native-type">AgentMonitorHandle</td>
+                    <td><p>Creates a run-scoped monitor consumer handle.</p></td>
+                  </tr>
+                  <tr>
+                    <td class="route">onMonitorState(listener)</td>
+                    <td class="native-type">() =&gt; void</td>
+                    <td><p>Host-wide monitor-state fan-out for application infrastructure.</p></td>
+                  </tr>
+                  <tr>
+                    <td class="route">onMonitorNotification(listener)</td>
+                    <td class="native-type">() =&gt; void</td>
+                    <td><p>Host-wide operational notification fan-out.</p></td>
+                  </tr>
+                  <tr>
+                    <td class="route">onMonitorRemoved(listener)</td>
+                    <td class="native-type">() =&gt; void</td>
+                    <td><p>Reports final monitor removal by runtime run id.</p></td>
+                  </tr>
+                  <tr>
+                    <td class="route">acknowledgeFailureBlocker(…)</td>
+                    <td class="native-type">Promise&lt;boolean&gt;</td>
+                    <td><p>Acknowledges an operational failure blocker.</p></td>
+                  </tr>
+                  <tr>
+                    <td class="route">readMonitorArtifact(…)</td>
+                    <td class="native-type">Promise&lt;MonitorArtifactReadResult&gt;</td>
+                    <td><p>Performs a bounded read of an adapter-issued opaque artifact.</p></td>
+                  </tr>
+                  <tr>
+                    <td class="route">workspaceDiff(terminalId)</td>
+                    <td class="native-type">Promise&lt;WorkspaceDiff | null&gt;</td>
+                    <td><p>Reads the current managed workspace diff.</p></td>
+                  </tr>
+                  <tr>
+                    <td class="route">handleProcessExit(…)</td>
+                    <td class="native-type">Promise&lt;AgentWorkspaceFinal | undefined&gt;</td>
+                    <td><p>Separately records host process exit and finalizes the workspace.</p></td>
+                  </tr>
+                  <tr>
+                    <td class="route">recordingStatus() / onRecordingStatus(…)</td>
+                    <td class="native-type">ActionRecorderStatus | unsubscribe</td>
+                    <td><p>Best-effort audit-log health and updates.</p></td>
+                  </tr>
+                  <tr>
+                    <td class="route">dispose()</td>
+                    <td class="native-type">Promise&lt;AgentWorkspaceFinal[]&gt;</td>
+                    <td><p>Stops observation/control and finalizes all remaining runtime workspaces.</p></td>
+                  </tr>
+                  <tr>
+                    <td class="route">
+                      createSession / sessionState / observationLevel / conversationSnapshot / onEvent / submitPrompt
+                    </td>
+                    <td class="native-type">compatibility</td>
+                    <td><p>Deprecated IPC-oriented surfaces. New application code uses the returned Agent.</p></td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+
+            <h3>Spawn input and failure</h3>
+            <div class="type-grid">
+              <article class="type-card">
+                <h3>CreateAgentSessionOptions</h3>
+                <p>Built-in runtimes narrow <span class="mono">agentOptions</span> by provider discriminator.</p>
+                <pre><code>interface CreateAgentSessionOptions {
+  agent: string;
+  cwd?: string;
+  resume?: string;
+  title?: string;
+  creationRequestId?: string;
+  externalRefs?: readonly ExternalRef[];
+  workspace?: AgentWorkspaceRequest;
+  agentOptions?: unknown;
+}</code></pre>
+              </article>
+              <article class="type-card">
+                <h3>AgentSessionFailure</h3>
+                <p>Failures are safe renderable data and preserve the allocated runtime identity.</p>
+                <pre><code>interface AgentSessionFailure {
+  runtimeRunId: string;
+  runtimeEpoch: number;
+  externalRefs: ExternalRef[];
+  terminalOutcome?: CreationRequestTerminalOutcome;
+  error: {
+    code: AgentSessionErrorCode;
+    message: string;
+  };
+}</code></pre>
+              </article>
+            </div>
+          </section>
+
+          <section id="subscriptions">
+            <h2>Subscriptions and typed selectors</h2>
+            <p class="section-note">
+              Selectors narrow the listener envelope at compile time. All forms receive the same immutable envelope;
+              only their routing breadth differs.
+            </p>
+
+            <div class="cards">
+              <article class="card">
+                <span class="badge service-context-window">exact</span>
+                <h3>'context-window:updated'</h3>
+                <div class="signature">AgentEventEnvelope&lt;ContextWindowUpdatedEvent&gt;</div>
+                <p>One public route. Best when a consumer owns one concrete behavior.</p>
+              </article>
+              <article class="card">
+                <span class="badge service-state">service</span>
+                <h3>'state:*'</h3>
+                <div class="signature">AgentEnvelopeForService&lt;'state'&gt;</div>
+                <p>Every route owned by the service. The nested event remains a discriminated union.</p>
+              </article>
+              <article class="card">
+                <span class="badge service-adapter">catch-all</span>
+                <h3>'*'</h3>
+                <div class="signature">AgentEventEnvelope&lt;AgentEvent&gt;</div>
+                <p>Every normalized envelope for logging, diagnostics, replay, or generic instrumentation.</p>
+              </article>
+            </div>
+
+            <pre><code>type AgentEventSelector =
+  | '*'
+  | `${AgentEventService}:*`
+  | AgentServiceEventType;
+
+const unsubscribe = agent.on('state:tool-completed', ({ event }) =&gt; {
+  // event is ToolCompletedEvent here
+  console.log(event.toolCallId, event.durationMs);
+});
+
+unsubscribe();</code></pre>
+
+            <div class="callout">
+              <strong>Delivery contract.</strong> Publication is synchronous. The Agent updates its state and
+              conversation projections before invoking listeners. A listener exception is reported through the runtime
+              error hook and does not stop other listeners or adapter ingestion. Do not depend on relative ordering
+              between listeners registered on different selector scopes.
+            </div>
+          </section>
+
+          <section id="envelope">
+            <h2>The event envelope</h2>
+            <p class="section-note">
+              Subscribe using the namespaced envelope <span class="mono">type</span>. Inspect the nested
+              <span class="mono">event.type</span> only when discriminating normalized payloads inside a wildcard
+              listener. Raw provider evidence, when retained, stays in <span class="mono">nativeEvent</span>.
+            </p>
+
+            <pre><code>interface AgentEventEnvelope&lt;T extends AgentEvent = AgentEvent&gt; {
+  type: AgentServiceEventType&lt;T&gt;; // public route, e.g. "state:turn-started"
+  service: AgentEventServiceOf&lt;T&gt;;
+  eventId?: string;
+  sourceEventRef?: {
+    namespace: string;
+    eventId: string;
+    revisionKey?: string;
+    sourceGeneration?: number;
+    cursorStart?: number;
+    cursorEnd?: number;
+  };
+  sequence: number;               // monotonic delivery order for this Agent
+  sessionId: string;
+  nativeSessionId?: string;
+  promptId?: string;              // user-turn correlation
+  turnId?: string;                // assistant response-cycle correlation
+  agentId?: string;               // provider-native actor; absent means root
+  agentType?: string;
+  providerVersion?: string;
+  timestamp: string;              // ISO 8601 wall-clock time
+  monotonicTime: number;
+  source: AgentEventSource;
+  confidence: AgentEventConfidence;
+  replay?: boolean;               // durable history, not a new live event
+  event: T;                       // normalized provider-neutral payload
+  nativeEvent?: unknown;          // retained raw provider evidence
+}</code></pre>
+
+            <div class="legend" aria-label="Envelope field interpretation">
+              <span class="legend-item"
+                ><span class="badge service-monitor">route</span> type + service drive fan-out</span
+              >
+              <span class="legend-item"
+                ><span class="badge service-environment">identity</span> ids correlate run, turn, actor, and
+                source</span
+              >
+              <span class="legend-item"
+                ><span class="badge service-usage">evidence</span> source + confidence explain trust</span
+              >
+              <span class="legend-item"
+                ><span class="badge service-adapter">escape hatch</span> nativeEvent retains raw evidence</span
+              >
+            </div>
+
+            <div class="type-grid">
+              <article class="type-card">
+                <h3>AgentEventSource</h3>
+                <pre><code>type AgentEventSource =
+  | 'native-hook'
+  | 'native-transcript'
+  | 'native-protocol'
+  | 'native-statusline'
+  | 'native-log'
+  | 'workspace'
+  | 'process'
+  | 'terminal-inference'
+  | 'runtime';</code></pre>
+              </article>
+              <article class="type-card">
+                <h3>AgentEventConfidence</h3>
+                <pre><code>type AgentEventConfidence =
+  | 'authoritative'
+  | 'derived'
+  | 'inferred';</code></pre>
+              </article>
+            </div>
+          </section>
+
+          <section id="catalog">
+            <h2>Complete event catalog</h2>
+            <p class="section-note">
+              All 38 public routes are listed below. Expand a row to see the exact normalized payload. Search matches
+              routes, native payload types, descriptions, and field names.
+            </p>
+
+            <div class="filter-bar" aria-label="Event catalog filters">
+              <input
+                class="search"
+                id="event-search"
+                type="search"
+                placeholder="Search routes or payload fields…"
+                autocomplete="off"
+              />
+              <button class="filter-button active" type="button" data-filter="all">All</button>
+              <button class="filter-button" type="button" data-filter="state">State</button>
+              <button class="filter-button" type="button" data-filter="context-window">Context</button>
+              <button class="filter-button" type="button" data-filter="conversation">Conversation</button>
+              <button class="filter-button" type="button" data-filter="monitor">Monitor</button>
+              <button class="filter-button" type="button" data-filter="other">Other</button>
+              <button class="small-button" id="expand-visible" type="button">Expand visible</button>
+              <button class="small-button" id="collapse-all" type="button">Collapse</button>
+              <span class="result-count" id="event-count">38 / 38 routes</span>
+            </div>
+
+            <div id="event-sections">
+              <section class="service-section" id="service-state" data-section-service="state">
+                <div class="service-header">
+                  <h3>State service</h3>
+                  <span class="badge service-state">27 routes</span>
+                  <p>Lifecycle, turns, reasoning, tools, interactions, actors, planning, and compaction.</p>
+                </div>
+                <div class="event-list">
+                  <details class="event-card" data-service="state">
+                    <summary>
+                      <span class="event-title"
+                        ><span class="route">state:session-started</span
+                        ><span class="native-type">session.started</span></span
+                      ><span class="badge service-state">state</span>
+                    </summary>
+                    <div class="event-body">
+                      <p>
+                        A provider session became observable. <span class="mono">rebind</span> intentionally rotates
+                        native identity inside the same runtime run.
+                      </p>
+                      <pre><code>interface SessionStartedEvent {
+  type: 'session.started';
+  nativeSessionId?: string;
+  title?: string;
+  startSource?: string;
+  rebind?: boolean;
+}</code></pre>
+                      <div class="projection-row">
+                        <span class="chip">lifecycle → ready</span><span class="chip">native identity</span>
+                      </div>
+                    </div>
+                  </details>
+
+                  <details class="event-card" data-service="state">
+                    <summary>
+                      <span class="event-title"
+                        ><span class="route">state:session-ready</span
+                        ><span class="native-type">session.ready</span></span
+                      ><span class="badge service-state">state</span>
+                    </summary>
+                    <div class="event-body">
+                      <p>The provider is ready to accept work.</p>
+                      <pre><code>interface SessionReadyEvent {
+  type: 'session.ready';
+}</code></pre>
+                      <div class="projection-row"><span class="chip">lifecycle → ready</span></div>
+                    </div>
+                  </details>
+
+                  <details class="event-card" data-service="state">
+                    <summary>
+                      <span class="event-title"
+                        ><span class="route">state:session-exited</span
+                        ><span class="native-type">session.exited</span></span
+                      ><span class="badge service-state">state</span>
+                    </summary>
+                    <div class="event-body">
+                      <p>The semantic provider session ended. This is distinct from host process exit.</p>
+                      <pre><code>interface SessionExitedEvent {
+  type: 'session.exited';
+  reason?: string;
+}</code></pre>
+                      <div class="projection-row">
+                        <span class="chip">lifecycle → exited</span><span class="chip">closes in-flight state</span>
+                      </div>
+                    </div>
+                  </details>
+
+                  <details class="event-card" data-service="state">
+                    <summary>
+                      <span class="event-title"
+                        ><span class="route">state:turn-started</span
+                        ><span class="native-type">turn.started</span></span
+                      ><span class="badge service-state">state</span>
+                    </summary>
+                    <div class="event-body">
+                      <p>A user turn began. When present, the prompt also creates a conversation user item.</p>
+                      <pre><code>interface TurnStartedEvent {
+  type: 'turn.started';
+  turnId?: string;
+  prompt?: string;
+}</code></pre>
+                      <div class="projection-row">
+                        <span class="chip">lifecycle → running</span><span class="chip">activeTurn</span
+                        ><span class="chip">conversation</span>
+                      </div>
+                    </div>
+                  </details>
+
+                  <details class="event-card" data-service="state">
+                    <summary>
+                      <span class="event-title"
+                        ><span class="route">state:turn-completed</span
+                        ><span class="native-type">turn.completed</span></span
+                      ><span class="badge service-state">state</span>
+                    </summary>
+                    <div class="event-body">
+                      <p>The response cycle completed successfully; final assistant text may be carried directly.</p>
+                      <pre><code>interface TurnCompletedEvent {
+  type: 'turn.completed';
+  turnId?: string;
+  stopReason?: string;
+  lastAssistantMessage?: string;
+}</code></pre>
+                      <div class="projection-row">
+                        <span class="chip">activeTurn cleared</span><span class="chip">conversation sealed</span>
+                      </div>
+                    </div>
+                  </details>
+
+                  <details class="event-card" data-service="state">
+                    <summary>
+                      <span class="event-title"
+                        ><span class="route">state:turn-failed</span><span class="native-type">turn.failed</span></span
+                      ><span class="badge service-state">state</span>
+                    </summary>
+                    <div class="event-body">
+                      <p>The response cycle terminated with a provider-visible failure.</p>
+                      <pre><code>interface TurnFailedEvent {
+  type: 'turn.failed';
+  turnId?: string;
+  error?: string;
+}</code></pre>
+                      <div class="projection-row">
+                        <span class="chip">activeTurn cleared</span><span class="chip">error notice</span>
+                      </div>
+                    </div>
+                  </details>
+
+                  <details class="event-card" data-service="state">
+                    <summary>
+                      <span class="event-title"
+                        ><span class="route">state:reasoning-started</span
+                        ><span class="native-type">reasoning.started</span></span
+                      ><span class="badge service-state">state</span>
+                    </summary>
+                    <div class="event-body">
+                      <p>Protocol-authoritative reasoning presence. It never exposes hidden thought text.</p>
+                      <pre><code>interface ReasoningStartedEvent {
+  type: 'reasoning.started';
+  reasoningId?: string;
+}</code></pre>
+                      <div class="projection-row">
+                        <span class="chip">activeReasoning</span><span class="chip">conversation activity</span>
+                      </div>
+                    </div>
+                  </details>
+
+                  <details class="event-card" data-service="state">
+                    <summary>
+                      <span class="event-title"
+                        ><span class="route">state:reasoning-progress</span
+                        ><span class="native-type">reasoning.progress</span></span
+                      ><span class="badge service-state">state</span>
+                    </summary>
+                    <div class="event-body">
+                      <p>A reasoning pulse. Any raw provider payload remains only on the envelope.</p>
+                      <pre><code>interface ReasoningProgressEvent {
+  type: 'reasoning.progress';
+  reasoningId?: string;
+}</code></pre>
+                      <div class="projection-row"><span class="chip">conversation activity</span></div>
+                    </div>
+                  </details>
+
+                  <details class="event-card" data-service="state">
+                    <summary>
+                      <span class="event-title"
+                        ><span class="route">state:reasoning-summary</span
+                        ><span class="native-type">reasoning.summary</span></span
+                      ><span class="badge service-state">state</span>
+                    </summary>
+                    <div class="event-body">
+                      <p>An explicitly user-displayable reasoning summary accumulated by the adapter.</p>
+                      <pre><code>interface ReasoningSummaryEvent {
+  type: 'reasoning.summary';
+  reasoningId?: string;
+  text: string;
+  final?: boolean;
+}</code></pre>
+                      <div class="projection-row"><span class="chip">conversation summary</span></div>
+                    </div>
+                  </details>
+
+                  <details class="event-card" data-service="state">
+                    <summary>
+                      <span class="event-title"
+                        ><span class="route">state:reasoning-completed</span
+                        ><span class="native-type">reasoning.completed</span></span
+                      ><span class="badge service-state">state</span>
+                    </summary>
+                    <div class="event-body">
+                      <p>The explicit reasoning phase ended.</p>
+                      <pre><code>interface ReasoningCompletedEvent {
+  type: 'reasoning.completed';
+  reasoningId?: string;
+}</code></pre>
+                      <div class="projection-row">
+                        <span class="chip">activeReasoning cleared</span><span class="chip">activity completed</span>
+                      </div>
+                    </div>
+                  </details>
+
+                  <details class="event-card" data-service="state">
+                    <summary>
+                      <span class="event-title"
+                        ><span class="route">state:tool-requested</span
+                        ><span class="native-type">tool.requested</span></span
+                      ><span class="badge service-state">state</span>
+                    </summary>
+                    <div class="event-body">
+                      <p>A tool call was proposed or requested but may not yet be executing.</p>
+                      <pre><code>interface ToolRequestedEvent {
+  type: 'tool.requested';
+  toolCallId: string;
+  tool: string;
+  input?: unknown;
+  presentation?: ToolPresentation;
+}</code></pre>
+                      <div class="projection-row">
+                        <span class="chip">tools map</span><span class="chip">activity requested</span>
+                      </div>
+                    </div>
+                  </details>
+
+                  <details class="event-card" data-service="state">
+                    <summary>
+                      <span class="event-title"
+                        ><span class="route">state:tool-started</span
+                        ><span class="native-type">tool.started</span></span
+                      ><span class="badge service-state">state</span>
+                    </summary>
+                    <div class="event-body">
+                      <p>A structured or ACP provider confirmed that tool execution began.</p>
+                      <pre><code>interface ToolStartedEvent {
+  type: 'tool.started';
+  toolCallId: string;
+  tool?: string;
+  input?: unknown;
+  presentation?: ToolPresentation;
+}</code></pre>
+                      <div class="projection-row">
+                        <span class="chip">tool → running</span><span class="chip">activity running</span>
+                      </div>
+                    </div>
+                  </details>
+
+                  <details class="event-card" data-service="state">
+                    <summary>
+                      <span class="event-title"
+                        ><span class="route">state:tool-completed</span
+                        ><span class="native-type">tool.completed</span></span
+                      ><span class="badge service-state">state</span>
+                    </summary>
+                    <div class="event-body">
+                      <p>A tool call completed successfully.</p>
+                      <pre><code>interface ToolCompletedEvent {
+  type: 'tool.completed';
+  toolCallId: string;
+  tool?: string;
+  output?: unknown;
+  durationMs?: number;
+  presentation?: ToolPresentation;
+}</code></pre>
+                      <div class="projection-row">
+                        <span class="chip">tool removed</span><span class="chip">toolsCompleted +1</span
+                        ><span class="chip">activity completed</span>
+                      </div>
+                    </div>
+                  </details>
+
+                  <details class="event-card" data-service="state">
+                    <summary>
+                      <span class="event-title"
+                        ><span class="route">state:tool-failed</span><span class="native-type">tool.failed</span></span
+                      ><span class="badge service-state">state</span>
+                    </summary>
+                    <div class="event-body">
+                      <p>A tool call terminated unsuccessfully.</p>
+                      <pre><code>interface ToolFailedEvent {
+  type: 'tool.failed';
+  toolCallId: string;
+  tool?: string;
+  error?: string;
+  presentation?: ToolPresentation;
+}</code></pre>
+                      <div class="projection-row">
+                        <span class="chip">tool removed</span><span class="chip">toolsFailed +1</span
+                        ><span class="chip">activity failed</span>
+                      </div>
+                    </div>
+                  </details>
+
+                  <details class="event-card" data-service="state">
+                    <summary>
+                      <span class="event-title"
+                        ><span class="route">state:permission-requested</span
+                        ><span class="native-type">permission.requested</span></span
+                      ><span class="badge service-state">state</span>
+                    </summary>
+                    <div class="event-body">
+                      <p>The agent requires user or host authorization for a tool action.</p>
+                      <pre><code>interface PermissionRequestedEvent {
+  type: 'permission.requested';
+  requestId: string;
+  toolCallId?: string;
+  tool?: string;
+  input?: unknown;
+  presentation: 'native-tui' | 'host-ui';
+}</code></pre>
+                      <div class="projection-row">
+                        <span class="chip">permissions map</span><span class="chip">blocking activity</span>
+                      </div>
+                    </div>
+                  </details>
+
+                  <details class="event-card" data-service="state">
+                    <summary>
+                      <span class="event-title"
+                        ><span class="route">state:permission-resolved</span
+                        ><span class="native-type">permission.resolved</span></span
+                      ><span class="badge service-state">state</span>
+                    </summary>
+                    <div class="event-body">
+                      <p>A pending permission reached a terminal outcome.</p>
+                      <pre><code>interface PermissionResolvedEvent {
+  type: 'permission.resolved';
+  requestId: string;
+  outcome: 'allowed' | 'denied' | 'dismissed' | 'unknown';
+}</code></pre>
+                      <div class="projection-row">
+                        <span class="chip">permission removed</span><span class="chip">activity resolved</span>
+                      </div>
+                    </div>
+                  </details>
+
+                  <details class="event-card" data-service="state">
+                    <summary>
+                      <span class="event-title"
+                        ><span class="route">state:subagent-started</span
+                        ><span class="native-type">subagent.started</span></span
+                      ><span class="badge service-state">state</span>
+                    </summary>
+                    <div class="event-body">
+                      <p>A provider-native child actor started delegated work.</p>
+                      <pre><code>interface SubagentStartedEvent {
+  type: 'subagent.started';
+  subagentId: string;
+  agentType?: string;
+}</code></pre>
+                      <div class="projection-row">
+                        <span class="chip">subagents map</span><span class="chip">delegation activity</span>
+                      </div>
+                    </div>
+                  </details>
+
+                  <details class="event-card" data-service="state">
+                    <summary>
+                      <span class="event-title"
+                        ><span class="route">state:subagent-stopped</span
+                        ><span class="native-type">subagent.stopped</span></span
+                      ><span class="badge service-state">state</span>
+                    </summary>
+                    <div class="event-body">
+                      <p>A provider-native child actor stopped.</p>
+                      <pre><code>interface SubagentStoppedEvent {
+  type: 'subagent.stopped';
+  subagentId: string;
+}</code></pre>
+                      <div class="projection-row">
+                        <span class="chip">subagent removed</span><span class="chip">activity completed</span>
+                      </div>
+                    </div>
+                  </details>
+
+                  <details class="event-card" data-service="state">
+                    <summary>
+                      <span class="event-title"
+                        ><span class="route">state:task-created</span
+                        ><span class="native-type">task.created</span></span
+                      ><span class="badge service-state">state</span>
+                    </summary>
+                    <div class="event-body">
+                      <p>A provider task entered the active task set.</p>
+                      <pre><code>interface TaskCreatedEvent {
+  type: 'task.created';
+  taskId: string;
+  description?: string;
+  teamName?: string;
+  teammateName?: string;
+}</code></pre>
+                      <div class="projection-row">
+                        <span class="chip">tasks map</span><span class="chip">task activity</span>
+                      </div>
+                    </div>
+                  </details>
+
+                  <details class="event-card" data-service="state">
+                    <summary>
+                      <span class="event-title"
+                        ><span class="route">state:task-completed</span
+                        ><span class="native-type">task.completed</span></span
+                      ><span class="badge service-state">state</span>
+                    </summary>
+                    <div class="event-body">
+                      <p>A provider task completed and leaves the active task set.</p>
+                      <pre><code>interface TaskCompletedEvent {
+  type: 'task.completed';
+  taskId: string;
+  teamName?: string;
+  teammateName?: string;
+}</code></pre>
+                      <div class="projection-row">
+                        <span class="chip">task removed</span><span class="chip">activity completed</span>
+                      </div>
+                    </div>
+                  </details>
+
+                  <details class="event-card" data-service="state">
+                    <summary>
+                      <span class="event-title"
+                        ><span class="route">state:task-updated</span
+                        ><span class="native-type">task.updated</span></span
+                      ><span class="badge service-state">state</span>
+                    </summary>
+                    <div class="event-body">
+                      <p>A provider task reported a lifecycle outside the legacy create/complete pair.</p>
+                      <pre><code>interface TaskUpdatedEvent {
+  type: 'task.updated';
+  taskId: string;
+  description?: string;
+  status: 'proposed' | 'pending' | 'in-progress'
+    | 'completed' | 'failed' | 'cancelled'
+    | 'removed' | 'unknown';
+  providerStatus?: string;
+  teamName?: string;
+  teammateName?: string;
+  provisional?: boolean;
+}</code></pre>
+                      <div class="projection-row">
+                        <span class="chip">planning state</span><span class="chip">monitor projection</span>
+                      </div>
+                    </div>
+                  </details>
+
+                  <details class="event-card" data-service="state">
+                    <summary>
+                      <span class="event-title"
+                        ><span class="route">state:plan-updated</span
+                        ><span class="native-type">plan.updated</span></span
+                      ><span class="badge service-state">state</span>
+                    </summary>
+                    <div class="event-body">
+                      <p>The provider published or replaced its current plan.</p>
+                      <pre><code>interface PlanUpdatedEvent {
+  type: 'plan.updated';
+  planId?: string;
+  steps: Array&lt;{
+    text: string;
+    status: string;
+  }&gt;;
+  provisional?: boolean;
+}</code></pre>
+                      <div class="projection-row">
+                        <span class="chip">planning state</span><span class="chip">monitor projection</span>
+                      </div>
+                    </div>
+                  </details>
+
+                  <details class="event-card" data-service="state">
+                    <summary>
+                      <span class="event-title"
+                        ><span class="route">state:compaction-started</span
+                        ><span class="native-type">compaction.started</span></span
+                      ><span class="badge service-state">state</span>
+                    </summary>
+                    <div class="event-body">
+                      <p>The provider began compacting or summarizing context history.</p>
+                      <pre><code>interface CompactionStartedEvent {
+  type: 'compaction.started';
+  compactionId?: string;
+  trigger?: string;
+}</code></pre>
+                      <div class="projection-row">
+                        <span class="chip">compaction active</span><span class="chip">context may invalidate</span>
+                      </div>
+                    </div>
+                  </details>
+
+                  <details class="event-card" data-service="state">
+                    <summary>
+                      <span class="event-title"
+                        ><span class="route">state:compaction-completed</span
+                        ><span class="native-type">compaction.completed</span></span
+                      ><span class="badge service-state">state</span>
+                    </summary>
+                    <div class="event-body">
+                      <p>The compaction operation ended; omitted outcome means a legacy successful completion.</p>
+                      <pre><code>interface CompactionCompletedEvent {
+  type: 'compaction.completed';
+  compactionId?: string;
+  trigger?: string;
+  outcome?: 'completed' | 'cancelled' | 'failed'
+    | 'superseded' | 'unknown';
+}</code></pre>
+                      <div class="projection-row">
+                        <span class="chip">compaction inactive</span><span class="chip">monitor projection</span>
+                      </div>
+                    </div>
+                  </details>
+
+                  <details class="event-card" data-service="state">
+                    <summary>
+                      <span class="event-title"
+                        ><span class="route">state:teammate-idle</span
+                        ><span class="native-type">teammate.idle</span></span
+                      ><span class="badge service-state">state</span>
+                    </summary>
+                    <div class="event-body">
+                      <p>A team member became idle. Membership and activity remain separate claims.</p>
+                      <pre><code>interface TeammateIdleEvent {
+  type: 'teammate.idle';
+  membershipId?: string;
+  teamId?: string;
+  teamName?: string;
+  teammateName: string;
+}</code></pre>
+                      <div class="projection-row"><span class="chip">delegation monitor</span></div>
+                    </div>
+                  </details>
+
+                  <details class="event-card" data-service="state">
+                    <summary>
+                      <span class="event-title"
+                        ><span class="route">state:question-requested</span
+                        ><span class="native-type">question.requested</span></span
+                      ><span class="badge service-state">state</span>
+                    </summary>
+                    <div class="event-body">
+                      <p>The provider requires one or more structured user answers.</p>
+                      <pre><code>interface QuestionRequestedEvent {
+  type: 'question.requested';
+  requestId: string;
+  questions: AgentStructuredQuestion[];
+}</code></pre>
+                      <div class="projection-row">
+                        <span class="chip">interaction blocker</span><span class="chip">monitor projection</span>
+                      </div>
+                    </div>
+                  </details>
+
+                  <details class="event-card" data-service="state">
+                    <summary>
+                      <span class="event-title"
+                        ><span class="route">state:question-resolved</span
+                        ><span class="native-type">question.resolved</span></span
+                      ><span class="badge service-state">state</span>
+                    </summary>
+                    <div class="event-body">
+                      <p>A structured question request reached a terminal outcome.</p>
+                      <pre><code>interface QuestionResolvedEvent {
+  type: 'question.resolved';
+  requestId: string;
+  outcome: 'answered' | 'failed'
+    | 'cancelled' | 'superseded';
+}</code></pre>
+                      <div class="projection-row">
+                        <span class="chip">interaction resolved</span><span class="chip">monitor projection</span>
+                      </div>
+                    </div>
+                  </details>
+                </div>
+              </section>
+
+              <section class="service-section" id="service-context-window" data-section-service="context-window">
+                <div class="service-header">
+                  <h3>Context-window service</h3>
+                  <span class="badge service-context-window">2 routes</span>
+                  <p>Current context pressure is distinct from cumulative token burn.</p>
+                </div>
+                <div class="event-list">
+                  <details class="event-card" data-service="context-window">
+                    <summary>
+                      <span class="event-title"
+                        ><span class="route">context-window:updated</span
+                        ><span class="native-type">context-window.updated</span></span
+                      ><span class="badge service-context-window">context</span>
+                    </summary>
+                    <div class="event-body">
+                      <p>A trustworthy provider context measurement. The reducer derives an exact ratio when needed.</p>
+                      <pre><code>interface ContextWindowUpdatedEvent {
+  type: 'context-window.updated';
+  usedTokens: number;
+  capacityTokens: number;
+  usedPercentage?: number;
+  percentageSource?: 'provider' | 'derived';
+  modelId?: string;
+}</code></pre>
+                      <div class="projection-row">
+                        <span class="chip">state.contextWindow</span><span class="chip">monitor context</span>
+                      </div>
+                    </div>
+                  </details>
+
+                  <details class="event-card" data-service="context-window">
+                    <summary>
+                      <span class="event-title"
+                        ><span class="route">context-window:invalidated</span
+                        ><span class="native-type">context-window.invalidated</span></span
+                      ><span class="badge service-context-window">context</span>
+                    </summary>
+                    <div class="event-body">
+                      <p>The prior measurement is no longer trustworthy. Invalidation never means zero usage.</p>
+                      <pre><code>interface ContextWindowInvalidatedEvent {
+  type: 'context-window.invalidated';
+  reason: 'compacted' | 'history-changed'
+    | 'model-changed' | 'provider-reset';
+}</code></pre>
+                      <div class="projection-row"><span class="chip">contextWindow cleared</span></div>
+                    </div>
+                  </details>
+                </div>
+              </section>
+
+              <section class="service-section" id="service-conversation" data-section-service="conversation">
+                <div class="service-header">
+                  <h3>Conversation service</h3>
+                  <span class="badge service-conversation">1 route</span>
+                  <p>Accumulated, provider-neutral assistant output.</p>
+                </div>
+                <div class="event-list">
+                  <details class="event-card" data-service="conversation">
+                    <summary>
+                      <span class="event-title"
+                        ><span class="route">conversation:assistant-message</span
+                        ><span class="native-type">assistant.message</span></span
+                      ><span class="badge service-conversation">conversation</span>
+                    </summary>
+                    <div class="event-body">
+                      <p>
+                        Accumulated assistant text. It is not a delta: replace prior text for the same message
+                        correlation.
+                      </p>
+                      <pre><code>interface AssistantMessageEvent {
+  type: 'assistant.message';
+  messageId?: string;
+  turnId?: string;
+  text: string;
+  final?: boolean;       // false while accumulating
+  displayOnly?: boolean; // sourced from display events
+}</code></pre>
+                      <div class="projection-row">
+                        <span class="chip">lastAssistantMessage</span
+                        ><span class="chip">conversation assistant item</span>
+                      </div>
+                    </div>
+                  </details>
+                </div>
+              </section>
+
+              <section class="service-section" id="service-usage" data-section-service="usage">
+                <div class="service-header">
+                  <h3>Usage service</h3>
+                  <span class="badge service-usage">1 route</span>
+                  <p>Session token burn, separate from context-window pressure and account quotas.</p>
+                </div>
+                <div class="event-list">
+                  <details class="event-card" data-service="usage">
+                    <summary>
+                      <span class="event-title"
+                        ><span class="route">usage:tokens-used</span><span class="native-type">tokens.used</span></span
+                      ><span class="badge service-usage">usage</span>
+                    </summary>
+                    <div class="event-body">
+                      <p>A response- or sample-bound usage fact with stable identity and canonicality.</p>
+                      <pre><code>interface TokensUsedEvent {
+  type: 'tokens.used';
+  usageId: string;
+  boundary: 'response' | 'sample';
+  canonical: boolean;
+  cumulativeTokens?: number;
+  deltaTokens?: number;
+  breakdown?: {
+    inputTokens?: number;
+    outputTokens?: number;
+    cacheReadTokens?: number;
+    cacheCreationTokens?: number;
+  };
+}</code></pre>
+                      <div class="projection-row">
+                        <span class="chip">monitor usage</span><span class="chip">burn-rate input</span>
+                      </div>
+                    </div>
+                  </details>
+                </div>
+              </section>
+
+              <section class="service-section" id="service-environment" data-section-service="environment">
+                <div class="service-header">
+                  <h3>Environment service</h3>
+                  <span class="badge service-environment">1 route</span>
+                  <p>Sparse effective/configured execution environment updates.</p>
+                </div>
+                <div class="event-list">
+                  <details class="event-card" data-service="environment">
+                    <summary>
+                      <span class="event-title"
+                        ><span class="route">environment:updated</span
+                        ><span class="native-type">session.environment.updated</span></span
+                      ><span class="badge service-environment">environment</span>
+                    </summary>
+                    <div class="event-body">
+                      <p>Omitted fields preserve prior values; null explicitly clears nullable facts.</p>
+                      <pre><code>interface SessionEnvironmentUpdatedEvent {
+  type: 'session.environment.updated';
+  intent?: 'configured' | 'observed';
+  currentCwd?: string | null;
+  model?: AgentModelIdentity | null;
+  git?: AgentGitState | null;
+  effort?: string | null;
+  providerSessionMode?: AgentProviderMode | null;
+  providerPermissionMode?: AgentProviderMode | null;
+}</code></pre>
+                      <div class="projection-row">
+                        <span class="chip">state.environment</span><span class="chip">git observer rebinding</span
+                        ><span class="chip">monitor environment/model/mode</span>
+                      </div>
+                    </div>
+                  </details>
+                </div>
+              </section>
+
+              <section class="service-section" id="service-workspace" data-section-service="workspace">
+                <div class="service-header">
+                  <h3>Workspace service</h3>
+                  <span class="badge service-workspace">1 route</span>
+                  <p>Normalized file-change evidence.</p>
+                </div>
+                <div class="event-list">
+                  <details class="event-card" data-service="workspace">
+                    <summary>
+                      <span class="event-title"
+                        ><span class="route">workspace:changed</span
+                        ><span class="native-type">workspace.changed</span></span
+                      ><span class="badge service-workspace">workspace</span>
+                    </summary>
+                    <div class="event-body">
+                      <p>One or more workspace paths changed; paths may be unavailable on coarse evidence surfaces.</p>
+                      <pre><code>interface WorkspaceChangedEvent {
+  type: 'workspace.changed';
+  paths?: string[];
+}</code></pre>
+                      <div class="projection-row">
+                        <span class="chip">workspace evidence</span><span class="chip">monitor activity</span>
+                      </div>
+                    </div>
+                  </details>
+                </div>
+              </section>
+
+              <section class="service-section" id="service-process" data-section-service="process">
+                <div class="service-header">
+                  <h3>Process service</h3>
+                  <span class="badge service-process">2 routes</span>
+                  <p>Host process facts remain separate from semantic session/turn completion.</p>
+                </div>
+                <div class="event-list">
+                  <details class="event-card" data-service="process">
+                    <summary>
+                      <span class="event-title"
+                        ><span class="route">process:started</span
+                        ><span class="native-type">process.started</span></span
+                      ><span class="badge service-process">process</span>
+                    </summary>
+                    <div class="event-body">
+                      <p>The host observed the provider process start.</p>
+                      <pre><code>interface ProcessStartedEvent {
+  type: 'process.started';
+  pid: number;
+}</code></pre>
+                      <div class="projection-row">
+                        <span class="chip">lifecycle → starting</span><span class="chip">host evidence</span>
+                      </div>
+                    </div>
+                  </details>
+
+                  <details class="event-card" data-service="process">
+                    <summary>
+                      <span class="event-title"
+                        ><span class="route">process:exited</span><span class="native-type">process.exited</span></span
+                      ><span class="badge service-process">process</span>
+                    </summary>
+                    <div class="event-body">
+                      <p>The host process ended with normalized reason and optional platform exit details.</p>
+                      <pre><code>interface ProcessExitedEvent {
+  type: 'process.exited';
+  exitCode?: number;
+  signal?: string;
+  reason: ProcessExitReason;
+}</code></pre>
+                      <div class="projection-row">
+                        <span class="chip">lifecycle terminal</span><span class="chip">workspace finalization</span>
+                      </div>
+                    </div>
+                  </details>
+                </div>
+              </section>
+
+              <section class="service-section" id="service-notification" data-section-service="notification">
+                <div class="service-header">
+                  <h3>Notification service</h3>
+                  <span class="badge service-notification">1 route</span>
+                  <p>Provider-native informational notification.</p>
+                </div>
+                <div class="event-list">
+                  <details class="event-card" data-service="notification">
+                    <summary>
+                      <span class="event-title"
+                        ><span class="route">notification:received</span
+                        ><span class="native-type">notification</span></span
+                      ><span class="badge service-notification">notification</span>
+                    </summary>
+                    <div class="event-body">
+                      <p>A provider notification that does not belong to a more specific semantic service.</p>
+                      <pre><code>interface NativeNotificationEvent {
+  type: 'notification';
+  message?: string;
+  notificationType?: string;
+}</code></pre>
+                      <div class="projection-row"><span class="chip">informational</span></div>
+                    </div>
+                  </details>
+                </div>
+              </section>
+
+              <section class="service-section" id="service-monitor" data-section-service="monitor">
+                <div class="service-header">
+                  <h3>Monitor service</h3>
+                  <span class="badge service-monitor">1 route</span>
+                  <p>Atomic correction/replacement-aware semantic observations on the same adapter stream.</p>
+                </div>
+                <div class="event-list">
+                  <details class="event-card" data-service="monitor">
+                    <summary>
+                      <span class="event-title"
+                        ><span class="route">monitor:batch</span><span class="native-type">monitor.batch</span></span
+                      ><span class="badge service-monitor">monitor</span>
+                    </summary>
+                    <div class="event-body">
+                      <p>
+                        A versioned batch of upserts, retractions, or replacements with evidence provenance, coverage,
+                        watermarks, and capabilities.
+                      </p>
+                      <pre><code>interface MonitorObservationBatchEvent {
+  type: 'monitor.batch';
+  batch: AdapterMonitorObservationBatch;
+}
+
+interface AdapterMonitorObservationBatch {
+  schemaVersion: 1;
+  batchId: string;
+  producer: {
+    id: string;
+    epoch: string;
+    sequence?: number;
+    contractVersion?: string;
+  };
+  phase: 'bootstrap' | 'live' | 'correction' | 'resync';
+  observedAt: string;
+  effectiveAt?: string;
+  quality: EvidenceQuality;
+  completeness: EvidenceCompleteness;
+  provisional: boolean;
+  readiness?: 'loading' | 'ready' | 'degraded';
+  scope?: { nativeSessionId?: string; actorRunKey?: string };
+  updates: MonitorFamilyUpdate[];
+  sourceWatermarks: SourceWatermark[];
+  evidence: EvidenceRef[];
+  capabilities?: ObservationCapability[];
+  coverage?: ObservationCoverage[];
+}</code></pre>
+                      <div class="projection-row">
+                        <span class="chip">monitor reducer only</span><span class="chip">not SessionRuntimeState</span>
+                      </div>
+                    </div>
+                  </details>
+                </div>
+              </section>
+
+              <section class="service-section" id="service-adapter" data-section-service="adapter">
+                <div class="service-header">
+                  <h3>Adapter service</h3>
+                  <span class="badge service-adapter">1 route</span>
+                  <p>Forward-compatible native evidence and normalized degradation diagnostics.</p>
+                </div>
+                <div class="event-list">
+                  <details class="event-card" data-service="adapter">
+                    <summary>
+                      <span class="event-title"
+                        ><span class="route">adapter:native-event</span
+                        ><span class="native-type">adapter.native-event</span></span
+                      ><span class="badge service-adapter">adapter</span>
+                    </summary>
+                    <div class="event-body">
+                      <p>
+                        An unrecognized native event or adapter degradation that must survive normalization without
+                        pretending to understand it.
+                      </p>
+                      <pre><code>interface UnknownNativeEvent {
+  type: 'adapter.native-event';
+  adapter: string;
+  nativeType?: string;
+  diagnostic?: {
+    code: string;
+    message: string;
+  };
+}</code></pre>
+                      <div class="projection-row">
+                        <span class="chip">unknownEvents +1</span><span class="chip">bounded diagnostics</span
+                        ><span class="chip">raw nativeEvent retained</span>
+                      </div>
+                    </div>
+                  </details>
+                </div>
+              </section>
+            </div>
+
+            <div class="no-results" id="no-results" hidden>No event routes match this filter.</div>
+          </section>
+
+          <section id="snapshots">
+            <h2>Agent snapshots</h2>
+            <p class="section-note">
+              Snapshots are derived views, not alternate event sources. Read them for current state; subscribe for
+              subsequent change. State reducer maps are live JavaScript <span class="mono">Map</span> values, while the
+              conversation snapshot is a provider-neutral UI projection.
+            </p>
+
+            <h3>SessionRuntimeState</h3>
+            <pre><code>type SessionLifecycle =
+  | 'preparing' | 'starting' | 'ready' | 'running'
+  | 'interrupting' | 'terminating' | 'exited' | 'failed';
+
+interface SessionRuntimeState {
+  lifecycle: SessionLifecycle;
+  activeTurn?: { id?: string; startedAt: string };
+  activeReasoning?: { reasoningId?: string; startedAt: string };
+  tools: Map&lt;string, {
+    toolCallId: string;
+    tool?: string;
+    state: 'requested' | 'running';
+    input?: unknown;
+    presentation?: ToolPresentation;
+  }&gt;;
+  settledTools: Map&lt;string, 'completed' | 'failed'&gt;;
+  permissions: Map&lt;string, {
+    requestId: string;
+    toolCallId?: string;
+    tool?: string;
+  }&gt;;
+  subagents: Map&lt;string, { subagentId: string; agentType?: string }&gt;;
+  tasks: Map&lt;string, { taskId: string; description?: string }&gt;;
+  contextWindow?: {
+    usedTokens: number;
+    capacityTokens: number;
+    usedPercent: number;
+    percentageSource?: 'provider' | 'derived';
+    modelId?: string;
+    updatedAt: string;
+    source: AgentEventSource;
+    confidence: AgentEventConfidence;
+  };
+  environment: {
+    currentCwd?: ObservedEnvironmentValue&lt;string&gt;;
+    model?: ObservedEnvironmentValue&lt;AgentModelIdentity&gt;;
+    git?: ObservedEnvironmentValue&lt;AgentGitState | null&gt;;
+  };
+  lastAssistantMessage?: string;
+  exit?: { exitCode?: number; signal?: string; reason?: ProcessExitReason | string };
+  counters: {
+    toolsCompleted: number;
+    toolsFailed: number;
+    unknownEvents: number;
+  };
+  lastSequence: number;
+  diagnostics: Array&lt;{
+    sequence: number;
+    code: string;
+    message: string;
+  }&gt;;
+}
+
+interface ObservedEnvironmentValue&lt;T&gt; {
+  value: T;
+  updatedAt: string;
+  source: AgentEventSource;
+  confidence: AgentEventConfidence;
+}</code></pre>
+
+            <h3>AgentConversationSnapshot</h3>
+            <pre><code>interface AgentConversationSnapshot {
+  items: ConversationItem[];
+  responding: boolean;
+}
+
+type ConversationItem =
+  | {
+      id: string;
+      kind: 'user';
+      turnId?: string;
+      text: string;
+    }
+  | {
+      id: string;
+      kind: 'assistant';
+      turnId?: string;
+      markdown: string;
+      streaming: boolean;
+    }
+  | {
+      id: string;
+      kind: 'activity';
+      turnId?: string;
+      activity: 'reasoning' | ToolActivityKind
+        | 'permission' | 'subagent' | 'task';
+      status: 'requested' | 'running' | 'completed' | 'failed';
+      title: string;
+      detail?: string;
+      summary?: string;
+      confidence: AgentEventConfidence;
+    }
+  | {
+      id: string;
+      kind: 'notice';
+      text: string;
+      tone: 'neutral' | 'error';
+    };</code></pre>
+          </section>
+
+          <section id="shared-types">
+            <h2>Shared API types</h2>
+            <p class="section-note">
+              Supporting declarations referenced by the Agent and event payloads. These are included so the page can be
+              used without jumping into source.
+            </p>
+
+            <div class="type-grid">
+              <article class="type-card">
+                <h3>PromptSubmission / PromptReceipt</h3>
+                <pre><code>interface PromptSubmission {
+  text: string;
+  mode?: 'paste-and-submit' | 'paste-only';
+  confirmationTimeoutMs?: number;
+}
+
+type PromptReceipt =
+  | { status: 'confirmed'; turnId?: string }
+  | { status: 'rejected'; reason: string }
+  | { status: 'uncertain'; reason: string };</code></pre>
+              </article>
+
+              <article class="type-card">
+                <h3>ObservationLevel</h3>
+                <p>The runtime never claims better evidence than the live adapter currently has.</p>
+                <pre><code>type ObservationLevel =
+  | 'structured'
+  | 'native-hooks'
+  | 'native-log'
+  | 'workspace-process'
+  | 'terminal-only';</code></pre>
+              </article>
+
+              <article class="type-card">
+                <h3>AgentSessionInfo</h3>
+                <pre><code>interface AgentSessionInfo {
+  agent: string;
+  runtimeRunId: string;
+  runtimeEpoch: number;
+  terminalSessionId: string;
+  nativeSession: NativeSessionRef;
+  nativeSessionRevision: number;
+  externalRefs: ExternalRef[];
+  sessionId: string;        // deprecated alias
+  runtimeSessionId: string; // deprecated alias
+  preparationId?: string;
+  processId?: number;
+  workspace: AgentWorkspaceInfo;
+}</code></pre>
+              </article>
+
+              <article class="type-card">
+                <h3>Workspace request and result</h3>
+                <pre><code>type WorkspaceMode =
+  | 'direct' | 'exclusive' | 'worktree' | 'copy';
+
+interface AgentWorkspaceRequest {
+  mode?: WorkspaceMode;
+  path?: string;
+  baseRef?: string;
+  branchName?: string;
+  resumeBranch?: string;
+  resumeRoot?: string;
+  workspacesRoot?: string;
+}
+
+interface AgentWorkspaceInfo {
+  workspaceInstanceId?: string;
+  id?: string; // deprecated alias
+  mode: WorkspaceMode;
+  root: string;
+  sourcePath: string;
+  branch?: string;
+  initialCommit?: string;
+  isolation?: 'managed-isolated'
+    | 'cooperative-exclusive' | 'shared' | 'unknown';
+  baselineCompleteness?: 'complete' | 'partial' | 'unavailable';
+  repositoryDigest?: {
+    algorithm: 'hmac-sha256';
+    value: string;
+  };
+}</code></pre>
+              </article>
+
+              <article class="type-card">
+                <h3>Runtime and caller identity</h3>
+                <pre><code>interface NativeSessionRef {
+  namespace: string;
+  id: string;
+  basis: 'configured' | 'observed' | 'inferred';
+  quality: EvidenceQuality;
+}
+
+interface ExternalRef {
+  namespace: string;
+  id: string;
+  kind: 'project' | 'contributor' | 'workflow'
+    | 'caller' | 'other';
+}
+
+type EvidenceQuality =
+  | 'exact' | 'strong' | 'derived' | 'estimated'
+  | 'inferred' | 'unknown';</code></pre>
+              </article>
+
+              <article class="type-card">
+                <h3>Spawn error codes</h3>
+                <pre><code>type AgentSessionErrorCode =
+  | 'WORKSPACE_CREATE_FAILED'
+  | 'WORKSPACE_CONFLICT'
+  | 'WORKSPACE_DIRTY'
+  | 'AGENT_NOT_FOUND'
+  | 'AGENT_SESSION_CREATE_FAILED'
+  | 'INVALID_CREATION_REQUEST_ID'
+  | 'INVALID_EXTERNAL_REFS'
+  | 'CREATION_REQUEST_NOT_FINGERPRINTABLE'
+  | 'CREATION_CLAIM_STORE_UNAVAILABLE'
+  | 'CREATION_REQUEST_CONFLICT'
+  | 'CREATION_REQUEST_RECOVERY_REQUIRED'
+  | 'CREATION_REQUEST_TERMINAL'
+  | 'RUNTIME_RUN_CONFLICT'
+  | 'RUNTIME_RESTORE_FAILED';</code></pre>
+              </article>
+
+              <article class="type-card">
+                <h3>ToolPresentation</h3>
+                <pre><code>type ToolActivityKind =
+  | 'command' | 'web-search' | 'file-read'
+  | 'file-edit' | 'browser' | 'mcp' | 'other';
+
+interface ToolPresentation {
+  kind: ToolActivityKind;
+  title: string;
+  detail?: string;
+}</code></pre>
+              </article>
+
+              <article class="type-card">
+                <h3>Structured questions</h3>
+                <pre><code>interface AgentQuestionOption {
+  label: string;
+  description?: string;
+}
+
+interface AgentStructuredQuestion {
+  id?: string;
+  header?: string;
+  prompt: string;
+  options?: AgentQuestionOption[];
+  allowMultiple?: boolean;
+  allowFreeForm?: boolean;
+}</code></pre>
+              </article>
+
+              <article class="type-card">
+                <h3>Model and provider modes</h3>
+                <pre><code>interface AgentModelIdentity {
+  id: string;
+  displayName?: string;
+  provider?: string;
+}
+
+interface AgentProviderMode {
+  raw: string;
+  normalized?: string;
+}</code></pre>
+              </article>
+
+              <article class="type-card">
+                <h3>AgentGitState</h3>
+                <pre><code>interface AgentGitState {
+  root: string;
+  branch: string | null;
+  headSha: string | null;
+  detached: boolean;
+  worktree?: boolean;
+}</code></pre>
+              </article>
+
+              <article class="type-card">
+                <h3>ProcessExitReason</h3>
+                <pre><code>type ProcessExitReason =
+  | 'completed'
+  | 'user-terminated'
+  | 'runtime-terminated'
+  | 'signal'
+  | 'crash'
+  | 'spawn-failed'
+  | 'workspace-failed'
+  | 'unknown';</code></pre>
+              </article>
+            </div>
+
+            <h3>Monitor batch update algebra</h3>
+            <p class="section-note">
+              Monitor batches are the one event whose nested value system is correction-aware. Every metric-family
+              update is an upsert, keyed retraction, or complete/partial replacement.
+            </p>
+            <pre><code>type MonitorMetricFamily =
+  | 'status' | 'usage' | 'context' | 'model' | 'effort' | 'mode'
+  | 'planning' | 'delegation' | 'workflow' | 'compaction' | 'environment';
+
+type MonitorFamilyUpdate =
+  | {
+      family: MonitorMetricFamily;
+      operation: 'upsert';
+      key: string;
+      value: MonitorFamilyValue;
+    }
+  | {
+      family: MonitorMetricFamily;
+      operation: 'retract';
+      key: string;
+    }
+  | {
+      family: MonitorMetricFamily;
+      operation: 'replace';
+      values: Array&lt;{ key: string; value: MonitorFamilyValue }&gt;;
+      coverage: 'complete' | 'partial' | 'unavailable';
+    };</code></pre>
+
+            <div class="table-wrap">
+              <table>
+                <thead>
+                  <tr>
+                    <th>Family</th>
+                    <th>Value variants</th>
+                    <th>Important fields</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr>
+                    <td class="route">status</td>
+                    <td>run · activity · interaction · failure</td>
+                    <td><p>Lifecycle/alive, current activity, questions/permissions, recoverable failures.</p></td>
+                  </tr>
+                  <tr>
+                    <td class="route">usage</td>
+                    <td>usage</td>
+                    <td><p>Usage id, actor, boundary, canonicality, cumulative/delta and token breakdown.</p></td>
+                  </tr>
+                  <tr>
+                    <td class="route">context</td>
+                    <td>context</td>
+                    <td><p>Actor, used/capacity/percentage, provider/derived/unavailable source.</p></td>
+                  </tr>
+                  <tr>
+                    <td class="route">model</td>
+                    <td>model</td>
+                    <td><p>Actor, provider model id, display name, configured/observed intent.</p></td>
+                  </tr>
+                  <tr>
+                    <td class="route">effort</td>
+                    <td>effort</td>
+                    <td><p>Actor, value, configured/observed intent.</p></td>
+                  </tr>
+                  <tr>
+                    <td class="route">mode</td>
+                    <td>mode</td>
+                    <td><p>Execution/provider-session/provider-permission kind, raw/normalized value.</p></td>
+                  </tr>
+                  <tr>
+                    <td class="route">planning</td>
+                    <td>plan · task</td>
+                    <td><p>Plan steps or task lifecycle, ownership, team metadata, provisionality.</p></td>
+                  </tr>
+                  <tr>
+                    <td class="route">delegation</td>
+                    <td>actor · affiliation · team · team-member</td>
+                    <td><p>Root/child actors, memberships, teams, state, runtime/native joins.</p></td>
+                  </tr>
+                  <tr>
+                    <td class="route">workflow</td>
+                    <td>workflow</td>
+                    <td><p>Workflow identity, active state, actor run keys, opaque artifact refs.</p></td>
+                  </tr>
+                  <tr>
+                    <td class="route">compaction</td>
+                    <td>compaction</td>
+                    <td><p>Active state, trigger, terminal outcome.</p></td>
+                  </tr>
+                  <tr>
+                    <td class="route">environment</td>
+                    <td>environment</td>
+                    <td><p>Sparse cwd/git updates and worktree paths.</p></td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+
+            <h3>Adapter author boundary</h3>
+            <p class="section-note">
+              Applications do not consume this interface directly. It documents the enforced low-level boundary:
+              normalized events plus explicit control—no state getter and no monitor callback.
+            </p>
+            <pre><code>interface AgentAdapterSession {
+  readonly sessionId: string;
+  readonly runtimeSessionId: string;
+  observationLevel(): ObservationLevel;
+  onEvent(listener: (envelope: AgentEventEnvelope) =&gt; void): () =&gt; void;
+  readMonitorArtifact?(
+    artifactId: string,
+    options: { maxBytes: number },
+  ): Promise&lt;MonitorArtifactReadResult&gt;;
+  submitPrompt(submission: PromptSubmission): Promise&lt;PromptReceipt&gt;;
+  dispose(): Promise&lt;void&gt;;
+}</code></pre>
+          </section>
+
+          <section id="semantics">
+            <h2>Operational semantics</h2>
+            <p class="section-note">The invariants consumers can safely design around.</p>
+            <div class="cards">
+              <article class="card">
+                <h3>One owner</h3>
+                <p>Each managed spawn, adoption, or restore has one runtime Agent and one adapter subscription.</p>
+              </article>
+              <article class="card">
+                <h3>Normalized boundary</h3>
+                <p>
+                  Provider-native names and shapes do not escape as public routes. Unknown evidence is retained
+                  explicitly.
+                </p>
+              </article>
+              <article class="card">
+                <h3>Stable ordering</h3>
+                <p>The runtime restamps monotonically increasing sequence numbers before projection and fan-out.</p>
+              </article>
+              <article class="card">
+                <h3>Idempotent state</h3>
+                <p>
+                  The reducer ignores non-increasing sequence numbers and records bounded diagnostics for invalid
+                  transitions.
+                </p>
+              </article>
+              <article class="card">
+                <h3>Separate identities</h3>
+                <p>
+                  Runtime run, terminal session, native session, prompt, turn, and actor correlations are not collapsed.
+                </p>
+              </article>
+              <article class="card">
+                <h3>Separate facts</h3>
+                <p>
+                  Process exit, semantic session exit, turn completion, context pressure, token burn, and account quota
+                  are distinct.
+                </p>
+              </article>
+              <article class="card">
+                <h3>Safe listener faults</h3>
+                <p>One observer cannot break ingestion or prevent other observers from receiving the same envelope.</p>
+              </article>
+              <article class="card">
+                <h3>Explicit uncertainty</h3>
+                <p>Evidence carries source/confidence, replay is marked, and prompt submission may return uncertain.</p>
+              </article>
+            </div>
+          </section>
+        </main>
+      </div>
+
+      <footer>
+        Generated from the canonical contracts in <span class="mono">packages/runtime/src/agent.ts</span>,
+        <span class="mono">packages/runtime/src/types.ts</span>, <span class="mono">packages/core/src/events.ts</span>,
+        <span class="mono">packages/core/src/event-bus.ts</span>, and the monitor SPI. Reference date: 2026-08-25.
+      </footer>
+    </div>
+
+    <script>
+      (() => {
+        const root = document.documentElement;
+        const themeButton = document.getElementById('theme-toggle');
+        let storedTheme;
+        try {
+          storedTheme = localStorage.getItem('chopsticks-agent-api-theme');
+        } catch {
+          storedTheme = undefined;
+        }
+        if (storedTheme === 'light' || storedTheme === 'dark') root.dataset.theme = storedTheme;
+
+        themeButton.addEventListener('click', () => {
+          const current = root.dataset.theme;
+          const systemDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+          const next = current === 'dark' || (!current && systemDark) ? 'light' : 'dark';
+          root.dataset.theme = next;
+          try {
+            localStorage.setItem('chopsticks-agent-api-theme', next);
+          } catch {
+            // File URLs may not expose persistent storage; the in-page theme still changes.
+          }
+        });
+
+        document.querySelectorAll('pre').forEach((pre) => {
+          const button = document.createElement('button');
+          button.type = 'button';
+          button.className = 'copy-button';
+          button.textContent = 'Copy';
+          button.addEventListener('click', async () => {
+            const code = pre.querySelector('code')?.textContent ?? pre.textContent;
+            try {
+              await navigator.clipboard.writeText(code);
+              button.textContent = 'Copied';
+              window.setTimeout(() => (button.textContent = 'Copy'), 1200);
+            } catch {
+              button.textContent = 'Select text';
+            }
+          });
+          pre.appendChild(button);
+        });
+
+        const cards = [...document.querySelectorAll('.event-card')];
+        const sections = [...document.querySelectorAll('.service-section')];
+        const search = document.getElementById('event-search');
+        const count = document.getElementById('event-count');
+        const noResults = document.getElementById('no-results');
+        const filterButtons = [...document.querySelectorAll('[data-filter]')];
+        let selectedFilter = 'all';
+
+        const filterGroup = (service) => {
+          if (selectedFilter === 'all') return true;
+          if (selectedFilter === 'other') {
+            return !['state', 'context-window', 'conversation', 'monitor'].includes(service);
+          }
+          return service === selectedFilter;
+        };
+
+        const applyFilters = () => {
+          const query = search.value.trim().toLowerCase();
+          let visible = 0;
+          cards.forEach((card) => {
+            const service = card.dataset.service;
+            const matches = filterGroup(service) && (!query || card.textContent.toLowerCase().includes(query));
+            card.hidden = !matches;
+            if (matches) visible += 1;
+          });
+          sections.forEach((section) => {
+            section.hidden = ![...section.querySelectorAll('.event-card')].some((card) => !card.hidden);
+          });
+          count.textContent = `${visible} / ${cards.length} routes`;
+          noResults.hidden = visible !== 0;
+        };
+
+        search.addEventListener('input', applyFilters);
+        filterButtons.forEach((button) => {
+          button.addEventListener('click', () => {
+            selectedFilter = button.dataset.filter;
+            filterButtons.forEach((candidate) => candidate.classList.toggle('active', candidate === button));
+            applyFilters();
+          });
+        });
+
+        document.getElementById('expand-visible').addEventListener('click', () => {
+          cards.forEach((card) => {
+            if (!card.hidden) card.open = true;
+          });
+        });
+
+        document.getElementById('collapse-all').addEventListener('click', () => {
+          cards.forEach((card) => (card.open = false));
+        });
+
+        let printOpenState = [];
+        window.addEventListener('beforeprint', () => {
+          printOpenState = cards.map((card) => card.open);
+          cards.forEach((card) => (card.open = true));
+        });
+        window.addEventListener('afterprint', () => {
+          cards.forEach((card, index) => (card.open = printOpenState[index]));
+        });
+
+        applyFilters();
+      })();
+    </script>
+  </body>
+</html>
