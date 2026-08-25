@@ -1,0 +1,166 @@
+{
+  "surface": "opencode",
+  "surfaceVersion": "1.18.16",
+  "event": "http/v2.session.events",
+  "channel": "http",
+  "channels": [
+    "http"
+  ],
+  "transport": "http",
+  "direction": "client-to-agent",
+  "trigger": "Subscribe to session events — Replay durable events after an aggregate sequence, then continue with new durable events.",
+  "payloadSchema": {
+    "type": "object",
+    "properties": {
+      "method": {
+        "type": "string"
+      },
+      "route": {
+        "type": "string"
+      },
+      "params": {
+        "type": "object",
+        "properties": {
+          "sessionID": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "sessionID"
+        ]
+      },
+      "query": {
+        "type": "object",
+        "properties": {
+          "after": {
+            "type": "string"
+          }
+        }
+      }
+    },
+    "required": [
+      "method",
+      "route",
+      "params"
+    ]
+  },
+  "resultSchema": {
+    "type": "object",
+    "properties": {
+      "method": {
+        "type": "string",
+        "enum": [
+          "GET"
+        ]
+      },
+      "route": {
+        "type": "string",
+        "enum": [
+          "/api/session/:sessionID/event"
+        ]
+      },
+      "status": {
+        "type": "integer",
+        "minimum": 200,
+        "maximum": 299
+      },
+      "params": {
+        "type": "object",
+        "properties": {
+          "sessionID": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "sessionID"
+        ]
+      },
+      "query": {
+        "type": "object",
+        "properties": {
+          "after": {
+            "type": "string"
+          }
+        }
+      }
+    },
+    "required": [
+      "method",
+      "route",
+      "status",
+      "params"
+    ]
+  },
+  "recordSchema": {
+    "type": "object",
+    "properties": {
+      "direction": {
+        "type": "string",
+        "enum": [
+          "client-to-agent"
+        ]
+      },
+      "request": {
+        "type": "object",
+        "properties": {
+          "method": {
+            "type": "string",
+            "enum": [
+              "GET"
+            ]
+          },
+          "route": {
+            "type": "string",
+            "enum": [
+              "/api/session/:sessionID/event"
+            ]
+          },
+          "params": {
+            "type": "object",
+            "properties": {
+              "sessionID": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "sessionID"
+            ]
+          },
+          "query": {
+            "type": "object",
+            "properties": {
+              "after": {
+                "type": "string"
+              }
+            }
+          }
+        },
+        "required": [
+          "method",
+          "route",
+          "params"
+        ]
+      }
+    },
+    "required": [
+      "direction",
+      "request"
+    ]
+  },
+  "evidence": {
+    "existence": [
+      "opencode-generated-openapi"
+    ],
+    "shape": [
+      "opencode-generated-openapi"
+    ],
+    "result": [
+      "opencode-generated-openapi"
+    ],
+    "carrier": [
+      "opencode-generated-openapi"
+    ]
+  },
+  "confidence": "unverified",
+  "notes": "OpenAPI operationId v2.session.events; GET /api/session/{sessionID}/event."
+}

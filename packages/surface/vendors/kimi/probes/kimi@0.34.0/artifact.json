@@ -1,0 +1,14 @@
+{
+  "vendor": "kimi",
+  "vendorVersion": "0.34.0",
+  "artifact": "$CHOPSTICKS_KIMI_BIN",
+  "platform": "darwin-arm64",
+  "bytes": 176894272,
+  "fileDescription": "Mach-O 64-bit executable arm64",
+  "versionArgs": [
+    "--version"
+  ],
+  "versionOutput": "0.34.0",
+  "sha256": "9f4337e10da47843f6b550474012a53ba8b30dd665f83b176a5cd479c5f7e859",
+  "probedAt": "2026-08-13T00:00:25.945Z"
+}

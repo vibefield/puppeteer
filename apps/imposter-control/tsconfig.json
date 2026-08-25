@@ -1,0 +1,17 @@
+{
+  "extends": "../../tsconfig.base.json",
+  "compilerOptions": {
+    "rootDir": "src",
+    "noEmit": true,
+    "jsx": "react-jsx",
+    "lib": ["ES2022", "DOM", "DOM.Iterable"],
+    "types": ["node", "react", "react-dom"],
+    // In-repo `exports` point at source, and @vibecook/chopsticks-imposter uses
+    // `.ts` relative imports so it can be spawned straight from src under
+    // node's type stripping (see packages/imposter/tsconfig.json). Consumers
+    // that typecheck against that source need the flag too; the app emits
+    // through esbuild, so nothing is rewritten here.
+    "allowImportingTsExtensions": true
+  },
+  "include": ["src"]
+}

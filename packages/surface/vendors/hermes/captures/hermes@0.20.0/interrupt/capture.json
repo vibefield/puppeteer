@@ -1,0 +1,7 @@
+{
+  "schemaVersion": 1,
+  "vendor": "hermes",
+  "version": "0.20.0",
+  "scenario": "interrupt",
+  "mode": "tui-gateway-stdio-hermetic"
+}

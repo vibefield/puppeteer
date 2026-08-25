@@ -1,0 +1,60 @@
+{
+  "surface": "codex",
+  "surfaceVersion": "0.147.0",
+  "event": "mcpServer/oauthLogin/completed",
+  "channel": "appserver",
+  "transport": "jsonrpc-notification",
+  "direction": "agent-to-client",
+  "payloadSchema": {
+    "type": "object",
+    "properties": {
+      "error": {},
+      "name": {
+        "type": "string"
+      },
+      "success": {
+        "type": "boolean"
+      },
+      "threadId": {}
+    },
+    "required": [
+      "name",
+      "success"
+    ]
+  },
+  "recordSchema": {
+    "type": "object",
+    "properties": {
+      "method": {
+        "type": "string",
+        "enum": [
+          "mcpServer/oauthLogin/completed"
+        ]
+      },
+      "params": {
+        "type": "object"
+      },
+      "emittedAtMs": {
+        "type": "number",
+        "minimum": 1000000000000
+      }
+    },
+    "required": [
+      "method",
+      "params",
+      "emittedAtMs"
+    ]
+  },
+  "evidence": {
+    "existence": [
+      "codex-generated-schema"
+    ],
+    "shape": [
+      "codex-generated-schema"
+    ],
+    "carrier": [
+      "codex-runtime-headless"
+    ]
+  },
+  "confidence": "unverified"
+}

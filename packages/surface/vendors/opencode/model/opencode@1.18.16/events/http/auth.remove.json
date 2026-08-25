@@ -1,0 +1,146 @@
+{
+  "surface": "opencode",
+  "surfaceVersion": "1.18.16",
+  "event": "http/auth.remove",
+  "channel": "http",
+  "channels": [
+    "http"
+  ],
+  "transport": "http",
+  "direction": "client-to-agent",
+  "trigger": "Remove auth credentials — Remove authentication credentials",
+  "payloadSchema": {
+    "type": "object",
+    "properties": {
+      "method": {
+        "type": "string"
+      },
+      "route": {
+        "type": "string"
+      },
+      "params": {
+        "type": "object",
+        "properties": {
+          "providerID": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "providerID"
+        ]
+      }
+    },
+    "required": [
+      "method",
+      "route",
+      "params"
+    ]
+  },
+  "resultSchema": {
+    "type": "object",
+    "properties": {
+      "method": {
+        "type": "string",
+        "enum": [
+          "DELETE"
+        ]
+      },
+      "route": {
+        "type": "string",
+        "enum": [
+          "/auth/:providerID"
+        ]
+      },
+      "status": {
+        "type": "integer",
+        "minimum": 200,
+        "maximum": 299
+      },
+      "params": {
+        "type": "object",
+        "properties": {
+          "providerID": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "providerID"
+        ]
+      },
+      "body": {
+        "type": "boolean"
+      }
+    },
+    "required": [
+      "method",
+      "route",
+      "status",
+      "params",
+      "body"
+    ]
+  },
+  "recordSchema": {
+    "type": "object",
+    "properties": {
+      "direction": {
+        "type": "string",
+        "enum": [
+          "client-to-agent"
+        ]
+      },
+      "request": {
+        "type": "object",
+        "properties": {
+          "method": {
+            "type": "string",
+            "enum": [
+              "DELETE"
+            ]
+          },
+          "route": {
+            "type": "string",
+            "enum": [
+              "/auth/:providerID"
+            ]
+          },
+          "params": {
+            "type": "object",
+            "properties": {
+              "providerID": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "providerID"
+            ]
+          }
+        },
+        "required": [
+          "method",
+          "route",
+          "params"
+        ]
+      }
+    },
+    "required": [
+      "direction",
+      "request"
+    ]
+  },
+  "evidence": {
+    "existence": [
+      "opencode-generated-openapi"
+    ],
+    "shape": [
+      "opencode-generated-openapi"
+    ],
+    "result": [
+      "opencode-generated-openapi"
+    ],
+    "carrier": [
+      "opencode-generated-openapi"
+    ]
+  },
+  "confidence": "unverified",
+  "notes": "OpenAPI operationId auth.remove; DELETE /auth/{providerID}."
+}

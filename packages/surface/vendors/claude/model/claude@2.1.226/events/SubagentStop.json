@@ -1,0 +1,81 @@
+{
+  "surface": "claude",
+  "surfaceVersion": "2.1.226",
+  "event": "SubagentStop",
+  "channel": "hook",
+  "channels": [
+    "hook"
+  ],
+  "transport": "http",
+  "direction": "agent-to-client",
+  "trigger": "A subagent finished; stop-hook re-entry must be deduplicated by agent_id.",
+  "payloadSchema": {
+    "type": "object",
+    "properties": {
+      "session_id": {
+        "type": "string"
+      },
+      "transcript_path": {
+        "type": "string"
+      },
+      "cwd": {
+        "type": "string"
+      },
+      "prompt_id": {
+        "type": "string"
+      },
+      "permission_mode": {
+        "type": "string"
+      },
+      "effort": {
+        "type": "object"
+      },
+      "hook_event_name": {
+        "type": "string"
+      },
+      "agent_id": {
+        "type": "string"
+      },
+      "agent_type": {
+        "type": "string"
+      },
+      "agent_transcript_path": {
+        "type": "string"
+      },
+      "last_assistant_message": {
+        "type": "string"
+      },
+      "stop_hook_active": {
+        "type": "boolean"
+      },
+      "background_tasks": {
+        "type": "array"
+      },
+      "session_crons": {
+        "type": "array"
+      }
+    },
+    "required": [
+      "agent_id",
+      "agent_transcript_path",
+      "agent_type",
+      "cwd",
+      "hook_event_name",
+      "last_assistant_message",
+      "session_id",
+      "stop_hook_active",
+      "transcript_path"
+    ]
+  },
+  "evidence": {
+    "existence": [
+      "claude-official-hooks"
+    ],
+    "shape": [
+      "claude-official-hooks"
+    ]
+  },
+  "confidence": "unverified",
+  "timeoutSec": 5,
+  "notes": "A subagent finished; stop-hook re-entry must be deduplicated by agent_id."
+}

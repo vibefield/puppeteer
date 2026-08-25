@@ -1,0 +1,228 @@
+{
+  "surface": "opencode",
+  "surfaceVersion": "1.18.16",
+  "event": "http/v2.session.question.list",
+  "channel": "http",
+  "channels": [
+    "http"
+  ],
+  "transport": "http",
+  "direction": "client-to-agent",
+  "trigger": "List session question requests — Retrieve pending question requests owned by a session.",
+  "payloadSchema": {
+    "type": "object",
+    "properties": {
+      "method": {
+        "type": "string"
+      },
+      "route": {
+        "type": "string"
+      },
+      "params": {
+        "type": "object",
+        "properties": {
+          "sessionID": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "sessionID"
+        ]
+      }
+    },
+    "required": [
+      "method",
+      "route",
+      "params"
+    ]
+  },
+  "resultSchema": {
+    "type": "object",
+    "properties": {
+      "method": {
+        "type": "string",
+        "enum": [
+          "GET"
+        ]
+      },
+      "route": {
+        "type": "string",
+        "enum": [
+          "/api/session/:sessionID/question"
+        ]
+      },
+      "status": {
+        "type": "integer",
+        "minimum": 200,
+        "maximum": 299
+      },
+      "params": {
+        "type": "object",
+        "properties": {
+          "sessionID": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "sessionID"
+        ]
+      },
+      "body": {
+        "type": "object",
+        "properties": {
+          "data": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "id": {
+                  "type": "string"
+                },
+                "questions": {
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "properties": {
+                      "custom": {
+                        "type": "boolean"
+                      },
+                      "header": {
+                        "type": "string"
+                      },
+                      "multiple": {
+                        "type": "boolean"
+                      },
+                      "options": {
+                        "type": "array",
+                        "items": {
+                          "type": "object",
+                          "properties": {
+                            "description": {
+                              "type": "string"
+                            },
+                            "label": {
+                              "type": "string"
+                            }
+                          },
+                          "required": [
+                            "description",
+                            "label"
+                          ]
+                        }
+                      },
+                      "question": {
+                        "type": "string"
+                      }
+                    },
+                    "required": [
+                      "header",
+                      "options",
+                      "question"
+                    ]
+                  }
+                },
+                "sessionID": {
+                  "type": "string"
+                },
+                "tool": {
+                  "type": "object",
+                  "properties": {
+                    "callID": {
+                      "type": "string"
+                    },
+                    "messageID": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "callID",
+                    "messageID"
+                  ]
+                }
+              },
+              "required": [
+                "id",
+                "questions",
+                "sessionID"
+              ]
+            }
+          }
+        },
+        "required": [
+          "data"
+        ]
+      }
+    },
+    "required": [
+      "method",
+      "route",
+      "status",
+      "params",
+      "body"
+    ]
+  },
+  "recordSchema": {
+    "type": "object",
+    "properties": {
+      "direction": {
+        "type": "string",
+        "enum": [
+          "client-to-agent"
+        ]
+      },
+      "request": {
+        "type": "object",
+        "properties": {
+          "method": {
+            "type": "string",
+            "enum": [
+              "GET"
+            ]
+          },
+          "route": {
+            "type": "string",
+            "enum": [
+              "/api/session/:sessionID/question"
+            ]
+          },
+          "params": {
+            "type": "object",
+            "properties": {
+              "sessionID": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "sessionID"
+            ]
+          }
+        },
+        "required": [
+          "method",
+          "route",
+          "params"
+        ]
+      }
+    },
+    "required": [
+      "direction",
+      "request"
+    ]
+  },
+  "evidence": {
+    "existence": [
+      "opencode-generated-openapi"
+    ],
+    "shape": [
+      "opencode-generated-openapi"
+    ],
+    "result": [
+      "opencode-generated-openapi"
+    ],
+    "carrier": [
+      "opencode-generated-openapi"
+    ]
+  },
+  "confidence": "unverified",
+  "notes": "OpenAPI operationId v2.session.question.list; GET /api/session/{sessionID}/question."
+}

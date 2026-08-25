@@ -1,0 +1,44 @@
+{
+  "surface": "kimi",
+  "surfaceVersion": "0.34.0",
+  "event": "tools.update_store",
+  "channel": "wire",
+  "channels": ["wire"],
+  "transport": "jsonl-record",
+  "direction": "agent-local",
+  "payloadSchema": {
+    "type": "object",
+    "properties": {
+      "key": {
+        "type": "string"
+      },
+      "value": {}
+    },
+    "required": ["key", "value"]
+  },
+  "recordSchema": {
+    "type": "object",
+    "properties": {
+      "type": {
+        "type": "string",
+        "enum": ["tools.update_store"]
+      },
+      "key": {
+        "type": "string"
+      },
+      "value": {},
+      "time": {
+        "type": "number",
+        "minimum": 0
+      }
+    },
+    "required": ["type", "key", "value", "time"]
+  },
+  "recordChannel": "wire",
+  "evidence": {
+    "existence": ["kimi-exact-release-source"],
+    "shape": ["kimi-exact-release-source"],
+    "carrier": ["kimi-exact-release-source"]
+  },
+  "confidence": "unverified"
+}

@@ -1,0 +1,191 @@
+{
+  "surface": "opencode",
+  "surfaceVersion": "1.18.16",
+  "event": "http/mcp.auth.start",
+  "channel": "http",
+  "channels": [
+    "http"
+  ],
+  "transport": "http",
+  "direction": "client-to-agent",
+  "trigger": "Start MCP OAuth — Start OAuth authentication flow for a Model Context Protocol (MCP) server.",
+  "payloadSchema": {
+    "type": "object",
+    "properties": {
+      "method": {
+        "type": "string"
+      },
+      "route": {
+        "type": "string"
+      },
+      "params": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "name"
+        ]
+      },
+      "query": {
+        "type": "object",
+        "properties": {
+          "directory": {
+            "type": "string"
+          },
+          "workspace": {
+            "type": "string"
+          }
+        }
+      }
+    },
+    "required": [
+      "method",
+      "route",
+      "params"
+    ]
+  },
+  "resultSchema": {
+    "type": "object",
+    "properties": {
+      "method": {
+        "type": "string",
+        "enum": [
+          "POST"
+        ]
+      },
+      "route": {
+        "type": "string",
+        "enum": [
+          "/mcp/:name/auth"
+        ]
+      },
+      "status": {
+        "type": "integer",
+        "minimum": 200,
+        "maximum": 299
+      },
+      "params": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "name"
+        ]
+      },
+      "query": {
+        "type": "object",
+        "properties": {
+          "directory": {
+            "type": "string"
+          },
+          "workspace": {
+            "type": "string"
+          }
+        }
+      },
+      "body": {
+        "type": "object",
+        "properties": {
+          "authorizationUrl": {
+            "type": "string"
+          },
+          "oauthState": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "authorizationUrl",
+          "oauthState"
+        ]
+      }
+    },
+    "required": [
+      "method",
+      "route",
+      "status",
+      "params",
+      "body"
+    ]
+  },
+  "recordSchema": {
+    "type": "object",
+    "properties": {
+      "direction": {
+        "type": "string",
+        "enum": [
+          "client-to-agent"
+        ]
+      },
+      "request": {
+        "type": "object",
+        "properties": {
+          "method": {
+            "type": "string",
+            "enum": [
+              "POST"
+            ]
+          },
+          "route": {
+            "type": "string",
+            "enum": [
+              "/mcp/:name/auth"
+            ]
+          },
+          "params": {
+            "type": "object",
+            "properties": {
+              "name": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "name"
+            ]
+          },
+          "query": {
+            "type": "object",
+            "properties": {
+              "directory": {
+                "type": "string"
+              },
+              "workspace": {
+                "type": "string"
+              }
+            }
+          }
+        },
+        "required": [
+          "method",
+          "route",
+          "params"
+        ]
+      }
+    },
+    "required": [
+      "direction",
+      "request"
+    ]
+  },
+  "evidence": {
+    "existence": [
+      "opencode-generated-openapi"
+    ],
+    "shape": [
+      "opencode-generated-openapi"
+    ],
+    "result": [
+      "opencode-generated-openapi"
+    ],
+    "carrier": [
+      "opencode-generated-openapi"
+    ]
+  },
+  "confidence": "unverified",
+  "notes": "OpenAPI operationId mcp.auth.start; POST /mcp/{name}/auth."
+}

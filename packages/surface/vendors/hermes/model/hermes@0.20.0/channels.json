@@ -1,0 +1,32 @@
+{
+  "channels": {
+    "argv": {
+      "kind": "argv-env",
+      "notes": "hermes --tui launch, HERMES_HOME isolation, CHOPSTICKS_HERMES_BIN."
+    },
+    "terminal": {
+      "kind": "terminal",
+      "notes": "Native Node Ink TUI. Semantics are never derived from terminal text."
+    },
+    "tui-gateway": {
+      "kind": "jsonrpc-stdio",
+      "notes": "JSON-RPC over stdio to tui_gateway.entry, or the same dispatcher over WebSocket handle_ws."
+    },
+    "plugin-hook": {
+      "kind": "hook-callback",
+      "notes": "In-process plugin hooks. Default tui_gateway.entry does not load user plugins until discover_plugins runs."
+    },
+    "outbound-webhook": {
+      "kind": "webhook-http",
+      "notes": "Notify-only hooks.outbound POSTs. Default tui_gateway.entry does not register them."
+    },
+    "state-db": {
+      "kind": "native-state",
+      "notes": "HERMES_HOME/state.db is resume/replay only. Not a live event stream."
+    },
+    "acp": {
+      "kind": "acp",
+      "notes": "Separate hermes acp / hermes-acp host. Forbidden beside a native-TUI session."
+    }
+  }
+}

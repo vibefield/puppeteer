@@ -1,0 +1,53 @@
+{
+  "surface": "codex",
+  "surfaceVersion": "0.147.0",
+  "event": "plugin/install",
+  "channel": "appserver",
+  "transport": "jsonrpc-request",
+  "direction": "client-to-agent",
+  "payloadSchema": {
+    "type": "object",
+    "properties": {
+      "marketplacePath": {},
+      "pluginName": {
+        "type": "string"
+      },
+      "remoteMarketplaceName": {}
+    },
+    "required": [
+      "pluginName"
+    ]
+  },
+  "recordSchema": {
+    "type": "object",
+    "properties": {
+      "method": {
+        "type": "string",
+        "enum": [
+          "plugin/install"
+        ]
+      },
+      "params": {
+        "type": "object"
+      },
+      "id": {}
+    },
+    "required": [
+      "method",
+      "params",
+      "id"
+    ]
+  },
+  "evidence": {
+    "existence": [
+      "codex-generated-schema"
+    ],
+    "shape": [
+      "codex-generated-schema"
+    ],
+    "carrier": [
+      "codex-generated-schema"
+    ]
+  },
+  "confidence": "unverified"
+}

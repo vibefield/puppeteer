@@ -1,0 +1,528 @@
+/** ACP 1.2.1 protocol facts projected onto the evidence-backed monitor SPI. */
+
+import { createHash, randomUUID } from 'node:crypto';
+import type { AgentStructuredQuestion, MonitorMetricFamily } from '@vibecook/chopsticks-core';
+import type {
+  AdapterMonitorObservationBatch,
+  EvidenceRef,
+  MonitorFamilyUpdate,
+  MonitorFamilyValueMap,
+  ObservationCapability,
+  ObservationCoverage,
+} from '@vibecook/chopsticks-core/monitor-spi';
+import type {
+  CreateElicitationRequest,
+  SessionConfigOption,
+  SessionModeState,
+  SessionNotification,
+} from '@agentclientprotocol/sdk';
+import { acpModelIdentity } from './normalizer.js';
+
+const ACP_CONTRACT = 'acp@1.2.1';
+const MAX_QUESTIONS = 64;
+const MAX_OPTIONS = 128;
+const MAX_TEXT_LENGTH = 4_096;
+
+/**
+ * Generic ACP claims stop at the standard protocol boundary. Agent-specific
+ * extension methods belong in the composing adapter (for example Grok), not
+ * here.
+ */
+export const ACP_MONITOR_CAPABILITIES: readonly ObservationCapability[] = [
+  {
+    family: 'status',
+    support: 'supported',
+    actorScope: 'root',
+    latency: 'response',
+    source: 'acp-turn-tool-permission-and-elicitation',
+    contractVersion: ACP_CONTRACT,
+    limitations: [
+      'ACP exposes root-session activity and structured permissions.',
+      'Structured form and URL elicitations are experimental and require client capability negotiation.',
+      'A transport close degrades observation; it never proves that the host process exited.',
+    ],
+  },
+  {
+    family: 'usage',
+    support: 'unsupported',
+    actorScope: 'root',
+    latency: 'response',
+    source: 'none-in-acp-1.2.1',
+    contractVersion: ACP_CONTRACT,
+    limitations: [
+      'usage_update.used is current context occupancy, not cumulative or per-response token consumption.',
+      'ACP 1.2.1 exposes cumulative monetary cost but no token-burn ledger or per-actor usage.',
+    ],
+  },
+  {
+    family: 'context',
+    support: 'supported',
+    actorScope: 'root',
+    latency: 'response',
+    source: 'acp-usage-update',
+    contractVersion: ACP_CONTRACT,
+    limitations: ['Context is available when the agent emits the optional usage_update notification.'],
+  },
+  {
+    family: 'model',
+    support: 'supported',
+    actorScope: 'root',
+    latency: 'response',
+    source: 'acp-model-config-option',
+    contractVersion: ACP_CONTRACT,
+    limitations: [
+      'The model is available when the agent supplies a config option with the standard model category.',
+      'ACP reports current session configuration, not a separate per-request routing boundary.',
+    ],
+  },
+  {
+    family: 'effort',
+    support: 'supported',
+    actorScope: 'root',
+    latency: 'response',
+    source: 'acp-thought-level-config-option',
+    contractVersion: ACP_CONTRACT,
+    limitations: [
+      'Effort is the current thought_level config value when supplied by the agent.',
+      'ACP does not expose a separate per-request applied-effort boundary.',
+    ],
+  },
+  {
+    family: 'mode',
+    support: 'supported',
+    actorScope: 'session',
+    latency: 'response',
+    source: 'acp-session-mode',
+    contractVersion: ACP_CONTRACT,
+    limitations: [
+      'Provider session mode IDs remain open strings and are not conflated with Chopsticks execution mode.',
+      'Permission posture is visible through concrete permission requests, not a standardized ACP permission mode.',
+    ],
+  },
+  {
+    family: 'planning',
+    support: 'degraded',
+    actorScope: 'root',
+    latency: 'response',
+    source: 'acp-plan-and-experimental-plan-update',
+    contractVersion: ACP_CONTRACT,
+    limitations: [
+      'Standard plan notifications are exact complete snapshots but have no provider plan ID.',
+      'Experimental item-plan updates and removals have stable plan IDs; file and markdown plans remain raw.',
+      'Plan entries are not promoted to independently identified task lifecycles.',
+    ],
+  },
+  {
+    family: 'delegation',
+    support: 'unsupported',
+    actorScope: 'root',
+    latency: 'historical',
+    source: 'none-in-acp-1.2.1',
+    contractVersion: ACP_CONTRACT,
+    limitations: ['ACP 1.2.1 defines no subagent identity, parentage, team membership, or child activity stream.'],
+  },
+  {
+    family: 'workflow',
+    support: 'unsupported',
+    actorScope: 'session',
+    latency: 'historical',
+    source: 'none-in-acp-1.2.1',
+    contractVersion: ACP_CONTRACT,
+    limitations: ['ACP 1.2.1 defines no workflow-run identity, membership, or bounded workflow artifact contract.'],
+  },
+  {
+    family: 'compaction',
+    support: 'unsupported',
+    actorScope: 'session',
+    latency: 'historical',
+    source: 'none-in-acp-1.2.1',
+    contractVersion: ACP_CONTRACT,
+    limitations: ['ACP 1.2.1 defines no context-compaction lifecycle notification.'],
+  },
+  {
+    family: 'environment',
+    support: 'supported',
+    actorScope: 'session',
+    latency: 'response',
+    source: 'acp-session-setup',
+    contractVersion: ACP_CONTRACT,
+    limitations: ['ACP session setup proves cwd; Git and worktree topology remain runtime-owned.'],
+  },
+] as const;
+
+const rec = (value: unknown): Record<string, unknown> | undefined =>
+  value !== null && typeof value === 'object' && !Array.isArray(value) ? (value as Record<string, unknown>) : undefined;
+
+function boundedText(value: unknown): string | undefined {
+  if (typeof value !== 'string') return undefined;
+  const trimmed = value.trim();
+  return trimmed ? trimmed.slice(0, MAX_TEXT_LENGTH) : undefined;
+}
+
+function finiteNonNegative(value: unknown): number | undefined {
+  return typeof value === 'number' && Number.isFinite(value) && value >= 0 ? value : undefined;
+}
+
+function upsert<F extends MonitorMetricFamily>(
+  family: F,
+  key: string,
+  value: MonitorFamilyValueMap[F],
+): MonitorFamilyUpdate {
+  return { family, operation: 'upsert', key, value } as MonitorFamilyUpdate;
+}
+
+function retract(family: MonitorMetricFamily, key: string): MonitorFamilyUpdate {
+  return { family, operation: 'retract', key } as MonitorFamilyUpdate;
+}
+
+function digest(value: unknown): string {
+  let serialized: string;
+  try {
+    serialized = JSON.stringify(value) ?? String(value);
+  } catch {
+    serialized = String(value);
+  }
+  return createHash('sha256').update(serialized).digest('hex').slice(0, 24);
+}
+
+function currentConfigValue(option: SessionConfigOption): string | undefined {
+  if (option.type === 'select') return boundedText(option.currentValue);
+  return option.type === 'boolean' ? String(option.currentValue) : undefined;
+}
+
+function configUpdates(configOptions: readonly SessionConfigOption[] | null | undefined): MonitorFamilyUpdate[] {
+  const updates: MonitorFamilyUpdate[] = [];
+  const model = acpModelIdentity(configOptions);
+  if (model) {
+    updates.push(
+      upsert('model', 'observed', {
+        kind: 'model',
+        providerModelId: model.id,
+        ...(model.displayName ? { displayName: model.displayName } : {}),
+        intent: 'observed',
+      }),
+    );
+  } else {
+    // config_option_update is a full set, so disappearance of the standard
+    // selector invalidates the prior model claim rather than leaving it stale.
+    updates.push(retract('model', 'observed'));
+  }
+
+  let effortObserved = false;
+  for (const option of configOptions ?? []) {
+    const value = currentConfigValue(option);
+    if (value === undefined) continue;
+    if (option.category === 'thought_level') {
+      effortObserved = true;
+      updates.push(upsert('effort', 'observed', { kind: 'effort', value, intent: 'observed' }));
+    } else if (option.category === 'mode') {
+      updates.push(
+        upsert('mode', 'provider-session-observed', {
+          kind: 'mode',
+          modeKind: 'provider-session',
+          raw: value,
+          intent: 'observed',
+        }),
+      );
+    }
+  }
+  if (!effortObserved) updates.push(retract('effort', 'observed'));
+  return updates;
+}
+
+function modeUpdate(modes: SessionModeState | null | undefined): MonitorFamilyUpdate | undefined {
+  const current = boundedText(modes?.currentModeId);
+  if (!current) return undefined;
+  return upsert('mode', 'provider-session-observed', {
+    kind: 'mode',
+    modeKind: 'provider-session',
+    raw: current,
+    intent: 'observed',
+  });
+}
+
+function planSteps(entries: unknown): Array<{ text: string; status: string }> | undefined {
+  if (!Array.isArray(entries)) return undefined;
+  const result: Array<{ text: string; status: string }> = [];
+  for (const candidate of entries) {
+    const entry = rec(candidate);
+    if (typeof entry?.content !== 'string' || typeof entry.status !== 'string') return undefined;
+    result.push({
+      text: entry.content.slice(0, MAX_TEXT_LENGTH),
+      status: entry.status.slice(0, MAX_TEXT_LENGTH),
+    });
+  }
+  return result;
+}
+
+function elicitationOptions(property: Record<string, unknown>): Array<{ label: string; description?: string }> {
+  const titled = Array.isArray(property.oneOf)
+    ? property.oneOf
+    : rec(property.items) && Array.isArray(rec(property.items)?.anyOf)
+      ? (rec(property.items)?.anyOf as unknown[])
+      : undefined;
+  if (titled) {
+    return titled.slice(0, MAX_OPTIONS).flatMap((candidate) => {
+      const option = rec(candidate);
+      const label = boundedText(option?.title ?? option?.const);
+      if (!label) return [];
+      const description = boundedText(option?.description);
+      return [{ label, ...(description ? { description } : {}) }];
+    });
+  }
+
+  const raw = Array.isArray(property.enum)
+    ? property.enum
+    : rec(property.items) && Array.isArray(rec(property.items)?.enum)
+      ? (rec(property.items)?.enum as unknown[])
+      : property.type === 'boolean'
+        ? [true, false]
+        : [];
+  return raw.slice(0, MAX_OPTIONS).flatMap((value) => {
+    if (!['string', 'number', 'boolean'].includes(typeof value)) return [];
+    return [{ label: String(value).slice(0, MAX_TEXT_LENGTH) }];
+  });
+}
+
+/** Translate ACP's experimental form schema without inspecting ambient prose. */
+export function acpElicitationQuestions(params: CreateElicitationRequest): AgentStructuredQuestion[] {
+  const request = rec(params);
+  const message = boundedText(request?.message) ?? 'Agent requires user input';
+  const schema = rec(request?.requestedSchema);
+  const properties = rec(schema?.properties);
+  if (request?.mode !== 'form' || !properties) {
+    return [{ prompt: message, allowMultiple: false, allowFreeForm: false }];
+  }
+
+  const fields = Object.entries(properties).slice(0, MAX_QUESTIONS);
+  if (fields.length === 0) return [{ prompt: message, allowMultiple: false, allowFreeForm: false }];
+  return fields.map(([id, candidate]) => {
+    const property = rec(candidate) ?? {};
+    const title = boundedText(property.title);
+    const description = boundedText(property.description);
+    const field = description ?? title ?? boundedText(id) ?? 'Input';
+    const options = elicitationOptions(property);
+    const allowMultiple = property.type === 'array';
+    const allowFreeForm = options.length === 0 && ['string', 'number', 'integer'].includes(String(property.type));
+    return {
+      id: id.slice(0, MAX_TEXT_LENGTH),
+      ...(title ? { header: title } : {}),
+      prompt: fields.length === 1 && !description ? message : `${message} — ${field}`.slice(0, MAX_TEXT_LENGTH),
+      ...(options.length > 0 ? { options } : {}),
+      allowMultiple,
+      allowFreeForm,
+    };
+  });
+}
+
+export interface AcpMonitorBootstrap {
+  cwd: string;
+  modes?: SessionModeState | null;
+  configOptions?: readonly SessionConfigOption[] | null;
+}
+
+export interface AcpMonitorEvidenceOptions {
+  nativeSessionId: () => string | undefined;
+  epoch?: string;
+}
+
+/** Stateful only for producer ordering; raw ACP payloads stay on compatibility envelopes. */
+export class AcpMonitorEvidence {
+  private readonly epoch: string;
+  private sequence = 0;
+
+  constructor(private readonly options: AcpMonitorEvidenceOptions) {
+    this.epoch = options.epoch ?? `acp:${randomUUID()}`;
+  }
+
+  private evidence(namespace: string, id: string, value?: unknown): EvidenceRef[] {
+    return [
+      {
+        namespace,
+        id,
+        ...(value === undefined ? {} : { revisionKey: digest(value) }),
+      },
+    ];
+  }
+
+  private batch(
+    label: string,
+    observedAt: string,
+    updates: MonitorFamilyUpdate[],
+    options: {
+      phase?: AdapterMonitorObservationBatch['phase'];
+      quality?: AdapterMonitorObservationBatch['quality'];
+      completeness?: AdapterMonitorObservationBatch['completeness'];
+      provisional?: boolean;
+      readiness?: AdapterMonitorObservationBatch['readiness'];
+      evidence?: EvidenceRef[];
+      capabilities?: ObservationCapability[];
+      coverage?: ObservationCoverage[];
+    } = {},
+  ): AdapterMonitorObservationBatch {
+    this.sequence += 1;
+    const nativeSessionId = this.options.nativeSessionId();
+    return {
+      schemaVersion: 1,
+      batchId: `${label}:${this.sequence}`,
+      producer: {
+        id: 'acp:protocol-monitor',
+        epoch: this.epoch,
+        sequence: this.sequence,
+        contractVersion: ACP_CONTRACT,
+      },
+      phase: options.phase ?? 'live',
+      observedAt,
+      quality: options.quality ?? 'exact',
+      completeness: options.completeness ?? 'partial',
+      provisional: options.provisional ?? false,
+      readiness: options.readiness ?? 'ready',
+      ...(nativeSessionId ? { scope: { nativeSessionId } } : {}),
+      updates,
+      sourceWatermarks: [],
+      evidence: options.evidence ?? [],
+      ...(options.capabilities ? { capabilities: options.capabilities } : {}),
+      ...(options.coverage ? { coverage: options.coverage } : {}),
+    };
+  }
+
+  capabilitiesBatch(observedAt: string): AdapterMonitorObservationBatch {
+    return this.batch('capabilities', observedAt, [], {
+      phase: 'bootstrap',
+      completeness: 'complete',
+      capabilities: [...ACP_MONITOR_CAPABILITIES],
+      evidence: this.evidence('acp:contract', ACP_CONTRACT),
+    });
+  }
+
+  bootstrapBatch(bootstrap: AcpMonitorBootstrap, observedAt: string): AdapterMonitorObservationBatch {
+    const updates: MonitorFamilyUpdate[] = [
+      upsert('environment', 'root', { kind: 'environment', cwd: bootstrap.cwd }),
+      ...configUpdates(bootstrap.configOptions),
+    ];
+    const mode = modeUpdate(bootstrap.modes);
+    if (mode) updates.push(mode);
+    return this.batch('session-bootstrap', observedAt, updates, {
+      phase: 'bootstrap',
+      completeness: 'complete',
+      evidence: this.evidence('acp:session-setup', this.options.nativeSessionId() ?? 'pending', bootstrap),
+    });
+  }
+
+  sessionUpdateBatch(
+    notification: SessionNotification,
+    observedAt: string,
+    phase: 'bootstrap' | 'live' = 'live',
+  ): AdapterMonitorObservationBatch | null {
+    const update = notification.update;
+    const kind = update.sessionUpdate;
+    const updates: MonitorFamilyUpdate[] = [];
+
+    if (kind === 'usage_update') {
+      const usedTokens = finiteNonNegative(update.used);
+      const capacity = finiteNonNegative(update.size);
+      const capacityTokens = capacity !== undefined && capacity > 0 ? capacity : undefined;
+      if (usedTokens !== undefined || capacityTokens !== undefined) {
+        updates.push(
+          upsert('context', 'root', {
+            kind: 'context',
+            ...(usedTokens !== undefined ? { usedTokens } : {}),
+            ...(capacityTokens !== undefined ? { capacityTokens } : {}),
+            percentageSource: usedTokens !== undefined && capacityTokens !== undefined ? 'derived' : 'unavailable',
+          }),
+        );
+      }
+    } else if (kind === 'config_option_update') {
+      updates.push(...configUpdates(update.configOptions));
+    } else if (kind === 'current_mode_update') {
+      const currentModeId = boundedText(update.currentModeId);
+      if (currentModeId) {
+        updates.push(
+          upsert('mode', 'provider-session-observed', {
+            kind: 'mode',
+            modeKind: 'provider-session',
+            raw: currentModeId,
+            intent: 'observed',
+          }),
+        );
+      }
+    } else if (kind === 'plan') {
+      const steps = planSteps(update.entries);
+      if (steps) {
+        if (steps.length === 0) updates.push(retract('planning', 'plan:root'));
+        else {
+          updates.push(
+            upsert('planning', 'plan:root', {
+              kind: 'plan',
+              planId: 'acp:root-plan',
+              steps,
+              provisional: false,
+            }),
+          );
+        }
+      }
+    } else if (kind === 'plan_update') {
+      if (update.plan.type === 'items') {
+        const steps = planSteps(update.plan.entries);
+        if (steps) {
+          const key = `plan:${update.plan.planId}`;
+          if (steps.length === 0) updates.push(retract('planning', key));
+          else {
+            updates.push(
+              upsert('planning', key, {
+                kind: 'plan',
+                planId: update.plan.planId,
+                steps,
+                provisional: false,
+              }),
+            );
+          }
+        }
+      }
+    } else if (kind === 'plan_removed') {
+      updates.push(retract('planning', `plan:${update.planId}`));
+    }
+
+    if (updates.length === 0) return null;
+    const object = rec(update);
+    const sourceObjectId = boundedText(
+      object?.planId ?? rec(object?.plan)?.planId ?? object?.messageId ?? object?.toolCallId,
+    );
+    return this.batch(kind.replaceAll('_', '-'), observedAt, updates, {
+      phase,
+      evidence: this.evidence(
+        'acp:session-update',
+        `${notification.sessionId}:${kind}:${sourceObjectId ?? 'root'}`,
+        update,
+      ),
+    });
+  }
+
+  /** Protocol loss invalidates future observation, never native host liveness. */
+  railUnavailableBatch(observedAt: string): AdapterMonitorObservationBatch {
+    const affected = ACP_MONITOR_CAPABILITIES.filter(({ support }) => support !== 'unsupported');
+    const capabilities = ACP_MONITOR_CAPABILITIES.map((capability) =>
+      capability.support === 'unsupported'
+        ? capability
+        : {
+            ...capability,
+            support: 'degraded' as const,
+            limitations: [...capability.limitations, 'ACP observation/control transport is unavailable.'],
+          },
+    );
+    const coverage: ObservationCoverage[] = affected.map(({ family }) => ({
+      family,
+      completeness: 'unavailable',
+      asOf: observedAt,
+      reason: 'ACP observation/control transport unavailable; last known facts may be stale',
+    }));
+    return this.batch('rail-unavailable', observedAt, [], {
+      quality: 'unknown',
+      completeness: 'unavailable',
+      readiness: 'degraded',
+      capabilities,
+      coverage,
+      evidence: this.evidence('acp:transport', `${this.options.nativeSessionId() ?? 'pending'}:unavailable`),
+    });
+  }
+}

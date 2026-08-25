@@ -1,0 +1,44 @@
+{
+  "surface": "kimi",
+  "surfaceVersion": "0.34.0",
+  "event": "interaction.resolved",
+  "channel": "wire",
+  "channels": ["wire"],
+  "transport": "jsonl-record",
+  "direction": "agent-local",
+  "payloadSchema": {
+    "type": "object",
+    "properties": {
+      "id": {
+        "type": "string"
+      },
+      "response": {}
+    },
+    "required": ["id", "response"]
+  },
+  "recordSchema": {
+    "type": "object",
+    "properties": {
+      "type": {
+        "type": "string",
+        "enum": ["interaction.resolved"]
+      },
+      "id": {
+        "type": "string"
+      },
+      "response": {},
+      "time": {
+        "type": "number",
+        "minimum": 0
+      }
+    },
+    "required": ["type", "id", "response", "time"]
+  },
+  "recordChannel": "wire",
+  "evidence": {
+    "existence": ["kimi-exact-release-source"],
+    "shape": ["kimi-exact-release-source"],
+    "carrier": ["kimi-exact-release-source"]
+  },
+  "confidence": "unverified"
+}

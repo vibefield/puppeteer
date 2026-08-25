@@ -1,0 +1,76 @@
+{
+  "surface": "kimi",
+  "surfaceVersion": "0.34.0",
+  "event": "swarm_mode.enter",
+  "channel": "wire",
+  "channels": ["wire"],
+  "transport": "jsonl-record",
+  "direction": "agent-local",
+  "payloadSchema": {
+    "type": "object",
+    "properties": {
+      "trigger": {
+        "type": "string",
+        "enum": ["manual", "task", "tool"]
+      }
+    },
+    "required": ["trigger"]
+  },
+  "recordSchema": {
+    "type": "object",
+    "properties": {
+      "type": {
+        "type": "string",
+        "enum": ["swarm_mode.enter"]
+      },
+      "trigger": {
+        "type": "string",
+        "enum": ["manual", "task", "tool"]
+      },
+      "time": {
+        "type": "number",
+        "minimum": 0
+      }
+    },
+    "required": ["type", "trigger", "time"]
+  },
+  "recordChannel": "wire",
+  "evidence": {
+    "existence": ["kimi-exact-release-source"],
+    "shape": ["kimi-exact-release-source"],
+    "carrier": ["kimi-exact-release-source"]
+  },
+  "confidence": "unverified",
+  "variants": [
+    {
+      "match": {
+        "trigger": "manual"
+      },
+      "evidence": {
+        "existence": ["kimi-exact-release-source"],
+        "shape": ["kimi-exact-release-source"]
+      },
+      "confidence": "unverified"
+    },
+    {
+      "match": {
+        "trigger": "task"
+      },
+      "evidence": {
+        "existence": ["kimi-exact-release-source"],
+        "shape": ["kimi-exact-release-source"]
+      },
+      "confidence": "unverified"
+    },
+    {
+      "match": {
+        "trigger": "tool"
+      },
+      "evidence": {
+        "existence": ["kimi-exact-release-source"],
+        "shape": ["kimi-exact-release-source"]
+      },
+      "confidence": "unverified"
+    }
+  ]
+}

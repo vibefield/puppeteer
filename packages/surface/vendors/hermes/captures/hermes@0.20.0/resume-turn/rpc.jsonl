@@ -1,0 +1,15 @@
+{"jsonrpc":"2.0","method":"event","params":{"type":"gateway.ready","payload":{"hasText":false,"hasContext":false}}}
+{"direction":"client","jsonrpc":"2.0","id":"anon-6b86b273ff34fce1","method":"session.resume","params":{"session_id":"anon-cba20b40c82eabe4","cwd":"/workspace","hasText":false}}
+{"jsonrpc":"2.0","id":"anon-6b86b273ff34fce1","result":{"session_id":"anon-b0fb2ba760857193","session_key":"anon-cba20b40c82eabe4","resumed":"20260812_132919_ae981b","status":"idle","message_count":2,"running":false}}
+{"jsonrpc":"2.0","method":"event","params":{"type":"session.info","session_id":"anon-b0fb2ba760857193","payload":{"model":"chopsticks-hermes-census","provider":"custom","approval_mode":"manual","version":"0.20.0","cwd":"/workspace","stored_session_id":"anon-cba20b40c82eabe4","running":false,"toolNames":["terminal","other"],"usage":{"model":"chopsticks-hermes-census","calls":0,"hasTotals":true},"hasText":false,"hasContext":false}}}
+{"direction":"client","jsonrpc":"2.0","id":"anon-d4735e3a265e16ee","method":"prompt.submit","params":{"session_id":"anon-b0fb2ba760857193","hasText":true}}
+{"jsonrpc":"2.0","method":"event","params":{"type":"message.start","session_id":"anon-b0fb2ba760857193","payload":{"hasText":false,"hasContext":false}}}
+{"jsonrpc":"2.0","id":"anon-d4735e3a265e16ee","result":{"status":"streaming"}}
+{"jsonrpc":"2.0","method":"event","params":{"type":"sessions.changed","session_id":"anon-e3b0c44298fc1c14","payload":{"hasText":false,"hasContext":false}}}
+{"jsonrpc":"2.0","method":"event","params":{"type":"thinking.delta","session_id":"anon-b0fb2ba760857193","payload":{"hasText":true,"hasContext":false}}}
+{"jsonrpc":"2.0","method":"event","params":{"type":"thinking.delta","session_id":"anon-b0fb2ba760857193","payload":{"hasText":true,"hasContext":false}}}
+{"jsonrpc":"2.0","method":"event","params":{"type":"message.delta","session_id":"anon-b0fb2ba760857193","payload":{"hasText":true,"hasContext":false}}}
+{"jsonrpc":"2.0","method":"event","params":{"type":"thinking.delta","session_id":"anon-b0fb2ba760857193","payload":{"hasText":true,"hasContext":false}}}
+{"jsonrpc":"2.0","method":"event","params":{"type":"reasoning.available","session_id":"anon-b0fb2ba760857193","payload":{"hasText":true,"hasContext":false}}}
+{"jsonrpc":"2.0","method":"event","params":{"type":"message.complete","session_id":"anon-b0fb2ba760857193","payload":{"status":"complete","usage":{"model":"chopsticks-hermes-census","calls":1,"hasTotals":true},"hasText":true,"hasContext":false}}}
+{"jsonrpc":"2.0","method":"event","params":{"type":"session.info","session_id":"anon-b0fb2ba760857193","payload":{"model":"chopsticks-hermes-census","provider":"custom","approval_mode":"manual","version":"0.20.0","cwd":"/workspace","stored_session_id":"anon-cba20b40c82eabe4","running":false,"toolNames":["terminal","other"],"usage":{"model":"chopsticks-hermes-census","calls":1,"hasTotals":true},"hasText":false,"hasContext":false}}}

@@ -1,0 +1,98 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/vibecook-dev/chopsticks/support/agents.schema.json",
+  "title": "Chopsticks promoted agent support",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schemaVersion", "agents"],
+  "properties": {
+    "$schema": { "type": "string" },
+    "schemaVersion": { "const": 1 },
+    "agents": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["id", "displayName", "kind", "adapterPackage", "status"],
+        "properties": {
+          "id": { "type": "string", "pattern": "^[a-z][a-z0-9-]*$" },
+          "displayName": { "type": "string", "minLength": 1 },
+          "kind": { "enum": ["vendor", "protocol"] },
+          "adapterPackage": { "type": "string", "pattern": "^@vibecook/chopsticks-adapter-" },
+          "persona": { "type": "string" },
+          "currentManifest": { "type": "string" },
+          "candidateManifest": { "type": "string" },
+          "legacyEvidence": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["kind", "frozenManifest", "modelSha256", "frozenOn", "reason"],
+            "properties": {
+              "kind": { "const": "pre-asm-v2-baseline" },
+              "frozenManifest": { "type": "string" },
+              "modelSha256": { "type": "string", "pattern": "^[0-9a-f]{64}$" },
+              "frozenOn": { "type": "string", "format": "date" },
+              "reason": { "type": "string", "minLength": 1 }
+            }
+          },
+          "verification": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "provider",
+              "candidateCommit",
+              "manifest",
+              "evidenceDigest",
+              "replayDigest",
+              "repository",
+              "workflowRef",
+              "runId",
+              "runAttempt",
+              "platformArtifacts"
+            ],
+            "properties": {
+              "provider": { "const": "github-actions" },
+              "candidateCommit": { "type": "string", "pattern": "^[0-9a-f]{40}$" },
+              "manifest": { "type": "string" },
+              "evidenceDigest": { "type": "string", "pattern": "^[0-9a-f]{64}$" },
+              "replayDigest": { "type": "string", "pattern": "^[0-9a-f]{64}$" },
+              "repository": { "type": "string", "minLength": 1 },
+              "workflowRef": { "type": "string", "minLength": 1 },
+              "runId": { "type": "string", "pattern": "^\\d+$" },
+              "runAttempt": { "type": "string", "pattern": "^\\d+$" },
+              "platformArtifacts": {
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "additionalProperties": false,
+                  "required": ["platform", "artifactSha256"],
+                  "properties": {
+                    "platform": { "type": "string", "minLength": 1 },
+                    "artifactSha256": { "type": "string", "pattern": "^sha256:[0-9a-f]{64}$" }
+                  }
+                }
+              }
+            }
+          },
+          "status": {
+            "enum": ["verified", "legacy-verified", "baseline-pending", "unsupported", "deprecated"]
+          },
+          "introducedInChopsticks": { "type": "string" }
+        },
+        "allOf": [
+          {
+            "if": { "properties": { "status": { "enum": ["verified", "legacy-verified"] } } },
+            "then": { "required": ["persona", "currentManifest", "introducedInChopsticks"] }
+          },
+          {
+            "if": { "properties": { "status": { "const": "legacy-verified" } }, "required": ["status"] },
+            "then": { "required": ["legacyEvidence"] }
+          },
+          {
+            "if": { "properties": { "status": { "const": "verified" } }, "required": ["status"] },
+            "then": { "required": ["verification"] }
+          }
+        ]
+      }
+    }
+  }
+}

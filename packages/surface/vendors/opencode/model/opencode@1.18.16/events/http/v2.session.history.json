@@ -1,0 +1,192 @@
+{
+  "surface": "opencode",
+  "surfaceVersion": "1.18.16",
+  "event": "http/v2.session.history",
+  "channel": "http",
+  "channels": [
+    "http"
+  ],
+  "transport": "http",
+  "direction": "client-to-agent",
+  "trigger": "Get session history — Read one finite page of public durable Session events after an exclusive aggregate sequence. Newly committed events may appear on later pages.",
+  "payloadSchema": {
+    "type": "object",
+    "properties": {
+      "method": {
+        "type": "string"
+      },
+      "route": {
+        "type": "string"
+      },
+      "params": {
+        "type": "object",
+        "properties": {
+          "sessionID": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "sessionID"
+        ]
+      },
+      "query": {
+        "type": "object",
+        "properties": {
+          "after": {
+            "type": "string"
+          },
+          "limit": {
+            "type": "string"
+          }
+        }
+      }
+    },
+    "required": [
+      "method",
+      "route",
+      "params"
+    ]
+  },
+  "resultSchema": {
+    "type": "object",
+    "properties": {
+      "method": {
+        "type": "string",
+        "enum": [
+          "GET"
+        ]
+      },
+      "route": {
+        "type": "string",
+        "enum": [
+          "/api/session/:sessionID/history"
+        ]
+      },
+      "status": {
+        "type": "integer",
+        "minimum": 200,
+        "maximum": 299
+      },
+      "params": {
+        "type": "object",
+        "properties": {
+          "sessionID": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "sessionID"
+        ]
+      },
+      "query": {
+        "type": "object",
+        "properties": {
+          "after": {
+            "type": "string"
+          },
+          "limit": {
+            "type": "string"
+          }
+        }
+      },
+      "body": {
+        "type": "object",
+        "properties": {
+          "data": {
+            "type": "array",
+            "items": {}
+          },
+          "hasMore": {
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "data",
+          "hasMore"
+        ]
+      }
+    },
+    "required": [
+      "method",
+      "route",
+      "status",
+      "params",
+      "body"
+    ]
+  },
+  "recordSchema": {
+    "type": "object",
+    "properties": {
+      "direction": {
+        "type": "string",
+        "enum": [
+          "client-to-agent"
+        ]
+      },
+      "request": {
+        "type": "object",
+        "properties": {
+          "method": {
+            "type": "string",
+            "enum": [
+              "GET"
+            ]
+          },
+          "route": {
+            "type": "string",
+            "enum": [
+              "/api/session/:sessionID/history"
+            ]
+          },
+          "params": {
+            "type": "object",
+            "properties": {
+              "sessionID": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "sessionID"
+            ]
+          },
+          "query": {
+            "type": "object",
+            "properties": {
+              "after": {
+                "type": "string"
+              },
+              "limit": {
+                "type": "string"
+              }
+            }
+          }
+        },
+        "required": [
+          "method",
+          "route",
+          "params"
+        ]
+      }
+    },
+    "required": [
+      "direction",
+      "request"
+    ]
+  },
+  "evidence": {
+    "existence": [
+      "opencode-generated-openapi"
+    ],
+    "shape": [
+      "opencode-generated-openapi"
+    ],
+    "result": [
+      "opencode-generated-openapi"
+    ],
+    "carrier": [
+      "opencode-generated-openapi"
+    ]
+  },
+  "confidence": "unverified",
+  "notes": "OpenAPI operationId v2.session.history; GET /api/session/{sessionID}/history."
+}

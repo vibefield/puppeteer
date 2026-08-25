@@ -1,0 +1,72 @@
+{
+  "$server": {
+    "command": "serve",
+    "hostnameFlag": "--hostname",
+    "portFlag": "--port",
+    "defaultHostname": "127.0.0.1",
+    "defaultPort": 0,
+    "directoryQuery": "directory",
+    "directoryHeader": "x-opencode-directory",
+    "auth": {
+      "usernameEnv": "OPENCODE_SERVER_USERNAME",
+      "passwordEnv": "OPENCODE_SERVER_PASSWORD",
+      "defaultUsername": "opencode"
+    },
+    "attach": {
+      "command": "attach",
+      "sessionFlag": "--session",
+      "directoryFlag": "--dir"
+    }
+  },
+  "routes": [
+    { "event": "http/event.subscribe", "method": "GET", "path": "/event", "action": "event.subscribe" },
+    { "event": "http/session.create", "method": "POST", "path": "/session", "action": "session.create" },
+    { "event": "http/session.list", "method": "GET", "path": "/session", "action": "session.list" },
+    { "event": "http/session.status", "method": "GET", "path": "/session/status", "action": "session.status" },
+    { "event": "http/permission.list", "method": "GET", "path": "/permission", "action": "permission.list" },
+    { "event": "http/question.list", "method": "GET", "path": "/question", "action": "question.list" },
+    { "event": "http/vcs.diff", "method": "GET", "path": "/vcs/diff", "action": "vcs.diff" },
+    { "event": "http/session.get", "method": "GET", "path": "/session/:sessionID", "action": "session.get" },
+    { "event": "http/session.update", "method": "PATCH", "path": "/session/:sessionID", "action": "session.update" },
+    { "event": "http/session.delete", "method": "DELETE", "path": "/session/:sessionID", "action": "session.delete" },
+    {
+      "event": "http/session.messages",
+      "method": "GET",
+      "path": "/session/:sessionID/message",
+      "action": "session.messages"
+    },
+    {
+      "event": "http/session.prompt_async",
+      "method": "POST",
+      "path": "/session/:sessionID/prompt_async",
+      "action": "session.prompt"
+    },
+    { "event": "http/session.abort", "method": "POST", "path": "/session/:sessionID/abort", "action": "session.abort" },
+    {
+      "event": "http/session.children",
+      "method": "GET",
+      "path": "/session/:sessionID/children",
+      "action": "session.children"
+    },
+    { "event": "http/session.diff", "method": "GET", "path": "/session/:sessionID/diff", "action": "session.diff" },
+    { "event": "http/session.fork", "method": "POST", "path": "/session/:sessionID/fork", "action": "session.fork" },
+    {
+      "event": "http/permission.reply",
+      "method": "POST",
+      "path": "/permission/:requestID/reply",
+      "action": "permission.reply"
+    },
+    {
+      "event": "http/question.reply",
+      "method": "POST",
+      "path": "/question/:requestID/reply",
+      "action": "question.reply"
+    },
+    {
+      "event": "http/question.reject",
+      "method": "POST",
+      "path": "/question/:requestID/reject",
+      "action": "question.reject"
+    }
+  ]
+}

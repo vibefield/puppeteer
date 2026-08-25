@@ -1,0 +1,90 @@
+{
+  "surface": "codex",
+  "surfaceVersion": "0.147.0",
+  "event": "item/permissions/requestApproval",
+  "channel": "appserver",
+  "transport": "jsonrpc-request",
+  "direction": "agent-to-client",
+  "trigger": "Request approval for additional permissions from the user.",
+  "payloadSchema": {
+    "type": "object",
+    "properties": {
+      "cwd": {
+        "type": "string"
+      },
+      "environmentId": {},
+      "itemId": {
+        "type": "string"
+      },
+      "permissions": {
+        "type": "object"
+      },
+      "reason": {},
+      "startedAtMs": {
+        "type": "number"
+      },
+      "threadId": {
+        "type": "string"
+      },
+      "turnId": {
+        "type": "string"
+      }
+    },
+    "required": [
+      "cwd",
+      "itemId",
+      "permissions",
+      "startedAtMs",
+      "threadId",
+      "turnId"
+    ]
+  },
+  "resultSchema": {
+    "type": "object",
+    "properties": {
+      "permissions": {
+        "type": "object"
+      },
+      "scope": {},
+      "strictAutoReview": {}
+    },
+    "required": [
+      "permissions"
+    ]
+  },
+  "recordSchema": {
+    "type": "object",
+    "properties": {
+      "method": {
+        "type": "string",
+        "enum": [
+          "item/permissions/requestApproval"
+        ]
+      },
+      "params": {
+        "type": "object"
+      },
+      "id": {}
+    },
+    "required": [
+      "method",
+      "params",
+      "id"
+    ]
+  },
+  "evidence": {
+    "existence": [
+      "codex-generated-schema"
+    ],
+    "shape": [
+      "codex-generated-schema"
+    ],
+    "result": [
+      "codex-generated-schema"
+    ],
+    "carrier": [
+      "codex-generated-schema"
+    ]
+  },
+  "confidence": "unverified"
+}

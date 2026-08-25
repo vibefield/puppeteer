@@ -1,0 +1,52 @@
+{
+  "surface": "codex",
+  "surfaceVersion": "0.147.0",
+  "event": "thread/increment_elicitation",
+  "channel": "appserver",
+  "transport": "jsonrpc-request",
+  "direction": "client-to-agent",
+  "trigger": "Increment the thread-local out-of-band elicitation counter.\n\nThis is used by external helpers to pause timeout accounting while a user approval or other elicitation is pending outside the app-server request flow.",
+  "payloadSchema": {
+    "type": "object",
+    "properties": {
+      "threadId": {
+        "type": "string"
+      }
+    },
+    "required": [
+      "threadId"
+    ]
+  },
+  "recordSchema": {
+    "type": "object",
+    "properties": {
+      "method": {
+        "type": "string",
+        "enum": [
+          "thread/increment_elicitation"
+        ]
+      },
+      "params": {
+        "type": "object"
+      },
+      "id": {}
+    },
+    "required": [
+      "method",
+      "params",
+      "id"
+    ]
+  },
+  "evidence": {
+    "existence": [
+      "codex-generated-schema"
+    ],
+    "shape": [
+      "codex-generated-schema"
+    ],
+    "carrier": [
+      "codex-generated-schema"
+    ]
+  },
+  "confidence": "unverified"
+}

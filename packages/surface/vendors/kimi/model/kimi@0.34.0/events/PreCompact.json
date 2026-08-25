@@ -1,0 +1,75 @@
+{
+  "surface": "kimi",
+  "surfaceVersion": "0.34.0",
+  "event": "PreCompact",
+  "channel": "hook-command",
+  "channels": ["hook-command"],
+  "transport": "command-stdin",
+  "direction": "agent-local",
+  "payloadSchema": {
+    "type": "object",
+    "properties": {
+      "hook_event_name": {
+        "type": "string",
+        "enum": ["PreCompact"]
+      },
+      "session_id": {
+        "type": "string"
+      },
+      "cwd": {
+        "type": "string"
+      },
+      "client_type": {
+        "type": "string"
+      },
+      "session_title": {
+        "type": "string"
+      },
+      "trigger": {
+        "type": "string",
+        "enum": ["manual", "auto"]
+      },
+      "token_count": {
+        "type": "number"
+      }
+    },
+    "required": ["hook_event_name", "session_id", "cwd", "client_type", "trigger", "token_count"]
+  },
+  "evidence": {
+    "existence": ["kimi-exact-release-source"],
+    "shape": ["kimi-exact-release-source"]
+  },
+  "confidence": "unverified",
+  "variants": [
+    {
+      "match": {
+        "hook_event_name": "PreCompact"
+      },
+      "evidence": {
+        "existence": ["kimi-exact-release-source"],
+        "shape": ["kimi-exact-release-source"]
+      },
+      "confidence": "unverified"
+    },
+    {
+      "match": {
+        "trigger": "manual"
+      },
+      "evidence": {
+        "existence": ["kimi-exact-release-source"],
+        "shape": ["kimi-exact-release-source"]
+      },
+      "confidence": "unverified"
+    },
+    {
+      "match": {
+        "trigger": "auto"
+      },
+      "evidence": {
+        "existence": ["kimi-exact-release-source"],
+        "shape": ["kimi-exact-release-source"]
+      },
+      "confidence": "unverified"
+    }
+  ]
+}

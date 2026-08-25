@@ -1,0 +1,5 @@
+{"role":"meta","type":"system.version","version":"0.34.0"}
+{"role":"assistant","tool_calls":[{"type":"function","id":"call_a11a5ed0469915","function":{"name":"Bash","arguments":"<redacted:arguments>"}}]}
+{"role":"tool","tool_call_id":"call_a11a5ed0469915","content":"<redacted:content>"}
+{"role":"assistant","content":"<redacted:content>"}
+{"role":"meta","type":"session.resume_hint","session_id":"session_a11a5ed0818c0d2d9e0ed2824f7c2d0d6fe3","command":"<redacted:command>","content":"<redacted:content>"}

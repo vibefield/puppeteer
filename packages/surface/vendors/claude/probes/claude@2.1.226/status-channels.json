@@ -1,0 +1,35 @@
+{
+  "probeVersion": 2,
+  "source": "static inspection of the exact digest-pinned executable",
+  "subagentStatusLine": {
+    "present": true,
+    "inputShape": "full-task-snapshot",
+    "taskFields": [
+      "id",
+      "name",
+      "type",
+      "status",
+      "description",
+      "label",
+      "startTime",
+      "model",
+      "effort",
+      "contextWindowSize",
+      "tokenCount",
+      "tokenSamples",
+      "cwd"
+    ],
+    "tokenSamples": {
+      "maxItems": 16,
+      "timestampsIncluded": false
+    },
+    "nominalCallbackIntervalMs": 5000
+  },
+  "evidence": {
+    "anchor": "Skipping subagentStatusLine execution",
+    "anchorByteOffset": 265142116,
+    "windowStart": 265140068,
+    "windowBytes": 14336,
+    "windowSha256": "4ae229e515deb0f8a1abf367b8b6e11f24728e37e80e3d102b7d1e0266e6ba45"
+  }
+}

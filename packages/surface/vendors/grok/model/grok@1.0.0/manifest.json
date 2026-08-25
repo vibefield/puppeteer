@@ -1,0 +1,8 @@
+{
+  "asmVersion": 2,
+  "vendor": "grok",
+  "vendorVersion": "1.0.0",
+  "generatedAt": "2026-08-08",
+  "source": "Controlled census of the installed darwin-arm64 Grok 1.0.0 artifact. The public xai-org/grok-build mirror is supplemental because it does not contain the binary-reported revision; see findings.md.",
+  "evidence": "evidence.json"
+}

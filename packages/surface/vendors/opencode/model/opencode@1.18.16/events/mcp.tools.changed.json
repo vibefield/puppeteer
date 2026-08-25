@@ -1,0 +1,65 @@
+{
+  "surface": "opencode",
+  "surfaceVersion": "1.18.16",
+  "event": "mcp.tools.changed",
+  "channel": "sse",
+  "channels": [
+    "sse"
+  ],
+  "transport": "sse-event",
+  "direction": "agent-to-client",
+  "trigger": "Published on the native GET /event stream.",
+  "payloadSchema": {
+    "type": "object",
+    "properties": {
+      "server": {
+        "type": "string"
+      }
+    },
+    "required": [
+      "server"
+    ]
+  },
+  "recordSchema": {
+    "type": "object",
+    "properties": {
+      "id": {
+        "type": "string"
+      },
+      "properties": {
+        "type": "object",
+        "properties": {
+          "server": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "server"
+        ]
+      },
+      "type": {
+        "type": "string",
+        "enum": [
+          "mcp.tools.changed"
+        ]
+      }
+    },
+    "required": [
+      "id",
+      "properties",
+      "type"
+    ]
+  },
+  "evidence": {
+    "existence": [
+      "opencode-generated-openapi"
+    ],
+    "shape": [
+      "opencode-generated-openapi"
+    ],
+    "carrier": [
+      "opencode-generated-openapi"
+    ]
+  },
+  "confidence": "unverified"
+}

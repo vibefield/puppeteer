@@ -1,0 +1,154 @@
+{
+  "surface": "kimi",
+  "surfaceVersion": "0.34.0",
+  "event": "UserPromptSubmit",
+  "channel": "hook-command",
+  "channels": ["hook-command"],
+  "transport": "command-stdin",
+  "direction": "agent-local",
+  "payloadSchema": {
+    "type": "object",
+    "properties": {
+      "hook_event_name": {
+        "type": "string",
+        "enum": ["UserPromptSubmit"]
+      },
+      "session_id": {
+        "type": "string"
+      },
+      "cwd": {
+        "type": "string"
+      },
+      "client_type": {
+        "type": "string"
+      },
+      "session_title": {
+        "type": "string"
+      },
+      "prompt": {
+        "type": "array",
+        "items": {
+          "anyOf": [
+            {
+              "type": "object",
+              "properties": {
+                "type": {
+                  "type": "string",
+                  "enum": ["text"]
+                },
+                "text": {
+                  "type": "string"
+                }
+              },
+              "required": ["type", "text"]
+            },
+            {
+              "type": "object",
+              "properties": {
+                "type": {
+                  "type": "string",
+                  "enum": ["think"]
+                },
+                "think": {
+                  "type": "string"
+                },
+                "encrypted": {
+                  "type": "string"
+                }
+              },
+              "required": ["type", "think"]
+            },
+            {
+              "type": "object",
+              "properties": {
+                "type": {
+                  "type": "string",
+                  "enum": ["image_url"]
+                },
+                "imageUrl": {
+                  "type": "object",
+                  "properties": {
+                    "url": {
+                      "type": "string"
+                    },
+                    "id": {
+                      "type": "string"
+                    }
+                  },
+                  "required": ["url"]
+                }
+              },
+              "required": ["type", "imageUrl"]
+            },
+            {
+              "type": "object",
+              "properties": {
+                "type": {
+                  "type": "string",
+                  "enum": ["audio_url"]
+                },
+                "audioUrl": {
+                  "type": "object",
+                  "properties": {
+                    "url": {
+                      "type": "string"
+                    },
+                    "id": {
+                      "type": "string"
+                    }
+                  },
+                  "required": ["url"]
+                }
+              },
+              "required": ["type", "audioUrl"]
+            },
+            {
+              "type": "object",
+              "properties": {
+                "type": {
+                  "type": "string",
+                  "enum": ["video_url"]
+                },
+                "videoUrl": {
+                  "type": "object",
+                  "properties": {
+                    "url": {
+                      "type": "string"
+                    },
+                    "id": {
+                      "type": "string"
+                    }
+                  },
+                  "required": ["url"]
+                }
+              },
+              "required": ["type", "videoUrl"]
+            }
+          ]
+        }
+      },
+      "is_steer": {
+        "type": "boolean"
+      }
+    },
+    "required": ["hook_event_name", "session_id", "cwd", "client_type", "prompt", "is_steer"]
+  },
+  "evidence": {
+    "existence": ["kimi-runtime-headless"],
+    "shape": ["kimi-runtime-headless", "kimi-exact-release-source"]
+  },
+  "confidence": "verified-headless",
+  "variants": [
+    {
+      "match": {
+        "hook_event_name": "UserPromptSubmit"
+      },
+      "evidence": {
+        "existence": ["kimi-runtime-headless"],
+        "shape": ["kimi-runtime-headless", "kimi-exact-release-source"]
+      },
+      "confidence": "verified-headless"
+    }
+  ],
+  "fixture": "captures/kimi@0.34.0/basic-turn/hooks/UserPromptSubmit.jsonl"
+}

@@ -1,0 +1,73 @@
+{
+  "behaviorVersion": 1,
+  "title": "Claude Code native hook lifecycle",
+  "description": "Observable hook points for Claude Code 2.1.207. Nodes are native hooks, not mutually exclusive agent states; dashed or unverified points are published/known but not captured in this baseline.",
+  "source": "Captured headless and M1 interactive censuses in packages/surface/vendors/claude/findings.md, supplemented only by names known to Claude Code 2.1.207.",
+  "lanes": [
+    { "id": "session", "label": "Session" },
+    { "id": "turn", "label": "Turn" },
+    { "id": "tool", "label": "Tool / permission" },
+    { "id": "delegation", "label": "Delegation / teams" },
+    { "id": "maintenance", "label": "Maintenance" },
+    { "id": "async", "label": "Asynchronous side events" }
+  ],
+  "nodes": [
+    { "id": "session-start", "event": "SessionStart", "confidence": "verified-headless", "lane": "session", "order": 0 },
+    { "id": "session-end", "event": "SessionEnd", "confidence": "verified-headless", "lane": "session", "order": 12 },
+
+    { "id": "prompt", "event": "UserPromptSubmit", "confidence": "verified-headless", "lane": "turn", "order": 2 },
+    { "id": "message", "event": "MessageDisplay", "confidence": "verified-headless", "lane": "turn", "order": 7, "description": "Streaming display batches; this is not proof of hidden reasoning." },
+    { "id": "stop", "event": "Stop", "confidence": "verified-headless", "lane": "turn", "order": 10 },
+    { "id": "stop-failure", "event": "StopFailure", "confidence": "unverified", "lane": "turn", "order": 11 },
+
+    { "id": "permission", "event": "PermissionRequest", "confidence": "verified-interactive", "lane": "tool", "order": 3, "description": "Captured at dialog-show time, before the later tool_use_id-bearing PreToolUse in this version." },
+    { "id": "pre-tool", "event": "PreToolUse", "confidence": "verified-headless", "lane": "tool", "order": 4 },
+    { "id": "post-tool", "event": "PostToolUse", "confidence": "verified-headless", "lane": "tool", "order": 5 },
+    { "id": "post-tool-failure", "event": "PostToolUseFailure", "confidence": "verified-interactive", "lane": "tool", "order": 6 },
+
+    { "id": "subagent-start", "event": "SubagentStart", "confidence": "verified-interactive", "lane": "delegation", "order": 4 },
+    { "id": "task-created", "event": "TaskCreated", "confidence": "unverified", "lane": "delegation", "order": 5 },
+    { "id": "task-completed", "event": "TaskCompleted", "confidence": "unverified", "lane": "delegation", "order": 7 },
+    { "id": "subagent-stop", "event": "SubagentStop", "confidence": "verified-interactive", "lane": "delegation", "order": 8 },
+    { "id": "teammate-idle", "event": "TeammateIdle", "confidence": "unverified", "lane": "delegation", "order": 9, "description": "A pre-idle interception point, not committed idle state." },
+
+    { "id": "pre-compact", "event": "PreCompact", "confidence": "unverified", "lane": "maintenance", "order": 8, "description": "About-to-compact interception point; compaction may still be blocked." },
+    { "id": "post-compact", "event": "PostCompact", "confidence": "unverified", "lane": "maintenance", "order": 9, "description": "Fires after compaction completes." },
+
+    { "id": "instructions", "event": "InstructionsLoaded", "confidence": "verified-headless", "lane": "async", "order": 1 },
+    { "id": "notification", "event": "Notification", "confidence": "verified-interactive", "lane": "async", "order": 3 },
+    { "id": "config-change", "event": "ConfigChange", "confidence": "unverified", "lane": "async", "order": 4 },
+    { "id": "cwd-change", "event": "CwdChanged", "confidence": "unverified", "lane": "async", "order": 5 },
+    { "id": "file-change", "event": "FileChanged", "confidence": "unverified", "lane": "async", "order": 6 },
+    { "id": "elicitation", "event": "Elicitation", "confidence": "unverified", "lane": "async", "order": 7 },
+    { "id": "elicitation-result", "event": "ElicitationResult", "confidence": "unverified", "lane": "async", "order": 8 },
+    { "id": "worktree-create", "event": "WorktreeCreate", "confidence": "unverified", "lane": "async", "order": 9 },
+    { "id": "worktree-remove", "event": "WorktreeRemove", "confidence": "unverified", "lane": "async", "order": 10 }
+  ],
+  "relations": [
+    { "from": "session-start", "to": "instructions", "kind": "async", "confidence": "verified-headless" },
+    { "from": "session-start", "to": "prompt", "kind": "sequence", "confidence": "verified-headless" },
+    { "from": "prompt", "to": "message", "kind": "conditional", "label": "display stream", "confidence": "verified-headless" },
+    { "from": "prompt", "to": "permission", "kind": "conditional", "label": "permission path", "confidence": "verified-interactive" },
+    { "from": "permission", "to": "pre-tool", "kind": "conditional", "label": "allowed", "confidence": "verified-interactive" },
+    { "from": "prompt", "to": "pre-tool", "kind": "conditional", "label": "tool without dialog", "confidence": "verified-headless" },
+    { "from": "pre-tool", "to": "post-tool", "kind": "conditional", "label": "success", "confidence": "verified-headless" },
+    { "from": "pre-tool", "to": "post-tool-failure", "kind": "conditional", "label": "execution failure", "confidence": "verified-interactive" },
+    { "from": "post-tool", "to": "message", "kind": "loop", "confidence": "verified-headless" },
+    { "from": "post-tool-failure", "to": "message", "kind": "loop", "confidence": "verified-interactive" },
+    { "from": "message", "to": "message", "kind": "loop", "label": "stream batches", "confidence": "verified-headless" },
+    { "from": "message", "to": "stop", "kind": "sequence", "confidence": "verified-headless" },
+    { "from": "stop", "to": "prompt", "kind": "loop", "label": "next turn", "confidence": "verified-headless" },
+    { "from": "stop", "to": "session-end", "kind": "conditional", "confidence": "verified-headless" },
+    { "from": "prompt", "to": "subagent-start", "kind": "conditional", "confidence": "verified-interactive" },
+    { "from": "subagent-start", "to": "subagent-stop", "kind": "sequence", "confidence": "verified-interactive" },
+    { "from": "task-created", "to": "task-completed", "kind": "conditional", "confidence": "unverified" },
+    { "from": "task-completed", "to": "teammate-idle", "kind": "conditional", "confidence": "unverified" },
+    { "from": "pre-compact", "to": "post-compact", "kind": "conditional", "label": "if not blocked", "confidence": "unverified" },
+    { "from": "session-end", "to": "session-start", "kind": "resume", "label": "resume session", "confidence": "verified-headless" },
+    { "from": "session-start", "to": "notification", "kind": "async", "confidence": "verified-interactive" },
+    { "from": "session-start", "to": "config-change", "kind": "async", "confidence": "unverified" },
+    { "from": "session-start", "to": "cwd-change", "kind": "async", "confidence": "unverified" },
+    { "from": "session-start", "to": "file-change", "kind": "async", "confidence": "unverified" }
+  ]
+}

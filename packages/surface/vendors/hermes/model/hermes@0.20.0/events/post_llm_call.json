@@ -1,0 +1,73 @@
+{
+  "surface": "hermes",
+  "surfaceVersion": "0.20.0",
+  "event": "post_llm_call",
+  "firstSeen": "0.20.0",
+  "lastVerified": "0.20.0",
+  "channel": "plugin-hook",
+  "channels": ["plugin-hook", "outbound-webhook"],
+  "transport": "hook-callback",
+  "direction": "agent-local",
+  "payloadSchema": {
+    "type": "object",
+    "properties": {
+      "hook_event_name": {
+        "type": "string"
+      },
+      "session_id": {
+        "anyOf": [
+          {
+            "type": "string"
+          },
+          {
+            "type": "null"
+          }
+        ]
+      },
+      "tool_name": {
+        "anyOf": [
+          {
+            "type": "string"
+          },
+          {
+            "type": "null"
+          }
+        ]
+      },
+      "platform": {
+        "anyOf": [
+          {
+            "type": "string"
+          },
+          {
+            "type": "null"
+          }
+        ]
+      },
+      "choice": {
+        "anyOf": [
+          {
+            "type": "string"
+          },
+          {
+            "type": "null"
+          }
+        ]
+      },
+      "keys": {
+        "type": "array",
+        "items": {
+          "type": "string"
+        }
+      }
+    },
+    "required": ["hook_event_name", "keys"]
+  },
+  "evidence": {
+    "existence": ["hermes-runtime-headless"],
+    "shape": ["hermes-runtime-headless"]
+  },
+  "confidence": "verified-headless",
+  "fixture": "captures/hermes@0.20.0/basic-turn/plugin-hooks.jsonl",
+  "notes": "Outbound webhook is a notify-only copy of the same hook name."
+}

@@ -1,0 +1,35 @@
+{
+  "surface": "grok",
+  "surfaceVersion": "1.0.0",
+  "event": "_x.ai/models/update",
+  "channel": "acp",
+  "transport": "jsonrpc-notification",
+  "payloadSchema": {
+    "type": "object",
+    "properties": {
+      "models": {
+        "type": "array"
+      },
+      "currentModelId": {
+        "type": "string"
+      }
+    },
+    "required": [
+      "models",
+      "currentModelId"
+    ]
+  },
+  "confidence": "verified-headless",
+  "firstSeen": "1.0.0",
+  "lastVerified": "1.0.0",
+  "fixture": "captures/grok@1.0.0/handshake.jsonl",
+  "direction": "agent-to-client",
+  "evidence": {
+    "existence": [
+      "grok-runtime-headless"
+    ],
+    "shape": [
+      "grok-runtime-headless"
+    ]
+  }
+}

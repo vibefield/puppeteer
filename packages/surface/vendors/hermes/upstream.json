@@ -1,0 +1,44 @@
+{
+  "$schema": "../../upstream.schema.json",
+  "schemaVersion": 1,
+  "vendor": "hermes",
+  "repository": "https://github.com/NousResearch/hermes-agent",
+  "sourceRelation": {
+    "strategy": "release-tag",
+    "template": "${tag}"
+  },
+  "detectors": [
+    {
+      "id": "github-stable",
+      "channel": "stable",
+      "kind": "github-release",
+      "url": "https://api.github.com/repos/NousResearch/hermes-agent/releases?per_page=30",
+      "tagPattern": "^v(\\d{4}\\.\\d{1,2}\\.\\d{1,2})$",
+      "titlePattern": "v(\\d+\\.\\d+\\.\\d+)",
+      "prerelease": false,
+      "authoritative": true
+    }
+  ],
+  "platforms": ["darwin-arm64", "darwin-x64", "linux-x64", "windows-x64"],
+  "acquisition": {
+    "strategy": "source-revision",
+    "allowedHosts": ["github.com", "codeload.github.com", "objects.githubusercontent.com"],
+    "maxBytes": 536870912,
+    "sourceArchive": {
+      "urls": ["https://github.com/NousResearch/hermes-agent/archive/refs/tags/${tag}.tar.gz"],
+      "format": "tar.gz",
+      "executableBasenames": ["hermes"]
+    }
+  },
+  "analysis": [
+    "source-revision",
+    "cli-flags",
+    "tui-gateway-jsonrpc",
+    "plugin-hooks",
+    "outbound-webhooks",
+    "session-db",
+    "acp-survey",
+    "controlled-census"
+  ],
+  "debounce": { "polls": 2, "minutes": 30 }
+}

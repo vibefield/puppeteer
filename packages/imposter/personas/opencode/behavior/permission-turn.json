@@ -1,0 +1,18 @@
+{
+  "name": "permission-turn",
+  "reply": "imposter: permission resolved",
+  "ops": [
+    { "op": "turn.start", "with": { "text": "$stimulus.text" } },
+    {
+      "op": "permission.ask",
+      "with": {
+        "permission": "bash",
+        "patterns": ["echo imposter"],
+        "metadata": { "command": "echo imposter" },
+        "always": ["echo *"]
+      }
+    },
+    { "op": "assistant.delta", "with": { "text": "$reply" } },
+    { "op": "turn.end" }
+  ]
+}

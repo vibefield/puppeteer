@@ -1,0 +1,78 @@
+{
+  "surface": "claude",
+  "surfaceVersion": "2.1.226",
+  "event": "TaskCreated",
+  "channel": "hook",
+  "channels": [
+    "hook"
+  ],
+  "transport": "http",
+  "direction": "agent-to-client",
+  "trigger": "TaskCreate is about to create a task.",
+  "payloadSchema": {
+    "type": "object",
+    "properties": {
+      "session_id": {
+        "type": "string"
+      },
+      "transcript_path": {
+        "type": "string"
+      },
+      "cwd": {
+        "type": "string"
+      },
+      "prompt_id": {
+        "type": "string"
+      },
+      "permission_mode": {
+        "type": "string"
+      },
+      "effort": {
+        "type": "object"
+      },
+      "hook_event_name": {
+        "type": "string"
+      },
+      "agent_id": {
+        "type": "string"
+      },
+      "agent_type": {
+        "type": "string"
+      },
+      "task_id": {
+        "type": "string"
+      },
+      "task_subject": {
+        "type": "string"
+      },
+      "task_description": {
+        "type": "string"
+      },
+      "teammate_name": {
+        "type": "string"
+      },
+      "team_name": {
+        "type": "string"
+      }
+    },
+    "required": [
+      "cwd",
+      "hook_event_name",
+      "session_id",
+      "task_id",
+      "task_subject",
+      "transcript_path"
+    ]
+  },
+  "evidence": {
+    "existence": [
+      "claude-official-hooks"
+    ],
+    "shape": [
+      "claude-official-hooks"
+    ]
+  },
+  "confidence": "unverified",
+  "timeoutSec": 5,
+  "notes": "TaskCreate is about to create a task."
+}

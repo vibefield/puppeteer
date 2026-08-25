@@ -1,0 +1,239 @@
+{
+  "surface": "opencode",
+  "surfaceVersion": "1.18.16",
+  "event": "http/v2.command.list",
+  "channel": "http",
+  "channels": [
+    "http"
+  ],
+  "transport": "http",
+  "direction": "client-to-agent",
+  "trigger": "List commands — Retrieve currently registered commands.",
+  "payloadSchema": {
+    "type": "object",
+    "properties": {
+      "method": {
+        "type": "string"
+      },
+      "route": {
+        "type": "string"
+      },
+      "query": {
+        "type": "object",
+        "properties": {
+          "location": {
+            "type": "object",
+            "properties": {
+              "directory": {
+                "type": "string"
+              },
+              "workspace": {
+                "type": "string"
+              }
+            }
+          }
+        }
+      }
+    },
+    "required": [
+      "method",
+      "route"
+    ]
+  },
+  "resultSchema": {
+    "type": "object",
+    "properties": {
+      "method": {
+        "type": "string",
+        "enum": [
+          "GET"
+        ]
+      },
+      "route": {
+        "type": "string",
+        "enum": [
+          "/api/command"
+        ]
+      },
+      "status": {
+        "type": "integer",
+        "minimum": 200,
+        "maximum": 299
+      },
+      "query": {
+        "type": "object",
+        "properties": {
+          "location": {
+            "type": "object",
+            "properties": {
+              "directory": {
+                "type": "string"
+              },
+              "workspace": {
+                "type": "string"
+              }
+            }
+          }
+        }
+      },
+      "body": {
+        "type": "object",
+        "properties": {
+          "data": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "agent": {
+                  "type": "string"
+                },
+                "description": {
+                  "type": "string"
+                },
+                "model": {
+                  "type": "object",
+                  "properties": {
+                    "id": {
+                      "type": "string"
+                    },
+                    "providerID": {
+                      "type": "string"
+                    },
+                    "variant": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "id",
+                    "providerID"
+                  ]
+                },
+                "name": {
+                  "type": "string"
+                },
+                "subtask": {
+                  "type": "boolean"
+                },
+                "template": {
+                  "type": "string"
+                }
+              },
+              "required": [
+                "name",
+                "template"
+              ]
+            }
+          },
+          "location": {
+            "type": "object",
+            "properties": {
+              "directory": {
+                "type": "string"
+              },
+              "project": {
+                "type": "object",
+                "properties": {
+                  "directory": {
+                    "type": "string"
+                  },
+                  "id": {
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "directory",
+                  "id"
+                ]
+              },
+              "workspaceID": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "directory",
+              "project"
+            ]
+          }
+        },
+        "required": [
+          "data",
+          "location"
+        ]
+      }
+    },
+    "required": [
+      "method",
+      "route",
+      "status",
+      "body"
+    ]
+  },
+  "recordSchema": {
+    "type": "object",
+    "properties": {
+      "direction": {
+        "type": "string",
+        "enum": [
+          "client-to-agent"
+        ]
+      },
+      "request": {
+        "type": "object",
+        "properties": {
+          "method": {
+            "type": "string",
+            "enum": [
+              "GET"
+            ]
+          },
+          "route": {
+            "type": "string",
+            "enum": [
+              "/api/command"
+            ]
+          },
+          "query": {
+            "type": "object",
+            "properties": {
+              "location": {
+                "type": "object",
+                "properties": {
+                  "directory": {
+                    "type": "string"
+                  },
+                  "workspace": {
+                    "type": "string"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "required": [
+          "method",
+          "route"
+        ]
+      }
+    },
+    "required": [
+      "direction",
+      "request"
+    ]
+  },
+  "evidence": {
+    "existence": [
+      "opencode-generated-openapi"
+    ],
+    "shape": [
+      "opencode-generated-openapi"
+    ],
+    "result": [
+      "opencode-generated-openapi"
+    ],
+    "carrier": [
+      "opencode-generated-openapi"
+    ]
+  },
+  "confidence": "unverified",
+  "notes": "OpenAPI operationId v2.command.list; GET /api/command."
+}

@@ -1,0 +1,55 @@
+{
+  "surface": "grok",
+  "surfaceVersion": "1.0.0",
+  "event": "summary.json",
+  "channel": "session-state",
+  "transport": "json-file-replace",
+  "payloadSchema": {
+    "type": "object",
+    "properties": {
+      "info": {
+        "type": "object"
+      },
+      "current_model_id": {
+        "type": "string"
+      },
+      "created_at": {
+        "type": "string"
+      },
+      "updated_at": {
+        "type": "string"
+      },
+      "num_messages": {
+        "type": "number"
+      },
+      "num_chat_messages": {
+        "type": "number"
+      },
+      "agent_name": {
+        "type": "string"
+      }
+    },
+    "required": [
+      "info",
+      "current_model_id",
+      "created_at",
+      "updated_at",
+      "num_messages",
+      "num_chat_messages",
+      "agent_name"
+    ]
+  },
+  "confidence": "verified-headless",
+  "firstSeen": "1.0.0",
+  "lastVerified": "1.0.0",
+  "fixture": "captures/grok@1.0.0/state.jsonl",
+  "direction": "agent-local",
+  "evidence": {
+    "existence": [
+      "grok-runtime-headless"
+    ],
+    "shape": [
+      "grok-runtime-headless"
+    ]
+  }
+}

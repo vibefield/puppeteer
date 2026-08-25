@@ -1,0 +1,73 @@
+{
+  "surface": "opencode",
+  "surfaceVersion": "1.18.16",
+  "event": "mcp.browser.open.failed",
+  "channel": "sse",
+  "channels": [
+    "sse"
+  ],
+  "transport": "sse-event",
+  "direction": "agent-to-client",
+  "trigger": "Published on the native GET /event stream.",
+  "payloadSchema": {
+    "type": "object",
+    "properties": {
+      "mcpName": {
+        "type": "string"
+      },
+      "url": {
+        "type": "string"
+      }
+    },
+    "required": [
+      "mcpName",
+      "url"
+    ]
+  },
+  "recordSchema": {
+    "type": "object",
+    "properties": {
+      "id": {
+        "type": "string"
+      },
+      "properties": {
+        "type": "object",
+        "properties": {
+          "mcpName": {
+            "type": "string"
+          },
+          "url": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "mcpName",
+          "url"
+        ]
+      },
+      "type": {
+        "type": "string",
+        "enum": [
+          "mcp.browser.open.failed"
+        ]
+      }
+    },
+    "required": [
+      "id",
+      "properties",
+      "type"
+    ]
+  },
+  "evidence": {
+    "existence": [
+      "opencode-generated-openapi"
+    ],
+    "shape": [
+      "opencode-generated-openapi"
+    ],
+    "carrier": [
+      "opencode-generated-openapi"
+    ]
+  },
+  "confidence": "unverified"
+}

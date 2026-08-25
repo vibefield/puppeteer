@@ -1,0 +1,96 @@
+{
+  "surface": "kimi",
+  "surfaceVersion": "0.34.0",
+  "event": "interaction.request",
+  "channel": "wire",
+  "channels": ["wire"],
+  "transport": "jsonl-record",
+  "direction": "agent-local",
+  "payloadSchema": {
+    "type": "object",
+    "properties": {
+      "id": {
+        "type": "string"
+      },
+      "kind": {
+        "type": "string",
+        "enum": ["approval", "question", "user_tool"]
+      },
+      "toolCallId": {
+        "type": "string"
+      },
+      "agentId": {
+        "type": "string"
+      },
+      "request": {}
+    },
+    "required": ["id", "kind", "request"]
+  },
+  "recordSchema": {
+    "type": "object",
+    "properties": {
+      "type": {
+        "type": "string",
+        "enum": ["interaction.request"]
+      },
+      "id": {
+        "type": "string"
+      },
+      "kind": {
+        "type": "string",
+        "enum": ["approval", "question", "user_tool"]
+      },
+      "toolCallId": {
+        "type": "string"
+      },
+      "agentId": {
+        "type": "string"
+      },
+      "request": {},
+      "time": {
+        "type": "number",
+        "minimum": 0
+      }
+    },
+    "required": ["type", "id", "kind", "request", "time"]
+  },
+  "recordChannel": "wire",
+  "evidence": {
+    "existence": ["kimi-exact-release-source"],
+    "shape": ["kimi-exact-release-source"],
+    "carrier": ["kimi-exact-release-source"]
+  },
+  "confidence": "unverified",
+  "variants": [
+    {
+      "match": {
+        "kind": "approval"
+      },
+      "evidence": {
+        "existence": ["kimi-exact-release-source"],
+        "shape": ["kimi-exact-release-source"]
+      },
+      "confidence": "unverified"
+    },
+    {
+      "match": {
+        "kind": "question"
+      },
+      "evidence": {
+        "existence": ["kimi-exact-release-source"],
+        "shape": ["kimi-exact-release-source"]
+      },
+      "confidence": "unverified"
+    },
+    {
+      "match": {
+        "kind": "user_tool"
+      },
+      "evidence": {
+        "existence": ["kimi-exact-release-source"],
+        "shape": ["kimi-exact-release-source"]
+      },
+      "confidence": "unverified"
+    }
+  ]
+}

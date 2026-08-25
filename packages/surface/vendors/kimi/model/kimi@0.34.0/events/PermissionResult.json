@@ -1,0 +1,146 @@
+{
+  "surface": "kimi",
+  "surfaceVersion": "0.34.0",
+  "event": "PermissionResult",
+  "channel": "hook-command",
+  "channels": ["hook-command"],
+  "transport": "command-stdin",
+  "direction": "agent-local",
+  "payloadSchema": {
+    "type": "object",
+    "properties": {
+      "hook_event_name": {
+        "type": "string",
+        "enum": ["PermissionResult"]
+      },
+      "session_id": {
+        "type": "string"
+      },
+      "cwd": {
+        "type": "string"
+      },
+      "client_type": {
+        "type": "string"
+      },
+      "session_title": {
+        "type": "string"
+      },
+      "agent_id": {
+        "type": "string"
+      },
+      "turn_id": {
+        "type": "number"
+      },
+      "tool_call_id": {
+        "type": "string"
+      },
+      "tool_name": {
+        "type": "string"
+      },
+      "action": {
+        "type": "string"
+      },
+      "display": {
+        "type": "object"
+      },
+      "tool_input": {},
+      "decision": {
+        "type": "string",
+        "enum": ["approved", "rejected", "cancelled", "error"]
+      },
+      "scope": {
+        "type": "string",
+        "enum": ["session"]
+      },
+      "feedback": {
+        "type": "string"
+      },
+      "selected_label": {
+        "type": "string"
+      },
+      "error": {
+        "type": "string"
+      }
+    },
+    "required": [
+      "hook_event_name",
+      "session_id",
+      "cwd",
+      "client_type",
+      "turn_id",
+      "tool_call_id",
+      "tool_name",
+      "action",
+      "display",
+      "tool_input",
+      "decision"
+    ]
+  },
+  "evidence": {
+    "existence": ["kimi-exact-release-source"],
+    "shape": ["kimi-exact-release-source"]
+  },
+  "confidence": "unverified",
+  "variants": [
+    {
+      "match": {
+        "hook_event_name": "PermissionResult"
+      },
+      "evidence": {
+        "existence": ["kimi-exact-release-source"],
+        "shape": ["kimi-exact-release-source"]
+      },
+      "confidence": "unverified"
+    },
+    {
+      "match": {
+        "decision": "approved"
+      },
+      "evidence": {
+        "existence": ["kimi-exact-release-source"],
+        "shape": ["kimi-exact-release-source"]
+      },
+      "confidence": "unverified"
+    },
+    {
+      "match": {
+        "decision": "rejected"
+      },
+      "evidence": {
+        "existence": ["kimi-exact-release-source"],
+        "shape": ["kimi-exact-release-source"]
+      },
+      "confidence": "unverified"
+    },
+    {
+      "match": {
+        "decision": "cancelled"
+      },
+      "evidence": {
+        "existence": ["kimi-exact-release-source"],
+        "shape": ["kimi-exact-release-source"]
+      },
+      "confidence": "unverified"
+    },
+    {
+      "match": {
+        "decision": "error"
+      },
+      "evidence": {
+        "existence": ["kimi-exact-release-source"],
+        "shape": ["kimi-exact-release-source"]
+      },
+      "confidence": "unverified"
+    },
+    {
+      "match": {
+        "scope": "session"
+      },
+      "evidence": {
+        "existence": ["kimi-exact-release-source"],
+        "shape": ["kimi-exact-release-source"]
+      },
+      "confidence": "unverified"
+    }
+  ]
+}

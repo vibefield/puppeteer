@@ -1,0 +1,247 @@
+{
+  "surface": "opencode",
+  "surfaceVersion": "1.18.16",
+  "event": "http/file.read",
+  "channel": "http",
+  "channels": [
+    "http"
+  ],
+  "transport": "http",
+  "direction": "client-to-agent",
+  "trigger": "Read file — Read the content of a specified file.",
+  "payloadSchema": {
+    "type": "object",
+    "properties": {
+      "method": {
+        "type": "string"
+      },
+      "route": {
+        "type": "string"
+      },
+      "query": {
+        "type": "object",
+        "properties": {
+          "directory": {
+            "type": "string"
+          },
+          "path": {
+            "type": "string"
+          },
+          "workspace": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "path"
+        ]
+      }
+    },
+    "required": [
+      "method",
+      "route",
+      "query"
+    ]
+  },
+  "resultSchema": {
+    "type": "object",
+    "properties": {
+      "method": {
+        "type": "string",
+        "enum": [
+          "GET"
+        ]
+      },
+      "route": {
+        "type": "string",
+        "enum": [
+          "/file/content"
+        ]
+      },
+      "status": {
+        "type": "integer",
+        "minimum": 200,
+        "maximum": 299
+      },
+      "query": {
+        "type": "object",
+        "properties": {
+          "directory": {
+            "type": "string"
+          },
+          "path": {
+            "type": "string"
+          },
+          "workspace": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "path"
+        ]
+      },
+      "body": {
+        "type": "object",
+        "properties": {
+          "content": {
+            "type": "string"
+          },
+          "diff": {
+            "type": "string"
+          },
+          "encoding": {
+            "type": "string"
+          },
+          "mimeType": {
+            "type": "string"
+          },
+          "patch": {
+            "type": "object",
+            "properties": {
+              "hunks": {
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "properties": {
+                    "lines": {
+                      "type": "array",
+                      "items": {
+                        "type": "string"
+                      }
+                    },
+                    "newLines": {
+                      "type": "integer",
+                      "minimum": 0
+                    },
+                    "newStart": {
+                      "type": "integer",
+                      "minimum": 0
+                    },
+                    "oldLines": {
+                      "type": "integer",
+                      "minimum": 0
+                    },
+                    "oldStart": {
+                      "type": "integer",
+                      "minimum": 0
+                    }
+                  },
+                  "required": [
+                    "lines",
+                    "newLines",
+                    "newStart",
+                    "oldLines",
+                    "oldStart"
+                  ]
+                }
+              },
+              "index": {
+                "type": "string"
+              },
+              "newFileName": {
+                "type": "string"
+              },
+              "newHeader": {
+                "type": "string"
+              },
+              "oldFileName": {
+                "type": "string"
+              },
+              "oldHeader": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "hunks",
+              "newFileName",
+              "oldFileName"
+            ]
+          },
+          "type": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "content",
+          "type"
+        ]
+      }
+    },
+    "required": [
+      "method",
+      "route",
+      "status",
+      "query",
+      "body"
+    ]
+  },
+  "recordSchema": {
+    "type": "object",
+    "properties": {
+      "direction": {
+        "type": "string",
+        "enum": [
+          "client-to-agent"
+        ]
+      },
+      "request": {
+        "type": "object",
+        "properties": {
+          "method": {
+            "type": "string",
+            "enum": [
+              "GET"
+            ]
+          },
+          "route": {
+            "type": "string",
+            "enum": [
+              "/file/content"
+            ]
+          },
+          "query": {
+            "type": "object",
+            "properties": {
+              "directory": {
+                "type": "string"
+              },
+              "path": {
+                "type": "string"
+              },
+              "workspace": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "path"
+            ]
+          }
+        },
+        "required": [
+          "method",
+          "route",
+          "query"
+        ]
+      }
+    },
+    "required": [
+      "direction",
+      "request"
+    ]
+  },
+  "evidence": {
+    "existence": [
+      "opencode-generated-openapi"
+    ],
+    "shape": [
+      "opencode-generated-openapi"
+    ],
+    "result": [
+      "opencode-generated-openapi"
+    ],
+    "carrier": [
+      "opencode-generated-openapi"
+    ]
+  },
+  "confidence": "unverified",
+  "notes": "OpenAPI operationId file.read; GET /file/content."
+}

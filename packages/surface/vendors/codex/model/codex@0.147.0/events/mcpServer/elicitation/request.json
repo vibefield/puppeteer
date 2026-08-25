@@ -1,0 +1,73 @@
+{
+  "surface": "codex",
+  "surfaceVersion": "0.147.0",
+  "event": "mcpServer/elicitation/request",
+  "channel": "appserver",
+  "transport": "jsonrpc-request",
+  "direction": "agent-to-client",
+  "trigger": "Request input for an MCP server elicitation.",
+  "payloadSchema": {
+    "type": "object",
+    "properties": {
+      "serverName": {
+        "type": "string"
+      },
+      "threadId": {
+        "type": "string"
+      },
+      "turnId": {}
+    },
+    "required": [
+      "serverName",
+      "threadId"
+    ]
+  },
+  "resultSchema": {
+    "type": "object",
+    "properties": {
+      "_meta": {},
+      "action": {
+        "type": "string"
+      },
+      "content": {}
+    },
+    "required": [
+      "action"
+    ]
+  },
+  "recordSchema": {
+    "type": "object",
+    "properties": {
+      "method": {
+        "type": "string",
+        "enum": [
+          "mcpServer/elicitation/request"
+        ]
+      },
+      "params": {
+        "type": "object"
+      },
+      "id": {}
+    },
+    "required": [
+      "method",
+      "params",
+      "id"
+    ]
+  },
+  "evidence": {
+    "existence": [
+      "codex-generated-schema"
+    ],
+    "shape": [
+      "codex-generated-schema"
+    ],
+    "result": [
+      "codex-generated-schema"
+    ],
+    "carrier": [
+      "codex-generated-schema"
+    ]
+  },
+  "confidence": "unverified"
+}

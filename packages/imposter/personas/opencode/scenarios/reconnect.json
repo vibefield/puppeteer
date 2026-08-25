@@ -1,0 +1,8 @@
+{
+  "name": "reconnect",
+  "steps": [
+    { "emit": { "event": "server.connected", "with": {} } },
+    { "delay": { "ms": 20 } },
+    { "emit": { "event": "server.connected", "with": {} } }
+  ]
+}

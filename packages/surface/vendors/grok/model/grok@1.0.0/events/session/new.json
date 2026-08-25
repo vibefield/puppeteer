@@ -1,0 +1,34 @@
+{
+  "surface": "grok",
+  "surfaceVersion": "1.0.0",
+  "event": "session/new",
+  "channel": "acp",
+  "transport": "jsonrpc-request",
+  "payloadSchema": {
+    "type": "object",
+    "properties": {
+      "cwd": {
+        "type": "string"
+      },
+      "mcpServers": {
+        "type": "array"
+      }
+    },
+    "required": ["cwd", "mcpServers"]
+  },
+  "resultSchema": {
+    "type": "object",
+    "properties": { "sessionId": { "type": "string" } },
+    "required": ["sessionId"]
+  },
+  "confidence": "unverified",
+  "firstSeen": "1.0.0",
+  "lastVerified": "1.0.0",
+  "fixture": "captures/grok@1.0.0/handshake.jsonl",
+  "direction": "client-to-agent",
+  "evidence": {
+    "existence": ["grok-runtime-headless"],
+    "shape": ["grok-runtime-headless"],
+    "result": ["grok-public-mirror-lead"]
+  }
+}

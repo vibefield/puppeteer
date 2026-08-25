@@ -1,0 +1,81 @@
+{
+  "surface": "hermes",
+  "surfaceVersion": "0.20.0",
+  "event": "approval.respond",
+  "firstSeen": "0.20.0",
+  "lastVerified": "0.20.0",
+  "channel": "tui-gateway",
+  "channels": ["tui-gateway"],
+  "transport": "jsonrpc-request",
+  "direction": "client-to-agent",
+  "payloadSchema": {
+    "type": "object",
+    "properties": {
+      "session_id": {
+        "type": "string"
+      },
+      "choice": {
+        "type": "string"
+      },
+      "hasText": {
+        "type": "boolean"
+      }
+    },
+    "required": ["session_id", "choice"]
+  },
+  "resultSchema": {
+    "type": "object",
+    "properties": {
+      "resolved": {
+        "type": "number",
+        "minimum": 0
+      }
+    },
+    "required": ["resolved"]
+  },
+  "recordSchema": {
+    "type": "object",
+    "properties": {
+      "direction": {
+        "type": "string",
+        "enum": ["client"]
+      },
+      "jsonrpc": {
+        "type": "string",
+        "enum": ["2.0"]
+      },
+      "id": {
+        "type": "string"
+      },
+      "method": {
+        "type": "string",
+        "enum": ["approval.respond"]
+      },
+      "params": {
+        "type": "object",
+        "properties": {
+          "session_id": {
+            "type": "string"
+          },
+          "choice": {
+            "type": "string"
+          },
+          "hasText": {
+            "type": "boolean"
+          }
+        },
+        "required": ["session_id", "choice"]
+      }
+    },
+    "required": ["direction", "jsonrpc", "id", "method", "params"]
+  },
+  "recordChannel": "tui-gateway",
+  "evidence": {
+    "existence": ["hermes-runtime-headless"],
+    "shape": ["hermes-runtime-headless"],
+    "result": ["hermes-runtime-headless"],
+    "carrier": ["hermes-runtime-headless"]
+  },
+  "confidence": "verified-headless",
+  "fixture": "captures/hermes@0.20.0/permission-deny/rpc.jsonl"
+}

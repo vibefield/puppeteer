@@ -1,0 +1,226 @@
+{
+  "referenceVersion": 1,
+  "vendor": "antigravity",
+  "vendorVersion": "1.1.12",
+  "kind": "documentation-lead",
+  "retrievedAt": "2026-08-12T21:10:00Z",
+  "limitations": [
+    "Official pages and the 1.1.12 changelog are documentation leads, not claim-addressable runtime evidence.",
+    "The hooks page is labeled Antigravity 2.0 in the public nav while its transcript-path note distinguishes desktop (~/.gemini/antigravity) from CLI (~/.gemini/antigravity-cli).",
+    "The public GitHub repository is documentation, changelog, and examples only. The 1.1.12 tag is release provenance, not source-to-binary correspondence.",
+    "Embedded documentation strings inside the official executable are still static presence, not proof that a live session emits those records.",
+    "Print-mode slash-command answers and stream-json are a separate survey-oracle surface. They must not be merged into native-TUI evidence and must not run until the authorization gate is resolved."
+  ],
+  "sources": [
+    {
+      "id": "cli-overview",
+      "title": "Antigravity CLI Overview",
+      "url": "https://antigravity.google/docs/cli/overview"
+    },
+    {
+      "id": "cli-reference",
+      "title": "CLI reference",
+      "url": "https://antigravity.google/docs/cli/reference"
+    },
+    {
+      "id": "hooks",
+      "title": "Hooks",
+      "url": "https://antigravity.google/docs/hooks"
+    },
+    {
+      "id": "statusline",
+      "title": "Status line customization",
+      "url": "https://antigravity.google/docs/cli/statusline"
+    },
+    {
+      "id": "statusline-command",
+      "title": "Status Line Command",
+      "url": "https://antigravity.google/docs/cli/commands/statusline"
+    },
+    {
+      "id": "conversations",
+      "title": "Managing conversations",
+      "url": "https://antigravity.google/docs/cli/conversations"
+    },
+    {
+      "id": "resume",
+      "title": "Resume Command",
+      "url": "https://antigravity.google/docs/cli/commands/resume"
+    },
+    {
+      "id": "settings",
+      "title": "Settings, rendering & keybindings",
+      "url": "https://antigravity.google/docs/cli/settings"
+    },
+    {
+      "id": "getting-started",
+      "title": "Getting Started",
+      "url": "https://antigravity.google/docs/cli/getting-started"
+    },
+    {
+      "id": "changelog-1.1.12",
+      "title": "Antigravity CLI Changelog 1.1.12",
+      "url": "https://raw.githubusercontent.com/google-antigravity/antigravity-cli/1.1.12/CHANGELOG.md"
+    },
+    {
+      "id": "statusline-example",
+      "title": "Official statusline.sh example",
+      "url": "https://raw.githubusercontent.com/google-antigravity/antigravity-cli/1.1.12/examples/statusline/statusline.sh"
+    }
+  ],
+  "projection": {
+    "identities": {
+      "product": "Antigravity CLI",
+      "installedCommand": "agy",
+      "archiveExecutable": "antigravity",
+      "desktopProduct": "Antigravity 2.0",
+      "sharedHarnessClaim": "Official overview states the CLI and desktop share one agent harness and can sync settings and export conversations. That claim is not runtime-verified here."
+    },
+    "paths": {
+      "cliDataDir": "~/.gemini/antigravity-cli",
+      "desktopDataDir": "~/.gemini/antigravity",
+      "settings": "~/.gemini/antigravity-cli/settings.json",
+      "keybindings": "~/.gemini/antigravity-cli/keybindings.json",
+      "globalConfigDir": "~/.gemini/config",
+      "globalHooks": "~/.gemini/config/hooks.json",
+      "workspaceHooks": ".agents/hooks.json",
+      "lastConversationsCache": "~/.gemini/antigravity-cli/cache/last_conversations.json",
+      "projectsCache": "~/.gemini/antigravity-cli/cache/projects.json",
+      "transcriptTemplate": "<app_data_dir>/brain/<conversationId>/.system_generated/logs/transcript.jsonl",
+      "transcriptFullSibling": "transcript_full.jsonl",
+      "installUnix": "~/.local/bin/agy",
+      "notes": [
+        "Changelog 1.1.8 says /hooks previously wrote ~/.gemini/antigravity-cli/hooks.json and was corrected to the shared ~/.gemini/config/hooks.json.",
+        "Changelog 1.1.1 says workspace-local hooks load from <workspace>/.agents/hooks.json after the folder is trusted, and 1.1.8 says /add-dir reloads discovered customizations.",
+        "Changelog 1.0.4 says conversations moved to SQLite (.db) while hook docs still name transcript.jsonl."
+      ]
+    },
+    "hooks": {
+      "configFile": "hooks.json",
+      "configLocations": [".agents/", "~/.gemini/config/"],
+      "events": ["PreToolUse", "PostToolUse", "PreInvocation", "PostInvocation", "Stop"],
+      "handlerType": "command",
+      "defaultTimeoutSeconds": 30,
+      "io": "stdin JSON / stdout JSON, camelCase field names",
+      "commonInputFields": ["conversationId", "workspacePaths", "transcriptPath", "artifactDirectoryPath", "modelName"],
+      "preToolInputFields": ["toolCall.name", "toolCall.args", "stepIdx"],
+      "preToolDecisions": ["allow", "deny", "ask", "force_ask", "deny_unless_prior_grant"],
+      "postToolOutput": {},
+      "invocationOutputFields": ["injectSteps", "terminationBehavior"],
+      "terminationBehaviorValues": ["force_continue", "terminate", ""],
+      "stopInputFields": ["executionNum", "terminationReason", "error", "fullyIdle"],
+      "stopContinueDecision": "continue",
+      "emptyPreToolDecision": "Changelog 1.0.16 says an empty PreToolUse decision string used to crash with 'unknown pre-tool hook decision' and is now handled. Official hook docs still mark decision as required. Empty is therefore not documented as allow.",
+      "stopLoopGuard": "Changelog 1.1.9 says a Stop hook that always continues is eventually ignored after a configurable number of consecutive continuations.",
+      "cwd": "Official hook docs say the hook working directory is the directory containing hooks.json."
+    },
+    "statusLine": {
+      "configFile": "~/.gemini/antigravity-cli/settings.json",
+      "configKey": "statusLine",
+      "commandShape": {
+        "type": "command",
+        "command": "path-to-script",
+        "optionalKeys": ["padding", "enabled", "stack_with_default"]
+      },
+      "stdin": "JSON snapshot on each agent-state change",
+      "stdout": "rendered status-line text, ANSI allowed",
+      "agentStates": ["idle", "thinking", "working", "tool_use", "initializing"],
+      "sensitiveFields": ["email", "plan_tier", "quota"],
+      "identityFields": ["conversation_id", "session_id", "transcript_path"],
+      "composition": "Official docs and /statusline write ~/.gemini/antigravity-cli/settings.json. There is no documented launch-scoped status-line flag. A first adapter must not mutate the user's global settings to install this rail.",
+      "exampleScriptReads": [
+        "agent_state",
+        "context_window.used_percentage",
+        "vcs.branch",
+        "vcs.dirty",
+        "sandbox.enabled",
+        "artifact_count",
+        "subagents.length",
+        "task_count",
+        "model.display_name",
+        "terminal_width"
+      ]
+    },
+    "resume": {
+      "explicitFlag": "--conversation",
+      "continueFlag": "--continue",
+      "continueAlias": "-c",
+      "pickerCommands": ["/resume", "/switch", "/conversation"],
+      "workspaceScoped": true,
+      "continueCache": "~/.gemini/antigravity-cli/cache/last_conversations.json",
+      "continueResolution": "Map the launch cwd to a conversation UUID, then verify the conversation still exists before loading. Missing or deleted IDs start a fresh session.",
+      "concurrentOpen": "Changelog 1.1.10 adds a non-blocking banner when the same conversation is already open in another CLI instance and points at /fork.",
+      "desktopImport": "The picker has a separate Antigravity desktop tab that clones history into the CLI session."
+    },
+    "settings": {
+      "file": "~/.gemini/antigravity-cli/settings.json",
+      "sparsePersistence": true,
+      "atomicWrite": "Changelog 1.1.12 says user config is written atomically to avoid truncated files. It names config.json in that fix; the settings page names settings.json. Both names remain leads until a live file is captured.",
+      "launchOverrides": ["--sandbox", "--model", "--mode", "--agent", "--effort"],
+      "permissionModes": ["request-review", "proceed-in-sandbox", "always-proceed", "strict"],
+      "executionModes": ["default", "accept-edits", "plan"]
+    },
+    "printMode": {
+      "flags": ["--print", "-p", "--output-format", "--json-schema", "--print-timeout"],
+      "outputFormats": ["text", "json", "stream-json"],
+      "streamJsonEvents": ["init", "step_update", "result"],
+      "streamJsonExtras": ["tool_info", "subagent_info"],
+      "startsAgentTurn": false,
+      "authorizedToRun": false,
+      "readonlySlashAnswers": [
+        "/permissions",
+        "/hooks",
+        "/help",
+        "/changelog",
+        "/config",
+        "/usage",
+        "/quota",
+        "/credits",
+        "/model",
+        "/effort",
+        "/skills"
+      ],
+      "note": "Changelog 1.1.11 and 1.1.12 say those slash commands can be answered in print mode without starting an agent turn, spending quota, or leaving a conversation. Changelog 1.1.2 says print mode can still prompt for OAuth on /dev/tty. The exact 1.1.12 executable also contains 'Please sign in to view available models'. Treat this as an authorized-census oracle only."
+    },
+    "tui": {
+      "submit": "Enter maps to prompt.submit",
+      "interrupt": "Esc maps to cli.escape and can halt streams; Ctrl+C is interrupt then exit",
+      "approvals": ["y / confirm.yes", "n / confirm.no", "A in the review panel"],
+      "workspaceTrust": "Getting-started docs say the first launch asks the user to trust the repository before the agent indexes files."
+    },
+    "contradictions": [
+      {
+        "topic": "models/agents --output-format",
+        "documentation": "Changelog 1.1.12 says the models and agents subcommands gained --output-format json|stream-json.",
+        "artifact": "Isolated `help models`, `models --help`, `help agents`, and `agents --help` on the exact darwin-arm64 1.1.12 executable do not list --output-format.",
+        "resolution": "Unresolved. Do not generate a detection or adapter contract from the changelog row."
+      },
+      {
+        "topic": "settings file name",
+        "documentation": "The settings page names ~/.gemini/antigravity-cli/settings.json. Changelog 1.1.12's atomic-write fix names config.json.",
+        "artifact": "The executable contains both settings.json and config.json as static strings.",
+        "resolution": "Unresolved. Capture the live files after authorization instead of guessing which file the adapter should observe."
+      },
+      {
+        "topic": "conversation store",
+        "documentation": "Hook and status-line docs name transcript.jsonl. Changelog 1.0.4 says SQLite became the CLI conversation format and that /resume scans .db and .db-wal.",
+        "artifact": "The executable contains transcript.jsonl, transcript_full.jsonl, and SQLite/GORM symbols.",
+        "resolution": "Treat JSONL and SQLite as distinct candidate rails until a live session shows which file is durable for the TUI adapter."
+      },
+      {
+        "topic": "update help",
+        "documentation": "Top-level --help lists an update subcommand.",
+        "artifact": "`help update` and `update --help` exit 2 with only 'Usage of update:' and do not name flags.",
+        "resolution": "Parser-only. Do not execute update."
+      }
+    ],
+    "authorizedSurveyBacklog": [
+      "After Gate -1, prove whether `agy -p /hooks --output-format json` answers locally without authenticating, creating a conversation, or writing user config.",
+      "Prove whether an auxiliary workspace passed with --add-dir loads .agents/hooks.json before the first turn without changing cwd identity or permissions.",
+      "Capture the exact no-op stdout for each hook family, especially empty PreToolUse and Stop.",
+      "Capture transcript.jsonl / transcript_full.jsonl / SQLite file creation, identity joins, and resume/live boundaries.",
+      "Prove an auditable exact-artifact update pin. AGY_CLI_DISABLE_AUTO_UPDATE is only a static string.",
+      "Do not install a status-line command by writing the user's settings.json."
+    ]
+  }
+}

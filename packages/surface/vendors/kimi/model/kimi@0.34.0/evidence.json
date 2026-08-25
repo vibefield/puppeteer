@@ -1,0 +1,96 @@
+{
+  "evidenceVersion": 2,
+  "vendor": "kimi",
+  "vendorVersion": "0.34.0",
+  "artifacts": [
+    {
+      "id": "installed-kimi-0.34.0-darwin-arm64",
+      "platform": "darwin-arm64",
+      "channel": "stable",
+      "acquiredAt": "2026-08-13T00:00:25.945Z",
+      "versionOutput": "0.34.0",
+      "fileDescription": "Mach-O 64-bit executable arm64",
+      "bytes": 176894272,
+      "integrity": {
+        "status": "verified",
+        "sha256": "sha256:9f4337e10da47843f6b550474012a53ba8b30dd665f83b176a5cd479c5f7e859"
+      }
+    }
+  ],
+  "sourceReferences": [
+    {
+      "repository": "https://github.com/moonshotai/kimi-code",
+      "revision": "f0614c53e59f7e1e257412063b059b9eb82764cf",
+      "relation": "exact-release",
+      "tag": "@moonshot-ai/kimi-code@0.34.0",
+      "contract": "packages/surface/vendors/kimi/references/kimi@0.34.0/source-contract.json"
+    }
+  ],
+  "records": [
+    {
+      "id": "sanitized-captures",
+      "kind": "capture-set",
+      "path": "packages/surface/vendors/kimi/captures/kimi@0.34.0",
+      "digestAlgorithm": "sha256-path-content-v1",
+      "sha256": "1c280e42d10df206c788f54203d966bc3861a2c96f3669eb3957e73e63f496a2"
+    },
+    {
+      "id": "binary-probes",
+      "kind": "probe-set",
+      "path": "packages/surface/vendors/kimi/probes/kimi@0.34.0",
+      "digestAlgorithm": "sha256-path-content-v1",
+      "sha256": "03233d5d0b58ab5eda11239febe716370c4064059fa634b2f0e0b890985b6904"
+    },
+    {
+      "id": "exact-source-reference",
+      "kind": "reference-snapshot",
+      "path": "packages/surface/vendors/kimi/references/kimi@0.34.0",
+      "digestAlgorithm": "sha256-path-content-v1",
+      "sha256": "5311a6e59320d8449d46375b3655d6d8e6156863d7e90ea6a80f3b46787b6a3e"
+    },
+    {
+      "id": "agent-surface-model",
+      "kind": "model-tree",
+      "path": "packages/surface/vendors/kimi/model/kimi@0.34.0",
+      "exclude": ["evidence.json"],
+      "digestAlgorithm": "sha256-path-content-v1",
+      "sha256": "effba61ccd848a8e5a3d834686823fb9acdd7a3e08413bcbbeb039103934baff"
+    }
+  ],
+  "claims": [
+    {
+      "id": "kimi-runtime-headless",
+      "kind": "runtime-capture",
+      "confidence": "verified-headless",
+      "record": "sanitized-captures",
+      "artifact": "installed-kimi-0.34.0-darwin-arm64",
+      "platform": "darwin-arm64",
+      "harness": "isolated KIMI_CODE_HOME with loopback OpenAI-compatible provider, command hooks, multi-invocation resume, detached process task, provider rejection, hook block/deny, HTTP retry, print-mode SIGINT abort, and a foreground subagent journal",
+      "capturedAt": "2026-08-10T07:23:19.932Z"
+    },
+    {
+      "id": "kimi-binary-probe",
+      "kind": "binary-probe",
+      "confidence": "verified-headless",
+      "record": "binary-probes",
+      "artifact": "installed-kimi-0.34.0-darwin-arm64",
+      "platform": "darwin-arm64",
+      "harness": "SHA-256, file identity, --version, --help, rejected-option, and raw-capture tree probes",
+      "capturedAt": "2026-08-13T00:00:25.945Z"
+    },
+    {
+      "id": "kimi-exact-release-source",
+      "kind": "exact-source",
+      "confidence": "unverified",
+      "record": "exact-source-reference",
+      "sourceReference": 0,
+      "notes": "Digest-pinned exact release source establishes 40 persisted operation schemas, 8 transient types, 20 hook schemas, protocol 1.5, and CLI declarations; it does not promote unforced runtime behavior."
+    }
+  ],
+  "limitations": [
+    "The controlled census is native print mode, including multi-invocation resume, a detached process task, provider rejection, hook block/deny, HTTP retry, print-mode SIGINT abort, and a foreground subagent journal; it is not interactive PTY mode.",
+    "Runtime evidence covers 26 of 63 modelled surfaces; the remaining 37 are exact-source-only.",
+    "Interactive TUI permissions, questions, steer, queueing, Esc-cancel with durable turn.ended(cancelled), compaction, swarm, and non-success process-task outcomes remain unverified.",
+    "Only the locally installed darwin-arm64 artifact has runtime evidence; this is not a support promotion."
+  ]
+}

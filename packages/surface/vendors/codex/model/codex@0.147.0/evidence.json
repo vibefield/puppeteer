@@ -1,0 +1,69 @@
+{
+  "evidenceVersion": 2,
+  "vendor": "codex",
+  "vendorVersion": "0.147.0",
+  "artifacts": [
+    {
+      "id": "installed-codex-0.147.0-darwin-arm64",
+      "platform": "darwin-arm64",
+      "channel": "stable",
+      "acquiredAt": "2026-08-09T18:45:00.000Z",
+      "versionOutput": "codex-cli 0.147.0",
+      "package": "@openai/codex-darwin-arm64@0.147.0",
+      "executable": "vendor/aarch64-apple-darwin/bin/codex",
+      "integrity": {
+        "status": "verified",
+        "sha256": "sha256:19c4f144c5226a9f17c58e6f0fa854843b0f77a6eb420f40e2745a12f10f5d37"
+      }
+    }
+  ],
+  "sourceReferences": [
+    {
+      "repository": "https://github.com/openai/codex",
+      "revision": "rust-v0.147.0",
+      "relation": "exact-release"
+    }
+  ],
+  "claims": [
+    {
+      "id": "codex-runtime-headless",
+      "kind": "runtime-capture",
+      "confidence": "verified-headless",
+      "record": "sanitized-captures",
+      "artifact": "installed-codex-0.147.0-darwin-arm64",
+      "platform": "darwin-arm64",
+      "harness": "packages/surface/vendors/codex/census/harness.mjs",
+      "capturedAt": "2026-08-09T18:45:00.000Z"
+    },
+    {
+      "id": "codex-generated-schema",
+      "kind": "generated-schema",
+      "confidence": "unverified",
+      "artifact": "installed-codex-0.147.0-darwin-arm64",
+      "sourceReference": 0,
+      "harness": "codex app-server generate-json-schema --experimental"
+    }
+  ],
+  "records": [
+    {
+      "id": "sanitized-captures",
+      "kind": "capture-set",
+      "path": "packages/surface/vendors/codex/captures/codex@0.147.0",
+      "digestAlgorithm": "sha256-path-content-v1",
+      "sha256": "a1721135bb3ae0e506bf8fa664edf51d6dab84c827402d8af782be2526aececd"
+    },
+    {
+      "id": "agent-surface-model",
+      "kind": "model-tree",
+      "path": "packages/surface/vendors/codex/model/codex@0.147.0",
+      "exclude": [
+        "evidence.json"
+      ],
+      "digestAlgorithm": "sha256-path-content-v1",
+      "sha256": "f9ea3c4fc029ad3da4be7f051e75df840d855ec42546c9d2888a53a90f64e9f3"
+    }
+  ],
+  "limitations": [
+    "Artifact integrity and the hermetic census are pinned for darwin-arm64; other platform artifacts still require independent acquisition and verification."
+  ]
+}

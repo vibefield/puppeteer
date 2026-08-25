@@ -1,0 +1,66 @@
+{
+  "surface": "codex",
+  "surfaceVersion": "0.147.0",
+  "event": "currentTime/read",
+  "channel": "appserver",
+  "transport": "jsonrpc-request",
+  "direction": "agent-to-client",
+  "trigger": "Read the current time from an external clock owned by the client.",
+  "payloadSchema": {
+    "type": "object",
+    "properties": {
+      "threadId": {
+        "type": "string"
+      }
+    },
+    "required": [
+      "threadId"
+    ]
+  },
+  "resultSchema": {
+    "type": "object",
+    "properties": {
+      "currentTimeAt": {
+        "type": "number"
+      }
+    },
+    "required": [
+      "currentTimeAt"
+    ]
+  },
+  "recordSchema": {
+    "type": "object",
+    "properties": {
+      "method": {
+        "type": "string",
+        "enum": [
+          "currentTime/read"
+        ]
+      },
+      "params": {
+        "type": "object"
+      },
+      "id": {}
+    },
+    "required": [
+      "method",
+      "params",
+      "id"
+    ]
+  },
+  "evidence": {
+    "existence": [
+      "codex-generated-schema"
+    ],
+    "shape": [
+      "codex-generated-schema"
+    ],
+    "result": [
+      "codex-generated-schema"
+    ],
+    "carrier": [
+      "codex-generated-schema"
+    ]
+  },
+  "confidence": "unverified"
+}

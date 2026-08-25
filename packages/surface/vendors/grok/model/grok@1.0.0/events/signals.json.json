@@ -1,0 +1,55 @@
+{
+  "surface": "grok",
+  "surfaceVersion": "1.0.0",
+  "event": "signals.json",
+  "channel": "session-state",
+  "transport": "json-file-replace",
+  "payloadSchema": {
+    "type": "object",
+    "properties": {
+      "contextTokensUsed": {
+        "type": "number"
+      },
+      "contextWindowTokens": {
+        "type": "number"
+      },
+      "contextWindowUsage": {
+        "type": "number"
+      },
+      "primaryModelId": {
+        "type": "string"
+      },
+      "compactionCount": {
+        "type": "number"
+      },
+      "turnCount": {
+        "type": "number"
+      },
+      "toolCallCount": {
+        "type": "number"
+      }
+    },
+    "required": [
+      "contextTokensUsed",
+      "contextWindowTokens",
+      "contextWindowUsage",
+      "primaryModelId",
+      "compactionCount",
+      "turnCount",
+      "toolCallCount"
+    ]
+  },
+  "confidence": "verified-headless",
+  "firstSeen": "1.0.0",
+  "lastVerified": "1.0.0",
+  "fixture": "captures/grok@1.0.0/state.jsonl",
+  "direction": "agent-local",
+  "evidence": {
+    "existence": [
+      "grok-runtime-headless"
+    ],
+    "shape": [
+      "grok-runtime-headless"
+    ]
+  }
+}

@@ -1,0 +1,45 @@
+{
+  "version": 1,
+  "flows": [
+    {
+      "id": "deep-research",
+      "intent": "workflow.research.deep",
+      "scenario": "deep-research",
+      "title": "Thorough parallel research",
+      "summary": "A full research arc: plan, two parallel teammates, web/fetch/read/shell tools, evidence reconciliation, 94% context pressure, automatic compaction, post-compaction source verification, and a sourced recommendation.",
+      "kind": "typical",
+      "tags": ["research", "agent-team", "web", "files", "shell", "compaction"],
+      "defaultStimulus": {
+        "text": "Research how modern coding agents expose delegation and context compaction. Compare the primary sources with this repository and deliver a sourced recommendation.",
+        "topic": "coding agent delegation and context compaction"
+      },
+      "defaultSpeed": 8
+    },
+    {
+      "id": "cross-layer-implementation",
+      "intent": "workflow.implementation.cross-layer",
+      "scenario": "cross-layer-implementation",
+      "title": "Cross-layer implementation",
+      "summary": "A realistic repository change with implementation and test workers, grep/read/edit/shell tools, a failing baseline, permission-gated verification, 96% context pressure, compaction, and final diff checks.",
+      "kind": "typical",
+      "tags": ["code", "subagents", "permission", "failure-recovery", "tests", "compaction"],
+      "defaultStimulus": {
+        "text": "Replace the toy scenario catalog with realistic long-running workflows, preserve the native evidence boundary, add regression coverage, and verify the final diff."
+      },
+      "defaultSpeed": 8
+    },
+    {
+      "id": "incident-investigation",
+      "intent": "workflow.incident.competing-hypotheses",
+      "scenario": "incident-investigation",
+      "title": "Competing-hypotheses incident",
+      "summary": "Two investigators test deploy and dependency hypotheses using MCP logs/metrics, shell reproduction, and web status evidence; one tool fails, context reaches 93%, compaction preserves the timeline, and a final check isolates the root cause.",
+      "kind": "typical",
+      "tags": ["incident", "agent-team", "mcp", "web", "tool-failure", "compaction"],
+      "defaultStimulus": {
+        "text": "Investigate the API timeout spike. Run competing hypotheses in parallel, identify the root cause from logs and metrics, and recommend the safest immediate mitigation."
+      },
+      "defaultSpeed": 8
+    }
+  ]
+}

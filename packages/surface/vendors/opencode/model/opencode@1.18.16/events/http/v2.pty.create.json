@@ -1,0 +1,285 @@
+{
+  "surface": "opencode",
+  "surfaceVersion": "1.18.16",
+  "event": "http/v2.pty.create",
+  "channel": "http",
+  "channels": [
+    "http"
+  ],
+  "transport": "http",
+  "direction": "client-to-agent",
+  "trigger": "Create PTY session — Create a pseudo-terminal session for a location.",
+  "payloadSchema": {
+    "type": "object",
+    "properties": {
+      "method": {
+        "type": "string"
+      },
+      "route": {
+        "type": "string"
+      },
+      "query": {
+        "type": "object",
+        "properties": {
+          "location": {
+            "type": "object",
+            "properties": {
+              "directory": {
+                "type": "string"
+              },
+              "workspace": {
+                "type": "string"
+              }
+            }
+          }
+        }
+      },
+      "body": {
+        "type": "object",
+        "properties": {
+          "args": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "command": {
+            "type": "string"
+          },
+          "cwd": {
+            "type": "string"
+          },
+          "env": {
+            "type": "object"
+          },
+          "title": {
+            "type": "string"
+          }
+        }
+      }
+    },
+    "required": [
+      "method",
+      "route",
+      "body"
+    ]
+  },
+  "resultSchema": {
+    "type": "object",
+    "properties": {
+      "method": {
+        "type": "string",
+        "enum": [
+          "POST"
+        ]
+      },
+      "route": {
+        "type": "string",
+        "enum": [
+          "/api/pty"
+        ]
+      },
+      "status": {
+        "type": "integer",
+        "minimum": 200,
+        "maximum": 299
+      },
+      "query": {
+        "type": "object",
+        "properties": {
+          "location": {
+            "type": "object",
+            "properties": {
+              "directory": {
+                "type": "string"
+              },
+              "workspace": {
+                "type": "string"
+              }
+            }
+          }
+        }
+      },
+      "body": {
+        "type": "object",
+        "properties": {
+          "data": {
+            "type": "object",
+            "properties": {
+              "args": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                }
+              },
+              "command": {
+                "type": "string"
+              },
+              "cwd": {
+                "type": "string"
+              },
+              "exitCode": {
+                "type": "integer",
+                "minimum": 0
+              },
+              "id": {
+                "type": "string"
+              },
+              "pid": {
+                "type": "integer",
+                "minimum": 0
+              },
+              "status": {
+                "type": "string"
+              },
+              "title": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "args",
+              "command",
+              "cwd",
+              "id",
+              "pid",
+              "status",
+              "title"
+            ]
+          },
+          "location": {
+            "type": "object",
+            "properties": {
+              "directory": {
+                "type": "string"
+              },
+              "project": {
+                "type": "object",
+                "properties": {
+                  "directory": {
+                    "type": "string"
+                  },
+                  "id": {
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "directory",
+                  "id"
+                ]
+              },
+              "workspaceID": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "directory",
+              "project"
+            ]
+          }
+        },
+        "required": [
+          "data",
+          "location"
+        ]
+      }
+    },
+    "required": [
+      "method",
+      "route",
+      "status",
+      "body"
+    ]
+  },
+  "recordSchema": {
+    "type": "object",
+    "properties": {
+      "direction": {
+        "type": "string",
+        "enum": [
+          "client-to-agent"
+        ]
+      },
+      "request": {
+        "type": "object",
+        "properties": {
+          "method": {
+            "type": "string",
+            "enum": [
+              "POST"
+            ]
+          },
+          "route": {
+            "type": "string",
+            "enum": [
+              "/api/pty"
+            ]
+          },
+          "query": {
+            "type": "object",
+            "properties": {
+              "location": {
+                "type": "object",
+                "properties": {
+                  "directory": {
+                    "type": "string"
+                  },
+                  "workspace": {
+                    "type": "string"
+                  }
+                }
+              }
+            }
+          },
+          "body": {
+            "type": "object",
+            "properties": {
+              "args": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                }
+              },
+              "command": {
+                "type": "string"
+              },
+              "cwd": {
+                "type": "string"
+              },
+              "env": {
+                "type": "object"
+              },
+              "title": {
+                "type": "string"
+              }
+            }
+          }
+        },
+        "required": [
+          "method",
+          "route",
+          "body"
+        ]
+      }
+    },
+    "required": [
+      "direction",
+      "request"
+    ]
+  },
+  "evidence": {
+    "existence": [
+      "opencode-generated-openapi"
+    ],
+    "shape": [
+      "opencode-generated-openapi"
+    ],
+    "result": [
+      "opencode-generated-openapi"
+    ],
+    "carrier": [
+      "opencode-generated-openapi"
+    ]
+  },
+  "confidence": "unverified",
+  "notes": "OpenAPI operationId v2.pty.create; POST /api/pty."
+}

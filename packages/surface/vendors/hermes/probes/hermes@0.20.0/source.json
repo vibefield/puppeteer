@@ -1,0 +1,10 @@
+{
+  "vendor": "hermes",
+  "vendorVersion": "0.20.0",
+  "releaseTag": "v2026.8.3",
+  "sourceRevision": "3c27eb6234bf91b8ceee9e9071591b31e9b148cb",
+  "tagObject": "7de39e700d2c329e15d32eb0b96e2f7cdd9fbdb2",
+  "relation": "annotated-tag-peels-to-release-commit",
+  "pyprojectSha256": "64d1085ee1c23caf0ae0d9e65c73e280f466362ed43fdda1531f18f3af1d9869",
+  "uvLockSha256": "aab3c83f71b683507a590b6315b23bdc0abd6b63b76b2349eae15bf00dfbaf2b"
+}

@@ -1,0 +1,33 @@
+{
+  "name": "permission-deny",
+  "steps": [
+    {
+      "at": 0,
+      "do": { "emit": { "channel": "tui-gateway", "event": "tool.start", "with": { "name": "terminal", "tool_id": "call_imposter" } } }
+    },
+    {
+      "at": 20,
+      "do": {
+        "emit": {
+          "channel": "tui-gateway",
+          "event": "approval.request",
+          "with": { "choices": ["once", "session", "always", "deny"] }
+        }
+      }
+    },
+    {
+      "at": 40,
+      "do": {
+        "emit": {
+          "channel": "tui-gateway",
+          "event": "tool.complete",
+          "with": { "name": "terminal", "tool_id": "call_imposter", "result": { "exit_code": -1, "status": "blocked", "hasOutput": false, "hasError": true } }
+        }
+      }
+    },
+    {
+      "at": 60,
+      "do": { "emit": { "channel": "tui-gateway", "event": "message.complete", "with": { "status": "complete", "hasText": true } } }
+    }
+  ]
+}

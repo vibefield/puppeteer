@@ -1,0 +1,166 @@
+{
+  "surface": "opencode",
+  "surfaceVersion": "1.18.16",
+  "event": "http/v2.session.switchAgent",
+  "channel": "http",
+  "channels": [
+    "http"
+  ],
+  "transport": "http",
+  "direction": "client-to-agent",
+  "trigger": "Switch session agent — Switch the agent used by subsequent provider turns.",
+  "payloadSchema": {
+    "type": "object",
+    "properties": {
+      "method": {
+        "type": "string"
+      },
+      "route": {
+        "type": "string"
+      },
+      "params": {
+        "type": "object",
+        "properties": {
+          "sessionID": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "sessionID"
+        ]
+      },
+      "body": {
+        "type": "object",
+        "properties": {
+          "agent": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "agent"
+        ]
+      }
+    },
+    "required": [
+      "method",
+      "route",
+      "params",
+      "body"
+    ]
+  },
+  "resultSchema": {
+    "type": "object",
+    "properties": {
+      "method": {
+        "type": "string",
+        "enum": [
+          "POST"
+        ]
+      },
+      "route": {
+        "type": "string",
+        "enum": [
+          "/api/session/:sessionID/agent"
+        ]
+      },
+      "status": {
+        "type": "integer",
+        "minimum": 200,
+        "maximum": 299
+      },
+      "params": {
+        "type": "object",
+        "properties": {
+          "sessionID": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "sessionID"
+        ]
+      }
+    },
+    "required": [
+      "method",
+      "route",
+      "status",
+      "params"
+    ]
+  },
+  "recordSchema": {
+    "type": "object",
+    "properties": {
+      "direction": {
+        "type": "string",
+        "enum": [
+          "client-to-agent"
+        ]
+      },
+      "request": {
+        "type": "object",
+        "properties": {
+          "method": {
+            "type": "string",
+            "enum": [
+              "POST"
+            ]
+          },
+          "route": {
+            "type": "string",
+            "enum": [
+              "/api/session/:sessionID/agent"
+            ]
+          },
+          "params": {
+            "type": "object",
+            "properties": {
+              "sessionID": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "sessionID"
+            ]
+          },
+          "body": {
+            "type": "object",
+            "properties": {
+              "agent": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "agent"
+            ]
+          }
+        },
+        "required": [
+          "method",
+          "route",
+          "params",
+          "body"
+        ]
+      }
+    },
+    "required": [
+      "direction",
+      "request"
+    ]
+  },
+  "evidence": {
+    "existence": [
+      "opencode-generated-openapi"
+    ],
+    "shape": [
+      "opencode-generated-openapi"
+    ],
+    "result": [
+      "opencode-generated-openapi"
+    ],
+    "carrier": [
+      "opencode-generated-openapi"
+    ]
+  },
+  "confidence": "unverified",
+  "notes": "OpenAPI operationId v2.session.switchAgent; POST /api/session/{sessionID}/agent."
+}

@@ -1,0 +1,71 @@
+{
+  "surface": "claude",
+  "surfaceVersion": "2.1.226",
+  "event": "UserPromptSubmit",
+  "channel": "hook",
+  "channels": [
+    "hook"
+  ],
+  "transport": "http",
+  "direction": "agent-to-client",
+  "trigger": "The verbatim submitted prompt; prompt_id is the native user-turn correlation when present.",
+  "payloadSchema": {
+    "type": "object",
+    "properties": {
+      "session_id": {
+        "type": "string"
+      },
+      "transcript_path": {
+        "type": "string"
+      },
+      "cwd": {
+        "type": "string"
+      },
+      "prompt_id": {
+        "type": "string"
+      },
+      "permission_mode": {
+        "type": "string"
+      },
+      "effort": {
+        "type": "object"
+      },
+      "hook_event_name": {
+        "type": "string"
+      },
+      "agent_id": {
+        "type": "string"
+      },
+      "agent_type": {
+        "type": "string"
+      },
+      "prompt": {
+        "type": "string"
+      },
+      "session_title": {
+        "type": "string"
+      }
+    },
+    "required": [
+      "cwd",
+      "hook_event_name",
+      "prompt",
+      "session_id",
+      "transcript_path"
+    ]
+  },
+  "evidence": {
+    "existence": [
+      "claude-runtime-headless"
+    ],
+    "shape": [
+      "claude-runtime-headless"
+    ]
+  },
+  "confidence": "verified-headless",
+  "timeoutSec": 5,
+  "firstSeen": "2.1.226",
+  "lastVerified": "2.1.226",
+  "fixture": "captures/claude@2.1.226",
+  "notes": "The verbatim submitted prompt; prompt_id is the native user-turn correlation when present."
+}

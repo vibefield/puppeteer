@@ -1,0 +1,1 @@
+{"hook_event_name":"Notification","session_id":"session_a11a5ed0df7cbb8df6064a013bfcea4d2330","cwd":"/workspace","client_type":"kimi_code_cli","sink":"context","notification_type":"task.completed","title":"<redacted:title>","body":"Exercise background task lifecycle completed.","severity":"info","source_kind":"background_task","source_id":"anon-59a494fa5c6807bb"}

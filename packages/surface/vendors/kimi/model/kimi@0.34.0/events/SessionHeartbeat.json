@@ -1,0 +1,52 @@
+{
+  "surface": "kimi",
+  "surfaceVersion": "0.34.0",
+  "event": "SessionHeartbeat",
+  "channel": "hook-command",
+  "channels": ["hook-command"],
+  "transport": "command-stdin",
+  "direction": "agent-local",
+  "payloadSchema": {
+    "type": "object",
+    "properties": {
+      "hook_event_name": {
+        "type": "string",
+        "enum": ["SessionHeartbeat"]
+      },
+      "session_id": {
+        "type": "string"
+      },
+      "cwd": {
+        "type": "string"
+      },
+      "client_type": {
+        "type": "string"
+      },
+      "session_title": {
+        "type": "string"
+      },
+      "uptime_ms": {
+        "type": "number",
+        "minimum": 0
+      }
+    },
+    "required": ["hook_event_name", "session_id", "cwd", "client_type", "uptime_ms"]
+  },
+  "evidence": {
+    "existence": ["kimi-exact-release-source"],
+    "shape": ["kimi-exact-release-source"]
+  },
+  "confidence": "unverified",
+  "variants": [
+    {
+      "match": {
+        "hook_event_name": "SessionHeartbeat"
+      },
+      "evidence": {
+        "existence": ["kimi-exact-release-source"],
+        "shape": ["kimi-exact-release-source"]
+      },
+      "confidence": "unverified"
+    }
+  ]
+}

@@ -1,0 +1,173 @@
+{
+  "surface": "opencode",
+  "surfaceVersion": "1.18.16",
+  "event": "http/experimental.console.switchOrg",
+  "channel": "http",
+  "channels": [
+    "http"
+  ],
+  "transport": "http",
+  "direction": "client-to-agent",
+  "trigger": "Switch active Console org — Persist a new active Console account/org selection for the current local OpenCode state.",
+  "payloadSchema": {
+    "type": "object",
+    "properties": {
+      "method": {
+        "type": "string"
+      },
+      "route": {
+        "type": "string"
+      },
+      "query": {
+        "type": "object",
+        "properties": {
+          "directory": {
+            "type": "string"
+          },
+          "workspace": {
+            "type": "string"
+          }
+        }
+      },
+      "body": {
+        "type": "object",
+        "properties": {
+          "accountID": {
+            "type": "string"
+          },
+          "orgID": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "accountID",
+          "orgID"
+        ]
+      }
+    },
+    "required": [
+      "method",
+      "route"
+    ]
+  },
+  "resultSchema": {
+    "type": "object",
+    "properties": {
+      "method": {
+        "type": "string",
+        "enum": [
+          "POST"
+        ]
+      },
+      "route": {
+        "type": "string",
+        "enum": [
+          "/experimental/console/switch"
+        ]
+      },
+      "status": {
+        "type": "integer",
+        "minimum": 200,
+        "maximum": 299
+      },
+      "query": {
+        "type": "object",
+        "properties": {
+          "directory": {
+            "type": "string"
+          },
+          "workspace": {
+            "type": "string"
+          }
+        }
+      },
+      "body": {
+        "type": "boolean"
+      }
+    },
+    "required": [
+      "method",
+      "route",
+      "status",
+      "body"
+    ]
+  },
+  "recordSchema": {
+    "type": "object",
+    "properties": {
+      "direction": {
+        "type": "string",
+        "enum": [
+          "client-to-agent"
+        ]
+      },
+      "request": {
+        "type": "object",
+        "properties": {
+          "method": {
+            "type": "string",
+            "enum": [
+              "POST"
+            ]
+          },
+          "route": {
+            "type": "string",
+            "enum": [
+              "/experimental/console/switch"
+            ]
+          },
+          "query": {
+            "type": "object",
+            "properties": {
+              "directory": {
+                "type": "string"
+              },
+              "workspace": {
+                "type": "string"
+              }
+            }
+          },
+          "body": {
+            "type": "object",
+            "properties": {
+              "accountID": {
+                "type": "string"
+              },
+              "orgID": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "accountID",
+              "orgID"
+            ]
+          }
+        },
+        "required": [
+          "method",
+          "route"
+        ]
+      }
+    },
+    "required": [
+      "direction",
+      "request"
+    ]
+  },
+  "evidence": {
+    "existence": [
+      "opencode-generated-openapi"
+    ],
+    "shape": [
+      "opencode-generated-openapi"
+    ],
+    "result": [
+      "opencode-generated-openapi"
+    ],
+    "carrier": [
+      "opencode-generated-openapi"
+    ]
+  },
+  "confidence": "unverified",
+  "notes": "OpenAPI operationId experimental.console.switchOrg; POST /experimental/console/switch."
+}

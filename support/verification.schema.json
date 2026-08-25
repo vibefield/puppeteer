@@ -1,0 +1,63 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/vibecook-dev/chopsticks/support/verification.schema.json",
+  "title": "Agent adaptation promotion verification",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schemaVersion", "vendor", "vendorVersion", "manifest", "status", "commit", "gates", "attestation"],
+  "properties": {
+    "schemaVersion": { "const": 1 },
+    "vendor": { "type": "string" },
+    "vendorVersion": { "type": "string" },
+    "manifest": { "type": "string" },
+    "status": { "const": "passed" },
+    "commit": { "type": "string", "pattern": "^[0-9a-f]{40}$" },
+    "gates": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "identity",
+        "privacy",
+        "model",
+        "adapterFixtures",
+        "imposter",
+        "replayDiff",
+        "hermetic",
+        "pinnedArtifact",
+        "platforms",
+        "packaging",
+        "documentation"
+      ],
+      "properties": {
+        "identity": { "const": "passed" },
+        "privacy": { "const": "passed" },
+        "model": { "const": "passed" },
+        "adapterFixtures": { "const": "passed" },
+        "imposter": { "const": "passed" },
+        "replayDiff": { "const": "passed" },
+        "hermetic": { "const": "passed" },
+        "pinnedArtifact": { "const": "passed" },
+        "platforms": { "const": "passed" },
+        "packaging": { "const": "passed" },
+        "documentation": { "const": "passed" }
+      }
+    },
+    "attestation": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["provider", "repository", "workflow", "workflowRef", "runId", "runAttempt", "evidenceDigest"],
+      "properties": {
+        "provider": { "const": "github-actions" },
+        "repository": { "type": "string", "pattern": "^[^/]+/[^/]+$" },
+        "workflow": { "type": "string", "minLength": 1 },
+        "workflowRef": {
+          "type": "string",
+          "pattern": "^[^/]+/[^/]+/\\.github/workflows/[^@]+@.+$"
+        },
+        "runId": { "type": "string", "pattern": "^[0-9]+$" },
+        "runAttempt": { "type": "string", "pattern": "^[0-9]+$" },
+        "evidenceDigest": { "type": "string", "pattern": "^[0-9a-f]{64}$" }
+      }
+    }
+  }
+}

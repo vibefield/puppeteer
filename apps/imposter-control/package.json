@@ -1,0 +1,37 @@
+{
+  "name": "imposter-control",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "description": "Agent adaptation devkit: inspect native Imposter traffic, normalization decisions, and unified reducer state.",
+  "license": "MIT",
+  "author": "James Yong",
+  "main": "./dist/main.cjs",
+  "scripts": {
+    "bundle": "node build.mjs",
+    "start": "pnpm bundle && electron .",
+    "smoke": "pnpm bundle && electron . --smoke",
+    "test": "vitest run",
+    "typecheck": "tsc -p tsconfig.json --noEmit"
+  },
+  "dependencies": {
+    "@parcel/watcher": "^2.5.0",
+    "@vibecook/chopsticks-adapter-claude": "workspace:*",
+    "@vibecook/chopsticks-adapter-codex": "workspace:*",
+    "@vibecook/chopsticks-adapter-kimi": "workspace:*",
+    "@vibecook/chopsticks-adapter-hermes": "workspace:*",
+    "@vibecook/chopsticks-adapter-opencode": "workspace:*",
+    "@vibecook/chopsticks-core": "workspace:*",
+    "@vibecook/chopsticks-imposter": "workspace:*",
+    "react": "^19.2.7",
+    "react-dom": "^19.2.7"
+  },
+  "devDependencies": {
+    "@types/node": "^22.9.0",
+    "@types/react": "^19.2.17",
+    "@types/react-dom": "^19.2.3",
+    "electron": "^43.1.0",
+    "esbuild": "^0.24.0",
+    "typescript": "^5.6.0"
+  }
+}

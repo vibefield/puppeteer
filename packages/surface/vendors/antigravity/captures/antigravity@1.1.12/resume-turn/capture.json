@@ -1,0 +1,18 @@
+{
+  "schemaVersion": 1,
+  "vendor": "antigravity",
+  "vendorVersion": "1.1.12",
+  "scenario": "resume-turn",
+  "mode": "authorized-print-oracle",
+  "artifactSha256": "c8fd3c0016e101689f923f82da1c068b0e6dce3abcb0089e282742693ad4d344",
+  "settingsMutated": false,
+  "hookEvents": [
+    "PostInvocation",
+    "PreInvocation",
+    "Stop"
+  ],
+  "durableKinds": [
+    "message",
+    "message"
+  ]
+}

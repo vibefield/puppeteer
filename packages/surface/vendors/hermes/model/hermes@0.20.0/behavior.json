@@ -1,0 +1,715 @@
+{
+  "behaviorVersion": 1,
+  "title": "Hermes Agent 0.20.0 native TUI-gateway lifecycle",
+  "description": "Partial order over stdio tui_gateway JSON-RPC and isolated-home hooks. Live Node TUI attach is the same dispatcher but is not itself a capture in this model.",
+  "source": "Hermetic Hermes 0.20.0 turn census. Unobserved source methods are omitted.",
+  "lanes": [
+    {
+      "id": "session",
+      "label": "Session"
+    },
+    {
+      "id": "turn",
+      "label": "Turn stream"
+    },
+    {
+      "id": "tool",
+      "label": "Tools and approvals"
+    },
+    {
+      "id": "hook",
+      "label": "Plugin hooks / webhooks"
+    }
+  ],
+  "nodes": [
+    {
+      "id": "gateway-ready",
+      "event": "gateway.ready",
+      "lane": "session",
+      "order": 0,
+      "confidence": "verified-headless",
+      "evidence": {
+        "existence": ["hermes-runtime-headless"],
+        "shape": ["hermes-runtime-headless"]
+      }
+    },
+    {
+      "id": "session-create",
+      "event": "session.create",
+      "lane": "session",
+      "order": 1,
+      "confidence": "verified-headless",
+      "evidence": {
+        "existence": ["hermes-runtime-headless"],
+        "shape": ["hermes-runtime-headless"]
+      }
+    },
+    {
+      "id": "session-resume",
+      "event": "session.resume",
+      "lane": "session",
+      "order": 1,
+      "confidence": "verified-headless",
+      "evidence": {
+        "existence": ["hermes-runtime-headless"],
+        "shape": ["hermes-runtime-headless"]
+      }
+    },
+    {
+      "id": "session-info",
+      "event": "session.info",
+      "lane": "session",
+      "order": 2,
+      "confidence": "verified-headless",
+      "evidence": {
+        "existence": ["hermes-runtime-headless"],
+        "shape": ["hermes-runtime-headless"]
+      }
+    },
+    {
+      "id": "sessions-changed",
+      "event": "sessions.changed",
+      "lane": "session",
+      "order": 3,
+      "confidence": "verified-headless",
+      "evidence": {
+        "existence": ["hermes-runtime-headless"],
+        "shape": ["hermes-runtime-headless"]
+      }
+    },
+    {
+      "id": "prompt-submit",
+      "event": "prompt.submit",
+      "lane": "turn",
+      "order": 4,
+      "confidence": "verified-headless",
+      "evidence": {
+        "existence": ["hermes-runtime-headless"],
+        "shape": ["hermes-runtime-headless"]
+      }
+    },
+    {
+      "id": "message-start",
+      "event": "message.start",
+      "lane": "turn",
+      "order": 5,
+      "confidence": "verified-headless",
+      "evidence": {
+        "existence": ["hermes-runtime-headless"],
+        "shape": ["hermes-runtime-headless"]
+      }
+    },
+    {
+      "id": "thinking-delta",
+      "event": "thinking.delta",
+      "lane": "turn",
+      "order": 6,
+      "confidence": "verified-headless",
+      "evidence": {
+        "existence": ["hermes-runtime-headless"],
+        "shape": ["hermes-runtime-headless"]
+      }
+    },
+    {
+      "id": "message-delta",
+      "event": "message.delta",
+      "lane": "turn",
+      "order": 7,
+      "confidence": "verified-headless",
+      "evidence": {
+        "existence": ["hermes-runtime-headless"],
+        "shape": ["hermes-runtime-headless"]
+      }
+    },
+    {
+      "id": "reasoning-available",
+      "event": "reasoning.available",
+      "lane": "turn",
+      "order": 8,
+      "confidence": "verified-headless",
+      "evidence": {
+        "existence": ["hermes-runtime-headless"],
+        "shape": ["hermes-runtime-headless"]
+      }
+    },
+    {
+      "id": "message-complete",
+      "event": "message.complete",
+      "lane": "turn",
+      "order": 9,
+      "confidence": "verified-headless",
+      "evidence": {
+        "existence": ["hermes-runtime-headless"],
+        "shape": ["hermes-runtime-headless"]
+      },
+      "match": {
+        "status": "complete"
+      }
+    },
+    {
+      "id": "message-interrupted",
+      "event": "message.complete",
+      "lane": "turn",
+      "order": 9,
+      "confidence": "verified-headless",
+      "evidence": {
+        "existence": ["hermes-runtime-headless"],
+        "shape": ["hermes-runtime-headless"]
+      },
+      "match": {
+        "status": "interrupted"
+      }
+    },
+    {
+      "id": "session-interrupt",
+      "event": "session.interrupt",
+      "lane": "turn",
+      "order": 8,
+      "confidence": "verified-headless",
+      "evidence": {
+        "existence": ["hermes-runtime-headless"],
+        "shape": ["hermes-runtime-headless"]
+      }
+    },
+    {
+      "id": "tool-generating",
+      "event": "tool.generating",
+      "lane": "tool",
+      "order": 6,
+      "confidence": "verified-headless",
+      "evidence": {
+        "existence": ["hermes-runtime-headless"],
+        "shape": ["hermes-runtime-headless"]
+      }
+    },
+    {
+      "id": "tool-start",
+      "event": "tool.start",
+      "lane": "tool",
+      "order": 7,
+      "confidence": "verified-headless",
+      "evidence": {
+        "existence": ["hermes-runtime-headless"],
+        "shape": ["hermes-runtime-headless"]
+      }
+    },
+    {
+      "id": "approval-request",
+      "event": "approval.request",
+      "lane": "tool",
+      "order": 8,
+      "confidence": "verified-headless",
+      "evidence": {
+        "existence": ["hermes-runtime-headless"],
+        "shape": ["hermes-runtime-headless"]
+      }
+    },
+    {
+      "id": "approval-respond",
+      "event": "approval.respond",
+      "lane": "tool",
+      "order": 8,
+      "confidence": "verified-headless",
+      "evidence": {
+        "existence": ["hermes-runtime-headless"],
+        "shape": ["hermes-runtime-headless"]
+      }
+    },
+    {
+      "id": "tool-complete",
+      "event": "tool.complete",
+      "lane": "tool",
+      "order": 9,
+      "confidence": "verified-headless",
+      "evidence": {
+        "existence": ["hermes-runtime-headless"],
+        "shape": ["hermes-runtime-headless"]
+      }
+    },
+    {
+      "id": "hook-session-start",
+      "event": "on_session_start",
+      "lane": "hook",
+      "order": 1,
+      "confidence": "verified-headless",
+      "evidence": {
+        "existence": ["hermes-runtime-headless"],
+        "shape": ["hermes-runtime-headless"]
+      }
+    },
+    {
+      "id": "hook-pre-llm",
+      "event": "pre_llm_call",
+      "lane": "hook",
+      "order": 4,
+      "confidence": "verified-headless",
+      "evidence": {
+        "existence": ["hermes-runtime-headless"],
+        "shape": ["hermes-runtime-headless"]
+      }
+    },
+    {
+      "id": "hook-pre-api",
+      "event": "pre_api_request",
+      "lane": "hook",
+      "order": 5,
+      "confidence": "verified-headless",
+      "evidence": {
+        "existence": ["hermes-runtime-headless"],
+        "shape": ["hermes-runtime-headless"]
+      }
+    },
+    {
+      "id": "hook-post-api",
+      "event": "post_api_request",
+      "lane": "hook",
+      "order": 8,
+      "confidence": "verified-headless",
+      "evidence": {
+        "existence": ["hermes-runtime-headless"],
+        "shape": ["hermes-runtime-headless"]
+      }
+    },
+    {
+      "id": "hook-post-llm",
+      "event": "post_llm_call",
+      "lane": "hook",
+      "order": 9,
+      "confidence": "verified-headless",
+      "evidence": {
+        "existence": ["hermes-runtime-headless"],
+        "shape": ["hermes-runtime-headless"]
+      }
+    },
+    {
+      "id": "hook-pre-tool",
+      "event": "pre_tool_call",
+      "lane": "hook",
+      "order": 7,
+      "confidence": "verified-headless",
+      "evidence": {
+        "existence": ["hermes-runtime-headless"],
+        "shape": ["hermes-runtime-headless"]
+      }
+    },
+    {
+      "id": "hook-pre-approval",
+      "event": "pre_approval_request",
+      "lane": "hook",
+      "order": 8,
+      "confidence": "verified-headless",
+      "evidence": {
+        "existence": ["hermes-runtime-headless"],
+        "shape": ["hermes-runtime-headless"]
+      }
+    },
+    {
+      "id": "hook-post-approval",
+      "event": "post_approval_response",
+      "lane": "hook",
+      "order": 8,
+      "confidence": "verified-headless",
+      "evidence": {
+        "existence": ["hermes-runtime-headless"],
+        "shape": ["hermes-runtime-headless"]
+      }
+    },
+    {
+      "id": "hook-post-tool",
+      "event": "post_tool_call",
+      "lane": "hook",
+      "order": 9,
+      "confidence": "verified-headless",
+      "evidence": {
+        "existence": ["hermes-runtime-headless"],
+        "shape": ["hermes-runtime-headless"]
+      }
+    },
+    {
+      "id": "hook-session-end",
+      "event": "on_session_end",
+      "lane": "hook",
+      "order": 10,
+      "confidence": "verified-headless",
+      "evidence": {
+        "existence": ["hermes-runtime-headless"],
+        "shape": ["hermes-runtime-headless"]
+      }
+    },
+    {
+      "id": "hook-finalize",
+      "event": "on_session_finalize",
+      "lane": "hook",
+      "order": 11,
+      "confidence": "verified-headless",
+      "evidence": {
+        "existence": ["hermes-runtime-headless"],
+        "shape": ["hermes-runtime-headless"]
+      }
+    }
+  ],
+  "relations": [
+    {
+      "from": "gateway-ready",
+      "to": "session-create",
+      "kind": "sequence",
+      "confidence": "verified-headless",
+      "evidence": {
+        "existence": ["hermes-runtime-headless"],
+        "shape": ["hermes-runtime-headless"],
+        "ordering": ["hermes-runtime-headless"]
+      }
+    },
+    {
+      "from": "gateway-ready",
+      "to": "session-resume",
+      "kind": "resume",
+      "label": "resume of a stored id",
+      "confidence": "verified-headless",
+      "evidence": {
+        "existence": ["hermes-runtime-headless"],
+        "shape": ["hermes-runtime-headless"],
+        "ordering": ["hermes-runtime-headless"]
+      }
+    },
+    {
+      "from": "session-create",
+      "to": "session-info",
+      "kind": "sequence",
+      "confidence": "verified-headless",
+      "evidence": {
+        "existence": ["hermes-runtime-headless"],
+        "shape": ["hermes-runtime-headless"],
+        "ordering": ["hermes-runtime-headless"]
+      }
+    },
+    {
+      "from": "session-resume",
+      "to": "session-info",
+      "kind": "sequence",
+      "confidence": "verified-headless",
+      "evidence": {
+        "existence": ["hermes-runtime-headless"],
+        "shape": ["hermes-runtime-headless"],
+        "ordering": ["hermes-runtime-headless"]
+      }
+    },
+    {
+      "from": "session-create",
+      "to": "sessions-changed",
+      "kind": "async",
+      "confidence": "verified-headless",
+      "evidence": {
+        "existence": ["hermes-runtime-headless"],
+        "shape": ["hermes-runtime-headless"],
+        "ordering": ["hermes-runtime-headless"]
+      }
+    },
+    {
+      "from": "session-create",
+      "to": "hook-session-start",
+      "kind": "async",
+      "confidence": "verified-headless",
+      "evidence": {
+        "existence": ["hermes-runtime-headless"],
+        "shape": ["hermes-runtime-headless"],
+        "ordering": ["hermes-runtime-headless"]
+      }
+    },
+    {
+      "from": "session-info",
+      "to": "prompt-submit",
+      "kind": "sequence",
+      "confidence": "verified-headless",
+      "evidence": {
+        "existence": ["hermes-runtime-headless"],
+        "shape": ["hermes-runtime-headless"],
+        "ordering": ["hermes-runtime-headless"]
+      }
+    },
+    {
+      "from": "prompt-submit",
+      "to": "message-start",
+      "kind": "sequence",
+      "confidence": "verified-headless",
+      "evidence": {
+        "existence": ["hermes-runtime-headless"],
+        "shape": ["hermes-runtime-headless"],
+        "ordering": ["hermes-runtime-headless"]
+      }
+    },
+    {
+      "from": "prompt-submit",
+      "to": "hook-pre-llm",
+      "kind": "async",
+      "confidence": "verified-headless",
+      "evidence": {
+        "existence": ["hermes-runtime-headless"],
+        "shape": ["hermes-runtime-headless"],
+        "ordering": ["hermes-runtime-headless"]
+      }
+    },
+    {
+      "from": "hook-pre-llm",
+      "to": "hook-pre-api",
+      "kind": "sequence",
+      "confidence": "verified-headless",
+      "evidence": {
+        "existence": ["hermes-runtime-headless"],
+        "shape": ["hermes-runtime-headless"],
+        "ordering": ["hermes-runtime-headless"]
+      }
+    },
+    {
+      "from": "message-start",
+      "to": "thinking-delta",
+      "kind": "sequence",
+      "confidence": "verified-headless",
+      "evidence": {
+        "existence": ["hermes-runtime-headless"],
+        "shape": ["hermes-runtime-headless"],
+        "ordering": ["hermes-runtime-headless"]
+      }
+    },
+    {
+      "from": "thinking-delta",
+      "to": "message-delta",
+      "kind": "conditional",
+      "label": "no-tool reply",
+      "confidence": "verified-headless",
+      "evidence": {
+        "existence": ["hermes-runtime-headless"],
+        "shape": ["hermes-runtime-headless"],
+        "ordering": ["hermes-runtime-headless"]
+      }
+    },
+    {
+      "from": "thinking-delta",
+      "to": "tool-generating",
+      "kind": "conditional",
+      "label": "tool call",
+      "confidence": "verified-headless",
+      "evidence": {
+        "existence": ["hermes-runtime-headless"],
+        "shape": ["hermes-runtime-headless"],
+        "ordering": ["hermes-runtime-headless"]
+      }
+    },
+    {
+      "from": "tool-generating",
+      "to": "tool-start",
+      "kind": "sequence",
+      "confidence": "verified-headless",
+      "evidence": {
+        "existence": ["hermes-runtime-headless"],
+        "shape": ["hermes-runtime-headless"],
+        "ordering": ["hermes-runtime-headless"]
+      }
+    },
+    {
+      "from": "tool-start",
+      "to": "hook-pre-tool",
+      "kind": "async",
+      "confidence": "verified-headless",
+      "evidence": {
+        "existence": ["hermes-runtime-headless"],
+        "shape": ["hermes-runtime-headless"],
+        "ordering": ["hermes-runtime-headless"]
+      }
+    },
+    {
+      "from": "tool-start",
+      "to": "tool-complete",
+      "kind": "conditional",
+      "label": "no approval",
+      "confidence": "verified-headless",
+      "evidence": {
+        "existence": ["hermes-runtime-headless"],
+        "shape": ["hermes-runtime-headless"],
+        "ordering": ["hermes-runtime-headless"]
+      }
+    },
+    {
+      "from": "tool-start",
+      "to": "approval-request",
+      "kind": "conditional",
+      "label": "dangerous command",
+      "confidence": "verified-headless",
+      "evidence": {
+        "existence": ["hermes-runtime-headless"],
+        "shape": ["hermes-runtime-headless"],
+        "ordering": ["hermes-runtime-headless"]
+      }
+    },
+    {
+      "from": "approval-request",
+      "to": "hook-pre-approval",
+      "kind": "async",
+      "confidence": "verified-headless",
+      "evidence": {
+        "existence": ["hermes-runtime-headless"],
+        "shape": ["hermes-runtime-headless"],
+        "ordering": ["hermes-runtime-headless"]
+      }
+    },
+    {
+      "from": "approval-request",
+      "to": "approval-respond",
+      "kind": "sequence",
+      "confidence": "verified-headless",
+      "evidence": {
+        "existence": ["hermes-runtime-headless"],
+        "shape": ["hermes-runtime-headless"],
+        "ordering": ["hermes-runtime-headless"]
+      }
+    },
+    {
+      "from": "approval-respond",
+      "to": "hook-post-approval",
+      "kind": "async",
+      "confidence": "verified-headless",
+      "evidence": {
+        "existence": ["hermes-runtime-headless"],
+        "shape": ["hermes-runtime-headless"],
+        "ordering": ["hermes-runtime-headless"]
+      }
+    },
+    {
+      "from": "approval-respond",
+      "to": "tool-complete",
+      "kind": "sequence",
+      "confidence": "verified-headless",
+      "evidence": {
+        "existence": ["hermes-runtime-headless"],
+        "shape": ["hermes-runtime-headless"],
+        "ordering": ["hermes-runtime-headless"]
+      }
+    },
+    {
+      "from": "tool-complete",
+      "to": "hook-post-tool",
+      "kind": "async",
+      "confidence": "verified-headless",
+      "evidence": {
+        "existence": ["hermes-runtime-headless"],
+        "shape": ["hermes-runtime-headless"],
+        "ordering": ["hermes-runtime-headless"]
+      }
+    },
+    {
+      "from": "tool-complete",
+      "to": "message-delta",
+      "kind": "conditional",
+      "label": "follow-up model call",
+      "confidence": "verified-headless",
+      "evidence": {
+        "existence": ["hermes-runtime-headless"],
+        "shape": ["hermes-runtime-headless"],
+        "ordering": ["hermes-runtime-headless"]
+      }
+    },
+    {
+      "from": "message-delta",
+      "to": "reasoning-available",
+      "kind": "conditional",
+      "confidence": "verified-headless",
+      "evidence": {
+        "existence": ["hermes-runtime-headless"],
+        "shape": ["hermes-runtime-headless"],
+        "ordering": ["hermes-runtime-headless"]
+      }
+    },
+    {
+      "from": "message-delta",
+      "to": "session-interrupt",
+      "kind": "conditional",
+      "label": "barge-in",
+      "confidence": "verified-headless",
+      "evidence": {
+        "existence": ["hermes-runtime-headless"],
+        "shape": ["hermes-runtime-headless"],
+        "ordering": ["hermes-runtime-headless"]
+      }
+    },
+    {
+      "from": "reasoning-available",
+      "to": "message-complete",
+      "kind": "sequence",
+      "confidence": "verified-headless",
+      "evidence": {
+        "existence": ["hermes-runtime-headless"],
+        "shape": ["hermes-runtime-headless"],
+        "ordering": ["hermes-runtime-headless"]
+      }
+    },
+    {
+      "from": "session-interrupt",
+      "to": "message-interrupted",
+      "kind": "sequence",
+      "confidence": "verified-headless",
+      "evidence": {
+        "existence": ["hermes-runtime-headless"],
+        "shape": ["hermes-runtime-headless"],
+        "ordering": ["hermes-runtime-headless"]
+      }
+    },
+    {
+      "from": "hook-pre-api",
+      "to": "hook-post-api",
+      "kind": "conditional",
+      "label": "provider finished",
+      "confidence": "verified-headless",
+      "evidence": {
+        "existence": ["hermes-runtime-headless"],
+        "shape": ["hermes-runtime-headless"],
+        "ordering": ["hermes-runtime-headless"]
+      }
+    },
+    {
+      "from": "hook-post-api",
+      "to": "hook-post-llm",
+      "kind": "conditional",
+      "confidence": "verified-headless",
+      "evidence": {
+        "existence": ["hermes-runtime-headless"],
+        "shape": ["hermes-runtime-headless"],
+        "ordering": ["hermes-runtime-headless"]
+      }
+    },
+    {
+      "from": "message-complete",
+      "to": "hook-session-end",
+      "kind": "async",
+      "label": "gateway teardown",
+      "confidence": "verified-headless",
+      "evidence": {
+        "existence": ["hermes-runtime-headless"],
+        "shape": ["hermes-runtime-headless"],
+        "ordering": ["hermes-runtime-headless"]
+      }
+    },
+    {
+      "from": "hook-session-end",
+      "to": "hook-finalize",
+      "kind": "sequence",
+      "confidence": "verified-headless",
+      "evidence": {
+        "existence": ["hermes-runtime-headless"],
+        "shape": ["hermes-runtime-headless"],
+        "ordering": ["hermes-runtime-headless"]
+      }
+    },
+    {
+      "from": "session-create",
+      "to": "session-resume",
+      "kind": "resume",
+      "label": "later process, same stored id",
+      "confidence": "verified-headless",
+      "evidence": {
+        "existence": ["hermes-runtime-headless"],
+        "shape": ["hermes-runtime-headless"],
+        "ordering": ["hermes-runtime-headless"]
+      }
+    }
+  ]
+}

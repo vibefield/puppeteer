@@ -1,0 +1,66 @@
+{
+  "surface": "kimi",
+  "surfaceVersion": "0.34.0",
+  "event": "plan.revision",
+  "channel": "wire",
+  "channels": ["wire"],
+  "transport": "jsonl-record",
+  "direction": "agent-local",
+  "payloadSchema": {
+    "type": "object",
+    "properties": {
+      "id": {
+        "type": "string"
+      },
+      "version": {
+        "type": "number"
+      },
+      "path": {
+        "type": "string"
+      },
+      "sha256": {
+        "type": "string"
+      },
+      "bytes": {
+        "type": "number"
+      }
+    },
+    "required": ["id", "version", "path", "sha256", "bytes"]
+  },
+  "recordSchema": {
+    "type": "object",
+    "properties": {
+      "type": {
+        "type": "string",
+        "enum": ["plan.revision"]
+      },
+      "id": {
+        "type": "string"
+      },
+      "version": {
+        "type": "number"
+      },
+      "path": {
+        "type": "string"
+      },
+      "sha256": {
+        "type": "string"
+      },
+      "bytes": {
+        "type": "number"
+      },
+      "time": {
+        "type": "number",
+        "minimum": 0
+      }
+    },
+    "required": ["type", "id", "version", "path", "sha256", "bytes", "time"]
+  },
+  "recordChannel": "wire",
+  "evidence": {
+    "existence": ["kimi-exact-release-source"],
+    "shape": ["kimi-exact-release-source"],
+    "carrier": ["kimi-exact-release-source"]
+  },
+  "confidence": "unverified"
+}

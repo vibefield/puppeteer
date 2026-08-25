@@ -1,0 +1,37 @@
+{
+  "surface": "grok",
+  "surfaceVersion": "1.0.0",
+  "event": "session/request_permission",
+  "channel": "acp",
+  "transport": "jsonrpc-request",
+  "payloadSchema": {
+    "type": "object",
+    "properties": {
+      "sessionId": {
+        "type": "string"
+      },
+      "toolCall": {
+        "type": "object"
+      },
+      "options": {
+        "type": "array"
+      }
+    },
+    "required": [
+      "sessionId",
+      "toolCall",
+      "options"
+    ]
+  },
+  "confidence": "unverified",
+  "notes": "ACP-standard request implemented by the installed client/agent stack but not exercised in the minimal artifact census.",
+  "direction": "agent-to-client",
+  "evidence": {
+    "existence": [
+      "grok-public-mirror-lead"
+    ],
+    "shape": [
+      "grok-public-mirror-lead"
+    ]
+  }
+}

@@ -1,0 +1,27 @@
+{
+  "probeKind": "archive-only",
+  "vendor": "antigravity",
+  "vendorVersion": "1.1.12",
+  "platform": "linux-x64",
+  "artifact": "$RELEASE_ARCHIVE_MEMBER",
+  "bytes": 201810416,
+  "sha256": "dfa88b922a2a16f4b9f28553a9625390c010bd011304b4dc892ce72a6d58b144",
+  "fileDescription": "ELF 64-bit LSB pie executable, x86-64, version 1 (SYSV), dynamically linked, interpreter /lib64/ld-linux-x86-64.so.2, for GNU/Linux 3.2.0, BuildID[md5/uuid]=87d33e3f935096e09bd4111c513cd2ca, stripped",
+  "staticStringCandidates": {
+    "disableAutoUpdateEnvironment": {
+      "value": "AGY_CLI_DISABLE_AUTO_UPDATE",
+      "present": true,
+      "status": "unverified-contract"
+    }
+  },
+  "probeHost": {
+    "platform": "darwin",
+    "arch": "arm64",
+    "osRelease": "25.5.0"
+  },
+  "execution": {
+    "status": "not-run",
+    "reason": "archive identity probe only; version/help execution requires a matching platform runner"
+  },
+  "probedAt": "2026-08-11T05:58:26.304Z"
+}

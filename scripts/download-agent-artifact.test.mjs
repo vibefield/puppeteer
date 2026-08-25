@@ -1,0 +1,249 @@
+import assert from 'node:assert/strict';
+import { existsSync, mkdirSync, mkdtempSync, readFileSync, writeFileSync } from 'node:fs';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
+import test from 'node:test';
+import { downloadAgentArtifact, resolveArtifactDownload } from './download-agent-artifact.mjs';
+
+const config = {
+  vendor: 'fake',
+  platforms: ['linux-x64'],
+  acquisition: {
+    allowedHosts: ['downloads.example.test'],
+    maxBytes: 100,
+    artifacts: {
+      'linux-x64': {
+        urls: ['https://downloads.example.test/${version}/fake'],
+        format: 'binary',
+        executableBasenames: ['fake'],
+      },
+    },
+  },
+};
+
+function crc32(bytes) {
+  let crc = 0xffffffff;
+  for (const byte of bytes) {
+    crc ^= byte;
+    for (let bit = 0; bit < 8; bit += 1) crc = (crc >>> 1) ^ (crc & 1 ? 0xedb88320 : 0);
+  }
+  return (crc ^ 0xffffffff) >>> 0;
+}
+
+function storedZip(entry, content) {
+  const name = Buffer.from(entry);
+  const bytes = Buffer.from(content);
+  const checksum = crc32(bytes);
+  const local = Buffer.alloc(30);
+  local.writeUInt32LE(0x04034b50, 0);
+  local.writeUInt16LE(20, 4);
+  local.writeUInt32LE(checksum, 14);
+  local.writeUInt32LE(bytes.length, 18);
+  local.writeUInt32LE(bytes.length, 22);
+  local.writeUInt16LE(name.length, 26);
+  const central = Buffer.alloc(46);
+  central.writeUInt32LE(0x02014b50, 0);
+  central.writeUInt16LE(20, 4);
+  central.writeUInt16LE(20, 6);
+  central.writeUInt32LE(checksum, 16);
+  central.writeUInt32LE(bytes.length, 20);
+  central.writeUInt32LE(bytes.length, 24);
+  central.writeUInt16LE(name.length, 28);
+  const centralOffset = local.length + name.length + bytes.length;
+  const end = Buffer.alloc(22);
+  end.writeUInt32LE(0x06054b50, 0);
+  end.writeUInt16LE(1, 8);
+  end.writeUInt16LE(1, 10);
+  end.writeUInt32LE(central.length + name.length, 12);
+  end.writeUInt32LE(centralOffset, 16);
+  return Buffer.concat([local, name, bytes, central, name, end]);
+}
+
+test('artifact URLs expand only the reviewed version field and host', () => {
+  assert.deepEqual(resolveArtifactDownload(config, 'linux-x64', '1.2.3').urls, [
+    'https://downloads.example.test/1.2.3/fake',
+  ]);
+});
+
+test('downloader writes bounded bytes but never runs them', async () => {
+  const repoRoot = mkdtempSync(join(tmpdir(), 'chopsticks-download-'));
+  const upstream = join(repoRoot, 'packages', 'surface', 'vendors', 'fake');
+  mkdirSync(upstream, { recursive: true });
+  writeFileSync(join(upstream, 'upstream.json'), JSON.stringify(config));
+  let calls = 0;
+  await downloadAgentArtifact({
+    repoRoot,
+    vendor: 'fake',
+    version: '1.2.3',
+    platform: 'linux-x64',
+    output: 'artifacts/fake',
+    fetchImpl: async (url) => {
+      calls += 1;
+      return {
+        ok: true,
+        status: 200,
+        url,
+        headers: new Headers({ 'content-length': '5' }),
+        arrayBuffer: async () => Buffer.from('bytes'),
+      };
+    },
+  });
+  assert.equal(calls, 1);
+  assert.equal(readFileSync(join(repoRoot, 'artifacts', 'fake'), 'utf8'), 'bytes');
+});
+
+test('downloader extracts one reviewed executable from a ZIP release', async () => {
+  const repoRoot = mkdtempSync(join(tmpdir(), 'chopsticks-download-zip-'));
+  const upstream = join(repoRoot, 'packages', 'surface', 'vendors', 'fake');
+  const zipConfig = structuredClone(config);
+  zipConfig.acquisition.maxBytes = 1_000;
+  zipConfig.acquisition.artifacts['linux-x64'].format = 'zip';
+  mkdirSync(upstream, { recursive: true });
+  writeFileSync(join(upstream, 'upstream.json'), JSON.stringify(zipConfig));
+  const archive = storedZip('release/fake', 'bytes');
+
+  await downloadAgentArtifact({
+    repoRoot,
+    vendor: 'fake',
+    version: '1.2.3',
+    platform: 'linux-x64',
+    output: 'artifacts/fake',
+    fetchImpl: async (url) => ({
+      ok: true,
+      status: 200,
+      url,
+      headers: new Headers({ 'content-length': String(archive.length) }),
+      arrayBuffer: async () => archive,
+    }),
+  });
+
+  assert.equal(readFileSync(join(repoRoot, 'artifacts', 'fake'), 'utf8'), 'bytes');
+});
+
+test('ZIP extraction rejects unsafe archive paths', async () => {
+  const repoRoot = mkdtempSync(join(tmpdir(), 'chopsticks-download-zip-unsafe-'));
+  const upstream = join(repoRoot, 'packages', 'surface', 'vendors', 'fake');
+  const zipConfig = structuredClone(config);
+  zipConfig.acquisition.maxBytes = 1_000;
+  zipConfig.acquisition.artifacts['linux-x64'].format = 'zip';
+  mkdirSync(upstream, { recursive: true });
+  writeFileSync(join(upstream, 'upstream.json'), JSON.stringify(zipConfig));
+  const archive = storedZip('../fake', 'bytes');
+
+  await assert.rejects(
+    downloadAgentArtifact({
+      repoRoot,
+      vendor: 'fake',
+      version: '1.2.3',
+      platform: 'linux-x64',
+      output: 'artifacts/fake',
+      fetchImpl: async (url) => ({
+        ok: true,
+        status: 200,
+        url,
+        headers: new Headers({ 'content-length': String(archive.length) }),
+        arrayBuffer: async () => archive,
+      }),
+    }),
+    /archive contains an unsafe path/,
+  );
+});
+
+test('ZIP extraction rejects option-like archive entries', async () => {
+  const repoRoot = mkdtempSync(join(tmpdir(), 'chopsticks-download-zip-option-'));
+  const upstream = join(repoRoot, 'packages', 'surface', 'vendors', 'fake');
+  const zipConfig = structuredClone(config);
+  zipConfig.acquisition.maxBytes = 1_000;
+  zipConfig.acquisition.artifacts['linux-x64'].format = 'zip';
+  mkdirSync(upstream, { recursive: true });
+  writeFileSync(join(upstream, 'upstream.json'), JSON.stringify(zipConfig));
+  const archive = storedZip('-x/fake', 'bytes');
+
+  await assert.rejects(
+    downloadAgentArtifact({
+      repoRoot,
+      vendor: 'fake',
+      version: '1.2.3',
+      platform: 'linux-x64',
+      output: 'artifacts/fake',
+      fetchImpl: async (url) => ({
+        ok: true,
+        status: 200,
+        url,
+        headers: new Headers({ 'content-length': String(archive.length) }),
+        arrayBuffer: async () => archive,
+      }),
+    }),
+    /archive contains an unsafe path/,
+  );
+});
+
+test('downloader cancels an oversized response stream before buffering the artifact', async () => {
+  const repoRoot = mkdtempSync(join(tmpdir(), 'chopsticks-download-limit-'));
+  const upstream = join(repoRoot, 'packages', 'surface', 'vendors', 'fake');
+  mkdirSync(upstream, { recursive: true });
+  writeFileSync(join(upstream, 'upstream.json'), JSON.stringify(config));
+  let chunk = 0;
+  let cancelled = false;
+  const body = new ReadableStream({
+    pull(controller) {
+      controller.enqueue(new Uint8Array(60));
+      chunk += 1;
+    },
+    cancel() {
+      cancelled = true;
+    },
+  });
+
+  await assert.rejects(
+    downloadAgentArtifact({
+      repoRoot,
+      vendor: 'fake',
+      version: '1.2.3',
+      platform: 'linux-x64',
+      output: 'artifacts/fake',
+      fetchImpl: async (url) => ({
+        ok: true,
+        status: 200,
+        url,
+        headers: new Headers(),
+        body,
+        arrayBuffer: async () => {
+          throw new Error('streaming responses must not be buffered wholesale');
+        },
+      }),
+    }),
+    /artifact download failed:[\s\S]*exceeds 100 bytes/,
+  );
+  assert.equal(cancelled, true);
+  assert.equal(existsSync(join(repoRoot, 'artifacts', 'fake')), false);
+});
+
+test('downloader validates every redirect before contacting the next origin', async () => {
+  const repoRoot = mkdtempSync(join(tmpdir(), 'chopsticks-download-redirect-'));
+  const upstream = join(repoRoot, 'packages', 'surface', 'vendors', 'fake');
+  mkdirSync(upstream, { recursive: true });
+  writeFileSync(join(upstream, 'upstream.json'), JSON.stringify(config));
+  let calls = 0;
+
+  await assert.rejects(
+    downloadAgentArtifact({
+      repoRoot,
+      vendor: 'fake',
+      version: '1.2.3',
+      platform: 'linux-x64',
+      output: 'artifacts/fake',
+      fetchImpl: async () => {
+        calls += 1;
+        return {
+          ok: false,
+          status: 302,
+          url: '',
+          headers: new Headers({ location: 'https://unreviewed.example.test/fake' }),
+        };
+      },
+    }),
+    /redirected to non-allowlisted origin/,
+  );
+  assert.equal(calls, 1);
+});

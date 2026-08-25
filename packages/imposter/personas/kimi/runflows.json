@@ -1,0 +1,84 @@
+{
+  "version": 1,
+  "flows": [
+    {
+      "id": "happy-turn",
+      "intent": "turn.basic",
+      "scenario": "happy-turn",
+      "title": "Basic Kimi wire turn",
+      "summary": "Prompt, loop content, step completion, and durable turn outcome.",
+      "kind": "typical",
+      "danger": "safe",
+      "tags": ["wire", "turn"],
+      "defaultStimulus": { "text": "hello" },
+      "defaultSpeed": 4
+    },
+    {
+      "id": "tool-success",
+      "intent": "turn.tool.success",
+      "scenario": "tool-success",
+      "title": "Tool success",
+      "summary": "Correlated tool.call and successful tool.result records.",
+      "kind": "typical",
+      "danger": "safe",
+      "tags": ["wire", "tool"],
+      "defaultStimulus": { "text": "run a tool" },
+      "defaultSpeed": 4
+    },
+    {
+      "id": "tool-failure",
+      "intent": "turn.tool.failure",
+      "scenario": "tool-failure",
+      "title": "Tool failure",
+      "summary": "A correlated tool.result carrying native isError true.",
+      "kind": "vendor",
+      "danger": "safe",
+      "tags": ["wire", "tool", "failure"],
+      "defaultSpeed": 4
+    },
+    {
+      "id": "duplicate-out-of-order",
+      "intent": "fault.ordering",
+      "scenario": "duplicate-out-of-order",
+      "title": "Duplicate and reordered tool result",
+      "summary": "A result arrives before its call and repeats afterward.",
+      "kind": "adversarial",
+      "danger": "disruptive",
+      "tags": ["ordering", "duplicate"],
+      "defaultSpeed": 4
+    },
+    {
+      "id": "unknown-record",
+      "intent": "fault.unknown-record",
+      "scenario": "unknown-record",
+      "title": "Unknown future wire record",
+      "summary": "Exercises lossless retention of an unmodeled record type.",
+      "kind": "adversarial",
+      "danger": "safe",
+      "tags": ["unknown", "forward-compatibility"],
+      "defaultSpeed": 4
+    },
+    {
+      "id": "late-after-end",
+      "intent": "fault.late-event",
+      "scenario": "late-after-end",
+      "title": "Late content after turn end",
+      "summary": "Emits valid content after the durable terminal record.",
+      "kind": "adversarial",
+      "danger": "disruptive",
+      "tags": ["late", "ordering"],
+      "defaultSpeed": 4
+    },
+    {
+      "id": "compaction-lifecycle",
+      "intent": "session.compaction",
+      "scenario": "compaction-lifecycle",
+      "title": "Source-backed compaction lifecycle",
+      "summary": "Unverified begin, apply, and complete records from the exact release source.",
+      "kind": "vendor",
+      "danger": "safe",
+      "tags": ["compaction", "source-only"],
+      "defaultSpeed": 4
+    }
+  ]
+}

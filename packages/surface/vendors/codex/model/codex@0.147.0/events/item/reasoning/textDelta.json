@@ -1,0 +1,70 @@
+{
+  "surface": "codex",
+  "surfaceVersion": "0.147.0",
+  "event": "item/reasoning/textDelta",
+  "channel": "appserver",
+  "transport": "jsonrpc-notification",
+  "direction": "agent-to-client",
+  "payloadSchema": {
+    "type": "object",
+    "properties": {
+      "contentIndex": {
+        "type": "number"
+      },
+      "delta": {
+        "type": "string"
+      },
+      "itemId": {
+        "type": "string"
+      },
+      "threadId": {
+        "type": "string"
+      },
+      "turnId": {
+        "type": "string"
+      }
+    },
+    "required": [
+      "contentIndex",
+      "delta",
+      "itemId",
+      "threadId",
+      "turnId"
+    ]
+  },
+  "recordSchema": {
+    "type": "object",
+    "properties": {
+      "method": {
+        "type": "string",
+        "enum": [
+          "item/reasoning/textDelta"
+        ]
+      },
+      "params": {
+        "type": "object"
+      },
+      "emittedAtMs": {
+        "type": "number",
+        "minimum": 1000000000000
+      }
+    },
+    "required": [
+      "method",
+      "params",
+      "emittedAtMs"
+    ]
+  },
+  "evidence": {
+    "existence": [
+      "codex-generated-schema"
+    ],
+    "shape": [
+      "codex-generated-schema"
+    ],
+    "carrier": [
+      "codex-runtime-headless"
+    ]
+  },
+  "confidence": "unverified"
+}

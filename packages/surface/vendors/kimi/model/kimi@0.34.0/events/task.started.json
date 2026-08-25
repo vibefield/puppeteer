@@ -1,0 +1,287 @@
+{
+  "surface": "kimi",
+  "surfaceVersion": "0.34.0",
+  "event": "task.started",
+  "channel": "wire",
+  "channels": ["wire"],
+  "transport": "jsonl-record",
+  "direction": "agent-local",
+  "payloadSchema": {
+    "type": "object",
+    "properties": {
+      "info": {
+        "type": "object",
+        "properties": {
+          "taskId": {
+            "type": "string"
+          },
+          "kind": {
+            "type": "string",
+            "enum": ["process", "question", "agent"]
+          },
+          "description": {
+            "type": "string"
+          },
+          "status": {
+            "type": "string",
+            "enum": ["running", "completed", "failed", "timed_out", "killed", "lost"]
+          },
+          "detached": {
+            "type": "boolean"
+          },
+          "startedAt": {
+            "type": "number"
+          },
+          "endedAt": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "stopReason": {
+            "type": "string"
+          },
+          "terminalNotificationSuppressed": {
+            "type": "boolean"
+          },
+          "timeoutMs": {
+            "type": "number"
+          },
+          "command": {
+            "type": "string"
+          },
+          "pid": {
+            "type": "number"
+          },
+          "exitCode": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "questionCount": {
+            "type": "number"
+          },
+          "toolCallId": {
+            "type": "string"
+          },
+          "agentId": {
+            "type": "string"
+          },
+          "subagentType": {
+            "type": "string"
+          },
+          "model": {
+            "type": "string"
+          },
+          "thinkingEffort": {
+            "type": "string"
+          }
+        },
+        "required": ["taskId", "kind", "description", "status", "startedAt", "endedAt"]
+      }
+    },
+    "required": ["info"]
+  },
+  "recordSchema": {
+    "type": "object",
+    "properties": {
+      "type": {
+        "type": "string",
+        "enum": ["task.started"]
+      },
+      "info": {
+        "type": "object",
+        "properties": {
+          "taskId": {
+            "type": "string"
+          },
+          "kind": {
+            "type": "string",
+            "enum": ["process", "question", "agent"]
+          },
+          "description": {
+            "type": "string"
+          },
+          "status": {
+            "type": "string",
+            "enum": ["running", "completed", "failed", "timed_out", "killed", "lost"]
+          },
+          "detached": {
+            "type": "boolean"
+          },
+          "startedAt": {
+            "type": "number"
+          },
+          "endedAt": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "stopReason": {
+            "type": "string"
+          },
+          "terminalNotificationSuppressed": {
+            "type": "boolean"
+          },
+          "timeoutMs": {
+            "type": "number"
+          },
+          "command": {
+            "type": "string"
+          },
+          "pid": {
+            "type": "number"
+          },
+          "exitCode": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "questionCount": {
+            "type": "number"
+          },
+          "toolCallId": {
+            "type": "string"
+          },
+          "agentId": {
+            "type": "string"
+          },
+          "subagentType": {
+            "type": "string"
+          },
+          "model": {
+            "type": "string"
+          },
+          "thinkingEffort": {
+            "type": "string"
+          }
+        },
+        "required": ["taskId", "kind", "description", "status", "startedAt", "endedAt"]
+      },
+      "time": {
+        "type": "number",
+        "minimum": 0
+      }
+    },
+    "required": ["type", "info", "time"]
+  },
+  "recordChannel": "wire",
+  "evidence": {
+    "existence": ["kimi-runtime-headless"],
+    "shape": ["kimi-runtime-headless", "kimi-exact-release-source"],
+    "carrier": ["kimi-runtime-headless", "kimi-exact-release-source"]
+  },
+  "confidence": "verified-headless",
+  "variants": [
+    {
+      "match": {
+        "info.kind": "process"
+      },
+      "evidence": {
+        "existence": ["kimi-runtime-headless"],
+        "shape": ["kimi-runtime-headless", "kimi-exact-release-source"]
+      },
+      "confidence": "verified-headless"
+    },
+    {
+      "match": {
+        "info.kind": "question"
+      },
+      "evidence": {
+        "existence": ["kimi-exact-release-source"],
+        "shape": ["kimi-exact-release-source"]
+      },
+      "confidence": "unverified"
+    },
+    {
+      "match": {
+        "info.kind": "agent"
+      },
+      "evidence": {
+        "existence": ["kimi-exact-release-source"],
+        "shape": ["kimi-exact-release-source"]
+      },
+      "confidence": "unverified"
+    },
+    {
+      "match": {
+        "info.status": "running"
+      },
+      "evidence": {
+        "existence": ["kimi-runtime-headless"],
+        "shape": ["kimi-runtime-headless", "kimi-exact-release-source"]
+      },
+      "confidence": "verified-headless"
+    },
+    {
+      "match": {
+        "info.status": "completed"
+      },
+      "evidence": {
+        "existence": ["kimi-exact-release-source"],
+        "shape": ["kimi-exact-release-source"]
+      },
+      "confidence": "unverified"
+    },
+    {
+      "match": {
+        "info.status": "failed"
+      },
+      "evidence": {
+        "existence": ["kimi-exact-release-source"],
+        "shape": ["kimi-exact-release-source"]
+      },
+      "confidence": "unverified"
+    },
+    {
+      "match": {
+        "info.status": "timed_out"
+      },
+      "evidence": {
+        "existence": ["kimi-exact-release-source"],
+        "shape": ["kimi-exact-release-source"]
+      },
+      "confidence": "unverified"
+    },
+    {
+      "match": {
+        "info.status": "killed"
+      },
+      "evidence": {
+        "existence": ["kimi-exact-release-source"],
+        "shape": ["kimi-exact-release-source"]
+      },
+      "confidence": "unverified"
+    },
+    {
+      "match": {
+        "info.status": "lost"
+      },
+      "evidence": {
+        "existence": ["kimi-exact-release-source"],
+        "shape": ["kimi-exact-release-source"]
+      },
+      "confidence": "unverified"
+    }
+  ],
+  "fixture": "captures/kimi@0.34.0/background-task/wire.jsonl"
+}

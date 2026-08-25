@@ -1,0 +1,27 @@
+{
+  "probeKind": "archive-only",
+  "vendor": "antigravity",
+  "vendorVersion": "1.1.12",
+  "platform": "windows-x64",
+  "artifact": "$RELEASE_ARCHIVE_MEMBER",
+  "bytes": 178518680,
+  "sha256": "fba49b64595e1484449a951442c0dfcdb488229ff47299d82381c31f10fa99f4",
+  "fileDescription": "PE32+ executable (console) x86-64, for MS Windows",
+  "staticStringCandidates": {
+    "disableAutoUpdateEnvironment": {
+      "value": "AGY_CLI_DISABLE_AUTO_UPDATE",
+      "present": true,
+      "status": "unverified-contract"
+    }
+  },
+  "probeHost": {
+    "platform": "darwin",
+    "arch": "arm64",
+    "osRelease": "25.5.0"
+  },
+  "execution": {
+    "status": "not-run",
+    "reason": "archive identity probe only; version/help execution requires a matching platform runner"
+  },
+  "probedAt": "2026-08-11T05:58:27.100Z"
+}

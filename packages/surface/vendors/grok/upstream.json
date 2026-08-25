@@ -1,0 +1,70 @@
+{
+  "$schema": "../../upstream.schema.json",
+  "schemaVersion": 1,
+  "vendor": "grok",
+  "repository": "https://github.com/xai-org/grok-build",
+  "sourceRelation": {
+    "strategy": "source-revision-file",
+    "path": "SOURCE_REV"
+  },
+  "detectors": [
+    {
+      "id": "vendor-stable",
+      "channel": "stable",
+      "kind": "text",
+      "url": "https://x.ai/cli/stable",
+      "versionPattern": "(\\d+\\.\\d+\\.\\d+(?:[-.][0-9A-Za-z]+)*)",
+      "authoritative": true
+    },
+    {
+      "id": "vendor-alpha",
+      "channel": "preview",
+      "kind": "text",
+      "url": "https://x.ai/cli/alpha",
+      "versionPattern": "(\\d+\\.\\d+\\.\\d+(?:[-.][0-9A-Za-z]+)*)",
+      "authoritative": false
+    }
+  ],
+  "platforms": ["darwin-arm64", "darwin-x64", "linux-x64", "windows-x64"],
+  "acquisition": {
+    "strategy": "https-template",
+    "allowedHosts": ["x.ai", "storage.googleapis.com"],
+    "maxBytes": 536870912,
+    "artifacts": {
+      "darwin-arm64": {
+        "urls": [
+          "https://x.ai/cli/grok-${version}-macos-aarch64",
+          "https://storage.googleapis.com/grok-build-public-artifacts/cli/grok-${version}-macos-aarch64"
+        ],
+        "format": "binary",
+        "executableBasenames": ["grok"]
+      },
+      "darwin-x64": {
+        "urls": [
+          "https://x.ai/cli/grok-${version}-macos-x86_64",
+          "https://storage.googleapis.com/grok-build-public-artifacts/cli/grok-${version}-macos-x86_64"
+        ],
+        "format": "binary",
+        "executableBasenames": ["grok"]
+      },
+      "linux-x64": {
+        "urls": [
+          "https://x.ai/cli/grok-${version}-linux-x86_64",
+          "https://storage.googleapis.com/grok-build-public-artifacts/cli/grok-${version}-linux-x86_64"
+        ],
+        "format": "binary",
+        "executableBasenames": ["grok"]
+      },
+      "windows-x64": {
+        "urls": [
+          "https://x.ai/cli/grok-${version}-windows-x86_64.exe",
+          "https://storage.googleapis.com/grok-build-public-artifacts/cli/grok-${version}-windows-x86_64.exe"
+        ],
+        "format": "binary",
+        "executableBasenames": ["grok.exe"]
+      }
+    }
+  },
+  "analysis": ["binary-flags", "acp-handshake", "acp-events", "controlled-census"],
+  "debounce": { "polls": 2, "minutes": 30 }
+}

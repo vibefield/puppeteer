@@ -1,0 +1,21 @@
+{
+  "vendor": "opencode",
+  "asm": {
+    "package": "@vibecook/chopsticks-surface",
+    "path": "vendors/opencode/model/opencode@1.18.16"
+  },
+  "shimNames": ["opencode"],
+  "envelope": {},
+  "bindings": {
+    "$projectId": "imposter-project",
+    "$sessionSlug": "$uuid:session-slug",
+    "$sessionModel": { "id": "opencode-imposter", "providerID": "imposter" },
+    "$sessionPermission": [{ "permission": "*", "pattern": "*", "action": "allow" }],
+    "$sessionCreatedAt": "$nowMs",
+    "$sessionUpdatedAt": "$nowMs",
+    "$promptCreatedAt": "$nowMs",
+    "$promptAgent": "build",
+    "$promptModel": { "providerID": "imposter", "modelID": "opencode-imposter" }
+  },
+  "boot": [{ "op": "session.start" }, { "op": "session.ready" }]
+}

@@ -1,0 +1,246 @@
+{
+  "surface": "opencode",
+  "surfaceVersion": "1.18.16",
+  "event": "http/v2.pty.connectToken",
+  "channel": "http",
+  "channels": [
+    "http"
+  ],
+  "transport": "http",
+  "direction": "client-to-agent",
+  "trigger": "Create PTY WebSocket token — Create a short-lived single-use ticket for opening a PTY WebSocket connection.",
+  "payloadSchema": {
+    "type": "object",
+    "properties": {
+      "method": {
+        "type": "string"
+      },
+      "route": {
+        "type": "string"
+      },
+      "params": {
+        "type": "object",
+        "properties": {
+          "ptyID": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "ptyID"
+        ]
+      },
+      "query": {
+        "type": "object",
+        "properties": {
+          "location": {
+            "type": "object",
+            "properties": {
+              "directory": {
+                "type": "string"
+              },
+              "workspace": {
+                "type": "string"
+              }
+            }
+          }
+        }
+      }
+    },
+    "required": [
+      "method",
+      "route",
+      "params"
+    ]
+  },
+  "resultSchema": {
+    "type": "object",
+    "properties": {
+      "method": {
+        "type": "string",
+        "enum": [
+          "POST"
+        ]
+      },
+      "route": {
+        "type": "string",
+        "enum": [
+          "/api/pty/:ptyID/connect-token"
+        ]
+      },
+      "status": {
+        "type": "integer",
+        "minimum": 200,
+        "maximum": 299
+      },
+      "params": {
+        "type": "object",
+        "properties": {
+          "ptyID": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "ptyID"
+        ]
+      },
+      "query": {
+        "type": "object",
+        "properties": {
+          "location": {
+            "type": "object",
+            "properties": {
+              "directory": {
+                "type": "string"
+              },
+              "workspace": {
+                "type": "string"
+              }
+            }
+          }
+        }
+      },
+      "body": {
+        "type": "object",
+        "properties": {
+          "data": {
+            "type": "object",
+            "properties": {
+              "expires_in": {
+                "type": "integer",
+                "exclusiveMinimum": 0
+              },
+              "ticket": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "expires_in",
+              "ticket"
+            ]
+          },
+          "location": {
+            "type": "object",
+            "properties": {
+              "directory": {
+                "type": "string"
+              },
+              "project": {
+                "type": "object",
+                "properties": {
+                  "directory": {
+                    "type": "string"
+                  },
+                  "id": {
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "directory",
+                  "id"
+                ]
+              },
+              "workspaceID": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "directory",
+              "project"
+            ]
+          }
+        },
+        "required": [
+          "data",
+          "location"
+        ]
+      }
+    },
+    "required": [
+      "method",
+      "route",
+      "status",
+      "params",
+      "body"
+    ]
+  },
+  "recordSchema": {
+    "type": "object",
+    "properties": {
+      "direction": {
+        "type": "string",
+        "enum": [
+          "client-to-agent"
+        ]
+      },
+      "request": {
+        "type": "object",
+        "properties": {
+          "method": {
+            "type": "string",
+            "enum": [
+              "POST"
+            ]
+          },
+          "route": {
+            "type": "string",
+            "enum": [
+              "/api/pty/:ptyID/connect-token"
+            ]
+          },
+          "params": {
+            "type": "object",
+            "properties": {
+              "ptyID": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "ptyID"
+            ]
+          },
+          "query": {
+            "type": "object",
+            "properties": {
+              "location": {
+                "type": "object",
+                "properties": {
+                  "directory": {
+                    "type": "string"
+                  },
+                  "workspace": {
+                    "type": "string"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "required": [
+          "method",
+          "route",
+          "params"
+        ]
+      }
+    },
+    "required": [
+      "direction",
+      "request"
+    ]
+  },
+  "evidence": {
+    "existence": [
+      "opencode-generated-openapi"
+    ],
+    "shape": [
+      "opencode-generated-openapi"
+    ],
+    "result": [
+      "opencode-generated-openapi"
+    ],
+    "carrier": [
+      "opencode-generated-openapi"
+    ]
+  },
+  "confidence": "unverified",
+  "notes": "OpenAPI operationId v2.pty.connectToken; POST /api/pty/{ptyID}/connect-token."
+}

@@ -1,0 +1,30 @@
+{
+  "surface": "kimi",
+  "surfaceVersion": "0.34.0",
+  "event": "session_index.entry",
+  "channel": "session-index",
+  "channels": ["session-index"],
+  "transport": "jsonl-record",
+  "direction": "agent-local",
+  "payloadSchema": {
+    "type": "object",
+    "properties": {
+      "sessionId": {
+        "type": "string"
+      },
+      "sessionDir": {
+        "type": "string"
+      },
+      "workDir": {
+        "type": "string"
+      }
+    },
+    "required": ["sessionId", "sessionDir", "workDir"]
+  },
+  "evidence": {
+    "existence": ["kimi-runtime-headless"],
+    "shape": ["kimi-runtime-headless"]
+  },
+  "confidence": "verified-headless",
+  "fixture": "captures/kimi@0.34.0/basic-turn/session-index.jsonl"
+}

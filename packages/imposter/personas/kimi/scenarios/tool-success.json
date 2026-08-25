@@ -1,0 +1,57 @@
+{
+  "name": "tool-success",
+  "steps": [
+    {
+      "at": 0,
+      "do": {
+        "emit": {
+          "channel": "wire",
+          "event": "turn.prompt",
+          "with": { "input": [{ "type": "text", "text": "$stimulus.text" }], "origin": { "kind": "user" } }
+        }
+      }
+    },
+    {
+      "at": 20,
+      "do": {
+        "emit": {
+          "channel": "wire",
+          "event": "context.append_loop_event",
+          "with": {
+            "event": {
+              "type": "tool.call",
+              "uuid": "$uuid:tool-event",
+              "turnId": "0",
+              "step": 1,
+              "stepUuid": "$uuid:step",
+              "toolCallId": "call-imposter",
+              "name": "Bash",
+              "args": { "command": "printf ok" }
+            }
+          }
+        }
+      }
+    },
+    {
+      "at": 40,
+      "do": {
+        "emit": {
+          "channel": "wire",
+          "event": "context.append_loop_event",
+          "with": {
+            "event": {
+              "type": "tool.result",
+              "parentUuid": "$uuid:tool-event",
+              "toolCallId": "call-imposter",
+              "result": { "output": "ok" }
+            }
+          }
+        }
+      }
+    },
+    {
+      "at": 60,
+      "do": { "emit": { "channel": "wire", "event": "turn.ended", "with": { "turnId": 0, "reason": "completed" } } }
+    }
+  ]
+}

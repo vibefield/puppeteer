@@ -1,0 +1,357 @@
+{
+  "session.start": [
+    {
+      "channel": "native-log",
+      "event": "metadata",
+      "with": { "protocol_version": "1.5", "created_at": "$sessionCreatedAt" }
+    },
+    {
+      "channel": "native-log",
+      "event": "profile.bind",
+      "with": {
+        "modelAlias": "kimi-imposter",
+        "profileName": "agent",
+        "thinkingEffort": "on",
+        "systemPrompt": "Kimi Imposter system prompt",
+        "environmentDisclosure": { "cwd": "$cwd", "date": { "disclosed": false } },
+        "agentsMdPaths": [],
+        "activeToolNames": ["Bash"],
+        "disallowedTools": []
+      }
+    },
+    {
+      "channel": "native-log",
+      "event": "permission.set_mode",
+      "with": { "mode": "manual" }
+    },
+    {
+      "channel": "hook",
+      "event": "SessionStart",
+      "with": {
+        "hook_event_name": "SessionStart",
+        "session_id": "$sessionId",
+        "cwd": "$cwd",
+        "client_type": "kimi_code_cli",
+        "source": "startup",
+        "model": "kimi-imposter",
+        "profile": "agent"
+      }
+    }
+  ],
+  "session.ready": [
+    {
+      "channel": "native-state",
+      "event": "state.json",
+      "with": {
+        "id": "$sessionId",
+        "version": 2,
+        "cwd": "$cwd",
+        "createdAt": "$sessionCreatedAt",
+        "updatedAt": "$nowMs",
+        "archived": false,
+        "agents": { "main": { "homedir": "$cwd", "type": "main" } },
+        "custom": {}
+      }
+    },
+    {
+      "channel": "native-index",
+      "event": "session_index.entry",
+      "with": { "sessionId": "$sessionId", "sessionDir": "$nativeSessionDir", "workDir": "$cwd" }
+    }
+  ],
+  "session.end": [
+    {
+      "channel": "hook",
+      "event": "SessionEnd",
+      "with": {
+        "hook_event_name": "SessionEnd",
+        "session_id": "$sessionId",
+        "cwd": "$cwd",
+        "client_type": "kimi_code_cli",
+        "reason": "$op.reason"
+      }
+    },
+    {
+      "channel": "native-state",
+      "event": "state.json",
+      "with": {
+        "id": "$sessionId",
+        "version": 2,
+        "cwd": "$cwd",
+        "createdAt": "$sessionCreatedAt",
+        "updatedAt": "$nowMs",
+        "archived": false,
+        "agents": { "main": { "homedir": "$cwd", "type": "main" } },
+        "custom": {},
+        "lastTurnReason": "completed"
+      }
+    }
+  ],
+  "turn.start": [
+    {
+      "channel": "native-log",
+      "event": "turn.prompt",
+      "with": { "input": [{ "type": "text", "text": "$op.text" }], "origin": { "kind": "user" } }
+    },
+    {
+      "channel": "native-log",
+      "event": "context.append_message",
+      "with": {
+        "message": {
+          "role": "user",
+          "content": [{ "type": "text", "text": "$op.text" }],
+          "toolCalls": [],
+          "origin": { "kind": "user" },
+          "id": "$uuid:user-message"
+        }
+      }
+    },
+    {
+      "channel": "native-log",
+      "event": "context.append_message",
+      "with": {
+        "message": {
+          "role": "user",
+          "content": [{ "type": "text", "text": "Permission mode: manual" }],
+          "toolCalls": [],
+          "origin": { "kind": "injection", "variant": "permission_mode" }
+        }
+      }
+    },
+    {
+      "channel": "native-log",
+      "event": "context.append_loop_event",
+      "with": {
+        "event": {
+          "type": "step.begin",
+          "uuid": "$uuid:step-one",
+          "turnId": "$string:$turnIndex",
+          "step": 1
+        }
+      }
+    },
+    {
+      "channel": "native-log",
+      "event": "llm.tools_snapshot",
+      "with": { "hash": "imposter-tools", "tools": [] }
+    },
+    {
+      "channel": "native-log",
+      "event": "llm.request",
+      "with": {
+        "kind": "loop",
+        "provider": "imposter",
+        "model": "kimi-imposter",
+        "modelAlias": "kimi-imposter",
+        "thinkingEffort": "on",
+        "thinkingKeep": "all",
+        "maxTokens": 32768,
+        "toolSelect": false,
+        "systemPromptHash": "imposter-system",
+        "toolsHash": "imposter-tools",
+        "messageCount": 2,
+        "turnStep": "$turnStep"
+      }
+    },
+    {
+      "channel": "native-log",
+      "event": "usage.record",
+      "with": {
+        "model": "kimi-imposter",
+        "usage": { "inputOther": 12, "output": 4, "inputCacheRead": 0, "inputCacheCreation": 0 },
+        "usageScope": "turn"
+      }
+    },
+    {
+      "channel": "hook",
+      "event": "UserPromptSubmit",
+      "with": {
+        "hook_event_name": "UserPromptSubmit",
+        "session_id": "$sessionId",
+        "cwd": "$cwd",
+        "client_type": "kimi_code_cli",
+        "prompt": [{ "type": "text", "text": "$op.text" }],
+        "is_steer": false
+      }
+    },
+    {
+      "channel": "hook",
+      "event": "TurnStarted",
+      "with": {
+        "hook_event_name": "TurnStarted",
+        "session_id": "$sessionId",
+        "cwd": "$cwd",
+        "client_type": "kimi_code_cli",
+        "turn_id": "$turnIndex",
+        "origin_kind": "user",
+        "prompt": "$op.text"
+      }
+    }
+  ],
+  "assistant.delta": [
+    {
+      "channel": "native-log",
+      "event": "context.append_loop_event",
+      "with": {
+        "event": {
+          "type": "content.part",
+          "uuid": "$uuid:content",
+          "turnId": "$string:$turnIndex",
+          "step": 1,
+          "stepUuid": "$uuid:step-one",
+          "part": { "type": "text", "text": "$op.text" }
+        }
+      }
+    }
+  ],
+  "tool.start": [
+    {
+      "channel": "native-log",
+      "event": "context.append_loop_event",
+      "with": {
+        "event": {
+          "type": "tool.call",
+          "uuid": "$uuid:tool-event",
+          "turnId": "$string:$turnIndex",
+          "step": 1,
+          "stepUuid": "$uuid:step-one",
+          "toolCallId": "$op.toolId",
+          "name": "$op.tool",
+          "args": "$op.input"
+        }
+      }
+    },
+    {
+      "channel": "hook",
+      "event": "PreToolUse",
+      "with": {
+        "hook_event_name": "PreToolUse",
+        "session_id": "$sessionId",
+        "cwd": "$cwd",
+        "client_type": "kimi_code_cli",
+        "tool_name": "$op.tool",
+        "tool_input": "$op.input",
+        "tool_call_id": "$op.toolId"
+      }
+    }
+  ],
+  "permission.ask": [
+    {
+      "channel": "native-log",
+      "event": "interaction.request",
+      "with": {
+        "id": "$uuid:interaction",
+        "kind": "approval",
+        "toolCallId": "$op.toolId",
+        "agentId": "main",
+        "request": { "tool": "$op.tool", "input": "$op.input" }
+      }
+    },
+    {
+      "channel": "hook",
+      "event": "PermissionRequest",
+      "with": {
+        "hook_event_name": "PermissionRequest",
+        "session_id": "$sessionId",
+        "cwd": "$cwd",
+        "client_type": "kimi_code_cli",
+        "tool_name": "$op.tool",
+        "tool_input": "$op.input",
+        "tool_call_id": "$op.toolId"
+      }
+    }
+  ],
+  "tool.end": [
+    {
+      "channel": "native-log",
+      "event": "context.append_loop_event",
+      "with": {
+        "event": {
+          "type": "tool.result",
+          "parentUuid": "$uuid:tool-event",
+          "toolCallId": "$op.toolId",
+          "result": { "output": "$op.output" }
+        }
+      }
+    },
+    {
+      "channel": "hook",
+      "event": "PostToolUse",
+      "with": {
+        "hook_event_name": "PostToolUse",
+        "session_id": "$sessionId",
+        "cwd": "$cwd",
+        "client_type": "kimi_code_cli",
+        "tool_name": "$op.tool",
+        "tool_input": "$op.input",
+        "tool_call_id": "$op.toolId",
+        "tool_output": "$op.output"
+      }
+    }
+  ],
+  "turn.end": [
+    {
+      "channel": "native-log",
+      "event": "context.append_loop_event",
+      "with": {
+        "event": {
+          "type": "step.end",
+          "uuid": "$uuid:step-one",
+          "turnId": "$string:$turnIndex",
+          "step": 1,
+          "finishReason": "end_turn",
+          "usage": { "inputOther": 12, "output": 4, "inputCacheRead": 0, "inputCacheCreation": 0 },
+          "providerFinishReason": "completed",
+          "rawFinishReason": "stop"
+        }
+      }
+    },
+    {
+      "channel": "native-log",
+      "event": "turn.ended",
+      "with": { "turnId": "$turnIndex", "reason": "completed", "durationMs": 100 }
+    },
+    {
+      "channel": "hook",
+      "event": "Stop",
+      "with": {
+        "hook_event_name": "Stop",
+        "session_id": "$sessionId",
+        "cwd": "$cwd",
+        "client_type": "kimi_code_cli",
+        "stop_hook_active": false
+      }
+    },
+    {
+      "channel": "native-state",
+      "event": "state.json",
+      "with": {
+        "id": "$sessionId",
+        "version": 2,
+        "cwd": "$cwd",
+        "createdAt": "$sessionCreatedAt",
+        "updatedAt": "$nowMs",
+        "archived": false,
+        "agents": { "main": { "homedir": "$cwd", "type": "main" } },
+        "custom": {},
+        "lastTurnReason": "completed"
+      }
+    }
+  ],
+  "usage.refresh": [
+    {
+      "channel": "native-state",
+      "event": "state.json",
+      "with": {
+        "id": "$sessionId",
+        "version": 2,
+        "cwd": "$cwd",
+        "createdAt": "$sessionCreatedAt",
+        "updatedAt": "$nowMs",
+        "archived": false,
+        "agents": { "main": { "homedir": "$cwd", "type": "main" } },
+        "custom": {}
+      }
+    }
+  ]
+}

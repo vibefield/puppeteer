@@ -1,0 +1,1014 @@
+{
+  "surface": "opencode",
+  "surfaceVersion": "1.18.16",
+  "event": "message.updated",
+  "channel": "sse",
+  "channels": [
+    "sse"
+  ],
+  "transport": "sse-event",
+  "direction": "agent-to-client",
+  "trigger": "Published on the native GET /event stream.",
+  "payloadSchema": {
+    "type": "object",
+    "properties": {
+      "info": {
+        "anyOf": [
+          {
+            "type": "object",
+            "properties": {
+              "agent": {
+                "type": "string"
+              },
+              "format": {
+                "anyOf": [
+                  {
+                    "type": "object",
+                    "properties": {
+                      "type": {
+                        "type": "string"
+                      }
+                    },
+                    "required": [
+                      "type"
+                    ]
+                  },
+                  {
+                    "type": "object",
+                    "properties": {
+                      "retryCount": {
+                        "type": "integer",
+                        "minimum": 0
+                      },
+                      "schema": {
+                        "type": "object"
+                      },
+                      "type": {
+                        "type": "string"
+                      }
+                    },
+                    "required": [
+                      "schema",
+                      "type"
+                    ]
+                  }
+                ]
+              },
+              "id": {
+                "type": "string"
+              },
+              "model": {
+                "type": "object",
+                "properties": {
+                  "modelID": {
+                    "type": "string"
+                  },
+                  "providerID": {
+                    "type": "string"
+                  },
+                  "variant": {
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "modelID",
+                  "providerID"
+                ]
+              },
+              "role": {
+                "type": "string",
+                "enum": [
+                  "user"
+                ]
+              },
+              "sessionID": {
+                "type": "string"
+              },
+              "summary": {
+                "type": "object",
+                "properties": {
+                  "body": {
+                    "type": "string"
+                  },
+                  "diffs": {
+                    "type": "array",
+                    "items": {
+                      "type": "object",
+                      "properties": {
+                        "additions": {
+                          "type": "number"
+                        },
+                        "deletions": {
+                          "type": "number"
+                        },
+                        "file": {
+                          "type": "string"
+                        },
+                        "patch": {
+                          "type": "string"
+                        },
+                        "status": {
+                          "type": "string"
+                        }
+                      },
+                      "required": [
+                        "additions",
+                        "deletions"
+                      ]
+                    }
+                  },
+                  "title": {
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "diffs"
+                ]
+              },
+              "system": {
+                "type": "string"
+              },
+              "time": {
+                "type": "object",
+                "properties": {
+                  "created": {
+                    "type": "number",
+                    "minimum": 0
+                  }
+                },
+                "required": [
+                  "created"
+                ]
+              },
+              "tools": {
+                "type": "object"
+              }
+            },
+            "required": [
+              "agent",
+              "id",
+              "model",
+              "role",
+              "sessionID",
+              "time"
+            ]
+          },
+          {
+            "type": "object",
+            "properties": {
+              "agent": {
+                "type": "string"
+              },
+              "cost": {
+                "type": "number"
+              },
+              "error": {
+                "anyOf": [
+                  {
+                    "type": "object",
+                    "properties": {
+                      "data": {
+                        "type": "object",
+                        "properties": {
+                          "message": {
+                            "type": "string"
+                          },
+                          "providerID": {
+                            "type": "string"
+                          }
+                        },
+                        "required": [
+                          "message",
+                          "providerID"
+                        ]
+                      },
+                      "name": {
+                        "type": "string"
+                      }
+                    },
+                    "required": [
+                      "data",
+                      "name"
+                    ]
+                  },
+                  {
+                    "type": "object",
+                    "properties": {
+                      "data": {
+                        "type": "object",
+                        "properties": {
+                          "message": {
+                            "type": "string"
+                          },
+                          "ref": {
+                            "type": "string"
+                          }
+                        },
+                        "required": [
+                          "message"
+                        ]
+                      },
+                      "name": {
+                        "type": "string"
+                      }
+                    },
+                    "required": [
+                      "data",
+                      "name"
+                    ]
+                  },
+                  {
+                    "type": "object",
+                    "properties": {
+                      "data": {
+                        "type": "object"
+                      },
+                      "name": {
+                        "type": "string"
+                      }
+                    },
+                    "required": [
+                      "data",
+                      "name"
+                    ]
+                  },
+                  {
+                    "type": "object",
+                    "properties": {
+                      "data": {
+                        "type": "object",
+                        "properties": {
+                          "message": {
+                            "type": "string"
+                          }
+                        },
+                        "required": [
+                          "message"
+                        ]
+                      },
+                      "name": {
+                        "type": "string"
+                      }
+                    },
+                    "required": [
+                      "data",
+                      "name"
+                    ]
+                  },
+                  {
+                    "type": "object",
+                    "properties": {
+                      "data": {
+                        "type": "object",
+                        "properties": {
+                          "message": {
+                            "type": "string"
+                          },
+                          "retries": {
+                            "type": "integer",
+                            "minimum": 0
+                          }
+                        },
+                        "required": [
+                          "message",
+                          "retries"
+                        ]
+                      },
+                      "name": {
+                        "type": "string"
+                      }
+                    },
+                    "required": [
+                      "data",
+                      "name"
+                    ]
+                  },
+                  {
+                    "type": "object",
+                    "properties": {
+                      "data": {
+                        "type": "object",
+                        "properties": {
+                          "message": {
+                            "type": "string"
+                          },
+                          "responseBody": {
+                            "type": "string"
+                          }
+                        },
+                        "required": [
+                          "message"
+                        ]
+                      },
+                      "name": {
+                        "type": "string"
+                      }
+                    },
+                    "required": [
+                      "data",
+                      "name"
+                    ]
+                  },
+                  {
+                    "type": "object",
+                    "properties": {
+                      "data": {
+                        "type": "object",
+                        "properties": {
+                          "isRetryable": {
+                            "type": "boolean"
+                          },
+                          "message": {
+                            "type": "string"
+                          },
+                          "metadata": {
+                            "type": "object"
+                          },
+                          "responseBody": {
+                            "type": "string"
+                          },
+                          "responseHeaders": {
+                            "type": "object"
+                          },
+                          "statusCode": {
+                            "type": "integer",
+                            "minimum": 0
+                          }
+                        },
+                        "required": [
+                          "isRetryable",
+                          "message"
+                        ]
+                      },
+                      "name": {
+                        "type": "string"
+                      }
+                    },
+                    "required": [
+                      "data",
+                      "name"
+                    ]
+                  }
+                ]
+              },
+              "finish": {
+                "type": "string"
+              },
+              "id": {
+                "type": "string"
+              },
+              "mode": {
+                "type": "string"
+              },
+              "modelID": {
+                "type": "string"
+              },
+              "parentID": {
+                "type": "string"
+              },
+              "path": {
+                "type": "object",
+                "properties": {
+                  "cwd": {
+                    "type": "string"
+                  },
+                  "root": {
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "cwd",
+                  "root"
+                ]
+              },
+              "providerID": {
+                "type": "string"
+              },
+              "role": {
+                "type": "string",
+                "enum": [
+                  "assistant"
+                ]
+              },
+              "sessionID": {
+                "type": "string"
+              },
+              "structured": {},
+              "summary": {
+                "type": "boolean"
+              },
+              "time": {
+                "type": "object",
+                "properties": {
+                  "completed": {
+                    "type": "integer",
+                    "minimum": 0
+                  },
+                  "created": {
+                    "type": "integer",
+                    "minimum": 0
+                  }
+                },
+                "required": [
+                  "created"
+                ]
+              },
+              "tokens": {
+                "type": "object",
+                "properties": {
+                  "cache": {
+                    "type": "object",
+                    "properties": {
+                      "read": {
+                        "type": "number"
+                      },
+                      "write": {
+                        "type": "number"
+                      }
+                    },
+                    "required": [
+                      "read",
+                      "write"
+                    ]
+                  },
+                  "input": {
+                    "type": "number"
+                  },
+                  "output": {
+                    "type": "number"
+                  },
+                  "reasoning": {
+                    "type": "number"
+                  },
+                  "total": {
+                    "type": "number"
+                  }
+                },
+                "required": [
+                  "cache",
+                  "input",
+                  "output",
+                  "reasoning"
+                ]
+              },
+              "variant": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "agent",
+              "cost",
+              "id",
+              "mode",
+              "modelID",
+              "parentID",
+              "path",
+              "providerID",
+              "role",
+              "sessionID",
+              "time",
+              "tokens"
+            ]
+          }
+        ]
+      },
+      "sessionID": {
+        "type": "string"
+      }
+    },
+    "required": [
+      "info",
+      "sessionID"
+    ]
+  },
+  "recordSchema": {
+    "type": "object",
+    "properties": {
+      "id": {
+        "type": "string"
+      },
+      "properties": {
+        "type": "object",
+        "properties": {
+          "info": {
+            "anyOf": [
+              {
+                "type": "object",
+                "properties": {
+                  "agent": {
+                    "type": "string"
+                  },
+                  "format": {
+                    "anyOf": [
+                      {
+                        "type": "object",
+                        "properties": {
+                          "type": {
+                            "type": "string"
+                          }
+                        },
+                        "required": [
+                          "type"
+                        ]
+                      },
+                      {
+                        "type": "object",
+                        "properties": {
+                          "retryCount": {
+                            "type": "integer",
+                            "minimum": 0
+                          },
+                          "schema": {
+                            "type": "object"
+                          },
+                          "type": {
+                            "type": "string"
+                          }
+                        },
+                        "required": [
+                          "schema",
+                          "type"
+                        ]
+                      }
+                    ]
+                  },
+                  "id": {
+                    "type": "string"
+                  },
+                  "model": {
+                    "type": "object",
+                    "properties": {
+                      "modelID": {
+                        "type": "string"
+                      },
+                      "providerID": {
+                        "type": "string"
+                      },
+                      "variant": {
+                        "type": "string"
+                      }
+                    },
+                    "required": [
+                      "modelID",
+                      "providerID"
+                    ]
+                  },
+                  "role": {
+                    "type": "string"
+                  },
+                  "sessionID": {
+                    "type": "string"
+                  },
+                  "summary": {
+                    "type": "object",
+                    "properties": {
+                      "body": {
+                        "type": "string"
+                      },
+                      "diffs": {
+                        "type": "array",
+                        "items": {
+                          "type": "object",
+                          "properties": {
+                            "additions": {
+                              "type": "number"
+                            },
+                            "deletions": {
+                              "type": "number"
+                            },
+                            "file": {
+                              "type": "string"
+                            },
+                            "patch": {
+                              "type": "string"
+                            },
+                            "status": {
+                              "type": "string"
+                            }
+                          },
+                          "required": [
+                            "additions",
+                            "deletions"
+                          ]
+                        }
+                      },
+                      "title": {
+                        "type": "string"
+                      }
+                    },
+                    "required": [
+                      "diffs"
+                    ]
+                  },
+                  "system": {
+                    "type": "string"
+                  },
+                  "time": {
+                    "type": "object",
+                    "properties": {
+                      "created": {
+                        "type": "number",
+                        "minimum": 0
+                      }
+                    },
+                    "required": [
+                      "created"
+                    ]
+                  },
+                  "tools": {
+                    "type": "object"
+                  }
+                },
+                "required": [
+                  "agent",
+                  "id",
+                  "model",
+                  "role",
+                  "sessionID",
+                  "time"
+                ]
+              },
+              {
+                "type": "object",
+                "properties": {
+                  "agent": {
+                    "type": "string"
+                  },
+                  "cost": {
+                    "type": "number"
+                  },
+                  "error": {
+                    "anyOf": [
+                      {
+                        "type": "object",
+                        "properties": {
+                          "data": {
+                            "type": "object",
+                            "properties": {
+                              "message": {
+                                "type": "string"
+                              },
+                              "providerID": {
+                                "type": "string"
+                              }
+                            },
+                            "required": [
+                              "message",
+                              "providerID"
+                            ]
+                          },
+                          "name": {
+                            "type": "string"
+                          }
+                        },
+                        "required": [
+                          "data",
+                          "name"
+                        ]
+                      },
+                      {
+                        "type": "object",
+                        "properties": {
+                          "data": {
+                            "type": "object",
+                            "properties": {
+                              "message": {
+                                "type": "string"
+                              },
+                              "ref": {
+                                "type": "string"
+                              }
+                            },
+                            "required": [
+                              "message"
+                            ]
+                          },
+                          "name": {
+                            "type": "string"
+                          }
+                        },
+                        "required": [
+                          "data",
+                          "name"
+                        ]
+                      },
+                      {
+                        "type": "object",
+                        "properties": {
+                          "data": {
+                            "type": "object"
+                          },
+                          "name": {
+                            "type": "string"
+                          }
+                        },
+                        "required": [
+                          "data",
+                          "name"
+                        ]
+                      },
+                      {
+                        "type": "object",
+                        "properties": {
+                          "data": {
+                            "type": "object",
+                            "properties": {
+                              "message": {
+                                "type": "string"
+                              }
+                            },
+                            "required": [
+                              "message"
+                            ]
+                          },
+                          "name": {
+                            "type": "string"
+                          }
+                        },
+                        "required": [
+                          "data",
+                          "name"
+                        ]
+                      },
+                      {
+                        "type": "object",
+                        "properties": {
+                          "data": {
+                            "type": "object",
+                            "properties": {
+                              "message": {
+                                "type": "string"
+                              },
+                              "retries": {
+                                "type": "integer",
+                                "minimum": 0
+                              }
+                            },
+                            "required": [
+                              "message",
+                              "retries"
+                            ]
+                          },
+                          "name": {
+                            "type": "string"
+                          }
+                        },
+                        "required": [
+                          "data",
+                          "name"
+                        ]
+                      },
+                      {
+                        "type": "object",
+                        "properties": {
+                          "data": {
+                            "type": "object",
+                            "properties": {
+                              "message": {
+                                "type": "string"
+                              },
+                              "responseBody": {
+                                "type": "string"
+                              }
+                            },
+                            "required": [
+                              "message"
+                            ]
+                          },
+                          "name": {
+                            "type": "string"
+                          }
+                        },
+                        "required": [
+                          "data",
+                          "name"
+                        ]
+                      },
+                      {
+                        "type": "object",
+                        "properties": {
+                          "data": {
+                            "type": "object",
+                            "properties": {
+                              "isRetryable": {
+                                "type": "boolean"
+                              },
+                              "message": {
+                                "type": "string"
+                              },
+                              "metadata": {
+                                "type": "object"
+                              },
+                              "responseBody": {
+                                "type": "string"
+                              },
+                              "responseHeaders": {
+                                "type": "object"
+                              },
+                              "statusCode": {
+                                "type": "integer",
+                                "minimum": 0
+                              }
+                            },
+                            "required": [
+                              "isRetryable",
+                              "message"
+                            ]
+                          },
+                          "name": {
+                            "type": "string"
+                          }
+                        },
+                        "required": [
+                          "data",
+                          "name"
+                        ]
+                      }
+                    ]
+                  },
+                  "finish": {
+                    "type": "string"
+                  },
+                  "id": {
+                    "type": "string"
+                  },
+                  "mode": {
+                    "type": "string"
+                  },
+                  "modelID": {
+                    "type": "string"
+                  },
+                  "parentID": {
+                    "type": "string"
+                  },
+                  "path": {
+                    "type": "object",
+                    "properties": {
+                      "cwd": {
+                        "type": "string"
+                      },
+                      "root": {
+                        "type": "string"
+                      }
+                    },
+                    "required": [
+                      "cwd",
+                      "root"
+                    ]
+                  },
+                  "providerID": {
+                    "type": "string"
+                  },
+                  "role": {
+                    "type": "string"
+                  },
+                  "sessionID": {
+                    "type": "string"
+                  },
+                  "structured": {},
+                  "summary": {
+                    "type": "boolean"
+                  },
+                  "time": {
+                    "type": "object",
+                    "properties": {
+                      "completed": {
+                        "type": "integer",
+                        "minimum": 0
+                      },
+                      "created": {
+                        "type": "integer",
+                        "minimum": 0
+                      }
+                    },
+                    "required": [
+                      "created"
+                    ]
+                  },
+                  "tokens": {
+                    "type": "object",
+                    "properties": {
+                      "cache": {
+                        "type": "object",
+                        "properties": {
+                          "read": {
+                            "type": "number"
+                          },
+                          "write": {
+                            "type": "number"
+                          }
+                        },
+                        "required": [
+                          "read",
+                          "write"
+                        ]
+                      },
+                      "input": {
+                        "type": "number"
+                      },
+                      "output": {
+                        "type": "number"
+                      },
+                      "reasoning": {
+                        "type": "number"
+                      },
+                      "total": {
+                        "type": "number"
+                      }
+                    },
+                    "required": [
+                      "cache",
+                      "input",
+                      "output",
+                      "reasoning"
+                    ]
+                  },
+                  "variant": {
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "agent",
+                  "cost",
+                  "id",
+                  "mode",
+                  "modelID",
+                  "parentID",
+                  "path",
+                  "providerID",
+                  "role",
+                  "sessionID",
+                  "time",
+                  "tokens"
+                ]
+              }
+            ]
+          },
+          "sessionID": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "info",
+          "sessionID"
+        ]
+      },
+      "type": {
+        "type": "string",
+        "enum": [
+          "message.updated"
+        ]
+      }
+    },
+    "required": [
+      "id",
+      "properties",
+      "type"
+    ]
+  },
+  "evidence": {
+    "existence": [
+      "opencode-runtime-abort-stream"
+    ],
+    "shape": [
+      "opencode-runtime-abort-stream"
+    ],
+    "carrier": [
+      "opencode-runtime-abort-stream"
+    ]
+  },
+  "variants": [
+    {
+      "match": {
+        "info.role": "user"
+      },
+      "evidence": {
+        "existence": [
+          "opencode-runtime-abort-stream"
+        ],
+        "shape": [
+          "opencode-runtime-abort-stream"
+        ]
+      },
+      "confidence": "verified-headless"
+    },
+    {
+      "match": {
+        "info.role": "assistant"
+      },
+      "evidence": {
+        "existence": [
+          "opencode-runtime-abort-stream"
+        ],
+        "shape": [
+          "opencode-runtime-abort-stream"
+        ]
+      },
+      "confidence": "verified-headless"
+    }
+  ],
+  "confidence": "verified-headless",
+  "firstSeen": "1.18.16",
+  "lastVerified": "1.18.16",
+  "fixture": "captures/opencode@1.18.16/abort-stream/events.jsonl"
+}

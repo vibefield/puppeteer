@@ -1,0 +1,134 @@
+name: Agent live reconciliation
+
+on:
+  schedule:
+    - cron: '43 3 * * *'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: agent-live-reconciliation
+  cancel-in-progress: false
+
+# Live agents need installed, authenticated vendor binaries. Repository
+# variables keep these jobs explicitly disabled until a credential-isolated
+# self-hosted runner with the `chopsticks-agent-live` label is available.
+jobs:
+  claude-surface:
+    if: ${{ vars.CLAUDE_LIVE_ENABLED == 'true' }}
+    runs-on: [self-hosted, chopsticks-agent-live]
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          persist-credentials: false
+      - uses: pnpm/action-setup@v6
+        with:
+          version: 10.34.5
+      - uses: actions/setup-node@v6
+        with:
+          node-version: 22.18.0
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile --filter './packages/**'
+      - name: Probe the installed Claude surface
+        env:
+          CHOPSTICKS_REAL_CLAUDE: '1'
+          CHOPSTICKS_CLAUDE_BIN: ${{ vars.CLAUDE_BIN }}
+        run: pnpm --filter @vibecook/chopsticks-adapter-claude test
+
+  codex-live:
+    if: ${{ vars.CODEX_LIVE_ENABLED == 'true' }}
+    runs-on: [self-hosted, chopsticks-agent-live]
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          persist-credentials: false
+      - uses: pnpm/action-setup@v6
+        with:
+          version: 10.34.5
+      - uses: actions/setup-node@v6
+        with:
+          node-version: 22.18.0
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile --filter './packages/**'
+      - name: Run Codex real-artifact lanes
+        env:
+          CODEX_LIVE: '1'
+          CHOPSTICKS_CODEX_BIN: ${{ vars.CODEX_BIN }}
+        run: pnpm --filter @vibecook/chopsticks-adapter-codex test
+
+  grok-live:
+    if: ${{ vars.GROK_LIVE_ENABLED == 'true' }}
+    runs-on: [self-hosted, chopsticks-agent-live, macOS, ARM64]
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          persist-credentials: false
+      - uses: pnpm/action-setup@v6
+        with:
+          version: 10.34.5
+      - uses: actions/setup-node@v6
+        with:
+          node-version: 22.18.0
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile --filter './packages/**'
+      - name: Run Grok leader/TUI/ACP/durable-store lane
+        env:
+          GROK_LIVE: '1'
+          CHOPSTICKS_GROK_BIN: ${{ vars.GROK_BIN }}
+          GROK_LIVE_HOME: ${{ vars.GROK_LIVE_HOME }}
+        run: pnpm --filter @vibecook/chopsticks-adapter-grok test
+
+  kimi-live:
+    if: ${{ vars.KIMI_LIVE_ENABLED == 'true' }}
+    runs-on: [self-hosted, chopsticks-agent-live, macOS, ARM64]
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          persist-credentials: false
+      - uses: pnpm/action-setup@v6
+        with:
+          version: 10.34.5
+      - uses: actions/setup-node@v6
+        with:
+          node-version: 22.18.0
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile --filter './packages/**'
+      - name: Run the hermetic Kimi wire census against the installed binary
+        env:
+          CHOPSTICKS_KIMI_BIN: ${{ vars.KIMI_BIN }}
+        run: >-
+          node packages/surface/vendors/kimi/census/harness.mjs
+          --artifact "$CHOPSTICKS_KIMI_BIN"
+          --version 0.34.0
+          --scenario basic-turn
+          --output .agent-live/kimi@0.34.0
+      - name: Recheck the Kimi adapter against the captured 0.34.0 contract
+        run: pnpm --filter @vibecook/chopsticks-adapter-kimi test
+
+  opencode-live:
+    if: ${{ vars.OPENCODE_LIVE_ENABLED == 'true' }}
+    runs-on: [self-hosted, chopsticks-agent-live, macOS, ARM64]
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          persist-credentials: false
+      - uses: pnpm/action-setup@v6
+        with:
+          version: 10.34.5
+      - uses: actions/setup-node@v6
+        with:
+          node-version: 22.18.0
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile --filter './packages/**'
+      - name: Run the OpenCode private-backend, HTTP/SSE, and exact-session attach lane
+        env:
+          OPENCODE_LIVE: '1'
+          CHOPSTICKS_OPENCODE_BIN: ${{ vars.OPENCODE_BIN }}
+        run: pnpm --filter @vibecook/chopsticks-adapter-opencode test

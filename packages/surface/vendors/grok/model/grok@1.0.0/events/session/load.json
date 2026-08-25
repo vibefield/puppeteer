@@ -1,0 +1,33 @@
+{
+  "surface": "grok",
+  "surfaceVersion": "1.0.0",
+  "event": "session/load",
+  "channel": "acp",
+  "transport": "jsonrpc-request",
+  "payloadSchema": {
+    "type": "object",
+    "properties": {
+      "sessionId": {
+        "type": "string"
+      },
+      "cwd": {
+        "type": "string"
+      },
+      "mcpServers": {
+        "type": "array"
+      }
+    },
+    "required": ["sessionId", "cwd", "mcpServers"]
+  },
+  "resultSchema": {
+    "type": "object"
+  },
+  "confidence": "unverified",
+  "notes": "Advertised by the installed artifact and required by the adapter resume path; a resumed turn was not included in the controlled capture.",
+  "direction": "client-to-agent",
+  "evidence": {
+    "existence": ["grok-public-mirror-lead"],
+    "shape": ["grok-public-mirror-lead"],
+    "result": ["grok-public-mirror-lead"]
+  }
+}

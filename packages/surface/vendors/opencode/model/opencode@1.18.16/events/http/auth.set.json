@@ -1,0 +1,288 @@
+{
+  "surface": "opencode",
+  "surfaceVersion": "1.18.16",
+  "event": "http/auth.set",
+  "channel": "http",
+  "channels": [
+    "http"
+  ],
+  "transport": "http",
+  "direction": "client-to-agent",
+  "trigger": "Set auth credentials — Set authentication credentials",
+  "payloadSchema": {
+    "type": "object",
+    "properties": {
+      "method": {
+        "type": "string"
+      },
+      "route": {
+        "type": "string"
+      },
+      "params": {
+        "type": "object",
+        "properties": {
+          "providerID": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "providerID"
+        ]
+      },
+      "body": {
+        "anyOf": [
+          {
+            "type": "object",
+            "properties": {
+              "access": {
+                "type": "string"
+              },
+              "accountId": {
+                "type": "string"
+              },
+              "enterpriseUrl": {
+                "type": "string"
+              },
+              "expires": {
+                "type": "integer",
+                "minimum": 0
+              },
+              "refresh": {
+                "type": "string"
+              },
+              "type": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "access",
+              "expires",
+              "refresh",
+              "type"
+            ]
+          },
+          {
+            "type": "object",
+            "properties": {
+              "key": {
+                "type": "string"
+              },
+              "metadata": {
+                "type": "object"
+              },
+              "type": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "key",
+              "type"
+            ]
+          },
+          {
+            "type": "object",
+            "properties": {
+              "key": {
+                "type": "string"
+              },
+              "token": {
+                "type": "string"
+              },
+              "type": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "key",
+              "token",
+              "type"
+            ]
+          }
+        ]
+      }
+    },
+    "required": [
+      "method",
+      "route",
+      "params"
+    ]
+  },
+  "resultSchema": {
+    "type": "object",
+    "properties": {
+      "method": {
+        "type": "string",
+        "enum": [
+          "PUT"
+        ]
+      },
+      "route": {
+        "type": "string",
+        "enum": [
+          "/auth/:providerID"
+        ]
+      },
+      "status": {
+        "type": "integer",
+        "minimum": 200,
+        "maximum": 299
+      },
+      "params": {
+        "type": "object",
+        "properties": {
+          "providerID": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "providerID"
+        ]
+      },
+      "body": {
+        "type": "boolean"
+      }
+    },
+    "required": [
+      "method",
+      "route",
+      "status",
+      "params",
+      "body"
+    ]
+  },
+  "recordSchema": {
+    "type": "object",
+    "properties": {
+      "direction": {
+        "type": "string",
+        "enum": [
+          "client-to-agent"
+        ]
+      },
+      "request": {
+        "type": "object",
+        "properties": {
+          "method": {
+            "type": "string",
+            "enum": [
+              "PUT"
+            ]
+          },
+          "route": {
+            "type": "string",
+            "enum": [
+              "/auth/:providerID"
+            ]
+          },
+          "params": {
+            "type": "object",
+            "properties": {
+              "providerID": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "providerID"
+            ]
+          },
+          "body": {
+            "anyOf": [
+              {
+                "type": "object",
+                "properties": {
+                  "access": {
+                    "type": "string"
+                  },
+                  "accountId": {
+                    "type": "string"
+                  },
+                  "enterpriseUrl": {
+                    "type": "string"
+                  },
+                  "expires": {
+                    "type": "integer",
+                    "minimum": 0
+                  },
+                  "refresh": {
+                    "type": "string"
+                  },
+                  "type": {
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "access",
+                  "expires",
+                  "refresh",
+                  "type"
+                ]
+              },
+              {
+                "type": "object",
+                "properties": {
+                  "key": {
+                    "type": "string"
+                  },
+                  "metadata": {
+                    "type": "object"
+                  },
+                  "type": {
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "key",
+                  "type"
+                ]
+              },
+              {
+                "type": "object",
+                "properties": {
+                  "key": {
+                    "type": "string"
+                  },
+                  "token": {
+                    "type": "string"
+                  },
+                  "type": {
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "key",
+                  "token",
+                  "type"
+                ]
+              }
+            ]
+          }
+        },
+        "required": [
+          "method",
+          "route",
+          "params"
+        ]
+      }
+    },
+    "required": [
+      "direction",
+      "request"
+    ]
+  },
+  "evidence": {
+    "existence": [
+      "opencode-generated-openapi"
+    ],
+    "shape": [
+      "opencode-generated-openapi"
+    ],
+    "result": [
+      "opencode-generated-openapi"
+    ],
+    "carrier": [
+      "opencode-generated-openapi"
+    ]
+  },
+  "confidence": "unverified",
+  "notes": "OpenAPI operationId auth.set; PUT /auth/{providerID}."
+}

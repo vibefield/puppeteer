@@ -1,0 +1,82 @@
+{
+  "$server": {
+    "command": "app-server",
+    "listen": { "flag": "--listen", "transports": ["unix"] },
+    "notification": { "emittedAtMs": "$nowMs" },
+    "gate": { "until": "initialize", "error": { "code": -32600, "message": "Not initialized" } }
+  },
+
+  "initialize": {
+    "result": {
+      "userAgent": "$vendorVersion",
+      "codexHome": "$imposterHome",
+      "platformFamily": "$platformFamily",
+      "platformOs": "$platformOs"
+    }
+  },
+
+  "model/list": { "result": { "data": [] } },
+  "account/rateLimits/read": { "result": { "rateLimits": {} } },
+
+  "thread/start": {
+    "bind": {
+      "$threadId": "$uuid:thread",
+      "$threadCwd": "$params.cwd",
+      "$threadModel": "$params.model",
+      "$threadModelProvider": "$params.modelProvider",
+      "$threadApprovalPolicy": "$params.approvalPolicy",
+      "$threadApprovalsReviewer": "$params.approvalsReviewer"
+    },
+    "result": {
+      "thread": { "id": "$threadId", "sessionId": "$threadId", "cwd": "$threadCwd", "status": { "type": "idle" } },
+      "model": "$threadModel",
+      "modelProvider": "$threadModelProvider",
+      "cwd": "$threadCwd",
+      "approvalPolicy": "$threadApprovalPolicy",
+      "approvalsReviewer": "$threadApprovalsReviewer",
+      "sandbox": "$threadSandbox",
+      "runtimeWorkspaceRoots": ["$threadCwd"],
+      "instructionSources": []
+    },
+    "then": [{ "op": "session.start" }, { "op": "session.ready" }]
+  },
+
+  "thread/resume": {
+    "$comment": "Resume ADOPTS the id it was handed. Minting a fresh one here was the bug that made `ai --codex` look dead in a Godview pane: the native TUI joins with thread/resume, the imposter rebound $threadId, and every notification the pane's turn produced named a thread the observer was not watching. Nothing errored — the adapter simply filtered it all out.",
+    "bind": { "$threadId": "$params.threadId" },
+    "restore": true,
+    "result": {
+      "thread": { "id": "$threadId", "sessionId": "$threadId", "cwd": "$threadCwd", "status": { "type": "idle" } },
+      "model": "$threadModel",
+      "modelProvider": "$threadModelProvider",
+      "cwd": "$threadCwd",
+      "approvalPolicy": "$threadApprovalPolicy",
+      "approvalsReviewer": "$threadApprovalsReviewer",
+      "sandbox": "$threadSandbox",
+      "runtimeWorkspaceRoots": ["$threadCwd"],
+      "instructionSources": []
+    },
+    "then": [{ "op": "session.start" }, { "op": "session.ready" }]
+  },
+
+  "thread/read": {
+    "result": {
+      "thread": { "id": "$threadId", "sessionId": "$threadId", "cwd": "$threadCwd", "status": { "type": "idle" } }
+    }
+  },
+
+  "thread/inject_items": {
+    "result": {}
+  },
+
+  "turn/start": {
+    "bind": {
+      "$turnId": "$uuid:turn",
+      "$clientUserMessageId": "$params.clientUserMessageId"
+    },
+    "result": {
+      "turn": { "id": "$turnId", "items": [], "itemsView": "notLoaded", "status": "inProgress", "error": null }
+    },
+    "then": "$behavior"
+  }
+}

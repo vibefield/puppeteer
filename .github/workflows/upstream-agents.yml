@@ -1,0 +1,108 @@
+name: Upstream agents
+
+on:
+  schedule:
+    - cron: '17 */6 * * *'
+  workflow_dispatch:
+
+# The tracking issue is an append-only ledger. Serializing runs prevents a
+# scheduled poll and a manual dispatch from restoring the same head and then
+# overwriting one another's newly observed release signal.
+concurrency:
+  group: upstream-agents
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+  issues: write
+
+jobs:
+  detect:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+
+      - uses: actions/setup-node@v6
+        with:
+          node-version: 22.18.0
+
+      - name: Validate detector definitions
+        run: node scripts/detect-upstream-agents.mjs --check-config
+
+      - name: Restore release debounce state
+        uses: actions/cache/restore@v4
+        with:
+          path: .upstream-state.json
+          key: upstream-state-${{ github.run_id }}
+          restore-keys: upstream-state-
+
+      - name: Restore durable release ledger from the tracking issue
+        uses: actions/github-script@v8
+        with:
+          script: |
+            const fs = require('node:fs');
+            const zlib = require('node:zlib');
+            const marker = '<!-- chopsticks-upstream-candidates -->';
+            const { data: issues } = await github.rest.issues.listForRepo({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              state: 'open',
+              per_page: 100,
+            });
+            const existing = issues.find((issue) => issue.body?.includes(marker));
+            const encoded = /<!-- chopsticks-upstream-state:([A-Za-z0-9+/=]+) -->/.exec(existing?.body ?? '')?.[1];
+            if (encoded) {
+              const state = zlib.gunzipSync(Buffer.from(encoded, 'base64')).toString('utf8');
+              const parsed = JSON.parse(state);
+              if (![1, 2].includes(parsed.schemaVersion)) throw new Error('tracking issue carries an unsupported state schema');
+              fs.writeFileSync('.upstream-state.json', `${JSON.stringify(parsed, null, 2)}\n`);
+            }
+
+      - id: detect
+        name: Detect release candidates
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: node scripts/detect-upstream-agents.mjs --state .upstream-state.json --output upstream-detection.json --github-output
+
+      - name: Save release debounce state
+        uses: actions/cache/save@v4
+        with:
+          path: .upstream-state.json
+          key: upstream-state-${{ github.run_id }}
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: upstream-detection
+          path: upstream-detection.json
+          retention-days: 30
+
+      - name: Open or refresh the candidate issue
+        if: always() && steps.detect.outcome == 'success'
+        uses: actions/github-script@v8
+        with:
+          script: |
+            const fs = require('node:fs');
+            const zlib = require('node:zlib');
+            const report = JSON.parse(fs.readFileSync('upstream-detection.json', 'utf8'));
+            const state = JSON.parse(fs.readFileSync('.upstream-state.json', 'utf8'));
+            const marker = '<!-- chopsticks-upstream-candidates -->';
+            const stateMarker = `<!-- chopsticks-upstream-state:${zlib.gzipSync(JSON.stringify(state)).toString('base64')} -->`;
+            const actionable = report.agents.filter((agent) => !['current', 'candidate-pending'].includes(agent.status));
+            const rows = actionable
+              .map((agent) => `| ${agent.vendor} | ${agent.promotedVersion ?? 'none'} | ${agent.detectedStableVersion ?? 'unknown'} | ${agent.status} | ${agent.workItems.map((item) => item.platform).join(', ')} |`)
+              .join('\n');
+            const alertRows = report.alerts.map((alert) => `- **${alert.vendor}**: ${alert.kind} (detected ${alert.detectedVersion ?? 'unknown'}, previous high ${alert.previousHighestVersion ?? 'none'})`).join('\n');
+            const historyRows = report.releaseHistory.map((release) => `| ${release.vendor} | ${release.version} | ${release.firstSeen} | ${release.lastSeen} | ${release.signalDigests.length} |`).join('\n');
+            const body = `${marker}\n${stateMarker}\nDetected at ${report.detectedAt}. Detection does not promote support. Artifact acquisition must replace every pending platform digest before verification.\n\n| Agent | Promoted | Detected stable | State | Pending platforms |\n| --- | --- | --- | --- | --- |\n${rows || '| — | — | — | current | — |'}\n\n### Alerts\n${alertRows || 'None'}\n\n### Durable release history\n| Agent | Version | First seen | Last seen | Distinct signals |\n| --- | --- | --- | --- | --- |\n${historyRows || '| — | — | — | — | — |'}\n\nThe compressed state marker above is restored by the next run. The workflow artifact contains detector identities, source-relation expectations, immutable history keys, and per-platform acquisition work items.`;
+            const { data: issues } = await github.rest.issues.listForRepo({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              state: 'open',
+              per_page: 100,
+            });
+            const existing = issues.find((issue) => issue.body?.includes(marker));
+            if (existing) {
+              await github.rest.issues.update({ owner: context.repo.owner, repo: context.repo.repo, issue_number: existing.number, body });
+            } else {
+              await github.rest.issues.create({ owner: context.repo.owner, repo: context.repo.repo, title: '[upstream] Agent release ledger', body });
+            }

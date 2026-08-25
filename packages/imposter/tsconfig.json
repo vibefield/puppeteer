@@ -1,0 +1,27 @@
+{
+  "extends": "../../tsconfig.base.json",
+  "compilerOptions": {
+    "rootDir": "src",
+    "outDir": "dist",
+    // The imposter is SPAWNED as a process, and node's type stripping resolves
+    // `./x.ts` but not `./x.js` (probed 2026-08-07). Writing `.ts` extensions
+    // is therefore what lets `bin/ai.mjs` run multi-file TypeScript straight
+    // from src with no build step, exactly as every other package runs from
+    // src. `rewriteRelativeImportExtensions` rewrites them to `.js` on emit so
+    // the published dist is ordinary ESM. This is a deliberate, local
+    // departure from the repo's `.js`-suffix convention — see src/index.ts.
+    //
+    // That also means `src/**` must be ERASABLE: stripping removes annotations
+    // and never synthesizes code, so an enum, a namespace, or a constructor
+    // parameter property typechecks cleanly here and then kills the spawned
+    // `ai` at import (2026-08-09). `erasableSyntaxOnly` cannot be turned on to
+    // catch it, because this program also resolves the adapter packages'
+    // sources — they are built, not stripped, and use that syntax legitimately.
+    // The enforcement is instead every suite that spawns `ai`, of which there
+    // are five; that is also why one of them must never be the first thing you
+    // skip when a run looks slow.
+    "allowImportingTsExtensions": true,
+    "rewriteRelativeImportExtensions": true
+  },
+  "include": ["src"]
+}

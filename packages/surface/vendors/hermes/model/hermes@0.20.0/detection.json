@@ -1,0 +1,33 @@
+{
+  "executables": ["hermes"],
+  "envVar": "CHOPSTICKS_HERMES_BIN",
+  "versionFlag": "--version",
+  "versionOutput": "Hermes Agent v0.20.0 (2026.8.3)",
+  "versionPattern": "^Hermes Agent v(\\d+\\.\\d+\\.\\d+) \\((\\d{4}\\.\\d{1,2}\\.\\d{1,2})\\)$",
+  "helpFlag": "--help",
+  "isolatedHomeEnv": "HERMES_HOME",
+  "probedFlags": {
+    "--tui": "--tui",
+    "--cli": "--cli",
+    "--resume": "--resume",
+    "--continue": "--continue",
+    "--worktree": "--worktree",
+    "--yolo": "--yolo",
+    "--ignore-user-config": "--ignore-user-config",
+    "--ignore-rules": "--ignore-rules",
+    "--safe-mode": "--safe-mode",
+    "--version": "--version"
+  },
+  "launchFlags": {
+    "tui": "--tui",
+    "cli": "--cli",
+    "resume": "--resume",
+    "continue": "--continue",
+    "worktree": "--worktree",
+    "yolo": "--yolo",
+    "ignoreUserConfig": "--ignore-user-config",
+    "ignoreRules": "--ignore-rules",
+    "safeMode": "--safe-mode",
+    "acp": "acp"
+  }
+}

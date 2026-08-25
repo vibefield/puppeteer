@@ -1,0 +1,204 @@
+{
+  "session.start": [
+    {
+      "channel": "jsonrpc",
+      "event": "gateway.ready",
+      "with": {}
+    },
+    {
+      "channel": "hook",
+      "event": "on_session_start",
+      "with": {
+        "hook_event_name": "on_session_start",
+        "session_id": "$storedSessionId",
+        "platform": "tui",
+        "choice": null,
+        "tool_name": null,
+        "keys": ["session_id", "model", "platform"]
+      }
+    }
+  ],
+  "session.ready": [
+    {
+      "channel": "jsonrpc",
+      "event": "session.info",
+      "with": {
+        "model": "chopsticks-hermes-census",
+        "provider": "custom",
+        "approval_mode": "manual",
+        "version": "0.20.0",
+        "cwd": "$cwd",
+        "stored_session_id": "$storedSessionId",
+        "running": false
+      }
+    }
+  ],
+  "session.end": [
+    {
+      "channel": "hook",
+      "event": "on_session_end",
+      "with": {
+        "hook_event_name": "on_session_end",
+        "session_id": "$storedSessionId",
+        "platform": "tui",
+        "choice": null,
+        "tool_name": null,
+        "keys": ["session_id", "completed", "interrupted", "platform"]
+      }
+    },
+    {
+      "channel": "hook",
+      "event": "on_session_finalize",
+      "with": {
+        "hook_event_name": "on_session_finalize",
+        "session_id": "$storedSessionId",
+        "platform": "tui",
+        "choice": null,
+        "tool_name": null,
+        "keys": ["session_id", "platform"]
+      }
+    }
+  ],
+  "turn.start": [
+    {
+      "channel": "jsonrpc",
+      "event": "message.start",
+      "with": {}
+    },
+    {
+      "channel": "hook",
+      "event": "pre_llm_call",
+      "with": {
+        "hook_event_name": "pre_llm_call",
+        "session_id": "$storedSessionId",
+        "platform": "tui",
+        "choice": null,
+        "tool_name": null,
+        "keys": ["session_id", "user_message", "platform"]
+      }
+    }
+  ],
+  "assistant.delta": [
+    {
+      "channel": "jsonrpc",
+      "event": "thinking.delta",
+      "with": { "hasText": true }
+    },
+    {
+      "channel": "jsonrpc",
+      "event": "message.delta",
+      "with": { "hasText": true, "text": "$op.text" }
+    }
+  ],
+  "tool.start": [
+    {
+      "channel": "jsonrpc",
+      "event": "tool.generating",
+      "with": { "name": "$op.tool" }
+    },
+    {
+      "channel": "jsonrpc",
+      "event": "tool.start",
+      "with": { "name": "$op.tool", "tool_id": "$op.toolId" }
+    },
+    {
+      "channel": "hook",
+      "event": "pre_tool_call",
+      "with": {
+        "hook_event_name": "pre_tool_call",
+        "session_id": "$storedSessionId",
+        "tool_name": "$op.tool",
+        "platform": null,
+        "choice": null,
+        "keys": ["tool_name", "args", "session_id", "tool_call_id"]
+      }
+    }
+  ],
+  "tool.end": [
+    {
+      "channel": "jsonrpc",
+      "event": "tool.complete",
+      "with": {
+        "name": "$op.tool",
+        "tool_id": "$op.toolId",
+        "result": { "exit_code": 0, "hasOutput": true, "hasError": false }
+      }
+    },
+    {
+      "channel": "hook",
+      "event": "post_tool_call",
+      "with": {
+        "hook_event_name": "post_tool_call",
+        "session_id": "$storedSessionId",
+        "tool_name": "$op.tool",
+        "platform": null,
+        "choice": null,
+        "keys": ["tool_name", "args", "result", "session_id", "status"]
+      }
+    }
+  ],
+  "permission.ask": [
+    {
+      "channel": "jsonrpc",
+      "event": "approval.request",
+      "with": {
+        "choices": ["once", "session", "always", "deny"],
+        "pattern_key": "delete in root path",
+        "allow_permanent": true,
+        "allow_session": true
+      }
+    },
+    {
+      "channel": "hook",
+      "event": "pre_approval_request",
+      "with": {
+        "hook_event_name": "pre_approval_request",
+        "session_id": "$storedSessionId",
+        "tool_name": null,
+        "platform": null,
+        "choice": null,
+        "keys": ["command", "pattern_key", "session_key", "surface"]
+      }
+    }
+  ],
+  "turn.end": [
+    {
+      "channel": "jsonrpc",
+      "event": "reasoning.available",
+      "with": { "hasText": true }
+    },
+    {
+      "channel": "jsonrpc",
+      "event": "message.complete",
+      "with": { "status": "complete", "hasText": true }
+    },
+    {
+      "channel": "hook",
+      "event": "post_llm_call",
+      "with": {
+        "hook_event_name": "post_llm_call",
+        "session_id": "$storedSessionId",
+        "platform": "tui",
+        "choice": null,
+        "tool_name": null,
+        "keys": ["session_id", "assistant_response", "platform"]
+      }
+    }
+  ],
+  "usage.refresh": [
+    {
+      "channel": "jsonrpc",
+      "event": "session.info",
+      "with": {
+        "model": "chopsticks-hermes-census",
+        "provider": "custom",
+        "approval_mode": "manual",
+        "version": "0.20.0",
+        "cwd": "$cwd",
+        "stored_session_id": "$storedSessionId",
+        "running": false,
+        "usage": { "model": "chopsticks-hermes-census", "calls": 1, "hasTotals": true }
+      }
+    }
+  ]
+}

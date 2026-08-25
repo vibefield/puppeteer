@@ -1,0 +1,139 @@
+# Changelog
+
+## [0.1.8](https://github.com/vibecook-dev/chopsticks/compare/v0.1.7...v0.1.8) (2026-08-03)
+
+
+### Features
+
+* **godview:** open the agent monitor to more than one view ([2961a8b](https://github.com/vibecook-dev/chopsticks/commit/2961a8bec36ac398b361b8a6426bf850e2bc3c86))
+* **godview:** open the agent monitor to more than one view ([f580e92](https://github.com/vibecook-dev/chopsticks/commit/f580e92192b597c84da42b658256db879fea92a7))
+
+## [0.1.7](https://github.com/vibecook-dev/chopsticks/compare/v0.1.6...v0.1.7) (2026-08-01)
+
+
+### Features
+
+* **godview:** record what each window would need to come back ([c761b41](https://github.com/vibecook-dev/chopsticks/commit/c761b4195d3bc18120d0f02ac7d2cd59bedd873f))
+* **godview:** record what each window would need to come back (reland) ([82ed33d](https://github.com/vibecook-dev/chopsticks/commit/82ed33de24794363e81569c5a8166c285b8a4fa7))
+* **godview:** restore the previous session on launch ([af3a4a5](https://github.com/vibecook-dev/chopsticks/commit/af3a4a5dbd080d3c780dcb989df6beac6189da16))
+* **godview:** restore the previous session on launch ([6325c0f](https://github.com/vibecook-dev/chopsticks/commit/6325c0fb9b8f7bcc745d5f8bf0adf8e99ffe8c7a))
+
+
+### Bug Fixes
+
+* **godview:** keep a window's pane layout across close and reopen ([65b1dd1](https://github.com/vibecook-dev/chopsticks/commit/65b1dd1c38ec65323ebfaa5950558ce7d6a69597))
+* **godview:** keep a window's pane layout across close and reopen ([211766e](https://github.com/vibecook-dev/chopsticks/commit/211766ea88d176d6a063c5d17517126d90d22ed6))
+
+## [0.1.6](https://github.com/vibecook-dev/chopsticks/compare/v0.1.5...v0.1.6) (2026-07-31)
+
+
+### Bug Fixes
+
+* **apps:** fail the smoke run when another instance holds the lock ([30ee611](https://github.com/vibecook-dev/chopsticks/commit/30ee611599abcbec53d3ba5d668ff25ab284ed0d))
+* **apps:** fail the smoke run when another instance holds the lock ([4aae6a0](https://github.com/vibecook-dev/chopsticks/commit/4aae6a03ffa5acd7b2a386928577501ff92aa1ba))
+
+## [0.1.5](https://github.com/vibecook-dev/chopsticks/compare/v0.1.4...v0.1.5) (2026-07-31)
+
+
+### Bug Fixes
+
+* **apps:** bundle the Ghosttea bridge so its imports resolve ([66bb92e](https://github.com/vibecook-dev/chopsticks/commit/66bb92e29ec7112380ad2d903877790139c08d29))
+* **apps:** bundle the Ghosttea bridge so its imports resolve ([bc33ac1](https://github.com/vibecook-dev/chopsticks/commit/bc33ac1463399b5e36d33319620e9224fc73ce79))
+* **apps:** stage the ghosttead binary, and move to Ghosttea 0.5.1 ([82efc9e](https://github.com/vibecook-dev/chopsticks/commit/82efc9e720c503c1df9cb7911dd236d7f8613310))
+* **apps:** stage the ghosttead binary, and move to Ghosttea 0.5.1 ([09cf973](https://github.com/vibecook-dev/chopsticks/commit/09cf973f1e4cd689ab6435e88561941530d82237))
+
+## [0.1.4](https://github.com/vibecook-dev/chopsticks/compare/v0.1.3...v0.1.4) (2026-07-28)
+
+
+### Features
+
+* add agent environment telemetry ([daeab4b](https://github.com/vibecook-dev/chopsticks/commit/daeab4b8735b65c4db5d282adb8baa398d201abc))
+* add caller-owned terminal adoption ([a3aff40](https://github.com/vibecook-dev/chopsticks/commit/a3aff40cc18a9fe7e617fced1356399eddbb2b38))
+* add cross-agent context telemetry ([ba28611](https://github.com/vibecook-dev/chopsticks/commit/ba28611b7dda14d545548c94448c2666dae99fda))
+* add provider account usage limits ([808402e](https://github.com/vibecook-dev/chopsticks/commit/808402e59c6ae1d75b82475dc6e3f33a2e86485f))
+* add truffle-enabled godview app ([5e92b55](https://github.com/vibecook-dev/chopsticks/commit/5e92b556aafb07b1f7d2866d98321ee43d9e0e2a))
+* **apps:** surface terminal and agent activity ([41fc563](https://github.com/vibecook-dev/chopsticks/commit/41fc56381dec72e10956629fb291e04fdcfa74b4))
+* **godview:** add agent mounting interactions ([45ac4f3](https://github.com/vibecook-dev/chopsticks/commit/45ac4f31645fee053309026080a9f224a52994a9))
+* **godview:** add centered bubble spawn motion ([bd53215](https://github.com/vibecook-dev/chopsticks/commit/bd53215a34bd88d37bbcabfeeaa1f7cd730938fd))
+* **godview:** add themes and pane color links ([c5985e2](https://github.com/vibecook-dev/chopsticks/commit/c5985e208eb4dda46d38d63563fa4826aed8e1f0))
+* **godview:** match prototype physics and add tuning controls ([148e17d](https://github.com/vibecook-dev/chopsticks/commit/148e17db7fbd370ccede0e9639e5a47785c50682))
+* **godview:** show agent usage limits ([7ce35df](https://github.com/vibecook-dev/chopsticks/commit/7ce35dfbe282a955b0135e938286c3a64b7805ea))
+
+
+### Bug Fixes
+
+* **apps:** bound agent state delivery ([1c44d00](https://github.com/vibecook-dev/chopsticks/commit/1c44d00a89e6c16e5a65d1006c6cb1fae1ca80fa))
+* **apps:** preserve pane cwd and restore clipboard ([8aef161](https://github.com/vibecook-dev/chopsticks/commit/8aef161fcceaf14ba910b4e65105c6b9df202b92))
+* **claude:** prefer statusline usage and refresh OAuth tokens ([3e494ce](https://github.com/vibecook-dev/chopsticks/commit/3e494ce35eaaa285417e64ce259cda5b186e638e))
+* **godview:** finalize terminal activity cleanup ([1353bc9](https://github.com/vibecook-dev/chopsticks/commit/1353bc9fccc407e073e5ddbc67b40dd14173c66a))
+* **godview:** show folder names in pane badges ([9024913](https://github.com/vibecook-dev/chopsticks/commit/9024913da6e50e44d713fd54feb8e3e3c1500692))
+* harden runtime telemetry observers ([d30bc07](https://github.com/vibecook-dev/chopsticks/commit/d30bc07393fe210a886baa541e1e2c1d4596527b))
+* harden session replay and terminal lifecycle ([7df3dfe](https://github.com/vibecook-dev/chopsticks/commit/7df3dfee32ad887bbe3b0fcad88de0dd7323a13d))
+* project Grok terminal turns ([77b4279](https://github.com/vibecook-dev/chopsticks/commit/77b42792eeafb249774103ac12c5fa222550b2db))
+* **runtime:** attach Git watchers before announcing state ([d28ec79](https://github.com/vibecook-dev/chopsticks/commit/d28ec7967b9bd7608da601a6361ee6a073f5a56f))
+* stage transitive ghosttea bridge runtime ([c55749a](https://github.com/vibecook-dev/chopsticks/commit/c55749a598de72167548902b35e92235b8f0ab2e))
+
+## [0.1.3](https://github.com/jamesyong-42/chopsticks/compare/v0.1.2...v0.1.3) (2026-07-19)
+
+
+### Features
+
+* complete unified agent launch options ([438d0a2](https://github.com/jamesyong-42/chopsticks/commit/438d0a2013400349f2b695b24651a839e7f498bb))
+
+## [0.1.2](https://github.com/jamesyong-42/chopsticks/compare/v0.1.1...v0.1.2) (2026-07-19)
+
+
+### Bug Fixes
+
+* align release tags with publish guard ([8ae50ac](https://github.com/jamesyong-42/chopsticks/commit/8ae50acd81ca38a5e0f0b9bb5a0d91094f3a1c0c))
+* load current tooling for release retries ([38fead0](https://github.com/jamesyong-42/chopsticks/commit/38fead09868ea1547363b1c232898ec2bba5798e))
+* publish packages with oidc-capable npm ([e2fa39c](https://github.com/jamesyong-42/chopsticks/commit/e2fa39c58c8140da04393e53e789792c9bb7cff1))
+* publish rewritten workspace tarballs ([83f4094](https://github.com/jamesyong-42/chopsticks/commit/83f409416d9fe1154ca6b3917a4103d074b4da5f))
+* use OIDC-capable npm for releases ([30541d8](https://github.com/jamesyong-42/chopsticks/commit/30541d854ec6e56a3b53c81f59d6d70110a35608))
+
+## [0.1.1](https://github.com/jamesyong-42/chopsticks/compare/chopsticks-v0.1.0...chopsticks-v0.1.1) (2026-07-19)
+
+
+### Features
+
+* **adapter-acp:** generic ACP structured driver + normalizer (M6 A2-A4) ([68a2460](https://github.com/jamesyong-42/chopsticks/commit/68a2460e36cbbb1c9ad493afd7b4ddb6f606a5cd))
+* **adapter-claude:** createClaudeSession driver — hub-side composition (M2) ([ac80e6f](https://github.com/jamesyong-42/chopsticks/commit/ac80e6f15d433f2c578b27ef0d23458ead973353))
+* **adapter-claude:** detection probe, registry-driven settings gen, session prepare (M2-1/M2-3) ([c568aa7](https://github.com/jamesyong-42/chopsticks/commit/c568aa7fe07af684d1489e68723a5650159f2a41))
+* **adapter-claude:** hook registry, loopback hook bridge, event normalizer (M2-1/M2-2/M2-4 core) ([744952e](https://github.com/jamesyong-42/chopsticks/commit/744952e2c97167ef446f5877bd5192d778961bf0))
+* **adapter-claude:** transcript observer over spaghetti + guarded prompt injection (M2-5/M2-6) ([b98ce4e](https://github.com/jamesyong-42/chopsticks/commit/b98ce4e969eec2f794093df0fec109aee2f9ae7e))
+* **adapter-codex:** app-server notification normalizer (M5 C2) ([a50d914](https://github.com/jamesyong-42/chopsticks/commit/a50d91427d8045547fbd10c0bf0f386b8d1e2e24))
+* **adapter-codex:** createCodexObserver — attach + observe a TUI thread (M5 C6-2) ([10c85d7](https://github.com/jamesyong-42/chopsticks/commit/10c85d70e3ae219aab4926f1dc2bd14d2d8cdaec))
+* **adapter-codex:** createCodexSession structured driver (M5 C4) ([0d59cb3](https://github.com/jamesyong-42/chopsticks/commit/0d59cb37d07bda77c00ed163898c478270b3b25e))
+* **adapter-codex:** WebSocket-over-UDS transport + app-server spawn (M5 C6-1) ([fca95e8](https://github.com/jamesyong-42/chopsticks/commit/fca95e8deceb415e2f5076ba69493c1e55b74ddd))
+* add agent launch options and release pipeline ([37dd9c5](https://github.com/jamesyong-42/chopsticks/commit/37dd9c5dd95fa16f3ecd4294823bff489bad9764))
+* **core:** full AgentEvent union + session state reducer (M0-2, M0-3) ([d06c8cb](https://github.com/jamesyong-42/chopsticks/commit/d06c8cb04032ed3448af412ecff76e82e9ae0cfb))
+* migrate workbench terminals to Ghosttea ([1eea6db](https://github.com/jamesyong-42/chopsticks/commit/1eea6dbf777014f859219e7d37a099ae6efa1b25))
+* **node:** @xterm/headless mirror sink with serialize snapshots (M1-3) ([efa5dd1](https://github.com/jamesyong-42/chopsticks/commit/efa5dd1f065d861bd222bff24b03f65b6c36135d))
+* **node:** PTY transport, process-tree ladder, ordered terminal distributor (M1-1..M1-3 core) ([5518204](https://github.com/jamesyong-42/chopsticks/commit/5518204cf27f0fa3428eb8acd7b8b1dbe11c0e90))
+* **record,adapter-claude:** own-action record + native resume (M4) ([f371f75](https://github.com/jamesyong-42/chopsticks/commit/f371f7522d439e90be42c07357118b744294e508))
+* **testing:** fake terminal agent + Phase 0 hook fixtures (M0-4) ([1be5bf4](https://github.com/jamesyong-42/chopsticks/commit/1be5bf4f94c8207b2e5c41799058229491e6d18e))
+* **workbench:** Claude sessions in the workbench — driver wiring + activity panel (M2) ([ad3a37a](https://github.com/jamesyong-42/chopsticks/commit/ad3a37a1ae922cdcb53498f5473b02f71bd102ef))
+* **workbench:** Codex sessions — native TUI tab + structured observer (M5 C6-3) ([c8d18fa](https://github.com/jamesyong-42/chopsticks/commit/c8d18facd1c0e647ef713e2271c0efe80bea42af))
+* **workbench:** control Codex from the panel — bracketed-paste injection (M5 C6-4) ([93e4e0a](https://github.com/jamesyong-42/chopsticks/commit/93e4e0aa44a571a13aebb8d1c84dd054ba0443ec))
+* **workbench:** Electron dev app with system-Node pty-host (M1-4) ([6b8d5c4](https://github.com/jamesyong-42/chopsticks/commit/6b8d5c40ec65610fe1a122d120de2709f8cff39b))
+* **workbench:** Ghostty-fashion terminal UI via avocado TerminalSurface ([9a8b39a](https://github.com/jamesyong-42/chopsticks/commit/9a8b39ad2d54b01b3fe573a0186b176c68f698e9))
+* **workbench:** Grok tab — native TUI + leader coexistence (M6 A6c) ([64b11b8](https://github.com/jamesyong-42/chopsticks/commit/64b11b89903ea6b5528246e9742c60b875f0478e))
+* **workbench:** own-action record wiring + resume affordance (M4) ([0316ec2](https://github.com/jamesyong-42/chopsticks/commit/0316ec230a8e619e19d27340589436c3445c3441))
+* **workbench:** redesign the agent panel as a proper chat UI ([63ea1f1](https://github.com/jamesyong-42/chopsticks/commit/63ea1f1e7b724d988bcf68934dd1f246ba01ec16))
+* **workbench:** workspace isolation for Claude sessions (M3) ([54fb120](https://github.com/jamesyong-42/chopsticks/commit/54fb120d6799f2fd997607fa1f0023cd17258d53))
+* **workspaces:** shared / git-worktree / copy isolation with final-diff metadata (M3) ([87c1cda](https://github.com/jamesyong-42/chopsticks/commit/87c1cda80b683fadceca4918f9af239d32744576))
+
+
+### Bug Fixes
+
+* **adapter-codex:** own thread at spawn so panel leaves preparing immediately ([601a067](https://github.com/jamesyong-42/chopsticks/commit/601a067c6d75680a615b2c30b9d1ba5567e352d3))
+* **adapter-codex:** retry thread attach until it materializes ([8d3970d](https://github.com/jamesyong-42/chopsticks/commit/8d3970d575c6361d3aeb1d92b1c6f1886207acb2))
+* **node:** CJS interop for @xterm/headless under real ESM ([f8f5c94](https://github.com/jamesyong-42/chopsticks/commit/f8f5c94886fcd6e8a3cbf04060199db2f0a4856b))
+* preserve interactive auth during publish ([bfad194](https://github.com/jamesyong-42/chopsticks/commit/bfad194b13af15d8fa702301fa940e9059ff67be))
+* skip immutable package versions during publish ([b5b83e7](https://github.com/jamesyong-42/chopsticks/commit/b5b83e78c4929eb1adddeff1fedce66c33dcb66d))
+* **workbench:** Codex resume — reopen the thread, and gate the button (M5 C6-5) ([b6ad259](https://github.com/jamesyong-42/chopsticks/commit/b6ad2594604926f81aebad5cc271f93ad536ed97))
+* **workbench:** Grok tab — TUI-first session creation, faster spawn ([a7dbf50](https://github.com/jamesyong-42/chopsticks/commit/a7dbf50ba8e0a7a06d6b7be12a4a9d9d6b900c47))
+* **workbench:** Grok TUI needs --leader to share the session (inject) ([7002a75](https://github.com/jamesyong-42/chopsticks/commit/7002a758e0d181dcb12fbf538873c5ba0a71b41a))
+* **workbench:** match avocado ghostty terminal parity ([9e75803](https://github.com/jamesyong-42/chopsticks/commit/9e7580309da8b08622e72916564f76be43e47cbf))
+* **workbench:** render agent panel messages from a single source ([8d10432](https://github.com/jamesyong-42/chopsticks/commit/8d10432cd8bab876d0df6a13dda708e9e45440e4))
+* **workbench:** use restty auto renderer like ghostty ([fb41cb1](https://github.com/jamesyong-42/chopsticks/commit/fb41cb133c6e035abf4b14b99a2059b3b2ddd19a))

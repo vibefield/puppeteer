@@ -1,0 +1,474 @@
+{
+  "name": "deep-research",
+  "notes": "A long research turn with parallel teammates, five tool families, automatic compaction, and post-compaction verification.",
+  "steps": [
+    {
+      "at": 0,
+      "do": {
+        "emit": {
+          "event": "UserPromptSubmit",
+          "with": {
+            "prompt": "$stimulus.text",
+            "prompt_id": "$uuid:prompt",
+            "session_title": "$sessionTitle",
+            "permission_mode": "$permissionMode"
+          }
+        }
+      }
+    },
+    {
+      "at": 100,
+      "do": {
+        "emit": {
+          "event": "MessageDisplay",
+          "with": {
+            "prompt_id": "$uuid:prompt",
+            "turn_id": "$uuid:turn",
+            "message_id": "$uuid:planning-message",
+            "index": 0,
+            "final": true,
+            "delta": "I’ll split the evidence review across two researchers, then verify and synthesize their findings."
+          }
+        }
+      }
+    },
+    {
+      "at": 200,
+      "do": {
+        "emit": {
+          "event": "TaskCreated",
+          "with": {
+            "prompt_id": "$uuid:prompt",
+            "task_id": "research-primary-sources",
+            "task_subject": "Review primary sources",
+            "task_description": "Collect current first-party evidence and note publication dates.",
+            "team_name": "research-team",
+            "teammate_name": "sources"
+          }
+        }
+      }
+    },
+    {
+      "at": 300,
+      "do": {
+        "emit": {
+          "event": "TaskCreated",
+          "with": {
+            "prompt_id": "$uuid:prompt",
+            "task_id": "research-local-evidence",
+            "task_subject": "Inspect local evidence",
+            "task_description": "Trace the repository and extract implementation constraints.",
+            "team_name": "research-team",
+            "teammate_name": "analyst"
+          }
+        }
+      }
+    },
+    {
+      "at": 400,
+      "do": {
+        "emit": {
+          "event": "SubagentStart",
+          "with": { "prompt_id": "$uuid:prompt", "agent_id": "research-sources", "agent_type": "researcher" }
+        }
+      }
+    },
+    {
+      "at": 500,
+      "do": {
+        "emit": {
+          "event": "SubagentStart",
+          "with": { "prompt_id": "$uuid:prompt", "agent_id": "research-analyst", "agent_type": "Explore" }
+        }
+      }
+    },
+    {
+      "at": 600,
+      "do": {
+        "emit": {
+          "event": "PreToolUse",
+          "with": {
+            "prompt_id": "$uuid:prompt",
+            "agent_id": "research-sources",
+            "agent_type": "researcher",
+            "tool_name": "WebSearch",
+            "tool_input": { "query": "current primary sources for $stimulus.text" },
+            "tool_use_id": "$uuid:web-search"
+          }
+        }
+      }
+    },
+    {
+      "at": 800,
+      "do": {
+        "emit": {
+          "event": "PostToolUse",
+          "with": {
+            "prompt_id": "$uuid:prompt",
+            "agent_id": "research-sources",
+            "agent_type": "researcher",
+            "tool_name": "WebSearch",
+            "tool_input": { "query": "current primary sources for $stimulus.text" },
+            "tool_response": { "results": ["official specification", "maintainer documentation", "release notes"] },
+            "tool_use_id": "$uuid:web-search",
+            "duration_ms": 180
+          }
+        }
+      }
+    },
+    {
+      "at": 900,
+      "do": {
+        "emit": {
+          "event": "PreToolUse",
+          "with": {
+            "prompt_id": "$uuid:prompt",
+            "agent_id": "research-sources",
+            "agent_type": "researcher",
+            "tool_name": "WebFetch",
+            "tool_input": { "url": "https://example.com/primary-source" },
+            "tool_use_id": "$uuid:web-fetch"
+          }
+        }
+      }
+    },
+    {
+      "at": 1100,
+      "do": {
+        "emit": {
+          "event": "PostToolUse",
+          "with": {
+            "prompt_id": "$uuid:prompt",
+            "agent_id": "research-sources",
+            "agent_type": "researcher",
+            "tool_name": "WebFetch",
+            "tool_input": { "url": "https://example.com/primary-source" },
+            "tool_response": {
+              "status": 200,
+              "summary": "Primary source confirms the current lifecycle and constraints."
+            },
+            "tool_use_id": "$uuid:web-fetch",
+            "duration_ms": 190
+          }
+        }
+      }
+    },
+    {
+      "at": 1200,
+      "do": {
+        "emit": {
+          "event": "PreToolUse",
+          "with": {
+            "prompt_id": "$uuid:prompt",
+            "agent_id": "research-analyst",
+            "agent_type": "Explore",
+            "tool_name": "Read",
+            "tool_input": { "file_path": "$cwd" },
+            "tool_use_id": "$uuid:read"
+          }
+        }
+      }
+    },
+    {
+      "at": 1400,
+      "do": {
+        "emit": {
+          "event": "PostToolUse",
+          "with": {
+            "prompt_id": "$uuid:prompt",
+            "agent_id": "research-analyst",
+            "agent_type": "Explore",
+            "tool_name": "Read",
+            "tool_input": { "file_path": "$cwd" },
+            "tool_response": {
+              "files": ["README.md", "draft/IMPOSTER.md", "packages/imposter/src/session/scenario.ts"]
+            },
+            "tool_use_id": "$uuid:read",
+            "duration_ms": 175
+          }
+        }
+      }
+    },
+    {
+      "at": 1500,
+      "do": {
+        "emit": {
+          "event": "PreToolUse",
+          "with": {
+            "prompt_id": "$uuid:prompt",
+            "tool_name": "Bash",
+            "tool_input": { "command": "rg -n 'scenario|compaction|subagent' packages draft" },
+            "tool_use_id": "$uuid:inventory"
+          }
+        }
+      }
+    },
+    {
+      "at": 1700,
+      "do": {
+        "emit": {
+          "event": "PostToolUse",
+          "with": {
+            "prompt_id": "$uuid:prompt",
+            "tool_name": "Bash",
+            "tool_input": { "command": "rg -n 'scenario|compaction|subagent' packages draft" },
+            "tool_response": { "output": "Found scenario catalogs, delegation hooks, and compaction events." },
+            "tool_use_id": "$uuid:inventory",
+            "duration_ms": 165
+          }
+        }
+      }
+    },
+    {
+      "at": 1800,
+      "do": {
+        "emit": {
+          "event": "PostToolBatch",
+          "with": {
+            "prompt_id": "$uuid:prompt",
+            "tool_calls": [
+              { "tool_name": "WebSearch", "tool_use_id": "$uuid:web-search" },
+              { "tool_name": "WebFetch", "tool_use_id": "$uuid:web-fetch" },
+              { "tool_name": "Read", "tool_use_id": "$uuid:read" },
+              { "tool_name": "Bash", "tool_use_id": "$uuid:inventory" }
+            ]
+          }
+        }
+      }
+    },
+    {
+      "at": 1900,
+      "do": {
+        "emit": {
+          "event": "TaskCompleted",
+          "with": {
+            "prompt_id": "$uuid:prompt",
+            "task_id": "research-primary-sources",
+            "task_subject": "Review primary sources",
+            "task_description": "Collected and cross-checked first-party evidence.",
+            "team_name": "research-team",
+            "teammate_name": "sources"
+          }
+        }
+      }
+    },
+    {
+      "at": 2000,
+      "do": {
+        "emit": {
+          "event": "TeammateIdle",
+          "with": { "prompt_id": "$uuid:prompt", "team_name": "research-team", "teammate_name": "sources" }
+        }
+      }
+    },
+    {
+      "at": 2100,
+      "do": {
+        "emit": {
+          "event": "SubagentStop",
+          "with": {
+            "prompt_id": "$uuid:prompt",
+            "agent_id": "research-sources",
+            "agent_type": "researcher",
+            "agent_transcript_path": "/tmp/research-sources.jsonl",
+            "last_assistant_message": "Primary-source findings delivered with dates and caveats.",
+            "stop_hook_active": false,
+            "background_tasks": [],
+            "session_crons": []
+          }
+        }
+      }
+    },
+    {
+      "at": 2200,
+      "do": {
+        "emit": {
+          "event": "TaskCompleted",
+          "with": {
+            "prompt_id": "$uuid:prompt",
+            "task_id": "research-local-evidence",
+            "task_subject": "Inspect local evidence",
+            "task_description": "Mapped implementation seams and existing scenario limitations.",
+            "team_name": "research-team",
+            "teammate_name": "analyst"
+          }
+        }
+      }
+    },
+    {
+      "at": 2300,
+      "do": {
+        "emit": {
+          "event": "TeammateIdle",
+          "with": { "prompt_id": "$uuid:prompt", "team_name": "research-team", "teammate_name": "analyst" }
+        }
+      }
+    },
+    {
+      "at": 2400,
+      "do": {
+        "emit": {
+          "event": "SubagentStop",
+          "with": {
+            "prompt_id": "$uuid:prompt",
+            "agent_id": "research-analyst",
+            "agent_type": "Explore",
+            "agent_transcript_path": "/tmp/research-analyst.jsonl",
+            "last_assistant_message": "Repository map and constraints delivered.",
+            "stop_hook_active": false,
+            "background_tasks": [],
+            "session_crons": []
+          }
+        }
+      }
+    },
+    {
+      "at": 2500,
+      "do": {
+        "statusline": {
+          "with": {
+            "session_id": "$sessionId",
+            "transcript_path": "$transcriptPath",
+            "cwd": "$cwd",
+            "model": { "id": "$modelId", "display_name": "$modelId" },
+            "workspace": { "current_dir": "$cwd" },
+            "context_window": {
+              "total_input_tokens": 188000,
+              "context_window_size": 200000,
+              "used_percentage": 94,
+              "current_usage": {
+                "input_tokens": 188000,
+                "cache_creation_input_tokens": 0,
+                "cache_read_input_tokens": 42000
+              }
+            },
+            "rate_limits": { "five_hour": { "used_percentage": 38, "resets_at": "$now" } }
+          }
+        }
+      }
+    },
+    {
+      "at": 2600,
+      "do": {
+        "emit": {
+          "event": "PreCompact",
+          "with": { "prompt_id": "$uuid:prompt", "trigger": "auto", "custom_instructions": "" }
+        }
+      }
+    },
+    {
+      "at": 2700,
+      "do": {
+        "emit": {
+          "event": "PostCompact",
+          "with": {
+            "prompt_id": "$uuid:prompt",
+            "trigger": "auto",
+            "compact_summary": "Research goal, source provenance, teammate findings, disagreements, and remaining verification steps were preserved."
+          }
+        }
+      }
+    },
+    {
+      "at": 2800,
+      "do": {
+        "emit": {
+          "event": "InstructionsLoaded",
+          "with": {
+            "prompt_id": "$uuid:prompt",
+            "file_path": "$claudeMdPath",
+            "memory_type": "User",
+            "load_reason": "compact"
+          }
+        }
+      }
+    },
+    {
+      "at": 2900,
+      "do": {
+        "emit": {
+          "event": "PreToolUse",
+          "with": {
+            "prompt_id": "$uuid:prompt",
+            "tool_name": "Grep",
+            "tool_input": { "pattern": "source|claim|caveat", "path": "$cwd" },
+            "tool_use_id": "$uuid:verify"
+          }
+        }
+      }
+    },
+    {
+      "at": 3100,
+      "do": {
+        "emit": {
+          "event": "PostToolUse",
+          "with": {
+            "prompt_id": "$uuid:prompt",
+            "tool_name": "Grep",
+            "tool_input": { "pattern": "source|claim|caveat", "path": "$cwd" },
+            "tool_response": { "matches": 12, "output": "Every material claim has a source or an explicit caveat." },
+            "tool_use_id": "$uuid:verify",
+            "duration_ms": 150
+          }
+        }
+      }
+    },
+    {
+      "at": 3200,
+      "do": {
+        "emit": {
+          "event": "MessageDisplay",
+          "with": {
+            "prompt_id": "$uuid:prompt",
+            "turn_id": "$uuid:turn",
+            "message_id": "$uuid:final-message",
+            "index": 0,
+            "final": true,
+            "delta": "The evidence is reconciled. I’m delivering the recommendation with sources, tradeoffs, and open questions."
+          }
+        }
+      }
+    },
+    {
+      "at": 3300,
+      "do": {
+        "transcript": {
+          "record": {
+            "type": "assistant",
+            "uuid": "$uuid:assistant",
+            "sessionId": "$sessionId",
+            "timestamp": "$now",
+            "cwd": "$cwd",
+            "version": "$vendorVersion",
+            "message": {
+              "id": "$uuid:message",
+              "role": "assistant",
+              "model": "$modelId",
+              "content": [
+                {
+                  "type": "text",
+                  "text": "Recommendation: use the source-backed option, retain the documented caveats, and validate the open question with a focused follow-up."
+                }
+              ]
+            }
+          }
+        }
+      }
+    },
+    {
+      "at": 3400,
+      "do": {
+        "emit": {
+          "event": "Stop",
+          "with": {
+            "prompt_id": "$uuid:prompt",
+            "last_assistant_message": "Recommendation delivered with sources, tradeoffs, and open questions.",
+            "stop_hook_active": false,
+            "background_tasks": [],
+            "session_crons": []
+          }
+        }
+      }
+    }
+  ]
+}

@@ -1,0 +1,83 @@
+{
+  "surface": "claude",
+  "surfaceVersion": "2.1.226",
+  "event": "PostToolUseFailure",
+  "channel": "hook",
+  "channels": [
+    "hook"
+  ],
+  "transport": "http",
+  "direction": "agent-to-client",
+  "trigger": "One failure event per approved tool call that fails.",
+  "payloadSchema": {
+    "type": "object",
+    "properties": {
+      "session_id": {
+        "type": "string"
+      },
+      "transcript_path": {
+        "type": "string"
+      },
+      "cwd": {
+        "type": "string"
+      },
+      "prompt_id": {
+        "type": "string"
+      },
+      "permission_mode": {
+        "type": "string"
+      },
+      "effort": {
+        "type": "object"
+      },
+      "hook_event_name": {
+        "type": "string"
+      },
+      "agent_id": {
+        "type": "string"
+      },
+      "agent_type": {
+        "type": "string"
+      },
+      "tool_name": {
+        "type": "string"
+      },
+      "tool_input": {
+        "type": "object"
+      },
+      "tool_use_id": {
+        "type": "string"
+      },
+      "error": {
+        "type": "string"
+      },
+      "is_interrupt": {
+        "type": "boolean"
+      },
+      "duration_ms": {
+        "type": "number"
+      }
+    },
+    "required": [
+      "cwd",
+      "error",
+      "hook_event_name",
+      "session_id",
+      "tool_input",
+      "tool_name",
+      "tool_use_id",
+      "transcript_path"
+    ]
+  },
+  "evidence": {
+    "existence": [
+      "claude-official-hooks"
+    ],
+    "shape": [
+      "claude-official-hooks"
+    ]
+  },
+  "confidence": "unverified",
+  "timeoutSec": 5,
+  "notes": "One failure event per approved tool call that fails."
+}

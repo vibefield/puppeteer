@@ -1,0 +1,254 @@
+{
+  "hooks": {
+    "SessionStart": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "sh -c 'cat >> \"/workspace/probe/captures-interactive/SessionStart.jsonl\"; echo >> \"/workspace/probe/captures-interactive/SessionStart.jsonl\"'"
+          }
+        ]
+      }
+    ],
+    "SessionEnd": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "sh -c 'cat >> \"/workspace/probe/captures-interactive/SessionEnd.jsonl\"; echo >> \"/workspace/probe/captures-interactive/SessionEnd.jsonl\"'"
+          }
+        ]
+      }
+    ],
+    "UserPromptSubmit": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "sh -c 'cat >> \"/workspace/probe/captures-interactive/UserPromptSubmit.jsonl\"; echo >> \"/workspace/probe/captures-interactive/UserPromptSubmit.jsonl\"'"
+          }
+        ]
+      }
+    ],
+    "PreToolUse": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "sh -c 'cat >> \"/workspace/probe/captures-interactive/PreToolUse.jsonl\"; echo >> \"/workspace/probe/captures-interactive/PreToolUse.jsonl\"'"
+          }
+        ]
+      }
+    ],
+    "PermissionRequest": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "sh -c 'cat >> \"/workspace/probe/captures-interactive/PermissionRequest.jsonl\"; echo >> \"/workspace/probe/captures-interactive/PermissionRequest.jsonl\"'"
+          }
+        ]
+      }
+    ],
+    "PostToolUse": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "sh -c 'cat >> \"/workspace/probe/captures-interactive/PostToolUse.jsonl\"; echo >> \"/workspace/probe/captures-interactive/PostToolUse.jsonl\"'"
+          }
+        ]
+      }
+    ],
+    "PostToolUseFailure": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "sh -c 'cat >> \"/workspace/probe/captures-interactive/PostToolUseFailure.jsonl\"; echo >> \"/workspace/probe/captures-interactive/PostToolUseFailure.jsonl\"'"
+          }
+        ]
+      }
+    ],
+    "Notification": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "sh -c 'cat >> \"/workspace/probe/captures-interactive/Notification.jsonl\"; echo >> \"/workspace/probe/captures-interactive/Notification.jsonl\"'"
+          }
+        ]
+      }
+    ],
+    "SubagentStart": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "sh -c 'cat >> \"/workspace/probe/captures-interactive/SubagentStart.jsonl\"; echo >> \"/workspace/probe/captures-interactive/SubagentStart.jsonl\"'"
+          }
+        ]
+      }
+    ],
+    "SubagentStop": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "sh -c 'cat >> \"/workspace/probe/captures-interactive/SubagentStop.jsonl\"; echo >> \"/workspace/probe/captures-interactive/SubagentStop.jsonl\"'"
+          }
+        ]
+      }
+    ],
+    "TaskCreated": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "sh -c 'cat >> \"/workspace/probe/captures-interactive/TaskCreated.jsonl\"; echo >> \"/workspace/probe/captures-interactive/TaskCreated.jsonl\"'"
+          }
+        ]
+      }
+    ],
+    "TaskCompleted": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "sh -c 'cat >> \"/workspace/probe/captures-interactive/TaskCompleted.jsonl\"; echo >> \"/workspace/probe/captures-interactive/TaskCompleted.jsonl\"'"
+          }
+        ]
+      }
+    ],
+    "Stop": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "sh -c 'cat >> \"/workspace/probe/captures-interactive/Stop.jsonl\"; echo >> \"/workspace/probe/captures-interactive/Stop.jsonl\"'"
+          }
+        ]
+      }
+    ],
+    "StopFailure": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "sh -c 'cat >> \"/workspace/probe/captures-interactive/StopFailure.jsonl\"; echo >> \"/workspace/probe/captures-interactive/StopFailure.jsonl\"'"
+          }
+        ]
+      }
+    ],
+    "TeammateIdle": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "sh -c 'cat >> \"/workspace/probe/captures-interactive/TeammateIdle.jsonl\"; echo >> \"/workspace/probe/captures-interactive/TeammateIdle.jsonl\"'"
+          }
+        ]
+      }
+    ],
+    "InstructionsLoaded": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "sh -c 'cat >> \"/workspace/probe/captures-interactive/InstructionsLoaded.jsonl\"; echo >> \"/workspace/probe/captures-interactive/InstructionsLoaded.jsonl\"'"
+          }
+        ]
+      }
+    ],
+    "ConfigChange": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "sh -c 'cat >> \"/workspace/probe/captures-interactive/ConfigChange.jsonl\"; echo >> \"/workspace/probe/captures-interactive/ConfigChange.jsonl\"'"
+          }
+        ]
+      }
+    ],
+    "CwdChanged": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "sh -c 'cat >> \"/workspace/probe/captures-interactive/CwdChanged.jsonl\"; echo >> \"/workspace/probe/captures-interactive/CwdChanged.jsonl\"'"
+          }
+        ]
+      }
+    ],
+    "FileChanged": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "sh -c 'cat >> \"/workspace/probe/captures-interactive/FileChanged.jsonl\"; echo >> \"/workspace/probe/captures-interactive/FileChanged.jsonl\"'"
+          }
+        ]
+      }
+    ],
+    "PreCompact": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "sh -c 'cat >> \"/workspace/probe/captures-interactive/PreCompact.jsonl\"; echo >> \"/workspace/probe/captures-interactive/PreCompact.jsonl\"'"
+          }
+        ]
+      }
+    ],
+    "PostCompact": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "sh -c 'cat >> \"/workspace/probe/captures-interactive/PostCompact.jsonl\"; echo >> \"/workspace/probe/captures-interactive/PostCompact.jsonl\"'"
+          }
+        ]
+      }
+    ],
+    "WorktreeCreate": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "sh -c 'cat >> \"/workspace/probe/captures-interactive/WorktreeCreate.jsonl\"; echo >> \"/workspace/probe/captures-interactive/WorktreeCreate.jsonl\"'"
+          }
+        ]
+      }
+    ],
+    "WorktreeRemove": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "sh -c 'cat >> \"/workspace/probe/captures-interactive/WorktreeRemove.jsonl\"; echo >> \"/workspace/probe/captures-interactive/WorktreeRemove.jsonl\"'"
+          }
+        ]
+      }
+    ],
+    "Elicitation": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "sh -c 'cat >> \"/workspace/probe/captures-interactive/Elicitation.jsonl\"; echo >> \"/workspace/probe/captures-interactive/Elicitation.jsonl\"'"
+          }
+        ]
+      }
+    ],
+    "ElicitationResult": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "sh -c 'cat >> \"/workspace/probe/captures-interactive/ElicitationResult.jsonl\"; echo >> \"/workspace/probe/captures-interactive/ElicitationResult.jsonl\"'"
+          }
+        ]
+      }
+    ]
+  }
+}

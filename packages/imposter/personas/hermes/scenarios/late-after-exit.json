@@ -1,0 +1,13 @@
+{
+  "name": "late-after-exit",
+  "steps": [
+    {
+      "at": 0,
+      "do": { "emit": { "channel": "tui-gateway", "event": "message.complete", "with": { "status": "complete", "hasText": true } } }
+    },
+    {
+      "at": 40,
+      "do": { "emit": { "channel": "tui-gateway", "event": "message.delta", "with": { "hasText": true } } }
+    }
+  ]
+}

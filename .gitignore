@@ -1,0 +1,13 @@
+probe/probe-*.stderr
+probe/http-received.json
+probe/marker.txt
+node_modules/
+.pnpm-store/
+dist/
+.idea/
+.env
+.env.*
+!.env.example
+.chopsticks/
+.agent-adaptation/
+packages/surface/vendors/*/captures-raw/

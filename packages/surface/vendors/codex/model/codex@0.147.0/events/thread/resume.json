@@ -1,0 +1,115 @@
+{
+  "surface": "codex",
+  "surfaceVersion": "0.147.0",
+  "event": "thread/resume",
+  "channel": "appserver",
+  "transport": "jsonrpc-request",
+  "direction": "client-to-agent",
+  "payloadSchema": {
+    "type": "object",
+    "properties": {
+      "approvalPolicy": {},
+      "approvalsReviewer": {},
+      "baseInstructions": {},
+      "config": {},
+      "cwd": {},
+      "developerInstructions": {},
+      "excludeTurns": {
+        "type": "boolean"
+      },
+      "history": {},
+      "initialTurnsPage": {},
+      "model": {},
+      "modelProvider": {},
+      "path": {},
+      "permissions": {},
+      "personality": {},
+      "runtimeWorkspaceRoots": {},
+      "sandbox": {},
+      "serviceTier": {},
+      "threadId": {
+        "type": "string"
+      }
+    },
+    "required": [
+      "threadId"
+    ]
+  },
+  "resultSchema": {
+    "type": "object",
+    "properties": {
+      "activePermissionProfile": {},
+      "approvalPolicy": {},
+      "approvalsReviewer": {},
+      "cwd": {
+        "type": "string"
+      },
+      "initialTurnsPage": {},
+      "instructionSources": {
+        "type": "array"
+      },
+      "itemsBackwardsCursor": {},
+      "model": {
+        "type": "string"
+      },
+      "modelProvider": {
+        "type": "string"
+      },
+      "multiAgentMode": {},
+      "reasoningEffort": {},
+      "runtimeWorkspaceRoots": {
+        "type": "array"
+      },
+      "sandbox": {},
+      "serviceTier": {},
+      "thread": {
+        "type": "object"
+      },
+      "turnsBackwardsCursor": {}
+    },
+    "required": [
+      "approvalPolicy",
+      "approvalsReviewer",
+      "cwd",
+      "model",
+      "modelProvider",
+      "sandbox",
+      "thread"
+    ]
+  },
+  "recordSchema": {
+    "type": "object",
+    "properties": {
+      "method": {
+        "type": "string",
+        "enum": [
+          "thread/resume"
+        ]
+      },
+      "params": {
+        "type": "object"
+      },
+      "id": {}
+    },
+    "required": [
+      "method",
+      "params",
+      "id"
+    ]
+  },
+  "evidence": {
+    "existence": [
+      "codex-generated-schema"
+    ],
+    "shape": [
+      "codex-generated-schema"
+    ],
+    "result": [
+      "codex-generated-schema"
+    ],
+    "carrier": [
+      "codex-generated-schema"
+    ]
+  },
+  "confidence": "unverified"
+}

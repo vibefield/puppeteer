@@ -1,0 +1,9 @@
+{"jsonrpc":"2.0","id":1,"method":"initialize","params":{"protocolVersion":1,"clientCapabilities":{"fs":{"readTextFile":false,"writeTextFile":false}}}}
+{"jsonrpc":"2.0","method":"_x.ai/mcp/servers_updated","params":{"servers":[]}}
+{"jsonrpc":"2.0","method":"_x.ai/models/update","params":{"models":[],"currentModelId":"anon-a11a5ed000000000"}}
+{"jsonrpc":"2.0","method":"_x.ai/settings/update","params":{"settings":{}}}
+{"jsonrpc":"2.0","method":"_x.ai/announcements/update","params":{"announcements":[]}}
+{"jsonrpc":"2.0","method":"_x.ai/mcp/init_progress","params":{"completed":0,"total":0}}
+{"jsonrpc":"2.0","id":2,"method":"session/new","params":{"cwd":"/workspace","mcpServers":[]}}
+{"jsonrpc":"2.0","method":"session/update","params":{"sessionId":"a11a5ed0-0000-4000-8000-000000000001","update":{"sessionUpdate":"available_commands_update","availableCommands":[]}}}
+{"jsonrpc":"2.0","method":"_x.ai/session_notification","params":{"sessionId":"a11a5ed0-0000-4000-8000-000000000001","update":{"sessionUpdate":"hook_execution","event_name":"session_start","runs":[]}}}

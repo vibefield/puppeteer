@@ -1,0 +1,15 @@
+{
+  "name": "unknown-record",
+  "steps": [
+    {
+      "at": 0,
+      "do": {
+        "emit": {
+          "channel": "wire",
+          "event": "future.record",
+          "with": { "future_field": "retained by the imposter log" }
+        }
+      }
+    }
+  ]
+}

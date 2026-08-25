@@ -1,0 +1,69 @@
+{
+  "name": "duplicate-out-of-order",
+  "then": [
+    {
+      "at": 0,
+      "do": {
+        "emit": {
+          "event": "item/completed",
+          "with": {
+            "threadId": "$threadId",
+            "turnId": "$uuid:turn",
+            "completedAtMs": "$nowMs",
+            "item": {
+              "type": "commandExecution",
+              "id": "$uuid:item",
+              "command": "echo reordered",
+              "cwd": "$threadCwd",
+              "status": "completed",
+              "exitCode": 0,
+              "aggregatedOutput": "reordered"
+            }
+          }
+        }
+      }
+    },
+    {
+      "at": 25,
+      "do": {
+        "emit": {
+          "event": "item/started",
+          "with": {
+            "threadId": "$threadId",
+            "turnId": "$uuid:turn",
+            "startedAtMs": "$nowMs",
+            "item": {
+              "type": "commandExecution",
+              "id": "$uuid:item",
+              "command": "echo reordered",
+              "cwd": "$threadCwd",
+              "status": "inProgress"
+            }
+          }
+        }
+      }
+    },
+    {
+      "at": 50,
+      "do": {
+        "emit": {
+          "event": "item/completed",
+          "with": {
+            "threadId": "$threadId",
+            "turnId": "$uuid:turn",
+            "completedAtMs": "$nowMs",
+            "item": {
+              "type": "commandExecution",
+              "id": "$uuid:item",
+              "command": "echo reordered",
+              "cwd": "$threadCwd",
+              "status": "completed",
+              "exitCode": 0,
+              "aggregatedOutput": "reordered"
+            }
+          }
+        }
+      }
+    }
+  ]
+}

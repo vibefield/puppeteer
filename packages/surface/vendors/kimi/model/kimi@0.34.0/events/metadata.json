@@ -1,0 +1,61 @@
+{
+  "surface": "kimi",
+  "surfaceVersion": "0.34.0",
+  "event": "metadata",
+  "channel": "wire",
+  "channels": ["wire"],
+  "transport": "jsonl-header",
+  "direction": "agent-local",
+  "payloadSchema": {
+    "type": "object",
+    "properties": {
+      "protocol_version": {
+        "type": "string",
+        "enum": ["1.5"]
+      },
+      "created_at": {
+        "type": "number",
+        "minimum": 0
+      }
+    },
+    "required": ["protocol_version", "created_at"]
+  },
+  "recordSchema": {
+    "type": "object",
+    "properties": {
+      "type": {
+        "type": "string",
+        "enum": ["metadata"]
+      },
+      "protocol_version": {
+        "type": "string",
+        "enum": ["1.5"]
+      },
+      "created_at": {
+        "type": "number",
+        "minimum": 0
+      }
+    },
+    "required": ["type", "protocol_version", "created_at"]
+  },
+  "recordChannel": "wire",
+  "evidence": {
+    "existence": ["kimi-runtime-headless"],
+    "shape": ["kimi-runtime-headless", "kimi-exact-release-source"],
+    "carrier": ["kimi-runtime-headless", "kimi-exact-release-source"]
+  },
+  "confidence": "verified-headless",
+  "variants": [
+    {
+      "match": {
+        "protocol_version": "1.5"
+      },
+      "evidence": {
+        "existence": ["kimi-runtime-headless"],
+        "shape": ["kimi-runtime-headless", "kimi-exact-release-source"]
+      },
+      "confidence": "verified-headless"
+    }
+  ],
+  "fixture": "captures/kimi@0.34.0/basic-turn/wire.jsonl"
+}

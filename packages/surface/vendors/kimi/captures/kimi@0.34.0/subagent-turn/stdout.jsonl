@@ -1,0 +1,5 @@
+{"role":"meta","type":"system.version","version":"0.34.0"}
+{"role":"assistant","tool_calls":[{"type":"function","id":"call_a11a5ed0db2f0220","function":{"name":"Agent","arguments":"<redacted:arguments>"}}]}
+{"role":"tool","tool_call_id":"call_a11a5ed0db2f0220","content":"<redacted:content>"}
+{"role":"assistant","content":"<redacted:content>"}
+{"role":"meta","type":"session.resume_hint","session_id":"session_a11a5ed0e90f6e53b67da8d2a964613725ea","command":"<redacted:command>","content":"<redacted:content>"}

@@ -1,0 +1,651 @@
+{
+  "vendor": "claude",
+  "appliesToRelease": "v2.1.226",
+  "retrievedAt": "2026-08-09T18:00:00.000Z",
+  "source": "https://code.claude.com/docs/en/hooks",
+  "release": "https://github.com/anthropics/claude-code/releases/tag/v2.1.226",
+  "caveat": "This is a reviewed field-level summary, not a runtime observation. Runtime confidence comes only from the census record.",
+  "commonRequired": [
+    "session_id",
+    "transcript_path",
+    "cwd",
+    "hook_event_name"
+  ],
+  "events": [
+    {
+      "event": "SessionStart",
+      "transport": "command",
+      "requiredEventFields": [
+        "source"
+      ],
+      "fields": [
+        "source",
+        "model",
+        "agent_type",
+        "session_title"
+      ],
+      "notes": "Starts or resumes a session; source may be startup, resume, clear, compact, or fork."
+    },
+    {
+      "event": "Setup",
+      "transport": "command",
+      "requiredEventFields": [
+        "trigger"
+      ],
+      "fields": [
+        "trigger"
+      ],
+      "notes": "One-time initialization hook for --init-only, -p --init, and maintenance mode."
+    },
+    {
+      "event": "InstructionsLoaded",
+      "transport": "http",
+      "requiredEventFields": [
+        "file_path",
+        "memory_type",
+        "load_reason"
+      ],
+      "fields": [
+        "file_path",
+        "memory_type",
+        "load_reason"
+      ],
+      "notes": "A CLAUDE.md or .claude/rules file entered context."
+    },
+    {
+      "event": "UserPromptSubmit",
+      "transport": "http",
+      "requiredEventFields": [
+        "prompt"
+      ],
+      "fields": [
+        "prompt",
+        "session_title"
+      ],
+      "notes": "The verbatim submitted prompt; prompt_id is the native user-turn correlation when present."
+    },
+    {
+      "event": "UserPromptExpansion",
+      "transport": "http",
+      "requiredEventFields": [
+        "expansion_type",
+        "command_name",
+        "command_args",
+        "command_source",
+        "prompt"
+      ],
+      "fields": [
+        "expansion_type",
+        "command_name",
+        "command_args",
+        "command_source",
+        "prompt"
+      ],
+      "notes": "A user-typed command expanded into its prompt before model processing."
+    },
+    {
+      "event": "MessageDisplay",
+      "transport": "http",
+      "requiredEventFields": [
+        "turn_id",
+        "message_id",
+        "index",
+        "final",
+        "delta"
+      ],
+      "fields": [
+        "turn_id",
+        "message_id",
+        "index",
+        "final",
+        "delta"
+      ],
+      "notes": "Streaming display delta; display-only and distinct from durable transcript content."
+    },
+    {
+      "event": "PreToolUse",
+      "transport": "http",
+      "requiredEventFields": [
+        "tool_name",
+        "tool_input",
+        "tool_use_id"
+      ],
+      "fields": [
+        "tool_name",
+        "tool_input",
+        "tool_use_id"
+      ],
+      "notes": "Runs before every tool call, before PermissionRequest when a decision is needed."
+    },
+    {
+      "event": "PermissionRequest",
+      "transport": "http",
+      "requiredEventFields": [
+        "tool_name",
+        "tool_input"
+      ],
+      "fields": [
+        "tool_name",
+        "tool_input",
+        "permission_suggestions"
+      ],
+      "notes": "Carries no tool_use_id; correlate to the preceding PreToolUse by prompt, tool name, and input."
+    },
+    {
+      "event": "PostToolUse",
+      "transport": "http",
+      "requiredEventFields": [
+        "tool_name",
+        "tool_input",
+        "tool_response",
+        "tool_use_id"
+      ],
+      "fields": [
+        "tool_name",
+        "tool_input",
+        "tool_response",
+        "tool_use_id",
+        "duration_ms"
+      ],
+      "notes": "One completion event per successful tool call."
+    },
+    {
+      "event": "PostToolUseFailure",
+      "transport": "http",
+      "requiredEventFields": [
+        "tool_name",
+        "tool_input",
+        "tool_use_id",
+        "error"
+      ],
+      "fields": [
+        "tool_name",
+        "tool_input",
+        "tool_use_id",
+        "error",
+        "is_interrupt",
+        "duration_ms"
+      ],
+      "notes": "One failure event per approved tool call that fails."
+    },
+    {
+      "event": "PostToolBatch",
+      "transport": "http",
+      "requiredEventFields": [
+        "tool_calls"
+      ],
+      "fields": [
+        "tool_calls"
+      ],
+      "notes": "Runs once after every call in a parallel tool batch resolves."
+    },
+    {
+      "event": "PermissionDenied",
+      "transport": "http",
+      "requiredEventFields": [
+        "tool_name",
+        "tool_input",
+        "tool_use_id",
+        "reason"
+      ],
+      "fields": [
+        "tool_name",
+        "tool_input",
+        "tool_use_id",
+        "reason"
+      ],
+      "notes": "Auto-mode classifier denial; manual dialog denials do not emit this hook."
+    },
+    {
+      "event": "Notification",
+      "transport": "http",
+      "requiredEventFields": [
+        "message",
+        "notification_type"
+      ],
+      "fields": [
+        "message",
+        "title",
+        "notification_type"
+      ],
+      "notes": "Native Claude Code notification."
+    },
+    {
+      "event": "SubagentStart",
+      "transport": "http",
+      "requiredEventFields": [
+        "agent_id",
+        "agent_type"
+      ],
+      "fields": [
+        "agent_id",
+        "agent_type"
+      ],
+      "notes": "A subagent was spawned."
+    },
+    {
+      "event": "SubagentStop",
+      "transport": "http",
+      "requiredEventFields": [
+        "stop_hook_active",
+        "agent_id",
+        "agent_type",
+        "agent_transcript_path",
+        "last_assistant_message"
+      ],
+      "fields": [
+        "agent_id",
+        "agent_type",
+        "agent_transcript_path",
+        "last_assistant_message",
+        "stop_hook_active",
+        "background_tasks",
+        "session_crons"
+      ],
+      "notes": "A subagent finished; stop-hook re-entry must be deduplicated by agent_id."
+    },
+    {
+      "event": "TaskCreated",
+      "transport": "http",
+      "requiredEventFields": [
+        "task_id",
+        "task_subject"
+      ],
+      "fields": [
+        "task_id",
+        "task_subject",
+        "task_description",
+        "teammate_name",
+        "team_name"
+      ],
+      "notes": "TaskCreate is about to create a task."
+    },
+    {
+      "event": "TaskCompleted",
+      "transport": "http",
+      "requiredEventFields": [
+        "task_id",
+        "task_subject"
+      ],
+      "fields": [
+        "task_id",
+        "task_subject",
+        "task_description",
+        "teammate_name",
+        "team_name"
+      ],
+      "notes": "A task is about to be marked complete."
+    },
+    {
+      "event": "Stop",
+      "transport": "http",
+      "requiredEventFields": [
+        "stop_hook_active",
+        "last_assistant_message",
+        "background_tasks",
+        "session_crons"
+      ],
+      "fields": [
+        "stop_hook_active",
+        "last_assistant_message",
+        "background_tasks",
+        "session_crons"
+      ],
+      "notes": "The assistant finished its turn."
+    },
+    {
+      "event": "StopFailure",
+      "transport": "http",
+      "requiredEventFields": [
+        "error"
+      ],
+      "fields": [
+        "error",
+        "error_details",
+        "last_assistant_message"
+      ],
+      "notes": "The turn ended because of an API error; hook output is observational only."
+    },
+    {
+      "event": "TeammateIdle",
+      "transport": "http",
+      "requiredEventFields": [
+        "teammate_name",
+        "team_name"
+      ],
+      "fields": [
+        "teammate_name",
+        "team_name"
+      ],
+      "notes": "An agent-team teammate is about to become idle."
+    },
+    {
+      "event": "ConfigChange",
+      "transport": "http",
+      "requiredEventFields": [
+        "source"
+      ],
+      "fields": [
+        "source",
+        "file_path"
+      ],
+      "notes": "A settings, policy, or skill configuration source changed."
+    },
+    {
+      "event": "CwdChanged",
+      "transport": "http",
+      "requiredEventFields": [
+        "old_cwd",
+        "new_cwd"
+      ],
+      "fields": [
+        "old_cwd",
+        "new_cwd"
+      ],
+      "notes": "The active working directory changed."
+    },
+    {
+      "event": "DirectoryAdded",
+      "transport": "http",
+      "requiredEventFields": [
+        "directory",
+        "source"
+      ],
+      "fields": [
+        "directory",
+        "source"
+      ],
+      "notes": "An additional working directory was registered; the hook runs asynchronously."
+    },
+    {
+      "event": "FileChanged",
+      "transport": "http",
+      "requiredEventFields": [
+        "file_path",
+        "event"
+      ],
+      "fields": [
+        "file_path",
+        "event"
+      ],
+      "matcherRequired": true,
+      "notes": "A configured matcher watch filename changed on disk; registration without a matcher observes nothing."
+    },
+    {
+      "event": "WorktreeCreate",
+      "transport": "http",
+      "requiredEventFields": [
+        "name"
+      ],
+      "fields": [
+        "name"
+      ],
+      "resultSchema": {
+        "type": "object",
+        "required": [
+          "hookSpecificOutput"
+        ],
+        "properties": {
+          "hookSpecificOutput": {
+            "type": "object",
+            "required": [
+              "hookEventName",
+              "worktreePath"
+            ],
+            "properties": {
+              "hookEventName": {
+                "type": "string",
+                "enum": [
+                  "WorktreeCreate"
+                ]
+              },
+              "worktreePath": {
+                "type": "string"
+              }
+            }
+          }
+        }
+      },
+      "notes": "Registration replaces Claude Code's default Git worktree creation and must return the created path."
+    },
+    {
+      "event": "WorktreeRemove",
+      "transport": "http",
+      "requiredEventFields": [
+        "worktree_path"
+      ],
+      "fields": [
+        "worktree_path"
+      ],
+      "notes": "Claude Code is removing a worktree."
+    },
+    {
+      "event": "PreCompact",
+      "transport": "http",
+      "requiredEventFields": [
+        "trigger",
+        "custom_instructions"
+      ],
+      "fields": [
+        "trigger",
+        "custom_instructions"
+      ],
+      "notes": "Context compaction is about to run and can still be blocked."
+    },
+    {
+      "event": "PostCompact",
+      "transport": "http",
+      "requiredEventFields": [
+        "trigger",
+        "compact_summary"
+      ],
+      "fields": [
+        "trigger",
+        "compact_summary"
+      ],
+      "notes": "Context compaction completed."
+    },
+    {
+      "event": "SessionEnd",
+      "transport": "http",
+      "requiredEventFields": [
+        "reason"
+      ],
+      "fields": [
+        "reason"
+      ],
+      "notes": "The native session terminated; prompt_id is absent before the first prompt."
+    },
+    {
+      "event": "Elicitation",
+      "transport": "http",
+      "requiredEventFields": [
+        "mcp_server_name",
+        "message"
+      ],
+      "fields": [
+        "mcp_server_name",
+        "message",
+        "requested_schema",
+        "mode",
+        "url",
+        "elicitation_id"
+      ],
+      "notes": "An MCP server requested structured user input."
+    },
+    {
+      "event": "ElicitationResult",
+      "transport": "http",
+      "requiredEventFields": [
+        "mcp_server_name",
+        "action"
+      ],
+      "fields": [
+        "mcp_server_name",
+        "action",
+        "mode",
+        "elicitation_id",
+        "content"
+      ],
+      "notes": "The user response to an MCP elicitation before it is returned to the server."
+    }
+  ],
+  "ordering": [
+    {
+      "from": "setup",
+      "to": "session-start",
+      "kind": "sequence",
+      "label": "optional initialization"
+    },
+    {
+      "from": "session-start",
+      "to": "instructions-loaded",
+      "kind": "async",
+      "label": "context discovery"
+    },
+    {
+      "from": "session-start",
+      "to": "user-prompt-submit",
+      "kind": "sequence",
+      "label": "first turn"
+    },
+    {
+      "from": "user-prompt-submit",
+      "to": "user-prompt-expansion",
+      "kind": "conditional",
+      "label": "typed command"
+    },
+    {
+      "from": "user-prompt-submit",
+      "to": "message-display",
+      "kind": "conditional",
+      "label": "display stream"
+    },
+    {
+      "from": "user-prompt-submit",
+      "to": "pre-tool-use",
+      "kind": "conditional",
+      "label": "agentic tool loop"
+    },
+    {
+      "from": "pre-tool-use",
+      "to": "permission-request",
+      "kind": "conditional",
+      "label": "permission required"
+    },
+    {
+      "from": "permission-request",
+      "to": "permission-denied",
+      "kind": "conditional",
+      "label": "auto-mode classifier denial"
+    },
+    {
+      "from": "pre-tool-use",
+      "to": "post-tool-use",
+      "kind": "conditional",
+      "label": "success"
+    },
+    {
+      "from": "pre-tool-use",
+      "to": "post-tool-use-failure",
+      "kind": "conditional",
+      "label": "execution failure"
+    },
+    {
+      "from": "post-tool-use",
+      "to": "post-tool-batch",
+      "kind": "conditional",
+      "label": "batch resolved"
+    },
+    {
+      "from": "post-tool-use-failure",
+      "to": "post-tool-batch",
+      "kind": "conditional",
+      "label": "batch resolved"
+    },
+    {
+      "from": "post-tool-batch",
+      "to": "message-display",
+      "kind": "loop",
+      "label": "next model response"
+    },
+    {
+      "from": "message-display",
+      "to": "message-display",
+      "kind": "loop",
+      "label": "streaming deltas"
+    },
+    {
+      "from": "message-display",
+      "to": "stop",
+      "kind": "sequence",
+      "label": "turn completes"
+    },
+    {
+      "from": "user-prompt-submit",
+      "to": "stop-failure",
+      "kind": "conditional",
+      "label": "API failure"
+    },
+    {
+      "from": "stop",
+      "to": "user-prompt-submit",
+      "kind": "loop",
+      "label": "next turn"
+    },
+    {
+      "from": "stop",
+      "to": "session-end",
+      "kind": "conditional",
+      "label": "session exits"
+    },
+    {
+      "from": "session-end",
+      "to": "session-start",
+      "kind": "resume",
+      "label": "--resume or --continue"
+    },
+    {
+      "from": "user-prompt-submit",
+      "to": "subagent-start",
+      "kind": "conditional",
+      "label": "delegation"
+    },
+    {
+      "from": "subagent-start",
+      "to": "subagent-stop",
+      "kind": "sequence",
+      "label": "subagent completes"
+    },
+    {
+      "from": "task-created",
+      "to": "task-completed",
+      "kind": "conditional",
+      "label": "task lifecycle"
+    },
+    {
+      "from": "task-completed",
+      "to": "teammate-idle",
+      "kind": "conditional",
+      "label": "team lifecycle"
+    },
+    {
+      "from": "pre-compact",
+      "to": "post-compact",
+      "kind": "conditional",
+      "label": "compaction succeeds"
+    },
+    {
+      "from": "post-compact",
+      "to": "session-start",
+      "kind": "sequence",
+      "label": "compact source refresh"
+    },
+    {
+      "from": "elicitation",
+      "to": "elicitation-result",
+      "kind": "sequence",
+      "label": "user responds"
+    }
+  ]
+}

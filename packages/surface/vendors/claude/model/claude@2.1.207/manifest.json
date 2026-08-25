@@ -1,0 +1,8 @@
+{
+  "asmVersion": 1,
+  "vendor": "claude",
+  "vendorVersion": "2.1.207",
+  "generatedAt": "2026-08-07",
+  "source": "phase-0 headless census (runs A-F) + M1 interactive census - packages/surface/vendors/claude/findings.md",
+  "evidence": "evidence.json"
+}

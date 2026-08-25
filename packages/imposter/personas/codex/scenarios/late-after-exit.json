@@ -1,0 +1,46 @@
+{
+  "name": "late-after-exit",
+  "then": [
+    {
+      "at": 0,
+      "do": {
+        "emit": {
+          "event": "thread/closed",
+          "with": { "threadId": "$threadId" }
+        }
+      }
+    },
+    {
+      "at": 25,
+      "do": {
+        "emit": {
+          "event": "item/started",
+          "with": {
+            "threadId": "$threadId",
+            "turnId": "$uuid:turn",
+            "startedAtMs": "$nowMs",
+            "item": {
+              "type": "commandExecution",
+              "id": "$uuid:item",
+              "command": "echo late",
+              "cwd": "$threadCwd",
+              "status": "inProgress"
+            }
+          }
+        }
+      }
+    },
+    {
+      "at": 50,
+      "do": {
+        "emit": {
+          "event": "turn/completed",
+          "with": {
+            "threadId": "$threadId",
+            "turn": { "id": "$uuid:turn", "status": "completed", "error": null }
+          }
+        }
+      }
+    }
+  ]
+}

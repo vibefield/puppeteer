@@ -1,0 +1,68 @@
+{
+  "surface": "hermes",
+  "surfaceVersion": "0.20.0",
+  "event": "message.start",
+  "firstSeen": "0.20.0",
+  "lastVerified": "0.20.0",
+  "channel": "tui-gateway",
+  "channels": ["tui-gateway"],
+  "transport": "jsonrpc-notification",
+  "direction": "agent-to-client",
+  "payloadSchema": {
+    "type": "object",
+    "properties": {
+      "hasText": {
+        "type": "boolean"
+      },
+      "hasContext": {
+        "type": "boolean"
+      }
+    }
+  },
+  "recordSchema": {
+    "type": "object",
+    "properties": {
+      "jsonrpc": {
+        "type": "string",
+        "enum": ["2.0"]
+      },
+      "method": {
+        "type": "string",
+        "enum": ["event"]
+      },
+      "params": {
+        "type": "object",
+        "properties": {
+          "type": {
+            "type": "string",
+            "enum": ["message.start"]
+          },
+          "session_id": {
+            "type": "string"
+          },
+          "payload": {
+            "type": "object",
+            "properties": {
+              "hasText": {
+                "type": "boolean"
+              },
+              "hasContext": {
+                "type": "boolean"
+              }
+            }
+          }
+        },
+        "required": ["type", "payload"]
+      }
+    },
+    "required": ["method", "params"]
+  },
+  "recordChannel": "tui-gateway",
+  "evidence": {
+    "existence": ["hermes-runtime-headless"],
+    "shape": ["hermes-runtime-headless"],
+    "carrier": ["hermes-runtime-headless"]
+  },
+  "confidence": "verified-headless",
+  "fixture": "captures/hermes@0.20.0/basic-turn/rpc.jsonl"
+}

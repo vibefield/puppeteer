@@ -1,0 +1,1143 @@
+{
+  "surface": "kimi",
+  "surfaceVersion": "0.34.0",
+  "event": "turn.prompt",
+  "channel": "wire",
+  "channels": ["wire"],
+  "transport": "jsonl-record",
+  "direction": "agent-local",
+  "payloadSchema": {
+    "type": "object",
+    "properties": {
+      "input": {
+        "type": "array",
+        "items": {
+          "anyOf": [
+            {
+              "type": "object",
+              "properties": {
+                "type": {
+                  "type": "string",
+                  "enum": ["text"]
+                },
+                "text": {
+                  "type": "string"
+                }
+              },
+              "required": ["type", "text"]
+            },
+            {
+              "type": "object",
+              "properties": {
+                "type": {
+                  "type": "string",
+                  "enum": ["think"]
+                },
+                "think": {
+                  "type": "string"
+                },
+                "encrypted": {
+                  "type": "string"
+                }
+              },
+              "required": ["type", "think"]
+            },
+            {
+              "type": "object",
+              "properties": {
+                "type": {
+                  "type": "string",
+                  "enum": ["image_url"]
+                },
+                "imageUrl": {
+                  "type": "object",
+                  "properties": {
+                    "url": {
+                      "type": "string"
+                    },
+                    "id": {
+                      "type": "string"
+                    }
+                  },
+                  "required": ["url"]
+                }
+              },
+              "required": ["type", "imageUrl"]
+            },
+            {
+              "type": "object",
+              "properties": {
+                "type": {
+                  "type": "string",
+                  "enum": ["audio_url"]
+                },
+                "audioUrl": {
+                  "type": "object",
+                  "properties": {
+                    "url": {
+                      "type": "string"
+                    },
+                    "id": {
+                      "type": "string"
+                    }
+                  },
+                  "required": ["url"]
+                }
+              },
+              "required": ["type", "audioUrl"]
+            },
+            {
+              "type": "object",
+              "properties": {
+                "type": {
+                  "type": "string",
+                  "enum": ["video_url"]
+                },
+                "videoUrl": {
+                  "type": "object",
+                  "properties": {
+                    "url": {
+                      "type": "string"
+                    },
+                    "id": {
+                      "type": "string"
+                    }
+                  },
+                  "required": ["url"]
+                }
+              },
+              "required": ["type", "videoUrl"]
+            }
+          ]
+        }
+      },
+      "origin": {
+        "type": "object",
+        "properties": {
+          "kind": {
+            "type": "string",
+            "enum": [
+              "user",
+              "skill_activation",
+              "plugin_command",
+              "injection",
+              "shell_command",
+              "compaction_summary",
+              "system_trigger",
+              "task",
+              "cron_job",
+              "cron_missed",
+              "hook_result",
+              "retry"
+            ]
+          },
+          "activationId": {
+            "type": "string"
+          },
+          "skillName": {
+            "type": "string"
+          },
+          "skillArgs": {
+            "type": "string"
+          },
+          "trigger": {
+            "type": "string",
+            "enum": ["user-slash", "model-tool", "nested-skill"]
+          },
+          "skillType": {
+            "type": "string"
+          },
+          "skillPath": {
+            "type": "string"
+          },
+          "skillSource": {
+            "type": "string",
+            "enum": ["project", "user", "extra", "builtin"]
+          },
+          "pluginId": {
+            "type": "string"
+          },
+          "commandName": {
+            "type": "string"
+          },
+          "commandArgs": {
+            "type": "string"
+          },
+          "variant": {
+            "type": "string"
+          },
+          "ownerPromptId": {
+            "type": "string"
+          },
+          "disclosure": {
+            "type": "object",
+            "properties": {
+              "kind": {
+                "type": "string",
+                "enum": ["date"]
+              },
+              "renderGeneration": {
+                "type": "number"
+              },
+              "localDate": {
+                "type": "string"
+              },
+              "timeZone": {
+                "type": "string"
+              }
+            },
+            "required": ["kind", "renderGeneration", "localDate", "timeZone"]
+          },
+          "phase": {
+            "type": "string",
+            "enum": ["input", "output"]
+          },
+          "isError": {
+            "type": "boolean"
+          },
+          "name": {
+            "type": "string"
+          },
+          "taskId": {
+            "type": "string"
+          },
+          "status": {
+            "type": "string",
+            "enum": ["running", "completed", "failed", "timed_out", "killed", "lost"]
+          },
+          "notificationId": {
+            "type": "string"
+          },
+          "jobId": {
+            "type": "string"
+          },
+          "cron": {
+            "type": "string"
+          },
+          "recurring": {
+            "type": "boolean"
+          },
+          "coalescedCount": {
+            "type": "number"
+          },
+          "stale": {
+            "type": "boolean"
+          },
+          "count": {
+            "type": "number"
+          },
+          "event": {
+            "type": "string"
+          },
+          "blocked": {
+            "type": "boolean"
+          }
+        },
+        "required": ["kind"],
+        "anyOf": [
+          {
+            "type": "object",
+            "properties": {
+              "kind": {
+                "type": "string",
+                "enum": ["user"]
+              }
+            },
+            "required": ["kind"]
+          },
+          {
+            "type": "object",
+            "properties": {
+              "kind": {
+                "type": "string",
+                "enum": ["skill_activation"]
+              },
+              "activationId": {
+                "type": "string"
+              },
+              "skillName": {
+                "type": "string"
+              },
+              "trigger": {
+                "type": "string",
+                "enum": ["user-slash", "model-tool", "nested-skill"]
+              }
+            },
+            "required": ["kind", "activationId", "skillName", "trigger"]
+          },
+          {
+            "type": "object",
+            "properties": {
+              "kind": {
+                "type": "string",
+                "enum": ["plugin_command"]
+              },
+              "activationId": {
+                "type": "string"
+              },
+              "pluginId": {
+                "type": "string"
+              },
+              "commandName": {
+                "type": "string"
+              },
+              "trigger": {
+                "type": "string",
+                "enum": ["user-slash"]
+              }
+            },
+            "required": ["kind", "activationId", "pluginId", "commandName", "trigger"]
+          },
+          {
+            "type": "object",
+            "properties": {
+              "kind": {
+                "type": "string",
+                "enum": ["injection"]
+              },
+              "variant": {
+                "type": "string"
+              }
+            },
+            "required": ["kind", "variant"]
+          },
+          {
+            "type": "object",
+            "properties": {
+              "kind": {
+                "type": "string",
+                "enum": ["shell_command"]
+              },
+              "phase": {
+                "type": "string",
+                "enum": ["input", "output"]
+              }
+            },
+            "required": ["kind", "phase"]
+          },
+          {
+            "type": "object",
+            "properties": {
+              "kind": {
+                "type": "string",
+                "enum": ["compaction_summary"]
+              }
+            },
+            "required": ["kind"]
+          },
+          {
+            "type": "object",
+            "properties": {
+              "kind": {
+                "type": "string",
+                "enum": ["system_trigger"]
+              },
+              "name": {
+                "type": "string"
+              }
+            },
+            "required": ["kind", "name"]
+          },
+          {
+            "type": "object",
+            "properties": {
+              "kind": {
+                "type": "string",
+                "enum": ["task"]
+              },
+              "taskId": {
+                "type": "string"
+              },
+              "status": {
+                "type": "string",
+                "enum": ["running", "completed", "failed", "timed_out", "killed", "lost"]
+              },
+              "notificationId": {
+                "type": "string"
+              }
+            },
+            "required": ["kind", "taskId", "status", "notificationId"]
+          },
+          {
+            "type": "object",
+            "properties": {
+              "kind": {
+                "type": "string",
+                "enum": ["cron_job"]
+              },
+              "jobId": {
+                "type": "string"
+              },
+              "cron": {
+                "type": "string"
+              },
+              "recurring": {
+                "type": "boolean"
+              },
+              "coalescedCount": {
+                "type": "number"
+              },
+              "stale": {
+                "type": "boolean"
+              }
+            },
+            "required": ["kind", "jobId", "cron", "recurring", "coalescedCount", "stale"]
+          },
+          {
+            "type": "object",
+            "properties": {
+              "kind": {
+                "type": "string",
+                "enum": ["cron_missed"]
+              },
+              "count": {
+                "type": "number"
+              }
+            },
+            "required": ["kind", "count"]
+          },
+          {
+            "type": "object",
+            "properties": {
+              "kind": {
+                "type": "string",
+                "enum": ["hook_result"]
+              },
+              "event": {
+                "type": "string"
+              }
+            },
+            "required": ["kind", "event"]
+          },
+          {
+            "type": "object",
+            "properties": {
+              "kind": {
+                "type": "string",
+                "enum": ["retry"]
+              }
+            },
+            "required": ["kind"]
+          }
+        ]
+      }
+    },
+    "required": ["input", "origin"]
+  },
+  "recordSchema": {
+    "type": "object",
+    "properties": {
+      "type": {
+        "type": "string",
+        "enum": ["turn.prompt"]
+      },
+      "input": {
+        "type": "array",
+        "items": {
+          "anyOf": [
+            {
+              "type": "object",
+              "properties": {
+                "type": {
+                  "type": "string",
+                  "enum": ["text"]
+                },
+                "text": {
+                  "type": "string"
+                }
+              },
+              "required": ["type", "text"]
+            },
+            {
+              "type": "object",
+              "properties": {
+                "type": {
+                  "type": "string",
+                  "enum": ["think"]
+                },
+                "think": {
+                  "type": "string"
+                },
+                "encrypted": {
+                  "type": "string"
+                }
+              },
+              "required": ["type", "think"]
+            },
+            {
+              "type": "object",
+              "properties": {
+                "type": {
+                  "type": "string",
+                  "enum": ["image_url"]
+                },
+                "imageUrl": {
+                  "type": "object",
+                  "properties": {
+                    "url": {
+                      "type": "string"
+                    },
+                    "id": {
+                      "type": "string"
+                    }
+                  },
+                  "required": ["url"]
+                }
+              },
+              "required": ["type", "imageUrl"]
+            },
+            {
+              "type": "object",
+              "properties": {
+                "type": {
+                  "type": "string",
+                  "enum": ["audio_url"]
+                },
+                "audioUrl": {
+                  "type": "object",
+                  "properties": {
+                    "url": {
+                      "type": "string"
+                    },
+                    "id": {
+                      "type": "string"
+                    }
+                  },
+                  "required": ["url"]
+                }
+              },
+              "required": ["type", "audioUrl"]
+            },
+            {
+              "type": "object",
+              "properties": {
+                "type": {
+                  "type": "string",
+                  "enum": ["video_url"]
+                },
+                "videoUrl": {
+                  "type": "object",
+                  "properties": {
+                    "url": {
+                      "type": "string"
+                    },
+                    "id": {
+                      "type": "string"
+                    }
+                  },
+                  "required": ["url"]
+                }
+              },
+              "required": ["type", "videoUrl"]
+            }
+          ]
+        }
+      },
+      "origin": {
+        "type": "object",
+        "properties": {
+          "kind": {
+            "type": "string",
+            "enum": [
+              "user",
+              "skill_activation",
+              "plugin_command",
+              "injection",
+              "shell_command",
+              "compaction_summary",
+              "system_trigger",
+              "task",
+              "cron_job",
+              "cron_missed",
+              "hook_result",
+              "retry"
+            ]
+          },
+          "activationId": {
+            "type": "string"
+          },
+          "skillName": {
+            "type": "string"
+          },
+          "skillArgs": {
+            "type": "string"
+          },
+          "trigger": {
+            "type": "string",
+            "enum": ["user-slash", "model-tool", "nested-skill"]
+          },
+          "skillType": {
+            "type": "string"
+          },
+          "skillPath": {
+            "type": "string"
+          },
+          "skillSource": {
+            "type": "string",
+            "enum": ["project", "user", "extra", "builtin"]
+          },
+          "pluginId": {
+            "type": "string"
+          },
+          "commandName": {
+            "type": "string"
+          },
+          "commandArgs": {
+            "type": "string"
+          },
+          "variant": {
+            "type": "string"
+          },
+          "ownerPromptId": {
+            "type": "string"
+          },
+          "disclosure": {
+            "type": "object",
+            "properties": {
+              "kind": {
+                "type": "string",
+                "enum": ["date"]
+              },
+              "renderGeneration": {
+                "type": "number"
+              },
+              "localDate": {
+                "type": "string"
+              },
+              "timeZone": {
+                "type": "string"
+              }
+            },
+            "required": ["kind", "renderGeneration", "localDate", "timeZone"]
+          },
+          "phase": {
+            "type": "string",
+            "enum": ["input", "output"]
+          },
+          "isError": {
+            "type": "boolean"
+          },
+          "name": {
+            "type": "string"
+          },
+          "taskId": {
+            "type": "string"
+          },
+          "status": {
+            "type": "string",
+            "enum": ["running", "completed", "failed", "timed_out", "killed", "lost"]
+          },
+          "notificationId": {
+            "type": "string"
+          },
+          "jobId": {
+            "type": "string"
+          },
+          "cron": {
+            "type": "string"
+          },
+          "recurring": {
+            "type": "boolean"
+          },
+          "coalescedCount": {
+            "type": "number"
+          },
+          "stale": {
+            "type": "boolean"
+          },
+          "count": {
+            "type": "number"
+          },
+          "event": {
+            "type": "string"
+          },
+          "blocked": {
+            "type": "boolean"
+          }
+        },
+        "required": ["kind"],
+        "anyOf": [
+          {
+            "type": "object",
+            "properties": {
+              "kind": {
+                "type": "string",
+                "enum": ["user"]
+              }
+            },
+            "required": ["kind"]
+          },
+          {
+            "type": "object",
+            "properties": {
+              "kind": {
+                "type": "string",
+                "enum": ["skill_activation"]
+              },
+              "activationId": {
+                "type": "string"
+              },
+              "skillName": {
+                "type": "string"
+              },
+              "trigger": {
+                "type": "string",
+                "enum": ["user-slash", "model-tool", "nested-skill"]
+              }
+            },
+            "required": ["kind", "activationId", "skillName", "trigger"]
+          },
+          {
+            "type": "object",
+            "properties": {
+              "kind": {
+                "type": "string",
+                "enum": ["plugin_command"]
+              },
+              "activationId": {
+                "type": "string"
+              },
+              "pluginId": {
+                "type": "string"
+              },
+              "commandName": {
+                "type": "string"
+              },
+              "trigger": {
+                "type": "string",
+                "enum": ["user-slash"]
+              }
+            },
+            "required": ["kind", "activationId", "pluginId", "commandName", "trigger"]
+          },
+          {
+            "type": "object",
+            "properties": {
+              "kind": {
+                "type": "string",
+                "enum": ["injection"]
+              },
+              "variant": {
+                "type": "string"
+              }
+            },
+            "required": ["kind", "variant"]
+          },
+          {
+            "type": "object",
+            "properties": {
+              "kind": {
+                "type": "string",
+                "enum": ["shell_command"]
+              },
+              "phase": {
+                "type": "string",
+                "enum": ["input", "output"]
+              }
+            },
+            "required": ["kind", "phase"]
+          },
+          {
+            "type": "object",
+            "properties": {
+              "kind": {
+                "type": "string",
+                "enum": ["compaction_summary"]
+              }
+            },
+            "required": ["kind"]
+          },
+          {
+            "type": "object",
+            "properties": {
+              "kind": {
+                "type": "string",
+                "enum": ["system_trigger"]
+              },
+              "name": {
+                "type": "string"
+              }
+            },
+            "required": ["kind", "name"]
+          },
+          {
+            "type": "object",
+            "properties": {
+              "kind": {
+                "type": "string",
+                "enum": ["task"]
+              },
+              "taskId": {
+                "type": "string"
+              },
+              "status": {
+                "type": "string",
+                "enum": ["running", "completed", "failed", "timed_out", "killed", "lost"]
+              },
+              "notificationId": {
+                "type": "string"
+              }
+            },
+            "required": ["kind", "taskId", "status", "notificationId"]
+          },
+          {
+            "type": "object",
+            "properties": {
+              "kind": {
+                "type": "string",
+                "enum": ["cron_job"]
+              },
+              "jobId": {
+                "type": "string"
+              },
+              "cron": {
+                "type": "string"
+              },
+              "recurring": {
+                "type": "boolean"
+              },
+              "coalescedCount": {
+                "type": "number"
+              },
+              "stale": {
+                "type": "boolean"
+              }
+            },
+            "required": ["kind", "jobId", "cron", "recurring", "coalescedCount", "stale"]
+          },
+          {
+            "type": "object",
+            "properties": {
+              "kind": {
+                "type": "string",
+                "enum": ["cron_missed"]
+              },
+              "count": {
+                "type": "number"
+              }
+            },
+            "required": ["kind", "count"]
+          },
+          {
+            "type": "object",
+            "properties": {
+              "kind": {
+                "type": "string",
+                "enum": ["hook_result"]
+              },
+              "event": {
+                "type": "string"
+              }
+            },
+            "required": ["kind", "event"]
+          },
+          {
+            "type": "object",
+            "properties": {
+              "kind": {
+                "type": "string",
+                "enum": ["retry"]
+              }
+            },
+            "required": ["kind"]
+          }
+        ]
+      },
+      "time": {
+        "type": "number",
+        "minimum": 0
+      }
+    },
+    "required": ["type", "input", "origin", "time"]
+  },
+  "recordChannel": "wire",
+  "evidence": {
+    "existence": ["kimi-runtime-headless"],
+    "shape": ["kimi-runtime-headless", "kimi-exact-release-source"],
+    "carrier": ["kimi-runtime-headless", "kimi-exact-release-source"]
+  },
+  "confidence": "verified-headless",
+  "variants": [
+    {
+      "match": {
+        "origin.kind": "user"
+      },
+      "evidence": {
+        "existence": ["kimi-runtime-headless"],
+        "shape": ["kimi-runtime-headless", "kimi-exact-release-source"]
+      },
+      "confidence": "verified-headless"
+    },
+    {
+      "match": {
+        "origin.kind": "skill_activation"
+      },
+      "evidence": {
+        "existence": ["kimi-exact-release-source"],
+        "shape": ["kimi-exact-release-source"]
+      },
+      "confidence": "unverified"
+    },
+    {
+      "match": {
+        "origin.trigger": "user-slash"
+      },
+      "evidence": {
+        "existence": ["kimi-exact-release-source"],
+        "shape": ["kimi-exact-release-source"]
+      },
+      "confidence": "unverified"
+    },
+    {
+      "match": {
+        "origin.trigger": "model-tool"
+      },
+      "evidence": {
+        "existence": ["kimi-exact-release-source"],
+        "shape": ["kimi-exact-release-source"]
+      },
+      "confidence": "unverified"
+    },
+    {
+      "match": {
+        "origin.trigger": "nested-skill"
+      },
+      "evidence": {
+        "existence": ["kimi-exact-release-source"],
+        "shape": ["kimi-exact-release-source"]
+      },
+      "confidence": "unverified"
+    },
+    {
+      "match": {
+        "origin.kind": "plugin_command"
+      },
+      "evidence": {
+        "existence": ["kimi-exact-release-source"],
+        "shape": ["kimi-exact-release-source"]
+      },
+      "confidence": "unverified"
+    },
+    {
+      "match": {
+        "origin.kind": "injection"
+      },
+      "evidence": {
+        "existence": ["kimi-exact-release-source"],
+        "shape": ["kimi-exact-release-source"]
+      },
+      "confidence": "unverified"
+    },
+    {
+      "match": {
+        "origin.kind": "shell_command"
+      },
+      "evidence": {
+        "existence": ["kimi-exact-release-source"],
+        "shape": ["kimi-exact-release-source"]
+      },
+      "confidence": "unverified"
+    },
+    {
+      "match": {
+        "origin.phase": "input"
+      },
+      "evidence": {
+        "existence": ["kimi-exact-release-source"],
+        "shape": ["kimi-exact-release-source"]
+      },
+      "confidence": "unverified"
+    },
+    {
+      "match": {
+        "origin.phase": "output"
+      },
+      "evidence": {
+        "existence": ["kimi-exact-release-source"],
+        "shape": ["kimi-exact-release-source"]
+      },
+      "confidence": "unverified"
+    },
+    {
+      "match": {
+        "origin.kind": "compaction_summary"
+      },
+      "evidence": {
+        "existence": ["kimi-exact-release-source"],
+        "shape": ["kimi-exact-release-source"]
+      },
+      "confidence": "unverified"
+    },
+    {
+      "match": {
+        "origin.kind": "system_trigger"
+      },
+      "evidence": {
+        "existence": ["kimi-exact-release-source"],
+        "shape": ["kimi-exact-release-source"]
+      },
+      "confidence": "unverified"
+    },
+    {
+      "match": {
+        "origin.kind": "task"
+      },
+      "evidence": {
+        "existence": ["kimi-exact-release-source"],
+        "shape": ["kimi-exact-release-source"]
+      },
+      "confidence": "unverified"
+    },
+    {
+      "match": {
+        "origin.status": "running"
+      },
+      "evidence": {
+        "existence": ["kimi-exact-release-source"],
+        "shape": ["kimi-exact-release-source"]
+      },
+      "confidence": "unverified"
+    },
+    {
+      "match": {
+        "origin.status": "completed"
+      },
+      "evidence": {
+        "existence": ["kimi-exact-release-source"],
+        "shape": ["kimi-exact-release-source"]
+      },
+      "confidence": "unverified"
+    },
+    {
+      "match": {
+        "origin.status": "failed"
+      },
+      "evidence": {
+        "existence": ["kimi-exact-release-source"],
+        "shape": ["kimi-exact-release-source"]
+      },
+      "confidence": "unverified"
+    },
+    {
+      "match": {
+        "origin.status": "timed_out"
+      },
+      "evidence": {
+        "existence": ["kimi-exact-release-source"],
+        "shape": ["kimi-exact-release-source"]
+      },
+      "confidence": "unverified"
+    },
+    {
+      "match": {
+        "origin.status": "killed"
+      },
+      "evidence": {
+        "existence": ["kimi-exact-release-source"],
+        "shape": ["kimi-exact-release-source"]
+      },
+      "confidence": "unverified"
+    },
+    {
+      "match": {
+        "origin.status": "lost"
+      },
+      "evidence": {
+        "existence": ["kimi-exact-release-source"],
+        "shape": ["kimi-exact-release-source"]
+      },
+      "confidence": "unverified"
+    },
+    {
+      "match": {
+        "origin.kind": "cron_job"
+      },
+      "evidence": {
+        "existence": ["kimi-exact-release-source"],
+        "shape": ["kimi-exact-release-source"]
+      },
+      "confidence": "unverified"
+    },
+    {
+      "match": {
+        "origin.kind": "cron_missed"
+      },
+      "evidence": {
+        "existence": ["kimi-exact-release-source"],
+        "shape": ["kimi-exact-release-source"]
+      },
+      "confidence": "unverified"
+    },
+    {
+      "match": {
+        "origin.kind": "hook_result"
+      },
+      "evidence": {
+        "existence": ["kimi-exact-release-source"],
+        "shape": ["kimi-exact-release-source"]
+      },
+      "confidence": "unverified"
+    },
+    {
+      "match": {
+        "origin.kind": "retry"
+      },
+      "evidence": {
+        "existence": ["kimi-exact-release-source"],
+        "shape": ["kimi-exact-release-source"]
+      },
+      "confidence": "unverified"
+    },
+    {
+      "match": {
+        "origin.skillSource": "project"
+      },
+      "evidence": {
+        "existence": ["kimi-exact-release-source"],
+        "shape": ["kimi-exact-release-source"]
+      },
+      "confidence": "unverified"
+    },
+    {
+      "match": {
+        "origin.skillSource": "user"
+      },
+      "evidence": {
+        "existence": ["kimi-exact-release-source"],
+        "shape": ["kimi-exact-release-source"]
+      },
+      "confidence": "unverified"
+    },
+    {
+      "match": {
+        "origin.skillSource": "extra"
+      },
+      "evidence": {
+        "existence": ["kimi-exact-release-source"],
+        "shape": ["kimi-exact-release-source"]
+      },
+      "confidence": "unverified"
+    },
+    {
+      "match": {
+        "origin.skillSource": "builtin"
+      },
+      "evidence": {
+        "existence": ["kimi-exact-release-source"],
+        "shape": ["kimi-exact-release-source"]
+      },
+      "confidence": "unverified"
+    },
+    {
+      "match": {
+        "origin.disclosure.kind": "date"
+      },
+      "evidence": {
+        "existence": ["kimi-exact-release-source"],
+        "shape": ["kimi-exact-release-source"]
+      },
+      "confidence": "unverified"
+    }
+  ],
+  "fixture": "captures/kimi@0.34.0/basic-turn/wire.jsonl"
+}

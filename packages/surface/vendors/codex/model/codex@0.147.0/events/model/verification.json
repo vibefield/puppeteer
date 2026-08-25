@@ -1,0 +1,62 @@
+{
+  "surface": "codex",
+  "surfaceVersion": "0.147.0",
+  "event": "model/verification",
+  "channel": "appserver",
+  "transport": "jsonrpc-notification",
+  "direction": "agent-to-client",
+  "payloadSchema": {
+    "type": "object",
+    "properties": {
+      "threadId": {
+        "type": "string"
+      },
+      "turnId": {
+        "type": "string"
+      },
+      "verifications": {
+        "type": "array"
+      }
+    },
+    "required": [
+      "threadId",
+      "turnId",
+      "verifications"
+    ]
+  },
+  "recordSchema": {
+    "type": "object",
+    "properties": {
+      "method": {
+        "type": "string",
+        "enum": [
+          "model/verification"
+        ]
+      },
+      "params": {
+        "type": "object"
+      },
+      "emittedAtMs": {
+        "type": "number",
+        "minimum": 1000000000000
+      }
+    },
+    "required": [
+      "method",
+      "params",
+      "emittedAtMs"
+    ]
+  },
+  "evidence": {
+    "existence": [
+      "codex-generated-schema"
+    ],
+    "shape": [
+      "codex-generated-schema"
+    ],
+    "carrier": [
+      "codex-runtime-headless"
+    ]
+  },
+  "confidence": "unverified"
+}

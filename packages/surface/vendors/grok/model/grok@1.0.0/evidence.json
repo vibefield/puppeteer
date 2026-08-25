@@ -1,0 +1,74 @@
+{
+  "evidenceVersion": 2,
+  "vendor": "grok",
+  "vendorVersion": "1.0.0",
+  "artifacts": [
+    {
+      "id": "installed-grok-1.0.0-darwin-arm64",
+      "platform": "darwin-arm64",
+      "channel": "stable",
+      "acquiredAt": "2026-08-08T00:00:00.000Z",
+      "versionOutput": "grok 1.0.0 (3cd0d0cbcebe) [stable]",
+      "integrity": {
+        "status": "verified",
+        "sha256": "sha256:13c7f4f0b9abb00bf38216302ea4bab31f03e13555e3576620eca1de572a8d21"
+      }
+    }
+  ],
+  "sourceReferences": [
+    {
+      "repository": "https://github.com/xai-org/grok-build",
+      "revision": "3cd0d0cbcebe",
+      "relation": "binary-reported-revision-not-present-in-public-mirror"
+    },
+    {
+      "repository": "https://github.com/xai-org/grok-build",
+      "revision": "8a14c91d88875a831a38b3a066b1683116bcb31c",
+      "relation": "public-mirror-commit",
+      "sourceRevision": "27b3c66635e2c0bf213429a36ab916f25d59df20"
+    }
+  ],
+  "claims": [
+    {
+      "id": "grok-runtime-headless",
+      "kind": "runtime-capture",
+      "confidence": "verified-headless",
+      "record": "sanitized-captures",
+      "artifact": "installed-grok-1.0.0-darwin-arm64",
+      "platform": "darwin-arm64",
+      "harness": "controlled ACP, PTY, leader, and native-store census documented in packages/surface/vendors/grok/findings.md",
+      "capturedAt": "2026-08-08T00:00:00.000Z"
+    },
+    {
+      "id": "grok-public-mirror-lead",
+      "kind": "inference",
+      "confidence": "unverified",
+      "sourceReference": 1,
+      "notes": "Source-only lead from a public mirror whose revision is not the installed artifact's binary-reported revision. It cannot promote an artifact claim."
+    }
+  ],
+  "records": [
+    {
+      "id": "sanitized-captures",
+      "kind": "capture-set",
+      "path": "packages/surface/vendors/grok/captures/grok@1.0.0",
+      "digestAlgorithm": "sha256-path-content-v1",
+      "sha256": "0e1a0286ba6d10b7bf9cf68624ad0ecbe9df45186273f9dc946f7d0bf7161434"
+    },
+    {
+      "id": "agent-surface-model",
+      "kind": "model-tree",
+      "path": "packages/surface/vendors/grok/model/grok@1.0.0",
+      "exclude": [
+        "evidence.json"
+      ],
+      "digestAlgorithm": "sha256-path-content-v1",
+      "sha256": "9babc56af1d9bdfb478af275804680c5f1b0b180efb465bf15b469a8ee77c1cd"
+    }
+  ],
+  "limitations": [
+    "The exact binary-reported source revision is absent from the public source mirror, so source-to-artifact equivalence is unverified and this candidate is not promoted in support/agents.json.",
+    "Compaction, subagent, workflow, and goal lifecycle names are source-backed but were not forced in the installed-artifact census; their behavior nodes remain unverified.",
+    "Only darwin-arm64 has artifact integrity and controlled-census evidence for this candidate."
+  ]
+}

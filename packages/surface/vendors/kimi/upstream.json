@@ -1,0 +1,59 @@
+{
+  "$schema": "../../upstream.schema.json",
+  "schemaVersion": 1,
+  "vendor": "kimi",
+  "repository": "https://github.com/MoonshotAI/kimi-code",
+  "sourceRelation": {
+    "strategy": "release-tag",
+    "template": "@moonshot-ai/kimi-code@${version}"
+  },
+  "detectors": [
+    {
+      "id": "github-stable",
+      "channel": "stable",
+      "kind": "github-release",
+      "url": "https://api.github.com/repos/MoonshotAI/kimi-code/releases?per_page=30",
+      "tagPattern": "^@moonshot-ai/kimi-code@(\\d+\\.\\d+\\.\\d+)$",
+      "prerelease": false,
+      "authoritative": true
+    }
+  ],
+  "platforms": ["darwin-arm64", "darwin-x64", "linux-x64", "windows-x64"],
+  "acquisition": {
+    "strategy": "https-template",
+    "allowedHosts": ["github.com", "objects.githubusercontent.com", "release-assets.githubusercontent.com"],
+    "maxBytes": 536870912,
+    "artifacts": {
+      "darwin-arm64": {
+        "urls": [
+          "https://github.com/MoonshotAI/kimi-code/releases/download/%40moonshot-ai%2Fkimi-code%40${version}/kimi-code-darwin-arm64.zip"
+        ],
+        "format": "zip",
+        "executableBasenames": ["kimi"]
+      },
+      "darwin-x64": {
+        "urls": [
+          "https://github.com/MoonshotAI/kimi-code/releases/download/%40moonshot-ai%2Fkimi-code%40${version}/kimi-code-darwin-x64.zip"
+        ],
+        "format": "zip",
+        "executableBasenames": ["kimi"]
+      },
+      "linux-x64": {
+        "urls": [
+          "https://github.com/MoonshotAI/kimi-code/releases/download/%40moonshot-ai%2Fkimi-code%40${version}/kimi-code-linux-x64.zip"
+        ],
+        "format": "zip",
+        "executableBasenames": ["kimi"]
+      },
+      "windows-x64": {
+        "urls": [
+          "https://github.com/MoonshotAI/kimi-code/releases/download/%40moonshot-ai%2Fkimi-code%40${version}/kimi-code-win32-x64.zip"
+        ],
+        "format": "zip",
+        "executableBasenames": ["kimi.exe"]
+      }
+    }
+  },
+  "analysis": ["binary-flags", "native-hooks", "wire-journal", "acp-handshake", "controlled-census"],
+  "debounce": { "polls": 2, "minutes": 30 }
+}

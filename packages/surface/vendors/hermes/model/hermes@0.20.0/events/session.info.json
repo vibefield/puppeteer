@@ -1,0 +1,148 @@
+{
+  "surface": "hermes",
+  "surfaceVersion": "0.20.0",
+  "event": "session.info",
+  "firstSeen": "0.20.0",
+  "lastVerified": "0.20.0",
+  "channel": "tui-gateway",
+  "channels": ["tui-gateway"],
+  "transport": "jsonrpc-notification",
+  "direction": "agent-to-client",
+  "payloadSchema": {
+    "type": "object",
+    "properties": {
+      "model": {
+        "type": "string"
+      },
+      "provider": {
+        "type": "string"
+      },
+      "approval_mode": {
+        "type": "string"
+      },
+      "version": {
+        "type": "string"
+      },
+      "cwd": {
+        "type": "string"
+      },
+      "stored_session_id": {
+        "type": "string"
+      },
+      "running": {
+        "type": "boolean"
+      },
+      "toolNames": {
+        "type": "array",
+        "items": {
+          "type": "string"
+        }
+      },
+      "usage": {
+        "type": "object",
+        "properties": {
+          "model": {
+            "type": "string"
+          },
+          "calls": {
+            "type": "number",
+            "minimum": 0
+          },
+          "hasTotals": {
+            "type": "boolean"
+          }
+        }
+      },
+      "hasText": {
+        "type": "boolean"
+      }
+    },
+    "required": ["model", "stored_session_id", "running"]
+  },
+  "recordSchema": {
+    "type": "object",
+    "properties": {
+      "jsonrpc": {
+        "type": "string",
+        "enum": ["2.0"]
+      },
+      "method": {
+        "type": "string",
+        "enum": ["event"]
+      },
+      "params": {
+        "type": "object",
+        "properties": {
+          "type": {
+            "type": "string",
+            "enum": ["session.info"]
+          },
+          "session_id": {
+            "type": "string"
+          },
+          "payload": {
+            "type": "object",
+            "properties": {
+              "model": {
+                "type": "string"
+              },
+              "provider": {
+                "type": "string"
+              },
+              "approval_mode": {
+                "type": "string"
+              },
+              "version": {
+                "type": "string"
+              },
+              "cwd": {
+                "type": "string"
+              },
+              "stored_session_id": {
+                "type": "string"
+              },
+              "running": {
+                "type": "boolean"
+              },
+              "toolNames": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                }
+              },
+              "usage": {
+                "type": "object",
+                "properties": {
+                  "model": {
+                    "type": "string"
+                  },
+                  "calls": {
+                    "type": "number",
+                    "minimum": 0
+                  },
+                  "hasTotals": {
+                    "type": "boolean"
+                  }
+                }
+              },
+              "hasText": {
+                "type": "boolean"
+              }
+            },
+            "required": ["model", "stored_session_id", "running"]
+          }
+        },
+        "required": ["type", "payload"]
+      }
+    },
+    "required": ["method", "params"]
+  },
+  "recordChannel": "tui-gateway",
+  "evidence": {
+    "existence": ["hermes-runtime-headless"],
+    "shape": ["hermes-runtime-headless"],
+    "carrier": ["hermes-runtime-headless"]
+  },
+  "confidence": "verified-headless",
+  "fixture": "captures/hermes@0.20.0/basic-turn/rpc.jsonl"
+}

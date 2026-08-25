@@ -1,0 +1,33 @@
+{
+  "requiredFlags": [
+    "--add-dir",
+    "--agent",
+    "--continue",
+    "--conversation",
+    "--log-file",
+    "--mode",
+    "--model",
+    "--output-format",
+    "--print",
+    "--prompt-interactive",
+    "--sandbox"
+  ],
+  "requiredSubcommands": [
+    "agent",
+    "agents",
+    "changelog",
+    "help",
+    "install",
+    "models",
+    "plugin",
+    "update"
+  ],
+  "rejectedOption": {
+    "flag": "--definitely-not-an-antigravity-option",
+    "status": 2,
+    "signal": null,
+    "stdoutBytes": 0,
+    "stderrBytes": 2367,
+    "mentionsRejectedFlag": true
+  }
+}

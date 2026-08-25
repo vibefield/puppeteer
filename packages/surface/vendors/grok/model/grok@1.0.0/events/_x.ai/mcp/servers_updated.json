@@ -1,0 +1,31 @@
+{
+  "surface": "grok",
+  "surfaceVersion": "1.0.0",
+  "event": "_x.ai/mcp/servers_updated",
+  "channel": "acp",
+  "transport": "jsonrpc-notification",
+  "payloadSchema": {
+    "type": "object",
+    "properties": {
+      "servers": {
+        "type": "array"
+      }
+    },
+    "required": [
+      "servers"
+    ]
+  },
+  "confidence": "verified-headless",
+  "firstSeen": "1.0.0",
+  "lastVerified": "1.0.0",
+  "fixture": "captures/grok@1.0.0/handshake.jsonl",
+  "direction": "agent-to-client",
+  "evidence": {
+    "existence": [
+      "grok-runtime-headless"
+    ],
+    "shape": [
+      "grok-runtime-headless"
+    ]
+  }
+}

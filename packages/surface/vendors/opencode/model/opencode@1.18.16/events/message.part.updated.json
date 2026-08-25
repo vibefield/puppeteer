@@ -1,0 +1,2478 @@
+{
+  "surface": "opencode",
+  "surfaceVersion": "1.18.16",
+  "event": "message.part.updated",
+  "channel": "sse",
+  "channels": [
+    "sse"
+  ],
+  "transport": "sse-event",
+  "direction": "agent-to-client",
+  "trigger": "Published on the native GET /event stream.",
+  "payloadSchema": {
+    "type": "object",
+    "properties": {
+      "part": {
+        "anyOf": [
+          {
+            "type": "object",
+            "properties": {
+              "id": {
+                "type": "string"
+              },
+              "ignored": {
+                "type": "boolean"
+              },
+              "messageID": {
+                "type": "string"
+              },
+              "metadata": {
+                "type": "object"
+              },
+              "sessionID": {
+                "type": "string"
+              },
+              "synthetic": {
+                "type": "boolean"
+              },
+              "text": {
+                "type": "string"
+              },
+              "time": {
+                "type": "object",
+                "properties": {
+                  "end": {
+                    "type": "integer",
+                    "minimum": 0
+                  },
+                  "start": {
+                    "type": "integer",
+                    "minimum": 0
+                  }
+                },
+                "required": [
+                  "start"
+                ]
+              },
+              "type": {
+                "type": "string",
+                "enum": [
+                  "text"
+                ]
+              }
+            },
+            "required": [
+              "id",
+              "messageID",
+              "sessionID",
+              "text",
+              "type"
+            ]
+          },
+          {
+            "type": "object",
+            "properties": {
+              "agent": {
+                "type": "string"
+              },
+              "command": {
+                "type": "string"
+              },
+              "description": {
+                "type": "string"
+              },
+              "id": {
+                "type": "string"
+              },
+              "messageID": {
+                "type": "string"
+              },
+              "model": {
+                "type": "object",
+                "properties": {
+                  "modelID": {
+                    "type": "string"
+                  },
+                  "providerID": {
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "modelID",
+                  "providerID"
+                ]
+              },
+              "prompt": {
+                "type": "string"
+              },
+              "sessionID": {
+                "type": "string"
+              },
+              "type": {
+                "type": "string",
+                "enum": [
+                  "subtask"
+                ]
+              }
+            },
+            "required": [
+              "agent",
+              "description",
+              "id",
+              "messageID",
+              "prompt",
+              "sessionID",
+              "type"
+            ]
+          },
+          {
+            "type": "object",
+            "properties": {
+              "id": {
+                "type": "string"
+              },
+              "messageID": {
+                "type": "string"
+              },
+              "metadata": {
+                "type": "object"
+              },
+              "sessionID": {
+                "type": "string"
+              },
+              "text": {
+                "type": "string"
+              },
+              "time": {
+                "type": "object",
+                "properties": {
+                  "end": {
+                    "type": "integer",
+                    "minimum": 0
+                  },
+                  "start": {
+                    "type": "integer",
+                    "minimum": 0
+                  }
+                },
+                "required": [
+                  "start"
+                ]
+              },
+              "type": {
+                "type": "string",
+                "enum": [
+                  "reasoning"
+                ]
+              }
+            },
+            "required": [
+              "id",
+              "messageID",
+              "sessionID",
+              "text",
+              "time",
+              "type"
+            ]
+          },
+          {
+            "type": "object",
+            "properties": {
+              "filename": {
+                "type": "string"
+              },
+              "id": {
+                "type": "string"
+              },
+              "messageID": {
+                "type": "string"
+              },
+              "mime": {
+                "type": "string"
+              },
+              "sessionID": {
+                "type": "string"
+              },
+              "source": {
+                "anyOf": [
+                  {
+                    "type": "object",
+                    "properties": {
+                      "path": {
+                        "type": "string"
+                      },
+                      "text": {
+                        "type": "object",
+                        "properties": {
+                          "end": {
+                            "type": "number"
+                          },
+                          "start": {
+                            "type": "number"
+                          },
+                          "value": {
+                            "type": "string"
+                          }
+                        },
+                        "required": [
+                          "end",
+                          "start",
+                          "value"
+                        ]
+                      },
+                      "type": {
+                        "type": "string"
+                      }
+                    },
+                    "required": [
+                      "path",
+                      "text",
+                      "type"
+                    ]
+                  },
+                  {
+                    "type": "object",
+                    "properties": {
+                      "kind": {
+                        "type": "integer",
+                        "minimum": 0
+                      },
+                      "name": {
+                        "type": "string"
+                      },
+                      "path": {
+                        "type": "string"
+                      },
+                      "range": {
+                        "type": "object",
+                        "properties": {
+                          "end": {
+                            "type": "object",
+                            "properties": {
+                              "character": {
+                                "type": "integer",
+                                "minimum": 0
+                              },
+                              "line": {
+                                "type": "integer",
+                                "minimum": 0
+                              }
+                            },
+                            "required": [
+                              "character",
+                              "line"
+                            ]
+                          },
+                          "start": {
+                            "type": "object",
+                            "properties": {
+                              "character": {
+                                "type": "integer",
+                                "minimum": 0
+                              },
+                              "line": {
+                                "type": "integer",
+                                "minimum": 0
+                              }
+                            },
+                            "required": [
+                              "character",
+                              "line"
+                            ]
+                          }
+                        },
+                        "required": [
+                          "end",
+                          "start"
+                        ]
+                      },
+                      "text": {
+                        "type": "object",
+                        "properties": {
+                          "end": {
+                            "type": "number"
+                          },
+                          "start": {
+                            "type": "number"
+                          },
+                          "value": {
+                            "type": "string"
+                          }
+                        },
+                        "required": [
+                          "end",
+                          "start",
+                          "value"
+                        ]
+                      },
+                      "type": {
+                        "type": "string"
+                      }
+                    },
+                    "required": [
+                      "kind",
+                      "name",
+                      "path",
+                      "range",
+                      "text",
+                      "type"
+                    ]
+                  },
+                  {
+                    "type": "object",
+                    "properties": {
+                      "clientName": {
+                        "type": "string"
+                      },
+                      "text": {
+                        "type": "object",
+                        "properties": {
+                          "end": {
+                            "type": "number"
+                          },
+                          "start": {
+                            "type": "number"
+                          },
+                          "value": {
+                            "type": "string"
+                          }
+                        },
+                        "required": [
+                          "end",
+                          "start",
+                          "value"
+                        ]
+                      },
+                      "type": {
+                        "type": "string"
+                      },
+                      "uri": {
+                        "type": "string"
+                      }
+                    },
+                    "required": [
+                      "clientName",
+                      "text",
+                      "type",
+                      "uri"
+                    ]
+                  }
+                ]
+              },
+              "type": {
+                "type": "string",
+                "enum": [
+                  "file"
+                ]
+              },
+              "url": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "id",
+              "messageID",
+              "mime",
+              "sessionID",
+              "type",
+              "url"
+            ]
+          },
+          {
+            "type": "object",
+            "properties": {
+              "callID": {
+                "type": "string"
+              },
+              "id": {
+                "type": "string"
+              },
+              "messageID": {
+                "type": "string"
+              },
+              "metadata": {
+                "type": "object"
+              },
+              "sessionID": {
+                "type": "string"
+              },
+              "state": {
+                "anyOf": [
+                  {
+                    "type": "object",
+                    "properties": {
+                      "input": {
+                        "type": "object"
+                      },
+                      "raw": {
+                        "type": "string"
+                      },
+                      "status": {
+                        "type": "string",
+                        "enum": [
+                          "pending"
+                        ]
+                      }
+                    },
+                    "required": [
+                      "input",
+                      "raw",
+                      "status"
+                    ]
+                  },
+                  {
+                    "type": "object",
+                    "properties": {
+                      "input": {
+                        "type": "object"
+                      },
+                      "metadata": {
+                        "type": "object"
+                      },
+                      "status": {
+                        "type": "string",
+                        "enum": [
+                          "running"
+                        ]
+                      },
+                      "time": {
+                        "type": "object",
+                        "properties": {
+                          "start": {
+                            "type": "integer",
+                            "minimum": 0
+                          }
+                        },
+                        "required": [
+                          "start"
+                        ]
+                      },
+                      "title": {
+                        "type": "string"
+                      }
+                    },
+                    "required": [
+                      "input",
+                      "status",
+                      "time"
+                    ]
+                  },
+                  {
+                    "type": "object",
+                    "properties": {
+                      "attachments": {
+                        "type": "array",
+                        "items": {
+                          "type": "object",
+                          "properties": {
+                            "filename": {
+                              "type": "string"
+                            },
+                            "id": {
+                              "type": "string"
+                            },
+                            "messageID": {
+                              "type": "string"
+                            },
+                            "mime": {
+                              "type": "string"
+                            },
+                            "sessionID": {
+                              "type": "string"
+                            },
+                            "source": {
+                              "anyOf": [
+                                {
+                                  "type": "object",
+                                  "properties": {
+                                    "path": {
+                                      "type": "string"
+                                    },
+                                    "text": {
+                                      "type": "object",
+                                      "properties": {
+                                        "end": {
+                                          "type": "number"
+                                        },
+                                        "start": {
+                                          "type": "number"
+                                        },
+                                        "value": {
+                                          "type": "string"
+                                        }
+                                      },
+                                      "required": [
+                                        "end",
+                                        "start",
+                                        "value"
+                                      ]
+                                    },
+                                    "type": {
+                                      "type": "string"
+                                    }
+                                  },
+                                  "required": [
+                                    "path",
+                                    "text",
+                                    "type"
+                                  ]
+                                },
+                                {
+                                  "type": "object",
+                                  "properties": {
+                                    "kind": {
+                                      "type": "integer",
+                                      "minimum": 0
+                                    },
+                                    "name": {
+                                      "type": "string"
+                                    },
+                                    "path": {
+                                      "type": "string"
+                                    },
+                                    "range": {
+                                      "type": "object",
+                                      "properties": {
+                                        "end": {
+                                          "type": "object",
+                                          "properties": {
+                                            "character": {
+                                              "type": "integer",
+                                              "minimum": 0
+                                            },
+                                            "line": {
+                                              "type": "integer",
+                                              "minimum": 0
+                                            }
+                                          },
+                                          "required": [
+                                            "character",
+                                            "line"
+                                          ]
+                                        },
+                                        "start": {
+                                          "type": "object",
+                                          "properties": {
+                                            "character": {
+                                              "type": "integer",
+                                              "minimum": 0
+                                            },
+                                            "line": {
+                                              "type": "integer",
+                                              "minimum": 0
+                                            }
+                                          },
+                                          "required": [
+                                            "character",
+                                            "line"
+                                          ]
+                                        }
+                                      },
+                                      "required": [
+                                        "end",
+                                        "start"
+                                      ]
+                                    },
+                                    "text": {
+                                      "type": "object",
+                                      "properties": {
+                                        "end": {
+                                          "type": "number"
+                                        },
+                                        "start": {
+                                          "type": "number"
+                                        },
+                                        "value": {
+                                          "type": "string"
+                                        }
+                                      },
+                                      "required": [
+                                        "end",
+                                        "start",
+                                        "value"
+                                      ]
+                                    },
+                                    "type": {
+                                      "type": "string"
+                                    }
+                                  },
+                                  "required": [
+                                    "kind",
+                                    "name",
+                                    "path",
+                                    "range",
+                                    "text",
+                                    "type"
+                                  ]
+                                },
+                                {
+                                  "type": "object",
+                                  "properties": {
+                                    "clientName": {
+                                      "type": "string"
+                                    },
+                                    "text": {
+                                      "type": "object",
+                                      "properties": {
+                                        "end": {
+                                          "type": "number"
+                                        },
+                                        "start": {
+                                          "type": "number"
+                                        },
+                                        "value": {
+                                          "type": "string"
+                                        }
+                                      },
+                                      "required": [
+                                        "end",
+                                        "start",
+                                        "value"
+                                      ]
+                                    },
+                                    "type": {
+                                      "type": "string"
+                                    },
+                                    "uri": {
+                                      "type": "string"
+                                    }
+                                  },
+                                  "required": [
+                                    "clientName",
+                                    "text",
+                                    "type",
+                                    "uri"
+                                  ]
+                                }
+                              ]
+                            },
+                            "type": {
+                              "type": "string"
+                            },
+                            "url": {
+                              "type": "string"
+                            }
+                          },
+                          "required": [
+                            "id",
+                            "messageID",
+                            "mime",
+                            "sessionID",
+                            "type",
+                            "url"
+                          ]
+                        }
+                      },
+                      "input": {
+                        "type": "object"
+                      },
+                      "metadata": {
+                        "type": "object"
+                      },
+                      "output": {
+                        "type": "string"
+                      },
+                      "status": {
+                        "type": "string",
+                        "enum": [
+                          "completed"
+                        ]
+                      },
+                      "time": {
+                        "type": "object",
+                        "properties": {
+                          "compacted": {
+                            "type": "integer",
+                            "minimum": 0
+                          },
+                          "end": {
+                            "type": "integer",
+                            "minimum": 0
+                          },
+                          "start": {
+                            "type": "integer",
+                            "minimum": 0
+                          }
+                        },
+                        "required": [
+                          "end",
+                          "start"
+                        ]
+                      },
+                      "title": {
+                        "type": "string"
+                      }
+                    },
+                    "required": [
+                      "input",
+                      "metadata",
+                      "output",
+                      "status",
+                      "time",
+                      "title"
+                    ]
+                  },
+                  {
+                    "type": "object",
+                    "properties": {
+                      "error": {
+                        "type": "string"
+                      },
+                      "input": {
+                        "type": "object"
+                      },
+                      "metadata": {
+                        "type": "object"
+                      },
+                      "status": {
+                        "type": "string",
+                        "enum": [
+                          "error"
+                        ]
+                      },
+                      "time": {
+                        "type": "object",
+                        "properties": {
+                          "end": {
+                            "type": "integer",
+                            "minimum": 0
+                          },
+                          "start": {
+                            "type": "integer",
+                            "minimum": 0
+                          }
+                        },
+                        "required": [
+                          "end",
+                          "start"
+                        ]
+                      }
+                    },
+                    "required": [
+                      "error",
+                      "input",
+                      "status",
+                      "time"
+                    ]
+                  }
+                ]
+              },
+              "tool": {
+                "type": "string"
+              },
+              "type": {
+                "type": "string",
+                "enum": [
+                  "tool"
+                ]
+              }
+            },
+            "required": [
+              "callID",
+              "id",
+              "messageID",
+              "sessionID",
+              "state",
+              "tool",
+              "type"
+            ]
+          },
+          {
+            "type": "object",
+            "properties": {
+              "id": {
+                "type": "string"
+              },
+              "messageID": {
+                "type": "string"
+              },
+              "sessionID": {
+                "type": "string"
+              },
+              "snapshot": {
+                "type": "string"
+              },
+              "type": {
+                "type": "string",
+                "enum": [
+                  "step-start"
+                ]
+              }
+            },
+            "required": [
+              "id",
+              "messageID",
+              "sessionID",
+              "type"
+            ]
+          },
+          {
+            "type": "object",
+            "properties": {
+              "cost": {
+                "type": "number"
+              },
+              "id": {
+                "type": "string"
+              },
+              "messageID": {
+                "type": "string"
+              },
+              "reason": {
+                "type": "string"
+              },
+              "sessionID": {
+                "type": "string"
+              },
+              "snapshot": {
+                "type": "string"
+              },
+              "tokens": {
+                "type": "object",
+                "properties": {
+                  "cache": {
+                    "type": "object",
+                    "properties": {
+                      "read": {
+                        "type": "number"
+                      },
+                      "write": {
+                        "type": "number"
+                      }
+                    },
+                    "required": [
+                      "read",
+                      "write"
+                    ]
+                  },
+                  "input": {
+                    "type": "number"
+                  },
+                  "output": {
+                    "type": "number"
+                  },
+                  "reasoning": {
+                    "type": "number"
+                  },
+                  "total": {
+                    "type": "number"
+                  }
+                },
+                "required": [
+                  "cache",
+                  "input",
+                  "output",
+                  "reasoning"
+                ]
+              },
+              "type": {
+                "type": "string",
+                "enum": [
+                  "step-finish"
+                ]
+              }
+            },
+            "required": [
+              "cost",
+              "id",
+              "messageID",
+              "reason",
+              "sessionID",
+              "tokens",
+              "type"
+            ]
+          },
+          {
+            "type": "object",
+            "properties": {
+              "id": {
+                "type": "string"
+              },
+              "messageID": {
+                "type": "string"
+              },
+              "sessionID": {
+                "type": "string"
+              },
+              "snapshot": {
+                "type": "string"
+              },
+              "type": {
+                "type": "string",
+                "enum": [
+                  "snapshot"
+                ]
+              }
+            },
+            "required": [
+              "id",
+              "messageID",
+              "sessionID",
+              "snapshot",
+              "type"
+            ]
+          },
+          {
+            "type": "object",
+            "properties": {
+              "files": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                }
+              },
+              "hash": {
+                "type": "string"
+              },
+              "id": {
+                "type": "string"
+              },
+              "messageID": {
+                "type": "string"
+              },
+              "sessionID": {
+                "type": "string"
+              },
+              "type": {
+                "type": "string",
+                "enum": [
+                  "patch"
+                ]
+              }
+            },
+            "required": [
+              "files",
+              "hash",
+              "id",
+              "messageID",
+              "sessionID",
+              "type"
+            ]
+          },
+          {
+            "type": "object",
+            "properties": {
+              "id": {
+                "type": "string"
+              },
+              "messageID": {
+                "type": "string"
+              },
+              "name": {
+                "type": "string"
+              },
+              "sessionID": {
+                "type": "string"
+              },
+              "source": {
+                "type": "object",
+                "properties": {
+                  "end": {
+                    "type": "integer",
+                    "minimum": 0
+                  },
+                  "start": {
+                    "type": "integer",
+                    "minimum": 0
+                  },
+                  "value": {
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "end",
+                  "start",
+                  "value"
+                ]
+              },
+              "type": {
+                "type": "string",
+                "enum": [
+                  "agent"
+                ]
+              }
+            },
+            "required": [
+              "id",
+              "messageID",
+              "name",
+              "sessionID",
+              "type"
+            ]
+          },
+          {
+            "type": "object",
+            "properties": {
+              "attempt": {
+                "type": "integer",
+                "minimum": 0
+              },
+              "error": {
+                "type": "object",
+                "properties": {
+                  "data": {
+                    "type": "object",
+                    "properties": {
+                      "isRetryable": {
+                        "type": "boolean"
+                      },
+                      "message": {
+                        "type": "string"
+                      },
+                      "metadata": {
+                        "type": "object"
+                      },
+                      "responseBody": {
+                        "type": "string"
+                      },
+                      "responseHeaders": {
+                        "type": "object"
+                      },
+                      "statusCode": {
+                        "type": "integer",
+                        "minimum": 0
+                      }
+                    },
+                    "required": [
+                      "isRetryable",
+                      "message"
+                    ]
+                  },
+                  "name": {
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "data",
+                  "name"
+                ]
+              },
+              "id": {
+                "type": "string"
+              },
+              "messageID": {
+                "type": "string"
+              },
+              "sessionID": {
+                "type": "string"
+              },
+              "time": {
+                "type": "object",
+                "properties": {
+                  "created": {
+                    "type": "integer",
+                    "minimum": 0
+                  }
+                },
+                "required": [
+                  "created"
+                ]
+              },
+              "type": {
+                "type": "string",
+                "enum": [
+                  "retry"
+                ]
+              }
+            },
+            "required": [
+              "attempt",
+              "error",
+              "id",
+              "messageID",
+              "sessionID",
+              "time",
+              "type"
+            ]
+          },
+          {
+            "type": "object",
+            "properties": {
+              "auto": {
+                "type": "boolean"
+              },
+              "id": {
+                "type": "string"
+              },
+              "messageID": {
+                "type": "string"
+              },
+              "overflow": {
+                "type": "boolean"
+              },
+              "sessionID": {
+                "type": "string"
+              },
+              "tail_start_id": {
+                "type": "string"
+              },
+              "type": {
+                "type": "string",
+                "enum": [
+                  "compaction"
+                ]
+              }
+            },
+            "required": [
+              "auto",
+              "id",
+              "messageID",
+              "sessionID",
+              "type"
+            ]
+          }
+        ]
+      },
+      "sessionID": {
+        "type": "string"
+      },
+      "time": {
+        "type": "number"
+      }
+    },
+    "required": [
+      "part",
+      "sessionID",
+      "time"
+    ]
+  },
+  "recordSchema": {
+    "type": "object",
+    "properties": {
+      "id": {
+        "type": "string"
+      },
+      "properties": {
+        "type": "object",
+        "properties": {
+          "part": {
+            "anyOf": [
+              {
+                "type": "object",
+                "properties": {
+                  "id": {
+                    "type": "string"
+                  },
+                  "ignored": {
+                    "type": "boolean"
+                  },
+                  "messageID": {
+                    "type": "string"
+                  },
+                  "metadata": {
+                    "type": "object"
+                  },
+                  "sessionID": {
+                    "type": "string"
+                  },
+                  "synthetic": {
+                    "type": "boolean"
+                  },
+                  "text": {
+                    "type": "string"
+                  },
+                  "time": {
+                    "type": "object",
+                    "properties": {
+                      "end": {
+                        "type": "integer",
+                        "minimum": 0
+                      },
+                      "start": {
+                        "type": "integer",
+                        "minimum": 0
+                      }
+                    },
+                    "required": [
+                      "start"
+                    ]
+                  },
+                  "type": {
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "id",
+                  "messageID",
+                  "sessionID",
+                  "text",
+                  "type"
+                ]
+              },
+              {
+                "type": "object",
+                "properties": {
+                  "agent": {
+                    "type": "string"
+                  },
+                  "command": {
+                    "type": "string"
+                  },
+                  "description": {
+                    "type": "string"
+                  },
+                  "id": {
+                    "type": "string"
+                  },
+                  "messageID": {
+                    "type": "string"
+                  },
+                  "model": {
+                    "type": "object",
+                    "properties": {
+                      "modelID": {
+                        "type": "string"
+                      },
+                      "providerID": {
+                        "type": "string"
+                      }
+                    },
+                    "required": [
+                      "modelID",
+                      "providerID"
+                    ]
+                  },
+                  "prompt": {
+                    "type": "string"
+                  },
+                  "sessionID": {
+                    "type": "string"
+                  },
+                  "type": {
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "agent",
+                  "description",
+                  "id",
+                  "messageID",
+                  "prompt",
+                  "sessionID",
+                  "type"
+                ]
+              },
+              {
+                "type": "object",
+                "properties": {
+                  "id": {
+                    "type": "string"
+                  },
+                  "messageID": {
+                    "type": "string"
+                  },
+                  "metadata": {
+                    "type": "object"
+                  },
+                  "sessionID": {
+                    "type": "string"
+                  },
+                  "text": {
+                    "type": "string"
+                  },
+                  "time": {
+                    "type": "object",
+                    "properties": {
+                      "end": {
+                        "type": "integer",
+                        "minimum": 0
+                      },
+                      "start": {
+                        "type": "integer",
+                        "minimum": 0
+                      }
+                    },
+                    "required": [
+                      "start"
+                    ]
+                  },
+                  "type": {
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "id",
+                  "messageID",
+                  "sessionID",
+                  "text",
+                  "time",
+                  "type"
+                ]
+              },
+              {
+                "type": "object",
+                "properties": {
+                  "filename": {
+                    "type": "string"
+                  },
+                  "id": {
+                    "type": "string"
+                  },
+                  "messageID": {
+                    "type": "string"
+                  },
+                  "mime": {
+                    "type": "string"
+                  },
+                  "sessionID": {
+                    "type": "string"
+                  },
+                  "source": {
+                    "anyOf": [
+                      {
+                        "type": "object",
+                        "properties": {
+                          "path": {
+                            "type": "string"
+                          },
+                          "text": {
+                            "type": "object",
+                            "properties": {
+                              "end": {
+                                "type": "number"
+                              },
+                              "start": {
+                                "type": "number"
+                              },
+                              "value": {
+                                "type": "string"
+                              }
+                            },
+                            "required": [
+                              "end",
+                              "start",
+                              "value"
+                            ]
+                          },
+                          "type": {
+                            "type": "string"
+                          }
+                        },
+                        "required": [
+                          "path",
+                          "text",
+                          "type"
+                        ]
+                      },
+                      {
+                        "type": "object",
+                        "properties": {
+                          "kind": {
+                            "type": "integer",
+                            "minimum": 0
+                          },
+                          "name": {
+                            "type": "string"
+                          },
+                          "path": {
+                            "type": "string"
+                          },
+                          "range": {
+                            "type": "object",
+                            "properties": {
+                              "end": {
+                                "type": "object",
+                                "properties": {
+                                  "character": {
+                                    "type": "integer",
+                                    "minimum": 0
+                                  },
+                                  "line": {
+                                    "type": "integer",
+                                    "minimum": 0
+                                  }
+                                },
+                                "required": [
+                                  "character",
+                                  "line"
+                                ]
+                              },
+                              "start": {
+                                "type": "object",
+                                "properties": {
+                                  "character": {
+                                    "type": "integer",
+                                    "minimum": 0
+                                  },
+                                  "line": {
+                                    "type": "integer",
+                                    "minimum": 0
+                                  }
+                                },
+                                "required": [
+                                  "character",
+                                  "line"
+                                ]
+                              }
+                            },
+                            "required": [
+                              "end",
+                              "start"
+                            ]
+                          },
+                          "text": {
+                            "type": "object",
+                            "properties": {
+                              "end": {
+                                "type": "number"
+                              },
+                              "start": {
+                                "type": "number"
+                              },
+                              "value": {
+                                "type": "string"
+                              }
+                            },
+                            "required": [
+                              "end",
+                              "start",
+                              "value"
+                            ]
+                          },
+                          "type": {
+                            "type": "string"
+                          }
+                        },
+                        "required": [
+                          "kind",
+                          "name",
+                          "path",
+                          "range",
+                          "text",
+                          "type"
+                        ]
+                      },
+                      {
+                        "type": "object",
+                        "properties": {
+                          "clientName": {
+                            "type": "string"
+                          },
+                          "text": {
+                            "type": "object",
+                            "properties": {
+                              "end": {
+                                "type": "number"
+                              },
+                              "start": {
+                                "type": "number"
+                              },
+                              "value": {
+                                "type": "string"
+                              }
+                            },
+                            "required": [
+                              "end",
+                              "start",
+                              "value"
+                            ]
+                          },
+                          "type": {
+                            "type": "string"
+                          },
+                          "uri": {
+                            "type": "string"
+                          }
+                        },
+                        "required": [
+                          "clientName",
+                          "text",
+                          "type",
+                          "uri"
+                        ]
+                      }
+                    ]
+                  },
+                  "type": {
+                    "type": "string"
+                  },
+                  "url": {
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "id",
+                  "messageID",
+                  "mime",
+                  "sessionID",
+                  "type",
+                  "url"
+                ]
+              },
+              {
+                "type": "object",
+                "properties": {
+                  "callID": {
+                    "type": "string"
+                  },
+                  "id": {
+                    "type": "string"
+                  },
+                  "messageID": {
+                    "type": "string"
+                  },
+                  "metadata": {
+                    "type": "object"
+                  },
+                  "sessionID": {
+                    "type": "string"
+                  },
+                  "state": {
+                    "anyOf": [
+                      {
+                        "type": "object",
+                        "properties": {
+                          "input": {
+                            "type": "object"
+                          },
+                          "raw": {
+                            "type": "string"
+                          },
+                          "status": {
+                            "type": "string"
+                          }
+                        },
+                        "required": [
+                          "input",
+                          "raw",
+                          "status"
+                        ]
+                      },
+                      {
+                        "type": "object",
+                        "properties": {
+                          "input": {
+                            "type": "object"
+                          },
+                          "metadata": {
+                            "type": "object"
+                          },
+                          "status": {
+                            "type": "string"
+                          },
+                          "time": {
+                            "type": "object",
+                            "properties": {
+                              "start": {
+                                "type": "integer",
+                                "minimum": 0
+                              }
+                            },
+                            "required": [
+                              "start"
+                            ]
+                          },
+                          "title": {
+                            "type": "string"
+                          }
+                        },
+                        "required": [
+                          "input",
+                          "status",
+                          "time"
+                        ]
+                      },
+                      {
+                        "type": "object",
+                        "properties": {
+                          "attachments": {
+                            "type": "array",
+                            "items": {
+                              "type": "object",
+                              "properties": {
+                                "filename": {
+                                  "type": "string"
+                                },
+                                "id": {
+                                  "type": "string"
+                                },
+                                "messageID": {
+                                  "type": "string"
+                                },
+                                "mime": {
+                                  "type": "string"
+                                },
+                                "sessionID": {
+                                  "type": "string"
+                                },
+                                "source": {
+                                  "anyOf": [
+                                    {
+                                      "type": "object",
+                                      "properties": {
+                                        "path": {
+                                          "type": "string"
+                                        },
+                                        "text": {
+                                          "type": "object",
+                                          "properties": {
+                                            "end": {
+                                              "type": "number"
+                                            },
+                                            "start": {
+                                              "type": "number"
+                                            },
+                                            "value": {
+                                              "type": "string"
+                                            }
+                                          },
+                                          "required": [
+                                            "end",
+                                            "start",
+                                            "value"
+                                          ]
+                                        },
+                                        "type": {
+                                          "type": "string"
+                                        }
+                                      },
+                                      "required": [
+                                        "path",
+                                        "text",
+                                        "type"
+                                      ]
+                                    },
+                                    {
+                                      "type": "object",
+                                      "properties": {
+                                        "kind": {
+                                          "type": "integer",
+                                          "minimum": 0
+                                        },
+                                        "name": {
+                                          "type": "string"
+                                        },
+                                        "path": {
+                                          "type": "string"
+                                        },
+                                        "range": {
+                                          "type": "object",
+                                          "properties": {
+                                            "end": {
+                                              "type": "object",
+                                              "properties": {
+                                                "character": {
+                                                  "type": "integer",
+                                                  "minimum": 0
+                                                },
+                                                "line": {
+                                                  "type": "integer",
+                                                  "minimum": 0
+                                                }
+                                              },
+                                              "required": [
+                                                "character",
+                                                "line"
+                                              ]
+                                            },
+                                            "start": {
+                                              "type": "object",
+                                              "properties": {
+                                                "character": {
+                                                  "type": "integer",
+                                                  "minimum": 0
+                                                },
+                                                "line": {
+                                                  "type": "integer",
+                                                  "minimum": 0
+                                                }
+                                              },
+                                              "required": [
+                                                "character",
+                                                "line"
+                                              ]
+                                            }
+                                          },
+                                          "required": [
+                                            "end",
+                                            "start"
+                                          ]
+                                        },
+                                        "text": {
+                                          "type": "object",
+                                          "properties": {
+                                            "end": {
+                                              "type": "number"
+                                            },
+                                            "start": {
+                                              "type": "number"
+                                            },
+                                            "value": {
+                                              "type": "string"
+                                            }
+                                          },
+                                          "required": [
+                                            "end",
+                                            "start",
+                                            "value"
+                                          ]
+                                        },
+                                        "type": {
+                                          "type": "string"
+                                        }
+                                      },
+                                      "required": [
+                                        "kind",
+                                        "name",
+                                        "path",
+                                        "range",
+                                        "text",
+                                        "type"
+                                      ]
+                                    },
+                                    {
+                                      "type": "object",
+                                      "properties": {
+                                        "clientName": {
+                                          "type": "string"
+                                        },
+                                        "text": {
+                                          "type": "object",
+                                          "properties": {
+                                            "end": {
+                                              "type": "number"
+                                            },
+                                            "start": {
+                                              "type": "number"
+                                            },
+                                            "value": {
+                                              "type": "string"
+                                            }
+                                          },
+                                          "required": [
+                                            "end",
+                                            "start",
+                                            "value"
+                                          ]
+                                        },
+                                        "type": {
+                                          "type": "string"
+                                        },
+                                        "uri": {
+                                          "type": "string"
+                                        }
+                                      },
+                                      "required": [
+                                        "clientName",
+                                        "text",
+                                        "type",
+                                        "uri"
+                                      ]
+                                    }
+                                  ]
+                                },
+                                "type": {
+                                  "type": "string"
+                                },
+                                "url": {
+                                  "type": "string"
+                                }
+                              },
+                              "required": [
+                                "id",
+                                "messageID",
+                                "mime",
+                                "sessionID",
+                                "type",
+                                "url"
+                              ]
+                            }
+                          },
+                          "input": {
+                            "type": "object"
+                          },
+                          "metadata": {
+                            "type": "object"
+                          },
+                          "output": {
+                            "type": "string"
+                          },
+                          "status": {
+                            "type": "string"
+                          },
+                          "time": {
+                            "type": "object",
+                            "properties": {
+                              "compacted": {
+                                "type": "integer",
+                                "minimum": 0
+                              },
+                              "end": {
+                                "type": "integer",
+                                "minimum": 0
+                              },
+                              "start": {
+                                "type": "integer",
+                                "minimum": 0
+                              }
+                            },
+                            "required": [
+                              "end",
+                              "start"
+                            ]
+                          },
+                          "title": {
+                            "type": "string"
+                          }
+                        },
+                        "required": [
+                          "input",
+                          "metadata",
+                          "output",
+                          "status",
+                          "time",
+                          "title"
+                        ]
+                      },
+                      {
+                        "type": "object",
+                        "properties": {
+                          "error": {
+                            "type": "string"
+                          },
+                          "input": {
+                            "type": "object"
+                          },
+                          "metadata": {
+                            "type": "object"
+                          },
+                          "status": {
+                            "type": "string"
+                          },
+                          "time": {
+                            "type": "object",
+                            "properties": {
+                              "end": {
+                                "type": "integer",
+                                "minimum": 0
+                              },
+                              "start": {
+                                "type": "integer",
+                                "minimum": 0
+                              }
+                            },
+                            "required": [
+                              "end",
+                              "start"
+                            ]
+                          }
+                        },
+                        "required": [
+                          "error",
+                          "input",
+                          "status",
+                          "time"
+                        ]
+                      }
+                    ]
+                  },
+                  "tool": {
+                    "type": "string"
+                  },
+                  "type": {
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "callID",
+                  "id",
+                  "messageID",
+                  "sessionID",
+                  "state",
+                  "tool",
+                  "type"
+                ]
+              },
+              {
+                "type": "object",
+                "properties": {
+                  "id": {
+                    "type": "string"
+                  },
+                  "messageID": {
+                    "type": "string"
+                  },
+                  "sessionID": {
+                    "type": "string"
+                  },
+                  "snapshot": {
+                    "type": "string"
+                  },
+                  "type": {
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "id",
+                  "messageID",
+                  "sessionID",
+                  "type"
+                ]
+              },
+              {
+                "type": "object",
+                "properties": {
+                  "cost": {
+                    "type": "number"
+                  },
+                  "id": {
+                    "type": "string"
+                  },
+                  "messageID": {
+                    "type": "string"
+                  },
+                  "reason": {
+                    "type": "string"
+                  },
+                  "sessionID": {
+                    "type": "string"
+                  },
+                  "snapshot": {
+                    "type": "string"
+                  },
+                  "tokens": {
+                    "type": "object",
+                    "properties": {
+                      "cache": {
+                        "type": "object",
+                        "properties": {
+                          "read": {
+                            "type": "number"
+                          },
+                          "write": {
+                            "type": "number"
+                          }
+                        },
+                        "required": [
+                          "read",
+                          "write"
+                        ]
+                      },
+                      "input": {
+                        "type": "number"
+                      },
+                      "output": {
+                        "type": "number"
+                      },
+                      "reasoning": {
+                        "type": "number"
+                      },
+                      "total": {
+                        "type": "number"
+                      }
+                    },
+                    "required": [
+                      "cache",
+                      "input",
+                      "output",
+                      "reasoning"
+                    ]
+                  },
+                  "type": {
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "cost",
+                  "id",
+                  "messageID",
+                  "reason",
+                  "sessionID",
+                  "tokens",
+                  "type"
+                ]
+              },
+              {
+                "type": "object",
+                "properties": {
+                  "id": {
+                    "type": "string"
+                  },
+                  "messageID": {
+                    "type": "string"
+                  },
+                  "sessionID": {
+                    "type": "string"
+                  },
+                  "snapshot": {
+                    "type": "string"
+                  },
+                  "type": {
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "id",
+                  "messageID",
+                  "sessionID",
+                  "snapshot",
+                  "type"
+                ]
+              },
+              {
+                "type": "object",
+                "properties": {
+                  "files": {
+                    "type": "array",
+                    "items": {
+                      "type": "string"
+                    }
+                  },
+                  "hash": {
+                    "type": "string"
+                  },
+                  "id": {
+                    "type": "string"
+                  },
+                  "messageID": {
+                    "type": "string"
+                  },
+                  "sessionID": {
+                    "type": "string"
+                  },
+                  "type": {
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "files",
+                  "hash",
+                  "id",
+                  "messageID",
+                  "sessionID",
+                  "type"
+                ]
+              },
+              {
+                "type": "object",
+                "properties": {
+                  "id": {
+                    "type": "string"
+                  },
+                  "messageID": {
+                    "type": "string"
+                  },
+                  "name": {
+                    "type": "string"
+                  },
+                  "sessionID": {
+                    "type": "string"
+                  },
+                  "source": {
+                    "type": "object",
+                    "properties": {
+                      "end": {
+                        "type": "integer",
+                        "minimum": 0
+                      },
+                      "start": {
+                        "type": "integer",
+                        "minimum": 0
+                      },
+                      "value": {
+                        "type": "string"
+                      }
+                    },
+                    "required": [
+                      "end",
+                      "start",
+                      "value"
+                    ]
+                  },
+                  "type": {
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "id",
+                  "messageID",
+                  "name",
+                  "sessionID",
+                  "type"
+                ]
+              },
+              {
+                "type": "object",
+                "properties": {
+                  "attempt": {
+                    "type": "integer",
+                    "minimum": 0
+                  },
+                  "error": {
+                    "type": "object",
+                    "properties": {
+                      "data": {
+                        "type": "object",
+                        "properties": {
+                          "isRetryable": {
+                            "type": "boolean"
+                          },
+                          "message": {
+                            "type": "string"
+                          },
+                          "metadata": {
+                            "type": "object"
+                          },
+                          "responseBody": {
+                            "type": "string"
+                          },
+                          "responseHeaders": {
+                            "type": "object"
+                          },
+                          "statusCode": {
+                            "type": "integer",
+                            "minimum": 0
+                          }
+                        },
+                        "required": [
+                          "isRetryable",
+                          "message"
+                        ]
+                      },
+                      "name": {
+                        "type": "string"
+                      }
+                    },
+                    "required": [
+                      "data",
+                      "name"
+                    ]
+                  },
+                  "id": {
+                    "type": "string"
+                  },
+                  "messageID": {
+                    "type": "string"
+                  },
+                  "sessionID": {
+                    "type": "string"
+                  },
+                  "time": {
+                    "type": "object",
+                    "properties": {
+                      "created": {
+                        "type": "integer",
+                        "minimum": 0
+                      }
+                    },
+                    "required": [
+                      "created"
+                    ]
+                  },
+                  "type": {
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "attempt",
+                  "error",
+                  "id",
+                  "messageID",
+                  "sessionID",
+                  "time",
+                  "type"
+                ]
+              },
+              {
+                "type": "object",
+                "properties": {
+                  "auto": {
+                    "type": "boolean"
+                  },
+                  "id": {
+                    "type": "string"
+                  },
+                  "messageID": {
+                    "type": "string"
+                  },
+                  "overflow": {
+                    "type": "boolean"
+                  },
+                  "sessionID": {
+                    "type": "string"
+                  },
+                  "tail_start_id": {
+                    "type": "string"
+                  },
+                  "type": {
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "auto",
+                  "id",
+                  "messageID",
+                  "sessionID",
+                  "type"
+                ]
+              }
+            ]
+          },
+          "sessionID": {
+            "type": "string"
+          },
+          "time": {
+            "type": "number"
+          }
+        },
+        "required": [
+          "part",
+          "sessionID",
+          "time"
+        ]
+      },
+      "type": {
+        "type": "string",
+        "enum": [
+          "message.part.updated"
+        ]
+      }
+    },
+    "required": [
+      "id",
+      "properties",
+      "type"
+    ]
+  },
+  "evidence": {
+    "existence": [
+      "opencode-runtime-abort-stream"
+    ],
+    "shape": [
+      "opencode-runtime-abort-stream"
+    ],
+    "carrier": [
+      "opencode-runtime-abort-stream"
+    ]
+  },
+  "variants": [
+    {
+      "match": {
+        "part.type": "text"
+      },
+      "evidence": {
+        "existence": [
+          "opencode-runtime-abort-stream"
+        ],
+        "shape": [
+          "opencode-runtime-abort-stream"
+        ]
+      },
+      "confidence": "verified-headless"
+    },
+    {
+      "match": {
+        "part.type": "subtask"
+      },
+      "evidence": {
+        "existence": [
+          "opencode-runtime-subtask-part"
+        ],
+        "shape": [
+          "opencode-runtime-subtask-part"
+        ]
+      },
+      "confidence": "verified-headless"
+    },
+    {
+      "match": {
+        "part.type": "reasoning"
+      },
+      "evidence": {
+        "existence": [
+          "opencode-runtime-abort-stream"
+        ],
+        "shape": [
+          "opencode-runtime-abort-stream"
+        ]
+      },
+      "confidence": "verified-headless"
+    },
+    {
+      "match": {
+        "part.type": "file"
+      },
+      "evidence": {
+        "existence": [
+          "opencode-runtime-file-part"
+        ],
+        "shape": [
+          "opencode-runtime-file-part"
+        ]
+      },
+      "confidence": "verified-headless"
+    },
+    {
+      "match": {
+        "part.state.status": "pending"
+      },
+      "evidence": {
+        "existence": [
+          "opencode-runtime-abort-tool"
+        ],
+        "shape": [
+          "opencode-runtime-abort-tool"
+        ]
+      },
+      "confidence": "verified-headless"
+    },
+    {
+      "match": {
+        "part.state.status": "running"
+      },
+      "evidence": {
+        "existence": [
+          "opencode-runtime-abort-tool"
+        ],
+        "shape": [
+          "opencode-runtime-abort-tool"
+        ]
+      },
+      "confidence": "verified-headless"
+    },
+    {
+      "match": {
+        "part.state.status": "completed"
+      },
+      "evidence": {
+        "existence": [
+          "opencode-runtime-abort-tool"
+        ],
+        "shape": [
+          "opencode-runtime-abort-tool"
+        ]
+      },
+      "confidence": "verified-headless"
+    },
+    {
+      "match": {
+        "part.state.status": "error"
+      },
+      "evidence": {
+        "existence": [
+          "opencode-runtime-permission-reject"
+        ],
+        "shape": [
+          "opencode-runtime-permission-reject"
+        ]
+      },
+      "confidence": "verified-headless"
+    },
+    {
+      "match": {
+        "part.type": "tool"
+      },
+      "evidence": {
+        "existence": [
+          "opencode-runtime-abort-tool"
+        ],
+        "shape": [
+          "opencode-runtime-abort-tool"
+        ]
+      },
+      "confidence": "verified-headless"
+    },
+    {
+      "match": {
+        "part.type": "step-start"
+      },
+      "evidence": {
+        "existence": [
+          "opencode-runtime-abort-stream"
+        ],
+        "shape": [
+          "opencode-runtime-abort-stream"
+        ]
+      },
+      "confidence": "verified-headless"
+    },
+    {
+      "match": {
+        "part.type": "step-finish"
+      },
+      "evidence": {
+        "existence": [
+          "opencode-runtime-agent-part"
+        ],
+        "shape": [
+          "opencode-runtime-agent-part"
+        ]
+      },
+      "confidence": "verified-headless"
+    },
+    {
+      "match": {
+        "part.type": "snapshot"
+      },
+      "evidence": {
+        "existence": [
+          "opencode-generated-openapi"
+        ],
+        "shape": [
+          "opencode-generated-openapi"
+        ]
+      },
+      "confidence": "unverified"
+    },
+    {
+      "match": {
+        "part.type": "patch"
+      },
+      "evidence": {
+        "existence": [
+          "opencode-runtime-file-delete"
+        ],
+        "shape": [
+          "opencode-runtime-file-delete"
+        ]
+      },
+      "confidence": "verified-headless"
+    },
+    {
+      "match": {
+        "part.type": "agent"
+      },
+      "evidence": {
+        "existence": [
+          "opencode-runtime-agent-part"
+        ],
+        "shape": [
+          "opencode-runtime-agent-part"
+        ]
+      },
+      "confidence": "verified-headless"
+    },
+    {
+      "match": {
+        "part.type": "retry"
+      },
+      "evidence": {
+        "existence": [
+          "opencode-generated-openapi"
+        ],
+        "shape": [
+          "opencode-generated-openapi"
+        ]
+      },
+      "confidence": "unverified"
+    },
+    {
+      "match": {
+        "part.type": "compaction"
+      },
+      "evidence": {
+        "existence": [
+          "opencode-runtime-auto-compaction"
+        ],
+        "shape": [
+          "opencode-runtime-auto-compaction"
+        ]
+      },
+      "confidence": "verified-headless"
+    }
+  ],
+  "confidence": "verified-headless",
+  "firstSeen": "1.18.16",
+  "lastVerified": "1.18.16",
+  "fixture": "captures/opencode@1.18.16/abort-stream/events.jsonl"
+}

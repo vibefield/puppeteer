@@ -1,0 +1,37 @@
+{
+  "status": 0,
+  "events": [
+    {
+      "event": "command_result",
+      "command": {
+        "name": "hooks",
+        "data": {
+          "hooks": []
+        }
+      }
+    },
+    {
+      "event": "result",
+      "result": {
+        "conversation_id": "anon-e3b0c44298fc1c14",
+        "status": "SUCCESS",
+        "num_turns": 0,
+        "duration_seconds": 0,
+        "usage": {
+          "input_tokens": 0,
+          "output_tokens": 0,
+          "thinking_tokens": 0,
+          "cache_read_tokens": 0,
+          "total_tokens": 0
+        },
+        "command": {
+          "name": "hooks",
+          "data": {
+            "hooks": []
+          }
+        },
+        "hasResponse": false
+      }
+    }
+  ]
+}

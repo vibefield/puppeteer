@@ -1,0 +1,593 @@
+{
+  "name": "deep-research",
+  "notes": "A 30-step Codex research turn with two collaboration workers, web/MCP/shell tools, automatic compaction, and post-compaction verification.",
+  "then": [
+    {
+      "at": 0,
+      "do": {
+        "emit": {
+          "event": "turn/started",
+          "with": { "threadId": "$threadId", "turn": { "id": "$uuid:turn", "status": "inProgress" } }
+        }
+      }
+    },
+    {
+      "at": 100,
+      "do": {
+        "emit": {
+          "event": "item/started",
+          "with": {
+            "threadId": "$threadId",
+            "turnId": "$uuid:turn",
+            "startedAtMs": "$nowMs",
+            "item": {
+              "type": "userMessage",
+              "id": "$uuid:user-item",
+              "clientId": null,
+              "content": [{ "type": "text", "text": "$stimulus.text" }]
+            }
+          }
+        }
+      }
+    },
+    {
+      "at": 200,
+      "do": {
+        "emit": {
+          "event": "item/completed",
+          "with": {
+            "threadId": "$threadId",
+            "turnId": "$uuid:turn",
+            "completedAtMs": "$nowMs",
+            "item": {
+              "type": "userMessage",
+              "id": "$uuid:user-item",
+              "clientId": null,
+              "content": [{ "type": "text", "text": "$stimulus.text" }]
+            }
+          }
+        }
+      }
+    },
+    {
+      "at": 300,
+      "do": {
+        "emit": {
+          "event": "item/started",
+          "with": {
+            "threadId": "$threadId",
+            "turnId": "$uuid:turn",
+            "startedAtMs": "$nowMs",
+            "item": { "type": "reasoning", "id": "$uuid:reasoning", "summary": [], "content": [] }
+          }
+        }
+      }
+    },
+    {
+      "at": 400,
+      "do": {
+        "emit": {
+          "event": "item/reasoning/summaryTextDelta",
+          "with": {
+            "threadId": "$threadId",
+            "turnId": "$uuid:turn",
+            "itemId": "$uuid:reasoning",
+            "summaryIndex": 0,
+            "delta": "Split primary-source research from local implementation analysis, then reconcile both lanes."
+          }
+        }
+      }
+    },
+    {
+      "at": 500,
+      "do": {
+        "emit": {
+          "event": "item/completed",
+          "with": {
+            "threadId": "$threadId",
+            "turnId": "$uuid:turn",
+            "completedAtMs": "$nowMs",
+            "item": {
+              "type": "reasoning",
+              "id": "$uuid:reasoning",
+              "summary": [
+                "Split primary-source research from local implementation analysis, then reconcile both lanes."
+              ],
+              "content": []
+            }
+          }
+        }
+      }
+    },
+    {
+      "at": 600,
+      "do": {
+        "emit": {
+          "event": "item/started",
+          "with": {
+            "threadId": "$threadId",
+            "turnId": "$uuid:turn",
+            "startedAtMs": "$nowMs",
+            "item": {
+              "type": "collabToolCall",
+              "id": "$uuid:spawn-sources",
+              "tool": "spawn_agent",
+              "status": "inProgress",
+              "senderThreadId": "$threadId",
+              "prompt": "Collect current primary sources and publication dates."
+            }
+          }
+        }
+      }
+    },
+    {
+      "at": 700,
+      "do": {
+        "emit": {
+          "event": "item/completed",
+          "with": {
+            "threadId": "$threadId",
+            "turnId": "$uuid:turn",
+            "completedAtMs": "$nowMs",
+            "item": {
+              "type": "collabToolCall",
+              "id": "$uuid:spawn-sources",
+              "tool": "spawn_agent",
+              "status": "completed",
+              "senderThreadId": "$threadId",
+              "newThreadId": "$uuid:sources-thread",
+              "prompt": "Collect current primary sources and publication dates.",
+              "agentStatus": "running"
+            }
+          }
+        }
+      }
+    },
+    {
+      "at": 800,
+      "do": {
+        "emit": {
+          "event": "item/started",
+          "with": {
+            "threadId": "$threadId",
+            "turnId": "$uuid:turn",
+            "startedAtMs": "$nowMs",
+            "item": {
+              "type": "collabToolCall",
+              "id": "$uuid:spawn-analyst",
+              "tool": "spawn_agent",
+              "status": "inProgress",
+              "senderThreadId": "$threadId",
+              "prompt": "Map the local repository and extract implementation constraints."
+            }
+          }
+        }
+      }
+    },
+    {
+      "at": 900,
+      "do": {
+        "emit": {
+          "event": "item/completed",
+          "with": {
+            "threadId": "$threadId",
+            "turnId": "$uuid:turn",
+            "completedAtMs": "$nowMs",
+            "item": {
+              "type": "collabToolCall",
+              "id": "$uuid:spawn-analyst",
+              "tool": "spawn_agent",
+              "status": "completed",
+              "senderThreadId": "$threadId",
+              "newThreadId": "$uuid:analyst-thread",
+              "prompt": "Map the local repository and extract implementation constraints.",
+              "agentStatus": "running"
+            }
+          }
+        }
+      }
+    },
+    {
+      "at": 1000,
+      "do": {
+        "emit": {
+          "event": "item/started",
+          "with": {
+            "threadId": "$threadId",
+            "turnId": "$uuid:turn",
+            "startedAtMs": "$nowMs",
+            "item": {
+              "type": "webSearch",
+              "id": "$uuid:web-search",
+              "query": "current primary sources for $stimulus.text",
+              "action": "search"
+            }
+          }
+        }
+      }
+    },
+    {
+      "at": 1200,
+      "do": {
+        "emit": {
+          "event": "item/completed",
+          "with": {
+            "threadId": "$threadId",
+            "turnId": "$uuid:turn",
+            "completedAtMs": "$nowMs",
+            "item": {
+              "type": "webSearch",
+              "id": "$uuid:web-search",
+              "query": "current primary sources for $stimulus.text",
+              "action": "search",
+              "results": ["official specification", "maintainer documentation", "release notes"]
+            }
+          }
+        }
+      }
+    },
+    {
+      "at": 1300,
+      "do": {
+        "emit": {
+          "event": "item/started",
+          "with": {
+            "threadId": "$threadId",
+            "turnId": "$uuid:turn",
+            "startedAtMs": "$nowMs",
+            "item": {
+              "type": "mcpToolCall",
+              "id": "$uuid:mcp-source",
+              "server": "docs",
+              "tool": "fetch_document",
+              "status": "inProgress",
+              "arguments": { "uri": "https://example.com/primary-source" }
+            }
+          }
+        }
+      }
+    },
+    {
+      "at": 1500,
+      "do": {
+        "emit": {
+          "event": "item/completed",
+          "with": {
+            "threadId": "$threadId",
+            "turnId": "$uuid:turn",
+            "completedAtMs": "$nowMs",
+            "item": {
+              "type": "mcpToolCall",
+              "id": "$uuid:mcp-source",
+              "server": "docs",
+              "tool": "fetch_document",
+              "status": "completed",
+              "arguments": { "uri": "https://example.com/primary-source" },
+              "result": { "summary": "Primary source confirms the current lifecycle and constraints." }
+            }
+          }
+        }
+      }
+    },
+    {
+      "at": 1600,
+      "do": {
+        "emit": {
+          "event": "item/started",
+          "with": {
+            "threadId": "$threadId",
+            "turnId": "$uuid:turn",
+            "startedAtMs": "$nowMs",
+            "item": {
+              "type": "commandExecution",
+              "id": "$uuid:inventory",
+              "command": "rg -n 'scenario|compaction|subagent' packages draft",
+              "cwd": "$threadCwd",
+              "status": "inProgress",
+              "commandActions": [{ "type": "search", "query": "scenario|compaction|subagent" }]
+            }
+          }
+        }
+      }
+    },
+    {
+      "at": 1800,
+      "do": {
+        "emit": {
+          "event": "item/completed",
+          "with": {
+            "threadId": "$threadId",
+            "turnId": "$uuid:turn",
+            "completedAtMs": "$nowMs",
+            "item": {
+              "type": "commandExecution",
+              "id": "$uuid:inventory",
+              "command": "rg -n 'scenario|compaction|subagent' packages draft",
+              "cwd": "$threadCwd",
+              "status": "completed",
+              "commandActions": [{ "type": "search", "query": "scenario|compaction|subagent" }],
+              "aggregatedOutput": "Found scenario catalogs, delegation items, and compaction events.",
+              "exitCode": 0,
+              "durationMs": 175
+            }
+          }
+        }
+      }
+    },
+    {
+      "at": 1900,
+      "do": {
+        "emit": {
+          "event": "item/started",
+          "with": {
+            "threadId": "$threadId",
+            "turnId": "$uuid:turn",
+            "startedAtMs": "$nowMs",
+            "item": {
+              "type": "collabToolCall",
+              "id": "$uuid:wait-agents",
+              "tool": "wait_agent",
+              "status": "inProgress",
+              "senderThreadId": "$threadId",
+              "receiverThreadId": "$uuid:sources-thread"
+            }
+          }
+        }
+      }
+    },
+    {
+      "at": 2100,
+      "do": {
+        "emit": {
+          "event": "item/completed",
+          "with": {
+            "threadId": "$threadId",
+            "turnId": "$uuid:turn",
+            "completedAtMs": "$nowMs",
+            "item": {
+              "type": "collabToolCall",
+              "id": "$uuid:wait-agents",
+              "tool": "wait_agent",
+              "status": "completed",
+              "senderThreadId": "$threadId",
+              "receiverThreadId": "$uuid:sources-thread",
+              "agentStatus": "completed"
+            }
+          }
+        }
+      }
+    },
+    {
+      "at": 2200,
+      "do": {
+        "emit": {
+          "event": "item/started",
+          "with": {
+            "threadId": "$threadId",
+            "turnId": "$uuid:turn",
+            "startedAtMs": "$nowMs",
+            "item": {
+              "type": "collabToolCall",
+              "id": "$uuid:cross-check",
+              "tool": "send_message",
+              "status": "inProgress",
+              "senderThreadId": "$threadId",
+              "receiverThreadId": "$uuid:analyst-thread",
+              "prompt": "Cross-check the primary-source claims against the repository evidence."
+            }
+          }
+        }
+      }
+    },
+    {
+      "at": 2300,
+      "do": {
+        "emit": {
+          "event": "item/completed",
+          "with": {
+            "threadId": "$threadId",
+            "turnId": "$uuid:turn",
+            "completedAtMs": "$nowMs",
+            "item": {
+              "type": "collabToolCall",
+              "id": "$uuid:cross-check",
+              "tool": "send_message",
+              "status": "completed",
+              "senderThreadId": "$threadId",
+              "receiverThreadId": "$uuid:analyst-thread",
+              "prompt": "Cross-check the primary-source claims against the repository evidence.",
+              "agentStatus": "working"
+            }
+          }
+        }
+      }
+    },
+    {
+      "at": 2400,
+      "do": {
+        "emit": {
+          "event": "thread/tokenUsage/updated",
+          "with": {
+            "threadId": "$threadId",
+            "turnId": "$uuid:turn",
+            "tokenUsage": {
+              "total": {
+                "totalTokens": 388000,
+                "inputTokens": 380000,
+                "cachedInputTokens": 100000,
+                "outputTokens": 8000,
+                "reasoningOutputTokens": 5000
+              },
+              "last": {
+                "totalTokens": 388000,
+                "inputTokens": 380000,
+                "cachedInputTokens": 100000,
+                "outputTokens": 8000,
+                "reasoningOutputTokens": 5000
+              },
+              "modelContextWindow": 400000
+            }
+          }
+        }
+      }
+    },
+    {
+      "at": 2500,
+      "do": {
+        "emit": {
+          "event": "item/started",
+          "with": {
+            "threadId": "$threadId",
+            "turnId": "$uuid:turn",
+            "startedAtMs": "$nowMs",
+            "item": { "type": "contextCompaction", "id": "$uuid:compaction" }
+          }
+        }
+      }
+    },
+    {
+      "at": 2600,
+      "do": {
+        "emit": {
+          "event": "item/completed",
+          "with": {
+            "threadId": "$threadId",
+            "turnId": "$uuid:turn",
+            "completedAtMs": "$nowMs",
+            "item": { "type": "contextCompaction", "id": "$uuid:compaction" }
+          }
+        }
+      }
+    },
+    {
+      "at": 2700,
+      "do": {
+        "emit": {
+          "event": "thread/tokenUsage/updated",
+          "with": {
+            "threadId": "$threadId",
+            "turnId": "$uuid:turn",
+            "tokenUsage": {
+              "total": {
+                "totalTokens": 410000,
+                "inputTokens": 399000,
+                "cachedInputTokens": 108000,
+                "outputTokens": 11000,
+                "reasoningOutputTokens": 6500
+              },
+              "last": {
+                "totalTokens": 22000,
+                "inputTokens": 19000,
+                "cachedInputTokens": 8000,
+                "outputTokens": 3000,
+                "reasoningOutputTokens": 1500
+              },
+              "modelContextWindow": 400000
+            }
+          }
+        }
+      }
+    },
+    {
+      "at": 2800,
+      "do": {
+        "emit": {
+          "event": "item/started",
+          "with": {
+            "threadId": "$threadId",
+            "turnId": "$uuid:turn",
+            "startedAtMs": "$nowMs",
+            "item": {
+              "type": "commandExecution",
+              "id": "$uuid:verify",
+              "command": "rg -n 'source|claim|caveat' research-notes",
+              "cwd": "$threadCwd",
+              "status": "inProgress",
+              "commandActions": [{ "type": "search", "query": "source|claim|caveat" }]
+            }
+          }
+        }
+      }
+    },
+    {
+      "at": 3000,
+      "do": {
+        "emit": {
+          "event": "item/completed",
+          "with": {
+            "threadId": "$threadId",
+            "turnId": "$uuid:turn",
+            "completedAtMs": "$nowMs",
+            "item": {
+              "type": "commandExecution",
+              "id": "$uuid:verify",
+              "command": "rg -n 'source|claim|caveat' research-notes",
+              "cwd": "$threadCwd",
+              "status": "completed",
+              "commandActions": [{ "type": "search", "query": "source|claim|caveat" }],
+              "aggregatedOutput": "Every material claim has a source or an explicit caveat.",
+              "exitCode": 0,
+              "durationMs": 165
+            }
+          }
+        }
+      }
+    },
+    {
+      "at": 3100,
+      "do": {
+        "emit": {
+          "event": "item/started",
+          "with": {
+            "threadId": "$threadId",
+            "turnId": "$uuid:turn",
+            "startedAtMs": "$nowMs",
+            "item": { "type": "agentMessage", "id": "$uuid:agent-message", "text": "", "phase": "final_answer" }
+          }
+        }
+      }
+    },
+    {
+      "at": 3200,
+      "do": {
+        "emit": {
+          "event": "item/agentMessage/delta",
+          "with": {
+            "threadId": "$threadId",
+            "turnId": "$uuid:turn",
+            "itemId": "$uuid:agent-message",
+            "delta": "Recommendation: use the source-backed option, retain the documented caveats, and validate the remaining open question."
+          }
+        }
+      }
+    },
+    {
+      "at": 3300,
+      "do": {
+        "emit": {
+          "event": "item/completed",
+          "with": {
+            "threadId": "$threadId",
+            "turnId": "$uuid:turn",
+            "completedAtMs": "$nowMs",
+            "item": {
+              "type": "agentMessage",
+              "id": "$uuid:agent-message",
+              "text": "Recommendation: use the source-backed option, retain the documented caveats, and validate the remaining open question.",
+              "phase": "final_answer"
+            }
+          }
+        }
+      }
+    },
+    {
+      "at": 3400,
+      "do": {
+        "emit": {
+          "event": "turn/completed",
+          "with": { "threadId": "$threadId", "turn": { "id": "$uuid:turn", "status": "completed", "error": null } }
+        }
+      }
+    }
+  ]
+}

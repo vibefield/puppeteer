@@ -1,0 +1,25 @@
+{
+  "name": "permission-allow",
+  "steps": [
+    {
+      "emit": {
+        "event": "permission.asked",
+        "request": true,
+        "with": {
+          "id": "$uuid:permission",
+          "sessionID": "$sessionId",
+          "permission": "bash",
+          "patterns": ["echo imposter"],
+          "metadata": { "command": "echo imposter" },
+          "always": ["echo *"]
+        }
+      }
+    },
+    {
+      "emit": {
+        "event": "permission.replied",
+        "with": { "sessionID": "$sessionId", "requestID": "$uuid:permission", "reply": "once" }
+      }
+    }
+  ]
+}

@@ -1,0 +1,8 @@
+{
+  "asmVersion": 2,
+  "vendor": "claude",
+  "vendorVersion": "2.1.226",
+  "generatedAt": "2026-08-09T17:13:54.000Z",
+  "source": "Pinned darwin-arm64 Claude Code 2.1.226 census plus a reviewed snapshot of Anthropic's official hook reference.",
+  "evidence": "evidence.json"
+}

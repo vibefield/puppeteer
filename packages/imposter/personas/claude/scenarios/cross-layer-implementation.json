@@ -1,0 +1,488 @@
+{
+  "name": "cross-layer-implementation",
+  "notes": "A repository change with parallel code/test work, an initial failure, approval-gated execution, compaction, and final diff verification.",
+  "steps": [
+    {
+      "at": 0,
+      "do": {
+        "emit": {
+          "event": "UserPromptSubmit",
+          "with": {
+            "prompt": "$stimulus.text",
+            "prompt_id": "$uuid:prompt",
+            "session_title": "$sessionTitle",
+            "permission_mode": "$permissionMode"
+          }
+        }
+      }
+    },
+    {
+      "at": 100,
+      "do": {
+        "emit": {
+          "event": "MessageDisplay",
+          "with": {
+            "prompt_id": "$uuid:prompt",
+            "turn_id": "$uuid:turn",
+            "message_id": "$uuid:plan-message",
+            "index": 0,
+            "final": true,
+            "delta": "I’ll trace the affected layers, delegate test coverage, implement the smallest change, and verify the final diff."
+          }
+        }
+      }
+    },
+    {
+      "at": 200,
+      "do": {
+        "emit": {
+          "event": "TaskCreated",
+          "with": {
+            "prompt_id": "$uuid:prompt",
+            "task_id": "implementation",
+            "task_subject": "Trace and implement",
+            "task_description": "Locate the ownership seam and implement the minimal cross-layer change.",
+            "team_name": "implementation-team",
+            "teammate_name": "implementer"
+          }
+        }
+      }
+    },
+    {
+      "at": 300,
+      "do": {
+        "emit": {
+          "event": "TaskCreated",
+          "with": {
+            "prompt_id": "$uuid:prompt",
+            "task_id": "regression-tests",
+            "task_subject": "Build regression coverage",
+            "task_description": "Find the relevant test harness and add high-signal coverage.",
+            "team_name": "implementation-team",
+            "teammate_name": "test-runner"
+          }
+        }
+      }
+    },
+    {
+      "at": 400,
+      "do": {
+        "emit": {
+          "event": "SubagentStart",
+          "with": { "prompt_id": "$uuid:prompt", "agent_id": "implementation-explorer", "agent_type": "Explore" }
+        }
+      }
+    },
+    {
+      "at": 500,
+      "do": {
+        "emit": {
+          "event": "SubagentStart",
+          "with": { "prompt_id": "$uuid:prompt", "agent_id": "implementation-tests", "agent_type": "test-runner" }
+        }
+      }
+    },
+    {
+      "at": 600,
+      "do": {
+        "emit": {
+          "event": "PreToolUse",
+          "with": {
+            "prompt_id": "$uuid:prompt",
+            "agent_id": "implementation-explorer",
+            "agent_type": "Explore",
+            "tool_name": "Grep",
+            "tool_input": { "pattern": "createScenarioRunner|scenarioSteps", "path": "$cwd" },
+            "tool_use_id": "$uuid:grep"
+          }
+        }
+      }
+    },
+    {
+      "at": 800,
+      "do": {
+        "emit": {
+          "event": "PostToolUse",
+          "with": {
+            "prompt_id": "$uuid:prompt",
+            "agent_id": "implementation-explorer",
+            "agent_type": "Explore",
+            "tool_name": "Grep",
+            "tool_input": { "pattern": "createScenarioRunner|scenarioSteps", "path": "$cwd" },
+            "tool_response": {
+              "matches": ["packages/imposter/src/session/scenario.ts", "packages/imposter/src/session/session.ts"]
+            },
+            "tool_use_id": "$uuid:grep",
+            "duration_ms": 145
+          }
+        }
+      }
+    },
+    {
+      "at": 900,
+      "do": {
+        "emit": {
+          "event": "PreToolUse",
+          "with": {
+            "prompt_id": "$uuid:prompt",
+            "agent_id": "implementation-tests",
+            "agent_type": "test-runner",
+            "tool_name": "Read",
+            "tool_input": { "file_path": "packages/imposter/src/persona/scenarios.claude.test.ts" },
+            "tool_use_id": "$uuid:read-tests"
+          }
+        }
+      }
+    },
+    {
+      "at": 1100,
+      "do": {
+        "emit": {
+          "event": "PostToolUse",
+          "with": {
+            "prompt_id": "$uuid:prompt",
+            "agent_id": "implementation-tests",
+            "agent_type": "test-runner",
+            "tool_name": "Read",
+            "tool_input": { "file_path": "packages/imposter/src/persona/scenarios.claude.test.ts" },
+            "tool_response": { "summary": "The persona suite is the correct executable contract boundary." },
+            "tool_use_id": "$uuid:read-tests",
+            "duration_ms": 155
+          }
+        }
+      }
+    },
+    {
+      "at": 1200,
+      "do": {
+        "emit": {
+          "event": "PreToolUse",
+          "with": {
+            "prompt_id": "$uuid:prompt",
+            "tool_name": "Bash",
+            "tool_input": { "command": "pnpm --filter @vibecook/chopsticks-imposter test -- scenarios.claude" },
+            "tool_use_id": "$uuid:baseline-test"
+          }
+        }
+      }
+    },
+    {
+      "at": 1400,
+      "do": {
+        "emit": {
+          "event": "PostToolUseFailure",
+          "with": {
+            "prompt_id": "$uuid:prompt",
+            "tool_name": "Bash",
+            "tool_input": { "command": "pnpm --filter @vibecook/chopsticks-imposter test -- scenarios.claude" },
+            "tool_use_id": "$uuid:baseline-test",
+            "error": "Expected long-form runflow contract is not implemented yet.",
+            "duration_ms": 195,
+            "is_interrupt": false
+          }
+        }
+      }
+    },
+    {
+      "at": 1500,
+      "do": {
+        "emit": {
+          "event": "PreToolUse",
+          "with": {
+            "prompt_id": "$uuid:prompt",
+            "tool_name": "Edit",
+            "tool_input": {
+              "file_path": "packages/imposter/personas/claude/runflows.json",
+              "old_string": "short catalog",
+              "new_string": "realistic catalog"
+            },
+            "tool_use_id": "$uuid:edit"
+          }
+        }
+      }
+    },
+    {
+      "at": 1700,
+      "do": {
+        "emit": {
+          "event": "PostToolUse",
+          "with": {
+            "prompt_id": "$uuid:prompt",
+            "tool_name": "Edit",
+            "tool_input": {
+              "file_path": "packages/imposter/personas/claude/runflows.json",
+              "old_string": "short catalog",
+              "new_string": "realistic catalog"
+            },
+            "tool_response": { "changed": true, "files": ["packages/imposter/personas/claude/runflows.json"] },
+            "tool_use_id": "$uuid:edit",
+            "duration_ms": 180
+          }
+        }
+      }
+    },
+    {
+      "at": 1800,
+      "do": {
+        "emit": {
+          "event": "PreToolUse",
+          "with": {
+            "prompt_id": "$uuid:prompt",
+            "tool_name": "Bash",
+            "tool_input": { "command": "pnpm --filter @vibecook/chopsticks-imposter test -- scenarios.claude" },
+            "tool_use_id": "$uuid:approved-test"
+          }
+        }
+      }
+    },
+    {
+      "at": 1900,
+      "do": {
+        "emit": {
+          "event": "PermissionRequest",
+          "with": {
+            "prompt_id": "$uuid:prompt",
+            "tool_name": "Bash",
+            "tool_input": { "command": "pnpm --filter @vibecook/chopsticks-imposter test -- scenarios.claude" },
+            "permission_suggestions": [{ "type": "addRules", "destination": "session" }]
+          }
+        }
+      }
+    },
+    {
+      "at": 2200,
+      "do": {
+        "emit": {
+          "event": "PostToolUse",
+          "with": {
+            "prompt_id": "$uuid:prompt",
+            "tool_name": "Bash",
+            "tool_input": { "command": "pnpm --filter @vibecook/chopsticks-imposter test -- scenarios.claude" },
+            "tool_response": { "output": "All Claude persona scenario tests passed.", "exitCode": 0 },
+            "tool_use_id": "$uuid:approved-test",
+            "duration_ms": 265
+          }
+        }
+      }
+    },
+    {
+      "at": 2300,
+      "do": {
+        "emit": {
+          "event": "TaskCompleted",
+          "with": {
+            "prompt_id": "$uuid:prompt",
+            "task_id": "implementation",
+            "task_subject": "Trace and implement",
+            "task_description": "Ownership seam updated without changing native truth.",
+            "team_name": "implementation-team",
+            "teammate_name": "implementer"
+          }
+        }
+      }
+    },
+    {
+      "at": 2400,
+      "do": {
+        "emit": {
+          "event": "SubagentStop",
+          "with": {
+            "prompt_id": "$uuid:prompt",
+            "agent_id": "implementation-explorer",
+            "agent_type": "Explore",
+            "agent_transcript_path": "/tmp/implementation-explorer.jsonl",
+            "last_assistant_message": "Implementation seam verified.",
+            "stop_hook_active": false,
+            "background_tasks": [],
+            "session_crons": []
+          }
+        }
+      }
+    },
+    {
+      "at": 2500,
+      "do": {
+        "emit": {
+          "event": "PreToolUse",
+          "with": {
+            "prompt_id": "$uuid:prompt",
+            "agent_id": "implementation-tests",
+            "agent_type": "test-runner",
+            "tool_name": "Bash",
+            "tool_input": { "command": "pnpm --filter @vibecook/chopsticks-imposter typecheck" },
+            "tool_use_id": "$uuid:typecheck"
+          }
+        }
+      }
+    },
+    {
+      "at": 2700,
+      "do": {
+        "emit": {
+          "event": "PostToolUse",
+          "with": {
+            "prompt_id": "$uuid:prompt",
+            "agent_id": "implementation-tests",
+            "agent_type": "test-runner",
+            "tool_name": "Bash",
+            "tool_input": { "command": "pnpm --filter @vibecook/chopsticks-imposter typecheck" },
+            "tool_response": { "output": "Typecheck passed.", "exitCode": 0 },
+            "tool_use_id": "$uuid:typecheck",
+            "duration_ms": 190
+          }
+        }
+      }
+    },
+    {
+      "at": 2800,
+      "do": {
+        "emit": {
+          "event": "TaskCompleted",
+          "with": {
+            "prompt_id": "$uuid:prompt",
+            "task_id": "regression-tests",
+            "task_subject": "Build regression coverage",
+            "task_description": "Regression suite and typecheck both pass.",
+            "team_name": "implementation-team",
+            "teammate_name": "test-runner"
+          }
+        }
+      }
+    },
+    {
+      "at": 2900,
+      "do": {
+        "emit": {
+          "event": "SubagentStop",
+          "with": {
+            "prompt_id": "$uuid:prompt",
+            "agent_id": "implementation-tests",
+            "agent_type": "test-runner",
+            "agent_transcript_path": "/tmp/implementation-tests.jsonl",
+            "last_assistant_message": "Tests and typecheck passed.",
+            "stop_hook_active": false,
+            "background_tasks": [],
+            "session_crons": []
+          }
+        }
+      }
+    },
+    {
+      "at": 3000,
+      "do": {
+        "statusline": {
+          "with": {
+            "session_id": "$sessionId",
+            "transcript_path": "$transcriptPath",
+            "cwd": "$cwd",
+            "model": { "id": "$modelId", "display_name": "$modelId" },
+            "workspace": { "current_dir": "$cwd" },
+            "context_window": {
+              "total_input_tokens": 192000,
+              "context_window_size": 200000,
+              "used_percentage": 96,
+              "current_usage": {
+                "input_tokens": 192000,
+                "cache_creation_input_tokens": 10000,
+                "cache_read_input_tokens": 52000
+              }
+            }
+          }
+        }
+      }
+    },
+    {
+      "at": 3100,
+      "do": {
+        "emit": {
+          "event": "PreCompact",
+          "with": { "prompt_id": "$uuid:prompt", "trigger": "auto", "custom_instructions": "" }
+        }
+      }
+    },
+    {
+      "at": 3200,
+      "do": {
+        "emit": {
+          "event": "PostCompact",
+          "with": {
+            "prompt_id": "$uuid:prompt",
+            "trigger": "auto",
+            "compact_summary": "Preserved requested change, touched files, test evidence, permission outcome, and final diff checklist."
+          }
+        }
+      }
+    },
+    {
+      "at": 3300,
+      "do": {
+        "emit": {
+          "event": "PreToolUse",
+          "with": {
+            "prompt_id": "$uuid:prompt",
+            "tool_name": "Bash",
+            "tool_input": { "command": "git diff --check && git diff --stat" },
+            "tool_use_id": "$uuid:diff-check"
+          }
+        }
+      }
+    },
+    {
+      "at": 3500,
+      "do": {
+        "emit": {
+          "event": "PostToolUse",
+          "with": {
+            "prompt_id": "$uuid:prompt",
+            "tool_name": "Bash",
+            "tool_input": { "command": "git diff --check && git diff --stat" },
+            "tool_response": { "output": "No whitespace errors; intended files only.", "exitCode": 0 },
+            "tool_use_id": "$uuid:diff-check",
+            "duration_ms": 170
+          }
+        }
+      }
+    },
+    {
+      "at": 3600,
+      "do": {
+        "transcript": {
+          "record": {
+            "type": "assistant",
+            "uuid": "$uuid:assistant",
+            "sessionId": "$sessionId",
+            "timestamp": "$now",
+            "cwd": "$cwd",
+            "version": "$vendorVersion",
+            "message": {
+              "id": "$uuid:message",
+              "role": "assistant",
+              "model": "$modelId",
+              "content": [
+                {
+                  "type": "text",
+                  "text": "Implemented the cross-layer change, added regression coverage, and verified tests, typecheck, and the final diff."
+                }
+              ]
+            }
+          }
+        }
+      }
+    },
+    {
+      "at": 3700,
+      "do": {
+        "emit": {
+          "event": "Stop",
+          "with": {
+            "prompt_id": "$uuid:prompt",
+            "last_assistant_message": "Implementation complete with regression evidence and a clean diff.",
+            "stop_hook_active": false,
+            "background_tasks": [],
+            "session_crons": []
+          }
+        }
+      }
+    }
+  ]
+}

@@ -1,0 +1,12 @@
+{
+  "name": "unknown-event",
+  "steps": [
+    {
+      "emit": {
+        "channel": "sse",
+        "event": "opencode.future.event",
+        "with": { "sessionID": "$sessionId", "future": true }
+      }
+    }
+  ]
+}

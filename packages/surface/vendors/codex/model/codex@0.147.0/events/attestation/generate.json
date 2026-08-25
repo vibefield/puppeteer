@@ -1,0 +1,55 @@
+{
+  "surface": "codex",
+  "surfaceVersion": "0.147.0",
+  "event": "attestation/generate",
+  "channel": "appserver",
+  "transport": "jsonrpc-request",
+  "direction": "agent-to-client",
+  "trigger": "Generate a fresh upstream attestation result on demand.",
+  "resultSchema": {
+    "type": "object",
+    "properties": {
+      "token": {
+        "type": "string"
+      }
+    },
+    "required": [
+      "token"
+    ]
+  },
+  "recordSchema": {
+    "type": "object",
+    "properties": {
+      "method": {
+        "type": "string",
+        "enum": [
+          "attestation/generate"
+        ]
+      },
+      "params": {
+        "type": "object"
+      },
+      "id": {}
+    },
+    "required": [
+      "method",
+      "params",
+      "id"
+    ]
+  },
+  "evidence": {
+    "existence": [
+      "codex-generated-schema"
+    ],
+    "shape": [
+      "codex-generated-schema"
+    ],
+    "result": [
+      "codex-generated-schema"
+    ],
+    "carrier": [
+      "codex-generated-schema"
+    ]
+  },
+  "confidence": "unverified"
+}

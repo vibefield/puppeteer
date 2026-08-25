@@ -1,0 +1,15 @@
+{
+  "vendor": "hermes",
+  "asm": {
+    "package": "@vibecook/chopsticks-surface",
+    "path": "vendors/hermes/model/hermes@0.20.0"
+  },
+  "shimNames": ["hermes"],
+  "jsonrpcEventMethod": "event",
+  "envelope": {},
+  "bindings": {
+    "$liveSessionId": "$uuid:live",
+    "$storedSessionId": "$uuid:stored"
+  },
+  "boot": [{ "op": "session.start" }, { "op": "session.ready" }]
+}

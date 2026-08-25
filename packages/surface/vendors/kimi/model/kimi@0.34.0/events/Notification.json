@@ -1,0 +1,114 @@
+{
+  "surface": "kimi",
+  "surfaceVersion": "0.34.0",
+  "event": "Notification",
+  "channel": "hook-command",
+  "channels": ["hook-command"],
+  "transport": "command-stdin",
+  "direction": "agent-local",
+  "payloadSchema": {
+    "type": "object",
+    "properties": {
+      "hook_event_name": {
+        "type": "string",
+        "enum": ["Notification"]
+      },
+      "session_id": {
+        "type": "string"
+      },
+      "cwd": {
+        "type": "string"
+      },
+      "client_type": {
+        "type": "string"
+      },
+      "session_title": {
+        "type": "string"
+      },
+      "sink": {
+        "type": "string",
+        "enum": ["context"]
+      },
+      "notification_type": {
+        "type": "string"
+      },
+      "title": {
+        "type": "string"
+      },
+      "body": {
+        "type": "string"
+      },
+      "severity": {
+        "type": "string",
+        "enum": ["info", "warning"]
+      },
+      "source_kind": {
+        "type": "string"
+      },
+      "source_id": {
+        "type": "string"
+      }
+    },
+    "required": [
+      "hook_event_name",
+      "session_id",
+      "cwd",
+      "client_type",
+      "sink",
+      "notification_type",
+      "title",
+      "body",
+      "severity",
+      "source_kind",
+      "source_id"
+    ]
+  },
+  "evidence": {
+    "existence": ["kimi-runtime-headless"],
+    "shape": ["kimi-runtime-headless", "kimi-exact-release-source"]
+  },
+  "confidence": "verified-headless",
+  "variants": [
+    {
+      "match": {
+        "hook_event_name": "Notification"
+      },
+      "evidence": {
+        "existence": ["kimi-runtime-headless"],
+        "shape": ["kimi-runtime-headless", "kimi-exact-release-source"]
+      },
+      "confidence": "verified-headless"
+    },
+    {
+      "match": {
+        "sink": "context"
+      },
+      "evidence": {
+        "existence": ["kimi-runtime-headless"],
+        "shape": ["kimi-runtime-headless", "kimi-exact-release-source"]
+      },
+      "confidence": "verified-headless"
+    },
+    {
+      "match": {
+        "severity": "info"
+      },
+      "evidence": {
+        "existence": ["kimi-runtime-headless"],
+        "shape": ["kimi-runtime-headless", "kimi-exact-release-source"]
+      },
+      "confidence": "verified-headless"
+    },
+    {
+      "match": {
+        "severity": "warning"
+      },
+      "evidence": {
+        "existence": ["kimi-exact-release-source"],
+        "shape": ["kimi-exact-release-source"]
+      },
+      "confidence": "unverified"
+    }
+  ],
+  "fixture": "captures/kimi@0.34.0/background-task/hooks/Notification.jsonl"
+}

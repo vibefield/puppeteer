@@ -1,0 +1,29 @@
+{
+  "name": "question-reply",
+  "steps": [
+    {
+      "emit": {
+        "event": "question.asked",
+        "request": true,
+        "with": {
+          "id": "$uuid:question",
+          "sessionID": "$sessionId",
+          "questions": [
+            {
+              "question": "Choose one",
+              "header": "Choice",
+              "options": [{ "label": "A", "description": "First option" }],
+              "multiple": false
+            }
+          ]
+        }
+      }
+    },
+    {
+      "emit": {
+        "event": "question.replied",
+        "with": { "sessionID": "$sessionId", "requestID": "$uuid:question", "answers": [["A"]] }
+      }
+    }
+  ]
+}

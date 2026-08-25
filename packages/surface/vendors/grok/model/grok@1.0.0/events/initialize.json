@@ -1,0 +1,43 @@
+{
+  "surface": "grok",
+  "surfaceVersion": "1.0.0",
+  "event": "initialize",
+  "channel": "acp",
+  "transport": "jsonrpc-request",
+  "payloadSchema": {
+    "type": "object",
+    "properties": {
+      "protocolVersion": {
+        "type": "number"
+      },
+      "clientCapabilities": {
+        "type": "object"
+      }
+    },
+    "required": ["protocolVersion", "clientCapabilities"]
+  },
+  "resultSchema": {
+    "type": "object",
+    "properties": {
+      "protocolVersion": { "type": "number" },
+      "agentCapabilities": { "type": "object" },
+      "authMethods": { "type": "array" },
+      "_meta": {
+        "type": "object",
+        "properties": { "agentVersion": { "type": "string" } },
+        "required": ["agentVersion"]
+      }
+    },
+    "required": ["protocolVersion", "agentCapabilities", "authMethods", "_meta"]
+  },
+  "confidence": "unverified",
+  "firstSeen": "1.0.0",
+  "lastVerified": "1.0.0",
+  "fixture": "captures/grok@1.0.0/handshake.jsonl",
+  "direction": "client-to-agent",
+  "evidence": {
+    "existence": ["grok-runtime-headless"],
+    "shape": ["grok-runtime-headless"],
+    "result": ["grok-public-mirror-lead"]
+  }
+}

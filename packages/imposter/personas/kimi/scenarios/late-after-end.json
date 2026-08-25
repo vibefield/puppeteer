@@ -1,0 +1,28 @@
+{
+  "name": "late-after-end",
+  "steps": [
+    {
+      "at": 0,
+      "do": { "emit": { "channel": "wire", "event": "turn.ended", "with": { "turnId": 0, "reason": "completed" } } }
+    },
+    {
+      "at": 30,
+      "do": {
+        "emit": {
+          "channel": "wire",
+          "event": "context.append_loop_event",
+          "with": {
+            "event": {
+              "type": "content.part",
+              "uuid": "$uuid:late",
+              "turnId": "0",
+              "step": 1,
+              "stepUuid": "$uuid:step",
+              "part": { "type": "text", "text": "late content" }
+            }
+          }
+        }
+      }
+    }
+  ]
+}

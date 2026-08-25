@@ -1,0 +1,16 @@
+export const publicPackages = [
+  ['packages/core', '@vibecook/chopsticks-core'],
+  ['packages/surface', '@vibecook/chopsticks-surface'],
+  ['packages/imposter', '@vibecook/chopsticks-imposter'],
+  ['packages/record', '@vibecook/chopsticks-record'],
+  ['packages/workspaces', '@vibecook/chopsticks-workspaces'],
+  ['packages/adapter-acp', '@vibecook/chopsticks-adapter-acp'],
+  ['packages/adapter-claude', '@vibecook/chopsticks-adapter-claude'],
+  ['packages/adapter-codex', '@vibecook/chopsticks-adapter-codex'],
+  ['packages/testing', '@vibecook/chopsticks-testing'],
+  ['packages/adapter-grok', '@vibecook/chopsticks-adapter-grok'],
+  ['packages/adapter-kimi', '@vibecook/chopsticks-adapter-kimi'],
+  ['packages/adapter-opencode', '@vibecook/chopsticks-adapter-opencode'],
+  ['packages/adapter-hermes', '@vibecook/chopsticks-adapter-hermes'],
+  ['packages/runtime', '@vibecook/chopsticks-runtime'],
+];

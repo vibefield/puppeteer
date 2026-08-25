@@ -1,0 +1,8 @@
+{
+  "schemaVersion": 1,
+  "vendor": "kimi",
+  "version": "0.34.0",
+  "scenario": "basic-turn",
+  "mode": "native-print-hermetic",
+  "wireProtocolVersion": "1.5"
+}

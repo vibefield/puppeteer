@@ -1,0 +1,62 @@
+{
+  "surface": "codex",
+  "surfaceVersion": "0.147.0",
+  "event": "thread/inject_items",
+  "channel": "appserver",
+  "transport": "jsonrpc-request",
+  "direction": "client-to-agent",
+  "trigger": "Append raw Responses API items to the thread history without starting a user turn.",
+  "payloadSchema": {
+    "type": "object",
+    "properties": {
+      "items": {
+        "type": "array"
+      },
+      "threadId": {
+        "type": "string"
+      }
+    },
+    "required": [
+      "items",
+      "threadId"
+    ]
+  },
+  "resultSchema": {
+    "type": "object"
+  },
+  "recordSchema": {
+    "type": "object",
+    "properties": {
+      "method": {
+        "type": "string",
+        "enum": [
+          "thread/inject_items"
+        ]
+      },
+      "params": {
+        "type": "object"
+      },
+      "id": {}
+    },
+    "required": [
+      "method",
+      "params",
+      "id"
+    ]
+  },
+  "evidence": {
+    "existence": [
+      "codex-generated-schema"
+    ],
+    "shape": [
+      "codex-generated-schema"
+    ],
+    "result": [
+      "codex-generated-schema"
+    ],
+    "carrier": [
+      "codex-generated-schema"
+    ]
+  },
+  "confidence": "unverified"
+}

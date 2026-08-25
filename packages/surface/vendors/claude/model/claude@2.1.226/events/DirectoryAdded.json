@@ -1,0 +1,69 @@
+{
+  "surface": "claude",
+  "surfaceVersion": "2.1.226",
+  "event": "DirectoryAdded",
+  "channel": "hook",
+  "channels": [
+    "hook"
+  ],
+  "transport": "http",
+  "direction": "agent-to-client",
+  "trigger": "An additional working directory was registered; the hook runs asynchronously.",
+  "payloadSchema": {
+    "type": "object",
+    "properties": {
+      "session_id": {
+        "type": "string"
+      },
+      "transcript_path": {
+        "type": "string"
+      },
+      "cwd": {
+        "type": "string"
+      },
+      "prompt_id": {
+        "type": "string"
+      },
+      "permission_mode": {
+        "type": "string"
+      },
+      "effort": {
+        "type": "object"
+      },
+      "hook_event_name": {
+        "type": "string"
+      },
+      "agent_id": {
+        "type": "string"
+      },
+      "agent_type": {
+        "type": "string"
+      },
+      "directory": {
+        "type": "string"
+      },
+      "source": {
+        "type": "string"
+      }
+    },
+    "required": [
+      "cwd",
+      "directory",
+      "hook_event_name",
+      "session_id",
+      "source",
+      "transcript_path"
+    ]
+  },
+  "evidence": {
+    "existence": [
+      "claude-official-hooks"
+    ],
+    "shape": [
+      "claude-official-hooks"
+    ]
+  },
+  "confidence": "unverified",
+  "timeoutSec": 5,
+  "notes": "An additional working directory was registered; the hook runs asynchronously."
+}

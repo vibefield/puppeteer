@@ -1,0 +1,24 @@
+{
+  "id": "session_a11a5ed0e90f6e53b67da8d2a964613725ea",
+  "version": 2,
+  "cwd": "/workspace",
+  "createdAt": 1767225600000,
+  "updatedAt": 1767225600000,
+  "archived": false,
+  "agents": {
+    "main": {
+      "homedir": "/workspace/redacted-file",
+      "type": "main"
+    },
+    "agent-0": {
+      "homedir": "/workspace/redacted-file",
+      "type": "sub",
+      "parentAgentId": "anon-0d6e4079e36703eb",
+      "labels": {
+        "parentAgentId": "anon-0d6e4079e36703eb"
+      }
+    }
+  },
+  "custom": {},
+  "lastTurnReason": "completed"
+}

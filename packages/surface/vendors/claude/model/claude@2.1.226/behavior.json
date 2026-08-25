@@ -1,0 +1,1000 @@
+{
+  "behaviorVersion": 1,
+  "title": "Claude Code native hook lifecycle (2.1.226)",
+  "description": "A partial order of native hook observations. Runtime-captured nodes are distinguished from official-document-only nodes and all ordering claims remain explicitly unverified until captured.",
+  "source": "Census packages/surface/vendors/claude/captures/claude@2.1.226 and reviewed official reference packages/surface/vendors/claude/references/claude@2.1.226.",
+  "lanes": [
+    {
+      "id": "session",
+      "label": "Session"
+    },
+    {
+      "id": "turn",
+      "label": "Turn"
+    },
+    {
+      "id": "tool",
+      "label": "Tool / permission"
+    },
+    {
+      "id": "delegation",
+      "label": "Delegation / teams"
+    },
+    {
+      "id": "maintenance",
+      "label": "Maintenance"
+    },
+    {
+      "id": "async",
+      "label": "Asynchronous side events"
+    }
+  ],
+  "nodes": [
+    {
+      "id": "session-start",
+      "event": "SessionStart",
+      "confidence": "verified-headless",
+      "evidence": {
+        "existence": [
+          "claude-runtime-headless"
+        ],
+        "shape": [
+          "claude-runtime-headless"
+        ]
+      },
+      "lane": "session",
+      "order": 0,
+      "description": "Starts or resumes a session; source may be startup, resume, clear, compact, or fork."
+    },
+    {
+      "id": "setup",
+      "event": "Setup",
+      "confidence": "verified-headless",
+      "evidence": {
+        "existence": [
+          "claude-runtime-headless"
+        ],
+        "shape": [
+          "claude-runtime-headless"
+        ]
+      },
+      "lane": "session",
+      "order": 1,
+      "description": "One-time initialization hook for --init-only, -p --init, and maintenance mode."
+    },
+    {
+      "id": "instructions-loaded",
+      "event": "InstructionsLoaded",
+      "confidence": "verified-headless",
+      "evidence": {
+        "existence": [
+          "claude-runtime-headless"
+        ],
+        "shape": [
+          "claude-runtime-headless"
+        ]
+      },
+      "lane": "async",
+      "order": 2,
+      "description": "A CLAUDE.md or .claude/rules file entered context."
+    },
+    {
+      "id": "user-prompt-submit",
+      "event": "UserPromptSubmit",
+      "confidence": "verified-headless",
+      "evidence": {
+        "existence": [
+          "claude-runtime-headless"
+        ],
+        "shape": [
+          "claude-runtime-headless"
+        ]
+      },
+      "lane": "turn",
+      "order": 3,
+      "description": "The verbatim submitted prompt; prompt_id is the native user-turn correlation when present."
+    },
+    {
+      "id": "user-prompt-expansion",
+      "event": "UserPromptExpansion",
+      "confidence": "unverified",
+      "evidence": {
+        "existence": [
+          "claude-official-hooks"
+        ],
+        "shape": [
+          "claude-official-hooks"
+        ]
+      },
+      "lane": "turn",
+      "order": 4,
+      "description": "A user-typed command expanded into its prompt before model processing."
+    },
+    {
+      "id": "message-display",
+      "event": "MessageDisplay",
+      "confidence": "verified-headless",
+      "evidence": {
+        "existence": [
+          "claude-runtime-headless"
+        ],
+        "shape": [
+          "claude-runtime-headless"
+        ]
+      },
+      "lane": "turn",
+      "order": 5,
+      "description": "Streaming display delta; display-only and distinct from durable transcript content."
+    },
+    {
+      "id": "pre-tool-use",
+      "event": "PreToolUse",
+      "confidence": "unverified",
+      "evidence": {
+        "existence": [
+          "claude-official-hooks"
+        ],
+        "shape": [
+          "claude-official-hooks"
+        ]
+      },
+      "lane": "tool",
+      "order": 6,
+      "description": "Runs before every tool call, before PermissionRequest when a decision is needed."
+    },
+    {
+      "id": "permission-request",
+      "event": "PermissionRequest",
+      "confidence": "unverified",
+      "evidence": {
+        "existence": [
+          "claude-official-hooks"
+        ],
+        "shape": [
+          "claude-official-hooks"
+        ]
+      },
+      "lane": "tool",
+      "order": 7,
+      "description": "Carries no tool_use_id; correlate to the preceding PreToolUse by prompt, tool name, and input."
+    },
+    {
+      "id": "post-tool-use",
+      "event": "PostToolUse",
+      "confidence": "unverified",
+      "evidence": {
+        "existence": [
+          "claude-official-hooks"
+        ],
+        "shape": [
+          "claude-official-hooks"
+        ]
+      },
+      "lane": "tool",
+      "order": 8,
+      "description": "One completion event per successful tool call."
+    },
+    {
+      "id": "post-tool-use-failure",
+      "event": "PostToolUseFailure",
+      "confidence": "unverified",
+      "evidence": {
+        "existence": [
+          "claude-official-hooks"
+        ],
+        "shape": [
+          "claude-official-hooks"
+        ]
+      },
+      "lane": "tool",
+      "order": 9,
+      "description": "One failure event per approved tool call that fails."
+    },
+    {
+      "id": "post-tool-batch",
+      "event": "PostToolBatch",
+      "confidence": "unverified",
+      "evidence": {
+        "existence": [
+          "claude-official-hooks"
+        ],
+        "shape": [
+          "claude-official-hooks"
+        ]
+      },
+      "lane": "tool",
+      "order": 10,
+      "description": "Runs once after every call in a parallel tool batch resolves."
+    },
+    {
+      "id": "permission-denied",
+      "event": "PermissionDenied",
+      "confidence": "unverified",
+      "evidence": {
+        "existence": [
+          "claude-official-hooks"
+        ],
+        "shape": [
+          "claude-official-hooks"
+        ]
+      },
+      "lane": "tool",
+      "order": 11,
+      "description": "Auto-mode classifier denial; manual dialog denials do not emit this hook."
+    },
+    {
+      "id": "notification",
+      "event": "Notification",
+      "confidence": "unverified",
+      "evidence": {
+        "existence": [
+          "claude-official-hooks"
+        ],
+        "shape": [
+          "claude-official-hooks"
+        ]
+      },
+      "lane": "async",
+      "order": 12,
+      "description": "Native Claude Code notification."
+    },
+    {
+      "id": "subagent-start",
+      "event": "SubagentStart",
+      "confidence": "unverified",
+      "evidence": {
+        "existence": [
+          "claude-official-hooks"
+        ],
+        "shape": [
+          "claude-official-hooks"
+        ]
+      },
+      "lane": "delegation",
+      "order": 13,
+      "description": "A subagent was spawned."
+    },
+    {
+      "id": "subagent-stop",
+      "event": "SubagentStop",
+      "confidence": "unverified",
+      "evidence": {
+        "existence": [
+          "claude-official-hooks"
+        ],
+        "shape": [
+          "claude-official-hooks"
+        ]
+      },
+      "lane": "delegation",
+      "order": 14,
+      "description": "A subagent finished; stop-hook re-entry must be deduplicated by agent_id."
+    },
+    {
+      "id": "task-created",
+      "event": "TaskCreated",
+      "confidence": "unverified",
+      "evidence": {
+        "existence": [
+          "claude-official-hooks"
+        ],
+        "shape": [
+          "claude-official-hooks"
+        ]
+      },
+      "lane": "delegation",
+      "order": 15,
+      "description": "TaskCreate is about to create a task."
+    },
+    {
+      "id": "task-completed",
+      "event": "TaskCompleted",
+      "confidence": "unverified",
+      "evidence": {
+        "existence": [
+          "claude-official-hooks"
+        ],
+        "shape": [
+          "claude-official-hooks"
+        ]
+      },
+      "lane": "delegation",
+      "order": 16,
+      "description": "A task is about to be marked complete."
+    },
+    {
+      "id": "stop",
+      "event": "Stop",
+      "confidence": "unverified",
+      "evidence": {
+        "existence": [
+          "claude-official-hooks"
+        ],
+        "shape": [
+          "claude-official-hooks"
+        ]
+      },
+      "lane": "turn",
+      "order": 17,
+      "description": "The assistant finished its turn."
+    },
+    {
+      "id": "stop-failure",
+      "event": "StopFailure",
+      "confidence": "verified-headless",
+      "evidence": {
+        "existence": [
+          "claude-runtime-headless"
+        ],
+        "shape": [
+          "claude-runtime-headless"
+        ]
+      },
+      "lane": "turn",
+      "order": 18,
+      "description": "The turn ended because of an API error; hook output is observational only."
+    },
+    {
+      "id": "teammate-idle",
+      "event": "TeammateIdle",
+      "confidence": "unverified",
+      "evidence": {
+        "existence": [
+          "claude-official-hooks"
+        ],
+        "shape": [
+          "claude-official-hooks"
+        ]
+      },
+      "lane": "delegation",
+      "order": 19,
+      "description": "An agent-team teammate is about to become idle."
+    },
+    {
+      "id": "config-change",
+      "event": "ConfigChange",
+      "confidence": "unverified",
+      "evidence": {
+        "existence": [
+          "claude-official-hooks"
+        ],
+        "shape": [
+          "claude-official-hooks"
+        ]
+      },
+      "lane": "async",
+      "order": 20,
+      "description": "A settings, policy, or skill configuration source changed."
+    },
+    {
+      "id": "cwd-changed",
+      "event": "CwdChanged",
+      "confidence": "unverified",
+      "evidence": {
+        "existence": [
+          "claude-official-hooks"
+        ],
+        "shape": [
+          "claude-official-hooks"
+        ]
+      },
+      "lane": "async",
+      "order": 21,
+      "description": "The active working directory changed."
+    },
+    {
+      "id": "directory-added",
+      "event": "DirectoryAdded",
+      "confidence": "unverified",
+      "evidence": {
+        "existence": [
+          "claude-official-hooks"
+        ],
+        "shape": [
+          "claude-official-hooks"
+        ]
+      },
+      "lane": "async",
+      "order": 22,
+      "description": "An additional working directory was registered; the hook runs asynchronously."
+    },
+    {
+      "id": "file-changed",
+      "event": "FileChanged",
+      "confidence": "unverified",
+      "evidence": {
+        "existence": [
+          "claude-official-hooks"
+        ],
+        "shape": [
+          "claude-official-hooks"
+        ]
+      },
+      "lane": "async",
+      "order": 23,
+      "description": "A configured matcher watch filename changed on disk; registration without a matcher observes nothing."
+    },
+    {
+      "id": "worktree-create",
+      "event": "WorktreeCreate",
+      "confidence": "unverified",
+      "evidence": {
+        "existence": [
+          "claude-official-hooks"
+        ],
+        "shape": [
+          "claude-official-hooks"
+        ]
+      },
+      "lane": "async",
+      "order": 24,
+      "description": "Registration replaces Claude Code's default Git worktree creation and must return the created path."
+    },
+    {
+      "id": "worktree-remove",
+      "event": "WorktreeRemove",
+      "confidence": "unverified",
+      "evidence": {
+        "existence": [
+          "claude-official-hooks"
+        ],
+        "shape": [
+          "claude-official-hooks"
+        ]
+      },
+      "lane": "async",
+      "order": 25,
+      "description": "Claude Code is removing a worktree."
+    },
+    {
+      "id": "pre-compact",
+      "event": "PreCompact",
+      "confidence": "unverified",
+      "evidence": {
+        "existence": [
+          "claude-official-hooks"
+        ],
+        "shape": [
+          "claude-official-hooks"
+        ]
+      },
+      "lane": "maintenance",
+      "order": 26,
+      "description": "Context compaction is about to run and can still be blocked."
+    },
+    {
+      "id": "post-compact",
+      "event": "PostCompact",
+      "confidence": "unverified",
+      "evidence": {
+        "existence": [
+          "claude-official-hooks"
+        ],
+        "shape": [
+          "claude-official-hooks"
+        ]
+      },
+      "lane": "maintenance",
+      "order": 27,
+      "description": "Context compaction completed."
+    },
+    {
+      "id": "session-end",
+      "event": "SessionEnd",
+      "confidence": "verified-headless",
+      "evidence": {
+        "existence": [
+          "claude-runtime-headless"
+        ],
+        "shape": [
+          "claude-runtime-headless"
+        ]
+      },
+      "lane": "session",
+      "order": 28,
+      "description": "The native session terminated; prompt_id is absent before the first prompt."
+    },
+    {
+      "id": "elicitation",
+      "event": "Elicitation",
+      "confidence": "unverified",
+      "evidence": {
+        "existence": [
+          "claude-official-hooks"
+        ],
+        "shape": [
+          "claude-official-hooks"
+        ]
+      },
+      "lane": "async",
+      "order": 29,
+      "description": "An MCP server requested structured user input."
+    },
+    {
+      "id": "elicitation-result",
+      "event": "ElicitationResult",
+      "confidence": "unverified",
+      "evidence": {
+        "existence": [
+          "claude-official-hooks"
+        ],
+        "shape": [
+          "claude-official-hooks"
+        ]
+      },
+      "lane": "async",
+      "order": 30,
+      "description": "The user response to an MCP elicitation before it is returned to the server."
+    }
+  ],
+  "relations": [
+    {
+      "from": "setup",
+      "to": "session-start",
+      "kind": "sequence",
+      "label": "optional initialization",
+      "confidence": "unverified",
+      "evidence": {
+        "existence": [
+          "claude-official-hooks"
+        ],
+        "shape": [
+          "claude-official-hooks"
+        ],
+        "ordering": [
+          "claude-official-hooks"
+        ]
+      }
+    },
+    {
+      "from": "session-start",
+      "to": "instructions-loaded",
+      "kind": "async",
+      "label": "context discovery",
+      "confidence": "unverified",
+      "evidence": {
+        "existence": [
+          "claude-official-hooks"
+        ],
+        "shape": [
+          "claude-official-hooks"
+        ],
+        "ordering": [
+          "claude-official-hooks"
+        ]
+      }
+    },
+    {
+      "from": "session-start",
+      "to": "user-prompt-submit",
+      "kind": "sequence",
+      "label": "first turn",
+      "confidence": "unverified",
+      "evidence": {
+        "existence": [
+          "claude-official-hooks"
+        ],
+        "shape": [
+          "claude-official-hooks"
+        ],
+        "ordering": [
+          "claude-official-hooks"
+        ]
+      }
+    },
+    {
+      "from": "user-prompt-submit",
+      "to": "user-prompt-expansion",
+      "kind": "conditional",
+      "label": "typed command",
+      "confidence": "unverified",
+      "evidence": {
+        "existence": [
+          "claude-official-hooks"
+        ],
+        "shape": [
+          "claude-official-hooks"
+        ],
+        "ordering": [
+          "claude-official-hooks"
+        ]
+      }
+    },
+    {
+      "from": "user-prompt-submit",
+      "to": "message-display",
+      "kind": "conditional",
+      "label": "display stream",
+      "confidence": "unverified",
+      "evidence": {
+        "existence": [
+          "claude-official-hooks"
+        ],
+        "shape": [
+          "claude-official-hooks"
+        ],
+        "ordering": [
+          "claude-official-hooks"
+        ]
+      }
+    },
+    {
+      "from": "user-prompt-submit",
+      "to": "pre-tool-use",
+      "kind": "conditional",
+      "label": "agentic tool loop",
+      "confidence": "unverified",
+      "evidence": {
+        "existence": [
+          "claude-official-hooks"
+        ],
+        "shape": [
+          "claude-official-hooks"
+        ],
+        "ordering": [
+          "claude-official-hooks"
+        ]
+      }
+    },
+    {
+      "from": "pre-tool-use",
+      "to": "permission-request",
+      "kind": "conditional",
+      "label": "permission required",
+      "confidence": "unverified",
+      "evidence": {
+        "existence": [
+          "claude-official-hooks"
+        ],
+        "shape": [
+          "claude-official-hooks"
+        ],
+        "ordering": [
+          "claude-official-hooks"
+        ]
+      }
+    },
+    {
+      "from": "permission-request",
+      "to": "permission-denied",
+      "kind": "conditional",
+      "label": "auto-mode classifier denial",
+      "confidence": "unverified",
+      "evidence": {
+        "existence": [
+          "claude-official-hooks"
+        ],
+        "shape": [
+          "claude-official-hooks"
+        ],
+        "ordering": [
+          "claude-official-hooks"
+        ]
+      }
+    },
+    {
+      "from": "pre-tool-use",
+      "to": "post-tool-use",
+      "kind": "conditional",
+      "label": "success",
+      "confidence": "unverified",
+      "evidence": {
+        "existence": [
+          "claude-official-hooks"
+        ],
+        "shape": [
+          "claude-official-hooks"
+        ],
+        "ordering": [
+          "claude-official-hooks"
+        ]
+      }
+    },
+    {
+      "from": "pre-tool-use",
+      "to": "post-tool-use-failure",
+      "kind": "conditional",
+      "label": "execution failure",
+      "confidence": "unverified",
+      "evidence": {
+        "existence": [
+          "claude-official-hooks"
+        ],
+        "shape": [
+          "claude-official-hooks"
+        ],
+        "ordering": [
+          "claude-official-hooks"
+        ]
+      }
+    },
+    {
+      "from": "post-tool-use",
+      "to": "post-tool-batch",
+      "kind": "conditional",
+      "label": "batch resolved",
+      "confidence": "unverified",
+      "evidence": {
+        "existence": [
+          "claude-official-hooks"
+        ],
+        "shape": [
+          "claude-official-hooks"
+        ],
+        "ordering": [
+          "claude-official-hooks"
+        ]
+      }
+    },
+    {
+      "from": "post-tool-use-failure",
+      "to": "post-tool-batch",
+      "kind": "conditional",
+      "label": "batch resolved",
+      "confidence": "unverified",
+      "evidence": {
+        "existence": [
+          "claude-official-hooks"
+        ],
+        "shape": [
+          "claude-official-hooks"
+        ],
+        "ordering": [
+          "claude-official-hooks"
+        ]
+      }
+    },
+    {
+      "from": "post-tool-batch",
+      "to": "message-display",
+      "kind": "loop",
+      "label": "next model response",
+      "confidence": "unverified",
+      "evidence": {
+        "existence": [
+          "claude-official-hooks"
+        ],
+        "shape": [
+          "claude-official-hooks"
+        ],
+        "ordering": [
+          "claude-official-hooks"
+        ]
+      }
+    },
+    {
+      "from": "message-display",
+      "to": "message-display",
+      "kind": "loop",
+      "label": "streaming deltas",
+      "confidence": "unverified",
+      "evidence": {
+        "existence": [
+          "claude-official-hooks"
+        ],
+        "shape": [
+          "claude-official-hooks"
+        ],
+        "ordering": [
+          "claude-official-hooks"
+        ]
+      }
+    },
+    {
+      "from": "message-display",
+      "to": "stop",
+      "kind": "sequence",
+      "label": "turn completes",
+      "confidence": "unverified",
+      "evidence": {
+        "existence": [
+          "claude-official-hooks"
+        ],
+        "shape": [
+          "claude-official-hooks"
+        ],
+        "ordering": [
+          "claude-official-hooks"
+        ]
+      }
+    },
+    {
+      "from": "user-prompt-submit",
+      "to": "stop-failure",
+      "kind": "conditional",
+      "label": "API failure",
+      "confidence": "unverified",
+      "evidence": {
+        "existence": [
+          "claude-official-hooks"
+        ],
+        "shape": [
+          "claude-official-hooks"
+        ],
+        "ordering": [
+          "claude-official-hooks"
+        ]
+      }
+    },
+    {
+      "from": "stop",
+      "to": "user-prompt-submit",
+      "kind": "loop",
+      "label": "next turn",
+      "confidence": "unverified",
+      "evidence": {
+        "existence": [
+          "claude-official-hooks"
+        ],
+        "shape": [
+          "claude-official-hooks"
+        ],
+        "ordering": [
+          "claude-official-hooks"
+        ]
+      }
+    },
+    {
+      "from": "stop",
+      "to": "session-end",
+      "kind": "conditional",
+      "label": "session exits",
+      "confidence": "unverified",
+      "evidence": {
+        "existence": [
+          "claude-official-hooks"
+        ],
+        "shape": [
+          "claude-official-hooks"
+        ],
+        "ordering": [
+          "claude-official-hooks"
+        ]
+      }
+    },
+    {
+      "from": "session-end",
+      "to": "session-start",
+      "kind": "resume",
+      "label": "--resume or --continue",
+      "confidence": "unverified",
+      "evidence": {
+        "existence": [
+          "claude-official-hooks"
+        ],
+        "shape": [
+          "claude-official-hooks"
+        ],
+        "ordering": [
+          "claude-official-hooks"
+        ]
+      }
+    },
+    {
+      "from": "user-prompt-submit",
+      "to": "subagent-start",
+      "kind": "conditional",
+      "label": "delegation",
+      "confidence": "unverified",
+      "evidence": {
+        "existence": [
+          "claude-official-hooks"
+        ],
+        "shape": [
+          "claude-official-hooks"
+        ],
+        "ordering": [
+          "claude-official-hooks"
+        ]
+      }
+    },
+    {
+      "from": "subagent-start",
+      "to": "subagent-stop",
+      "kind": "sequence",
+      "label": "subagent completes",
+      "confidence": "unverified",
+      "evidence": {
+        "existence": [
+          "claude-official-hooks"
+        ],
+        "shape": [
+          "claude-official-hooks"
+        ],
+        "ordering": [
+          "claude-official-hooks"
+        ]
+      }
+    },
+    {
+      "from": "task-created",
+      "to": "task-completed",
+      "kind": "conditional",
+      "label": "task lifecycle",
+      "confidence": "unverified",
+      "evidence": {
+        "existence": [
+          "claude-official-hooks"
+        ],
+        "shape": [
+          "claude-official-hooks"
+        ],
+        "ordering": [
+          "claude-official-hooks"
+        ]
+      }
+    },
+    {
+      "from": "task-completed",
+      "to": "teammate-idle",
+      "kind": "conditional",
+      "label": "team lifecycle",
+      "confidence": "unverified",
+      "evidence": {
+        "existence": [
+          "claude-official-hooks"
+        ],
+        "shape": [
+          "claude-official-hooks"
+        ],
+        "ordering": [
+          "claude-official-hooks"
+        ]
+      }
+    },
+    {
+      "from": "pre-compact",
+      "to": "post-compact",
+      "kind": "conditional",
+      "label": "compaction succeeds",
+      "confidence": "unverified",
+      "evidence": {
+        "existence": [
+          "claude-official-hooks"
+        ],
+        "shape": [
+          "claude-official-hooks"
+        ],
+        "ordering": [
+          "claude-official-hooks"
+        ]
+      }
+    },
+    {
+      "from": "post-compact",
+      "to": "session-start",
+      "kind": "sequence",
+      "label": "compact source refresh",
+      "confidence": "unverified",
+      "evidence": {
+        "existence": [
+          "claude-official-hooks"
+        ],
+        "shape": [
+          "claude-official-hooks"
+        ],
+        "ordering": [
+          "claude-official-hooks"
+        ]
+      }
+    },
+    {
+      "from": "elicitation",
+      "to": "elicitation-result",
+      "kind": "sequence",
+      "label": "user responds",
+      "confidence": "unverified",
+      "evidence": {
+        "existence": [
+          "claude-official-hooks"
+        ],
+        "shape": [
+          "claude-official-hooks"
+        ],
+        "ordering": [
+          "claude-official-hooks"
+        ]
+      }
+    }
+  ]
+}

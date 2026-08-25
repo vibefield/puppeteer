@@ -1,0 +1,75 @@
+{
+  "surface": "codex",
+  "surfaceVersion": "0.147.0",
+  "event": "process/exited",
+  "channel": "appserver",
+  "transport": "jsonrpc-notification",
+  "direction": "agent-to-client",
+  "trigger": "Final exit notification for a `process/spawn` session.",
+  "payloadSchema": {
+    "type": "object",
+    "properties": {
+      "exitCode": {
+        "type": "number"
+      },
+      "processHandle": {
+        "type": "string"
+      },
+      "stderr": {
+        "type": "string"
+      },
+      "stderrCapReached": {
+        "type": "boolean"
+      },
+      "stdout": {
+        "type": "string"
+      },
+      "stdoutCapReached": {
+        "type": "boolean"
+      }
+    },
+    "required": [
+      "exitCode",
+      "processHandle",
+      "stderr",
+      "stderrCapReached",
+      "stdout",
+      "stdoutCapReached"
+    ]
+  },
+  "recordSchema": {
+    "type": "object",
+    "properties": {
+      "method": {
+        "type": "string",
+        "enum": [
+          "process/exited"
+        ]
+      },
+      "params": {
+        "type": "object"
+      },
+      "emittedAtMs": {
+        "type": "number",
+        "minimum": 1000000000000
+      }
+    },
+    "required": [
+      "method",
+      "params",
+      "emittedAtMs"
+    ]
+  },
+  "evidence": {
+    "existence": [
+      "codex-generated-schema"
+    ],
+    "shape": [
+      "codex-generated-schema"
+    ],
+    "carrier": [
+      "codex-runtime-headless"
+    ]
+  },
+  "confidence": "unverified"
+}

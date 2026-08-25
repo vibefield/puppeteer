@@ -1,0 +1,16 @@
+{
+  "name": "approval-turn",
+  "reply": "imposter: approved",
+  "ops": [
+    { "op": "turn.start", "with": { "text": "$stimulus.text" } },
+    { "op": "tool.start", "with": { "toolId": "$uuid:tool", "command": "echo ok" } },
+    { "op": "permission.ask", "with": { "toolId": "$uuid:tool", "command": "echo ok" } },
+    { "op": "tool.end", "with": { "toolId": "$uuid:tool", "command": "echo ok", "output": "ok" } },
+    { "op": "assistant.delta", "with": { "text": "$reply" } },
+    { "op": "turn.end" },
+    {
+      "op": "usage.refresh",
+      "with": { "addedTokens": 16 }
+    }
+  ]
+}

@@ -1,0 +1,57 @@
+{
+  "$server": {
+    "match": { "all": ["agent", "stdio"] },
+    "jsonrpc": "2.0",
+    "leader": {
+      "sequence": ["agent", "leader"],
+      "socketFlag": "--leader-socket"
+    },
+    "viewer": {
+      "all": ["--leader", "--leader-socket", "--resume"],
+      "none": ["agent"],
+      "sessionFlag": "--resume"
+    }
+  },
+  "initialize": {
+    "before": [{ "op": "session.initialize" }],
+    "result": {
+      "protocolVersion": 1,
+      "agentCapabilities": {
+        "loadSession": true,
+        "promptCapabilities": { "image": false, "audio": false, "embeddedContext": false },
+        "mcpCapabilities": { "http": false, "sse": false }
+      },
+      "authMethods": [],
+      "_meta": { "agentVersion": "$vendorVersion" }
+    }
+  },
+  "session/new": {
+    "bind": {
+      "$sessionId": "$uuid:session",
+      "$threadCwd": "$params.cwd"
+    },
+    "before": [
+      { "op": "session.start" },
+      { "op": "session.ready" },
+      {
+        "op": "usage.refresh",
+        "with": { "usedTokens": 0 }
+      }
+    ],
+    "result": { "sessionId": "$sessionId" }
+  },
+  "session/load": {
+    "bind": {
+      "$sessionId": "$params.sessionId",
+      "$threadCwd": "$params.cwd"
+    },
+    "restore": true,
+    "before": [{ "op": "session.ready" }],
+    "result": {}
+  },
+  "session/prompt": {
+    "bind": { "$promptId": "$uuid:prompt" },
+    "before": "$behavior",
+    "result": { "stopReason": "end_turn" }
+  }
+}

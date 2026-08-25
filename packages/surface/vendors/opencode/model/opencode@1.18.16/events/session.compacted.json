@@ -1,0 +1,68 @@
+{
+  "surface": "opencode",
+  "surfaceVersion": "1.18.16",
+  "event": "session.compacted",
+  "channel": "sse",
+  "channels": [
+    "sse"
+  ],
+  "transport": "sse-event",
+  "direction": "agent-to-client",
+  "trigger": "Published on the native GET /event stream.",
+  "payloadSchema": {
+    "type": "object",
+    "properties": {
+      "sessionID": {
+        "type": "string"
+      }
+    },
+    "required": [
+      "sessionID"
+    ]
+  },
+  "recordSchema": {
+    "type": "object",
+    "properties": {
+      "id": {
+        "type": "string"
+      },
+      "properties": {
+        "type": "object",
+        "properties": {
+          "sessionID": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "sessionID"
+        ]
+      },
+      "type": {
+        "type": "string",
+        "enum": [
+          "session.compacted"
+        ]
+      }
+    },
+    "required": [
+      "id",
+      "properties",
+      "type"
+    ]
+  },
+  "evidence": {
+    "existence": [
+      "opencode-runtime-auto-compaction"
+    ],
+    "shape": [
+      "opencode-runtime-auto-compaction"
+    ],
+    "carrier": [
+      "opencode-runtime-auto-compaction"
+    ]
+  },
+  "confidence": "verified-headless",
+  "firstSeen": "1.18.16",
+  "lastVerified": "1.18.16",
+  "fixture": "captures/opencode@1.18.16/auto-compaction/events.jsonl"
+}

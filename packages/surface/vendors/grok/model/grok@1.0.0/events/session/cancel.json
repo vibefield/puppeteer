@@ -1,0 +1,29 @@
+{
+  "surface": "grok",
+  "surfaceVersion": "1.0.0",
+  "event": "session/cancel",
+  "channel": "acp",
+  "transport": "jsonrpc-notification",
+  "payloadSchema": {
+    "type": "object",
+    "properties": {
+      "sessionId": {
+        "type": "string"
+      }
+    },
+    "required": [
+      "sessionId"
+    ]
+  },
+  "confidence": "unverified",
+  "notes": "ACP-standard cancellation implemented by the adapter path but not exercised in the installed-artifact census.",
+  "direction": "client-to-agent",
+  "evidence": {
+    "existence": [
+      "grok-public-mirror-lead"
+    ],
+    "shape": [
+      "grok-public-mirror-lead"
+    ]
+  }
+}

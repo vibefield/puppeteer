@@ -1,0 +1,46 @@
+{
+  "evidenceVersion": 1,
+  "vendor": "claude",
+  "vendorVersion": "2.1.207",
+  "artifacts": [
+    {
+      "id": "legacy-installed-claude-darwin-arm64",
+      "platform": "darwin-arm64",
+      "channel": "stable",
+      "acquiredAt": "2026-08-07T00:00:00.000Z",
+      "versionOutput": "2.1.207 (Claude Code)",
+      "integrity": {
+        "status": "legacy-missing-digest"
+      }
+    }
+  ],
+  "sourceReferences": [
+    {
+      "repository": "https://github.com/anthropics/claude-code",
+      "revision": "v2.1.207",
+      "relation": "release-tag"
+    }
+  ],
+  "records": [
+    {
+      "id": "sanitized-captures",
+      "kind": "capture-set",
+      "path": "packages/surface/vendors/claude/captures/claude@2.1.207",
+      "digestAlgorithm": "sha256-path-content-v1",
+      "sha256": "d209f577c626b4b97fd8bd41b15c18aa7428dd5e3ee05ad02aa15b1dd2b46320"
+    },
+    {
+      "id": "agent-surface-model",
+      "kind": "model-tree",
+      "path": "packages/surface/vendors/claude/model/claude@2.1.207",
+      "exclude": [
+        "evidence.json"
+      ],
+      "digestAlgorithm": "sha256-path-content-v1",
+      "sha256": "75db9f536735b92b32acae34c71b96d059e79b56a0f0c10eab4265ccefac3ca4"
+    }
+  ],
+  "limitations": [
+    "Legacy baseline: the exact installed binary digest was not recorded during the original census. Source and sanitized evidence are pinned, but this baseline does not satisfy the artifact-integrity gate required for future promotions."
+  ]
+}

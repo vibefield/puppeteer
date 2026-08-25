@@ -1,0 +1,19 @@
+{
+  "probeKind": "archive-only",
+  "vendor": "antigravity",
+  "vendorVersion": "1.1.12",
+  "platform": "windows-x64",
+  "releaseAsset": "agy_cli_windows_x64.zip",
+  "sourceUrl": "https://github.com/google-antigravity/antigravity-cli/releases/download/1.1.12/agy_cli_windows_x64.zip",
+  "bytes": 50794876,
+  "sha256": "270d71910675d614499a0f7f165f275aff0a03c00b0f92cc9ed09f352c58de85",
+  "format": "zip",
+  "entries": [
+    "antigravity.exe"
+  ],
+  "selectedExecutable": "antigravity.exe",
+  "memberSha256": "fba49b64595e1484449a951442c0dfcdb488229ff47299d82381c31f10fa99f4",
+  "memberBytes": 178518680,
+  "memberMatchesArtifact": true,
+  "probedAt": "2026-08-11T05:58:27.100Z"
+}

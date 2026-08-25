@@ -1,0 +1,21 @@
+{
+  "identity": {
+    "version": "0.34.0",
+    "output": "<redacted:output>"
+  },
+  "artifactSha256": "9f4337e10da47843f6b550474012a53ba8b30dd665f83b176a5cd479c5f7e859",
+  "args": {
+    "promptMode": true,
+    "outputFormat": "<redacted:outputFormat>",
+    "isolatedSkillsDirectory": true
+  },
+  "code": 0,
+  "signal": null,
+  "invocations": [
+    {
+      "resumed": false,
+      "code": 0,
+      "signal": null
+    }
+  ]
+}

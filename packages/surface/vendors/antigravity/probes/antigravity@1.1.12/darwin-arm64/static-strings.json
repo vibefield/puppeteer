@@ -1,0 +1,305 @@
+{
+  "probeKind": "static-strings",
+  "vendor": "antigravity",
+  "vendorVersion": "1.1.12",
+  "platform": "darwin-arm64",
+  "artifactSha256": "c8fd3c0016e101689f923f82da1c068b0e6dce3abcb0089e282742693ad4d344",
+  "status": "unverified-contract",
+  "candidates": {
+    "envDisableAutoUpdate": {
+      "value": "AGY_CLI_DISABLE_AUTO_UPDATE",
+      "kind": "environment",
+      "present": true,
+      "status": "unverified-contract"
+    },
+    "envHideAccountInfo": {
+      "value": "AGY_CLI_HIDE_ACCOUNT_INFO",
+      "kind": "environment",
+      "present": true,
+      "status": "unverified-contract"
+    },
+    "envDisableLatex": {
+      "value": "AGY_CLI_DISABLE_LATEX",
+      "kind": "environment",
+      "present": true,
+      "status": "unverified-contract"
+    },
+    "envCmdOutputPercentage": {
+      "value": "AGY_CLI_CMD_OUTPUT_PERCENTAGE",
+      "kind": "environment",
+      "present": true,
+      "status": "unverified-contract"
+    },
+    "envDisableMermaidAscii": {
+      "value": "AGY_CLI_DISABLE_MERMAID_ASCII",
+      "kind": "environment",
+      "present": true,
+      "status": "unverified-contract"
+    },
+    "envExperimentalRendering": {
+      "value": "AGY_CLI_EXPERIMENTAL_RENDERING",
+      "kind": "environment",
+      "present": true,
+      "status": "unverified-contract"
+    },
+    "envForceOsc8": {
+      "value": "AGY_CLI_FORCE_OSC8",
+      "kind": "environment",
+      "present": true,
+      "status": "unverified-contract"
+    },
+    "envInteractiveHeadless": {
+      "value": "AGY_CLI_INTERACTIVE_HEADLESS",
+      "kind": "environment",
+      "present": true,
+      "status": "unverified-contract"
+    },
+    "envLogoStyle": {
+      "value": "AGY_CLI_LOGO_STYLE",
+      "kind": "environment",
+      "present": true,
+      "status": "unverified-contract"
+    },
+    "envNewHarness": {
+      "value": "AGY_CLI_NEW_HARNESS",
+      "kind": "environment",
+      "present": true,
+      "status": "unverified-contract"
+    },
+    "pathAgentsHooks": {
+      "value": ".agents/hooks.json",
+      "kind": "path",
+      "present": true,
+      "status": "unverified-contract"
+    },
+    "pathGeminiAntigravityCli": {
+      "value": ".gemini/antigravity-cli",
+      "kind": "path",
+      "present": true,
+      "status": "unverified-contract"
+    },
+    "pathGeminiAntigravityDesktop": {
+      "value": ".gemini/antigravity/",
+      "kind": "path",
+      "present": true,
+      "status": "unverified-contract"
+    },
+    "pathGeminiConfig": {
+      "value": ".gemini/config",
+      "kind": "path",
+      "present": true,
+      "status": "unverified-contract"
+    },
+    "pathLastConversations": {
+      "value": "last_conversations.json",
+      "kind": "path",
+      "present": true,
+      "status": "unverified-contract"
+    },
+    "pathTranscriptJsonl": {
+      "value": "transcript.jsonl",
+      "kind": "path",
+      "present": true,
+      "status": "unverified-contract"
+    },
+    "pathTranscriptFullJsonl": {
+      "value": "transcript_full.jsonl",
+      "kind": "path",
+      "present": true,
+      "status": "unverified-contract"
+    },
+    "pathSystemGeneratedLogs": {
+      "value": ".system_generated/logs",
+      "kind": "path",
+      "present": true,
+      "status": "unverified-contract"
+    },
+    "hookPreToolUse": {
+      "value": "PreToolUse",
+      "kind": "hook-event",
+      "present": true,
+      "status": "unverified-contract"
+    },
+    "hookPostToolUse": {
+      "value": "PostToolUse",
+      "kind": "hook-event",
+      "present": true,
+      "status": "unverified-contract"
+    },
+    "hookPreInvocation": {
+      "value": "PreInvocation",
+      "kind": "hook-event",
+      "present": true,
+      "status": "unverified-contract"
+    },
+    "hookPostInvocation": {
+      "value": "PostInvocation",
+      "kind": "hook-event",
+      "present": true,
+      "status": "unverified-contract"
+    },
+    "hookConversationId": {
+      "value": "conversationId",
+      "kind": "hook-field",
+      "present": true,
+      "status": "unverified-contract"
+    },
+    "hookTranscriptPath": {
+      "value": "transcriptPath",
+      "kind": "hook-field",
+      "present": true,
+      "status": "unverified-contract"
+    },
+    "hookArtifactDirectoryPath": {
+      "value": "artifactDirectoryPath",
+      "kind": "hook-field",
+      "present": true,
+      "status": "unverified-contract"
+    },
+    "hookWorkspacePaths": {
+      "value": "workspacePaths",
+      "kind": "hook-field",
+      "present": true,
+      "status": "unverified-contract"
+    },
+    "hookStepIdx": {
+      "value": "stepIdx",
+      "kind": "hook-field",
+      "present": true,
+      "status": "unverified-contract"
+    },
+    "hookFullyIdle": {
+      "value": "fullyIdle",
+      "kind": "hook-field",
+      "present": true,
+      "status": "unverified-contract"
+    },
+    "hookTerminationReason": {
+      "value": "terminationReason",
+      "kind": "hook-field",
+      "present": true,
+      "status": "unverified-contract"
+    },
+    "hookInjectSteps": {
+      "value": "injectSteps",
+      "kind": "hook-field",
+      "present": true,
+      "status": "unverified-contract"
+    },
+    "hookPermissionOverrides": {
+      "value": "permissionOverrides",
+      "kind": "hook-field",
+      "present": true,
+      "status": "unverified-contract"
+    },
+    "hookForceAsk": {
+      "value": "force_ask",
+      "kind": "hook-field",
+      "present": true,
+      "status": "unverified-contract"
+    },
+    "hookDenyUnlessPriorGrant": {
+      "value": "deny_unless_prior_grant",
+      "kind": "hook-field",
+      "present": true,
+      "status": "unverified-contract"
+    },
+    "hookTerminationBehavior": {
+      "value": "terminationBehavior",
+      "kind": "hook-field",
+      "present": true,
+      "status": "unverified-contract"
+    },
+    "hookForceContinue": {
+      "value": "force_continue",
+      "kind": "hook-field",
+      "present": true,
+      "status": "unverified-contract"
+    },
+    "hookUnknownPreToolDecision": {
+      "value": "unknown pre-tool hook decision",
+      "kind": "hook-field",
+      "present": true,
+      "status": "unverified-contract"
+    },
+    "statusConversationId": {
+      "value": "conversation_id",
+      "kind": "statusline-field",
+      "present": true,
+      "status": "unverified-contract"
+    },
+    "statusTranscriptPath": {
+      "value": "transcript_path",
+      "kind": "statusline-field",
+      "present": true,
+      "status": "unverified-contract"
+    },
+    "statusAgentState": {
+      "value": "agent_state",
+      "kind": "statusline-field",
+      "present": true,
+      "status": "unverified-contract"
+    },
+    "statusToolConfirmationPending": {
+      "value": "tool_confirmation_pending",
+      "kind": "statusline-field",
+      "present": true,
+      "status": "unverified-contract"
+    },
+    "statusPendingInputCount": {
+      "value": "pending_input_count",
+      "kind": "statusline-field",
+      "present": true,
+      "status": "unverified-contract"
+    },
+    "statusStackWithDefault": {
+      "value": "stack_with_default",
+      "kind": "statusline-field",
+      "present": true,
+      "status": "unverified-contract"
+    },
+    "statusLineKey": {
+      "value": "statusLine",
+      "kind": "statusline-field",
+      "present": true,
+      "status": "unverified-contract"
+    },
+    "oracleStreamJson": {
+      "value": "stream-json",
+      "kind": "survey-oracle",
+      "present": true,
+      "status": "unverified-contract"
+    },
+    "oracleStepUpdate": {
+      "value": "step_update",
+      "kind": "survey-oracle",
+      "present": true,
+      "status": "unverified-contract"
+    },
+    "oracleToolInfo": {
+      "value": "tool_info",
+      "kind": "survey-oracle",
+      "present": true,
+      "status": "unverified-contract"
+    },
+    "oracleSubagentInfo": {
+      "value": "subagent_info",
+      "kind": "survey-oracle",
+      "present": true,
+      "status": "unverified-contract"
+    },
+    "transcriptUserInputType": {
+      "value": "\"type\":\"USER_INPUT\"",
+      "kind": "transcript",
+      "present": true,
+      "status": "unverified-contract"
+    },
+    "modelsRequireSignIn": {
+      "value": "Please sign in to view available models",
+      "kind": "auth-boundary",
+      "present": true,
+      "status": "unverified-contract"
+    }
+  },
+  "probedAt": "2026-08-12T21:04:17.245Z"
+}

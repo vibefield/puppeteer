@@ -1,0 +1,63 @@
+{
+  "surface": "codex",
+  "surfaceVersion": "0.147.0",
+  "event": "windows/worldWritableWarning",
+  "channel": "appserver",
+  "transport": "jsonrpc-notification",
+  "direction": "agent-to-client",
+  "trigger": "Notifies the user of world-writable directories on Windows, which cannot be protected by the sandbox.",
+  "payloadSchema": {
+    "type": "object",
+    "properties": {
+      "extraCount": {
+        "type": "number"
+      },
+      "failedScan": {
+        "type": "boolean"
+      },
+      "samplePaths": {
+        "type": "array"
+      }
+    },
+    "required": [
+      "extraCount",
+      "failedScan",
+      "samplePaths"
+    ]
+  },
+  "recordSchema": {
+    "type": "object",
+    "properties": {
+      "method": {
+        "type": "string",
+        "enum": [
+          "windows/worldWritableWarning"
+        ]
+      },
+      "params": {
+        "type": "object"
+      },
+      "emittedAtMs": {
+        "type": "number",
+        "minimum": 1000000000000
+      }
+    },
+    "required": [
+      "method",
+      "params",
+      "emittedAtMs"
+    ]
+  },
+  "evidence": {
+    "existence": [
+      "codex-generated-schema"
+    ],
+    "shape": [
+      "codex-generated-schema"
+    ],
+    "carrier": [
+      "codex-runtime-headless"
+    ]
+  },
+  "confidence": "unverified"
+}

@@ -1,0 +1,172 @@
+{
+  "surface": "grok",
+  "surfaceVersion": "1.0.0",
+  "event": "session/update",
+  "channel": "acp",
+  "channels": [
+    "acp",
+    "session-log"
+  ],
+  "transport": "jsonrpc-notification",
+  "payloadSchema": {
+    "type": "object",
+    "properties": {
+      "sessionId": {
+        "type": "string"
+      },
+      "update": {
+        "type": "object",
+        "properties": {
+          "sessionUpdate": {
+            "type": "string",
+            "enum": [
+              "available_commands_update",
+              "user_message_chunk",
+              "agent_thought_chunk",
+              "agent_message_chunk",
+              "tool_call",
+              "tool_call_update"
+            ]
+          }
+        },
+        "required": [
+          "sessionUpdate"
+        ]
+      },
+      "_meta": {
+        "type": "object"
+      }
+    },
+    "required": [
+      "sessionId",
+      "update"
+    ]
+  },
+  "confidence": "verified-headless",
+  "firstSeen": "1.0.0",
+  "lastVerified": "1.0.0",
+  "fixture": "captures/grok@1.0.0/turn.jsonl",
+  "notes": "Observed both live over ACP and durably in updates.jsonl; channel is the default trigger rail and channels records both native observations.",
+  "direction": "agent-to-client",
+  "evidence": {
+    "existence": [
+      "grok-runtime-headless"
+    ],
+    "shape": [
+      "grok-runtime-headless"
+    ],
+    "carrier": [
+      "grok-runtime-headless"
+    ]
+  },
+  "recordSchema": {
+    "type": "object",
+    "properties": {
+      "timestamp": {
+        "type": "number",
+        "minimum": 1000000000000
+      },
+      "method": {
+        "type": "string",
+        "enum": [
+          "session/update"
+        ]
+      },
+      "params": {
+        "type": "object"
+      }
+    },
+    "required": [
+      "timestamp",
+      "method",
+      "params"
+    ]
+  },
+  "variants": [
+    {
+      "match": {
+        "update.sessionUpdate": "available_commands_update"
+      },
+      "evidence": {
+        "existence": [
+          "grok-runtime-headless"
+        ],
+        "shape": [
+          "grok-runtime-headless"
+        ]
+      },
+      "confidence": "verified-headless"
+    },
+    {
+      "match": {
+        "update.sessionUpdate": "user_message_chunk"
+      },
+      "evidence": {
+        "existence": [
+          "grok-runtime-headless"
+        ],
+        "shape": [
+          "grok-runtime-headless"
+        ]
+      },
+      "confidence": "verified-headless"
+    },
+    {
+      "match": {
+        "update.sessionUpdate": "agent_thought_chunk"
+      },
+      "evidence": {
+        "existence": [
+          "grok-runtime-headless"
+        ],
+        "shape": [
+          "grok-runtime-headless"
+        ]
+      },
+      "confidence": "verified-headless"
+    },
+    {
+      "match": {
+        "update.sessionUpdate": "agent_message_chunk"
+      },
+      "evidence": {
+        "existence": [
+          "grok-runtime-headless"
+        ],
+        "shape": [
+          "grok-runtime-headless"
+        ]
+      },
+      "confidence": "verified-headless"
+    },
+    {
+      "match": {
+        "update.sessionUpdate": "tool_call"
+      },
+      "evidence": {
+        "existence": [
+          "grok-public-mirror-lead"
+        ],
+        "shape": [
+          "grok-public-mirror-lead"
+        ]
+      },
+      "confidence": "unverified"
+    },
+    {
+      "match": {
+        "update.sessionUpdate": "tool_call_update"
+      },
+      "evidence": {
+        "existence": [
+          "grok-public-mirror-lead"
+        ],
+        "shape": [
+          "grok-public-mirror-lead"
+        ]
+      },
+      "confidence": "unverified"
+    }
+  ],
+  "recordChannel": "session-log"
+}

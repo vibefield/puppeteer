@@ -1,0 +1,330 @@
+{
+  "session.initialize": [
+    {
+      "channel": "jsonrpc",
+      "event": "_x.ai/mcp/servers_updated",
+      "with": { "servers": [] }
+    },
+    {
+      "channel": "jsonrpc",
+      "event": "_x.ai/models/update",
+      "with": { "models": [], "currentModelId": "$modelId" }
+    },
+    {
+      "channel": "jsonrpc",
+      "event": "_x.ai/settings/update",
+      "with": { "settings": {} }
+    },
+    {
+      "channel": "jsonrpc",
+      "event": "_x.ai/announcements/update",
+      "with": { "announcements": [] }
+    },
+    {
+      "channel": "jsonrpc",
+      "event": "_x.ai/mcp/init_progress",
+      "with": { "completed": 0, "total": 0 }
+    }
+  ],
+  "session.start": [
+    {
+      "channel": "jsonrpc",
+      "event": "session/update",
+      "with": {
+        "sessionId": "$sessionId",
+        "update": { "sessionUpdate": "available_commands_update", "availableCommands": [] }
+      }
+    },
+    {
+      "channel": "jsonrpc",
+      "event": "_x.ai/session_notification",
+      "with": {
+        "sessionId": "$sessionId",
+        "update": { "sessionUpdate": "hook_execution", "event_name": "session_start", "runs": [] }
+      }
+    },
+    {
+      "channel": "native-log",
+      "event": "_x.ai/session/update",
+      "with": {
+        "sessionId": "$sessionId",
+        "update": { "sessionUpdate": "hook_execution", "event_name": "session_start", "runs": [] },
+        "_meta": { "agentTimestampMs": "$nowMs" }
+      }
+    },
+    {
+      "channel": "native-state",
+      "event": "summary.json",
+      "with": {
+        "info": { "id": "$sessionId", "cwd": "$threadCwd" },
+        "current_model_id": "$modelId",
+        "created_at": "$sessionCreatedAt",
+        "updated_at": "$now",
+        "num_messages": "$messageCount",
+        "num_chat_messages": "$messageCount",
+        "agent_name": "grok"
+      }
+    }
+  ],
+  "session.end": [
+    {
+      "channel": "jsonrpc",
+      "event": "_x.ai/session_notification",
+      "with": {
+        "sessionId": "$sessionId",
+        "update": { "sessionUpdate": "hook_execution", "event_name": "session_end", "runs": [] }
+      }
+    },
+    {
+      "channel": "native-log",
+      "event": "_x.ai/session/update",
+      "with": {
+        "sessionId": "$sessionId",
+        "update": { "sessionUpdate": "hook_execution", "event_name": "session_end", "runs": [] },
+        "_meta": { "agentTimestampMs": "$nowMs" }
+      }
+    }
+  ],
+  "turn.start": [
+    {
+      "channel": "jsonrpc",
+      "event": "session/update",
+      "with": {
+        "sessionId": "$sessionId",
+        "update": { "sessionUpdate": "user_message_chunk", "content": { "type": "text", "text": "$op.text" } }
+      }
+    },
+    {
+      "channel": "jsonrpc",
+      "event": "_x.ai/session_notification",
+      "with": {
+        "sessionId": "$sessionId",
+        "update": {
+          "sessionUpdate": "hook_execution",
+          "event_name": "user_prompt_submit",
+          "prompt_id": "$uuid:prompt",
+          "runs": []
+        }
+      }
+    },
+    {
+      "channel": "native-log",
+      "event": "_x.ai/session/update",
+      "with": {
+        "sessionId": "$sessionId",
+        "update": {
+          "sessionUpdate": "hook_execution",
+          "event_name": "user_prompt_submit",
+          "prompt_id": "$uuid:prompt",
+          "runs": []
+        },
+        "_meta": { "promptId": "$uuid:prompt", "agentTimestampMs": "$nowMs" }
+      }
+    },
+    {
+      "channel": "native-log",
+      "event": "session/update",
+      "with": {
+        "sessionId": "$sessionId",
+        "update": { "sessionUpdate": "user_message_chunk", "content": { "type": "text", "text": "$op.text" } },
+        "_meta": { "promptId": "$uuid:prompt", "agentTimestampMs": "$nowMs" }
+      }
+    }
+  ],
+  "assistant.delta": [
+    {
+      "channel": "jsonrpc",
+      "event": "session/update",
+      "with": {
+        "sessionId": "$sessionId",
+        "update": {
+          "sessionUpdate": "agent_message_chunk",
+          "messageId": "$uuid:message",
+          "content": { "type": "text", "text": "$op.text" }
+        }
+      }
+    },
+    {
+      "channel": "native-log",
+      "event": "session/update",
+      "with": {
+        "sessionId": "$sessionId",
+        "update": {
+          "sessionUpdate": "agent_message_chunk",
+          "messageId": "$uuid:message",
+          "content": { "type": "text", "text": "$op.text" }
+        },
+        "_meta": { "promptId": "$uuid:prompt", "agentTimestampMs": "$nowMs" }
+      }
+    }
+  ],
+  "tool.start": [
+    {
+      "channel": "jsonrpc",
+      "event": "session/update",
+      "with": {
+        "sessionId": "$sessionId",
+        "update": {
+          "sessionUpdate": "tool_call",
+          "toolCallId": "$op.toolId",
+          "title": "$op.command",
+          "kind": "execute",
+          "status": "in_progress",
+          "rawInput": { "command": "$op.command" }
+        }
+      }
+    },
+    {
+      "channel": "native-log",
+      "event": "session/update",
+      "with": {
+        "sessionId": "$sessionId",
+        "update": {
+          "sessionUpdate": "tool_call",
+          "toolCallId": "$op.toolId",
+          "title": "$op.command",
+          "kind": "execute",
+          "status": "in_progress",
+          "rawInput": { "command": "$op.command" }
+        },
+        "_meta": { "promptId": "$uuid:prompt", "agentTimestampMs": "$nowMs" }
+      }
+    }
+  ],
+  "permission.ask": [
+    {
+      "channel": "jsonrpc",
+      "event": "session/request_permission",
+      "await": true,
+      "with": {
+        "sessionId": "$sessionId",
+        "toolCall": {
+          "toolCallId": "$op.toolId",
+          "title": "$op.command",
+          "kind": "execute",
+          "status": "in_progress",
+          "rawInput": { "command": "$op.command" }
+        },
+        "options": [
+          { "optionId": "allow_once", "name": "Allow once", "kind": "allow_once" },
+          { "optionId": "reject_once", "name": "Reject", "kind": "reject_once" }
+        ]
+      }
+    }
+  ],
+  "tool.end": [
+    {
+      "channel": "jsonrpc",
+      "event": "session/update",
+      "with": {
+        "sessionId": "$sessionId",
+        "update": {
+          "sessionUpdate": "tool_call_update",
+          "toolCallId": "$op.toolId",
+          "status": "completed",
+          "rawOutput": "$op.output"
+        }
+      }
+    },
+    {
+      "channel": "native-log",
+      "event": "session/update",
+      "with": {
+        "sessionId": "$sessionId",
+        "update": {
+          "sessionUpdate": "tool_call_update",
+          "toolCallId": "$op.toolId",
+          "status": "completed",
+          "rawOutput": "$op.output"
+        },
+        "_meta": { "promptId": "$uuid:prompt", "agentTimestampMs": "$nowMs" }
+      }
+    }
+  ],
+  "turn.end": [
+    {
+      "channel": "jsonrpc",
+      "event": "_x.ai/session_notification",
+      "with": {
+        "sessionId": "$sessionId",
+        "update": {
+          "sessionUpdate": "response_completed",
+          "signature": "<redacted:signature>",
+          "usage": { "inputTokens": 12, "outputTokens": 4 }
+        }
+      }
+    },
+    {
+      "channel": "jsonrpc",
+      "event": "_x.ai/session_notification",
+      "with": {
+        "sessionId": "$sessionId",
+        "update": { "sessionUpdate": "hook_execution", "event_name": "stop", "prompt_id": "$uuid:prompt", "runs": [] }
+      }
+    },
+    {
+      "channel": "jsonrpc",
+      "event": "_x.ai/session_notification",
+      "with": {
+        "sessionId": "$sessionId",
+        "update": {
+          "sessionUpdate": "turn_completed",
+          "prompt_id": "$uuid:prompt",
+          "stop_reason": "end_turn",
+          "usage": { "inputTokens": 12, "outputTokens": 4 }
+        }
+      }
+    },
+    {
+      "channel": "native-log",
+      "event": "_x.ai/session/update",
+      "with": {
+        "sessionId": "$sessionId",
+        "update": { "sessionUpdate": "hook_execution", "event_name": "stop", "prompt_id": "$uuid:prompt", "runs": [] },
+        "_meta": { "promptId": "$uuid:prompt", "agentTimestampMs": "$nowMs" }
+      }
+    },
+    {
+      "channel": "native-log",
+      "event": "_x.ai/session/update",
+      "with": {
+        "sessionId": "$sessionId",
+        "update": {
+          "sessionUpdate": "turn_completed",
+          "prompt_id": "$uuid:prompt",
+          "stop_reason": "end_turn",
+          "usage": { "inputTokens": 12, "outputTokens": 4 }
+        },
+        "_meta": { "promptId": "$uuid:prompt", "agentTimestampMs": "$nowMs" }
+      }
+    },
+    {
+      "channel": "native-state",
+      "event": "summary.json",
+      "with": {
+        "info": { "id": "$sessionId", "cwd": "$threadCwd" },
+        "current_model_id": "$modelId",
+        "created_at": "$sessionCreatedAt",
+        "updated_at": "$now",
+        "num_messages": "$messageCount",
+        "num_chat_messages": "$messageCount",
+        "agent_name": "grok"
+      }
+    }
+  ],
+  "usage.refresh": [
+    {
+      "channel": "native-state",
+      "event": "signals.json",
+      "with": {
+        "contextTokensUsed": "$usedTokens",
+        "contextWindowTokens": "$capacityTokens",
+        "contextWindowUsage": "$contextUsage",
+        "primaryModelId": "$modelId",
+        "compactionCount": "$compactionCount",
+        "turnCount": "$turnCount",
+        "toolCallCount": "$toolCallCount"
+      }
+    }
+  ]
+}

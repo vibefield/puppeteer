@@ -1,0 +1,25 @@
+{
+  "name": "permission-deny",
+  "steps": [
+    {
+      "emit": {
+        "event": "permission.asked",
+        "request": true,
+        "with": {
+          "id": "$uuid:permission",
+          "sessionID": "$sessionId",
+          "permission": "bash",
+          "patterns": ["rm unsafe"],
+          "metadata": { "command": "rm unsafe" },
+          "always": []
+        }
+      }
+    },
+    {
+      "emit": {
+        "event": "permission.replied",
+        "with": { "sessionID": "$sessionId", "requestID": "$uuid:permission", "reply": "reject" }
+      }
+    }
+  ]
+}

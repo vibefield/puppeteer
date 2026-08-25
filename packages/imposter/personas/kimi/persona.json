@@ -1,0 +1,21 @@
+{
+  "vendor": "kimi",
+  "asm": {
+    "package": "@vibecook/chopsticks-surface",
+    "path": "vendors/kimi/model/kimi@0.34.0"
+  },
+  "shimNames": ["kimi"],
+  "envelope": {},
+  "bindings": {
+    "$workdirKey": "$workdirKey:$cwd",
+    "$sessionCreatedAt": "$nowMs"
+  },
+  "nativeStore": {
+    "rootEnv": "KIMI_CODE_HOME",
+    "sessionPath": ["sessions", "$workdirKey", "$sessionId"],
+    "updatesPath": ["agents", "main", "wire.jsonl"],
+    "indexPath": ["session_index.jsonl"],
+    "recordFormat": "flat-record"
+  },
+  "boot": [{ "op": "session.start" }, { "op": "session.ready" }]
+}

@@ -1,0 +1,199 @@
+{
+  "surface": "kimi",
+  "surfaceVersion": "0.34.0",
+  "event": "goal.update",
+  "channel": "wire",
+  "channels": ["wire"],
+  "transport": "jsonl-record",
+  "direction": "agent-local",
+  "payloadSchema": {
+    "type": "object",
+    "properties": {
+      "goalId": {
+        "type": "string"
+      },
+      "status": {
+        "type": "string",
+        "enum": ["active", "paused", "blocked", "complete"]
+      },
+      "reason": {
+        "type": "string"
+      },
+      "turnsUsed": {
+        "type": "number"
+      },
+      "tokensUsed": {
+        "type": "number"
+      },
+      "wallClockMs": {
+        "type": "number"
+      },
+      "wallClockResumedAt": {
+        "type": "number",
+        "minimum": 0
+      },
+      "budgetLimits": {
+        "type": "object",
+        "properties": {
+          "tokenBudget": {
+            "type": "number"
+          },
+          "turnBudget": {
+            "type": "number"
+          },
+          "wallClockBudgetMs": {
+            "type": "number"
+          }
+        }
+      },
+      "actor": {
+        "type": "string",
+        "enum": ["user", "model", "runtime", "system"]
+      }
+    }
+  },
+  "recordSchema": {
+    "type": "object",
+    "properties": {
+      "type": {
+        "type": "string",
+        "enum": ["goal.update"]
+      },
+      "goalId": {
+        "type": "string"
+      },
+      "status": {
+        "type": "string",
+        "enum": ["active", "paused", "blocked", "complete"]
+      },
+      "reason": {
+        "type": "string"
+      },
+      "turnsUsed": {
+        "type": "number"
+      },
+      "tokensUsed": {
+        "type": "number"
+      },
+      "wallClockMs": {
+        "type": "number"
+      },
+      "wallClockResumedAt": {
+        "type": "number",
+        "minimum": 0
+      },
+      "budgetLimits": {
+        "type": "object",
+        "properties": {
+          "tokenBudget": {
+            "type": "number"
+          },
+          "turnBudget": {
+            "type": "number"
+          },
+          "wallClockBudgetMs": {
+            "type": "number"
+          }
+        }
+      },
+      "actor": {
+        "type": "string",
+        "enum": ["user", "model", "runtime", "system"]
+      },
+      "time": {
+        "type": "number",
+        "minimum": 0
+      }
+    },
+    "required": ["type", "time"]
+  },
+  "recordChannel": "wire",
+  "evidence": {
+    "existence": ["kimi-exact-release-source"],
+    "shape": ["kimi-exact-release-source"],
+    "carrier": ["kimi-exact-release-source"]
+  },
+  "confidence": "unverified",
+  "variants": [
+    {
+      "match": {
+        "status": "active"
+      },
+      "evidence": {
+        "existence": ["kimi-exact-release-source"],
+        "shape": ["kimi-exact-release-source"]
+      },
+      "confidence": "unverified"
+    },
+    {
+      "match": {
+        "status": "paused"
+      },
+      "evidence": {
+        "existence": ["kimi-exact-release-source"],
+        "shape": ["kimi-exact-release-source"]
+      },
+      "confidence": "unverified"
+    },
+    {
+      "match": {
+        "status": "blocked"
+      },
+      "evidence": {
+        "existence": ["kimi-exact-release-source"],
+        "shape": ["kimi-exact-release-source"]
+      },
+      "confidence": "unverified"
+    },
+    {
+      "match": {
+        "status": "complete"
+      },
+      "evidence": {
+        "existence": ["kimi-exact-release-source"],
+        "shape": ["kimi-exact-release-source"]
+      },
+      "confidence": "unverified"
+    },
+    {
+      "match": {
+        "actor": "user"
+      },
+      "evidence": {
+        "existence": ["kimi-exact-release-source"],
+        "shape": ["kimi-exact-release-source"]
+      },
+      "confidence": "unverified"
+    },
+    {
+      "match": {
+        "actor": "model"
+      },
+      "evidence": {
+        "existence": ["kimi-exact-release-source"],
+        "shape": ["kimi-exact-release-source"]
+      },
+      "confidence": "unverified"
+    },
+    {
+      "match": {
+        "actor": "runtime"
+      },
+      "evidence": {
+        "existence": ["kimi-exact-release-source"],
+        "shape": ["kimi-exact-release-source"]
+      },
+      "confidence": "unverified"
+    },
+    {
+      "match": {
+        "actor": "system"
+      },
+      "evidence": {
+        "existence": ["kimi-exact-release-source"],
+        "shape": ["kimi-exact-release-source"]
+      },
+      "confidence": "unverified"
+    }
+  ]
+}

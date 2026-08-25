@@ -1,0 +1,2034 @@
+{
+  "behaviorVersion": 1,
+  "title": "OpenCode HTTP/SSE native session lifecycle",
+  "description": "Evidence-qualified partial order for the pinned OpenCode 1.18.16 serve backend. Repeated status and part updates are native loops, and blocker branches remain distinct from normalized turn state.",
+  "source": "Hermetic OpenCode HTTP/SSE census and exact-session native attach probe documented in packages/surface/vendors/opencode/findings.md.",
+  "lanes": [
+    {
+      "id": "backend",
+      "label": "Backend and resume"
+    },
+    {
+      "id": "session",
+      "label": "Session status"
+    },
+    {
+      "id": "lifecycle",
+      "label": "Fork, archive, and deletion"
+    },
+    {
+      "id": "message",
+      "label": "Messages and parts"
+    },
+    {
+      "id": "workspace",
+      "label": "Workspace and diffs"
+    },
+    {
+      "id": "context",
+      "label": "Compaction and context"
+    },
+    {
+      "id": "subagent",
+      "label": "Subtasks and child sessions"
+    },
+    {
+      "id": "blocker",
+      "label": "Native blockers"
+    },
+    {
+      "id": "failure",
+      "label": "Failure and recovery"
+    }
+  ],
+  "nodes": [
+    {
+      "id": "server-connected",
+      "event": "server.connected",
+      "confidence": "verified-headless",
+      "evidence": {
+        "existence": ["opencode-runtime-turn"],
+        "shape": ["opencode-runtime-turn"]
+      },
+      "lane": "backend",
+      "order": 0
+    },
+    {
+      "id": "session-created",
+      "event": "session.created",
+      "confidence": "verified-headless",
+      "evidence": {
+        "existence": ["opencode-runtime-turn"],
+        "shape": ["opencode-runtime-turn"]
+      },
+      "lane": "session",
+      "order": 1
+    },
+    {
+      "id": "post-restart-native-attach-permission",
+      "event": "permission.replied",
+      "confidence": "verified-interactive",
+      "evidence": {
+        "existence": ["opencode-runtime-attach-exact-resume"],
+        "shape": ["opencode-runtime-attach-exact-resume"]
+      },
+      "lane": "backend",
+      "order": 1,
+      "label": "permission.replied · native attach after restart",
+      "description": "After the private backend restarted and recovered the exact session, a newly attached native TUI resolved the resumed turn's permission with always; the harness issued no permission reply request.",
+      "match": {
+        "reply": "always"
+      }
+    },
+    {
+      "id": "session-fork-request",
+      "event": "http/session.fork",
+      "confidence": "verified-headless",
+      "evidence": {
+        "existence": ["opencode-runtime-session-lifecycle"],
+        "shape": ["opencode-runtime-session-lifecycle"]
+      },
+      "lane": "lifecycle",
+      "order": 0,
+      "label": "POST /session/:id/fork",
+      "description": "With messageID, clones history strictly before the target; without a body, clones the complete history. Both allocate new message and part IDs."
+    },
+    {
+      "id": "fork-session-created",
+      "event": "session.created",
+      "confidence": "verified-headless",
+      "evidence": {
+        "existence": ["opencode-runtime-session-lifecycle"],
+        "shape": ["opencode-runtime-session-lifecycle"]
+      },
+      "lane": "lifecycle",
+      "order": 1,
+      "label": "session.created · independent fork",
+      "description": "The fork has a new root session ID and no parentID; cloned assistant parentID values are remapped to cloned user message IDs."
+    },
+    {
+      "id": "session-archive-request",
+      "event": "http/session.update",
+      "confidence": "verified-headless",
+      "evidence": {
+        "existence": ["opencode-runtime-session-lifecycle"],
+        "shape": ["opencode-runtime-session-lifecycle"]
+      },
+      "lane": "lifecycle",
+      "order": 2,
+      "label": "PATCH /session/:id · time.archived"
+    },
+    {
+      "id": "session-archived",
+      "event": "session.updated",
+      "confidence": "verified-headless",
+      "evidence": {
+        "existence": ["opencode-runtime-session-lifecycle"],
+        "shape": ["opencode-runtime-session-lifecycle"]
+      },
+      "lane": "lifecycle",
+      "order": 3,
+      "label": "session.updated · archived timestamp",
+      "description": "The update response and live event carry the same archived timestamp."
+    },
+    {
+      "id": "session-project-list",
+      "event": "http/session.list",
+      "confidence": "verified-headless",
+      "evidence": {
+        "existence": ["opencode-runtime-session-lifecycle"],
+        "shape": ["opencode-runtime-session-lifecycle"]
+      },
+      "lane": "lifecycle",
+      "order": 4,
+      "label": "GET /session · archived retained",
+      "description": "The stable project-scoped list retains archived sessions."
+    },
+    {
+      "id": "session-global-list-active",
+      "event": "http/experimental.session.list",
+      "confidence": "verified-headless",
+      "evidence": {
+        "existence": ["opencode-runtime-session-lifecycle"],
+        "shape": ["opencode-runtime-session-lifecycle"]
+      },
+      "lane": "lifecycle",
+      "order": 5,
+      "label": "GET /experimental/session · archived excluded",
+      "description": "Without archived=true, the experimental global list excludes archived sessions."
+    },
+    {
+      "id": "session-global-list-archived",
+      "event": "http/experimental.session.list",
+      "confidence": "verified-headless",
+      "evidence": {
+        "existence": ["opencode-runtime-session-lifecycle"],
+        "shape": ["opencode-runtime-session-lifecycle"]
+      },
+      "lane": "lifecycle",
+      "order": 6,
+      "label": "GET /experimental/session · archived=true",
+      "description": "With archived=true, the experimental global list includes active and archived sessions.",
+      "match": {
+        "query.archived": "true"
+      }
+    },
+    {
+      "id": "session-delete-request",
+      "event": "http/session.delete",
+      "confidence": "verified-headless",
+      "evidence": {
+        "existence": ["opencode-runtime-session-lifecycle"],
+        "shape": ["opencode-runtime-session-lifecycle"]
+      },
+      "lane": "lifecycle",
+      "order": 7,
+      "label": "DELETE /session/:id"
+    },
+    {
+      "id": "session-deleted",
+      "event": "session.deleted",
+      "confidence": "verified-headless",
+      "evidence": {
+        "existence": ["opencode-runtime-session-lifecycle"],
+        "shape": ["opencode-runtime-session-lifecycle"]
+      },
+      "lane": "lifecycle",
+      "order": 8,
+      "label": "session.deleted",
+      "description": "Carries the deleted session snapshot; the next archived-inclusive list no longer returns that ID."
+    },
+    {
+      "id": "user-message",
+      "event": "message.updated",
+      "confidence": "verified-headless",
+      "evidence": {
+        "existence": ["opencode-runtime-turn"],
+        "shape": ["opencode-runtime-turn"]
+      },
+      "lane": "message",
+      "order": 2,
+      "label": "message.updated · user",
+      "match": {
+        "info.role": "user"
+      }
+    },
+    {
+      "id": "prompt-file-part",
+      "event": "message.part.updated",
+      "confidence": "verified-headless",
+      "evidence": {
+        "existence": ["opencode-runtime-file-part"],
+        "shape": ["opencode-runtime-file-part"]
+      },
+      "lane": "message",
+      "order": 3,
+      "label": "message.part.updated · prompt file",
+      "description": "A text/plain prompt attachment persists as a file part after OpenCode emits two synthetic text expansions for the read call and decoded contents.",
+      "match": {
+        "part.type": "file"
+      }
+    },
+    {
+      "id": "session-busy",
+      "event": "session.status",
+      "confidence": "verified-headless",
+      "evidence": {
+        "existence": ["opencode-runtime-turn"],
+        "shape": ["opencode-runtime-turn"]
+      },
+      "lane": "session",
+      "order": 3,
+      "label": "session.status · busy",
+      "match": {
+        "status.type": "busy"
+      }
+    },
+    {
+      "id": "assistant-message",
+      "event": "message.updated",
+      "confidence": "verified-headless",
+      "evidence": {
+        "existence": ["opencode-runtime-turn"],
+        "shape": ["opencode-runtime-turn"]
+      },
+      "lane": "message",
+      "order": 4,
+      "label": "message.updated · assistant",
+      "match": {
+        "info.role": "assistant"
+      }
+    },
+    {
+      "id": "reasoning-part",
+      "event": "message.part.updated",
+      "confidence": "verified-headless",
+      "evidence": {
+        "existence": ["opencode-runtime-turn"],
+        "shape": ["opencode-runtime-turn"]
+      },
+      "lane": "message",
+      "order": 5,
+      "label": "message.part.updated · reasoning",
+      "match": {
+        "part.type": "reasoning"
+      }
+    },
+    {
+      "id": "text-delta",
+      "event": "message.part.delta",
+      "confidence": "verified-headless",
+      "evidence": {
+        "existence": ["opencode-runtime-turn"],
+        "shape": ["opencode-runtime-turn"]
+      },
+      "lane": "message",
+      "order": 6
+    },
+    {
+      "id": "tool-pending",
+      "event": "message.part.updated",
+      "confidence": "verified-headless",
+      "evidence": {
+        "existence": ["opencode-runtime-permission-accept"],
+        "shape": ["opencode-runtime-permission-accept"]
+      },
+      "lane": "message",
+      "order": 7,
+      "label": "tool · pending",
+      "match": {
+        "part.type": "tool",
+        "part.state.status": "pending"
+      }
+    },
+    {
+      "id": "tool-running",
+      "event": "message.part.updated",
+      "confidence": "verified-headless",
+      "evidence": {
+        "existence": ["opencode-runtime-permission-accept"],
+        "shape": ["opencode-runtime-permission-accept"]
+      },
+      "lane": "message",
+      "order": 8,
+      "label": "tool · running",
+      "match": {
+        "part.type": "tool",
+        "part.state.status": "running"
+      }
+    },
+    {
+      "id": "workspace-file-edited",
+      "event": "file.edited",
+      "confidence": "verified-headless",
+      "evidence": {
+        "existence": ["opencode-runtime-file-write"],
+        "shape": ["opencode-runtime-file-write"]
+      },
+      "lane": "workspace",
+      "order": 0,
+      "label": "file.edited"
+    },
+    {
+      "id": "workspace-watcher-add",
+      "event": "file.watcher.updated",
+      "confidence": "verified-headless",
+      "evidence": {
+        "existence": ["opencode-runtime-file-write"],
+        "shape": ["opencode-runtime-file-write"]
+      },
+      "lane": "workspace",
+      "order": 1,
+      "label": "file.watcher.updated · add",
+      "match": {
+        "event": "add"
+      }
+    },
+    {
+      "id": "workspace-watcher-change",
+      "event": "file.watcher.updated",
+      "confidence": "verified-headless",
+      "evidence": {
+        "existence": ["opencode-runtime-file-edit"],
+        "shape": ["opencode-runtime-file-edit"]
+      },
+      "lane": "workspace",
+      "order": 2,
+      "label": "file.watcher.updated · change",
+      "match": {
+        "event": "change"
+      }
+    },
+    {
+      "id": "workspace-watcher-unlink",
+      "event": "file.watcher.updated",
+      "confidence": "verified-headless",
+      "evidence": {
+        "existence": ["opencode-runtime-file-delete"],
+        "shape": ["opencode-runtime-file-delete"]
+      },
+      "lane": "workspace",
+      "order": 3,
+      "label": "file.watcher.updated · unlink",
+      "match": {
+        "event": "unlink"
+      }
+    },
+    {
+      "id": "workspace-snapshot-before",
+      "event": "message.part.updated",
+      "confidence": "verified-headless",
+      "evidence": {
+        "existence": ["opencode-runtime-file-write", "opencode-runtime-file-edit", "opencode-runtime-file-delete"],
+        "shape": ["opencode-runtime-file-write", "opencode-runtime-file-edit", "opencode-runtime-file-delete"]
+      },
+      "lane": "workspace",
+      "order": 4,
+      "label": "step-start · pre-mutation snapshot",
+      "description": "The step-start part carries the snapshot hash later repeated as the patch-part hash.",
+      "match": {
+        "part.type": "step-start"
+      }
+    },
+    {
+      "id": "workspace-snapshot-after",
+      "event": "message.part.updated",
+      "confidence": "verified-headless",
+      "evidence": {
+        "existence": ["opencode-runtime-file-write", "opencode-runtime-file-edit", "opencode-runtime-file-delete"],
+        "shape": ["opencode-runtime-file-write", "opencode-runtime-file-edit", "opencode-runtime-file-delete"]
+      },
+      "lane": "workspace",
+      "order": 5,
+      "label": "step-finish · post-mutation snapshot",
+      "description": "The step-finish snapshot differs from the pre-mutation snapshot for the controlled file change.",
+      "match": {
+        "part.type": "step-finish"
+      }
+    },
+    {
+      "id": "workspace-patch-part",
+      "event": "message.part.updated",
+      "confidence": "verified-headless",
+      "evidence": {
+        "existence": ["opencode-runtime-file-write", "opencode-runtime-file-edit", "opencode-runtime-file-delete"],
+        "shape": ["opencode-runtime-file-write", "opencode-runtime-file-edit", "opencode-runtime-file-delete"]
+      },
+      "lane": "workspace",
+      "order": 6,
+      "label": "message.part.updated · patch",
+      "match": {
+        "part.type": "patch"
+      }
+    },
+    {
+      "id": "workspace-message-diff",
+      "event": "http/session.diff",
+      "confidence": "verified-headless",
+      "evidence": {
+        "existence": ["opencode-runtime-file-write", "opencode-runtime-file-edit", "opencode-runtime-file-delete"],
+        "shape": ["opencode-runtime-file-write", "opencode-runtime-file-edit", "opencode-runtime-file-delete"]
+      },
+      "lane": "workspace",
+      "order": 7,
+      "label": "GET /session/:id/diff · messageID",
+      "description": "With the exact submitted messageID query, returns the snapshot-derived per-message diff; without it, the endpoint returns an empty array."
+    },
+    {
+      "id": "workspace-vcs-diff",
+      "event": "http/vcs.diff",
+      "confidence": "verified-headless",
+      "evidence": {
+        "existence": ["opencode-runtime-file-edit"],
+        "shape": ["opencode-runtime-file-edit"]
+      },
+      "lane": "workspace",
+      "order": 8,
+      "label": "GET /vcs/diff · git",
+      "description": "Returns the current tracked workspace patch; the message-scoped session diff is a separate snapshot-derived view.",
+      "match": {
+        "query.mode": "git"
+      }
+    },
+    {
+      "id": "manual-compaction-request",
+      "event": "http/session.summarize",
+      "confidence": "verified-headless",
+      "evidence": {
+        "existence": ["opencode-runtime-manual-compaction"],
+        "shape": ["opencode-runtime-manual-compaction"]
+      },
+      "lane": "context",
+      "order": 0,
+      "label": "POST /session/:id/summarize · manual",
+      "match": {
+        "body.auto": false
+      }
+    },
+    {
+      "id": "manual-compaction-part",
+      "event": "message.part.updated",
+      "confidence": "verified-headless",
+      "evidence": {
+        "existence": ["opencode-runtime-manual-compaction"],
+        "shape": ["opencode-runtime-manual-compaction"]
+      },
+      "lane": "context",
+      "order": 1,
+      "label": "message.part.updated · compaction",
+      "match": {
+        "part.type": "compaction",
+        "part.auto": false
+      }
+    },
+    {
+      "id": "session-compacted-manual",
+      "event": "session.compacted",
+      "confidence": "verified-headless",
+      "evidence": {
+        "existence": ["opencode-runtime-manual-compaction"],
+        "shape": ["opencode-runtime-manual-compaction"]
+      },
+      "lane": "context",
+      "order": 2,
+      "label": "session.compacted · manual"
+    },
+    {
+      "id": "auto-threshold-step",
+      "event": "message.part.updated",
+      "confidence": "verified-headless",
+      "evidence": {
+        "existence": ["opencode-runtime-auto-compaction"],
+        "shape": ["opencode-runtime-auto-compaction"]
+      },
+      "lane": "context",
+      "order": 3,
+      "label": "step-finish · 120 tokens / 128 context",
+      "description": "Controlled reported usage crossed the 96-token usable threshold after reserving 32 output tokens.",
+      "match": {
+        "part.type": "step-finish",
+        "part.tokens.total": 120
+      }
+    },
+    {
+      "id": "auto-compaction-part",
+      "event": "message.part.updated",
+      "confidence": "verified-headless",
+      "evidence": {
+        "existence": ["opencode-runtime-auto-compaction"],
+        "shape": ["opencode-runtime-auto-compaction"]
+      },
+      "lane": "context",
+      "order": 4,
+      "label": "message.part.updated · auto compaction",
+      "match": {
+        "part.type": "compaction",
+        "part.auto": true
+      }
+    },
+    {
+      "id": "auto-compaction-continuation",
+      "event": "message.part.updated",
+      "confidence": "verified-headless",
+      "evidence": {
+        "existence": ["opencode-runtime-auto-compaction"],
+        "shape": ["opencode-runtime-auto-compaction"]
+      },
+      "lane": "context",
+      "order": 5,
+      "label": "message.part.updated · synthetic continuation",
+      "match": {
+        "part.type": "text",
+        "part.synthetic": true
+      }
+    },
+    {
+      "id": "session-compacted-auto",
+      "event": "session.compacted",
+      "confidence": "verified-headless",
+      "evidence": {
+        "existence": ["opencode-runtime-auto-compaction"],
+        "shape": ["opencode-runtime-auto-compaction"]
+      },
+      "lane": "context",
+      "order": 6,
+      "label": "session.compacted · automatic"
+    },
+    {
+      "id": "context-overflow-error",
+      "event": "session.error",
+      "confidence": "verified-headless",
+      "evidence": {
+        "existence": ["opencode-runtime-overflow-compaction"],
+        "shape": ["opencode-runtime-overflow-compaction"]
+      },
+      "lane": "context",
+      "order": 7,
+      "label": "session.error · provider context overflow",
+      "description": "A controlled provider HTTP 413 was parsed as ContextOverflowError; automatic compaction continued instead of terminating the session."
+    },
+    {
+      "id": "overflow-compaction-part",
+      "event": "message.part.updated",
+      "confidence": "verified-headless",
+      "evidence": {
+        "existence": ["opencode-runtime-overflow-compaction"],
+        "shape": ["opencode-runtime-overflow-compaction"]
+      },
+      "lane": "context",
+      "order": 8,
+      "label": "message.part.updated · overflow compaction",
+      "match": {
+        "part.type": "compaction",
+        "part.auto": true,
+        "part.overflow": true
+      }
+    },
+    {
+      "id": "overflow-compaction-continuation",
+      "event": "message.part.updated",
+      "confidence": "verified-headless",
+      "evidence": {
+        "existence": ["opencode-runtime-overflow-compaction"],
+        "shape": ["opencode-runtime-overflow-compaction"]
+      },
+      "lane": "context",
+      "order": 9,
+      "label": "message.part.updated · overflow continuation",
+      "match": {
+        "part.type": "text",
+        "part.synthetic": true,
+        "part.metadata.compaction_continue": true
+      }
+    },
+    {
+      "id": "session-compacted-overflow",
+      "event": "session.compacted",
+      "confidence": "verified-headless",
+      "evidence": {
+        "existence": ["opencode-runtime-overflow-compaction"],
+        "shape": ["opencode-runtime-overflow-compaction"]
+      },
+      "lane": "context",
+      "order": 10,
+      "label": "session.compacted · provider overflow"
+    },
+    {
+      "id": "unknown-context-step",
+      "event": "message.part.updated",
+      "confidence": "verified-headless",
+      "evidence": {
+        "existence": ["opencode-runtime-unknown-context"],
+        "shape": ["opencode-runtime-unknown-context"]
+      },
+      "lane": "context",
+      "order": 11,
+      "label": "step-finish · unknown capacity / high usage",
+      "description": "With model limit.context=0, reported total usage of 1,000,010 completed normally without a compaction part or session.compacted event.",
+      "match": {
+        "part.type": "step-finish",
+        "part.tokens.total": 1000010
+      }
+    },
+    {
+      "id": "direct-subtask-part",
+      "event": "message.part.updated",
+      "confidence": "verified-headless",
+      "evidence": {
+        "existence": ["opencode-runtime-subtask-part"],
+        "shape": ["opencode-runtime-subtask-part"]
+      },
+      "lane": "subagent",
+      "order": 0,
+      "label": "message.part.updated · direct subtask",
+      "match": {
+        "part.type": "subtask"
+      }
+    },
+    {
+      "id": "subagent-task-running",
+      "event": "message.part.updated",
+      "confidence": "verified-headless",
+      "evidence": {
+        "existence": ["opencode-runtime-task-child", "opencode-runtime-subtask-part"],
+        "shape": ["opencode-runtime-task-child", "opencode-runtime-subtask-part"]
+      },
+      "lane": "subagent",
+      "order": 1,
+      "label": "task tool · running",
+      "match": {
+        "part.type": "tool",
+        "part.tool": "task",
+        "part.state.status": "running"
+      }
+    },
+    {
+      "id": "subagent-child-created",
+      "event": "session.created",
+      "confidence": "verified-headless",
+      "evidence": {
+        "existence": ["opencode-runtime-task-child", "opencode-runtime-subtask-part"],
+        "shape": ["opencode-runtime-task-child", "opencode-runtime-subtask-part"]
+      },
+      "lane": "subagent",
+      "order": 2,
+      "label": "session.created · child",
+      "description": "Child session has info.parentID joined to the parent session and is also returned by GET /session/:id/children."
+    },
+    {
+      "id": "subagent-child-idle",
+      "event": "session.idle",
+      "confidence": "verified-headless",
+      "evidence": {
+        "existence": ["opencode-runtime-task-child", "opencode-runtime-subtask-part"],
+        "shape": ["opencode-runtime-task-child", "opencode-runtime-subtask-part"]
+      },
+      "lane": "subagent",
+      "order": 3,
+      "label": "session.idle · child",
+      "description": "The session ID is the child ID carried by the parent task tool metadata."
+    },
+    {
+      "id": "subagent-task-completed",
+      "event": "message.part.updated",
+      "confidence": "verified-headless",
+      "evidence": {
+        "existence": ["opencode-runtime-task-child", "opencode-runtime-subtask-part"],
+        "shape": ["opencode-runtime-task-child", "opencode-runtime-subtask-part"]
+      },
+      "lane": "subagent",
+      "order": 4,
+      "label": "task tool · completed",
+      "match": {
+        "part.type": "tool",
+        "part.tool": "task",
+        "part.state.status": "completed"
+      }
+    },
+    {
+      "id": "subagent-parent-resumed",
+      "event": "message.updated",
+      "confidence": "verified-headless",
+      "evidence": {
+        "existence": ["opencode-runtime-task-child", "opencode-runtime-subtask-part"],
+        "shape": ["opencode-runtime-task-child", "opencode-runtime-subtask-part"]
+      },
+      "lane": "subagent",
+      "order": 5,
+      "label": "message.updated · parent build resumed",
+      "match": {
+        "info.role": "assistant",
+        "info.mode": "build",
+        "info.finish": "stop"
+      }
+    },
+    {
+      "id": "subagent-detach-request",
+      "event": "http/experimental.session.background",
+      "confidence": "verified-headless",
+      "evidence": {
+        "existence": ["opencode-runtime-detach-task"],
+        "shape": ["opencode-runtime-detach-task"]
+      },
+      "lane": "subagent",
+      "order": 6,
+      "label": "POST /experimental/session/:id/background"
+    },
+    {
+      "id": "subagent-background-running",
+      "event": "message.part.updated",
+      "confidence": "verified-headless",
+      "evidence": {
+        "existence": ["opencode-runtime-background-task", "opencode-runtime-detach-task"],
+        "shape": ["opencode-runtime-background-task", "opencode-runtime-detach-task"]
+      },
+      "lane": "subagent",
+      "order": 7,
+      "label": "task tool · background running",
+      "match": {
+        "part.type": "tool",
+        "part.tool": "task",
+        "part.state.status": "running",
+        "part.state.metadata.background": true
+      }
+    },
+    {
+      "id": "subagent-background-task-completed",
+      "event": "message.part.updated",
+      "confidence": "verified-headless",
+      "evidence": {
+        "existence": ["opencode-runtime-background-task", "opencode-runtime-detach-task"],
+        "shape": ["opencode-runtime-background-task", "opencode-runtime-detach-task"]
+      },
+      "lane": "subagent",
+      "order": 8,
+      "label": "task tool · background handle returned",
+      "description": "The parent task carrier is completed with background:true and jobId equal to the child session ID while the child is still running.",
+      "match": {
+        "part.type": "tool",
+        "part.tool": "task",
+        "part.state.status": "completed",
+        "part.state.metadata.background": true
+      }
+    },
+    {
+      "id": "subagent-background-parent-idle",
+      "event": "session.idle",
+      "confidence": "verified-headless",
+      "evidence": {
+        "existence": ["opencode-runtime-background-task", "opencode-runtime-detach-task"],
+        "shape": ["opencode-runtime-background-task", "opencode-runtime-detach-task"]
+      },
+      "lane": "subagent",
+      "order": 9,
+      "label": "session.idle · parent while child runs"
+    },
+    {
+      "id": "subagent-background-child-idle",
+      "event": "session.idle",
+      "confidence": "verified-headless",
+      "evidence": {
+        "existence": ["opencode-runtime-background-task", "opencode-runtime-detach-task"],
+        "shape": ["opencode-runtime-background-task", "opencode-runtime-detach-task"]
+      },
+      "lane": "subagent",
+      "order": 10,
+      "label": "session.idle · background child"
+    },
+    {
+      "id": "subagent-background-result",
+      "event": "message.part.updated",
+      "confidence": "verified-headless",
+      "evidence": {
+        "existence": ["opencode-runtime-background-task", "opencode-runtime-detach-task"],
+        "shape": ["opencode-runtime-background-task", "opencode-runtime-detach-task"]
+      },
+      "lane": "subagent",
+      "order": 11,
+      "label": "message.part.updated · injected background result",
+      "match": {
+        "part.type": "text",
+        "part.synthetic": true
+      }
+    },
+    {
+      "id": "subagent-background-parent-resumed",
+      "event": "message.updated",
+      "confidence": "verified-headless",
+      "evidence": {
+        "existence": ["opencode-runtime-background-task", "opencode-runtime-detach-task"],
+        "shape": ["opencode-runtime-background-task", "opencode-runtime-detach-task"]
+      },
+      "lane": "subagent",
+      "order": 12,
+      "label": "message.updated · parent handles background result",
+      "match": {
+        "info.role": "assistant",
+        "info.mode": "build",
+        "info.finish": "stop"
+      }
+    },
+    {
+      "id": "direct-agent-part",
+      "event": "message.part.updated",
+      "confidence": "verified-headless",
+      "evidence": {
+        "existence": ["opencode-runtime-agent-part"],
+        "shape": ["opencode-runtime-agent-part"]
+      },
+      "lane": "subagent",
+      "order": 13,
+      "label": "message.part.updated · agent mention",
+      "match": {
+        "part.type": "agent"
+      }
+    },
+    {
+      "id": "agent-part-task-instruction",
+      "event": "message.part.updated",
+      "confidence": "verified-headless",
+      "evidence": {
+        "existence": ["opencode-runtime-agent-part"],
+        "shape": ["opencode-runtime-agent-part"]
+      },
+      "lane": "subagent",
+      "order": 14,
+      "label": "message.part.updated · synthetic task instruction",
+      "match": {
+        "part.type": "text",
+        "part.synthetic": true
+      }
+    },
+    {
+      "id": "permission-asked",
+      "event": "permission.asked",
+      "confidence": "verified-headless",
+      "evidence": {
+        "existence": ["opencode-runtime-permission-accept"],
+        "shape": ["opencode-runtime-permission-accept"]
+      },
+      "lane": "blocker",
+      "order": 9
+    },
+    {
+      "id": "permission-once",
+      "event": "permission.replied",
+      "confidence": "verified-headless",
+      "evidence": {
+        "existence": ["opencode-runtime-permission-accept"],
+        "shape": ["opencode-runtime-permission-accept"]
+      },
+      "lane": "blocker",
+      "order": 10,
+      "label": "permission.replied · once",
+      "match": {
+        "reply": "once"
+      }
+    },
+    {
+      "id": "permission-always",
+      "event": "permission.replied",
+      "confidence": "verified-interactive",
+      "evidence": {
+        "existence": ["opencode-runtime-attach-permission-always"],
+        "shape": ["opencode-runtime-attach-permission-always"]
+      },
+      "lane": "blocker",
+      "order": 11,
+      "label": "permission.replied · always (native TUI)",
+      "match": {
+        "reply": "always"
+      }
+    },
+    {
+      "id": "permission-reject",
+      "event": "permission.replied",
+      "confidence": "verified-headless",
+      "evidence": {
+        "existence": ["opencode-runtime-permission-reject"],
+        "shape": ["opencode-runtime-permission-reject"]
+      },
+      "lane": "blocker",
+      "order": 12,
+      "label": "permission.replied · reject",
+      "match": {
+        "reply": "reject"
+      }
+    },
+    {
+      "id": "question-asked",
+      "event": "question.asked",
+      "confidence": "verified-headless",
+      "evidence": {
+        "existence": ["opencode-runtime-question-reply"],
+        "shape": ["opencode-runtime-question-reply"]
+      },
+      "lane": "blocker",
+      "order": 13
+    },
+    {
+      "id": "question-replied",
+      "event": "question.replied",
+      "confidence": "verified-headless",
+      "evidence": {
+        "existence": ["opencode-runtime-question-reply"],
+        "shape": ["opencode-runtime-question-reply"]
+      },
+      "lane": "blocker",
+      "order": 14
+    },
+    {
+      "id": "question-rejected",
+      "event": "question.rejected",
+      "confidence": "verified-headless",
+      "evidence": {
+        "existence": ["opencode-runtime-question-reject"],
+        "shape": ["opencode-runtime-question-reject"]
+      },
+      "lane": "blocker",
+      "order": 15
+    },
+    {
+      "id": "tool-completed",
+      "event": "message.part.updated",
+      "confidence": "verified-headless",
+      "evidence": {
+        "existence": ["opencode-runtime-permission-accept"],
+        "shape": ["opencode-runtime-permission-accept"]
+      },
+      "lane": "message",
+      "order": 16,
+      "label": "tool · completed",
+      "match": {
+        "part.type": "tool",
+        "part.state.status": "completed"
+      }
+    },
+    {
+      "id": "tool-error",
+      "event": "message.part.updated",
+      "confidence": "verified-headless",
+      "evidence": {
+        "existence": ["opencode-runtime-permission-reject"],
+        "shape": ["opencode-runtime-permission-reject"]
+      },
+      "lane": "message",
+      "order": 17,
+      "label": "tool · error",
+      "match": {
+        "part.type": "tool",
+        "part.state.status": "error"
+      }
+    },
+    {
+      "id": "session-retry",
+      "event": "session.status",
+      "confidence": "verified-headless",
+      "evidence": {
+        "existence": ["opencode-runtime-provider-retry"],
+        "shape": ["opencode-runtime-provider-retry"]
+      },
+      "lane": "failure",
+      "order": 18,
+      "label": "session.status · retry",
+      "match": {
+        "status.type": "retry"
+      }
+    },
+    {
+      "id": "session-error",
+      "event": "session.error",
+      "confidence": "verified-headless",
+      "evidence": {
+        "existence": ["opencode-runtime-provider-error"],
+        "shape": ["opencode-runtime-provider-error"]
+      },
+      "lane": "failure",
+      "order": 19,
+      "description": "Carries both terminal provider errors and MessageAbortedError observations; privacy redaction prevents a false stable match selector on prose error names."
+    },
+    {
+      "id": "session-status-idle",
+      "event": "session.status",
+      "confidence": "verified-headless",
+      "evidence": {
+        "existence": ["opencode-runtime-turn"],
+        "shape": ["opencode-runtime-turn"]
+      },
+      "lane": "session",
+      "order": 20,
+      "label": "session.status · idle",
+      "match": {
+        "status.type": "idle"
+      }
+    },
+    {
+      "id": "session-idle",
+      "event": "session.idle",
+      "confidence": "verified-headless",
+      "evidence": {
+        "existence": ["opencode-runtime-turn"],
+        "shape": ["opencode-runtime-turn"]
+      },
+      "lane": "session",
+      "order": 21
+    }
+  ],
+  "relations": [
+    {
+      "from": "server-connected",
+      "to": "session-created",
+      "kind": "sequence",
+      "confidence": "verified-headless",
+      "evidence": {
+        "existence": ["opencode-runtime-turn"],
+        "shape": ["opencode-runtime-turn"],
+        "ordering": ["opencode-runtime-turn"]
+      }
+    },
+    {
+      "from": "server-connected",
+      "to": "post-restart-native-attach-permission",
+      "kind": "resume",
+      "label": "restarted backend → exact-session native attach → resumed permission",
+      "confidence": "verified-interactive",
+      "evidence": {
+        "existence": ["opencode-runtime-attach-exact-resume"],
+        "shape": ["opencode-runtime-attach-exact-resume"],
+        "ordering": ["opencode-runtime-attach-exact-resume"]
+      }
+    },
+    {
+      "from": "session-fork-request",
+      "to": "fork-session-created",
+      "kind": "sequence",
+      "confidence": "verified-headless",
+      "evidence": {
+        "existence": ["opencode-runtime-session-lifecycle"],
+        "shape": ["opencode-runtime-session-lifecycle"],
+        "ordering": ["opencode-runtime-session-lifecycle"]
+      }
+    },
+    {
+      "from": "fork-session-created",
+      "to": "session-archive-request",
+      "kind": "conditional",
+      "label": "client archives the message-scoped fork",
+      "confidence": "verified-headless",
+      "evidence": {
+        "existence": ["opencode-runtime-session-lifecycle"],
+        "shape": ["opencode-runtime-session-lifecycle"],
+        "ordering": ["opencode-runtime-session-lifecycle"]
+      }
+    },
+    {
+      "from": "session-archive-request",
+      "to": "session-archived",
+      "kind": "sequence",
+      "confidence": "verified-headless",
+      "evidence": {
+        "existence": ["opencode-runtime-session-lifecycle"],
+        "shape": ["opencode-runtime-session-lifecycle"],
+        "ordering": ["opencode-runtime-session-lifecycle"]
+      }
+    },
+    {
+      "from": "session-archived",
+      "to": "session-project-list",
+      "kind": "sequence",
+      "label": "stable list retains archived sessions",
+      "confidence": "verified-headless",
+      "evidence": {
+        "existence": ["opencode-runtime-session-lifecycle"],
+        "shape": ["opencode-runtime-session-lifecycle"],
+        "ordering": ["opencode-runtime-session-lifecycle"]
+      }
+    },
+    {
+      "from": "session-project-list",
+      "to": "session-global-list-active",
+      "kind": "sequence",
+      "label": "experimental default filters archived sessions",
+      "confidence": "verified-headless",
+      "evidence": {
+        "existence": ["opencode-runtime-session-lifecycle"],
+        "shape": ["opencode-runtime-session-lifecycle"],
+        "ordering": ["opencode-runtime-session-lifecycle"]
+      }
+    },
+    {
+      "from": "session-global-list-active",
+      "to": "session-global-list-archived",
+      "kind": "sequence",
+      "label": "archived=true broadens the global list",
+      "confidence": "verified-headless",
+      "evidence": {
+        "existence": ["opencode-runtime-session-lifecycle"],
+        "shape": ["opencode-runtime-session-lifecycle"],
+        "ordering": ["opencode-runtime-session-lifecycle"]
+      }
+    },
+    {
+      "from": "session-global-list-archived",
+      "to": "session-delete-request",
+      "kind": "sequence",
+      "confidence": "verified-headless",
+      "evidence": {
+        "existence": ["opencode-runtime-session-lifecycle"],
+        "shape": ["opencode-runtime-session-lifecycle"],
+        "ordering": ["opencode-runtime-session-lifecycle"]
+      }
+    },
+    {
+      "from": "session-delete-request",
+      "to": "session-deleted",
+      "kind": "sequence",
+      "confidence": "verified-headless",
+      "evidence": {
+        "existence": ["opencode-runtime-session-lifecycle"],
+        "shape": ["opencode-runtime-session-lifecycle"],
+        "ordering": ["opencode-runtime-session-lifecycle"]
+      }
+    },
+    {
+      "from": "server-connected",
+      "to": "server-connected",
+      "kind": "resume",
+      "label": "fresh SSE connection after private backend restart",
+      "confidence": "verified-headless",
+      "evidence": {
+        "existence": ["opencode-runtime-exact-resume"],
+        "shape": ["opencode-runtime-exact-resume"],
+        "ordering": ["opencode-runtime-exact-resume"]
+      }
+    },
+    {
+      "from": "session-created",
+      "to": "user-message",
+      "kind": "sequence",
+      "confidence": "verified-headless",
+      "evidence": {
+        "existence": ["opencode-runtime-turn"],
+        "shape": ["opencode-runtime-turn"],
+        "ordering": ["opencode-runtime-turn"]
+      }
+    },
+    {
+      "from": "user-message",
+      "to": "session-busy",
+      "kind": "sequence",
+      "confidence": "verified-headless",
+      "evidence": {
+        "existence": ["opencode-runtime-turn"],
+        "shape": ["opencode-runtime-turn"],
+        "ordering": ["opencode-runtime-turn"]
+      }
+    },
+    {
+      "from": "user-message",
+      "to": "prompt-file-part",
+      "kind": "conditional",
+      "label": "prompt includes an attachment",
+      "confidence": "verified-headless",
+      "evidence": {
+        "existence": ["opencode-runtime-file-part"],
+        "shape": ["opencode-runtime-file-part"],
+        "ordering": ["opencode-runtime-file-part"]
+      }
+    },
+    {
+      "from": "prompt-file-part",
+      "to": "session-busy",
+      "kind": "sequence",
+      "confidence": "verified-headless",
+      "evidence": {
+        "existence": ["opencode-runtime-file-part"],
+        "shape": ["opencode-runtime-file-part"],
+        "ordering": ["opencode-runtime-file-part"]
+      }
+    },
+    {
+      "from": "session-busy",
+      "to": "assistant-message",
+      "kind": "sequence",
+      "confidence": "verified-headless",
+      "evidence": {
+        "existence": ["opencode-runtime-turn"],
+        "shape": ["opencode-runtime-turn"],
+        "ordering": ["opencode-runtime-turn"]
+      }
+    },
+    {
+      "from": "assistant-message",
+      "to": "reasoning-part",
+      "kind": "sequence",
+      "confidence": "verified-headless",
+      "evidence": {
+        "existence": ["opencode-runtime-turn"],
+        "shape": ["opencode-runtime-turn"],
+        "ordering": ["opencode-runtime-turn"]
+      }
+    },
+    {
+      "from": "reasoning-part",
+      "to": "text-delta",
+      "kind": "sequence",
+      "confidence": "verified-headless",
+      "evidence": {
+        "existence": ["opencode-runtime-turn"],
+        "shape": ["opencode-runtime-turn"],
+        "ordering": ["opencode-runtime-turn"]
+      }
+    },
+    {
+      "from": "text-delta",
+      "to": "text-delta",
+      "kind": "loop",
+      "confidence": "verified-headless",
+      "evidence": {
+        "existence": ["opencode-runtime-turn"],
+        "shape": ["opencode-runtime-turn"],
+        "ordering": ["opencode-runtime-turn"]
+      }
+    },
+    {
+      "from": "text-delta",
+      "to": "session-status-idle",
+      "kind": "sequence",
+      "confidence": "verified-headless",
+      "evidence": {
+        "existence": ["opencode-runtime-turn"],
+        "shape": ["opencode-runtime-turn"],
+        "ordering": ["opencode-runtime-turn"]
+      }
+    },
+    {
+      "from": "session-status-idle",
+      "to": "session-idle",
+      "kind": "sequence",
+      "confidence": "verified-headless",
+      "evidence": {
+        "existence": ["opencode-runtime-turn"],
+        "shape": ["opencode-runtime-turn"],
+        "ordering": ["opencode-runtime-turn"]
+      }
+    },
+    {
+      "from": "session-busy",
+      "to": "tool-pending",
+      "kind": "conditional",
+      "label": "provider requests a tool",
+      "confidence": "verified-headless",
+      "evidence": {
+        "existence": ["opencode-runtime-permission-accept"],
+        "shape": ["opencode-runtime-permission-accept"],
+        "ordering": ["opencode-runtime-permission-accept"]
+      }
+    },
+    {
+      "from": "workspace-snapshot-before",
+      "to": "tool-pending",
+      "kind": "sequence",
+      "confidence": "verified-headless",
+      "evidence": {
+        "existence": ["opencode-runtime-file-write", "opencode-runtime-file-edit", "opencode-runtime-file-delete"],
+        "shape": ["opencode-runtime-file-write", "opencode-runtime-file-edit", "opencode-runtime-file-delete"],
+        "ordering": ["opencode-runtime-file-write", "opencode-runtime-file-edit", "opencode-runtime-file-delete"]
+      }
+    },
+    {
+      "from": "tool-pending",
+      "to": "tool-running",
+      "kind": "sequence",
+      "confidence": "verified-headless",
+      "evidence": {
+        "existence": ["opencode-runtime-permission-accept"],
+        "shape": ["opencode-runtime-permission-accept"],
+        "ordering": ["opencode-runtime-permission-accept"]
+      }
+    },
+    {
+      "from": "tool-running",
+      "to": "workspace-file-edited",
+      "kind": "conditional",
+      "label": "write or edit mutates a file",
+      "confidence": "verified-headless",
+      "evidence": {
+        "existence": ["opencode-runtime-file-write"],
+        "shape": ["opencode-runtime-file-write"],
+        "ordering": ["opencode-runtime-file-write"]
+      }
+    },
+    {
+      "from": "tool-running",
+      "to": "workspace-watcher-unlink",
+      "kind": "conditional",
+      "label": "apply_patch deletes a tracked file",
+      "confidence": "verified-headless",
+      "evidence": {
+        "existence": ["opencode-runtime-file-delete"],
+        "shape": ["opencode-runtime-file-delete"],
+        "ordering": ["opencode-runtime-file-delete"]
+      }
+    },
+    {
+      "from": "workspace-file-edited",
+      "to": "workspace-watcher-add",
+      "kind": "conditional",
+      "label": "new file",
+      "confidence": "verified-headless",
+      "evidence": {
+        "existence": ["opencode-runtime-file-write"],
+        "shape": ["opencode-runtime-file-write"],
+        "ordering": ["opencode-runtime-file-write"]
+      }
+    },
+    {
+      "from": "workspace-file-edited",
+      "to": "workspace-watcher-change",
+      "kind": "conditional",
+      "label": "existing file",
+      "confidence": "verified-headless",
+      "evidence": {
+        "existence": ["opencode-runtime-file-edit"],
+        "shape": ["opencode-runtime-file-edit"],
+        "ordering": ["opencode-runtime-file-edit"]
+      }
+    },
+    {
+      "from": "workspace-watcher-add",
+      "to": "tool-completed",
+      "kind": "sequence",
+      "confidence": "verified-headless",
+      "evidence": {
+        "existence": ["opencode-runtime-file-write"],
+        "shape": ["opencode-runtime-file-write"],
+        "ordering": ["opencode-runtime-file-write"]
+      }
+    },
+    {
+      "from": "workspace-watcher-change",
+      "to": "tool-completed",
+      "kind": "sequence",
+      "confidence": "verified-headless",
+      "evidence": {
+        "existence": ["opencode-runtime-file-edit"],
+        "shape": ["opencode-runtime-file-edit"],
+        "ordering": ["opencode-runtime-file-edit"]
+      }
+    },
+    {
+      "from": "workspace-watcher-unlink",
+      "to": "tool-completed",
+      "kind": "sequence",
+      "confidence": "verified-headless",
+      "evidence": {
+        "existence": ["opencode-runtime-file-delete"],
+        "shape": ["opencode-runtime-file-delete"],
+        "ordering": ["opencode-runtime-file-delete"]
+      }
+    },
+    {
+      "from": "tool-completed",
+      "to": "workspace-snapshot-after",
+      "kind": "sequence",
+      "confidence": "verified-headless",
+      "evidence": {
+        "existence": ["opencode-runtime-file-write", "opencode-runtime-file-edit", "opencode-runtime-file-delete"],
+        "shape": ["opencode-runtime-file-write", "opencode-runtime-file-edit", "opencode-runtime-file-delete"],
+        "ordering": ["opencode-runtime-file-write", "opencode-runtime-file-edit", "opencode-runtime-file-delete"]
+      }
+    },
+    {
+      "from": "workspace-snapshot-after",
+      "to": "workspace-patch-part",
+      "kind": "sequence",
+      "label": "patch hash joins back to the pre-mutation step-start snapshot",
+      "confidence": "verified-headless",
+      "evidence": {
+        "existence": ["opencode-runtime-file-write", "opencode-runtime-file-edit", "opencode-runtime-file-delete"],
+        "shape": ["opencode-runtime-file-write", "opencode-runtime-file-edit", "opencode-runtime-file-delete"],
+        "ordering": ["opencode-runtime-file-write", "opencode-runtime-file-edit", "opencode-runtime-file-delete"]
+      }
+    },
+    {
+      "from": "session-idle",
+      "to": "workspace-message-diff",
+      "kind": "sequence",
+      "label": "client reads the exact submitted message's durable snapshot diff",
+      "confidence": "verified-headless",
+      "evidence": {
+        "existence": ["opencode-runtime-file-write", "opencode-runtime-file-edit", "opencode-runtime-file-delete"],
+        "shape": ["opencode-runtime-file-write", "opencode-runtime-file-edit", "opencode-runtime-file-delete"],
+        "ordering": ["opencode-runtime-file-write", "opencode-runtime-file-edit", "opencode-runtime-file-delete"]
+      }
+    },
+    {
+      "from": "session-idle",
+      "to": "workspace-vcs-diff",
+      "kind": "sequence",
+      "label": "client reads the durable tracked workspace patch",
+      "confidence": "verified-headless",
+      "evidence": {
+        "existence": ["opencode-runtime-file-edit"],
+        "shape": ["opencode-runtime-file-edit"],
+        "ordering": ["opencode-runtime-file-edit"]
+      }
+    },
+    {
+      "from": "session-idle",
+      "to": "manual-compaction-request",
+      "kind": "conditional",
+      "label": "manual compaction after a completed turn",
+      "confidence": "verified-headless",
+      "evidence": {
+        "existence": ["opencode-runtime-manual-compaction"],
+        "shape": ["opencode-runtime-manual-compaction"],
+        "ordering": ["opencode-runtime-manual-compaction"]
+      }
+    },
+    {
+      "from": "manual-compaction-request",
+      "to": "manual-compaction-part",
+      "kind": "sequence",
+      "confidence": "verified-headless",
+      "evidence": {
+        "existence": ["opencode-runtime-manual-compaction"],
+        "shape": ["opencode-runtime-manual-compaction"],
+        "ordering": ["opencode-runtime-manual-compaction"]
+      }
+    },
+    {
+      "from": "manual-compaction-part",
+      "to": "session-compacted-manual",
+      "kind": "sequence",
+      "confidence": "verified-headless",
+      "evidence": {
+        "existence": ["opencode-runtime-manual-compaction"],
+        "shape": ["opencode-runtime-manual-compaction"],
+        "ordering": ["opencode-runtime-manual-compaction"]
+      }
+    },
+    {
+      "from": "session-compacted-manual",
+      "to": "session-status-idle",
+      "kind": "sequence",
+      "confidence": "verified-headless",
+      "evidence": {
+        "existence": ["opencode-runtime-manual-compaction"],
+        "shape": ["opencode-runtime-manual-compaction"],
+        "ordering": ["opencode-runtime-manual-compaction"]
+      }
+    },
+    {
+      "from": "session-busy",
+      "to": "auto-threshold-step",
+      "kind": "conditional",
+      "label": "reported usage crosses the model's usable context threshold",
+      "confidence": "verified-headless",
+      "evidence": {
+        "existence": ["opencode-runtime-auto-compaction"],
+        "shape": ["opencode-runtime-auto-compaction"],
+        "ordering": ["opencode-runtime-auto-compaction"]
+      }
+    },
+    {
+      "from": "auto-threshold-step",
+      "to": "auto-compaction-part",
+      "kind": "sequence",
+      "confidence": "verified-headless",
+      "evidence": {
+        "existence": ["opencode-runtime-auto-compaction"],
+        "shape": ["opencode-runtime-auto-compaction"],
+        "ordering": ["opencode-runtime-auto-compaction"]
+      }
+    },
+    {
+      "from": "auto-compaction-part",
+      "to": "auto-compaction-continuation",
+      "kind": "sequence",
+      "confidence": "verified-headless",
+      "evidence": {
+        "existence": ["opencode-runtime-auto-compaction"],
+        "shape": ["opencode-runtime-auto-compaction"],
+        "ordering": ["opencode-runtime-auto-compaction"]
+      }
+    },
+    {
+      "from": "auto-compaction-continuation",
+      "to": "session-compacted-auto",
+      "kind": "sequence",
+      "confidence": "verified-headless",
+      "evidence": {
+        "existence": ["opencode-runtime-auto-compaction"],
+        "shape": ["opencode-runtime-auto-compaction"],
+        "ordering": ["opencode-runtime-auto-compaction"]
+      }
+    },
+    {
+      "from": "session-compacted-auto",
+      "to": "session-busy",
+      "kind": "loop",
+      "label": "synthetic continuation resumes the build agent",
+      "confidence": "verified-headless",
+      "evidence": {
+        "existence": ["opencode-runtime-auto-compaction"],
+        "shape": ["opencode-runtime-auto-compaction"],
+        "ordering": ["opencode-runtime-auto-compaction"]
+      }
+    },
+    {
+      "from": "session-busy",
+      "to": "context-overflow-error",
+      "kind": "conditional",
+      "label": "provider rejects the request as over its context limit",
+      "confidence": "verified-headless",
+      "evidence": {
+        "existence": ["opencode-runtime-overflow-compaction"],
+        "shape": ["opencode-runtime-overflow-compaction"],
+        "ordering": ["opencode-runtime-overflow-compaction"]
+      }
+    },
+    {
+      "from": "context-overflow-error",
+      "to": "overflow-compaction-part",
+      "kind": "sequence",
+      "label": "automatic compaction keeps the turn recoverable",
+      "confidence": "verified-headless",
+      "evidence": {
+        "existence": ["opencode-runtime-overflow-compaction"],
+        "shape": ["opencode-runtime-overflow-compaction"],
+        "ordering": ["opencode-runtime-overflow-compaction"]
+      }
+    },
+    {
+      "from": "overflow-compaction-part",
+      "to": "overflow-compaction-continuation",
+      "kind": "sequence",
+      "confidence": "verified-headless",
+      "evidence": {
+        "existence": ["opencode-runtime-overflow-compaction"],
+        "shape": ["opencode-runtime-overflow-compaction"],
+        "ordering": ["opencode-runtime-overflow-compaction"]
+      }
+    },
+    {
+      "from": "overflow-compaction-continuation",
+      "to": "session-compacted-overflow",
+      "kind": "sequence",
+      "confidence": "verified-headless",
+      "evidence": {
+        "existence": ["opencode-runtime-overflow-compaction"],
+        "shape": ["opencode-runtime-overflow-compaction"],
+        "ordering": ["opencode-runtime-overflow-compaction"]
+      }
+    },
+    {
+      "from": "session-compacted-overflow",
+      "to": "session-busy",
+      "kind": "loop",
+      "label": "synthetic continuation resumes the build agent after overflow recovery",
+      "confidence": "verified-headless",
+      "evidence": {
+        "existence": ["opencode-runtime-overflow-compaction"],
+        "shape": ["opencode-runtime-overflow-compaction"],
+        "ordering": ["opencode-runtime-overflow-compaction"]
+      }
+    },
+    {
+      "from": "session-busy",
+      "to": "unknown-context-step",
+      "kind": "conditional",
+      "label": "model capacity is the native unknown sentinel (context=0)",
+      "confidence": "verified-headless",
+      "evidence": {
+        "existence": ["opencode-runtime-unknown-context"],
+        "shape": ["opencode-runtime-unknown-context"],
+        "ordering": ["opencode-runtime-unknown-context"]
+      }
+    },
+    {
+      "from": "unknown-context-step",
+      "to": "session-status-idle",
+      "kind": "sequence",
+      "label": "no proactive compaction despite high reported usage",
+      "confidence": "verified-headless",
+      "evidence": {
+        "existence": ["opencode-runtime-unknown-context"],
+        "shape": ["opencode-runtime-unknown-context"],
+        "ordering": ["opencode-runtime-unknown-context"]
+      }
+    },
+    {
+      "from": "direct-agent-part",
+      "to": "agent-part-task-instruction",
+      "kind": "sequence",
+      "confidence": "verified-headless",
+      "evidence": {
+        "existence": ["opencode-runtime-agent-part"],
+        "shape": ["opencode-runtime-agent-part"],
+        "ordering": ["opencode-runtime-agent-part"]
+      }
+    },
+    {
+      "from": "agent-part-task-instruction",
+      "to": "tool-pending",
+      "kind": "sequence",
+      "label": "provider follows the generated instruction by calling task",
+      "confidence": "verified-headless",
+      "evidence": {
+        "existence": ["opencode-runtime-agent-part"],
+        "shape": ["opencode-runtime-agent-part"],
+        "ordering": ["opencode-runtime-agent-part"]
+      }
+    },
+    {
+      "from": "direct-subtask-part",
+      "to": "subagent-task-running",
+      "kind": "sequence",
+      "label": "direct subtask input is implemented as a foreground task tool",
+      "confidence": "verified-headless",
+      "evidence": {
+        "existence": ["opencode-runtime-subtask-part"],
+        "shape": ["opencode-runtime-subtask-part"],
+        "ordering": ["opencode-runtime-subtask-part"]
+      }
+    },
+    {
+      "from": "tool-pending",
+      "to": "subagent-child-created",
+      "kind": "conditional",
+      "label": "provider requested the task tool",
+      "confidence": "verified-headless",
+      "evidence": {
+        "existence": ["opencode-runtime-task-child", "opencode-runtime-agent-part"],
+        "shape": ["opencode-runtime-task-child", "opencode-runtime-agent-part"],
+        "ordering": ["opencode-runtime-task-child", "opencode-runtime-agent-part"]
+      }
+    },
+    {
+      "from": "subagent-task-running",
+      "to": "subagent-child-created",
+      "kind": "sequence",
+      "label": "direct subtask handler starts its task carrier before creating the child",
+      "confidence": "verified-headless",
+      "evidence": {
+        "existence": ["opencode-runtime-subtask-part"],
+        "shape": ["opencode-runtime-subtask-part"],
+        "ordering": ["opencode-runtime-subtask-part"]
+      }
+    },
+    {
+      "from": "subagent-child-created",
+      "to": "subagent-child-idle",
+      "kind": "sequence",
+      "label": "same child session ID",
+      "confidence": "verified-headless",
+      "evidence": {
+        "existence": ["opencode-runtime-task-child", "opencode-runtime-subtask-part"],
+        "shape": ["opencode-runtime-task-child", "opencode-runtime-subtask-part"],
+        "ordering": ["opencode-runtime-task-child", "opencode-runtime-subtask-part"]
+      }
+    },
+    {
+      "from": "subagent-child-idle",
+      "to": "subagent-task-completed",
+      "kind": "sequence",
+      "label": "parent task metadata sessionId equals the completed child ID",
+      "confidence": "verified-headless",
+      "evidence": {
+        "existence": ["opencode-runtime-task-child", "opencode-runtime-subtask-part"],
+        "shape": ["opencode-runtime-task-child", "opencode-runtime-subtask-part"],
+        "ordering": ["opencode-runtime-task-child", "opencode-runtime-subtask-part"]
+      }
+    },
+    {
+      "from": "subagent-task-completed",
+      "to": "subagent-parent-resumed",
+      "kind": "sequence",
+      "confidence": "verified-headless",
+      "evidence": {
+        "existence": ["opencode-runtime-task-child", "opencode-runtime-subtask-part"],
+        "shape": ["opencode-runtime-task-child", "opencode-runtime-subtask-part"],
+        "ordering": ["opencode-runtime-task-child", "opencode-runtime-subtask-part"]
+      }
+    },
+    {
+      "from": "subagent-parent-resumed",
+      "to": "session-status-idle",
+      "kind": "sequence",
+      "confidence": "verified-headless",
+      "evidence": {
+        "existence": ["opencode-runtime-task-child", "opencode-runtime-subtask-part"],
+        "shape": ["opencode-runtime-task-child", "opencode-runtime-subtask-part"],
+        "ordering": ["opencode-runtime-task-child", "opencode-runtime-subtask-part"]
+      }
+    },
+    {
+      "from": "subagent-task-running",
+      "to": "subagent-detach-request",
+      "kind": "conditional",
+      "label": "client promotes a synchronous child that is still running",
+      "confidence": "verified-headless",
+      "evidence": {
+        "existence": ["opencode-runtime-detach-task"],
+        "shape": ["opencode-runtime-detach-task"],
+        "ordering": ["opencode-runtime-detach-task"]
+      }
+    },
+    {
+      "from": "subagent-detach-request",
+      "to": "subagent-background-running",
+      "kind": "sequence",
+      "confidence": "verified-headless",
+      "evidence": {
+        "existence": ["opencode-runtime-detach-task"],
+        "shape": ["opencode-runtime-detach-task"],
+        "ordering": ["opencode-runtime-detach-task"]
+      }
+    },
+    {
+      "from": "subagent-child-created",
+      "to": "subagent-background-running",
+      "kind": "conditional",
+      "label": "task was launched with background:true",
+      "confidence": "verified-headless",
+      "evidence": {
+        "existence": ["opencode-runtime-background-task"],
+        "shape": ["opencode-runtime-background-task"],
+        "ordering": ["opencode-runtime-background-task"]
+      }
+    },
+    {
+      "from": "subagent-background-running",
+      "to": "subagent-background-task-completed",
+      "kind": "sequence",
+      "label": "parent receives a running-handle result without waiting for child idle",
+      "confidence": "verified-headless",
+      "evidence": {
+        "existence": ["opencode-runtime-background-task", "opencode-runtime-detach-task"],
+        "shape": ["opencode-runtime-background-task", "opencode-runtime-detach-task"],
+        "ordering": ["opencode-runtime-background-task", "opencode-runtime-detach-task"]
+      }
+    },
+    {
+      "from": "subagent-background-task-completed",
+      "to": "subagent-background-parent-idle",
+      "kind": "sequence",
+      "confidence": "verified-headless",
+      "evidence": {
+        "existence": ["opencode-runtime-background-task", "opencode-runtime-detach-task"],
+        "shape": ["opencode-runtime-background-task", "opencode-runtime-detach-task"],
+        "ordering": ["opencode-runtime-background-task", "opencode-runtime-detach-task"]
+      }
+    },
+    {
+      "from": "subagent-background-parent-idle",
+      "to": "subagent-background-child-idle",
+      "kind": "sequence",
+      "label": "parent is already idle while the background child finishes",
+      "confidence": "verified-headless",
+      "evidence": {
+        "existence": ["opencode-runtime-background-task", "opencode-runtime-detach-task"],
+        "shape": ["opencode-runtime-background-task", "opencode-runtime-detach-task"],
+        "ordering": ["opencode-runtime-background-task", "opencode-runtime-detach-task"]
+      }
+    },
+    {
+      "from": "subagent-background-child-idle",
+      "to": "subagent-background-result",
+      "kind": "sequence",
+      "label": "child completion injects a synthetic result into the parent",
+      "confidence": "verified-headless",
+      "evidence": {
+        "existence": ["opencode-runtime-background-task", "opencode-runtime-detach-task"],
+        "shape": ["opencode-runtime-background-task", "opencode-runtime-detach-task"],
+        "ordering": ["opencode-runtime-background-task", "opencode-runtime-detach-task"]
+      }
+    },
+    {
+      "from": "subagent-background-result",
+      "to": "subagent-background-parent-resumed",
+      "kind": "sequence",
+      "confidence": "verified-headless",
+      "evidence": {
+        "existence": ["opencode-runtime-background-task", "opencode-runtime-detach-task"],
+        "shape": ["opencode-runtime-background-task", "opencode-runtime-detach-task"],
+        "ordering": ["opencode-runtime-background-task", "opencode-runtime-detach-task"]
+      }
+    },
+    {
+      "from": "subagent-background-parent-resumed",
+      "to": "session-status-idle",
+      "kind": "sequence",
+      "confidence": "verified-headless",
+      "evidence": {
+        "existence": ["opencode-runtime-background-task", "opencode-runtime-detach-task"],
+        "shape": ["opencode-runtime-background-task", "opencode-runtime-detach-task"],
+        "ordering": ["opencode-runtime-background-task", "opencode-runtime-detach-task"]
+      }
+    },
+    {
+      "from": "tool-running",
+      "to": "permission-asked",
+      "kind": "conditional",
+      "confidence": "verified-headless",
+      "evidence": {
+        "existence": ["opencode-runtime-permission-accept"],
+        "shape": ["opencode-runtime-permission-accept"],
+        "ordering": ["opencode-runtime-permission-accept"]
+      }
+    },
+    {
+      "from": "permission-asked",
+      "to": "permission-once",
+      "kind": "conditional",
+      "confidence": "verified-headless",
+      "evidence": {
+        "existence": ["opencode-runtime-permission-accept"],
+        "shape": ["opencode-runtime-permission-accept"],
+        "ordering": ["opencode-runtime-permission-accept"]
+      }
+    },
+    {
+      "from": "permission-asked",
+      "to": "permission-always",
+      "kind": "conditional",
+      "label": "native attach TUI confirmation",
+      "confidence": "verified-interactive",
+      "evidence": {
+        "existence": ["opencode-runtime-attach-permission-always"],
+        "shape": ["opencode-runtime-attach-permission-always"],
+        "ordering": ["opencode-runtime-attach-permission-always"]
+      }
+    },
+    {
+      "from": "permission-asked",
+      "to": "permission-reject",
+      "kind": "conditional",
+      "confidence": "verified-headless",
+      "evidence": {
+        "existence": ["opencode-runtime-permission-reject"],
+        "shape": ["opencode-runtime-permission-reject"],
+        "ordering": ["opencode-runtime-permission-reject"]
+      }
+    },
+    {
+      "from": "permission-once",
+      "to": "tool-completed",
+      "kind": "sequence",
+      "confidence": "verified-headless",
+      "evidence": {
+        "existence": ["opencode-runtime-permission-accept"],
+        "shape": ["opencode-runtime-permission-accept"],
+        "ordering": ["opencode-runtime-permission-accept"]
+      }
+    },
+    {
+      "from": "permission-always",
+      "to": "tool-completed",
+      "kind": "sequence",
+      "confidence": "verified-interactive",
+      "evidence": {
+        "existence": ["opencode-runtime-attach-permission-always"],
+        "shape": ["opencode-runtime-attach-permission-always"],
+        "ordering": ["opencode-runtime-attach-permission-always"]
+      }
+    },
+    {
+      "from": "permission-reject",
+      "to": "tool-error",
+      "kind": "sequence",
+      "confidence": "verified-headless",
+      "evidence": {
+        "existence": ["opencode-runtime-permission-reject"],
+        "shape": ["opencode-runtime-permission-reject"],
+        "ordering": ["opencode-runtime-permission-reject"]
+      }
+    },
+    {
+      "from": "tool-running",
+      "to": "question-asked",
+      "kind": "conditional",
+      "confidence": "verified-headless",
+      "evidence": {
+        "existence": ["opencode-runtime-question-reply"],
+        "shape": ["opencode-runtime-question-reply"],
+        "ordering": ["opencode-runtime-question-reply"]
+      }
+    },
+    {
+      "from": "question-asked",
+      "to": "question-replied",
+      "kind": "conditional",
+      "confidence": "verified-headless",
+      "evidence": {
+        "existence": ["opencode-runtime-question-reply"],
+        "shape": ["opencode-runtime-question-reply"],
+        "ordering": ["opencode-runtime-question-reply"]
+      }
+    },
+    {
+      "from": "question-asked",
+      "to": "question-rejected",
+      "kind": "conditional",
+      "confidence": "verified-headless",
+      "evidence": {
+        "existence": ["opencode-runtime-question-reject"],
+        "shape": ["opencode-runtime-question-reject"],
+        "ordering": ["opencode-runtime-question-reject"]
+      }
+    },
+    {
+      "from": "question-replied",
+      "to": "tool-completed",
+      "kind": "sequence",
+      "confidence": "verified-headless",
+      "evidence": {
+        "existence": ["opencode-runtime-question-reply"],
+        "shape": ["opencode-runtime-question-reply"],
+        "ordering": ["opencode-runtime-question-reply"]
+      }
+    },
+    {
+      "from": "question-rejected",
+      "to": "tool-error",
+      "kind": "sequence",
+      "confidence": "verified-headless",
+      "evidence": {
+        "existence": ["opencode-runtime-question-reject"],
+        "shape": ["opencode-runtime-question-reject"],
+        "ordering": ["opencode-runtime-question-reject"]
+      }
+    },
+    {
+      "from": "session-busy",
+      "to": "session-retry",
+      "kind": "conditional",
+      "confidence": "verified-headless",
+      "evidence": {
+        "existence": ["opencode-runtime-provider-retry"],
+        "shape": ["opencode-runtime-provider-retry"],
+        "ordering": ["opencode-runtime-provider-retry"]
+      }
+    },
+    {
+      "from": "session-retry",
+      "to": "session-busy",
+      "kind": "loop",
+      "confidence": "verified-headless",
+      "evidence": {
+        "existence": ["opencode-runtime-provider-retry"],
+        "shape": ["opencode-runtime-provider-retry"],
+        "ordering": ["opencode-runtime-provider-retry"]
+      }
+    },
+    {
+      "from": "text-delta",
+      "to": "session-error",
+      "kind": "conditional",
+      "label": "stream abort",
+      "confidence": "verified-headless",
+      "evidence": {
+        "existence": ["opencode-runtime-abort-stream"],
+        "shape": ["opencode-runtime-abort-stream"],
+        "ordering": ["opencode-runtime-abort-stream"]
+      }
+    },
+    {
+      "from": "tool-running",
+      "to": "session-error",
+      "kind": "conditional",
+      "label": "running-tool abort",
+      "confidence": "verified-headless",
+      "evidence": {
+        "existence": ["opencode-runtime-abort-tool"],
+        "shape": ["opencode-runtime-abort-tool"],
+        "ordering": ["opencode-runtime-abort-tool"]
+      }
+    },
+    {
+      "from": "session-busy",
+      "to": "session-error",
+      "kind": "conditional",
+      "label": "terminal provider error",
+      "confidence": "verified-headless",
+      "evidence": {
+        "existence": ["opencode-runtime-provider-error"],
+        "shape": ["opencode-runtime-provider-error"],
+        "ordering": ["opencode-runtime-provider-error"]
+      }
+    },
+    {
+      "from": "session-error",
+      "to": "session-status-idle",
+      "kind": "sequence",
+      "confidence": "verified-headless",
+      "evidence": {
+        "existence": ["opencode-runtime-provider-error"],
+        "shape": ["opencode-runtime-provider-error"],
+        "ordering": ["opencode-runtime-provider-error"]
+      }
+    }
+  ]
+}

@@ -1,0 +1,445 @@
+{
+  "name": "incident-investigation",
+  "notes": "A competing-hypotheses incident investigation using MCP, shell, web, failure recovery, delegation, compaction, and verification.",
+  "steps": [
+    {
+      "at": 0,
+      "do": {
+        "emit": {
+          "event": "UserPromptSubmit",
+          "with": {
+            "prompt": "$stimulus.text",
+            "prompt_id": "$uuid:prompt",
+            "session_title": "$sessionTitle",
+            "permission_mode": "$permissionMode"
+          }
+        }
+      }
+    },
+    {
+      "at": 100,
+      "do": {
+        "emit": {
+          "event": "MessageDisplay",
+          "with": {
+            "prompt_id": "$uuid:prompt",
+            "turn_id": "$uuid:turn",
+            "message_id": "$uuid:triage-message",
+            "index": 0,
+            "final": true,
+            "delta": "I’ll run two competing hypotheses in parallel and reconcile them against logs, metrics, and a direct reproduction."
+          }
+        }
+      }
+    },
+    {
+      "at": 200,
+      "do": {
+        "emit": {
+          "event": "TaskCreated",
+          "with": {
+            "prompt_id": "$uuid:prompt",
+            "task_id": "hypothesis-deploy",
+            "task_subject": "Test deploy regression",
+            "task_description": "Check whether the last deploy changed request failure rates.",
+            "team_name": "incident-team",
+            "teammate_name": "deploy-investigator"
+          }
+        }
+      }
+    },
+    {
+      "at": 300,
+      "do": {
+        "emit": {
+          "event": "TaskCreated",
+          "with": {
+            "prompt_id": "$uuid:prompt",
+            "task_id": "hypothesis-dependency",
+            "task_subject": "Test dependency failure",
+            "task_description": "Check whether an upstream dependency or quota caused the incident.",
+            "team_name": "incident-team",
+            "teammate_name": "dependency-investigator"
+          }
+        }
+      }
+    },
+    {
+      "at": 400,
+      "do": {
+        "emit": {
+          "event": "SubagentStart",
+          "with": { "prompt_id": "$uuid:prompt", "agent_id": "incident-deploy", "agent_type": "debugger" }
+        }
+      }
+    },
+    {
+      "at": 500,
+      "do": {
+        "emit": {
+          "event": "SubagentStart",
+          "with": { "prompt_id": "$uuid:prompt", "agent_id": "incident-dependency", "agent_type": "debugger" }
+        }
+      }
+    },
+    {
+      "at": 600,
+      "do": {
+        "emit": {
+          "event": "PreToolUse",
+          "with": {
+            "prompt_id": "$uuid:prompt",
+            "agent_id": "incident-deploy",
+            "agent_type": "debugger",
+            "tool_name": "mcp__observability__query_logs",
+            "tool_input": { "service": "api", "since": "30m", "query": "status>=500" },
+            "tool_use_id": "$uuid:logs"
+          }
+        }
+      }
+    },
+    {
+      "at": 800,
+      "do": {
+        "emit": {
+          "event": "PostToolUse",
+          "with": {
+            "prompt_id": "$uuid:prompt",
+            "agent_id": "incident-deploy",
+            "agent_type": "debugger",
+            "tool_name": "mcp__observability__query_logs",
+            "tool_input": { "service": "api", "since": "30m", "query": "status>=500" },
+            "tool_response": { "matches": 184, "pattern": "timeouts begin two minutes before deploy completion" },
+            "tool_use_id": "$uuid:logs",
+            "duration_ms": 185
+          }
+        }
+      }
+    },
+    {
+      "at": 900,
+      "do": {
+        "emit": {
+          "event": "PreToolUse",
+          "with": {
+            "prompt_id": "$uuid:prompt",
+            "agent_id": "incident-dependency",
+            "agent_type": "debugger",
+            "tool_name": "Bash",
+            "tool_input": { "command": "./scripts/reproduce-timeout.sh" },
+            "tool_use_id": "$uuid:reproduce"
+          }
+        }
+      }
+    },
+    {
+      "at": 1100,
+      "do": {
+        "emit": {
+          "event": "PostToolUseFailure",
+          "with": {
+            "prompt_id": "$uuid:prompt",
+            "agent_id": "incident-dependency",
+            "agent_type": "debugger",
+            "tool_name": "Bash",
+            "tool_input": { "command": "./scripts/reproduce-timeout.sh" },
+            "tool_use_id": "$uuid:reproduce",
+            "error": "Fixture lacks the production timeout header; reproduction inconclusive.",
+            "duration_ms": 180,
+            "is_interrupt": false
+          }
+        }
+      }
+    },
+    {
+      "at": 1200,
+      "do": {
+        "emit": {
+          "event": "PreToolUse",
+          "with": {
+            "prompt_id": "$uuid:prompt",
+            "agent_id": "incident-dependency",
+            "agent_type": "debugger",
+            "tool_name": "WebSearch",
+            "tool_input": { "query": "upstream provider status timeout incident" },
+            "tool_use_id": "$uuid:status-search"
+          }
+        }
+      }
+    },
+    {
+      "at": 1400,
+      "do": {
+        "emit": {
+          "event": "PostToolUse",
+          "with": {
+            "prompt_id": "$uuid:prompt",
+            "agent_id": "incident-dependency",
+            "agent_type": "debugger",
+            "tool_name": "WebSearch",
+            "tool_input": { "query": "upstream provider status timeout incident" },
+            "tool_response": { "results": ["No matching provider incident in the relevant window."] },
+            "tool_use_id": "$uuid:status-search",
+            "duration_ms": 170
+          }
+        }
+      }
+    },
+    {
+      "at": 1500,
+      "do": {
+        "emit": {
+          "event": "PreToolUse",
+          "with": {
+            "prompt_id": "$uuid:prompt",
+            "tool_name": "mcp__observability__query_metrics",
+            "tool_input": { "metric": "api.request.duration", "group_by": "release", "since": "2h" },
+            "tool_use_id": "$uuid:metrics"
+          }
+        }
+      }
+    },
+    {
+      "at": 1700,
+      "do": {
+        "emit": {
+          "event": "PostToolUse",
+          "with": {
+            "prompt_id": "$uuid:prompt",
+            "tool_name": "mcp__observability__query_metrics",
+            "tool_input": { "metric": "api.request.duration", "group_by": "release", "since": "2h" },
+            "tool_response": {
+              "series": [
+                { "release": "previous", "p99_ms": 480 },
+                { "release": "current", "p99_ms": 5100 }
+              ]
+            },
+            "tool_use_id": "$uuid:metrics",
+            "duration_ms": 190
+          }
+        }
+      }
+    },
+    {
+      "at": 1800,
+      "do": {
+        "emit": {
+          "event": "PostToolBatch",
+          "with": {
+            "prompt_id": "$uuid:prompt",
+            "tool_calls": [
+              { "tool_name": "mcp__observability__query_logs", "tool_use_id": "$uuid:logs" },
+              { "tool_name": "Bash", "tool_use_id": "$uuid:reproduce" },
+              { "tool_name": "WebSearch", "tool_use_id": "$uuid:status-search" },
+              { "tool_name": "mcp__observability__query_metrics", "tool_use_id": "$uuid:metrics" }
+            ]
+          }
+        }
+      }
+    },
+    {
+      "at": 1900,
+      "do": {
+        "emit": {
+          "event": "TaskCompleted",
+          "with": {
+            "prompt_id": "$uuid:prompt",
+            "task_id": "hypothesis-deploy",
+            "task_subject": "Test deploy regression",
+            "task_description": "Latency increase is isolated to the current release.",
+            "team_name": "incident-team",
+            "teammate_name": "deploy-investigator"
+          }
+        }
+      }
+    },
+    {
+      "at": 2000,
+      "do": {
+        "emit": {
+          "event": "SubagentStop",
+          "with": {
+            "prompt_id": "$uuid:prompt",
+            "agent_id": "incident-deploy",
+            "agent_type": "debugger",
+            "agent_transcript_path": "/tmp/incident-deploy.jsonl",
+            "last_assistant_message": "Deploy regression is the leading hypothesis.",
+            "stop_hook_active": false,
+            "background_tasks": [],
+            "session_crons": []
+          }
+        }
+      }
+    },
+    {
+      "at": 2100,
+      "do": {
+        "emit": {
+          "event": "TaskCompleted",
+          "with": {
+            "prompt_id": "$uuid:prompt",
+            "task_id": "hypothesis-dependency",
+            "task_subject": "Test dependency failure",
+            "task_description": "No upstream incident found; local reproduction needs the production header.",
+            "team_name": "incident-team",
+            "teammate_name": "dependency-investigator"
+          }
+        }
+      }
+    },
+    {
+      "at": 2200,
+      "do": {
+        "emit": {
+          "event": "SubagentStop",
+          "with": {
+            "prompt_id": "$uuid:prompt",
+            "agent_id": "incident-dependency",
+            "agent_type": "debugger",
+            "agent_transcript_path": "/tmp/incident-dependency.jsonl",
+            "last_assistant_message": "Dependency hypothesis is weak; evidence favors the deploy.",
+            "stop_hook_active": false,
+            "background_tasks": [],
+            "session_crons": []
+          }
+        }
+      }
+    },
+    {
+      "at": 2300,
+      "do": {
+        "statusline": {
+          "with": {
+            "session_id": "$sessionId",
+            "transcript_path": "$transcriptPath",
+            "cwd": "$cwd",
+            "model": { "id": "$modelId", "display_name": "$modelId" },
+            "workspace": { "current_dir": "$cwd" },
+            "context_window": {
+              "total_input_tokens": 186000,
+              "context_window_size": 200000,
+              "used_percentage": 93,
+              "current_usage": {
+                "input_tokens": 186000,
+                "cache_creation_input_tokens": 0,
+                "cache_read_input_tokens": 61000
+              }
+            }
+          }
+        }
+      }
+    },
+    {
+      "at": 2400,
+      "do": {
+        "emit": {
+          "event": "PreCompact",
+          "with": { "prompt_id": "$uuid:prompt", "trigger": "auto", "custom_instructions": "" }
+        }
+      }
+    },
+    {
+      "at": 2500,
+      "do": {
+        "emit": {
+          "event": "PostCompact",
+          "with": {
+            "prompt_id": "$uuid:prompt",
+            "trigger": "auto",
+            "compact_summary": "Preserved incident timeline, both hypotheses, failed reproduction details, log/metric evidence, and the rollback verification plan."
+          }
+        }
+      }
+    },
+    {
+      "at": 2600,
+      "do": {
+        "emit": {
+          "event": "PreToolUse",
+          "with": {
+            "prompt_id": "$uuid:prompt",
+            "tool_name": "Bash",
+            "tool_input": { "command": "./scripts/compare-release-config.sh previous current" },
+            "tool_use_id": "$uuid:verify-config"
+          }
+        }
+      }
+    },
+    {
+      "at": 2800,
+      "do": {
+        "emit": {
+          "event": "PostToolUse",
+          "with": {
+            "prompt_id": "$uuid:prompt",
+            "tool_name": "Bash",
+            "tool_input": { "command": "./scripts/compare-release-config.sh previous current" },
+            "tool_response": {
+              "output": "Current release lowered the upstream timeout from 10s to 1s.",
+              "exitCode": 0
+            },
+            "tool_use_id": "$uuid:verify-config",
+            "duration_ms": 175
+          }
+        }
+      }
+    },
+    {
+      "at": 2900,
+      "do": {
+        "emit": {
+          "event": "MessageDisplay",
+          "with": {
+            "prompt_id": "$uuid:prompt",
+            "turn_id": "$uuid:turn",
+            "message_id": "$uuid:final-message",
+            "index": 0,
+            "final": true,
+            "delta": "The timeout change in the current release explains the incident; rollback is the lowest-risk immediate mitigation."
+          }
+        }
+      }
+    },
+    {
+      "at": 3000,
+      "do": {
+        "transcript": {
+          "record": {
+            "type": "assistant",
+            "uuid": "$uuid:assistant",
+            "sessionId": "$sessionId",
+            "timestamp": "$now",
+            "cwd": "$cwd",
+            "version": "$vendorVersion",
+            "message": {
+              "id": "$uuid:message",
+              "role": "assistant",
+              "model": "$modelId",
+              "content": [
+                {
+                  "type": "text",
+                  "text": "Root cause: the current release reduced the upstream timeout. Roll back now, then restore the intended timeout with a regression test."
+                }
+              ]
+            }
+          }
+        }
+      }
+    },
+    {
+      "at": 3100,
+      "do": {
+        "emit": {
+          "event": "Stop",
+          "with": {
+            "prompt_id": "$uuid:prompt",
+            "last_assistant_message": "Root cause identified; rollback and regression-test actions documented.",
+            "stop_hook_active": false,
+            "background_tasks": [],
+            "session_crons": []
+          }
+        }
+      }
+    }
+  ]
+}

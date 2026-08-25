@@ -1,0 +1,29 @@
+{
+  "name": "question-reject",
+  "steps": [
+    {
+      "emit": {
+        "event": "question.asked",
+        "request": true,
+        "with": {
+          "id": "$uuid:question",
+          "sessionID": "$sessionId",
+          "questions": [
+            {
+              "question": "Continue?",
+              "header": "Confirm",
+              "options": [{ "label": "Yes", "description": "Continue" }],
+              "multiple": false
+            }
+          ]
+        }
+      }
+    },
+    {
+      "emit": {
+        "event": "question.rejected",
+        "with": { "sessionID": "$sessionId", "requestID": "$uuid:question" }
+      }
+    }
+  ]
+}

@@ -1,0 +1,71 @@
+{
+  "surface": "codex",
+  "surfaceVersion": "0.147.0",
+  "event": "process/spawn",
+  "channel": "appserver",
+  "transport": "jsonrpc-request",
+  "direction": "client-to-agent",
+  "trigger": "Spawn a standalone process (argv vector) without a Codex sandbox.",
+  "payloadSchema": {
+    "type": "object",
+    "properties": {
+      "command": {
+        "type": "array"
+      },
+      "cwd": {},
+      "env": {},
+      "outputBytesCap": {},
+      "processHandle": {
+        "type": "string"
+      },
+      "size": {},
+      "streamStdin": {
+        "type": "boolean"
+      },
+      "streamStdoutStderr": {
+        "type": "boolean"
+      },
+      "timeoutMs": {},
+      "tty": {
+        "type": "boolean"
+      }
+    },
+    "required": [
+      "command",
+      "cwd",
+      "processHandle"
+    ]
+  },
+  "recordSchema": {
+    "type": "object",
+    "properties": {
+      "method": {
+        "type": "string",
+        "enum": [
+          "process/spawn"
+        ]
+      },
+      "params": {
+        "type": "object"
+      },
+      "id": {}
+    },
+    "required": [
+      "method",
+      "params",
+      "id"
+    ]
+  },
+  "evidence": {
+    "existence": [
+      "codex-generated-schema"
+    ],
+    "shape": [
+      "codex-generated-schema"
+    ],
+    "carrier": [
+      "codex-generated-schema"
+    ]
+  },
+  "confidence": "unverified"
+}

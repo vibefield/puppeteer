@@ -1,0 +1,154 @@
+{
+  "remoteControl/status/changed": {
+    "status": "disabled",
+    "serverName": "<redacted:serverName>",
+    "installationId": "a11a5ed0-652e-4959-acaf-d9146cfa0080",
+    "environmentId": null
+  },
+  "thread/started": {
+    "thread": {
+      "id": "a11a5ed0-40bf-4570-bd0d-26003ecee58d",
+      "extra": null,
+      "sessionId": "a11a5ed0-40bf-4570-bd0d-26003ecee58d",
+      "forkedFromId": null,
+      "parentThreadId": null,
+      "preview": "<redacted:preview>",
+      "ephemeral": false,
+      "historyMode": "legacy",
+      "modelProvider": "openai",
+      "createdAt": 1767225600000,
+      "updatedAt": 1767225600000,
+      "recencyAt": 1767225600000,
+      "status": {
+        "type": "idle"
+      },
+      "path": "/workspace/redacted-file",
+      "cwd": "/workspace",
+      "cliVersion": "0.144.2",
+      "source": "vscode",
+      "threadSource": null,
+      "agentNickname": null,
+      "agentRole": null,
+      "gitInfo": null,
+      "name": null,
+      "turns": []
+    }
+  },
+  "mcpServer/startupStatus/updated": {
+    "threadId": "a11a5ed0-40bf-4570-bd0d-26003ecee58d",
+    "name": "node_repl",
+    "status": "starting",
+    "error": null,
+    "failureReason": null
+  },
+  "thread/status/changed": {
+    "threadId": "a11a5ed0-40bf-4570-bd0d-26003ecee58d",
+    "status": {
+      "type": "active",
+      "activeFlags": []
+    }
+  },
+  "turn/started": {
+    "threadId": "a11a5ed0-40bf-4570-bd0d-26003ecee58d",
+    "turn": {
+      "id": "a11a5ed0-bcb5-40f4-8c89-ecb2cbac2eb1",
+      "items": [],
+      "itemsView": "notLoaded",
+      "status": "inProgress",
+      "error": null,
+      "startedAt": 1767225600000,
+      "completedAt": null,
+      "durationMs": null
+    }
+  },
+  "item/started": {
+    "item": {
+      "type": "userMessage",
+      "id": "a11a5ed0-29ea-428c-bd60-5c90bbd00129",
+      "clientId": null,
+      "content": [
+        {
+          "type": "text",
+          "text": "<redacted:text>",
+          "text_elements": []
+        }
+      ]
+    },
+    "threadId": "a11a5ed0-40bf-4570-bd0d-26003ecee58d",
+    "turnId": "a11a5ed0-bcb5-40f4-8c89-ecb2cbac2eb1",
+    "startedAtMs": 1767225600000
+  },
+  "item/completed": {
+    "item": {
+      "type": "userMessage",
+      "id": "a11a5ed0-29ea-428c-bd60-5c90bbd00129",
+      "clientId": null,
+      "content": [
+        {
+          "type": "text",
+          "text": "<redacted:text>",
+          "text_elements": []
+        }
+      ]
+    },
+    "threadId": "a11a5ed0-40bf-4570-bd0d-26003ecee58d",
+    "turnId": "a11a5ed0-bcb5-40f4-8c89-ecb2cbac2eb1",
+    "completedAtMs": 1767225600000
+  },
+  "item/agentMessage/delta": {
+    "threadId": "a11a5ed0-40bf-4570-bd0d-26003ecee58d",
+    "turnId": "a11a5ed0-bcb5-40f4-8c89-ecb2cbac2eb1",
+    "itemId": "msg_a11a5ed048173f29ea006cccbab8c4a4075587ddf023b20579",
+    "delta": "<redacted:delta>"
+  },
+  "thread/tokenUsage/updated": {
+    "threadId": "a11a5ed0-40bf-4570-bd0d-26003ecee58d",
+    "turnId": "a11a5ed0-bcb5-40f4-8c89-ecb2cbac2eb1",
+    "tokenUsage": {
+      "total": {
+        "totalTokens": 13505,
+        "inputTokens": 13500,
+        "cachedInputTokens": 9984,
+        "outputTokens": 5,
+        "reasoningOutputTokens": 0
+      },
+      "last": {
+        "totalTokens": 13505,
+        "inputTokens": 13500,
+        "cachedInputTokens": 9984,
+        "outputTokens": 5,
+        "reasoningOutputTokens": 0
+      },
+      "modelContextWindow": 258400
+    }
+  },
+  "account/rateLimits/updated": {
+    "rateLimits": {
+      "limitId": "anon-57de4cf40144bdf7",
+      "limitName": null,
+      "primary": {
+        "usedPercent": 14,
+        "windowDurationMins": 10080,
+        "resetsAt": 1767225600000
+      },
+      "secondary": null,
+      "credits": null,
+      "individualLimit": null,
+      "planType": "plus",
+      "rateLimitReachedType": null
+    }
+  },
+  "turn/completed": {
+    "threadId": "a11a5ed0-40bf-4570-bd0d-26003ecee58d",
+    "turn": {
+      "id": "a11a5ed0-bcb5-40f4-8c89-ecb2cbac2eb1",
+      "items": [],
+      "itemsView": "notLoaded",
+      "status": "completed",
+      "error": null,
+      "startedAt": 1767225600000,
+      "completedAt": 1767225600000,
+      "durationMs": 2480
+    }
+  }
+}

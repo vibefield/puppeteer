@@ -1,0 +1,1 @@
+{"type":"approval.request","followUp":{"method":"approval.respond","params":{"choice":"deny"}},"frame":{"type":"approval.request","session_id":"anon-41b1d4ef660e22a8","payload":{"choices":["once","session","always","deny"]}}}

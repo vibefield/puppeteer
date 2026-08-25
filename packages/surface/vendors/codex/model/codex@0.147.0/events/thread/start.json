@@ -1,0 +1,120 @@
+{
+  "surface": "codex",
+  "surfaceVersion": "0.147.0",
+  "event": "thread/start",
+  "channel": "appserver",
+  "transport": "jsonrpc-request",
+  "direction": "client-to-agent",
+  "trigger": "NEW APIs",
+  "payloadSchema": {
+    "type": "object",
+    "properties": {
+      "allowProviderModelFallback": {
+        "type": "boolean"
+      },
+      "approvalPolicy": {},
+      "approvalsReviewer": {},
+      "baseInstructions": {},
+      "config": {},
+      "cwd": {},
+      "developerInstructions": {},
+      "dynamicTools": {},
+      "environments": {},
+      "ephemeral": {},
+      "experimentalRawEvents": {
+        "type": "boolean"
+      },
+      "historyMode": {},
+      "mockExperimentalField": {},
+      "model": {},
+      "modelProvider": {},
+      "multiAgentMode": {},
+      "permissions": {},
+      "personality": {},
+      "runtimeWorkspaceRoots": {},
+      "sandbox": {},
+      "selectedCapabilityRoots": {},
+      "serviceName": {},
+      "serviceTier": {},
+      "sessionStartSource": {},
+      "threadSource": {}
+    }
+  },
+  "resultSchema": {
+    "type": "object",
+    "properties": {
+      "activePermissionProfile": {},
+      "approvalPolicy": {},
+      "approvalsReviewer": {},
+      "cwd": {
+        "type": "string"
+      },
+      "instructionSources": {
+        "type": "array"
+      },
+      "model": {
+        "type": "string"
+      },
+      "modelProvider": {
+        "type": "string"
+      },
+      "multiAgentMode": {},
+      "reasoningEffort": {},
+      "runtimeWorkspaceRoots": {
+        "type": "array"
+      },
+      "sandbox": {},
+      "serviceTier": {},
+      "thread": {
+        "type": "object"
+      }
+    },
+    "required": [
+      "approvalPolicy",
+      "approvalsReviewer",
+      "cwd",
+      "model",
+      "modelProvider",
+      "sandbox",
+      "thread"
+    ]
+  },
+  "recordSchema": {
+    "type": "object",
+    "properties": {
+      "method": {
+        "type": "string",
+        "enum": [
+          "thread/start"
+        ]
+      },
+      "params": {
+        "type": "object"
+      },
+      "id": {}
+    },
+    "required": [
+      "method",
+      "params",
+      "id"
+    ]
+  },
+  "evidence": {
+    "existence": [
+      "codex-runtime-headless"
+    ],
+    "shape": [
+      "codex-runtime-headless"
+    ],
+    "result": [
+      "codex-runtime-headless"
+    ],
+    "carrier": [
+      "codex-runtime-headless"
+    ]
+  },
+  "confidence": "verified-headless",
+  "firstSeen": "0.147.0",
+  "lastVerified": "0.147.0",
+  "fixture": "captures/codex@0.147.0/protocol-approval-accept.jsonl"
+}

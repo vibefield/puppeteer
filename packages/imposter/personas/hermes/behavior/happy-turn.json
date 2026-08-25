@@ -1,0 +1,9 @@
+{
+  "name": "happy-turn",
+  "reply": "SURFACE_HERMES_OK",
+  "ops": [
+    { "op": "turn.start", "with": { "text": "$stimulus.text" } },
+    { "op": "assistant.delta", "with": { "text": "$reply" } },
+    { "op": "turn.end" }
+  ]
+}

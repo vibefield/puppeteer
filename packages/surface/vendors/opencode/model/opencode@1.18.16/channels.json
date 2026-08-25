@@ -1,0 +1,20 @@
+{
+  "channels": {
+    "argv": {
+      "kind": "argv-env",
+      "notes": "Chopsticks launches one loopback `opencode serve` backend with an environment-only Basic-auth password, then launches `opencode attach` for the exact native session ID."
+    },
+    "http": {
+      "kind": "http",
+      "notes": "Authenticated loopback REST control and durable state. Event names use `http/<OpenAPI operationId>`; record schemas retain exact HTTP method and templated route."
+    },
+    "sse": {
+      "kind": "sse",
+      "notes": "GET /event emits native `{id,type,properties}` records. No replay cursor was observed; reconnect requires durable HTTP rehydration and entity reconciliation."
+    },
+    "terminal": {
+      "kind": "terminal",
+      "notes": "The real OpenCode TUI attached to the shared backend and exact session. It can be the blocker controller; terminal pixels are not the semantic observation rail."
+    }
+  }
+}

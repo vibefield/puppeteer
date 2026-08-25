@@ -1,0 +1,76 @@
+{
+  "surface": "hermes",
+  "surfaceVersion": "0.20.0",
+  "event": "session.interrupt",
+  "firstSeen": "0.20.0",
+  "lastVerified": "0.20.0",
+  "channel": "tui-gateway",
+  "channels": ["tui-gateway"],
+  "transport": "jsonrpc-request",
+  "direction": "client-to-agent",
+  "payloadSchema": {
+    "type": "object",
+    "properties": {
+      "session_id": {
+        "type": "string"
+      },
+      "hasText": {
+        "type": "boolean"
+      }
+    },
+    "required": ["session_id"]
+  },
+  "resultSchema": {
+    "type": "object",
+    "properties": {
+      "status": {
+        "type": "string",
+        "enum": ["interrupted"]
+      }
+    },
+    "required": ["status"]
+  },
+  "recordSchema": {
+    "type": "object",
+    "properties": {
+      "direction": {
+        "type": "string",
+        "enum": ["client"]
+      },
+      "jsonrpc": {
+        "type": "string",
+        "enum": ["2.0"]
+      },
+      "id": {
+        "type": "string"
+      },
+      "method": {
+        "type": "string",
+        "enum": ["session.interrupt"]
+      },
+      "params": {
+        "type": "object",
+        "properties": {
+          "session_id": {
+            "type": "string"
+          },
+          "hasText": {
+            "type": "boolean"
+          }
+        },
+        "required": ["session_id"]
+      }
+    },
+    "required": ["direction", "jsonrpc", "id", "method", "params"]
+  },
+  "recordChannel": "tui-gateway",
+  "evidence": {
+    "existence": ["hermes-runtime-headless"],
+    "shape": ["hermes-runtime-headless"],
+    "result": ["hermes-runtime-headless"],
+    "carrier": ["hermes-runtime-headless"]
+  },
+  "confidence": "verified-headless",
+  "fixture": "captures/hermes@0.20.0/interrupt/rpc.jsonl",
+  "notes": "RPC write is not the stop. Wait for message.complete status interrupted."
+}

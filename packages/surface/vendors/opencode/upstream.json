@@ -1,0 +1,51 @@
+{
+  "$schema": "../../upstream.schema.json",
+  "schemaVersion": 1,
+  "vendor": "opencode",
+  "repository": "https://github.com/anomalyco/opencode",
+  "sourceRelation": {
+    "strategy": "release-tag",
+    "template": "v${version}"
+  },
+  "detectors": [
+    {
+      "id": "github-stable",
+      "channel": "stable",
+      "kind": "github-release",
+      "url": "https://api.github.com/repos/anomalyco/opencode/releases?per_page=30",
+      "tagPattern": "^v(\\d+\\.\\d+\\.\\d+)$",
+      "prerelease": false,
+      "authoritative": true
+    }
+  ],
+  "platforms": ["darwin-arm64", "darwin-x64", "linux-x64", "windows-x64"],
+  "acquisition": {
+    "strategy": "https-template",
+    "allowedHosts": ["registry.npmjs.org"],
+    "maxBytes": 268435456,
+    "artifacts": {
+      "darwin-arm64": {
+        "urls": ["https://registry.npmjs.org/opencode-darwin-arm64/-/opencode-darwin-arm64-${version}.tgz"],
+        "format": "tar.gz",
+        "executableBasenames": ["opencode"]
+      },
+      "darwin-x64": {
+        "urls": ["https://registry.npmjs.org/opencode-darwin-x64/-/opencode-darwin-x64-${version}.tgz"],
+        "format": "tar.gz",
+        "executableBasenames": ["opencode"]
+      },
+      "linux-x64": {
+        "urls": ["https://registry.npmjs.org/opencode-linux-x64/-/opencode-linux-x64-${version}.tgz"],
+        "format": "tar.gz",
+        "executableBasenames": ["opencode"]
+      },
+      "windows-x64": {
+        "urls": ["https://registry.npmjs.org/opencode-windows-x64/-/opencode-windows-x64-${version}.tgz"],
+        "format": "tar.gz",
+        "executableBasenames": ["opencode.exe"]
+      }
+    }
+  },
+  "analysis": ["binary-flags", "openapi-schema", "http-sse-census", "attach-resume", "permission-question-control"],
+  "debounce": { "polls": 2, "minutes": 30 }
+}

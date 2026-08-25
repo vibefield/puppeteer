@@ -1,0 +1,8 @@
+{
+  "name": "resume",
+  "steps": [
+    { "emit": { "event": "server.connected", "with": {} } },
+    { "emit": { "event": "session.status", "with": { "sessionID": "$sessionId", "status": { "type": "idle" } } } },
+    { "emit": { "event": "session.idle", "with": { "sessionID": "$sessionId" } } }
+  ]
+}

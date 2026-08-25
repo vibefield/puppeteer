@@ -1,0 +1,182 @@
+{
+  "session.start": [
+    {
+      "channel": "sse",
+      "event": "session.created",
+      "with": {
+        "sessionID": "$sessionId",
+        "info": {
+          "id": "$sessionId",
+          "slug": "$sessionSlug",
+          "version": "$vendorVersion",
+          "projectID": "$projectId",
+          "directory": "$cwd",
+          "path": "$cwd",
+          "title": "$sessionTitle",
+          "model": "$sessionModel",
+          "permission": "$sessionPermission",
+          "cost": 0,
+          "tokens": { "input": 0, "output": 0, "reasoning": 0, "cache": { "read": 0, "write": 0 } },
+          "time": { "created": "$sessionCreatedAt", "updated": "$sessionUpdatedAt" }
+        }
+      }
+    }
+  ],
+  "turn.start": [
+    {
+      "channel": "sse",
+      "event": "message.updated",
+      "with": {
+        "sessionID": "$sessionId",
+        "info": {
+          "id": "$userMessageId",
+          "role": "user",
+          "sessionID": "$sessionId",
+          "time": { "created": "$promptCreatedAt" },
+          "agent": "$promptAgent",
+          "model": "$promptModel"
+        }
+      }
+    },
+    {
+      "channel": "sse",
+      "event": "message.part.updated",
+      "with": {
+        "sessionID": "$sessionId",
+        "part": {
+          "id": "$uuid:user-part",
+          "messageID": "$userMessageId",
+          "sessionID": "$sessionId",
+          "type": "text",
+          "text": "$op.text"
+        },
+        "time": "$promptCreatedAt"
+      }
+    },
+    {
+      "channel": "sse",
+      "event": "session.status",
+      "with": { "sessionID": "$sessionId", "status": { "type": "busy" } }
+    },
+    {
+      "channel": "sse",
+      "event": "message.updated",
+      "with": {
+        "sessionID": "$sessionId",
+        "info": {
+          "id": "$uuid:assistant-message",
+          "parentID": "$userMessageId",
+          "role": "assistant",
+          "mode": "build",
+          "agent": "$promptAgent",
+          "path": { "cwd": "$cwd", "root": "$cwd" },
+          "cost": 0,
+          "tokens": { "input": 0, "output": 0, "reasoning": 0, "cache": { "read": 0, "write": 0 } },
+          "modelID": "$modelId",
+          "providerID": "imposter",
+          "time": { "created": "$promptCreatedAt" },
+          "sessionID": "$sessionId"
+        }
+      }
+    },
+    {
+      "channel": "sse",
+      "event": "message.part.updated",
+      "with": {
+        "sessionID": "$sessionId",
+        "part": {
+          "id": "$uuid:step-start",
+          "messageID": "$uuid:assistant-message",
+          "sessionID": "$sessionId",
+          "type": "step-start"
+        },
+        "time": "$nowMs"
+      }
+    }
+  ],
+  "assistant.delta": [
+    {
+      "channel": "sse",
+      "event": "message.part.updated",
+      "with": {
+        "sessionID": "$sessionId",
+        "part": {
+          "id": "$uuid:assistant-part",
+          "messageID": "$uuid:assistant-message",
+          "sessionID": "$sessionId",
+          "type": "text",
+          "text": "$op.text",
+          "time": { "start": "$promptCreatedAt", "end": "$nowMs" }
+        },
+        "time": "$nowMs"
+      }
+    }
+  ],
+  "permission.ask": [
+    {
+      "channel": "sse",
+      "event": "permission.asked",
+      "await": true,
+      "with": {
+        "id": "$uuid:permission",
+        "sessionID": "$sessionId",
+        "permission": "$op.permission",
+        "patterns": "$op.patterns",
+        "metadata": "$op.metadata",
+        "always": "$op.always",
+        "tool": { "messageID": "$uuid:assistant-message", "callID": "$uuid:tool-call" }
+      }
+    }
+  ],
+  "turn.end": [
+    {
+      "channel": "sse",
+      "event": "message.part.updated",
+      "with": {
+        "sessionID": "$sessionId",
+        "part": {
+          "id": "$uuid:step-finish",
+          "messageID": "$uuid:assistant-message",
+          "sessionID": "$sessionId",
+          "type": "step-finish",
+          "reason": "stop",
+          "cost": 0,
+          "tokens": { "total": 18, "input": 11, "output": 7, "reasoning": 0, "cache": { "read": 0, "write": 0 } }
+        },
+        "time": "$nowMs"
+      }
+    },
+    {
+      "channel": "sse",
+      "event": "message.updated",
+      "with": {
+        "sessionID": "$sessionId",
+        "info": {
+          "id": "$uuid:assistant-message",
+          "parentID": "$userMessageId",
+          "role": "assistant",
+          "mode": "build",
+          "agent": "$promptAgent",
+          "path": { "cwd": "$cwd", "root": "$cwd" },
+          "cost": 0,
+          "tokens": { "total": 18, "input": 11, "output": 7, "reasoning": 0, "cache": { "read": 0, "write": 0 } },
+          "modelID": "$modelId",
+          "providerID": "imposter",
+          "time": { "created": "$promptCreatedAt", "completed": "$nowMs" },
+          "sessionID": "$sessionId",
+          "finish": "stop"
+        }
+      }
+    },
+    {
+      "channel": "sse",
+      "event": "session.status",
+      "with": { "sessionID": "$sessionId", "status": { "type": "idle" } }
+    },
+    {
+      "channel": "sse",
+      "event": "session.idle",
+      "with": { "sessionID": "$sessionId" }
+    }
+  ]
+}

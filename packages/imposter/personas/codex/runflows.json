@@ -1,0 +1,45 @@
+{
+  "version": 1,
+  "flows": [
+    {
+      "id": "deep-research",
+      "intent": "workflow.research.deep",
+      "scenario": "deep-research",
+      "title": "Thorough parallel research",
+      "summary": "A 30-step app-server turn with reasoning summaries, two collaboration workers, web/MCP/shell tools, 97% context pressure, contextCompaction item lifecycle, post-compaction verification, and a final sourced answer.",
+      "kind": "typical",
+      "tags": ["research", "multi-agent", "web", "mcp", "shell", "compaction"],
+      "defaultStimulus": {
+        "text": "Research how modern coding agents expose delegation and context compaction. Compare the primary sources with this repository and deliver a sourced recommendation.",
+        "topic": "coding agent delegation and context compaction"
+      },
+      "defaultSpeed": 8
+    },
+    {
+      "id": "cross-layer-implementation",
+      "intent": "workflow.implementation.cross-layer",
+      "scenario": "cross-layer-implementation",
+      "title": "Cross-layer implementation",
+      "summary": "A 30-step implementation turn with two workers, command/file/MCP tools, an initial failure, a real JSON-RPC approval request, 96% context pressure, compaction, passing tests, and a final answer.",
+      "kind": "typical",
+      "tags": ["code", "multi-agent", "approval", "failure-recovery", "tests", "compaction"],
+      "defaultStimulus": {
+        "text": "Replace the toy scenario catalog with realistic long-running workflows, preserve the native evidence boundary, add regression coverage, and verify the final diff."
+      },
+      "defaultSpeed": 8
+    },
+    {
+      "id": "incident-investigation",
+      "intent": "workflow.incident.competing-hypotheses",
+      "scenario": "incident-investigation",
+      "title": "Competing-hypotheses incident",
+      "summary": "A 29-step incident turn with two collaboration workers, MCP logs/metrics, a failed shell reproduction, web status evidence, 93% context pressure, compaction, and a root-cause recommendation.",
+      "kind": "typical",
+      "tags": ["incident", "multi-agent", "mcp", "web", "tool-failure", "compaction"],
+      "defaultStimulus": {
+        "text": "Investigate the API timeout spike. Run competing hypotheses in parallel, identify the root cause from logs and metrics, and recommend the safest immediate mitigation."
+      },
+      "defaultSpeed": 8
+    }
+  ]
+}

@@ -1,0 +1,67 @@
+{
+  "$schema": "../../upstream.schema.json",
+  "schemaVersion": 1,
+  "vendor": "claude",
+  "repository": "https://github.com/anthropics/claude-code",
+  "sourceRelation": {
+    "strategy": "release-tag",
+    "template": "v${version}"
+  },
+  "detectors": [
+    {
+      "id": "vendor-stable",
+      "channel": "stable",
+      "kind": "text",
+      "url": "https://downloads.claude.ai/claude-code-releases/stable",
+      "versionPattern": "(\\d+\\.\\d+\\.\\d+(?:[-.][0-9A-Za-z]+)*)",
+      "authoritative": true
+    },
+    {
+      "id": "github-latest",
+      "channel": "preview",
+      "kind": "github-release",
+      "url": "https://api.github.com/repos/anthropics/claude-code/releases?per_page=20",
+      "tagPattern": "^v(\\d+\\.\\d+\\.\\d+)$",
+      "prerelease": false,
+      "authoritative": false
+    },
+    {
+      "id": "vendor-latest",
+      "channel": "preview",
+      "kind": "text",
+      "url": "https://downloads.claude.ai/claude-code-releases/latest",
+      "versionPattern": "(\\d+\\.\\d+\\.\\d+(?:[-.][0-9A-Za-z]+)*)",
+      "authoritative": false
+    }
+  ],
+  "platforms": ["darwin-arm64", "darwin-x64", "linux-x64", "windows-x64"],
+  "acquisition": {
+    "strategy": "https-template",
+    "allowedHosts": ["downloads.claude.ai"],
+    "maxBytes": 536870912,
+    "artifacts": {
+      "darwin-arm64": {
+        "urls": ["https://downloads.claude.ai/claude-code-releases/${version}/darwin-arm64/claude"],
+        "format": "binary",
+        "executableBasenames": ["claude"]
+      },
+      "darwin-x64": {
+        "urls": ["https://downloads.claude.ai/claude-code-releases/${version}/darwin-x64/claude"],
+        "format": "binary",
+        "executableBasenames": ["claude"]
+      },
+      "linux-x64": {
+        "urls": ["https://downloads.claude.ai/claude-code-releases/${version}/linux-x64/claude"],
+        "format": "binary",
+        "executableBasenames": ["claude"]
+      },
+      "windows-x64": {
+        "urls": ["https://downloads.claude.ai/claude-code-releases/${version}/win32-x64/claude.exe"],
+        "format": "binary",
+        "executableBasenames": ["claude.exe"]
+      }
+    }
+  },
+  "analysis": ["binary-flags", "settings", "hooks", "transcript", "statusline"],
+  "debounce": { "polls": 2, "minutes": 30 }
+}

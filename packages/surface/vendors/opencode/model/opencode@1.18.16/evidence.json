@@ -1,0 +1,568 @@
+{
+  "evidenceVersion": 2,
+  "vendor": "opencode",
+  "vendorVersion": "1.18.16",
+  "artifacts": [
+    {
+      "id": "opencode-1.18.16-darwin-arm64",
+      "platform": "darwin-arm64",
+      "channel": "stable",
+      "acquiredAt": "2026-08-10T07:08:47.000Z",
+      "versionOutput": "1.18.16",
+      "sourceUrl": "https://registry.npmjs.org/opencode-darwin-arm64/-/opencode-darwin-arm64-1.18.16.tgz",
+      "sourceTag": "v1.18.16",
+      "sourceRevision": "a3647eb025c7615159d417dcc49fc39fdaeba65b",
+      "integrity": {
+        "status": "verified",
+        "sha256": "sha256:a41776bf64c75786d6baf531b840ffb873c090d7c44793ae2dd4b1896de56a1f"
+      }
+    }
+  ],
+  "sourceReferences": [
+    {
+      "repository": "https://github.com/anomalyco/opencode",
+      "revision": "a3647eb025c7615159d417dcc49fc39fdaeba65b",
+      "tag": "v1.18.16",
+      "relation": "exact-release"
+    }
+  ],
+  "records": [
+    {
+      "id": "capture-abort-stream",
+      "kind": "capture-set",
+      "path": "packages/surface/vendors/opencode/captures/opencode@1.18.16/abort-stream",
+      "digestAlgorithm": "sha256-path-content-v1",
+      "sha256": "ea95f1084101eb1b8d9510b5e53f0b1c42ac5c26eef554ae2ec3b3510b02ea27"
+    },
+    {
+      "id": "capture-abort-tool",
+      "kind": "capture-set",
+      "path": "packages/surface/vendors/opencode/captures/opencode@1.18.16/abort-tool",
+      "digestAlgorithm": "sha256-path-content-v1",
+      "sha256": "17fbd7c08c1eca364cd58c71fb4c6203b1702ad667610a54d8be1877662c3c44"
+    },
+    {
+      "id": "capture-agent-part",
+      "kind": "capture-set",
+      "path": "packages/surface/vendors/opencode/captures/opencode@1.18.16/agent-part",
+      "digestAlgorithm": "sha256-path-content-v1",
+      "sha256": "b96310e897d1aa9c864adb47e99ada1c6533bddd91c0a81a1eb730300d267592"
+    },
+    {
+      "id": "capture-attach-exact-resume",
+      "kind": "capture-set",
+      "path": "packages/surface/vendors/opencode/captures/opencode@1.18.16/attach-exact-resume",
+      "digestAlgorithm": "sha256-path-content-v1",
+      "sha256": "eb88b020651fc17f4e138755948f5a4513a5c89381c92c7328f5a5ecdefd0000"
+    },
+    {
+      "id": "capture-attach-permission-always",
+      "kind": "capture-set",
+      "path": "packages/surface/vendors/opencode/captures/opencode@1.18.16/attach-permission-always",
+      "digestAlgorithm": "sha256-path-content-v1",
+      "sha256": "2c719961190d27e64d8c8bbf3054389e5f86d83246bbed8e84e59a5f8751d7f5"
+    },
+    {
+      "id": "capture-auto-compaction",
+      "kind": "capture-set",
+      "path": "packages/surface/vendors/opencode/captures/opencode@1.18.16/auto-compaction",
+      "digestAlgorithm": "sha256-path-content-v1",
+      "sha256": "852a8c019bb0e6df7f49bff6b84ce9e310e35aa22914d6cf23f296ebf498b226"
+    },
+    {
+      "id": "capture-background-task",
+      "kind": "capture-set",
+      "path": "packages/surface/vendors/opencode/captures/opencode@1.18.16/background-task",
+      "digestAlgorithm": "sha256-path-content-v1",
+      "sha256": "b6b7d2f9d7ab73bac37aa68dc424a7f185f4d4bbd3370677c1d827ae315594a0"
+    },
+    {
+      "id": "capture-detach-task",
+      "kind": "capture-set",
+      "path": "packages/surface/vendors/opencode/captures/opencode@1.18.16/detach-task",
+      "digestAlgorithm": "sha256-path-content-v1",
+      "sha256": "5bd6b8ac7de1f7d5ac2db6ffeba716b4e970eaaa25d940aed5bbe55b87eb03b8"
+    },
+    {
+      "id": "capture-exact-resume",
+      "kind": "capture-set",
+      "path": "packages/surface/vendors/opencode/captures/opencode@1.18.16/exact-resume",
+      "digestAlgorithm": "sha256-path-content-v1",
+      "sha256": "5fadb795a76a570fc925899a00ee291ced053a99fd96f1676b38c92fe999e496"
+    },
+    {
+      "id": "capture-file-delete",
+      "kind": "capture-set",
+      "path": "packages/surface/vendors/opencode/captures/opencode@1.18.16/file-delete",
+      "digestAlgorithm": "sha256-path-content-v1",
+      "sha256": "751f48e90d010c6a7b0f4ebdf04028a07b893f184e60441af4fb848eca6d2914"
+    },
+    {
+      "id": "capture-file-edit",
+      "kind": "capture-set",
+      "path": "packages/surface/vendors/opencode/captures/opencode@1.18.16/file-edit",
+      "digestAlgorithm": "sha256-path-content-v1",
+      "sha256": "45f16f02dd6b8370d33169ef5a1c4044cf4d50da789c4fd8e73d770ab0772a0b"
+    },
+    {
+      "id": "capture-file-part",
+      "kind": "capture-set",
+      "path": "packages/surface/vendors/opencode/captures/opencode@1.18.16/file-part",
+      "digestAlgorithm": "sha256-path-content-v1",
+      "sha256": "a71e9ed13359f5a962c46c9079a28e25ef8704c6e8ced0a78f284328fa8d6648"
+    },
+    {
+      "id": "capture-file-write",
+      "kind": "capture-set",
+      "path": "packages/surface/vendors/opencode/captures/opencode@1.18.16/file-write",
+      "digestAlgorithm": "sha256-path-content-v1",
+      "sha256": "93679da3eb80b8fb89afe5ddb59ef1d21236548e39940ce7759ff510548e864d"
+    },
+    {
+      "id": "capture-manual-compaction",
+      "kind": "capture-set",
+      "path": "packages/surface/vendors/opencode/captures/opencode@1.18.16/manual-compaction",
+      "digestAlgorithm": "sha256-path-content-v1",
+      "sha256": "46bf49fc8fa2c86cc75e6fa0fc5829b5417e885dc1d5f3a2829c676b15fa4b72"
+    },
+    {
+      "id": "capture-overflow-compaction",
+      "kind": "capture-set",
+      "path": "packages/surface/vendors/opencode/captures/opencode@1.18.16/overflow-compaction",
+      "digestAlgorithm": "sha256-path-content-v1",
+      "sha256": "ed95c8f33e3c44066b763f01c7a84db07930ada3bcd1ce0e86ef289d73d315b4"
+    },
+    {
+      "id": "capture-permission-accept",
+      "kind": "capture-set",
+      "path": "packages/surface/vendors/opencode/captures/opencode@1.18.16/permission-accept",
+      "digestAlgorithm": "sha256-path-content-v1",
+      "sha256": "6948d3a842a85ba6f4cd89957358444a92aae0f5f4f05bef0d3db2bb6114c9ed"
+    },
+    {
+      "id": "capture-permission-reject",
+      "kind": "capture-set",
+      "path": "packages/surface/vendors/opencode/captures/opencode@1.18.16/permission-reject",
+      "digestAlgorithm": "sha256-path-content-v1",
+      "sha256": "68d51b897fdaedb0ff500b0a0d900d89992cfd770edd51465050aef128ce36b1"
+    },
+    {
+      "id": "capture-provider-error",
+      "kind": "capture-set",
+      "path": "packages/surface/vendors/opencode/captures/opencode@1.18.16/provider-error",
+      "digestAlgorithm": "sha256-path-content-v1",
+      "sha256": "4d5146c0f64076eb8dbe52778a6101fdddc86f7e921d31d9e4e2c7efea4df198"
+    },
+    {
+      "id": "capture-provider-retry",
+      "kind": "capture-set",
+      "path": "packages/surface/vendors/opencode/captures/opencode@1.18.16/provider-retry",
+      "digestAlgorithm": "sha256-path-content-v1",
+      "sha256": "a51917cb02a57a288a99a6ef2f89634cfd7020f9ed50ab38b79b4c78066a46d8"
+    },
+    {
+      "id": "capture-question-reject",
+      "kind": "capture-set",
+      "path": "packages/surface/vendors/opencode/captures/opencode@1.18.16/question-reject",
+      "digestAlgorithm": "sha256-path-content-v1",
+      "sha256": "4d630fe6457f96ab813c305f1cc8c8b9fe5e1b21c5c7260152449f0245db75f8"
+    },
+    {
+      "id": "capture-question-reply",
+      "kind": "capture-set",
+      "path": "packages/surface/vendors/opencode/captures/opencode@1.18.16/question-reply",
+      "digestAlgorithm": "sha256-path-content-v1",
+      "sha256": "71aecab87c0612c771d5fba17b3dcae6eb49f961793f918a3c16af575970dca5"
+    },
+    {
+      "id": "capture-reconnect-rehydrate",
+      "kind": "capture-set",
+      "path": "packages/surface/vendors/opencode/captures/opencode@1.18.16/reconnect-rehydrate",
+      "digestAlgorithm": "sha256-path-content-v1",
+      "sha256": "fb81161a3f3ae15729f81000ec19582c2889e743b7a6fd18864ee5dfd04006ea"
+    },
+    {
+      "id": "capture-session-lifecycle",
+      "kind": "capture-set",
+      "path": "packages/surface/vendors/opencode/captures/opencode@1.18.16/session-lifecycle",
+      "digestAlgorithm": "sha256-path-content-v1",
+      "sha256": "a496f7d26c129eaf019c8ef5a7eae7f7cbb201c0e42d3e89ae44804ab36f0557"
+    },
+    {
+      "id": "capture-subtask-part",
+      "kind": "capture-set",
+      "path": "packages/surface/vendors/opencode/captures/opencode@1.18.16/subtask-part",
+      "digestAlgorithm": "sha256-path-content-v1",
+      "sha256": "18fb6889bdbaaca217ac30a73847c205bed92e102893c5ee822149f1374cbb86"
+    },
+    {
+      "id": "capture-task-child",
+      "kind": "capture-set",
+      "path": "packages/surface/vendors/opencode/captures/opencode@1.18.16/task-child",
+      "digestAlgorithm": "sha256-path-content-v1",
+      "sha256": "66d7998d104290861b0965ff3b861713f52900e696633a88b9960e2c79431797"
+    },
+    {
+      "id": "capture-turn",
+      "kind": "capture-set",
+      "path": "packages/surface/vendors/opencode/captures/opencode@1.18.16/turn",
+      "digestAlgorithm": "sha256-path-content-v1",
+      "sha256": "f168d0b76c96591e998c773530de91907876b2c0a3ec7d30fdf1d5a78c311ac4"
+    },
+    {
+      "id": "capture-unknown-context",
+      "kind": "capture-set",
+      "path": "packages/surface/vendors/opencode/captures/opencode@1.18.16/unknown-context",
+      "digestAlgorithm": "sha256-path-content-v1",
+      "sha256": "e6e0b034f33206ee90598f4c81b0d489bf077c89fe4679586b1f108e19c726a8"
+    },
+    {
+      "id": "binary-probes",
+      "kind": "probe-set",
+      "path": "packages/surface/vendors/opencode/probes/opencode@1.18.16",
+      "digestAlgorithm": "sha256-path-content-v1",
+      "sha256": "41f1e1d4214af39168ca46f8bdb42a6dc664b997cde4e793abfa80be62c49ec4"
+    },
+    {
+      "id": "agent-surface-model",
+      "kind": "model-tree",
+      "path": "packages/surface/vendors/opencode/model/opencode@1.18.16",
+      "exclude": [
+        "evidence.json"
+      ],
+      "digestAlgorithm": "sha256-path-content-v1",
+      "sha256": "b6558f4ae8b0713016fb52915663b39abb2e97bcdb0af2754c719201873db439"
+    }
+  ],
+  "claims": [
+    {
+      "id": "opencode-binary-probe",
+      "kind": "binary-probe",
+      "confidence": "verified-headless",
+      "record": "binary-probes",
+      "artifact": "opencode-1.18.16-darwin-arm64",
+      "sourceReference": 0,
+      "platform": "darwin-arm64",
+      "harness": "opencode --version/--help; opencode serve --help; opencode attach --help",
+      "capturedAt": "2026-08-10T07:08:47.000Z"
+    },
+    {
+      "id": "opencode-generated-openapi",
+      "kind": "generated-schema",
+      "confidence": "unverified",
+      "artifact": "opencode-1.18.16-darwin-arm64",
+      "sourceReference": 0,
+      "harness": "GET /doc from the pinned private opencode serve backend",
+      "notes": "The generated schema proves possible names and shapes, not runtime occurrence or ordering."
+    },
+    {
+      "id": "opencode-runtime-abort-stream",
+      "kind": "runtime-capture",
+      "confidence": "verified-headless",
+      "record": "capture-abort-stream",
+      "artifact": "opencode-1.18.16-darwin-arm64",
+      "platform": "darwin-arm64",
+      "harness": "packages/surface/vendors/opencode/census/harness.mjs",
+      "capturedAt": "2026-08-11T04:45:25.264Z",
+      "notes": "Hermetic headless census scenario: abort-stream."
+    },
+    {
+      "id": "opencode-runtime-abort-tool",
+      "kind": "runtime-capture",
+      "confidence": "verified-headless",
+      "record": "capture-abort-tool",
+      "artifact": "opencode-1.18.16-darwin-arm64",
+      "platform": "darwin-arm64",
+      "harness": "packages/surface/vendors/opencode/census/harness.mjs",
+      "capturedAt": "2026-08-11T04:45:34.390Z",
+      "notes": "Hermetic headless census scenario: abort-tool."
+    },
+    {
+      "id": "opencode-runtime-agent-part",
+      "kind": "runtime-capture",
+      "confidence": "verified-headless",
+      "record": "capture-agent-part",
+      "artifact": "opencode-1.18.16-darwin-arm64",
+      "platform": "darwin-arm64",
+      "harness": "packages/surface/vendors/opencode/census/harness.mjs",
+      "capturedAt": "2026-08-11T06:51:18.359Z",
+      "notes": "Hermetic headless census scenario: agent-part."
+    },
+    {
+      "id": "opencode-runtime-attach-exact-resume",
+      "kind": "runtime-capture",
+      "confidence": "verified-interactive",
+      "record": "capture-attach-exact-resume",
+      "artifact": "opencode-1.18.16-darwin-arm64",
+      "platform": "darwin-arm64",
+      "harness": "packages/surface/vendors/opencode/census/harness.mjs",
+      "capturedAt": "2026-08-11T07:18:00.868Z",
+      "notes": "Native attach TUI interaction on the shared backend."
+    },
+    {
+      "id": "opencode-runtime-attach-permission-always",
+      "kind": "runtime-capture",
+      "confidence": "verified-interactive",
+      "record": "capture-attach-permission-always",
+      "artifact": "opencode-1.18.16-darwin-arm64",
+      "platform": "darwin-arm64",
+      "harness": "packages/surface/vendors/opencode/census/harness.mjs",
+      "capturedAt": "2026-08-11T05:05:34.164Z",
+      "notes": "Native attach TUI interaction on the shared backend."
+    },
+    {
+      "id": "opencode-runtime-auto-compaction",
+      "kind": "runtime-capture",
+      "confidence": "verified-headless",
+      "record": "capture-auto-compaction",
+      "artifact": "opencode-1.18.16-darwin-arm64",
+      "platform": "darwin-arm64",
+      "harness": "packages/surface/vendors/opencode/census/harness.mjs",
+      "capturedAt": "2026-08-11T06:00:30.080Z",
+      "notes": "Hermetic headless census scenario: auto-compaction."
+    },
+    {
+      "id": "opencode-runtime-background-task",
+      "kind": "runtime-capture",
+      "confidence": "verified-headless",
+      "record": "capture-background-task",
+      "artifact": "opencode-1.18.16-darwin-arm64",
+      "platform": "darwin-arm64",
+      "harness": "packages/surface/vendors/opencode/census/harness.mjs",
+      "capturedAt": "2026-08-11T06:45:27.498Z",
+      "notes": "Hermetic headless census scenario: background-task."
+    },
+    {
+      "id": "opencode-runtime-detach-task",
+      "kind": "runtime-capture",
+      "confidence": "verified-headless",
+      "record": "capture-detach-task",
+      "artifact": "opencode-1.18.16-darwin-arm64",
+      "platform": "darwin-arm64",
+      "harness": "packages/surface/vendors/opencode/census/harness.mjs",
+      "capturedAt": "2026-08-11T06:45:16.713Z",
+      "notes": "Hermetic headless census scenario: detach-task."
+    },
+    {
+      "id": "opencode-runtime-exact-resume",
+      "kind": "runtime-capture",
+      "confidence": "verified-headless",
+      "record": "capture-exact-resume",
+      "artifact": "opencode-1.18.16-darwin-arm64",
+      "platform": "darwin-arm64",
+      "harness": "packages/surface/vendors/opencode/census/harness.mjs",
+      "capturedAt": "2026-08-11T04:56:30.098Z",
+      "notes": "Hermetic headless census scenario: exact-resume."
+    },
+    {
+      "id": "opencode-runtime-file-delete",
+      "kind": "runtime-capture",
+      "confidence": "verified-headless",
+      "record": "capture-file-delete",
+      "artifact": "opencode-1.18.16-darwin-arm64",
+      "platform": "darwin-arm64",
+      "harness": "packages/surface/vendors/opencode/census/harness.mjs",
+      "capturedAt": "2026-08-11T06:31:04.089Z",
+      "notes": "Hermetic headless census scenario: file-delete."
+    },
+    {
+      "id": "opencode-runtime-file-edit",
+      "kind": "runtime-capture",
+      "confidence": "verified-headless",
+      "record": "capture-file-edit",
+      "artifact": "opencode-1.18.16-darwin-arm64",
+      "platform": "darwin-arm64",
+      "harness": "packages/surface/vendors/opencode/census/harness.mjs",
+      "capturedAt": "2026-08-11T06:31:06.819Z",
+      "notes": "Hermetic headless census scenario: file-edit."
+    },
+    {
+      "id": "opencode-runtime-file-part",
+      "kind": "runtime-capture",
+      "confidence": "verified-headless",
+      "record": "capture-file-part",
+      "artifact": "opencode-1.18.16-darwin-arm64",
+      "platform": "darwin-arm64",
+      "harness": "packages/surface/vendors/opencode/census/harness.mjs",
+      "capturedAt": "2026-08-11T07:01:18.440Z",
+      "notes": "Hermetic headless census scenario: file-part."
+    },
+    {
+      "id": "opencode-runtime-file-write",
+      "kind": "runtime-capture",
+      "confidence": "verified-headless",
+      "record": "capture-file-write",
+      "artifact": "opencode-1.18.16-darwin-arm64",
+      "platform": "darwin-arm64",
+      "harness": "packages/surface/vendors/opencode/census/harness.mjs",
+      "capturedAt": "2026-08-11T06:31:05.993Z",
+      "notes": "Hermetic headless census scenario: file-write."
+    },
+    {
+      "id": "opencode-runtime-manual-compaction",
+      "kind": "runtime-capture",
+      "confidence": "verified-headless",
+      "record": "capture-manual-compaction",
+      "artifact": "opencode-1.18.16-darwin-arm64",
+      "platform": "darwin-arm64",
+      "harness": "packages/surface/vendors/opencode/census/harness.mjs",
+      "capturedAt": "2026-08-11T05:53:20.004Z",
+      "notes": "Hermetic headless census scenario: manual-compaction."
+    },
+    {
+      "id": "opencode-runtime-overflow-compaction",
+      "kind": "runtime-capture",
+      "confidence": "verified-headless",
+      "record": "capture-overflow-compaction",
+      "artifact": "opencode-1.18.16-darwin-arm64",
+      "platform": "darwin-arm64",
+      "harness": "packages/surface/vendors/opencode/census/harness.mjs",
+      "capturedAt": "2026-08-11T06:37:52.297Z",
+      "notes": "Hermetic headless census scenario: overflow-compaction."
+    },
+    {
+      "id": "opencode-runtime-permission-accept",
+      "kind": "runtime-capture",
+      "confidence": "verified-headless",
+      "record": "capture-permission-accept",
+      "artifact": "opencode-1.18.16-darwin-arm64",
+      "platform": "darwin-arm64",
+      "harness": "packages/surface/vendors/opencode/census/harness.mjs",
+      "capturedAt": "2026-08-10T07:31:38.386Z",
+      "notes": "Hermetic headless census scenario: permission-accept."
+    },
+    {
+      "id": "opencode-runtime-permission-reject",
+      "kind": "runtime-capture",
+      "confidence": "verified-headless",
+      "record": "capture-permission-reject",
+      "artifact": "opencode-1.18.16-darwin-arm64",
+      "platform": "darwin-arm64",
+      "harness": "packages/surface/vendors/opencode/census/harness.mjs",
+      "capturedAt": "2026-08-10T07:33:01.938Z",
+      "notes": "Hermetic headless census scenario: permission-reject."
+    },
+    {
+      "id": "opencode-runtime-provider-error",
+      "kind": "runtime-capture",
+      "confidence": "verified-headless",
+      "record": "capture-provider-error",
+      "artifact": "opencode-1.18.16-darwin-arm64",
+      "platform": "darwin-arm64",
+      "harness": "packages/surface/vendors/opencode/census/harness.mjs",
+      "capturedAt": "2026-08-11T04:45:54.406Z",
+      "notes": "Hermetic headless census scenario: provider-error."
+    },
+    {
+      "id": "opencode-runtime-provider-retry",
+      "kind": "runtime-capture",
+      "confidence": "verified-headless",
+      "record": "capture-provider-retry",
+      "artifact": "opencode-1.18.16-darwin-arm64",
+      "platform": "darwin-arm64",
+      "harness": "packages/surface/vendors/opencode/census/harness.mjs",
+      "capturedAt": "2026-08-11T04:45:43.535Z",
+      "notes": "Hermetic headless census scenario: provider-retry."
+    },
+    {
+      "id": "opencode-runtime-question-reject",
+      "kind": "runtime-capture",
+      "confidence": "verified-headless",
+      "record": "capture-question-reject",
+      "artifact": "opencode-1.18.16-darwin-arm64",
+      "platform": "darwin-arm64",
+      "harness": "packages/surface/vendors/opencode/census/harness.mjs",
+      "capturedAt": "2026-08-10T07:33:36.468Z",
+      "notes": "Hermetic headless census scenario: question-reject."
+    },
+    {
+      "id": "opencode-runtime-question-reply",
+      "kind": "runtime-capture",
+      "confidence": "verified-headless",
+      "record": "capture-question-reply",
+      "artifact": "opencode-1.18.16-darwin-arm64",
+      "platform": "darwin-arm64",
+      "harness": "packages/surface/vendors/opencode/census/harness.mjs",
+      "capturedAt": "2026-08-10T07:33:19.838Z",
+      "notes": "Hermetic headless census scenario: question-reply."
+    },
+    {
+      "id": "opencode-runtime-reconnect-rehydrate",
+      "kind": "runtime-capture",
+      "confidence": "verified-headless",
+      "record": "capture-reconnect-rehydrate",
+      "artifact": "opencode-1.18.16-darwin-arm64",
+      "platform": "darwin-arm64",
+      "harness": "packages/surface/vendors/opencode/census/harness.mjs",
+      "capturedAt": "2026-08-11T04:56:19.470Z",
+      "notes": "Hermetic headless census scenario: reconnect-rehydrate."
+    },
+    {
+      "id": "opencode-runtime-session-lifecycle",
+      "kind": "runtime-capture",
+      "confidence": "verified-headless",
+      "record": "capture-session-lifecycle",
+      "artifact": "opencode-1.18.16-darwin-arm64",
+      "platform": "darwin-arm64",
+      "harness": "packages/surface/vendors/opencode/census/harness.mjs",
+      "capturedAt": "2026-08-11T07:10:18.767Z",
+      "notes": "Hermetic headless census scenario: session-lifecycle."
+    },
+    {
+      "id": "opencode-runtime-subtask-part",
+      "kind": "runtime-capture",
+      "confidence": "verified-headless",
+      "record": "capture-subtask-part",
+      "artifact": "opencode-1.18.16-darwin-arm64",
+      "platform": "darwin-arm64",
+      "harness": "packages/surface/vendors/opencode/census/harness.mjs",
+      "capturedAt": "2026-08-11T06:17:34.203Z",
+      "notes": "Hermetic headless census scenario: subtask-part."
+    },
+    {
+      "id": "opencode-runtime-task-child",
+      "kind": "runtime-capture",
+      "confidence": "verified-headless",
+      "record": "capture-task-child",
+      "artifact": "opencode-1.18.16-darwin-arm64",
+      "platform": "darwin-arm64",
+      "harness": "packages/surface/vendors/opencode/census/harness.mjs",
+      "capturedAt": "2026-08-11T06:14:05.678Z",
+      "notes": "Hermetic headless census scenario: task-child."
+    },
+    {
+      "id": "opencode-runtime-turn",
+      "kind": "runtime-capture",
+      "confidence": "verified-headless",
+      "record": "capture-turn",
+      "artifact": "opencode-1.18.16-darwin-arm64",
+      "platform": "darwin-arm64",
+      "harness": "packages/surface/vendors/opencode/census/harness.mjs",
+      "capturedAt": "2026-08-10T07:31:18.479Z",
+      "notes": "Hermetic headless census scenario: turn."
+    },
+    {
+      "id": "opencode-runtime-unknown-context",
+      "kind": "runtime-capture",
+      "confidence": "verified-headless",
+      "record": "capture-unknown-context",
+      "artifact": "opencode-1.18.16-darwin-arm64",
+      "platform": "darwin-arm64",
+      "harness": "packages/surface/vendors/opencode/census/harness.mjs",
+      "capturedAt": "2026-08-11T06:55:14.225Z",
+      "notes": "Hermetic headless census scenario: unknown-context."
+    },
+    {
+      "id": "opencode-topology-inference",
+      "kind": "inference",
+      "confidence": "unverified",
+      "notes": "Reserved for explicitly unverified behavior relations; never upgrades runtime confidence."
+    }
+  ],
+  "limitations": [
+    "Artifact integrity and runtime probes are pinned only for darwin-arm64.",
+    "OpenAPI/source-only branches remain unverified until a controlled runtime capture exercises them.",
+    "The SSE carrier exposes no observed replay cursor; durable REST rehydration is required after a gap.",
+    "Native attach was captured on an exact fresh session, but not yet combined with a backend-restart resume."
+  ]
+}

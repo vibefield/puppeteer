@@ -1,0 +1,19 @@
+{
+  "name": "happy-turn",
+  "steps": [
+    {
+      "at": 0,
+      "do": { "emit": { "channel": "tui-gateway", "event": "message.start", "with": {} } }
+    },
+    {
+      "at": 20,
+      "do": { "emit": { "channel": "tui-gateway", "event": "message.delta", "with": { "hasText": true } } }
+    },
+    {
+      "at": 40,
+      "do": {
+        "emit": { "channel": "tui-gateway", "event": "message.complete", "with": { "status": "complete", "hasText": true } }
+      }
+    }
+  ]
+}

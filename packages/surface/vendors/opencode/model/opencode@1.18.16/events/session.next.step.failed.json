@@ -1,0 +1,113 @@
+{
+  "surface": "opencode",
+  "surfaceVersion": "1.18.16",
+  "event": "session.next.step.failed",
+  "channel": "sse",
+  "channels": [
+    "sse"
+  ],
+  "transport": "sse-event",
+  "direction": "agent-to-client",
+  "trigger": "Published on the native GET /event stream.",
+  "payloadSchema": {
+    "type": "object",
+    "properties": {
+      "assistantMessageID": {
+        "type": "string"
+      },
+      "error": {
+        "type": "object",
+        "properties": {
+          "message": {
+            "type": "string"
+          },
+          "type": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "message",
+          "type"
+        ]
+      },
+      "sessionID": {
+        "type": "string"
+      },
+      "timestamp": {
+        "type": "number"
+      }
+    },
+    "required": [
+      "assistantMessageID",
+      "error",
+      "sessionID",
+      "timestamp"
+    ]
+  },
+  "recordSchema": {
+    "type": "object",
+    "properties": {
+      "id": {
+        "type": "string"
+      },
+      "properties": {
+        "type": "object",
+        "properties": {
+          "assistantMessageID": {
+            "type": "string"
+          },
+          "error": {
+            "type": "object",
+            "properties": {
+              "message": {
+                "type": "string"
+              },
+              "type": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "message",
+              "type"
+            ]
+          },
+          "sessionID": {
+            "type": "string"
+          },
+          "timestamp": {
+            "type": "number"
+          }
+        },
+        "required": [
+          "assistantMessageID",
+          "error",
+          "sessionID",
+          "timestamp"
+        ]
+      },
+      "type": {
+        "type": "string",
+        "enum": [
+          "session.next.step.failed"
+        ]
+      }
+    },
+    "required": [
+      "id",
+      "properties",
+      "type"
+    ]
+  },
+  "evidence": {
+    "existence": [
+      "opencode-generated-openapi"
+    ],
+    "shape": [
+      "opencode-generated-openapi"
+    ],
+    "carrier": [
+      "opencode-generated-openapi"
+    ]
+  },
+  "confidence": "unverified"
+}

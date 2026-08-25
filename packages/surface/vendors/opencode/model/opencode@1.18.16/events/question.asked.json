@@ -1,0 +1,194 @@
+{
+  "surface": "opencode",
+  "surfaceVersion": "1.18.16",
+  "event": "question.asked",
+  "channel": "sse",
+  "channels": [
+    "sse"
+  ],
+  "transport": "sse-event",
+  "direction": "agent-to-client",
+  "trigger": "Published on the native GET /event stream.",
+  "payloadSchema": {
+    "type": "object",
+    "properties": {
+      "id": {
+        "type": "string"
+      },
+      "questions": {
+        "type": "array",
+        "items": {
+          "type": "object",
+          "properties": {
+            "custom": {
+              "type": "boolean"
+            },
+            "header": {
+              "type": "string"
+            },
+            "multiple": {
+              "type": "boolean"
+            },
+            "options": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "properties": {
+                  "description": {
+                    "type": "string"
+                  },
+                  "label": {
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "description",
+                  "label"
+                ]
+              }
+            },
+            "question": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "header",
+            "options",
+            "question"
+          ]
+        }
+      },
+      "sessionID": {
+        "type": "string"
+      },
+      "tool": {
+        "type": "object",
+        "properties": {
+          "callID": {
+            "type": "string"
+          },
+          "messageID": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "callID",
+          "messageID"
+        ]
+      }
+    },
+    "required": [
+      "id",
+      "questions",
+      "sessionID"
+    ]
+  },
+  "recordSchema": {
+    "type": "object",
+    "properties": {
+      "id": {
+        "type": "string"
+      },
+      "properties": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "questions": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "custom": {
+                  "type": "boolean"
+                },
+                "header": {
+                  "type": "string"
+                },
+                "multiple": {
+                  "type": "boolean"
+                },
+                "options": {
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "properties": {
+                      "description": {
+                        "type": "string"
+                      },
+                      "label": {
+                        "type": "string"
+                      }
+                    },
+                    "required": [
+                      "description",
+                      "label"
+                    ]
+                  }
+                },
+                "question": {
+                  "type": "string"
+                }
+              },
+              "required": [
+                "header",
+                "options",
+                "question"
+              ]
+            }
+          },
+          "sessionID": {
+            "type": "string"
+          },
+          "tool": {
+            "type": "object",
+            "properties": {
+              "callID": {
+                "type": "string"
+              },
+              "messageID": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "callID",
+              "messageID"
+            ]
+          }
+        },
+        "required": [
+          "id",
+          "questions",
+          "sessionID"
+        ]
+      },
+      "type": {
+        "type": "string",
+        "enum": [
+          "question.asked"
+        ]
+      }
+    },
+    "required": [
+      "id",
+      "properties",
+      "type"
+    ]
+  },
+  "evidence": {
+    "existence": [
+      "opencode-runtime-question-reject"
+    ],
+    "shape": [
+      "opencode-runtime-question-reject"
+    ],
+    "carrier": [
+      "opencode-runtime-question-reject"
+    ]
+  },
+  "confidence": "verified-headless",
+  "firstSeen": "1.18.16",
+  "lastVerified": "1.18.16",
+  "fixture": "captures/opencode@1.18.16/question-reject/events.jsonl"
+}

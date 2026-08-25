@@ -1,0 +1,20 @@
+{
+  "name": "compaction-lifecycle",
+  "steps": [
+    {
+      "at": 0,
+      "do": { "emit": { "channel": "wire", "event": "full_compaction.begin", "with": { "source": "auto" } } }
+    },
+    {
+      "at": 30,
+      "do": {
+        "emit": {
+          "channel": "wire",
+          "event": "context.apply_compaction",
+          "with": { "summary": "imposter summary", "compactedCount": 3 }
+        }
+      }
+    },
+    { "at": 60, "do": { "emit": { "channel": "wire", "event": "full_compaction.complete", "with": {} } } }
+  ]
+}

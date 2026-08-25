@@ -1,0 +1,1393 @@
+{
+  "surface": "kimi",
+  "surfaceVersion": "0.34.0",
+  "event": "context.append_loop_event",
+  "channel": "wire",
+  "channels": ["wire"],
+  "transport": "jsonl-record",
+  "direction": "agent-local",
+  "payloadSchema": {
+    "type": "object",
+    "properties": {
+      "event": {
+        "type": "object",
+        "properties": {
+          "type": {
+            "type": "string",
+            "enum": ["step.begin", "step.end", "content.part", "tool.call", "tool.result"]
+          },
+          "uuid": {
+            "type": "string"
+          },
+          "parentUuid": {
+            "type": "string"
+          },
+          "turnId": {
+            "type": "string"
+          },
+          "step": {
+            "type": "number"
+          },
+          "stepUuid": {
+            "type": "string"
+          },
+          "part": {
+            "anyOf": [
+              {
+                "type": "object",
+                "properties": {
+                  "type": {
+                    "type": "string",
+                    "enum": ["text"]
+                  },
+                  "text": {
+                    "type": "string"
+                  }
+                },
+                "required": ["type", "text"]
+              },
+              {
+                "type": "object",
+                "properties": {
+                  "type": {
+                    "type": "string",
+                    "enum": ["think"]
+                  },
+                  "think": {
+                    "type": "string"
+                  },
+                  "encrypted": {
+                    "type": "string"
+                  }
+                },
+                "required": ["type", "think"]
+              },
+              {
+                "type": "object",
+                "properties": {
+                  "type": {
+                    "type": "string",
+                    "enum": ["image_url"]
+                  },
+                  "imageUrl": {
+                    "type": "object",
+                    "properties": {
+                      "url": {
+                        "type": "string"
+                      },
+                      "id": {
+                        "type": "string"
+                      }
+                    },
+                    "required": ["url"]
+                  }
+                },
+                "required": ["type", "imageUrl"]
+              },
+              {
+                "type": "object",
+                "properties": {
+                  "type": {
+                    "type": "string",
+                    "enum": ["audio_url"]
+                  },
+                  "audioUrl": {
+                    "type": "object",
+                    "properties": {
+                      "url": {
+                        "type": "string"
+                      },
+                      "id": {
+                        "type": "string"
+                      }
+                    },
+                    "required": ["url"]
+                  }
+                },
+                "required": ["type", "audioUrl"]
+              },
+              {
+                "type": "object",
+                "properties": {
+                  "type": {
+                    "type": "string",
+                    "enum": ["video_url"]
+                  },
+                  "videoUrl": {
+                    "type": "object",
+                    "properties": {
+                      "url": {
+                        "type": "string"
+                      },
+                      "id": {
+                        "type": "string"
+                      }
+                    },
+                    "required": ["url"]
+                  }
+                },
+                "required": ["type", "videoUrl"]
+              }
+            ]
+          },
+          "toolCallId": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "args": {},
+          "extras": {
+            "type": "object"
+          },
+          "result": {
+            "type": "object",
+            "properties": {
+              "output": {
+                "anyOf": [
+                  {
+                    "type": "string"
+                  },
+                  {
+                    "type": "array",
+                    "items": {
+                      "anyOf": [
+                        {
+                          "type": "object",
+                          "properties": {
+                            "type": {
+                              "type": "string",
+                              "enum": ["text"]
+                            },
+                            "text": {
+                              "type": "string"
+                            }
+                          },
+                          "required": ["type", "text"]
+                        },
+                        {
+                          "type": "object",
+                          "properties": {
+                            "type": {
+                              "type": "string",
+                              "enum": ["think"]
+                            },
+                            "think": {
+                              "type": "string"
+                            },
+                            "encrypted": {
+                              "type": "string"
+                            }
+                          },
+                          "required": ["type", "think"]
+                        },
+                        {
+                          "type": "object",
+                          "properties": {
+                            "type": {
+                              "type": "string",
+                              "enum": ["image_url"]
+                            },
+                            "imageUrl": {
+                              "type": "object",
+                              "properties": {
+                                "url": {
+                                  "type": "string"
+                                },
+                                "id": {
+                                  "type": "string"
+                                }
+                              },
+                              "required": ["url"]
+                            }
+                          },
+                          "required": ["type", "imageUrl"]
+                        },
+                        {
+                          "type": "object",
+                          "properties": {
+                            "type": {
+                              "type": "string",
+                              "enum": ["audio_url"]
+                            },
+                            "audioUrl": {
+                              "type": "object",
+                              "properties": {
+                                "url": {
+                                  "type": "string"
+                                },
+                                "id": {
+                                  "type": "string"
+                                }
+                              },
+                              "required": ["url"]
+                            }
+                          },
+                          "required": ["type", "audioUrl"]
+                        },
+                        {
+                          "type": "object",
+                          "properties": {
+                            "type": {
+                              "type": "string",
+                              "enum": ["video_url"]
+                            },
+                            "videoUrl": {
+                              "type": "object",
+                              "properties": {
+                                "url": {
+                                  "type": "string"
+                                },
+                                "id": {
+                                  "type": "string"
+                                }
+                              },
+                              "required": ["url"]
+                            }
+                          },
+                          "required": ["type", "videoUrl"]
+                        }
+                      ]
+                    }
+                  }
+                ]
+              },
+              "isError": {
+                "type": "boolean"
+              },
+              "note": {
+                "type": "string"
+              }
+            },
+            "required": ["output"]
+          },
+          "finishReason": {
+            "type": "string"
+          },
+          "usage": {
+            "type": "object",
+            "properties": {
+              "inputOther": {
+                "type": "number"
+              },
+              "output": {
+                "type": "number"
+              },
+              "inputCacheRead": {
+                "type": "number"
+              },
+              "inputCacheCreation": {
+                "type": "number"
+              }
+            },
+            "required": ["inputOther", "output", "inputCacheRead", "inputCacheCreation"]
+          },
+          "llmFirstTokenLatencyMs": {
+            "type": "number"
+          },
+          "llmStreamDurationMs": {
+            "type": "number"
+          },
+          "llmRequestBuildMs": {
+            "type": "number"
+          },
+          "llmServerFirstTokenMs": {
+            "type": "number"
+          },
+          "llmServerDecodeMs": {
+            "type": "number"
+          },
+          "llmClientConsumeMs": {
+            "type": "number"
+          },
+          "messageId": {
+            "type": "string"
+          },
+          "providerFinishReason": {
+            "type": "string",
+            "enum": ["completed", "tool_calls", "truncated", "filtered", "paused", "other"]
+          },
+          "rawFinishReason": {
+            "type": "string"
+          }
+        },
+        "required": ["type"],
+        "anyOf": [
+          {
+            "type": "object",
+            "properties": {
+              "type": {
+                "type": "string",
+                "enum": ["step.begin"]
+              },
+              "uuid": {
+                "type": "string"
+              }
+            },
+            "required": ["type", "uuid"]
+          },
+          {
+            "type": "object",
+            "properties": {
+              "type": {
+                "type": "string",
+                "enum": ["step.end"]
+              },
+              "uuid": {
+                "type": "string"
+              }
+            },
+            "required": ["type", "uuid"]
+          },
+          {
+            "type": "object",
+            "properties": {
+              "type": {
+                "type": "string",
+                "enum": ["content.part"]
+              },
+              "stepUuid": {
+                "type": "string"
+              },
+              "part": {
+                "anyOf": [
+                  {
+                    "type": "object",
+                    "properties": {
+                      "type": {
+                        "type": "string",
+                        "enum": ["text"]
+                      },
+                      "text": {
+                        "type": "string"
+                      }
+                    },
+                    "required": ["type", "text"]
+                  },
+                  {
+                    "type": "object",
+                    "properties": {
+                      "type": {
+                        "type": "string",
+                        "enum": ["think"]
+                      },
+                      "think": {
+                        "type": "string"
+                      },
+                      "encrypted": {
+                        "type": "string"
+                      }
+                    },
+                    "required": ["type", "think"]
+                  },
+                  {
+                    "type": "object",
+                    "properties": {
+                      "type": {
+                        "type": "string",
+                        "enum": ["image_url"]
+                      },
+                      "imageUrl": {
+                        "type": "object",
+                        "properties": {
+                          "url": {
+                            "type": "string"
+                          },
+                          "id": {
+                            "type": "string"
+                          }
+                        },
+                        "required": ["url"]
+                      }
+                    },
+                    "required": ["type", "imageUrl"]
+                  },
+                  {
+                    "type": "object",
+                    "properties": {
+                      "type": {
+                        "type": "string",
+                        "enum": ["audio_url"]
+                      },
+                      "audioUrl": {
+                        "type": "object",
+                        "properties": {
+                          "url": {
+                            "type": "string"
+                          },
+                          "id": {
+                            "type": "string"
+                          }
+                        },
+                        "required": ["url"]
+                      }
+                    },
+                    "required": ["type", "audioUrl"]
+                  },
+                  {
+                    "type": "object",
+                    "properties": {
+                      "type": {
+                        "type": "string",
+                        "enum": ["video_url"]
+                      },
+                      "videoUrl": {
+                        "type": "object",
+                        "properties": {
+                          "url": {
+                            "type": "string"
+                          },
+                          "id": {
+                            "type": "string"
+                          }
+                        },
+                        "required": ["url"]
+                      }
+                    },
+                    "required": ["type", "videoUrl"]
+                  }
+                ]
+              }
+            },
+            "required": ["type", "stepUuid", "part"]
+          },
+          {
+            "type": "object",
+            "properties": {
+              "type": {
+                "type": "string",
+                "enum": ["tool.call"]
+              },
+              "stepUuid": {
+                "type": "string"
+              },
+              "toolCallId": {
+                "type": "string"
+              },
+              "name": {
+                "type": "string"
+              }
+            },
+            "required": ["type", "stepUuid", "toolCallId", "name"]
+          },
+          {
+            "type": "object",
+            "properties": {
+              "type": {
+                "type": "string",
+                "enum": ["tool.result"]
+              },
+              "toolCallId": {
+                "type": "string"
+              },
+              "result": {
+                "type": "object",
+                "properties": {
+                  "output": {
+                    "anyOf": [
+                      {
+                        "type": "string"
+                      },
+                      {
+                        "type": "array",
+                        "items": {
+                          "anyOf": [
+                            {
+                              "type": "object",
+                              "properties": {
+                                "type": {
+                                  "type": "string",
+                                  "enum": ["text"]
+                                },
+                                "text": {
+                                  "type": "string"
+                                }
+                              },
+                              "required": ["type", "text"]
+                            },
+                            {
+                              "type": "object",
+                              "properties": {
+                                "type": {
+                                  "type": "string",
+                                  "enum": ["think"]
+                                },
+                                "think": {
+                                  "type": "string"
+                                },
+                                "encrypted": {
+                                  "type": "string"
+                                }
+                              },
+                              "required": ["type", "think"]
+                            },
+                            {
+                              "type": "object",
+                              "properties": {
+                                "type": {
+                                  "type": "string",
+                                  "enum": ["image_url"]
+                                },
+                                "imageUrl": {
+                                  "type": "object",
+                                  "properties": {
+                                    "url": {
+                                      "type": "string"
+                                    },
+                                    "id": {
+                                      "type": "string"
+                                    }
+                                  },
+                                  "required": ["url"]
+                                }
+                              },
+                              "required": ["type", "imageUrl"]
+                            },
+                            {
+                              "type": "object",
+                              "properties": {
+                                "type": {
+                                  "type": "string",
+                                  "enum": ["audio_url"]
+                                },
+                                "audioUrl": {
+                                  "type": "object",
+                                  "properties": {
+                                    "url": {
+                                      "type": "string"
+                                    },
+                                    "id": {
+                                      "type": "string"
+                                    }
+                                  },
+                                  "required": ["url"]
+                                }
+                              },
+                              "required": ["type", "audioUrl"]
+                            },
+                            {
+                              "type": "object",
+                              "properties": {
+                                "type": {
+                                  "type": "string",
+                                  "enum": ["video_url"]
+                                },
+                                "videoUrl": {
+                                  "type": "object",
+                                  "properties": {
+                                    "url": {
+                                      "type": "string"
+                                    },
+                                    "id": {
+                                      "type": "string"
+                                    }
+                                  },
+                                  "required": ["url"]
+                                }
+                              },
+                              "required": ["type", "videoUrl"]
+                            }
+                          ]
+                        }
+                      }
+                    ]
+                  },
+                  "isError": {
+                    "type": "boolean"
+                  },
+                  "note": {
+                    "type": "string"
+                  }
+                },
+                "required": ["output"]
+              }
+            },
+            "required": ["type", "toolCallId", "result"]
+          }
+        ]
+      }
+    },
+    "required": ["event"]
+  },
+  "recordSchema": {
+    "type": "object",
+    "properties": {
+      "type": {
+        "type": "string",
+        "enum": ["context.append_loop_event"]
+      },
+      "event": {
+        "type": "object",
+        "properties": {
+          "type": {
+            "type": "string",
+            "enum": ["step.begin", "step.end", "content.part", "tool.call", "tool.result"]
+          },
+          "uuid": {
+            "type": "string"
+          },
+          "parentUuid": {
+            "type": "string"
+          },
+          "turnId": {
+            "type": "string"
+          },
+          "step": {
+            "type": "number"
+          },
+          "stepUuid": {
+            "type": "string"
+          },
+          "part": {
+            "anyOf": [
+              {
+                "type": "object",
+                "properties": {
+                  "type": {
+                    "type": "string",
+                    "enum": ["text"]
+                  },
+                  "text": {
+                    "type": "string"
+                  }
+                },
+                "required": ["type", "text"]
+              },
+              {
+                "type": "object",
+                "properties": {
+                  "type": {
+                    "type": "string",
+                    "enum": ["think"]
+                  },
+                  "think": {
+                    "type": "string"
+                  },
+                  "encrypted": {
+                    "type": "string"
+                  }
+                },
+                "required": ["type", "think"]
+              },
+              {
+                "type": "object",
+                "properties": {
+                  "type": {
+                    "type": "string",
+                    "enum": ["image_url"]
+                  },
+                  "imageUrl": {
+                    "type": "object",
+                    "properties": {
+                      "url": {
+                        "type": "string"
+                      },
+                      "id": {
+                        "type": "string"
+                      }
+                    },
+                    "required": ["url"]
+                  }
+                },
+                "required": ["type", "imageUrl"]
+              },
+              {
+                "type": "object",
+                "properties": {
+                  "type": {
+                    "type": "string",
+                    "enum": ["audio_url"]
+                  },
+                  "audioUrl": {
+                    "type": "object",
+                    "properties": {
+                      "url": {
+                        "type": "string"
+                      },
+                      "id": {
+                        "type": "string"
+                      }
+                    },
+                    "required": ["url"]
+                  }
+                },
+                "required": ["type", "audioUrl"]
+              },
+              {
+                "type": "object",
+                "properties": {
+                  "type": {
+                    "type": "string",
+                    "enum": ["video_url"]
+                  },
+                  "videoUrl": {
+                    "type": "object",
+                    "properties": {
+                      "url": {
+                        "type": "string"
+                      },
+                      "id": {
+                        "type": "string"
+                      }
+                    },
+                    "required": ["url"]
+                  }
+                },
+                "required": ["type", "videoUrl"]
+              }
+            ]
+          },
+          "toolCallId": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "args": {},
+          "extras": {
+            "type": "object"
+          },
+          "result": {
+            "type": "object",
+            "properties": {
+              "output": {
+                "anyOf": [
+                  {
+                    "type": "string"
+                  },
+                  {
+                    "type": "array",
+                    "items": {
+                      "anyOf": [
+                        {
+                          "type": "object",
+                          "properties": {
+                            "type": {
+                              "type": "string",
+                              "enum": ["text"]
+                            },
+                            "text": {
+                              "type": "string"
+                            }
+                          },
+                          "required": ["type", "text"]
+                        },
+                        {
+                          "type": "object",
+                          "properties": {
+                            "type": {
+                              "type": "string",
+                              "enum": ["think"]
+                            },
+                            "think": {
+                              "type": "string"
+                            },
+                            "encrypted": {
+                              "type": "string"
+                            }
+                          },
+                          "required": ["type", "think"]
+                        },
+                        {
+                          "type": "object",
+                          "properties": {
+                            "type": {
+                              "type": "string",
+                              "enum": ["image_url"]
+                            },
+                            "imageUrl": {
+                              "type": "object",
+                              "properties": {
+                                "url": {
+                                  "type": "string"
+                                },
+                                "id": {
+                                  "type": "string"
+                                }
+                              },
+                              "required": ["url"]
+                            }
+                          },
+                          "required": ["type", "imageUrl"]
+                        },
+                        {
+                          "type": "object",
+                          "properties": {
+                            "type": {
+                              "type": "string",
+                              "enum": ["audio_url"]
+                            },
+                            "audioUrl": {
+                              "type": "object",
+                              "properties": {
+                                "url": {
+                                  "type": "string"
+                                },
+                                "id": {
+                                  "type": "string"
+                                }
+                              },
+                              "required": ["url"]
+                            }
+                          },
+                          "required": ["type", "audioUrl"]
+                        },
+                        {
+                          "type": "object",
+                          "properties": {
+                            "type": {
+                              "type": "string",
+                              "enum": ["video_url"]
+                            },
+                            "videoUrl": {
+                              "type": "object",
+                              "properties": {
+                                "url": {
+                                  "type": "string"
+                                },
+                                "id": {
+                                  "type": "string"
+                                }
+                              },
+                              "required": ["url"]
+                            }
+                          },
+                          "required": ["type", "videoUrl"]
+                        }
+                      ]
+                    }
+                  }
+                ]
+              },
+              "isError": {
+                "type": "boolean"
+              },
+              "note": {
+                "type": "string"
+              }
+            },
+            "required": ["output"]
+          },
+          "finishReason": {
+            "type": "string"
+          },
+          "usage": {
+            "type": "object",
+            "properties": {
+              "inputOther": {
+                "type": "number"
+              },
+              "output": {
+                "type": "number"
+              },
+              "inputCacheRead": {
+                "type": "number"
+              },
+              "inputCacheCreation": {
+                "type": "number"
+              }
+            },
+            "required": ["inputOther", "output", "inputCacheRead", "inputCacheCreation"]
+          },
+          "llmFirstTokenLatencyMs": {
+            "type": "number"
+          },
+          "llmStreamDurationMs": {
+            "type": "number"
+          },
+          "llmRequestBuildMs": {
+            "type": "number"
+          },
+          "llmServerFirstTokenMs": {
+            "type": "number"
+          },
+          "llmServerDecodeMs": {
+            "type": "number"
+          },
+          "llmClientConsumeMs": {
+            "type": "number"
+          },
+          "messageId": {
+            "type": "string"
+          },
+          "providerFinishReason": {
+            "type": "string",
+            "enum": ["completed", "tool_calls", "truncated", "filtered", "paused", "other"]
+          },
+          "rawFinishReason": {
+            "type": "string"
+          }
+        },
+        "required": ["type"],
+        "anyOf": [
+          {
+            "type": "object",
+            "properties": {
+              "type": {
+                "type": "string",
+                "enum": ["step.begin"]
+              },
+              "uuid": {
+                "type": "string"
+              }
+            },
+            "required": ["type", "uuid"]
+          },
+          {
+            "type": "object",
+            "properties": {
+              "type": {
+                "type": "string",
+                "enum": ["step.end"]
+              },
+              "uuid": {
+                "type": "string"
+              }
+            },
+            "required": ["type", "uuid"]
+          },
+          {
+            "type": "object",
+            "properties": {
+              "type": {
+                "type": "string",
+                "enum": ["content.part"]
+              },
+              "stepUuid": {
+                "type": "string"
+              },
+              "part": {
+                "anyOf": [
+                  {
+                    "type": "object",
+                    "properties": {
+                      "type": {
+                        "type": "string",
+                        "enum": ["text"]
+                      },
+                      "text": {
+                        "type": "string"
+                      }
+                    },
+                    "required": ["type", "text"]
+                  },
+                  {
+                    "type": "object",
+                    "properties": {
+                      "type": {
+                        "type": "string",
+                        "enum": ["think"]
+                      },
+                      "think": {
+                        "type": "string"
+                      },
+                      "encrypted": {
+                        "type": "string"
+                      }
+                    },
+                    "required": ["type", "think"]
+                  },
+                  {
+                    "type": "object",
+                    "properties": {
+                      "type": {
+                        "type": "string",
+                        "enum": ["image_url"]
+                      },
+                      "imageUrl": {
+                        "type": "object",
+                        "properties": {
+                          "url": {
+                            "type": "string"
+                          },
+                          "id": {
+                            "type": "string"
+                          }
+                        },
+                        "required": ["url"]
+                      }
+                    },
+                    "required": ["type", "imageUrl"]
+                  },
+                  {
+                    "type": "object",
+                    "properties": {
+                      "type": {
+                        "type": "string",
+                        "enum": ["audio_url"]
+                      },
+                      "audioUrl": {
+                        "type": "object",
+                        "properties": {
+                          "url": {
+                            "type": "string"
+                          },
+                          "id": {
+                            "type": "string"
+                          }
+                        },
+                        "required": ["url"]
+                      }
+                    },
+                    "required": ["type", "audioUrl"]
+                  },
+                  {
+                    "type": "object",
+                    "properties": {
+                      "type": {
+                        "type": "string",
+                        "enum": ["video_url"]
+                      },
+                      "videoUrl": {
+                        "type": "object",
+                        "properties": {
+                          "url": {
+                            "type": "string"
+                          },
+                          "id": {
+                            "type": "string"
+                          }
+                        },
+                        "required": ["url"]
+                      }
+                    },
+                    "required": ["type", "videoUrl"]
+                  }
+                ]
+              }
+            },
+            "required": ["type", "stepUuid", "part"]
+          },
+          {
+            "type": "object",
+            "properties": {
+              "type": {
+                "type": "string",
+                "enum": ["tool.call"]
+              },
+              "stepUuid": {
+                "type": "string"
+              },
+              "toolCallId": {
+                "type": "string"
+              },
+              "name": {
+                "type": "string"
+              }
+            },
+            "required": ["type", "stepUuid", "toolCallId", "name"]
+          },
+          {
+            "type": "object",
+            "properties": {
+              "type": {
+                "type": "string",
+                "enum": ["tool.result"]
+              },
+              "toolCallId": {
+                "type": "string"
+              },
+              "result": {
+                "type": "object",
+                "properties": {
+                  "output": {
+                    "anyOf": [
+                      {
+                        "type": "string"
+                      },
+                      {
+                        "type": "array",
+                        "items": {
+                          "anyOf": [
+                            {
+                              "type": "object",
+                              "properties": {
+                                "type": {
+                                  "type": "string",
+                                  "enum": ["text"]
+                                },
+                                "text": {
+                                  "type": "string"
+                                }
+                              },
+                              "required": ["type", "text"]
+                            },
+                            {
+                              "type": "object",
+                              "properties": {
+                                "type": {
+                                  "type": "string",
+                                  "enum": ["think"]
+                                },
+                                "think": {
+                                  "type": "string"
+                                },
+                                "encrypted": {
+                                  "type": "string"
+                                }
+                              },
+                              "required": ["type", "think"]
+                            },
+                            {
+                              "type": "object",
+                              "properties": {
+                                "type": {
+                                  "type": "string",
+                                  "enum": ["image_url"]
+                                },
+                                "imageUrl": {
+                                  "type": "object",
+                                  "properties": {
+                                    "url": {
+                                      "type": "string"
+                                    },
+                                    "id": {
+                                      "type": "string"
+                                    }
+                                  },
+                                  "required": ["url"]
+                                }
+                              },
+                              "required": ["type", "imageUrl"]
+                            },
+                            {
+                              "type": "object",
+                              "properties": {
+                                "type": {
+                                  "type": "string",
+                                  "enum": ["audio_url"]
+                                },
+                                "audioUrl": {
+                                  "type": "object",
+                                  "properties": {
+                                    "url": {
+                                      "type": "string"
+                                    },
+                                    "id": {
+                                      "type": "string"
+                                    }
+                                  },
+                                  "required": ["url"]
+                                }
+                              },
+                              "required": ["type", "audioUrl"]
+                            },
+                            {
+                              "type": "object",
+                              "properties": {
+                                "type": {
+                                  "type": "string",
+                                  "enum": ["video_url"]
+                                },
+                                "videoUrl": {
+                                  "type": "object",
+                                  "properties": {
+                                    "url": {
+                                      "type": "string"
+                                    },
+                                    "id": {
+                                      "type": "string"
+                                    }
+                                  },
+                                  "required": ["url"]
+                                }
+                              },
+                              "required": ["type", "videoUrl"]
+                            }
+                          ]
+                        }
+                      }
+                    ]
+                  },
+                  "isError": {
+                    "type": "boolean"
+                  },
+                  "note": {
+                    "type": "string"
+                  }
+                },
+                "required": ["output"]
+              }
+            },
+            "required": ["type", "toolCallId", "result"]
+          }
+        ]
+      },
+      "time": {
+        "type": "number",
+        "minimum": 0
+      }
+    },
+    "required": ["type", "event", "time"]
+  },
+  "recordChannel": "wire",
+  "evidence": {
+    "existence": ["kimi-runtime-headless"],
+    "shape": ["kimi-runtime-headless", "kimi-exact-release-source"],
+    "carrier": ["kimi-runtime-headless", "kimi-exact-release-source"]
+  },
+  "confidence": "verified-headless",
+  "variants": [
+    {
+      "match": {
+        "event.type": "step.begin"
+      },
+      "evidence": {
+        "existence": ["kimi-runtime-headless"],
+        "shape": ["kimi-runtime-headless", "kimi-exact-release-source"]
+      },
+      "confidence": "verified-headless"
+    },
+    {
+      "match": {
+        "event.type": "step.end"
+      },
+      "evidence": {
+        "existence": ["kimi-runtime-headless"],
+        "shape": ["kimi-runtime-headless", "kimi-exact-release-source"]
+      },
+      "confidence": "verified-headless"
+    },
+    {
+      "match": {
+        "event.type": "content.part"
+      },
+      "evidence": {
+        "existence": ["kimi-runtime-headless"],
+        "shape": ["kimi-runtime-headless", "kimi-exact-release-source"]
+      },
+      "confidence": "verified-headless"
+    },
+    {
+      "match": {
+        "event.part.type": "text"
+      },
+      "evidence": {
+        "existence": ["kimi-runtime-headless"],
+        "shape": ["kimi-runtime-headless", "kimi-exact-release-source"]
+      },
+      "confidence": "verified-headless"
+    },
+    {
+      "match": {
+        "event.part.type": "think"
+      },
+      "evidence": {
+        "existence": ["kimi-runtime-headless"],
+        "shape": ["kimi-runtime-headless", "kimi-exact-release-source"]
+      },
+      "confidence": "verified-headless"
+    },
+    {
+      "match": {
+        "event.part.type": "image_url"
+      },
+      "evidence": {
+        "existence": ["kimi-exact-release-source"],
+        "shape": ["kimi-exact-release-source"]
+      },
+      "confidence": "unverified"
+    },
+    {
+      "match": {
+        "event.part.type": "audio_url"
+      },
+      "evidence": {
+        "existence": ["kimi-exact-release-source"],
+        "shape": ["kimi-exact-release-source"]
+      },
+      "confidence": "unverified"
+    },
+    {
+      "match": {
+        "event.part.type": "video_url"
+      },
+      "evidence": {
+        "existence": ["kimi-exact-release-source"],
+        "shape": ["kimi-exact-release-source"]
+      },
+      "confidence": "unverified"
+    },
+    {
+      "match": {
+        "event.type": "tool.call"
+      },
+      "evidence": {
+        "existence": ["kimi-runtime-headless"],
+        "shape": ["kimi-runtime-headless", "kimi-exact-release-source"]
+      },
+      "confidence": "verified-headless"
+    },
+    {
+      "match": {
+        "event.type": "tool.result"
+      },
+      "evidence": {
+        "existence": ["kimi-runtime-headless"],
+        "shape": ["kimi-runtime-headless", "kimi-exact-release-source"]
+      },
+      "confidence": "verified-headless"
+    },
+    {
+      "match": {
+        "event.providerFinishReason": "completed"
+      },
+      "evidence": {
+        "existence": ["kimi-runtime-headless"],
+        "shape": ["kimi-runtime-headless", "kimi-exact-release-source"]
+      },
+      "confidence": "verified-headless"
+    },
+    {
+      "match": {
+        "event.providerFinishReason": "tool_calls"
+      },
+      "evidence": {
+        "existence": ["kimi-runtime-headless"],
+        "shape": ["kimi-runtime-headless", "kimi-exact-release-source"]
+      },
+      "confidence": "verified-headless"
+    },
+    {
+      "match": {
+        "event.providerFinishReason": "truncated"
+      },
+      "evidence": {
+        "existence": ["kimi-exact-release-source"],
+        "shape": ["kimi-exact-release-source"]
+      },
+      "confidence": "unverified"
+    },
+    {
+      "match": {
+        "event.providerFinishReason": "filtered"
+      },
+      "evidence": {
+        "existence": ["kimi-exact-release-source"],
+        "shape": ["kimi-exact-release-source"]
+      },
+      "confidence": "unverified"
+    },
+    {
+      "match": {
+        "event.providerFinishReason": "paused"
+      },
+      "evidence": {
+        "existence": ["kimi-exact-release-source"],
+        "shape": ["kimi-exact-release-source"]
+      },
+      "confidence": "unverified"
+    },
+    {
+      "match": {
+        "event.providerFinishReason": "other"
+      },
+      "evidence": {
+        "existence": ["kimi-exact-release-source"],
+        "shape": ["kimi-exact-release-source"]
+      },
+      "confidence": "unverified"
+    }
+  ],
+  "fixture": "captures/kimi@0.34.0/tool-success/wire.jsonl"
+}

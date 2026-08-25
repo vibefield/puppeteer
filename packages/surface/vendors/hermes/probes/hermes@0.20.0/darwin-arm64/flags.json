@@ -1,0 +1,27 @@
+{
+  "visibleHelpOptions": {
+    "--tui": true,
+    "--cli": true,
+    "--resume": true,
+    "--continue": true,
+    "--worktree": true,
+    "--yolo": true,
+    "--ignore-user-config": true,
+    "--ignore-rules": true,
+    "--safe-mode": true,
+    "--version": true
+  },
+  "visibleSubcommands": {
+    "chat": true,
+    "acp": true,
+    "version": true,
+    "sessions": true,
+    "dashboard": true
+  },
+  "rejectedOptionProbe": {
+    "args": ["--definitely-not-a-hermes-option"],
+    "status": 2,
+    "stdout": "",
+    "stderr": "usage: hermes [-h] [--version] [-z PROMPT] [--usage-file PATH] [-m MODEL]\n              [--provider PROVIDER] [--reasoning LEVEL] [-t TOOLSETS]\n              [--resume SESSION] [--no-restore-cwd]\n              [--continue [SESSION_NAME]] [--worktree] [--accept-hooks]\n              [--skills SKILLS] [--yolo] [--pass-session-id]\n              [--ignore-user-config] [--ignore-rules] [--safe-mode] [--tui]\n              [--cli] [--dev]\n              {chat,model,moa,fallback,secrets,egress,migrate,gateway,proxy,lsp,setup,whatsapp,whatsapp-cloud,slack,send,login,logout,auth,status,cron,sync,webhook,portal,kanban,project,hooks,doctor,security,approvals,dump,debug,backup,checkpoints,import,import-agent,config,skin,console,pairing,skills,bundles,plugins,curator,pets,journey,learning,memory-graph,memory,tools,computer-use,mcp,sessions,insights,monitoring,claw,version,update,uninstall,acp,profile,completion,dashboard,serve,desktop,gui,logs,prompt-size} ...\nhermes: error: unrecognized arguments: --definitely-not-a-hermes-option"
+  }
+}

@@ -1,0 +1,10 @@
+{
+  "vendor": "opencode",
+  "version": "1.18.16",
+  "platform": "darwin-arm64",
+  "sha256": "a41776bf64c75786d6baf531b840ffb873c090d7c44793ae2dd4b1896de56a1f",
+  "capturedAt": "2026-08-10T07:08:47.000Z",
+  "sourceUrl": "https://registry.npmjs.org/opencode-darwin-arm64/-/opencode-darwin-arm64-1.18.16.tgz",
+  "sourceTag": "v1.18.16",
+  "sourceRevision": "a3647eb025c7615159d417dcc49fc39fdaeba65b"
+}

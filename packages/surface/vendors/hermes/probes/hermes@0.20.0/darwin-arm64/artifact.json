@@ -1,0 +1,16 @@
+{
+  "probeKind": "console-script",
+  "vendor": "hermes",
+  "vendorVersion": "0.20.0",
+  "platform": "darwin-arm64",
+  "artifact": "$CHOPSTICKS_HERMES_BIN",
+  "identity": "source-revision-and-lockfile",
+  "note": "hermes is a Python console script; product identity is the pinned checkout, not the wrapper bytes.",
+  "versionArgs": ["--version"],
+  "versionOutput": "Hermes Agent v0.20.0 (2026.8.3)",
+  "probeHost": {
+    "platform": "darwin",
+    "arch": "arm64"
+  },
+  "probedAt": "2026-08-12T18:56:46.921Z"
+}

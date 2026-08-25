@@ -1,0 +1,2 @@
+{"method":"signals.json","params":{"contextTokensUsed":13,"contextWindowTokens":131072,"contextWindowUsage":0.0001,"primaryModelId":"anon-a11a5ed000000004","compactionCount":0,"turnCount":1,"toolCallCount":0}}
+{"method":"summary.json","params":{"info":{"id":"anon-a11a5ed000000001","cwd":"/workspace"},"current_model_id":"anon-a11a5ed000000004","created_at":"<redacted:timestamp>","updated_at":"<redacted:timestamp>","num_messages":2,"num_chat_messages":2,"agent_name":"grok"}}

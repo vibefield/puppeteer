@@ -1,0 +1,45 @@
+{
+  "version": 1,
+  "flows": [
+    {
+      "id": "happy-turn",
+      "intent": "turn.basic",
+      "scenario": "happy-turn",
+      "title": "Happy turn",
+      "summary": "Busy, assistant message and part, then durable idle.",
+      "kind": "typical"
+    },
+    {
+      "id": "permission-allow",
+      "intent": "blocker.permission.allow",
+      "scenario": "permission-allow",
+      "title": "Permission allow",
+      "summary": "SSE permission request resolved by a later HTTP decision.",
+      "kind": "lifecycle"
+    },
+    {
+      "id": "question-reply",
+      "intent": "blocker.question.reply",
+      "scenario": "question-reply",
+      "title": "Question reply",
+      "summary": "Structured native question resolved with nested answer arrays.",
+      "kind": "lifecycle"
+    },
+    {
+      "id": "reconnect",
+      "intent": "transport.reconnect",
+      "scenario": "reconnect",
+      "title": "SSE reconnect",
+      "summary": "A replacement stream connects without fabricating history replay.",
+      "kind": "adversarial"
+    },
+    {
+      "id": "out-of-order",
+      "intent": "transport.out-of-order",
+      "scenario": "out-of-order",
+      "title": "Part before message",
+      "summary": "A message part arrives before the durable owner message.",
+      "kind": "adversarial"
+    }
+  ]
+}

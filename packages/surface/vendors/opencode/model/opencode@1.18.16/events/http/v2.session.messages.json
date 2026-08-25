@@ -1,0 +1,1092 @@
+{
+  "surface": "opencode",
+  "surfaceVersion": "1.18.16",
+  "event": "http/v2.session.messages",
+  "channel": "http",
+  "channels": [
+    "http"
+  ],
+  "transport": "http",
+  "direction": "client-to-agent",
+  "trigger": "Get session messages — Retrieve projected messages for a session. Items keep the requested order across pages; use cursor.next or cursor.previous to move through the ordered timeline.",
+  "payloadSchema": {
+    "type": "object",
+    "properties": {
+      "method": {
+        "type": "string"
+      },
+      "route": {
+        "type": "string"
+      },
+      "params": {
+        "type": "object",
+        "properties": {
+          "sessionID": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "sessionID"
+        ]
+      },
+      "query": {
+        "type": "object",
+        "properties": {
+          "cursor": {
+            "type": "string"
+          },
+          "limit": {
+            "type": "number"
+          },
+          "order": {
+            "type": "string"
+          }
+        }
+      }
+    },
+    "required": [
+      "method",
+      "route",
+      "params"
+    ]
+  },
+  "resultSchema": {
+    "type": "object",
+    "properties": {
+      "method": {
+        "type": "string",
+        "enum": [
+          "GET"
+        ]
+      },
+      "route": {
+        "type": "string",
+        "enum": [
+          "/api/session/:sessionID/message"
+        ]
+      },
+      "status": {
+        "type": "integer",
+        "minimum": 200,
+        "maximum": 299
+      },
+      "params": {
+        "type": "object",
+        "properties": {
+          "sessionID": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "sessionID"
+        ]
+      },
+      "query": {
+        "type": "object",
+        "properties": {
+          "cursor": {
+            "type": "string"
+          },
+          "limit": {
+            "type": "number"
+          },
+          "order": {
+            "type": "string"
+          }
+        }
+      },
+      "body": {
+        "type": "object",
+        "properties": {
+          "cursor": {
+            "type": "object",
+            "properties": {
+              "next": {
+                "type": "string"
+              },
+              "previous": {
+                "type": "string"
+              }
+            }
+          },
+          "data": {
+            "type": "array",
+            "items": {
+              "anyOf": [
+                {
+                  "type": "object",
+                  "properties": {
+                    "agent": {
+                      "type": "string"
+                    },
+                    "id": {
+                      "type": "string"
+                    },
+                    "metadata": {
+                      "type": "object"
+                    },
+                    "time": {
+                      "type": "object",
+                      "properties": {
+                        "created": {
+                          "type": "number"
+                        }
+                      },
+                      "required": [
+                        "created"
+                      ]
+                    },
+                    "type": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "agent",
+                    "id",
+                    "time",
+                    "type"
+                  ]
+                },
+                {
+                  "type": "object",
+                  "properties": {
+                    "id": {
+                      "type": "string"
+                    },
+                    "metadata": {
+                      "type": "object"
+                    },
+                    "model": {
+                      "type": "object",
+                      "properties": {
+                        "id": {
+                          "type": "string"
+                        },
+                        "providerID": {
+                          "type": "string"
+                        },
+                        "variant": {
+                          "type": "string"
+                        }
+                      },
+                      "required": [
+                        "id",
+                        "providerID"
+                      ]
+                    },
+                    "time": {
+                      "type": "object",
+                      "properties": {
+                        "created": {
+                          "type": "number"
+                        }
+                      },
+                      "required": [
+                        "created"
+                      ]
+                    },
+                    "type": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "id",
+                    "model",
+                    "time",
+                    "type"
+                  ]
+                },
+                {
+                  "type": "object",
+                  "properties": {
+                    "agents": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "name": {
+                            "type": "string"
+                          },
+                          "source": {
+                            "type": "object",
+                            "properties": {
+                              "end": {
+                                "type": "number"
+                              },
+                              "start": {
+                                "type": "number"
+                              },
+                              "text": {
+                                "type": "string"
+                              }
+                            },
+                            "required": [
+                              "end",
+                              "start",
+                              "text"
+                            ]
+                          }
+                        },
+                        "required": [
+                          "name"
+                        ]
+                      }
+                    },
+                    "files": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "description": {
+                            "type": "string"
+                          },
+                          "mime": {
+                            "type": "string"
+                          },
+                          "name": {
+                            "type": "string"
+                          },
+                          "source": {
+                            "type": "object",
+                            "properties": {
+                              "end": {
+                                "type": "number"
+                              },
+                              "start": {
+                                "type": "number"
+                              },
+                              "text": {
+                                "type": "string"
+                              }
+                            },
+                            "required": [
+                              "end",
+                              "start",
+                              "text"
+                            ]
+                          },
+                          "uri": {
+                            "type": "string"
+                          }
+                        },
+                        "required": [
+                          "mime",
+                          "uri"
+                        ]
+                      }
+                    },
+                    "id": {
+                      "type": "string"
+                    },
+                    "metadata": {
+                      "type": "object"
+                    },
+                    "text": {
+                      "type": "string"
+                    },
+                    "time": {
+                      "type": "object",
+                      "properties": {
+                        "created": {
+                          "type": "number"
+                        }
+                      },
+                      "required": [
+                        "created"
+                      ]
+                    },
+                    "type": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "id",
+                    "text",
+                    "time",
+                    "type"
+                  ]
+                },
+                {
+                  "type": "object",
+                  "properties": {
+                    "id": {
+                      "type": "string"
+                    },
+                    "metadata": {
+                      "type": "object"
+                    },
+                    "sessionID": {
+                      "type": "string"
+                    },
+                    "text": {
+                      "type": "string"
+                    },
+                    "time": {
+                      "type": "object",
+                      "properties": {
+                        "created": {
+                          "type": "number"
+                        }
+                      },
+                      "required": [
+                        "created"
+                      ]
+                    },
+                    "type": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "id",
+                    "sessionID",
+                    "text",
+                    "time",
+                    "type"
+                  ]
+                },
+                {
+                  "type": "object",
+                  "properties": {
+                    "id": {
+                      "type": "string"
+                    },
+                    "metadata": {
+                      "type": "object"
+                    },
+                    "text": {
+                      "type": "string"
+                    },
+                    "time": {
+                      "type": "object",
+                      "properties": {
+                        "created": {
+                          "type": "number"
+                        }
+                      },
+                      "required": [
+                        "created"
+                      ]
+                    },
+                    "type": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "id",
+                    "text",
+                    "time",
+                    "type"
+                  ]
+                },
+                {
+                  "type": "object",
+                  "properties": {
+                    "callID": {
+                      "type": "string"
+                    },
+                    "command": {
+                      "type": "string"
+                    },
+                    "id": {
+                      "type": "string"
+                    },
+                    "metadata": {
+                      "type": "object"
+                    },
+                    "output": {
+                      "type": "string"
+                    },
+                    "time": {
+                      "type": "object",
+                      "properties": {
+                        "completed": {
+                          "type": "number"
+                        },
+                        "created": {
+                          "type": "number"
+                        }
+                      },
+                      "required": [
+                        "created"
+                      ]
+                    },
+                    "type": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "callID",
+                    "command",
+                    "id",
+                    "output",
+                    "time",
+                    "type"
+                  ]
+                },
+                {
+                  "type": "object",
+                  "properties": {
+                    "agent": {
+                      "type": "string"
+                    },
+                    "content": {
+                      "type": "array",
+                      "items": {
+                        "anyOf": [
+                          {
+                            "type": "object",
+                            "properties": {
+                              "id": {
+                                "type": "string"
+                              },
+                              "text": {
+                                "type": "string"
+                              },
+                              "type": {
+                                "type": "string"
+                              }
+                            },
+                            "required": [
+                              "id",
+                              "text",
+                              "type"
+                            ]
+                          },
+                          {
+                            "type": "object",
+                            "properties": {
+                              "id": {
+                                "type": "string"
+                              },
+                              "providerMetadata": {
+                                "type": "object"
+                              },
+                              "text": {
+                                "type": "string"
+                              },
+                              "time": {
+                                "type": "object",
+                                "properties": {
+                                  "completed": {
+                                    "type": "number"
+                                  },
+                                  "created": {
+                                    "type": "number"
+                                  }
+                                },
+                                "required": [
+                                  "created"
+                                ]
+                              },
+                              "type": {
+                                "type": "string"
+                              }
+                            },
+                            "required": [
+                              "id",
+                              "text",
+                              "type"
+                            ]
+                          },
+                          {
+                            "type": "object",
+                            "properties": {
+                              "id": {
+                                "type": "string"
+                              },
+                              "name": {
+                                "type": "string"
+                              },
+                              "provider": {
+                                "type": "object",
+                                "properties": {
+                                  "executed": {
+                                    "type": "boolean"
+                                  },
+                                  "metadata": {
+                                    "type": "object"
+                                  },
+                                  "resultMetadata": {
+                                    "type": "object"
+                                  }
+                                },
+                                "required": [
+                                  "executed"
+                                ]
+                              },
+                              "state": {
+                                "anyOf": [
+                                  {
+                                    "type": "object",
+                                    "properties": {
+                                      "input": {
+                                        "type": "string"
+                                      },
+                                      "status": {
+                                        "type": "string"
+                                      }
+                                    },
+                                    "required": [
+                                      "input",
+                                      "status"
+                                    ]
+                                  },
+                                  {
+                                    "type": "object",
+                                    "properties": {
+                                      "content": {
+                                        "type": "array",
+                                        "items": {
+                                          "anyOf": [
+                                            {
+                                              "type": "object",
+                                              "properties": {
+                                                "text": {
+                                                  "type": "string"
+                                                },
+                                                "type": {
+                                                  "type": "string"
+                                                }
+                                              },
+                                              "required": [
+                                                "text",
+                                                "type"
+                                              ]
+                                            },
+                                            {
+                                              "type": "object",
+                                              "properties": {
+                                                "mime": {
+                                                  "type": "string"
+                                                },
+                                                "name": {
+                                                  "type": "string"
+                                                },
+                                                "type": {
+                                                  "type": "string"
+                                                },
+                                                "uri": {
+                                                  "type": "string"
+                                                }
+                                              },
+                                              "required": [
+                                                "mime",
+                                                "type",
+                                                "uri"
+                                              ]
+                                            }
+                                          ]
+                                        }
+                                      },
+                                      "input": {
+                                        "type": "object"
+                                      },
+                                      "status": {
+                                        "type": "string"
+                                      },
+                                      "structured": {
+                                        "type": "object"
+                                      }
+                                    },
+                                    "required": [
+                                      "content",
+                                      "input",
+                                      "status",
+                                      "structured"
+                                    ]
+                                  },
+                                  {
+                                    "type": "object",
+                                    "properties": {
+                                      "attachments": {
+                                        "type": "array",
+                                        "items": {
+                                          "type": "object",
+                                          "properties": {
+                                            "description": {
+                                              "type": "string"
+                                            },
+                                            "mime": {
+                                              "type": "string"
+                                            },
+                                            "name": {
+                                              "type": "string"
+                                            },
+                                            "source": {
+                                              "type": "object",
+                                              "properties": {
+                                                "end": {
+                                                  "type": "number"
+                                                },
+                                                "start": {
+                                                  "type": "number"
+                                                },
+                                                "text": {
+                                                  "type": "string"
+                                                }
+                                              },
+                                              "required": [
+                                                "end",
+                                                "start",
+                                                "text"
+                                              ]
+                                            },
+                                            "uri": {
+                                              "type": "string"
+                                            }
+                                          },
+                                          "required": [
+                                            "mime",
+                                            "uri"
+                                          ]
+                                        }
+                                      },
+                                      "content": {
+                                        "type": "array",
+                                        "items": {
+                                          "anyOf": [
+                                            {
+                                              "type": "object",
+                                              "properties": {
+                                                "text": {
+                                                  "type": "string"
+                                                },
+                                                "type": {
+                                                  "type": "string"
+                                                }
+                                              },
+                                              "required": [
+                                                "text",
+                                                "type"
+                                              ]
+                                            },
+                                            {
+                                              "type": "object",
+                                              "properties": {
+                                                "mime": {
+                                                  "type": "string"
+                                                },
+                                                "name": {
+                                                  "type": "string"
+                                                },
+                                                "type": {
+                                                  "type": "string"
+                                                },
+                                                "uri": {
+                                                  "type": "string"
+                                                }
+                                              },
+                                              "required": [
+                                                "mime",
+                                                "type",
+                                                "uri"
+                                              ]
+                                            }
+                                          ]
+                                        }
+                                      },
+                                      "input": {
+                                        "type": "object"
+                                      },
+                                      "outputPaths": {
+                                        "type": "array",
+                                        "items": {
+                                          "type": "string"
+                                        }
+                                      },
+                                      "result": {},
+                                      "status": {
+                                        "type": "string"
+                                      },
+                                      "structured": {
+                                        "type": "object"
+                                      }
+                                    },
+                                    "required": [
+                                      "content",
+                                      "input",
+                                      "status",
+                                      "structured"
+                                    ]
+                                  },
+                                  {
+                                    "type": "object",
+                                    "properties": {
+                                      "content": {
+                                        "type": "array",
+                                        "items": {
+                                          "anyOf": [
+                                            {
+                                              "type": "object",
+                                              "properties": {
+                                                "text": {
+                                                  "type": "string"
+                                                },
+                                                "type": {
+                                                  "type": "string"
+                                                }
+                                              },
+                                              "required": [
+                                                "text",
+                                                "type"
+                                              ]
+                                            },
+                                            {
+                                              "type": "object",
+                                              "properties": {
+                                                "mime": {
+                                                  "type": "string"
+                                                },
+                                                "name": {
+                                                  "type": "string"
+                                                },
+                                                "type": {
+                                                  "type": "string"
+                                                },
+                                                "uri": {
+                                                  "type": "string"
+                                                }
+                                              },
+                                              "required": [
+                                                "mime",
+                                                "type",
+                                                "uri"
+                                              ]
+                                            }
+                                          ]
+                                        }
+                                      },
+                                      "error": {
+                                        "type": "object",
+                                        "properties": {
+                                          "message": {
+                                            "type": "string"
+                                          },
+                                          "type": {
+                                            "type": "string"
+                                          }
+                                        },
+                                        "required": [
+                                          "message",
+                                          "type"
+                                        ]
+                                      },
+                                      "input": {
+                                        "type": "object"
+                                      },
+                                      "result": {},
+                                      "status": {
+                                        "type": "string"
+                                      },
+                                      "structured": {
+                                        "type": "object"
+                                      }
+                                    },
+                                    "required": [
+                                      "content",
+                                      "error",
+                                      "input",
+                                      "status",
+                                      "structured"
+                                    ]
+                                  }
+                                ]
+                              },
+                              "time": {
+                                "type": "object",
+                                "properties": {
+                                  "completed": {
+                                    "type": "number"
+                                  },
+                                  "created": {
+                                    "type": "number"
+                                  },
+                                  "pruned": {
+                                    "type": "number"
+                                  },
+                                  "ran": {
+                                    "type": "number"
+                                  }
+                                },
+                                "required": [
+                                  "created"
+                                ]
+                              },
+                              "type": {
+                                "type": "string"
+                              }
+                            },
+                            "required": [
+                              "id",
+                              "name",
+                              "state",
+                              "time",
+                              "type"
+                            ]
+                          }
+                        ]
+                      }
+                    },
+                    "cost": {
+                      "type": "number"
+                    },
+                    "error": {
+                      "type": "object",
+                      "properties": {
+                        "message": {
+                          "type": "string"
+                        },
+                        "type": {
+                          "type": "string"
+                        }
+                      },
+                      "required": [
+                        "message",
+                        "type"
+                      ]
+                    },
+                    "finish": {
+                      "type": "string"
+                    },
+                    "id": {
+                      "type": "string"
+                    },
+                    "metadata": {
+                      "type": "object"
+                    },
+                    "model": {
+                      "type": "object",
+                      "properties": {
+                        "id": {
+                          "type": "string"
+                        },
+                        "providerID": {
+                          "type": "string"
+                        },
+                        "variant": {
+                          "type": "string"
+                        }
+                      },
+                      "required": [
+                        "id",
+                        "providerID"
+                      ]
+                    },
+                    "snapshot": {
+                      "type": "object",
+                      "properties": {
+                        "end": {
+                          "type": "string"
+                        },
+                        "files": {
+                          "type": "array",
+                          "items": {
+                            "type": "string"
+                          }
+                        },
+                        "start": {
+                          "type": "string"
+                        }
+                      }
+                    },
+                    "time": {
+                      "type": "object",
+                      "properties": {
+                        "completed": {
+                          "type": "number"
+                        },
+                        "created": {
+                          "type": "number"
+                        }
+                      },
+                      "required": [
+                        "created"
+                      ]
+                    },
+                    "tokens": {
+                      "type": "object",
+                      "properties": {
+                        "cache": {
+                          "type": "object",
+                          "properties": {
+                            "read": {
+                              "type": "number"
+                            },
+                            "write": {
+                              "type": "number"
+                            }
+                          },
+                          "required": [
+                            "read",
+                            "write"
+                          ]
+                        },
+                        "input": {
+                          "type": "number"
+                        },
+                        "output": {
+                          "type": "number"
+                        },
+                        "reasoning": {
+                          "type": "number"
+                        }
+                      },
+                      "required": [
+                        "cache",
+                        "input",
+                        "output",
+                        "reasoning"
+                      ]
+                    },
+                    "type": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "agent",
+                    "content",
+                    "id",
+                    "model",
+                    "time",
+                    "type"
+                  ]
+                },
+                {
+                  "type": "object",
+                  "properties": {
+                    "id": {
+                      "type": "string"
+                    },
+                    "metadata": {
+                      "type": "object"
+                    },
+                    "reason": {
+                      "type": "string"
+                    },
+                    "recent": {
+                      "type": "string"
+                    },
+                    "summary": {
+                      "type": "string"
+                    },
+                    "time": {
+                      "type": "object",
+                      "properties": {
+                        "created": {
+                          "type": "number"
+                        }
+                      },
+                      "required": [
+                        "created"
+                      ]
+                    },
+                    "type": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "id",
+                    "reason",
+                    "recent",
+                    "summary",
+                    "time",
+                    "type"
+                  ]
+                }
+              ]
+            }
+          }
+        },
+        "required": [
+          "cursor",
+          "data"
+        ]
+      }
+    },
+    "required": [
+      "method",
+      "route",
+      "status",
+      "params",
+      "body"
+    ]
+  },
+  "recordSchema": {
+    "type": "object",
+    "properties": {
+      "direction": {
+        "type": "string",
+        "enum": [
+          "client-to-agent"
+        ]
+      },
+      "request": {
+        "type": "object",
+        "properties": {
+          "method": {
+            "type": "string",
+            "enum": [
+              "GET"
+            ]
+          },
+          "route": {
+            "type": "string",
+            "enum": [
+              "/api/session/:sessionID/message"
+            ]
+          },
+          "params": {
+            "type": "object",
+            "properties": {
+              "sessionID": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "sessionID"
+            ]
+          },
+          "query": {
+            "type": "object",
+            "properties": {
+              "cursor": {
+                "type": "string"
+              },
+              "limit": {
+                "type": "number"
+              },
+              "order": {
+                "type": "string"
+              }
+            }
+          }
+        },
+        "required": [
+          "method",
+          "route",
+          "params"
+        ]
+      }
+    },
+    "required": [
+      "direction",
+      "request"
+    ]
+  },
+  "evidence": {
+    "existence": [
+      "opencode-generated-openapi"
+    ],
+    "shape": [
+      "opencode-generated-openapi"
+    ],
+    "result": [
+      "opencode-generated-openapi"
+    ],
+    "carrier": [
+      "opencode-generated-openapi"
+    ]
+  },
+  "confidence": "unverified",
+  "notes": "OpenAPI operationId v2.session.messages; GET /api/session/{sessionID}/message."
+}

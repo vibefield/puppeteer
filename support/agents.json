@@ -1,0 +1,68 @@
+{
+  "$schema": "./agents.schema.json",
+  "schemaVersion": 1,
+  "agents": [
+    {
+      "id": "claude",
+      "displayName": "Claude Code",
+      "kind": "vendor",
+      "adapterPackage": "@vibecook/chopsticks-adapter-claude",
+      "persona": "claude",
+      "currentManifest": "packages/surface/vendors/claude/model/claude@2.1.207/manifest.json",
+      "status": "legacy-verified",
+      "legacyEvidence": {
+        "kind": "pre-asm-v2-baseline",
+        "frozenManifest": "packages/surface/vendors/claude/model/claude@2.1.207/manifest.json",
+        "modelSha256": "75db9f536735b92b32acae34c71b96d059e79b56a0f0c10eab4265ccefac3ca4",
+        "frozenOn": "2026-08-09",
+        "reason": "Grandfathered support predates claim-addressable ASM v2 and the guarded multi-platform promotion workflow."
+      },
+      "introducedInChopsticks": "0.1.8",
+      "candidateManifest": "packages/surface/vendors/claude/model/claude@2.1.226/manifest.json"
+    },
+    {
+      "id": "codex",
+      "displayName": "Codex",
+      "kind": "vendor",
+      "adapterPackage": "@vibecook/chopsticks-adapter-codex",
+      "persona": "codex",
+      "currentManifest": "packages/surface/vendors/codex/model/codex@0.147.0/manifest.json",
+      "status": "legacy-verified",
+      "legacyEvidence": {
+        "kind": "pre-asm-v2-baseline",
+        "frozenManifest": "packages/surface/vendors/codex/model/codex@0.147.0/manifest.json",
+        "modelSha256": "f9ea3c4fc029ad3da4be7f051e75df840d855ec42546c9d2888a53a90f64e9f3",
+        "frozenOn": "2026-08-09",
+        "reason": "Grandfathered support predates the complete multi-platform artifact attestation required by the guarded promotion workflow."
+      },
+      "introducedInChopsticks": "0.1.8"
+    },
+    {
+      "id": "grok",
+      "displayName": "Grok Build",
+      "kind": "vendor",
+      "adapterPackage": "@vibecook/chopsticks-adapter-grok",
+      "persona": "grok",
+      "candidateManifest": "packages/surface/vendors/grok/model/grok@1.0.0/manifest.json",
+      "status": "baseline-pending"
+    },
+    {
+      "id": "kimi",
+      "displayName": "Kimi Code",
+      "kind": "vendor",
+      "adapterPackage": "@vibecook/chopsticks-adapter-kimi",
+      "persona": "kimi",
+      "candidateManifest": "packages/surface/vendors/kimi/model/kimi@0.34.0/manifest.json",
+      "status": "baseline-pending"
+    },
+    {
+      "id": "opencode",
+      "displayName": "OpenCode",
+      "kind": "vendor",
+      "adapterPackage": "@vibecook/chopsticks-adapter-opencode",
+      "persona": "opencode",
+      "candidateManifest": "packages/surface/vendors/opencode/model/opencode@1.18.16/manifest.json",
+      "status": "baseline-pending"
+    }
+  ]
+}

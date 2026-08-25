@@ -1,0 +1,217 @@
+{
+  "surface": "opencode",
+  "surfaceVersion": "1.18.16",
+  "event": "http/v2.session.permission.get",
+  "channel": "http",
+  "channels": [
+    "http"
+  ],
+  "transport": "http",
+  "direction": "client-to-agent",
+  "trigger": "Get permission request — Retrieve a pending permission request owned by a session.",
+  "payloadSchema": {
+    "type": "object",
+    "properties": {
+      "method": {
+        "type": "string"
+      },
+      "route": {
+        "type": "string"
+      },
+      "params": {
+        "type": "object",
+        "properties": {
+          "requestID": {
+            "type": "string"
+          },
+          "sessionID": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "requestID",
+          "sessionID"
+        ]
+      }
+    },
+    "required": [
+      "method",
+      "route",
+      "params"
+    ]
+  },
+  "resultSchema": {
+    "type": "object",
+    "properties": {
+      "method": {
+        "type": "string",
+        "enum": [
+          "GET"
+        ]
+      },
+      "route": {
+        "type": "string",
+        "enum": [
+          "/api/session/:sessionID/permission/:requestID"
+        ]
+      },
+      "status": {
+        "type": "integer",
+        "minimum": 200,
+        "maximum": 299
+      },
+      "params": {
+        "type": "object",
+        "properties": {
+          "requestID": {
+            "type": "string"
+          },
+          "sessionID": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "requestID",
+          "sessionID"
+        ]
+      },
+      "body": {
+        "type": "object",
+        "properties": {
+          "data": {
+            "type": "object",
+            "properties": {
+              "action": {
+                "type": "string"
+              },
+              "id": {
+                "type": "string"
+              },
+              "metadata": {
+                "type": "object"
+              },
+              "resources": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                }
+              },
+              "save": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                }
+              },
+              "sessionID": {
+                "type": "string"
+              },
+              "source": {
+                "type": "object",
+                "properties": {
+                  "callID": {
+                    "type": "string"
+                  },
+                  "messageID": {
+                    "type": "string"
+                  },
+                  "type": {
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "callID",
+                  "messageID",
+                  "type"
+                ]
+              }
+            },
+            "required": [
+              "action",
+              "id",
+              "resources",
+              "sessionID"
+            ]
+          }
+        },
+        "required": [
+          "data"
+        ]
+      }
+    },
+    "required": [
+      "method",
+      "route",
+      "status",
+      "params",
+      "body"
+    ]
+  },
+  "recordSchema": {
+    "type": "object",
+    "properties": {
+      "direction": {
+        "type": "string",
+        "enum": [
+          "client-to-agent"
+        ]
+      },
+      "request": {
+        "type": "object",
+        "properties": {
+          "method": {
+            "type": "string",
+            "enum": [
+              "GET"
+            ]
+          },
+          "route": {
+            "type": "string",
+            "enum": [
+              "/api/session/:sessionID/permission/:requestID"
+            ]
+          },
+          "params": {
+            "type": "object",
+            "properties": {
+              "requestID": {
+                "type": "string"
+              },
+              "sessionID": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "requestID",
+              "sessionID"
+            ]
+          }
+        },
+        "required": [
+          "method",
+          "route",
+          "params"
+        ]
+      }
+    },
+    "required": [
+      "direction",
+      "request"
+    ]
+  },
+  "evidence": {
+    "existence": [
+      "opencode-generated-openapi"
+    ],
+    "shape": [
+      "opencode-generated-openapi"
+    ],
+    "result": [
+      "opencode-generated-openapi"
+    ],
+    "carrier": [
+      "opencode-generated-openapi"
+    ]
+  },
+  "confidence": "unverified",
+  "notes": "OpenAPI operationId v2.session.permission.get; GET /api/session/{sessionID}/permission/{requestID}."
+}

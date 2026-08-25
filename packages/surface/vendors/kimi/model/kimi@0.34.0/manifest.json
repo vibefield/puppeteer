@@ -1,0 +1,8 @@
+{
+  "asmVersion": 2,
+  "vendor": "kimi",
+  "vendorVersion": "0.34.0",
+  "generatedAt": "2026-08-13",
+  "source": "Kimi Code 0.34.0 controlled print-mode census plus a digest-pinned projection of the exact release source. The source inventory contains 40 persisted and 8 transient operation types; unforced branches remain unverified.",
+  "evidence": "evidence.json"
+}

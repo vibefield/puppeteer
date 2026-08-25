@@ -1,0 +1,3 @@
+{"event":"PreInvocation","conversationId":"a11a5ed0-6fd6-4359-8558-eb714b26344d","modelName":"gemini-3.6-flash-high","invocationNum":0,"initialNumSteps":1,"workspacePathCount":1}
+{"event":"PostInvocation","conversationId":"a11a5ed0-6fd6-4359-8558-eb714b26344d","modelName":"gemini-3.6-flash-high","invocationNum":0,"initialNumSteps":1,"workspacePathCount":1}
+{"event":"Stop","conversationId":"a11a5ed0-6fd6-4359-8558-eb714b26344d","modelName":"gemini-3.6-flash-high","fullyIdle":true,"terminationReason":"NO_TOOL_CALL","errorPresent":false,"workspacePathCount":1}

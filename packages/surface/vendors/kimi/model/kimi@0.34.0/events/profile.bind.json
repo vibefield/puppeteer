@@ -1,0 +1,121 @@
+{
+  "surface": "kimi",
+  "surfaceVersion": "0.34.0",
+  "event": "profile.bind",
+  "channel": "wire",
+  "channels": ["wire"],
+  "transport": "jsonl-record",
+  "direction": "agent-local",
+  "payloadSchema": {
+    "type": "object",
+    "properties": {
+      "modelAlias": {
+        "type": "string"
+      },
+      "profileName": {
+        "type": "string"
+      },
+      "thinkingEffort": {
+        "type": "string"
+      },
+      "systemPrompt": {
+        "type": "string"
+      },
+      "environmentDisclosure": {
+        "type": "object"
+      },
+      "renderGeneration": {
+        "type": "number"
+      },
+      "agentsMdPaths": {
+        "type": "array",
+        "items": {
+          "type": "string"
+        }
+      },
+      "activeToolNames": {
+        "type": "array",
+        "items": {
+          "type": "string"
+        }
+      },
+      "disallowedTools": {
+        "type": "array",
+        "items": {
+          "type": "string"
+        }
+      },
+      "subagents": {
+        "type": "array",
+        "items": {
+          "type": "string"
+        }
+      }
+    },
+    "required": ["thinkingEffort", "systemPrompt", "disallowedTools"]
+  },
+  "recordSchema": {
+    "type": "object",
+    "properties": {
+      "type": {
+        "type": "string",
+        "enum": ["profile.bind"]
+      },
+      "modelAlias": {
+        "type": "string"
+      },
+      "profileName": {
+        "type": "string"
+      },
+      "thinkingEffort": {
+        "type": "string"
+      },
+      "systemPrompt": {
+        "type": "string"
+      },
+      "environmentDisclosure": {
+        "type": "object"
+      },
+      "renderGeneration": {
+        "type": "number"
+      },
+      "agentsMdPaths": {
+        "type": "array",
+        "items": {
+          "type": "string"
+        }
+      },
+      "activeToolNames": {
+        "type": "array",
+        "items": {
+          "type": "string"
+        }
+      },
+      "disallowedTools": {
+        "type": "array",
+        "items": {
+          "type": "string"
+        }
+      },
+      "subagents": {
+        "type": "array",
+        "items": {
+          "type": "string"
+        }
+      },
+      "time": {
+        "type": "number",
+        "minimum": 0
+      }
+    },
+    "required": ["type", "thinkingEffort", "systemPrompt", "disallowedTools", "time"]
+  },
+  "recordChannel": "wire",
+  "evidence": {
+    "existence": ["kimi-runtime-headless"],
+    "shape": ["kimi-runtime-headless", "kimi-exact-release-source"],
+    "carrier": ["kimi-runtime-headless", "kimi-exact-release-source"]
+  },
+  "confidence": "verified-headless",
+  "fixture": "captures/kimi@0.34.0/basic-turn/wire.jsonl"
+}

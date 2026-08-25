@@ -1,0 +1,25 @@
+{
+  "version": 1,
+  "flows": [
+    {
+      "id": "compact-lifecycle",
+      "intent": "session.compaction",
+      "scenario": "compact-lifecycle",
+      "title": "Automatic compaction lifecycle",
+      "summary": "Compaction start, persisted checkpoint, and completion across Grok's live and durable rails.",
+      "kind": "vendor",
+      "tags": ["context", "compaction", "native-store"],
+      "defaultSpeed": 4
+    },
+    {
+      "id": "agent-team-lifecycle",
+      "intent": "subagent.lifecycle",
+      "scenario": "agent-team-lifecycle",
+      "title": "Agent-team lifecycle",
+      "summary": "A child agent is spawned, reports progress, and finishes with correlated metrics.",
+      "kind": "vendor",
+      "tags": ["subagent", "team", "progress"],
+      "defaultSpeed": 4
+    }
+  ]
+}

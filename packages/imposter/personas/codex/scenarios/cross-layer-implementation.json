@@ -1,0 +1,625 @@
+{
+  "name": "cross-layer-implementation",
+  "notes": "A 30-step Codex implementation turn with parallel workers, command/file/MCP tools, a real approval request, compaction, and final verification.",
+  "then": [
+    {
+      "at": 0,
+      "do": {
+        "emit": {
+          "event": "turn/started",
+          "with": { "threadId": "$threadId", "turn": { "id": "$uuid:turn", "status": "inProgress" } }
+        }
+      }
+    },
+    {
+      "at": 100,
+      "do": {
+        "emit": {
+          "event": "item/started",
+          "with": {
+            "threadId": "$threadId",
+            "turnId": "$uuid:turn",
+            "startedAtMs": "$nowMs",
+            "item": {
+              "type": "userMessage",
+              "id": "$uuid:user-item",
+              "clientId": null,
+              "content": [{ "type": "text", "text": "$stimulus.text" }]
+            }
+          }
+        }
+      }
+    },
+    {
+      "at": 200,
+      "do": {
+        "emit": {
+          "event": "item/completed",
+          "with": {
+            "threadId": "$threadId",
+            "turnId": "$uuid:turn",
+            "completedAtMs": "$nowMs",
+            "item": {
+              "type": "userMessage",
+              "id": "$uuid:user-item",
+              "clientId": null,
+              "content": [{ "type": "text", "text": "$stimulus.text" }]
+            }
+          }
+        }
+      }
+    },
+    {
+      "at": 500,
+      "do": {
+        "emit": {
+          "event": "item/started",
+          "with": {
+            "threadId": "$threadId",
+            "turnId": "$uuid:turn",
+            "startedAtMs": "$nowMs",
+            "item": {
+              "type": "collabToolCall",
+              "id": "$uuid:spawn-implementer",
+              "tool": "spawn_agent",
+              "status": "inProgress",
+              "senderThreadId": "$threadId",
+              "prompt": "Trace the implementation seam and propose the smallest safe change."
+            }
+          }
+        }
+      }
+    },
+    {
+      "at": 600,
+      "do": {
+        "emit": {
+          "event": "item/completed",
+          "with": {
+            "threadId": "$threadId",
+            "turnId": "$uuid:turn",
+            "completedAtMs": "$nowMs",
+            "item": {
+              "type": "collabToolCall",
+              "id": "$uuid:spawn-implementer",
+              "tool": "spawn_agent",
+              "status": "completed",
+              "senderThreadId": "$threadId",
+              "newThreadId": "$uuid:implementer-thread",
+              "prompt": "Trace the implementation seam and propose the smallest safe change.",
+              "agentStatus": "running"
+            }
+          }
+        }
+      }
+    },
+    {
+      "at": 700,
+      "do": {
+        "emit": {
+          "event": "item/started",
+          "with": {
+            "threadId": "$threadId",
+            "turnId": "$uuid:turn",
+            "startedAtMs": "$nowMs",
+            "item": {
+              "type": "collabToolCall",
+              "id": "$uuid:spawn-tests",
+              "tool": "spawn_agent",
+              "status": "inProgress",
+              "senderThreadId": "$threadId",
+              "prompt": "Find the regression boundary and design high-signal tests."
+            }
+          }
+        }
+      }
+    },
+    {
+      "at": 800,
+      "do": {
+        "emit": {
+          "event": "item/completed",
+          "with": {
+            "threadId": "$threadId",
+            "turnId": "$uuid:turn",
+            "completedAtMs": "$nowMs",
+            "item": {
+              "type": "collabToolCall",
+              "id": "$uuid:spawn-tests",
+              "tool": "spawn_agent",
+              "status": "completed",
+              "senderThreadId": "$threadId",
+              "newThreadId": "$uuid:tests-thread",
+              "prompt": "Find the regression boundary and design high-signal tests.",
+              "agentStatus": "running"
+            }
+          }
+        }
+      }
+    },
+    {
+      "at": 900,
+      "do": {
+        "emit": {
+          "event": "item/started",
+          "with": {
+            "threadId": "$threadId",
+            "turnId": "$uuid:turn",
+            "startedAtMs": "$nowMs",
+            "item": {
+              "type": "commandExecution",
+              "id": "$uuid:trace",
+              "command": "rg -n 'createScenarioRunner|scenarioSteps|runflows' packages/imposter",
+              "cwd": "$threadCwd",
+              "status": "inProgress",
+              "commandActions": [{ "type": "search", "query": "createScenarioRunner|scenarioSteps|runflows" }]
+            }
+          }
+        }
+      }
+    },
+    {
+      "at": 1100,
+      "do": {
+        "emit": {
+          "event": "item/completed",
+          "with": {
+            "threadId": "$threadId",
+            "turnId": "$uuid:turn",
+            "completedAtMs": "$nowMs",
+            "item": {
+              "type": "commandExecution",
+              "id": "$uuid:trace",
+              "command": "rg -n 'createScenarioRunner|scenarioSteps|runflows' packages/imposter",
+              "cwd": "$threadCwd",
+              "status": "completed",
+              "commandActions": [{ "type": "search", "query": "createScenarioRunner|scenarioSteps|runflows" }],
+              "aggregatedOutput": "Scenario data belongs to personas; runtime validation belongs to the scenario runner and persona tests.",
+              "exitCode": 0,
+              "durationMs": 175
+            }
+          }
+        }
+      }
+    },
+    {
+      "at": 1200,
+      "do": {
+        "emit": {
+          "event": "item/started",
+          "with": {
+            "threadId": "$threadId",
+            "turnId": "$uuid:turn",
+            "startedAtMs": "$nowMs",
+            "item": {
+              "type": "fileChange",
+              "id": "$uuid:file-change",
+              "status": "inProgress",
+              "changes": [
+                {
+                  "path": "packages/imposter/personas/codex/runflows.json",
+                  "kind": "update",
+                  "diff": "+ realistic runflow catalog"
+                }
+              ]
+            }
+          }
+        }
+      }
+    },
+    {
+      "at": 1400,
+      "do": {
+        "emit": {
+          "event": "item/completed",
+          "with": {
+            "threadId": "$threadId",
+            "turnId": "$uuid:turn",
+            "completedAtMs": "$nowMs",
+            "item": {
+              "type": "fileChange",
+              "id": "$uuid:file-change",
+              "status": "completed",
+              "changes": [
+                {
+                  "path": "packages/imposter/personas/codex/runflows.json",
+                  "kind": "update",
+                  "diff": "+ realistic runflow catalog"
+                }
+              ]
+            }
+          }
+        }
+      }
+    },
+    {
+      "at": 1500,
+      "do": {
+        "emit": {
+          "event": "item/started",
+          "with": {
+            "threadId": "$threadId",
+            "turnId": "$uuid:turn",
+            "startedAtMs": "$nowMs",
+            "item": {
+              "type": "commandExecution",
+              "id": "$uuid:baseline-test",
+              "command": "pnpm --filter @vibecook/chopsticks-imposter test -- scenarios.codex",
+              "cwd": "$threadCwd",
+              "status": "inProgress",
+              "commandActions": [
+                { "type": "run", "command": "pnpm --filter @vibecook/chopsticks-imposter test -- scenarios.codex" }
+              ]
+            }
+          }
+        }
+      }
+    },
+    {
+      "at": 1700,
+      "do": {
+        "emit": {
+          "event": "item/completed",
+          "with": {
+            "threadId": "$threadId",
+            "turnId": "$uuid:turn",
+            "completedAtMs": "$nowMs",
+            "item": {
+              "type": "commandExecution",
+              "id": "$uuid:baseline-test",
+              "command": "pnpm --filter @vibecook/chopsticks-imposter test -- scenarios.codex",
+              "cwd": "$threadCwd",
+              "status": "failed",
+              "commandActions": [
+                { "type": "run", "command": "pnpm --filter @vibecook/chopsticks-imposter test -- scenarios.codex" }
+              ],
+              "aggregatedOutput": "Expected long-form runflow contract is not implemented yet.",
+              "exitCode": 1,
+              "durationMs": 180
+            }
+          }
+        }
+      }
+    },
+    {
+      "at": 1800,
+      "do": {
+        "emit": {
+          "event": "item/started",
+          "with": {
+            "threadId": "$threadId",
+            "turnId": "$uuid:turn",
+            "startedAtMs": "$nowMs",
+            "item": {
+              "type": "mcpToolCall",
+              "id": "$uuid:issue-context",
+              "server": "github",
+              "tool": "get_issue",
+              "status": "inProgress",
+              "arguments": { "number": 42 }
+            }
+          }
+        }
+      }
+    },
+    {
+      "at": 2000,
+      "do": {
+        "emit": {
+          "event": "item/completed",
+          "with": {
+            "threadId": "$threadId",
+            "turnId": "$uuid:turn",
+            "completedAtMs": "$nowMs",
+            "item": {
+              "type": "mcpToolCall",
+              "id": "$uuid:issue-context",
+              "server": "github",
+              "tool": "get_issue",
+              "status": "completed",
+              "arguments": { "number": 42 },
+              "result": {
+                "title": "Replace toy scenarios with realistic agent workflows",
+                "acceptance": "20-30 steps, tool diversity, delegation, compaction"
+              }
+            }
+          }
+        }
+      }
+    },
+    {
+      "at": 2100,
+      "do": {
+        "emit": {
+          "event": "item/started",
+          "with": {
+            "threadId": "$threadId",
+            "turnId": "$uuid:turn",
+            "startedAtMs": "$nowMs",
+            "item": {
+              "type": "commandExecution",
+              "id": "$uuid:approved-test",
+              "command": "pnpm --filter @vibecook/chopsticks-imposter test",
+              "cwd": "$threadCwd",
+              "status": "inProgress",
+              "commandActions": [{ "type": "run", "command": "pnpm --filter @vibecook/chopsticks-imposter test" }]
+            }
+          }
+        }
+      }
+    },
+    {
+      "at": 2200,
+      "do": {
+        "emit": {
+          "request": true,
+          "event": "item/commandExecution/requestApproval",
+          "with": {
+            "threadId": "$threadId",
+            "turnId": "$uuid:turn",
+            "itemId": "$uuid:approved-test",
+            "startedAtMs": "$nowMs",
+            "command": "pnpm --filter @vibecook/chopsticks-imposter test",
+            "cwd": "$threadCwd",
+            "commandActions": [{ "type": "run", "command": "pnpm --filter @vibecook/chopsticks-imposter test" }],
+            "availableDecisions": ["accept", "cancel"]
+          }
+        }
+      }
+    },
+    {
+      "at": 2500,
+      "do": {
+        "emit": {
+          "event": "item/completed",
+          "with": {
+            "threadId": "$threadId",
+            "turnId": "$uuid:turn",
+            "completedAtMs": "$nowMs",
+            "item": {
+              "type": "commandExecution",
+              "id": "$uuid:approved-test",
+              "command": "pnpm --filter @vibecook/chopsticks-imposter test",
+              "cwd": "$threadCwd",
+              "status": "completed",
+              "commandActions": [{ "type": "run", "command": "pnpm --filter @vibecook/chopsticks-imposter test" }],
+              "aggregatedOutput": "Scenario, normalizer, and control-plane tests passed.",
+              "exitCode": 0,
+              "durationMs": 265
+            }
+          }
+        }
+      }
+    },
+    {
+      "at": 2600,
+      "do": {
+        "emit": {
+          "event": "item/started",
+          "with": {
+            "threadId": "$threadId",
+            "turnId": "$uuid:turn",
+            "startedAtMs": "$nowMs",
+            "item": {
+              "type": "collabToolCall",
+              "id": "$uuid:wait-workers",
+              "tool": "wait_agent",
+              "status": "inProgress",
+              "senderThreadId": "$threadId",
+              "receiverThreadId": "$uuid:tests-thread"
+            }
+          }
+        }
+      }
+    },
+    {
+      "at": 2700,
+      "do": {
+        "emit": {
+          "event": "item/completed",
+          "with": {
+            "threadId": "$threadId",
+            "turnId": "$uuid:turn",
+            "completedAtMs": "$nowMs",
+            "item": {
+              "type": "collabToolCall",
+              "id": "$uuid:wait-workers",
+              "tool": "wait_agent",
+              "status": "completed",
+              "senderThreadId": "$threadId",
+              "receiverThreadId": "$uuid:tests-thread",
+              "agentStatus": "completed"
+            }
+          }
+        }
+      }
+    },
+    {
+      "at": 2800,
+      "do": {
+        "emit": {
+          "event": "thread/tokenUsage/updated",
+          "with": {
+            "threadId": "$threadId",
+            "turnId": "$uuid:turn",
+            "tokenUsage": {
+              "total": {
+                "totalTokens": 384000,
+                "inputTokens": 374000,
+                "cachedInputTokens": 96000,
+                "outputTokens": 10000,
+                "reasoningOutputTokens": 6000
+              },
+              "last": {
+                "totalTokens": 384000,
+                "inputTokens": 374000,
+                "cachedInputTokens": 96000,
+                "outputTokens": 10000,
+                "reasoningOutputTokens": 6000
+              },
+              "modelContextWindow": 400000
+            }
+          }
+        }
+      }
+    },
+    {
+      "at": 2900,
+      "do": {
+        "emit": {
+          "event": "item/started",
+          "with": {
+            "threadId": "$threadId",
+            "turnId": "$uuid:turn",
+            "startedAtMs": "$nowMs",
+            "item": { "type": "contextCompaction", "id": "$uuid:compaction" }
+          }
+        }
+      }
+    },
+    {
+      "at": 3000,
+      "do": {
+        "emit": {
+          "event": "item/completed",
+          "with": {
+            "threadId": "$threadId",
+            "turnId": "$uuid:turn",
+            "completedAtMs": "$nowMs",
+            "item": { "type": "contextCompaction", "id": "$uuid:compaction" }
+          }
+        }
+      }
+    },
+    {
+      "at": 3100,
+      "do": {
+        "emit": {
+          "event": "thread/tokenUsage/updated",
+          "with": {
+            "threadId": "$threadId",
+            "turnId": "$uuid:turn",
+            "tokenUsage": {
+              "total": {
+                "totalTokens": 405000,
+                "inputTokens": 392000,
+                "cachedInputTokens": 104000,
+                "outputTokens": 13000,
+                "reasoningOutputTokens": 7000
+              },
+              "last": {
+                "totalTokens": 21000,
+                "inputTokens": 18000,
+                "cachedInputTokens": 8000,
+                "outputTokens": 3000,
+                "reasoningOutputTokens": 1000
+              },
+              "modelContextWindow": 400000
+            }
+          }
+        }
+      }
+    },
+    {
+      "at": 3200,
+      "do": {
+        "emit": {
+          "event": "item/started",
+          "with": {
+            "threadId": "$threadId",
+            "turnId": "$uuid:turn",
+            "startedAtMs": "$nowMs",
+            "item": {
+              "type": "commandExecution",
+              "id": "$uuid:diff-check",
+              "command": "git diff --check && git diff --stat",
+              "cwd": "$threadCwd",
+              "status": "inProgress",
+              "commandActions": [{ "type": "run", "command": "git diff --check && git diff --stat" }]
+            }
+          }
+        }
+      }
+    },
+    {
+      "at": 3400,
+      "do": {
+        "emit": {
+          "event": "item/completed",
+          "with": {
+            "threadId": "$threadId",
+            "turnId": "$uuid:turn",
+            "completedAtMs": "$nowMs",
+            "item": {
+              "type": "commandExecution",
+              "id": "$uuid:diff-check",
+              "command": "git diff --check && git diff --stat",
+              "cwd": "$threadCwd",
+              "status": "completed",
+              "commandActions": [{ "type": "run", "command": "git diff --check && git diff --stat" }],
+              "aggregatedOutput": "No whitespace errors; intended files only.",
+              "exitCode": 0,
+              "durationMs": 170
+            }
+          }
+        }
+      }
+    },
+    {
+      "at": 3500,
+      "do": {
+        "emit": {
+          "event": "item/started",
+          "with": {
+            "threadId": "$threadId",
+            "turnId": "$uuid:turn",
+            "startedAtMs": "$nowMs",
+            "item": { "type": "agentMessage", "id": "$uuid:agent-message", "text": "", "phase": "final_answer" }
+          }
+        }
+      }
+    },
+    {
+      "at": 3600,
+      "do": {
+        "emit": {
+          "event": "item/agentMessage/delta",
+          "with": {
+            "threadId": "$threadId",
+            "turnId": "$uuid:turn",
+            "itemId": "$uuid:agent-message",
+            "delta": "Implemented the cross-layer change with parallel review, approval evidence, passing tests, and a verified final diff."
+          }
+        }
+      }
+    },
+    {
+      "at": 3700,
+      "do": {
+        "emit": {
+          "event": "item/completed",
+          "with": {
+            "threadId": "$threadId",
+            "turnId": "$uuid:turn",
+            "completedAtMs": "$nowMs",
+            "item": {
+              "type": "agentMessage",
+              "id": "$uuid:agent-message",
+              "text": "Implemented the cross-layer change with parallel review, approval evidence, passing tests, and a verified final diff.",
+              "phase": "final_answer"
+            }
+          }
+        }
+      }
+    },
+    {
+      "at": 3800,
+      "do": {
+        "emit": {
+          "event": "turn/completed",
+          "with": { "threadId": "$threadId", "turn": { "id": "$uuid:turn", "status": "completed", "error": null } }
+        }
+      }
+    }
+  ]
+}

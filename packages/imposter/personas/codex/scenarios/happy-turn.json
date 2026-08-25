@@ -1,0 +1,64 @@
+{
+  "name": "happy-turn",
+  "then": [
+    {
+      "at": 0,
+      "do": {
+        "emit": {
+          "event": "turn/started",
+          "with": { "threadId": "$threadId", "turn": { "id": "$uuid:turn", "status": "inProgress" } }
+        }
+      }
+    },
+    {
+      "at": 20,
+      "do": {
+        "emit": {
+          "event": "item/completed",
+          "with": {
+            "threadId": "$threadId",
+            "turnId": "$uuid:turn",
+            "completedAtMs": "$nowMs",
+            "item": {
+              "type": "userMessage",
+              "id": "$uuid:user-item",
+              "clientId": null,
+              "content": [{ "type": "text", "text": "$stimulus.text" }]
+            }
+          }
+        }
+      }
+    },
+    {
+      "at": 40,
+      "do": {
+        "emit": {
+          "event": "item/completed",
+          "with": {
+            "threadId": "$threadId",
+            "turnId": "$uuid:turn",
+            "completedAtMs": "$nowMs",
+            "item": {
+              "type": "agentMessage",
+              "id": "$uuid:agent-item",
+              "text": "imposter: ok",
+              "phase": "final_answer"
+            }
+          }
+        }
+      }
+    },
+    {
+      "at": 60,
+      "do": {
+        "emit": {
+          "event": "turn/completed",
+          "with": {
+            "threadId": "$threadId",
+            "turn": { "id": "$uuid:turn", "status": "completed", "error": null }
+          }
+        }
+      }
+    }
+  ]
+}

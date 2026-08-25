@@ -1,0 +1,24 @@
+{
+  "vendor": "grok",
+  "asm": {
+    "package": "@vibecook/chopsticks-surface",
+    "path": "vendors/grok/model/grok@1.0.0"
+  },
+  "shimNames": ["grok"],
+  "envelope": {},
+  "bindings": { "$threadCwd": "$cwd", "$sessionCreatedAt": "$now" },
+  "nativeStore": {
+    "rootEnv": "GROK_HOME",
+    "sessionPath": ["sessions", "$encodeURIComponent:$threadCwd", "$sessionId"],
+    "updatesFile": "updates.jsonl"
+  },
+  "boot": [
+    { "op": "session.initialize" },
+    { "op": "session.start" },
+    { "op": "session.ready" },
+    {
+      "op": "usage.refresh",
+      "with": { "usedTokens": 0 }
+    }
+  ]
+}

@@ -1,0 +1,17 @@
+{
+  "executables": ["grok"],
+  "envVar": "CHOPSTICKS_GROK_BIN",
+  "versionFlag": "--version",
+  "versionOutput": "grok 1.0.0 (3cd0d0cbcebe) [stable]",
+  "versionPattern": "^grok (\\d+\\.\\d+\\.\\d+) \\(([0-9a-f]+)\\) \\[(stable|alpha)\\]$",
+  "helpFlag": "--help",
+  "launchFlags": {
+    "leader": "leader",
+    "leaderSocket": "--leader-socket",
+    "sessionId": "--session-id",
+    "resume": "--resume",
+    "model": "--model",
+    "permissionMode": "--permission-mode",
+    "sandbox": "--sandbox"
+  }
+}

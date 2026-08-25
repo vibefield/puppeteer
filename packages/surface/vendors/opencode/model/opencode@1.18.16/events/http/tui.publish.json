@@ -1,0 +1,365 @@
+{
+  "surface": "opencode",
+  "surfaceVersion": "1.18.16",
+  "event": "http/tui.publish",
+  "channel": "http",
+  "channels": [
+    "http"
+  ],
+  "transport": "http",
+  "direction": "client-to-agent",
+  "trigger": "Publish TUI event — Publish a TUI event.",
+  "payloadSchema": {
+    "type": "object",
+    "properties": {
+      "method": {
+        "type": "string"
+      },
+      "route": {
+        "type": "string"
+      },
+      "query": {
+        "type": "object",
+        "properties": {
+          "directory": {
+            "type": "string"
+          },
+          "workspace": {
+            "type": "string"
+          }
+        }
+      },
+      "body": {
+        "anyOf": [
+          {
+            "type": "object",
+            "properties": {
+              "properties": {
+                "type": "object",
+                "properties": {
+                  "text": {
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "text"
+                ]
+              },
+              "type": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "properties",
+              "type"
+            ]
+          },
+          {
+            "type": "object",
+            "properties": {
+              "properties": {
+                "type": "object",
+                "properties": {
+                  "command": {
+                    "anyOf": [
+                      {
+                        "type": "string"
+                      }
+                    ]
+                  }
+                },
+                "required": [
+                  "command"
+                ]
+              },
+              "type": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "properties",
+              "type"
+            ]
+          },
+          {
+            "type": "object",
+            "properties": {
+              "properties": {
+                "type": "object",
+                "properties": {
+                  "duration": {
+                    "type": "integer",
+                    "exclusiveMinimum": 0
+                  },
+                  "message": {
+                    "type": "string"
+                  },
+                  "title": {
+                    "type": "string"
+                  },
+                  "variant": {
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "message",
+                  "variant"
+                ]
+              },
+              "type": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "properties",
+              "type"
+            ]
+          },
+          {
+            "type": "object",
+            "properties": {
+              "properties": {
+                "type": "object",
+                "properties": {
+                  "sessionID": {
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "sessionID"
+                ]
+              },
+              "type": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "properties",
+              "type"
+            ]
+          }
+        ]
+      }
+    },
+    "required": [
+      "method",
+      "route"
+    ]
+  },
+  "resultSchema": {
+    "type": "object",
+    "properties": {
+      "method": {
+        "type": "string",
+        "enum": [
+          "POST"
+        ]
+      },
+      "route": {
+        "type": "string",
+        "enum": [
+          "/tui/publish"
+        ]
+      },
+      "status": {
+        "type": "integer",
+        "minimum": 200,
+        "maximum": 299
+      },
+      "query": {
+        "type": "object",
+        "properties": {
+          "directory": {
+            "type": "string"
+          },
+          "workspace": {
+            "type": "string"
+          }
+        }
+      },
+      "body": {
+        "type": "boolean"
+      }
+    },
+    "required": [
+      "method",
+      "route",
+      "status",
+      "body"
+    ]
+  },
+  "recordSchema": {
+    "type": "object",
+    "properties": {
+      "direction": {
+        "type": "string",
+        "enum": [
+          "client-to-agent"
+        ]
+      },
+      "request": {
+        "type": "object",
+        "properties": {
+          "method": {
+            "type": "string",
+            "enum": [
+              "POST"
+            ]
+          },
+          "route": {
+            "type": "string",
+            "enum": [
+              "/tui/publish"
+            ]
+          },
+          "query": {
+            "type": "object",
+            "properties": {
+              "directory": {
+                "type": "string"
+              },
+              "workspace": {
+                "type": "string"
+              }
+            }
+          },
+          "body": {
+            "anyOf": [
+              {
+                "type": "object",
+                "properties": {
+                  "properties": {
+                    "type": "object",
+                    "properties": {
+                      "text": {
+                        "type": "string"
+                      }
+                    },
+                    "required": [
+                      "text"
+                    ]
+                  },
+                  "type": {
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "properties",
+                  "type"
+                ]
+              },
+              {
+                "type": "object",
+                "properties": {
+                  "properties": {
+                    "type": "object",
+                    "properties": {
+                      "command": {
+                        "anyOf": [
+                          {
+                            "type": "string"
+                          }
+                        ]
+                      }
+                    },
+                    "required": [
+                      "command"
+                    ]
+                  },
+                  "type": {
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "properties",
+                  "type"
+                ]
+              },
+              {
+                "type": "object",
+                "properties": {
+                  "properties": {
+                    "type": "object",
+                    "properties": {
+                      "duration": {
+                        "type": "integer",
+                        "exclusiveMinimum": 0
+                      },
+                      "message": {
+                        "type": "string"
+                      },
+                      "title": {
+                        "type": "string"
+                      },
+                      "variant": {
+                        "type": "string"
+                      }
+                    },
+                    "required": [
+                      "message",
+                      "variant"
+                    ]
+                  },
+                  "type": {
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "properties",
+                  "type"
+                ]
+              },
+              {
+                "type": "object",
+                "properties": {
+                  "properties": {
+                    "type": "object",
+                    "properties": {
+                      "sessionID": {
+                        "type": "string"
+                      }
+                    },
+                    "required": [
+                      "sessionID"
+                    ]
+                  },
+                  "type": {
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "properties",
+                  "type"
+                ]
+              }
+            ]
+          }
+        },
+        "required": [
+          "method",
+          "route"
+        ]
+      }
+    },
+    "required": [
+      "direction",
+      "request"
+    ]
+  },
+  "evidence": {
+    "existence": [
+      "opencode-generated-openapi"
+    ],
+    "shape": [
+      "opencode-generated-openapi"
+    ],
+    "result": [
+      "opencode-generated-openapi"
+    ],
+    "carrier": [
+      "opencode-generated-openapi"
+    ]
+  },
+  "confidence": "unverified",
+  "notes": "OpenAPI operationId tui.publish; POST /tui/publish."
+}

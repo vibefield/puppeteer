@@ -1,0 +1,29 @@
+{
+  "$schema": "https://raw.githubusercontent.com/googleapis/release-please/main/schemas/config.json",
+  "include-component-in-tag": false,
+  "packages": {
+    ".": {
+      "release-type": "node",
+      "component": "chopsticks",
+      "bump-minor-pre-major": true,
+      "bump-patch-for-minor-pre-major": true,
+      "extra-files": [
+        { "type": "json", "path": "packages/core/package.json", "jsonpath": "$.version" },
+        { "type": "json", "path": "packages/surface/package.json", "jsonpath": "$.version" },
+        { "type": "json", "path": "packages/imposter/package.json", "jsonpath": "$.version" },
+        { "type": "json", "path": "packages/record/package.json", "jsonpath": "$.version" },
+        { "type": "json", "path": "packages/workspaces/package.json", "jsonpath": "$.version" },
+        { "type": "json", "path": "packages/adapter-acp/package.json", "jsonpath": "$.version" },
+        { "type": "json", "path": "packages/adapter-claude/package.json", "jsonpath": "$.version" },
+        { "type": "json", "path": "packages/adapter-codex/package.json", "jsonpath": "$.version" },
+        { "type": "json", "path": "packages/adapter-grok/package.json", "jsonpath": "$.version" },
+        { "type": "json", "path": "packages/adapter-kimi/package.json", "jsonpath": "$.version" },
+        { "type": "json", "path": "packages/adapter-opencode/package.json", "jsonpath": "$.version" },
+        { "type": "json", "path": "packages/adapter-hermes/package.json", "jsonpath": "$.version" },
+        { "type": "json", "path": "packages/runtime/package.json", "jsonpath": "$.version" },
+        { "type": "json", "path": "packages/testing/package.json", "jsonpath": "$.version" },
+        { "type": "generic", "path": "packages/core/src/version.ts" }
+      ]
+    }
+  }
+}

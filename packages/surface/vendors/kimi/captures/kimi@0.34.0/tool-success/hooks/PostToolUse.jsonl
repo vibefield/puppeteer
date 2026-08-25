@@ -1,0 +1,1 @@
+{"hook_event_name":"PostToolUse","session_id":"session_a11a5ed067dc4fb012075f57244714614184","cwd":"/workspace","client_type":"kimi_code_cli","tool_name":"Bash","tool_input":{"command":"<redacted:command>","description":"<redacted:description>"},"tool_call_id":"call_a11a5ed0ae24795","tool_output":"<redacted:tool_output>"}

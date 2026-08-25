@@ -1,0 +1,96 @@
+{
+  "surface": "opencode",
+  "surfaceVersion": "1.18.16",
+  "event": "question.replied",
+  "channel": "sse",
+  "channels": [
+    "sse"
+  ],
+  "transport": "sse-event",
+  "direction": "agent-to-client",
+  "trigger": "Published on the native GET /event stream.",
+  "payloadSchema": {
+    "type": "object",
+    "properties": {
+      "answers": {
+        "type": "array",
+        "items": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        }
+      },
+      "requestID": {
+        "type": "string"
+      },
+      "sessionID": {
+        "type": "string"
+      }
+    },
+    "required": [
+      "answers",
+      "requestID",
+      "sessionID"
+    ]
+  },
+  "recordSchema": {
+    "type": "object",
+    "properties": {
+      "id": {
+        "type": "string"
+      },
+      "properties": {
+        "type": "object",
+        "properties": {
+          "answers": {
+            "type": "array",
+            "items": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            }
+          },
+          "requestID": {
+            "type": "string"
+          },
+          "sessionID": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "answers",
+          "requestID",
+          "sessionID"
+        ]
+      },
+      "type": {
+        "type": "string",
+        "enum": [
+          "question.replied"
+        ]
+      }
+    },
+    "required": [
+      "id",
+      "properties",
+      "type"
+    ]
+  },
+  "evidence": {
+    "existence": [
+      "opencode-runtime-question-reply"
+    ],
+    "shape": [
+      "opencode-runtime-question-reply"
+    ],
+    "carrier": [
+      "opencode-runtime-question-reply"
+    ]
+  },
+  "confidence": "verified-headless",
+  "firstSeen": "1.18.16",
+  "lastVerified": "1.18.16",
+  "fixture": "captures/opencode@1.18.16/question-reply/events.jsonl"
+}

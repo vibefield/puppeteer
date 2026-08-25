@@ -1,0 +1,93 @@
+{
+  "evidenceVersion": 2,
+  "vendor": "claude",
+  "vendorVersion": "2.1.226",
+  "artifacts": [
+    {
+      "id": "installed-claude-2.1.226-darwin-arm64",
+      "platform": "darwin-arm64",
+      "channel": "latest",
+      "acquiredAt": "2026-08-09T17:13:54.000Z",
+      "versionOutput": "2.1.226 (Claude Code)",
+      "integrity": {
+        "status": "verified",
+        "sha256": "sha256:013a1cf17df5ff1dcc189d5d6fd3fdd5f097ddc3cd41aa9992e99805574febbe"
+      }
+    }
+  ],
+  "sourceReferences": [
+    {
+      "repository": "https://github.com/anthropics/claude-code",
+      "revision": "v2.1.226",
+      "relation": "release-tag"
+    }
+  ],
+  "claims": [
+    {
+      "id": "claude-runtime-headless",
+      "kind": "runtime-capture",
+      "confidence": "verified-headless",
+      "record": "sanitized-captures",
+      "artifact": "installed-claude-2.1.226-darwin-arm64",
+      "platform": "darwin-arm64",
+      "harness": "Authentication-independent isolated --init-only and print-mode census in packages/surface/vendors/claude/census/harness.mjs",
+      "capturedAt": "2026-08-09T17:13:54.000Z"
+    },
+    {
+      "id": "claude-binary-probe",
+      "kind": "binary-probe",
+      "confidence": "verified-headless",
+      "record": "binary-probes",
+      "artifact": "installed-claude-2.1.226-darwin-arm64",
+      "platform": "darwin-arm64",
+      "harness": "Exact artifact --version, --help, SHA-256, and bounded status-channel source probe in packages/surface/vendors/claude/census/generate-model.mjs",
+      "capturedAt": "2026-08-09T17:13:54.000Z"
+    },
+    {
+      "id": "claude-official-hooks",
+      "kind": "official-doc",
+      "confidence": "unverified",
+      "record": "official-hook-reference",
+      "sourceReference": 0,
+      "notes": "Digest-pinned review of https://code.claude.com/docs/en/hooks retrieved for the v2.1.226 adaptation. Documentation proves declared support, not execution on the pinned artifact."
+    }
+  ],
+  "records": [
+    {
+      "id": "sanitized-captures",
+      "kind": "capture-set",
+      "path": "packages/surface/vendors/claude/captures/claude@2.1.226",
+      "digestAlgorithm": "sha256-path-content-v1",
+      "sha256": "66a4596fe819d221ef875d45d03801fc9ae4b6861d0d1aa31b42a5646aea6d44"
+    },
+    {
+      "id": "binary-probes",
+      "kind": "probe-set",
+      "path": "packages/surface/vendors/claude/probes/claude@2.1.226",
+      "digestAlgorithm": "sha256-path-content-v1",
+      "sha256": "1f21b7f422608a3caf840285a4ebaf9843dfb3eefb4895c48aad22a9306fafd8"
+    },
+    {
+      "id": "official-hook-reference",
+      "kind": "reference-snapshot",
+      "path": "packages/surface/vendors/claude/references/claude@2.1.226",
+      "digestAlgorithm": "sha256-path-content-v1",
+      "sha256": "a5c9d37d8eaf9982781c9d8c89457a003ee52c667456b99da4aad53b515a6276"
+    },
+    {
+      "id": "agent-surface-model",
+      "kind": "model-tree",
+      "path": "packages/surface/vendors/claude/model/claude@2.1.226",
+      "exclude": [
+        "evidence.json"
+      ],
+      "digestAlgorithm": "sha256-path-content-v1",
+      "sha256": "ce475301d6d128e74378d5894120cbfbb6b429aab0ce42ef3ef3267982edb61b"
+    }
+  ],
+  "limitations": [
+    "Artifact integrity and controlled runtime captures currently cover only darwin-arm64; protected promotion still requires every configured platform.",
+    "The isolated baseline deliberately uses no credentials. The child status payload is statically verified in the pinned artifact, but its runtime invocation and hook-based tool, permission, delegation, compaction, worktree, and MCP paths remain uncaptured.",
+    "The official hook reference is mutable. Its reviewed summary is digest-pinned here, and a future candidate must repeat the review and census rather than inheriting this claim."
+  ]
+}

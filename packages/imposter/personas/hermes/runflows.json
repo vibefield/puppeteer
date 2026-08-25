@@ -1,0 +1,50 @@
+{
+  "version": 1,
+  "flows": [
+    {
+      "id": "happy-turn",
+      "intent": "turn.basic",
+      "scenario": "happy-turn",
+      "title": "Basic Hermes TUI-gateway turn",
+      "summary": "message.start, streamed delta, and message.complete on the stdio gateway.",
+      "kind": "typical",
+      "danger": "safe",
+      "tags": ["tui-gateway", "turn"],
+      "defaultStimulus": { "text": "hello" },
+      "defaultSpeed": 4
+    },
+    {
+      "id": "permission-deny",
+      "intent": "permission.deny",
+      "scenario": "permission-deny",
+      "title": "Approval deny",
+      "summary": "tool.start, approval.request, blocked tool.complete, then message.complete.",
+      "kind": "typical",
+      "danger": "safe",
+      "tags": ["approval", "tool"],
+      "defaultSpeed": 4
+    },
+    {
+      "id": "unknown-event",
+      "intent": "fault.unknown-record",
+      "scenario": "unknown-event",
+      "title": "Unknown future gateway event",
+      "summary": "Exercises lossless retention of an unmodeled native name.",
+      "kind": "adversarial",
+      "danger": "safe",
+      "tags": ["unknown", "forward-compatibility"],
+      "defaultSpeed": 4
+    },
+    {
+      "id": "late-after-exit",
+      "intent": "fault.late-event",
+      "scenario": "late-after-exit",
+      "title": "Delta after message.complete",
+      "summary": "Emits a valid delta after the terminal complete record.",
+      "kind": "adversarial",
+      "danger": "disruptive",
+      "tags": ["late", "ordering"],
+      "defaultSpeed": 4
+    }
+  ]
+}

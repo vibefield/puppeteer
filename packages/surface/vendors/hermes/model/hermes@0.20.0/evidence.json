@@ -1,0 +1,90 @@
+{
+  "evidenceVersion": 2,
+  "vendor": "hermes",
+  "vendorVersion": "0.20.0",
+  "artifacts": [
+    {
+      "id": "hermes-0.20.0-source-revision",
+      "platform": "darwin-arm64",
+      "channel": "stable",
+      "acquiredAt": "2026-08-12T18:56:46.921Z",
+      "versionOutput": "Hermes Agent v0.20.0 (2026.8.3)",
+      "identity": "source-revision-and-lockfile",
+      "integrity": {
+        "status": "verified",
+        "sha256": "sha256:64d1085ee1c23caf0ae0d9e65c73e280f466362ed43fdda1531f18f3af1d9869"
+      },
+      "notes": "Source-revision pin. Integrity is pyproject.toml of the tagged checkout, not the console-script wrapper.",
+      "uvLockSha256": "aab3c83f71b683507a590b6315b23bdc0abd6b63b76b2349eae15bf00dfbaf2b"
+    }
+  ],
+  "sourceReferences": [
+    {
+      "repository": "https://github.com/NousResearch/hermes-agent",
+      "revision": "3c27eb6234bf91b8ceee9e9071591b31e9b148cb",
+      "relation": "exact-release",
+      "tag": "v2026.8.3",
+      "tagObject": "7de39e700d2c329e15d32eb0b96e2f7cdd9fbdb2"
+    }
+  ],
+  "records": [
+    {
+      "id": "sanitized-captures",
+      "kind": "capture-set",
+      "path": "packages/surface/vendors/hermes/captures/hermes@0.20.0",
+      "digestAlgorithm": "sha256-path-content-v1",
+      "sha256": "e8b1fef65afb84d7a91016d29e4590ece39848e94590ad948ecf89c3400aca0d"
+    },
+    {
+      "id": "identity-probes",
+      "kind": "probe-set",
+      "path": "packages/surface/vendors/hermes/probes/hermes@0.20.0",
+      "digestAlgorithm": "sha256-path-content-v1",
+      "sha256": "d4b908afd96cef9bdba1d100872dc2d0ebd9897f7bb6c7e221aef0d111a7ae6d"
+    },
+    {
+      "id": "agent-surface-model",
+      "kind": "model-tree",
+      "path": "packages/surface/vendors/hermes/model/hermes@0.20.0",
+      "exclude": ["evidence.json"],
+      "digestAlgorithm": "sha256-path-content-v1",
+      "sha256": "6d9c807277be9cb5e4cfe3e2c5e470cd85411440b604ce8ded5b301227868bb8"
+    }
+  ],
+  "claims": [
+    {
+      "id": "hermes-runtime-headless",
+      "kind": "runtime-capture",
+      "confidence": "verified-headless",
+      "record": "sanitized-captures",
+      "artifact": "hermes-0.20.0-source-revision",
+      "platform": "darwin-arm64",
+      "harness": "isolated HERMES_HOME, loopback OpenAI-compatible provider, stdio tui_gateway census sidecar, plugin-hook dump and outbound webhook collector",
+      "capturedAt": "2026-08-12T13:29:19.000Z"
+    },
+    {
+      "id": "hermes-identity-probe",
+      "kind": "binary-probe",
+      "confidence": "verified-headless",
+      "record": "identity-probes",
+      "artifact": "hermes-0.20.0-source-revision",
+      "platform": "darwin-arm64",
+      "harness": "source pin, --version, --help, rejected option, hermes acp --version/--check, Gate 0 process trees",
+      "capturedAt": "2026-08-12T18:56:46.921Z"
+    },
+    {
+      "id": "hermes-exact-source",
+      "kind": "exact-source",
+      "confidence": "unverified",
+      "sourceReference": 0,
+      "notes": "Pinned checkout lead for unobserved methods. It cannot promote a runtime claim."
+    }
+  ],
+  "limitations": [
+    "Only darwin-arm64 executed the source-revision checkout. Other platforms are declared execution environments, not separately captured binaries.",
+    "Turn captures are stdio tui_gateway, not a live hermes --tui PTY with a Node viewer attached.",
+    "Plugin hooks and outbound webhooks required the census sidecar. Default tui_gateway.entry does not register them.",
+    "Unobserved source methods (session.compress, prompt.background, clarify.respond, subagent.*, allow-once/always) are omitted from events/.",
+    "state.db was used for resume identity but was not snapshotted as a live event carrier."
+  ]
+}

@@ -1,0 +1,421 @@
+{
+  "surface": "opencode",
+  "surfaceVersion": "1.18.16",
+  "event": "http/session.fork",
+  "channel": "http",
+  "channels": [
+    "http"
+  ],
+  "transport": "http",
+  "direction": "client-to-agent",
+  "trigger": "Fork session — Create a new session by forking an existing session at a specific message point.",
+  "payloadSchema": {
+    "type": "object",
+    "properties": {
+      "method": {
+        "type": "string"
+      },
+      "route": {
+        "type": "string"
+      },
+      "params": {
+        "type": "object",
+        "properties": {
+          "sessionID": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "sessionID"
+        ]
+      },
+      "query": {
+        "type": "object",
+        "properties": {
+          "directory": {
+            "type": "string"
+          },
+          "workspace": {
+            "type": "string"
+          }
+        }
+      },
+      "body": {
+        "type": "object",
+        "properties": {
+          "messageID": {
+            "type": "string"
+          }
+        }
+      }
+    },
+    "required": [
+      "method",
+      "route",
+      "params"
+    ]
+  },
+  "resultSchema": {
+    "type": "object",
+    "properties": {
+      "method": {
+        "type": "string",
+        "enum": [
+          "POST"
+        ]
+      },
+      "route": {
+        "type": "string",
+        "enum": [
+          "/session/:sessionID/fork"
+        ]
+      },
+      "status": {
+        "type": "integer",
+        "minimum": 200,
+        "maximum": 299
+      },
+      "params": {
+        "type": "object",
+        "properties": {
+          "sessionID": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "sessionID"
+        ]
+      },
+      "query": {
+        "type": "object",
+        "properties": {
+          "directory": {
+            "type": "string"
+          },
+          "workspace": {
+            "type": "string"
+          }
+        }
+      },
+      "body": {
+        "type": "object",
+        "properties": {
+          "agent": {
+            "type": "string"
+          },
+          "cost": {
+            "type": "number"
+          },
+          "directory": {
+            "type": "string"
+          },
+          "id": {
+            "type": "string"
+          },
+          "metadata": {
+            "type": "object"
+          },
+          "model": {
+            "type": "object",
+            "properties": {
+              "id": {
+                "type": "string"
+              },
+              "providerID": {
+                "type": "string"
+              },
+              "variant": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "id",
+              "providerID"
+            ]
+          },
+          "parentID": {
+            "type": "string"
+          },
+          "path": {
+            "type": "string"
+          },
+          "permission": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "action": {
+                  "type": "string"
+                },
+                "pattern": {
+                  "type": "string"
+                },
+                "permission": {
+                  "type": "string"
+                }
+              },
+              "required": [
+                "action",
+                "pattern",
+                "permission"
+              ]
+            }
+          },
+          "projectID": {
+            "type": "string"
+          },
+          "revert": {
+            "type": "object",
+            "properties": {
+              "diff": {
+                "type": "string"
+              },
+              "messageID": {
+                "type": "string"
+              },
+              "partID": {
+                "type": "string"
+              },
+              "snapshot": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "messageID"
+            ]
+          },
+          "share": {
+            "type": "object",
+            "properties": {
+              "url": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "url"
+            ]
+          },
+          "slug": {
+            "type": "string"
+          },
+          "summary": {
+            "type": "object",
+            "properties": {
+              "additions": {
+                "type": "number"
+              },
+              "deletions": {
+                "type": "number"
+              },
+              "diffs": {
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "properties": {
+                    "additions": {
+                      "type": "number"
+                    },
+                    "deletions": {
+                      "type": "number"
+                    },
+                    "file": {
+                      "type": "string"
+                    },
+                    "patch": {
+                      "type": "string"
+                    },
+                    "status": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "additions",
+                    "deletions"
+                  ]
+                }
+              },
+              "files": {
+                "type": "number"
+              }
+            },
+            "required": [
+              "additions",
+              "deletions",
+              "files"
+            ]
+          },
+          "time": {
+            "type": "object",
+            "properties": {
+              "archived": {
+                "type": "number"
+              },
+              "compacting": {
+                "type": "integer",
+                "minimum": 0
+              },
+              "created": {
+                "type": "integer",
+                "minimum": 0
+              },
+              "updated": {
+                "type": "integer",
+                "minimum": 0
+              }
+            },
+            "required": [
+              "created",
+              "updated"
+            ]
+          },
+          "title": {
+            "type": "string"
+          },
+          "tokens": {
+            "type": "object",
+            "properties": {
+              "cache": {
+                "type": "object",
+                "properties": {
+                  "read": {
+                    "type": "number"
+                  },
+                  "write": {
+                    "type": "number"
+                  }
+                },
+                "required": [
+                  "read",
+                  "write"
+                ]
+              },
+              "input": {
+                "type": "number"
+              },
+              "output": {
+                "type": "number"
+              },
+              "reasoning": {
+                "type": "number"
+              }
+            },
+            "required": [
+              "cache",
+              "input",
+              "output",
+              "reasoning"
+            ]
+          },
+          "version": {
+            "type": "string"
+          },
+          "workspaceID": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "directory",
+          "id",
+          "projectID",
+          "slug",
+          "time",
+          "title",
+          "version"
+        ]
+      }
+    },
+    "required": [
+      "method",
+      "route",
+      "status",
+      "params",
+      "body"
+    ]
+  },
+  "recordSchema": {
+    "type": "object",
+    "properties": {
+      "direction": {
+        "type": "string",
+        "enum": [
+          "client-to-agent"
+        ]
+      },
+      "request": {
+        "type": "object",
+        "properties": {
+          "method": {
+            "type": "string",
+            "enum": [
+              "POST"
+            ]
+          },
+          "route": {
+            "type": "string",
+            "enum": [
+              "/session/:sessionID/fork"
+            ]
+          },
+          "params": {
+            "type": "object",
+            "properties": {
+              "sessionID": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "sessionID"
+            ]
+          },
+          "query": {
+            "type": "object",
+            "properties": {
+              "directory": {
+                "type": "string"
+              },
+              "workspace": {
+                "type": "string"
+              }
+            }
+          },
+          "body": {
+            "type": "object",
+            "properties": {
+              "messageID": {
+                "type": "string"
+              }
+            }
+          }
+        },
+        "required": [
+          "method",
+          "route",
+          "params"
+        ]
+      }
+    },
+    "required": [
+      "direction",
+      "request"
+    ]
+  },
+  "evidence": {
+    "existence": [
+      "opencode-runtime-session-lifecycle"
+    ],
+    "shape": [
+      "opencode-runtime-session-lifecycle"
+    ],
+    "result": [
+      "opencode-runtime-session-lifecycle"
+    ],
+    "carrier": [
+      "opencode-runtime-session-lifecycle"
+    ]
+  },
+  "confidence": "verified-headless",
+  "firstSeen": "1.18.16",
+  "lastVerified": "1.18.16",
+  "fixture": "captures/opencode@1.18.16/session-lifecycle/http-roundtrip.jsonl",
+  "notes": "OpenAPI operationId session.fork; POST /session/{sessionID}/fork."
+}

@@ -1,0 +1,2 @@
+<pid>	<ppid>	<redacted:path> <redacted:path> --tui
+<pid>	<ppid>	<node> --expose-gc <redacted:path>

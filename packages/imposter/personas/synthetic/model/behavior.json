@@ -1,0 +1,27 @@
+{
+  "behaviorVersion": 1,
+  "title": "Synthetic native event lifecycle",
+  "description": "The synthetic persona has no external vendor; these are nevertheless its exact native event names and ordering contract.",
+  "source": "packages/imposter/personas/synthetic/behavior/happy-turn.json",
+  "lanes": [
+    { "id": "session", "label": "Session" },
+    { "id": "turn", "label": "Turn" }
+  ],
+  "nodes": [
+    { "id": "boot", "event": "agent.boot", "confidence": "unverified", "lane": "session", "order": 0 },
+    { "id": "settled", "event": "agent.settled", "confidence": "unverified", "lane": "session", "order": 1 },
+    { "id": "halt", "event": "agent.halt", "confidence": "unverified", "lane": "session", "order": 5 },
+    { "id": "prompt", "event": "agent.prompt", "confidence": "unverified", "lane": "turn", "order": 2 },
+    { "id": "reply", "event": "agent.reply", "confidence": "unverified", "lane": "turn", "order": 3 },
+    { "id": "action", "event": "agent.action", "confidence": "unverified", "lane": "turn", "order": 4 }
+  ],
+  "relations": [
+    { "from": "boot", "to": "settled", "kind": "sequence", "confidence": "unverified" },
+    { "from": "settled", "to": "prompt", "kind": "sequence", "confidence": "unverified" },
+    { "from": "prompt", "to": "reply", "kind": "sequence", "confidence": "unverified" },
+    { "from": "reply", "to": "action", "kind": "conditional", "confidence": "unverified" },
+    { "from": "action", "to": "prompt", "kind": "loop", "confidence": "unverified" },
+    { "from": "reply", "to": "prompt", "kind": "loop", "confidence": "unverified" },
+    { "from": "prompt", "to": "halt", "kind": "conditional", "confidence": "unverified" }
+  ]
+}

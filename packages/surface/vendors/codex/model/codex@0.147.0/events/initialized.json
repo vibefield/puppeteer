@@ -1,0 +1,37 @@
+{
+  "surface": "codex",
+  "surfaceVersion": "0.147.0",
+  "event": "initialized",
+  "channel": "appserver",
+  "transport": "jsonrpc-notification",
+  "direction": "client-to-agent",
+  "recordSchema": {
+    "type": "object",
+    "properties": {
+      "method": {
+        "type": "string",
+        "enum": [
+          "initialized"
+        ]
+      }
+    },
+    "required": [
+      "method"
+    ]
+  },
+  "evidence": {
+    "existence": [
+      "codex-runtime-headless"
+    ],
+    "shape": [
+      "codex-runtime-headless"
+    ],
+    "carrier": [
+      "codex-runtime-headless"
+    ]
+  },
+  "confidence": "verified-headless",
+  "firstSeen": "0.147.0",
+  "lastVerified": "0.147.0",
+  "fixture": "captures/codex@0.147.0/protocol-approval-accept.jsonl"
+}

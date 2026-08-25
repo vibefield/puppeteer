@@ -1,0 +1,37 @@
+{
+  "probeKind": "archive-only",
+  "vendor": "antigravity",
+  "vendorVersion": "1.1.12",
+  "platform": "darwin-x64",
+  "artifact": "$RELEASE_ARCHIVE_MEMBER",
+  "bytes": 179387760,
+  "sha256": "a3e9175bfc15656a70e87ed5df627c2691da3dee88acf69ae0601e5ecf146c48",
+  "fileDescription": "Mach-O 64-bit executable x86_64",
+  "signature": {
+    "verified": false,
+    "verificationResult": "invalid-signature",
+    "verificationExitCode": 1,
+    "identifier": "cli",
+    "teamIdentifier": "EQHXZ8M8AV",
+    "authorities": [
+      "(unavailable)"
+    ]
+  },
+  "staticStringCandidates": {
+    "disableAutoUpdateEnvironment": {
+      "value": "AGY_CLI_DISABLE_AUTO_UPDATE",
+      "present": true,
+      "status": "unverified-contract"
+    }
+  },
+  "probeHost": {
+    "platform": "darwin",
+    "arch": "arm64",
+    "osRelease": "25.5.0"
+  },
+  "execution": {
+    "status": "not-run",
+    "reason": "archive identity probe only; version/help execution requires a matching platform runner"
+  },
+  "probedAt": "2026-08-11T05:58:25.519Z"
+}

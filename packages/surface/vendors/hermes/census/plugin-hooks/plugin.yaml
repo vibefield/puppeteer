@@ -1,0 +1,16 @@
+name: census-hooks
+version: 0.1.0
+description: Isolated-home census observer. Writes hook kwargs to CHOPSTICKS_HERMES_HOOK_LOG.
+author: chopsticks
+hooks:
+  - on_session_start
+  - on_session_end
+  - on_session_finalize
+  - pre_llm_call
+  - post_llm_call
+  - pre_api_request
+  - post_api_request
+  - pre_tool_call
+  - post_tool_call
+  - pre_approval_request
+  - post_approval_response

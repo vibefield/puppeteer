@@ -1,0 +1,13 @@
+{
+  "jsonrpc": "2.0",
+  "method": "event",
+  "params": {
+    "type": "gateway.ready",
+    "payload": {
+      "change_events": true,
+      "skin": {
+        "name": "default"
+      }
+    }
+  }
+}

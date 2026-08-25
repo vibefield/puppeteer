@@ -1,0 +1,102 @@
+{
+  "surface": "kimi",
+  "surfaceVersion": "0.34.0",
+  "event": "mcp.tools_discovered",
+  "channel": "wire",
+  "channels": ["wire"],
+  "transport": "jsonl-record",
+  "direction": "agent-local",
+  "payloadSchema": {
+    "type": "object",
+    "properties": {
+      "serverName": {
+        "type": "string"
+      },
+      "hash": {
+        "type": "string"
+      },
+      "tools": {
+        "type": "array"
+      },
+      "enabledNames": {
+        "type": "array",
+        "items": {
+          "type": "string"
+        }
+      },
+      "collisions": {
+        "type": "array",
+        "items": {
+          "type": "object",
+          "properties": {
+            "qualified": {
+              "type": "string"
+            },
+            "toolName": {
+              "type": "string"
+            },
+            "collidesWith": {
+              "type": "object"
+            }
+          },
+          "required": ["qualified", "toolName", "collidesWith"]
+        }
+      }
+    },
+    "required": ["serverName", "hash", "tools", "enabledNames"]
+  },
+  "recordSchema": {
+    "type": "object",
+    "properties": {
+      "type": {
+        "type": "string",
+        "enum": ["mcp.tools_discovered"]
+      },
+      "serverName": {
+        "type": "string"
+      },
+      "hash": {
+        "type": "string"
+      },
+      "tools": {
+        "type": "array"
+      },
+      "enabledNames": {
+        "type": "array",
+        "items": {
+          "type": "string"
+        }
+      },
+      "collisions": {
+        "type": "array",
+        "items": {
+          "type": "object",
+          "properties": {
+            "qualified": {
+              "type": "string"
+            },
+            "toolName": {
+              "type": "string"
+            },
+            "collidesWith": {
+              "type": "object"
+            }
+          },
+          "required": ["qualified", "toolName", "collidesWith"]
+        }
+      },
+      "time": {
+        "type": "number",
+        "minimum": 0
+      }
+    },
+    "required": ["type", "serverName", "hash", "tools", "enabledNames", "time"]
+  },
+  "recordChannel": "wire",
+  "evidence": {
+    "existence": ["kimi-exact-release-source"],
+    "shape": ["kimi-exact-release-source"],
+    "carrier": ["kimi-exact-release-source"]
+  },
+  "confidence": "unverified"
+}

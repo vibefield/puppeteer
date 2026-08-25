@@ -1,0 +1,102 @@
+{
+  "visibleHelpOptions": {
+    "session": [
+      "-S",
+      "--session"
+    ],
+    "continue": [
+      "-c",
+      "--continue"
+    ],
+    "yolo": [
+      "-y",
+      "--yolo"
+    ],
+    "auto": [
+      "--auto"
+    ],
+    "model": [
+      "-m",
+      "--model"
+    ],
+    "prompt": [
+      "-p",
+      "--prompt"
+    ],
+    "outputFormat": [
+      "--output-format"
+    ],
+    "skillsDir": [
+      "--skills-dir"
+    ],
+    "agent": [
+      "--agent"
+    ],
+    "agentFile": [
+      "--agent-file"
+    ],
+    "addDir": [
+      "--add-dir"
+    ],
+    "plan": [
+      "--plan"
+    ]
+  },
+  "exactSourceOptions": {
+    "session": [
+      "-S",
+      "--session",
+      "-r",
+      "--resume"
+    ],
+    "continue": [
+      "-c",
+      "-C",
+      "--continue"
+    ],
+    "yolo": [
+      "-y",
+      "--yolo",
+      "--yes",
+      "--auto-approve"
+    ],
+    "auto": [
+      "--auto"
+    ],
+    "model": [
+      "-m",
+      "--model"
+    ],
+    "prompt": [
+      "-p",
+      "--prompt"
+    ],
+    "outputFormat": [
+      "--output-format"
+    ],
+    "skillsDir": [
+      "--skills-dir"
+    ],
+    "agent": [
+      "--agent"
+    ],
+    "agentFile": [
+      "--agent-file"
+    ],
+    "addDir": [
+      "--add-dir"
+    ],
+    "plan": [
+      "--plan"
+    ]
+  },
+  "rejectedOptionProbe": {
+    "args": [
+      "--definitely-not-a-kimi-option"
+    ],
+    "status": 1,
+    "signal": null,
+    "stdout": "",
+    "stderr": "error: unknown option '--definitely-not-a-kimi-option'"
+  }
+}

@@ -1,0 +1,34 @@
+{
+  "vendor": "codex",
+  "asm": {
+    "package": "@vibecook/chopsticks-surface",
+    "path": "vendors/codex/model/codex@0.147.0"
+  },
+  "shimNames": ["codex"],
+  "envelope": {},
+
+  "bindings": {
+    "$threadId": "$uuid:thread",
+    "$threadCwd": "$cwd",
+    "$threadModel": "$modelId",
+    "$threadModelProvider": "imposter",
+    "$threadApprovalPolicy": "on-request",
+    "$threadApprovalsReviewer": "user",
+    "$clientUserMessageId": null,
+    "$threadSandbox": {
+      "type": "workspaceWrite",
+      "writableRoots": [],
+      "networkAccess": false,
+      "excludeTmpdirEnvVar": false,
+      "excludeSlashTmp": false
+    }
+  },
+
+  "nativeStore": {
+    "sessionPath": ["threads", "$threadId"],
+    "updatesFile": "notifications.jsonl",
+    "mirrorJsonRpc": true
+  },
+
+  "boot": [{ "op": "session.start" }, { "op": "session.ready" }]
+}

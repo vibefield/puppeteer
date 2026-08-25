@@ -1,0 +1,2155 @@
+{
+  "surface": "opencode",
+  "surfaceVersion": "1.18.16",
+  "event": "http/global.config.get",
+  "channel": "http",
+  "channels": [
+    "http"
+  ],
+  "transport": "http",
+  "direction": "client-to-agent",
+  "trigger": "Get global configuration — Retrieve the current global OpenCode configuration settings and preferences.",
+  "payloadSchema": {
+    "type": "object",
+    "properties": {
+      "method": {
+        "type": "string"
+      },
+      "route": {
+        "type": "string"
+      }
+    },
+    "required": [
+      "method",
+      "route"
+    ]
+  },
+  "resultSchema": {
+    "type": "object",
+    "properties": {
+      "method": {
+        "type": "string",
+        "enum": [
+          "GET"
+        ]
+      },
+      "route": {
+        "type": "string",
+        "enum": [
+          "/global/config"
+        ]
+      },
+      "status": {
+        "type": "integer",
+        "minimum": 200,
+        "maximum": 299
+      },
+      "body": {
+        "type": "object",
+        "properties": {
+          "$schema": {
+            "type": "string"
+          },
+          "agent": {
+            "type": "object",
+            "properties": {
+              "build": {
+                "type": "object",
+                "properties": {
+                  "color": {
+                    "anyOf": [
+                      {
+                        "type": "string"
+                      }
+                    ]
+                  },
+                  "description": {
+                    "type": "string"
+                  },
+                  "disable": {
+                    "type": "boolean"
+                  },
+                  "hidden": {
+                    "type": "boolean"
+                  },
+                  "maxSteps": {
+                    "type": "integer",
+                    "exclusiveMinimum": 0
+                  },
+                  "mode": {
+                    "type": "string"
+                  },
+                  "model": {
+                    "type": "string"
+                  },
+                  "options": {
+                    "type": "object"
+                  },
+                  "permission": {
+                    "anyOf": [
+                      {
+                        "type": "string"
+                      },
+                      {
+                        "type": "object",
+                        "properties": {
+                          "bash": {
+                            "anyOf": [
+                              {
+                                "type": "string"
+                              },
+                              {
+                                "type": "object"
+                              }
+                            ]
+                          },
+                          "doom_loop": {
+                            "type": "string"
+                          },
+                          "edit": {
+                            "anyOf": [
+                              {
+                                "type": "string"
+                              },
+                              {
+                                "type": "object"
+                              }
+                            ]
+                          },
+                          "external_directory": {
+                            "anyOf": [
+                              {
+                                "type": "string"
+                              },
+                              {
+                                "type": "object"
+                              }
+                            ]
+                          },
+                          "glob": {
+                            "anyOf": [
+                              {
+                                "type": "string"
+                              },
+                              {
+                                "type": "object"
+                              }
+                            ]
+                          },
+                          "grep": {
+                            "anyOf": [
+                              {
+                                "type": "string"
+                              },
+                              {
+                                "type": "object"
+                              }
+                            ]
+                          },
+                          "list": {
+                            "anyOf": [
+                              {
+                                "type": "string"
+                              },
+                              {
+                                "type": "object"
+                              }
+                            ]
+                          },
+                          "lsp": {
+                            "anyOf": [
+                              {
+                                "type": "string"
+                              },
+                              {
+                                "type": "object"
+                              }
+                            ]
+                          },
+                          "question": {
+                            "type": "string"
+                          },
+                          "read": {
+                            "anyOf": [
+                              {
+                                "type": "string"
+                              },
+                              {
+                                "type": "object"
+                              }
+                            ]
+                          },
+                          "skill": {
+                            "anyOf": [
+                              {
+                                "type": "string"
+                              },
+                              {
+                                "type": "object"
+                              }
+                            ]
+                          },
+                          "task": {
+                            "anyOf": [
+                              {
+                                "type": "string"
+                              },
+                              {
+                                "type": "object"
+                              }
+                            ]
+                          },
+                          "todowrite": {
+                            "type": "string"
+                          },
+                          "webfetch": {
+                            "type": "string"
+                          },
+                          "websearch": {
+                            "type": "string"
+                          }
+                        }
+                      }
+                    ]
+                  },
+                  "prompt": {
+                    "type": "string"
+                  },
+                  "steps": {
+                    "type": "integer",
+                    "exclusiveMinimum": 0
+                  },
+                  "temperature": {
+                    "type": "number"
+                  },
+                  "tools": {
+                    "type": "object"
+                  },
+                  "top_p": {
+                    "type": "number"
+                  },
+                  "variant": {
+                    "type": "string"
+                  }
+                }
+              },
+              "compaction": {
+                "type": "object",
+                "properties": {
+                  "color": {
+                    "anyOf": [
+                      {
+                        "type": "string"
+                      }
+                    ]
+                  },
+                  "description": {
+                    "type": "string"
+                  },
+                  "disable": {
+                    "type": "boolean"
+                  },
+                  "hidden": {
+                    "type": "boolean"
+                  },
+                  "maxSteps": {
+                    "type": "integer",
+                    "exclusiveMinimum": 0
+                  },
+                  "mode": {
+                    "type": "string"
+                  },
+                  "model": {
+                    "type": "string"
+                  },
+                  "options": {
+                    "type": "object"
+                  },
+                  "permission": {
+                    "anyOf": [
+                      {
+                        "type": "string"
+                      },
+                      {
+                        "type": "object",
+                        "properties": {
+                          "bash": {
+                            "anyOf": [
+                              {
+                                "type": "string"
+                              },
+                              {
+                                "type": "object"
+                              }
+                            ]
+                          },
+                          "doom_loop": {
+                            "type": "string"
+                          },
+                          "edit": {
+                            "anyOf": [
+                              {
+                                "type": "string"
+                              },
+                              {
+                                "type": "object"
+                              }
+                            ]
+                          },
+                          "external_directory": {
+                            "anyOf": [
+                              {
+                                "type": "string"
+                              },
+                              {
+                                "type": "object"
+                              }
+                            ]
+                          },
+                          "glob": {
+                            "anyOf": [
+                              {
+                                "type": "string"
+                              },
+                              {
+                                "type": "object"
+                              }
+                            ]
+                          },
+                          "grep": {
+                            "anyOf": [
+                              {
+                                "type": "string"
+                              },
+                              {
+                                "type": "object"
+                              }
+                            ]
+                          },
+                          "list": {
+                            "anyOf": [
+                              {
+                                "type": "string"
+                              },
+                              {
+                                "type": "object"
+                              }
+                            ]
+                          },
+                          "lsp": {
+                            "anyOf": [
+                              {
+                                "type": "string"
+                              },
+                              {
+                                "type": "object"
+                              }
+                            ]
+                          },
+                          "question": {
+                            "type": "string"
+                          },
+                          "read": {
+                            "anyOf": [
+                              {
+                                "type": "string"
+                              },
+                              {
+                                "type": "object"
+                              }
+                            ]
+                          },
+                          "skill": {
+                            "anyOf": [
+                              {
+                                "type": "string"
+                              },
+                              {
+                                "type": "object"
+                              }
+                            ]
+                          },
+                          "task": {
+                            "anyOf": [
+                              {
+                                "type": "string"
+                              },
+                              {
+                                "type": "object"
+                              }
+                            ]
+                          },
+                          "todowrite": {
+                            "type": "string"
+                          },
+                          "webfetch": {
+                            "type": "string"
+                          },
+                          "websearch": {
+                            "type": "string"
+                          }
+                        }
+                      }
+                    ]
+                  },
+                  "prompt": {
+                    "type": "string"
+                  },
+                  "steps": {
+                    "type": "integer",
+                    "exclusiveMinimum": 0
+                  },
+                  "temperature": {
+                    "type": "number"
+                  },
+                  "tools": {
+                    "type": "object"
+                  },
+                  "top_p": {
+                    "type": "number"
+                  },
+                  "variant": {
+                    "type": "string"
+                  }
+                }
+              },
+              "explore": {
+                "type": "object",
+                "properties": {
+                  "color": {
+                    "anyOf": [
+                      {
+                        "type": "string"
+                      }
+                    ]
+                  },
+                  "description": {
+                    "type": "string"
+                  },
+                  "disable": {
+                    "type": "boolean"
+                  },
+                  "hidden": {
+                    "type": "boolean"
+                  },
+                  "maxSteps": {
+                    "type": "integer",
+                    "exclusiveMinimum": 0
+                  },
+                  "mode": {
+                    "type": "string"
+                  },
+                  "model": {
+                    "type": "string"
+                  },
+                  "options": {
+                    "type": "object"
+                  },
+                  "permission": {
+                    "anyOf": [
+                      {
+                        "type": "string"
+                      },
+                      {
+                        "type": "object",
+                        "properties": {
+                          "bash": {
+                            "anyOf": [
+                              {
+                                "type": "string"
+                              },
+                              {
+                                "type": "object"
+                              }
+                            ]
+                          },
+                          "doom_loop": {
+                            "type": "string"
+                          },
+                          "edit": {
+                            "anyOf": [
+                              {
+                                "type": "string"
+                              },
+                              {
+                                "type": "object"
+                              }
+                            ]
+                          },
+                          "external_directory": {
+                            "anyOf": [
+                              {
+                                "type": "string"
+                              },
+                              {
+                                "type": "object"
+                              }
+                            ]
+                          },
+                          "glob": {
+                            "anyOf": [
+                              {
+                                "type": "string"
+                              },
+                              {
+                                "type": "object"
+                              }
+                            ]
+                          },
+                          "grep": {
+                            "anyOf": [
+                              {
+                                "type": "string"
+                              },
+                              {
+                                "type": "object"
+                              }
+                            ]
+                          },
+                          "list": {
+                            "anyOf": [
+                              {
+                                "type": "string"
+                              },
+                              {
+                                "type": "object"
+                              }
+                            ]
+                          },
+                          "lsp": {
+                            "anyOf": [
+                              {
+                                "type": "string"
+                              },
+                              {
+                                "type": "object"
+                              }
+                            ]
+                          },
+                          "question": {
+                            "type": "string"
+                          },
+                          "read": {
+                            "anyOf": [
+                              {
+                                "type": "string"
+                              },
+                              {
+                                "type": "object"
+                              }
+                            ]
+                          },
+                          "skill": {
+                            "anyOf": [
+                              {
+                                "type": "string"
+                              },
+                              {
+                                "type": "object"
+                              }
+                            ]
+                          },
+                          "task": {
+                            "anyOf": [
+                              {
+                                "type": "string"
+                              },
+                              {
+                                "type": "object"
+                              }
+                            ]
+                          },
+                          "todowrite": {
+                            "type": "string"
+                          },
+                          "webfetch": {
+                            "type": "string"
+                          },
+                          "websearch": {
+                            "type": "string"
+                          }
+                        }
+                      }
+                    ]
+                  },
+                  "prompt": {
+                    "type": "string"
+                  },
+                  "steps": {
+                    "type": "integer",
+                    "exclusiveMinimum": 0
+                  },
+                  "temperature": {
+                    "type": "number"
+                  },
+                  "tools": {
+                    "type": "object"
+                  },
+                  "top_p": {
+                    "type": "number"
+                  },
+                  "variant": {
+                    "type": "string"
+                  }
+                }
+              },
+              "general": {
+                "type": "object",
+                "properties": {
+                  "color": {
+                    "anyOf": [
+                      {
+                        "type": "string"
+                      }
+                    ]
+                  },
+                  "description": {
+                    "type": "string"
+                  },
+                  "disable": {
+                    "type": "boolean"
+                  },
+                  "hidden": {
+                    "type": "boolean"
+                  },
+                  "maxSteps": {
+                    "type": "integer",
+                    "exclusiveMinimum": 0
+                  },
+                  "mode": {
+                    "type": "string"
+                  },
+                  "model": {
+                    "type": "string"
+                  },
+                  "options": {
+                    "type": "object"
+                  },
+                  "permission": {
+                    "anyOf": [
+                      {
+                        "type": "string"
+                      },
+                      {
+                        "type": "object",
+                        "properties": {
+                          "bash": {
+                            "anyOf": [
+                              {
+                                "type": "string"
+                              },
+                              {
+                                "type": "object"
+                              }
+                            ]
+                          },
+                          "doom_loop": {
+                            "type": "string"
+                          },
+                          "edit": {
+                            "anyOf": [
+                              {
+                                "type": "string"
+                              },
+                              {
+                                "type": "object"
+                              }
+                            ]
+                          },
+                          "external_directory": {
+                            "anyOf": [
+                              {
+                                "type": "string"
+                              },
+                              {
+                                "type": "object"
+                              }
+                            ]
+                          },
+                          "glob": {
+                            "anyOf": [
+                              {
+                                "type": "string"
+                              },
+                              {
+                                "type": "object"
+                              }
+                            ]
+                          },
+                          "grep": {
+                            "anyOf": [
+                              {
+                                "type": "string"
+                              },
+                              {
+                                "type": "object"
+                              }
+                            ]
+                          },
+                          "list": {
+                            "anyOf": [
+                              {
+                                "type": "string"
+                              },
+                              {
+                                "type": "object"
+                              }
+                            ]
+                          },
+                          "lsp": {
+                            "anyOf": [
+                              {
+                                "type": "string"
+                              },
+                              {
+                                "type": "object"
+                              }
+                            ]
+                          },
+                          "question": {
+                            "type": "string"
+                          },
+                          "read": {
+                            "anyOf": [
+                              {
+                                "type": "string"
+                              },
+                              {
+                                "type": "object"
+                              }
+                            ]
+                          },
+                          "skill": {
+                            "anyOf": [
+                              {
+                                "type": "string"
+                              },
+                              {
+                                "type": "object"
+                              }
+                            ]
+                          },
+                          "task": {
+                            "anyOf": [
+                              {
+                                "type": "string"
+                              },
+                              {
+                                "type": "object"
+                              }
+                            ]
+                          },
+                          "todowrite": {
+                            "type": "string"
+                          },
+                          "webfetch": {
+                            "type": "string"
+                          },
+                          "websearch": {
+                            "type": "string"
+                          }
+                        }
+                      }
+                    ]
+                  },
+                  "prompt": {
+                    "type": "string"
+                  },
+                  "steps": {
+                    "type": "integer",
+                    "exclusiveMinimum": 0
+                  },
+                  "temperature": {
+                    "type": "number"
+                  },
+                  "tools": {
+                    "type": "object"
+                  },
+                  "top_p": {
+                    "type": "number"
+                  },
+                  "variant": {
+                    "type": "string"
+                  }
+                }
+              },
+              "plan": {
+                "type": "object",
+                "properties": {
+                  "color": {
+                    "anyOf": [
+                      {
+                        "type": "string"
+                      }
+                    ]
+                  },
+                  "description": {
+                    "type": "string"
+                  },
+                  "disable": {
+                    "type": "boolean"
+                  },
+                  "hidden": {
+                    "type": "boolean"
+                  },
+                  "maxSteps": {
+                    "type": "integer",
+                    "exclusiveMinimum": 0
+                  },
+                  "mode": {
+                    "type": "string"
+                  },
+                  "model": {
+                    "type": "string"
+                  },
+                  "options": {
+                    "type": "object"
+                  },
+                  "permission": {
+                    "anyOf": [
+                      {
+                        "type": "string"
+                      },
+                      {
+                        "type": "object",
+                        "properties": {
+                          "bash": {
+                            "anyOf": [
+                              {
+                                "type": "string"
+                              },
+                              {
+                                "type": "object"
+                              }
+                            ]
+                          },
+                          "doom_loop": {
+                            "type": "string"
+                          },
+                          "edit": {
+                            "anyOf": [
+                              {
+                                "type": "string"
+                              },
+                              {
+                                "type": "object"
+                              }
+                            ]
+                          },
+                          "external_directory": {
+                            "anyOf": [
+                              {
+                                "type": "string"
+                              },
+                              {
+                                "type": "object"
+                              }
+                            ]
+                          },
+                          "glob": {
+                            "anyOf": [
+                              {
+                                "type": "string"
+                              },
+                              {
+                                "type": "object"
+                              }
+                            ]
+                          },
+                          "grep": {
+                            "anyOf": [
+                              {
+                                "type": "string"
+                              },
+                              {
+                                "type": "object"
+                              }
+                            ]
+                          },
+                          "list": {
+                            "anyOf": [
+                              {
+                                "type": "string"
+                              },
+                              {
+                                "type": "object"
+                              }
+                            ]
+                          },
+                          "lsp": {
+                            "anyOf": [
+                              {
+                                "type": "string"
+                              },
+                              {
+                                "type": "object"
+                              }
+                            ]
+                          },
+                          "question": {
+                            "type": "string"
+                          },
+                          "read": {
+                            "anyOf": [
+                              {
+                                "type": "string"
+                              },
+                              {
+                                "type": "object"
+                              }
+                            ]
+                          },
+                          "skill": {
+                            "anyOf": [
+                              {
+                                "type": "string"
+                              },
+                              {
+                                "type": "object"
+                              }
+                            ]
+                          },
+                          "task": {
+                            "anyOf": [
+                              {
+                                "type": "string"
+                              },
+                              {
+                                "type": "object"
+                              }
+                            ]
+                          },
+                          "todowrite": {
+                            "type": "string"
+                          },
+                          "webfetch": {
+                            "type": "string"
+                          },
+                          "websearch": {
+                            "type": "string"
+                          }
+                        }
+                      }
+                    ]
+                  },
+                  "prompt": {
+                    "type": "string"
+                  },
+                  "steps": {
+                    "type": "integer",
+                    "exclusiveMinimum": 0
+                  },
+                  "temperature": {
+                    "type": "number"
+                  },
+                  "tools": {
+                    "type": "object"
+                  },
+                  "top_p": {
+                    "type": "number"
+                  },
+                  "variant": {
+                    "type": "string"
+                  }
+                }
+              },
+              "summary": {
+                "type": "object",
+                "properties": {
+                  "color": {
+                    "anyOf": [
+                      {
+                        "type": "string"
+                      }
+                    ]
+                  },
+                  "description": {
+                    "type": "string"
+                  },
+                  "disable": {
+                    "type": "boolean"
+                  },
+                  "hidden": {
+                    "type": "boolean"
+                  },
+                  "maxSteps": {
+                    "type": "integer",
+                    "exclusiveMinimum": 0
+                  },
+                  "mode": {
+                    "type": "string"
+                  },
+                  "model": {
+                    "type": "string"
+                  },
+                  "options": {
+                    "type": "object"
+                  },
+                  "permission": {
+                    "anyOf": [
+                      {
+                        "type": "string"
+                      },
+                      {
+                        "type": "object",
+                        "properties": {
+                          "bash": {
+                            "anyOf": [
+                              {
+                                "type": "string"
+                              },
+                              {
+                                "type": "object"
+                              }
+                            ]
+                          },
+                          "doom_loop": {
+                            "type": "string"
+                          },
+                          "edit": {
+                            "anyOf": [
+                              {
+                                "type": "string"
+                              },
+                              {
+                                "type": "object"
+                              }
+                            ]
+                          },
+                          "external_directory": {
+                            "anyOf": [
+                              {
+                                "type": "string"
+                              },
+                              {
+                                "type": "object"
+                              }
+                            ]
+                          },
+                          "glob": {
+                            "anyOf": [
+                              {
+                                "type": "string"
+                              },
+                              {
+                                "type": "object"
+                              }
+                            ]
+                          },
+                          "grep": {
+                            "anyOf": [
+                              {
+                                "type": "string"
+                              },
+                              {
+                                "type": "object"
+                              }
+                            ]
+                          },
+                          "list": {
+                            "anyOf": [
+                              {
+                                "type": "string"
+                              },
+                              {
+                                "type": "object"
+                              }
+                            ]
+                          },
+                          "lsp": {
+                            "anyOf": [
+                              {
+                                "type": "string"
+                              },
+                              {
+                                "type": "object"
+                              }
+                            ]
+                          },
+                          "question": {
+                            "type": "string"
+                          },
+                          "read": {
+                            "anyOf": [
+                              {
+                                "type": "string"
+                              },
+                              {
+                                "type": "object"
+                              }
+                            ]
+                          },
+                          "skill": {
+                            "anyOf": [
+                              {
+                                "type": "string"
+                              },
+                              {
+                                "type": "object"
+                              }
+                            ]
+                          },
+                          "task": {
+                            "anyOf": [
+                              {
+                                "type": "string"
+                              },
+                              {
+                                "type": "object"
+                              }
+                            ]
+                          },
+                          "todowrite": {
+                            "type": "string"
+                          },
+                          "webfetch": {
+                            "type": "string"
+                          },
+                          "websearch": {
+                            "type": "string"
+                          }
+                        }
+                      }
+                    ]
+                  },
+                  "prompt": {
+                    "type": "string"
+                  },
+                  "steps": {
+                    "type": "integer",
+                    "exclusiveMinimum": 0
+                  },
+                  "temperature": {
+                    "type": "number"
+                  },
+                  "tools": {
+                    "type": "object"
+                  },
+                  "top_p": {
+                    "type": "number"
+                  },
+                  "variant": {
+                    "type": "string"
+                  }
+                }
+              },
+              "title": {
+                "type": "object",
+                "properties": {
+                  "color": {
+                    "anyOf": [
+                      {
+                        "type": "string"
+                      }
+                    ]
+                  },
+                  "description": {
+                    "type": "string"
+                  },
+                  "disable": {
+                    "type": "boolean"
+                  },
+                  "hidden": {
+                    "type": "boolean"
+                  },
+                  "maxSteps": {
+                    "type": "integer",
+                    "exclusiveMinimum": 0
+                  },
+                  "mode": {
+                    "type": "string"
+                  },
+                  "model": {
+                    "type": "string"
+                  },
+                  "options": {
+                    "type": "object"
+                  },
+                  "permission": {
+                    "anyOf": [
+                      {
+                        "type": "string"
+                      },
+                      {
+                        "type": "object",
+                        "properties": {
+                          "bash": {
+                            "anyOf": [
+                              {
+                                "type": "string"
+                              },
+                              {
+                                "type": "object"
+                              }
+                            ]
+                          },
+                          "doom_loop": {
+                            "type": "string"
+                          },
+                          "edit": {
+                            "anyOf": [
+                              {
+                                "type": "string"
+                              },
+                              {
+                                "type": "object"
+                              }
+                            ]
+                          },
+                          "external_directory": {
+                            "anyOf": [
+                              {
+                                "type": "string"
+                              },
+                              {
+                                "type": "object"
+                              }
+                            ]
+                          },
+                          "glob": {
+                            "anyOf": [
+                              {
+                                "type": "string"
+                              },
+                              {
+                                "type": "object"
+                              }
+                            ]
+                          },
+                          "grep": {
+                            "anyOf": [
+                              {
+                                "type": "string"
+                              },
+                              {
+                                "type": "object"
+                              }
+                            ]
+                          },
+                          "list": {
+                            "anyOf": [
+                              {
+                                "type": "string"
+                              },
+                              {
+                                "type": "object"
+                              }
+                            ]
+                          },
+                          "lsp": {
+                            "anyOf": [
+                              {
+                                "type": "string"
+                              },
+                              {
+                                "type": "object"
+                              }
+                            ]
+                          },
+                          "question": {
+                            "type": "string"
+                          },
+                          "read": {
+                            "anyOf": [
+                              {
+                                "type": "string"
+                              },
+                              {
+                                "type": "object"
+                              }
+                            ]
+                          },
+                          "skill": {
+                            "anyOf": [
+                              {
+                                "type": "string"
+                              },
+                              {
+                                "type": "object"
+                              }
+                            ]
+                          },
+                          "task": {
+                            "anyOf": [
+                              {
+                                "type": "string"
+                              },
+                              {
+                                "type": "object"
+                              }
+                            ]
+                          },
+                          "todowrite": {
+                            "type": "string"
+                          },
+                          "webfetch": {
+                            "type": "string"
+                          },
+                          "websearch": {
+                            "type": "string"
+                          }
+                        }
+                      }
+                    ]
+                  },
+                  "prompt": {
+                    "type": "string"
+                  },
+                  "steps": {
+                    "type": "integer",
+                    "exclusiveMinimum": 0
+                  },
+                  "temperature": {
+                    "type": "number"
+                  },
+                  "tools": {
+                    "type": "object"
+                  },
+                  "top_p": {
+                    "type": "number"
+                  },
+                  "variant": {
+                    "type": "string"
+                  }
+                }
+              }
+            }
+          },
+          "attachment": {
+            "type": "object",
+            "properties": {
+              "image": {
+                "type": "object",
+                "properties": {
+                  "auto_resize": {
+                    "type": "boolean"
+                  },
+                  "max_base64_bytes": {
+                    "type": "integer",
+                    "exclusiveMinimum": 0
+                  },
+                  "max_height": {
+                    "type": "integer",
+                    "exclusiveMinimum": 0
+                  },
+                  "max_width": {
+                    "type": "integer",
+                    "exclusiveMinimum": 0
+                  }
+                }
+              }
+            }
+          },
+          "autoshare": {
+            "type": "boolean"
+          },
+          "autoupdate": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "string"
+              }
+            ]
+          },
+          "command": {
+            "type": "object"
+          },
+          "compaction": {
+            "type": "object",
+            "properties": {
+              "auto": {
+                "type": "boolean"
+              },
+              "preserve_recent_tokens": {
+                "type": "integer",
+                "minimum": 0
+              },
+              "prune": {
+                "type": "boolean"
+              },
+              "reserved": {
+                "type": "integer",
+                "minimum": 0
+              },
+              "tail_turns": {
+                "type": "integer",
+                "minimum": 0
+              }
+            }
+          },
+          "default_agent": {
+            "type": "string"
+          },
+          "disabled_providers": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "enabled_providers": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "enterprise": {
+            "type": "object",
+            "properties": {
+              "url": {
+                "type": "string"
+              }
+            }
+          },
+          "experimental": {
+            "type": "object",
+            "properties": {
+              "batch_tool": {
+                "type": "boolean"
+              },
+              "continue_loop_on_deny": {
+                "type": "boolean"
+              },
+              "disable_paste_summary": {
+                "type": "boolean"
+              },
+              "mcp_timeout": {
+                "type": "integer",
+                "exclusiveMinimum": 0
+              },
+              "openTelemetry": {
+                "type": "boolean"
+              },
+              "policies": {
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "properties": {
+                    "action": {
+                      "type": "string"
+                    },
+                    "effect": {
+                      "type": "string"
+                    },
+                    "resource": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "action",
+                    "effect",
+                    "resource"
+                  ]
+                }
+              },
+              "primary_tools": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "formatter": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "object"
+              }
+            ]
+          },
+          "instructions": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "layout": {
+            "type": "string"
+          },
+          "logLevel": {
+            "type": "string"
+          },
+          "lsp": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "object"
+              }
+            ]
+          },
+          "mcp": {
+            "type": "object"
+          },
+          "mode": {
+            "type": "object",
+            "properties": {
+              "build": {
+                "type": "object",
+                "properties": {
+                  "color": {
+                    "anyOf": [
+                      {
+                        "type": "string"
+                      }
+                    ]
+                  },
+                  "description": {
+                    "type": "string"
+                  },
+                  "disable": {
+                    "type": "boolean"
+                  },
+                  "hidden": {
+                    "type": "boolean"
+                  },
+                  "maxSteps": {
+                    "type": "integer",
+                    "exclusiveMinimum": 0
+                  },
+                  "mode": {
+                    "type": "string"
+                  },
+                  "model": {
+                    "type": "string"
+                  },
+                  "options": {
+                    "type": "object"
+                  },
+                  "permission": {
+                    "anyOf": [
+                      {
+                        "type": "string"
+                      },
+                      {
+                        "type": "object",
+                        "properties": {
+                          "bash": {
+                            "anyOf": [
+                              {
+                                "type": "string"
+                              },
+                              {
+                                "type": "object"
+                              }
+                            ]
+                          },
+                          "doom_loop": {
+                            "type": "string"
+                          },
+                          "edit": {
+                            "anyOf": [
+                              {
+                                "type": "string"
+                              },
+                              {
+                                "type": "object"
+                              }
+                            ]
+                          },
+                          "external_directory": {
+                            "anyOf": [
+                              {
+                                "type": "string"
+                              },
+                              {
+                                "type": "object"
+                              }
+                            ]
+                          },
+                          "glob": {
+                            "anyOf": [
+                              {
+                                "type": "string"
+                              },
+                              {
+                                "type": "object"
+                              }
+                            ]
+                          },
+                          "grep": {
+                            "anyOf": [
+                              {
+                                "type": "string"
+                              },
+                              {
+                                "type": "object"
+                              }
+                            ]
+                          },
+                          "list": {
+                            "anyOf": [
+                              {
+                                "type": "string"
+                              },
+                              {
+                                "type": "object"
+                              }
+                            ]
+                          },
+                          "lsp": {
+                            "anyOf": [
+                              {
+                                "type": "string"
+                              },
+                              {
+                                "type": "object"
+                              }
+                            ]
+                          },
+                          "question": {
+                            "type": "string"
+                          },
+                          "read": {
+                            "anyOf": [
+                              {
+                                "type": "string"
+                              },
+                              {
+                                "type": "object"
+                              }
+                            ]
+                          },
+                          "skill": {
+                            "anyOf": [
+                              {
+                                "type": "string"
+                              },
+                              {
+                                "type": "object"
+                              }
+                            ]
+                          },
+                          "task": {
+                            "anyOf": [
+                              {
+                                "type": "string"
+                              },
+                              {
+                                "type": "object"
+                              }
+                            ]
+                          },
+                          "todowrite": {
+                            "type": "string"
+                          },
+                          "webfetch": {
+                            "type": "string"
+                          },
+                          "websearch": {
+                            "type": "string"
+                          }
+                        }
+                      }
+                    ]
+                  },
+                  "prompt": {
+                    "type": "string"
+                  },
+                  "steps": {
+                    "type": "integer",
+                    "exclusiveMinimum": 0
+                  },
+                  "temperature": {
+                    "type": "number"
+                  },
+                  "tools": {
+                    "type": "object"
+                  },
+                  "top_p": {
+                    "type": "number"
+                  },
+                  "variant": {
+                    "type": "string"
+                  }
+                }
+              },
+              "plan": {
+                "type": "object",
+                "properties": {
+                  "color": {
+                    "anyOf": [
+                      {
+                        "type": "string"
+                      }
+                    ]
+                  },
+                  "description": {
+                    "type": "string"
+                  },
+                  "disable": {
+                    "type": "boolean"
+                  },
+                  "hidden": {
+                    "type": "boolean"
+                  },
+                  "maxSteps": {
+                    "type": "integer",
+                    "exclusiveMinimum": 0
+                  },
+                  "mode": {
+                    "type": "string"
+                  },
+                  "model": {
+                    "type": "string"
+                  },
+                  "options": {
+                    "type": "object"
+                  },
+                  "permission": {
+                    "anyOf": [
+                      {
+                        "type": "string"
+                      },
+                      {
+                        "type": "object",
+                        "properties": {
+                          "bash": {
+                            "anyOf": [
+                              {
+                                "type": "string"
+                              },
+                              {
+                                "type": "object"
+                              }
+                            ]
+                          },
+                          "doom_loop": {
+                            "type": "string"
+                          },
+                          "edit": {
+                            "anyOf": [
+                              {
+                                "type": "string"
+                              },
+                              {
+                                "type": "object"
+                              }
+                            ]
+                          },
+                          "external_directory": {
+                            "anyOf": [
+                              {
+                                "type": "string"
+                              },
+                              {
+                                "type": "object"
+                              }
+                            ]
+                          },
+                          "glob": {
+                            "anyOf": [
+                              {
+                                "type": "string"
+                              },
+                              {
+                                "type": "object"
+                              }
+                            ]
+                          },
+                          "grep": {
+                            "anyOf": [
+                              {
+                                "type": "string"
+                              },
+                              {
+                                "type": "object"
+                              }
+                            ]
+                          },
+                          "list": {
+                            "anyOf": [
+                              {
+                                "type": "string"
+                              },
+                              {
+                                "type": "object"
+                              }
+                            ]
+                          },
+                          "lsp": {
+                            "anyOf": [
+                              {
+                                "type": "string"
+                              },
+                              {
+                                "type": "object"
+                              }
+                            ]
+                          },
+                          "question": {
+                            "type": "string"
+                          },
+                          "read": {
+                            "anyOf": [
+                              {
+                                "type": "string"
+                              },
+                              {
+                                "type": "object"
+                              }
+                            ]
+                          },
+                          "skill": {
+                            "anyOf": [
+                              {
+                                "type": "string"
+                              },
+                              {
+                                "type": "object"
+                              }
+                            ]
+                          },
+                          "task": {
+                            "anyOf": [
+                              {
+                                "type": "string"
+                              },
+                              {
+                                "type": "object"
+                              }
+                            ]
+                          },
+                          "todowrite": {
+                            "type": "string"
+                          },
+                          "webfetch": {
+                            "type": "string"
+                          },
+                          "websearch": {
+                            "type": "string"
+                          }
+                        }
+                      }
+                    ]
+                  },
+                  "prompt": {
+                    "type": "string"
+                  },
+                  "steps": {
+                    "type": "integer",
+                    "exclusiveMinimum": 0
+                  },
+                  "temperature": {
+                    "type": "number"
+                  },
+                  "tools": {
+                    "type": "object"
+                  },
+                  "top_p": {
+                    "type": "number"
+                  },
+                  "variant": {
+                    "type": "string"
+                  }
+                }
+              }
+            }
+          },
+          "model": {
+            "type": "string"
+          },
+          "permission": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "object",
+                "properties": {
+                  "bash": {
+                    "anyOf": [
+                      {
+                        "type": "string"
+                      },
+                      {
+                        "type": "object"
+                      }
+                    ]
+                  },
+                  "doom_loop": {
+                    "type": "string"
+                  },
+                  "edit": {
+                    "anyOf": [
+                      {
+                        "type": "string"
+                      },
+                      {
+                        "type": "object"
+                      }
+                    ]
+                  },
+                  "external_directory": {
+                    "anyOf": [
+                      {
+                        "type": "string"
+                      },
+                      {
+                        "type": "object"
+                      }
+                    ]
+                  },
+                  "glob": {
+                    "anyOf": [
+                      {
+                        "type": "string"
+                      },
+                      {
+                        "type": "object"
+                      }
+                    ]
+                  },
+                  "grep": {
+                    "anyOf": [
+                      {
+                        "type": "string"
+                      },
+                      {
+                        "type": "object"
+                      }
+                    ]
+                  },
+                  "list": {
+                    "anyOf": [
+                      {
+                        "type": "string"
+                      },
+                      {
+                        "type": "object"
+                      }
+                    ]
+                  },
+                  "lsp": {
+                    "anyOf": [
+                      {
+                        "type": "string"
+                      },
+                      {
+                        "type": "object"
+                      }
+                    ]
+                  },
+                  "question": {
+                    "type": "string"
+                  },
+                  "read": {
+                    "anyOf": [
+                      {
+                        "type": "string"
+                      },
+                      {
+                        "type": "object"
+                      }
+                    ]
+                  },
+                  "skill": {
+                    "anyOf": [
+                      {
+                        "type": "string"
+                      },
+                      {
+                        "type": "object"
+                      }
+                    ]
+                  },
+                  "task": {
+                    "anyOf": [
+                      {
+                        "type": "string"
+                      },
+                      {
+                        "type": "object"
+                      }
+                    ]
+                  },
+                  "todowrite": {
+                    "type": "string"
+                  },
+                  "webfetch": {
+                    "type": "string"
+                  },
+                  "websearch": {
+                    "type": "string"
+                  }
+                }
+              }
+            ]
+          },
+          "plugin": {
+            "type": "array",
+            "items": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "array"
+                }
+              ]
+            }
+          },
+          "provider": {
+            "type": "object"
+          },
+          "reference": {
+            "type": "object"
+          },
+          "references": {
+            "type": "object"
+          },
+          "server": {
+            "type": "object",
+            "properties": {
+              "cors": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                }
+              },
+              "hostname": {
+                "type": "string"
+              },
+              "mdns": {
+                "type": "boolean"
+              },
+              "mdnsDomain": {
+                "type": "string"
+              },
+              "port": {
+                "type": "integer",
+                "exclusiveMinimum": 0
+              }
+            }
+          },
+          "share": {
+            "type": "string"
+          },
+          "shell": {
+            "type": "string"
+          },
+          "skills": {
+            "type": "object",
+            "properties": {
+              "paths": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                }
+              },
+              "urls": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "small_model": {
+            "type": "string"
+          },
+          "snapshot": {
+            "type": "boolean"
+          },
+          "subagent_depth": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "tool_output": {
+            "type": "object",
+            "properties": {
+              "max_bytes": {
+                "type": "integer",
+                "exclusiveMinimum": 0
+              },
+              "max_lines": {
+                "type": "integer",
+                "exclusiveMinimum": 0
+              }
+            }
+          },
+          "tools": {
+            "type": "object"
+          },
+          "username": {
+            "type": "string"
+          },
+          "watcher": {
+            "type": "object",
+            "properties": {
+              "ignore": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "required": [
+      "method",
+      "route",
+      "status",
+      "body"
+    ]
+  },
+  "recordSchema": {
+    "type": "object",
+    "properties": {
+      "direction": {
+        "type": "string",
+        "enum": [
+          "client-to-agent"
+        ]
+      },
+      "request": {
+        "type": "object",
+        "properties": {
+          "method": {
+            "type": "string",
+            "enum": [
+              "GET"
+            ]
+          },
+          "route": {
+            "type": "string",
+            "enum": [
+              "/global/config"
+            ]
+          }
+        },
+        "required": [
+          "method",
+          "route"
+        ]
+      }
+    },
+    "required": [
+      "direction",
+      "request"
+    ]
+  },
+  "evidence": {
+    "existence": [
+      "opencode-generated-openapi"
+    ],
+    "shape": [
+      "opencode-generated-openapi"
+    ],
+    "result": [
+      "opencode-generated-openapi"
+    ],
+    "carrier": [
+      "opencode-generated-openapi"
+    ]
+  },
+  "confidence": "unverified",
+  "notes": "OpenAPI operationId global.config.get; GET /global/config."
+}

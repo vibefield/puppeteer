@@ -1,0 +1,131 @@
+{
+  "probeKind": "parser-execution",
+  "vendor": "antigravity",
+  "vendorVersion": "1.1.12",
+  "platform": "darwin-arm64",
+  "isolatedHomeFiles": [],
+  "commands": [
+    {
+      "id": "help-agents",
+      "args": [
+        "help",
+        "agents"
+      ],
+      "status": 0,
+      "signal": null,
+      "stdout": "",
+      "stderr": "Usage: antigravity agent [flags]\n\nList available agents\n\nFlags:\n  -h      Show help\n  --help  Show help\n"
+    },
+    {
+      "id": "help-models",
+      "args": [
+        "help",
+        "models"
+      ],
+      "status": 0,
+      "signal": null,
+      "stdout": "",
+      "stderr": "Usage: antigravity models [flags]\n\nList available models\n\nFlags:\n  -h      Show help\n  --help  Show help\n"
+    },
+    {
+      "id": "help-plugin",
+      "args": [
+        "help",
+        "plugin"
+      ],
+      "status": 0,
+      "signal": null,
+      "stdout": "",
+      "stderr": "Usage: antigravity plugin <command> [arguments]\n\nCommands:\n  list                   List imported plugins\n  import [source]        Import plugins from gemini or claude\n  install <target>       Install a plugin (supports plugin@marketplace)\n  uninstall <name>       Uninstall a plugin\n  enable <name>          Enable a plugin\n  disable <name>         Disable a plugin\n  validate [path]        Validate a plugin\n  link <mp> <target>     Generate link to a marketplace\n  help                   Show this help\n"
+    },
+    {
+      "id": "help-update",
+      "args": [
+        "help",
+        "update"
+      ],
+      "status": 2,
+      "signal": null,
+      "stdout": "",
+      "stderr": "Usage of update:\n"
+    },
+    {
+      "id": "help-install",
+      "args": [
+        "help",
+        "install"
+      ],
+      "status": 0,
+      "signal": null,
+      "stdout": "",
+      "stderr": "Usage: antigravity install [flags]\n\nConfigure environment paths and shell settings\n\nFlags:\n  --dir           Custom directory target to configure PATH for\n  -h              Show help\n  --help          Show help\n  --skip-aliases  Bypasses shell profile alias purging\n  --skip-path     Bypasses shell profile PATH appending\n"
+    },
+    {
+      "id": "help-changelog",
+      "args": [
+        "help",
+        "changelog"
+      ],
+      "status": 0,
+      "signal": null,
+      "stdout": "",
+      "stderr": "Usage: antigravity changelog [flags]\n\nShow changelog and release notes\n\nFlags:\n  -h      Show help\n  --help  Show help\n"
+    },
+    {
+      "id": "agents-help",
+      "args": [
+        "agents",
+        "--help"
+      ],
+      "status": 0,
+      "signal": null,
+      "stdout": "",
+      "stderr": "Usage: antigravity agent [flags]\n\nList available agents\n\nFlags:\n  -h      Show help\n  --help  Show help\n"
+    },
+    {
+      "id": "models-help",
+      "args": [
+        "models",
+        "--help"
+      ],
+      "status": 0,
+      "signal": null,
+      "stdout": "",
+      "stderr": "Usage: antigravity models [flags]\n\nList available models\n\nFlags:\n  -h      Show help\n  --help  Show help\n"
+    },
+    {
+      "id": "plugin-help",
+      "args": [
+        "plugin",
+        "--help"
+      ],
+      "status": 0,
+      "signal": null,
+      "stdout": "",
+      "stderr": "Usage: antigravity plugin <command> [arguments]\n\nCommands:\n  list                   List imported plugins\n  import [source]        Import plugins from gemini or claude\n  install <target>       Install a plugin (supports plugin@marketplace)\n  uninstall <name>       Uninstall a plugin\n  enable <name>          Enable a plugin\n  disable <name>         Disable a plugin\n  validate [path]        Validate a plugin\n  link <mp> <target>     Generate link to a marketplace\n  help                   Show this help\n"
+    },
+    {
+      "id": "update-help",
+      "args": [
+        "update",
+        "--help"
+      ],
+      "status": 2,
+      "signal": null,
+      "stdout": "",
+      "stderr": "Usage of update:\n"
+    },
+    {
+      "id": "changelog-help",
+      "args": [
+        "changelog",
+        "--help"
+      ],
+      "status": 0,
+      "signal": null,
+      "stdout": "",
+      "stderr": "Usage: antigravity changelog [flags]\n\nShow changelog and release notes\n\nFlags:\n  -h      Show help\n  --help  Show help\n"
+    }
+  ],
+  "probedAt": "2026-08-12T21:04:17.245Z"
+}

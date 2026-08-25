@@ -1,0 +1,38 @@
+{
+  "probeKind": "parser-execution",
+  "vendor": "antigravity",
+  "vendorVersion": "1.1.12",
+  "platform": "darwin-arm64",
+  "artifact": "$CHOPSTICKS_ANTIGRAVITY_BIN",
+  "bytes": 172267536,
+  "sha256": "c8fd3c0016e101689f923f82da1c068b0e6dce3abcb0089e282742693ad4d344",
+  "fileDescription": "Mach-O 64-bit executable arm64",
+  "versionArgs": [
+    "--version"
+  ],
+  "versionOutput": "1.1.12",
+  "signature": {
+    "verified": false,
+    "verificationResult": "invalid-signature",
+    "verificationExitCode": 1,
+    "identifier": "cli",
+    "teamIdentifier": "EQHXZ8M8AV",
+    "authorities": [
+      "(unavailable)"
+    ]
+  },
+  "staticStringCandidates": {
+    "disableAutoUpdateEnvironment": {
+      "value": "AGY_CLI_DISABLE_AUTO_UPDATE",
+      "present": true,
+      "status": "unverified-contract"
+    }
+  },
+  "probeHost": {
+    "platform": "darwin",
+    "arch": "arm64",
+    "osRelease": "25.5.0"
+  },
+  "isolatedHomeFiles": [],
+  "probedAt": "2026-08-11T05:58:24.459Z"
+}

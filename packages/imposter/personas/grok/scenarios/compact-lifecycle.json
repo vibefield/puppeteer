@@ -1,0 +1,61 @@
+{
+  "name": "compact-lifecycle",
+  "then": [
+    {
+      "at": 0,
+      "do": {
+        "emit": {
+          "event": "_x.ai/session_notification",
+          "with": {
+            "sessionId": "$sessionId",
+            "update": {
+              "sessionUpdate": "auto_compact_started",
+              "tokens_used": 110000,
+              "context_window": 131072,
+              "percentage": 84,
+              "reason": "context_threshold"
+            }
+          }
+        }
+      }
+    },
+    {
+      "at": 40,
+      "do": {
+        "emit": {
+          "event": "_x.ai/session/update",
+          "with": {
+            "sessionId": "$sessionId",
+            "update": {
+              "sessionUpdate": "compaction_checkpoint",
+              "checkpoint_id": "$uuid:checkpoint",
+              "prompt_index_at_compaction": 1,
+              "checkpoint_file": "compaction_checkpoints/imposter.json",
+              "schema_version": 1,
+              "created_at": "$now"
+            },
+            "_meta": { "promptId": "$uuid:prompt", "agentTimestampMs": "$nowMs" }
+          }
+        }
+      }
+    },
+    {
+      "at": 80,
+      "do": {
+        "emit": {
+          "event": "_x.ai/session_notification",
+          "with": {
+            "sessionId": "$sessionId",
+            "update": {
+              "sessionUpdate": "auto_compact_completed",
+              "tokens_before": 110000,
+              "tokens_after": 22000,
+              "elapsed_ms": 80,
+              "summary_preview": "imposter compacted summary"
+            }
+          }
+        }
+      }
+    }
+  ]
+}

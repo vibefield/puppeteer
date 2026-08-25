@@ -1,0 +1,66 @@
+{
+  "referenceVersion": 1,
+  "vendor": "antigravity",
+  "vendorVersion": "1.1.12",
+  "repository": "https://github.com/google-antigravity/antigravity-cli",
+  "retrievedAt": "2026-08-11T05:42:04Z",
+  "release": {
+    "id": 368267156,
+    "tag": "1.1.12",
+    "revision": "f7519c9084190ed421e89dd81c63970b5177c9ef",
+    "relation": "release-tag",
+    "draft": false,
+    "prerelease": false,
+    "immutable": false,
+    "publishedAt": "2026-08-11T01:26:58Z",
+    "url": "https://github.com/google-antigravity/antigravity-cli/releases/tag/1.1.12",
+    "apiUrl": "https://api.github.com/repos/google-antigravity/antigravity-cli/releases/368267156"
+  },
+  "assets": [
+    {
+      "platform": "darwin-arm64",
+      "id": 509437228,
+      "name": "agy_cli_mac_arm64.tar.gz",
+      "format": "tar.gz",
+      "size": 48689274,
+      "sha256": "7b70bdf27727a68d58c1bebfd3fd2e87d1172dc32eab9827d52fd62ad64f286b",
+      "url": "https://github.com/google-antigravity/antigravity-cli/releases/download/1.1.12/agy_cli_mac_arm64.tar.gz",
+      "executableBasenames": ["antigravity"]
+    },
+    {
+      "platform": "darwin-x64",
+      "id": 509437252,
+      "name": "agy_cli_mac_x64.tar.gz",
+      "format": "tar.gz",
+      "size": 53329096,
+      "sha256": "82f5ccc62ae77e202c33cd0347b564ffe645b7cdb2a35c45bb6eb34d516e8832",
+      "url": "https://github.com/google-antigravity/antigravity-cli/releases/download/1.1.12/agy_cli_mac_x64.tar.gz",
+      "executableBasenames": ["antigravity"]
+    },
+    {
+      "platform": "linux-x64",
+      "id": 509437201,
+      "name": "agy_cli_linux_x64.tar.gz",
+      "format": "tar.gz",
+      "size": 55332777,
+      "sha256": "c778ae4fd11e5dc2dbddfd7108ee1974ae60fd531afb246be41c6e4bb49c81ca",
+      "url": "https://github.com/google-antigravity/antigravity-cli/releases/download/1.1.12/agy_cli_linux_x64.tar.gz",
+      "executableBasenames": ["antigravity"]
+    },
+    {
+      "platform": "windows-x64",
+      "id": 509437340,
+      "name": "agy_cli_windows_x64.zip",
+      "format": "zip",
+      "size": 50794876,
+      "sha256": "270d71910675d614499a0f7f165f275aff0a03c00b0f92cc9ed09f352c58de85",
+      "url": "https://github.com/google-antigravity/antigravity-cli/releases/download/1.1.12/agy_cli_windows_x64.zip",
+      "executableBasenames": ["antigravity.exe"]
+    }
+  ],
+  "limitations": [
+    "GitHub reports this release as non-immutable, so detection must retain and compare release-signal identity in addition to the version.",
+    "The public repository does not expose the implementation used to build the release binaries; the tag is release provenance, not exact source-to-binary correspondence.",
+    "Archive digests are GitHub-published SHA-256 values. Executable digests require per-platform offline probes."
+  ]
+}

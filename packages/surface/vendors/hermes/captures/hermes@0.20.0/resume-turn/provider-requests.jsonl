@@ -1,0 +1,13 @@
+{"method":"GET","endpoint":"/api/v1/models","body":null}
+{"method":"GET","endpoint":"/api/v1/models","body":null}
+{"method":"GET","endpoint":"/api/v1/models","body":null}
+{"method":"GET","endpoint":"/v1/models/chopsticks-hermes-census","body":null}
+{"method":"GET","endpoint":"/v1/models","body":null}
+{"method":"POST","endpoint":"/api/show","body":{"model":null,"stream":null,"messageCount":0,"messageRoles":[],"toolNames":[]}}
+{"method":"GET","endpoint":"/api/v1/models","body":null}
+{"method":"GET","endpoint":"/v1/models/chopsticks-hermes-census","body":null}
+{"method":"GET","endpoint":"/v1/models","body":null}
+{"method":"POST","endpoint":"/api/show","body":{"model":null,"stream":null,"messageCount":0,"messageRoles":[],"toolNames":[]}}
+{"method":"POST","endpoint":"/v1/chat/completions","body":{"model":"chopsticks-hermes-census","stream":true,"messageCount":4,"messageRoles":["system","user","assistant","user"],"toolNames":["process","terminal","tool_search","tool_describe","tool_call"]}}
+{"method":"POST","endpoint":"/v1/chat/completions","body":{"model":"chopsticks-hermes-census","stream":null,"messageCount":2,"messageRoles":["system","user"],"toolNames":[]}}
+{"method":"POST","endpoint":"/v1/chat/completions","body":{"model":"chopsticks-hermes-census","stream":null,"messageCount":2,"messageRoles":["system","user"],"toolNames":[]}}

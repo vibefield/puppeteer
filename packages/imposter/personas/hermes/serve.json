@@ -1,0 +1,54 @@
+{
+  "$server": {
+    "jsonrpc": "2.0",
+    "command": "tui-gateway"
+  },
+
+  "session.create": {
+    "bind": {
+      "$liveSessionId": "$uuid:live",
+      "$storedSessionId": "$uuid:stored"
+    },
+    "then": [{ "op": "session.start" }, { "op": "session.ready" }],
+    "result": {
+      "session_id": "$liveSessionId",
+      "stored_session_id": "$storedSessionId",
+      "message_count": 0
+    }
+  },
+
+  "session.resume": {
+    "bind": {
+      "$liveSessionId": "$uuid:live",
+      "$storedSessionId": "$params.session_id"
+    },
+    "then": [{ "op": "session.ready" }],
+    "result": {
+      "session_id": "$liveSessionId",
+      "resumed": "$storedSessionId",
+      "session_key": "$storedSessionId",
+      "status": "idle",
+      "message_count": 2,
+      "running": false
+    }
+  },
+
+  "prompt.submit": {
+    "then": "$behavior",
+    "result": { "status": "streaming" }
+  },
+
+  "session.interrupt": {
+    "result": { "status": "interrupted" }
+  },
+
+  "approval.respond": {
+    "result": { "resolved": 1 },
+    "then": [
+      {
+        "op": "tool.end",
+        "with": { "tool": "terminal", "toolId": "call_imposter" }
+      }
+    ]
+  }
+}

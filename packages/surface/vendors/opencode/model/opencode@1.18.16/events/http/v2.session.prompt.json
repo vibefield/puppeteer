@@ -1,0 +1,473 @@
+{
+  "surface": "opencode",
+  "surfaceVersion": "1.18.16",
+  "event": "http/v2.session.prompt",
+  "channel": "http",
+  "channels": [
+    "http"
+  ],
+  "transport": "http",
+  "direction": "client-to-agent",
+  "trigger": "Send message — Durably admit one session input and schedule agent-loop execution unless resume is false.",
+  "payloadSchema": {
+    "type": "object",
+    "properties": {
+      "method": {
+        "type": "string"
+      },
+      "route": {
+        "type": "string"
+      },
+      "params": {
+        "type": "object",
+        "properties": {
+          "sessionID": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "sessionID"
+        ]
+      },
+      "body": {
+        "type": "object",
+        "properties": {
+          "delivery": {
+            "type": "string"
+          },
+          "id": {
+            "type": "string"
+          },
+          "prompt": {
+            "type": "object",
+            "properties": {
+              "agents": {
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "properties": {
+                    "name": {
+                      "type": "string"
+                    },
+                    "source": {
+                      "type": "object",
+                      "properties": {
+                        "end": {
+                          "type": "number"
+                        },
+                        "start": {
+                          "type": "number"
+                        },
+                        "text": {
+                          "type": "string"
+                        }
+                      },
+                      "required": [
+                        "end",
+                        "start",
+                        "text"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "name"
+                  ]
+                }
+              },
+              "files": {
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "properties": {
+                    "description": {
+                      "type": "string"
+                    },
+                    "name": {
+                      "type": "string"
+                    },
+                    "source": {
+                      "type": "object",
+                      "properties": {
+                        "end": {
+                          "type": "number"
+                        },
+                        "start": {
+                          "type": "number"
+                        },
+                        "text": {
+                          "type": "string"
+                        }
+                      },
+                      "required": [
+                        "end",
+                        "start",
+                        "text"
+                      ]
+                    },
+                    "uri": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "uri"
+                  ]
+                }
+              },
+              "text": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "text"
+            ]
+          },
+          "resume": {
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "prompt"
+        ]
+      }
+    },
+    "required": [
+      "method",
+      "route",
+      "params",
+      "body"
+    ]
+  },
+  "resultSchema": {
+    "type": "object",
+    "properties": {
+      "method": {
+        "type": "string",
+        "enum": [
+          "POST"
+        ]
+      },
+      "route": {
+        "type": "string",
+        "enum": [
+          "/api/session/:sessionID/prompt"
+        ]
+      },
+      "status": {
+        "type": "integer",
+        "minimum": 200,
+        "maximum": 299
+      },
+      "params": {
+        "type": "object",
+        "properties": {
+          "sessionID": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "sessionID"
+        ]
+      },
+      "body": {
+        "type": "object",
+        "properties": {
+          "data": {
+            "type": "object",
+            "properties": {
+              "admittedSeq": {
+                "type": "integer",
+                "minimum": 0
+              },
+              "delivery": {
+                "type": "string"
+              },
+              "id": {
+                "type": "string"
+              },
+              "promotedSeq": {
+                "type": "integer",
+                "minimum": 0
+              },
+              "prompt": {
+                "type": "object",
+                "properties": {
+                  "agents": {
+                    "type": "array",
+                    "items": {
+                      "type": "object",
+                      "properties": {
+                        "name": {
+                          "type": "string"
+                        },
+                        "source": {
+                          "type": "object",
+                          "properties": {
+                            "end": {
+                              "type": "number"
+                            },
+                            "start": {
+                              "type": "number"
+                            },
+                            "text": {
+                              "type": "string"
+                            }
+                          },
+                          "required": [
+                            "end",
+                            "start",
+                            "text"
+                          ]
+                        }
+                      },
+                      "required": [
+                        "name"
+                      ]
+                    }
+                  },
+                  "files": {
+                    "type": "array",
+                    "items": {
+                      "type": "object",
+                      "properties": {
+                        "description": {
+                          "type": "string"
+                        },
+                        "mime": {
+                          "type": "string"
+                        },
+                        "name": {
+                          "type": "string"
+                        },
+                        "source": {
+                          "type": "object",
+                          "properties": {
+                            "end": {
+                              "type": "number"
+                            },
+                            "start": {
+                              "type": "number"
+                            },
+                            "text": {
+                              "type": "string"
+                            }
+                          },
+                          "required": [
+                            "end",
+                            "start",
+                            "text"
+                          ]
+                        },
+                        "uri": {
+                          "type": "string"
+                        }
+                      },
+                      "required": [
+                        "mime",
+                        "uri"
+                      ]
+                    }
+                  },
+                  "text": {
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "text"
+                ]
+              },
+              "sessionID": {
+                "type": "string"
+              },
+              "timeCreated": {
+                "type": "number"
+              }
+            },
+            "required": [
+              "admittedSeq",
+              "delivery",
+              "id",
+              "prompt",
+              "sessionID",
+              "timeCreated"
+            ]
+          }
+        },
+        "required": [
+          "data"
+        ]
+      }
+    },
+    "required": [
+      "method",
+      "route",
+      "status",
+      "params",
+      "body"
+    ]
+  },
+  "recordSchema": {
+    "type": "object",
+    "properties": {
+      "direction": {
+        "type": "string",
+        "enum": [
+          "client-to-agent"
+        ]
+      },
+      "request": {
+        "type": "object",
+        "properties": {
+          "method": {
+            "type": "string",
+            "enum": [
+              "POST"
+            ]
+          },
+          "route": {
+            "type": "string",
+            "enum": [
+              "/api/session/:sessionID/prompt"
+            ]
+          },
+          "params": {
+            "type": "object",
+            "properties": {
+              "sessionID": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "sessionID"
+            ]
+          },
+          "body": {
+            "type": "object",
+            "properties": {
+              "delivery": {
+                "type": "string"
+              },
+              "id": {
+                "type": "string"
+              },
+              "prompt": {
+                "type": "object",
+                "properties": {
+                  "agents": {
+                    "type": "array",
+                    "items": {
+                      "type": "object",
+                      "properties": {
+                        "name": {
+                          "type": "string"
+                        },
+                        "source": {
+                          "type": "object",
+                          "properties": {
+                            "end": {
+                              "type": "number"
+                            },
+                            "start": {
+                              "type": "number"
+                            },
+                            "text": {
+                              "type": "string"
+                            }
+                          },
+                          "required": [
+                            "end",
+                            "start",
+                            "text"
+                          ]
+                        }
+                      },
+                      "required": [
+                        "name"
+                      ]
+                    }
+                  },
+                  "files": {
+                    "type": "array",
+                    "items": {
+                      "type": "object",
+                      "properties": {
+                        "description": {
+                          "type": "string"
+                        },
+                        "name": {
+                          "type": "string"
+                        },
+                        "source": {
+                          "type": "object",
+                          "properties": {
+                            "end": {
+                              "type": "number"
+                            },
+                            "start": {
+                              "type": "number"
+                            },
+                            "text": {
+                              "type": "string"
+                            }
+                          },
+                          "required": [
+                            "end",
+                            "start",
+                            "text"
+                          ]
+                        },
+                        "uri": {
+                          "type": "string"
+                        }
+                      },
+                      "required": [
+                        "uri"
+                      ]
+                    }
+                  },
+                  "text": {
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "text"
+                ]
+              },
+              "resume": {
+                "type": "boolean"
+              }
+            },
+            "required": [
+              "prompt"
+            ]
+          }
+        },
+        "required": [
+          "method",
+          "route",
+          "params",
+          "body"
+        ]
+      }
+    },
+    "required": [
+      "direction",
+      "request"
+    ]
+  },
+  "evidence": {
+    "existence": [
+      "opencode-generated-openapi"
+    ],
+    "shape": [
+      "opencode-generated-openapi"
+    ],
+    "result": [
+      "opencode-generated-openapi"
+    ],
+    "carrier": [
+      "opencode-generated-openapi"
+    ]
+  },
+  "confidence": "unverified",
+  "notes": "OpenAPI operationId v2.session.prompt; POST /api/session/{sessionID}/prompt."
+}

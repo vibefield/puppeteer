@@ -1,0 +1,274 @@
+{
+  "surface": "opencode",
+  "surfaceVersion": "1.18.16",
+  "event": "session.status",
+  "channel": "sse",
+  "channels": [
+    "sse"
+  ],
+  "transport": "sse-event",
+  "direction": "agent-to-client",
+  "trigger": "Published on the native GET /event stream.",
+  "payloadSchema": {
+    "type": "object",
+    "properties": {
+      "sessionID": {
+        "type": "string"
+      },
+      "status": {
+        "anyOf": [
+          {
+            "type": "object",
+            "properties": {
+              "type": {
+                "type": "string",
+                "enum": [
+                  "idle"
+                ]
+              }
+            },
+            "required": [
+              "type"
+            ]
+          },
+          {
+            "type": "object",
+            "properties": {
+              "action": {
+                "type": "object",
+                "properties": {
+                  "label": {
+                    "type": "string"
+                  },
+                  "link": {
+                    "type": "string"
+                  },
+                  "message": {
+                    "type": "string"
+                  },
+                  "provider": {
+                    "type": "string"
+                  },
+                  "reason": {
+                    "type": "string"
+                  },
+                  "title": {
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "label",
+                  "message",
+                  "provider",
+                  "reason",
+                  "title"
+                ]
+              },
+              "attempt": {
+                "type": "integer",
+                "minimum": 0
+              },
+              "message": {
+                "type": "string"
+              },
+              "next": {
+                "type": "integer",
+                "minimum": 0
+              },
+              "type": {
+                "type": "string",
+                "enum": [
+                  "retry"
+                ]
+              }
+            },
+            "required": [
+              "attempt",
+              "message",
+              "next",
+              "type"
+            ]
+          },
+          {
+            "type": "object",
+            "properties": {
+              "type": {
+                "type": "string",
+                "enum": [
+                  "busy"
+                ]
+              }
+            },
+            "required": [
+              "type"
+            ]
+          }
+        ]
+      }
+    },
+    "required": [
+      "sessionID",
+      "status"
+    ]
+  },
+  "recordSchema": {
+    "type": "object",
+    "properties": {
+      "id": {
+        "type": "string"
+      },
+      "properties": {
+        "type": "object",
+        "properties": {
+          "sessionID": {
+            "type": "string"
+          },
+          "status": {
+            "anyOf": [
+              {
+                "type": "object",
+                "properties": {
+                  "type": {
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "type"
+                ]
+              },
+              {
+                "type": "object",
+                "properties": {
+                  "action": {
+                    "type": "object",
+                    "properties": {
+                      "label": {
+                        "type": "string"
+                      },
+                      "link": {
+                        "type": "string"
+                      },
+                      "message": {
+                        "type": "string"
+                      },
+                      "provider": {
+                        "type": "string"
+                      },
+                      "reason": {
+                        "type": "string"
+                      },
+                      "title": {
+                        "type": "string"
+                      }
+                    },
+                    "required": [
+                      "label",
+                      "message",
+                      "provider",
+                      "reason",
+                      "title"
+                    ]
+                  },
+                  "attempt": {
+                    "type": "integer",
+                    "minimum": 0
+                  },
+                  "message": {
+                    "type": "string"
+                  },
+                  "next": {
+                    "type": "integer",
+                    "minimum": 0
+                  },
+                  "type": {
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "attempt",
+                  "message",
+                  "next",
+                  "type"
+                ]
+              }
+            ]
+          }
+        },
+        "required": [
+          "sessionID",
+          "status"
+        ]
+      },
+      "type": {
+        "type": "string",
+        "enum": [
+          "session.status"
+        ]
+      }
+    },
+    "required": [
+      "id",
+      "properties",
+      "type"
+    ]
+  },
+  "evidence": {
+    "existence": [
+      "opencode-runtime-abort-stream"
+    ],
+    "shape": [
+      "opencode-runtime-abort-stream"
+    ],
+    "carrier": [
+      "opencode-runtime-abort-stream"
+    ]
+  },
+  "variants": [
+    {
+      "match": {
+        "status.type": "idle"
+      },
+      "evidence": {
+        "existence": [
+          "opencode-runtime-abort-stream"
+        ],
+        "shape": [
+          "opencode-runtime-abort-stream"
+        ]
+      },
+      "confidence": "verified-headless"
+    },
+    {
+      "match": {
+        "status.type": "retry"
+      },
+      "evidence": {
+        "existence": [
+          "opencode-runtime-provider-retry"
+        ],
+        "shape": [
+          "opencode-runtime-provider-retry"
+        ]
+      },
+      "confidence": "verified-headless"
+    },
+    {
+      "match": {
+        "status.type": "busy"
+      },
+      "evidence": {
+        "existence": [
+          "opencode-runtime-abort-stream"
+        ],
+        "shape": [
+          "opencode-runtime-abort-stream"
+        ]
+      },
+      "confidence": "verified-headless"
+    }
+  ],
+  "confidence": "verified-headless",
+  "firstSeen": "1.18.16",
+  "lastVerified": "1.18.16",
+  "fixture": "captures/opencode@1.18.16/abort-stream/events.jsonl"
+}

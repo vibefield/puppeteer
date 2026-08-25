@@ -1,0 +1,38 @@
+{
+  "executables": ["kimi"],
+  "envVar": "CHOPSTICKS_KIMI_BIN",
+  "versionFlag": "--version",
+  "versionOutput": "0.34.0",
+  "versionPattern": "^(\\d+\\.\\d+\\.\\d+)$",
+  "helpFlag": "--help",
+  "probedFlags": {
+    "session": "-S, --session",
+    "continue": "-c, --continue",
+    "yolo": "-y, --yolo",
+    "auto": "--auto",
+    "model": "-m, --model",
+    "prompt": "-p, --prompt",
+    "outputFormat": "--output-format",
+    "skillsDir": "--skills-dir",
+    "agent": "--agent",
+    "agentFile": "--agent-file",
+    "addDir": "--add-dir",
+    "plan": "--plan"
+  },
+  "launchFlags": {
+    "session": "-S, --session, -r, --resume",
+    "sessionId": "-S, --session, -r, --resume",
+    "resume": "-S, --session, -r, --resume",
+    "continue": "-c, -C, --continue",
+    "yolo": "-y, --yolo, --yes, --auto-approve",
+    "auto": "--auto",
+    "model": "-m, --model",
+    "prompt": "-p, --prompt",
+    "outputFormat": "--output-format",
+    "skillsDir": "--skills-dir",
+    "agent": "--agent",
+    "agentFile": "--agent-file",
+    "addDir": "--add-dir",
+    "plan": "--plan"
+  }
+}

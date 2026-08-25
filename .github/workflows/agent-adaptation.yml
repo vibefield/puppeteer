@@ -1,0 +1,241 @@
+name: Agent surface adaptation
+
+on:
+  workflow_dispatch:
+    inputs:
+      vendor:
+        description: Candidate vendor
+        required: true
+        type: choice
+        options: [claude, codex, grok, kimi, opencode]
+      version:
+        description: Exact normalized vendor version
+        required: true
+        type: string
+      manifest:
+        description: Versioned ASM v2 manifest already prepared on the selected ref
+        required: true
+        type: string
+      publish_draft:
+        description: Open or update a draft PR after analysis
+        required: true
+        default: true
+        type: boolean
+
+permissions:
+  contents: read
+
+env:
+  AGENT_VENDOR: ${{ inputs.vendor }}
+  AGENT_VERSION: ${{ inputs.version }}
+  AGENT_MANIFEST: ${{ inputs.manifest }}
+
+concurrency:
+  group: agent-adaptation-${{ inputs.vendor }}-${{ inputs.version }}
+  cancel-in-progress: false
+
+# Artifact execution and the write-enabled publisher never share a job. The
+# publisher receives only a path-allowlisted Git patch and JSON reports.
+jobs:
+  acquire:
+    name: Acquire ${{ matrix.platform }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - platform: darwin-arm64
+            runner: macos-14
+            executable: agent
+          - platform: darwin-x64
+            runner: macos-15-intel
+            executable: agent
+          - platform: linux-x64
+            runner: ubuntu-24.04
+            executable: agent
+          - platform: windows-x64
+            runner: windows-2025
+            executable: agent.exe
+    runs-on: ${{ matrix.runner }}
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          persist-credentials: false
+
+      - uses: actions/setup-node@v6
+        with:
+          node-version: 22.18.0
+
+      - name: Download reviewed artifact bytes
+        run: >-
+          node scripts/download-agent-artifact.mjs
+          --vendor "${{ inputs.vendor }}"
+          --version "${{ inputs.version }}"
+          --platform "${{ matrix.platform }}"
+          --output ".agent-adaptation/artifacts/${{ matrix.platform }}/${{ matrix.executable }}"
+          --metadata ".agent-adaptation/artifacts/${{ matrix.platform }}/download.json"
+
+      - name: Probe exact version in a disposable home
+        run: >-
+          node scripts/probe-agent-artifact.mjs
+          --artifact ".agent-adaptation/artifacts/${{ matrix.platform }}/${{ matrix.executable }}"
+          --version "${{ inputs.version }}"
+          --output ".agent-adaptation/artifacts/${{ matrix.platform }}/version.txt"
+          --home ".agent-adaptation/home/${{ matrix.platform }}"
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: agent-artifact-${{ matrix.platform }}
+          path: .agent-adaptation/artifacts
+          include-hidden-files: true
+          retention-days: 1
+
+  assemble:
+    needs: acquire
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          persist-credentials: false
+
+      - uses: actions/download-artifact@v5
+        with:
+          pattern: agent-artifact-*
+          path: .agent-adaptation/artifacts
+          merge-multiple: true
+
+      - name: Bind every platform to immutable bytes
+        run: >-
+          node scripts/assemble-agent-artifacts.mjs
+          --vendor "$AGENT_VENDOR"
+          --version "$AGENT_VERSION"
+          --directory .agent-adaptation/artifacts
+          --output .agent-adaptation/acquisition.json
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: agent-acquisition
+          path: .agent-adaptation/acquisition.json
+          include-hidden-files: true
+          retention-days: 7
+
+  analyze:
+    needs: assemble
+    runs-on: ubuntu-24.04
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+
+      - uses: pnpm/action-setup@v6
+        with:
+          version: 10.34.5
+
+      - uses: actions/setup-node@v6
+        with:
+          node-version: 22.18.0
+          cache: pnpm
+
+      - run: pnpm install --frozen-lockfile --filter './packages/**'
+
+      - uses: actions/download-artifact@v5
+        with:
+          name: agent-acquisition
+          path: .agent-adaptation
+
+      - name: Attach exact artifacts without inventing claims
+        run: >-
+          pnpm surface:evidence:artifacts
+          --manifest "$AGENT_MANIFEST"
+          --artifacts .agent-adaptation/acquisition.json
+
+      - name: Stage candidate pointer and Imposter projection
+        run: >-
+          node scripts/stage-agent-candidate.mjs
+          --vendor "$AGENT_VENDOR"
+          --manifest "$AGENT_MANIFEST"
+
+      - name: Refresh and audit immutable evidence
+        run: pnpm --filter @vibecook/chopsticks-surface surface:evidence:write
+
+      - run: pnpm --filter @vibecook/chopsticks-surface run "surface:audit:${AGENT_VENDOR}"
+      - run: pnpm --filter "@vibecook/chopsticks-adapter-${AGENT_VENDOR}" test
+      - run: pnpm --filter @vibecook/chopsticks-imposter test
+      - run: pnpm packages:check
+      - run: pnpm support:check
+
+      - name: Exact replay and drift classification
+        run: >-
+          pnpm surface:reconcile
+          --vendor "$AGENT_VENDOR"
+          --manifest "$AGENT_MANIFEST"
+          --artifacts .agent-adaptation/acquisition.json
+          --output "packages/surface/vendors/${AGENT_VENDOR}/candidates/${AGENT_VENDOR}@${AGENT_VERSION}/reconciliation.json"
+
+      - name: Confine automated changes
+        run: |
+          git fetch --no-tags origin main
+          node scripts/validate-agent-candidate-changes.mjs \
+            --vendor "$AGENT_VENDOR" \
+            --version "$AGENT_VERSION" \
+            --manifest "$AGENT_MANIFEST" \
+            --base origin/main
+
+      - name: Build publisher-safe patch
+        run: |
+          git add -A
+          git diff --cached --binary --output=.agent-adaptation/candidate.patch
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: agent-candidate-output
+          path: .agent-adaptation/candidate.patch
+          include-hidden-files: true
+          retention-days: 14
+
+  publish-draft:
+    needs: analyze
+    if: ${{ inputs.publish_draft && github.ref_name != 'main' }}
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: write
+      pull-requests: write
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+
+      - uses: actions/download-artifact@v5
+        with:
+          name: agent-candidate-output
+          path: .agent-adaptation
+
+      - name: Apply and revalidate the data-only candidate patch
+        run: |
+          git fetch --no-tags origin main
+          git apply --index .agent-adaptation/candidate.patch
+          node scripts/validate-agent-candidate-changes.mjs \
+            --vendor "$AGENT_VENDOR" \
+            --version "$AGENT_VERSION" \
+            --manifest "$AGENT_MANIFEST" \
+            --base origin/main
+
+      - name: Commit candidate branch
+        run: |
+          git config user.name github-actions[bot]
+          git config user.email 41898282+github-actions[bot]@users.noreply.github.com
+          git diff --cached --quiet || git commit -m "chore(surface): stage ${AGENT_VENDOR} ${AGENT_VERSION}"
+          git push origin "HEAD:${GITHUB_REF_NAME}"
+
+      - name: Open a draft review without promoting support
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          if [ -z "$(gh pr list --head "$GITHUB_REF_NAME" --base main --json number --jq '.[0].number')" ]; then
+            gh pr create --draft --base main --head "$GITHUB_REF_NAME" \
+              --title "chore(surface): adapt ${AGENT_VENDOR} ${AGENT_VERSION}" \
+              --body "Automated candidate analysis from workflow run ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}. Support metadata is not promoted; review the reconciliation report and complete every protected promotion gate."
+          fi

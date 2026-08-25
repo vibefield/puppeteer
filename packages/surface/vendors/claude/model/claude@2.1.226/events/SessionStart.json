@@ -1,0 +1,74 @@
+{
+  "surface": "claude",
+  "surfaceVersion": "2.1.226",
+  "event": "SessionStart",
+  "channel": "hook",
+  "channels": [
+    "hook"
+  ],
+  "transport": "command",
+  "direction": "agent-to-client",
+  "trigger": "Starts or resumes a session; source may be startup, resume, clear, compact, or fork.",
+  "payloadSchema": {
+    "type": "object",
+    "properties": {
+      "session_id": {
+        "type": "string"
+      },
+      "transcript_path": {
+        "type": "string"
+      },
+      "cwd": {
+        "type": "string"
+      },
+      "prompt_id": {
+        "type": "string"
+      },
+      "permission_mode": {
+        "type": "string"
+      },
+      "effort": {
+        "type": "object"
+      },
+      "hook_event_name": {
+        "type": "string"
+      },
+      "agent_id": {
+        "type": "string"
+      },
+      "agent_type": {
+        "type": "string"
+      },
+      "source": {
+        "type": "string"
+      },
+      "model": {
+        "type": "string"
+      },
+      "session_title": {
+        "type": "string"
+      }
+    },
+    "required": [
+      "cwd",
+      "hook_event_name",
+      "session_id",
+      "source",
+      "transcript_path"
+    ]
+  },
+  "evidence": {
+    "existence": [
+      "claude-runtime-headless"
+    ],
+    "shape": [
+      "claude-runtime-headless"
+    ]
+  },
+  "confidence": "verified-headless",
+  "timeoutSec": 5,
+  "firstSeen": "2.1.226",
+  "lastVerified": "2.1.226",
+  "fixture": "captures/claude@2.1.226",
+  "notes": "Starts or resumes a session; source may be startup, resume, clear, compact, or fork."
+}

@@ -1,0 +1,196 @@
+{
+  "surface": "grok",
+  "surfaceVersion": "1.0.0",
+  "event": "_x.ai/session/update",
+  "channel": "session-log",
+  "transport": "jsonl-record",
+  "payloadSchema": {
+    "type": "object",
+    "properties": {
+      "sessionId": {
+        "type": "string"
+      },
+      "update": {
+        "type": "object",
+        "properties": {
+          "sessionUpdate": {
+            "type": "string",
+            "enum": [
+              "hook_execution",
+              "response_completed",
+              "turn_completed",
+              "subagent_spawned",
+              "subagent_finished",
+              "workflow_updated",
+              "goal_updated",
+              "compaction_checkpoint"
+            ]
+          }
+        },
+        "required": [
+          "sessionUpdate"
+        ]
+      },
+      "_meta": {
+        "type": "object"
+      }
+    },
+    "required": [
+      "sessionId",
+      "update"
+    ]
+  },
+  "confidence": "verified-headless",
+  "firstSeen": "1.0.0",
+  "lastVerified": "1.0.0",
+  "fixture": "captures/grok@1.0.0/persisted.jsonl",
+  "direction": "agent-local",
+  "evidence": {
+    "existence": [
+      "grok-runtime-headless"
+    ],
+    "shape": [
+      "grok-runtime-headless"
+    ],
+    "carrier": [
+      "grok-runtime-headless"
+    ]
+  },
+  "recordSchema": {
+    "type": "object",
+    "properties": {
+      "timestamp": {
+        "type": "number",
+        "minimum": 1000000000000
+      },
+      "method": {
+        "type": "string",
+        "enum": [
+          "_x.ai/session/update"
+        ]
+      },
+      "params": {
+        "type": "object"
+      }
+    },
+    "required": [
+      "timestamp",
+      "method",
+      "params"
+    ]
+  },
+  "variants": [
+    {
+      "match": {
+        "update.sessionUpdate": "hook_execution"
+      },
+      "evidence": {
+        "existence": [
+          "grok-runtime-headless"
+        ],
+        "shape": [
+          "grok-runtime-headless"
+        ]
+      },
+      "confidence": "verified-headless"
+    },
+    {
+      "match": {
+        "update.sessionUpdate": "response_completed"
+      },
+      "evidence": {
+        "existence": [
+          "grok-public-mirror-lead"
+        ],
+        "shape": [
+          "grok-public-mirror-lead"
+        ]
+      },
+      "confidence": "unverified"
+    },
+    {
+      "match": {
+        "update.sessionUpdate": "turn_completed"
+      },
+      "evidence": {
+        "existence": [
+          "grok-runtime-headless"
+        ],
+        "shape": [
+          "grok-runtime-headless"
+        ]
+      },
+      "confidence": "verified-headless"
+    },
+    {
+      "match": {
+        "update.sessionUpdate": "subagent_spawned"
+      },
+      "evidence": {
+        "existence": [
+          "grok-public-mirror-lead"
+        ],
+        "shape": [
+          "grok-public-mirror-lead"
+        ]
+      },
+      "confidence": "unverified"
+    },
+    {
+      "match": {
+        "update.sessionUpdate": "subagent_finished"
+      },
+      "evidence": {
+        "existence": [
+          "grok-public-mirror-lead"
+        ],
+        "shape": [
+          "grok-public-mirror-lead"
+        ]
+      },
+      "confidence": "unverified"
+    },
+    {
+      "match": {
+        "update.sessionUpdate": "workflow_updated"
+      },
+      "evidence": {
+        "existence": [
+          "grok-public-mirror-lead"
+        ],
+        "shape": [
+          "grok-public-mirror-lead"
+        ]
+      },
+      "confidence": "unverified"
+    },
+    {
+      "match": {
+        "update.sessionUpdate": "goal_updated"
+      },
+      "evidence": {
+        "existence": [
+          "grok-public-mirror-lead"
+        ],
+        "shape": [
+          "grok-public-mirror-lead"
+        ]
+      },
+      "confidence": "unverified"
+    },
+    {
+      "match": {
+        "update.sessionUpdate": "compaction_checkpoint"
+      },
+      "evidence": {
+        "existence": [
+          "grok-public-mirror-lead"
+        ],
+        "shape": [
+          "grok-public-mirror-lead"
+        ]
+      },
+      "confidence": "unverified"
+    }
+  ]
+}

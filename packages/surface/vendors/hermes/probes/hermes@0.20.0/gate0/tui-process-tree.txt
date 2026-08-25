@@ -1,0 +1,3 @@
+<pid>	<ppid>	<redacted:path> <redacted:path> --tui
+<pid>	<ppid>	<node> --expose-gc <redacted:path>
+<pid>	<ppid>	<redacted:path> -m tui_gateway.entry

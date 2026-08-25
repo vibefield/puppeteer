@@ -1,0 +1,160 @@
+import { execFileSync } from 'node:child_process';
+import { mkdtempSync, readFileSync, readdirSync, rmSync } from 'node:fs';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
+import { fileURLToPath } from 'node:url';
+
+import { publicPackages } from './public-packages.mjs';
+import { spawnPackageManager } from './package-manager.mjs';
+
+const root = fileURLToPath(new URL('..', import.meta.url));
+const rootManifest = JSON.parse(readFileSync(`${root}/package.json`, 'utf8'));
+const version = rootManifest.version;
+const expectedTag = `v${version}`;
+const publicPackageNames = new Set(publicPackages.map(([, packageName]) => packageName));
+const releaseToolingFiles = new Set([
+  'scripts/package-manager.mjs',
+  'scripts/publish-errors.mjs',
+  'scripts/publish-errors.test.mjs',
+  'scripts/publish-packages.mjs',
+]);
+
+const tagCommit = execFileSync('git', ['rev-list', '-n', '1', expectedTag], {
+  cwd: root,
+  encoding: 'utf8',
+  stdio: ['ignore', 'pipe', 'ignore'],
+}).trim();
+const headCommit = execFileSync('git', ['rev-parse', 'HEAD'], {
+  cwd: root,
+  encoding: 'utf8',
+}).trim();
+
+if (tagCommit !== headCommit) {
+  execFileSync('git', ['merge-base', '--is-ancestor', expectedTag, 'HEAD'], {
+    cwd: root,
+    stdio: 'ignore',
+  });
+
+  const changedFiles = execFileSync('git', ['diff', '--name-only', `${expectedTag}..HEAD`], {
+    cwd: root,
+    encoding: 'utf8',
+  })
+    .trim()
+    .split('\n')
+    .filter(Boolean);
+  const unsafeFiles = changedFiles.filter((file) => !releaseToolingFiles.has(file));
+
+  if (unsafeFiles.length > 0) {
+    throw new Error(`${expectedTag} is not at HEAD; non-release files changed:\n${unsafeFiles.join('\n')}`);
+  }
+}
+
+function isPublished(packageName) {
+  const result = spawnPackageManager(
+    'npm',
+    ['view', `${packageName}@${version}`, 'version', '--registry=https://registry.npmjs.org/'],
+    { cwd: root, stdio: 'ignore' },
+  );
+  return result.status === 0;
+}
+
+async function waitForPublished(packageName) {
+  const attempts = 10;
+
+  for (let attempt = 1; attempt <= attempts; attempt += 1) {
+    if (isPublished(packageName)) {
+      return true;
+    }
+
+    if (attempt < attempts) {
+      console.log(`${packageName}@${version} is not visible yet; retrying registry check (${attempt}/${attempts})`);
+      await new Promise((resolve) => setTimeout(resolve, 3_000));
+    }
+  }
+
+  return false;
+}
+
+function validatePackedManifest(tarballPath, expectedName) {
+  const packedManifest = JSON.parse(
+    execFileSync('tar', ['-xOf', tarballPath, 'package/package.json'], {
+      cwd: root,
+      encoding: 'utf8',
+    }),
+  );
+
+  if (packedManifest.name !== expectedName || packedManifest.version !== version) {
+    throw new Error(
+      `packed tarball must be ${expectedName}@${version}; found ${packedManifest.name}@${packedManifest.version}`,
+    );
+  }
+
+  for (const dependencyField of ['dependencies', 'optionalDependencies', 'peerDependencies']) {
+    for (const [dependencyName, dependencyVersion] of Object.entries(packedManifest[dependencyField] ?? {})) {
+      if (typeof dependencyVersion === 'string' && dependencyVersion.startsWith('workspace:')) {
+        throw new Error(`${expectedName} tarball still contains ${dependencyName}: ${dependencyVersion}`);
+      }
+
+      if (publicPackageNames.has(dependencyName) && dependencyVersion !== version) {
+        throw new Error(
+          `${expectedName} tarball must depend on ${dependencyName}@${version}; found ${dependencyVersion}`,
+        );
+      }
+    }
+  }
+}
+
+for (const [directory, expectedName] of publicPackages) {
+  const manifest = JSON.parse(readFileSync(`${root}/${directory}/package.json`, 'utf8'));
+
+  if (manifest.name !== expectedName || manifest.version !== version) {
+    throw new Error(`${directory} must be ${expectedName}@${version}; found ${manifest.name}@${manifest.version}`);
+  }
+
+  if (isPublished(expectedName)) {
+    console.log(`${expectedName}@${version} already published; skipping`);
+    continue;
+  }
+
+  const packDirectory = mkdtempSync(join(tmpdir(), 'chopsticks-publish-'));
+  let result;
+
+  try {
+    const packResult = spawnPackageManager('pnpm', ['--dir', directory, 'pack', '--pack-destination', packDirectory], {
+      cwd: root,
+      stdio: 'inherit',
+    });
+
+    if (packResult.status !== 0) {
+      throw new Error(`${expectedName}@${version} pack returned ${packResult.status ?? 'no status'}`);
+    }
+
+    const tarballs = readdirSync(packDirectory).filter((file) => file.endsWith('.tgz'));
+    if (tarballs.length !== 1) {
+      throw new Error(`expected one packed tarball for ${expectedName}; found ${tarballs.length}`);
+    }
+
+    const tarballPath = join(packDirectory, tarballs[0]);
+    validatePackedManifest(tarballPath, expectedName);
+
+    result = spawnPackageManager('npm', ['publish', tarballPath, '--access', 'public'], {
+      cwd: root,
+      stdio: 'inherit',
+    });
+  } finally {
+    rmSync(packDirectory, { recursive: true, force: true });
+  }
+
+  if (result.status !== 0) {
+    console.log(
+      `${expectedName}@${version} publish returned ${result.status ?? 'no status'}; checking registry before failing`,
+    );
+
+    if (await waitForPublished(expectedName)) {
+      console.log(`${expectedName}@${version} is already published; continuing`);
+      continue;
+    }
+
+    process.exit(result.status ?? 1);
+  }
+}

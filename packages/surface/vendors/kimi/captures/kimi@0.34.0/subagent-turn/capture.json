@@ -1,0 +1,11 @@
+{
+  "schemaVersion": 1,
+  "vendor": "kimi",
+  "version": "0.34.0",
+  "scenario": "subagent-turn",
+  "mode": "native-print-hermetic",
+  "wireProtocolVersion": "1.5",
+  "agentJournals": [
+    "agent-0"
+  ]
+}

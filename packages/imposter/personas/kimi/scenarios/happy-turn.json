@@ -1,0 +1,66 @@
+{
+  "name": "happy-turn",
+  "steps": [
+    {
+      "at": 0,
+      "do": {
+        "emit": {
+          "channel": "wire",
+          "event": "turn.prompt",
+          "with": { "input": [{ "type": "text", "text": "$stimulus.text" }], "origin": { "kind": "user" } }
+        }
+      }
+    },
+    {
+      "at": 20,
+      "do": {
+        "emit": {
+          "channel": "wire",
+          "event": "context.append_loop_event",
+          "with": { "event": { "type": "step.begin", "uuid": "$uuid:step", "turnId": "0", "step": 1 } }
+        }
+      }
+    },
+    {
+      "at": 40,
+      "do": {
+        "emit": {
+          "channel": "wire",
+          "event": "context.append_loop_event",
+          "with": {
+            "event": {
+              "type": "content.part",
+              "uuid": "$uuid:content",
+              "turnId": "0",
+              "step": 1,
+              "stepUuid": "$uuid:step",
+              "part": { "type": "text", "text": "imposter: ok" }
+            }
+          }
+        }
+      }
+    },
+    {
+      "at": 60,
+      "do": {
+        "emit": {
+          "channel": "wire",
+          "event": "context.append_loop_event",
+          "with": {
+            "event": { "type": "step.end", "uuid": "$uuid:step", "turnId": "0", "step": 1, "finishReason": "end_turn" }
+          }
+        }
+      }
+    },
+    {
+      "at": 80,
+      "do": {
+        "emit": {
+          "channel": "wire",
+          "event": "turn.ended",
+          "with": { "turnId": 0, "reason": "completed", "durationMs": 80 }
+        }
+      }
+    }
+  ]
+}

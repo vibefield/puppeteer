@@ -1,0 +1,86 @@
+{
+  "name": "@vibecook/chopsticks-surface",
+  "version": "0.1.8",
+  "type": "module",
+  "description": "Vendor-neutral evidence and Agent Surface Model (ASM) runtime for captured coding-agent behavior.",
+  "license": "MIT",
+  "author": "James Yong",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/vibecook-dev/chopsticks.git",
+    "directory": "packages/surface"
+  },
+  "main": "./src/model.ts",
+  "types": "./src/model.ts",
+  "exports": {
+    ".": "./src/model.ts",
+    "./package.json": "./package.json",
+    "./sanitize": "./src/sanitize.ts"
+  },
+  "publishConfig": {
+    "access": "public",
+    "provenance": true,
+    "main": "./dist/model.js",
+    "types": "./dist/model.d.ts",
+    "exports": {
+      ".": {
+        "types": "./dist/model.d.ts",
+        "import": "./dist/model.js"
+      },
+      "./package.json": "./package.json",
+      "./sanitize": {
+        "types": "./dist/sanitize.d.ts",
+        "import": "./dist/sanitize.js"
+      }
+    }
+  },
+  "files": [
+    "dist",
+    "vendors/*/model/**/*"
+  ],
+  "scripts": {
+    "clean": "node -e \"require('node:fs').rmSync('dist',{recursive:true,force:true})\"",
+    "build": "pnpm clean && tsc -p tsconfig.build.json",
+    "prepack": "pnpm build",
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "test": "vitest run",
+    "surface:audit": "node scripts/audit.mjs",
+    "surface:evidence:check": "node scripts/check-evidence.mjs",
+    "surface:evidence:write": "node scripts/check-evidence.mjs --write",
+    "surface:audit:antigravity": "node vendors/antigravity/audit.mjs",
+    "surface:audit:claude": "node vendors/claude/audit.mjs",
+    "surface:audit:codex": "node vendors/codex/audit.mjs",
+    "surface:audit:grok": "node vendors/grok/audit.mjs",
+    "surface:audit:hermes": "node vendors/hermes/audit.mjs",
+    "surface:audit:kimi": "node vendors/kimi/audit.mjs",
+    "surface:audit:opencode": "node vendors/opencode/audit.mjs",
+    "surface:census:antigravity": "node vendors/antigravity/census/harness.mjs --mode offline",
+    "surface:census:antigravity:extras": "node vendors/antigravity/census/harness.mjs --mode offline --extras",
+    "surface:census:antigravity:authorized": "node vendors/antigravity/census/authorized-census.mjs",
+    "surface:sanitize:antigravity": "node vendors/antigravity/sanitize-captures.mjs",
+    "surface:privacy:antigravity": "node vendors/antigravity/sanitize-captures.mjs --check",
+    "surface:census:claude": "node vendors/claude/census/harness.mjs",
+    "surface:model:claude": "node vendors/claude/census/generate-model.mjs",
+    "surface:census:codex": "node vendors/codex/census/harness.mjs",
+    "surface:census:hermes": "node vendors/hermes/census/harness.mjs",
+    "surface:model:hermes": "node vendors/hermes/census/generate-model.mjs",
+    "surface:sanitize:hermes": "node vendors/hermes/sanitize-captures.mjs",
+    "surface:privacy:hermes": "node vendors/hermes/sanitize-captures.mjs --check",
+    "surface:census:kimi": "node vendors/kimi/census/harness.mjs",
+    "surface:probe:kimi": "node vendors/kimi/census/probe-binary.mjs",
+    "surface:reference:kimi": "node vendors/kimi/census/extract-source-reference.mjs",
+    "surface:census:opencode": "node vendors/opencode/census/harness.mjs",
+    "surface:sanitize:kimi": "node vendors/kimi/sanitize-captures.mjs",
+    "surface:privacy:kimi": "node vendors/kimi/sanitize-captures.mjs --check",
+    "surface:model:kimi": "node vendors/kimi/census/generate-model.mjs",
+    "surface:model:codex": "node vendors/codex/census/generate-model.mjs",
+    "surface:model:opencode": "node vendors/opencode/census/generate-model.mjs --version 1.18.16",
+    "surface:privacy:claude": "node vendors/claude/sanitize-captures.mjs --check",
+    "surface:sanitize:claude": "node vendors/claude/sanitize-captures.mjs",
+    "surface:privacy:opencode": "node vendors/opencode/census/sanitize.mjs --version 1.18.16 --check-only",
+    "surface:sanitize:opencode": "node vendors/opencode/census/sanitize.mjs --version 1.18.16"
+  },
+  "engines": {
+    "node": ">=22.18.0"
+  }
+}

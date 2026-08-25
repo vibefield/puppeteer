@@ -1,0 +1,32 @@
+packages:
+  - packages/*
+  - apps/*
+overrides:
+  '@vibecook/spaghetti-sdk@0.7.0': link:../p008/spaghetti/packages/sdk
+allowBuilds:
+  '@parcel/watcher': true
+  '@vibecook/truffle': true
+  better-sqlite3: true
+  electron: true
+  esbuild: true
+minimumReleaseAgeExclude:
+  - '@vibecook/ghosttea@0.9.3'
+  - '@vibecook/ghosttea-electron@0.9.3'
+  - '@vibecook/ghosttea-frame@0.9.3'
+  - '@vibecook/ghosttea-native-tabs@0.9.3'
+  - '@vibecook/ghosttea-protocol@0.9.3'
+  - '@vibecook/ghosttea-react@0.9.3'
+  - '@vibecook/ghosttead@0.9.3'
+  # The daemon platform packages arrive as optional dependencies of
+  # @vibecook/ghosttead, and the release-age quarantine applies to them too.
+  - '@vibecook/ghosttead-darwin-arm64@0.9.3'
+  - '@vibecook/ghosttead-win32-x64@0.9.3'
+  - '@vibecook/ghosttea-client@0.9.3'
+  - '@vibecook/truffle-native@0.7.12'
+  - '@vibecook/truffle-sidecar-darwin-arm64@0.7.12'
+  - '@vibecook/truffle-sidecar-darwin-x64@0.7.12'
+  - '@vibecook/truffle-sidecar-linux-arm64@0.7.12'
+  - '@vibecook/truffle-sidecar-linux-x64@0.7.12'
+  - '@vibecook/truffle-sidecar-win32-x64@0.7.12'
+  - '@vibecook/truffle@0.7.12'
+verifyDepsBeforeRun: false
