@@ -4,6 +4,7 @@ The repository keeps current decisions, active work, and history in separate pla
 
 ## Current architecture
 
+- [`architecture.html`](architecture.html) is the top-level visual guide to foundations, layers, repository ownership, conventions, and public contracts.
 - [`rfcs/004-layered-agent-runtime.md`](rfcs/004-layered-agent-runtime.md) is the repository-wide layer and dependency model.
 - [`rfcs/002-modular-agent-events-and-services.md`](rfcs/002-modular-agent-events-and-services.md) defines category event schemas, `category:event-name` routes, and adapter service ownership.
 - [`rfcs/003-native-observation-sources.md`](rfcs/003-native-observation-sources.md) assigns live semantic observation to adapters and retires the Spaghetti runtime dependency.
