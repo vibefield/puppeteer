@@ -4,7 +4,7 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { promisify } from 'node:util';
 import { describe, expect, it } from 'vitest';
-import { createGitStateObserver, resolveGitState } from './git-observer.js';
+import { createGitStateObserver, resolveGitState } from './git.js';
 
 const execFileAsync = promisify(execFile);
 

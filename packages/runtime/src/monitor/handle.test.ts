@@ -5,7 +5,7 @@ import {
   MonitorNotificationGapError,
   type MonitorHandleSource,
   type MonitorHandleSubscriber,
-} from './monitor-handle.js';
+} from './handle.js';
 
 function state(revision: number): AgentMonitorState {
   return {

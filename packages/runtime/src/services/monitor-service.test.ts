@@ -7,12 +7,8 @@ import type {
 } from '@vibecook/puppeteer-core';
 import type { AdapterMonitorObservationBatch, MonitorFamilyUpdate } from '@vibecook/puppeteer-core/monitor-spi';
 import { describe, expect, it, vi } from 'vitest';
-import type { MonitorClock, MonitorScheduledTask } from './monitor-clock.js';
-import {
-  AgentMonitorService,
-  MONITOR_ARTIFACT_HARD_MAX_BYTES,
-  type MonitorArtifactAudit,
-} from './services/monitor-service.js';
+import type { MonitorClock, MonitorScheduledTask } from '../monitor/clock.js';
+import { AgentMonitorService, MONITOR_ARTIFACT_HARD_MAX_BYTES, type MonitorArtifactAudit } from './monitor-service.js';
 
 class FakeClock implements MonitorClock {
   private currentMs = Date.parse('2026-08-16T12:00:00.000Z');

@@ -24,8 +24,8 @@ import {
   type WorkspaceMonitorObservation,
 } from '@vibecook/puppeteer-core/monitor-spi';
 import type { RuntimeAgentEventEnvelope } from '../types.js';
-import type { MonitorClock, MonitorScheduledTask } from '../monitor-clock.js';
-import { createMonitorHandle, type MonitorHandleSource, type MonitorHandleSubscriber } from '../monitor-handle.js';
+import type { MonitorClock, MonitorScheduledTask } from '../monitor/clock.js';
+import { createMonitorHandle, type MonitorHandleSource, type MonitorHandleSubscriber } from '../monitor/handle.js';
 import type { AgentProjectionService } from './projection-service.js';
 
 export const DEFAULT_MONITOR_COALESCE_MS = 100;
@@ -60,9 +60,6 @@ export interface AgentMonitorServiceOptions {
   onArtifactAudit?: (audit: MonitorArtifactAudit) => void | Promise<void>;
   onError?: (error: Error) => void;
 }
-
-/** @deprecated Compatibility name. Prefer `AgentMonitorServiceOptions`. */
-export type RuntimeMonitorHubOptions = AgentMonitorServiceOptions;
 
 type UnscopedWorkspaceMonitorObservation =
   | Omit<Extract<WorkspaceMonitorObservation, { operation: 'upsert' }>, 'runtimeRunId' | 'runtimeEpoch'>
@@ -249,7 +246,7 @@ export class AgentMonitorService
     });
     // The host owns process liveness. Adapter/control rails may disappear while
     // the native TUI remains alive, so their terminal-looking events stay on
-    // the compatibility stream but cannot remove or fail the monitor.
+    // the normalized event stream but cannot remove or fail the monitor.
     if (
       !options.hostProcessEvidence &&
       (envelope.event.type === 'process:exited' || envelope.event.type === 'session:exited')
@@ -700,6 +697,3 @@ export class AgentMonitorService
     }
   }
 }
-
-/** @deprecated Compatibility name. Prefer `AgentMonitorService`. */
-export { AgentMonitorService as RuntimeMonitorHub };

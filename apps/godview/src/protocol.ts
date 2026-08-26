@@ -3,7 +3,6 @@ import type {
   AccountUsageFailure,
   AccountUsageFetchResult,
   MonitorArtifactReadResult,
-  ObservationLevel,
   PromptReceipt as CorePromptReceipt,
 } from '@vibecook/puppeteer-core';
 import type {
@@ -11,14 +10,14 @@ import type {
   AgentSessionInfo as RuntimeAgentSessionInfo,
   AgentWorkspaceFinal,
   AgentWorkspaceInfo,
+} from '@vibecook/puppeteer-runtime';
+import type {
   AcknowledgeAgentFailureRequest,
   AgentMonitorNotificationMessage,
   AgentMonitorRemovedMessage,
-  AgentMonitorRendererConfiguration,
   AgentMonitorStateMessage,
-  LegacySerializedSessionState,
   ReadAgentMonitorArtifactRequest,
-} from '@vibecook/puppeteer-runtime';
+} from './main/monitor-ipc.js';
 import type { BuiltinAgentKind } from '@vibecook/puppeteer-builtin-providers';
 import type { WorkspaceDiff } from '@vibecook/puppeteer-workspaces';
 
@@ -31,10 +30,9 @@ export type {
   AcknowledgeAgentFailureRequest,
   AgentMonitorNotificationMessage,
   AgentMonitorRemovedMessage,
-  AgentMonitorRendererConfiguration,
   AgentMonitorStateMessage,
   ReadAgentMonitorArtifactRequest,
-} from '@vibecook/puppeteer-runtime';
+} from './main/monitor-ipc.js';
 export const ACCOUNT_USAGE_AGENTS = ['claude', 'codex', 'grok'] as const;
 export type AccountUsageAgent = (typeof ACCOUNT_USAGE_AGENTS)[number];
 
@@ -75,22 +73,8 @@ export type AgentSessionFailure = RuntimeAgentSessionFailure;
 
 export type CreateAgentSessionResult = AgentSessionInfo | AgentSessionFailure;
 
-export type SerializedSessionState = LegacySerializedSessionState;
-
-export interface AgentStateMessage {
-  runtimeSessionId: string;
-  state: SerializedSessionState;
-  observationLevel: ObservationLevel;
-}
-
-export interface AgentStateBatch {
-  sequence: number;
-  states: AgentStateMessage[];
-}
-
 export interface AgentSessionSnapshot {
   info: AgentSessionInfo;
-  state?: AgentStateMessage;
   final?: WorkspaceFinalEvent;
 }
 
@@ -137,8 +121,6 @@ export interface PuppeteerBridge {
   onAgentSession(cb: (info: AgentSessionInfo) => void): () => void;
   onAgentRemoved(cb: (runtimeSessionId: string) => void): () => void;
   submitPrompt(opts: SubmitPromptOptions): Promise<PromptReceipt>;
-  onAgentState(cb: (state: AgentStateMessage) => void): () => void;
-  agentMonitorConfiguration(): Promise<AgentMonitorRendererConfiguration>;
   listAgentMonitors(): Promise<AgentMonitorStateMessage[]>;
   onAgentMonitorState(cb: (message: AgentMonitorStateMessage) => void): () => void;
   onAgentMonitorNotification(cb: (message: AgentMonitorNotificationMessage) => void): () => void;

@@ -1,4 +1,4 @@
-import type { AgentExecutionMode, AgentGitState, ObservationLevel } from '../events.js';
+import type { AgentExecutionMode, AgentGitState, ObservationLevel } from '../events/index.js';
 
 /** Current wire/schema generation for the JSON-plain monitor projection. */
 export const AGENT_MONITOR_SCHEMA_VERSION = 1 as const;
@@ -46,14 +46,6 @@ export interface ActorRunRef {
   nativeSessionId?: string;
   nativeAgentId?: string;
   nativeAgentType?: string;
-}
-
-/** A scoped semantic-observer attachment; its scope epoch is not the runtime epoch. */
-export interface ObservationAttachmentRef {
-  attachmentId: string;
-  runtimeRunId: RuntimeRunId;
-  observerContract: string;
-  observerScopeEpoch: string;
 }
 
 export type ArtifactFamily = 'workflow-definition' | 'workflow-journal' | 'team-config' | 'other';

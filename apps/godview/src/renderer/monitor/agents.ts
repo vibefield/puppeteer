@@ -5,7 +5,7 @@ import {
   presentAgentMonitorHeadline,
   type AgentMonitorState,
 } from '@vibecook/puppeteer-core';
-import type { AgentMonitorStateMessage, AgentSessionInfo, AgentStateMessage } from '../../protocol.js';
+import type { AgentMonitorStateMessage, AgentSessionInfo } from '../../protocol.js';
 import {
   agentColor,
   classifyTerminalStatus,
@@ -13,14 +13,12 @@ import {
   providerLabel,
   type AgentVisualStatus,
 } from '../agent-status.js';
-import { classifyLegacyAgentStatus, legacyAgentDetail } from '../legacy-agent-state.js';
 import { folderName } from '../folder-name.js';
 import type { PaneAttachment } from '../pane-attachments.js';
 import type { MonitorAgent } from './types.js';
 
 export interface MonitorAgentRecord {
   info: AgentSessionInfo;
-  state?: AgentStateMessage;
   monitor?: AgentMonitorStateMessage;
 }
 
@@ -69,87 +67,55 @@ export interface AssembleMonitorAgentsInput {
   /** Live terminal id -> stable monitor identity. */
   identities?: ReadonlyMap<string, string>;
   activeSessionId?: string;
-  godviewMonitorV2?: boolean;
   nowMs?: number;
 }
 
 /** Undefined for a session that has stopped being worth showing at all. */
 export function monitorAgentFromSession(
   record: MonitorAgentRecord,
-  options: { godviewMonitorV2?: boolean; allMonitorStates?: readonly AgentMonitorState[]; nowMs?: number } = {},
+  options: { allMonitorStates?: readonly AgentMonitorState[]; nowMs?: number } = {},
 ): MonitorAgent | undefined {
-  const { info, state, monitor } = record;
-  if (options.godviewMonitorV2) {
-    if (!monitor) return undefined;
-    const current = monitor.state;
-    const headline = presentAgentMonitorHeadline(current);
-    const currentCwd = current.environment.cwd;
-    const branch = current.environment.git?.branch ?? info.workspace.branch;
-    const cwd = currentCwd || info.workspace.sourcePath || info.workspace.root || info.session.cwd || undefined;
-    const cumulativeTokens = current.usage.cumulativeTokens;
-    const burn = current.usage.burnRatePerMin;
-    const detail = [
-      headline.detail,
-      headline.blockerCount > 1 ? `+${headline.blockerCount - 1} blockers` : undefined,
-      cumulativeTokens === undefined ? undefined : `${Math.round(cumulativeTokens).toLocaleString()} tokens`,
-      burn === undefined ? undefined : `${Math.round(burn).toLocaleString()} tok/min`,
-    ]
-      .filter((value): value is string => Boolean(value))
-      .join(' · ');
-    const recency = classifyMonitorRecency(current.freshness.lastEvidenceAt, options.nowMs ?? Number.NaN).recency;
-    const teamAggregate = current.team
-      ? aggregateAffiliatedAgentMonitorTeam(current, options.allMonitorStates ?? [current])
-      : undefined;
-    return {
-      id: info.session.id,
-      session: info.session,
-      status: current.status,
-      project: projectLabel(info, currentCwd),
-      detail,
-      color: agentColor(info.runtimeSessionId),
-      active: false,
-      ...(recency === 'stale' ? { stale: true } : {}),
-      ...(cwd ? { cwd } : {}),
-      agent: {
-        kind: info.agent,
-        provider: providerLabel(info.agent),
-        ...(current.model ? { model: current.model.displayName || current.model.id } : {}),
-        ...(branch ? { branch } : {}),
-        ...(current.context ? { contextWindow: current.context } : {}),
-        monitor: current,
-        ...(teamAggregate ? { teamAggregate } : {}),
-        recency,
-        info,
-      },
-    };
-  }
-  if (info.session.exited) return undefined;
-  const status = classifyLegacyAgentStatus(state);
-  if (!status) return undefined;
-  const environment = state?.state.environment;
-  const currentCwd = environment?.currentCwd?.value;
-  const model = environment?.model?.value;
-  const git = environment?.git?.value;
-  const branch = environment?.git ? (git?.branch ?? undefined) : info.workspace.branch;
+  const { info, monitor } = record;
+  if (!monitor) return undefined;
+  const current = monitor.state;
+  const headline = presentAgentMonitorHeadline(current);
+  const currentCwd = current.environment.cwd;
+  const branch = current.environment.git?.branch ?? info.workspace.branch;
   const cwd = currentCwd || info.workspace.sourcePath || info.workspace.root || info.session.cwd || undefined;
-  const contextWindow = state?.state.contextWindow;
+  const cumulativeTokens = current.usage.cumulativeTokens;
+  const burn = current.usage.burnRatePerMin;
+  const detail = [
+    headline.detail,
+    headline.blockerCount > 1 ? `+${headline.blockerCount - 1} blockers` : undefined,
+    cumulativeTokens === undefined ? undefined : `${Math.round(cumulativeTokens).toLocaleString()} tokens`,
+    burn === undefined ? undefined : `${Math.round(burn).toLocaleString()} tok/min`,
+  ]
+    .filter((value): value is string => Boolean(value))
+    .join(' · ');
+  const recency = classifyMonitorRecency(current.freshness.lastEvidenceAt, options.nowMs ?? Number.NaN).recency;
+  const teamAggregate = current.team
+    ? aggregateAffiliatedAgentMonitorTeam(current, options.allMonitorStates ?? [current])
+    : undefined;
   return {
     id: info.session.id,
     session: info.session,
-    status,
+    status: current.status,
     project: projectLabel(info, currentCwd),
-    detail: legacyAgentDetail(state, status),
+    detail,
     color: agentColor(info.runtimeSessionId),
     active: false,
+    ...(recency === 'stale' ? { stale: true } : {}),
     ...(cwd ? { cwd } : {}),
     agent: {
       kind: info.agent,
       provider: providerLabel(info.agent),
-      ...(model ? { model: model.displayName || model.id } : {}),
+      ...(current.model ? { model: current.model.displayName || current.model.id } : {}),
       ...(branch ? { branch } : {}),
-      ...(contextWindow ? { contextWindow } : {}),
+      ...(current.context ? { contextWindow: current.context } : {}),
+      monitor: current,
+      ...(teamAggregate ? { teamAggregate } : {}),
+      recency,
       info,
-      ...(state ? { state } : {}),
     },
   };
 }
@@ -181,7 +147,6 @@ export function assembleMonitorAgents(input: AssembleMonitorAgentsInput): readon
   const agents = input.agents
     .map((record) =>
       monitorAgentFromSession(record, {
-        godviewMonitorV2: input.godviewMonitorV2,
         allMonitorStates,
         nowMs: input.nowMs,
       }),

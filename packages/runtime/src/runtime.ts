@@ -17,6 +17,7 @@ import {
   type ExternalRef,
   type MonitorNotification,
   type PromptReceipt,
+  type PromptSubmission,
   type ProcessExitReason,
   type SessionRuntimeState,
   type TerminalSpec,
@@ -63,9 +64,8 @@ import type {
   RuntimeAgentEventEnvelope,
   RuntimeRunInfo,
 } from './types.js';
-import { DEFAULT_RUNTIME_FEATURE_FLAGS } from './types.js';
 import { cloneAgentSessionInfo, createAgentController, type Agent, type AgentController } from './agent.js';
-import { createGitStateObserver, type GitStateObserver } from './git-observer.js';
+import { createGitStateObserver, type GitStateObserver } from './observation/git.js';
 import {
   allocateRuntimeRunIdentity,
   canonicalizeCreationFingerprint,
@@ -75,13 +75,13 @@ import {
   type RevisionedNativeSessionClaim,
   type RuntimeCreationOperation,
   type RuntimeRunIdentity,
-} from './identity.js';
+} from './identity/runtime-identity.js';
 import type {
   CreationRequestClaim,
   CreationRequestClaimRef,
   CreationRequestTerminalOutcome,
-} from './creation-registry.js';
-import { createSystemMonitorClock } from './monitor-clock.js';
+} from './identity/creation-registry.js';
+import { createSystemMonitorClock } from './monitor/clock.js';
 import { AgentMonitorService, type MonitorArtifactAudit } from './services/monitor-service.js';
 
 interface ManagedSession {
@@ -381,7 +381,6 @@ const MAX_TERMINAL_RUN_INFOS = 1_024;
 
 export function createAgentRuntime(options: AgentRuntimeOptions): AgentRuntime {
   const providers = new Map(options.providers.map((provider) => [provider.kind, provider]));
-  const features = { ...DEFAULT_RUNTIME_FEATURE_FLAGS, ...options.features, agentMonitorStateV2: true };
   const monitorClock = options.monitorClock ?? createSystemMonitorClock();
   const runs = new Map<string, ManagedRun>();
   const terminalFailuresByRunId = new Map<string, TerminalFailureEntry>();
@@ -555,8 +554,8 @@ export function createAgentRuntime(options: AgentRuntimeOptions): AgentRuntime {
   function retainTerminalFailure(run: ManagedRun): void {
     const monitor = run.monitor;
     if (!monitor) {
-      // Monitor v2 may be disabled. Terminal identity still moves out of the
-      // live run registry so v1 hosts do not retain an unbounded ManagedRun.
+      // Allocation/preparation can fail before the canonical monitor service is
+      // constructed. Release that incomplete run instead of retaining it.
       if (!terminalFailuresByRunId.has(run.identity.runtimeRunId)) releaseTerminalRun(run);
       return;
     }
@@ -619,30 +618,27 @@ export function createAgentRuntime(options: AgentRuntimeOptions): AgentRuntime {
 
   async function recordWorkspaceEvidence(run: ManagedRun, workspace: Workspace): Promise<void> {
     const baseline = workspace.baseline;
-    const v2Allocation = features.workspaceProvenanceV2
-      ? {
-          repositoryKind: baseline.repository.kind,
-          ...(baseline.repository.digest === undefined ? {} : { repositoryDigest: { ...baseline.repository.digest } }),
-          isolation: baseline.isolation,
-          knownConcurrentClaims: baseline.knownConcurrentClaims,
-        }
-      : {};
     await recordAction({
       ...actionBase(run, `workspace:${workspace.workspaceInstanceId}:allocated`, baseline.capturedAt),
       type: 'workspace.allocated',
       workspaceInstanceId: workspace.workspaceInstanceId,
       mode: workspace.mode,
       ...(workspace.branch === undefined ? {} : { branch: workspace.branch }),
-      ...v2Allocation,
+      repositoryKind: baseline.repository.kind,
+      ...(baseline.repository.digest === undefined ? {} : { repositoryDigest: { ...baseline.repository.digest } }),
+      isolation: baseline.isolation,
+      knownConcurrentClaims: baseline.knownConcurrentClaims,
     });
     await recordAction({
       ...actionBase(run, `workspace:${workspace.workspaceInstanceId}:baseline`, baseline.capturedAt),
       type: 'workspace.baseline',
-      ...(features.workspaceProvenanceV2 ? { quality: baseline.quality, completeness: baseline.completeness } : {}),
+      quality: baseline.quality,
+      completeness: baseline.completeness,
       workspaceInstanceId: workspace.workspaceInstanceId,
       ...(workspace.initialCommit === undefined ? {} : { initialCommit: workspace.initialCommit }),
       initialDirtyFileCount: workspace.initialDirtyFiles.length,
-      ...(features.workspaceProvenanceV2 ? { capturedAt: baseline.capturedAt, git: baseline.git } : {}),
+      capturedAt: baseline.capturedAt,
+      git: baseline.git,
     });
     run.monitor?.acceptWorkspace({
       kind: 'workspace',
@@ -661,21 +657,19 @@ export function createAgentRuntime(options: AgentRuntimeOptions): AgentRuntime {
         worktrees: workspace.mode === 'worktree' ? [workspace.root] : [],
       },
     });
-    if (features.workspaceProvenanceV2) {
-      run.monitor?.acceptWorkspace({
-        kind: 'workspace',
-        schemaVersion: 1,
-        recordId: `workspace:${workspace.workspaceInstanceId}:provenance-baseline`,
-        observedAt: monitorClock.now().toISOString(),
-        source: { id: 'runtime-workspace', kind: 'workspace-provenance' },
-        quality: baseline.quality,
-        completeness: baseline.completeness,
-        provisional: false,
-        evidence: [{ namespace: 'workspace', id: `${workspace.workspaceInstanceId}:baseline` }],
-        operation: 'provenance',
-        value: workspaceMonitorProvenance(workspace),
-      });
-    }
+    run.monitor?.acceptWorkspace({
+      kind: 'workspace',
+      schemaVersion: 1,
+      recordId: `workspace:${workspace.workspaceInstanceId}:provenance-baseline`,
+      observedAt: monitorClock.now().toISOString(),
+      source: { id: 'runtime-workspace', kind: 'workspace-provenance' },
+      quality: baseline.quality,
+      completeness: baseline.completeness,
+      provisional: false,
+      evidence: [{ namespace: 'workspace', id: `${workspace.workspaceInstanceId}:baseline` }],
+      operation: 'provenance',
+      value: workspaceMonitorProvenance(workspace),
+    });
   }
 
   function recordProcessSpawned(
@@ -1176,21 +1170,19 @@ export function createAgentRuntime(options: AgentRuntimeOptions): AgentRuntime {
         const cleanup = await cleanupWorkspace(workspace);
         const failedAt = new Date().toISOString();
         const failureCode = error instanceof WorkspaceError ? error.code : 'WORKSPACE_FINALIZE_FAILED';
-        if (features.workspaceProvenanceV2) {
-          run.monitor?.acceptWorkspace({
-            kind: 'workspace',
-            schemaVersion: 1,
-            recordId: `workspace:${workspace.workspaceInstanceId}:provenance-finalization-failed`,
-            observedAt: failedAt,
-            source: { id: 'runtime-workspace', kind: 'workspace-provenance' },
-            quality: 'unknown',
-            completeness: 'unavailable',
-            provisional: false,
-            evidence: [{ namespace: 'workspace', id: `${workspace.workspaceInstanceId}:finalization-failed` }],
-            operation: 'provenance',
-            value: failedWorkspaceMonitorProvenance(workspace, failedAt, failureCode, cleanup),
-          });
-        }
+        run.monitor?.acceptWorkspace({
+          kind: 'workspace',
+          schemaVersion: 1,
+          recordId: `workspace:${workspace.workspaceInstanceId}:provenance-finalization-failed`,
+          observedAt: failedAt,
+          source: { id: 'runtime-workspace', kind: 'workspace-provenance' },
+          quality: 'unknown',
+          completeness: 'unavailable',
+          provisional: false,
+          evidence: [{ namespace: 'workspace', id: `${workspace.workspaceInstanceId}:finalization-failed` }],
+          operation: 'provenance',
+          value: failedWorkspaceMonitorProvenance(workspace, failedAt, failureCode, cleanup),
+        });
         await recordAction({
           ...actionBase(run, `workspace:${workspace.workspaceInstanceId}:finalization-failed`, failedAt),
           type: 'workspace.finalization-failed',
@@ -1198,14 +1190,10 @@ export function createAgentRuntime(options: AgentRuntimeOptions): AgentRuntime {
           completeness: 'unavailable',
           workspaceInstanceId: workspace.workspaceInstanceId,
           code: failureCode,
-          ...(features.workspaceProvenanceV2
-            ? {
-                outcome: 'failed' as const,
-                trigger,
-                cleanupOutcome: cleanup.cleanupOutcome,
-                retained: cleanup.retained,
-              }
-            : {}),
+          outcome: 'failed',
+          trigger,
+          cleanupOutcome: cleanup.cleanupOutcome,
+          retained: cleanup.retained,
         });
         return cleanup;
       } finally {
@@ -1229,31 +1217,25 @@ export function createAgentRuntime(options: AgentRuntimeOptions): AgentRuntime {
         cleanup.cleanupOutcome === 'failed' && (provenance.quality === 'strong' || provenance.quality === 'exact')
           ? ('derived' as const)
           : provenance.quality;
-      if (features.workspaceProvenanceV2) {
-        run.monitor?.acceptWorkspace({
-          kind: 'workspace',
-          schemaVersion: 1,
-          recordId: `workspace:${workspace.workspaceInstanceId}:provenance-finalized`,
-          observedAt: provenance.finalizedAt,
-          source: { id: 'runtime-workspace', kind: 'workspace-provenance' },
-          quality,
-          completeness,
-          provisional: false,
-          evidence: [{ namespace: 'workspace', id: `${workspace.workspaceInstanceId}:finalized` }],
-          operation: 'provenance',
-          value: workspaceMonitorProvenance(workspace, { ...provenance, outcome, quality, completeness }, cleanup),
-        });
-      }
+      run.monitor?.acceptWorkspace({
+        kind: 'workspace',
+        schemaVersion: 1,
+        recordId: `workspace:${workspace.workspaceInstanceId}:provenance-finalized`,
+        observedAt: provenance.finalizedAt,
+        source: { id: 'runtime-workspace', kind: 'workspace-provenance' },
+        quality,
+        completeness,
+        provisional: false,
+        evidence: [{ namespace: 'workspace', id: `${workspace.workspaceInstanceId}:finalized` }],
+        operation: 'provenance',
+        value: workspaceMonitorProvenance(workspace, { ...provenance, outcome, quality, completeness }, cleanup),
+      });
       try {
         await recordAction({
           ...actionBase(run, `workspace:${workspace.workspaceInstanceId}:finalized`, provenance.finalizedAt),
           type: 'workspace.finalized',
-          quality: features.workspaceProvenanceV2 ? quality : 'exact',
-          completeness: features.workspaceProvenanceV2
-            ? completeness
-            : cleanup.cleanupOutcome === 'failed'
-              ? 'partial'
-              : 'complete',
+          quality,
+          completeness,
           workspaceInstanceId: workspace.workspaceInstanceId,
           ...(metadata.initialCommit === undefined ? {} : { initialCommit: metadata.initialCommit }),
           ...(metadata.finalCommit === undefined ? {} : { finalCommit: metadata.finalCommit }),
@@ -1261,20 +1243,16 @@ export function createAgentRuntime(options: AgentRuntimeOptions): AgentRuntime {
           insertions: provenance.changes.insertions,
           deletions: provenance.changes.deletions,
           retained: cleanup.retained,
-          ...(features.workspaceProvenanceV2
-            ? {
-                outcome,
-                trigger,
-                cleanupOutcome: cleanup.cleanupOutcome,
-                git: provenance.git,
-                reachableCommits: provenance.reachableCommits,
-                ...(provenance.changes.filesFingerprint === undefined
-                  ? {}
-                  : { filesFingerprint: { ...provenance.changes.filesFingerprint } }),
-                interference: provenance.interference.map((entry) => ({ ...entry })),
-                knownConcurrentClaims: provenance.knownConcurrentClaims,
-              }
-            : {}),
+          outcome,
+          trigger,
+          cleanupOutcome: cleanup.cleanupOutcome,
+          git: provenance.git,
+          reachableCommits: provenance.reachableCommits,
+          ...(provenance.changes.filesFingerprint === undefined
+            ? {}
+            : { filesFingerprint: { ...provenance.changes.filesFingerprint } }),
+          interference: provenance.interference.map((entry) => ({ ...entry })),
+          knownConcurrentClaims: provenance.knownConcurrentClaims,
         });
         return { metadata, ...cleanup };
       } finally {
@@ -1435,7 +1413,7 @@ export function createAgentRuntime(options: AgentRuntimeOptions): AgentRuntime {
     try {
       workspaceRequest.provenance = {
         knownConcurrentClaims: claim.currentConcurrentClaims(),
-        ...(features.workspaceProvenanceV2 && options.recorder
+        ...(options.recorder
           ? {
               keyedDigest: (domain, canonicalValue) =>
                 options.recorder!.keyedDigest(`workspace:${domain}`, canonicalValue),
@@ -1450,6 +1428,29 @@ export function createAgentRuntime(options: AgentRuntimeOptions): AgentRuntime {
       if (err instanceof WorkspaceError) return { error: { code: err.code, message: err.message } };
       throw err;
     }
+  }
+
+  async function submitManagedPrompt(managed: ManagedSession, submission: PromptSubmission): Promise<PromptReceipt> {
+    const injectionId = randomUUID();
+    const receipt = await managed.session.services.prompt.submit(submission);
+    managed.run.monitor?.recordPromptReceipt(injectionId, monitorClock.now().toISOString());
+    try {
+      await options.recorder?.recordInjection({
+        ...actionBase(managed.run, `injection:${injectionId}`, new Date().toISOString()),
+        type: 'injection.receipt',
+        injectionId,
+        prompt: submission.text,
+        outcome: receipt.status,
+        ...(receipt.status === 'confirmed'
+          ? receipt.turnId === undefined
+            ? {}
+            : { turnId: receipt.turnId }
+          : { reasonPresent: receipt.reason.length > 0 }),
+      });
+    } catch (error) {
+      report(error);
+    }
+    return receipt;
   }
 
   function manageSession(
@@ -1483,10 +1484,15 @@ export function createAgentRuntime(options: AgentRuntimeOptions): AgentRuntime {
     if (extras.preparationId !== undefined) info.preparationId = extras.preparationId;
     if (extras.processId !== undefined) info.processId = extras.processId;
     if (!run.monitor) throw new Error(`runtime monitor was not installed for run ${run.identity.runtimeRunId}`);
+    let managed: ManagedSession | undefined;
     const agentController = createAgentController({
       adapter: session,
       info,
       monitor: run.monitor,
+      submitPrompt: (submission) =>
+        managed
+          ? submitManagedPrompt(managed, submission)
+          : Promise.resolve({ status: 'rejected', reason: 'agent session is not ready' }),
       onListenerError: report,
     });
     const agent = agentController.agent;
@@ -1614,7 +1620,7 @@ export function createAgentRuntime(options: AgentRuntimeOptions): AgentRuntime {
       }
     };
 
-    const managed: ManagedSession = {
+    managed = {
       session,
       agent,
       agentController,
@@ -2355,26 +2361,7 @@ export function createAgentRuntime(options: AgentRuntimeOptions): AgentRuntime {
     async submitPrompt(runtimeSessionId, submission): Promise<PromptReceipt> {
       const managed = sessionsByTerminalId.get(runtimeSessionId);
       if (!managed) return { status: 'rejected', reason: 'agent session not found' };
-      const injectionId = randomUUID();
-      const receipt = await managed.agent.submitPrompt(submission);
-      managed.run.monitor?.recordPromptReceipt(injectionId, monitorClock.now().toISOString());
-      try {
-        await options.recorder?.recordInjection({
-          ...actionBase(managed.run, `injection:${injectionId}`, new Date().toISOString()),
-          type: 'injection.receipt',
-          injectionId,
-          prompt: submission.text,
-          outcome: receipt.status,
-          ...(receipt.status === 'confirmed'
-            ? receipt.turnId === undefined
-              ? {}
-              : { turnId: receipt.turnId }
-            : { reasonPresent: receipt.reason.length > 0 }),
-        });
-      } catch (error) {
-        report(error);
-      }
-      return receipt;
+      return managed.agent.submitPrompt(submission);
     },
 
     async workspaceDiff(runtimeSessionId) {

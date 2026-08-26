@@ -16,7 +16,7 @@ describe('monitor SPI package subpath', () => {
     const batch: AdapterMonitorObservationBatch = {
       schemaVersion: 1,
       batchId: 'batch-1',
-      producer: { id: 'claude:semantic', epoch: 'scope-4', contractVersion: '012d-v1' },
+      producer: { id: 'claude:transcript', epoch: 'generation-4', contractVersion: 'claude-transcript-v1' },
       phase: 'correction',
       observedAt: '2026-08-16T12:00:00.000Z',
       quality: 'exact',

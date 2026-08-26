@@ -5,7 +5,7 @@ import {
   createNativeSessionClaim,
   reviseNativeSessionClaim,
   RuntimeIdentityError,
-} from './identity.js';
+} from './runtime-identity.js';
 
 describe('runtime identity', () => {
   it('allocates a stable run before provider identity and validates opaque references', () => {

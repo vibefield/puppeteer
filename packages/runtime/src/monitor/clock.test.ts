@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from 'vitest';
-import { createSystemMonitorClock } from './monitor-clock.js';
+import { createSystemMonitorClock } from './clock.js';
 
 describe('createSystemMonitorClock', () => {
   it('provides current time and cancellable scheduled work', () => {

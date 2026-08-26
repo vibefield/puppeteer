@@ -66,8 +66,8 @@ describe('godviewTruffleConfig', () => {
     });
     expect(explicit.environment.TRUFFLE_SIDECAR_PATH).toBe('/custom/sidecar');
 
-    expect(() =>
-      godviewTruffleConfig({ ...base, environment: {}, pathExists: () => false }),
-    ).toThrow(/Truffle is enabled but sidecar-slim was not found/);
+    expect(() => godviewTruffleConfig({ ...base, environment: {}, pathExists: () => false })).toThrow(
+      /Truffle is enabled but sidecar-slim was not found/,
+    );
   });
 });

@@ -1,8 +1,4 @@
-import type {
-  AccountUsageAvailable,
-  AccountUsageFailure,
-  AccountUsageFetchResult,
-} from '@vibecook/puppeteer-core';
+import type { AccountUsageAvailable, AccountUsageFailure, AccountUsageFetchResult } from '@vibecook/puppeteer-core';
 import {
   ACCOUNT_USAGE_AGENTS,
   type AccountUsageAgent,
@@ -98,10 +94,7 @@ export function createAccountUsageMonitor(options: AccountUsageMonitorOptions): 
   let inFlight: Promise<AgentAccountUsageBatch> | undefined;
   let timer: ReturnType<typeof setInterval> | undefined;
   const states = new Map<AccountUsageAgent, ProviderRefreshState>(
-    ACCOUNT_USAGE_AGENTS.map((agent) => [
-      agent,
-      { nextRefreshAtMs: Number.NEGATIVE_INFINITY, consecutiveFailures: 0 },
-    ]),
+    ACCOUNT_USAGE_AGENTS.map((agent) => [agent, { nextRefreshAtMs: Number.NEGATIVE_INFINITY, consecutiveFailures: 0 }]),
   );
   const now = options.now ?? (() => new Date());
 
@@ -126,11 +119,7 @@ export function createAccountUsageMonitor(options: AccountUsageMonitorOptions): 
     return batch;
   };
 
-  const applyResult = (
-    agent: AccountUsageAgent,
-    result: AccountUsageFetchResult,
-    completedAtMs: number,
-  ): void => {
+  const applyResult = (agent: AccountUsageAgent, result: AccountUsageFetchResult, completedAtMs: number): void => {
     const state = states.get(agent)!;
     if (result.status === 'available') {
       state.lastAvailable = result;
@@ -153,9 +142,7 @@ export function createAccountUsageMonitor(options: AccountUsageMonitorOptions): 
   const refresh = (): Promise<AgentAccountUsageBatch> => {
     if (inFlight) return inFlight;
     const startedAtMs = now().valueOf();
-    const dueAgents = ACCOUNT_USAGE_AGENTS.filter(
-      (agent) => states.get(agent)!.nextRefreshAtMs <= startedAtMs,
-    );
+    const dueAgents = ACCOUNT_USAGE_AGENTS.filter((agent) => states.get(agent)!.nextRefreshAtMs <= startedAtMs);
     if (dueAgents.length === 0 && latest) return Promise.resolve(latest);
 
     const request = Promise.all(

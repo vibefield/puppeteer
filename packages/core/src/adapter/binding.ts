@@ -1,16 +1,13 @@
 /**
- * The agent-agnostic session contract (DESIGN §9), lifted into core once a
- * second driver existed to test it against (M5: Claude's hook+PTY driver and
- * Codex's structured app-server driver). Before that, the adapter session lived as a
- * concrete `ClaudeSession` in the Claude adapter — lifting off one example
- * would have baked in Claude's shape.
+ * Provider-neutral low-level adapter binding. Runtime wraps exactly one of
+ * these handles in its application-facing `Agent`.
  *
  * Zero I/O by design (like the rest of core): interfaces only. Concrete drivers
  * (`createClaudeSession`, `createCodexSession`, and peers) implement these.
  */
 
-import type { ObservationLevel } from './events.js';
-import type { AgentAdapterEventSource, AgentArtifactService, AgentPromptService } from './services/index.js';
+import type { ObservationLevel } from '../events/index.js';
+import type { AgentAdapterEventSource, AgentArtifactService, AgentPromptService } from '../services/index.js';
 
 /**
  * The low-level handle every adapter returns for one live agent process/thread.
@@ -39,8 +36,3 @@ export interface AgentAdapterBinding {
   /** Tear down observation/control. Process lifecycle stays with the host. */
   dispose(): Promise<void>;
 }
-
-/** @deprecated Low-level compatibility name. Prefer AgentAdapterBinding. */
-export type AgentAdapterSession = AgentAdapterBinding;
-/** @deprecated Low-level compatibility name. Prefer AgentAdapterBinding. */
-export type AgentSession = AgentAdapterBinding;

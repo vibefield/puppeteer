@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import fc from 'fast-check';
-import { agentEventCategory, agentEventType, type AgentEvent, type AgentEventEnvelope } from '../events.js';
+import { agentEventCategory, agentEventType, type AgentEvent, type AgentEventEnvelope } from '../events/index.js';
 import type {
   MonitorFamilyUpdate,
   MonitorAccumulatorState,
@@ -704,7 +704,9 @@ describe('monitor accumulator', () => {
         completeness: 'partial',
       },
     };
-    const reduced = reduceMonitorAccumulator(initial(), input);
+    const initialState = initial();
+    const before = projectAgentMonitorState(initialState);
+    const reduced = reduceMonitorAccumulator(initialState, input);
     expect(reduced.state.workspace.provenance.get('workspace-1')).toMatchObject({
       baseline: { isolation: 'managed-isolated', git: { headCommit: 'abc123' } },
       finalization: {
@@ -714,6 +716,9 @@ describe('monitor accumulator', () => {
       },
       interference: [{ kind: 'observation-gap' }],
     });
+    expect(reduced.state.workspace.lastAcceptedAt).toBe(T0);
+    expect(reduced.state.workspace.lastPublicAcceptedAt).toBeUndefined();
+    expect(projectAgentMonitorState(reduced.state, { previous: before })).toBe(before);
     expect(JSON.stringify(reduced.state.workspace.provenance.get('workspace-1'))).not.toContain('/Users/');
   });
 

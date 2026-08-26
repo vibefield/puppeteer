@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import type { SessionActivity, SessionSummary } from '@vibecook/ghosttea-protocol';
 import type { AgentMonitorState, AgentMonitorStatus } from '@vibecook/puppeteer-core';
-import type { AgentMonitorStateMessage, AgentSessionInfo, AgentStateMessage } from '../../protocol.js';
+import type { AgentMonitorStateMessage, AgentSessionInfo } from '../../protocol.js';
 import {
   assembleMonitorAgents,
   mergeMonitorTerminals,
@@ -12,45 +12,6 @@ import {
 
 function session(id: string, overrides: Partial<SessionSummary> = {}): SessionSummary {
   return { id, exited: false, createdAtMs: 0, cwd: '/project/godview', ...overrides } as SessionSummary;
-}
-
-function state(overrides: Partial<AgentStateMessage['state']> = {}): AgentStateMessage {
-  return {
-    runtimeSessionId: 'runtime-1',
-    observationLevel: 'structured',
-    state: {
-      lifecycle: 'ready',
-      tools: [],
-      permissions: [],
-      subagents: [],
-      tasks: [],
-      environment: {},
-      counters: { toolsCompleted: 0, toolsFailed: 0, unknownEvents: 0 },
-      lastSequence: 0,
-      diagnostics: [],
-      ...overrides,
-    },
-  };
-}
-
-function agentRecord(
-  runtimeSessionId: string,
-  terminalId: string,
-  overrides: Partial<AgentStateMessage['state']> = {},
-  createdAtMs = 0,
-): MonitorAgentRecord {
-  return {
-    info: {
-      agent: 'codex',
-      runtimeRunId: `run-${runtimeSessionId}`,
-      runtimeEpoch: 1,
-      sessionId: `native-${runtimeSessionId}`,
-      runtimeSessionId,
-      workspace: { mode: 'direct', root: '/project/godview', sourcePath: '/project/godview' },
-      session: session(terminalId, { createdAtMs }),
-    } as AgentSessionInfo,
-    state: state(overrides),
-  };
 }
 
 function monitorState(
@@ -87,6 +48,27 @@ function monitorMessage(state: AgentMonitorState, terminalSessionId: string): Ag
   return { runtimeRunId: state.runtimeRunId, terminalSessionId, state };
 }
 
+function agentRecord(
+  runtimeSessionId: string,
+  terminalId: string,
+  overrides: Partial<AgentMonitorState> = {},
+  createdAtMs = 0,
+): MonitorAgentRecord {
+  const runtimeRunId = `run-${runtimeSessionId}`;
+  return {
+    info: {
+      agent: 'codex',
+      runtimeRunId,
+      runtimeEpoch: 1,
+      sessionId: `native-${runtimeSessionId}`,
+      runtimeSessionId,
+      workspace: { mode: 'direct', root: '/project/godview', sourcePath: '/project/godview' },
+      session: session(terminalId, { createdAtMs }),
+    } as AgentSessionInfo,
+    monitor: monitorMessage(monitorState(runtimeRunId, overrides.status ?? 'idle', overrides), terminalId),
+  };
+}
+
 describe('monitor agent assembly', () => {
   it('lists agents in launch order ahead of the terminals nothing has claimed', () => {
     const assembled = assembleMonitorAgents({
@@ -108,14 +90,14 @@ describe('monitor agent assembly', () => {
     expect(assembled[0]!.agent?.kind).toBe('codex');
   });
 
-  it('excludes exited sessions and sessions that reached a terminal lifecycle', () => {
-    const exited = agentRecord('runtime-a', 'terminal-a');
-    exited.info = { ...exited.info, session: session('terminal-a', { exited: true }) };
+  it('shows only records backed by the canonical monitor projection', () => {
+    const pending = agentRecord('runtime-a', 'terminal-a');
+    pending.monitor = undefined;
     const assembled = assembleMonitorAgents({
-      agents: [exited, agentRecord('runtime-b', 'terminal-b', { lifecycle: 'failed' })],
+      agents: [pending, agentRecord('runtime-b', 'terminal-b')],
       terminals: [],
     });
-    expect(assembled).toEqual([]);
+    expect(assembled.map((agent) => agent.id)).toEqual(['terminal-b']);
   });
 
   it('folds the shell-owned pane facts in, so no view looks them up itself', () => {
@@ -174,8 +156,8 @@ describe('monitor agent assembly', () => {
   it('cycles and counts agent-backed sessions only', () => {
     const assembled = assembleMonitorAgents({
       agents: [
-        agentRecord('runtime-a', 'terminal-a', { permissions: [{ requestId: 'approval-a' }] }, 10),
-        agentRecord('runtime-b', 'terminal-b', { permissions: [{ requestId: 'approval-b' }] }, 20),
+        agentRecord('runtime-a', 'terminal-a', { status: 'blocked' }, 10),
+        agentRecord('runtime-b', 'terminal-b', { status: 'blocked' }, 20),
       ],
       terminals: [{ session: session('terminal-c') }],
     });
@@ -188,9 +170,7 @@ describe('monitor agent assembly', () => {
   });
 
   it('uses the core v2 status directly, so an open task at rest remains idle', () => {
-    const record = agentRecord('runtime-a', 'terminal-a', {
-      tasks: [{ taskId: 'task-1', description: 'Open task' }],
-    });
+    const record = agentRecord('runtime-a', 'terminal-a');
     const monitor = monitorState('run-runtime-a', 'idle', {
       tasks: [{ id: 'task-1', description: 'Open task', status: 'pending' }],
       usage: { cumulativeTokens: 120, burnRatePerMin: 12, burnRateWindowMs: 60_000, samples: [] },
@@ -200,7 +180,6 @@ describe('monitor agent assembly', () => {
     const [agent] = assembleMonitorAgents({
       agents: [record],
       terminals: [],
-      godviewMonitorV2: true,
       nowMs: Date.parse('2026-08-17T00:00:01.000Z'),
     });
     expect(agent).toMatchObject({ status: 'idle', detail: 'idle · 120 tokens · 12 tok/min' });
@@ -226,7 +205,6 @@ describe('monitor agent assembly', () => {
     const [agent] = assembleMonitorAgents({
       agents: [record],
       terminals: [],
-      godviewMonitorV2: true,
       nowMs: Date.parse('2026-08-17T00:01:00.000Z'),
     });
     expect(agent).toMatchObject({
@@ -256,7 +234,6 @@ describe('monitor agent assembly', () => {
     const [agent] = assembleMonitorAgents({
       agents: [root, peer],
       terminals: [],
-      godviewMonitorV2: true,
       nowMs: Date.parse('2026-08-17T00:00:01.000Z'),
     });
     expect(agent?.agent?.teamAggregate).toMatchObject({

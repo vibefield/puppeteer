@@ -21,7 +21,7 @@ import {
 import type { AdapterMonitorObservationBatch } from '@vibecook/puppeteer-core/monitor-spi';
 import { createActionRecorder, isOwnActionV2 } from '@vibecook/puppeteer-record';
 import { createWorkspace } from '@vibecook/puppeteer-workspaces';
-import { createFileCreationRequestRegistry, type CreationRequestRegistry } from './creation-registry.js';
+import { createFileCreationRequestRegistry, type CreationRequestRegistry } from './identity/creation-registry.js';
 import { createAgentRuntime } from './runtime.js';
 import type { AgentProvider } from './types.js';
 
@@ -860,16 +860,17 @@ describe('createAgentRuntime', () => {
       providers: [fakeProvider('one', new Map())],
     });
     const remoteUrl = 'https://user:credential-password@example.invalid/private.git';
-    const created = await runtime.createSession({
+    const created = await runtime.spawn({
       agent: 'one',
       agentOptions: { token: 'provider-credential-token', environment: { SECRET: 'environment-secret' }, remoteUrl },
     });
     if ('error' in created) throw new Error('unexpected create failure');
 
     await writeFile(join(root, 'credential-source.ts'), 'raw-diff-secret\n');
-    await expect(
-      runtime.submitPrompt(created.terminalSessionId, { text: 'private prompt credential' }),
-    ).resolves.toEqual({ status: 'confirmed', turnId: 'one-turn' });
+    await expect(created.submitPrompt({ text: 'private prompt credential' })).resolves.toEqual({
+      status: 'confirmed',
+      turnId: 'one-turn',
+    });
     await runtime.handleProcessExit(created.terminalSessionId, { exitCode: 0, signal: null, reason: 'completed' });
 
     const contents = await readFile(path, 'utf8');
@@ -905,7 +906,6 @@ describe('createAgentRuntime', () => {
       defaultCwd: root,
       recorder,
       providers: [fakeProvider('one', new Map())],
-      features: { workspaceProvenanceV2: true },
     });
     const created = await runtime.createSession({
       agent: 'one',
@@ -984,7 +984,6 @@ describe('createAgentRuntime', () => {
       defaultCwd: root,
       recorder,
       providers: [fakeProvider('one', new Map())],
-      features: { workspaceProvenanceV2: true },
     });
     const first = await runtime.createSession({ agent: 'one' });
     const second = await runtime.createSession({ agent: 'one' });
@@ -1447,7 +1446,6 @@ describe('createAgentRuntime', () => {
       host,
       defaultCwd: root,
       recorder,
-      features: { workspaceProvenanceV2: true },
       providers: [
         {
           kind: 'broken',
@@ -1903,7 +1901,6 @@ describe('createAgentRuntime', () => {
       defaultCwd: root,
       recorder,
       providers: [preparableProvider('one', hooks)],
-      features: { workspaceProvenanceV2: true },
     });
     const prepared = await runtime.prepareSession({
       agent: 'one',
@@ -1972,7 +1969,6 @@ describe('createAgentRuntime', () => {
       defaultCwd: root,
       recorder,
       providers: [fakeProvider('one', new Map())],
-      features: { workspaceProvenanceV2: true },
     });
     const created = await runtime.createSession({
       agent: 'one',
@@ -2018,7 +2014,6 @@ describe('createAgentRuntime', () => {
       defaultCwd: root,
       recorder,
       providers: [fakeProvider('one', new Map())],
-      features: { workspaceProvenanceV2: true },
     });
     const created = await runtime.createSession({
       agent: 'one',
@@ -2058,7 +2053,6 @@ describe('createAgentRuntime', () => {
       defaultCwd: root,
       recorder,
       providers: [fakeProvider('one', new Map())],
-      features: { workspaceProvenanceV2: true },
     });
     const created = await runtime.createSession({ agent: 'one' });
     if ('error' in created) throw new Error('unexpected create failure');
@@ -2171,7 +2165,6 @@ describe('createAgentRuntime', () => {
       defaultCwd: root,
       recorder,
       providers: [fakeProvider('monitor-unclassified-exit', new Map())],
-      features: { workspaceProvenanceV2: true },
     });
     const notices: string[] = [];
     runtime.onMonitorNotification((notice) => notices.push(notice.type));
@@ -2489,7 +2482,6 @@ describe('createAgentRuntime', () => {
       host,
       defaultCwd: root,
       providers: [fakeProvider('monitor-invariant', new Map())],
-      features: { agentMonitorStateV2: false },
     });
     const created = await runtime.createSession({ agent: 'monitor-invariant' });
     if ('error' in created) throw new Error('unexpected create failure');

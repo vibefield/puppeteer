@@ -1,5 +1,4 @@
 import { basename } from 'node:path';
-import type { RuntimeRunId } from '@vibecook/puppeteer-core';
 import type { AgentProvider } from '@vibecook/puppeteer-runtime';
 import { createAcpSession, type AcpConnector } from '@vibecook/puppeteer-adapter-acp';
 import {
@@ -8,7 +7,6 @@ import {
   onClaudeAccountUsage,
   preflightClaudeLaunch,
   prepareClaudeTuiSession,
-  type CreateClaudeSessionOptions,
   type ClaudeHookRailFaultInjection,
 } from '@vibecook/puppeteer-adapter-claude';
 import {
@@ -31,35 +29,12 @@ import type {
   HermesAgentOptions,
 } from './types.js';
 
-export interface ClaudeObservationRuntimeContext {
-  runtimeRunId: RuntimeRunId | null;
-}
-
-type AdapterCallbackValue<T> = T extends (value: infer Value) => void ? Value : never;
-type RuntimeObservationCallback<T> = (
-  value: AdapterCallbackValue<NonNullable<T>>,
-  context: ClaudeObservationRuntimeContext,
-) => void;
-
 export interface BuiltinProviderOptions {
   executables?: Partial<Record<BuiltinExecutableAgentKind, string>>;
   /** Default connector for generic ACP sessions; individual sessions may override it. */
   acpConnector?: AcpConnector;
-  /** Runtime rollout boundary for Claude settings/status-channel integration. */
-  claudeSubagentStatusObservation?: boolean;
-  onClaudeObservationBatch?: RuntimeObservationCallback<CreateClaudeSessionOptions['onObservationBatch']>;
-  onClaudeObservationError?: RuntimeObservationCallback<CreateClaudeSessionOptions['onObservationError']>;
   /** Native-canary-only hook rail fault; normal product sessions leave this unset. */
   claudeHookRailFaultInjection?: ClaudeHookRailFaultInjection;
-}
-
-function bindObservationCallback<T>(
-  callback: ((value: T, context: ClaudeObservationRuntimeContext) => void) | undefined,
-  runtimeRunId: RuntimeRunId | undefined,
-): ((value: T) => void) | undefined {
-  if (!callback) return undefined;
-  const context: ClaudeObservationRuntimeContext = { runtimeRunId: runtimeRunId ?? null };
-  return (value) => callback(value, context);
 }
 
 /**
@@ -129,7 +104,7 @@ export function createBuiltinProviders(options: BuiltinProviderOptions = {}): Ag
       executionMode: 'native-tui',
       fetchAccountUsage: () => fetchClaudeAccountUsage(),
       onAccountUsage: (listener) => onClaudeAccountUsage(listener),
-      async createSession({ runtimeRunId, cwd, resume, title, host, agentOptions }) {
+      async createSession({ cwd, resume, title, host, agentOptions }) {
         const launch = agentOptions as ClaudeAgentOptions | undefined;
         const { executable, providerVersion } = await claudeLaunchFor(resume, title, launch);
         return createClaudeSession({
@@ -146,9 +121,7 @@ export function createBuiltinProviders(options: BuiltinProviderOptions = {}): Ag
           fileChangeMatcher: launch?.fileChangeMatcher,
           resumeInvocation: launch?.resumeInvocation,
           onDiagnostic: launch?.onDiagnostic,
-          observeSubagentStatus: options.claudeSubagentStatusObservation ?? false,
-          onObservationBatch: bindObservationCallback(options.onClaudeObservationBatch, runtimeRunId),
-          onObservationError: bindObservationCallback(options.onClaudeObservationError, runtimeRunId),
+          observeSubagentStatus: true,
           hookRailFaultInjection: options.claudeHookRailFaultInjection,
           ports: {
             spawn: (prepared) => host.spawnTerminal(prepared),
@@ -156,7 +129,7 @@ export function createBuiltinProviders(options: BuiltinProviderOptions = {}): Ag
           },
         });
       },
-      async prepareSession({ runtimeRunId, cwd, resume, title, host, agentOptions }) {
+      async prepareSession({ cwd, resume, title, host, agentOptions }) {
         const launch = agentOptions as ClaudeAgentOptions | undefined;
         const { executable, providerVersion } = await claudeLaunchFor(resume, title, launch);
         const prepared = await prepareClaudeTuiSession({
@@ -173,9 +146,7 @@ export function createBuiltinProviders(options: BuiltinProviderOptions = {}): Ag
           fileChangeMatcher: launch?.fileChangeMatcher,
           resumeInvocation: launch?.resumeInvocation,
           onDiagnostic: launch?.onDiagnostic,
-          observeSubagentStatus: options.claudeSubagentStatusObservation ?? false,
-          onObservationBatch: bindObservationCallback(options.onClaudeObservationBatch, runtimeRunId),
-          onObservationError: bindObservationCallback(options.onClaudeObservationError, runtimeRunId),
+          observeSubagentStatus: true,
           hookRailFaultInjection: options.claudeHookRailFaultInjection,
           automate: host.automateTerminal,
         });

@@ -23,7 +23,7 @@ import type {
   AgentModelIdentity,
   ProcessExitReason,
   ToolPresentation,
-} from './events.js';
+} from './events/index.js';
 
 export type SessionLifecycle =
   'preparing' | 'starting' | 'ready' | 'running' | 'interrupting' | 'terminating' | 'exited' | 'failed';
@@ -225,7 +225,7 @@ export function reduceSessionState(state: SessionRuntimeState, envelope: AgentEv
   const event = envelope.event as AgentEvent;
   const seq = envelope.sequence;
 
-  // This compatibility state machine models the root conversation only.
+  // This detailed state machine models the root conversation only.
   // Actor-local evidence remains available on the event and monitor rails;
   // delegation events are the explicit root-facing relationship records.
   if ((envelope.agentId || envelope.actorKey) && !event.type.startsWith('delegation:')) return next;

@@ -28,14 +28,14 @@ import type {
   Workspace,
   WorkspaceSessionMetadata,
 } from '@vibecook/puppeteer-workspaces';
-import type { AgentConversationSnapshot } from './conversation.js';
+import type { AgentConversationSnapshot } from './services/conversation-service.js';
 import type {
   CreationRequestClaimRef,
   CreationRequestRegistry,
   CreationRequestTerminalOutcome,
-} from './creation-registry.js';
-import type { RuntimeCreationOperation } from './identity.js';
-import type { MonitorClock } from './monitor-clock.js';
+} from './identity/creation-registry.js';
+import type { RuntimeCreationOperation } from './identity/runtime-identity.js';
+import type { MonitorClock } from './monitor/clock.js';
 import type { Agent } from './agent.js';
 
 /** Provider-owned live preparation. The runtime keeps this handle private and exposes only its serializable recipe. */
@@ -260,8 +260,6 @@ export interface AgentRuntimeOptions {
   onError?: (error: Error) => void;
   /** How long an unadopted preparation remains live. Default: 30 seconds. */
   preparationTtlMs?: number;
-  /** Remaining rollout flags. Agent monitoring itself is always enabled. */
-  features?: Partial<RuntimeFeatureFlags>;
   /** Injectable wall-clock/scheduler for agent monitoring. */
   monitorClock?: MonitorClock;
   /** Ordinary monitor publication coalescing. Default: 100 ms. */
@@ -271,19 +269,6 @@ export interface AgentRuntimeOptions {
   /** Maximum unacknowledged failed monitors retained by one host. Default: 256. */
   terminalFailureCapacity?: number;
 }
-
-export interface RuntimeFeatureFlags {
-  /** @deprecated Agent monitoring is now an invariant and this flag is ignored. */
-  agentMonitorStateV2: boolean;
-  claudeSubagentStatusObservation: boolean;
-  workspaceProvenanceV2: boolean;
-}
-
-export const DEFAULT_RUNTIME_FEATURE_FLAGS: Readonly<RuntimeFeatureFlags> = Object.freeze({
-  agentMonitorStateV2: true,
-  claudeSubagentStatusObservation: false,
-  workspaceProvenanceV2: false,
-});
 
 export type RuntimeRunStatus = 'allocated' | 'preparing' | 'prepared' | 'active' | 'terminal';
 

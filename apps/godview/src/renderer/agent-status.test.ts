@@ -1,26 +1,6 @@
 import { describe, expect, it } from 'vitest';
-import type { AgentSessionInfo, AgentStateMessage } from '../protocol.js';
+import type { AgentSessionInfo } from '../protocol.js';
 import { agentColor, classifyTerminalStatus, projectLabel, providerLabel } from './agent-status.js';
-import { classifyLegacyAgentStatus, legacyAgentDetail } from './legacy-agent-state.js';
-
-function state(overrides: Partial<AgentStateMessage['state']> = {}): AgentStateMessage {
-  return {
-    runtimeSessionId: 'session-1',
-    observationLevel: 'structured',
-    state: {
-      lifecycle: 'ready',
-      tools: [],
-      permissions: [],
-      subagents: [],
-      tasks: [],
-      environment: {},
-      counters: { toolsCompleted: 0, toolsFailed: 0, unknownEvents: 0 },
-      lastSequence: 0,
-      diagnostics: [],
-      ...overrides,
-    },
-  };
-}
 
 const info = {
   agent: 'codex',
@@ -31,19 +11,6 @@ const info = {
 } as AgentSessionInfo;
 
 describe('Godview agent status', () => {
-  it('maps ready, active, and permission states to the three statuses', () => {
-    expect(classifyLegacyAgentStatus(state())).toBe('idle');
-    expect(classifyLegacyAgentStatus(state({ lifecycle: 'running', activeTurn: { startedAt: 'now' } }))).toBe(
-      'working',
-    );
-    expect(classifyLegacyAgentStatus(state({ permissions: [{ requestId: 'approval' }] }))).toBe('blocked');
-  });
-
-  it('drops sessions that reached a terminal lifecycle', () => {
-    expect(classifyLegacyAgentStatus(state({ lifecycle: 'failed' }))).toBeUndefined();
-    expect(classifyLegacyAgentStatus(state({ lifecycle: 'exited' }))).toBeUndefined();
-  });
-
   it('uses foreground activity for unassigned terminals and keeps unknown activity on the idle fallback', () => {
     expect(classifyTerminalStatus({ kind: 'shell-idle' })).toBe('idle');
     expect(classifyTerminalStatus({ kind: 'foreground-job' })).toBe('working');
@@ -58,17 +25,6 @@ describe('Godview agent status', () => {
     expect(providerLabel('hermes')).toBe('Hermes');
     expect(providerLabel('kimi')).toBe('Kimi');
     expect(providerLabel('opencode')).toBe('OpenCode');
-  });
-
-  it('describes what an agent is doing without reading the terminal', () => {
-    expect(legacyAgentDetail(undefined, 'working')).toBe('starting');
-    expect(legacyAgentDetail(state({ permissions: [{ requestId: 'a', tool: 'Bash' }] }), 'blocked')).toBe(
-      'permission · Bash',
-    );
-    expect(legacyAgentDetail(state({ tools: [{ toolCallId: 't', tool: 'Read', state: 'running' }] }), 'working')).toBe(
-      'Read',
-    );
-    expect(legacyAgentDetail(state({ activeReasoning: { startedAt: 'now' } }), 'working')).toBe('thinking');
   });
 
   it('assigns a stable per-session relationship color', () => {

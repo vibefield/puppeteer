@@ -286,6 +286,3 @@ export class AgentConversationService implements AgentProjectionService<AgentCon
     }
   }
 }
-
-/** @deprecated Compatibility name. Prefer `AgentConversationService`. */
-export { AgentConversationService as AgentConversationProjector };

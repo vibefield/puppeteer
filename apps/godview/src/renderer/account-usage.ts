@@ -1,17 +1,8 @@
-import type {
-  AccountUsageBudget,
-  AccountUsageLimit,
-  AccountUsageWindow,
-} from '@vibecook/puppeteer-core';
+import type { AccountUsageBudget, AccountUsageLimit, AccountUsageWindow } from '@vibecook/puppeteer-core';
 import type { AccountUsageAgent, AgentAccountUsage } from '../protocol.js';
 
 export type AccountUsageViewState =
-  | 'available'
-  | 'loading'
-  | 'rate-limited'
-  | 'unauthenticated'
-  | 'unsupported'
-  | 'unavailable';
+  'available' | 'loading' | 'rate-limited' | 'unauthenticated' | 'unsupported' | 'unavailable';
 
 export interface AccountUsageMetricView {
   key: string;

@@ -1022,7 +1022,7 @@ export function projectAgentMonitorState(
   const evidenceAsOf = latestTimestamp([
     accumulator.runtime.lastAcceptedAt,
     accumulator.semantic.lastAcceptedAt,
-    accumulator.workspace.lastAcceptedAt,
+    accumulator.workspace.lastPublicAcceptedAt,
     accumulator.allocatedAt,
   ]);
   const projectionAsOf = options.asOf ?? evidenceAsOf ?? accumulator.allocatedAt;

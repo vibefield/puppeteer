@@ -32,24 +32,14 @@ import { createActionRecorder } from '@vibecook/puppeteer-record';
 import type { GodviewTheme } from '../appearance-themes.js';
 import {
   buildAgentEnvironment,
-  connectMonitorIpcRelay,
-  acknowledgeAgentFailureForIpc,
-  formatMonitorCanaryTrace,
-  MonitorIpcRelay,
-  readAgentMonitorArtifactForIpc,
-  resolveMonitorHostFeatureFlags,
-  serializeLegacySessionState,
   type AgentRuntime,
   type AgentWorkspaceFinal,
   type AgentWorkspaceRequest,
-  type MonitorShadowMismatchReport,
 } from '@vibecook/puppeteer-runtime';
 import type {
   AgentAccountUsageBatch,
   AgentSessionInfo,
   AgentSessionSnapshot,
-  AgentStateBatch,
-  AgentStateMessage,
   CreateAgentSessionOptions,
   CreateAgentSessionResult,
   PaneRehydrationRequest,
@@ -60,6 +50,12 @@ import type {
   TerminalSessionHandoff,
 } from '../protocol.js';
 import { createAccountUsageMonitor } from './account-usage-monitor.js';
+import {
+  acknowledgeAgentFailureForIpc,
+  connectMonitorIpcRelay,
+  MonitorIpcRelay,
+  readAgentMonitorArtifactForIpc,
+} from './monitor-ipc.js';
 import {
   APPEARANCE_BLOCK_START,
   appearanceBlock,
@@ -103,7 +99,6 @@ import { orderNativeTabs } from './native-tab-order.js';
 import { resolveProcessCwd } from './process-cwd.js';
 import { GodviewTabRegistry } from './tab-registry.js';
 import { godviewTruffleConfig } from './truffle-config.js';
-import { LatestValueQueue } from './latest-value-queue.js';
 import { allocateWorkspaceSlot } from './workspace-slots.js';
 import { RESTORE_MANIFEST_VERSION, type RestoreManifest } from './restore-manifest.js';
 import { readRestoreManifest, restorePaneFor, restorePromptDetail, summarizeRestore } from './restore-plan.js';
@@ -134,7 +129,6 @@ declare const __dirname: string;
 
 const DEFAULT_COLS = 100;
 const DEFAULT_ROWS = 30;
-const AGENT_FLUSH_MS = 16;
 const ADOPTED_PROCESS_EXIT_GRACE_MS = 5_000;
 const SHUTDOWN_CLEANUP_TIMEOUT_MS = 7_000;
 const SMOKE = process.argv.includes('--smoke');
@@ -159,7 +153,6 @@ const CLAUDE_RAIL_FAILURE_OCCURRENCE = (() => {
   }
   return occurrence;
 })();
-const monitorHostFeatures = resolveMonitorHostFeatureFlags(process.argv);
 const appRoot = resolve(__dirname, '..');
 const repoRoot = resolve(appRoot, '../..');
 const ghostteadBinaryName = process.platform === 'win32' ? 'ghosttead.exe' : 'ghosttead';
@@ -277,8 +270,6 @@ interface AgentRecord {
 type InternalCreateAgentSessionOptions = CreateAgentSessionOptions & { agentOptions?: unknown };
 
 const agentRecords = new Map<string, AgentRecord>();
-const dirtyAgentStates = new Set<string>();
-let agentFlushTimer: NodeJS.Timeout | undefined;
 const scenarioRecorder = createClaudeScenarioRecorder();
 const scenarioRecordingFlushTimers = new Map<string, NodeJS.Timeout>();
 // Checkpoint at activity bursts without rewriting a growing JSON document for
@@ -302,14 +293,6 @@ const restoredSessionAliases = new Map<string, string>();
 /** One dead session can appear in several mirrored panes; recover it exactly once. */
 const paneRehydrations = new Map<string, Promise<SessionSummary | null>>();
 
-interface AgentStateDelivery {
-  queue: LatestValueQueue<string, AgentStateMessage>;
-  paused: boolean;
-}
-
-const agentStateDeliveries = new Map<number, AgentStateDelivery>();
-const spawnThroughShadowMismatches = new Map<string, MonitorShadowMismatchReport>();
-
 function safeSend(window: BrowserWindow, channel: string, value: unknown): boolean {
   if (window.isDestroyed() || window.webContents.isDestroyed()) return false;
   try {
@@ -329,29 +312,14 @@ function broadcast(channel: string, value: unknown): void {
 }
 
 const monitorRelay = new MonitorIpcRelay({
-  enabled: monitorHostFeatures.monitorV2,
-  shadowComparison: monitorHostFeatures.shadowComparison,
-  onState: (message) => {
-    if (monitorHostFeatures.canaryTrace) process.stderr.write(formatMonitorCanaryTrace('state', message));
-    broadcast('puppeteer:agent-monitor-state', message);
-  },
-  onNotification: (message) => {
-    if (monitorHostFeatures.canaryTrace) process.stderr.write(formatMonitorCanaryTrace('notification', message));
-    broadcast('puppeteer:agent-monitor-notification', message);
-  },
+  onState: (message) => broadcast('puppeteer:agent-monitor-state', message),
+  onNotification: (message) => broadcast('puppeteer:agent-monitor-notification', message),
   onRemoved: (message) => {
-    if (monitorHostFeatures.canaryTrace) process.stderr.write(formatMonitorCanaryTrace('removed', message));
     broadcast('puppeteer:agent-monitor-removed', message);
-    if (monitorHostFeatures.godviewMonitorV2 && message.terminalSessionId) {
+    if (message.terminalSessionId) {
       agentRecords.delete(message.terminalSessionId);
-      discardAgentState(message.terminalSessionId);
       scheduleRestoreCheckpoint(true);
     }
-  },
-  onShadowMismatch: (report) => {
-    if (SPAWN_THROUGH_SMOKE) spawnThroughShadowMismatches.set(report.runtimeRunId, report);
-    if (monitorHostFeatures.canaryTrace) process.stderr.write(formatMonitorCanaryTrace('shadow-mismatch', report));
-    process.stderr.write(`[main] monitor shadow mismatch ${JSON.stringify(report)}\n`);
   },
 });
 
@@ -465,57 +433,6 @@ async function startScenarioRecording(
     throw error;
   }
   return { cancelled: false, status };
-}
-
-function stateDeliveryFor(window: BrowserWindow): AgentStateDelivery {
-  const id = window.webContents.id;
-  let delivery = agentStateDeliveries.get(id);
-  if (!delivery) {
-    delivery = { queue: new LatestValueQueue(), paused: false };
-    agentStateDeliveries.set(id, delivery);
-  }
-  return delivery;
-}
-
-function flushAgentStateDelivery(window: BrowserWindow): void {
-  const delivery = stateDeliveryFor(window);
-  if (delivery.paused) return;
-  const batch = delivery.queue.take();
-  if (!batch) return;
-  const message: AgentStateBatch = { sequence: batch.sequence, states: batch.values };
-  if (!safeSend(window, 'puppeteer:agent-states', message)) {
-    delivery.queue.retryInFlight();
-    delivery.paused = true;
-  }
-}
-
-function publishAgentState(message: AgentStateMessage): void {
-  for (const record of tabs.records()) {
-    if (record.window.isDestroyed() || record.window.webContents.isDestroyed()) continue;
-    const delivery = stateDeliveryFor(record.window);
-    delivery.queue.enqueue(message.runtimeSessionId, message);
-    flushAgentStateDelivery(record.window);
-  }
-}
-
-function pauseAgentStateDelivery(window: BrowserWindow): void {
-  if (window.isDestroyed() || window.webContents.isDestroyed()) return;
-  const delivery = agentStateDeliveries.get(window.webContents.id);
-  if (!delivery) return;
-  delivery.queue.retryInFlight();
-  delivery.paused = true;
-}
-
-function resumeAgentStateDelivery(window: BrowserWindow): void {
-  const delivery = stateDeliveryFor(window);
-  delivery.queue.retryInFlight();
-  delivery.paused = false;
-  flushAgentStateDelivery(window);
-}
-
-function discardAgentState(runtimeSessionId: string): void {
-  dirtyAgentStates.delete(runtimeSessionId);
-  for (const delivery of agentStateDeliveries.values()) delivery.queue.delete(runtimeSessionId);
 }
 
 function loadAppearanceProfiles(): { profiles: AppearanceProfiles; persisted: boolean } {
@@ -845,18 +762,6 @@ const agentRuntime: AgentRuntime = createBuiltinAgentRuntime({
   defaultCwd: repoRoot,
   executables: realAgentExecutables,
   recorder,
-  onClaudeObservationError: (error, { runtimeRunId }) =>
-    process.stderr.write(
-      `[claude-semantic] ${JSON.stringify({
-        kind: 'error',
-        runtimeRunId,
-        name: error.name,
-        code:
-          typeof (error as Error & { code?: unknown }).code === 'string'
-            ? (error as Error & { code: string }).code
-            : 'unknown',
-      })}\n`,
-    ),
   ...(CLAUDE_RAIL_FAILURE_SMOKE
     ? {
         claudeHookRailFaultInjection: {
@@ -866,10 +771,6 @@ const agentRuntime: AgentRuntime = createBuiltinAgentRuntime({
         },
       }
     : {}),
-  features: {
-    claudeSubagentStatusObservation: monitorHostFeatures.monitorV2,
-    workspaceProvenanceV2: monitorHostFeatures.monitorV2,
-  },
   onError: (error) => process.stderr.write(`[main] agent runtime: ${error.message}\n`),
 });
 const monitorConnection = connectMonitorIpcRelay(agentRuntime, monitorRelay, (error) =>
@@ -887,42 +788,6 @@ agentRuntime.onAccountUsage((agent, result) => {
   if (agent !== 'claude' && agent !== 'codex' && agent !== 'grok') return;
   accountUsageMonitor.ingest(agent, result);
 });
-agentRuntime.onEvent((runtimeSessionId, envelope) => {
-  if (scenarioRecorder.capture(runtimeSessionId, envelope)) scheduleScenarioRecordingFlush(runtimeSessionId);
-  const runtimeInfo = agentRuntime.sessionInfo(runtimeSessionId);
-  const record = agentRecords.get(runtimeSessionId);
-  if (runtimeInfo && record && record.info.sessionId !== runtimeInfo.sessionId) {
-    record.info = { ...record.info, sessionId: runtimeInfo.sessionId };
-    scheduleRestoreCheckpoint(true);
-    broadcast('puppeteer:agent-session', record.info);
-  }
-  const legacyState = agentRuntime.sessionState(runtimeSessionId);
-  if (legacyState) monitorRelay.acceptLegacyState(runtimeSessionId, legacyState);
-  dirtyAgentStates.add(runtimeSessionId);
-  scheduleAgentStateFlush();
-});
-
-function stateSnapshot(runtimeSessionId: string): AgentStateMessage | undefined {
-  const state = agentRuntime.sessionState(runtimeSessionId);
-  const observationLevel = agentRuntime.observationLevel(runtimeSessionId);
-  if (!state || !observationLevel) return undefined;
-  monitorRelay.acceptLegacyState(runtimeSessionId, state);
-  return { runtimeSessionId, state: serializeLegacySessionState(state), observationLevel };
-}
-
-function scheduleAgentStateFlush(): void {
-  if (agentFlushTimer) return;
-  agentFlushTimer = setTimeout(() => {
-    agentFlushTimer = undefined;
-    const sessionIds = [...dirtyAgentStates];
-    dirtyAgentStates.clear();
-    for (const sessionId of sessionIds) {
-      const snapshot = stateSnapshot(sessionId);
-      if (snapshot) publishAgentState(snapshot);
-    }
-  }, AGENT_FLUSH_MS);
-}
-
 function pushWorkspaceFinal(final: AgentWorkspaceFinal): void {
   try {
     finishScenarioRecording(final.runtimeSessionId);
@@ -931,12 +796,10 @@ function pushWorkspaceFinal(final: AgentWorkspaceFinal): void {
   }
   const record = agentRecords.get(final.runtimeSessionId);
   if (record) record.final = final;
-  discardAgentState(final.runtimeSessionId);
   broadcast('puppeteer:workspace-final', final);
-  // A v2 crash remains a small blocked monitor until acknowledgment. Clean
+  // A crash remains a small blocked monitor until acknowledgment. Clean
   // completion has already emitted monitor removal and can leave the board.
-  const retainedFailure =
-    monitorHostFeatures.godviewMonitorV2 && record && monitorRelay.hasRun(record.info.runtimeRunId);
+  const retainedFailure = record && monitorRelay.hasRun(record.info.runtimeRunId);
   if (!retainedFailure) agentRecords.delete(final.runtimeSessionId);
 }
 
@@ -1218,15 +1081,29 @@ async function openInitialWindows(): Promise<void> {
 
 function rememberAgent(info: AgentSessionInfo, session: SessionSummary, launch?: RestoreAgentLaunchProvenance): void {
   agentRecords.set(info.runtimeSessionId, { info, session, ...(launch ? { launch } : {}), agentProcessAlive: true });
+  const agent = agentRuntime.agent(info.runtimeSessionId);
+  agent?.on('*', (envelope) => {
+    if (scenarioRecorder.capture(info.runtimeSessionId, envelope)) {
+      scheduleScenarioRecordingFlush(info.runtimeSessionId);
+    }
+    const runtimeInfo = agent.info;
+    const record = agentRecords.get(info.runtimeSessionId);
+    if (record && record.info.nativeSession.id !== runtimeInfo.nativeSession.id) {
+      record.info = {
+        ...record.info,
+        nativeSession: { ...runtimeInfo.nativeSession },
+        nativeSessionRevision: runtimeInfo.nativeSessionRevision,
+        sessionId: runtimeInfo.nativeSession.id,
+      };
+      scheduleRestoreCheckpoint(true);
+      broadcast('puppeteer:agent-session', record.info);
+    }
+  });
   scheduleRestoreCheckpoint(true);
   broadcast('puppeteer:agent-session', info);
-  if (monitorHostFeatures.monitorV2) {
-    if (monitorConnection.start(info.runtimeRunId)) {
-      monitorRelay.bindTerminal(info.runtimeRunId, info.runtimeSessionId);
-    }
+  if (monitorConnection.start(info.runtimeRunId)) {
+    monitorRelay.bindTerminal(info.runtimeRunId, info.runtimeSessionId);
   }
-  const snapshot = stateSnapshot(info.runtimeSessionId);
-  if (snapshot) publishAgentState(snapshot);
 }
 
 function onSessionExited(event: SessionExitedEvent, preserveAgentForRecovery = false): Promise<void> | undefined {
@@ -1654,8 +1531,9 @@ async function createAgentSession(
   owner?: BrowserWindow,
   restoringSessionId?: string,
 ): Promise<CreateAgentSessionResult> {
-  const result = await agentRuntime.createSession(options);
-  if ('error' in result) return result;
+  const spawned = await agentRuntime.spawn(options);
+  if ('error' in spawned) return spawned;
+  const result = spawned.info;
   const session = await backend!.automation.getSession(result.runtimeSessionId);
   const info: AgentSessionInfo = { ...result, agent: result.agent as AgentSessionInfo['agent'], session };
   const rawAgentOptions =
@@ -1691,7 +1569,6 @@ async function handleSpawnThroughRequest(request: SpawnThroughRequest): Promise<
       stopAdoptedProcessMonitor(runtimeSessionId);
       managedTerminalIds.delete(runtimeSessionId);
       agentRecords.delete(runtimeSessionId);
-      discardAgentState(runtimeSessionId);
       broadcast('puppeteer:agent-removed', runtimeSessionId);
     }
     process.stderr.write(`[main] spawn-through exec failed: ${request.message}\n`);
@@ -1793,7 +1670,6 @@ function registerIpc(): void {
   ipcMain.handle('puppeteer:list-agent-sessions', (): AgentSessionSnapshot[] =>
     [...agentRecords.values()].map((record) => ({
       info: { ...record.info, session: record.session },
-      state: stateSnapshot(record.info.runtimeSessionId),
       final: record.final,
     })),
   );
@@ -1801,9 +1677,6 @@ function registerIpc(): void {
     const window = BrowserWindow.fromWebContents(event.sender);
     return window && tabs.get(window) ? monitorRelay.snapshot() : [];
   });
-  ipcMain.handle('puppeteer:agent-monitor-configuration', () => ({
-    godviewMonitorV2: monitorHostFeatures.godviewMonitorV2,
-  }));
   ipcMain.handle('puppeteer:acknowledge-agent-failure', (event, input: unknown): Promise<boolean> => {
     const window = BrowserWindow.fromWebContents(event.sender);
     if (!window || !tabs.get(window)) return Promise.resolve(false);
@@ -1814,8 +1687,11 @@ function registerIpc(): void {
     if (!window || !tabs.get(window)) return { status: 'denied' as const };
     return readAgentMonitorArtifactForIpc(agentRuntime, monitorRelay, input);
   });
-  ipcMain.handle('puppeteer:submit-prompt', (_event, options: SubmitPromptOptions): Promise<PromptReceipt> =>
-    agentRuntime.submitPrompt(options.runtimeSessionId, { text: options.text }),
+  ipcMain.handle(
+    'puppeteer:submit-prompt',
+    (_event, options: SubmitPromptOptions): Promise<PromptReceipt> =>
+      agentRuntime.agent(options.runtimeSessionId)?.submitPrompt({ text: options.text }) ??
+      Promise.resolve({ status: 'rejected', reason: 'agent session not found' }),
   );
   ipcMain.handle('puppeteer:workspace-diff', (_event, runtimeSessionId: string) =>
     agentRuntime.workspaceDiff(runtimeSessionId),
@@ -1835,13 +1711,6 @@ function registerIpc(): void {
     const status = finishScenarioRecording(runtimeSessionId);
     if (!status) throw new Error('scenario recording is not active');
     return status;
-  });
-  ipcMain.on('puppeteer:agent-states-ack', (event, sequence: unknown) => {
-    if (typeof sequence !== 'number' || !Number.isSafeInteger(sequence)) return;
-    const window = BrowserWindow.fromWebContents(event.sender);
-    if (!window || !tabs.get(window)) return;
-    const delivery = agentStateDeliveries.get(event.sender.id);
-    if (delivery?.queue.acknowledge(sequence)) flushAgentStateDelivery(window);
   });
 }
 
@@ -2263,7 +2132,6 @@ async function createWindow(options: CreateWindowOptions = {}): Promise<BrowserW
     },
   });
   const windowWebContents = window.webContents;
-  const webContentsId = windowWebContents.id;
   let rendererRecoveryTimer: NodeJS.Timeout | undefined;
   const record = tabs.add(window, tabId, groupId, options.restoreWorkspace);
   if (options.tabOf && process.platform === 'darwin' && !options.tabOf.isDestroyed()) {
@@ -2304,7 +2172,6 @@ async function createWindow(options: CreateWindowOptions = {}): Promise<BrowserW
     if (closed) terminateDetachedPlainSessions(tabs.unreferencedSessionIds(closed.sessionIds));
     dirtyConfigEditorSenders.delete(windowWebContents);
     scheduleRestoreCheckpoint(true);
-    agentStateDeliveries.delete(webContentsId);
     if (rendererRecoveryTimer) clearTimeout(rendererRecoveryTimer);
     if (lastFocusedWindow === window) lastFocusedWindow = undefined;
   });
@@ -2321,7 +2188,6 @@ async function createWindow(options: CreateWindowOptions = {}): Promise<BrowserW
     }
   });
   window.webContents.on('render-process-gone', (_event, details) => {
-    pauseAgentStateDelivery(window);
     console.error(`[renderer] process gone: ${details.reason} (${details.exitCode})`);
     if (quitting || window.isDestroyed() || details.reason === 'clean-exit' || rendererRecoveryTimer) return;
     rendererRecoveryTimer = setTimeout(() => {
@@ -2339,7 +2205,6 @@ async function createWindow(options: CreateWindowOptions = {}): Promise<BrowserW
     (command) => command !== 'copy' || clipboardHost.canCopy(window.webContents),
   );
   window.webContents.on('did-finish-load', () => {
-    resumeAgentStateDelivery(window);
     if (!window.isDestroyed() && backend?.running) backend.attachRenderer(window.webContents);
   });
   await window.loadFile(join(__dirname, 'index.html'));
@@ -2594,7 +2459,7 @@ async function runAgentSmoke(agent: BuiltinExecutableAgentKind): Promise<void> {
   const deadline = Date.now() + 30_000;
   let lifecycle: string | undefined;
   while (Date.now() < deadline) {
-    lifecycle = agentRuntime.sessionState(result.runtimeSessionId)?.lifecycle;
+    lifecycle = agentRuntime.agent(result.runtimeSessionId)?.lifecycle;
     if (lifecycle === 'ready' || lifecycle === 'failed' || lifecycle === 'exited') break;
     if (exitInfo) break;
     await new Promise((resolveDelay) => setTimeout(resolveDelay, 100));
@@ -2670,7 +2535,7 @@ async function runSpawnThroughSmoke(agent: BuiltinExecutableAgentKind): Promise<
   // then prove the durable bind and ready lifecycle.
   const allowsLazyInitialIdentity = agent === 'kimi' && Boolean(process.env.PUPPETEER_SPAWN_SMOKE_PROMPT);
   while (Date.now() < deadline) {
-    lifecycle = stateSnapshot(session.id)?.state.lifecycle;
+    lifecycle = agentRuntime.agent(session.id)?.lifecycle;
     if (
       agentRecords.has(session.id) &&
       lifecycle &&
@@ -2700,8 +2565,9 @@ async function runSpawnThroughSmoke(agent: BuiltinExecutableAgentKind): Promise<
   const observedProcessExitReasons: string[] = [];
   let clearEventSequence: number | undefined;
   let postClearTranscriptAssistant = false;
-  const unsubscribeSmokeEvents = agentRuntime.onEvent((runtimeSessionId, envelope) => {
-    if (runtimeSessionId !== session.id) return;
+  const smokeAgent = agentRuntime.agent(session.id);
+  if (!smokeAgent) throw new Error(`${agent} runtime Agent is unavailable`);
+  const unsubscribeSmokeEvents = smokeAgent.on('*', (envelope) => {
     const { event } = envelope;
     switch (event.type) {
       case 'tool:requested':
@@ -2907,7 +2773,7 @@ async function runSpawnThroughSmoke(agent: BuiltinExecutableAgentKind): Promise<
     );
   }
   if (process.env.PUPPETEER_SPAWN_SMOKE_REQUIRE_HISTORY === '1') {
-    const conversation = agentRuntime.conversationSnapshot(session.id);
+    const conversation = agentRuntime.agent(session.id)?.conversation;
     const hasUser = conversation?.items.some((item) => item.kind === 'user');
     const hasAssistant = conversation?.items.some((item) => item.kind === 'assistant');
     if (!hasUser || !hasAssistant) {
@@ -3165,14 +3031,14 @@ async function runSpawnThroughSmoke(agent: BuiltinExecutableAgentKind): Promise<
       }
       const compactionCommand = expectCompaction && smokePrompt.trim().startsWith('/compact');
       const clearCommand = smokePrompt.trim() === '/clear';
-      const currentBeforeClear = clearCommand ? agentRuntime.sessionInfo(session.id) : undefined;
+      const currentBeforeClear = clearCommand ? agentRuntime.agent(session.id)?.info : undefined;
       const nativeBeforeClear = currentBeforeClear
         ? {
             nativeSession: { ...currentBeforeClear.nativeSession },
             nativeSessionRevision: currentBeforeClear.nativeSessionRevision,
           }
         : undefined;
-      const before = agentRuntime.conversationSnapshot(session.id);
+      const before = agentRuntime.agent(session.id)?.conversation;
       const assistantCount = before?.items.filter((item) => item.kind === 'assistant').length ?? 0;
       // `/clear` is a native input command. Send it as literal terminal typing
       // rather than bracketed paste so Claude's command dispatcher owns it.
@@ -3184,13 +3050,13 @@ async function runSpawnThroughSmoke(agent: BuiltinExecutableAgentKind): Promise<
       const turnDeadline = Date.now() + observationMs;
       if (clearCommand) {
         if (!nativeBeforeClear) throw new Error(`${agent} lost runtime identity before /clear`);
-        let info = agentRuntime.sessionInfo(session.id);
+        let info = agentRuntime.agent(session.id)?.info;
         let rebind = observedRebinds.find(
           (candidate) =>
             candidate.nativeSessionId !== undefined && candidate.nativeSessionId !== nativeBeforeClear.nativeSession.id,
         );
         while (Date.now() < turnDeadline) {
-          info = agentRuntime.sessionInfo(session.id);
+          info = agentRuntime.agent(session.id)?.info;
           rebind = observedRebinds.find(
             (candidate) =>
               candidate.nativeSessionId !== undefined &&
@@ -3201,7 +3067,7 @@ async function runSpawnThroughSmoke(agent: BuiltinExecutableAgentKind): Promise<
             info.nativeSession.id !== nativeBeforeClear.nativeSession.id &&
             info.nativeSessionRevision > nativeBeforeClear.nativeSessionRevision &&
             rebind?.startSource === 'clear' &&
-            agentRuntime.sessionState(session.id)?.lifecycle === 'ready'
+            agentRuntime.agent(session.id)?.lifecycle === 'ready'
           ) {
             break;
           }
@@ -3212,10 +3078,10 @@ async function runSpawnThroughSmoke(agent: BuiltinExecutableAgentKind): Promise<
           info.nativeSession.id === nativeBeforeClear.nativeSession.id ||
           info.nativeSessionRevision <= nativeBeforeClear.nativeSessionRevision ||
           rebind?.startSource !== 'clear' ||
-          agentRuntime.sessionState(session.id)?.lifecycle !== 'ready'
+          agentRuntime.agent(session.id)?.lifecycle !== 'ready'
         ) {
           throw new Error(
-            `${agent} did not rebind native identity after /clear: ${JSON.stringify({ before: nativeBeforeClear, after: info, rebind, state: agentRuntime.sessionState(session.id) })}`,
+            `${agent} did not rebind native identity after /clear: ${JSON.stringify({ before: nativeBeforeClear, after: info, rebind, state: agentRuntime.agent(session.id)?.state })}`,
           );
         }
         clearEventSequence = rebind.sequence;
@@ -3224,11 +3090,11 @@ async function runSpawnThroughSmoke(agent: BuiltinExecutableAgentKind): Promise<
         );
         continue;
       }
-      let conversation = agentRuntime.conversationSnapshot(session.id);
+      let conversation = agentRuntime.agent(session.id)?.conversation;
       while (Date.now() < turnDeadline) {
-        const state = agentRuntime.sessionState(session.id);
+        const state = agentRuntime.agent(session.id)?.state;
         const monitor = agentRuntime.monitorState(record.info.runtimeRunId);
-        conversation = agentRuntime.conversationSnapshot(session.id);
+        conversation = agentRuntime.agent(session.id)?.conversation;
         if (expectCompaction && monitor) {
           if (monitor.compaction.active) {
             observedCompactionActive = true;
@@ -3514,7 +3380,7 @@ async function runSpawnThroughSmoke(agent: BuiltinExecutableAgentKind): Promise<
         );
         continue;
       }
-      const state = agentRuntime.sessionState(session.id);
+      const state = agentRuntime.agent(session.id)?.state;
       const hasUser = conversation?.items.some((item) => item.kind === 'user' && item.text === smokePrompt);
       const inputBoundaryObserved = hasUser || (expectRailFailure && observedRailFailure && index > 0);
       const nextAssistantCount = conversation?.items.filter((item) => item.kind === 'assistant').length ?? 0;
@@ -3627,7 +3493,7 @@ async function runSpawnThroughSmoke(agent: BuiltinExecutableAgentKind): Promise<
     }
     if (expectRailFailure) {
       const monitor = agentRuntime.monitorState(record.info.runtimeRunId);
-      const state = agentRuntime.sessionState(session.id);
+      const state = agentRuntime.agent(session.id)?.state;
       if (
         !observedRailFailure ||
         !monitor?.alive ||
@@ -3712,7 +3578,7 @@ async function runSpawnThroughSmoke(agent: BuiltinExecutableAgentKind): Promise<
         `SPAWN-THROUGH TEAM MEMBER OK ${JSON.stringify({ member: expectedTeamMember, ids: [...observedTeamMemberIds], models: [...observedTeamMemberModels], efforts: [...observedTeamMemberEfforts], active: observedTeamMemberActive, idle: observedTeamMemberIdle, telemetry: requireTeamMemberTelemetry })}`,
       );
     }
-    console.log(`SPAWN-THROUGH CONVERSATION ${JSON.stringify(agentRuntime.conversationSnapshot(session.id))}`);
+    console.log(`SPAWN-THROUGH CONVERSATION ${JSON.stringify(agentRuntime.agent(session.id)?.conversation)}`);
   }
   if (expectedDelegateMarkers.length > 0) {
     const markerDeadline = Date.now() + 20_000;
@@ -3753,13 +3619,13 @@ async function runSpawnThroughSmoke(agent: BuiltinExecutableAgentKind): Promise<
     const exitDeadline = Date.now() + 20_000;
     while (
       Date.now() < exitDeadline &&
-      (processIsAlive(processId) || agentRuntime.sessionState(session.id)?.lifecycle !== 'exited')
+      (processIsAlive(processId) || agentRuntime.agent(session.id)?.lifecycle !== 'exited')
     ) {
       await new Promise((resolveDelay) => setTimeout(resolveDelay, 100));
     }
-    if (processIsAlive(processId) || agentRuntime.sessionState(session.id)?.lifecycle !== 'exited') {
+    if (processIsAlive(processId) || agentRuntime.agent(session.id)?.lifecycle !== 'exited') {
       throw new Error(
-        `${agent} did not emit SessionEnd and exit its adopted process after /exit: ${JSON.stringify({ processId, state: agentRuntime.sessionState(session.id) })}`,
+        `${agent} did not emit SessionEnd and exit its adopted process after /exit: ${JSON.stringify({ processId, state: agentRuntime.agent(session.id)?.state })}`,
       );
     }
     finishAdoptedProcess(session.id, 'completed');
@@ -3806,10 +3672,6 @@ async function runSpawnThroughSmoke(agent: BuiltinExecutableAgentKind): Promise<
   if (monitorRelay.hasRun(record.info.runtimeRunId)) {
     throw new Error(`${agent} monitor was not removed at the final canary boundary`);
   }
-  const shadowMismatch = spawnThroughShadowMismatches.get(record.info.runtimeRunId);
-  if (shadowMismatch) {
-    throw new Error(`${agent} produced a settled monitor shadow mismatch: ${JSON.stringify(shadowMismatch)}`);
-  }
   unsubscribeSmokeEvents();
   console.log(`SPAWN-THROUGH SMOKE OK ${agent} ${record.info.sessionId} exit=${exitMode}`);
 }
@@ -3823,7 +3685,6 @@ function shutdown(): Promise<void> {
     restoreCheckpointTimer = undefined;
     commitRestoreCheckpoint();
     accountUsageMonitor.stop();
-    if (agentFlushTimer) clearTimeout(agentFlushTimer);
     for (const runtimeSessionId of adoptedProcessMonitors.keys()) stopAdoptedProcessMonitor(runtimeSessionId);
     const client = backend?.automation;
     if (client) {
@@ -3885,7 +3746,6 @@ function checkpointAndExitForSystemShutdown(event?: { preventDefault?: () => voi
   restoreCheckpointTimer = undefined;
   commitRestoreCheckpoint();
   accountUsageMonitor.stop();
-  if (agentFlushTimer) clearTimeout(agentFlushTimer);
   backend?.stop();
   quitReady = true;
   app.quit();

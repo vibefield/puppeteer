@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { createEnvelopeStamper, type AgentEvent } from '@vibecook/puppeteer-core';
-import { AgentConversationService } from './services/conversation-service.js';
+import { AgentConversationService } from './conversation-service.js';
 
 function project(events: AgentEvent[]) {
   const stamper = createEnvelopeStamper();

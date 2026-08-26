@@ -1,7 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import type { AgentAdapterBinding, AgentHost } from '@vibecook/puppeteer-core';
 import type { AcpConnector } from '@vibecook/puppeteer-adapter-acp';
-import type { CreateClaudeSessionOptions } from '@vibecook/puppeteer-adapter-claude';
 
 const adapters = vi.hoisted(() => ({
   createAcpSession: vi.fn(),
@@ -201,19 +200,14 @@ describe('createBuiltinProviders launch options', () => {
         permissionMode: 'plan',
         fileChangeMatcher: '.env|.envrc',
         onDiagnostic,
-        observeSubagentStatus: false,
+        observeSubagentStatus: true,
       }),
     );
   });
 
-  it('forwards Claude observation options through create and prepare paths', async () => {
+  it('forwards Claude canary fault injection through create and prepare paths', async () => {
     const hookRailFaultInjection = { afterHookEvent: 'Stop', reason: 'runtime canary fault' };
-    const onClaudeObservationBatch = vi.fn();
-    const onClaudeObservationError = vi.fn();
     const claude = createBuiltinProviders({
-      claudeSubagentStatusObservation: true,
-      onClaudeObservationBatch,
-      onClaudeObservationError,
       claudeHookRailFaultInjection: hookRailFaultInjection,
     }).find((provider) => provider.kind === 'claude')!;
 
@@ -223,37 +217,15 @@ describe('createBuiltinProviders launch options', () => {
     expect(adapters.createClaudeSession).toHaveBeenCalledWith(
       expect.objectContaining({
         observeSubagentStatus: true,
-        onObservationBatch: expect.any(Function),
-        onObservationError: expect.any(Function),
         hookRailFaultInjection,
       }),
     );
     expect(adapters.prepareClaudeTuiSession).toHaveBeenCalledWith(
       expect.objectContaining({
         observeSubagentStatus: true,
-        onObservationBatch: expect.any(Function),
-        onObservationError: expect.any(Function),
         hookRailFaultInjection,
       }),
     );
-
-    const createdOptions = adapters.createClaudeSession.mock.calls[0]![0] as CreateClaudeSessionOptions;
-    const preparedOptions = adapters.prepareClaudeTuiSession.mock.calls[0]![0] as CreateClaudeSessionOptions;
-    const batch = {} as Parameters<NonNullable<CreateClaudeSessionOptions['onObservationBatch']>>[0];
-    const error = new Error('observer');
-    for (const forwarded of [createdOptions, preparedOptions]) {
-      forwarded.onObservationBatch?.(batch);
-      forwarded.onObservationError?.(error);
-    }
-    expect(onClaudeObservationBatch).toHaveBeenNthCalledWith(1, batch, {
-      runtimeRunId: 'runtime-create',
-    });
-    expect(onClaudeObservationBatch).toHaveBeenNthCalledWith(2, batch, {
-      runtimeRunId: 'runtime-prepare',
-    });
-    expect(onClaudeObservationError).toHaveBeenNthCalledWith(1, error, {
-      runtimeRunId: 'runtime-create',
-    });
   });
 
   it('does not spawn Claude when capability preflight fails', async () => {
@@ -579,7 +551,7 @@ describe('createBuiltinProviders launch options', () => {
         permissionMode: 'plan',
         configDir: '/work/claude-config',
         fileChangeMatcher: '.env',
-        observeSubagentStatus: false,
+        observeSubagentStatus: true,
       }),
     );
     expect(claudePrepared.launch).toEqual({

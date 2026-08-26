@@ -7,9 +7,6 @@ export interface BuiltinAgentRuntimeOptions extends Omit<AgentRuntimeOptions, 'p
   acpConnector?: BuiltinProviderOptions['acpConnector'];
   /** Native-canary-only Claude observation-rail fault injection. */
   claudeHookRailFaultInjection?: BuiltinProviderOptions['claudeHookRailFaultInjection'];
-  /** Optional tap of authoritative Claude semantic batches. */
-  onClaudeObservationBatch?: BuiltinProviderOptions['onClaudeObservationBatch'];
-  onClaudeObservationError?: BuiltinProviderOptions['onClaudeObservationError'];
 }
 
 /** Turn-key runtime containing every built-in provider behind one interface. */
@@ -19,9 +16,6 @@ export function createBuiltinAgentRuntime(options: BuiltinAgentRuntimeOptions): 
     providers: createBuiltinProviders({
       executables: options.executables,
       acpConnector: options.acpConnector,
-      claudeSubagentStatusObservation: options.features?.claudeSubagentStatusObservation ?? false,
-      onClaudeObservationBatch: options.onClaudeObservationBatch,
-      onClaudeObservationError: options.onClaudeObservationError,
       claudeHookRailFaultInjection: options.claudeHookRailFaultInjection,
     }),
   });

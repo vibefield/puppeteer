@@ -1,4 +1,4 @@
-import type { AgentExecutionMode, AgentGitState, ObservationLevel } from '../events.js';
+import type { AgentExecutionMode, AgentGitState, ObservationLevel } from '../events/index.js';
 import type {
   ActorRunRef,
   ArtifactRef,
@@ -561,7 +561,10 @@ export interface MonitorWorkspaceSlice {
   seenRecordIds: ReadonlySet<string>;
   entries: ReadonlyMap<string, MonitorStoredEntry>;
   provenance: ReadonlyMap<string, MonitorWorkspaceProvenanceState>;
+  /** Most recent private workspace-plane input, including provenance-only records. */
   lastAcceptedAt?: string;
+  /** Most recent workspace input that can change the public monitor projection. */
+  lastPublicAcceptedAt?: string;
 }
 
 export interface CreateMonitorAccumulatorOptions {

@@ -14,7 +14,7 @@ import {
   type SessionLifecycle,
   type SessionRuntimeState,
 } from '@vibecook/puppeteer-core';
-import { AgentEventBus } from './event-bus.js';
+import { AgentEventBus } from './events/event-bus.js';
 import { AgentConversationService, type AgentConversationSnapshot } from './services/conversation-service.js';
 import type { AgentMonitorService } from './services/monitor-service.js';
 import { AgentStateService } from './services/state-service.js';
@@ -24,6 +24,7 @@ export interface AgentOptions {
   adapter: AgentAdapterBinding;
   info: AgentSessionInfo;
   monitor: AgentMonitorService;
+  submitPrompt: (submission: PromptSubmission) => Promise<PromptReceipt>;
   onListenerError?: (error: unknown, envelope: AgentEventEnvelope) => void;
 }
 
@@ -41,6 +42,7 @@ interface AgentInternals {
   state: AgentStateService;
   conversation: AgentConversationService;
   monitor: AgentMonitorService;
+  submitPrompt: (submission: PromptSubmission) => Promise<PromptReceipt>;
   disposed: boolean;
 }
 
@@ -84,6 +86,7 @@ export class Agent {
       state: new AgentStateService(),
       conversation: new AgentConversationService(),
       monitor: options.monitor,
+      submitPrompt: options.submitPrompt,
       disposed: false,
     });
   }
@@ -140,7 +143,7 @@ export class Agent {
   }
 
   submitPrompt(submission: PromptSubmission): Promise<PromptReceipt> {
-    return internals(this).adapter.services.prompt.submit(submission);
+    return internals(this).submitPrompt(submission);
   }
 
   observeMonitor(): AgentMonitorHandle {

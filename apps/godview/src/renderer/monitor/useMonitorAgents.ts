@@ -3,12 +3,7 @@ import type { GhostteaWorkspaceContext } from '@vibecook/ghosttea-react/workspac
 import type { MonitorNotification } from '@vibecook/puppeteer-core';
 import { createAgentMonitorStore } from '@vibecook/puppeteer-monitor';
 import { useAgentMonitorStore } from '@vibecook/puppeteer-react';
-import type {
-  AgentMonitorRemovedMessage,
-  AgentMonitorStateMessage,
-  AgentSessionInfo,
-  AgentStateMessage,
-} from '../../protocol.js';
+import type { AgentMonitorRemovedMessage, AgentMonitorStateMessage, AgentSessionInfo } from '../../protocol.js';
 import type { PaneAttachment } from '../pane-attachments.js';
 import {
   assembleMonitorAgents,
@@ -32,7 +27,6 @@ export interface MonitorAgentsResult {
   actions: MonitorActions;
   notifications: readonly MonitorNotification[];
   dismissNotification(runtimeRunId: string, notificationId: string): void;
-  godviewMonitorV2: boolean;
 }
 
 /**
@@ -52,19 +46,14 @@ export function useMonitorAgents({
   const [exitedTerminalIds, setExitedTerminalIds] = useState(() => new Set<string>());
   const [monitorStore] = useState(() => createAgentMonitorStore({ notificationCapacity: 4 }));
   const monitorSnapshot = useAgentMonitorStore(monitorStore);
-  const [monitorRendererV2, setMonitorRendererV2] = useState<boolean>();
   const [nowMs, setNowMs] = useState(Date.now());
 
   useEffect(() => {
     let alive = true;
-    let rendererV2 = false;
-    let configurationReady = false;
     let publishFrame: number | undefined;
     const current = new Map<string, MonitorAgentRecord>();
     const monitorsByRun = new Map<string, AgentMonitorStateMessage>();
     const removed = new Set<string>();
-    const pendingFinals = new Set<string>();
-    const pendingNotifications: MonitorNotification[] = [];
     const publish = (): void => {
       if (publishFrame !== undefined) return;
       publishFrame = window.requestAnimationFrame(() => {
@@ -82,12 +71,6 @@ export function useMonitorAgents({
     const forget = (runtimeSessionId: string): void => {
       removed.add(runtimeSessionId);
       if (current.delete(runtimeSessionId)) publish();
-    };
-    const updateState = (state: AgentStateMessage): void => {
-      const existing = current.get(state.runtimeSessionId);
-      if (!existing) return;
-      current.set(state.runtimeSessionId, { ...existing, state });
-      publish();
     };
     const acceptMonitor = (message: AgentMonitorStateMessage): boolean => {
       if (!monitorStore.acceptState(message.state)) return false;
@@ -114,52 +97,21 @@ export function useMonitorAgents({
         [...current.values()].find((record) => record.info.runtimeRunId === message.runtimeRunId)?.info
           .runtimeSessionId;
       if (!terminalSessionId) return;
-      if (rendererV2) {
-        forget(terminalSessionId);
-        return;
-      }
-      const record = current.get(terminalSessionId);
-      if (record?.monitor) {
-        current.set(terminalSessionId, { info: record.info, ...(record.state ? { state: record.state } : {}) });
-        publish();
-      }
+      forget(terminalSessionId);
     };
     const publishNotification = (notification: MonitorNotification): void => {
       if (alive) monitorStore.acceptNotification(notification);
     };
 
     const unsubscribeSession = window.puppeteer.onAgentSession(remember);
-    const unsubscribeState = window.puppeteer.onAgentState(updateState);
     const unsubscribeRemoved = window.puppeteer.onAgentRemoved(forget);
-    const unsubscribeFinal = window.puppeteer.onWorkspaceFinal((event) => {
-      if (!configurationReady) pendingFinals.add(event.runtimeSessionId);
-      else if (!rendererV2) forget(event.runtimeSessionId);
-    });
     const unsubscribeMonitorState = window.puppeteer.onAgentMonitorState(updateMonitor);
     const unsubscribeMonitorRemoved = window.puppeteer.onAgentMonitorRemoved(removeMonitor);
-    const unsubscribeMonitorNotification = window.puppeteer.onAgentMonitorNotification((message) => {
-      if (!configurationReady) {
-        pendingNotifications.push(message.notification);
-        if (pendingNotifications.length > 4) pendingNotifications.shift();
-      } else if (rendererV2) publishNotification(message.notification);
-    });
+    const unsubscribeMonitorNotification = window.puppeteer.onAgentMonitorNotification((message) =>
+      publishNotification(message.notification),
+    );
 
     void (async () => {
-      const configuration = await window.puppeteer
-        .agentMonitorConfiguration()
-        .catch(() => ({ godviewMonitorV2: false }));
-      if (!alive) return;
-      rendererV2 = configuration.godviewMonitorV2;
-      configurationReady = true;
-      setMonitorRendererV2(rendererV2);
-      if (rendererV2) {
-        for (const message of pendingNotifications) publishNotification(message);
-      }
-      pendingNotifications.length = 0;
-      if (!rendererV2) {
-        for (const runtimeSessionId of pendingFinals) forget(runtimeSessionId);
-      }
-      pendingFinals.clear();
       const [snapshots, monitorSnapshots] = await Promise.all([
         window.puppeteer.listAgentSessions(),
         window.puppeteer.listAgentMonitors(),
@@ -171,11 +123,9 @@ export function useMonitorAgents({
         const id = snapshot.info.runtimeSessionId;
         const monitor = monitorsByRun.get(snapshot.info.runtimeRunId);
         if (removed.has(id)) continue;
-        if (rendererV2 ? !monitor : snapshot.final || snapshot.info.session.exited) continue;
         const live = current.get(id);
         next.set(id, {
           info: live?.info ?? snapshot.info,
-          state: live?.state ?? snapshot.state,
           ...((live?.monitor ?? monitor) ? { monitor: live?.monitor ?? monitor } : {}),
         });
       }
@@ -191,9 +141,7 @@ export function useMonitorAgents({
       alive = false;
       if (publishFrame !== undefined) window.cancelAnimationFrame(publishFrame);
       unsubscribeSession();
-      unsubscribeState();
       unsubscribeRemoved();
-      unsubscribeFinal();
       unsubscribeMonitorState();
       unsubscribeMonitorRemoved();
       unsubscribeMonitorNotification();
@@ -202,10 +150,9 @@ export function useMonitorAgents({
   }, []);
 
   useEffect(() => {
-    if (monitorRendererV2 !== true) return;
     const timer = window.setInterval(() => setNowMs(Date.now()), 10_000);
     return () => window.clearInterval(timer);
-  }, [monitorRendererV2]);
+  }, []);
 
   useEffect(
     () =>
@@ -240,27 +187,16 @@ export function useMonitorAgents({
   );
 
   const agents = useMemo(() => {
-    if (monitorRendererV2 === undefined) return [];
     return assembleMonitorAgents({
       agents: [...records.values()],
       terminals: visibleTerminals,
       sessions,
       attachments,
       identities: terminalIdentities,
-      godviewMonitorV2: monitorRendererV2,
       nowMs,
       ...(workspace?.activeSession ? { activeSessionId: workspace.activeSession.id } : {}),
     });
-  }, [
-    attachments,
-    monitorRendererV2,
-    nowMs,
-    records,
-    sessions,
-    terminalIdentities,
-    visibleTerminals,
-    workspace?.activeSession,
-  ]);
+  }, [attachments, nowMs, records, sessions, terminalIdentities, visibleTerminals, workspace?.activeSession]);
 
   const select = useCallback(
     (agent: MonitorAgent): void => {
@@ -304,6 +240,5 @@ export function useMonitorAgents({
     actions,
     notifications: monitorSnapshot.notifications,
     dismissNotification,
-    godviewMonitorV2: monitorRendererV2 === true,
   };
 }

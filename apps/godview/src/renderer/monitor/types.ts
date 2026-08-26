@@ -6,11 +6,10 @@ import type {
 import type {
   AgentMonitorState,
   AgentMonitorTeamAggregate,
-  ContextWindowRuntimeState,
   MonitorContextState,
   MonitorRecency,
 } from '@vibecook/puppeteer-core';
-import type { AgentKind, AgentSessionInfo, AgentStateMessage } from '../../protocol.js';
+import type { AgentKind, AgentSessionInfo } from '../../protocol.js';
 import type { AgentVisualStatus } from '../agent-status.js';
 import type { PaneAttachment } from '../pane-attachments.js';
 import type { MonitorParameterGroup, MonitorParameters } from './parameters.js';
@@ -21,13 +20,12 @@ export interface MonitorAgentFacet {
   provider: string;
   model?: string;
   branch?: string;
-  contextWindow?: MonitorContextState | ContextWindowRuntimeState;
-  monitor?: AgentMonitorState;
+  contextWindow?: MonitorContextState;
+  monitor: AgentMonitorState;
   teamAggregate?: AgentMonitorTeamAggregate;
-  recency?: MonitorRecency;
-  /** The underlying projections, for a view that wants tools, permissions, or diagnostics. */
+  recency: MonitorRecency;
+  /** The runtime identity and canonical monitor projection behind this view row. */
   info: AgentSessionInfo;
-  state?: AgentStateMessage;
 }
 
 /**
@@ -67,8 +65,8 @@ export type AgentMonitorProps = PortableAgentMonitorViewProps<MonitorAgent, Moni
 
 /**
  * A way of looking at the running agents. Adding one is a file plus a line in
- * the registry — deliberately the same shape as adding an `AgentProvider` to
- * the runtime (packages/runtime/src/providers.ts).
+ * the registry — deliberately the same shape as adding a built-in provider in
+ * `packages/builtin-providers`.
  *
  * A view is a pure function of these props. It never reaches the runtime, the
  * workspace, or a terminal, which is what keeps it structurally unable to break

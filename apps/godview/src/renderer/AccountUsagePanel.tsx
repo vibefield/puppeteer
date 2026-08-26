@@ -48,10 +48,7 @@ export function AccountUsagePanel() {
     };
   }, []);
 
-  const entries = useMemo(
-    () => new Map(batch?.entries.map((entry) => [entry.agent, entry] as const) ?? []),
-    [batch],
-  );
+  const entries = useMemo(() => new Map(batch?.entries.map((entry) => [entry.agent, entry] as const) ?? []), [batch]);
   const views = ACCOUNT_USAGE_AGENTS.map((agent) => providerAccountUsageView(agent, entries.get(agent), nowMs));
 
   return (

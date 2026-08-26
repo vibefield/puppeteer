@@ -47,8 +47,7 @@ function booleanSetting(value: string): boolean {
 export function godviewTruffleConfig(options: GodviewTruffleConfigOptions): GodviewTruffleConfig {
   const environment = options.environment ?? process.env;
   const pathExists = options.pathExists ?? existsSync;
-  const enabledSetting =
-    nonempty(environment, 'GHOSTTEA_TRUFFLE_ENABLED', 'TERMINALD_TRUFFLE_ENABLED') ?? 'true';
+  const enabledSetting = nonempty(environment, 'GHOSTTEA_TRUFFLE_ENABLED', 'TERMINALD_TRUFFLE_ENABLED') ?? 'true';
   const enabled = booleanSetting(enabledSetting);
   const sidecarName = options.platform === 'win32' ? 'sidecar-slim.exe' : 'sidecar-slim';
   const bundledSidecar = join(options.resourcesPath, 'bin', sidecarName);

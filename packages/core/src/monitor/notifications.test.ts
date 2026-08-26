@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { agentEventCategory, agentEventType, type AgentEvent, type AgentEventEnvelope } from '../events.js';
+import { agentEventCategory, agentEventType, type AgentEvent, type AgentEventEnvelope } from '../events/index.js';
 import type { MonitorFamilyUpdate, RuntimeMonitorObservationBatch } from './internal-types.js';
 import { projectAgentMonitorState } from './project.js';
 import { createMonitorAccumulatorState, reduceMonitorAccumulator, translateAgentEventEnvelope } from './reduce.js';

@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import fc from 'fast-check';
-import type { AgentEvent, AgentEventEnvelope } from './events.js';
-import { createEnvelopeStamper } from './events.js';
+import type { AgentEvent, AgentEventEnvelope } from './events/index.js';
+import { createEnvelopeStamper } from './events/index.js';
 import { createInitialSessionState, reduceSessionState, type SessionRuntimeState } from './state.js';
 
 function stampAll(events: AgentEvent[]): AgentEventEnvelope[] {

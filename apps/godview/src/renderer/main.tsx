@@ -318,7 +318,7 @@ function Godview() {
     [workspace],
   );
 
-  const { agents, actions, notifications, dismissNotification, godviewMonitorV2 } = useMonitorAgents({
+  const { agents, actions, notifications, dismissNotification } = useMonitorAgents({
     workspace,
     attachments: paneAttachments,
     terminalIdentities,
@@ -356,7 +356,7 @@ function Godview() {
       const refreshedSessions = await terminalRuntime.listSessions();
       const monitored = agentsBySession.get(selectedSession.id);
       const facet = monitored?.agent;
-      const agentCwd = facet?.monitor?.environment.cwd ?? facet?.state?.state.environment.currentCwd?.value;
+      const agentCwd = facet?.monitor.environment.cwd;
       const refreshedSession =
         refreshedSessions.find((candidate) => candidate.id === selectedSession.id) ?? selectedSession;
       const processCwd =
@@ -551,7 +551,7 @@ function Godview() {
           </div>
         </header>
 
-        {godviewMonitorV2 && notifications.length ? (
+        {notifications.length ? (
           <div className="godview-monitor-feed" aria-live="polite" aria-label="Agent monitor notifications">
             {notifications.map((message) => (
               <div className="godview-monitor-notice" key={`${message.runtimeRunId}:${message.notificationId}`}>
@@ -589,7 +589,7 @@ function Godview() {
           <div ref={chromeRef} className="godview-monitor-chrome" {...{ [MONITOR_CHROME_ATTRIBUTE]: '' }}>
             <AccountUsagePanel />
           </div>
-          {godviewMonitorV2 && activeAgent?.agent?.monitor ? (
+          {activeAgent?.agent?.monitor ? (
             <AgentMonitorInspector
               key={activeAgent.agent.monitor.runtimeRunId}
               state={activeAgent.agent.monitor}

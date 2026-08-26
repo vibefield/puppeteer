@@ -66,7 +66,6 @@ describe('Godview monitor IPC protocol', () => {
       maxBytes: 4096,
     };
     const bridgeMethods: (keyof PuppeteerBridge)[] = [
-      'agentMonitorConfiguration',
       'listAgentMonitors',
       'onAgentMonitorState',
       'onAgentMonitorNotification',
@@ -75,7 +74,7 @@ describe('Godview monitor IPC protocol', () => {
       'readAgentMonitorArtifact',
     ];
     expect(JSON.parse(JSON.stringify({ acknowledgment, artifactRead }))).toEqual({ acknowledgment, artifactRead });
-    expect(bridgeMethods).toHaveLength(7);
+    expect(bridgeMethods).toHaveLength(6);
     expect(artifactRead).not.toHaveProperty('path');
   });
 });

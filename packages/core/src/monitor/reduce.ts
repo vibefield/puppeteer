@@ -6,7 +6,7 @@ import type {
   ModeUpdatedEvent,
   ModelUpdatedEvent,
   ProcessExitReason,
-} from '../events.js';
+} from '../events/index.js';
 import type {
   ActorRunRef,
   EvidenceCompleteness,
@@ -562,6 +562,9 @@ function reduceWorkspace(state: MonitorAccumulatorState, input: WorkspaceMonitor
       entries,
       provenance,
       lastAcceptedAt: latestAccepted(state.workspace.lastAcceptedAt, input.observedAt),
+      ...(input.operation === 'provenance'
+        ? {}
+        : { lastPublicAcceptedAt: latestAccepted(state.workspace.lastPublicAcceptedAt, input.observedAt) }),
     },
   };
   return finishAccepted(state, next, input);
@@ -725,7 +728,7 @@ function modeUpdates(event: ModeUpdatedEvent, actor?: ActorRunRef): MonitorFamil
   ];
 }
 
-/** Converts the compatibility AgentEvent stream into evidence inputs without mutating SessionRuntimeState. */
+/** Converts the canonical AgentEvent stream into monitor evidence without mutating detailed Agent state. */
 export function translateAgentEventEnvelope(options: TranslateAgentEventOptions): RuntimeMonitorInput {
   const { envelope } = options;
   const eventId = envelope.eventId ?? `legacy:${envelope.sessionId}:${envelope.sequence}`;

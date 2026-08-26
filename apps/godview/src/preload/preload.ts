@@ -6,12 +6,9 @@ import type {
   AgentAccountUsageBatch,
   AgentMonitorNotificationMessage,
   AgentMonitorRemovedMessage,
-  AgentMonitorRendererConfiguration,
   AgentMonitorStateMessage,
   AgentSessionSnapshot,
   AgentSessionInfo,
-  AgentStateBatch,
-  AgentStateMessage,
   PuppeteerBridge,
   CreateAgentSessionOptions,
   CreateAgentSessionResult,
@@ -28,17 +25,6 @@ import type {
 
 forwardGhostteaRendererPorts(ipcRenderer);
 const clipboardBridge = createGhostteaClipboardBridge(ipcRenderer);
-const agentStateListeners = new Set<(state: AgentStateMessage) => void>();
-
-ipcRenderer.on('puppeteer:agent-states', (_event, batch: AgentStateBatch) => {
-  try {
-    for (const state of batch.states) {
-      for (const listener of agentStateListeners) listener(state);
-    }
-  } finally {
-    ipcRenderer.send('puppeteer:agent-states-ack', batch.sequence);
-  }
-});
 
 function onIpcMessage<T>(channel: string, callback: (message: T) => void): () => void {
   const listener = (_event: Electron.IpcRendererEvent, message: T): void => callback(message);
@@ -89,12 +75,6 @@ const puppeteer: PuppeteerBridge = {
   },
   submitPrompt: (options: SubmitPromptOptions): Promise<PromptReceipt> =>
     ipcRenderer.invoke('puppeteer:submit-prompt', options),
-  onAgentState: (callback: (state: AgentStateMessage) => void): (() => void) => {
-    agentStateListeners.add(callback);
-    return () => agentStateListeners.delete(callback);
-  },
-  agentMonitorConfiguration: (): Promise<AgentMonitorRendererConfiguration> =>
-    ipcRenderer.invoke('puppeteer:agent-monitor-configuration'),
   listAgentMonitors: (): Promise<AgentMonitorStateMessage[]> => ipcRenderer.invoke('puppeteer:list-agent-monitors'),
   onAgentMonitorState: (callback: (message: AgentMonitorStateMessage) => void): (() => void) =>
     onIpcMessage('puppeteer:agent-monitor-state', callback),

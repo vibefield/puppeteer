@@ -84,7 +84,8 @@ export function readRestoreManifest(value: unknown): RestoreManifest | undefined
 
   const windows = value.windows.map(parseWindow).filter((window): window is RestoreWindow => window !== undefined);
   if (!windows.length) return undefined;
-  const updatedAtMs = typeof value.updatedAtMs === 'number' && Number.isFinite(value.updatedAtMs) ? value.updatedAtMs : 0;
+  const updatedAtMs =
+    typeof value.updatedAtMs === 'number' && Number.isFinite(value.updatedAtMs) ? value.updatedAtMs : 0;
   return { version: RESTORE_MANIFEST_VERSION, updatedAtMs, windows };
 }
 
