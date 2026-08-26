@@ -20,7 +20,7 @@ export class OpenCodeDelegationNormalizer {
     const existing = this.children.get(childId);
     if (existing?.started || existing?.stopped) return [];
     boundedOpenCodeMapSet(this.children, childId, { started: true, stopped: false }, this.maximum);
-    return [{ type: 'subagent.started', subagentId: childId, ...(agentType ? { agentType } : {}) }];
+    return [{ type: 'delegation:subagent-started', subagentId: childId, ...(agentType ? { agentType } : {}) }];
   }
 
   stop(childId: string): AgentEvent[] {
@@ -35,6 +35,6 @@ export class OpenCodeDelegationNormalizer {
       return [];
     }
     boundedOpenCodeMapSet(this.children, childId, { started: true, stopped: true }, this.maximum);
-    return [{ type: 'subagent.stopped', subagentId: childId }];
+    return [{ type: 'delegation:subagent-stopped', subagentId: childId }];
   }
 }

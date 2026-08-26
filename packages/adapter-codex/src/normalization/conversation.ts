@@ -16,7 +16,7 @@ export class CodexConversationNormalizer {
         const itemId = str(item.id) ?? 'unknown-item';
         this.messageBuffers.delete(itemId);
         events.push({
-          type: 'assistant.message',
+          type: 'conversation:assistant-message',
           messageId: itemId,
           turnId: input.turnId,
           text: itemText(item),
@@ -32,7 +32,7 @@ export class CodexConversationNormalizer {
       const text = (this.messageBuffers.get(itemId) ?? '') + (str(params.delta) ?? '');
       this.messageBuffers.set(itemId, text);
       events.push({
-        type: 'assistant.message',
+        type: 'conversation:assistant-message',
         messageId: itemId,
         turnId: input.turnId,
         text,

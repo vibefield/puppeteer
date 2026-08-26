@@ -9,7 +9,7 @@ export class KimiConversationNormalizer {
     const text = (this.assistantByTurn.get(turnId) ?? '') + textDelta;
     boundedKimiMapSet(this.assistantByTurn, turnId, text);
     return {
-      type: 'assistant.message',
+      type: 'conversation:assistant-message',
       messageId: `kimi-assistant:${turnId}`,
       turnId,
       text,
@@ -26,7 +26,7 @@ export class KimiConversationNormalizer {
           text,
           events: [
             {
-              type: 'assistant.message',
+              type: 'conversation:assistant-message',
               messageId: `kimi-assistant:${turnId}`,
               turnId,
               text,

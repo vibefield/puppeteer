@@ -3,6 +3,7 @@ import type {
   AgentMonitorStatus,
   ActorRunRef,
   MonitorActivity,
+  MonitorActivityKind,
   MonitorBlocker,
   MonitorBoundedCollection,
   MonitorContextState,
@@ -112,6 +113,24 @@ function allEntries(state: MonitorAccumulatorState): MonitorStoredEntry[] {
   return [...state.runtime.entries.values(), ...state.semantic.entries.values(), ...state.workspace.entries.values()];
 }
 
+function actorLocalSourceKey(entry: MonitorStoredEntry, actorRunKey: string): string {
+  try {
+    const encoded = JSON.parse(entry.key) as unknown;
+    if (
+      Array.isArray(encoded) &&
+      encoded.length === 2 &&
+      typeof encoded[0] === 'string' &&
+      encoded[1] === actorRunKey
+    ) {
+      return encoded[0];
+    }
+  } catch {
+    // Semantic producers use their own readable keys; only runtime actor keys
+    // are tuple-encoded by translateAgentEventEnvelope.
+  }
+  return entry.key;
+}
+
 function logicalEntryKey(entry: MonitorStoredEntry): string {
   const actor = actorOf(entry.value)?.runKey ?? '';
   switch (entry.value.kind) {
@@ -122,14 +141,16 @@ function logicalEntryKey(entry: MonitorStoredEntry): string {
     case 'failure':
       return JSON.stringify([entry.family, 'failure', entry.value.failureId, actor]);
     case 'usage':
-      return JSON.stringify([entry.family, entry.value.usageId, actor]);
+      // One usage identity may gain better actor attribution on a later rail.
+      // Attribution is evidence, not part of the token observation identity.
+      return JSON.stringify([entry.family, entry.value.usageId]);
     case 'context':
       return JSON.stringify([entry.family, actor || 'root']);
     case 'model':
     case 'effort':
       return JSON.stringify([entry.family, entry.value.intent, actor || 'root']);
     case 'mode':
-      return JSON.stringify([entry.family, entry.value.modeKind, entry.value.intent ?? 'observed']);
+      return JSON.stringify([entry.family, entry.value.modeKind, entry.value.intent ?? 'observed', actor || 'root']);
     case 'plan':
       return JSON.stringify([entry.family, entry.value.planId, actor]);
     case 'task':
@@ -152,8 +173,9 @@ function logicalEntryKey(entry: MonitorStoredEntry): string {
       return JSON.stringify([entry.family, entry.value.workflowId]);
     case 'activity':
     case 'compaction':
+      return JSON.stringify([entry.family, actor ? actorLocalSourceKey(entry, actor) : entry.key, actor]);
     case 'environment':
-      return JSON.stringify([entry.family, entry.key]);
+      return JSON.stringify([entry.family, actor || 'root']);
   }
 }
 
@@ -184,8 +206,11 @@ function actorOf(value: MonitorFamilyValue): ActorRunRef | undefined {
     case 'context':
     case 'model':
     case 'effort':
+    case 'mode':
+    case 'environment':
     case 'plan':
     case 'task':
+    case 'compaction':
       return value.actor;
     case 'actor':
     case 'affiliation':
@@ -193,11 +218,8 @@ function actorOf(value: MonitorFamilyValue): ActorRunRef | undefined {
     case 'team-member':
       return value.actor;
     case 'run':
-    case 'mode':
     case 'team':
     case 'workflow':
-    case 'compaction':
-    case 'environment':
       return undefined;
   }
 }
@@ -310,24 +332,21 @@ function activityPriority(kind: MonitorActivity['kind']): number {
               : 7;
 }
 
-type ActiveActivityEntry = {
+type ActiveActorActivity = {
   entry: MonitorStoredEntry;
-  value: Extract<MonitorFamilyValue, { kind: 'activity' }>;
+  activityKind: MonitorActivityKind | 'compacting';
+  line: string;
+  since: string;
 };
 
-function activityEntryTime(candidate: ActiveActivityEntry): number {
-  return time(candidate.value.since ?? candidate.entry.effectiveAt ?? candidate.entry.observedAt);
-}
-
-function preferActivity(candidate: ActiveActivityEntry, current: ActiveActivityEntry): boolean {
-  const candidatePriority = activityPriority(candidate.value.activityKind);
-  const currentPriority = activityPriority(current.value.activityKind);
+function preferActivity(candidate: ActiveActorActivity, current: ActiveActorActivity): boolean {
+  const candidatePriority = candidate.activityKind === 'compacting' ? 1 : activityPriority(candidate.activityKind);
+  const currentPriority = current.activityKind === 'compacting' ? 1 : activityPriority(current.activityKind);
   return (
     candidatePriority < currentPriority ||
     (candidatePriority === currentPriority &&
-      (activityEntryTime(candidate) > activityEntryTime(current) ||
-        (activityEntryTime(candidate) === activityEntryTime(current) &&
-          candidate.entry.key.localeCompare(current.entry.key) < 0)))
+      (time(candidate.since) > time(current.since) ||
+        (time(candidate.since) === time(current.since) && candidate.entry.key.localeCompare(current.entry.key) < 0)))
   );
 }
 
@@ -348,7 +367,11 @@ function projectActivity(
   );
   const candidates: ActivityCandidate[] = [];
   for (const entry of entries) {
-    if (entry.value.kind === 'compaction' && entry.value.active) {
+    if (
+      entry.value.kind === 'compaction' &&
+      entry.value.active &&
+      (!entry.value.actor || !stoppedActors.has(entry.value.actor.runKey))
+    ) {
       candidates.push({
         kind: 'compacting',
         line: 'Compacting context',
@@ -585,7 +608,7 @@ function projectSubagents(
   unbounded: boolean,
 ) {
   const actors = new Map<string, { actor: ActorRunRef; state?: MonitorActorFamilyValue }>();
-  const activities = new Map<string, ActiveActivityEntry>();
+  const activities = new Map<string, ActiveActorActivity>();
   for (const entry of entries) {
     const actor = actorOf(entry.value);
     if (!actor || actor.role !== 'child') continue;
@@ -594,7 +617,23 @@ function projectSubagents(
     else if (!current) actors.set(actor.runKey, { actor });
     if (entry.value.kind === 'activity' && entry.value.active) {
       const currentActivity = activities.get(actor.runKey);
-      const candidate = { entry, value: entry.value };
+      const candidate: ActiveActorActivity = {
+        entry,
+        activityKind: entry.value.activityKind,
+        line: entry.value.line ?? 'Working',
+        since: entry.value.since ?? entry.effectiveAt ?? entry.observedAt,
+      };
+      if (!currentActivity || preferActivity(candidate, currentActivity)) {
+        activities.set(actor.runKey, candidate);
+      }
+    } else if (entry.value.kind === 'compaction' && entry.value.active) {
+      const currentActivity = activities.get(actor.runKey);
+      const candidate: ActiveActorActivity = {
+        entry,
+        activityKind: 'compacting',
+        line: 'Compacting context',
+        since: entry.effectiveAt ?? entry.observedAt,
+      };
       if (!currentActivity || preferActivity(candidate, currentActivity)) {
         activities.set(actor.runKey, candidate);
       }
@@ -605,7 +644,7 @@ function projectSubagents(
       const context = actorMetric(entries, actor.runKey, 'context');
       const model = actorMetric(entries, actor.runKey, 'model');
       const effort = actorMetric(entries, actor.runKey, 'effort');
-      const activity = activities.get(actor.runKey)?.value;
+      const activity = activities.get(actor.runKey);
       const contextPercent = context ? contextPercentage(context.value) : undefined;
       const active =
         state?.state === 'stopped'
@@ -770,6 +809,13 @@ function projectTeam(
               at: time(entry.value.since ?? entry.effectiveAt ?? entry.observedAt),
               ...(entry.value.line ? { line: entry.value.line } : {}),
             });
+          } else if (entry.value.kind === 'compaction' && entry.value.active) {
+            activityClaims.push({
+              state: 'active',
+              entry,
+              at: time(entry.effectiveAt ?? entry.observedAt),
+              line: 'Compacting context',
+            });
           }
         }
       }
@@ -865,7 +911,7 @@ function projectEnvironment(
   const environment = familyEntries(entries, 'environment')
     .filter(
       (entry): entry is MonitorStoredEntry & { value: MonitorEnvironmentFamilyValue } =>
-        entry.value.kind === 'environment',
+        entry.value.kind === 'environment' && (entry.value.actor === undefined || entry.value.actor.role === 'root'),
     )
     .sort((a, b) => time(a.observedAt) - time(b.observedAt) || planePriority(a) - planePriority(b));
   let cwd: string | undefined;

@@ -473,7 +473,14 @@
         color: var(--muted);
       }
 
-      .service-state {
+      .service-session,
+      .service-turn,
+      .service-reasoning,
+      .service-tool,
+      .service-interaction,
+      .service-delegation,
+      .service-planning,
+      .service-compaction {
         background: var(--copper-bg);
         color: var(--copper);
       }
@@ -499,6 +506,9 @@
       }
 
       .service-environment,
+      .service-model,
+      .service-effort,
+      .service-mode,
       .service-workspace {
         background: var(--blue-bg);
         color: var(--blue);
@@ -925,8 +935,8 @@
 
         <div class="stats" aria-label="API summary">
           <div class="stat"><strong>1</strong><span>Agent object per runtime run</span></div>
-          <div class="stat"><strong>11</strong><span>top-level event services</span></div>
-          <div class="stat"><strong>39</strong><span>normalized event routes</span></div>
+          <div class="stat"><strong>21</strong><span>top-level event categories</span></div>
+          <div class="stat"><strong>42</strong><span>normalized event routes</span></div>
           <div class="stat"><strong>3</strong><span>selector forms</span></div>
         </div>
       </header>
@@ -941,12 +951,15 @@
           <a href="#subscriptions">Subscriptions</a>
           <a href="#envelope">Event envelope</a>
           <a href="#catalog">Event catalog</a>
-          <a class="sub-link" href="#service-state">state</a>
+          <a class="sub-link" href="#service-behavior">behavior domains</a>
           <a class="sub-link" href="#service-context-window">context-window</a>
           <a class="sub-link" href="#service-conversation">conversation</a>
           <a class="sub-link" href="#service-usage">usage</a>
           <a class="sub-link" href="#service-workflow">workflow</a>
           <a class="sub-link" href="#service-environment">environment</a>
+          <a class="sub-link" href="#service-model">model</a>
+          <a class="sub-link" href="#service-effort">effort</a>
+          <a class="sub-link" href="#service-mode">mode</a>
           <a class="sub-link" href="#service-workspace">workspace</a>
           <a class="sub-link" href="#service-process">process</a>
           <a class="sub-link" href="#service-notification">notification</a>
@@ -1215,7 +1228,7 @@
 
             <div class="callout">
               <strong>Schema boundary.</strong> Each Core event category owns strict Zod schemas and exports TypeScript
-              types inferred from them. The exhaustive catalog binds all 39
+              types inferred from them. The exhaustive catalog binds all 42
               <span class="mono">category:event-name</span> routes to those schemas. Runtime validation uses Zod once at
               adapter ingress; listener callback narrowing is derived in TypeScript from the same catalog.
             </div>
@@ -1240,7 +1253,7 @@ const result = await runtime.spawn({
 if ('error' in result) throw new Error(result.error.message);
 const agent = result;
 
-const offState = agent.on('state:*', (envelope) =&gt; {
+const offTurns = agent.on('turn:*', (envelope) =&gt; {
   console.log(envelope.type, agent.state.lifecycle);
 });
 
@@ -1254,7 +1267,7 @@ const offAll = agent.on('*', ({ service, type, sequence }) =&gt; {
 
 const receipt = await agent.submitPrompt({ text: 'Review this repository' });
 
-offState();
+offTurns();
 offContext();
 offAll();</code></pre>
             <div class="callout warning">
@@ -1277,7 +1290,10 @@ offAll();</code></pre>
                 <span class="badge service-environment">identity</span>
                 <h3>agent.info</h3>
                 <div class="signature">Readonly&lt;AgentSessionInfo&gt;</div>
-                <p>Provider, runtime/native/terminal identities, external references, and workspace metadata.</p>
+                <p>
+                  Defensive snapshot of provider, runtime/native/terminal identities, external references, and workspace
+                  metadata.
+                </p>
               </article>
               <article class="card">
                 <span class="badge service-environment">identity</span>
@@ -1292,10 +1308,10 @@ offAll();</code></pre>
                 <p>Host terminal/PTY routing identity for the live agent.</p>
               </article>
               <article class="card">
-                <span class="badge service-state">projection</span>
+                <span class="badge service-session">projection</span>
                 <h3>agent.state</h3>
                 <div class="signature">SessionRuntimeState</div>
-                <p>Current deterministic state projection after all accepted non-monitor envelopes.</p>
+                <p>Defensive snapshot of deterministic state after all accepted non-monitor envelopes.</p>
               </article>
               <article class="card">
                 <span class="badge service-conversation">projection</span>
@@ -1515,10 +1531,10 @@ offAll();</code></pre>
                 <p>One public route. Best when a consumer owns one concrete behavior.</p>
               </article>
               <article class="card">
-                <span class="badge service-state">service</span>
-                <h3>'state:*'</h3>
-                <div class="signature">AgentEnvelopeForService&lt;'state'&gt;</div>
-                <p>Every route owned by the service. The nested event remains a discriminated union.</p>
+                <span class="badge service-tool">category</span>
+                <h3>'tool:*'</h3>
+                <div class="signature">AgentEnvelopeForService&lt;'tool'&gt;</div>
+                <p>Every route owned by one event category. The nested event remains a discriminated union.</p>
               </article>
               <article class="card">
                 <span class="badge service-adapter">catch-all</span>
@@ -1533,7 +1549,7 @@ offAll();</code></pre>
   | `${AgentEventService}:*`
   | AgentServiceEventType;
 
-const unsubscribe = agent.on('state:tool-completed', ({ event }) =&gt; {
+const unsubscribe = agent.on('tool:completed', ({ event }) =&gt; {
   // event is ToolCompletedEvent here
   console.log(event.toolCallId, event.durationMs);
 });
@@ -1544,22 +1560,23 @@ unsubscribe();</code></pre>
               <strong>Delivery contract.</strong> Publication is synchronous. The Agent updates its state and
               conversation projections before invoking listeners. A listener exception is reported through the runtime
               error hook and does not stop other listeners or adapter ingestion. Do not depend on relative ordering
-              between listeners registered on different selector scopes.
+              between listeners registered on different selector scopes. Schema-owned event structures are recursively
+              frozen; opaque tool input/output and retained <span class="mono">nativeEvent</span> evidence are not
+              recursively frozen and must be treated as read-only by consumers.
             </div>
           </section>
 
           <section id="envelope">
             <h2>The event envelope</h2>
             <p class="section-note">
-              Subscribe using the namespaced envelope <span class="mono">type</span>. Inspect the nested
-              <span class="mono">event.type</span> only when discriminating normalized payloads inside a wildcard
-              listener during the compatibility migration. Raw provider evidence, when retained, stays in
-              <span class="mono">nativeEvent</span>. The public event identity always follows
-              <span class="mono">category:event-name</span>.
+              The envelope and normalized payload share one canonical identity:
+              <span class="mono">envelope.type === envelope.event.type</span>. Both always follow
+              <span class="mono">category:event-name</span>. Raw provider evidence, when retained, stays in
+              <span class="mono">nativeEvent</span> and never changes public routing.
             </p>
 
             <pre><code>interface AgentEventEnvelope&lt;T extends AgentEvent = AgentEvent&gt; {
-  type: AgentServiceEventType&lt;T&gt;; // public route, e.g. "state:turn-started"
+  type: AgentServiceEventType&lt;T&gt;; // public route, e.g. "turn:started"
   service: AgentEventServiceOf&lt;T&gt;;
   eventId?: string;
   sourceEventRef?: {
@@ -1577,6 +1594,8 @@ unsubscribe();</code></pre>
   turnId?: string;                // assistant response-cycle correlation
   agentId?: string;               // provider-native actor; absent means root
   agentType?: string;
+  actorKey?: string;              // stable derived non-root actor lane
+  actorRole?: 'child' | 'auxiliary' | 'unknown';
   providerVersion?: string;
   timestamp: string;              // ISO 8601 wall-clock time
   monotonicTime: number;
@@ -1586,6 +1605,14 @@ unsubscribe();</code></pre>
   event: T;                       // normalized provider-neutral payload
   nativeEvent?: unknown;          // retained raw provider evidence
 }</code></pre>
+
+            <div class="callout">
+              <strong>Source identity.</strong> When an adapter supplies <span class="mono">sourceEventRef</span>, the
+              runtime derives a stable delivery identity from its namespace, event id, revision, source generation, and
+              cursor range. An exact source revision is delivered once within the runtime's bounded replay window;
+              changing revision metadata represents a legitimate correction and produces a distinct envelope identity.
+              <span class="mono">sequence</span> remains delivery order, not source identity.
+            </div>
 
             <div class="legend" aria-label="Envelope field interpretation">
               <span class="legend-item"
@@ -1631,7 +1658,7 @@ unsubscribe();</code></pre>
           <section id="catalog">
             <h2>Complete event catalog</h2>
             <p class="section-note">
-              All 39 public routes are listed below. Expand a row to see the exact normalized payload. Search matches
+              All 42 public routes are listed below. Expand a row to see the exact normalized payload. Search matches
               routes, native payload types, descriptions, and field names.
             </p>
 
@@ -1644,30 +1671,30 @@ unsubscribe();</code></pre>
                 autocomplete="off"
               />
               <button class="filter-button active" type="button" data-filter="all">All</button>
-              <button class="filter-button" type="button" data-filter="state">State</button>
+              <button class="filter-button" type="button" data-filter="behavior">Behavior</button>
               <button class="filter-button" type="button" data-filter="context-window">Context</button>
               <button class="filter-button" type="button" data-filter="conversation">Conversation</button>
               <button class="filter-button" type="button" data-filter="monitor">Monitor</button>
               <button class="filter-button" type="button" data-filter="other">Other</button>
               <button class="small-button" id="expand-visible" type="button">Expand visible</button>
               <button class="small-button" id="collapse-all" type="button">Collapse</button>
-              <span class="result-count" id="event-count">39 / 39 routes</span>
+              <span class="result-count" id="event-count">42 / 42 routes</span>
             </div>
 
             <div id="event-sections">
-              <section class="service-section" id="service-state" data-section-service="state">
+              <section class="service-section" id="service-behavior" data-section-service="behavior">
                 <div class="service-header">
-                  <h3>State service</h3>
-                  <span class="badge service-state">27 routes</span>
-                  <p>Lifecycle, turns, reasoning, tools, interactions, actors, planning, and compaction.</p>
+                  <h3>Behavior event domains</h3>
+                  <span class="badge service-session">27 routes</span>
+                  <p>Eight independent categories for lifecycle, turns, reasoning, tools, interactions, delegation, planning, and compaction.</p>
                 </div>
                 <div class="event-list">
-                  <details class="event-card" data-service="state">
+                  <details class="event-card" data-service="session">
                     <summary>
                       <span class="event-title"
-                        ><span class="route">state:session-started</span
-                        ><span class="native-type">session.started</span></span
-                      ><span class="badge service-state">state</span>
+                        ><span class="route">session:started</span
+                        ><span class="native-type">session:started</span></span
+                      ><span class="badge service-session">session</span>
                     </summary>
                     <div class="event-body">
                       <p>
@@ -1675,7 +1702,7 @@ unsubscribe();</code></pre>
                         native identity inside the same runtime run.
                       </p>
                       <pre><code>interface SessionStartedEvent {
-  type: 'session.started';
+  type: 'session:started';
   nativeSessionId?: string;
   title?: string;
   startSource?: string;
@@ -1687,33 +1714,33 @@ unsubscribe();</code></pre>
                     </div>
                   </details>
 
-                  <details class="event-card" data-service="state">
+                  <details class="event-card" data-service="session">
                     <summary>
                       <span class="event-title"
-                        ><span class="route">state:session-ready</span
-                        ><span class="native-type">session.ready</span></span
-                      ><span class="badge service-state">state</span>
+                        ><span class="route">session:ready</span
+                        ><span class="native-type">session:ready</span></span
+                      ><span class="badge service-session">session</span>
                     </summary>
                     <div class="event-body">
                       <p>The provider is ready to accept work.</p>
                       <pre><code>interface SessionReadyEvent {
-  type: 'session.ready';
+  type: 'session:ready';
 }</code></pre>
                       <div class="projection-row"><span class="chip">lifecycle → ready</span></div>
                     </div>
                   </details>
 
-                  <details class="event-card" data-service="state">
+                  <details class="event-card" data-service="session">
                     <summary>
                       <span class="event-title"
-                        ><span class="route">state:session-exited</span
-                        ><span class="native-type">session.exited</span></span
-                      ><span class="badge service-state">state</span>
+                        ><span class="route">session:exited</span
+                        ><span class="native-type">session:exited</span></span
+                      ><span class="badge service-session">session</span>
                     </summary>
                     <div class="event-body">
                       <p>The semantic provider session ended. This is distinct from host process exit.</p>
                       <pre><code>interface SessionExitedEvent {
-  type: 'session.exited';
+  type: 'session:exited';
   reason?: string;
 }</code></pre>
                       <div class="projection-row">
@@ -1722,17 +1749,17 @@ unsubscribe();</code></pre>
                     </div>
                   </details>
 
-                  <details class="event-card" data-service="state">
+                  <details class="event-card" data-service="turn">
                     <summary>
                       <span class="event-title"
-                        ><span class="route">state:turn-started</span
-                        ><span class="native-type">turn.started</span></span
-                      ><span class="badge service-state">state</span>
+                        ><span class="route">turn:started</span
+                        ><span class="native-type">turn:started</span></span
+                      ><span class="badge service-turn">turn</span>
                     </summary>
                     <div class="event-body">
                       <p>A user turn began. When present, the prompt also creates a conversation user item.</p>
                       <pre><code>interface TurnStartedEvent {
-  type: 'turn.started';
+  type: 'turn:started';
   turnId?: string;
   prompt?: string;
 }</code></pre>
@@ -1743,17 +1770,17 @@ unsubscribe();</code></pre>
                     </div>
                   </details>
 
-                  <details class="event-card" data-service="state">
+                  <details class="event-card" data-service="turn">
                     <summary>
                       <span class="event-title"
-                        ><span class="route">state:turn-completed</span
-                        ><span class="native-type">turn.completed</span></span
-                      ><span class="badge service-state">state</span>
+                        ><span class="route">turn:completed</span
+                        ><span class="native-type">turn:completed</span></span
+                      ><span class="badge service-turn">turn</span>
                     </summary>
                     <div class="event-body">
                       <p>The response cycle completed successfully; final assistant text may be carried directly.</p>
                       <pre><code>interface TurnCompletedEvent {
-  type: 'turn.completed';
+  type: 'turn:completed';
   turnId?: string;
   stopReason?: string;
   lastAssistantMessage?: string;
@@ -1764,16 +1791,16 @@ unsubscribe();</code></pre>
                     </div>
                   </details>
 
-                  <details class="event-card" data-service="state">
+                  <details class="event-card" data-service="turn">
                     <summary>
                       <span class="event-title"
-                        ><span class="route">state:turn-failed</span><span class="native-type">turn.failed</span></span
-                      ><span class="badge service-state">state</span>
+                        ><span class="route">turn:failed</span><span class="native-type">turn:failed</span></span
+                      ><span class="badge service-turn">turn</span>
                     </summary>
                     <div class="event-body">
                       <p>The response cycle terminated with a provider-visible failure.</p>
                       <pre><code>interface TurnFailedEvent {
-  type: 'turn.failed';
+  type: 'turn:failed';
   turnId?: string;
   error?: string;
 }</code></pre>
@@ -1783,17 +1810,17 @@ unsubscribe();</code></pre>
                     </div>
                   </details>
 
-                  <details class="event-card" data-service="state">
+                  <details class="event-card" data-service="reasoning">
                     <summary>
                       <span class="event-title"
-                        ><span class="route">state:reasoning-started</span
-                        ><span class="native-type">reasoning.started</span></span
-                      ><span class="badge service-state">state</span>
+                        ><span class="route">reasoning:started</span
+                        ><span class="native-type">reasoning:started</span></span
+                      ><span class="badge service-reasoning">reasoning</span>
                     </summary>
                     <div class="event-body">
                       <p>Protocol-authoritative reasoning presence. It never exposes hidden thought text.</p>
                       <pre><code>interface ReasoningStartedEvent {
-  type: 'reasoning.started';
+  type: 'reasoning:started';
   reasoningId?: string;
 }</code></pre>
                       <div class="projection-row">
@@ -1802,34 +1829,34 @@ unsubscribe();</code></pre>
                     </div>
                   </details>
 
-                  <details class="event-card" data-service="state">
+                  <details class="event-card" data-service="reasoning">
                     <summary>
                       <span class="event-title"
-                        ><span class="route">state:reasoning-progress</span
-                        ><span class="native-type">reasoning.progress</span></span
-                      ><span class="badge service-state">state</span>
+                        ><span class="route">reasoning:progress</span
+                        ><span class="native-type">reasoning:progress</span></span
+                      ><span class="badge service-reasoning">reasoning</span>
                     </summary>
                     <div class="event-body">
                       <p>A reasoning pulse. Any raw provider payload remains only on the envelope.</p>
                       <pre><code>interface ReasoningProgressEvent {
-  type: 'reasoning.progress';
+  type: 'reasoning:progress';
   reasoningId?: string;
 }</code></pre>
                       <div class="projection-row"><span class="chip">conversation activity</span></div>
                     </div>
                   </details>
 
-                  <details class="event-card" data-service="state">
+                  <details class="event-card" data-service="reasoning">
                     <summary>
                       <span class="event-title"
-                        ><span class="route">state:reasoning-summary</span
-                        ><span class="native-type">reasoning.summary</span></span
-                      ><span class="badge service-state">state</span>
+                        ><span class="route">reasoning:summary</span
+                        ><span class="native-type">reasoning:summary</span></span
+                      ><span class="badge service-reasoning">reasoning</span>
                     </summary>
                     <div class="event-body">
                       <p>An explicitly user-displayable reasoning summary accumulated by the adapter.</p>
                       <pre><code>interface ReasoningSummaryEvent {
-  type: 'reasoning.summary';
+  type: 'reasoning:summary';
   reasoningId?: string;
   text: string;
   final?: boolean;
@@ -1838,17 +1865,17 @@ unsubscribe();</code></pre>
                     </div>
                   </details>
 
-                  <details class="event-card" data-service="state">
+                  <details class="event-card" data-service="reasoning">
                     <summary>
                       <span class="event-title"
-                        ><span class="route">state:reasoning-completed</span
-                        ><span class="native-type">reasoning.completed</span></span
-                      ><span class="badge service-state">state</span>
+                        ><span class="route">reasoning:completed</span
+                        ><span class="native-type">reasoning:completed</span></span
+                      ><span class="badge service-reasoning">reasoning</span>
                     </summary>
                     <div class="event-body">
                       <p>The explicit reasoning phase ended.</p>
                       <pre><code>interface ReasoningCompletedEvent {
-  type: 'reasoning.completed';
+  type: 'reasoning:completed';
   reasoningId?: string;
 }</code></pre>
                       <div class="projection-row">
@@ -1857,17 +1884,17 @@ unsubscribe();</code></pre>
                     </div>
                   </details>
 
-                  <details class="event-card" data-service="state">
+                  <details class="event-card" data-service="tool">
                     <summary>
                       <span class="event-title"
-                        ><span class="route">state:tool-requested</span
-                        ><span class="native-type">tool.requested</span></span
-                      ><span class="badge service-state">state</span>
+                        ><span class="route">tool:requested</span
+                        ><span class="native-type">tool:requested</span></span
+                      ><span class="badge service-tool">tool</span>
                     </summary>
                     <div class="event-body">
                       <p>A tool call was proposed or requested but may not yet be executing.</p>
                       <pre><code>interface ToolRequestedEvent {
-  type: 'tool.requested';
+  type: 'tool:requested';
   toolCallId: string;
   tool: string;
   input?: unknown;
@@ -1879,17 +1906,17 @@ unsubscribe();</code></pre>
                     </div>
                   </details>
 
-                  <details class="event-card" data-service="state">
+                  <details class="event-card" data-service="tool">
                     <summary>
                       <span class="event-title"
-                        ><span class="route">state:tool-started</span
-                        ><span class="native-type">tool.started</span></span
-                      ><span class="badge service-state">state</span>
+                        ><span class="route">tool:started</span
+                        ><span class="native-type">tool:started</span></span
+                      ><span class="badge service-tool">tool</span>
                     </summary>
                     <div class="event-body">
                       <p>A structured or ACP provider confirmed that tool execution began.</p>
                       <pre><code>interface ToolStartedEvent {
-  type: 'tool.started';
+  type: 'tool:started';
   toolCallId: string;
   tool?: string;
   input?: unknown;
@@ -1901,17 +1928,17 @@ unsubscribe();</code></pre>
                     </div>
                   </details>
 
-                  <details class="event-card" data-service="state">
+                  <details class="event-card" data-service="tool">
                     <summary>
                       <span class="event-title"
-                        ><span class="route">state:tool-completed</span
-                        ><span class="native-type">tool.completed</span></span
-                      ><span class="badge service-state">state</span>
+                        ><span class="route">tool:completed</span
+                        ><span class="native-type">tool:completed</span></span
+                      ><span class="badge service-tool">tool</span>
                     </summary>
                     <div class="event-body">
                       <p>A tool call completed successfully.</p>
                       <pre><code>interface ToolCompletedEvent {
-  type: 'tool.completed';
+  type: 'tool:completed';
   toolCallId: string;
   tool?: string;
   output?: unknown;
@@ -1925,16 +1952,16 @@ unsubscribe();</code></pre>
                     </div>
                   </details>
 
-                  <details class="event-card" data-service="state">
+                  <details class="event-card" data-service="tool">
                     <summary>
                       <span class="event-title"
-                        ><span class="route">state:tool-failed</span><span class="native-type">tool.failed</span></span
-                      ><span class="badge service-state">state</span>
+                        ><span class="route">tool:failed</span><span class="native-type">tool:failed</span></span
+                      ><span class="badge service-tool">tool</span>
                     </summary>
                     <div class="event-body">
                       <p>A tool call terminated unsuccessfully.</p>
                       <pre><code>interface ToolFailedEvent {
-  type: 'tool.failed';
+  type: 'tool:failed';
   toolCallId: string;
   tool?: string;
   error?: string;
@@ -1947,17 +1974,17 @@ unsubscribe();</code></pre>
                     </div>
                   </details>
 
-                  <details class="event-card" data-service="state">
+                  <details class="event-card" data-service="interaction">
                     <summary>
                       <span class="event-title"
-                        ><span class="route">state:permission-requested</span
-                        ><span class="native-type">permission.requested</span></span
-                      ><span class="badge service-state">state</span>
+                        ><span class="route">interaction:permission-requested</span
+                        ><span class="native-type">interaction:permission-requested</span></span
+                      ><span class="badge service-interaction">interaction</span>
                     </summary>
                     <div class="event-body">
                       <p>The agent requires user or host authorization for a tool action.</p>
                       <pre><code>interface PermissionRequestedEvent {
-  type: 'permission.requested';
+  type: 'interaction:permission-requested';
   requestId: string;
   toolCallId?: string;
   tool?: string;
@@ -1970,17 +1997,17 @@ unsubscribe();</code></pre>
                     </div>
                   </details>
 
-                  <details class="event-card" data-service="state">
+                  <details class="event-card" data-service="interaction">
                     <summary>
                       <span class="event-title"
-                        ><span class="route">state:permission-resolved</span
-                        ><span class="native-type">permission.resolved</span></span
-                      ><span class="badge service-state">state</span>
+                        ><span class="route">interaction:permission-resolved</span
+                        ><span class="native-type">interaction:permission-resolved</span></span
+                      ><span class="badge service-interaction">interaction</span>
                     </summary>
                     <div class="event-body">
                       <p>A pending permission reached a terminal outcome.</p>
                       <pre><code>interface PermissionResolvedEvent {
-  type: 'permission.resolved';
+  type: 'interaction:permission-resolved';
   requestId: string;
   outcome: 'allowed' | 'denied' | 'dismissed' | 'unknown';
 }</code></pre>
@@ -1990,17 +2017,17 @@ unsubscribe();</code></pre>
                     </div>
                   </details>
 
-                  <details class="event-card" data-service="state">
+                  <details class="event-card" data-service="delegation">
                     <summary>
                       <span class="event-title"
-                        ><span class="route">state:subagent-started</span
-                        ><span class="native-type">subagent.started</span></span
-                      ><span class="badge service-state">state</span>
+                        ><span class="route">delegation:subagent-started</span
+                        ><span class="native-type">delegation:subagent-started</span></span
+                      ><span class="badge service-delegation">delegation</span>
                     </summary>
                     <div class="event-body">
                       <p>A provider-native child actor started delegated work.</p>
                       <pre><code>interface SubagentStartedEvent {
-  type: 'subagent.started';
+  type: 'delegation:subagent-started';
   subagentId: string;
   agentType?: string;
 }</code></pre>
@@ -2010,17 +2037,17 @@ unsubscribe();</code></pre>
                     </div>
                   </details>
 
-                  <details class="event-card" data-service="state">
+                  <details class="event-card" data-service="delegation">
                     <summary>
                       <span class="event-title"
-                        ><span class="route">state:subagent-stopped</span
-                        ><span class="native-type">subagent.stopped</span></span
-                      ><span class="badge service-state">state</span>
+                        ><span class="route">delegation:subagent-stopped</span
+                        ><span class="native-type">delegation:subagent-stopped</span></span
+                      ><span class="badge service-delegation">delegation</span>
                     </summary>
                     <div class="event-body">
                       <p>A provider-native child actor stopped.</p>
                       <pre><code>interface SubagentStoppedEvent {
-  type: 'subagent.stopped';
+  type: 'delegation:subagent-stopped';
   subagentId: string;
 }</code></pre>
                       <div class="projection-row">
@@ -2029,17 +2056,17 @@ unsubscribe();</code></pre>
                     </div>
                   </details>
 
-                  <details class="event-card" data-service="state">
+                  <details class="event-card" data-service="delegation">
                     <summary>
                       <span class="event-title"
-                        ><span class="route">state:task-created</span
-                        ><span class="native-type">task.created</span></span
-                      ><span class="badge service-state">state</span>
+                        ><span class="route">delegation:task-created</span
+                        ><span class="native-type">delegation:task-created</span></span
+                      ><span class="badge service-delegation">delegation</span>
                     </summary>
                     <div class="event-body">
                       <p>A provider task entered the active task set.</p>
                       <pre><code>interface TaskCreatedEvent {
-  type: 'task.created';
+  type: 'delegation:task-created';
   taskId: string;
   description?: string;
   teamName?: string;
@@ -2051,17 +2078,17 @@ unsubscribe();</code></pre>
                     </div>
                   </details>
 
-                  <details class="event-card" data-service="state">
+                  <details class="event-card" data-service="delegation">
                     <summary>
                       <span class="event-title"
-                        ><span class="route">state:task-completed</span
-                        ><span class="native-type">task.completed</span></span
-                      ><span class="badge service-state">state</span>
+                        ><span class="route">delegation:task-completed</span
+                        ><span class="native-type">delegation:task-completed</span></span
+                      ><span class="badge service-delegation">delegation</span>
                     </summary>
                     <div class="event-body">
                       <p>A provider task completed and leaves the active task set.</p>
                       <pre><code>interface TaskCompletedEvent {
-  type: 'task.completed';
+  type: 'delegation:task-completed';
   taskId: string;
   teamName?: string;
   teammateName?: string;
@@ -2072,17 +2099,17 @@ unsubscribe();</code></pre>
                     </div>
                   </details>
 
-                  <details class="event-card" data-service="state">
+                  <details class="event-card" data-service="delegation">
                     <summary>
                       <span class="event-title"
-                        ><span class="route">state:task-updated</span
-                        ><span class="native-type">task.updated</span></span
-                      ><span class="badge service-state">state</span>
+                        ><span class="route">delegation:task-updated</span
+                        ><span class="native-type">delegation:task-updated</span></span
+                      ><span class="badge service-delegation">delegation</span>
                     </summary>
                     <div class="event-body">
                       <p>A provider task reported a lifecycle outside the legacy create/complete pair.</p>
                       <pre><code>interface TaskUpdatedEvent {
-  type: 'task.updated';
+  type: 'delegation:task-updated';
   taskId: string;
   description?: string;
   status: 'proposed' | 'pending' | 'in-progress'
@@ -2099,17 +2126,17 @@ unsubscribe();</code></pre>
                     </div>
                   </details>
 
-                  <details class="event-card" data-service="state">
+                  <details class="event-card" data-service="planning">
                     <summary>
                       <span class="event-title"
-                        ><span class="route">state:plan-updated</span
-                        ><span class="native-type">plan.updated</span></span
-                      ><span class="badge service-state">state</span>
+                        ><span class="route">planning:updated</span
+                        ><span class="native-type">planning:updated</span></span
+                      ><span class="badge service-planning">planning</span>
                     </summary>
                     <div class="event-body">
                       <p>The provider published or replaced its current plan.</p>
                       <pre><code>interface PlanUpdatedEvent {
-  type: 'plan.updated';
+  type: 'planning:updated';
   planId?: string;
   steps: Array&lt;{
     text: string;
@@ -2123,17 +2150,17 @@ unsubscribe();</code></pre>
                     </div>
                   </details>
 
-                  <details class="event-card" data-service="state">
+                  <details class="event-card" data-service="compaction">
                     <summary>
                       <span class="event-title"
-                        ><span class="route">state:compaction-started</span
-                        ><span class="native-type">compaction.started</span></span
-                      ><span class="badge service-state">state</span>
+                        ><span class="route">compaction:started</span
+                        ><span class="native-type">compaction:started</span></span
+                      ><span class="badge service-compaction">compaction</span>
                     </summary>
                     <div class="event-body">
                       <p>The provider began compacting or summarizing context history.</p>
                       <pre><code>interface CompactionStartedEvent {
-  type: 'compaction.started';
+  type: 'compaction:started';
   compactionId?: string;
   trigger?: string;
 }</code></pre>
@@ -2143,17 +2170,17 @@ unsubscribe();</code></pre>
                     </div>
                   </details>
 
-                  <details class="event-card" data-service="state">
+                  <details class="event-card" data-service="compaction">
                     <summary>
                       <span class="event-title"
-                        ><span class="route">state:compaction-completed</span
-                        ><span class="native-type">compaction.completed</span></span
-                      ><span class="badge service-state">state</span>
+                        ><span class="route">compaction:completed</span
+                        ><span class="native-type">compaction:completed</span></span
+                      ><span class="badge service-compaction">compaction</span>
                     </summary>
                     <div class="event-body">
                       <p>The compaction operation ended; omitted outcome means a legacy successful completion.</p>
                       <pre><code>interface CompactionCompletedEvent {
-  type: 'compaction.completed';
+  type: 'compaction:completed';
   compactionId?: string;
   trigger?: string;
   outcome?: 'completed' | 'cancelled' | 'failed'
@@ -2165,17 +2192,17 @@ unsubscribe();</code></pre>
                     </div>
                   </details>
 
-                  <details class="event-card" data-service="state">
+                  <details class="event-card" data-service="delegation">
                     <summary>
                       <span class="event-title"
-                        ><span class="route">state:teammate-idle</span
-                        ><span class="native-type">teammate.idle</span></span
-                      ><span class="badge service-state">state</span>
+                        ><span class="route">delegation:teammate-idle</span
+                        ><span class="native-type">delegation:teammate-idle</span></span
+                      ><span class="badge service-delegation">delegation</span>
                     </summary>
                     <div class="event-body">
                       <p>A team member became idle. Membership and activity remain separate claims.</p>
                       <pre><code>interface TeammateIdleEvent {
-  type: 'teammate.idle';
+  type: 'delegation:teammate-idle';
   membershipId?: string;
   teamId?: string;
   teamName?: string;
@@ -2185,17 +2212,17 @@ unsubscribe();</code></pre>
                     </div>
                   </details>
 
-                  <details class="event-card" data-service="state">
+                  <details class="event-card" data-service="interaction">
                     <summary>
                       <span class="event-title"
-                        ><span class="route">state:question-requested</span
-                        ><span class="native-type">question.requested</span></span
-                      ><span class="badge service-state">state</span>
+                        ><span class="route">interaction:question-requested</span
+                        ><span class="native-type">interaction:question-requested</span></span
+                      ><span class="badge service-interaction">interaction</span>
                     </summary>
                     <div class="event-body">
                       <p>The provider requires one or more structured user answers.</p>
                       <pre><code>interface QuestionRequestedEvent {
-  type: 'question.requested';
+  type: 'interaction:question-requested';
   requestId: string;
   questions: AgentStructuredQuestion[];
 }</code></pre>
@@ -2205,17 +2232,17 @@ unsubscribe();</code></pre>
                     </div>
                   </details>
 
-                  <details class="event-card" data-service="state">
+                  <details class="event-card" data-service="interaction">
                     <summary>
                       <span class="event-title"
-                        ><span class="route">state:question-resolved</span
-                        ><span class="native-type">question.resolved</span></span
-                      ><span class="badge service-state">state</span>
+                        ><span class="route">interaction:question-resolved</span
+                        ><span class="native-type">interaction:question-resolved</span></span
+                      ><span class="badge service-interaction">interaction</span>
                     </summary>
                     <div class="event-body">
                       <p>A structured question request reached a terminal outcome.</p>
                       <pre><code>interface QuestionResolvedEvent {
-  type: 'question.resolved';
+  type: 'interaction:question-resolved';
   requestId: string;
   outcome: 'answered' | 'failed'
     | 'cancelled' | 'superseded';
@@ -2239,13 +2266,13 @@ unsubscribe();</code></pre>
                     <summary>
                       <span class="event-title"
                         ><span class="route">context-window:updated</span
-                        ><span class="native-type">context-window.updated</span></span
+                        ><span class="native-type">context-window:updated</span></span
                       ><span class="badge service-context-window">context</span>
                     </summary>
                     <div class="event-body">
                       <p>A trustworthy provider context measurement. The reducer derives an exact ratio when needed.</p>
                       <pre><code>interface ContextWindowUpdatedEvent {
-  type: 'context-window.updated';
+  type: 'context-window:updated';
   usedTokens: number;
   capacityTokens: number;
   usedPercentage?: number;
@@ -2262,13 +2289,13 @@ unsubscribe();</code></pre>
                     <summary>
                       <span class="event-title"
                         ><span class="route">context-window:invalidated</span
-                        ><span class="native-type">context-window.invalidated</span></span
+                        ><span class="native-type">context-window:invalidated</span></span
                       ><span class="badge service-context-window">context</span>
                     </summary>
                     <div class="event-body">
                       <p>The prior measurement is no longer trustworthy. Invalidation never means zero usage.</p>
                       <pre><code>interface ContextWindowInvalidatedEvent {
-  type: 'context-window.invalidated';
+  type: 'context-window:invalidated';
   reason: 'compacted' | 'history-changed'
     | 'model-changed' | 'provider-reset';
 }</code></pre>
@@ -2289,7 +2316,7 @@ unsubscribe();</code></pre>
                     <summary>
                       <span class="event-title"
                         ><span class="route">conversation:assistant-message</span
-                        ><span class="native-type">assistant.message</span></span
+                        ><span class="native-type">conversation:assistant-message</span></span
                       ><span class="badge service-conversation">conversation</span>
                     </summary>
                     <div class="event-body">
@@ -2298,7 +2325,7 @@ unsubscribe();</code></pre>
                         correlation.
                       </p>
                       <pre><code>interface AssistantMessageEvent {
-  type: 'assistant.message';
+  type: 'conversation:assistant-message';
   messageId?: string;
   turnId?: string;
   text: string;
@@ -2324,13 +2351,13 @@ unsubscribe();</code></pre>
                   <details class="event-card" data-service="usage">
                     <summary>
                       <span class="event-title"
-                        ><span class="route">usage:tokens-used</span><span class="native-type">tokens.used</span></span
+                        ><span class="route">usage:tokens-used</span><span class="native-type">usage:tokens-used</span></span
                       ><span class="badge service-usage">usage</span>
                     </summary>
                     <div class="event-body">
                       <p>A response- or sample-bound usage fact with stable identity and canonicality.</p>
                       <pre><code>interface TokensUsedEvent {
-  type: 'tokens.used';
+  type: 'usage:tokens-used';
   usageId: string;
   boundary: 'response' | 'sample';
   canonical: boolean;
@@ -2367,13 +2394,13 @@ unsubscribe();</code></pre>
                     <summary>
                       <span class="event-title"
                         ><span class="route">workflow:updated</span
-                        ><span class="native-type">workflow.updated</span></span
+                        ><span class="native-type">workflow:updated</span></span
                       ><span class="badge service-workflow">workflow</span>
                     </summary>
                     <div class="event-body">
                       <p>Repeated workflow ids update the same run; omitted members preserve identity-only evidence.</p>
                       <pre><code>interface WorkflowUpdatedEvent {
-  type: 'workflow.updated';
+  type: 'workflow:updated';
   workflowId: string;
   name?: string;
   active: boolean;
@@ -2395,32 +2422,108 @@ unsubscribe();</code></pre>
                 <div class="service-header">
                   <h3>Environment service</h3>
                   <span class="badge service-environment">1 route</span>
-                  <p>Sparse effective/configured execution environment updates.</p>
+                  <p>Sparse filesystem and Git environment updates.</p>
                 </div>
                 <div class="event-list">
                   <details class="event-card" data-service="environment">
                     <summary>
                       <span class="event-title"
                         ><span class="route">environment:updated</span
-                        ><span class="native-type">session.environment.updated</span></span
+                        ><span class="native-type">environment:updated</span></span
                       ><span class="badge service-environment">environment</span>
                     </summary>
                     <div class="event-body">
                       <p>Omitted fields preserve prior values; null explicitly clears nullable facts.</p>
-                      <pre><code>interface SessionEnvironmentUpdatedEvent {
-  type: 'session.environment.updated';
-  intent?: 'configured' | 'observed';
+                      <pre><code>interface EnvironmentUpdatedEvent {
+  type: 'environment:updated';
   currentCwd?: string | null;
-  model?: AgentModelIdentity | null;
   git?: AgentGitState | null;
-  effort?: string | null;
-  providerSessionMode?: AgentProviderMode | null;
-  providerPermissionMode?: AgentProviderMode | null;
 }</code></pre>
                       <div class="projection-row">
                         <span class="chip">state.environment</span><span class="chip">git observer rebinding</span
-                        ><span class="chip">monitor environment/model/mode</span>
+                        ><span class="chip">monitor environment</span>
                       </div>
+                    </div>
+                  </details>
+                </div>
+              </section>
+
+              <section class="service-section" id="service-model" data-section-service="model">
+                <div class="service-header">
+                  <h3>Model service</h3>
+                  <span class="badge service-model">1 route</span>
+                  <p>Configured intent and effective model observations stay independent from filesystem state.</p>
+                </div>
+                <div class="event-list">
+                  <details class="event-card" data-service="model">
+                    <summary>
+                      <span class="event-title"
+                        ><span class="route">model:updated</span><span class="native-type">model:updated</span></span
+                      ><span class="badge service-model">model</span>
+                    </summary>
+                    <div class="event-body">
+                      <p>Null explicitly clears the model; intent distinguishes requested configuration from observation.</p>
+                      <pre><code>interface ModelUpdatedEvent {
+  type: 'model:updated';
+  intent?: 'configured' | 'observed';
+  model: AgentModelIdentity | null;
+}</code></pre>
+                      <div class="projection-row">
+                        <span class="chip">state.environment.model</span><span class="chip">monitor model</span>
+                      </div>
+                    </div>
+                  </details>
+                </div>
+              </section>
+
+              <section class="service-section" id="service-effort" data-section-service="effort">
+                <div class="service-header">
+                  <h3>Effort service</h3>
+                  <span class="badge service-effort">1 route</span>
+                  <p>Configured intent and effective reasoning-effort observations.</p>
+                </div>
+                <div class="event-list">
+                  <details class="event-card" data-service="effort">
+                    <summary>
+                      <span class="event-title"
+                        ><span class="route">effort:updated</span><span class="native-type">effort:updated</span></span
+                      ><span class="badge service-effort">effort</span>
+                    </summary>
+                    <div class="event-body">
+                      <p>Effort is monitor evidence and does not mutate unrelated Agent state.</p>
+                      <pre><code>interface EffortUpdatedEvent {
+  type: 'effort:updated';
+  intent?: 'configured' | 'observed';
+  effort: string | null;
+}</code></pre>
+                      <div class="projection-row"><span class="chip">monitor effort</span></div>
+                    </div>
+                  </details>
+                </div>
+              </section>
+
+              <section class="service-section" id="service-mode" data-section-service="mode">
+                <div class="service-header">
+                  <h3>Mode service</h3>
+                  <span class="badge service-mode">1 route</span>
+                  <p>Provider session and permission modes share a focused category with an explicit discriminator.</p>
+                </div>
+                <div class="event-list">
+                  <details class="event-card" data-service="mode">
+                    <summary>
+                      <span class="event-title"
+                        ><span class="route">mode:updated</span><span class="native-type">mode:updated</span></span
+                      ><span class="badge service-mode">mode</span>
+                    </summary>
+                    <div class="event-body">
+                      <p>The mode kind prevents session and permission settings from overwriting one another.</p>
+                      <pre><code>interface ModeUpdatedEvent {
+  type: 'mode:updated';
+  intent?: 'configured' | 'observed';
+  modeKind: 'provider-session' | 'provider-permission';
+  mode: AgentProviderMode | null;
+}</code></pre>
+                      <div class="projection-row"><span class="chip">monitor mode</span></div>
                     </div>
                   </details>
                 </div>
@@ -2437,13 +2540,13 @@ unsubscribe();</code></pre>
                     <summary>
                       <span class="event-title"
                         ><span class="route">workspace:changed</span
-                        ><span class="native-type">workspace.changed</span></span
+                        ><span class="native-type">workspace:changed</span></span
                       ><span class="badge service-workspace">workspace</span>
                     </summary>
                     <div class="event-body">
                       <p>One or more workspace paths changed; paths may be unavailable on coarse evidence surfaces.</p>
                       <pre><code>interface WorkspaceChangedEvent {
-  type: 'workspace.changed';
+  type: 'workspace:changed';
   paths?: string[];
 }</code></pre>
                       <div class="projection-row">
@@ -2465,13 +2568,13 @@ unsubscribe();</code></pre>
                     <summary>
                       <span class="event-title"
                         ><span class="route">process:started</span
-                        ><span class="native-type">process.started</span></span
+                        ><span class="native-type">process:started</span></span
                       ><span class="badge service-process">process</span>
                     </summary>
                     <div class="event-body">
                       <p>The host observed the provider process start.</p>
                       <pre><code>interface ProcessStartedEvent {
-  type: 'process.started';
+  type: 'process:started';
   pid: number;
 }</code></pre>
                       <div class="projection-row">
@@ -2483,13 +2586,13 @@ unsubscribe();</code></pre>
                   <details class="event-card" data-service="process">
                     <summary>
                       <span class="event-title"
-                        ><span class="route">process:exited</span><span class="native-type">process.exited</span></span
+                        ><span class="route">process:exited</span><span class="native-type">process:exited</span></span
                       ><span class="badge service-process">process</span>
                     </summary>
                     <div class="event-body">
                       <p>The host process ended with normalized reason and optional platform exit details.</p>
                       <pre><code>interface ProcessExitedEvent {
-  type: 'process.exited';
+  type: 'process:exited';
   exitCode?: number;
   signal?: string;
   reason: ProcessExitReason;
@@ -2539,7 +2642,7 @@ unsubscribe();</code></pre>
                   <details class="event-card" data-service="monitor">
                     <summary>
                       <span class="event-title"
-                        ><span class="route">monitor:batch</span><span class="native-type">monitor.batch</span></span
+                        ><span class="route">monitor:batch</span><span class="native-type">monitor:batch</span></span
                       ><span class="badge service-monitor">monitor</span>
                     </summary>
                     <div class="event-body">
@@ -2548,7 +2651,7 @@ unsubscribe();</code></pre>
                         watermarks, and capabilities.
                       </p>
                       <pre><code>interface MonitorObservationBatchEvent {
-  type: 'monitor.batch';
+  type: 'monitor:batch';
   batch: AdapterMonitorObservationBatch;
 }
 
@@ -2594,7 +2697,7 @@ interface AdapterMonitorObservationBatch {
                     <summary>
                       <span class="event-title"
                         ><span class="route">adapter:native-event</span
-                        ><span class="native-type">adapter.native-event</span></span
+                        ><span class="native-type">adapter:native-event</span></span
                       ><span class="badge service-adapter">adapter</span>
                     </summary>
                     <div class="event-body">
@@ -2603,7 +2706,7 @@ interface AdapterMonitorObservationBatch {
                         pretending to understand it.
                       </p>
                       <pre><code>interface UnknownNativeEvent {
-  type: 'adapter.native-event';
+  type: 'adapter:native-event';
   adapter: string;
   nativeType?: string;
   diagnostic?: {
@@ -2628,8 +2731,9 @@ interface AdapterMonitorObservationBatch {
             <h2>Agent snapshots</h2>
             <p class="section-note">
               Snapshots are derived views, not alternate event sources. Read them for current state; subscribe for
-              subsequent change. State reducer maps are live JavaScript <span class="mono">Map</span> values, while the
-              conversation snapshot is a provider-neutral UI projection.
+              subsequent change. State snapshots preserve JavaScript <span class="mono">Map</span> ergonomics but own
+              defensive copies of reducer collections; mutating a returned snapshot cannot alter the Agent. Conversation
+              snapshots follow the same copy-on-read rule, while operational monitor snapshots are deeply frozen.
             </p>
 
             <h3>SessionRuntimeState</h3>
@@ -3156,10 +3260,22 @@ type MonitorFamilyUpdate =
         const filterButtons = [...document.querySelectorAll('[data-filter]')];
         let selectedFilter = 'all';
 
+        const behaviorCategories = [
+          'session',
+          'turn',
+          'reasoning',
+          'tool',
+          'interaction',
+          'delegation',
+          'planning',
+          'compaction',
+        ];
+
         const filterGroup = (service) => {
           if (selectedFilter === 'all') return true;
+          if (selectedFilter === 'behavior') return behaviorCategories.includes(service);
           if (selectedFilter === 'other') {
-            return !['state', 'context-window', 'conversation', 'monitor'].includes(service);
+            return ![...behaviorCategories, 'context-window', 'conversation', 'monitor'].includes(service);
           }
           return service === selectedFilter;
         };

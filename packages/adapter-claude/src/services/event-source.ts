@@ -16,6 +16,8 @@ export interface ClaudeEventPublication {
   turnId?: string;
   agentId?: string;
   agentType?: string;
+  actorKey?: string;
+  actorRole?: 'child' | 'auxiliary' | 'unknown';
   providerVersion?: string;
   confidence?: AgentEventConfidence;
   native?: unknown;
@@ -43,6 +45,8 @@ export class ClaudeEventSource {
         turnId: publication.turnId,
         agentId: publication.agentId,
         agentType: publication.agentType,
+        actorKey: publication.actorKey,
+        actorRole: publication.actorRole,
         providerVersion: publication.providerVersion ?? this.options.providerVersion,
         timestamp: publication.timestamp,
         monotonicTime: performance.now(),

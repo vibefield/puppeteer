@@ -39,7 +39,7 @@ export function grokExtensionEvents(method: string, params: Record<string, unkno
       ? (params.update as Record<string, unknown>)
       : undefined;
   const nativeType = typeof update?.sessionUpdate === 'string' ? update.sessionUpdate : method;
-  return [{ type: 'adapter.native-event', adapter: 'grok', nativeType }];
+  return [{ type: 'adapter:native-event', adapter: 'grok', nativeType }];
 }
 
 /** Grok-only extensions without cross-provider semantics → adapter fallback. */
@@ -52,7 +52,7 @@ export function normalizeGrokExtension(
   if (!nativeType || !GROK_EXTENSION_UPDATES.has(nativeType)) return undefined;
   return [
     observed(
-      { type: 'adapter.native-event', adapter: 'grok', nativeType },
+      { type: 'adapter:native-event', adapter: 'grok', nativeType },
       promptId,
       'native-log',
       GROK_SOURCE_ONLY_UPDATES.has(nativeType) ? 'inferred' : 'authoritative',

@@ -123,7 +123,7 @@ describe('normalization lab projection', () => {
     expect(replayed).toEqual(first);
     expect(first.traces.map((trace) => trace.nativeSequence)).toEqual([1, 2, 3, 4, 5]);
     expect(first.traces.map((trace) => trace.disposition)).toEqual(['mapped', 'mapped', 'mapped', 'mapped', 'mapped']);
-    expect(first.traces[2]!.events.map((event) => event.event.type)).toEqual(['tool.requested']);
+    expect(first.traces[2]!.events.map((event) => event.event.type)).toEqual(['tool:requested']);
     expect(first.traces[2]!.changes.some((change) => change.path === 'tools')).toBe(true);
     expect(first.state).toMatchObject({
       lifecycle: 'ready',
@@ -137,7 +137,7 @@ describe('normalization lab projection', () => {
     expect(update.traces).toHaveLength(1);
     expect(update.traces[0]).toMatchObject({ disposition: 'retained-native' });
     expect(update.traces[0]!.events[0]!.event).toMatchObject({
-      type: 'adapter.native-event',
+      type: 'adapter:native-event',
       nativeType: 'FutureHook',
     });
     expect(update.state).toMatchObject({ counters: { unknownEvents: 1 } });
@@ -209,7 +209,7 @@ describe('normalization lab projection', () => {
     ]);
     expect(snapshot.traces[1]!.events).toEqual([]);
     expect(snapshot.traces[2]!.events[0]!.event).toMatchObject({
-      type: 'turn.started',
+      type: 'turn:started',
       turnId: 'turn-1',
       prompt: 'hello',
     });
@@ -284,7 +284,7 @@ describe('normalization lab projection', () => {
       confidence: 'authoritative',
       promptId: '0',
       turnId: '0',
-      event: { type: 'turn.started', prompt: 'hello' },
+      event: { type: 'turn:started', prompt: 'hello' },
     });
     expect(first.traces[6]!.explanation).toContain('avoid double counting');
     expect(first.state).toMatchObject({
@@ -397,12 +397,12 @@ describe('normalization lab projection', () => {
     expect(first.traces[3]!.events[0]).toMatchObject({
       promptId: 'msg-user',
       turnId: 'msg-user',
-      event: { type: 'assistant.message', messageId: 'msg-assistant', text: 'hi', final: true },
+      event: { type: 'conversation:assistant-message', messageId: 'msg-assistant', text: 'hi', final: true },
     });
     expect(first.traces[3]!.native).toEqual(records[3]);
     expect(first.traces[3]!.events[0]).toMatchObject({ source: 'native-protocol', confidence: 'authoritative' });
     expect(first.traces[7]!.events[0]!.event).toMatchObject({
-      type: 'adapter.native-event',
+      type: 'adapter:native-event',
       adapter: 'opencode',
       nativeType: 'future.event',
     });

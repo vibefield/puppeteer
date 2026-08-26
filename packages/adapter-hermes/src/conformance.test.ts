@@ -31,7 +31,7 @@ function waitForTurnSettlement(session: Awaited<ReturnType<typeof createHermesTu
   return new Promise<void>((resolve, reject) => {
     const timer = setTimeout(() => reject(new Error('turn did not settle')), 2_000);
     const off = session.onEvent(({ event }) => {
-      if (event.type === 'turn.completed' || event.type === 'turn.failed') {
+      if (event.type === 'turn:completed' || event.type === 'turn:failed') {
         clearTimeout(timer);
         off();
         resolve();

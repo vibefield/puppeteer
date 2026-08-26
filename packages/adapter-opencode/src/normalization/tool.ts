@@ -61,7 +61,7 @@ export class OpenCodeToolNormalizer {
       boundedOpenCodeMapSet(this.states, callId, 'requested', this.maximum);
       return {
         join,
-        event: { type: 'tool.requested', toolCallId: callId, tool, input: state.input, presentation: shown },
+        event: { type: 'tool:requested', toolCallId: callId, tool, input: state.input, presentation: shown },
       };
     }
     if (status === 'running') {
@@ -69,7 +69,7 @@ export class OpenCodeToolNormalizer {
       boundedOpenCodeMapSet(this.states, callId, 'running', this.maximum);
       return {
         join,
-        event: { type: 'tool.started', toolCallId: callId, tool, input: state.input, presentation: shown },
+        event: { type: 'tool:started', toolCallId: callId, tool, input: state.input, presentation: shown },
       };
     }
     if (status === 'completed') {
@@ -80,7 +80,7 @@ export class OpenCodeToolNormalizer {
       return {
         join,
         event: {
-          type: 'tool.completed',
+          type: 'tool:completed',
           toolCallId: callId,
           tool,
           output: state.output,
@@ -94,7 +94,7 @@ export class OpenCodeToolNormalizer {
       return {
         join,
         event: {
-          type: 'tool.failed',
+          type: 'tool:failed',
           toolCallId: callId,
           tool,
           error: openCodeError(state.error),

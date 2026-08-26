@@ -4,41 +4,45 @@ import { join } from 'node:path';
 import { describe, expect, it } from 'vitest';
 import {
   claudeContextWindowEvent,
-  claudeEnvironmentEvent,
+  claudeEnvironmentEvents,
   claudeSubagentStatusTasks,
   resolveClaudeStatusChannels,
   resolveClaudeStatusLine,
 } from './status-channel.js';
 
-describe('claudeEnvironmentEvent', () => {
+describe('claudeEnvironmentEvents', () => {
   it('extracts the live workspace cwd and human-facing model card', () => {
     expect(
-      claudeEnvironmentEvent({
+      claudeEnvironmentEvents({
         cwd: '/old',
         workspace: { current_dir: '/repo/packages/app' },
         model: { id: 'claude-opus-4-6', display_name: 'Opus 4.6' },
         effort: { level: 'xhigh' },
       }),
-    ).toEqual({
-      type: 'session.environment.updated',
-      intent: 'observed',
-      currentCwd: '/repo/packages/app',
-      model: { id: 'claude-opus-4-6', displayName: 'Opus 4.6', provider: 'anthropic' },
-      effort: 'xhigh',
-    });
+    ).toEqual([
+      { type: 'environment:updated', currentCwd: '/repo/packages/app' },
+      {
+        type: 'model:updated',
+        intent: 'observed',
+        model: { id: 'claude-opus-4-6', displayName: 'Opus 4.6', provider: 'anthropic' },
+      },
+      { type: 'effort:updated', intent: 'observed', effort: 'xhigh' },
+    ]);
   });
 
   it('retracts observed effort when the active model omits unsupported effort', () => {
     expect(
-      claudeEnvironmentEvent({
+      claudeEnvironmentEvents({
         model: { id: 'claude-haiku-4-5-20251001', display_name: 'Haiku 4.5' },
       }),
-    ).toEqual({
-      type: 'session.environment.updated',
-      intent: 'observed',
-      model: { id: 'claude-haiku-4-5-20251001', displayName: 'Haiku 4.5', provider: 'anthropic' },
-      effort: null,
-    });
+    ).toEqual([
+      {
+        type: 'model:updated',
+        intent: 'observed',
+        model: { id: 'claude-haiku-4-5-20251001', displayName: 'Haiku 4.5', provider: 'anthropic' },
+      },
+      { type: 'effort:updated', intent: 'observed', effort: null },
+    ]);
   });
 });
 
@@ -58,7 +62,7 @@ describe('claudeContextWindowEvent', () => {
         },
       }),
     ).toEqual({
-      type: 'context-window.updated',
+      type: 'context-window:updated',
       usedTokens: 15_500,
       capacityTokens: 200_000,
       percentageSource: 'derived',
@@ -68,7 +72,7 @@ describe('claudeContextWindowEvent', () => {
 
   it('invalidates the previous value when Claude reports null after startup/compaction', () => {
     expect(claudeContextWindowEvent({ context_window: { context_window_size: 200_000, current_usage: null } })).toEqual(
-      { type: 'context-window.invalidated', reason: 'provider-reset' },
+      { type: 'context-window:invalidated', reason: 'provider-reset' },
     );
   });
 
@@ -84,7 +88,7 @@ describe('claudeContextWindowEvent', () => {
         },
       }),
     ).toEqual({
-      type: 'context-window.updated',
+      type: 'context-window:updated',
       usedTokens: 0,
       capacityTokens: 200_000,
       modelId: 'claude-haiku-4-5-20251001',
@@ -98,7 +102,7 @@ describe('claudeContextWindowEvent', () => {
         context_window: { context_window_size: 1_000_000, current_usage: {}, used_percentage: 13 },
       }),
     ).toEqual({
-      type: 'context-window.updated',
+      type: 'context-window:updated',
       usedTokens: 130_000,
       capacityTokens: 1_000_000,
       usedPercentage: 13,
@@ -117,7 +121,7 @@ describe('claudeContextWindowEvent', () => {
         },
       }),
     ).toEqual({
-      type: 'context-window.updated',
+      type: 'context-window:updated',
       usedTokens: 55_000,
       capacityTokens: 200_000,
       usedPercentage: 27.5,
@@ -141,7 +145,7 @@ describe('claudeContextWindowEvent', () => {
         },
       }),
     ).toEqual({
-      type: 'context-window.updated',
+      type: 'context-window:updated',
       usedTokens: 15_000,
       capacityTokens: 200_000,
       usedPercentage: 19.5,

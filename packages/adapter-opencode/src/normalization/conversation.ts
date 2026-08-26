@@ -7,5 +7,5 @@ export function normalizeOpenCodeAssistantMessage(
   text: string,
   final: boolean,
 ): AgentEvent {
-  return { type: 'assistant.message', messageId, turnId, text, final };
+  return { type: 'conversation:assistant-message', messageId, turnId, text, final };
 }

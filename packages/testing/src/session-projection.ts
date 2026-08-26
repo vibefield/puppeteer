@@ -34,7 +34,7 @@ export function projectAgentEvents(
   const monitorBatches: AdapterMonitorObservationBatch[] = [];
   const unsubscribe = session.onEvent((envelope) => {
     envelopes.push(envelope);
-    if (envelope.event.type === 'monitor.batch') {
+    if (envelope.event.type === 'monitor:batch') {
       monitorBatches.push(envelope.event.batch);
       return;
     }

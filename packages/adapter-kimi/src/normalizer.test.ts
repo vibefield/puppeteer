@@ -21,28 +21,30 @@ describe('KimiWireNormalizer', () => {
 
     expect(events.map((event) => event.type)).toEqual(
       expect.arrayContaining([
-        'session.environment.updated',
-        'turn.started',
-        'reasoning.started',
-        'assistant.message',
-        'reasoning.completed',
-        'turn.completed',
+        'environment:updated',
+        'model:updated',
+        'effort:updated',
+        'turn:started',
+        'reasoning:started',
+        'conversation:assistant-message',
+        'reasoning:completed',
+        'turn:completed',
       ]),
     );
-    expect(events.find((event) => event.type === 'turn.started')).toMatchObject({ turnId: '0' });
+    expect(events.find((event) => event.type === 'turn:started')).toMatchObject({ turnId: '0' });
     expect(events.at(-1)).toMatchObject({
-      type: 'turn.completed',
+      type: 'turn:completed',
       turnId: '0',
       stopReason: 'completed',
       lastAssistantMessage: '<redacted:text>',
     });
     const portable = JSON.stringify(events);
     expect(portable).not.toContain('<redacted:think>');
-    expect(events.filter((event) => event.type === 'assistant.message').at(-1)).toMatchObject({
+    expect(events.filter((event) => event.type === 'conversation:assistant-message').at(-1)).toMatchObject({
       text: '<redacted:text>',
       final: true,
     });
-    expect(events.filter((event) => event.type === 'session.environment.updated')).toEqual(
+    expect(events.filter((event) => event.type === 'model:updated')).toEqual(
       expect.arrayContaining([
         expect.objectContaining({
           intent: 'configured',
@@ -69,12 +71,11 @@ describe('KimiWireNormalizer', () => {
       }).events,
     ).toEqual([
       {
-        type: 'session.environment.updated',
-        intent: 'configured',
+        type: 'environment:updated',
         currentCwd: '/repo',
-        model: { id: 'kimi-code/k3', provider: 'moonshot-ai' },
-        effort: 'high',
       },
+      { type: 'model:updated', intent: 'configured', model: { id: 'kimi-code/k3', provider: 'moonshot-ai' } },
+      { type: 'effort:updated', intent: 'configured', effort: 'high' },
     ]);
     expect(
       normalizer.normalize({
@@ -87,28 +88,24 @@ describe('KimiWireNormalizer', () => {
         time: 2,
       }).events,
     ).toEqual([
-      {
-        type: 'session.environment.updated',
-        intent: 'observed',
-        model: { id: 'k3', provider: 'moonshot-ai' },
-        effort: 'high',
-      },
+      { type: 'model:updated', intent: 'observed', model: { id: 'k3', provider: 'moonshot-ai' } },
+      { type: 'effort:updated', intent: 'observed', effort: 'high' },
     ]);
   });
 
   it('maps captured tool success and failure with stable terminal tombstones', () => {
     const success = normalize(capture('tool-success'));
-    expect(success.find((event) => event.type === 'tool.requested')).toMatchObject({
+    expect(success.find((event) => event.type === 'tool:requested')).toMatchObject({
       tool: 'Bash',
       presentation: { kind: 'command' },
     });
-    expect(success.find((event) => event.type === 'tool.completed')).toMatchObject({
+    expect(success.find((event) => event.type === 'tool:completed')).toMatchObject({
       tool: 'Bash',
       output: '<redacted:output>',
     });
 
     const failure = normalize(capture('tool-nonzero'));
-    expect(failure.find((event) => event.type === 'tool.failed')).toMatchObject({
+    expect(failure.find((event) => event.type === 'tool:failed')).toMatchObject({
       tool: 'Bash',
       error: '<redacted:output>',
     });
@@ -120,7 +117,7 @@ describe('KimiWireNormalizer', () => {
       time: 1,
     };
     expect(reordered.normalize(result).events).toEqual([
-      { type: 'tool.completed', toolCallId: 'call-1', output: 'early' },
+      { type: 'tool:completed', toolCallId: 'call-1', output: 'early' },
     ]);
     expect(
       reordered.normalize({
@@ -146,7 +143,7 @@ describe('KimiWireNormalizer', () => {
       event: { type: 'step.begin', turnId: '7', step: 1, uuid: 'step' },
       time: 2,
     });
-    expect(started.events).toEqual([{ type: 'turn.started', turnId: '7', prompt: 'hello' }]);
+    expect(started.events).toEqual([{ type: 'turn:started', turnId: '7', prompt: 'hello' }]);
 
     normalizer.normalize({ type: 'turn.ended', turnId: 7, reason: 'cancelled', time: 3 });
     const late = normalizer.normalize({
@@ -163,7 +160,7 @@ describe('KimiWireNormalizer', () => {
     });
     expect(late).toMatchObject({ disposition: 'retained-native' });
     expect(late.events).toEqual([
-      { type: 'adapter.native-event', adapter: 'kimi', nativeType: 'late:context.append_loop_event:content.part' },
+      { type: 'adapter:native-event', adapter: 'kimi', nativeType: 'late:context.append_loop_event:content.part' },
     ]);
 
     const toolNormalizer = new KimiWireNormalizer();
@@ -193,7 +190,7 @@ describe('KimiWireNormalizer', () => {
     });
     expect(lateTool).toMatchObject({ disposition: 'retained-native', turnId: '8' });
     expect(lateTool.events).toEqual([
-      { type: 'adapter.native-event', adapter: 'kimi', nativeType: 'late:context.append_loop_event:tool.result' },
+      { type: 'adapter:native-event', adapter: 'kimi', nativeType: 'late:context.append_loop_event:tool.result' },
     ]);
   });
 
@@ -209,7 +206,7 @@ describe('KimiWireNormalizer', () => {
       }).events,
     ).toEqual([
       {
-        type: 'permission.requested',
+        type: 'interaction:permission-requested',
         requestId: 'i1',
         toolCallId: 'call-1',
         tool: 'Bash',
@@ -219,9 +216,9 @@ describe('KimiWireNormalizer', () => {
     ]);
     expect(
       normalizer.normalize({ type: 'interaction.resolved', id: 'i1', response: { decision: 'approved' } }).events,
-    ).toEqual([{ type: 'permission.resolved', requestId: 'i1', outcome: 'allowed' }]);
+    ).toEqual([{ type: 'interaction:permission-resolved', requestId: 'i1', outcome: 'allowed' }]);
     expect(normalizer.normalize({ type: 'full_compaction.complete' }).events).toEqual([
-      { type: 'context-window.invalidated', reason: 'compacted' },
+      { type: 'context-window:invalidated', reason: 'compacted' },
     ]);
 
     const info = {
@@ -232,12 +229,12 @@ describe('KimiWireNormalizer', () => {
       subagentType: 'Explore',
     };
     expect(normalizer.normalize({ type: 'task.started', info }).events).toEqual([
-      { type: 'task.created', taskId: 'task-1', description: 'delegate' },
-      { type: 'subagent.started', subagentId: 'agent-1', agentType: 'Explore' },
+      { type: 'delegation:task-created', taskId: 'task-1', description: 'delegate' },
+      { type: 'delegation:subagent-started', subagentId: 'agent-1', agentType: 'Explore' },
     ]);
     expect(normalizer.normalize({ type: 'task.terminated', info: { ...info, status: 'completed' } }).events).toEqual([
-      { type: 'task.completed', taskId: 'task-1' },
-      { type: 'subagent.stopped', subagentId: 'agent-1' },
+      { type: 'delegation:task-completed', taskId: 'task-1' },
+      { type: 'delegation:subagent-stopped', subagentId: 'agent-1' },
     ]);
   });
 
@@ -245,13 +242,13 @@ describe('KimiWireNormalizer', () => {
     const normalizer = new KimiWireNormalizer();
     expect(normalizer.normalize({ type: 'future.record', future: true })).toMatchObject({
       disposition: 'retained-native',
-      events: [{ type: 'adapter.native-event', adapter: 'kimi', nativeType: 'future.record' }],
+      events: [{ type: 'adapter:native-event', adapter: 'kimi', nativeType: 'future.record' }],
     });
     expect(
       normalizer.normalize({ type: 'turn.ended', turnId: 0, reason: 'completed' }, { agentId: 'agent-child' }),
     ).toMatchObject({
       disposition: 'retained-native',
-      events: [{ type: 'adapter.native-event', adapter: 'kimi', nativeType: 'turn.ended' }],
+      events: [{ type: 'adapter:native-event', adapter: 'kimi', nativeType: 'turn.ended' }],
     });
   });
 });

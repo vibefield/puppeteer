@@ -10,7 +10,7 @@ import { defineConfig } from 'vitest/config';
  * "Test timed out in 5000ms" instead of naming the milestone that was missed.
  *
  * `fileParallelism: false` because raising the deadline was not enough: a
- * 15 s wait for `session.started` still expired on a two-core runner, which is
+ * 15 s wait for `session:started` still expired on a two-core runner, which is
  * not slowness, it is contention. Several suites spawning node processes at
  * once starve each other, and node's type stripping means every spawn compiles
  * the source tree afresh. Serial is both honest about what these tests are and,

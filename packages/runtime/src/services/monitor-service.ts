@@ -1,4 +1,4 @@
-import { DEFAULT_MONITOR_FRESHNESS_POLICY } from '@vibecook/puppeteer-core';
+import { AdapterMonitorObservationBatchSchema, DEFAULT_MONITOR_FRESHNESS_POLICY } from '@vibecook/puppeteer-core';
 import type {
   AgentExecutionMode,
   AgentMonitorHandle,
@@ -98,6 +98,18 @@ function artifactRefs(state: AgentMonitorState) {
   return state.workflows.flatMap((workflow) => workflow.artifactRefs);
 }
 
+function freezeMonitorState(state: AgentMonitorState): AgentMonitorState {
+  const seen = new WeakSet<object>();
+  const freeze = (value: unknown): void => {
+    if (typeof value !== 'object' || value === null || seen.has(value)) return;
+    seen.add(value);
+    for (const nested of Array.isArray(value) ? value : Object.values(value)) freeze(nested);
+    Object.freeze(value);
+  };
+  freeze(state);
+  return state;
+}
+
 /** One reducer and source subscription shared by every consumer of a runtime run. */
 export class AgentMonitorService
   implements MonitorHandleSource, AgentProjectionService<AgentMonitorState, RuntimeAgentEventEnvelope>
@@ -154,10 +166,12 @@ export class AgentMonitorService
       allocatedAt: options.allocatedAt,
       ...(options.terminalSessionId ? { terminalSessionId: options.terminalSessionId } : {}),
     });
-    this.published = projectAgentMonitorState(this.accumulator, {
-      asOf: options.allocatedAt,
-      burnRateWindowMs: this.burnRateWindowMs,
-    });
+    this.published = freezeMonitorState(
+      projectAgentMonitorState(this.accumulator, {
+        asOf: options.allocatedAt,
+        burnRateWindowMs: this.burnRateWindowMs,
+      }),
+    );
   }
 
   start(): void {
@@ -181,7 +195,7 @@ export class AgentMonitorService
 
   consume(envelope: RuntimeAgentEventEnvelope, options: { hostProcessEvidence?: boolean } = {}): void {
     if (!this.accepts(envelope)) return;
-    if (envelope.event.type === 'monitor.batch') {
+    if (envelope.event.type === 'monitor:batch') {
       this.acceptSemantic(envelope.event.batch);
       return;
     }
@@ -238,7 +252,7 @@ export class AgentMonitorService
     // the compatibility stream but cannot remove or fail the monitor.
     if (
       !options.hostProcessEvidence &&
-      (envelope.event.type === 'process.exited' || envelope.event.type === 'session.exited')
+      (envelope.event.type === 'process:exited' || envelope.event.type === 'session:exited')
     ) {
       input.updates = input.updates.filter(
         (update) => !(update.family === 'status' && update.operation === 'upsert' && update.value.kind === 'run'),
@@ -248,8 +262,14 @@ export class AgentMonitorService
   }
 
   acceptSemantic(batch: AdapterMonitorObservationBatch): boolean {
+    if (this.closed || this.frozen) return false;
+    const parsed = AdapterMonitorObservationBatchSchema.safeParse(batch);
+    if (!parsed.success) {
+      this.report(new Error(`Adapter emitted invalid monitor batch: ${parsed.error.message}`));
+      return false;
+    }
     const input: RuntimeMonitorObservationBatch = {
-      ...batch,
+      ...parsed.data,
       kind: 'semantic',
       runtimeRunId: this.options.runtimeRunId,
       runtimeEpoch: this.options.runtimeEpoch,
@@ -326,13 +346,13 @@ export class AgentMonitorService
     if (this.frozen) {
       const blockers = this.published.blockers.filter((candidate) => candidate.id !== blockerId);
       const status = blockers.length > 0 ? 'blocked' : this.published.activity ? 'working' : 'idle';
-      this.published = {
+      this.published = freezeMonitorState({
         ...this.published,
         revision: this.published.revision + 1,
         status,
         ...(status === this.published.status ? {} : { statusSince: this.options.clock.now().toISOString() }),
         blockers,
-      };
+      });
       if (this.started) this.publishState(this.published);
       return true;
     }
@@ -478,11 +498,13 @@ export class AgentMonitorService
     this.scheduleLeases(input);
     this.scheduleRateBoundary();
 
-    const candidate = projectAgentMonitorState(this.accumulator, {
-      previous: this.published,
-      asOf: this.options.clock.now().toISOString(),
-      burnRateWindowMs: this.burnRateWindowMs,
-    });
+    const candidate = freezeMonitorState(
+      projectAgentMonitorState(this.accumulator, {
+        previous: this.published,
+        asOf: this.options.clock.now().toISOString(),
+        burnRateWindowMs: this.burnRateWindowMs,
+      }),
+    );
     if (forceUrgent || isUrgentTransition(this.published, candidate, input)) this.flush();
     else this.scheduleFlush();
     return true;
@@ -500,11 +522,13 @@ export class AgentMonitorService
     if (this.closed) return false;
     this.coalesceTask?.cancel();
     this.coalesceTask = undefined;
-    const next = projectAgentMonitorState(this.accumulator, {
-      previous: this.published,
-      asOf: this.options.clock.now().toISOString(),
-      burnRateWindowMs: this.burnRateWindowMs,
-    });
+    const next = freezeMonitorState(
+      projectAgentMonitorState(this.accumulator, {
+        previous: this.published,
+        asOf: this.options.clock.now().toISOString(),
+        burnRateWindowMs: this.burnRateWindowMs,
+      }),
+    );
     const changed = next !== this.published;
     if (changed) {
       this.published = next;
@@ -597,13 +621,16 @@ export class AgentMonitorService
     this.freshnessTask = undefined;
     if (this.closed) return;
     const nowMs = this.options.clock.now().getTime();
-    const boundaries = Object.entries(this.published.freshness.families)
-      .flatMap(([family, freshness]) => {
-        if (!freshness?.asOf || freshness.support === 'unsupported') return [];
-        const at = Date.parse(freshness.asOf) + DEFAULT_MONITOR_FRESHNESS_POLICY.staleAfterMs + 1;
-        return Number.isFinite(at) ? [{ key: `${family}\0${freshness.asOf}`, at }] : [];
-      })
-      .filter((boundary) => !this.publishedFreshnessBoundaries.has(boundary.key));
+    const currentBoundaries = Object.entries(this.published.freshness.families).flatMap(([family, freshness]) => {
+      if (!freshness?.asOf || freshness.support === 'unsupported') return [];
+      const at = Date.parse(freshness.asOf) + DEFAULT_MONITOR_FRESHNESS_POLICY.staleAfterMs + 1;
+      return Number.isFinite(at) ? [{ key: `${family}\0${freshness.asOf}`, at }] : [];
+    });
+    const currentKeys = new Set(currentBoundaries.map(({ key }) => key));
+    for (const key of this.publishedFreshnessBoundaries) {
+      if (!currentKeys.has(key)) this.publishedFreshnessBoundaries.delete(key);
+    }
+    const boundaries = currentBoundaries.filter((boundary) => !this.publishedFreshnessBoundaries.has(boundary.key));
     for (const boundary of boundaries) {
       // A newly installed historical snapshot is already rendered with its
       // current recency; only future fresh -> stale crossings need a pulse.
@@ -624,7 +651,7 @@ export class AgentMonitorService
         .filter((boundary) => boundary.at <= crossedAt && !this.publishedFreshnessBoundaries.has(boundary.key));
       for (const boundary of crossed) this.publishedFreshnessBoundaries.add(boundary.key);
       if (crossed.length > 0) {
-        this.published = { ...this.published, revision: this.published.revision + 1 };
+        this.published = freezeMonitorState({ ...this.published, revision: this.published.revision + 1 });
         if (this.started) this.publishState(this.published);
       }
       this.scheduleFreshnessBoundary();

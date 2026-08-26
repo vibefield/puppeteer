@@ -1,13 +1,12 @@
 import type { TokensUsedEvent } from '@vibecook/puppeteer-core';
+import { claudeOtelActor, type ClaudeOtelActorAttribution } from './actor.js';
 import { claudeOtelEventTimestamp, otelNonNegativeNumber, otelString, type ClaudeOtelLogRecord } from './wire.js';
 
-export interface ClaudeOtelUsageObservation {
+export interface ClaudeOtelUsageObservation extends ClaudeOtelActorAttribution {
   event: TokensUsedEvent;
   timestamp: string;
   sessionId: string;
   promptId?: string;
-  agentId?: string;
-  agentType?: string;
   providerVersion?: string;
   /** Contains only the allow-listed attributes produced by `wire.ts`. */
   nativeEvent: ClaudeOtelLogRecord;
@@ -42,13 +41,11 @@ export function normalizeClaudeOtelUsage(record: ClaudeOtelLogRecord): ClaudeOte
   const meterTokens = (inputTokens ?? 0) + (outputTokens ?? 0);
   const costUsd = otelNonNegativeNumber(record, 'cost_usd');
   const promptId = otelString(record, 'prompt.id');
-  const agentId = otelString(record, 'agent.id') ?? otelString(record, 'agent_id');
-  const agentType =
-    otelString(record, 'agent.type') ?? otelString(record, 'agent.name') ?? otelString(record, 'agent_type');
+  const actor = claudeOtelActor(record);
 
   return {
     event: {
-      type: 'tokens.used',
+      type: 'usage:tokens-used',
       usageId: claudeRequestUsageId(record),
       boundary: 'response',
       canonical: true,
@@ -65,8 +62,7 @@ export function normalizeClaudeOtelUsage(record: ClaudeOtelLogRecord): ClaudeOte
     timestamp: claudeOtelEventTimestamp(record),
     sessionId,
     ...(promptId ? { promptId } : {}),
-    ...(agentId ? { agentId } : {}),
-    ...(agentType ? { agentType } : {}),
+    ...actor,
     ...(record.providerVersion ? { providerVersion: record.providerVersion } : {}),
     nativeEvent: record,
   };

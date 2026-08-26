@@ -11,7 +11,7 @@
  *      terminal capability (the tab the user drives), observing the SAME thread.
  *
  * Owning the thread first is what lets the agent panel leave `preparing`
- * immediately (session.started → ready), matching Claude/Grok. Bare
+ * immediately (session:started → ready), matching Claude/Grok. Bare
  * `codex --remote` only creates a thread on the first prompt, which left the
  * panel stuck on preparing until the user typed.
  *

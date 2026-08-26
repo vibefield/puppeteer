@@ -208,13 +208,13 @@ describe('createAgentRuntime', () => {
     expect('accept' in spawned).toBe(false);
     expect('dispose' in spawned).toBe(false);
 
-    const stateEvents: string[] = [];
+    const turnEvents: string[] = [];
     const contextEvents: number[] = [];
     const conversationEvents: string[] = [];
     let stateSeenByListener: string | undefined;
     let conversationSeenByListener: string | undefined;
-    spawned.on('state:*', (envelope) => stateEvents.push(envelope.type));
-    spawned.on('state:turn-started', () => {
+    spawned.on('turn:*', (envelope) => turnEvents.push(envelope.type));
+    spawned.on('turn:started', () => {
       stateSeenByListener = spawned.state.lifecycle;
     });
     spawned.on('context-window:updated', (envelope) => contextEvents.push(envelope.event.usedTokens));
@@ -227,20 +227,20 @@ describe('createAgentRuntime', () => {
     });
 
     const source = handles.get(spawned.terminalSessionId);
-    source?.emit(testEnvelope({ type: 'turn.started', turnId: 'turn-1', prompt: 'hello' }));
-    source?.emit(testEnvelope({ type: 'context-window.updated', usedTokens: 25, capacityTokens: 100 }));
+    source?.emit(testEnvelope({ type: 'turn:started', turnId: 'turn-1', prompt: 'hello' }));
+    source?.emit(testEnvelope({ type: 'context-window:updated', usedTokens: 25, capacityTokens: 100 }));
     source?.emit(
       testEnvelope({
-        type: 'assistant.message',
+        type: 'conversation:assistant-message',
         turnId: 'turn-1',
         text: 'hi',
         final: true,
         displayOnly: false,
       }),
     );
-    source?.emit(testEnvelope({ type: 'turn.completed', turnId: 'turn-1' }));
+    source?.emit(testEnvelope({ type: 'turn:completed', turnId: 'turn-1' }));
 
-    expect(stateEvents).toEqual(['state:turn-started', 'state:turn-completed']);
+    expect(turnEvents).toEqual(['turn:started', 'turn:completed']);
     expect(stateSeenByListener).toBe('running');
     expect(contextEvents).toEqual([25]);
     expect(conversationEvents).toEqual(['hi']);
@@ -252,6 +252,25 @@ describe('createAgentRuntime', () => {
         expect.objectContaining({ kind: 'assistant', markdown: 'hi', streaming: false }),
       ]),
     );
+    const exposedState = spawned.state;
+    exposedState.counters.toolsCompleted = 99;
+    exposedState.tools.set('forged', { toolCallId: 'forged', state: 'running' });
+    expect(spawned.state.counters.toolsCompleted).toBe(0);
+    expect(spawned.state.tools.has('forged')).toBe(false);
+
+    const exposedInfo = spawned.info;
+    const expectedNativeSessionId = exposedInfo.nativeSession.id;
+    const expectedWorkspaceRoot = exposedInfo.workspace.root;
+    exposedInfo.nativeSession.id = 'forged';
+    exposedInfo.externalRefs.push({ namespace: 'test', id: 'forged', kind: 'other' });
+    exposedInfo.workspace.root = '/forged';
+    expect(spawned.info.nativeSession.id).toBe(expectedNativeSessionId);
+    expect(spawned.info.externalRefs).toHaveLength(0);
+    expect(spawned.info.workspace.root).toBe(expectedWorkspaceRoot);
+
+    const compatibilityInfo = runtime.sessionInfo(spawned.terminalSessionId)!;
+    compatibilityInfo.nativeSession.id = 'also-forged';
+    expect(runtime.sessionInfo(spawned.terminalSessionId)?.nativeSession.id).not.toBe('also-forged');
     await expect(spawned.submitPrompt({ text: 'again' })).resolves.toMatchObject({ status: 'confirmed' });
 
     await runtime.dispose();
@@ -302,9 +321,10 @@ describe('createAgentRuntime', () => {
       monotonicTime: 10,
       source: 'native-protocol',
       confidence: 'authoritative',
-      event: { type: 'turn.started', turnId: 'turn-1' },
+      event: { type: 'turn:started', turnId: 'turn-1' },
     });
     emit({ ...started, sequence: 999 } as AdapterEventCandidate);
+    emit(started);
     emit({
       ...createAdapterEventCandidate({
         sessionId: 'candidate-native-1',
@@ -312,9 +332,9 @@ describe('createAgentRuntime', () => {
         monotonicTime: 11,
         source: 'native-protocol',
         confidence: 'authoritative',
-        event: { type: 'context-window.updated', usedTokens: 10, capacityTokens: 100 },
+        event: { type: 'context-window:updated', usedTokens: 10, capacityTokens: 100 },
       }),
-      event: { type: 'context-window.updated', usedTokens: 'invalid', capacityTokens: 100 },
+      event: { type: 'context-window:updated', usedTokens: 'invalid', capacityTokens: 100 },
     } as unknown as AdapterEventCandidate);
     emit(
       createAdapterEventCandidate({
@@ -323,14 +343,53 @@ describe('createAgentRuntime', () => {
         monotonicTime: 12,
         source: 'native-protocol',
         confidence: 'authoritative',
-        event: { type: 'context-window.updated', usedTokens: 20, capacityTokens: 100 },
+        event: { type: 'context-window:updated', usedTokens: 20, capacityTokens: 100 },
       }),
     );
 
-    expect(delivered.map((envelope) => envelope.type)).toEqual(['state:turn-started', 'context-window:updated']);
+    expect(delivered.map((envelope) => envelope.type)).toEqual(['turn:started', 'context-window:updated']);
     expect(delivered[1]!.sequence).toBe(delivered[0]!.sequence + 1);
     expect(delivered[0]!.sequence).not.toBe(999);
+    expect(errors.some((error) => error.message.includes('invalid candidate metadata'))).toBe(true);
     expect(errors.some((error) => error.message.includes('Adapter emitted invalid context-window:updated'))).toBe(true);
+    await runtime.dispose();
+  });
+
+  it('applies the same strict ingress validation to legacy envelope adapters', async () => {
+    const root = await mkdtemp(join(tmpdir(), 'puppeteer-runtime-legacy-ingress-'));
+    const handles = new Map<string, { emit: (event: AgentEventEnvelope) => void }>();
+    const errors: Error[] = [];
+    const runtime = createAgentRuntime({
+      host,
+      defaultCwd: root,
+      providers: [fakeProvider('legacy', handles)],
+      onError: (error) => errors.push(error),
+    });
+    const spawned = await runtime.spawn({ agent: 'legacy', cwd: root });
+    if ('error' in spawned) throw new Error(spawned.error.message);
+    const delivered: AgentEventEnvelope[] = [];
+    spawned.on('*', (envelope) => delivered.push(envelope));
+    const source = handles.get(spawned.terminalSessionId)!;
+
+    source.emit({
+      ...testEnvelope({ type: 'turn:started', turnId: 'bad-time' }),
+      timestamp: 'August 25, 2026',
+    });
+    source.emit({
+      ...testEnvelope({ type: 'turn:started', turnId: 'bad-category' }),
+      service: 'tool',
+    } as AgentEventEnvelope);
+    source.emit({
+      ...testEnvelope({ type: 'context-window:updated', usedTokens: 10, capacityTokens: 100 }),
+      event: { type: 'context-window:updated', usedTokens: 'invalid', capacityTokens: 100 },
+    } as unknown as AgentEventEnvelope);
+    source.emit(testEnvelope({ type: 'turn:started', turnId: 'valid' }));
+
+    expect(delivered).toHaveLength(1);
+    expect(delivered[0]).toMatchObject({ type: 'turn:started', event: { turnId: 'valid' } });
+    expect(errors.some((error) => error.message.includes('invalid candidate metadata'))).toBe(true);
+    expect(errors.some((error) => error.message.includes('mismatched legacy event category'))).toBe(true);
+    expect(errors.some((error) => error.message.includes('invalid context-window:updated'))).toBe(true);
     await runtime.dispose();
   });
 
@@ -473,22 +532,22 @@ describe('createAgentRuntime', () => {
       });
     const replay = [
       stamp({
-        type: 'tool.started',
+        type: 'tool:started',
         toolCallId: 'tool-1',
         tool: 'command',
         presentation: { kind: 'command', title: 'Running command' },
       }),
       stamp({
-        type: 'tool.completed',
+        type: 'tool:completed',
         toolCallId: 'tool-1',
         tool: 'command',
         presentation: { kind: 'command', title: 'Ran command' },
       }),
-      stamp({ type: 'adapter.native-event', adapter: 'replay', nativeType: 'future/event' }),
-      stamp({ type: 'turn.started', turnId: 'history-turn', prompt: 'Historical question' }),
+      stamp({ type: 'adapter:native-event', adapter: 'replay', nativeType: 'future/event' }),
+      stamp({ type: 'turn:started', turnId: 'history-turn', prompt: 'Historical question' }),
       stamp(
         {
-          type: 'assistant.message',
+          type: 'conversation:assistant-message',
           messageId: 'history-answer',
           turnId: 'history-turn',
           text: 'Historical answer',
@@ -498,7 +557,7 @@ describe('createAgentRuntime', () => {
         'native-transcript',
         true,
       ),
-      stamp({ type: 'turn.completed', turnId: 'history-turn' }),
+      stamp({ type: 'turn:completed', turnId: 'history-turn' }),
     ];
     const provider: AgentProvider = {
       kind: 'replay',
@@ -531,12 +590,12 @@ describe('createAgentRuntime', () => {
       unknownEvents: 1,
     });
     expect(projected.slice(0, replay.length)).toEqual([
-      'tool.started',
-      'tool.completed',
-      'adapter.native-event',
-      'turn.started',
-      'assistant.message',
-      'turn.completed',
+      'tool:started',
+      'tool:completed',
+      'adapter:native-event',
+      'turn:started',
+      'conversation:assistant-message',
+      'turn:completed',
     ]);
     expect(runtime.conversationSnapshot(runtimeSessionId)?.items).toEqual([
       expect.objectContaining({ kind: 'activity', activity: 'command', status: 'completed' }),
@@ -563,16 +622,22 @@ describe('createAgentRuntime', () => {
       expect(runtime.sessionState(created.runtimeSessionId)?.environment.git?.value).toMatchObject({ branch: 'main' });
     });
 
-    handles.get(created.runtimeSessionId)!.emit(
-      testEnvelope(
-        {
-          type: 'session.environment.updated',
-          currentCwd: second,
-          model: { id: 'model-2', displayName: 'Model Two' },
-        },
-        { sequence: 1, sessionId: created.sessionId },
-      ),
-    );
+    handles
+      .get(created.runtimeSessionId)!
+      .emit(
+        testEnvelope(
+          { type: 'environment:updated', currentCwd: second },
+          { sequence: 1, sessionId: created.sessionId },
+        ),
+      );
+    handles
+      .get(created.runtimeSessionId)!
+      .emit(
+        testEnvelope(
+          { type: 'model:updated', model: { id: 'model-2', displayName: 'Model Two' } },
+          { sequence: 2, sessionId: created.sessionId },
+        ),
+      );
     expect(runtime.sessionState(created.runtimeSessionId)?.environment.git).toBeUndefined();
     await vi.waitFor(() => {
       expect(runtime.sessionState(created.runtimeSessionId)?.environment).toMatchObject({
@@ -606,16 +671,16 @@ describe('createAgentRuntime', () => {
         source: 'native-transcript',
       });
 
-    emit(envelope(1, { type: 'turn.started', turnId: 'prompt-1', prompt: 'hello' }));
+    emit(envelope(1, { type: 'turn:started', turnId: 'prompt-1', prompt: 'hello' }));
     emit(
       envelope(2, {
-        type: 'assistant.message',
+        type: 'conversation:assistant-message',
         messageId: 'grok-assistant:prompt-1',
         text: 'hi',
         final: false,
       }),
     );
-    emit(envelope(3, { type: 'turn.completed', turnId: 'prompt-1' }));
+    emit(envelope(3, { type: 'turn:completed', turnId: 'prompt-1' }));
 
     expect(runtime.conversationSnapshot(created.runtimeSessionId)).toMatchObject({
       responding: false,
@@ -653,7 +718,7 @@ describe('createAgentRuntime', () => {
 
     handles.get(created.terminalSessionId)!.emit(
       testEnvelope(
-        { type: 'session.started', nativeSessionId: 'one-native-corrected' },
+        { type: 'session:started', nativeSessionId: 'one-native-corrected' },
         {
           eventId: 'native-session-rotated',
           sequence: 1,
@@ -718,21 +783,21 @@ describe('createAgentRuntime', () => {
     runtime.onEvent((id, envelope) => observed.push(`${id}:${envelope.event.type}`));
     handles
       .get(first.runtimeSessionId)!
-      .emit(testEnvelope({ type: 'session.ready' }, { sequence: 1, sessionId: first.sessionId, source: 'runtime' }));
-    expect(observed).toEqual(['one-runtime-1:session.ready']);
+      .emit(testEnvelope({ type: 'session:ready' }, { sequence: 1, sessionId: first.sessionId, source: 'runtime' }));
+    expect(observed).toEqual(['one-runtime-1:session:ready']);
     handles
       .get(first.runtimeSessionId)!
       .emit(
         testEnvelope(
-          { type: 'assistant.message', text: 'duplicate transcript copy' },
+          { type: 'conversation:assistant-message', text: 'duplicate transcript copy' },
           { sequence: 2, sessionId: first.sessionId, monotonicTime: 2, source: 'native-transcript' },
         ),
       );
-    expect(observed).toEqual(['one-runtime-1:session.ready']);
+    expect(observed).toEqual(['one-runtime-1:session:ready']);
 
     handles.get(first.runtimeSessionId)!.emit(
       testEnvelope(
-        { type: 'turn.started', turnId: 'one-turn', prompt: 'hello' },
+        { type: 'turn:started', turnId: 'one-turn', prompt: 'hello' },
         {
           sequence: 3,
           sessionId: first.sessionId,
@@ -744,7 +809,7 @@ describe('createAgentRuntime', () => {
     );
     handles.get(first.runtimeSessionId)!.emit(
       testEnvelope(
-        { type: 'assistant.message', messageId: 'm1', text: '**hi**', final: false },
+        { type: 'conversation:assistant-message', messageId: 'm1', text: '**hi**', final: false },
         {
           sequence: 4,
           sessionId: first.sessionId,
@@ -1479,7 +1544,7 @@ describe('createAgentRuntime', () => {
 
     handles.get(created.terminalSessionId)!.emit(
       testEnvelope(
-        { type: 'session.ready' },
+        { type: 'session:ready' },
         {
           eventId: 'provider-event-1',
           sourceEventRef: {
@@ -1513,6 +1578,48 @@ describe('createAgentRuntime', () => {
       },
     });
     expect(observed.at(-1)!.sequence).not.toBe(99);
+    const firstRevisionId = observed.at(-1)!.eventId;
+    handles.get(created.terminalSessionId)!.emit(
+      testEnvelope(
+        { type: 'session:ready' },
+        {
+          sourceEventRef: {
+            namespace: 'provider-semantic',
+            eventId: 'provider-event-1',
+            revisionKey: 'response-1:5',
+            sourceGeneration: 3,
+            cursorStart: 100,
+            cursorEnd: 160,
+          },
+          sessionId: created.sessionId,
+          timestamp: '2026-08-16T18:00:01.000Z',
+          monotonicTime: 100,
+        },
+      ),
+    );
+    expect(observed.at(-1)!.eventId).not.toBe(firstRevisionId);
+    const revisedEventId = observed.at(-1)!.eventId;
+    const observedRevisions = observed.length;
+    handles.get(created.terminalSessionId)!.emit(
+      testEnvelope(
+        { type: 'session:ready' },
+        {
+          sourceEventRef: {
+            namespace: 'provider-semantic',
+            eventId: 'provider-event-1',
+            revisionKey: 'response-1:5',
+            sourceGeneration: 3,
+            cursorStart: 100,
+            cursorEnd: 160,
+          },
+          sessionId: created.sessionId,
+          timestamp: '2026-08-16T18:00:02.000Z',
+          monotonicTime: 101,
+        },
+      ),
+    );
+    expect(observed).toHaveLength(observedRevisions);
+    expect(observed.at(-1)!.eventId).toBe(revisedEventId);
     await runtime.dispose();
   });
 
@@ -1623,7 +1730,7 @@ describe('createAgentRuntime', () => {
     expect(observed[0]).toEqual({ epoch: 2, sequence: 1 });
     restoredHarness.emit({
       ...testEnvelope(
-        { type: 'session.ready' },
+        { type: 'session:ready' },
         {
           eventId: 'old-runtime-event',
           sequence: 99,
@@ -1640,7 +1747,7 @@ describe('createAgentRuntime', () => {
     expect(observed).toEqual([{ epoch: 2, sequence: 1 }]);
     restoredHarness.emit(
       testEnvelope(
-        { type: 'session.ready' },
+        { type: 'session:ready' },
         {
           eventId: 'current-provider-event',
           sequence: 1,
@@ -2150,7 +2257,7 @@ describe('createAgentRuntime', () => {
       .get(created.terminalSessionId)!
       .emit(
         testEnvelope(
-          { type: 'session.ready' },
+          { type: 'session:ready' },
           { eventId: 'provider-ready', sequence: 1, sessionId: created.sessionId },
         ),
       );
@@ -2338,7 +2445,7 @@ describe('createAgentRuntime', () => {
       evidence: [],
     };
     const semanticEnvelope = testEnvelope(
-      { type: 'monitor.batch', batch: observation },
+      { type: 'monitor:batch', batch: observation },
       { sessionId: 'monitor-artifact-native' },
     );
     for (const listener of eventListeners) listener(semanticEnvelope);

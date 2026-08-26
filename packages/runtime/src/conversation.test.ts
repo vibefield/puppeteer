@@ -24,9 +24,9 @@ function project(events: AgentEvent[]) {
 describe('AgentConversationService', () => {
   it('updates streaming Markdown in place instead of creating delta rows', () => {
     const snapshot = project([
-      { type: 'turn.started', turnId: 'turn-1', prompt: 'Explain this' },
-      { type: 'assistant.message', messageId: 'm1', text: '**par', final: false },
-      { type: 'assistant.message', messageId: 'm1', text: '**paragraph**', final: true },
+      { type: 'turn:started', turnId: 'turn-1', prompt: 'Explain this' },
+      { type: 'conversation:assistant-message', messageId: 'm1', text: '**par', final: false },
+      { type: 'conversation:assistant-message', messageId: 'm1', text: '**paragraph**', final: true },
     ]);
     expect(snapshot.items).toHaveLength(2);
     expect(snapshot.items[1]).toMatchObject({ kind: 'assistant', markdown: '**paragraph**', streaming: false });
@@ -35,16 +35,16 @@ describe('AgentConversationService', () => {
 
   it('projects explicit reasoning separately from tools and summaries', () => {
     const snapshot = project([
-      { type: 'reasoning.started', reasoningId: 'r1' },
-      { type: 'reasoning.summary', reasoningId: 'r1', text: 'Considered two approaches.', final: false },
+      { type: 'reasoning:started', reasoningId: 'r1' },
+      { type: 'reasoning:summary', reasoningId: 'r1', text: 'Considered two approaches.', final: false },
       {
-        type: 'tool.started',
+        type: 'tool:started',
         toolCallId: 't1',
         tool: 'command',
         presentation: { kind: 'command', title: 'Running command', detail: 'pnpm test' },
       },
-      { type: 'tool.completed', toolCallId: 't1', tool: 'command' },
-      { type: 'reasoning.completed', reasoningId: 'r1' },
+      { type: 'tool:completed', toolCallId: 't1', tool: 'command' },
+      { type: 'reasoning:completed', reasoningId: 'r1' },
     ]);
     expect(snapshot.items).toEqual(
       expect.arrayContaining([
@@ -56,14 +56,41 @@ describe('AgentConversationService', () => {
 
   it('tracks permission and delegated work as independent activities', () => {
     const snapshot = project([
-      { type: 'permission.requested', requestId: 'p1', tool: 'Bash', presentation: 'native-tui' },
-      { type: 'subagent.started', subagentId: 'a1', agentType: 'reviewer' },
-      { type: 'permission.resolved', requestId: 'p1', outcome: 'allowed' },
-      { type: 'subagent.stopped', subagentId: 'a1' },
+      { type: 'interaction:permission-requested', requestId: 'p1', tool: 'Bash', presentation: 'native-tui' },
+      { type: 'delegation:subagent-started', subagentId: 'a1', agentType: 'reviewer' },
+      { type: 'interaction:permission-resolved', requestId: 'p1', outcome: 'allowed' },
+      { type: 'delegation:subagent-stopped', subagentId: 'a1' },
     ]);
     expect(snapshot.items.filter((item) => item.kind === 'activity').map((item) => item.status)).toEqual([
       'completed',
       'completed',
+    ]);
+  });
+
+  it('keeps child internals off the root conversation while retaining explicit delegation', () => {
+    const stamper = createEnvelopeStamper();
+    const projector = new AgentConversationService();
+    const consume = (event: AgentEvent): void => {
+      projector.consume(
+        stamper.next({
+          sessionId: 's',
+          agentId: 'worker-1',
+          agentType: 'reviewer',
+          timestamp: '2026-07-15T00:00:00.000Z',
+          monotonicTime: 0,
+          source: 'native-hook',
+          confidence: 'authoritative',
+          event,
+        }),
+      );
+    };
+
+    consume({ type: 'conversation:assistant-message', text: 'private child response', final: true });
+    consume({ type: 'tool:started', toolCallId: 'child-tool', tool: 'Read' });
+    consume({ type: 'delegation:subagent-started', subagentId: 'worker-1', agentType: 'reviewer' });
+
+    expect(projector.snapshot().items).toEqual([
+      expect.objectContaining({ kind: 'activity', activity: 'subagent', title: 'Delegating to reviewer' }),
     ]);
   });
 
@@ -85,22 +112,22 @@ describe('AgentConversationService', () => {
       );
     };
 
-    consume('prompt-1', { type: 'turn.started', turnId: 'prompt-1', prompt: 'first question' });
+    consume('prompt-1', { type: 'turn:started', turnId: 'prompt-1', prompt: 'first question' });
     consume('prompt-1', {
-      type: 'assistant.message',
+      type: 'conversation:assistant-message',
       messageId: 'grok-assistant:prompt-1',
       text: 'first answer',
       final: false,
     });
-    consume('prompt-1', { type: 'turn.completed', turnId: 'prompt-1' });
-    consume('prompt-2', { type: 'turn.started', turnId: 'prompt-2', prompt: 'second question' });
+    consume('prompt-1', { type: 'turn:completed', turnId: 'prompt-1' });
+    consume('prompt-2', { type: 'turn:started', turnId: 'prompt-2', prompt: 'second question' });
     consume('prompt-2', {
-      type: 'assistant.message',
+      type: 'conversation:assistant-message',
       messageId: 'grok-assistant:prompt-2',
       text: 'second answer',
       final: false,
     });
-    consume('prompt-2', { type: 'turn.completed', turnId: 'prompt-2' });
+    consume('prompt-2', { type: 'turn:completed', turnId: 'prompt-2' });
 
     expect(projector.snapshot()).toMatchObject({
       responding: false,

@@ -78,7 +78,7 @@ describe('Kimi session observer', () => {
       cursorStart: firstBytes,
       cursorEnd: Buffer.byteLength(raw),
     });
-    expect(events.some(({ event }) => event.type === 'tokens.used')).toBe(false);
+    expect(events.some(({ event }) => event.type === 'usage:tokens-used')).toBe(false);
     await observer.stop();
   });
 
@@ -111,11 +111,11 @@ describe('Kimi session observer', () => {
     observer.onEvent((event) => events.push(event));
     await observer.poll();
 
-    expect(events.find((entry) => entry.event.type === 'session.started')?.replay).toBeUndefined();
-    expect(events.filter((entry) => entry.event.type === 'turn.started')).toMatchObject([
+    expect(events.find((entry) => entry.event.type === 'session:started')?.replay).toBeUndefined();
+    expect(events.filter((entry) => entry.event.type === 'turn:started')).toMatchObject([
       { replay: true, event: { turnId: '0', prompt: 'history' } },
     ]);
-    expect(events.find((entry) => entry.event.type === 'turn.completed')).toMatchObject({ replay: true });
+    expect(events.find((entry) => entry.event.type === 'turn:completed')).toMatchObject({ replay: true });
 
     const expectation = observer.expectPrompt('live prompt', 2_000);
     const firstHalf = JSON.stringify({
@@ -126,7 +126,7 @@ describe('Kimi session observer', () => {
     });
     await appendFile(location.wirePath, firstHalf.slice(0, 31));
     await observer.poll();
-    expect(events.filter((entry) => entry.event.type === 'turn.started')).toHaveLength(1);
+    expect(events.filter((entry) => entry.event.type === 'turn:started')).toHaveLength(1);
     await appendFile(location.wirePath, `${firstHalf.slice(31)}\n`);
     await appendFile(
       location.wirePath,
@@ -138,7 +138,7 @@ describe('Kimi session observer', () => {
     await observer.poll();
 
     await expect(expectation.promise).resolves.toEqual({ matched: true, sessionId: 'session-1', text: 'live prompt' });
-    expect(events.filter((entry) => entry.event.type === 'turn.started').at(-1)).toMatchObject({
+    expect(events.filter((entry) => entry.event.type === 'turn:started').at(-1)).toMatchObject({
       replay: false,
       event: { turnId: '1', prompt: 'live prompt' },
     });
@@ -178,9 +178,9 @@ describe('Kimi session observer', () => {
     expect(observer.sessionId()).toBe(sessionId);
     await expect(expectation.promise).resolves.toMatchObject({ matched: true, sessionId });
     expect(events.map((entry) => entry.event.type)).toEqual(
-      expect.arrayContaining(['session.started', 'session.environment.updated', 'turn.started']),
+      expect.arrayContaining(['session:started', 'environment:updated', 'turn:started']),
     );
-    expect(events.find((entry) => entry.event.type === 'turn.started')).toMatchObject({ replay: false });
+    expect(events.find((entry) => entry.event.type === 'turn:started')).toMatchObject({ replay: false });
     await observer.stop();
   });
 
@@ -207,7 +207,7 @@ describe('Kimi session observer', () => {
     await observer.stop();
 
     expect(events.map((entry) => entry.event.type)).toEqual(
-      expect.arrayContaining(['session.started', 'turn.started', 'turn.completed']),
+      expect.arrayContaining(['session:started', 'turn:started', 'turn:completed']),
     );
   });
 });

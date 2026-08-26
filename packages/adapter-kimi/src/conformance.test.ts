@@ -176,7 +176,7 @@ async function createHarness(existing?: DurableStore): Promise<AgentSessionHarne
     driveTurn: async (prompt) => {
       let completed = false;
       const off = session.onEvent((envelope: AgentEventEnvelope) => {
-        if (!envelope.replay && envelope.event.type === 'turn.completed') completed = true;
+        if (!envelope.replay && envelope.event.type === 'turn:completed') completed = true;
       });
       try {
         const receipt = await session.submitPrompt({ text: prompt });
@@ -217,7 +217,7 @@ async function createMonitorHarness(): Promise<AgentMonitorSessionHarness> {
     async closeObservationRail() {
       let degraded = false;
       const off = session.onEvent(({ event }) => {
-        if (event.type === 'monitor.batch' && event.batch.readiness === 'degraded') degraded = true;
+        if (event.type === 'monitor:batch' && event.batch.readiness === 'degraded') degraded = true;
       });
       appendFileSync(join(store.sessionDir, 'agents', 'main', 'wire.jsonl'), '{invalid-monitor-record}\n');
       await waitFor(() => degraded, 'Kimi observation degradation');

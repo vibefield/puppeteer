@@ -101,12 +101,135 @@ function apply(state: MonitorAccumulatorState, inputs: Parameters<typeof reduceM
 }
 
 describe('monitor accumulator', () => {
+  it('keeps root and actor-scoped model and effort claims independently', () => {
+    const state = apply(initial(), [
+      runtime({ type: 'model:updated', model: { id: 'root-model' } }, 1),
+      runtime({ type: 'effort:updated', effort: 'high' }, 2),
+      runtime({ type: 'model:updated', model: { id: 'child-model' } }, 3, {
+        actorKey: 'workflow:worker',
+        actorRole: 'child',
+        agentType: 'worker',
+      }),
+      runtime({ type: 'effort:updated', effort: 'low' }, 4, {
+        actorKey: 'workflow:worker',
+        actorRole: 'child',
+        agentType: 'worker',
+      }),
+    ]);
+
+    expect(projectAgentMonitorState(state)).toMatchObject({
+      model: { id: 'root-model' },
+      effort: { value: 'high' },
+      subagents: [{ modelId: 'child-model', effort: 'low' }],
+    });
+    expect([...state.runtime.entries.values()].filter(({ family }) => family === 'model')).toHaveLength(2);
+  });
+
+  it('keeps root and child lifecycle activities independent when native ids overlap', () => {
+    const child = {
+      actorKey: 'workflow:worker',
+      actorRole: 'child' as const,
+      agentType: 'worker',
+    };
+    let state = apply(initial(), [
+      runtime({ type: 'session:ready' }, 1),
+      runtime({ type: 'turn:started', turnId: 'shared-turn' }, 2),
+      runtime({ type: 'turn:started', turnId: 'shared-turn' }, 3, child),
+      runtime({ type: 'conversation:assistant-message', text: 'root', final: false }, 4),
+      runtime({ type: 'conversation:assistant-message', text: 'child', final: false }, 5, child),
+      runtime({ type: 'reasoning:started', reasoningId: 'shared-reasoning' }, 6),
+      runtime({ type: 'reasoning:started', reasoningId: 'shared-reasoning' }, 7, child),
+      runtime({ type: 'tool:started', toolCallId: 'shared-tool', tool: 'Read' }, 8),
+      runtime({ type: 'tool:started', toolCallId: 'shared-tool', tool: 'Read' }, 9, child),
+    ]);
+
+    expect([...state.runtime.entries.values()].filter(({ value }) => value.kind === 'activity')).toHaveLength(8);
+
+    state = apply(state, [
+      runtime({ type: 'turn:completed', turnId: 'shared-turn' }, 10, child),
+      runtime({ type: 'tool:completed', toolCallId: 'shared-tool' }, 11, child),
+    ]);
+
+    const remaining = [...state.runtime.entries.values()].filter(
+      (entry) => entry.value.kind === 'activity' && entry.value.actor === undefined,
+    );
+    expect(remaining).toHaveLength(4);
+    expect(remaining.map(({ value }) => (value.kind === 'activity' ? value.activityKind : undefined)).sort()).toEqual([
+      'other',
+      'reasoning',
+      'responding',
+      'tool',
+    ]);
+    expect(projectAgentMonitorState(state)).toMatchObject({ status: 'working' });
+  });
+
+  it('does not let actor-scoped process or session events terminate the root run', () => {
+    const child = { actorKey: 'workflow:worker', actorRole: 'child' as const };
+    const state = apply(initial(), [
+      runtime({ type: 'session:ready' }, 1),
+      runtime({ type: 'session:exited', reason: 'child-finished' }, 2, child),
+      runtime({ type: 'process:exited', reason: 'crash', exitCode: 1 }, 3, child),
+    ]);
+
+    expect(projectAgentMonitorState(state)).toMatchObject({ status: 'idle' });
+    expect([...state.runtime.entries.values()].filter(({ value }) => value.kind === 'run')).toHaveLength(1);
+  });
+
+  it('resolves interactions only for the actor that owns the request', () => {
+    const child = { actorKey: 'workflow:worker', actorRole: 'child' as const };
+    let state = apply(initial(), [
+      runtime({ type: 'session:ready' }, 1),
+      runtime({ type: 'interaction:permission-requested', requestId: 'shared', presentation: 'native-tui' }, 2),
+      runtime({ type: 'interaction:permission-requested', requestId: 'shared', presentation: 'native-tui' }, 3, child),
+      runtime({ type: 'interaction:permission-resolved', requestId: 'shared', outcome: 'allowed' }, 4, child),
+    ]);
+
+    expect(projectAgentMonitorState(state).blockers).toEqual([
+      expect.objectContaining({ id: 'shared', kind: 'permission' }),
+    ]);
+    expect(projectAgentMonitorState(state).blockers[0]).not.toHaveProperty('actorRunKey');
+
+    state = apply(state, [
+      runtime({ type: 'interaction:permission-resolved', requestId: 'shared', outcome: 'allowed' }, 5),
+    ]);
+    expect(projectAgentMonitorState(state).blockers).toEqual([]);
+  });
+
+  it('retains actor-local plans, tasks, and compactions with overlapping ids', () => {
+    const child = { actorKey: 'workflow:worker', actorRole: 'child' as const };
+    let state = apply(initial(), [
+      runtime({ type: 'planning:updated', planId: 'shared', steps: [{ text: 'Root', status: 'pending' }] }, 1),
+      runtime({ type: 'planning:updated', planId: 'shared', steps: [{ text: 'Child', status: 'pending' }] }, 2, child),
+      runtime({ type: 'delegation:task-created', taskId: 'shared', description: 'Root task' }, 3),
+      runtime({ type: 'delegation:task-created', taskId: 'shared', description: 'Child task' }, 4, child),
+      runtime({ type: 'compaction:started', compactionId: 'shared' }, 5),
+      runtime({ type: 'compaction:started', compactionId: 'shared' }, 6, child),
+      runtime({ type: 'compaction:completed', compactionId: 'shared' }, 7, child),
+    ]);
+
+    expect([...state.runtime.entries.values()].filter(({ value }) => value.kind === 'plan')).toHaveLength(2);
+    expect(projectAgentMonitorState(state).tasks).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ id: 'shared', description: 'Root task' }),
+        expect.objectContaining({
+          id: 'shared',
+          description: 'Child task',
+          actorRunKey: 'native-1:actor-derived:workflow:worker',
+        }),
+      ]),
+    );
+    expect(projectAgentMonitorState(state).compaction.active).toBe(true);
+
+    state = apply(state, [runtime({ type: 'compaction:completed', compactionId: 'shared' }, 8)]);
+    expect(projectAgentMonitorState(state).compaction.active).toBe(false);
+  });
+
   it('keeps provider context percentage instead of recalculating it from counts', () => {
     const state = reduceMonitorAccumulator(
       initial(),
       runtime(
         {
-          type: 'context-window.updated',
+          type: 'context-window:updated',
           usedTokens: 15_000,
           capacityTokens: 200_000,
           usedPercentage: 19.5,
@@ -127,7 +250,7 @@ describe('monitor accumulator', () => {
     const state = apply(initial(), [
       runtime(
         {
-          type: 'workflow.updated',
+          type: 'workflow:updated',
           workflowId: 'workflow-1',
           active: false,
           members: [{ agentId: 'worker-a', agentType: 'researcher', state: 'completed' }],
@@ -135,7 +258,7 @@ describe('monitor accumulator', () => {
         1,
         { source: 'native-transcript' },
       ),
-      runtime({ type: 'workflow.updated', workflowId: 'workflow-1', name: 'research', active: true }, 2, {
+      runtime({ type: 'workflow:updated', workflowId: 'workflow-1', name: 'research', active: true }, 2, {
         source: 'native-telemetry',
       }),
     ]);
@@ -153,23 +276,23 @@ describe('monitor accumulator', () => {
 
   it('keeps plans and tasks informational while projecting exact activity priority', () => {
     let state = apply(initial(), [
-      runtime({ type: 'session.ready' }, 1),
-      runtime({ type: 'plan.updated', steps: [{ text: 'Do it', status: 'pending' }] }, 2),
-      runtime({ type: 'task.created', taskId: 'task-1' }, 3),
+      runtime({ type: 'session:ready' }, 1),
+      runtime({ type: 'planning:updated', steps: [{ text: 'Do it', status: 'pending' }] }, 2),
+      runtime({ type: 'delegation:task-created', taskId: 'task-1' }, 3),
     ]);
     const informational = projectAgentMonitorState(state);
     expect(informational.status).toBe('idle');
     expect(informational.activity).toBeUndefined();
 
     state = apply(state, [
-      runtime({ type: 'turn.started', turnId: 'turn-1' }, 4),
-      runtime({ type: 'assistant.message', text: 'partial', final: false }, 5),
-      runtime({ type: 'reasoning.started', reasoningId: 'reason-1' }, 6),
+      runtime({ type: 'turn:started', turnId: 'turn-1' }, 4),
+      runtime({ type: 'conversation:assistant-message', text: 'partial', final: false }, 5),
+      runtime({ type: 'reasoning:started', reasoningId: 'reason-1' }, 6),
       runtime(
-        { type: 'tool.started', toolCallId: 'tool-1', presentation: { kind: 'file-edit', title: 'Editing reducer' } },
+        { type: 'tool:started', toolCallId: 'tool-1', presentation: { kind: 'file-edit', title: 'Editing reducer' } },
         7,
       ),
-      runtime({ type: 'compaction.started', compactionId: 'compact-1' }, 8),
+      runtime({ type: 'compaction:started', compactionId: 'compact-1' }, 8),
     ]);
     expect(projectAgentMonitorState(state)).toMatchObject({
       status: 'working',
@@ -179,11 +302,11 @@ describe('monitor accumulator', () => {
 
   it('retains concurrent blockers and closes permission and question independently', () => {
     let state = apply(initial(), [
-      runtime({ type: 'session.ready' }, 1),
-      runtime({ type: 'permission.requested', requestId: 'permission-1', presentation: 'native-tui' }, 2),
+      runtime({ type: 'session:ready' }, 1),
+      runtime({ type: 'interaction:permission-requested', requestId: 'permission-1', presentation: 'native-tui' }, 2),
       runtime(
         {
-          type: 'question.requested',
+          type: 'interaction:question-requested',
           requestId: 'question-1',
           questions: [{ prompt: 'Choose', options: [{ label: 'A' }, { label: 'B' }] }],
         },
@@ -192,28 +315,32 @@ describe('monitor accumulator', () => {
     ]);
     expect(projectAgentMonitorState(state).blockers.map((blocker) => blocker.kind)).toEqual(['question', 'permission']);
 
-    state = apply(state, [runtime({ type: 'permission.resolved', requestId: 'permission-1', outcome: 'allowed' }, 4)]);
+    state = apply(state, [
+      runtime({ type: 'interaction:permission-resolved', requestId: 'permission-1', outcome: 'allowed' }, 4),
+    ]);
     expect(projectAgentMonitorState(state).blockers.map((blocker) => blocker.id)).toEqual(['question-1']);
 
-    state = apply(state, [runtime({ type: 'question.resolved', requestId: 'question-1', outcome: 'answered' }, 5)]);
+    state = apply(state, [
+      runtime({ type: 'interaction:question-resolved', requestId: 'question-1', outcome: 'answered' }, 5),
+    ]);
     expect(projectAgentMonitorState(state)).toMatchObject({ status: 'idle', blockers: [] });
   });
 
   it('orders failures before questions before permissions, then oldest and lexical id', () => {
     const state = apply(initial(), [
-      runtime({ type: 'session.ready' }, 1),
-      runtime({ type: 'permission.requested', requestId: 'p', presentation: 'native-tui' }, 2),
-      runtime({ type: 'question.requested', requestId: 'q-b', questions: [{ prompt: 'B?' }] }, 4),
-      runtime({ type: 'question.requested', requestId: 'q-a', questions: [{ prompt: 'A?' }] }, 3),
-      runtime({ type: 'turn.failed', turnId: 'turn', error: 'boom' }, 5),
+      runtime({ type: 'session:ready' }, 1),
+      runtime({ type: 'interaction:permission-requested', requestId: 'p', presentation: 'native-tui' }, 2),
+      runtime({ type: 'interaction:question-requested', requestId: 'q-b', questions: [{ prompt: 'B?' }] }, 4),
+      runtime({ type: 'interaction:question-requested', requestId: 'q-a', questions: [{ prompt: 'A?' }] }, 3),
+      runtime({ type: 'turn:failed', turnId: 'turn', error: 'boom' }, 5),
     ]);
     expect(projectAgentMonitorState(state).blockers.map((blocker) => blocker.id)).toEqual(['turn', 'q-a', 'q-b', 'p']);
   });
 
   it('applies complete/partial replacement and swaps a new scope epoch without erasing other planes', () => {
     let state = apply(initial(), [
-      runtime({ type: 'session.ready' }, 1),
-      runtime({ type: 'context-window.updated', usedTokens: 20, capacityTokens: 100 }, 2),
+      runtime({ type: 'session:ready' }, 1),
+      runtime({ type: 'context-window:updated', usedTokens: 20, capacityTokens: 100 }, 2),
       workspace('workspace-1', { kind: 'environment', cwd: '/repo', worktrees: ['/repo/wt'] }),
       semantic(
         'replace-1',
@@ -307,7 +434,7 @@ describe('monitor accumulator', () => {
   });
 
   it('deduplicates stable runtime and semantic identities', () => {
-    const runtimeEvent = runtime({ type: 'task.created', taskId: 'task-1' }, 1, { eventId: 'event-1' });
+    const runtimeEvent = runtime({ type: 'delegation:task-created', taskId: 'task-1' }, 1, { eventId: 'event-1' });
     const first = reduceMonitorAccumulator(initial(), runtimeEvent);
     const duplicate = reduceMonitorAccumulator(first.state, runtimeEvent);
     expect(duplicate).toMatchObject({ accepted: false, notifications: [] });
@@ -617,7 +744,7 @@ describe('monitor accumulator', () => {
   });
 
   it('expires pulse activity only through an explicit reducer input', () => {
-    let state = apply(initial(), [runtime({ type: 'session.ready' }, 1)]);
+    let state = apply(initial(), [runtime({ type: 'session:ready' }, 1)]);
     state = apply(state, [
       semantic('pulse', 'live', [
         {
@@ -655,7 +782,7 @@ describe('monitor accumulator', () => {
           },
         },
       ]);
-    let state = apply(initial(), [runtime({ type: 'session.ready' }, 1), pulse('pulse-1')]);
+    let state = apply(initial(), [runtime({ type: 'session:ready' }, 1), pulse('pulse-1')]);
     state = reduceMonitorAccumulator(state, {
       kind: 'lease-expired',
       runtimeRunId: 'run-1',

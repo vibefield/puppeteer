@@ -12,7 +12,7 @@ export function normalizeClaudeOtelWorkflow(record: ClaudeOtelLogRecord): Claude
   if (!workflowId) return undefined;
   const name = otelString(record, 'workflow.name');
   return {
-    event: { type: 'workflow.updated', workflowId, active: true, ...(name ? { name } : {}) },
+    event: { type: 'workflow:updated', workflowId, active: true, ...(name ? { name } : {}) },
     timestamp: claudeOtelEventTimestamp(record),
   };
 }

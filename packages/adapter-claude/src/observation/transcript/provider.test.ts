@@ -68,20 +68,20 @@ describe('ClaudeTranscriptObservationProvider', () => {
     await handle.poll();
 
     expect(events.filter(({ replay }) => replay).map(({ event }) => event.type)).toEqual([
-      'turn.started',
-      'assistant.message',
-      'turn.completed',
-      'tokens.used',
-      'session.environment.updated',
-      'workflow.updated',
+      'turn:started',
+      'conversation:assistant-message',
+      'turn:completed',
+      'usage:tokens-used',
+      'model:updated',
+      'workflow:updated',
     ]);
-    expect(events.find(({ event }) => event.type === 'tokens.used')?.event).toMatchObject({
+    expect(events.find(({ event }) => event.type === 'usage:tokens-used')?.event).toMatchObject({
       usageId: 'claude-request:request-1',
       totalTokens: 48,
       meterTokens: 16,
     });
-    expect(events.find(({ event }) => event.type === 'workflow.updated')?.event).toEqual({
-      type: 'workflow.updated',
+    expect(events.find(({ event }) => event.type === 'workflow:updated')?.event).toEqual({
+      type: 'workflow:updated',
       workflowId: 'workflow-1',
       active: true,
       members: [
@@ -130,16 +130,45 @@ describe('ClaudeTranscriptObservationProvider', () => {
     handle.onEvent((event) => events.push(event));
     await handle.poll();
 
-    expect(events.filter(({ event }) => event.type === 'assistant.message')).toHaveLength(0);
-    expect(events.filter(({ event }) => event.type === 'tokens.used').map(({ event }) => event)).toEqual([
+    expect(events.filter(({ event }) => event.type === 'conversation:assistant-message')).toHaveLength(0);
+    expect(events.filter(({ event }) => event.type === 'usage:tokens-used').map(({ event }) => event)).toEqual([
       expect.objectContaining({ usageId: 'claude-request:request-child', totalTokens: 30, meterTokens: 10 }),
     ]);
-    expect(events.find(({ event }) => event.type === 'tokens.used')).toMatchObject({
+    expect(events.find(({ event }) => event.type === 'usage:tokens-used')).toMatchObject({
       agentId: 'worker',
       agentType: 'researcher',
       replay: true,
     });
     expect(JSON.stringify(events)).not.toContain('request-foreign');
+    await handle.dispose();
+  });
+
+  it('continues workflow observation when transcript reading fails', async () => {
+    const root = mkdtempSync(join(tmpdir(), 'claude-transcript-isolation-'));
+    roots.push(root);
+    const sessionId = 'session-1';
+    const transcriptPath = join(root, 'transcript.jsonl');
+    mkdirSync(transcriptPath);
+    const workflowDirectory = join(root, sessionId, 'subagents', 'workflows', 'workflow-1');
+    mkdirSync(workflowDirectory, { recursive: true });
+    writeFileSync(
+      join(workflowDirectory, 'journal.jsonl'),
+      `${JSON.stringify({ type: 'started', agentId: 'worker-a' })}\n`,
+    );
+    const provider = new ClaudeTranscriptObservationProvider();
+    const handle = await provider.attach({ nativeSessionId: sessionId, transcriptPath, bootstrap: false });
+    const events: SemanticObservationEvent[] = [];
+    const errors: Error[] = [];
+    handle.onEvent((event) => events.push(event));
+    handle.onError((error) => errors.push(error));
+
+    await handle.poll();
+
+    expect(errors).toHaveLength(1);
+    expect(events.find(({ event }) => event.type === 'workflow:updated')?.event).toMatchObject({
+      workflowId: 'workflow-1',
+      active: true,
+    });
     await handle.dispose();
   });
 });

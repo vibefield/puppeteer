@@ -22,8 +22,8 @@ export class HermesToolNormalizer {
     boundedHermesMapSet(this.toolNames, toolCallId, tool);
     const shown = presentation(tool);
     return [
-      { type: 'tool.requested', toolCallId, tool, presentation: shown },
-      { type: 'tool.started', toolCallId, tool, presentation: shown },
+      { type: 'tool:requested', toolCallId, tool, presentation: shown },
+      { type: 'tool:started', toolCallId, tool, presentation: shown },
     ];
   }
 
@@ -37,7 +37,7 @@ export class HermesToolNormalizer {
     if (blocked) {
       return [
         {
-          type: 'tool.failed',
+          type: 'tool:failed',
           toolCallId,
           tool,
           error: hermesString(result?.error) ?? hermesString(result?.status) ?? 'tool failed',
@@ -48,7 +48,7 @@ export class HermesToolNormalizer {
     const durationMs = typeof payload.duration_s === 'number' ? Math.round(payload.duration_s * 1000) : undefined;
     return [
       {
-        type: 'tool.completed',
+        type: 'tool:completed',
         toolCallId,
         tool,
         ...(result ? { output: result } : {}),

@@ -59,8 +59,8 @@ describe('Hermes adapter against Imposter', () => {
     off();
 
     expect(projection.state.lastAssistantMessage).toBe('SURFACE_HERMES_OK');
-    expect(observed.some((event) => event.event.type === 'turn.started')).toBe(true);
-    expect(observed.some((event) => event.event.type === 'turn.completed')).toBe(true);
+    expect(observed.some((event) => event.event.type === 'turn:started')).toBe(true);
+    expect(observed.some((event) => event.event.type === 'turn:completed')).toBe(true);
     expect(projection.state.lifecycle).toBe('ready');
     projection.dispose();
   }, 20_000);

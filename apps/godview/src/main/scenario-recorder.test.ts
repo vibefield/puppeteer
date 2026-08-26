@@ -16,7 +16,7 @@ function envelope(
     monotonicTime,
     source,
     confidence: 'authoritative',
-    event: { type: 'adapter.native-event', adapter: 'claude-code' },
+    event: { type: 'adapter:native-event', adapter: 'claude-code' },
     nativeEvent,
   };
 }

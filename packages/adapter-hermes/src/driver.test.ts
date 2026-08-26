@@ -70,7 +70,7 @@ describe('Hermes TUI session driver', () => {
       await session.submitPrompt({ text: 'hello' });
       await new Promise((resolve) => setTimeout(resolve, 0));
       const assistant = candidates.find(({ type }) => type === 'conversation:assistant-message');
-      expect(assistant?.event.type).toBe('assistant.message');
+      expect(assistant?.event.type).toBe('conversation:assistant-message');
       expect(assistant).not.toHaveProperty('sequence');
       expect(assistant && safeParseAgentEvent(assistant.type, assistant.event).success).toBe(true);
       expect(candidates.every(({ type }) => type.includes(':'))).toBe(true);
@@ -130,8 +130,8 @@ describe('Hermes TUI session driver', () => {
       gateway.disconnect('test rail loss');
       expect(session.observationLevel()).toBe('terminal-only');
       expect(projection.state.lifecycle).toBe(lifecycle);
-      expect(events).not.toContain('session.exited');
-      expect(events).not.toContain('process.exited');
+      expect(events).not.toContain('session:exited');
+      expect(events).not.toContain('process:exited');
       expect(batches.at(-1)).toMatchObject({ readiness: 'degraded', completeness: 'unavailable' });
 
       gateway.reconnect();

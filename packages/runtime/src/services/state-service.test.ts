@@ -15,17 +15,33 @@ const envelope = (event: Parameters<ReturnType<typeof createEnvelopeStamper>['ne
 describe('AgentStateService', () => {
   it('owns reducer state and ignores monitor-category projection input', () => {
     const service = new AgentStateService();
-    service.consume(envelope({ type: 'turn.started', turnId: 'turn-1' }));
+    service.consume(envelope({ type: 'turn:started', turnId: 'turn-1' }));
     expect(service.snapshot()).toMatchObject({ lifecycle: 'running', activeTurn: { id: 'turn-1' } });
 
     const before = service.snapshot();
     const monitorOnly = {
-      ...envelope({ type: 'session.ready' }),
+      ...envelope({ type: 'session:ready' }),
       type: 'monitor:batch',
       service: 'monitor',
     } as unknown as AgentEventEnvelope;
     service.consume(monitorOnly);
 
-    expect(service.snapshot()).toBe(before);
+    expect(service.snapshot()).toEqual(before);
+  });
+
+  it('returns defensive snapshots instead of exposing reducer-owned collections', () => {
+    const service = new AgentStateService();
+    service.consume(
+      envelope({ type: 'tool:requested', toolCallId: 'tool-1', tool: 'Read', input: { path: '/original' } }),
+    );
+
+    const exposed = service.snapshot();
+    (exposed.tools.get('tool-1')?.input as { path: string }).path = '/forged';
+    exposed.tools.clear();
+    exposed.counters.toolsCompleted = 99;
+
+    expect(service.snapshot()).toMatchObject({ counters: { toolsCompleted: 0 } });
+    expect(service.snapshot().tools.has('tool-1')).toBe(true);
+    expect(service.snapshot().tools.get('tool-1')?.input).toEqual({ path: '/original' });
   });
 });

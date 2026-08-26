@@ -100,7 +100,7 @@ export interface SessionRuntimeState {
   /**
    * Bounded terminal-id memory used to make native duplicate and out-of-order
    * tool events idempotent. Provider item ids are session-unique; retaining a
-   * tombstone prevents a late `tool.started` from reviving a completed call.
+   * tombstone prevents a late `tool:started` from reviving a completed call.
    */
   settledTools: Map<string, 'completed' | 'failed'>;
   /** Pending permission requests. Resolved requests leave this map. */
@@ -225,14 +225,19 @@ export function reduceSessionState(state: SessionRuntimeState, envelope: AgentEv
   const event = envelope.event as AgentEvent;
   const seq = envelope.sequence;
 
+  // This compatibility state machine models the root conversation only.
+  // Actor-local evidence remains available on the event and monitor rails;
+  // delegation events are the explicit root-facing relationship records.
+  if ((envelope.agentId || envelope.actorKey) && !event.type.startsWith('delegation:')) return next;
+
   switch (event.type) {
-    case 'process.started': {
+    case 'process:started': {
       if (next.lifecycle === 'preparing') next = { ...next, lifecycle: 'starting' };
-      else next = withDiagnostic(next, seq, 'process-started-late', `process.started in ${next.lifecycle}`);
+      else next = withDiagnostic(next, seq, 'process-started-late', `process:started in ${next.lifecycle}`);
       break;
     }
 
-    case 'session.started': {
+    case 'session:started': {
       if (event.rebind) {
         next = {
           ...next,
@@ -255,7 +260,7 @@ export function reduceSessionState(state: SessionRuntimeState, envelope: AgentEv
       break;
     }
 
-    case 'session.ready': {
+    case 'session:ready': {
       if (isTerminal(next.lifecycle)) {
         next = withDiagnostic(next, seq, 'session-start-after-exit', `${event.type} in ${next.lifecycle}`);
       } else if (next.lifecycle !== 'running') {
@@ -264,20 +269,20 @@ export function reduceSessionState(state: SessionRuntimeState, envelope: AgentEv
       break;
     }
 
-    case 'turn.started': {
+    case 'turn:started': {
       if (isTerminal(next.lifecycle)) {
-        next = withDiagnostic(next, seq, 'turn-after-exit', `turn.started in ${next.lifecycle}`);
+        next = withDiagnostic(next, seq, 'turn-after-exit', `turn:started in ${next.lifecycle}`);
         break;
       }
       if (next.activeTurn) {
-        next = withDiagnostic(next, seq, 'turn-overlap', `turn.started while turn ${next.activeTurn.id ?? '?'} active`);
+        next = withDiagnostic(next, seq, 'turn-overlap', `turn:started while turn ${next.activeTurn.id ?? '?'} active`);
       }
       next = { ...next, lifecycle: 'running', activeTurn: { id: event.turnId, startedAt: envelope.timestamp } };
       break;
     }
 
-    case 'turn.completed':
-    case 'turn.failed': {
+    case 'turn:completed':
+    case 'turn:failed': {
       if (next.activeTurn && event.turnId && next.activeTurn.id && next.activeTurn.id !== event.turnId) {
         next = withDiagnostic(
           next,
@@ -288,18 +293,19 @@ export function reduceSessionState(state: SessionRuntimeState, envelope: AgentEv
       }
       next = { ...next, activeTurn: undefined, activeReasoning: undefined };
       if (!isTerminal(next.lifecycle)) next = { ...next, lifecycle: 'ready' };
-      if (event.type === 'turn.completed' && event.lastAssistantMessage !== undefined) {
+      if (event.type === 'turn:completed' && event.lastAssistantMessage !== undefined) {
         next = { ...next, lastAssistantMessage: event.lastAssistantMessage };
       }
       break;
     }
 
-    case 'assistant.message': {
+    case 'conversation:assistant-message': {
       if (event.final !== false) next = { ...next, lastAssistantMessage: event.text };
       break;
     }
 
-    case 'context-window.updated': {
+    case 'context-window:updated': {
+      if (envelope.agentId || envelope.actorKey) break;
       if (
         !Number.isFinite(event.usedTokens) ||
         event.usedTokens < 0 ||
@@ -341,11 +347,13 @@ export function reduceSessionState(state: SessionRuntimeState, envelope: AgentEv
       break;
     }
 
-    case 'context-window.invalidated':
+    case 'context-window:invalidated':
+      if (envelope.agentId || envelope.actorKey) break;
       next = { ...next, contextWindow: undefined };
       break;
 
-    case 'session.environment.updated': {
+    case 'environment:updated': {
+      if (envelope.agentId || envelope.actorKey) break;
       let environment = next.environment;
       const observed = <T>(value: T): ObservedEnvironmentValue<T> => ({
         value,
@@ -366,18 +374,6 @@ export function reduceSessionState(state: SessionRuntimeState, envelope: AgentEv
         }
       }
 
-      if (event.model !== undefined && event.intent !== 'configured') {
-        if (event.model === null) {
-          environment = { ...environment, model: undefined };
-        } else if (!event.model.id.trim()) {
-          next = withDiagnostic(next, seq, 'environment-model-invalid', 'model id must be non-empty');
-        } else {
-          const id = event.model.id.trim();
-          const previous = environment.model?.value.id === id ? environment.model.value : undefined;
-          environment = { ...environment, model: observed({ ...previous, ...event.model, id }) };
-        }
-      }
-
       if (event.git !== undefined) {
         if (event.git !== null && !event.git.root.trim()) {
           next = withDiagnostic(next, seq, 'environment-git-invalid', 'Git root must be non-empty');
@@ -390,7 +386,35 @@ export function reduceSessionState(state: SessionRuntimeState, envelope: AgentEv
       break;
     }
 
-    case 'reasoning.started': {
+    case 'model:updated': {
+      if (envelope.agentId || envelope.actorKey || event.intent === 'configured') break;
+      let environment = next.environment;
+      const observed = <T>(value: T): ObservedEnvironmentValue<T> => ({
+        value,
+        updatedAt: envelope.timestamp,
+        source: envelope.source,
+        confidence: envelope.confidence,
+      });
+      if (event.model === null) {
+        environment = { ...environment, model: undefined };
+      } else if (!event.model.id.trim()) {
+        next = withDiagnostic(next, seq, 'model-id-invalid', 'model id must be non-empty');
+      } else {
+        const id = event.model.id.trim();
+        const previous = environment.model?.value.id === id ? environment.model.value : undefined;
+        environment = { ...environment, model: observed({ ...previous, ...event.model, id }) };
+      }
+      if (environment !== next.environment) next = { ...next, environment };
+      break;
+    }
+
+    case 'effort:updated':
+    case 'mode:updated':
+      // These domains are exposed through the monitor projection. Session
+      // state intentionally retains only filesystem and effective model facts.
+      break;
+
+    case 'reasoning:started': {
       const rejected = rejectResourceAfterExit(next, seq, event.type);
       if (rejected) {
         next = rejected;
@@ -403,8 +427,8 @@ export function reduceSessionState(state: SessionRuntimeState, envelope: AgentEv
       break;
     }
 
-    case 'reasoning.progress':
-    case 'reasoning.summary': {
+    case 'reasoning:progress':
+    case 'reasoning:summary': {
       const rejected = rejectResourceAfterExit(next, seq, event.type);
       if (rejected) {
         next = rejected;
@@ -419,11 +443,11 @@ export function reduceSessionState(state: SessionRuntimeState, envelope: AgentEv
       break;
     }
 
-    case 'reasoning.completed':
+    case 'reasoning:completed':
       next = { ...next, activeReasoning: undefined };
       break;
 
-    case 'tool.requested': {
+    case 'tool:requested': {
       const rejected = rejectResourceAfterExit(next, seq, event.type);
       if (rejected) {
         next = rejected;
@@ -451,7 +475,7 @@ export function reduceSessionState(state: SessionRuntimeState, envelope: AgentEv
       break;
     }
 
-    case 'tool.started': {
+    case 'tool:started': {
       const rejected = rejectResourceAfterExit(next, seq, event.type);
       if (rejected) {
         next = rejected;
@@ -480,9 +504,9 @@ export function reduceSessionState(state: SessionRuntimeState, envelope: AgentEv
       break;
     }
 
-    case 'tool.completed':
-    case 'tool.failed': {
-      const outcome = event.type === 'tool.completed' ? 'completed' : 'failed';
+    case 'tool:completed':
+    case 'tool:failed': {
+      const outcome = event.type === 'tool:completed' ? 'completed' : 'failed';
       const previous = next.settledTools.get(event.toolCallId);
       if (previous) {
         if (previous !== outcome) {
@@ -503,7 +527,7 @@ export function reduceSessionState(state: SessionRuntimeState, envelope: AgentEv
         tools.delete(event.toolCallId);
       }
       const counters = { ...next.counters };
-      if (event.type === 'tool.completed') counters.toolsCompleted += 1;
+      if (event.type === 'tool:completed') counters.toolsCompleted += 1;
       else counters.toolsFailed += 1;
       next = {
         ...next,
@@ -514,7 +538,7 @@ export function reduceSessionState(state: SessionRuntimeState, envelope: AgentEv
       break;
     }
 
-    case 'permission.requested': {
+    case 'interaction:permission-requested': {
       const rejected = rejectResourceAfterExit(next, seq, event.type);
       if (rejected) {
         next = rejected;
@@ -527,7 +551,7 @@ export function reduceSessionState(state: SessionRuntimeState, envelope: AgentEv
       break;
     }
 
-    case 'permission.resolved': {
+    case 'interaction:permission-resolved': {
       if (next.permissions.has(event.requestId)) {
         const permissions = new Map(next.permissions);
         permissions.delete(event.requestId);
@@ -536,7 +560,7 @@ export function reduceSessionState(state: SessionRuntimeState, envelope: AgentEv
       break;
     }
 
-    case 'subagent.started': {
+    case 'delegation:subagent-started': {
       const rejected = rejectResourceAfterExit(next, seq, event.type);
       if (rejected) {
         next = rejected;
@@ -548,7 +572,7 @@ export function reduceSessionState(state: SessionRuntimeState, envelope: AgentEv
       break;
     }
 
-    case 'subagent.stopped': {
+    case 'delegation:subagent-stopped': {
       if (next.subagents.has(event.subagentId)) {
         const subagents = new Map(next.subagents);
         subagents.delete(event.subagentId);
@@ -557,7 +581,7 @@ export function reduceSessionState(state: SessionRuntimeState, envelope: AgentEv
       break;
     }
 
-    case 'task.created': {
+    case 'delegation:task-created': {
       const rejected = rejectResourceAfterExit(next, seq, event.type);
       if (rejected) {
         next = rejected;
@@ -569,7 +593,7 @@ export function reduceSessionState(state: SessionRuntimeState, envelope: AgentEv
       break;
     }
 
-    case 'task.completed': {
+    case 'delegation:task-completed': {
       if (next.tasks.has(event.taskId)) {
         const tasks = new Map(next.tasks);
         tasks.delete(event.taskId);
@@ -578,7 +602,7 @@ export function reduceSessionState(state: SessionRuntimeState, envelope: AgentEv
       break;
     }
 
-    case 'task.updated': {
+    case 'delegation:task-updated': {
       const rejected = rejectResourceAfterExit(next, seq, event.type);
       if (rejected) {
         next = rejected;
@@ -592,7 +616,7 @@ export function reduceSessionState(state: SessionRuntimeState, envelope: AgentEv
       break;
     }
 
-    case 'session.exited': {
+    case 'session:exited': {
       next = diagnoseOrphansOnExit(next, seq);
       next = {
         ...next,
@@ -608,7 +632,7 @@ export function reduceSessionState(state: SessionRuntimeState, envelope: AgentEv
       break;
     }
 
-    case 'process.exited': {
+    case 'process:exited': {
       const failed = event.reason === 'crash' || event.reason === 'spawn-failed' || event.reason === 'workspace-failed';
       next = diagnoseOrphansOnExit(next, seq);
       next = {
@@ -625,19 +649,19 @@ export function reduceSessionState(state: SessionRuntimeState, envelope: AgentEv
       break;
     }
 
-    case 'workspace.changed':
-    case 'notification':
-    case 'tokens.used':
-    case 'workflow.updated':
-    case 'plan.updated':
-    case 'compaction.started':
-    case 'compaction.completed':
-    case 'teammate.idle':
-    case 'question.requested':
-    case 'question.resolved':
+    case 'workspace:changed':
+    case 'notification:received':
+    case 'usage:tokens-used':
+    case 'workflow:updated':
+    case 'planning:updated':
+    case 'compaction:started':
+    case 'compaction:completed':
+    case 'delegation:teammate-idle':
+    case 'interaction:question-requested':
+    case 'interaction:question-resolved':
       break;
 
-    case 'adapter.native-event': {
+    case 'adapter:native-event': {
       next = { ...next, counters: { ...next.counters, unknownEvents: next.counters.unknownEvents + 1 } };
       if (event.diagnostic) {
         next = withDiagnostic(next, seq, event.diagnostic.code, event.diagnostic.message);

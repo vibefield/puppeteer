@@ -9,11 +9,11 @@
 
 ## Current implementation status
 
-> **2026-08-25 source cutover:** [`RFC-002`](./002-native-observation-sources.md) retires the Spaghetti runtime dependency. References below to `SPAGHETTI-01`, scoped observers, SDK pins, shadow flags, and Spaghetti-owned live semantics are retained as implementation history, not current architecture. Claude now uses authenticated OTLP logs for settled request usage, transcript JSONL for conversation/history and usage fallback, and workflow journals for exact membership.
+> **2026-08-25 source cutover:** [`RFC-003`](./003-native-observation-sources.md) retires the Spaghetti runtime dependency. References below to `SPAGHETTI-01`, scoped observers, SDK pins, shadow flags, and Spaghetti-owned live semantics are retained as implementation history, not current architecture. Claude now uses authenticated OTLP logs for settled request usage, transcript JSONL for conversation/history and usage fallback, and workflow journals for exact membership.
 
 > **2026-08-25 architecture update:** adapter handles now publish only one
-> normalized event stream. Every envelope has a top-level service route such as
-> `state:*`, `context-window:*`, or `monitor:*`; atomic monitor batches travel as
+> normalized event stream. Every envelope has a top-level category route such as
+> `turn:*`, `context-window:*`, or `monitor:*`; atomic monitor batches travel as
 > `monitor:batch` on that same stream. The runtime creates one `Agent` per spawn,
 > owns all reducers/projections there, and exposes typed observation through
 > `agent.on(...)`. The separate `onMonitorBatch()` rail and adapter-owned state

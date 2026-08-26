@@ -45,10 +45,10 @@ const NODES: LifecycleNode[] = [
 ];
 
 const EDGES: LifecycleEdge[] = [
-  { from: 'preparing', to: 'starting', label: 'process.started' },
+  { from: 'preparing', to: 'starting', label: 'process:started' },
   { from: 'preparing', to: 'ready', label: 'session.*', bow: -34 },
-  { from: 'starting', to: 'ready', label: 'session.ready' },
-  { from: 'ready', to: 'running', label: 'turn.started', bow: -13 },
+  { from: 'starting', to: 'ready', label: 'session:ready' },
+  { from: 'ready', to: 'running', label: 'turn:started', bow: -13 },
   { from: 'running', to: 'ready', label: 'turn.done', bow: 25 },
   { from: 'ready', to: 'exited', kind: 'terminal', bow: -58 },
   { from: 'running', to: 'exited', label: 'exit', kind: 'terminal', bow: -20 },

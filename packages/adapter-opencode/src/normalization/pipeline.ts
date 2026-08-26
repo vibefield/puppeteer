@@ -8,6 +8,7 @@ import { normalizeOpenCodeAssistantMessage } from './conversation.js';
 import { normalizeOpenCodeContextInvalidated, OpenCodeContextWindowNormalizer } from './context-window.js';
 import { OpenCodeDelegationNormalizer } from './delegation.js';
 import { OpenCodeEnvironmentNormalizer } from './environment.js';
+import { OpenCodeModelNormalizer } from './model.js';
 import { OpenCodeInteractionNormalizer } from './interaction.js';
 import {
   normalizeOpenCodeReasoningCompleted,
@@ -98,6 +99,7 @@ export class OpenCodeNormalizer {
   private readonly maxSeenEventIds: number;
   private readonly maxCorrelationEntries: number;
   private readonly environment = new OpenCodeEnvironmentNormalizer();
+  private readonly model = new OpenCodeModelNormalizer();
   private readonly contextWindow: OpenCodeContextWindowNormalizer;
   private readonly delegation: OpenCodeDelegationNormalizer;
   private readonly interaction: OpenCodeInteractionNormalizer;
@@ -346,7 +348,9 @@ export class OpenCodeNormalizer {
     options: NormalizeOpenCodeOptions,
     nativeEvent: unknown,
   ): OpenCodeNormalizedEvent[] {
-    return this.environment.normalize(info).map((event) => this.output(event, timestamp, options, nativeEvent));
+    return [...this.environment.normalize(info), ...this.model.normalize(info)].map((event) =>
+      this.output(event, timestamp, options, nativeEvent),
+    );
   }
 
   private messageUpdated(
@@ -404,7 +408,7 @@ export class OpenCodeNormalizer {
     if (this.completedTurns.has(messageID) || this.exited) return events;
     this.activeTurnID = messageID;
     const model = isRecord(info.model) ? info.model : undefined;
-    this.environment.observeModel(text(model?.modelID));
+    this.model.observeModel(text(model?.modelID));
     events.push(
       this.output(normalizeOpenCodeTurnStarted(messageID), timestamp, options, options.nativeEvent ?? record, {
         promptId: messageID,
@@ -637,7 +641,7 @@ export class OpenCodeNormalizer {
     timestamp: string,
     options: NormalizeOpenCodeOptions,
   ): OpenCodeNormalizedEvent[] {
-    return this.contextWindow.normalize(part, this.environment.modelId()).map((event) =>
+    return this.contextWindow.normalize(part, this.model.modelId()).map((event) =>
       this.output(event, timestamp, options, options.nativeEvent ?? record, {
         promptId: turnID,
         turnId: turnID,

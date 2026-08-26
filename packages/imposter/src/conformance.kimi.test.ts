@@ -132,7 +132,7 @@ async function kimiImposterHarness(
     driveTurn: async (prompt) => {
       let completed = false;
       const off = session.onEvent((envelope: AgentEventEnvelope) => {
-        if (!envelope.replay && envelope.event.type === 'turn.completed') completed = true;
+        if (!envelope.replay && envelope.event.type === 'turn:completed') completed = true;
       });
       try {
         const receipt = await session.submitPrompt({ text: prompt });

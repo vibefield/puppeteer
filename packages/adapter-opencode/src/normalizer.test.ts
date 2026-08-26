@@ -63,20 +63,20 @@ describe('OpenCode normalizer over Surface-owned captures', () => {
   it('maps a captured turn with exact prompt correlation, streaming text, reasoning, context, and idle completion', () => {
     const events = normalizeFixture('turn', 100);
     const types = events.map((entry) => entry.event.type);
-    expect(types).toContain('session.started');
-    expect(types).toContain('session.environment.updated');
-    expect(types).toContain('turn.started');
-    expect(types).toContain('reasoning.started');
-    expect(types).toContain('reasoning.summary');
-    expect(types).toContain('reasoning.completed');
-    expect(types).toContain('assistant.message');
-    expect(types).toContain('context-window.updated');
-    expect(types.filter((type) => type === 'turn.completed')).toHaveLength(1);
+    expect(types).toContain('session:started');
+    expect(types).toContain('environment:updated');
+    expect(types).toContain('turn:started');
+    expect(types).toContain('reasoning:started');
+    expect(types).toContain('reasoning:summary');
+    expect(types).toContain('reasoning:completed');
+    expect(types).toContain('conversation:assistant-message');
+    expect(types).toContain('context-window:updated');
+    expect(types.filter((type) => type === 'turn:completed')).toHaveLength(1);
 
-    const turn = events.find((entry) => entry.event.type === 'turn.started')!;
+    const turn = events.find((entry) => entry.event.type === 'turn:started')!;
     expect(turn.promptId).toMatch(/^msg_/);
     expect(turn.turnId).toBe(turn.promptId);
-    const context = events.find((entry) => entry.event.type === 'context-window.updated')!.event;
+    const context = events.find((entry) => entry.event.type === 'context-window:updated')!.event;
     expect(context).toMatchObject({ usedTokens: 18, capacityTokens: 100 });
     expect(events.every((entry) => entry.source === 'native-protocol')).toBe(true);
     expect(events.every((entry) => entry.nativeEvent !== undefined)).toBe(true);
@@ -92,11 +92,11 @@ describe('OpenCode normalizer over Surface-owned captures', () => {
     const events = normalizeFixture('permission-reject');
     expect(events.map((entry) => entry.event)).toEqual(
       expect.arrayContaining([
-        expect.objectContaining({ type: 'permission.requested' }),
-        expect.objectContaining({ type: 'permission.resolved', outcome: 'denied' }),
-        expect.objectContaining({ type: 'tool.requested' }),
-        expect.objectContaining({ type: 'tool.started' }),
-        expect.objectContaining({ type: 'tool.failed' }),
+        expect.objectContaining({ type: 'interaction:permission-requested' }),
+        expect.objectContaining({ type: 'interaction:permission-resolved', outcome: 'denied' }),
+        expect.objectContaining({ type: 'tool:requested' }),
+        expect.objectContaining({ type: 'tool:started' }),
+        expect.objectContaining({ type: 'tool:failed' }),
       ]),
     );
     const state = reduce(events);
@@ -107,9 +107,9 @@ describe('OpenCode normalizer over Surface-owned captures', () => {
 
   it('detects captured native option questions and their correlated answer', () => {
     const events = normalizeFixture('question-reply');
-    const requested = events.find((entry) => entry.event.type === 'question.requested');
+    const requested = events.find((entry) => entry.event.type === 'interaction:question-requested');
     expect(requested?.event).toMatchObject({
-      type: 'question.requested',
+      type: 'interaction:question-requested',
       requestId: 'que_a11a5ed05a1f59c0bc08d90a8d',
       questions: [
         {
@@ -125,37 +125,37 @@ describe('OpenCode normalizer over Surface-owned captures', () => {
       ],
     });
     expect(events.map((entry) => entry.event)).toContainEqual({
-      type: 'question.resolved',
+      type: 'interaction:question-resolved',
       requestId: 'que_a11a5ed05a1f59c0bc08d90a8d',
       outcome: 'answered',
     });
-    expect(events.filter((entry) => entry.event.type === 'question.requested')).toHaveLength(1);
+    expect(events.filter((entry) => entry.event.type === 'interaction:question-requested')).toHaveLength(1);
   });
 
   it('keeps native question rejection distinct from permission denial', () => {
     const events = normalizeFixture('question-reject');
     expect(events.map((entry) => entry.event)).toContainEqual({
-      type: 'question.resolved',
+      type: 'interaction:question-resolved',
       requestId: 'que_a11a5ed0e6c279ae26af86edf9',
       outcome: 'cancelled',
     });
-    expect(events.filter((entry) => entry.event.type === 'permission.requested')).toEqual([]);
+    expect(events.filter((entry) => entry.event.type === 'interaction:permission-requested')).toEqual([]);
   });
 
   it('keeps a captured provider failure terminal despite later idle traffic', () => {
     const events = normalizeFixture('provider-error');
-    expect(events.filter((entry) => entry.event.type === 'turn.failed')).toHaveLength(1);
-    expect(events.filter((entry) => entry.event.type === 'turn.completed')).toHaveLength(0);
+    expect(events.filter((entry) => entry.event.type === 'turn:failed')).toHaveLength(1);
+    expect(events.filter((entry) => entry.event.type === 'turn:completed')).toHaveLength(0);
     expect(reduce(events).activeTurn).toBeUndefined();
   });
 
   it('recovers a captured overflow error through automatic compaction instead of failing the turn', () => {
     const events = normalizeFixture('overflow-compaction');
-    expect(events.filter((entry) => entry.event.type === 'turn.started')).toHaveLength(1);
-    expect(events.filter((entry) => entry.event.type === 'turn.failed')).toHaveLength(0);
-    expect(events.filter((entry) => entry.event.type === 'turn.completed')).toHaveLength(1);
+    expect(events.filter((entry) => entry.event.type === 'turn:started')).toHaveLength(1);
+    expect(events.filter((entry) => entry.event.type === 'turn:failed')).toHaveLength(0);
+    expect(events.filter((entry) => entry.event.type === 'turn:completed')).toHaveLength(1);
     expect(events.map((entry) => entry.event)).toContainEqual({
-      type: 'context-window.invalidated',
+      type: 'context-window:invalidated',
       reason: 'compacted',
     });
     expect(reduce(events).activeTurn).toBeUndefined();
@@ -163,17 +163,17 @@ describe('OpenCode normalizer over Surface-owned captures', () => {
 
   it('keeps a captured abort failure terminal after idle', () => {
     const events = normalizeFixture('abort-stream');
-    expect(events.filter((entry) => entry.event.type === 'turn.failed')).toHaveLength(1);
-    expect(events.filter((entry) => entry.event.type === 'turn.completed')).toHaveLength(0);
+    expect(events.filter((entry) => entry.event.type === 'turn:failed')).toHaveLength(1);
+    expect(events.filter((entry) => entry.event.type === 'turn:completed')).toHaveLength(0);
   });
 
   it('keeps automatic threshold compaction on the same captured turn', () => {
     const events = normalizeFixture('auto-compaction');
-    expect(events.filter((entry) => entry.event.type === 'turn.started')).toHaveLength(1);
-    expect(events.filter((entry) => entry.event.type === 'turn.failed')).toHaveLength(0);
-    expect(events.filter((entry) => entry.event.type === 'turn.completed')).toHaveLength(1);
+    expect(events.filter((entry) => entry.event.type === 'turn:started')).toHaveLength(1);
+    expect(events.filter((entry) => entry.event.type === 'turn:failed')).toHaveLength(0);
+    expect(events.filter((entry) => entry.event.type === 'turn:completed')).toHaveLength(1);
     expect(events.map((entry) => entry.event)).toContainEqual({
-      type: 'context-window.invalidated',
+      type: 'context-window:invalidated',
       reason: 'compacted',
     });
   });
@@ -181,7 +181,7 @@ describe('OpenCode normalizer over Surface-owned captures', () => {
   it('invalidates context on captured compaction', () => {
     const events = normalizeFixture('manual-compaction', 100);
     expect(events.map((entry) => entry.event)).toContainEqual({
-      type: 'context-window.invalidated',
+      type: 'context-window:invalidated',
       reason: 'compacted',
     });
   });
@@ -229,16 +229,16 @@ describe('OpenCode normalizer over Surface-owned captures', () => {
       properties: { sessionID: 'ses_1', value: 1 },
     };
 
-    expect(normalizer.normalize(user).map((entry) => entry.event.type)).toEqual(['turn.started']);
+    expect(normalizer.normalize(user).map((entry) => entry.event.type)).toEqual(['turn:started']);
     expect(normalizer.normalize(earlyPart)).toEqual([]);
     expect(normalizer.normalize(assistant).map((entry) => entry.event)).toContainEqual(
-      expect.objectContaining({ type: 'assistant.message', text: 'answer', final: true }),
+      expect.objectContaining({ type: 'conversation:assistant-message', text: 'answer', final: true }),
     );
     expect(normalizer.normalize(assistant)).toEqual([]);
     const retained = normalizer.normalize(unknown);
     expect(retained).toHaveLength(1);
     expect(retained[0]!.event).toEqual({
-      type: 'adapter.native-event',
+      type: 'adapter:native-event',
       adapter: 'opencode',
       nativeType: 'future.session.fact',
     });
@@ -248,21 +248,21 @@ describe('OpenCode normalizer over Surface-owned captures', () => {
   it('maps a captured foreground child session to one subagent lifecycle without a second parent session', () => {
     const events = normalizeFixture('task-child');
     const types = events.map((entry) => entry.event.type);
-    expect(types.filter((type) => type === 'session.started')).toHaveLength(1);
-    expect(types.filter((type) => type === 'subagent.started')).toHaveLength(1);
-    expect(types.filter((type) => type === 'subagent.stopped')).toHaveLength(1);
-    expect(types.filter((type) => type === 'turn.completed')).toHaveLength(1);
+    expect(types.filter((type) => type === 'session:started')).toHaveLength(1);
+    expect(types.filter((type) => type === 'delegation:subagent-started')).toHaveLength(1);
+    expect(types.filter((type) => type === 'delegation:subagent-stopped')).toHaveLength(1);
+    expect(types.filter((type) => type === 'turn:completed')).toHaveLength(1);
 
-    const started = events.find((entry) => entry.event.type === 'subagent.started')!.event;
-    const stopped = events.find((entry) => entry.event.type === 'subagent.stopped')!.event;
+    const started = events.find((entry) => entry.event.type === 'delegation:subagent-started')!.event;
+    const stopped = events.find((entry) => entry.event.type === 'delegation:subagent-stopped')!.event;
     expect(started).toMatchObject({
-      type: 'subagent.started',
+      type: 'delegation:subagent-started',
       subagentId: 'ses_a11a5ed0a84e8d6d6a9ea922a5',
       agentType: '<redacted:agent>',
     });
-    expect(stopped).toEqual({ type: 'subagent.stopped', subagentId: 'ses_a11a5ed0a84e8d6d6a9ea922a5' });
-    expect(types.indexOf('subagent.started')).toBeLessThan(types.indexOf('subagent.stopped'));
-    expect(types.indexOf('subagent.stopped')).toBeLessThan(types.lastIndexOf('turn.completed'));
+    expect(stopped).toEqual({ type: 'delegation:subagent-stopped', subagentId: 'ses_a11a5ed0a84e8d6d6a9ea922a5' });
+    expect(types.indexOf('delegation:subagent-started')).toBeLessThan(types.indexOf('delegation:subagent-stopped'));
+    expect(types.indexOf('delegation:subagent-stopped')).toBeLessThan(types.lastIndexOf('turn:completed'));
 
     const state = reduce(events);
     expect(state.subagents.size).toBe(0);
@@ -272,11 +272,11 @@ describe('OpenCode normalizer over Surface-owned captures', () => {
 
   it('keeps a captured background child active after the parent first goes idle', () => {
     const events = normalizeFixture('background-task');
-    const startedAt = events.findIndex((entry) => entry.event.type === 'subagent.started');
-    const firstParentIdle = events.findIndex((entry) => entry.event.type === 'turn.completed');
-    const stoppedAt = events.findIndex((entry) => entry.event.type === 'subagent.stopped');
+    const startedAt = events.findIndex((entry) => entry.event.type === 'delegation:subagent-started');
+    const firstParentIdle = events.findIndex((entry) => entry.event.type === 'turn:completed');
+    const stoppedAt = events.findIndex((entry) => entry.event.type === 'delegation:subagent-stopped');
     const lastParentIdle = events.reduce(
-      (last, entry, index) => (entry.event.type === 'turn.completed' ? index : last),
+      (last, entry, index) => (entry.event.type === 'turn:completed' ? index : last),
       -1,
     );
 
@@ -284,9 +284,9 @@ describe('OpenCode normalizer over Surface-owned captures', () => {
     expect(firstParentIdle).toBeGreaterThan(startedAt);
     expect(stoppedAt).toBeGreaterThan(firstParentIdle);
     expect(lastParentIdle).toBeGreaterThan(stoppedAt);
-    expect(events.filter((entry) => entry.event.type === 'subagent.started')).toHaveLength(1);
-    expect(events.filter((entry) => entry.event.type === 'subagent.stopped')).toHaveLength(1);
-    expect(events.filter((entry) => entry.event.type === 'turn.completed')).toHaveLength(2);
+    expect(events.filter((entry) => entry.event.type === 'delegation:subagent-started')).toHaveLength(1);
+    expect(events.filter((entry) => entry.event.type === 'delegation:subagent-stopped')).toHaveLength(1);
+    expect(events.filter((entry) => entry.event.type === 'turn:completed')).toHaveLength(2);
 
     const mid = reduce(events.slice(0, firstParentIdle + 1));
     expect(mid.subagents.size).toBe(1);
@@ -297,7 +297,7 @@ describe('OpenCode normalizer over Surface-owned captures', () => {
   it('does not treat a captured fork as a subagent', () => {
     const events = normalizeFixture('session-lifecycle');
     expect(events.filter((entry) => entry.event.type.startsWith('subagent.'))).toEqual([]);
-    expect(events.filter((entry) => entry.event.type === 'session.started')).toHaveLength(1);
+    expect(events.filter((entry) => entry.event.type === 'session:started')).toHaveLength(1);
   });
 
   it('joins a child from task metadata when session.created is missing or late', () => {
@@ -310,7 +310,7 @@ describe('OpenCode normalizer over Surface-owned captures', () => {
           properties: { sessionID: 'ses_parent', info: { id: 'msg_user', role: 'user', sessionID: 'ses_parent' } },
         })
         .map((entry) => entry.event.type),
-    ).toEqual(['turn.started']);
+    ).toEqual(['turn:started']);
     expect(
       normalizer.normalize({
         id: 'evt_assistant',
@@ -343,8 +343,8 @@ describe('OpenCode normalizer over Surface-owned captures', () => {
       },
     });
     expect(fromMetadata.map((entry) => entry.event)).toEqual([
-      { type: 'subagent.started', subagentId: 'ses_child', agentType: 'explore' },
-      expect.objectContaining({ type: 'tool.started', toolCallId: 'call_1', tool: 'task' }),
+      { type: 'delegation:subagent-started', subagentId: 'ses_child', agentType: 'explore' },
+      expect.objectContaining({ type: 'tool:started', toolCallId: 'call_1', tool: 'task' }),
     ]);
 
     const lateCreated = normalizer.normalize({
@@ -364,6 +364,6 @@ describe('OpenCode normalizer over Surface-owned captures', () => {
           properties: { sessionID: 'ses_child' },
         })
         .map((entry) => entry.event),
-    ).toEqual([{ type: 'subagent.stopped', subagentId: 'ses_child' }]);
+    ).toEqual([{ type: 'delegation:subagent-stopped', subagentId: 'ses_child' }]);
   });
 });

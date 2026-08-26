@@ -5,12 +5,12 @@
 - **Last updated:** 2026-08-25
 - **Owners:** Puppeteer runtime and adapter maintainers
 - **Target:** Puppeteer runtime v2 observation architecture
-- **Related:** [`001-implementation-plan.md`](./001-implementation-plan.md); [`002-native-observation-sources.md`](./002-native-observation-sources.md); [`docs/archive/MONITOR.md`](../../docs/archive/MONITOR.md)
+- **Related:** [`001-implementation-plan.md`](./001-implementation-plan.md); [`003-native-observation-sources.md`](./003-native-observation-sources.md); [`docs/archive/MONITOR.md`](../../docs/archive/MONITOR.md)
 - **Supersedes:** [`docs/archive/MONITOR.md`](../../docs/archive/MONITOR.md) and the observation, runtime identity, reducer, and Spaghetti-integration portions of [`draft/DESIGN.md`](../../draft/DESIGN.md)
 
 ## 1. Abstract
 
-> **2026-08-25 amendment:** RFC-002 supersedes this RFC's assignment of the live semantic plane to Spaghetti, its scoped-observer protocol, and its SDK/version-pin requirements. The evidence accumulator and public monitor projection remain accepted. Claude's live semantic sources are now adapter-owned hooks, authenticated OTLP logs, bounded transcript JSONL, status channels, and workflow journals.
+> **2026-08-25 amendment:** RFC-003 supersedes this RFC's assignment of the live semantic plane to Spaghetti, its scoped-observer protocol, and its SDK/version-pin requirements. The evidence accumulator and public monitor projection remain accepted. Claude's live semantic sources are now adapter-owned hooks, authenticated OTLP logs, bounded transcript JSONL, status channels, and workflow journals.
 
 Puppeteer needs to expose a substantially richer view of a running coding agent while preserving the agent's original terminal UI. Consumers such as Godview need to observe token usage and burn rate, context-window pressure, model and effort changes, provider modes, plans, tasks, questions, subagents, teams, workflows, and workspace outcomes. VibeField additionally needs durable runtime and workspace provenance that can be joined with transcript evidence and Git facts to produce contribution claims.
 

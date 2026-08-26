@@ -556,7 +556,7 @@
   </header>
   <div class="hook-card-body">
     <p>Agent requests structured user input (form or URL modes).</p>
-    <h5>Input (union)</h5><div class="scroll"><table class="def-table"><thead><tr><th>Field</th><th>Type / shape</th><th>Notes</th></tr></thead><tbody><tr><td class="m">message</td><td>string (required)</td><td></td></tr><tr><td class="m">mode</td><td>string (required)</td><td>form | url | extension</td></tr><tr><td class="m">requestedSchema</td><td>ElicitationSchema</td><td>form mode</td></tr><tr><td class="m">url</td><td>uri string</td><td>url mode</td></tr><tr><td class="m">elicitationId</td><td>ElicitationId</td><td>url mode</td></tr></tbody></table></div><h5>Output (union)</h5><div class="scroll"><table class="def-table"><thead><tr><th>Field</th><th>Type / shape</th><th>Notes</th></tr></thead><tbody><tr><td class="m">action</td><td>string (required)</td><td>accept | decline | cancel</td></tr><tr><td class="m">content</td><td>object | null</td><td>accept: schema values</td></tr></tbody></table></div><h5>Puppeteer</h5><p class="hook-usage"><strong>Puppeteer:</strong> typed form schema → question.requested; callback response or URL completion → question.resolved. Supplying a callback automatically advertises the capability.</p>
+    <h5>Input (union)</h5><div class="scroll"><table class="def-table"><thead><tr><th>Field</th><th>Type / shape</th><th>Notes</th></tr></thead><tbody><tr><td class="m">message</td><td>string (required)</td><td></td></tr><tr><td class="m">mode</td><td>string (required)</td><td>form | url | extension</td></tr><tr><td class="m">requestedSchema</td><td>ElicitationSchema</td><td>form mode</td></tr><tr><td class="m">url</td><td>uri string</td><td>url mode</td></tr><tr><td class="m">elicitationId</td><td>ElicitationId</td><td>url mode</td></tr></tbody></table></div><h5>Output (union)</h5><div class="scroll"><table class="def-table"><thead><tr><th>Field</th><th>Type / shape</th><th>Notes</th></tr></thead><tbody><tr><td class="m">action</td><td>string (required)</td><td>accept | decline | cancel</td></tr><tr><td class="m">content</td><td>object | null</td><td>accept: schema values</td></tr></tbody></table></div><h5>Puppeteer</h5><p class="hook-usage"><strong>Puppeteer:</strong> typed form schema → interaction:question-requested; callback response or URL completion → interaction:question-resolved. Supplying a callback automatically advertises the capability.</p>
   </div>
 </article>
 <article class="hook-card use-used" id="acp-c-elicit-complete">
@@ -583,7 +583,7 @@
   </header>
   <div class="hook-card-body">
     <p>A chunk of the user's message being streamed.</p>
-    <h5>Payload fields (update object)</h5><div class="scroll"><table class="def-table"><thead><tr><th>Field</th><th>Type / shape</th><th>Notes</th></tr></thead><tbody><tr><td class="m">sessionUpdate</td><td>string (required)</td><td>Must be "user_message_chunk"</td></tr><tr><td class="m">content</td><td>ContentBlock (required)</td><td>Single content item</td></tr><tr><td class="m">messageId</td><td>MessageId | null</td><td>Same id = same message</td></tr><tr><td class="m">_meta</td><td>object | null</td><td></td></tr></tbody></table></div><h5>Puppeteer</h5><p class="hook-usage"><strong>Puppeteer:</strong> Dropped — driver already emitted turn.started with our prompt text.</p>
+    <h5>Payload fields (update object)</h5><div class="scroll"><table class="def-table"><thead><tr><th>Field</th><th>Type / shape</th><th>Notes</th></tr></thead><tbody><tr><td class="m">sessionUpdate</td><td>string (required)</td><td>Must be "user_message_chunk"</td></tr><tr><td class="m">content</td><td>ContentBlock (required)</td><td>Single content item</td></tr><tr><td class="m">messageId</td><td>MessageId | null</td><td>Same id = same message</td></tr><tr><td class="m">_meta</td><td>object | null</td><td></td></tr></tbody></table></div><h5>Puppeteer</h5><p class="hook-usage"><strong>Puppeteer:</strong> Dropped — driver already emitted turn:started with our prompt text.</p>
   </div>
 </article>
 <article class="hook-card use-used" id="acp-u-agent_message_chunk">
@@ -595,7 +595,7 @@
   </header>
   <div class="hook-card-body">
     <p>A chunk of the agent's response being streamed.</p>
-    <h5>Payload fields</h5><div class="scroll"><table class="def-table"><thead><tr><th>Field</th><th>Type / shape</th><th>Notes</th></tr></thead><tbody><tr><td class="m">sessionUpdate</td><td>string (required)</td><td>"agent_message_chunk"</td></tr><tr><td class="m">content</td><td>ContentBlock (required)</td><td>Usually type text</td></tr><tr><td class="m">messageId</td><td>MessageId | null</td><td>Chunks with same id = one message</td></tr><tr><td class="m">_meta</td><td>object | null</td><td></td></tr></tbody></table></div><h5>Puppeteer</h5><p class="hook-usage"><strong>Puppeteer:</strong> Accumulate content.text → assistant.message (final:false).</p>
+    <h5>Payload fields</h5><div class="scroll"><table class="def-table"><thead><tr><th>Field</th><th>Type / shape</th><th>Notes</th></tr></thead><tbody><tr><td class="m">sessionUpdate</td><td>string (required)</td><td>"agent_message_chunk"</td></tr><tr><td class="m">content</td><td>ContentBlock (required)</td><td>Usually type text</td></tr><tr><td class="m">messageId</td><td>MessageId | null</td><td>Chunks with same id = one message</td></tr><tr><td class="m">_meta</td><td>object | null</td><td></td></tr></tbody></table></div><h5>Puppeteer</h5><p class="hook-usage"><strong>Puppeteer:</strong> Accumulate content.text → conversation:assistant-message (final:false).</p>
   </div>
 </article>
 <article class="hook-card use-used" id="acp-u-agent_thought_chunk">
@@ -607,7 +607,7 @@
   </header>
   <div class="hook-card-body">
     <p>A chunk of the agent's internal reasoning being streamed.</p>
-    <h5>Payload fields</h5><div class="scroll"><table class="def-table"><thead><tr><th>Field</th><th>Type / shape</th><th>Notes</th></tr></thead><tbody><tr><td class="m">sessionUpdate</td><td>string (required)</td><td>"agent_thought_chunk"</td></tr><tr><td class="m">content</td><td>ContentBlock (required)</td><td>Thought text</td></tr><tr><td class="m">messageId</td><td>MessageId | null</td><td></td></tr><tr><td class="m">_meta</td><td>object | null</td><td></td></tr></tbody></table></div><h5>Puppeteer</h5><p class="hook-usage"><strong>Puppeteer:</strong> reasoning.started then reasoning.progress; raw content on envelope only.</p>
+    <h5>Payload fields</h5><div class="scroll"><table class="def-table"><thead><tr><th>Field</th><th>Type / shape</th><th>Notes</th></tr></thead><tbody><tr><td class="m">sessionUpdate</td><td>string (required)</td><td>"agent_thought_chunk"</td></tr><tr><td class="m">content</td><td>ContentBlock (required)</td><td>Thought text</td></tr><tr><td class="m">messageId</td><td>MessageId | null</td><td></td></tr><tr><td class="m">_meta</td><td>object | null</td><td></td></tr></tbody></table></div><h5>Puppeteer</h5><p class="hook-usage"><strong>Puppeteer:</strong> reasoning:started then reasoning:progress; raw content on envelope only.</p>
   </div>
 </article>
 <article class="hook-card use-used" id="acp-u-tool_call">
@@ -619,7 +619,7 @@
   </header>
   <div class="hook-card-body">
     <p>Agent reports a new tool call.</p>
-    <h5>Payload fields</h5><div class="scroll"><table class="def-table"><thead><tr><th>Field</th><th>Type / shape</th><th>Notes</th></tr></thead><tbody><tr><td class="m">sessionUpdate</td><td>string (required)</td><td>"tool_call"</td></tr><tr><td class="m">toolCallId</td><td>ToolCallId (required)</td><td>Unique within session</td></tr><tr><td class="m">title</td><td>string (required)</td><td>Human-readable title</td></tr><tr><td class="m">kind</td><td>ToolKind</td><td>read|edit|delete|move|search|execute|think|fetch|other</td></tr><tr><td class="m">status</td><td>ToolCallStatus</td><td>pending (default)|in_progress|completed|failed</td></tr><tr><td class="m">content</td><td>ToolCallContent[]</td><td>content | diff | terminal</td></tr><tr><td class="m">locations</td><td>ToolCallLocation[]</td><td>path + optional line</td></tr><tr><td class="m">rawInput</td><td>object</td><td>Raw tool parameters</td></tr><tr><td class="m">rawOutput</td><td>object</td><td>Raw tool result</td></tr><tr><td class="m">_meta</td><td>object | null</td><td></td></tr></tbody></table></div><h5>Puppeteer</h5><p class="hook-usage"><strong>Puppeteer:</strong> tool.started; also tool.completed/failed if status already terminal.</p>
+    <h5>Payload fields</h5><div class="scroll"><table class="def-table"><thead><tr><th>Field</th><th>Type / shape</th><th>Notes</th></tr></thead><tbody><tr><td class="m">sessionUpdate</td><td>string (required)</td><td>"tool_call"</td></tr><tr><td class="m">toolCallId</td><td>ToolCallId (required)</td><td>Unique within session</td></tr><tr><td class="m">title</td><td>string (required)</td><td>Human-readable title</td></tr><tr><td class="m">kind</td><td>ToolKind</td><td>read|edit|delete|move|search|execute|think|fetch|other</td></tr><tr><td class="m">status</td><td>ToolCallStatus</td><td>pending (default)|in_progress|completed|failed</td></tr><tr><td class="m">content</td><td>ToolCallContent[]</td><td>content | diff | terminal</td></tr><tr><td class="m">locations</td><td>ToolCallLocation[]</td><td>path + optional line</td></tr><tr><td class="m">rawInput</td><td>object</td><td>Raw tool parameters</td></tr><tr><td class="m">rawOutput</td><td>object</td><td>Raw tool result</td></tr><tr><td class="m">_meta</td><td>object | null</td><td></td></tr></tbody></table></div><h5>Puppeteer</h5><p class="hook-usage"><strong>Puppeteer:</strong> tool:started; also tool:completed/failed if status already terminal.</p>
   </div>
 </article>
 <article class="hook-card use-used" id="acp-u-tool_call_update">
@@ -631,7 +631,7 @@
   </header>
   <div class="hook-card-body">
     <p>Partial update on a tool call. All fields except toolCallId optional.</p>
-    <h5>Payload fields</h5><div class="scroll"><table class="def-table"><thead><tr><th>Field</th><th>Type / shape</th><th>Notes</th></tr></thead><tbody><tr><td class="m">sessionUpdate</td><td>string (required)</td><td>"tool_call_update"</td></tr><tr><td class="m">toolCallId</td><td>ToolCallId (required)</td><td></td></tr><tr><td class="m">title</td><td>string | null</td><td></td></tr><tr><td class="m">kind</td><td>ToolKind | null</td><td></td></tr><tr><td class="m">status</td><td>ToolCallStatus | null</td><td>pending|in_progress|completed|failed</td></tr><tr><td class="m">content</td><td>ToolCallContent[] | null</td><td>Replace content collection</td></tr><tr><td class="m">locations</td><td>ToolCallLocation[] | null</td><td></td></tr><tr><td class="m">rawInput</td><td>object | null</td><td></td></tr><tr><td class="m">rawOutput</td><td>object | null</td><td></td></tr><tr><td class="m">_meta</td><td>object | null</td><td></td></tr></tbody></table></div><h5>Puppeteer</h5><p class="hook-usage"><strong>Puppeteer:</strong> tool.completed / tool.failed on terminal status; pending/in_progress ignored.</p>
+    <h5>Payload fields</h5><div class="scroll"><table class="def-table"><thead><tr><th>Field</th><th>Type / shape</th><th>Notes</th></tr></thead><tbody><tr><td class="m">sessionUpdate</td><td>string (required)</td><td>"tool_call_update"</td></tr><tr><td class="m">toolCallId</td><td>ToolCallId (required)</td><td></td></tr><tr><td class="m">title</td><td>string | null</td><td></td></tr><tr><td class="m">kind</td><td>ToolKind | null</td><td></td></tr><tr><td class="m">status</td><td>ToolCallStatus | null</td><td>pending|in_progress|completed|failed</td></tr><tr><td class="m">content</td><td>ToolCallContent[] | null</td><td>Replace content collection</td></tr><tr><td class="m">locations</td><td>ToolCallLocation[] | null</td><td></td></tr><tr><td class="m">rawInput</td><td>object | null</td><td></td></tr><tr><td class="m">rawOutput</td><td>object | null</td><td></td></tr><tr><td class="m">_meta</td><td>object | null</td><td></td></tr></tbody></table></div><h5>Puppeteer</h5><p class="hook-usage"><strong>Puppeteer:</strong> tool:completed / tool:failed on terminal status; pending/in_progress ignored.</p>
   </div>
 </article>
 <article class="hook-card use-used" id="acp-u-plan">
@@ -703,7 +703,7 @@
   </header>
   <div class="hook-card-body">
     <p>Context window and cost update for the session.</p>
-    <h5>Payload fields</h5><div class="scroll"><table class="def-table"><thead><tr><th>Field</th><th>Type / shape</th><th>Notes</th></tr></thead><tbody><tr><td class="m">sessionUpdate</td><td>string (required)</td><td>"usage_update"</td></tr><tr><td class="m">used</td><td>number (required)</td><td>Non-null tokens used in current context</td></tr><tr><td class="m">size</td><td>number (required)</td><td>Non-null effective context capacity</td></tr><tr><td class="m">cost</td><td>Cost | null</td><td>Optional { amount, currency } ISO 4217</td></tr><tr><td class="m">_meta</td><td>object | null</td><td></td></tr></tbody></table></div><h5>Puppeteer</h5><p class="hook-usage"><strong>Puppeteer:</strong> context-window.updated plus monitor context percentage. It is never treated as token burn. No invalidated event exists in plain ACP.</p>
+    <h5>Payload fields</h5><div class="scroll"><table class="def-table"><thead><tr><th>Field</th><th>Type / shape</th><th>Notes</th></tr></thead><tbody><tr><td class="m">sessionUpdate</td><td>string (required)</td><td>"usage_update"</td></tr><tr><td class="m">used</td><td>number (required)</td><td>Non-null tokens used in current context</td></tr><tr><td class="m">size</td><td>number (required)</td><td>Non-null effective context capacity</td></tr><tr><td class="m">cost</td><td>Cost | null</td><td>Optional { amount, currency } ISO 4217</td></tr><tr><td class="m">_meta</td><td>object | null</td><td></td></tr></tbody></table></div><h5>Puppeteer</h5><p class="hook-usage"><strong>Puppeteer:</strong> context-window:updated plus monitor context percentage. It is never treated as token burn. No invalidated event exists in plain ACP.</p>
   </div>
 </article></div>
           <h4>ContentBlock &amp; StopReason</h4>
@@ -723,21 +723,21 @@
           <pre class="flow">initialize → session/new|load
   → session/update → AcpNotificationNormalizer
   → session/request_permission → onApproval
-  → submitPrompt: turn.started → session/prompt → turn.completed|failed
+  → submitPrompt: turn:started → session/prompt → turn:completed|failed
   → observationLevel: structured</pre>
           <div class="scroll"><table class="def-table">
             <thead><tr><th>Surface</th><th>Our mapping</th></tr></thead>
             <tbody>
               <tr><td class="m">initialize, session/new|load, session/prompt</td><td>Session + structured prompt</td></tr>
-              <tr><td class="m">session/request_permission</td><td>permission.requested / .resolved</td></tr>
-              <tr><td class="m">agent_message_chunk</td><td>assistant.message</td></tr>
-              <tr><td class="m">agent_thought_chunk</td><td>reasoning.started / progress</td></tr>
-              <tr><td class="m">tool_call / tool_call_update</td><td>tool.started / completed / failed</td></tr>
-              <tr><td class="m">usage_update</td><td>context-window.updated</td></tr>
-              <tr><td class="m">config_option_update</td><td>environment.model or native-event</td></tr>
+              <tr><td class="m">session/request_permission</td><td>interaction:permission-requested / interaction:permission-resolved</td></tr>
+              <tr><td class="m">agent_message_chunk</td><td>conversation:assistant-message</td></tr>
+              <tr><td class="m">agent_thought_chunk</td><td>reasoning:started / reasoning:progress</td></tr>
+              <tr><td class="m">tool_call / tool_call_update</td><td>tool:started / tool:completed / tool:failed</td></tr>
+              <tr><td class="m">usage_update</td><td>context-window:updated</td></tr>
+              <tr><td class="m">config_option_update</td><td>model:updated or adapter:native-event</td></tr>
               <tr><td class="m">user_message_chunk</td><td>dropped</td></tr>
-              <tr><td class="m">other updates</td><td>adapter.native-event</td></tr>
-              <tr><td class="m">prompt stopReason</td><td>turn.completed / failed (driver)</td></tr>
+              <tr><td class="m">other updates</td><td>adapter:native-event</td></tr>
+              <tr><td class="m">prompt stopReason</td><td>turn:completed / turn:failed (driver)</td></tr>
             </tbody>
           </table></div>
         </div>
@@ -813,7 +813,7 @@ flowchart LR
   NRM --> RED["reduceSessionState"]
   DRV --> RED
   GIT["runtime git observer"] --> RED
-  NRM -.->|"unhandled kinds"| UNK["adapter.native-event"]
+  NRM -.->|"unhandled kinds"| UNK["adapter:native-event"]
   UNK --> RED
   RED --> ACC["monitor accumulator"]
   MON --> ACC
@@ -841,7 +841,7 @@ flowchart LR
           <tbody>
             <tr>
               <td class="m">agent_message_chunk</td>
-              <td class="m">assistant.message <span class="none">(accumulated, final: false)</span></td>
+              <td class="m">conversation:assistant-message <span class="none">(accumulated, final: false)</span></td>
               <td>lastAssistantMessage</td>
               <td><span class="tag t-dead">none</span></td>
               <td><strong>nothing</strong> — no view reads lastAssistantMessage</td>
@@ -851,39 +851,39 @@ flowchart LR
               <td class="m"><span class="none">deliberately dropped</span></td>
               <td>—</td>
               <td><span class="tag t-dead">none</span></td>
-              <td>nothing — the driver already emitted turn.started carrying this text</td>
+              <td>nothing — the driver already emitted turn:started carrying this text</td>
             </tr>
             <tr>
               <td class="m">agent_thought_chunk</td>
-              <td class="m">reasoning.started <span class="none">(first)</span><br />reasoning.progress <span class="none">(subsequent)</span></td>
+              <td class="m">reasoning:started <span class="none">(first)</span><br />reasoning:progress <span class="none">(subsequent)</span></td>
               <td>activeReasoning set</td>
               <td><span class="tag t-live">working</span></td>
               <td>detail “thinking”</td>
             </tr>
             <tr>
               <td class="m">tool_call</td>
-              <td class="m">tool.started<br />+ tool.completed / tool.failed <span class="none">if it arrives already resolved</span></td>
+              <td class="m">tool:started<br />+ tool:completed / tool:failed <span class="none">if it arrives already resolved</span></td>
               <td>tools += <code>state:'running'</code></td>
               <td><span class="tag t-live">working</span></td>
               <td>detail becomes the tool title</td>
             </tr>
             <tr>
               <td class="m">tool_call_update</td>
-              <td class="m">tool.completed <span class="none">or</span> tool.failed</td>
+              <td class="m">tool:completed <span class="none">or</span> tool:failed</td>
               <td>tools −=; counters.toolsCompleted / toolsFailed++</td>
               <td><span class="tag t-live">→ idle</span></td>
               <td>falls back to idle when nothing else is live</td>
             </tr>
             <tr>
               <td class="m">usage_update</td>
-              <td class="m">context-window.updated</td>
+              <td class="m">context-window:updated</td>
               <td>contextWindow</td>
               <td><span class="tag t-dead">none</span></td>
               <td>CTX badge, bubble fill height, rain tail length</td>
             </tr>
             <tr>
               <td class="m">config_option_update</td>
-              <td class="m">session.environment.updated <span class="none">(if it names a model)</span><br />else adapter.native-event</td>
+              <td class="m">model:updated <span class="none">(if it names a model)</span><br />else adapter:native-event</td>
               <td>environment.model</td>
               <td><span class="tag t-dead">none</span></td>
               <td>model label</td>
@@ -900,49 +900,49 @@ flowchart LR
           <tbody>
             <tr>
               <td class="m">session/new returns</td>
-              <td class="m">session.started<br />session.environment.updated</td>
+              <td class="m">session:started<br />environment:updated<br />model:updated <span class="none">(when known)</span></td>
               <td>lifecycle → <code>ready</code></td>
               <td><span class="tag t-live">idle</span></td>
               <td>—</td>
             </tr>
             <tr>
               <td class="m">we call prompt()</td>
-              <td class="m">turn.started</td>
+              <td class="m">turn:started</td>
               <td>lifecycle → <code>running</code>; activeTurn</td>
               <td><span class="tag t-live">working</span></td>
               <td><strong>only fires for prompts we submitted.</strong> User-typed turns never appear</td>
             </tr>
             <tr>
               <td class="m">prompt() resolves</td>
-              <td class="m">reasoning.completed<br />turn.completed</td>
+              <td class="m">reasoning:completed<br />turn:completed</td>
               <td>activeReasoning + activeTurn cleared</td>
               <td><span class="tag t-live">idle</span></td>
-              <td>reasoning.completed fires whether or not any reasoning occurred, at <code>confidence: derived</code></td>
+              <td>reasoning:completed fires whether or not any reasoning occurred, at <code>confidence: derived</code></td>
             </tr>
             <tr>
               <td class="m">prompt() rejects</td>
-              <td class="m">reasoning.completed<br />turn.failed</td>
+              <td class="m">reasoning:completed<br />turn:failed</td>
               <td>activeTurn cleared</td>
               <td><span class="tag t-live">idle</span></td>
               <td>a failed turn is visually identical to a completed one</td>
             </tr>
             <tr>
               <td class="m">session/request_permission</td>
-              <td class="m">permission.requested → .resolved</td>
+              <td class="m">interaction:permission-requested → interaction:permission-resolved</td>
               <td>permissions += / −=</td>
               <td><span class="tag t-live">blocked</span></td>
               <td>a typed permission blocker with the real ACP request identity</td>
             </tr>
             <tr>
               <td class="m">elicitation/create</td>
-              <td class="m">question.requested → .resolved</td>
+              <td class="m">interaction:question-requested → interaction:question-resolved</td>
               <td>typed question blocker with schema-backed choices</td>
               <td><span class="tag t-live">blocked</span></td>
               <td>experimental; a host callback automatically advertises form and URL support</td>
             </tr>
             <tr>
               <td class="m">connection closes</td>
-              <td class="m">adapter.native-event <span class="none">(transport.closed)</span></td>
+              <td class="m">adapter:native-event <span class="none">(transport.closed)</span></td>
               <td>lifecycle unchanged; monitor readiness degraded</td>
               <td><span class="tag t-partial">last known state</span></td>
               <td>only the host may report process exit</td>
@@ -954,25 +954,25 @@ flowchart LR
       <h2>Untracked</h2>
       <p>
         Any <code>session/update</code> kind without a verified projection becomes
-        <code>adapter.native-event</code> — retained verbatim per ADR-008, counted in
+        <code>adapter:native-event</code> — retained verbatim per ADR-008, counted in
         <code>counters.unknownEvents</code>, invisible. In the ACP surface that includes available-command and
         session-info updates. Unrecognized JSON-RPC methods on the connection take the same path.
       </p>
 
       <h2>Gaps worth knowing</h2>
       <p>
-        <strong>No <code>context-window.invalidated</code>.</strong> ACP is the only adapter that never emits it, so a
+        <strong>No <code>context-window:invalidated</code>.</strong> ACP is the only adapter that never emits it, so a
         compaction leaves a stale CTX reading rather than clearing it — the badge keeps showing a number that is no
         longer true.
       </p>
       <p>
-        <strong>Union members never produced:</strong> <code class="m">session.ready</code> ·
-        <code class="m">session.exited</code> · <code class="m">reasoning.summary</code> ·
-        <code class="m">tool.requested</code> · <code class="m">subagent.started</code> ·
-        <code class="m">subagent.stopped</code> · <code class="m">task.created</code> ·
-        <code class="m">task.completed</code> · <code class="m">context-window.invalidated</code> ·
-        <code class="m">process.started</code> · <code class="m">workspace.changed</code> ·
-        <code class="m">notification</code>.
+        <strong>Union members never produced:</strong> <code class="m">session:ready</code> ·
+        <code class="m">session:exited</code> · <code class="m">reasoning:summary</code> ·
+        <code class="m">tool:requested</code> · <code class="m">delegation:subagent-started</code> ·
+        <code class="m">delegation:subagent-stopped</code> · <code class="m">delegation:task-created</code> ·
+        <code class="m">delegation:task-completed</code> · <code class="m">context-window:invalidated</code> ·
+        <code class="m">process:started</code> · <code class="m">workspace:changed</code> ·
+        <code class="m">notification:received</code>.
       </p>
 
       <footer>Verify with <code>src/normalizer.ts</code> · <code>src/driver.ts</code>.</footer>

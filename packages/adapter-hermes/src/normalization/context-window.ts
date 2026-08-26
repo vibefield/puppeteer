@@ -26,7 +26,7 @@ export function normalizeHermesContextWindow(payload: Record<string, unknown>): 
   const modelId = hermesString(payload.model);
   return [
     {
-      type: 'context-window.updated',
+      type: 'context-window:updated',
       usedTokens,
       capacityTokens,
       ...(percentage !== undefined

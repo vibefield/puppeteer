@@ -27,7 +27,7 @@ import type {
 } from '@agentclientprotocol/sdk';
 import type { AcpAgentConnection, AcpConnector } from './connection.js';
 import { AcpMonitorEvidence } from './monitor-evidence.js';
-import { acpModelIdentity } from './normalization/environment.js';
+import { acpModelIdentity } from './normalization/model.js';
 import { AcpNotificationNormalizer } from './normalization/pipeline.js';
 import { AcpApprovalService, type AcpApprovalDecision, type AcpApprovalRequest } from './services/approvals.js';
 import { AcpElicitationService, type AcpElicitationRequest } from './services/elicitation.js';
@@ -83,7 +83,7 @@ export async function createAcpSession(options: CreateAcpSessionOptions): Promis
 
   function emitMonitorBatch(batch: AdapterMonitorObservationBatch | null): void {
     if (!batch || disposed) return;
-    apply({ type: 'monitor.batch', batch }, 'native-protocol', { nativeEvent: batch });
+    apply({ type: 'monitor:batch', batch }, 'native-protocol', { nativeEvent: batch });
   }
 
   const elicitations = new AcpElicitationService({
@@ -110,14 +110,17 @@ export async function createAcpSession(options: CreateAcpSessionOptions): Promis
       emitMonitorBatch(monitorEvidence.sessionUpdateBatch(params, observedAt, bootstrapping ? 'bootstrap' : 'live'));
       const normalized = normalizer.normalize(params);
       const closesReasoning = normalized.events.some((event) =>
-        ['assistant.message', 'tool.requested', 'tool.started', 'tool.completed', 'tool.failed'].includes(event.type),
+        ['conversation:assistant-message', 'tool:requested', 'tool:started', 'tool:completed', 'tool:failed'].includes(
+          event.type,
+        ),
       );
       if (closesReasoning) prompts.closeReasoning(params);
 
       for (const event of normalized.events) {
         prompts.observe(event);
         const source =
-          event.type.startsWith('context-window.') || event.type === 'session.environment.updated'
+          event.type.startsWith('context-window:') ||
+          ['environment:updated', 'model:updated', 'effort:updated', 'mode:updated'].includes(event.type)
             ? 'native-protocol'
             : 'native-hook';
         apply(event, source, { nativeEvent: params });
@@ -126,7 +129,7 @@ export async function createAcpSession(options: CreateAcpSessionOptions): Promis
 
     extNotification(method, params): void {
       const normalized = options.onExtensionNotification?.(method, params) ?? [
-        { type: 'adapter.native-event', adapter: 'acp', nativeType: method } as const,
+        { type: 'adapter:native-event', adapter: 'acp', nativeType: method } as const,
       ];
       for (const event of normalized) apply(event, 'native-protocol', { nativeEvent: { method, params } });
     },
@@ -144,7 +147,7 @@ export async function createAcpSession(options: CreateAcpSessionOptions): Promis
     controlDegraded = true;
     observation = 'terminal-only';
     emitMonitorBatch(monitorEvidence.railUnavailableBatch(new Date().toISOString()));
-    apply({ type: 'adapter.native-event', adapter: 'acp', nativeType: 'transport.closed' }, 'runtime', {
+    apply({ type: 'adapter:native-event', adapter: 'acp', nativeType: 'transport.closed' }, 'runtime', {
       nativeEvent: { code, signal },
     });
   });
@@ -194,12 +197,12 @@ export async function createAcpSession(options: CreateAcpSessionOptions): Promis
   }
 
   const model = acpModelIdentity(configOptions);
-  apply(
-    { type: 'session.environment.updated', currentCwd: options.cwd, ...(model ? { model } : {}) },
-    'native-protocol',
-    { nativeEvent: { bootstrap: options.resume ? 'session/load' : 'session/new', configOptions } },
-  );
-  apply({ type: 'session.started', nativeSessionId: sessionId }, 'native-hook');
+  const bootstrapEvidence = { bootstrap: options.resume ? 'session/load' : 'session/new', configOptions };
+  apply({ type: 'environment:updated', currentCwd: options.cwd }, 'native-protocol', {
+    nativeEvent: bootstrapEvidence,
+  });
+  if (model) apply({ type: 'model:updated', model }, 'native-protocol', { nativeEvent: bootstrapEvidence });
+  apply({ type: 'session:started', nativeSessionId: sessionId }, 'native-hook');
   emitMonitorBatch(
     monitorEvidence.bootstrapBatch({ cwd: options.cwd, modes, configOptions }, new Date().toISOString()),
   );

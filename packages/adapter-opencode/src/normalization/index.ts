@@ -6,6 +6,7 @@ export * from './turn.js';
 export * from './conversation.js';
 export * from './reasoning.js';
 export * from './environment.js';
+export * from './model.js';
 export * from './context-window.js';
 export * from './interaction.js';
 export * from './delegation.js';

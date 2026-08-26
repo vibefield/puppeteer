@@ -302,7 +302,7 @@ the separate team canary and must not be accepted as proof of the ordinary
 subagent case.
 
 For that separate native team-member path, pin both models and require the
-durable Spaghetti affiliation to reconcile with the low-latency activity hook:
+durable workflow-journal affiliation to reconcile with the low-latency activity hook:
 
 ```sh
 CLAUDE_CODE_SUBAGENT_MODEL=haiku \
@@ -362,12 +362,12 @@ Claude 2.1.234 emits `PreCompact` before deciding that a short conversation has
 too few messages, then emits no `PostCompact`. The next accepted
 `UserPromptSubmit` is therefore evidence that the attempt ended, but not that
 it succeeded. Puppeteer projects `lastOutcome: unknown`, clears the compacting
-activity, and emits no false `compaction.completed` notification. Omit the
+activity, and emits no false `compaction:completed` notification. Omit the
 boundary-fallback flag and expect `completed` for a long-session canary that
 must receive the native `PostCompact` boundary.
 
 To close the real observation listener after the first completed turn while
-leaving Claude and its semantic transcript observer alive:
+leaving Claude and its adapter-owned transcript observer alive:
 
 ```sh
 CLAUDE_CODE_SUBAGENT_MODEL=haiku \
@@ -437,7 +437,7 @@ Termination has three independent modes:
   acknowledges it and verifies removal.
 
 Never use the crash mode against a session containing work that must be
-preserved. All three modes require one matching `process.exited` event, strict
+preserved. All three modes require one matching `process:exited` event, strict
 final shadow convergence, and no monitor left after the expected removal.
 
 Claude may accept `manual` as launch intent while reporting the effective raw
@@ -450,7 +450,7 @@ the documented alias transition rather than treating it as a mode change.
 The same spawn-through smoke supports `codex`, `grok`, `kimi`, `opencode`, and
 `hermes` when the executable, credentials, and provider-specific prerequisites
 exist. A fresh Kimi TUI is intentionally prompt-lazy: its durable native
-session and `session.started` record may not exist until the first prompt. The
+session and `session:started` record may not exist until the first prompt. The
 harness permits that initial `starting` state only when a scripted Kimi prompt
 is present, then requires durable binding and normal ready/turn evidence before
 passing. Kimi's verified wire exposes response-boundary burn and input

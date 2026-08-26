@@ -1,57 +1,80 @@
 import { z } from 'zod';
 import { UnknownNativeEventSchema, type AdapterEvent } from './adapter.js';
+import { CompactionCompletedEventSchema, CompactionStartedEventSchema, type CompactionEvent } from './compaction.js';
 import {
   ContextWindowInvalidatedEventSchema,
   ContextWindowUpdatedEventSchema,
   type ContextWindowEvent,
 } from './context-window.js';
 import { AssistantMessageEventSchema, type ConversationEvent } from './conversation.js';
-import { SessionEnvironmentUpdatedEventSchema, type EnvironmentEvent } from './environment.js';
-import { MonitorObservationBatchEventSchema, type MonitorEvent } from './monitor.js';
-import { NativeNotificationEventSchema, type NotificationEvent } from './notification.js';
-import { ProcessExitedEventSchema, ProcessStartedEventSchema, type ProcessEvent } from './process.js';
 import {
-  CompactionCompletedEventSchema,
-  CompactionStartedEventSchema,
-  PermissionRequestedEventSchema,
-  PermissionResolvedEventSchema,
-  PlanUpdatedEventSchema,
-  QuestionRequestedEventSchema,
-  QuestionResolvedEventSchema,
-  ReasoningCompletedEventSchema,
-  ReasoningProgressEventSchema,
-  ReasoningStartedEventSchema,
-  ReasoningSummaryEventSchema,
-  SessionExitedEventSchema,
-  SessionReadyEventSchema,
-  SessionStartedEventSchema,
   SubagentStartedEventSchema,
   SubagentStoppedEventSchema,
   TaskCompletedEventSchema,
   TaskCreatedEventSchema,
   TaskUpdatedEventSchema,
   TeammateIdleEventSchema,
+  type DelegationEvent,
+} from './delegation.js';
+import { EffortUpdatedEventSchema, type EffortEvent } from './effort.js';
+import { EnvironmentUpdatedEventSchema, type EnvironmentEvent } from './environment.js';
+import type { AgentEventContract } from './contract.js';
+import {
+  PermissionRequestedEventSchema,
+  PermissionResolvedEventSchema,
+  QuestionRequestedEventSchema,
+  QuestionResolvedEventSchema,
+  type InteractionEvent,
+} from './interaction.js';
+import { ModeUpdatedEventSchema, type ModeEvent } from './mode.js';
+import { ModelUpdatedEventSchema, type ModelEvent } from './model.js';
+import { MonitorObservationBatchEventSchema, type MonitorEvent } from './monitor.js';
+import { NativeNotificationEventSchema, type NotificationEvent } from './notification.js';
+import { PlanUpdatedEventSchema, type PlanningEvent } from './planning.js';
+import { ProcessExitedEventSchema, ProcessStartedEventSchema, type ProcessEvent } from './process.js';
+import {
+  ReasoningCompletedEventSchema,
+  ReasoningProgressEventSchema,
+  ReasoningStartedEventSchema,
+  ReasoningSummaryEventSchema,
+  type ReasoningEvent,
+} from './reasoning.js';
+import {
+  SessionExitedEventSchema,
+  SessionReadyEventSchema,
+  SessionStartedEventSchema,
+  type SessionEvent,
+} from './session.js';
+import {
   ToolCompletedEventSchema,
   ToolFailedEventSchema,
   ToolRequestedEventSchema,
   ToolStartedEventSchema,
-  TurnCompletedEventSchema,
-  TurnFailedEventSchema,
-  TurnStartedEventSchema,
-  type StateEvent,
-} from './state/index.js';
+  type ToolEvent,
+} from './tool.js';
+import { TurnCompletedEventSchema, TurnFailedEventSchema, TurnStartedEventSchema, type TurnEvent } from './turn.js';
 import { TokensUsedEventSchema, type UsageEvent } from './usage.js';
 import { WorkflowUpdatedEventSchema, type WorkflowEvent } from './workflow.js';
 import { WorkspaceChangedEventSchema, type WorkspaceEvent } from './workspace.js';
 
 /** Complete normalized event union. Category modules own the individual members. */
 export type AgentEvent =
-  | StateEvent
+  | SessionEvent
+  | TurnEvent
+  | ReasoningEvent
+  | ToolEvent
+  | InteractionEvent
+  | DelegationEvent
+  | PlanningEvent
+  | CompactionEvent
   | ContextWindowEvent
   | ConversationEvent
   | UsageEvent
   | WorkflowEvent
   | EnvironmentEvent
+  | ModelEvent
+  | EffortEvent
+  | ModeEvent
   | WorkspaceEvent
   | ProcessEvent
   | NotificationEvent
@@ -60,12 +83,22 @@ export type AgentEvent =
 
 /** Top-level categories on the public `category:event-name` rail. */
 export type AgentEventService =
-  | 'state'
+  | 'session'
+  | 'turn'
+  | 'reasoning'
+  | 'tool'
+  | 'interaction'
+  | 'delegation'
+  | 'planning'
+  | 'compaction'
   | 'context-window'
   | 'conversation'
   | 'usage'
   | 'workflow'
   | 'environment'
+  | 'model'
+  | 'effort'
+  | 'mode'
   | 'workspace'
   | 'process'
   | 'notification'
@@ -74,18 +107,17 @@ export type AgentEventService =
 
 interface AgentEventCatalogDefinition {
   category: AgentEventService;
-  /** Temporary compatibility identity inside the pre-payload normalized event. */
-  legacyType: AgentEvent['type'];
+  eventType: AgentEvent['type'];
   schema: z.ZodObject;
   description: string;
 }
 
 function defineAgentEvent<
   const Category extends AgentEventService,
-  const LegacyType extends AgentEvent['type'],
+  const EventType extends AgentEvent['type'],
   const Schema extends z.ZodObject,
->(category: Category, legacyType: LegacyType, schema: Schema, description: string) {
-  return { category, legacyType, schema, description } as const;
+>(category: Category, eventType: EventType, schema: Schema, description: string) {
+  return { category, eventType, schema, description } as const;
 }
 
 /**
@@ -93,207 +125,230 @@ function defineAgentEvent<
  * Adding an event means adding a category-owned schema and an explicit entry.
  */
 export const agentEventCatalog = {
-  'state:session-started': defineAgentEvent(
-    'state',
-    'session.started',
+  'session:started': defineAgentEvent(
+    'session',
+    'session:started',
     SessionStartedEventSchema,
     'A provider session started or rebound to a new native identity.',
   ),
-  'state:session-ready': defineAgentEvent('state', 'session.ready', SessionReadyEventSchema, 'The session is ready.'),
-  'state:session-exited': defineAgentEvent(
-    'state',
-    'session.exited',
+  'session:ready': defineAgentEvent('session', 'session:ready', SessionReadyEventSchema, 'The session is ready.'),
+  'session:exited': defineAgentEvent(
+    'session',
+    'session:exited',
     SessionExitedEventSchema,
     'The semantic provider session exited.',
   ),
-  'state:turn-started': defineAgentEvent('state', 'turn.started', TurnStartedEventSchema, 'A user turn started.'),
-  'state:turn-completed': defineAgentEvent(
-    'state',
-    'turn.completed',
+  'turn:started': defineAgentEvent('turn', 'turn:started', TurnStartedEventSchema, 'A user turn started.'),
+  'turn:completed': defineAgentEvent(
+    'turn',
+    'turn:completed',
     TurnCompletedEventSchema,
     'A user turn completed successfully.',
   ),
-  'state:turn-failed': defineAgentEvent('state', 'turn.failed', TurnFailedEventSchema, 'A user turn failed.'),
-  'state:reasoning-started': defineAgentEvent(
-    'state',
-    'reasoning.started',
+  'turn:failed': defineAgentEvent('turn', 'turn:failed', TurnFailedEventSchema, 'A user turn failed.'),
+  'reasoning:started': defineAgentEvent(
+    'reasoning',
+    'reasoning:started',
     ReasoningStartedEventSchema,
     'A provider-authoritative reasoning phase started.',
   ),
-  'state:reasoning-progress': defineAgentEvent(
-    'state',
-    'reasoning.progress',
+  'reasoning:progress': defineAgentEvent(
+    'reasoning',
+    'reasoning:progress',
     ReasoningProgressEventSchema,
     'A reasoning activity pulse was observed.',
   ),
-  'state:reasoning-summary': defineAgentEvent(
-    'state',
-    'reasoning.summary',
+  'reasoning:summary': defineAgentEvent(
+    'reasoning',
+    'reasoning:summary',
     ReasoningSummaryEventSchema,
     'A user-displayable reasoning summary was emitted.',
   ),
-  'state:reasoning-completed': defineAgentEvent(
-    'state',
-    'reasoning.completed',
+  'reasoning:completed': defineAgentEvent(
+    'reasoning',
+    'reasoning:completed',
     ReasoningCompletedEventSchema,
     'A reasoning phase completed.',
   ),
-  'state:tool-requested': defineAgentEvent(
-    'state',
-    'tool.requested',
+  'tool:requested': defineAgentEvent(
+    'tool',
+    'tool:requested',
     ToolRequestedEventSchema,
     'A tool invocation was requested.',
   ),
-  'state:tool-started': defineAgentEvent('state', 'tool.started', ToolStartedEventSchema, 'A tool invocation started.'),
-  'state:tool-completed': defineAgentEvent(
-    'state',
-    'tool.completed',
+  'tool:started': defineAgentEvent('tool', 'tool:started', ToolStartedEventSchema, 'A tool invocation started.'),
+  'tool:completed': defineAgentEvent(
+    'tool',
+    'tool:completed',
     ToolCompletedEventSchema,
     'A tool invocation completed.',
   ),
-  'state:tool-failed': defineAgentEvent('state', 'tool.failed', ToolFailedEventSchema, 'A tool invocation failed.'),
-  'state:permission-requested': defineAgentEvent(
-    'state',
-    'permission.requested',
+  'tool:failed': defineAgentEvent('tool', 'tool:failed', ToolFailedEventSchema, 'A tool invocation failed.'),
+  'interaction:permission-requested': defineAgentEvent(
+    'interaction',
+    'interaction:permission-requested',
     PermissionRequestedEventSchema,
     'The agent requested a permission decision.',
   ),
-  'state:permission-resolved': defineAgentEvent(
-    'state',
-    'permission.resolved',
+  'interaction:permission-resolved': defineAgentEvent(
+    'interaction',
+    'interaction:permission-resolved',
     PermissionResolvedEventSchema,
     'A permission request was resolved.',
   ),
-  'state:question-requested': defineAgentEvent(
-    'state',
-    'question.requested',
+  'interaction:question-requested': defineAgentEvent(
+    'interaction',
+    'interaction:question-requested',
     QuestionRequestedEventSchema,
     'The agent requested structured user input.',
   ),
-  'state:question-resolved': defineAgentEvent(
-    'state',
-    'question.resolved',
+  'interaction:question-resolved': defineAgentEvent(
+    'interaction',
+    'interaction:question-resolved',
     QuestionResolvedEventSchema,
     'A structured question request was resolved.',
   ),
-  'state:subagent-started': defineAgentEvent(
-    'state',
-    'subagent.started',
+  'delegation:subagent-started': defineAgentEvent(
+    'delegation',
+    'delegation:subagent-started',
     SubagentStartedEventSchema,
     'A delegated subagent started.',
   ),
-  'state:subagent-stopped': defineAgentEvent(
-    'state',
-    'subagent.stopped',
+  'delegation:subagent-stopped': defineAgentEvent(
+    'delegation',
+    'delegation:subagent-stopped',
     SubagentStoppedEventSchema,
     'A delegated subagent stopped.',
   ),
-  'state:task-created': defineAgentEvent(
-    'state',
-    'task.created',
+  'delegation:task-created': defineAgentEvent(
+    'delegation',
+    'delegation:task-created',
     TaskCreatedEventSchema,
     'A delegated task was created.',
   ),
-  'state:task-completed': defineAgentEvent(
-    'state',
-    'task.completed',
+  'delegation:task-completed': defineAgentEvent(
+    'delegation',
+    'delegation:task-completed',
     TaskCompletedEventSchema,
     'A delegated task completed.',
   ),
-  'state:task-updated': defineAgentEvent(
-    'state',
-    'task.updated',
+  'delegation:task-updated': defineAgentEvent(
+    'delegation',
+    'delegation:task-updated',
     TaskUpdatedEventSchema,
     'A delegated task changed state.',
   ),
-  'state:teammate-idle': defineAgentEvent(
-    'state',
-    'teammate.idle',
+  'delegation:teammate-idle': defineAgentEvent(
+    'delegation',
+    'delegation:teammate-idle',
     TeammateIdleEventSchema,
     'A provider teammate became idle.',
   ),
-  'state:plan-updated': defineAgentEvent('state', 'plan.updated', PlanUpdatedEventSchema, 'The active plan changed.'),
-  'state:compaction-started': defineAgentEvent(
-    'state',
-    'compaction.started',
+  'planning:updated': defineAgentEvent(
+    'planning',
+    'planning:updated',
+    PlanUpdatedEventSchema,
+    'The active plan changed.',
+  ),
+  'compaction:started': defineAgentEvent(
+    'compaction',
+    'compaction:started',
     CompactionStartedEventSchema,
     'Context compaction started.',
   ),
-  'state:compaction-completed': defineAgentEvent(
-    'state',
-    'compaction.completed',
+  'compaction:completed': defineAgentEvent(
+    'compaction',
+    'compaction:completed',
     CompactionCompletedEventSchema,
     'Context compaction finished.',
   ),
   'context-window:updated': defineAgentEvent(
     'context-window',
-    'context-window.updated',
+    'context-window:updated',
     ContextWindowUpdatedEventSchema,
     'The provider reported current context-window pressure.',
   ),
   'context-window:invalidated': defineAgentEvent(
     'context-window',
-    'context-window.invalidated',
+    'context-window:invalidated',
     ContextWindowInvalidatedEventSchema,
     'The previous context-window measurement became untrustworthy.',
   ),
   'conversation:assistant-message': defineAgentEvent(
     'conversation',
-    'assistant.message',
+    'conversation:assistant-message',
     AssistantMessageEventSchema,
     'A normalized assistant message or message update was emitted.',
   ),
   'usage:tokens-used': defineAgentEvent(
     'usage',
-    'tokens.used',
+    'usage:tokens-used',
     TokensUsedEventSchema,
     'The provider reported token consumption.',
   ),
   'workflow:updated': defineAgentEvent(
     'workflow',
-    'workflow.updated',
+    'workflow:updated',
     WorkflowUpdatedEventSchema,
     'A provider workflow and its observed worker membership changed.',
   ),
   'environment:updated': defineAgentEvent(
     'environment',
-    'session.environment.updated',
-    SessionEnvironmentUpdatedEventSchema,
-    'The effective or configured session environment changed.',
+    'environment:updated',
+    EnvironmentUpdatedEventSchema,
+    'The effective filesystem environment changed.',
+  ),
+  'model:updated': defineAgentEvent(
+    'model',
+    'model:updated',
+    ModelUpdatedEventSchema,
+    'The configured or effective provider model changed.',
+  ),
+  'effort:updated': defineAgentEvent(
+    'effort',
+    'effort:updated',
+    EffortUpdatedEventSchema,
+    'The configured or effective reasoning effort changed.',
+  ),
+  'mode:updated': defineAgentEvent(
+    'mode',
+    'mode:updated',
+    ModeUpdatedEventSchema,
+    'A configured or effective provider mode changed.',
   ),
   'workspace:changed': defineAgentEvent(
     'workspace',
-    'workspace.changed',
+    'workspace:changed',
     WorkspaceChangedEventSchema,
     'The session workspace changed.',
   ),
   'process:started': defineAgentEvent(
     'process',
-    'process.started',
+    'process:started',
     ProcessStartedEventSchema,
     'The provider process started.',
   ),
   'process:exited': defineAgentEvent(
     'process',
-    'process.exited',
+    'process:exited',
     ProcessExitedEventSchema,
     'The provider process exited.',
   ),
   'notification:received': defineAgentEvent(
     'notification',
-    'notification',
+    'notification:received',
     NativeNotificationEventSchema,
     'A provider-native notification was received.',
   ),
   'monitor:batch': defineAgentEvent(
     'monitor',
-    'monitor.batch',
+    'monitor:batch',
     MonitorObservationBatchEventSchema,
     'An atomic semantic monitor observation batch was emitted.',
   ),
   'adapter:native-event': defineAgentEvent(
     'adapter',
-    'adapter.native-event',
+    'adapter:native-event',
     UnknownNativeEventSchema,
     'Unrecognized or degraded provider evidence was retained.',
   ),
@@ -305,8 +360,12 @@ export type AgentEventType = keyof AgentEventCatalog;
 export type AgentEventForType<Type extends AgentEventType> = z.output<AgentEventCatalog[Type]['schema']> & AgentEvent;
 
 type AssertNever<Value extends never> = Value;
-type CatalogLegacyType = AgentEventCatalog[AgentEventType]['legacyType'];
-export type AgentEventCatalogMissingLegacyType = AssertNever<Exclude<AgentEvent['type'], CatalogLegacyType>>;
+export type AgentEventContractViolation = AssertNever<Exclude<AgentEvent, AgentEventContract>>;
+type CatalogEventType = AgentEventCatalog[AgentEventType]['eventType'];
+export type AgentEventCatalogMissingEventType = AssertNever<Exclude<AgentEvent['type'], CatalogEventType>>;
+export type AgentEventCatalogIdentityMismatch = AssertNever<
+  { [Type in AgentEventType]: Type extends AgentEventCatalog[Type]['eventType'] ? never : Type }[AgentEventType]
+>;
 export type AgentEventCatalogRouteCategoryMismatch = AssertNever<
   {
     [Type in AgentEventType]: Type extends `${AgentEventCatalog[Type]['category']}:${string}` ? never : Type;
@@ -315,7 +374,7 @@ export type AgentEventCatalogRouteCategoryMismatch = AssertNever<
 
 export type AgentEventServiceOf<T extends AgentEvent = AgentEvent> = T extends AgentEvent
   ? {
-      [Type in AgentEventType]: T['type'] extends AgentEventCatalog[Type]['legacyType']
+      [Type in AgentEventType]: T['type'] extends AgentEventCatalog[Type]['eventType']
         ? AgentEventCatalog[Type]['category']
         : never;
     }[AgentEventType]
@@ -323,7 +382,7 @@ export type AgentEventServiceOf<T extends AgentEvent = AgentEvent> = T extends A
 
 export type AgentServiceEventTypeFor<T extends AgentEvent> = T extends AgentEvent
   ? {
-      [Type in AgentEventType]: T['type'] extends AgentEventCatalog[Type]['legacyType'] ? Type : never;
+      [Type in AgentEventType]: T['type'] extends AgentEventCatalog[Type]['eventType'] ? Type : never;
     }[AgentEventType]
   : never;
 
@@ -333,8 +392,8 @@ export type AgentServiceEventType<T extends AgentEvent = AgentEvent> = AgentServ
 type CatalogEntry = AgentEventCatalog[AgentEventType];
 
 const catalogEntries = Object.entries(agentEventCatalog) as Array<[AgentEventType, CatalogEntry]>;
-const catalogByLegacyType = new Map<AgentEvent['type'], [AgentEventType, CatalogEntry]>(
-  catalogEntries.map(([type, definition]) => [definition.legacyType, [type, definition]]),
+const catalogByEventType = new Map<AgentEvent['type'], [AgentEventType, CatalogEntry]>(
+  catalogEntries.map(([type, definition]) => [definition.eventType, [type, definition]]),
 );
 
 export function isAgentEventType(value: unknown): value is AgentEventType {
@@ -342,19 +401,17 @@ export function isAgentEventType(value: unknown): value is AgentEventType {
 }
 
 function definitionForEvent(event: AgentEvent): [AgentEventType, CatalogEntry] | undefined {
-  return catalogByLegacyType.get(event.type);
+  return catalogByEventType.get(event.type);
 }
 
 export function agentEventService<T extends AgentEvent>(event: T): AgentEventServiceOf<T> {
   const definition = definitionForEvent(event);
-  // Compatibility for pre-catalog adapters and deliberately malformed reducer
-  // tests. Runtime candidate validation will remove this deprecated fallback.
-  return (definition?.[1].category ?? 'state') as AgentEventServiceOf<T>;
+  if (!definition) throw new TypeError(`unregistered canonical agent event: ${String(event.type)}`);
+  return definition[1].category as AgentEventServiceOf<T>;
 }
 
 export function agentServiceEventType<T extends AgentEvent>(event: T): AgentServiceEventTypeFor<T> {
-  const definition = definitionForEvent(event);
-  return (definition?.[0] ?? `state:${event.type.replaceAll('.', '-')}`) as AgentServiceEventTypeFor<T>;
+  return event.type as AgentServiceEventTypeFor<T>;
 }
 
 /** Validate one normalized event against the schema registered for its public route. */
@@ -372,10 +429,22 @@ export function safeParseAgentEvent<Type extends AgentEventType>(
   return agentEventCatalog[type].schema.safeParse(input) as AgentEventParseResult<Type>;
 }
 
-/** The payload schema excludes the temporary dotted compatibility discriminator. */
+/** The payload schema excludes the canonical routing discriminator. */
 export function agentEventPayloadSchema<Type extends AgentEventType>(
   type: Type,
 ): z.ZodType<Omit<AgentEventForType<Type>, 'type'>> {
-  const schema = agentEventCatalog[type].schema as z.ZodObject;
-  return schema.omit({ type: true }) as unknown as z.ZodType<Omit<AgentEventForType<Type>, 'type'>>;
+  const definition = agentEventCatalog[type];
+  const schema = definition.schema as z.ZodObject;
+  const { type: _discriminator, ...payloadShape } = schema.shape;
+  return z.strictObject(payloadShape).transform((payload, context) => {
+    const parsed = schema.safeParse({ type: definition.eventType, ...payload });
+    if (!parsed.success) {
+      for (const issue of parsed.error.issues) {
+        context.addIssue({ code: 'custom', message: issue.message, path: issue.path });
+      }
+      return z.NEVER;
+    }
+    const { type: _type, ...validatedPayload } = parsed.data as AgentEvent;
+    return validatedPayload;
+  }) as unknown as z.ZodType<Omit<AgentEventForType<Type>, 'type'>>;
 }

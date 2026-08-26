@@ -6,15 +6,15 @@
  *   distinct `turn_id` (assistant response cycle) — both are surfaced for
  *   candidate correlation metadata.
  * - MessageDisplay STREAMS: deltas are accumulated per message_id and an
- *   assistant.message is emitted per delta with `final` marking completion.
+ *   conversation:assistant-message is emitted per delta with `final` marking completion.
  * - PermissionRequest carries NO tool_use_id or request id. As of 2.1.226,
  *   PreToolUse fires first for every call and PermissionRequest follows only
  *   when a decision is needed. We correlate by prompt, tool name, and canonical
  *   tool input, while still tolerating the legacy reverse ordering. Execution
  *   completion proves allow; PermissionDenied or a turn boundary closes denial.
  * - SubagentStop is re-entrant (1× stop_hook_active:false, then N× true):
- *   only the first occurrence per agent_id normalizes to subagent.stopped.
- * - Unknown events are RETAINED (ADR-008) as adapter.native-event; the raw
+ *   only the first occurrence per agent_id normalizes to delegation:subagent-stopped.
+ * - Unknown events are RETAINED (ADR-008) as adapter:native-event; the raw
  *   body always rides the envelope's nativeEvent upstream.
  *
  * Stateful by necessity (delta accumulation, permission FIFO, stop dedup) —
@@ -22,14 +22,19 @@
  */
 
 import { normalizeClaudeNativeEvent } from './adapter.js';
+import { normalizeClaudeCompactionCompleted, normalizeClaudeCompactionStarted } from './compaction.js';
 import { normalizeClaudeAssistantMessage } from './conversation.js';
 import { normalizeClaudeContextInvalidated } from './context-window.js';
 import {
+  claudeTaskIdFromResponse,
   normalizeClaudeSubagentStarted,
   normalizeClaudeSubagentStopped,
+  normalizeClaudeTaskUpdated,
   normalizeClaudeTeammateIdle,
+  parseClaudeTask,
 } from './delegation.js';
-import { ClaudeEnvironmentNormalizer, normalizeClaudeCwd, normalizeClaudeSessionEnvironment } from './environment.js';
+import { ClaudeEffortNormalizer } from './effort.js';
+import { normalizeClaudeCwd, normalizeClaudeSessionEnvironment } from './environment.js';
 import {
   claudeQuestionOutcome,
   normalizeClaudePermissionRequested,
@@ -39,15 +44,10 @@ import {
   parseClaudeStructuredQuestions,
 } from './interaction.js';
 import { normalizeClaudeNotification } from './notification.js';
-import {
-  normalizeClaudeCompactionCompleted,
-  normalizeClaudeCompactionStarted,
-  normalizeClaudePlanUpdated,
-  parseClaudeExitPlan,
-  parseClaudePlan,
-} from './planning.js';
+import { normalizeClaudeSessionModel } from './model.js';
+import { ClaudeModeNormalizer } from './mode.js';
+import { normalizeClaudePlanUpdated, parseClaudeExitPlan, parseClaudePlan } from './planning.js';
 import { normalizeClaudeSessionExited, normalizeClaudeSessionReady, normalizeClaudeSessionStarted } from './session.js';
-import { claudeTaskIdFromResponse, normalizeClaudeTaskUpdated, parseClaudeTask } from './task.js';
 import {
   normalizeClaudeToolCompleted,
   normalizeClaudeToolFailed,
@@ -80,7 +80,8 @@ export class ClaudeHookNormalizer {
   private compactionCounter = 0;
   private activeCompaction: { id: string; promptId?: string; trigger?: string } | undefined;
   private lastClosedCompaction: { id: string; promptId?: string } | undefined;
-  private readonly environment = new ClaudeEnvironmentNormalizer();
+  private readonly effort = new ClaudeEffortNormalizer();
+  private readonly mode = new ClaudeModeNormalizer();
 
   private nextFallbackToolId(promptId: string | undefined, toolName: string): string {
     const key = promptId ?? 'unknown';
@@ -240,12 +241,16 @@ export class ClaudeHookNormalizer {
       providerVersion: claudeString(body.version) ?? claudeString(body.claude_version),
     };
     const isRebind = name === 'SessionStart' && claudeString(body.source) === 'clear';
-    if (isRebind) this.environment.reset();
+    if (isRebind) {
+      this.effort.reset();
+      this.mode.reset();
+    }
     const diagnostic = claudeHookDiagnostic(name, body);
     if (diagnostic) {
       result.diagnostics.push(diagnostic);
       result.events.push(normalizeClaudeNativeEvent(name));
-      this.environment.append(result, body);
+      this.effort.append(result, body);
+      this.mode.append(result, body);
       return result;
     }
 
@@ -256,6 +261,8 @@ export class ClaudeHookNormalizer {
         result.events.push(normalizeClaudeSessionStarted(body, isRebind));
         const environment = normalizeClaudeSessionEnvironment(body);
         if (environment) result.events.push(environment);
+        const model = normalizeClaudeSessionModel(body);
+        if (model) result.events.push(model);
         if (isRebind) result.events.push(normalizeClaudeContextInvalidated('history-changed'));
         break;
 
@@ -630,8 +637,12 @@ export class ClaudeHookNormalizer {
         break;
     }
 
-    this.environment.append(result, body);
-    if (name === 'SessionEnd') this.environment.reset();
+    this.effort.append(result, body);
+    this.mode.append(result, body);
+    if (name === 'SessionEnd') {
+      this.effort.reset();
+      this.mode.reset();
+    }
     return result;
   }
 

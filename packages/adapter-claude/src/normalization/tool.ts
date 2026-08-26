@@ -48,7 +48,7 @@ export function normalizeClaudeToolRequested(
   tool: string,
   input: unknown,
 ): import('@vibecook/puppeteer-core').AgentEvent {
-  return { type: 'tool.requested', toolCallId, tool, input, presentation: claudeToolPresentation(tool, input) };
+  return { type: 'tool:requested', toolCallId, tool, input, presentation: claudeToolPresentation(tool, input) };
 }
 
 export function normalizeClaudeToolCompleted(
@@ -58,7 +58,7 @@ export function normalizeClaudeToolCompleted(
   durationMs: number | undefined,
 ): import('@vibecook/puppeteer-core').AgentEvent {
   return {
-    type: 'tool.completed',
+    type: 'tool:completed',
     toolCallId,
     tool,
     output,
@@ -73,7 +73,7 @@ export function normalizeClaudeToolFailed(
   error: string | undefined,
 ): import('@vibecook/puppeteer-core').AgentEvent {
   return {
-    type: 'tool.failed',
+    type: 'tool:failed',
     toolCallId,
     tool,
     error,

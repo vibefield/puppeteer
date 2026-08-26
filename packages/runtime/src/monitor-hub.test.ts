@@ -71,6 +71,7 @@ function hub(
     states?: AgentMonitorState[];
     notifications?: MonitorNotification[];
     audits?: MonitorArtifactAudit[];
+    errors?: Error[];
   } = {},
 ) {
   const clock = options.clock ?? new FakeClock();
@@ -87,6 +88,7 @@ function hub(
     onArtifactAudit: (audit) => {
       options.audits?.push(audit);
     },
+    onError: (error) => options.errors?.push(error),
   });
   result.start();
   return { clock, hub: result };
@@ -118,6 +120,32 @@ function semanticSession(
 }
 
 describe('AgentMonitorService', () => {
+  it('publishes deeply immutable monitor snapshots', () => {
+    const { hub: monitor } = hub();
+    const snapshot = monitor.current();
+
+    expect(Object.isFrozen(snapshot)).toBe(true);
+    expect(Object.isFrozen(snapshot.blockers)).toBe(true);
+    expect(() =>
+      snapshot.blockers.push({ id: 'forged', kind: 'failure', since: '2026-08-16T12:00:00.000Z' }),
+    ).toThrow();
+    expect(monitor.current().blockers).toHaveLength(0);
+  });
+
+  it('validates semantic batches before they reach the accumulator', () => {
+    const errors: Error[] = [];
+    const { hub: monitor } = hub({ errors });
+    const before = monitor.current();
+    const invalid = {
+      ...batch('batch-1', []),
+      observedAt: 'August 16, 2026',
+    } as AdapterMonitorObservationBatch;
+
+    expect(monitor.acceptSemantic(invalid)).toBe(false);
+    expect(monitor.current()).toBe(before);
+    expect(errors[0]?.message).toMatch(/invalid monitor batch/);
+  });
+
   it('publishes a synchronous readiness state and coalesces ordinary full-state revisions', () => {
     const states: AgentMonitorState[] = [];
     const { clock, hub: monitor } = hub({ states });
@@ -309,7 +337,7 @@ describe('AgentMonitorService', () => {
       monotonicTime: 1,
       source: 'native-protocol' as const,
       confidence: 'authoritative' as const,
-      event: { type: 'process.exited' as const, exitCode: 1, reason: 'crash' as const },
+      event: { type: 'process:exited' as const, exitCode: 1, reason: 'crash' as const },
     };
     monitor.acceptAgentEvent(envelope);
     expect(monitor.current()).toMatchObject({ alive: true, status: 'idle' });

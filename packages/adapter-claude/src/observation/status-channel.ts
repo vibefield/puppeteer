@@ -6,7 +6,9 @@ import { join, resolve } from 'node:path';
 import type {
   ContextWindowInvalidatedEvent,
   ContextWindowUpdatedEvent,
-  SessionEnvironmentUpdatedEvent,
+  EffortEvent,
+  EnvironmentEvent,
+  ModelEvent,
 } from '@vibecook/puppeteer-core';
 
 export interface ClaudeStatusLineConfig {
@@ -114,9 +116,11 @@ export function claudeStatusChannelMetadata(payload: unknown): ClaudeStatusChann
   };
 }
 
+export type ClaudeStatusEnvironmentEvent = EnvironmentEvent | ModelEvent | EffortEvent;
+
 /** Claude's root status channel is the authoritative live cwd/model-card/effort surface. */
-export function claudeEnvironmentEvent(payload: unknown): SessionEnvironmentUpdatedEvent | null {
-  if (!payload || typeof payload !== 'object') return null;
+export function claudeEnvironmentEvents(payload: unknown): ClaudeStatusEnvironmentEvent[] {
+  if (!payload || typeof payload !== 'object') return [];
   const body = payload as ClaudeStatusLinePayload;
   const currentCwd = nonEmptyString(body.workspace?.current_dir) ?? nonEmptyString(body.cwd);
   const id = nonEmptyString(body.model?.id);
@@ -126,14 +130,19 @@ export function claudeEnvironmentEvent(payload: unknown): SessionEnvironmentUpda
   // support it. A complete snapshot with a model and no effort therefore
   // retracts an older observed value instead of leaving it stale.
   const effortSnapshot = effort ?? (id ? null : undefined);
-  if (!currentCwd && !id && effortSnapshot === undefined) return null;
-  return {
-    type: 'session.environment.updated',
-    intent: 'observed',
-    ...(currentCwd ? { currentCwd } : {}),
-    ...(id ? { model: { id, ...(displayName ? { displayName } : {}), provider: 'anthropic' } } : {}),
-    ...(effortSnapshot !== undefined ? { effort: effortSnapshot } : {}),
-  };
+  const events: ClaudeStatusEnvironmentEvent[] = [];
+  if (currentCwd) events.push({ type: 'environment:updated', currentCwd });
+  if (id) {
+    events.push({
+      type: 'model:updated',
+      intent: 'observed',
+      model: { id, ...(displayName ? { displayName } : {}), provider: 'anthropic' },
+    });
+  }
+  if (effortSnapshot !== undefined) {
+    events.push({ type: 'effort:updated', intent: 'observed', effort: effortSnapshot });
+  }
+  return events;
 }
 
 /** Convert Claude's provider-defined input-only usage into the shared used/size event. */
@@ -152,9 +161,9 @@ export function claudeContextWindowEvent(
     // that explicit, but give new sessions a useful CTX:00% state.
     if (capacityTokens !== undefined && capacityTokens > 0 && nonNegativeNumber(context.total_input_tokens) === 0) {
       const modelId = nonEmptyString(body.model?.id);
-      return { type: 'context-window.updated', usedTokens: 0, capacityTokens, modelId };
+      return { type: 'context-window:updated', usedTokens: 0, capacityTokens, modelId };
     }
-    return { type: 'context-window.invalidated', reason: 'provider-reset' };
+    return { type: 'context-window:invalidated', reason: 'provider-reset' };
   }
 
   if (capacityTokens === undefined || capacityTokens <= 0) return null;
@@ -190,7 +199,7 @@ export function claudeContextWindowEvent(
 
   const modelId = nonEmptyString(body.model?.id);
   return {
-    type: 'context-window.updated',
+    type: 'context-window:updated',
     usedTokens,
     capacityTokens,
     ...(validProviderPercentage !== undefined

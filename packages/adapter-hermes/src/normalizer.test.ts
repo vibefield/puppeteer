@@ -26,26 +26,27 @@ describe('HermesGatewayNormalizer', () => {
     ].flatMap((frame) => normalizer.normalize(frame).events);
 
     expect(events.map((item) => item.type)).toEqual([
-      'adapter.native-event',
-      'session.started',
-      'session.ready',
-      'session.environment.updated',
-      'turn.started',
-      'adapter.native-event',
-      'assistant.message',
-      'assistant.message',
-      'adapter.native-event',
-      'assistant.message',
-      'turn.completed',
+      'adapter:native-event',
+      'session:started',
+      'session:ready',
+      'environment:updated',
+      'model:updated',
+      'turn:started',
+      'adapter:native-event',
+      'conversation:assistant-message',
+      'conversation:assistant-message',
+      'adapter:native-event',
+      'conversation:assistant-message',
+      'turn:completed',
     ]);
-    expect(events.find((item) => item.type === 'session.started')).toMatchObject({
+    expect(events.find((item) => item.type === 'session:started')).toMatchObject({
       nativeSessionId: '20260812_132919_ae981b',
     });
-    expect(events.filter((item) => item.type === 'assistant.message').at(-1)).toMatchObject({
+    expect(events.filter((item) => item.type === 'conversation:assistant-message').at(-1)).toMatchObject({
       text: 'SURFACE_HERMES_OK',
       final: true,
     });
-    expect(events.some((item) => item.type.startsWith('reasoning.'))).toBe(false);
+    expect(events.some((item) => item.type.startsWith('reasoning:'))).toBe(false);
   });
 
   it('maps tools and native-TUI approvals without inventing a resolution', () => {
@@ -56,8 +57,8 @@ describe('HermesGatewayNormalizer', () => {
     ].flatMap((frame) => normalizer.normalize(frame).events);
     expect(success).toEqual(
       expect.arrayContaining([
-        expect.objectContaining({ type: 'tool.requested', tool: 'terminal', toolCallId: 'call_1' }),
-        expect.objectContaining({ type: 'tool.completed', toolCallId: 'call_1' }),
+        expect.objectContaining({ type: 'tool:requested', tool: 'terminal', toolCallId: 'call_1' }),
+        expect.objectContaining({ type: 'tool:completed', toolCallId: 'call_1' }),
       ]),
     );
 
@@ -67,7 +68,7 @@ describe('HermesGatewayNormalizer', () => {
     ).events;
     expect(permission).toEqual([
       expect.objectContaining({
-        type: 'permission.requested',
+        type: 'interaction:permission-requested',
         requestId: 'call_rm',
         presentation: 'native-tui',
       }),
@@ -76,11 +77,11 @@ describe('HermesGatewayNormalizer', () => {
       denied.normalize(
         event('tool.complete', { name: 'terminal', tool_id: 'call_rm', result: { status: 'blocked', exit_code: -1 } }),
       ).events,
-    ).toEqual([expect.objectContaining({ type: 'tool.failed', toolCallId: 'call_rm' })]);
+    ).toEqual([expect.objectContaining({ type: 'tool:failed', toolCallId: 'call_rm' })]);
     expect(
       denied
         .normalize(event('tool.complete', { name: 'terminal', tool_id: 'call_rm', result: { status: 'blocked' } }))
-        .events.some((item) => item.type === 'permission.resolved'),
+        .events.some((item) => item.type === 'interaction:permission-resolved'),
     ).toBe(false);
   });
 
@@ -88,8 +89,8 @@ describe('HermesGatewayNormalizer', () => {
     const normalizer = new HermesGatewayNormalizer();
     const first = normalizer.acknowledgeSession('20260812_132919_ae981b');
     expect(first.events).toEqual([
-      { type: 'session.started', nativeSessionId: '20260812_132919_ae981b' },
-      { type: 'session.ready' },
+      { type: 'session:started', nativeSessionId: '20260812_132919_ae981b' },
+      { type: 'session:ready' },
     ]);
     expect(normalizer.acknowledgeSession('20260812_132919_ae981b').events).toEqual([]);
     expect(
@@ -101,16 +102,19 @@ describe('HermesGatewayNormalizer', () => {
           running: false,
         }),
       ).events,
-    ).toEqual([expect.objectContaining({ type: 'session.environment.updated', currentCwd: '/workspace' })]);
+    ).toEqual([
+      expect.objectContaining({ type: 'environment:updated', currentCwd: '/workspace' }),
+      expect.objectContaining({ type: 'model:updated', model: { id: 'puppeteer-hermes-census' } }),
+    ]);
   });
 
-  it('marks interrupted completion as turn.failed', () => {
+  it('marks interrupted completion as turn:failed', () => {
     const normalizer = new HermesGatewayNormalizer();
     normalizer.normalize(event('message.start'));
     const events = normalizer.normalize(event('message.complete', { text: 'partial', status: 'interrupted' })).events;
     expect(events).toEqual([
-      expect.objectContaining({ type: 'assistant.message', final: true, text: 'partial' }),
-      expect.objectContaining({ type: 'turn.failed', error: 'interrupted' }),
+      expect.objectContaining({ type: 'conversation:assistant-message', final: true, text: 'partial' }),
+      expect.objectContaining({ type: 'turn:failed', error: 'interrupted' }),
     ]);
   });
 
@@ -129,7 +133,7 @@ describe('HermesGatewayNormalizer', () => {
     ).events;
 
     expect(events).toContainEqual({
-      type: 'context-window.updated',
+      type: 'context-window:updated',
       usedTokens: 250,
       capacityTokens: 1_000,
       usedPercentage: 24.5,
@@ -138,7 +142,7 @@ describe('HermesGatewayNormalizer', () => {
     });
     expect(
       normalizer.normalize(event('session.info', { usage: { total: 10_100, context_max: 1_000 } })).events,
-    ).not.toContainEqual(expect.objectContaining({ type: 'context-window.updated' }));
+    ).not.toContainEqual(expect.objectContaining({ type: 'context-window:updated' }));
   });
 
   it('detects native option questions and cancellation without terminal parsing', () => {
@@ -152,7 +156,7 @@ describe('HermesGatewayNormalizer', () => {
 
     expect(normalizer.normalize(request).events).toEqual([
       {
-        type: 'question.requested',
+        type: 'interaction:question-requested',
         requestId: 'clarify-1',
         questions: [
           {
@@ -167,7 +171,7 @@ describe('HermesGatewayNormalizer', () => {
     ]);
     expect(normalizer.normalize(request).events).toEqual([]);
     expect(normalizer.normalize(event('clarify.expire', { request_id: 'clarify-1' })).events).toEqual([
-      { type: 'question.resolved', requestId: 'clarify-1', outcome: 'cancelled' },
+      { type: 'interaction:question-resolved', requestId: 'clarify-1', outcome: 'cancelled' },
     ]);
     expect(normalizer.normalize(event('clarify.expire', { request_id: 'clarify-1' })).events).toEqual([]);
   });

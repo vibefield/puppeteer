@@ -5,6 +5,7 @@ import {
   agentServiceEventType,
   isAgentEventType,
   safeParseAgentEvent,
+  AdapterEventCandidateSchema,
   type AccountUsageFetchResult,
   type AdapterEventCandidate,
   type AgentEvent,
@@ -63,7 +64,7 @@ import type {
   RuntimeRunInfo,
 } from './types.js';
 import { DEFAULT_RUNTIME_FEATURE_FLAGS } from './types.js';
-import { createAgentController, type Agent, type AgentController } from './agent.js';
+import { cloneAgentSessionInfo, createAgentController, type Agent, type AgentController } from './agent.js';
 import { createGitStateObserver, type GitStateObserver } from './git-observer.js';
 import {
   allocateRuntimeRunIdentity,
@@ -178,7 +179,7 @@ interface InflightCreation {
  * retaining transcript messages for native-log-only providers.
  */
 function isCanonicalApplicationEvent(session: AgentAdapterSession, envelope: AgentEventEnvelope): boolean {
-  if (envelope.event.type !== 'assistant.message' || envelope.source !== 'native-transcript') return true;
+  if (envelope.event.type !== 'conversation:assistant-message' || envelope.source !== 'native-transcript') return true;
   if (envelope.replay) return true;
   const level = session.observationLevel();
   return level !== 'native-hooks' && level !== 'structured';
@@ -355,18 +356,26 @@ function runInfo(run: ManagedRun): RuntimeRunInfo {
   };
 }
 
-function sourceDerivedEventId(runtimeRunId: string, namespace: string, eventId: string): string {
+function sourceDerivedEventId(runtimeRunId: string, source: NonNullable<AgentEventEnvelope['sourceEventRef']>): string {
   const digest = createHash('sha256')
     .update(runtimeRunId)
     .update('\0')
-    .update(namespace)
-    .update('\0')
-    .update(eventId)
+    .update(
+      JSON.stringify([
+        source.namespace,
+        source.eventId,
+        source.revisionKey ?? null,
+        source.sourceGeneration ?? null,
+        source.cursorStart ?? null,
+        source.cursorEnd ?? null,
+      ]),
+    )
     .digest('hex');
   return `source:${digest}`;
 }
 
 const MAX_ACKNOWLEDGED_FAILURE_BLOCKERS = 1_024;
+const MAX_SOURCE_EVENT_IDENTITIES = 20_000;
 const DEFAULT_TERMINAL_FAILURE_CAPACITY = 256;
 const MAX_TERMINAL_RUN_INFOS = 1_024;
 
@@ -1285,7 +1294,7 @@ export function createAgentRuntime(options: AgentRuntimeOptions): AgentRuntime {
     if (exit && features.agentMonitorStateV2) {
       managed.dispatch(
         {
-          type: 'process.exited',
+          type: 'process:exited',
           ...(exit.exitCode === null ? {} : { exitCode: exit.exitCode }),
           ...(exit.signal === null ? {} : { signal: exit.signal }),
           reason: normalizedExitReason!,
@@ -1493,6 +1502,7 @@ export function createAgentRuntime(options: AgentRuntimeOptions): AgentRuntime {
     });
     run.monitor?.attachSession(session);
     let deliverySequence = 0;
+    const seenSourceEventIds = new Set<string>();
     let gitObserver: GitStateObserver | undefined;
 
     const updateNativeSession = (
@@ -1528,10 +1538,18 @@ export function createAgentRuntime(options: AgentRuntimeOptions): AgentRuntime {
       const sourceEventRef =
         upstream?.sourceEventRef ??
         (upstream?.eventId ? { namespace: provider.kind, eventId: upstream.eventId } : undefined);
+      const eventId = sourceEventRef ? sourceDerivedEventId(run.identity.runtimeRunId, sourceEventRef) : randomUUID();
+      if (sourceEventRef) {
+        if (seenSourceEventIds.has(eventId)) return;
+        seenSourceEventIds.add(eventId);
+        while (seenSourceEventIds.size > MAX_SOURCE_EVENT_IDENTITIES) {
+          const oldest = seenSourceEventIds.values().next().value as string | undefined;
+          if (oldest === undefined) break;
+          seenSourceEventIds.delete(oldest);
+        }
+      }
       const envelope: RuntimeAgentEventEnvelope = {
-        eventId: sourceEventRef
-          ? sourceDerivedEventId(run.identity.runtimeRunId, sourceEventRef.namespace, sourceEventRef.eventId)
-          : randomUUID(),
+        eventId,
         type: agentServiceEventType(event),
         service: agentEventService(event),
         runtimeRunId: run.identity.runtimeRunId,
@@ -1543,6 +1561,8 @@ export function createAgentRuntime(options: AgentRuntimeOptions): AgentRuntime {
         ...(upstream?.turnId === undefined ? {} : { turnId: upstream.turnId }),
         ...(upstream?.agentId === undefined ? {} : { agentId: upstream.agentId }),
         ...(upstream?.agentType === undefined ? {} : { agentType: upstream.agentType }),
+        ...(upstream?.actorKey === undefined ? {} : { actorKey: upstream.actorKey }),
+        ...(upstream?.actorRole === undefined ? {} : { actorRole: upstream.actorRole }),
         ...(upstream?.providerVersion === undefined ? {} : { providerVersion: upstream.providerVersion }),
         ...(sourceEventRef === undefined ? {} : { sourceEventRef }),
         timestamp: upstream?.timestamp ?? new Date().toISOString(),
@@ -1555,7 +1575,7 @@ export function createAgentRuntime(options: AgentRuntimeOptions): AgentRuntime {
       };
       const nativeSessionId =
         envelope.nativeSessionId ??
-        (envelope.event.type === 'session.started' ? envelope.event.nativeSessionId : undefined);
+        (envelope.event.type === 'session:started' ? envelope.event.nativeSessionId : undefined);
       if (nativeSessionId) {
         updateNativeSession(
           nativeSessionId,
@@ -1617,25 +1637,40 @@ export function createAgentRuntime(options: AgentRuntimeOptions): AgentRuntime {
           terminalSessionId: session.runtimeSessionId,
         });
       };
-      const acceptCandidate = (candidate: AdapterEventCandidate): void => {
+      const acceptCandidate = (candidate: AdapterEventCandidate, legacyService?: unknown): void => {
         updateAdapterMetadata();
-        if (!isAgentEventType(candidate.type)) {
+        const parsedCandidate = AdapterEventCandidateSchema.safeParse(candidate);
+        if (!parsedCandidate.success) {
+          report(new Error(`Adapter emitted invalid candidate metadata: ${parsedCandidate.error.message}`));
+          return;
+        }
+        if (!isAgentEventType(parsedCandidate.data.type)) {
           report(new Error(`Adapter emitted an unregistered event route: ${String(candidate.type)}`));
           return;
         }
-        const parsed = safeParseAgentEvent(candidate.type, candidate.event);
+        const parsed = safeParseAgentEvent(parsedCandidate.data.type, parsedCandidate.data.event);
         if (!parsed.success) {
-          report(new Error(`Adapter emitted invalid ${candidate.type}: ${parsed.error.message}`));
+          report(new Error(`Adapter emitted invalid ${parsedCandidate.data.type}: ${parsed.error.message}`));
           return;
         }
-        dispatch(parsed.data, candidate.source, candidate.confidence, candidate.nativeEvent, candidate, true);
+        if (legacyService !== undefined && legacyService !== agentEventService(parsed.data)) {
+          report(new Error(`Adapter emitted mismatched legacy event category: ${String(legacyService)}`));
+          return;
+        }
+        dispatch(
+          parsed.data,
+          parsedCandidate.data.source,
+          parsedCandidate.data.confidence,
+          parsedCandidate.data.nativeEvent,
+          parsedCandidate.data as AdapterEventCandidate,
+          true,
+        );
       };
 
       if (session.onEventCandidate) {
         managed.unsubscribe = session.onEventCandidate(acceptCandidate);
       } else {
         managed.unsubscribe = session.onEvent((envelope) => {
-          updateAdapterMetadata();
           const priorRuntimeEnvelope = envelope as Partial<RuntimeAgentEventEnvelope>;
           if (
             (priorRuntimeEnvelope.runtimeRunId !== undefined &&
@@ -1645,7 +1680,30 @@ export function createAgentRuntime(options: AgentRuntimeOptions): AgentRuntime {
           ) {
             return;
           }
-          dispatch(envelope.event, envelope.source, envelope.confidence, envelope.nativeEvent, envelope, true);
+          acceptCandidate(
+            {
+              type: envelope.type,
+              eventId: envelope.eventId,
+              sourceEventRef: envelope.sourceEventRef,
+              sessionId: envelope.sessionId,
+              nativeSessionId: envelope.nativeSessionId,
+              promptId: envelope.promptId,
+              turnId: envelope.turnId,
+              agentId: envelope.agentId,
+              agentType: envelope.agentType,
+              actorKey: envelope.actorKey,
+              actorRole: envelope.actorRole,
+              providerVersion: envelope.providerVersion,
+              timestamp: envelope.timestamp,
+              monotonicTime: envelope.monotonicTime,
+              source: envelope.source,
+              confidence: envelope.confidence,
+              replay: envelope.replay,
+              event: envelope.event,
+              nativeEvent: envelope.nativeEvent,
+            } as AdapterEventCandidate,
+            envelope.service,
+          );
         });
       }
     } catch (error) {
@@ -1656,15 +1714,15 @@ export function createAgentRuntime(options: AgentRuntimeOptions): AgentRuntime {
     }
 
     if (!agent.state.environment.currentCwd) {
-      dispatch({ type: 'session.environment.updated', currentCwd: lease.workspace.root }, 'runtime', 'derived');
+      dispatch({ type: 'environment:updated', currentCwd: lease.workspace.root }, 'runtime', 'derived');
     }
     gitObserver = createGitStateObserver({
       cwd: agent.state.environment.currentCwd?.value ?? lease.workspace.root,
-      onChange: (git) => dispatch({ type: 'session.environment.updated', git }, 'runtime', 'derived'),
+      onChange: (git) => dispatch({ type: 'environment:updated', git }, 'runtime', 'derived'),
       onError: report,
     });
     managed.gitObserver = gitObserver;
-    return info;
+    return cloneAgentSessionInfo(info);
   }
 
   async function destroyUnusedPreparation(
@@ -2144,7 +2202,7 @@ export function createAgentRuntime(options: AgentRuntimeOptions): AgentRuntime {
           currentSession.info.terminalSessionId === restore.session.runtimeSessionId &&
           currentSession.info.nativeSession.id === restore.session.sessionId
         ) {
-          return currentSession.info;
+          return cloneAgentSessionInfo(currentSession.info);
         }
         return sessionFailure(
           currentSession.run,
@@ -2310,7 +2368,10 @@ export function createAgentRuntime(options: AgentRuntimeOptions): AgentRuntime {
     onRecordingStatus(listener) {
       return options.recorder?.onStatus(listener) ?? (() => undefined);
     },
-    sessionInfo: (id) => sessionsByTerminalId.get(id)?.info,
+    sessionInfo: (id) => {
+      const info = sessionsByTerminalId.get(id)?.info;
+      return info ? cloneAgentSessionInfo(info) : undefined;
+    },
     sessionState: (id) => sessionsByTerminalId.get(id)?.agent.state,
     observationLevel: (id) => sessionsByTerminalId.get(id)?.agent.observationLevel,
     conversationSnapshot: (id) => sessionsByTerminalId.get(id)?.agent.conversation,

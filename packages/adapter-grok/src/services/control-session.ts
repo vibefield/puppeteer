@@ -38,7 +38,7 @@ export function createPendingControlSession(
 
   function emitMonitorBatch(batch: AdapterMonitorObservationBatch | null): void {
     if (!batch) return;
-    publish({ type: 'monitor.batch', batch }, { timestamp: batch.observedAt, source: 'native-protocol' });
+    publish({ type: 'monitor:batch', batch }, { timestamp: batch.observedAt, source: 'native-protocol' });
   }
 
   const capabilitiesBatch = monitorEvidence.capabilitiesBatch(new Date().toISOString());
@@ -53,7 +53,7 @@ export function createPendingControlSession(
     if (
       protocolContextAvailable &&
       observed.source === 'native-log' &&
-      observed.event.type.startsWith('context-window.')
+      observed.event.type.startsWith('context-window:')
     ) {
       return;
     }
@@ -62,12 +62,12 @@ export function createPendingControlSession(
     }
     const observedTurnId =
       observed.promptId ??
-      (observed.event.type === 'turn.started' ||
-      observed.event.type === 'turn.completed' ||
-      observed.event.type === 'turn.failed'
+      (observed.event.type === 'turn:started' ||
+      observed.event.type === 'turn:completed' ||
+      observed.event.type === 'turn:failed'
         ? observed.event.turnId
         : undefined);
-    if (observed.event.type === 'turn.started') activeTurnId = observedTurnId;
+    if (observed.event.type === 'turn:started') activeTurnId = observedTurnId;
     publish(observed.event, {
       promptId: observed.promptId,
       turnId: observedTurnId,
@@ -77,7 +77,7 @@ export function createPendingControlSession(
       replay: observed.phase === 'bootstrap',
       nativeEvent: observed.nativeEvent,
     });
-    if (observed.event.type === 'turn.completed' || observed.event.type === 'turn.failed') activeTurnId = undefined;
+    if (observed.event.type === 'turn:completed' || observed.event.type === 'turn:failed') activeTurnId = undefined;
   }
 
   function degradeControl(error: unknown, code: 'grok-control-attach-failed' | 'grok-control-closed'): void {
@@ -87,7 +87,7 @@ export function createPendingControlSession(
     const timestamp = new Date().toISOString();
     publish(
       {
-        type: 'adapter.native-event',
+        type: 'adapter:native-event',
         adapter: 'grok',
         nativeType: 'control.unavailable',
         diagnostic: { code, message },
@@ -110,7 +110,7 @@ export function createPendingControlSession(
     }
     control = acp;
     unsubscribeControl = acp.onEvent((envelope) => {
-      if (envelope.event.type === 'monitor.batch') {
+      if (envelope.event.type === 'monitor:batch') {
         applyObserved(
           {
             event: envelope.event,
@@ -126,25 +126,25 @@ export function createPendingControlSession(
       }
       emitMonitorBatch(monitorEvidence.controlEnvelopeBatch(envelope));
       const acpTransportClosed =
-        envelope.event.type === 'adapter.native-event' &&
+        envelope.event.type === 'adapter:native-event' &&
         envelope.event.adapter === 'acp' &&
         envelope.event.nativeType === 'transport.closed';
-      if (acpTransportClosed || envelope.event.type === 'process.exited' || envelope.event.type === 'session.exited') {
+      if (acpTransportClosed || envelope.event.type === 'process:exited' || envelope.event.type === 'session:exited') {
         degradeControl(new Error('Grok ACP control transport closed'), 'grok-control-closed');
         return;
       }
       // The native log owns TUI conversation and lifecycle. ACP remains the
       // live authority for host-side permissions and standard context usage.
       const allowedWithObserver = [
-        'permission.requested',
-        'permission.resolved',
-        'context-window.updated',
-        'context-window.invalidated',
-        'session.environment.updated',
+        'interaction:permission-requested',
+        'interaction:permission-resolved',
+        'context-window:updated',
+        'context-window:invalidated',
+        'environment:updated',
       ];
-      const liveNativeTruth = envelope.event.type === 'adapter.native-event' && envelope.event.adapter === 'grok';
+      const liveNativeTruth = envelope.event.type === 'adapter:native-event' && envelope.event.adapter === 'grok';
       if (observer && !allowedWithObserver.includes(envelope.event.type) && !liveNativeTruth) return;
-      if (envelope.event.type.startsWith('context-window.')) protocolContextAvailable = true;
+      if (envelope.event.type.startsWith('context-window:')) protocolContextAvailable = true;
       applyObserved(
         {
           event: envelope.event,
@@ -159,7 +159,7 @@ export function createPendingControlSession(
       );
     });
     applyObserved({
-      event: { type: 'session.ready' },
+      event: { type: 'session:ready' },
       source: 'runtime',
       confidence: 'authoritative',
       nativeEvent: { code: 'grok-control-attached' },
@@ -171,7 +171,7 @@ export function createPendingControlSession(
     unsubscribeObserver = observer.onEvent(applyObserved);
     unsubscribeObserverError = observer.onError((error) => {
       applyObserved({
-        event: { type: 'adapter.native-event', adapter: 'grok', nativeType: 'updates-log-error' },
+        event: { type: 'adapter:native-event', adapter: 'grok', nativeType: 'updates-log-error' },
         source: 'runtime',
         confidence: 'derived',
         nativeEvent: { message: error.message },

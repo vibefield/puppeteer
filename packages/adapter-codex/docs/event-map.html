@@ -2860,7 +2860,7 @@ codex app-server generate-json-schema --out ./schemas</code></pre>
       <span class="tag t-used">Used</span>
     </div>
   </header>
-  <div class="hook-card-body"><p><strong>Official ThreadItem list</strong> on the App Server page does not always enumerate this name; open-source schema / live streams may include a local shell variant. Puppeteer maps it like <code>commandExecution</code>.</p><h5>Puppeteer</h5><p class="hook-usage"><strong>Puppeteer:</strong> tool.started / tool.completed as command.</p></div>
+  <div class="hook-card-body"><p><strong>Official ThreadItem list</strong> on the App Server page does not always enumerate this name; open-source schema / live streams may include a local shell variant. Puppeteer maps it like <code>commandExecution</code>.</p><h5>Puppeteer</h5><p class="hook-usage"><strong>Puppeteer:</strong> tool:started / tool:completed as command.</p></div>
 </article></div>
 
           <h4 id="gt-cx-approvals">Approvals &amp; server requests — full set</h4>
@@ -2875,7 +2875,7 @@ codex app-server generate-json-schema --out ./schemas</code></pre>
   <div class="hook-card-body"><p>Order of messages:</p>
 <ol><li><code>item/started</code> shows the pending <code>commandExecution</code> item with <code>command</code>, <code>cwd</code>, and other fields.</li><li><code>item/commandExecution/requestApproval</code> includes <code>itemId</code>, <code>threadId</code>, <code>turnId</code>, optional <code>reason</code>, optional <code>command</code>, optional <code>cwd</code>, optional <code>commandActions</code>, optional <code>proposedExecpolicyAmendment</code>, optional <code>networkApprovalContext</code>, and optional <code>availableDecisions</code>. When <code>initialize.params.capabilities.experimentalApi = true</code>, the payload can also include experimental <code>additionalPermissions</code> describing requested per-command sandbox access. Any filesystem paths inside <code>additionalPermissions</code> are absolute on the wire.</li><li>Client responds with one of the command execution approval decisions above.</li><li><code>serverRequest/resolved</code> confirms that the pending request has been answered or cleared.</li><li><code>item/completed</code> returns the final <code>commandExecution</code> item with <code>status: completed | failed | declined</code>.</li></ol>
 <p>When <code>networkApprovalContext</code> is present, the prompt is for managed network access (not a general shell-command approval). The current v2 schema exposes the target <code>host</code> and <code>protocol</code>; clients should render a network-specific prompt and not rely on <code>command</code> being a user-meaningful shell command preview.</p>
-<p>Codex groups concurrent network approval prompts by destination (<code>host</code>, protocol, and port). The app-server may therefore send one prompt that unblocks multiple queued requests to the same destination, while different ports on the same host are treated separately.</p><p class="hook-usage"><strong>Puppeteer:</strong> ServerRequest → permission.requested / .resolved.</p></div>
+<p>Codex groups concurrent network approval prompts by destination (<code>host</code>, protocol, and port). The app-server may therefore send one prompt that unblocks multiple queued requests to the same destination, while different ports on the same host are treated separately.</p><p class="hook-usage"><strong>Puppeteer:</strong> ServerRequest → interaction:permission-requested / interaction:permission-resolved.</p></div>
 </article>
 <article class="hook-card use-used" id="cx-a-file">
   <header class="hook-card-h">
@@ -2885,7 +2885,7 @@ codex app-server generate-json-schema --out ./schemas</code></pre>
     </div>
   </header>
   <div class="hook-card-body"><p>Order of messages:</p>
-<ol><li><code>item/started</code> emits a <code>fileChange</code> item with proposed <code>changes</code> and <code>status: &quot;inProgress&quot;</code>.</li><li><code>item/fileChange/requestApproval</code> includes <code>itemId</code>, <code>threadId</code>, <code>turnId</code>, optional <code>reason</code>, and optional <code>grantRoot</code>.</li><li>Client responds with one of the file change approval decisions above.</li><li><code>serverRequest/resolved</code> confirms that the pending request has been answered or cleared.</li><li><code>item/completed</code> returns the final <code>fileChange</code> item with <code>status: completed | failed | declined</code>.</li></ol><p class="hook-usage"><strong>Puppeteer:</strong> ServerRequest → permission.requested / .resolved.</p></div>
+<ol><li><code>item/started</code> emits a <code>fileChange</code> item with proposed <code>changes</code> and <code>status: &quot;inProgress&quot;</code>.</li><li><code>item/fileChange/requestApproval</code> includes <code>itemId</code>, <code>threadId</code>, <code>turnId</code>, optional <code>reason</code>, and optional <code>grantRoot</code>.</li><li>Client responds with one of the file change approval decisions above.</li><li><code>serverRequest/resolved</code> confirms that the pending request has been answered or cleared.</li><li><code>item/completed</code> returns the final <code>fileChange</code> item with <code>status: completed | failed | declined</code>.</li></ol><p class="hook-usage"><strong>Puppeteer:</strong> ServerRequest → interaction:permission-requested / interaction:permission-resolved.</p></div>
 </article>
 <article class="hook-card use-partial" id="cx-a-input">
   <header class="hook-card-h">
@@ -2966,7 +2966,7 @@ codex app-server --listen unix://&lt;sock&gt;
   → thread/inject_items { items: [] }
   → host: codex resume &lt;id&gt; --remote …
   → notifications → CodexNotificationNormalizer
-  → approval ServerRequests → permission.* (default deny)
+  → approval ServerRequests → interaction:* (default deny)
   → submitPrompt → turn/start (+ clientUserMessageId when set)</pre>
           <div class="scroll"><table class="def-table">
             <thead><tr><th>We use (official name)</th><th>Maps to</th></tr></thead>
@@ -2975,8 +2975,8 @@ codex app-server --listen unix://&lt;sock&gt;
               <tr><td class="m">thread/start · resume · read · inject_items</td><td>Session identity + rollout materialization</td></tr>
               <tr><td class="m">turn/start</td><td>Structured prompt / deterministic receipt</td></tr>
               <tr><td class="m">turn/* · item/* · reasoning deltas</td><td>AgentEvent lifecycle / tools / thinking</td></tr>
-              <tr><td class="m">thread/tokenUsage/updated · contextCompaction</td><td>context-window.*</td></tr>
-              <tr><td class="m">command/file requestApproval</td><td>permission.requested / .resolved</td></tr>
+              <tr><td class="m">thread/tokenUsage/updated · contextCompaction</td><td>context-window:*</td></tr>
+              <tr><td class="m">command/file requestApproval</td><td>interaction:permission-requested / interaction:permission-resolved</td></tr>
               <tr><td class="m">codex --remote</td><td>Native TUI on same thread</td></tr>
             </tbody>
           </table></div>
@@ -3022,7 +3022,7 @@ stateDiagram-v2
   note right of preparing
     starting, interrupting and terminating
     have no producer anywhere — unreachable.
-    session.ready and session.exited are
+    session:ready and session:exited are
     never emitted by this adapter.
   end note
           </pre>
@@ -3039,9 +3039,9 @@ stateDiagram-v2
   working --> idle : turn/completed, tools empty
   idle --> working : turn/started · item/started · reasoning
   idle --> waiting : approval ServerRequest
-  working --> dropped : process.exited
-  idle --> dropped : process.exited
-  waiting --> dropped : process.exited
+  working --> dropped : process:exited
+  idle --> dropped : process:exited
+  waiting --> dropped : process:exited
   dropped --> [*]
   note right of working
     detail = "thinking" while activeReasoning
@@ -3061,7 +3061,7 @@ flowchart LR
   NRM --> RED["reduceSessionState"]
   DRV --> RED
   GIT["runtime git observer"] --> RED
-  NRM -.->|"4 ambient methods<br/>unhandled"| UNK["adapter.native-event<br/>counters.unknownEvents"]
+  NRM -.->|"4 ambient methods<br/>unhandled"| UNK["adapter:native-event<br/>counters.unknownEvents"]
   UNK --> RED
   RED --> CLS{"classifyAgentStatus"}
   CLS --> VIS["idle · working · waiting"]
@@ -3089,106 +3089,106 @@ flowchart LR
           <tbody>
             <tr>
               <td class="m">thread/started</td>
-              <td class="m">session.started<br />session.environment.updated</td>
+              <td class="m">session:started<br />environment:updated</td>
               <td>lifecycle → <code>ready</code>; environment.currentCwd</td>
               <td><span class="tag t-live">idle</span></td>
               <td>bubble appears; project label</td>
             </tr>
             <tr>
               <td class="m">thread/settings/updated</td>
-              <td class="m">session.environment.updated</td>
+              <td class="m">environment:updated</td>
               <td>environment.currentCwd / model</td>
               <td><span class="tag t-dead">none</span></td>
               <td>model + project labels update live — a mid-session model switch is visible here and nowhere else</td>
             </tr>
             <tr>
               <td class="m">turn/started</td>
-              <td class="m">turn.started <span class="none">(deferred until the userMessage item carries the prompt)</span></td>
+              <td class="m">turn:started <span class="none">(deferred until the userMessage item carries the prompt)</span></td>
               <td>lifecycle → <code>running</code>; activeTurn set</td>
               <td><span class="tag t-live">working</span></td>
               <td>swarm ignites; rain speeds up; detail “responding”</td>
             </tr>
             <tr>
               <td class="m">item/started · item/completed<br /><span class="none">kind: reasoning</span></td>
-              <td class="m">reasoning.started<br />reasoning.summary<br />reasoning.completed</td>
+              <td class="m">reasoning:started<br />reasoning:summary<br />reasoning:completed</td>
               <td>activeReasoning set / cleared</td>
               <td><span class="tag t-live">working</span></td>
               <td><strong>detail “thinking” — unique to Codex</strong></td>
             </tr>
             <tr>
               <td class="m">item/started · item/completed<br /><span class="none">kinds: commandExecution, localShellCall, fileChange, webSearch, mcpToolCall</span></td>
-              <td class="m">tool.started<br />tool.completed</td>
+              <td class="m">tool:started<br />tool:completed</td>
               <td>tools += <code>state:'running'</code> / −=; counters.toolsCompleted++</td>
               <td><span class="tag t-live">working</span></td>
               <td>detail becomes the tool title (“Running command”, “Searching the web”)</td>
             </tr>
             <tr>
               <td class="m">item/completed<br /><span class="none">kind: agentMessage</span></td>
-              <td class="m">assistant.message</td>
+              <td class="m">conversation:assistant-message</td>
               <td>lastAssistantMessage</td>
               <td><span class="tag t-dead">none</span></td>
               <td><strong>nothing</strong> — no view reads it</td>
             </tr>
             <tr>
               <td class="m">item/completed<br /><span class="none">kind: userMessage</span></td>
-              <td class="m"><span class="none">no event — supplies the prompt text to the deferred turn.started</span></td>
+              <td class="m"><span class="none">no event — supplies the prompt text to the deferred turn:started</span></td>
               <td>—</td>
               <td><span class="tag t-dead">none</span></td>
               <td>invisible, but <code>clientId</code> here is the deterministic injection-confirmation channel</td>
             </tr>
             <tr>
               <td class="m">item/agentMessage/delta</td>
-              <td class="m">assistant.message <span class="none">(streaming)</span></td>
+              <td class="m">conversation:assistant-message <span class="none">(streaming)</span></td>
               <td>lastAssistantMessage</td>
               <td><span class="tag t-dead">none</span></td>
               <td>nothing</td>
             </tr>
             <tr>
               <td class="m">item/reasoning/textDelta<br />item/reasoning/summaryPartAdded</td>
-              <td class="m">reasoning.progress</td>
+              <td class="m">reasoning:progress</td>
               <td>activeReasoning set if absent</td>
               <td><span class="tag t-live">working</span></td>
               <td>keeps “thinking” alive between start and completion</td>
             </tr>
             <tr>
               <td class="m">item/reasoning/summaryTextDelta</td>
-              <td class="m">reasoning.summary</td>
+              <td class="m">reasoning:summary</td>
               <td>activeReasoning set if absent</td>
               <td><span class="tag t-live">working</span></td>
               <td>same</td>
             </tr>
             <tr>
               <td class="m">turn/completed</td>
-              <td class="m">turn.completed <span class="none">or</span> turn.failed <span class="none">(on error)</span></td>
+              <td class="m">turn:completed <span class="none">or</span> turn:failed <span class="none">(on error)</span></td>
               <td>activeTurn + activeReasoning cleared; lifecycle → <code>ready</code></td>
               <td><span class="tag t-live">idle</span></td>
               <td><strong>Codex is the only provider where turn failure is actually observed</strong></td>
             </tr>
             <tr>
               <td class="m">thread/tokenUsage/updated</td>
-              <td class="m">context-window.updated <span class="none">or</span> .invalidated</td>
+              <td class="m">context-window:updated <span class="none">or</span> .invalidated</td>
               <td>contextWindow</td>
               <td><span class="tag t-dead">none</span></td>
               <td>CTX badge, bubble fill height, rain tail length</td>
             </tr>
             <tr>
               <td class="m">thread/compacted</td>
-              <td class="m">context-window.invalidated <span class="none">(reason: compacted)</span></td>
+              <td class="m">context-window:invalidated <span class="none">(reason: compacted)</span></td>
               <td>contextWindow cleared</td>
               <td><span class="tag t-dead">none</span></td>
               <td>CTX drops to <code>--%</code>; rain tail falls back to its default</td>
             </tr>
             <tr>
               <td class="m">model/rerouted</td>
-              <td class="m">session.environment.updated<br />context-window.invalidated</td>
+              <td class="m">environment:updated<br />context-window:invalidated</td>
               <td>environment.model; contextWindow cleared</td>
               <td><span class="tag t-dead">none</span></td>
               <td>model label changes mid-session</td>
             </tr>
             <tr>
               <td class="m">error</td>
-              <td class="m">notification</td>
-              <td><strong>none</strong> — reducer is <code>case 'notification': break;</code></td>
+              <td class="m">notification:received</td>
+              <td><strong>none</strong> — reducer is <code>case 'notification:received': break;</code></td>
               <td><span class="tag t-dead">none</span></td>
               <td>nothing. A protocol-level error is completely invisible in every view</td>
             </tr>
@@ -3203,19 +3203,19 @@ flowchart LR
           <tbody>
             <tr>
               <td class="m">approval ServerRequest<br /><span class="none">ExecCommand / ApplyPatch</span></td>
-              <td class="m">permission.requested<br />permission.resolved</td>
+              <td class="m">interaction:permission-requested<br />interaction:permission-resolved</td>
               <td>permissions += / −=</td>
               <td><span class="tag t-live">waiting</span></td>
             </tr>
             <tr>
               <td class="m">process exit (driver)</td>
-              <td class="m">process.exited</td>
+              <td class="m">process:exited</td>
               <td>lifecycle → <code>exited</code> | <code>failed</code></td>
               <td><span class="tag t-dead">dropped</span></td>
             </tr>
             <tr>
               <td class="m">rollout-context.ts</td>
-              <td class="m">context-window.updated</td>
+              <td class="m">context-window:updated</td>
               <td>contextWindow</td>
               <td><span class="tag t-dead">none</span></td>
             </tr>
@@ -3226,7 +3226,7 @@ flowchart LR
       <h2>Untracked: received and not interpreted</h2>
       <p>
         Confirmed present in the C1 live capture (findings §7). All fall through to
-        <code>adapter.native-event</code> — retained verbatim per ADR-008, counted in
+        <code>adapter:native-event</code> — retained verbatim per ADR-008, counted in
         <code>counters.unknownEvents</code>, invisible in every view.
       </p>
       <div class="scroll">
@@ -3243,23 +3243,23 @@ flowchart LR
 
       <h2>Gaps worth knowing</h2>
       <p>
-        <strong>Tool failure is not represented.</strong> The normalizer never emits <code>tool.failed</code> — a failed
-        <code>commandExecution</code> normalizes to <code>tool.completed</code> like any other. So
+        <strong>Tool failure is not represented.</strong> The normalizer never emits <code>tool:failed</code> — a failed
+        <code>commandExecution</code> normalizes to <code>tool:completed</code> like any other. So
         <code>counters.toolsFailed</code> stays at zero for Codex, and a session of failing commands looks identical to a
         session of succeeding ones.
       </p>
       <p>
-        <strong>Tools are always <code>running</code>.</strong> Codex emits <code>tool.started</code> and never
-        <code>tool.requested</code>, the mirror image of Claude. <code>ToolRuntimeState.state</code> therefore encodes
+        <strong>Tools are always <code>running</code>.</strong> Codex emits <code>tool:started</code> and never
+        <code>tool:requested</code>, the mirror image of Claude. <code>ToolRuntimeState.state</code> therefore encodes
         which vendor you are running, not where the tool is in its lifecycle.
       </p>
       <p>
-        <strong>Union members never produced:</strong> <code class="m">session.ready</code> ·
-        <code class="m">session.exited</code> · <code class="m">tool.requested</code> ·
-        <code class="m">tool.failed</code> · <code class="m">subagent.started</code> ·
-        <code class="m">subagent.stopped</code> · <code class="m">task.created</code> ·
-        <code class="m">task.completed</code> · <code class="m">process.started</code> ·
-        <code class="m">workspace.changed</code>.
+        <strong>Union members never produced:</strong> <code class="m">session:ready</code> ·
+        <code class="m">session:exited</code> · <code class="m">tool:requested</code> ·
+        <code class="m">tool:failed</code> · <code class="m">delegation:subagent-started</code> ·
+        <code class="m">delegation:subagent-stopped</code> · <code class="m">delegation:task-created</code> ·
+        <code class="m">delegation:task-completed</code> · <code class="m">process:started</code> ·
+        <code class="m">workspace:changed</code>.
       </p>
 
       <footer>

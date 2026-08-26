@@ -79,34 +79,34 @@ describe('CodexNotificationNormalizer', () => {
   it('maps a real single-turn app-server stream onto core events', () => {
     const events = normalizeAll(CAPTURE);
 
-    const started = events.filter((e) => e.type === 'session.started');
+    const started = events.filter((e) => e.type === 'session:started');
     expect(started).toHaveLength(1);
     expect(started[0]).toMatchObject({ nativeSessionId: THREAD });
 
-    // turn.started is deferred to the userMessage so it carries id AND prompt,
+    // turn:started is deferred to the userMessage so it carries id AND prompt,
     // and it is emitted exactly once (not duplicated by the defensive flush).
-    const turnStarts = events.filter((e) => e.type === 'turn.started');
+    const turnStarts = events.filter((e) => e.type === 'turn:started');
     expect(turnStarts).toHaveLength(1);
     expect(turnStarts[0]).toMatchObject({ turnId: TURN, prompt: PROMPT });
 
     // Streaming delta: accumulated text, not yet final.
-    const deltas = events.filter((e) => e.type === 'assistant.message' && e.final === false);
+    const deltas = events.filter((e) => e.type === 'conversation:assistant-message' && e.final === false);
     expect(deltas).toHaveLength(1);
     expect(deltas[0]).toMatchObject({ messageId: MSG, text: 'pong', displayOnly: false });
 
     // Authoritative final assistant message from item/completed.
-    const finals = events.filter((e) => e.type === 'assistant.message' && e.final === true);
+    const finals = events.filter((e) => e.type === 'conversation:assistant-message' && e.final === true);
     expect(finals).toHaveLength(1);
     expect(finals[0]).toMatchObject({ messageId: MSG, turnId: TURN, text: 'pong' });
 
-    const completed = events.filter((e) => e.type === 'turn.completed');
+    const completed = events.filter((e) => e.type === 'turn:completed');
     expect(completed).toHaveLength(1);
     expect(completed[0]).toMatchObject({ turnId: TURN });
   });
 
   it('maps current token usage, retains incomplete payloads, and drops pure infra', () => {
     const tokens = new CodexNotificationNormalizer().normalize(CAPTURE[9]!);
-    expect(tokens.events).toEqual([{ type: 'context-window.updated', usedTokens: 50_000, capacityTokens: 200_000 }]);
+    expect(tokens.events).toEqual([{ type: 'context-window:updated', usedTokens: 50_000, capacityTokens: 200_000 }]);
 
     // The cumulative five-million total is deliberately ignored. An older
     // payload without current usage/window is retained, never treated as 0%.
@@ -115,13 +115,13 @@ describe('CodexNotificationNormalizer', () => {
         method: 'thread/tokenUsage/updated',
         params: { tokenUsage: { total: { totalTokens: 5_000_000 } } },
       }).events,
-    ).toEqual([{ type: 'adapter.native-event', adapter: 'codex', nativeType: 'thread/tokenUsage/updated' }]);
+    ).toEqual([{ type: 'adapter:native-event', adapter: 'codex', nativeType: 'thread/tokenUsage/updated' }]);
     expect(
       new CodexNotificationNormalizer().normalize({
         method: 'thread/tokenUsage/updated',
         params: { tokenUsage: { total: {}, last: { totalTokens: 10 }, modelContextWindow: null } },
       }).events,
-    ).toEqual([{ type: 'context-window.invalidated', reason: 'provider-reset' }]);
+    ).toEqual([{ type: 'context-window:invalidated', reason: 'provider-reset' }]);
 
     // pure infra/account/UI churn → dropped entirely.
     for (const m of [
@@ -147,14 +147,14 @@ describe('CodexNotificationNormalizer', () => {
         method: 'item/completed',
         params: { threadId: THREAD, turnId: TURN, item: { type: 'contextCompaction', id: 'compact-1' } },
       }).events,
-    ).toEqual([{ type: 'context-window.invalidated', reason: 'compacted' }]);
+    ).toEqual([{ type: 'context-window:invalidated', reason: 'compacted' }]);
     // Kept for compatibility with older app-server streams.
     expect(n.normalize({ method: 'thread/compacted', params: {} }).events).toEqual([
-      { type: 'context-window.invalidated', reason: 'compacted' },
+      { type: 'context-window:invalidated', reason: 'compacted' },
     ]);
     expect(n.normalize({ method: 'model/rerouted', params: { toModel: 'gpt-5.6-sol' } }).events).toEqual([
-      { type: 'session.environment.updated', model: { id: 'gpt-5.6-sol' } },
-      { type: 'context-window.invalidated', reason: 'model-changed' },
+      { type: 'model:updated', model: { id: 'gpt-5.6-sol' } },
+      { type: 'context-window:invalidated', reason: 'model-changed' },
     ]);
   });
 
@@ -162,16 +162,16 @@ describe('CodexNotificationNormalizer', () => {
     const n = new CodexNotificationNormalizer((id) => (id === 'gpt-5.6-sol' ? 'GPT-5.6-Codex' : undefined));
     expect(
       n.normalize({ method: 'thread/started', params: { thread: { id: THREAD, cwd: '/repo' } } }).events,
-    ).toContainEqual({ type: 'session.environment.updated', currentCwd: '/repo' });
+    ).toContainEqual({ type: 'environment:updated', currentCwd: '/repo' });
     expect(
       n.normalize({
         method: 'thread/settings/updated',
         params: { threadSettings: { cwd: '/repo/packages/app', model: 'gpt-5.6-sol', modelProvider: 'openai' } },
       }).events,
     ).toEqual([
+      { type: 'environment:updated', currentCwd: '/repo/packages/app' },
       {
-        type: 'session.environment.updated',
-        currentCwd: '/repo/packages/app',
+        type: 'model:updated',
         model: { id: 'gpt-5.6-sol', displayName: 'GPT-5.6-Codex', provider: 'openai' },
       },
     ]);
@@ -180,7 +180,7 @@ describe('CodexNotificationNormalizer', () => {
   it('maps thread/closed to a terminal session event', () => {
     expect(
       new CodexNotificationNormalizer().normalize({ method: 'thread/closed', params: { threadId: THREAD } }).events,
-    ).toEqual([{ type: 'session.exited', reason: 'thread-closed' }]);
+    ).toEqual([{ type: 'session:exited', reason: 'thread-closed' }]);
   });
 
   it('surfaces the userMessage clientId for injection confirmation', () => {
@@ -224,25 +224,25 @@ describe('CodexNotificationNormalizer', () => {
     ];
 
     expect(events).toEqual([
-      { type: 'reasoning.started', reasoningId: 'r1' },
-      { type: 'reasoning.progress', reasoningId: 'r1' },
-      { type: 'reasoning.summary', reasoningId: 'r1', text: 'Checked both approaches.', final: false },
-      { type: 'reasoning.completed', reasoningId: 'r1' },
+      { type: 'reasoning:started', reasoningId: 'r1' },
+      { type: 'reasoning:progress', reasoningId: 'r1' },
+      { type: 'reasoning:summary', reasoningId: 'r1', text: 'Checked both approaches.', final: false },
+      { type: 'reasoning:completed', reasoningId: 'r1' },
     ]);
     expect(JSON.stringify(events)).not.toContain('private thought text');
   });
 
-  it('a failed turn normalizes to turn.failed with the error', () => {
+  it('a failed turn normalizes to turn:failed with the error', () => {
     const n = new CodexNotificationNormalizer();
     n.normalize(CAPTURE[2]!); // turn/started
     const out = n.normalize({
       method: 'turn/completed',
       params: { threadId: THREAD, turn: { id: TURN, status: 'failed', error: { message: 'model error' } } },
     });
-    // defensive turn.started flush (no userMessage) + turn.failed
+    // defensive turn:started flush (no userMessage) + turn:failed
     expect(out.events).toEqual([
-      { type: 'turn.started', turnId: TURN, prompt: undefined },
-      { type: 'turn.failed', turnId: TURN, error: 'model error' },
+      { type: 'turn:started', turnId: TURN, prompt: undefined },
+      { type: 'turn:failed', turnId: TURN, error: 'model error' },
     ]);
   });
 

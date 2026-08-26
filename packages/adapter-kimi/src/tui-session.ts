@@ -167,7 +167,7 @@ export async function prepareKimiTuiSession(options: CreateKimiTuiSessionOptions
       const emitMonitorBatch = (batch: AdapterMonitorObservationBatch | null): void => {
         if (!batch || sessionDisposed) return;
         publishEvent(
-          { type: 'monitor.batch', batch },
+          { type: 'monitor:batch', batch },
           { timestamp: batch.observedAt, source: 'native-log', confidence: 'authoritative' },
         );
       };
@@ -202,7 +202,7 @@ export async function prepareKimiTuiSession(options: CreateKimiTuiSessionOptions
         const observedAt = new Date().toISOString();
         emitMonitorBatch(monitorEvidence.observerDegradedBatch(observedAt));
         publish({
-          event: { type: 'adapter.native-event', adapter: 'kimi', nativeType: 'wire-observer-error' },
+          event: { type: 'adapter:native-event', adapter: 'kimi', nativeType: 'wire-observer-error' },
           source: 'runtime',
           confidence: 'authoritative',
           nativeEvent: { message: error.message },

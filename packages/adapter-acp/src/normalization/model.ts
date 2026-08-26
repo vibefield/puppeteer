@@ -2,7 +2,7 @@ import type { SessionConfigOption, SessionUpdate } from '@agentclientprotocol/sd
 import type { AgentModelIdentity } from '@vibecook/puppeteer-core';
 import type { AcpEventOfType } from './types.js';
 
-type AcpEnvironmentEvent = AcpEventOfType<'session.environment.updated' | 'adapter.native-event'>;
+type AcpModelEvent = AcpEventOfType<'model:updated' | 'adapter:native-event'>;
 
 /** Resolve the active model only from ACP's semantic model config selector. */
 export function acpModelIdentity(
@@ -15,11 +15,11 @@ export function acpModelIdentity(
   return { id: config.currentValue, ...(selected?.name ? { displayName: selected.name } : {}) };
 }
 
-/** ACP config changes → environment event adapter. */
-export function normalizeAcpEnvironment(update: SessionUpdate): AcpEnvironmentEvent[] {
+/** ACP model config changes -> Core model events. */
+export function normalizeAcpModel(update: SessionUpdate): AcpModelEvent[] {
   if (update.sessionUpdate !== 'config_option_update') return [];
   const model = acpModelIdentity(update.configOptions);
   return model
-    ? [{ type: 'session.environment.updated', model }]
-    : [{ type: 'adapter.native-event', adapter: 'acp', nativeType: update.sessionUpdate }];
+    ? [{ type: 'model:updated', model }]
+    : [{ type: 'adapter:native-event', adapter: 'acp', nativeType: update.sessionUpdate }];
 }

@@ -70,10 +70,10 @@ describe.skipIf(!live)('Claude pinned artifact (live)', () => {
       const result = await waitForExit(child);
       expect(result.code, result.stderr).toBe(0);
       expect(events.map((event) => event.event.type)).toEqual(
-        expect.arrayContaining(['session.started', 'session.ready', 'session.exited', 'adapter.native-event']),
+        expect.arrayContaining(['session:started', 'session:ready', 'session:exited', 'adapter:native-event']),
       );
       expect(
-        events.some((event) => event.event.type === 'adapter.native-event' && event.event.nativeType === 'Setup'),
+        events.some((event) => event.event.type === 'adapter:native-event' && event.event.nativeType === 'Setup'),
       ).toBe(true);
       expect(session.observationLevel()).toBe('native-hooks');
     } finally {

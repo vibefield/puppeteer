@@ -168,13 +168,13 @@ async function imposterHarness(
     },
     driveTurn: async (prompt) => {
       // A resumed observer replays the prior transcript before tailing new
-      // records. Waiting for merely *any* turn.completed can therefore return
+      // records. Waiting for merely *any* turn:completed can therefore return
       // on the old turn while the newly submitted turn is still running.
       // Match the confirmed receipt and exclude replay traffic so the shared
       // conformance assertion observes the state of this turn, not its history.
       const completedTurnIds = new Set<string | undefined>();
       const off = session.onEvent((envelope: AgentEventEnvelope) => {
-        if (!envelope.replay && envelope.event.type === 'turn.completed') {
+        if (!envelope.replay && envelope.event.type === 'turn:completed') {
           completedTurnIds.add(envelope.event.turnId);
         }
       });
@@ -185,7 +185,7 @@ async function imposterHarness(
         }
         await waitFor(
           () => completedTurnIds.has(receipt.turnId),
-          `non-replay turn.completed for ${receipt.turnId ?? 'the confirmed turn'}`,
+          `non-replay turn:completed for ${receipt.turnId ?? 'the confirmed turn'}`,
           5000,
         );
       } finally {
@@ -211,16 +211,16 @@ describe('claude imposter channels', () => {
     const harness = await imposterHarness();
     const messages: AgentEventEnvelope[] = [];
     harness.session.onEvent((envelope) => {
-      if (envelope.event.type === 'assistant.message') messages.push(envelope);
+      if (envelope.event.type === 'conversation:assistant-message') messages.push(envelope);
     });
     try {
       await harness.driveTurn('where does the transcript live?');
       await waitFor(
         () => messages.some((envelope) => envelope.source === 'native-transcript'),
-        'transcript-sourced assistant.message',
+        'transcript-sourced conversation:assistant-message',
       );
       const fromTranscript = messages.find((envelope) => envelope.source === 'native-transcript')!;
-      if (fromTranscript.event.type === 'assistant.message') {
+      if (fromTranscript.event.type === 'conversation:assistant-message') {
         expect(fromTranscript.event.displayOnly).toBe(false);
         expect(fromTranscript.event.text).toBe(BEHAVIOR.reply);
       }

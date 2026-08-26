@@ -41,14 +41,14 @@ export function claudeQuestionOutcome(value: unknown): 'answered' | 'cancelled' 
 }
 
 export function normalizeClaudeQuestionRequested(requestId: string, questions: AgentStructuredQuestion[]) {
-  return { type: 'question.requested' as const, requestId, questions };
+  return { type: 'interaction:question-requested' as const, requestId, questions };
 }
 
 export function normalizeClaudeQuestionResolved(
   requestId: string,
   outcome: 'answered' | 'failed' | 'cancelled' | 'superseded',
 ) {
-  return { type: 'question.resolved' as const, requestId, outcome };
+  return { type: 'interaction:question-resolved' as const, requestId, outcome };
 }
 
 export function normalizeClaudePermissionRequested(
@@ -58,7 +58,7 @@ export function normalizeClaudePermissionRequested(
   toolCallId?: string,
 ) {
   return {
-    type: 'permission.requested' as const,
+    type: 'interaction:permission-requested' as const,
     requestId,
     ...(toolCallId ? { toolCallId } : {}),
     tool,
@@ -71,5 +71,5 @@ export function normalizeClaudePermissionResolved(
   requestId: string,
   outcome: 'allowed' | 'denied' | 'dismissed' | 'unknown',
 ) {
-  return { type: 'permission.resolved' as const, requestId, outcome };
+  return { type: 'interaction:permission-resolved' as const, requestId, outcome };
 }

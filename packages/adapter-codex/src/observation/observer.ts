@@ -119,15 +119,15 @@ export async function createCodexObserver(opts: CreateCodexObserverOptions): Pro
 
   function emitMonitorBatch(batch: AdapterMonitorObservationBatch | null): void {
     if (!batch) return;
-    apply({ type: 'monitor.batch', batch }, 'native-protocol', batch);
+    apply({ type: 'monitor:batch', batch }, 'native-protocol', batch);
   }
 
   const capabilitiesBatch = monitorEvidence.capabilitiesBatch(new Date().toISOString());
   emitMonitorBatch(capabilitiesBatch);
 
   function apply(event: AgentEvent, source: AgentEventEnvelope['source'], nativeEvent?: unknown, replay = false): void {
-    if (event.type === 'context-window.updated') contextWindowObserved = true;
-    if (event.type === 'context-window.invalidated') contextWindowObserved = false;
+    if (event.type === 'context-window:updated') contextWindowObserved = true;
+    if (event.type === 'context-window:invalidated') contextWindowObserved = false;
     events.publish(event, source, nativeEvent, 'authoritative', replay);
   }
 
@@ -142,7 +142,8 @@ export async function createCodexObserver(opts: CreateCodexObserverOptions): Pro
     if (norm.turnId) currentTurnId = norm.turnId;
     for (const event of norm.events) {
       const source =
-        event.type.startsWith('context-window.') || event.type === 'session.environment.updated'
+        event.type.startsWith('context-window:') ||
+        ['environment:updated', 'model:updated', 'effort:updated', 'mode:updated'].includes(event.type)
           ? 'native-protocol'
           : 'native-hook';
       apply(event, source, replayed ? { method, params, replayed: true } : { method, params }, replayed);
@@ -176,23 +177,22 @@ export async function createCodexObserver(opts: CreateCodexObserverOptions): Pro
       ),
     );
     if (!currentCwd && !modelId) return;
-    apply(
-      {
-        type: 'session.environment.updated',
-        ...(currentCwd ? { currentCwd } : {}),
-        ...(modelId
-          ? {
-              model: {
-                id: modelId,
-                ...(modelNames.get(modelId) ? { displayName: modelNames.get(modelId) } : {}),
-                ...(provider ? { provider } : {}),
-              },
-            }
-          : {}),
-      },
-      'native-protocol',
-      { response, bootstrap: 'thread-response' },
-    );
+    const evidence = { response, bootstrap: 'thread-response' };
+    if (currentCwd) apply({ type: 'environment:updated', currentCwd }, 'native-protocol', evidence);
+    if (modelId) {
+      apply(
+        {
+          type: 'model:updated',
+          model: {
+            id: modelId,
+            ...(modelNames.get(modelId) ? { displayName: modelNames.get(modelId) } : {}),
+            ...(provider ? { provider } : {}),
+          },
+        },
+        'native-protocol',
+        evidence,
+      );
+    }
   }
 
   function replayCompletedTurns(resumed: Record<string, unknown> | undefined): Set<string> {
@@ -251,7 +251,7 @@ export async function createCodexObserver(opts: CreateCodexObserverOptions): Pro
         } catch {
           // History enrichment must never prevent live resume attachment.
         }
-        apply({ type: 'session.started', nativeSessionId: threadId }, 'native-hook');
+        apply({ type: 'session:started', nativeSessionId: threadId }, 'native-hook');
         const replayedTurnIds = replayCompletedTurns(history);
 
         // thread/resume opens the live stream before thread/read resolves. Keep
@@ -311,13 +311,13 @@ export async function createCodexObserver(opts: CreateCodexObserverOptions): Pro
   client.onServerRequest(async (method, params, id) => {
     const requestId = String(id);
     apply(
-      { type: 'permission.requested', requestId, tool: method, input: params, presentation: 'host-ui' },
+      { type: 'interaction:permission-requested', requestId, tool: method, input: params, presentation: 'host-ui' },
       'native-hook',
       { method, params, id },
     );
     const decision = opts.onApproval ? await opts.onApproval({ method, params, requestId: id }) : 'denied';
     apply(
-      { type: 'permission.resolved', requestId, outcome: decision === 'approved' ? 'allowed' : 'denied' },
+      { type: 'interaction:permission-resolved', requestId, outcome: decision === 'approved' ? 'allowed' : 'denied' },
       'native-hook',
       { method, params, id },
     );
@@ -333,7 +333,7 @@ export async function createCodexObserver(opts: CreateCodexObserverOptions): Pro
     const detail = signal ? `signal:${signal}` : code === null ? 'transport closed' : `exit:${code}`;
     emitMonitorBatch(monitorEvidence.railUnavailableBatch(observedAt, detail));
     if (attached) {
-      apply({ type: 'adapter.native-event', adapter: 'codex', nativeType: 'app-server.transport.closed' }, 'runtime', {
+      apply({ type: 'adapter:native-event', adapter: 'codex', nativeType: 'app-server.transport.closed' }, 'runtime', {
         code,
         signal,
       });

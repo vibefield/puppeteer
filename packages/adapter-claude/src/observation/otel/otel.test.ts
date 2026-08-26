@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 import {
   decodeClaudeOtelLogs,
   isClaudeOtelLogsVerified,
-  normalizeClaudeOtelEnvironment,
+  normalizeClaudeOtelModel,
   normalizeClaudeOtelUsage,
   normalizeClaudeOtelWorkflow,
   supportsClaudeOtelLogs,
@@ -59,10 +59,12 @@ describe('Claude OTLP log normalization', () => {
     expect(normalizeClaudeOtelUsage(records[0]!)).toMatchObject({
       sessionId: 'session-1',
       promptId: 'prompt-1',
+      actorRole: 'child',
+      actorKey: 'workflow:workflow-1:unknown',
       providerVersion: '2.1.245',
       timestamp: '2026-08-25T16:30:14.402Z',
       event: {
-        type: 'tokens.used',
+        type: 'usage:tokens-used',
         usageId: 'claude-request:request-1',
         totalTokens: 17_451,
         meterTokens: 61,
@@ -76,11 +78,39 @@ describe('Claude OTLP log normalization', () => {
         },
       },
     });
-    expect(normalizeClaudeOtelEnvironment(records[0]!)).toMatchObject({
-      event: { type: 'session.environment.updated', model: { id: 'claude-haiku-4-5' } },
+    expect(normalizeClaudeOtelModel(records[0]!)).toMatchObject({
+      actorRole: 'child',
+      actorKey: 'workflow:workflow-1:unknown',
+      event: { type: 'model:updated', model: { id: 'claude-haiku-4-5' } },
     });
     expect(normalizeClaudeOtelWorkflow(records[0]!)).toMatchObject({
-      event: { type: 'workflow.updated', workflowId: 'workflow-1', name: 'research', active: true },
+      event: { type: 'workflow:updated', workflowId: 'workflow-1', name: 'research', active: true },
+    });
+  });
+
+  it('keeps explicit root requests actorless and isolates auxiliary requests', () => {
+    const root = {
+      receivedAt: '2026-08-25T00:00:00.000Z',
+      timestamp: '2026-08-25T00:00:00.000Z',
+      body: 'claude_code.api_request',
+      attributes: {
+        'event.name': 'api_request',
+        'session.id': 'session-1',
+        model: 'claude-opus-5',
+        input_tokens: 1,
+        query_source: 'repl_main_thread',
+      },
+    } as const;
+    const auxiliary = {
+      ...root,
+      attributes: { ...root.attributes, model: 'claude-haiku-4-5', query_source: 'compact' },
+    } as const;
+
+    expect(normalizeClaudeOtelModel(root)).not.toHaveProperty('actorKey');
+    expect(normalizeClaudeOtelUsage(root)).not.toHaveProperty('actorKey');
+    expect(normalizeClaudeOtelModel(auxiliary)).toMatchObject({
+      actorKey: 'query-source:compact',
+      actorRole: 'auxiliary',
     });
   });
 

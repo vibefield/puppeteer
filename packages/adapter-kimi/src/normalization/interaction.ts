@@ -30,7 +30,7 @@ export class KimiInteractionNormalizer {
     const toolCallId = kimiString(body.toolCallId);
     return [
       {
-        type: 'permission.requested',
+        type: 'interaction:permission-requested',
         requestId,
         ...(toolCallId ? { toolCallId } : {}),
         ...(tool ? { tool } : {}),
@@ -45,6 +45,6 @@ export class KimiInteractionNormalizer {
     const fact = requestId ? this.interactions.get(requestId) : undefined;
     if (!requestId || fact?.kind !== 'approval') return undefined;
     this.interactions.delete(requestId);
-    return [{ type: 'permission.resolved', requestId, outcome: permissionOutcome(body.response) }];
+    return [{ type: 'interaction:permission-resolved', requestId, outcome: permissionOutcome(body.response) }];
   }
 }

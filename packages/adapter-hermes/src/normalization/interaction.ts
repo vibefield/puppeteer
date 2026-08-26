@@ -10,7 +10,7 @@ export class HermesInteractionNormalizer {
     const toolCallId = hermesString(payload.tool_id);
     return [
       {
-        type: 'permission.requested',
+        type: 'interaction:permission-requested',
         requestId: toolCallId ?? liveSessionId ?? 'hermes-approval',
         ...(toolCallId ? { toolCallId } : {}),
         tool: hermesString(payload.name) ?? 'terminal',
@@ -24,13 +24,13 @@ export class HermesInteractionNormalizer {
     const questions = hermesStructuredQuestions(payload);
     if (!requestId || !questions || this.questionStates.has(requestId)) return [];
     boundedHermesMapSet(this.questionStates, requestId, 'requested');
-    return [{ type: 'question.requested', requestId, questions }];
+    return [{ type: 'interaction:question-requested', requestId, questions }];
   }
 
   expireQuestion(payload: Record<string, unknown>): AgentEvent[] {
     const requestId = hermesString(payload.request_id);
     if (!requestId || this.questionStates.get(requestId) === 'resolved') return [];
     boundedHermesMapSet(this.questionStates, requestId, 'resolved');
-    return [{ type: 'question.resolved', requestId, outcome: 'cancelled' }];
+    return [{ type: 'interaction:question-resolved', requestId, outcome: 'cancelled' }];
   }
 }

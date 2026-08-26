@@ -3,9 +3,11 @@ import { isRetainedHermesEvent, normalizeHermesNative } from './adapter.js';
 import { HermesConversationNormalizer } from './conversation.js';
 import { normalizeHermesContextWindow } from './context-window.js';
 import { normalizeHermesEnvironment } from './environment.js';
+import { normalizeHermesModel } from './model.js';
 import { HermesInteractionNormalizer } from './interaction.js';
 import { HermesSessionNormalizer } from './session.js';
 import { HermesToolNormalizer } from './tool.js';
+import { HermesTurnNormalizer } from './turn.js';
 import {
   hermesNativeEvent,
   parseHermesFrame,
@@ -17,6 +19,7 @@ import {
 export class HermesGatewayNormalizer {
   private readonly session = new HermesSessionNormalizer();
   private readonly conversation = new HermesConversationNormalizer();
+  private readonly turn = new HermesTurnNormalizer();
   private readonly tool = new HermesToolNormalizer();
   private readonly interaction = new HermesInteractionNormalizer();
 
@@ -35,7 +38,7 @@ export class HermesGatewayNormalizer {
   normalize(frame: unknown): HermesNormalizedRecord {
     const parsed = parseHermesFrame(frame);
     const nativeSessionId = this.session.nativeSessionId(parsed.liveSessionId, parsed.payload);
-    const currentTurnId = this.conversation.currentTurnId();
+    const currentTurnId = this.turn.currentTurnId();
     const base = {
       nativeSessionId,
       liveSessionId: parsed.liveSessionId,
@@ -54,19 +57,22 @@ export class HermesGatewayNormalizer {
           [
             ...this.session.acknowledge(nativeSessionId),
             ...normalizeHermesEnvironment(parsed.payload),
+            ...normalizeHermesModel(parsed.payload),
             ...normalizeHermesContextWindow(parsed.payload),
           ],
           base,
         );
       case 'message.start': {
-        const started = this.conversation.start();
+        const started = this.turn.start();
+        this.conversation.start();
         return this.record(started.events, { ...base, turnId: started.turnId });
       }
       case 'message.delta':
-        return this.record(this.conversation.delta(parsed.payload), base);
+        return this.record(this.conversation.delta(parsed.payload, currentTurnId), base);
       case 'message.complete': {
-        const completed = this.conversation.complete(parsed.payload);
-        return this.record(completed.events, { ...base, turnId: completed.turnId });
+        const conversation = this.conversation.complete(parsed.payload, currentTurnId);
+        const completed = this.turn.complete(parsed.payload, conversation.text);
+        return this.record([...conversation.events, ...completed.events], { ...base, turnId: completed.turnId });
       }
       case 'tool.start':
         return this.record(this.tool.start(parsed.payload), base);

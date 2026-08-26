@@ -59,5 +59,5 @@ export function parseHermesFrame(frame: unknown): {
 }
 
 export function hermesNativeEvent(nativeType: string): AgentEvent {
-  return { type: 'adapter.native-event', adapter: 'hermes', nativeType };
+  return { type: 'adapter:native-event', adapter: 'hermes', nativeType };
 }

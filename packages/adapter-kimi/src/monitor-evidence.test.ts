@@ -616,7 +616,7 @@ describe('KimiMonitorEvidence', () => {
     const projector = evidence();
     const truncated = projector.observerEventBatch(
       {
-        event: { type: 'adapter.native-event', adapter: 'kimi', nativeType: 'replay-window-truncated' },
+        event: { type: 'adapter:native-event', adapter: 'kimi', nativeType: 'replay-window-truncated' },
         source: 'runtime',
         confidence: 'authoritative',
         replay: true,

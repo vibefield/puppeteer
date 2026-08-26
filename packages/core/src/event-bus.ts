@@ -6,6 +6,7 @@ import type {
   AgentEventServiceOf,
   AgentServiceEventType,
 } from './events.js';
+import { agentEventService, agentServiceEventType } from './events.js';
 
 type EnvelopeForService<Event extends AgentEvent, Service extends AgentEventService> = Event extends AgentEvent
   ? AgentEventServiceOf<Event> extends Service
@@ -30,10 +31,28 @@ export interface AgentEventBusOptions {
   onListenerError?: (error: unknown, envelope: AgentEventEnvelope) => void;
 }
 
+/** Freeze schema-owned payload structure while leaving opaque tool data alone. */
+function freezeNormalizedEvent(event: AgentEvent): void {
+  const seen = new WeakSet<object>();
+  const freeze = (value: unknown): void => {
+    if (typeof value !== 'object' || value === null || seen.has(value)) return;
+    seen.add(value);
+    if (Array.isArray(value)) {
+      for (const item of value) freeze(item);
+    } else {
+      for (const [key, item] of Object.entries(value)) {
+        if (key !== 'input' && key !== 'output') freeze(item);
+      }
+    }
+    Object.freeze(value);
+  };
+  freeze(event);
+}
+
 /**
  * Synchronous, provider-neutral event bus for one live agent.
  *
- * Exact routes (`context-window:updated`), service routes (`state:*`), and the
+ * Exact routes (`context-window:updated`), category routes (`tool:*`), and the
  * catch-all route (`*`) all observe the same immutable envelope. A listener
  * failure is isolated from ingestion and from the other services.
  */
@@ -59,6 +78,19 @@ export class AgentEventBus {
   }
 
   emit(envelope: AgentEventEnvelope): void {
+    const canonicalType = agentServiceEventType(envelope.event);
+    const canonicalService = agentEventService(envelope.event);
+    if (envelope.type !== canonicalType || envelope.service !== canonicalService) {
+      throw new TypeError(
+        `agent event envelope route mismatch: expected ${canonicalType} (${canonicalService}), received ${envelope.type} (${envelope.service})`,
+      );
+    }
+    // All selector scopes receive this exact object. Freeze the public
+    // normalized shell so an earlier listener cannot alter what later
+    // listeners observe. Opaque nested provider evidence remains untouched.
+    if (envelope.sourceEventRef) Object.freeze(envelope.sourceEventRef);
+    freezeNormalizedEvent(envelope.event);
+    Object.freeze(envelope);
     this.deliver(this.#all, envelope);
     this.deliver(this.#services.get(envelope.service), envelope);
     this.deliver(this.#types.get(envelope.type), envelope);
@@ -95,7 +127,11 @@ export class AgentEventBus {
       try {
         listener(envelope);
       } catch (error) {
-        this.#onListenerError?.(error, envelope);
+        try {
+          this.#onListenerError?.(error, envelope);
+        } catch {
+          // Diagnostic hooks are listeners too; their failure cannot break fan-out.
+        }
       }
     }
   }
@@ -112,14 +148,28 @@ export interface AgentEventStreamSource {
  */
 export class BufferedAgentEventSource implements AgentEventStreamSource {
   readonly #listeners = new Set<AgentEventListener>();
+  readonly #pendingCapacity: number;
   #pending: AgentEventEnvelope[] = [];
   #attached = false;
   #closed = false;
 
+  constructor(options: { pendingCapacity?: number } = {}) {
+    this.#pendingCapacity = options.pendingCapacity ?? 256;
+    if (!Number.isSafeInteger(this.#pendingCapacity) || this.#pendingCapacity < 1) {
+      throw new RangeError('agent event pendingCapacity must be a positive safe integer');
+    }
+  }
+
   emit(envelope: AgentEventEnvelope): void {
     if (this.#closed) return;
+    if (envelope.sourceEventRef) Object.freeze(envelope.sourceEventRef);
+    freezeNormalizedEvent(envelope.event);
+    Object.freeze(envelope);
     if (!this.#attached) {
       this.#pending.push(envelope);
+      if (this.#pending.length > this.#pendingCapacity) {
+        this.#pending.splice(0, this.#pending.length - this.#pendingCapacity);
+      }
       return;
     }
     this.deliver(envelope);

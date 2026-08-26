@@ -782,7 +782,7 @@ export class KimiMonitorEvidence {
   /** Compatibility observer diagnostics that change evidence coverage, not host lifecycle. */
   observerEventBatch(observed: KimiObservedEvent, observedAt: string): AdapterMonitorObservationBatch | null {
     if (
-      observed.event.type !== 'adapter.native-event' ||
+      observed.event.type !== 'adapter:native-event' ||
       observed.event.adapter !== 'kimi' ||
       observed.event.nativeType !== 'replay-window-truncated'
     ) {

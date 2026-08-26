@@ -10,7 +10,7 @@ describe('createEnvelopeStamper', () => {
       monotonicTime: 0,
       source: 'native-hook' as const,
       confidence: 'authoritative' as const,
-      event: { type: 'session.started' as const },
+      event: { type: 'session:started' as const },
     };
     const a = stamper.next(base);
     const b = stamper.next(base);
@@ -27,10 +27,27 @@ describe('createEnvelopeStamper', () => {
       monotonicTime: 0,
       source: 'runtime' as const,
       confidence: 'derived' as const,
-      event: { type: 'session.ready' as const },
+      event: { type: 'session:ready' as const },
     };
     s1.next(base);
     expect(s2.next(base).sequence).toBe(1);
+  });
+
+  it('does not let excess compatibility fields override derived envelope identity', () => {
+    const stamper = createEnvelopeStamper();
+    const fields = {
+      sessionId: 's',
+      timestamp: '2026-08-25T00:00:00.000Z',
+      monotonicTime: 0,
+      source: 'runtime' as const,
+      confidence: 'derived' as const,
+      event: { type: 'session:ready' as const },
+      type: 'tool:started',
+      service: 'tool',
+      sequence: 999,
+    };
+
+    expect(stamper.next(fields)).toMatchObject({ type: 'session:ready', service: 'session', sequence: 1 });
   });
 
   it('retains stable source event and revision references while assigning delivery order', () => {
@@ -49,7 +66,7 @@ describe('createEnvelopeStamper', () => {
       monotonicTime: 0,
       source: 'native-protocol',
       confidence: 'authoritative',
-      event: { type: 'session.ready' },
+      event: { type: 'session:ready' },
     });
 
     expect(envelope).toMatchObject({

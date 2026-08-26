@@ -41,7 +41,7 @@ export interface RuntimeRunRef {
 export interface ActorRunRef {
   rootSessionKey: string;
   runKey: string;
-  role: 'root' | 'child';
+  role: 'root' | 'child' | 'auxiliary' | 'unknown';
   parentRunKey?: string;
   nativeSessionId?: string;
   nativeAgentId?: string;
@@ -381,19 +381,19 @@ export interface AgentMonitorState {
 export type MonitorNotificationType =
   | 'blocked.entered'
   | 'plan.created'
-  | 'plan.updated'
-  | 'task.created'
-  | 'task.completed'
-  | 'subagent.started'
-  | 'subagent.stopped'
+  | 'planning:updated'
+  | 'delegation:task-created'
+  | 'delegation:task-completed'
+  | 'delegation:subagent-started'
+  | 'delegation:subagent-stopped'
   | 'team.observed'
   | 'team.member-added'
   | 'team.member-removed'
   | 'team.member-idle'
   | 'workflow.started'
   | 'workflow.completed'
-  | 'compaction.started'
-  | 'compaction.completed'
+  | 'compaction:started'
+  | 'compaction:completed'
   | 'cwd.changed'
   | 'worktree.created'
   | 'worktree.removed'

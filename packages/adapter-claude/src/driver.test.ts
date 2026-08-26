@@ -204,8 +204,8 @@ describe('createClaudeSession (full loop, test-as-Claude)', () => {
     });
     expect(response.status).toBe(200);
     expect(first.observationLevel()).toBe('native-hooks');
-    expect(events.some((event) => event.event.type === 'turn.started')).toBe(true);
-    const turn = candidates.find(({ type }) => type === 'state:turn-started');
+    expect(events.some((event) => event.event.type === 'turn:started')).toBe(true);
+    const turn = candidates.find(({ type }) => type === 'turn:started');
     expect(turn).not.toHaveProperty('sequence');
     expect(turn && safeParseAgentEvent(turn.type, turn.event).success).toBe(true);
     expect(candidates.every(({ type }) => type.includes(':'))).toBe(true);
@@ -274,7 +274,7 @@ describe('createClaudeSession (full loop, test-as-Claude)', () => {
       },
     ]);
     expect(events.at(-1)?.event).toEqual({
-      type: 'adapter.native-event',
+      type: 'adapter:native-event',
       adapter: 'claude-code',
       nativeType: 'PreToolUse',
     });
@@ -330,20 +330,33 @@ describe('createClaudeSession (full loop, test-as-Claude)', () => {
       providerVersion: '2.1.226',
       onObservationPollHint: (hint) => hints.push(hint),
     });
-    const configured = events.find(
-      (envelope) => envelope.event.type === 'session.environment.updated' && envelope.event.intent === 'configured',
+    const configuredModel = events.find(
+      (envelope) => envelope.event.type === 'model:updated' && envelope.event.intent === 'configured',
     );
-    expect(configured).toMatchObject({
+    expect(configuredModel).toMatchObject({
       source: 'runtime',
       providerVersion: '2.1.226',
       event: {
-        type: 'session.environment.updated',
+        type: 'model:updated',
         intent: 'configured',
         model: { id: 'configured-sonnet' },
-        effort: 'high',
-        providerPermissionMode: { raw: 'plan' },
       },
     });
+    expect(events).toContainEqual(
+      expect.objectContaining({
+        event: { type: 'effort:updated', intent: 'configured', effort: 'high' },
+      }),
+    );
+    expect(events).toContainEqual(
+      expect.objectContaining({
+        event: {
+          type: 'mode:updated',
+          intent: 'configured',
+          modeKind: 'provider-permission',
+          mode: { raw: 'plan', normalized: 'Plan' },
+        },
+      }),
+    );
 
     await hook('UserPromptSubmit', {
       prompt_id: 'p-metadata',
@@ -355,7 +368,7 @@ describe('createClaudeSession (full loop, test-as-Claude)', () => {
       version: '2.1.999',
     });
     const observed = events.find(
-      (envelope) => envelope.event.type === 'session.environment.updated' && envelope.event.intent === 'observed',
+      (envelope) => envelope.event.type === 'effort:updated' && envelope.event.intent === 'observed',
     );
     expect(observed).toMatchObject({
       source: 'native-hook',
@@ -364,10 +377,20 @@ describe('createClaudeSession (full loop, test-as-Claude)', () => {
       agentType: 'Explore',
       providerVersion: '2.1.999',
       event: {
+        type: 'effort:updated',
         effort: 'future-ultra',
-        providerPermissionMode: { raw: 'future-auto' },
       },
     });
+    expect(events).toContainEqual(
+      expect.objectContaining({
+        agentId: 'agent-7',
+        event: expect.objectContaining({
+          type: 'mode:updated',
+          modeKind: 'provider-permission',
+          mode: { raw: 'future-auto' },
+        }),
+      }),
+    );
     expect(hints).toContainEqual(expect.objectContaining({ hookEventName: 'UserPromptSubmit' }));
   });
 
@@ -392,7 +415,7 @@ describe('createClaudeSession (full loop, test-as-Claude)', () => {
         ],
       },
     });
-    const requested = events.find((envelope) => envelope.event.type === 'question.requested');
+    const requested = events.find((envelope) => envelope.event.type === 'interaction:question-requested');
     expect(requested).toMatchObject({ confidence: 'inferred' });
     expect((await session.submitPrompt({ text: 'cannot bypass' })).status).toBe('rejected');
 
@@ -409,7 +432,7 @@ describe('createClaudeSession (full loop, test-as-Claude)', () => {
     });
     expect(events).toContainEqual(
       expect.objectContaining({
-        event: { type: 'question.resolved', requestId: 'question:ask-1', outcome: 'answered' },
+        event: { type: 'interaction:question-resolved', requestId: 'question:ask-1', outcome: 'answered' },
       }),
     );
     expect((await session.submitPrompt({ text: 'permission remains' })).status).toBe('rejected');
@@ -473,7 +496,7 @@ describe('createClaudeSession (full loop, test-as-Claude)', () => {
     });
     expect(foreignResponse.status).toBe(200);
     expect(session.observationLevel()).toBe('terminal-only');
-    expect(events.some(({ event }) => event.type === 'tokens.used')).toBe(false);
+    expect(events.some(({ event }) => event.type === 'usage:tokens-used')).toBe(false);
 
     const emptyResponse = await fetch(prepared.env.OTEL_EXPORTER_OTLP_LOGS_ENDPOINT, {
       method: 'POST',
@@ -487,7 +510,7 @@ describe('createClaudeSession (full loop, test-as-Claude)', () => {
 
     expect(response.status).toBe(200);
     expect(session.observationLevel()).toBe('native-log');
-    const usage = events.find(({ event }) => event.type === 'tokens.used');
+    const usage = events.find(({ event }) => event.type === 'usage:tokens-used');
     expect(usage).toMatchObject({
       source: 'native-telemetry',
       promptId: 'prompt-otel',
@@ -501,7 +524,7 @@ describe('createClaudeSession (full loop, test-as-Claude)', () => {
     expect(JSON.stringify(usage?.nativeEvent)).not.toContain('must-not-cross@example.com');
     expect(safeParseAgentEvent('usage:tokens-used', usage!.event).success).toBe(true);
     expect((await postOtlp()).status).toBe(200);
-    expect(events.filter(({ event }) => event.type === 'tokens.used')).toHaveLength(1);
+    expect(events.filter(({ event }) => event.type === 'usage:tokens-used')).toHaveLength(1);
   });
 
   it('feeds authoritative assistant text and fallback usage from the transcript observer', async () => {
@@ -553,13 +576,13 @@ describe('createClaudeSession (full loop, test-as-Claude)', () => {
       () => {
         const fromTranscript = events.find((e) => e.source === 'native-transcript');
         expect(fromTranscript?.event).toMatchObject({
-          type: 'assistant.message',
+          type: 'conversation:assistant-message',
           text: 'authoritative answer',
           displayOnly: false,
         });
         expect(projection.state.lastAssistantMessage).toBe('authoritative answer');
-        expect(events.find(({ event }) => event.type === 'tokens.used')?.event).toMatchObject({
-          type: 'tokens.used',
+        expect(events.find(({ event }) => event.type === 'usage:tokens-used')?.event).toMatchObject({
+          type: 'usage:tokens-used',
           usageId: 'claude-request:request-1',
           canonical: true,
           totalTokens: 21,
@@ -638,11 +661,11 @@ describe('createClaudeSession (full loop, test-as-Claude)', () => {
       modelId: 'claude-fable-5',
       source: 'native-statusline',
     });
-    expect(events.filter(({ event }) => event.type === 'context-window.updated')).toHaveLength(1);
+    expect(events.filter(({ event }) => event.type === 'context-window:updated')).toHaveLength(1);
 
     await statusLine({ context_window: { context_window_size: 200_000, current_usage: null } });
     expect(projection.state.contextWindow).toBeUndefined();
-    expect(events.at(-1)?.event).toEqual({ type: 'context-window.invalidated', reason: 'provider-reset' });
+    expect(events.at(-1)?.event).toEqual({ type: 'context-window:invalidated', reason: 'provider-reset' });
 
     await statusLine({
       context_window: {
@@ -655,7 +678,7 @@ describe('createClaudeSession (full loop, test-as-Claude)', () => {
     await hook('PostCompact', { trigger: 'manual', compact_summary: 'Synthetic summary.' });
 
     expect(projection.state.contextWindow).toBeUndefined();
-    expect(events.at(-1)?.event).toEqual({ type: 'context-window.invalidated', reason: 'compacted' });
+    expect(events.at(-1)?.event).toEqual({ type: 'context-window:invalidated', reason: 'compacted' });
     const rootBatches = monitorBatches.filter(({ producer }) => producer.id === 'claude:status-root');
     expect(rootBatches.at(-1)).toMatchObject({
       producer: { id: 'claude:status-root', sequence: 4 },
@@ -757,9 +780,9 @@ describe('createClaudeSession (full loop, test-as-Claude)', () => {
     expect(session.sessionId).toBe(after);
     expect(projection.state.lifecycle).toBe('ready');
     expect(
-      events.find(({ event }) => event.type === 'session.started' && event.nativeSessionId === after)?.event,
+      events.find(({ event }) => event.type === 'session:started' && event.nativeSessionId === after)?.event,
     ).toMatchObject({
-      type: 'session.started',
+      type: 'session:started',
       nativeSessionId: after,
       rebind: true,
     });
@@ -833,7 +856,7 @@ describe('createClaudeSession (full loop, test-as-Claude)', () => {
     expect(projection.state.lifecycle).toBe('ready');
     expect(events.at(-1)).toMatchObject({
       source: 'runtime',
-      event: { type: 'adapter.native-event', nativeType: 'hook-bridge.unavailable' },
+      event: { type: 'adapter:native-event', nativeType: 'hook-bridge.unavailable' },
       nativeEvent: { reason: 'listener failed' },
     });
     expect(monitorBatches.at(-1)).toMatchObject({
@@ -841,7 +864,7 @@ describe('createClaudeSession (full loop, test-as-Claude)', () => {
       completeness: 'unavailable',
       updates: [],
     });
-    expect(events.some(({ event }) => event.type === 'session.exited' || event.type === 'process.exited')).toBe(false);
+    expect(events.some(({ event }) => event.type === 'session:exited' || event.type === 'process:exited')).toBe(false);
   });
 
   it('closes the real hook listener for an explicit canary fault without ending the session', async () => {
@@ -854,7 +877,7 @@ describe('createClaudeSession (full loop, test-as-Claude)', () => {
     const monitorBatches = projection.monitorBatches;
     const degradedObservationLevels: string[] = [];
     session.onEvent(({ event }) => {
-      if (event.type === 'monitor.batch' && event.batch.readiness === 'degraded') {
+      if (event.type === 'monitor:batch' && event.batch.readiness === 'degraded') {
         degradedObservationLevels.push(session.observationLevel());
       }
     });
@@ -870,10 +893,10 @@ describe('createClaudeSession (full loop, test-as-Claude)', () => {
     expect(projection.state.lifecycle).toBe('ready');
     expect(monitorBatches.at(-1)).toMatchObject({ readiness: 'degraded', completeness: 'unavailable' });
     expect(events.at(-1)).toMatchObject({
-      event: { type: 'adapter.native-event', nativeType: 'hook-bridge.unavailable' },
+      event: { type: 'adapter:native-event', nativeType: 'hook-bridge.unavailable' },
       nativeEvent: { reason: 'test canary rail fault' },
     });
-    expect(events.some(({ event }) => event.type === 'session.exited' || event.type === 'process.exited')).toBe(false);
+    expect(events.some(({ event }) => event.type === 'session:exited' || event.type === 'process:exited')).toBe(false);
     await expect(
       fetch(endpoint, {
         method: 'POST',
@@ -972,9 +995,9 @@ describe('createClaudeSession (full loop, test-as-Claude)', () => {
     await session.pollTranscript();
     expect(session.observationLevel()).toBe('native-hooks');
     expect(historyEvents.filter((event) => event.replay).map((event) => event.event)).toEqual([
-      { type: 'turn.started', turnId: 'history-prompt', prompt: 'What did we decide?' },
+      { type: 'turn:started', turnId: 'history-prompt', prompt: 'What did we decide?' },
       {
-        type: 'assistant.message',
+        type: 'conversation:assistant-message',
         messageId: 'history-assistant',
         turnId: 'history-prompt',
         text: 'Use the native resume path.',
@@ -982,12 +1005,12 @@ describe('createClaudeSession (full loop, test-as-Claude)', () => {
         displayOnly: false,
       },
       {
-        type: 'turn.completed',
+        type: 'turn:completed',
         turnId: 'history-prompt',
         lastAssistantMessage: 'Use the native resume path.',
       },
       {
-        type: 'session.environment.updated',
+        type: 'model:updated',
         intent: 'observed',
         model: { id: 'claude-sonnet-local', provider: 'anthropic' },
       },

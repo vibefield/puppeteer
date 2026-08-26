@@ -10,7 +10,7 @@ export function normalizeGrokDelegation(
     return [
       observed(
         {
-          type: 'subagent.started',
+          type: 'delegation:subagent-started',
           subagentId: update.subagent_id,
           ...(typeof update.subagent_type === 'string' ? { agentType: update.subagent_type } : {}),
         },
@@ -21,7 +21,14 @@ export function normalizeGrokDelegation(
     ];
   }
   if (update.sessionUpdate === 'subagent_finished' && typeof update.subagent_id === 'string') {
-    return [observed({ type: 'subagent.stopped', subagentId: update.subagent_id }, promptId, 'native-log', 'inferred')];
+    return [
+      observed(
+        { type: 'delegation:subagent-stopped', subagentId: update.subagent_id },
+        promptId,
+        'native-log',
+        'inferred',
+      ),
+    ];
   }
   return undefined;
 }

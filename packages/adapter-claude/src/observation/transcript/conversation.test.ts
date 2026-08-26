@@ -22,14 +22,14 @@ describe('Claude transcript conversation projection', () => {
     );
 
     expect(projectClaudeTranscriptConversation(records).history.map(({ event }) => event)).toEqual([
-      { type: 'turn.started', turnId: 'prompt-1', prompt: 'First prompt' },
+      { type: 'turn:started', turnId: 'prompt-1', prompt: 'First prompt' },
       {
-        type: 'turn.failed',
+        type: 'turn:failed',
         turnId: 'prompt-1',
         error: 'superseded by a newer user prompt before an assistant response',
       },
-      { type: 'turn.started', turnId: 'prompt-2', prompt: 'Replacement prompt' },
-      { type: 'turn.failed', turnId: 'prompt-2', error: 'interrupted before an assistant response' },
+      { type: 'turn:started', turnId: 'prompt-2', prompt: 'Replacement prompt' },
+      { type: 'turn:failed', turnId: 'prompt-2', error: 'interrupted before an assistant response' },
     ]);
   });
 });

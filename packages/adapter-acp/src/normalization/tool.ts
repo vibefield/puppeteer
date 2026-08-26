@@ -2,7 +2,7 @@ import type { SessionUpdate } from '@agentclientprotocol/sdk';
 import type { ToolActivityKind, ToolPresentation } from '@vibecook/puppeteer-core';
 import type { AcpEventOfType } from './types.js';
 
-type AcpToolEvent = AcpEventOfType<'tool.started' | 'tool.completed' | 'tool.failed'>;
+type AcpToolEvent = AcpEventOfType<'tool:started' | 'tool:completed' | 'tool:failed'>;
 
 function detailOf(value: unknown): string | undefined {
   if (typeof value === 'string') return value;
@@ -41,17 +41,17 @@ export function normalizeAcpTool(update: SessionUpdate): AcpToolEvent[] {
     const toolCallId = update.toolCallId;
     const tool = update.kind ?? update.title ?? 'tool';
     const presentation = toolPresentation(update.kind ?? undefined, update.title ?? undefined, update.rawInput);
-    const events: AcpToolEvent[] = [{ type: 'tool.started', toolCallId, tool, input: update.rawInput, presentation }];
+    const events: AcpToolEvent[] = [{ type: 'tool:started', toolCallId, tool, input: update.rawInput, presentation }];
     if (update.status === 'completed') {
       events.push({
-        type: 'tool.completed',
+        type: 'tool:completed',
         toolCallId,
         tool,
         output: update.rawOutput ?? update.content,
         presentation,
       });
     } else if (update.status === 'failed') {
-      events.push({ type: 'tool.failed', toolCallId, tool });
+      events.push({ type: 'tool:failed', toolCallId, tool });
     }
     return events;
   }
@@ -63,7 +63,7 @@ export function normalizeAcpTool(update: SessionUpdate): AcpToolEvent[] {
   if (update.status === 'completed') {
     return [
       {
-        type: 'tool.completed',
+        type: 'tool:completed',
         toolCallId,
         tool,
         output: update.rawOutput ?? update.content,
@@ -71,6 +71,6 @@ export function normalizeAcpTool(update: SessionUpdate): AcpToolEvent[] {
       },
     ];
   }
-  if (update.status === 'failed') return [{ type: 'tool.failed', toolCallId, tool, presentation }];
+  if (update.status === 'failed') return [{ type: 'tool:failed', toolCallId, tool, presentation }];
   return [];
 }

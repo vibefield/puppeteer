@@ -4,7 +4,7 @@ import type { SessionNotification } from '@agentclientprotocol/sdk';
 import { normalizeAcpFallback } from './adapter.js';
 import { AcpConversationNormalizer } from './conversation.js';
 import { normalizeAcpContextWindow } from './context-window.js';
-import { normalizeAcpEnvironment } from './environment.js';
+import { normalizeAcpModel } from './model.js';
 import { AcpReasoningNormalizer } from './reasoning.js';
 import { normalizeAcpTool } from './tool.js';
 import type { NormalizedUpdate } from './types.js';
@@ -28,7 +28,7 @@ export class AcpNotificationNormalizer {
       case 'usage_update':
         return { events: normalizeAcpContextWindow(update) };
       case 'config_option_update':
-        return { events: normalizeAcpEnvironment(update) };
+        return { events: normalizeAcpModel(update) };
       default:
         return { events: normalizeAcpFallback(update) };
     }

@@ -17,5 +17,5 @@ export function isFilteredOpenCodeInfrastructure(nativeType: string): boolean {
 }
 
 export function normalizeOpenCodeNativeEvent(nativeType: string): AgentEvent {
-  return { type: 'adapter.native-event', adapter: 'opencode', nativeType };
+  return { type: 'adapter:native-event', adapter: 'opencode', nativeType };
 }

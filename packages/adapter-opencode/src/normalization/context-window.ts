@@ -22,7 +22,7 @@ export class OpenCodeContextWindowNormalizer {
     this.lastUsage = identity;
     return [
       {
-        type: 'context-window.updated',
+        type: 'context-window:updated',
         usedTokens,
         capacityTokens: this.capacityTokens,
         ...(modelId ? { modelId } : {}),
@@ -32,5 +32,5 @@ export class OpenCodeContextWindowNormalizer {
 }
 
 export function normalizeOpenCodeContextInvalidated(): AgentEvent {
-  return { type: 'context-window.invalidated', reason: 'compacted' };
+  return { type: 'context-window:invalidated', reason: 'compacted' };
 }

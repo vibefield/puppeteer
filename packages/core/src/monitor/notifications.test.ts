@@ -63,10 +63,10 @@ function semantic(
 
 describe('monitor notifications', () => {
   it('uses stable IDs and does not repeat a duplicate transition', () => {
-    const input = runtime({ type: 'task.created', taskId: 'task-1', description: 'Build it' }, 1);
+    const input = runtime({ type: 'delegation:task-created', taskId: 'task-1', description: 'Build it' }, 1);
     const first = reduceMonitorAccumulator(initial(), input);
     expect(first.notifications).toHaveLength(1);
-    expect(first.notifications[0]).toMatchObject({ type: 'task.created', summary: 'Build it' });
+    expect(first.notifications[0]).toMatchObject({ type: 'delegation:task-created', summary: 'Build it' });
 
     const duplicate = reduceMonitorAccumulator(first.state, input);
     expect(duplicate.notifications).toEqual([]);
@@ -79,21 +79,31 @@ describe('monitor notifications', () => {
   it('does not announce a blockable task transition until confirmation', () => {
     const provisional = reduceMonitorAccumulator(
       initial(),
-      runtime({ type: 'task.updated', taskId: 'task-p', status: 'proposed', provisional: true }, 1, false, 'inferred'),
+      runtime(
+        { type: 'delegation:task-updated', taskId: 'task-p', status: 'proposed', provisional: true },
+        1,
+        false,
+        'inferred',
+      ),
     );
     expect(provisional.notifications).toEqual([]);
 
     const confirmed = reduceMonitorAccumulator(
       provisional.state,
-      runtime({ type: 'task.updated', taskId: 'task-p', status: 'pending', provisional: false }, 2),
+      runtime({ type: 'delegation:task-updated', taskId: 'task-p', status: 'pending', provisional: false }, 2),
     );
-    expect(confirmed.notifications).toEqual([expect.objectContaining({ type: 'task.created' })]);
+    expect(confirmed.notifications).toEqual([expect.objectContaining({ type: 'delegation:task-created' })]);
   });
 
   it('confirms team membership without promoting a provisional idle hook', () => {
     const provisional = reduceMonitorAccumulator(
       initial(),
-      runtime({ type: 'teammate.idle', teamName: 'alpha', teammateName: 'researcher' }, 1, false, 'inferred'),
+      runtime(
+        { type: 'delegation:teammate-idle', teamName: 'alpha', teammateName: 'researcher' },
+        1,
+        false,
+        'inferred',
+      ),
     );
     expect(provisional.notifications).toEqual([]);
     expect(projectAgentMonitorState(provisional.state).team?.teammates[0]).toMatchObject({
@@ -201,12 +211,13 @@ describe('monitor notifications', () => {
         },
       ]),
     );
-    expect(completed.notifications.map(({ type }) => type)).toEqual(['task.completed']);
+    expect(completed.notifications.map(({ type }) => type)).toEqual(['delegation:task-completed']);
   });
 
   it('suppresses bootstrap, correction, resync, and replacement installation', () => {
     expect(
-      reduceMonitorAccumulator(initial(), runtime({ type: 'task.created', taskId: 'history' }, 1, true)).notifications,
+      reduceMonitorAccumulator(initial(), runtime({ type: 'delegation:task-created', taskId: 'history' }, 1, true))
+        .notifications,
     ).toEqual([]);
 
     const update: MonitorFamilyUpdate = {
@@ -235,29 +246,29 @@ describe('monitor notifications', () => {
   });
 
   it('emits blocker, compaction, and terminal transitions separately from state', () => {
-    let state = reduceMonitorAccumulator(initial(), runtime({ type: 'session.ready' }, 1)).state;
+    let state = reduceMonitorAccumulator(initial(), runtime({ type: 'session:ready' }, 1)).state;
     const blocked = reduceMonitorAccumulator(
       state,
-      runtime({ type: 'question.requested', requestId: 'q1', questions: [{ prompt: 'Proceed?' }] }, 2),
+      runtime({ type: 'interaction:question-requested', requestId: 'q1', questions: [{ prompt: 'Proceed?' }] }, 2),
     );
     expect(blocked.notifications.map((item) => item.type)).toEqual(['blocked.entered']);
     state = blocked.state;
 
-    const compacting = reduceMonitorAccumulator(state, runtime({ type: 'compaction.started', compactionId: 'c1' }, 3));
-    expect(compacting.notifications.map((item) => item.type)).toEqual(['compaction.started']);
+    const compacting = reduceMonitorAccumulator(state, runtime({ type: 'compaction:started', compactionId: 'c1' }, 3));
+    expect(compacting.notifications.map((item) => item.type)).toEqual(['compaction:started']);
     const compacted = reduceMonitorAccumulator(
       compacting.state,
-      runtime({ type: 'compaction.completed', compactionId: 'c1' }, 4),
+      runtime({ type: 'compaction:completed', compactionId: 'c1' }, 4),
     );
-    expect(compacted.notifications.map((item) => item.type)).toEqual(['compaction.completed']);
+    expect(compacted.notifications.map((item) => item.type)).toEqual(['compaction:completed']);
 
     const retrying = reduceMonitorAccumulator(
       compacted.state,
-      runtime({ type: 'compaction.started', compactionId: 'c2' }, 5),
+      runtime({ type: 'compaction:started', compactionId: 'c2' }, 5),
     );
     const cancelled = reduceMonitorAccumulator(
       retrying.state,
-      runtime({ type: 'compaction.completed', compactionId: 'c2', outcome: 'cancelled' }, 6),
+      runtime({ type: 'compaction:completed', compactionId: 'c2', outcome: 'cancelled' }, 6),
     );
     expect(cancelled.notifications).toEqual([]);
     expect(projectAgentMonitorState(cancelled.state).compaction).toMatchObject({
@@ -267,7 +278,7 @@ describe('monitor notifications', () => {
 
     const ended = reduceMonitorAccumulator(
       cancelled.state,
-      runtime({ type: 'process.exited', reason: 'crash', exitCode: 1 }, 7),
+      runtime({ type: 'process:exited', reason: 'crash', exitCode: 1 }, 7),
     );
     expect(ended.notifications.map((item) => item.type)).toContain('session.ended');
   });

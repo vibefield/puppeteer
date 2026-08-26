@@ -54,7 +54,7 @@ function notice(overrides: Partial<MonitorNotification> = {}): MonitorNotificati
     notificationId: 'notice-1',
     runtimeRunId: 'run-1',
     at: '2026-08-17T00:00:00.000Z',
-    type: 'task.created',
+    type: 'delegation:task-created',
     ...overrides,
   };
 }

@@ -11,7 +11,7 @@ export class CodexContextWindowNormalizer {
       const item = rec(params.item);
       if (item?.type !== 'contextCompaction') return { handled: false, events };
       if (method === 'item/completed') {
-        events.push({ type: 'context-window.invalidated', reason: 'compacted' });
+        events.push({ type: 'context-window:invalidated', reason: 'compacted' });
       }
       return { handled: true, events };
     }
@@ -23,22 +23,22 @@ export class CodexContextWindowNormalizer {
         const usedTokens = num(last?.totalTokens);
         const capacityTokens = num(usage?.modelContextWindow);
         if (usedTokens !== undefined && capacityTokens !== undefined) {
-          events.push({ type: 'context-window.updated', usedTokens, capacityTokens });
+          events.push({ type: 'context-window:updated', usedTokens, capacityTokens });
           return { handled: true, events };
         }
         if (usage && usage.modelContextWindow === null) {
-          events.push({ type: 'context-window.invalidated', reason: 'provider-reset' });
+          events.push({ type: 'context-window:invalidated', reason: 'provider-reset' });
           return { handled: true, events };
         }
         return { handled: false, events };
       }
 
       case 'thread/compacted':
-        events.push({ type: 'context-window.invalidated', reason: 'compacted' });
+        events.push({ type: 'context-window:invalidated', reason: 'compacted' });
         return { handled: true, events };
 
       case 'model/rerouted':
-        events.push({ type: 'context-window.invalidated', reason: 'model-changed' });
+        events.push({ type: 'context-window:invalidated', reason: 'model-changed' });
         return { handled: true, events };
 
       default:

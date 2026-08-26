@@ -92,7 +92,7 @@ describe('createCodexObserver attach resilience', () => {
 
     await vi.waitFor(() => expect(projection.state.lifecycle).toBe('ready'), { timeout: 5000 });
     expect(obs.sessionId).toBe('th-1');
-    expect(seen).toContain('session.started');
+    expect(seen).toContain('session:started');
     expect(t.resumeAttempts()).toBeGreaterThan(4);
     projection.dispose();
     await obs.dispose();
@@ -123,7 +123,7 @@ describe('createCodexObserver controller-owned bootstrap', () => {
     const candidates: AdapterEventCandidate[] = [];
     const off = obs.onEventCandidate((candidate) => candidates.push(candidate));
 
-    expect(candidates.some(({ type }) => type === 'state:session-started')).toBe(true);
+    expect(candidates.some(({ type }) => type === 'session:started')).toBe(true);
     expect(candidates.every(({ type }) => type.includes(':'))).toBe(true);
     expect(candidates.every((candidate) => !('sequence' in candidate))).toBe(true);
     expect(candidates.every(({ type, event }) => safeParseAgentEvent(type, event).success)).toBe(true);
@@ -185,9 +185,9 @@ describe('createCodexObserver controller-owned bootstrap', () => {
 
     expect(obs.observationLevel()).toBe('terminal-only');
     expect(projection.state.lifecycle).toBe('ready');
-    expect(events.some(({ type }) => type === 'process.exited' || type === 'session.exited')).toBe(false);
+    expect(events.some(({ type }) => type === 'process:exited' || type === 'session:exited')).toBe(false);
     expect(events.at(-1)).toMatchObject({
-      type: 'adapter.native-event',
+      type: 'adapter:native-event',
       nativeType: 'app-server.transport.closed',
     });
     expect(monitorBatches.at(-1)).toMatchObject({ readiness: 'degraded', completeness: 'unavailable', updates: [] });
@@ -219,7 +219,7 @@ describe('createCodexObserver controller-owned bootstrap', () => {
       },
     });
 
-    expect(events).toEqual(['monitor.batch', 'monitor.batch']);
+    expect(events).toEqual(['monitor:batch', 'monitor:batch']);
     expect(projection.state.activeTurn).toBeUndefined();
     expect(
       monitorBatches
@@ -264,7 +264,9 @@ describe('createCodexObserver controller-owned bootstrap', () => {
       params: { command: 'git status' },
       requestId: 999,
     });
-    expect(events).toEqual(expect.arrayContaining(['permission.requested', 'permission.resolved']));
+    expect(events).toEqual(
+      expect.arrayContaining(['interaction:permission-requested', 'interaction:permission-resolved']),
+    );
     await obs.dispose();
   });
 
@@ -309,21 +311,21 @@ describe('createCodexObserver controller-owned bootstrap', () => {
     const obs = await createCodexObserver({ transport: t.transport, threadId: 'th-history' });
     const projection = projectAgentEvents(obs);
     const events: unknown[] = projection.envelopes
-      .filter(({ event }) => event.type !== 'monitor.batch' && event.type !== 'session.environment.updated')
+      .filter(({ event }) => event.type !== 'monitor:batch' && event.type !== 'environment:updated')
       .map(({ event }) => event);
 
     expect(events).toEqual([
-      { type: 'session.started', nativeSessionId: 'th-history' },
-      { type: 'turn.started', turnId: 'turn-history', prompt: 'What did we decide?' },
+      { type: 'session:started', nativeSessionId: 'th-history' },
+      { type: 'turn:started', turnId: 'turn-history', prompt: 'What did we decide?' },
       {
-        type: 'assistant.message',
+        type: 'conversation:assistant-message',
         messageId: 'assistant-history',
         turnId: 'turn-history',
         text: 'Use the native resume path.',
         final: true,
         displayOnly: false,
       },
-      { type: 'turn.completed', turnId: 'turn-history' },
+      { type: 'turn:completed', turnId: 'turn-history' },
     ]);
     expect(projection.state.lastAssistantMessage).toBe('Use the native resume path.');
     expect(t.calls().find((call) => call.method === 'thread/resume')?.params).toEqual({ threadId: 'th-history' });
@@ -449,14 +451,14 @@ describe('createCodexObserver controller-owned bootstrap', () => {
 
     expect(
       events
-        .filter((envelope) => envelope.event.type === 'assistant.message')
+        .filter((envelope) => envelope.event.type === 'conversation:assistant-message')
         .map((envelope) => ({ text: envelope.event.text, replay: envelope.replay })),
     ).toEqual([
       { text: 'Old answer', replay: true },
       { text: 'Overlapping answer', replay: true },
       { text: 'Live answer', replay: undefined },
     ]);
-    expect(events.filter((envelope) => envelope.event.type === 'turn.completed')).toHaveLength(3);
+    expect(events.filter((envelope) => envelope.event.type === 'turn:completed')).toHaveLength(3);
     await obs.dispose();
   });
 

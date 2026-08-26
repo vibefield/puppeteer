@@ -71,7 +71,7 @@ describe('projectAgentMonitorState', () => {
     const unchanged = projectAgentMonitorState(accumulator, { previous: first });
     expect(unchanged).toBe(first);
 
-    const readyAccumulator = reduceMonitorAccumulator(accumulator, runtimeEnvelope({ type: 'session.ready' }, 1)).state;
+    const readyAccumulator = reduceMonitorAccumulator(accumulator, runtimeEnvelope({ type: 'session:ready' }, 1)).state;
     const ready = projectAgentMonitorState(readyAccumulator, { previous: first });
     expect(ready.revision).toBe(first.revision + 1);
     expect(ready.status).toBe('idle');
@@ -79,16 +79,16 @@ describe('projectAgentMonitorState', () => {
   });
 
   it('does not leave a dead clean run working when a tool lacks a terminal event', () => {
-    let state = reduceMonitorAccumulator(initial(), runtimeEnvelope({ type: 'session.ready' }, 1)).state;
+    let state = reduceMonitorAccumulator(initial(), runtimeEnvelope({ type: 'session:ready' }, 1)).state;
     state = reduceMonitorAccumulator(
       state,
-      runtimeEnvelope({ type: 'tool.requested', toolCallId: 'open-tool', tool: 'ExitPlanMode' }, 2),
+      runtimeEnvelope({ type: 'tool:requested', toolCallId: 'open-tool', tool: 'ExitPlanMode' }, 2),
     ).state;
     expect(projectAgentMonitorState(state)).toMatchObject({ status: 'working', alive: true });
 
     state = reduceMonitorAccumulator(
       state,
-      runtimeEnvelope({ type: 'process.exited', reason: 'completed', exitCode: 0 }, 3),
+      runtimeEnvelope({ type: 'process:exited', reason: 'completed', exitCode: 0 }, 3),
     ).state;
     expect(projectAgentMonitorState(state)).toMatchObject({ status: 'idle', alive: false });
   });
@@ -209,7 +209,7 @@ describe('projectAgentMonitorState', () => {
   });
 
   it('keeps configured and observed model/effort/modes distinct and open-ended', () => {
-    let state = reduceMonitorAccumulator(initial(), runtimeEnvelope({ type: 'session.ready' }, 1)).state;
+    let state = reduceMonitorAccumulator(initial(), runtimeEnvelope({ type: 'session:ready' }, 1)).state;
     state = reduceMonitorAccumulator(
       state,
       semantic(
@@ -330,28 +330,42 @@ describe('projectAgentMonitorState', () => {
   it('prefers observed effective environment facts over separately retained launch intent', () => {
     let state = reduceMonitorAccumulator(
       initial(),
-      runtimeEnvelope(
-        {
-          type: 'session.environment.updated',
-          intent: 'configured',
-          model: { id: 'configured-model' },
-          effort: 'high',
-          providerPermissionMode: { raw: 'plan' },
-        },
-        1,
-      ),
+      runtimeEnvelope({ type: 'model:updated', intent: 'configured', model: { id: 'configured-model' } }, 1),
+    ).state;
+    state = reduceMonitorAccumulator(
+      state,
+      runtimeEnvelope({ type: 'effort:updated', intent: 'configured', effort: 'high' }, 2),
     ).state;
     state = reduceMonitorAccumulator(
       state,
       runtimeEnvelope(
         {
-          type: 'session.environment.updated',
-          intent: 'observed',
-          model: { id: 'effective-model' },
-          effort: 'future-ultra',
-          providerPermissionMode: { raw: 'accept-edits' },
+          type: 'mode:updated',
+          intent: 'configured',
+          modeKind: 'provider-permission',
+          mode: { raw: 'plan' },
         },
-        2,
+        3,
+      ),
+    ).state;
+    state = reduceMonitorAccumulator(
+      state,
+      runtimeEnvelope({ type: 'model:updated', intent: 'observed', model: { id: 'effective-model' } }, 4),
+    ).state;
+    state = reduceMonitorAccumulator(
+      state,
+      runtimeEnvelope({ type: 'effort:updated', intent: 'observed', effort: 'future-ultra' }, 5),
+    ).state;
+    state = reduceMonitorAccumulator(
+      state,
+      runtimeEnvelope(
+        {
+          type: 'mode:updated',
+          intent: 'observed',
+          modeKind: 'provider-permission',
+          mode: { raw: 'accept-edits' },
+        },
+        6,
       ),
     ).state;
     expect(projectAgentMonitorState(state)).toMatchObject({
@@ -362,14 +376,7 @@ describe('projectAgentMonitorState', () => {
 
     state = reduceMonitorAccumulator(
       state,
-      runtimeEnvelope(
-        {
-          type: 'session.environment.updated',
-          intent: 'observed',
-          effort: null,
-        },
-        3,
-      ),
+      runtimeEnvelope({ type: 'effort:updated', intent: 'observed', effort: null }, 7),
     ).state;
     expect(projectAgentMonitorState(state)).toMatchObject({
       effort: { value: 'high', configured: 'high', intent: 'configured' },
@@ -381,9 +388,10 @@ describe('projectAgentMonitorState', () => {
       initial(),
       runtimeEnvelope(
         {
-          type: 'session.environment.updated',
+          type: 'mode:updated',
           intent: 'configured',
-          providerPermissionMode: { raw: 'manual' },
+          modeKind: 'provider-permission',
+          mode: { raw: 'manual' },
         },
         1,
       ),
@@ -408,9 +416,10 @@ describe('projectAgentMonitorState', () => {
       state,
       runtimeEnvelope(
         {
-          type: 'session.environment.updated',
+          type: 'mode:updated',
           intent: 'observed',
-          providerPermissionMode: { raw: 'acceptEdits', normalized: 'Accept Edits' },
+          modeKind: 'provider-permission',
+          mode: { raw: 'acceptEdits', normalized: 'Accept Edits' },
         },
         20,
       ),
@@ -455,27 +464,23 @@ describe('projectAgentMonitorState', () => {
     ).state;
     state = reduceMonitorAccumulator(
       state,
-      runtimeEnvelope(
-        {
-          type: 'session.environment.updated',
-          intent: 'observed',
-          model: { id: 'current-model' },
-          effort: 'max',
-        },
-        20,
-      ),
+      runtimeEnvelope({ type: 'model:updated', intent: 'observed', model: { id: 'current-model' } }, 20),
+    ).state;
+    state = reduceMonitorAccumulator(
+      state,
+      runtimeEnvelope({ type: 'effort:updated', intent: 'observed', effort: 'max' }, 21),
     ).state;
     state = reduceMonitorAccumulator(
       state,
       runtimeEnvelope(
         {
-          type: 'context-window.updated',
+          type: 'context-window:updated',
           usedTokens: 70_000,
           capacityTokens: 200_000,
           usedPercentage: 35,
           percentageSource: 'provider',
         },
-        21,
+        22,
       ),
     ).state;
 
@@ -489,15 +494,23 @@ describe('projectAgentMonitorState', () => {
   it('keeps blockable hook transitions visibly provisional', () => {
     let state = reduceMonitorAccumulator(
       initial(),
-      runtimeEnvelope({ type: 'task.updated', taskId: 'task-p', status: 'proposed', provisional: true }, 1, 'inferred'),
+      runtimeEnvelope(
+        { type: 'delegation:task-updated', taskId: 'task-p', status: 'proposed', provisional: true },
+        1,
+        'inferred',
+      ),
     ).state;
     state = reduceMonitorAccumulator(
       state,
-      runtimeEnvelope({ type: 'teammate.idle', teamName: 'alpha', teammateName: 'researcher' }, 2, 'inferred'),
+      runtimeEnvelope(
+        { type: 'delegation:teammate-idle', teamName: 'alpha', teammateName: 'researcher' },
+        2,
+        'inferred',
+      ),
     ).state;
     state = reduceMonitorAccumulator(
       state,
-      runtimeEnvelope({ type: 'compaction.started', compactionId: 'compact-p' }, 3, 'inferred'),
+      runtimeEnvelope({ type: 'compaction:started', compactionId: 'compact-p' }, 3, 'inferred'),
     ).state;
     expect(projectAgentMonitorState(state)).toMatchObject({
       tasks: [{ id: 'task-p', status: 'proposed', provisional: true }],
@@ -569,7 +582,7 @@ describe('projectAgentMonitorState', () => {
       nativeAgentId: 'agent-7',
       nativeAgentType: 'Explore',
     };
-    let state = reduceMonitorAccumulator(initial(), runtimeEnvelope({ type: 'session.ready' }, 1)).state;
+    let state = reduceMonitorAccumulator(initial(), runtimeEnvelope({ type: 'session:ready' }, 1)).state;
     state = reduceMonitorAccumulator(
       state,
       semantic(
@@ -630,7 +643,13 @@ describe('projectAgentMonitorState', () => {
     let state = reduceMonitorAccumulator(
       initial(),
       runtimeEnvelope(
-        { type: 'tokens.used', usageId: 'response-shared', boundary: 'response', canonical: true, deltaTokens: 60 },
+        {
+          type: 'usage:tokens-used',
+          usageId: 'response-shared',
+          boundary: 'response',
+          canonical: true,
+          deltaTokens: 60,
+        },
         1,
       ),
     ).state;
@@ -647,6 +666,13 @@ describe('projectAgentMonitorState', () => {
             value: {
               kind: 'usage',
               usageId: 'response-shared',
+              actor: {
+                rootSessionKey: 'session-1',
+                runKey: 'session-1:actor:worker-1',
+                role: 'child',
+                parentRunKey: 'session-1:root',
+                nativeAgentId: 'worker-1',
+              },
               boundary: 'response',
               canonical: true,
               deltaTokens: 60,
@@ -860,7 +886,11 @@ describe('projectAgentMonitorState', () => {
     ).state;
     state = reduceMonitorAccumulator(
       state,
-      runtimeEnvelope({ type: 'teammate.idle', teamName: 'alpha', teammateName: 'researcher' }, 20, 'inferred'),
+      runtimeEnvelope(
+        { type: 'delegation:teammate-idle', teamName: 'alpha', teammateName: 'researcher' },
+        20,
+        'inferred',
+      ),
     ).state;
 
     expect(projectAgentMonitorState(state).team).toMatchObject({

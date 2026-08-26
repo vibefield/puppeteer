@@ -41,9 +41,9 @@ describe.skipIf(!live)('createCodexSession over WS-over-UDS (live app-server)', 
       expect(receipt.status).toBe('confirmed');
 
       await new Promise<void>((resolve, reject) => {
-        const timer = setTimeout(() => reject(new Error('no turn.completed within 60s')), 60_000);
+        const timer = setTimeout(() => reject(new Error('no turn:completed within 60s')), 60_000);
         session.onEvent((e) => {
-          if (e.event.type === 'turn.completed' || e.event.type === 'turn.failed') {
+          if (e.event.type === 'turn:completed' || e.event.type === 'turn:failed') {
             clearTimeout(timer);
             resolve();
           }

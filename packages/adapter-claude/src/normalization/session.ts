@@ -4,7 +4,7 @@ import { claudeString } from './wire.js';
 
 export function normalizeClaudeSessionStarted(body: ClaudeHookPayload, rebind: boolean): AgentEvent {
   return {
-    type: 'session.started',
+    type: 'session:started',
     nativeSessionId: claudeString(body.session_id),
     title: claudeString(body.session_title),
     startSource: claudeString(body.source),
@@ -13,9 +13,9 @@ export function normalizeClaudeSessionStarted(body: ClaudeHookPayload, rebind: b
 }
 
 export function normalizeClaudeSessionReady(): AgentEvent {
-  return { type: 'session.ready' };
+  return { type: 'session:ready' };
 }
 
 export function normalizeClaudeSessionExited(body: ClaudeHookPayload): AgentEvent {
-  return { type: 'session.exited', reason: claudeString(body.reason) };
+  return { type: 'session:exited', reason: claudeString(body.reason) };
 }

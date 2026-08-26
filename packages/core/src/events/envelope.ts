@@ -9,35 +9,39 @@ import {
 
 export interface AgentEventEnvelope<T extends AgentEvent = AgentEvent> {
   /** Namespaced event-bus route. Consumers subscribe to this field, never native event names. */
-  type: AgentServiceEventType<T>;
+  readonly type: AgentServiceEventType<T>;
   /** Top-level category on the public event rail. */
-  service: AgentEventServiceOf<T>;
+  readonly service: AgentEventServiceOf<T>;
   /** Stable source identity when the producer has one; sequence remains delivery order only. */
-  eventId?: string;
+  readonly eventId?: string;
   /** Complete upstream identity/revision reference, when supplied by the producer. */
-  sourceEventRef?: AgentEventSourceRef;
+  readonly sourceEventRef?: AgentEventSourceRef;
   /** Monotonic per session, assigned by the runtime at ingestion, before fan-out. */
-  sequence: number;
-  sessionId: string;
-  nativeSessionId?: string;
+  readonly sequence: number;
+  readonly sessionId: string;
+  readonly nativeSessionId?: string;
   /** User-turn correlation (Claude Code `prompt_id`). */
-  promptId?: string;
+  readonly promptId?: string;
   /** Assistant response-cycle correlation (Claude Code `turn_id`). */
-  turnId?: string;
+  readonly turnId?: string;
   /** Provider-native actor attribution. Absence means the root actor. */
-  agentId?: string;
-  agentType?: string;
+  readonly agentId?: string;
+  readonly agentType?: string;
+  /** Stable derived lane when evidence identifies a non-root actor without an exact native id. */
+  readonly actorKey?: string;
+  /** Classification for a non-root actor lane. */
+  readonly actorRole?: 'child' | 'auxiliary' | 'unknown';
   /** Provider binary/protocol version associated with this evidence, when known. */
-  providerVersion?: string;
-  timestamp: string;
-  monotonicTime: number;
-  source: AgentEventSource;
-  confidence: AgentEventConfidence;
+  readonly providerVersion?: string;
+  readonly timestamp: string;
+  readonly monotonicTime: number;
+  readonly source: AgentEventSource;
+  readonly confidence: AgentEventConfidence;
   /** True when this envelope reconstructs durable history rather than reporting a new live event. */
-  replay?: boolean;
-  event: T;
+  readonly replay?: boolean;
+  readonly event: T;
   /** DESIGN ADR-008 — the raw native event is always retained. */
-  nativeEvent?: unknown;
+  readonly nativeEvent?: unknown;
 }
 
 export interface EnvelopeStamper {
@@ -59,10 +63,10 @@ export function createEnvelopeStamper(initialSequence = 0): EnvelopeStamper {
     next(fields) {
       sequence += 1;
       return {
+        ...fields,
         sequence,
         type: agentServiceEventType(fields.event),
         service: agentEventService(fields.event),
-        ...fields,
       };
     },
   };

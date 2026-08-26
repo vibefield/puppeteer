@@ -228,7 +228,7 @@ export function runAgentMonitorConformance(
       try {
         await harness.closeObservationRail();
         expect(projection.envelopes.map(({ type }) => type)).not.toContain('process:exited');
-        expect(projection.envelopes.map(({ type }) => type)).not.toContain('state:session-exited');
+        expect(projection.envelopes.map(({ type }) => type)).not.toContain('session:exited');
         expect(projection.state.lifecycle).not.toBe('exited');
         expect(projection.monitorBatches.at(-1)).toMatchObject({
           readiness: 'degraded',

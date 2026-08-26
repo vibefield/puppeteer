@@ -80,7 +80,7 @@ async function createHarness(existing?: {
           reject(new Error('timed out waiting for OpenCode observation rail degradation'));
         }, 5_000);
         const off = session.onEvent(({ event }) => {
-          if (event.type !== 'monitor.batch' || event.batch.readiness !== 'degraded') return;
+          if (event.type !== 'monitor:batch' || event.batch.readiness !== 'degraded') return;
           clearTimeout(timer);
           off?.();
           resolve();
@@ -92,7 +92,7 @@ async function createHarness(existing?: {
     async driveTurn(prompt) {
       let completed = false;
       const off = session.onEvent((envelope: AgentEventEnvelope) => {
-        if (!envelope.replay && envelope.event.type === 'turn.completed') completed = true;
+        if (!envelope.replay && envelope.event.type === 'turn:completed') completed = true;
       });
       try {
         const receipt = await session.submitPrompt({ text: prompt });

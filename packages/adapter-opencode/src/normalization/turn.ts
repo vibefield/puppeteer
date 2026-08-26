@@ -1,7 +1,7 @@
 import type { AgentEvent } from '@vibecook/puppeteer-core';
 
 export function normalizeOpenCodeTurnStarted(turnID: string): AgentEvent {
-  return { type: 'turn.started', turnId: turnID };
+  return { type: 'turn:started', turnId: turnID };
 }
 
 export function normalizeOpenCodeTurnCompleted(
@@ -10,7 +10,7 @@ export function normalizeOpenCodeTurnCompleted(
   lastAssistantMessage?: string,
 ): AgentEvent {
   return {
-    type: 'turn.completed',
+    type: 'turn:completed',
     turnId: turnID,
     stopReason,
     ...(lastAssistantMessage ? { lastAssistantMessage } : {}),
@@ -18,5 +18,5 @@ export function normalizeOpenCodeTurnCompleted(
 }
 
 export function normalizeOpenCodeTurnFailed(turnID: string, error?: string): AgentEvent {
-  return { type: 'turn.failed', turnId: turnID, error };
+  return { type: 'turn:failed', turnId: turnID, error };
 }

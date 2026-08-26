@@ -37,7 +37,7 @@ function notification(index: number): MonitorNotification {
     notificationId: `notice-${index}`,
     runtimeRunId: 'run-1',
     at: '2026-08-16T12:00:00.000Z',
-    type: 'task.created',
+    type: 'delegation:task-created',
   };
 }
 

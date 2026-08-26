@@ -332,7 +332,7 @@
       <span class="tag t-observer">Native observer</span>
     </div>
   </header>
-  <div class="hook-card-body"><p>Each line is a JSON-RPC-like record of a session update (adapter-observed, ACP-compatible discriminators).</p><h5>Record fields</h5><div class="scroll"><table class="def-table"><thead><tr><th>Field</th><th>Type / shape</th><th>Notes</th></tr></thead><tbody><tr><td class="m">timestamp</td><td>number | string</td><td>Wall time; may be sec or ms</td></tr><tr><td class="m">method</td><td>string</td><td>Often session/update or similar</td></tr><tr><td class="m">params.sessionId</td><td>string</td><td>Native session id</td></tr><tr><td class="m">params.update</td><td>object</td><td>sessionUpdate discriminator + payload</td></tr><tr><td class="m">params._meta</td><td>object</td><td>promptId, agentTimestampMs, …</td></tr></tbody></table></div><h5>update.sessionUpdate values we map</h5><div class="scroll"><table class="def-table"><thead><tr><th>Field</th><th>Type / shape</th><th>Notes</th></tr></thead><tbody><tr><td class="m">user_message_chunk</td><td>content.text, messageId, _meta.promptId</td><td>→ turn.started</td></tr><tr><td class="m">agent_message_chunk</td><td>content.text, messageId</td><td>→ assistant.message</td></tr><tr><td class="m">agent_thought_chunk</td><td>content</td><td>→ reasoning.*</td></tr><tr><td class="m">tool_call / tool_call_update</td><td>ACP tool fields</td><td>→ tool.* via shared mapper</td></tr><tr><td class="m">turn_completed</td><td>stop_reason, …</td><td>→ turn.completed + reasoning.completed</td></tr><tr><td class="m">hook_execution</td><td>event_name, reason</td><td>session_start → session.started; session_end → session.exited</td></tr></tbody></table></div></div>
+  <div class="hook-card-body"><p>Each line is a JSON-RPC-like record of a session update (adapter-observed, ACP-compatible discriminators).</p><h5>Record fields</h5><div class="scroll"><table class="def-table"><thead><tr><th>Field</th><th>Type / shape</th><th>Notes</th></tr></thead><tbody><tr><td class="m">timestamp</td><td>number | string</td><td>Wall time; may be sec or ms</td></tr><tr><td class="m">method</td><td>string</td><td>Often session/update or similar</td></tr><tr><td class="m">params.sessionId</td><td>string</td><td>Native session id</td></tr><tr><td class="m">params.update</td><td>object</td><td>sessionUpdate discriminator + payload</td></tr><tr><td class="m">params._meta</td><td>object</td><td>promptId, agentTimestampMs, …</td></tr></tbody></table></div><h5>update.sessionUpdate values we map</h5><div class="scroll"><table class="def-table"><thead><tr><th>Field</th><th>Type / shape</th><th>Notes</th></tr></thead><tbody><tr><td class="m">user_message_chunk</td><td>content.text, messageId, _meta.promptId</td><td>→ turn:started</td></tr><tr><td class="m">agent_message_chunk</td><td>content.text, messageId</td><td>→ conversation:assistant-message</td></tr><tr><td class="m">agent_thought_chunk</td><td>content</td><td>→ reasoning:*</td></tr><tr><td class="m">tool_call / tool_call_update</td><td>ACP tool fields</td><td>→ tool:* via shared mapper</td></tr><tr><td class="m">turn_completed</td><td>stop_reason, …</td><td>→ turn:completed + reasoning:completed</td></tr><tr><td class="m">hook_execution</td><td>event_name, reason</td><td>session_start → session:started; session_end → session:exited</td></tr></tbody></table></div></div>
 </article>
 <article class="hook-card use-observer" id="gk-signals">
   <header class="hook-card-h">
@@ -341,7 +341,7 @@
       <span class="tag t-observer">Native observer</span>
     </div>
   </header>
-  <div class="hook-card-body"><p>Observer also reads session side-car metadata for tokens and model (not fully published as a schema page).</p><h5>Observed signal fields</h5><div class="scroll"><table class="def-table"><thead><tr><th>Field</th><th>Type / shape</th><th>Notes</th></tr></thead><tbody><tr><td class="m">contextTokensUsed</td><td>number</td><td>Used tokens</td></tr><tr><td class="m">contextWindowTokens</td><td>number</td><td>Capacity</td></tr><tr><td class="m">contextWindowUsage</td><td>number</td><td>Ratio/percentage when present</td></tr><tr><td class="m">primaryModelId / current_model_id</td><td>string</td><td>Active model</td></tr><tr><td class="m">compactionCount</td><td>number</td><td>Increments on compaction → invalidation</td></tr><tr><td class="m">cwd</td><td>string</td><td>Workspace path</td></tr></tbody></table></div><h5>Puppeteer</h5><p class="hook-usage"><strong>Puppeteer:</strong> context-window.updated|invalidated; session.environment.updated.</p></div>
+  <div class="hook-card-body"><p>Observer also reads session side-car metadata for tokens and model (not fully published as a schema page).</p><h5>Observed signal fields</h5><div class="scroll"><table class="def-table"><thead><tr><th>Field</th><th>Type / shape</th><th>Notes</th></tr></thead><tbody><tr><td class="m">contextTokensUsed</td><td>number</td><td>Used tokens</td></tr><tr><td class="m">contextWindowTokens</td><td>number</td><td>Capacity</td></tr><tr><td class="m">contextWindowUsage</td><td>number</td><td>Ratio/percentage when present</td></tr><tr><td class="m">primaryModelId / current_model_id</td><td>string</td><td>Active model</td></tr><tr><td class="m">compactionCount</td><td>number</td><td>Increments on compaction → invalidation</td></tr><tr><td class="m">cwd</td><td>string</td><td>Workspace path</td></tr></tbody></table></div><h5>Puppeteer</h5><p class="hook-usage"><strong>Puppeteer:</strong> context-window:updated|invalidated; environment:updated.</p></div>
 </article></div>
         </div>
 
@@ -356,7 +356,7 @@
       <span class="tag t-used">Log + ACP</span>
     </div>
   </header>
-  <div class="hook-card-body"><p>Official: a chunk of the agent's response being streamed.</p><h5>Payload</h5><div class="scroll"><table class="def-table"><thead><tr><th>Field</th><th>Type / shape</th><th>Notes</th></tr></thead><tbody><tr><td class="m">sessionUpdate</td><td>string (required)</td><td>"agent_message_chunk"</td></tr><tr><td class="m">content</td><td>ContentBlock (required)</td><td>Usually {{type:"text", text}}</td></tr><tr><td class="m">messageId</td><td>MessageId | null</td><td>Same id groups chunks into one message</td></tr><tr><td class="m">_meta</td><td>object | null</td><td></td></tr></tbody></table></div><h5>Envelope</h5><div class="scroll"><table class="def-table"><thead><tr><th>Field</th><th>Type / shape</th><th>Notes</th></tr></thead><tbody><tr><td class="m">sessionId</td><td>SessionId (required)</td><td>On session/update params</td></tr><tr><td class="m">update</td><td>object (required)</td><td>Above fields</td></tr></tbody></table></div><h5>Puppeteer dual-source</h5><p class="hook-usage">When observer active: taken from <strong>log</strong> only (ACP path filtered out). → assistant.message</p></div>
+  <div class="hook-card-body"><p>Official: a chunk of the agent's response being streamed.</p><h5>Payload</h5><div class="scroll"><table class="def-table"><thead><tr><th>Field</th><th>Type / shape</th><th>Notes</th></tr></thead><tbody><tr><td class="m">sessionUpdate</td><td>string (required)</td><td>"agent_message_chunk"</td></tr><tr><td class="m">content</td><td>ContentBlock (required)</td><td>Usually {{type:"text", text}}</td></tr><tr><td class="m">messageId</td><td>MessageId | null</td><td>Same id groups chunks into one message</td></tr><tr><td class="m">_meta</td><td>object | null</td><td></td></tr></tbody></table></div><h5>Envelope</h5><div class="scroll"><table class="def-table"><thead><tr><th>Field</th><th>Type / shape</th><th>Notes</th></tr></thead><tbody><tr><td class="m">sessionId</td><td>SessionId (required)</td><td>On session/update params</td></tr><tr><td class="m">update</td><td>object (required)</td><td>Above fields</td></tr></tbody></table></div><h5>Puppeteer dual-source</h5><p class="hook-usage">When observer active: taken from <strong>log</strong> only (ACP path filtered out). → conversation:assistant-message</p></div>
 </article>
 
 <article class="hook-card use-used" id="gk-acp-umsg">
@@ -366,7 +366,7 @@
       <span class="tag t-used">Log (TUI turns)</span>
     </div>
   </header>
-  <div class="hook-card-body"><p>Official: a chunk of the user's message being streamed.</p><h5>Payload</h5><div class="scroll"><table class="def-table"><thead><tr><th>Field</th><th>Type / shape</th><th>Notes</th></tr></thead><tbody><tr><td class="m">sessionUpdate</td><td>string (required)</td><td>"user_message_chunk"</td></tr><tr><td class="m">content</td><td>ContentBlock (required)</td><td>User text</td></tr><tr><td class="m">messageId</td><td>MessageId | null</td><td></td></tr><tr><td class="m">_meta.promptId</td><td>string (Grok)</td><td>Observed correlation on disk records</td></tr></tbody></table></div><h5>Puppeteer</h5><p class="hook-usage">From <strong>log</strong> → turn.started (makes TUI-typed turns visible). Plain ACP driver would drop this.</p></div>
+  <div class="hook-card-body"><p>Official: a chunk of the user's message being streamed.</p><h5>Payload</h5><div class="scroll"><table class="def-table"><thead><tr><th>Field</th><th>Type / shape</th><th>Notes</th></tr></thead><tbody><tr><td class="m">sessionUpdate</td><td>string (required)</td><td>"user_message_chunk"</td></tr><tr><td class="m">content</td><td>ContentBlock (required)</td><td>User text</td></tr><tr><td class="m">messageId</td><td>MessageId | null</td><td></td></tr><tr><td class="m">_meta.promptId</td><td>string (Grok)</td><td>Observed correlation on disk records</td></tr></tbody></table></div><h5>Puppeteer</h5><p class="hook-usage">From <strong>log</strong> → turn:started (makes TUI-typed turns visible). Plain ACP driver would drop this.</p></div>
 </article>
 
 <article class="hook-card use-used" id="gk-acp-thought">
@@ -376,7 +376,7 @@
       <span class="tag t-used">Log</span>
     </div>
   </header>
-  <div class="hook-card-body"><p>Official: agent internal reasoning chunk.</p><h5>Payload</h5><div class="scroll"><table class="def-table"><thead><tr><th>Field</th><th>Type / shape</th><th>Notes</th></tr></thead><tbody><tr><td class="m">sessionUpdate</td><td>string (required)</td><td>"agent_thought_chunk"</td></tr><tr><td class="m">content</td><td>ContentBlock (required)</td><td></td></tr><tr><td class="m">messageId</td><td>MessageId | null</td><td></td></tr></tbody></table></div><h5>Puppeteer</h5><p class="hook-usage">Log → reasoning.started / progress</p></div>
+  <div class="hook-card-body"><p>Official: agent internal reasoning chunk.</p><h5>Payload</h5><div class="scroll"><table class="def-table"><thead><tr><th>Field</th><th>Type / shape</th><th>Notes</th></tr></thead><tbody><tr><td class="m">sessionUpdate</td><td>string (required)</td><td>"agent_thought_chunk"</td></tr><tr><td class="m">content</td><td>ContentBlock (required)</td><td></td></tr><tr><td class="m">messageId</td><td>MessageId | null</td><td></td></tr></tbody></table></div><h5>Puppeteer</h5><p class="hook-usage">Log → reasoning:started / progress</p></div>
 </article>
 
 <article class="hook-card use-used" id="gk-acp-tool">
@@ -386,7 +386,7 @@
       <span class="tag t-used">Log</span>
     </div>
   </header>
-  <div class="hook-card-body"><p>Official tool_call and tool_call_update field sets (ACP tool-calls).</p><h5>tool_call fields</h5><div class="scroll"><table class="def-table"><thead><tr><th>Field</th><th>Type / shape</th><th>Notes</th></tr></thead><tbody><tr><td class="m">toolCallId</td><td>ToolCallId (required)</td><td></td></tr><tr><td class="m">title</td><td>string (required)</td><td></td></tr><tr><td class="m">kind</td><td>ToolKind</td><td>read|edit|delete|move|search|execute|think|fetch|other</td></tr><tr><td class="m">status</td><td>ToolCallStatus</td><td>pending|in_progress|completed|failed</td></tr><tr><td class="m">content</td><td>ToolCallContent[]</td><td></td></tr><tr><td class="m">locations</td><td>ToolCallLocation[]</td><td>path + optional line</td></tr><tr><td class="m">rawInput / rawOutput</td><td>object</td><td></td></tr></tbody></table></div><h5>tool_call_update</h5><div class="scroll"><table class="def-table"><thead><tr><th>Field</th><th>Type / shape</th><th>Notes</th></tr></thead><tbody><tr><td class="m">toolCallId</td><td>ToolCallId (required)</td><td></td></tr><tr><td class="m">status / title / kind / content / rawInput / rawOutput</td><td>optional partial</td><td>All optional except id</td></tr></tbody></table></div><h5>Puppeteer</h5><p class="hook-usage">Log owns tools when observer active; shared ACP semantic mapper → tool.started/completed/failed</p></div>
+  <div class="hook-card-body"><p>Official tool_call and tool_call_update field sets (ACP tool-calls).</p><h5>tool_call fields</h5><div class="scroll"><table class="def-table"><thead><tr><th>Field</th><th>Type / shape</th><th>Notes</th></tr></thead><tbody><tr><td class="m">toolCallId</td><td>ToolCallId (required)</td><td></td></tr><tr><td class="m">title</td><td>string (required)</td><td></td></tr><tr><td class="m">kind</td><td>ToolKind</td><td>read|edit|delete|move|search|execute|think|fetch|other</td></tr><tr><td class="m">status</td><td>ToolCallStatus</td><td>pending|in_progress|completed|failed</td></tr><tr><td class="m">content</td><td>ToolCallContent[]</td><td></td></tr><tr><td class="m">locations</td><td>ToolCallLocation[]</td><td>path + optional line</td></tr><tr><td class="m">rawInput / rawOutput</td><td>object</td><td></td></tr></tbody></table></div><h5>tool_call_update</h5><div class="scroll"><table class="def-table"><thead><tr><th>Field</th><th>Type / shape</th><th>Notes</th></tr></thead><tbody><tr><td class="m">toolCallId</td><td>ToolCallId (required)</td><td></td></tr><tr><td class="m">status / title / kind / content / rawInput / rawOutput</td><td>optional partial</td><td>All optional except id</td></tr></tbody></table></div><h5>Puppeteer</h5><p class="hook-usage">Log owns tools when observer active; shared ACP semantic mapper → tool:started/completed/failed</p></div>
 </article>
 
 <article class="hook-card use-used" id="gk-acp-usage">
@@ -396,7 +396,7 @@
       <span class="tag t-used">ACP allowlist</span>
     </div>
   </header>
-  <div class="hook-card-body"><p>Official: context window and cost update.</p><h5>Payload</h5><div class="scroll"><table class="def-table"><thead><tr><th>Field</th><th>Type / shape</th><th>Notes</th></tr></thead><tbody><tr><td class="m">used</td><td>number (required)</td><td>Tokens used in current context</td></tr><tr><td class="m">size</td><td>number (required)</td><td>Effective capacity</td></tr><tr><td class="m">cost</td><td>Cost | null</td><td>{{ amount, currency }} optional</td></tr></tbody></table></div><h5>Puppeteer</h5><p class="hook-usage">Allowlisted from <strong>ACP</strong> when observer runs → context-window.updated. Native log also recovers invalidation.</p></div>
+  <div class="hook-card-body"><p>Official: context window and cost update.</p><h5>Payload</h5><div class="scroll"><table class="def-table"><thead><tr><th>Field</th><th>Type / shape</th><th>Notes</th></tr></thead><tbody><tr><td class="m">used</td><td>number (required)</td><td>Tokens used in current context</td></tr><tr><td class="m">size</td><td>number (required)</td><td>Effective capacity</td></tr><tr><td class="m">cost</td><td>Cost | null</td><td>{{ amount, currency }} optional</td></tr></tbody></table></div><h5>Puppeteer</h5><p class="hook-usage">Allowlisted from <strong>ACP</strong> when observer runs → context-window:updated. Native log also recovers invalidation.</p></div>
 </article>
 
 <article class="hook-card use-used" id="gk-acp-perm">
@@ -406,7 +406,7 @@
       <span class="tag t-used">ACP allowlist</span>
     </div>
   </header>
-  <div class="hook-card-body"><p>Official Agent→Client permission request (not a sessionUpdate; JSON-RPC request).</p><h5>Input</h5><div class="scroll"><table class="def-table"><thead><tr><th>Field</th><th>Type / shape</th><th>Notes</th></tr></thead><tbody><tr><td class="m">sessionId</td><td>SessionId (required)</td><td></td></tr><tr><td class="m">toolCall</td><td>ToolCallUpdate (required)</td><td></td></tr><tr><td class="m">options</td><td>PermissionOption[] (required)</td><td>optionId, name, kind allow_once|allow_always|reject_once|reject_always</td></tr></tbody></table></div><h5>Output</h5><div class="scroll"><table class="def-table"><thead><tr><th>Field</th><th>Type / shape</th><th>Notes</th></tr></thead><tbody><tr><td class="m">outcome</td><td>RequestPermissionOutcome</td><td>selected+optionId or cancelled</td></tr></tbody></table></div><h5>Puppeteer</h5><p class="hook-usage">Allowlisted from ACP → permission.requested / .resolved; onApproval default deny</p></div>
+  <div class="hook-card-body"><p>Official Agent→Client permission request (not a sessionUpdate; JSON-RPC request).</p><h5>Input</h5><div class="scroll"><table class="def-table"><thead><tr><th>Field</th><th>Type / shape</th><th>Notes</th></tr></thead><tbody><tr><td class="m">sessionId</td><td>SessionId (required)</td><td></td></tr><tr><td class="m">toolCall</td><td>ToolCallUpdate (required)</td><td></td></tr><tr><td class="m">options</td><td>PermissionOption[] (required)</td><td>optionId, name, kind allow_once|allow_always|reject_once|reject_always</td></tr></tbody></table></div><h5>Output</h5><div class="scroll"><table class="def-table"><thead><tr><th>Field</th><th>Type / shape</th><th>Notes</th></tr></thead><tbody><tr><td class="m">outcome</td><td>RequestPermissionOutcome</td><td>selected+optionId or cancelled</td></tr></tbody></table></div><h5>Puppeteer</h5><p class="hook-usage">Allowlisted from ACP → interaction:permission-requested / interaction:permission-resolved; onApproval default deny</p></div>
 </article>
 
 <article class="hook-card use-used" id="gk-acp-prompt">
@@ -426,7 +426,7 @@
       <span class="tag t-observer">Native only</span>
     </div>
   </header>
-  <div class="hook-card-body"><p>Grok-specific record in updates.jsonl (not an ACP method). Lifecycle hooks embedded in the session stream.</p><h5>Observed fields</h5><div class="scroll"><table class="def-table"><thead><tr><th>Field</th><th>Type / shape</th><th>Notes</th></tr></thead><tbody><tr><td class="m">sessionUpdate</td><td>"hook_execution"</td><td></td></tr><tr><td class="m">event_name</td><td>string</td><td>session_start | session_end | …</td></tr><tr><td class="m">reason</td><td>string?</td><td>On session_end</td></tr></tbody></table></div><h5>Puppeteer</h5><p class="hook-usage">session_start → session.started; session_end → session.exited (Grok is the only ACP-family adapter emitting real session.exited)</p></div>
+  <div class="hook-card-body"><p>Grok-specific record in updates.jsonl (not an ACP method). Lifecycle hooks embedded in the session stream.</p><h5>Observed fields</h5><div class="scroll"><table class="def-table"><thead><tr><th>Field</th><th>Type / shape</th><th>Notes</th></tr></thead><tbody><tr><td class="m">sessionUpdate</td><td>"hook_execution"</td><td></td></tr><tr><td class="m">event_name</td><td>string</td><td>session_start | session_end | …</td></tr><tr><td class="m">reason</td><td>string?</td><td>On session_end</td></tr></tbody></table></div><h5>Puppeteer</h5><p class="hook-usage">session_start → session:started; session_end → session:exited (Grok is the only ACP-family adapter emitting real session:exited)</p></div>
 </article>
 
 <article class="hook-card use-observer" id="gk-turn-completed">
@@ -436,7 +436,7 @@
       <span class="tag t-observer">Native only</span>
     </div>
   </header>
-  <div class="hook-card-body"><p>Grok-persisted turn boundary in the log (ACP v1 ends turns via prompt response instead).</p><h5>Observed fields</h5><div class="scroll"><table class="def-table"><thead><tr><th>Field</th><th>Type / shape</th><th>Notes</th></tr></thead><tbody><tr><td class="m">sessionUpdate</td><td>"turn_completed"</td><td></td></tr><tr><td class="m">stop_reason</td><td>string?</td><td>Stop-like reason when present</td></tr><tr><td class="m">_meta.promptId</td><td>string?</td><td>Turn correlation</td></tr></tbody></table></div><h5>Puppeteer</h5><p class="hook-usage">→ reasoning.completed + turn.completed</p></div>
+  <div class="hook-card-body"><p>Grok-persisted turn boundary in the log (ACP v1 ends turns via prompt response instead).</p><h5>Observed fields</h5><div class="scroll"><table class="def-table"><thead><tr><th>Field</th><th>Type / shape</th><th>Notes</th></tr></thead><tbody><tr><td class="m">sessionUpdate</td><td>"turn_completed"</td><td></td></tr><tr><td class="m">stop_reason</td><td>string?</td><td>Stop-like reason when present</td></tr><tr><td class="m">_meta.promptId</td><td>string?</td><td>Turn correlation</td></tr></tbody></table></div><h5>Puppeteer</h5><p class="hook-usage">→ reasoning:completed + turn:completed</p></div>
 </article>
           </div>
 
@@ -453,23 +453,23 @@
   → createAcpSession (stdio/control to leader session)
   → GrokSessionObserver(updates.jsonl)
   → observer active ⇒ ACP allowlist only:
-      permission.* · context-window.* · session.environment.updated
+      interaction:* · context-window:* · environment:updated
   → log owns turns/tools/messages/lifecycle
   → observationLevel: native-log</pre>
           <div class="scroll"><table class="def-table">
             <thead><tr><th>Source field</th><th>AgentEvent</th></tr></thead>
             <tbody>
-              <tr><td class="m">hook_execution session_start</td><td class="m">session.started</td></tr>
-              <tr><td class="m">hook_execution session_end</td><td class="m">session.exited</td></tr>
-              <tr><td class="m">user_message_chunk</td><td class="m">turn.started (TUI-visible)</td></tr>
-              <tr><td class="m">agent_message_chunk</td><td class="m">assistant.message</td></tr>
-              <tr><td class="m">agent_thought_chunk</td><td class="m">reasoning.*</td></tr>
-              <tr><td class="m">tool_call*</td><td class="m">tool.*</td></tr>
-              <tr><td class="m">turn_completed</td><td class="m">turn.completed</td></tr>
-              <tr><td class="m">token / compaction signals</td><td class="m">context-window.updated|invalidated</td></tr>
-              <tr><td class="m">ACP permission (allowlist)</td><td class="m">permission.requested|resolved</td></tr>
-              <tr><td class="m">ACP usage (allowlist)</td><td class="m">context-window.updated</td></tr>
-              <tr><td class="m">leader exit</td><td class="m">process.exited</td></tr>
+              <tr><td class="m">hook_execution session_start</td><td class="m">session:started</td></tr>
+              <tr><td class="m">hook_execution session_end</td><td class="m">session:exited</td></tr>
+              <tr><td class="m">user_message_chunk</td><td class="m">turn:started (TUI-visible)</td></tr>
+              <tr><td class="m">agent_message_chunk</td><td class="m">conversation:assistant-message</td></tr>
+              <tr><td class="m">agent_thought_chunk</td><td class="m">reasoning:*</td></tr>
+              <tr><td class="m">tool_call*</td><td class="m">tool:*</td></tr>
+              <tr><td class="m">turn_completed</td><td class="m">turn:completed</td></tr>
+              <tr><td class="m">token / compaction signals</td><td class="m">context-window:updated|invalidated</td></tr>
+              <tr><td class="m">ACP permission (allowlist)</td><td class="m">interaction:permission-requested|resolved</td></tr>
+              <tr><td class="m">ACP usage (allowlist)</td><td class="m">context-window:updated</td></tr>
+              <tr><td class="m">leader exit</td><td class="m">process:exited</td></tr>
             </tbody>
           </table></div>
         </div>
@@ -479,7 +479,7 @@
 
       <div class="note">
         <strong>Read the ACP map first.</strong> Everything in it applies here: <code>agent_message_chunk</code>,
-        <code>agent_thought_chunk</code> → <code>reasoning.started</code>, <code>tool_call</code> /
+        <code>agent_thought_chunk</code> → <code>reasoning:started</code>, <code>tool_call</code> /
         <code>tool_call_update</code>, <code>usage_update</code>, plus driver-derived turn boundaries and permissions.
         This page covers only what Grok adds on top.
       </div>
@@ -498,9 +498,9 @@
           <h3>Two sources, one authority each</h3>
           <pre class="mermaid">
 flowchart LR
-  LOG["native session log<br/>(GrokSessionObserver)"] --> OWN1["session.started / .exited<br/>turn.started / .completed<br/>assistant.message<br/>reasoning.completed<br/>context-window.*"]
+  LOG["native session log<br/>(GrokSessionObserver)"] --> OWN1["session:started / session:exited<br/>turn:started / turn:completed<br/>conversation:assistant-message<br/>reasoning:completed<br/>context-window:*"]
   ACP["ACP driver + normalizer"] --> GATE{"observer active?"}
-  GATE -->|"yes — allowlist"| OWN2["permission.requested / .resolved<br/>context-window.updated / .invalidated<br/>session.environment.updated"]
+  GATE -->|"yes — allowlist"| OWN2["interaction:permission-requested / interaction:permission-resolved<br/>context-window:updated / context-window:invalidated<br/>environment:updated"]
   GATE -->|"no"| FULL["full ACP stream"]
   OWN1 --> RED["reduceSessionState"]
   OWN2 --> RED
@@ -547,9 +547,9 @@ stateDiagram-v2
   working --> idle : response finished, tools empty
   idle --> working : observed turn · tool_call · agent_thought_chunk
   idle --> waiting : ACP permission request
-  working --> dropped : session.exited / process.exited
-  idle --> dropped : session.exited / process.exited
-  waiting --> dropped : session.exited / process.exited
+  working --> dropped : session:exited / process:exited
+  idle --> dropped : session:exited / process:exited
+  waiting --> dropped : session:exited / process:exited
   dropped --> [*]
           </pre>
         </div>
@@ -574,49 +574,49 @@ stateDiagram-v2
           </thead>
           <tbody>
             <tr>
-              <td class="m">session started</td><td class="m">session.started</td>
+              <td class="m">session started</td><td class="m">session:started</td>
               <td>lifecycle → <code>ready</code></td>
               <td><span class="tag t-live">idle</span></td>
               <td>bubble appears</td>
             </tr>
             <tr>
-              <td class="m">session ended</td><td class="m">session.exited</td>
+              <td class="m">session ended</td><td class="m">session:exited</td>
               <td>lifecycle → <code>exited</code></td>
               <td><span class="tag t-dead">dropped</span></td>
               <td>disappears from every view. <strong>Grok is the only ACP-family adapter that reports this</strong> rather than relying on process exit</td>
             </tr>
             <tr>
-              <td class="m">user prompt observed</td><td class="m">turn.started</td>
+              <td class="m">user prompt observed</td><td class="m">turn:started</td>
               <td>lifecycle → <code>running</code>; activeTurn</td>
               <td><span class="tag t-live">working</span></td>
               <td>ignites even for a prompt typed directly into the TUI</td>
             </tr>
             <tr>
-              <td class="m">assistant response</td><td class="m">assistant.message</td>
+              <td class="m">assistant response</td><td class="m">conversation:assistant-message</td>
               <td>lastAssistantMessage</td>
               <td><span class="tag t-dead">none</span></td>
               <td><strong>nothing</strong> — no view reads it</td>
             </tr>
             <tr>
-              <td class="m">response finished</td><td class="m">reasoning.completed<br />turn.completed</td>
+              <td class="m">response finished</td><td class="m">reasoning:completed<br />turn:completed</td>
               <td>activeReasoning + activeTurn cleared</td>
               <td><span class="tag t-live">idle</span></td>
               <td>stops igniting</td>
             </tr>
             <tr>
-              <td class="m">token accounting</td><td class="m">context-window.updated</td>
+              <td class="m">token accounting</td><td class="m">context-window:updated</td>
               <td>contextWindow</td>
               <td><span class="tag t-dead">none</span></td>
               <td>CTX badge, bubble fill height, rain tail length</td>
             </tr>
             <tr>
-              <td class="m">compaction</td><td class="m">context-window.invalidated</td>
+              <td class="m">compaction</td><td class="m">context-window:invalidated</td>
               <td>contextWindow cleared</td>
               <td><span class="tag t-dead">none</span></td>
               <td>CTX drops to <code>--%</code>. <strong>ACP alone never does this</strong> — Grok recovers the signal</td>
             </tr>
             <tr>
-              <td class="m">model / cwd change</td><td class="m">session.environment.updated</td>
+              <td class="m">model / cwd change</td><td class="m">environment:updated</td>
               <td>environment.model / currentCwd</td>
               <td><span class="tag t-dead">none</span></td>
               <td>model and project labels</td>
@@ -631,15 +631,15 @@ stateDiagram-v2
           <thead><tr><th>Trigger</th><th>Normalized</th><th>Fold</th><th>Visual status</th></tr></thead>
           <tbody>
             <tr>
-              <td class="m">leader ready</td><td class="m">session.ready</td>
+              <td class="m">leader ready</td><td class="m">session:ready</td>
               <td>lifecycle → <code>ready</code></td><td><span class="tag t-live">idle</span></td>
             </tr>
             <tr>
-              <td class="m">leader process exits</td><td class="m">process.exited</td>
+              <td class="m">leader process exits</td><td class="m">process:exited</td>
               <td>lifecycle → <code>exited</code> | <code>failed</code></td><td><span class="tag t-dead">dropped</span></td>
             </tr>
             <tr>
-              <td class="m">unrecognized leader traffic</td><td class="m">adapter.native-event</td>
+              <td class="m">unrecognized leader traffic</td><td class="m">adapter:native-event</td>
               <td>counters.unknownEvents++</td><td><span class="tag t-dead">none</span></td>
             </tr>
           </tbody>
@@ -648,40 +648,40 @@ stateDiagram-v2
 
       <h2>Do the two sources double-count? No — verified</h2>
       <p>
-        Both sources could describe the same turn: the ACP driver emits <code>turn.started</code> when <strong>we</strong>
+        Both sources could describe the same turn: the ACP driver emits <code>turn:started</code> when <strong>we</strong>
         call <code>prompt()</code>, and the observer emits one when it sees <strong>a</strong> prompt land, including
         ours. They do not collide, because <code>backend.ts:263</code> filters the ACP stream to an explicit allowlist
         whenever the observer is running:
       </p>
       <p>
-        <code class="m">permission.requested</code> · <code class="m">permission.resolved</code> ·
-        <code class="m">context-window.updated</code> · <code class="m">context-window.invalidated</code> ·
-        <code class="m">session.environment.updated</code>
+        <code class="m">interaction:permission-requested</code> · <code class="m">interaction:permission-resolved</code> ·
+        <code class="m">context-window:updated</code> · <code class="m">context-window:invalidated</code> ·
+        <code class="m">environment:updated</code>
       </p>
       <p>
-        Everything else from ACP — <code>turn.*</code>, <code>assistant.message</code>, <code>tool.*</code>,
-        <code>reasoning.*</code> — is dropped before it reaches the reducer. The split is stated in the code itself:
+        Everything else from ACP — <code>turn:*</code>, <code>conversation:assistant-message</code>, <code>tool:*</code>,
+        <code>reasoning:*</code> — is dropped before it reaches the reducer. The split is stated in the code itself:
         <em>“the native log owns TUI conversation and lifecycle. ACP remains the live authority for host-side permissions
         and standard context usage.”</em> The observation level moves to <code>native-log</code> to match.
       </p>
       <p>
         The Claude adapter resolves the same way and is documented on its own page: the live transcript path keeps only
-        assistant records, and <code>turn.*</code> is projected solely on resume under <code>replay: true</code>. Neither
+        assistant records, and <code>turn:*</code> is projected solely on resume under <code>replay: true</code>. Neither
         adapter double-counts, and neither needed a live session to prove it.
       </p>
 
       <h2>Coverage relative to the union</h2>
       <p>
         Grok has the widest coverage of any adapter, because it is ACP <em>plus</em> a native observer: it is the only
-        one to reach both <code>session.exited</code> and <code>process.exited</code>, and it recovers
-        <code>context-window.invalidated</code>, which plain ACP lacks.
+        one to reach both <code>session:exited</code> and <code>process:exited</code>, and it recovers
+        <code>context-window:invalidated</code>, which plain ACP lacks.
       </p>
       <p>
-        <strong>Union members never produced:</strong> <code class="m">reasoning.summary</code> ·
-        <code class="m">tool.requested</code> · <code class="m">subagent.started</code> ·
-        <code class="m">subagent.stopped</code> · <code class="m">task.created</code> ·
-        <code class="m">task.completed</code> · <code class="m">process.started</code> ·
-        <code class="m">workspace.changed</code> · <code class="m">notification</code>.
+        <strong>Union members never produced:</strong> <code class="m">reasoning:summary</code> ·
+        <code class="m">tool:requested</code> · <code class="m">delegation:subagent-started</code> ·
+        <code class="m">delegation:subagent-stopped</code> · <code class="m">delegation:task-created</code> ·
+        <code class="m">delegation:task-completed</code> · <code class="m">process:started</code> ·
+        <code class="m">workspace:changed</code> · <code class="m">notification</code>.
       </p>
 
       <footer>

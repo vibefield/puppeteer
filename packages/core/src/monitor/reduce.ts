@@ -1,8 +1,11 @@
 import type {
   AgentEventEnvelope,
   AgentEventConfidence,
+  EffortUpdatedEvent,
+  EnvironmentUpdatedEvent,
+  ModeUpdatedEvent,
+  ModelUpdatedEvent,
   ProcessExitReason,
-  SessionEnvironmentUpdatedEvent,
 } from '../events.js';
 import type {
   ActorRunRef,
@@ -231,8 +234,8 @@ function initialRunEntry(options: CreateMonitorAccumulatorOptions): MonitorStore
 }
 
 export function createMonitorAccumulatorState(options: CreateMonitorAccumulatorOptions): MonitorAccumulatorState {
-  if (!Number.isInteger(options.runtimeEpoch) || options.runtimeEpoch < 1) {
-    throw new RangeError('monitor runtimeEpoch must be a positive integer');
+  if (!Number.isSafeInteger(options.runtimeEpoch) || options.runtimeEpoch < 1) {
+    throw new RangeError('monitor runtimeEpoch must be a positive safe integer');
   }
   if (!Number.isFinite(Date.parse(options.allocatedAt))) {
     throw new RangeError('monitor allocatedAt must be an ISO-compatible timestamp');
@@ -613,15 +616,18 @@ function completeness(confidence: AgentEventConfidence): EvidenceCompleteness {
 }
 
 function actorFor(envelope: AgentEventEnvelope): ActorRunRef | undefined {
-  if (!envelope.agentId) return undefined;
+  const actorIdentity = envelope.agentId ?? envelope.actorKey;
+  if (!actorIdentity) return undefined;
   const rootSessionKey = envelope.nativeSessionId ?? envelope.sessionId;
   return {
     rootSessionKey,
-    runKey: `${rootSessionKey}:actor:${envelope.agentId}`,
-    role: 'child',
+    runKey: envelope.agentId
+      ? `${rootSessionKey}:actor:${envelope.agentId}`
+      : `${rootSessionKey}:actor-derived:${envelope.actorKey}`,
+    role: envelope.actorRole ?? 'child',
     parentRunKey: `${rootSessionKey}:root`,
     ...(envelope.nativeSessionId ? { nativeSessionId: envelope.nativeSessionId } : {}),
-    nativeAgentId: envelope.agentId,
+    ...(envelope.agentId ? { nativeAgentId: envelope.agentId } : {}),
     ...(envelope.agentType ? { nativeAgentType: envelope.agentType } : {}),
   };
 }
@@ -642,65 +648,81 @@ function retract(family: MonitorMetricFamily, key: string): MonitorFamilyUpdate 
   return { family, operation: 'retract', key } as MonitorFamilyUpdate;
 }
 
+/**
+ * Runtime events share one accumulator owner and scope, so actor-local facts
+ * must carry the actor in their source-owned key. Keep root keys readable and
+ * encode actor keys as a tuple to avoid delimiter collisions with native IDs.
+ */
+function actorScopedKey(key: string, actor?: ActorRunRef): string {
+  return actor ? JSON.stringify([key, actor.runKey]) : key;
+}
+
 function unexpectedExit(reason: ProcessExitReason): boolean {
   return reason === 'crash' || reason === 'signal' || reason === 'spawn-failed' || reason === 'workspace-failed';
 }
 
-function environmentUpdates(
-  event: SessionEnvironmentUpdatedEvent,
-  at: string,
-  actor?: ActorRunRef,
-): MonitorFamilyUpdate[] {
+function environmentUpdates(event: EnvironmentUpdatedEvent, actor?: ActorRunRef): MonitorFamilyUpdate[] {
   const updates: MonitorFamilyUpdate[] = [];
-  const intent = event.intent ?? 'observed';
   if (event.currentCwd !== undefined || event.git !== undefined) {
     updates.push(
-      upsert('environment', 'environment', {
+      upsert('environment', actor ? `environment:actor:${actor.runKey}` : 'environment', {
         kind: 'environment',
+        ...(actor ? { actor } : {}),
         ...(event.currentCwd !== undefined ? { cwd: event.currentCwd } : {}),
         ...(event.git !== undefined ? { git: event.git } : {}),
       }),
     );
   }
-  if (event.model === null) updates.push(retract('model', intent));
-  else if (event.model !== undefined) {
-    updates.push(
-      upsert('model', intent, {
-        kind: 'model',
-        providerModelId: event.model.id,
-        ...(event.model.displayName ? { displayName: event.model.displayName } : {}),
-        intent,
-        ...(actor ? { actor } : {}),
-      }),
-    );
-  }
-  if (event.effort === null) updates.push(retract('effort', intent));
-  else if (event.effort !== undefined) {
-    updates.push(
-      upsert('effort', intent, { kind: 'effort', value: event.effort, intent, ...(actor ? { actor } : {}) }),
-    );
-  }
-  const modes = [
-    ['provider-session', event.providerSessionMode] as const,
-    ['provider-permission', event.providerPermissionMode] as const,
-  ];
-  for (const [modeKind, mode] of modes) {
-    const key = `${modeKind}:${intent}`;
-    if (mode === null) updates.push(retract('mode', key));
-    else if (mode !== undefined) {
-      updates.push(
-        upsert('mode', key, {
-          kind: 'mode',
-          modeKind,
-          raw: mode.raw,
-          ...(mode.normalized ? { normalized: mode.normalized } : {}),
-          intent,
-        }),
-      );
-    }
-  }
-  void at;
   return updates;
+}
+
+function scopedIntentKey(intent: 'configured' | 'observed', actor?: ActorRunRef): string {
+  return actor ? `${intent}:actor:${actor.runKey}` : intent;
+}
+
+function modelUpdates(event: ModelUpdatedEvent, actor?: ActorRunRef): MonitorFamilyUpdate[] {
+  const intent = event.intent ?? 'observed';
+  const key = scopedIntentKey(intent, actor);
+  if (event.model === null) return [retract('model', key)];
+  return [
+    upsert('model', key, {
+      kind: 'model',
+      providerModelId: event.model.id,
+      ...(event.model.displayName ? { displayName: event.model.displayName } : {}),
+      intent,
+      ...(actor ? { actor } : {}),
+    }),
+  ];
+}
+
+function effortUpdates(event: EffortUpdatedEvent, actor?: ActorRunRef): MonitorFamilyUpdate[] {
+  const intent = event.intent ?? 'observed';
+  const key = scopedIntentKey(intent, actor);
+  if (event.effort === null) return [retract('effort', key)];
+  return [
+    upsert('effort', key, {
+      kind: 'effort',
+      value: event.effort,
+      intent,
+      ...(actor ? { actor } : {}),
+    }),
+  ];
+}
+
+function modeUpdates(event: ModeUpdatedEvent, actor?: ActorRunRef): MonitorFamilyUpdate[] {
+  const intent = event.intent ?? 'observed';
+  const key = `${event.modeKind}:${scopedIntentKey(intent, actor)}`;
+  if (event.mode === null) return [retract('mode', key)];
+  return [
+    upsert('mode', key, {
+      kind: 'mode',
+      modeKind: event.modeKind,
+      raw: event.mode.raw,
+      ...(event.mode.normalized ? { normalized: event.mode.normalized } : {}),
+      intent,
+      ...(actor ? { actor } : {}),
+    }),
+  ];
 }
 
 /** Converts the compatibility AgentEvent stream into evidence inputs without mutating SessionRuntimeState. */
@@ -713,10 +735,12 @@ export function translateAgentEventEnvelope(options: TranslateAgentEventOptions)
   const updates: MonitorFamilyUpdate[] = [];
 
   switch (event.type) {
-    case 'process.started':
+    case 'process:started':
+      if (actor) break;
       updates.push(upsert('status', 'run', { kind: 'run', lifecycle: 'starting', alive: true }));
       break;
-    case 'session.started':
+    case 'session:started':
+      if (actor) break;
       updates.push(
         upsert('status', 'run', {
           kind: 'run',
@@ -728,13 +752,16 @@ export function translateAgentEventEnvelope(options: TranslateAgentEventOptions)
         }),
       );
       break;
-    case 'session.ready':
+    case 'session:ready':
+      if (actor) break;
       updates.push(upsert('status', 'run', { kind: 'run', lifecycle: 'running', alive: true }));
       break;
-    case 'session.exited':
+    case 'session:exited':
+      if (actor) break;
       updates.push(upsert('status', 'run', { kind: 'run', lifecycle: 'exited', alive: false }));
       break;
-    case 'process.exited':
+    case 'process:exited':
+      if (actor) break;
       updates.push(
         upsert('status', 'run', {
           kind: 'run',
@@ -746,9 +773,9 @@ export function translateAgentEventEnvelope(options: TranslateAgentEventOptions)
         }),
       );
       break;
-    case 'turn.started':
+    case 'turn:started':
       updates.push(
-        upsert('status', 'turn', {
+        upsert('status', actorScopedKey('turn', actor), {
           kind: 'activity',
           activityKind: 'other',
           active: true,
@@ -756,18 +783,22 @@ export function translateAgentEventEnvelope(options: TranslateAgentEventOptions)
           since: envelope.timestamp,
           ...(actor ? { actor } : {}),
         }),
-        retract('status', 'failure:turn'),
+        retract('status', actorScopedKey('failure:turn', actor)),
       );
       break;
-    case 'turn.completed':
-      updates.push(retract('status', 'turn'), retract('status', 'responding'), retract('status', 'reasoning'));
-      break;
-    case 'turn.failed':
+    case 'turn:completed':
       updates.push(
-        retract('status', 'turn'),
-        retract('status', 'responding'),
-        retract('status', 'reasoning'),
-        upsert('status', 'failure:turn', {
+        retract('status', actorScopedKey('turn', actor)),
+        retract('status', actorScopedKey('responding', actor)),
+        retract('status', actorScopedKey('reasoning', actor)),
+      );
+      break;
+    case 'turn:failed':
+      updates.push(
+        retract('status', actorScopedKey('turn', actor)),
+        retract('status', actorScopedKey('responding', actor)),
+        retract('status', actorScopedKey('reasoning', actor)),
+        upsert('status', actorScopedKey('failure:turn', actor), {
           kind: 'failure',
           failureId: 'turn',
           state: 'active',
@@ -778,10 +809,10 @@ export function translateAgentEventEnvelope(options: TranslateAgentEventOptions)
         }),
       );
       break;
-    case 'assistant.message':
+    case 'conversation:assistant-message':
       updates.push(
         event.final === false
-          ? upsert('status', 'responding', {
+          ? upsert('status', actorScopedKey('responding', actor), {
               kind: 'activity',
               activityKind: 'responding',
               active: true,
@@ -789,14 +820,14 @@ export function translateAgentEventEnvelope(options: TranslateAgentEventOptions)
               since: envelope.timestamp,
               ...(actor ? { actor } : {}),
             })
-          : retract('status', 'responding'),
+          : retract('status', actorScopedKey('responding', actor)),
       );
       break;
-    case 'reasoning.started':
-    case 'reasoning.progress':
-    case 'reasoning.summary':
+    case 'reasoning:started':
+    case 'reasoning:progress':
+    case 'reasoning:summary':
       updates.push(
-        upsert('status', 'reasoning', {
+        upsert('status', actorScopedKey('reasoning', actor), {
           kind: 'activity',
           activityKind: 'reasoning',
           active: true,
@@ -806,13 +837,13 @@ export function translateAgentEventEnvelope(options: TranslateAgentEventOptions)
         }),
       );
       break;
-    case 'reasoning.completed':
-      updates.push(retract('status', 'reasoning'));
+    case 'reasoning:completed':
+      updates.push(retract('status', actorScopedKey('reasoning', actor)));
       break;
-    case 'tool.requested':
-    case 'tool.started':
+    case 'tool:requested':
+    case 'tool:started':
       updates.push(
-        upsert('status', `tool:${event.toolCallId}`, {
+        upsert('status', actorScopedKey(`tool:${event.toolCallId}`, actor), {
           kind: 'activity',
           activityKind: 'tool',
           active: true,
@@ -822,13 +853,13 @@ export function translateAgentEventEnvelope(options: TranslateAgentEventOptions)
         }),
       );
       break;
-    case 'tool.completed':
-    case 'tool.failed':
-      updates.push(retract('status', `tool:${event.toolCallId}`));
+    case 'tool:completed':
+    case 'tool:failed':
+      updates.push(retract('status', actorScopedKey(`tool:${event.toolCallId}`, actor)));
       break;
-    case 'permission.requested':
+    case 'interaction:permission-requested':
       updates.push(
-        upsert('status', `permission:${event.requestId}`, {
+        upsert('status', actorScopedKey(`permission:${event.requestId}`, actor), {
           kind: 'interaction',
           interactionId: event.requestId,
           interactionKind: 'permission',
@@ -838,19 +869,20 @@ export function translateAgentEventEnvelope(options: TranslateAgentEventOptions)
         }),
       );
       break;
-    case 'permission.resolved':
+    case 'interaction:permission-resolved':
       updates.push(
-        upsert('status', `permission:${event.requestId}`, {
+        upsert('status', actorScopedKey(`permission:${event.requestId}`, actor), {
           kind: 'interaction',
           interactionId: event.requestId,
           interactionKind: 'permission',
           state: 'resolved',
+          ...(actor ? { actor } : {}),
         }),
       );
       break;
-    case 'question.requested':
+    case 'interaction:question-requested':
       updates.push(
-        upsert('status', `question:${event.requestId}`, {
+        upsert('status', actorScopedKey(`question:${event.requestId}`, actor), {
           kind: 'interaction',
           interactionId: event.requestId,
           interactionKind: event.questions.some((question) => question.allowFreeForm)
@@ -866,17 +898,18 @@ export function translateAgentEventEnvelope(options: TranslateAgentEventOptions)
         }),
       );
       break;
-    case 'question.resolved':
+    case 'interaction:question-resolved':
       updates.push(
-        upsert('status', `question:${event.requestId}`, {
+        upsert('status', actorScopedKey(`question:${event.requestId}`, actor), {
           kind: 'interaction',
           interactionId: event.requestId,
           interactionKind: 'mixed',
           state: event.outcome === 'answered' ? 'resolved' : event.outcome,
+          ...(actor ? { actor } : {}),
         }),
       );
       break;
-    case 'subagent.started': {
+    case 'delegation:subagent-started': {
       const child: ActorRunRef = actor ?? {
         rootSessionKey: envelope.nativeSessionId ?? envelope.sessionId,
         runKey: `${envelope.nativeSessionId ?? envelope.sessionId}:actor:${event.subagentId}`,
@@ -888,7 +921,7 @@ export function translateAgentEventEnvelope(options: TranslateAgentEventOptions)
       updates.push(upsert('delegation', `actor:${child.runKey}`, { kind: 'actor', actor: child, state: 'active' }));
       break;
     }
-    case 'subagent.stopped': {
+    case 'delegation:subagent-stopped': {
       const child: ActorRunRef = actor ?? {
         rootSessionKey: envelope.nativeSessionId ?? envelope.sessionId,
         runKey: `${envelope.nativeSessionId ?? envelope.sessionId}:actor:${event.subagentId}`,
@@ -899,9 +932,9 @@ export function translateAgentEventEnvelope(options: TranslateAgentEventOptions)
       updates.push(upsert('delegation', `actor:${child.runKey}`, { kind: 'actor', actor: child, state: 'stopped' }));
       break;
     }
-    case 'task.created':
+    case 'delegation:task-created':
       updates.push(
-        upsert('planning', `task:${event.taskId}`, {
+        upsert('planning', actorScopedKey(`task:${event.taskId}`, actor), {
           kind: 'task',
           taskId: event.taskId,
           description: event.description,
@@ -913,9 +946,9 @@ export function translateAgentEventEnvelope(options: TranslateAgentEventOptions)
         }),
       );
       break;
-    case 'task.updated':
+    case 'delegation:task-updated':
       updates.push(
-        upsert('planning', `task:${event.taskId}`, {
+        upsert('planning', actorScopedKey(`task:${event.taskId}`, actor), {
           kind: 'task',
           taskId: event.taskId,
           description: event.description,
@@ -928,9 +961,9 @@ export function translateAgentEventEnvelope(options: TranslateAgentEventOptions)
         }),
       );
       break;
-    case 'task.completed':
+    case 'delegation:task-completed':
       updates.push(
-        upsert('planning', `task:${event.taskId}`, {
+        upsert('planning', actorScopedKey(`task:${event.taskId}`, actor), {
           kind: 'task',
           taskId: event.taskId,
           status: 'completed',
@@ -941,7 +974,7 @@ export function translateAgentEventEnvelope(options: TranslateAgentEventOptions)
         }),
       );
       break;
-    case 'tokens.used':
+    case 'usage:tokens-used':
       updates.push(
         upsert('usage', event.usageId, {
           kind: 'usage',
@@ -963,7 +996,7 @@ export function translateAgentEventEnvelope(options: TranslateAgentEventOptions)
         }),
       );
       break;
-    case 'context-window.updated': {
+    case 'context-window:updated': {
       if (
         Number.isFinite(event.usedTokens) &&
         event.usedTokens >= 0 &&
@@ -990,12 +1023,12 @@ export function translateAgentEventEnvelope(options: TranslateAgentEventOptions)
       }
       break;
     }
-    case 'context-window.invalidated':
+    case 'context-window:invalidated':
       updates.push(retract('context', actor ? `actor:${actor.runKey}` : 'root'));
       break;
-    case 'plan.updated':
+    case 'planning:updated':
       updates.push(
-        upsert('planning', `plan:${event.planId ?? 'current'}`, {
+        upsert('planning', actorScopedKey(`plan:${event.planId ?? 'current'}`, actor), {
           kind: 'plan',
           planId: event.planId ?? 'current',
           steps: event.steps,
@@ -1004,18 +1037,19 @@ export function translateAgentEventEnvelope(options: TranslateAgentEventOptions)
         }),
       );
       break;
-    case 'compaction.started':
-    case 'compaction.completed':
+    case 'compaction:started':
+    case 'compaction:completed':
       updates.push(
-        upsert('compaction', event.compactionId ?? 'current', {
+        upsert('compaction', actorScopedKey(event.compactionId ?? 'current', actor), {
           kind: 'compaction',
-          active: event.type === 'compaction.started',
+          active: event.type === 'compaction:started',
           trigger: event.trigger,
-          ...(event.type === 'compaction.completed' ? { outcome: event.outcome ?? 'completed' } : {}),
+          ...(event.type === 'compaction:completed' ? { outcome: event.outcome ?? 'completed' } : {}),
+          ...(actor ? { actor } : {}),
         }),
       );
       break;
-    case 'teammate.idle':
+    case 'delegation:teammate-idle':
       updates.push(
         upsert('delegation', `team:${event.teamId ?? event.teamName ?? 'current'}`, {
           kind: 'team',
@@ -1035,7 +1069,7 @@ export function translateAgentEventEnvelope(options: TranslateAgentEventOptions)
         }),
       );
       break;
-    case 'workflow.updated': {
+    case 'workflow:updated': {
       const rootSessionKey = envelope.nativeSessionId ?? envelope.sessionId;
       const members = event.members ?? [];
       const actorRunKeys = members.map(({ agentId }) => `${rootSessionKey}:actor:${agentId}`);
@@ -1074,12 +1108,21 @@ export function translateAgentEventEnvelope(options: TranslateAgentEventOptions)
       }
       break;
     }
-    case 'session.environment.updated':
-      updates.push(...environmentUpdates(event, envelope.timestamp, actor));
+    case 'environment:updated':
+      updates.push(...environmentUpdates(event, actor));
       break;
-    case 'workspace.changed':
-    case 'notification':
-    case 'adapter.native-event':
+    case 'model:updated':
+      updates.push(...modelUpdates(event, actor));
+      break;
+    case 'effort:updated':
+      updates.push(...effortUpdates(event, actor));
+      break;
+    case 'mode:updated':
+      updates.push(...modeUpdates(event, actor));
+      break;
+    case 'workspace:changed':
+    case 'notification:received':
+    case 'adapter:native-event':
       break;
   }
 

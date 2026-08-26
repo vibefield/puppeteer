@@ -167,7 +167,7 @@ describe('createCodexSession', () => {
     expect(session.threadPath()).toBe(ROLLOUT);
     expect(session.observationLevel()).toBe('structured');
     await flush();
-    expect(projection.state.lifecycle).toBe('ready'); // thread/started -> session.started
+    expect(projection.state.lifecycle).toBe('ready'); // thread/started -> session:started
     expect(projection.state.environment).toMatchObject({
       currentCwd: { value: '/x' },
       model: { value: { id: 'gpt-5.6-sol', displayName: 'GPT-5.6-Codex' } },
@@ -203,12 +203,14 @@ describe('createCodexSession', () => {
 
     expect(projection.state.lifecycle).toBe('ready');
     expect(projection.state.lastAssistantMessage).toBe('pong');
-    expect(events.some((e) => e.type === 'assistant.message' && e.final === true && e.text === 'pong')).toBe(true);
-    expect(events.some((e) => e.type === 'turn.completed')).toBe(true);
-    expect(events.some((e) => e.type === 'reasoning.started')).toBe(true);
-    expect(events.some((e) => e.type === 'reasoning.summary' && e.text === 'Checked the request.')).toBe(true);
+    expect(
+      events.some((e) => e.type === 'conversation:assistant-message' && e.final === true && e.text === 'pong'),
+    ).toBe(true);
+    expect(events.some((e) => e.type === 'turn:completed')).toBe(true);
+    expect(events.some((e) => e.type === 'reasoning:started')).toBe(true);
+    expect(events.some((e) => e.type === 'reasoning:summary' && e.text === 'Checked the request.')).toBe(true);
     expect(projection.state.activeReasoning).toBeUndefined();
-    const rawThought = envelopes.find((e) => e.event.type === 'reasoning.progress');
+    const rawThought = envelopes.find((e) => e.event.type === 'reasoning:progress');
     expect(rawThought?.nativeEvent).toMatchObject({
       method: 'item/reasoning/textDelta',
       params: { delta: 'private thought text' },
@@ -253,7 +255,7 @@ describe('createCodexSession', () => {
     });
     await flush();
 
-    expect(events.some((event) => event.type === 'turn.started' && event.turnId === 'child-turn')).toBe(false);
+    expect(events.some((event) => event.type === 'turn:started' && event.turnId === 'child-turn')).toBe(false);
     expect(projection.state.activeTurn).toBeUndefined();
     expect(
       monitorBatches
@@ -286,8 +288,10 @@ describe('createCodexSession', () => {
     await session.submitPrompt({ text: 'run ls' });
     await flush();
 
-    expect(events.some((e) => e.type === 'permission.requested' && e.tool === 'execCommandApproval')).toBe(true);
-    expect(events.some((e) => e.type === 'permission.resolved' && e.outcome === 'allowed')).toBe(true);
+    expect(events.some((e) => e.type === 'interaction:permission-requested' && e.tool === 'execCommandApproval')).toBe(
+      true,
+    );
+    expect(events.some((e) => e.type === 'interaction:permission-resolved' && e.outcome === 'allowed')).toBe(true);
     const resp = s.sent.find((m) => m.id === 999 && 'result' in m);
     expect(resp?.result).toEqual({ decision: 'approved' });
   });
@@ -383,9 +387,9 @@ describe('createCodexSession', () => {
     await flush();
     expect(session.observationLevel()).toBe('terminal-only');
     expect(projection.state.lifecycle).toBe('ready');
-    expect(events.some((e) => e.type === 'process.exited' || e.type === 'session.exited')).toBe(false);
+    expect(events.some((e) => e.type === 'process:exited' || e.type === 'session:exited')).toBe(false);
     expect(events.at(-1)).toEqual({
-      type: 'adapter.native-event',
+      type: 'adapter:native-event',
       adapter: 'codex',
       nativeType: 'app-server.transport.closed',
     });

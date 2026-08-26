@@ -38,7 +38,7 @@ export async function readLastCodexContextWindow(
         const usedTokens = finiteNumber(last?.total_tokens);
         const capacityTokens = finiteNumber(info?.model_context_window);
         if (usedTokens === undefined || capacityTokens === undefined) continue;
-        return { type: 'context-window.updated', usedTokens, capacityTokens };
+        return { type: 'context-window:updated', usedTokens, capacityTokens };
       } catch {
         // Partial/corrupt tail records do not hide an earlier complete update.
       }

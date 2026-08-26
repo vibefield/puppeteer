@@ -70,17 +70,5 @@ export function normalizeClaudePlanUpdated(
   plan: Pick<PlanUpdatedEvent, 'planId' | 'steps'>,
   provisional: boolean,
 ): PlanUpdatedEvent {
-  return { type: 'plan.updated', ...plan, provisional };
-}
-
-export function normalizeClaudeCompactionStarted(compactionId: string, trigger?: string) {
-  return { type: 'compaction.started' as const, compactionId, trigger };
-}
-
-export function normalizeClaudeCompactionCompleted(
-  compactionId: string,
-  trigger: string | undefined,
-  outcome: 'completed' | 'cancelled' | 'failed' | 'superseded' | 'unknown',
-) {
-  return { type: 'compaction.completed' as const, compactionId, trigger, outcome };
+  return { type: 'planning:updated', ...plan, provisional };
 }

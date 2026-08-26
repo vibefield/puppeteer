@@ -4,6 +4,8 @@ import { KimiConversationNormalizer } from './conversation.js';
 import { normalizeKimiContextWindow } from './context-window.js';
 import { KimiDelegationNormalizer } from './delegation.js';
 import { normalizeKimiEnvironment } from './environment.js';
+import { normalizeKimiEffort } from './effort.js';
+import { normalizeKimiModel } from './model.js';
 import { KimiInteractionNormalizer } from './interaction.js';
 import { KimiReasoningNormalizer } from './reasoning.js';
 import { KimiToolNormalizer } from './tool.js';
@@ -62,7 +64,12 @@ export class KimiWireNormalizer {
     if (type === 'turn.ended') return this.completeTurn(body, type, result);
 
     const environment = normalizeKimiEnvironment(type, body);
-    if (environment) return result(environment, environment.length > 0 ? 'mapped' : 'no-output');
+    const model = normalizeKimiModel(type, body);
+    const effort = normalizeKimiEffort(type, body);
+    if (environment || model || effort) {
+      const events = [...(environment ?? []), ...(model ?? []), ...(effort ?? [])];
+      return result(events, events.length > 0 ? 'mapped' : 'no-output');
+    }
     const contextWindow = normalizeKimiContextWindow(type);
     if (contextWindow) return result(contextWindow, 'mapped');
 

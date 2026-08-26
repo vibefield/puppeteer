@@ -28,7 +28,7 @@ export class AcpElicitationService {
     const interactionId = nativeId ? `acp-elicitation:${nativeId}` : `acp-elicitation-${++this.counter}`;
     if (nativeId) this.urlInteractions.set(nativeId, interactionId);
     const questions = acpElicitationQuestions(params);
-    this.options.publish({ type: 'question.requested', requestId: interactionId, questions }, params);
+    this.options.publish({ type: 'interaction:question-requested', requestId: interactionId, questions }, params);
 
     try {
       const response = this.options.respond
@@ -37,27 +37,30 @@ export class AcpElicitationService {
       if (response.action === 'accept') {
         if (params.mode !== 'url') {
           this.options.publish(
-            { type: 'question.resolved', requestId: interactionId, outcome: 'answered' },
+            { type: 'interaction:question-resolved', requestId: interactionId, outcome: 'answered' },
             { request: params, response },
           );
         }
       } else if (response.action === 'decline' || response.action === 'cancel') {
         if (nativeId) this.urlInteractions.delete(nativeId);
         this.options.publish(
-          { type: 'question.resolved', requestId: interactionId, outcome: 'cancelled' },
+          { type: 'interaction:question-resolved', requestId: interactionId, outcome: 'cancelled' },
           { request: params, response },
         );
       } else {
         if (nativeId) this.urlInteractions.delete(nativeId);
         this.options.publish(
-          { type: 'question.resolved', requestId: interactionId, outcome: 'failed' },
+          { type: 'interaction:question-resolved', requestId: interactionId, outcome: 'failed' },
           { request: params, response },
         );
       }
       return response;
     } catch (error) {
       if (nativeId) this.urlInteractions.delete(nativeId);
-      this.options.publish({ type: 'question.resolved', requestId: interactionId, outcome: 'failed' }, params);
+      this.options.publish(
+        { type: 'interaction:question-resolved', requestId: interactionId, outcome: 'failed' },
+        params,
+      );
       throw error;
     }
   }
@@ -66,12 +69,15 @@ export class AcpElicitationService {
     const interactionId = this.urlInteractions.get(elicitationId);
     if (!interactionId) return;
     this.urlInteractions.delete(elicitationId);
-    this.options.publish({ type: 'question.resolved', requestId: interactionId, outcome: 'answered' }, nativeEvent);
+    this.options.publish(
+      { type: 'interaction:question-resolved', requestId: interactionId, outcome: 'answered' },
+      nativeEvent,
+    );
   }
 
   settlePending(outcome: 'failed' | 'superseded', nativeEvent: unknown): void {
     for (const interactionId of this.urlInteractions.values()) {
-      this.options.publish({ type: 'question.resolved', requestId: interactionId, outcome }, nativeEvent);
+      this.options.publish({ type: 'interaction:question-resolved', requestId: interactionId, outcome }, nativeEvent);
     }
     this.urlInteractions.clear();
   }

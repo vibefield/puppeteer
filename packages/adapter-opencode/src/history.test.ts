@@ -34,15 +34,15 @@ describe('OpenCode durable history projection', () => {
 
     expect(events.every((entry) => entry.replay === true)).toBe(true);
     expect(events.map((entry) => entry.event)).toContainEqual(
-      expect.objectContaining({ type: 'assistant.message', text: '<redacted:text>', final: true }),
+      expect.objectContaining({ type: 'conversation:assistant-message', text: '<redacted:text>', final: true }),
     );
     expect(events.map((entry) => entry.event)).toContainEqual(
       expect.objectContaining({
-        type: 'turn.completed',
+        type: 'turn:completed',
         lastAssistantMessage: '<redacted:text>',
       }),
     );
-    expect(events.find((entry) => entry.event.type === 'turn.started')?.promptId).toBe(messages[0]!.info.id);
+    expect(events.find((entry) => entry.event.type === 'turn:started')?.promptId).toBe(messages[0]!.info.id);
 
     const replayAgain = projectOpenCodeHistory(messages).flatMap((projection) =>
       normalizer.normalize(projection.record, { replay: true, nativeEvent: projection.nativeEvent }),
@@ -71,7 +71,7 @@ describe('OpenCode durable history projection', () => {
       }),
     ).toEqual([
       expect.objectContaining({
-        event: expect.objectContaining({ type: 'assistant.message', text: '<redacted:text> updated' }),
+        event: expect.objectContaining({ type: 'conversation:assistant-message', text: '<redacted:text> updated' }),
       }),
     ]);
   });
@@ -104,10 +104,11 @@ describe('OpenCode durable history projection', () => {
     ];
 
     expect(events.map((entry) => entry.event)).toEqual([
-      expect.objectContaining({ type: 'session.started', nativeSessionId: parentInfo.id }),
-      expect.objectContaining({ type: 'session.environment.updated' }),
-      { type: 'subagent.started', subagentId: child.id, agentType: child.agent },
-      { type: 'subagent.stopped', subagentId: child.id },
+      expect.objectContaining({ type: 'session:started', nativeSessionId: parentInfo.id }),
+      expect.objectContaining({ type: 'environment:updated' }),
+      expect.objectContaining({ type: 'model:updated' }),
+      { type: 'delegation:subagent-started', subagentId: child.id, agentType: child.agent },
+      { type: 'delegation:subagent-stopped', subagentId: child.id },
     ]);
     expect(events.every((entry) => entry.replay === true)).toBe(true);
   });

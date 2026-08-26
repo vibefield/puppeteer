@@ -14,11 +14,13 @@ export class KimiDelegationNormalizer {
     const id = taskId(info);
     if (!id) return undefined;
     const description = kimiString(info?.description);
-    const events: AgentEvent[] = [{ type: 'task.created', taskId: id, ...(description ? { description } : {}) }];
+    const events: AgentEvent[] = [
+      { type: 'delegation:task-created', taskId: id, ...(description ? { description } : {}) },
+    ];
     const agentId = info?.kind === 'agent' ? kimiString(info.agentId) : undefined;
     if (agentId) {
       const agentType = kimiString(info?.subagentType);
-      events.push({ type: 'subagent.started', subagentId: agentId, ...(agentType ? { agentType } : {}) });
+      events.push({ type: 'delegation:subagent-started', subagentId: agentId, ...(agentType ? { agentType } : {}) });
     }
     return events;
   }
@@ -29,9 +31,9 @@ export class KimiDelegationNormalizer {
     if (!id) return undefined;
     if (this.settledTasks.has(id)) return [];
     boundedKimiSetAdd(this.settledTasks, id);
-    const events: AgentEvent[] = [{ type: 'task.completed', taskId: id }];
+    const events: AgentEvent[] = [{ type: 'delegation:task-completed', taskId: id }];
     const agentId = info?.kind === 'agent' ? kimiString(info.agentId) : undefined;
-    if (agentId) events.push({ type: 'subagent.stopped', subagentId: agentId });
+    if (agentId) events.push({ type: 'delegation:subagent-stopped', subagentId: agentId });
     return events;
   }
 }

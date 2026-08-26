@@ -36,7 +36,7 @@ export class AcpApprovalService {
     const tool = params.toolCall.title ?? params.toolCall.kind ?? undefined;
     this.options.publish(
       {
-        type: 'permission.requested',
+        type: 'interaction:permission-requested',
         requestId,
         toolCallId: requestId,
         tool,
@@ -54,7 +54,7 @@ export class AcpApprovalService {
         })
       : 'denied';
     this.options.publish(
-      { type: 'permission.resolved', requestId, outcome: decision === 'approved' ? 'allowed' : 'denied' },
+      { type: 'interaction:permission-resolved', requestId, outcome: decision === 'approved' ? 'allowed' : 'denied' },
       params,
     );
     return acpPermissionOutcome(decision, params.options);

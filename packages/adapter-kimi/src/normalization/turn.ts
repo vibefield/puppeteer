@@ -41,7 +41,7 @@ export class KimiTurnNormalizer {
     if (this.startedTurns.has(turnId)) return [];
     boundedKimiSetAdd(this.startedTurns, turnId);
     const prompt = this.pendingPrompts.shift();
-    return [{ type: 'turn.started', turnId, ...(prompt?.text ? { prompt: prompt.text } : {}) }];
+    return [{ type: 'turn:started', turnId, ...(prompt?.text ? { prompt: prompt.text } : {}) }];
   }
 
   isTerminal(turnId: string): boolean {
@@ -57,7 +57,7 @@ export class KimiTurnNormalizer {
 
   completed(turnId: string, stopReason: string, lastAssistantMessage?: string): AgentEvent {
     return {
-      type: 'turn.completed',
+      type: 'turn:completed',
       turnId,
       stopReason,
       ...(lastAssistantMessage !== undefined ? { lastAssistantMessage } : {}),
@@ -65,6 +65,6 @@ export class KimiTurnNormalizer {
   }
 
   failed(turnId: string, error?: string): AgentEvent {
-    return { type: 'turn.failed', turnId, error };
+    return { type: 'turn:failed', turnId, error };
   }
 }

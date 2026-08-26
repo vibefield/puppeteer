@@ -91,10 +91,10 @@ describe('OpenCode native-TUI session composition', () => {
     off();
 
     expect(projection.state.lastAssistantMessage).toBe('imposter: ok');
-    expect(observed.some((event) => event.event.type === 'turn.started' && event.promptId === confirmedTurnID)).toBe(
+    expect(observed.some((event) => event.event.type === 'turn:started' && event.promptId === confirmedTurnID)).toBe(
       true,
     );
-    expect(observed.some((event) => event.event.type === 'turn.completed')).toBe(true);
+    expect(observed.some((event) => event.event.type === 'turn:completed')).toBe(true);
     const assistant = candidates.find(({ type }) => type === 'conversation:assistant-message');
     expect(assistant).not.toHaveProperty('sequence');
     expect(assistant && safeParseAgentEvent(assistant.type, assistant.event).success).toBe(true);

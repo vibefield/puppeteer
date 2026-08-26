@@ -19,7 +19,7 @@ export class HermesPromptService {
   constructor(private readonly options: HermesPromptServiceOptions) {}
 
   observe(event: AgentEvent): void {
-    if (event.type === 'turn.started') this.startWaiter?.(event.turnId);
+    if (event.type === 'turn:started') this.startWaiter?.(event.turnId);
   }
 
   async submit(submission: PromptSubmission): Promise<PromptReceipt> {

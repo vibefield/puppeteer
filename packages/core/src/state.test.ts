@@ -25,36 +25,37 @@ function replay(envelopes: AgentEventEnvelope[], initial = createInitialSessionS
 const id = fc.constantFrom('a', 'b', 'c', 'd');
 
 const arbitraryEvent: fc.Arbitrary<AgentEvent> = fc.oneof(
-  fc.constant<AgentEvent>({ type: 'session.started' }),
-  fc.constant<AgentEvent>({ type: 'session.ready' }),
-  id.map((turnId): AgentEvent => ({ type: 'turn.started', turnId, prompt: `p-${turnId}` })),
-  id.map((turnId): AgentEvent => ({ type: 'turn.completed', turnId, lastAssistantMessage: `m-${turnId}` })),
-  id.map((turnId): AgentEvent => ({ type: 'turn.failed', turnId })),
-  id.map((toolCallId): AgentEvent => ({ type: 'tool.requested', toolCallId, tool: 'Bash' })),
-  id.map((toolCallId): AgentEvent => ({ type: 'tool.started', toolCallId })),
-  id.map((toolCallId): AgentEvent => ({ type: 'tool.completed', toolCallId })),
-  id.map((toolCallId): AgentEvent => ({ type: 'tool.failed', toolCallId })),
-  id.map((requestId): AgentEvent => ({ type: 'permission.requested', requestId, presentation: 'native-tui' })),
-  id.map((requestId): AgentEvent => ({ type: 'permission.resolved', requestId, outcome: 'allowed' })),
-  id.map((subagentId): AgentEvent => ({ type: 'subagent.started', subagentId })),
-  id.map((subagentId): AgentEvent => ({ type: 'subagent.stopped', subagentId })),
-  id.map((taskId): AgentEvent => ({ type: 'task.created', taskId })),
-  id.map((taskId): AgentEvent => ({ type: 'task.completed', taskId })),
-  fc.constant<AgentEvent>({ type: 'assistant.message', text: 'hello' }),
+  fc.constant<AgentEvent>({ type: 'session:started' }),
+  fc.constant<AgentEvent>({ type: 'session:ready' }),
+  id.map((turnId): AgentEvent => ({ type: 'turn:started', turnId, prompt: `p-${turnId}` })),
+  id.map((turnId): AgentEvent => ({ type: 'turn:completed', turnId, lastAssistantMessage: `m-${turnId}` })),
+  id.map((turnId): AgentEvent => ({ type: 'turn:failed', turnId })),
+  id.map((toolCallId): AgentEvent => ({ type: 'tool:requested', toolCallId, tool: 'Bash' })),
+  id.map((toolCallId): AgentEvent => ({ type: 'tool:started', toolCallId })),
+  id.map((toolCallId): AgentEvent => ({ type: 'tool:completed', toolCallId })),
+  id.map((toolCallId): AgentEvent => ({ type: 'tool:failed', toolCallId })),
+  id.map((requestId): AgentEvent => ({
+    type: 'interaction:permission-requested',
+    requestId,
+    presentation: 'native-tui',
+  })),
+  id.map((requestId): AgentEvent => ({ type: 'interaction:permission-resolved', requestId, outcome: 'allowed' })),
+  id.map((subagentId): AgentEvent => ({ type: 'delegation:subagent-started', subagentId })),
+  id.map((subagentId): AgentEvent => ({ type: 'delegation:subagent-stopped', subagentId })),
+  id.map((taskId): AgentEvent => ({ type: 'delegation:task-created', taskId })),
+  id.map((taskId): AgentEvent => ({ type: 'delegation:task-completed', taskId })),
+  fc.constant<AgentEvent>({ type: 'conversation:assistant-message', text: 'hello' }),
   fc.tuple(fc.nat(), fc.integer({ min: 1, max: 1_000_000 })).map(([usedTokens, capacityTokens]): AgentEvent => ({
-    type: 'context-window.updated',
+    type: 'context-window:updated',
     usedTokens,
     capacityTokens,
   })),
-  fc.constant<AgentEvent>({ type: 'context-window.invalidated', reason: 'compacted' }),
-  fc.constant<AgentEvent>({
-    type: 'session.environment.updated',
-    currentCwd: '/tmp/project',
-    model: { id: 'model-a', displayName: 'Model A' },
-  }),
-  fc.constant<AgentEvent>({ type: 'session.exited', reason: 'other' }),
-  fc.constant<AgentEvent>({ type: 'process.exited', reason: 'completed', exitCode: 0 }),
-  fc.constant<AgentEvent>({ type: 'adapter.native-event', adapter: 'claude-code', nativeType: 'Mystery' }),
+  fc.constant<AgentEvent>({ type: 'context-window:invalidated', reason: 'compacted' }),
+  fc.constant<AgentEvent>({ type: 'environment:updated', currentCwd: '/tmp/project' }),
+  fc.constant<AgentEvent>({ type: 'model:updated', model: { id: 'model-a', displayName: 'Model A' } }),
+  fc.constant<AgentEvent>({ type: 'session:exited', reason: 'other' }),
+  fc.constant<AgentEvent>({ type: 'process:exited', reason: 'completed', exitCode: 0 }),
+  fc.constant<AgentEvent>({ type: 'adapter:native-event', adapter: 'claude-code', nativeType: 'Mystery' }),
 );
 
 const arbitraryEvents = fc.array(arbitraryEvent, { maxLength: 40 });
@@ -102,16 +103,16 @@ describe('reduceSessionState properties (DESIGN §26.5)', () => {
 
 describe('reduceSessionState transitions', () => {
   it('tracks exact context pressure, provenance, and invalidation', () => {
-    const [updated, invalidated] = stampAll([
+    const [baseUpdated, invalidated] = stampAll([
       {
-        type: 'context-window.updated',
+        type: 'context-window:updated',
         usedTokens: 18_415,
         capacityTokens: 500_000,
         modelId: 'grok-4.5',
       },
-      { type: 'context-window.invalidated', reason: 'compacted' },
+      { type: 'context-window:invalidated', reason: 'compacted' },
     ]);
-    updated.source = 'native-log';
+    const updated = { ...baseUpdated, source: 'native-log' as const };
 
     const measured = reduceSessionState(createInitialSessionState(), updated);
     expect(measured.contextWindow).toMatchObject({
@@ -129,7 +130,7 @@ describe('reduceSessionState transitions', () => {
   it('preserves a valid provider-calculated context percentage', () => {
     const [updated] = stampAll([
       {
-        type: 'context-window.updated',
+        type: 'context-window:updated',
         usedTokens: 15_000,
         capacityTokens: 200_000,
         usedPercentage: 19.5,
@@ -147,13 +148,13 @@ describe('reduceSessionState transitions', () => {
   it('clamps over-capacity display values and rejects invalid measurements', () => {
     const [over, invalid] = stampAll([
       {
-        type: 'context-window.updated',
+        type: 'context-window:updated',
         usedTokens: 250,
         capacityTokens: 200,
         usedPercentage: 140,
         percentageSource: 'provider',
       },
-      { type: 'context-window.updated', usedTokens: 10, capacityTokens: 0 },
+      { type: 'context-window:updated', usedTokens: 10, capacityTokens: 0 },
     ]);
     const measured = reduceSessionState(createInitialSessionState(), over);
     expect(measured.contextWindow?.usedPercent).toBe(100);
@@ -165,22 +166,22 @@ describe('reduceSessionState transitions', () => {
   });
 
   it('merges sparse environment facts, tracks provenance, and clears stale Git on cwd changes', () => {
-    const [initial, moved, resolved] = stampAll([
+    const [baseInitial, baseModel, baseMoved, baseResolved] = stampAll([
       {
-        type: 'session.environment.updated',
+        type: 'environment:updated',
         currentCwd: '/repo/one',
-        model: { id: 'codex-1', displayName: 'Codex 1', provider: 'openai' },
         git: { root: '/repo/one', branch: 'main', headSha: 'abc', detached: false },
       },
-      { type: 'session.environment.updated', currentCwd: '/repo/two' },
-      { type: 'session.environment.updated', git: null },
+      { type: 'model:updated', model: { id: 'codex-1', displayName: 'Codex 1', provider: 'openai' } },
+      { type: 'environment:updated', currentCwd: '/repo/two' },
+      { type: 'environment:updated', git: null },
     ]);
-    initial.source = 'native-protocol';
-    moved.source = 'native-hook';
-    resolved.source = 'runtime';
-    resolved.confidence = 'derived';
+    const initial = { ...baseInitial, source: 'native-protocol' as const };
+    const model = { ...baseModel, source: 'native-protocol' as const };
+    const moved = { ...baseMoved, source: 'native-hook' as const };
+    const resolved = { ...baseResolved, source: 'runtime' as const, confidence: 'derived' as const };
 
-    const first = reduceSessionState(createInitialSessionState(), initial);
+    const first = replay([initial, model]);
     expect(first.environment.currentCwd).toMatchObject({ value: '/repo/one', source: 'native-protocol' });
     expect(first.environment.model?.value).toMatchObject({ id: 'codex-1', displayName: 'Codex 1' });
     expect(first.environment.git?.value).toMatchObject({ branch: 'main' });
@@ -196,49 +197,111 @@ describe('reduceSessionState transitions', () => {
 
   it('preserves complementary model-card fields when sources report the same model id', () => {
     const [catalog, provider] = stampAll([
-      { type: 'session.environment.updated', model: { id: 'grok-4.5', displayName: 'Grok 4.5' } },
-      { type: 'session.environment.updated', model: { id: 'grok-4.5', provider: 'xai' } },
+      { type: 'model:updated', model: { id: 'grok-4.5', displayName: 'Grok 4.5' } },
+      { type: 'model:updated', model: { id: 'grok-4.5', provider: 'xai' } },
     ]);
     const state = replay([catalog, provider]);
     expect(state.environment.model?.value).toEqual({ id: 'grok-4.5', displayName: 'Grok 4.5', provider: 'xai' });
+  });
+
+  it('does not project actor-scoped context or environment into root session state', () => {
+    const [root, baseChildModel, baseChildContext] = stampAll([
+      { type: 'model:updated', model: { id: 'root-model' } },
+      { type: 'model:updated', model: { id: 'child-model' } },
+      { type: 'context-window:updated', usedTokens: 50, capacityTokens: 100 },
+    ]);
+    const childModel = { ...baseChildModel, actorKey: 'workflow:worker', actorRole: 'child' as const };
+    const childContext = { ...baseChildContext, agentId: 'worker-1' };
+
+    const state = replay([root, childModel, childContext]);
+
+    expect(state.environment.model?.value.id).toBe('root-model');
+    expect(state.contextWindow).toBeUndefined();
+  });
+
+  it('keeps actor-local lifecycle and resources out of the root state machine', () => {
+    const [
+      ready,
+      rootTurn,
+      rootTool,
+      childSessionExit,
+      childProcessExit,
+      childTurnEnd,
+      childMessage,
+      childToolEnd,
+      child,
+    ] = stampAll([
+      { type: 'session:ready' },
+      { type: 'turn:started', turnId: 'root-turn' },
+      { type: 'tool:started', toolCallId: 'root-tool', tool: 'Read' },
+      { type: 'session:exited', reason: 'child-finished' },
+      { type: 'process:exited', reason: 'crash', exitCode: 1 },
+      { type: 'turn:completed', turnId: 'root-turn' },
+      { type: 'conversation:assistant-message', text: 'child response', final: true },
+      { type: 'tool:completed', toolCallId: 'root-tool' },
+      { type: 'delegation:subagent-started', subagentId: 'worker-1', agentType: 'reviewer' },
+    ]);
+    const actor = { agentId: 'worker-1', agentType: 'reviewer' };
+    const state = replay([
+      ready!,
+      rootTurn!,
+      rootTool!,
+      { ...childSessionExit!, ...actor },
+      { ...childProcessExit!, ...actor },
+      { ...childTurnEnd!, ...actor },
+      { ...childMessage!, ...actor },
+      { ...childToolEnd!, ...actor },
+      { ...child!, ...actor },
+    ]);
+
+    expect(state).toMatchObject({
+      lifecycle: 'running',
+      activeTurn: { id: 'root-turn' },
+      lastSequence: 9,
+    });
+    expect(state.lastAssistantMessage).toBeUndefined();
+    expect([...state.tools.keys()]).toEqual(['root-tool']);
+    expect([...state.subagents.keys()]).toEqual(['worker-1']);
   });
 
   it('does not mistake configured launch intent for an observed effective model', () => {
     const state = replay(
       stampAll([
         {
-          type: 'session.environment.updated',
+          type: 'model:updated',
           intent: 'configured',
           model: { id: 'configured-model' },
-          providerPermissionMode: { raw: 'plan' },
         },
+        { type: 'mode:updated', intent: 'configured', modeKind: 'provider-permission', mode: { raw: 'plan' } },
       ]),
     );
     expect(state.environment.model).toBeUndefined();
   });
 
   it('rejects blank environment identities without losing previous facts', () => {
-    const [valid, invalid] = stampAll([
-      { type: 'session.environment.updated', currentCwd: '/repo', model: { id: 'model-a' } },
-      { type: 'session.environment.updated', currentCwd: ' ', model: { id: '' } },
+    const [validEnvironment, validModel, invalidEnvironment, invalidModel] = stampAll([
+      { type: 'environment:updated', currentCwd: '/repo' },
+      { type: 'model:updated', model: { id: 'model-a' } },
+      { type: 'environment:updated', currentCwd: ' ' },
+      { type: 'model:updated', model: { id: '' } },
     ]);
-    const first = reduceSessionState(createInitialSessionState(), valid);
-    const second = reduceSessionState(first, invalid);
+    const first = replay([validEnvironment, validModel]);
+    const second = replay([invalidEnvironment, invalidModel], first);
     expect(second.environment.currentCwd).toBe(first.environment.currentCwd);
     expect(second.environment.model).toBe(first.environment.model);
     expect(second.diagnostics.slice(-2).map((diagnostic) => diagnostic.code)).toEqual([
       'environment-cwd-invalid',
-      'environment-model-invalid',
+      'model-id-invalid',
     ]);
   });
 
   it('completed tools leave the active-tool map', () => {
     const state = replay(
       stampAll([
-        { type: 'tool.requested', toolCallId: 't1', tool: 'Read' },
-        { type: 'tool.requested', toolCallId: 't2', tool: 'Bash' },
-        { type: 'tool.completed', toolCallId: 't1' },
-        { type: 'tool.failed', toolCallId: 't2' },
+        { type: 'tool:requested', toolCallId: 't1', tool: 'Read' },
+        { type: 'tool:requested', toolCallId: 't2', tool: 'Bash' },
+        { type: 'tool:completed', toolCallId: 't1' },
+        { type: 'tool:failed', toolCallId: 't2' },
       ]),
     );
     expect(state.tools.size).toBe(0);
@@ -249,9 +312,9 @@ describe('reduceSessionState transitions', () => {
   it('keeps terminal tool events idempotent across native duplicate and out-of-order delivery', () => {
     const state = replay(
       stampAll([
-        { type: 'tool.completed', toolCallId: 'reordered' },
-        { type: 'tool.started', toolCallId: 'reordered', tool: 'command' },
-        { type: 'tool.completed', toolCallId: 'reordered' },
+        { type: 'tool:completed', toolCallId: 'reordered' },
+        { type: 'tool:started', toolCallId: 'reordered', tool: 'command' },
+        { type: 'tool:completed', toolCallId: 'reordered' },
       ]),
     );
 
@@ -264,9 +327,9 @@ describe('reduceSessionState transitions', () => {
   it('tracks explicit reasoning independently and clears it at turn completion', () => {
     const mid = replay(
       stampAll([
-        { type: 'turn.started', turnId: 'p1' },
-        { type: 'reasoning.started', reasoningId: 'r1' },
-        { type: 'tool.started', toolCallId: 't1', tool: 'command' },
+        { type: 'turn:started', turnId: 'p1' },
+        { type: 'reasoning:started', reasoningId: 'r1' },
+        { type: 'tool:started', toolCallId: 't1', tool: 'command' },
       ]),
     );
     expect(mid.activeReasoning).toMatchObject({ reasoningId: 'r1' });
@@ -274,9 +337,9 @@ describe('reduceSessionState transitions', () => {
 
     const done = replay(
       stampAll([
-        { type: 'turn.started', turnId: 'p1' },
-        { type: 'reasoning.started', reasoningId: 'r1' },
-        { type: 'turn.completed', turnId: 'p1' },
+        { type: 'turn:started', turnId: 'p1' },
+        { type: 'reasoning:started', reasoningId: 'r1' },
+        { type: 'turn:completed', turnId: 'p1' },
       ]),
     );
     expect(done.activeReasoning).toBeUndefined();
@@ -285,10 +348,10 @@ describe('reduceSessionState transitions', () => {
   it('session exit ends the active turn and clears in-flight tools with diagnostics', () => {
     const state = replay(
       stampAll([
-        { type: 'session.started' },
-        { type: 'turn.started', turnId: 'p1' },
-        { type: 'tool.requested', toolCallId: 't1', tool: 'Bash' },
-        { type: 'session.exited', reason: 'other' },
+        { type: 'session:started' },
+        { type: 'turn:started', turnId: 'p1' },
+        { type: 'tool:requested', toolCallId: 't1', tool: 'Bash' },
+        { type: 'session:exited', reason: 'other' },
       ]),
     );
     expect(state.lifecycle).toBe('exited');
@@ -300,10 +363,10 @@ describe('reduceSessionState transitions', () => {
   it('allows an explicit native-session rebind to reopen the same live runtime after /clear', () => {
     const state = replay(
       stampAll([
-        { type: 'session.started', nativeSessionId: 'native-before' },
-        { type: 'session.exited', reason: 'clear' },
+        { type: 'session:started', nativeSessionId: 'native-before' },
+        { type: 'session:exited', reason: 'clear' },
         {
-          type: 'session.started',
+          type: 'session:started',
           nativeSessionId: 'native-after',
           startSource: 'clear',
           rebind: true,
@@ -318,9 +381,9 @@ describe('reduceSessionState transitions', () => {
   it('permission events cannot overwrite unrelated tool state', () => {
     const state = replay(
       stampAll([
-        { type: 'tool.requested', toolCallId: 'x', tool: 'Bash' },
-        { type: 'permission.requested', requestId: 'x', toolCallId: 'x', presentation: 'native-tui' },
-        { type: 'permission.resolved', requestId: 'x', outcome: 'denied' },
+        { type: 'tool:requested', toolCallId: 'x', tool: 'Bash' },
+        { type: 'interaction:permission-requested', requestId: 'x', toolCallId: 'x', presentation: 'native-tui' },
+        { type: 'interaction:permission-resolved', requestId: 'x', outcome: 'denied' },
       ]),
     );
     expect(state.tools.get('x')).toMatchObject({ tool: 'Bash', state: 'requested' });
@@ -328,35 +391,36 @@ describe('reduceSessionState transitions', () => {
   });
 
   it('unknown event types are counted, never thrown', () => {
-    const bogus = stampAll([{ type: 'wat.is-this' } as unknown as AgentEvent]);
-    const state = replay(bogus);
+    const [base] = stampAll([{ type: 'adapter:native-event', adapter: 'test', nativeType: 'bogus' }]);
+    const bogus = { ...base, event: { type: 'wat.is-this' } as unknown as AgentEvent } as AgentEventEnvelope;
+    const state = replay([bogus]);
     expect(state.counters.unknownEvents).toBe(1);
   });
 
   it('keeps monitor-only event additions compatible without misclassifying them as unknown native events', () => {
     const state = replay(
       stampAll([
-        { type: 'tokens.used', usageId: 'response-1', boundary: 'response', canonical: true, deltaTokens: 20 },
-        { type: 'plan.updated', steps: [{ text: 'Ship it', status: 'pending' }] },
-        { type: 'compaction.started', compactionId: 'c1' },
-        { type: 'compaction.completed', compactionId: 'c1' },
-        { type: 'teammate.idle', teammateName: 'researcher' },
-        { type: 'question.requested', requestId: 'q1', questions: [{ prompt: 'Proceed?' }] },
-        { type: 'question.resolved', requestId: 'q1', outcome: 'answered' },
+        { type: 'usage:tokens-used', usageId: 'response-1', boundary: 'response', canonical: true, deltaTokens: 20 },
+        { type: 'planning:updated', steps: [{ text: 'Ship it', status: 'pending' }] },
+        { type: 'compaction:started', compactionId: 'c1' },
+        { type: 'compaction:completed', compactionId: 'c1' },
+        { type: 'delegation:teammate-idle', teammateName: 'researcher' },
+        { type: 'interaction:question-requested', requestId: 'q1', questions: [{ prompt: 'Proceed?' }] },
+        { type: 'interaction:question-resolved', requestId: 'q1', outcome: 'answered' },
       ]),
     );
     expect(state.counters.unknownEvents).toBe(0);
   });
 
   it('turn lifecycle: started → running, completed → ready with last assistant message', () => {
-    const mid = replay(stampAll([{ type: 'session.started' }, { type: 'turn.started', turnId: 'p1' }]));
+    const mid = replay(stampAll([{ type: 'session:started' }, { type: 'turn:started', turnId: 'p1' }]));
     expect(mid.lifecycle).toBe('running');
     expect(mid.activeTurn?.id).toBe('p1');
     const done = replay(
       stampAll([
-        { type: 'session.started' },
-        { type: 'turn.started', turnId: 'p1' },
-        { type: 'turn.completed', turnId: 'p1', lastAssistantMessage: 'ok' },
+        { type: 'session:started' },
+        { type: 'turn:started', turnId: 'p1' },
+        { type: 'turn:completed', turnId: 'p1', lastAssistantMessage: 'ok' },
       ]),
     );
     expect(done.lifecycle).toBe('ready');
@@ -366,7 +430,7 @@ describe('reduceSessionState transitions', () => {
 
   it('crash-like process exits mark the session failed', () => {
     const state = replay(
-      stampAll([{ type: 'session.started' }, { type: 'process.exited', reason: 'crash', exitCode: 1 }]),
+      stampAll([{ type: 'session:started' }, { type: 'process:exited', reason: 'crash', exitCode: 1 }]),
     );
     expect(state.lifecycle).toBe('failed');
     expect(state.exit).toEqual({ exitCode: 1, signal: undefined, reason: 'crash' });
@@ -375,14 +439,14 @@ describe('reduceSessionState transitions', () => {
   it('process exit diagnoses and clears every in-flight resource', () => {
     const state = replay(
       stampAll([
-        { type: 'session.started' },
-        { type: 'turn.started', turnId: 'p1' },
-        { type: 'reasoning.started', reasoningId: 'r1' },
-        { type: 'tool.started', toolCallId: 'tool-1' },
-        { type: 'permission.requested', requestId: 'permission-1', presentation: 'host-ui' },
-        { type: 'subagent.started', subagentId: 'subagent-1' },
-        { type: 'task.created', taskId: 'task-1' },
-        { type: 'process.exited', reason: 'crash', exitCode: 137 },
+        { type: 'session:started' },
+        { type: 'turn:started', turnId: 'p1' },
+        { type: 'reasoning:started', reasoningId: 'r1' },
+        { type: 'tool:started', toolCallId: 'tool-1' },
+        { type: 'interaction:permission-requested', requestId: 'permission-1', presentation: 'host-ui' },
+        { type: 'delegation:subagent-started', subagentId: 'subagent-1' },
+        { type: 'delegation:task-created', taskId: 'task-1' },
+        { type: 'process:exited', reason: 'crash', exitCode: 137 },
       ]),
     );
 
@@ -406,12 +470,12 @@ describe('reduceSessionState transitions', () => {
   it('does not let late events reopen resources after a terminal exit', () => {
     const state = replay(
       stampAll([
-        { type: 'session.exited', reason: 'other' },
-        { type: 'reasoning.started', reasoningId: 'late-reasoning' },
-        { type: 'tool.started', toolCallId: 'late-tool' },
-        { type: 'permission.requested', requestId: 'late-permission', presentation: 'host-ui' },
-        { type: 'subagent.started', subagentId: 'late-subagent' },
-        { type: 'task.created', taskId: 'late-task' },
+        { type: 'session:exited', reason: 'other' },
+        { type: 'reasoning:started', reasoningId: 'late-reasoning' },
+        { type: 'tool:started', toolCallId: 'late-tool' },
+        { type: 'interaction:permission-requested', requestId: 'late-permission', presentation: 'host-ui' },
+        { type: 'delegation:subagent-started', subagentId: 'late-subagent' },
+        { type: 'delegation:task-created', taskId: 'late-task' },
       ]),
     );
 
@@ -431,8 +495,8 @@ describe('reduceSessionState transitions', () => {
   });
 
   it('diagnostics are bounded', () => {
-    const events: AgentEvent[] = [{ type: 'session.exited', reason: 'other' }];
-    for (let i = 0; i < 200; i++) events.push({ type: 'turn.started', turnId: `p${i}` });
+    const events: AgentEvent[] = [{ type: 'session:exited', reason: 'other' }];
+    for (let i = 0; i < 200; i++) events.push({ type: 'turn:started', turnId: `p${i}` });
     const state = replay(stampAll(events));
     expect(state.diagnostics.length).toBeLessThanOrEqual(50);
   });

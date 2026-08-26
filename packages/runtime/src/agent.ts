@@ -47,6 +47,18 @@ function internals(agent: Agent): AgentInternals {
   return value;
 }
 
+export function cloneAgentSessionInfo(info: AgentSessionInfo): AgentSessionInfo {
+  return {
+    ...info,
+    nativeSession: { ...info.nativeSession },
+    externalRefs: info.externalRefs.map((reference) => ({ ...reference })),
+    workspace: {
+      ...info.workspace,
+      ...(info.workspace.repositoryDigest ? { repositoryDigest: { ...info.workspace.repositoryDigest } } : {}),
+    },
+  };
+}
+
 /**
  * One runtime-owned agent instance per provider spawn.
  *
@@ -72,7 +84,7 @@ export class Agent {
   }
 
   get info(): Readonly<AgentSessionInfo> {
-    return internals(this).info;
+    return cloneAgentSessionInfo(internals(this).info);
   }
 
   get runtimeRunId(): string {
@@ -129,14 +141,14 @@ export function createAgentController(options: AgentOptions): AgentController {
     agent,
     accept(envelope, acceptOptions = {}) {
       const internal = internals(agent);
-      const previousState = internal.state.snapshot();
+      const previousState = internal.state.currentState();
       if (acceptOptions.projectMonitor !== false) {
         internal.monitor?.consume(envelope, { hostProcessEvidence: acceptOptions.hostProcessEvidence });
       }
       if (acceptOptions.projectState !== false) internal.state.consume(envelope);
       if (acceptOptions.projectConversation !== false) internal.conversation.consume(envelope);
       if (acceptOptions.publish !== false) internal.events.emit(envelope);
-      return { previousState, state: internal.state.snapshot() };
+      return { previousState, state: internal.state.currentState() };
     },
     async dispose() {
       const internal = internals(agent);

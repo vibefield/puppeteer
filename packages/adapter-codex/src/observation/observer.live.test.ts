@@ -49,7 +49,7 @@ describe.skipIf(!live)('createCodexObserver (live, Model B)', () => {
       // first user message.
       const turn1 = new Promise<void>((res) => {
         const off = driver.onEvent((e) => {
-          if (e.event.type === 'turn.completed') {
+          if (e.event.type === 'turn:completed') {
             off();
             res();
           }

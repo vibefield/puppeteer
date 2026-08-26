@@ -12,7 +12,7 @@ export class GrokConversationNormalizer {
     const messageId = update.messageId ?? this.messageIdByPrompt.get(promptId) ?? `grok-assistant:${promptId}`;
     this.messageIdByPrompt.set(promptId, messageId);
     return observed(
-      { type: 'assistant.message', messageId, turnId: promptId, text, final: false, displayOnly: false },
+      { type: 'conversation:assistant-message', messageId, turnId: promptId, text, final: false, displayOnly: false },
       promptId,
     );
   }
@@ -25,7 +25,7 @@ export class GrokConversationNormalizer {
       events: [
         observed(
           {
-            type: 'assistant.message',
+            type: 'conversation:assistant-message',
             messageId: this.messageIdByPrompt.get(promptId) ?? `grok-assistant:${promptId}`,
             turnId: promptId,
             text,

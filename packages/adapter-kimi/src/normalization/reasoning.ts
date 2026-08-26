@@ -7,14 +7,14 @@ export class KimiReasoningNormalizer {
 
   progress(turnId: string): AgentEvent {
     const reasoningId = `kimi-reasoning:${turnId}`;
-    if (this.activeTurns.has(turnId)) return { type: 'reasoning.progress', reasoningId };
+    if (this.activeTurns.has(turnId)) return { type: 'reasoning:progress', reasoningId };
     boundedKimiSetAdd(this.activeTurns, turnId);
-    return { type: 'reasoning.started', reasoningId };
+    return { type: 'reasoning:started', reasoningId };
   }
 
   complete(turnId: string): AgentEvent[] {
     return this.activeTurns.delete(turnId)
-      ? [{ type: 'reasoning.completed', reasoningId: `kimi-reasoning:${turnId}` }]
+      ? [{ type: 'reasoning:completed', reasoningId: `kimi-reasoning:${turnId}` }]
       : [];
   }
 

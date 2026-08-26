@@ -28,7 +28,7 @@ describe('readLastCodexContextWindow', () => {
     );
 
     await expect(readLastCodexContextWindow(path)).resolves.toEqual({
-      type: 'context-window.updated',
+      type: 'context-window:updated',
       usedTokens: 50_000,
       capacityTokens: 200_000,
     });

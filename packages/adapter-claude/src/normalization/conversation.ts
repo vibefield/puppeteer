@@ -6,5 +6,5 @@ export function normalizeClaudeAssistantMessage(
   text: string,
   final: boolean,
 ): AgentEvent {
-  return { type: 'assistant.message', messageId, turnId, text, final, displayOnly: true };
+  return { type: 'conversation:assistant-message', messageId, turnId, text, final, displayOnly: true };
 }

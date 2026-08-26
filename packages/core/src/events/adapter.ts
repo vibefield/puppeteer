@@ -2,15 +2,15 @@ import { z } from 'zod';
 
 /** DESIGN ADR-008 — unrecognized native events survive normalization. */
 export const AdapterDiagnosticSchema = z.strictObject({
-  code: z.string(),
+  code: z.string().trim().min(1),
   message: z.string(),
 });
 export type AdapterDiagnostic = z.infer<typeof AdapterDiagnosticSchema>;
 
 export const UnknownNativeEventSchema = z.strictObject({
-  type: z.literal('adapter.native-event'),
-  adapter: z.string(),
-  nativeType: z.string().optional(),
+  type: z.literal('adapter:native-event'),
+  adapter: z.string().trim().min(1),
+  nativeType: z.string().trim().min(1).optional(),
   /** Normalized adapter degradation detail retained by the runtime state projection. */
   diagnostic: AdapterDiagnosticSchema.optional(),
 });

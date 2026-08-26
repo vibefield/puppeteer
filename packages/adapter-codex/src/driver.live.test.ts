@@ -32,9 +32,9 @@ describe.skipIf(!live)('createCodexSession (live codex app-server)', () => {
 
       // Wait for the turn to complete via the observed event stream.
       await new Promise<void>((resolve, reject) => {
-        const timer = setTimeout(() => reject(new Error('no turn.completed within 60s')), 60_000);
+        const timer = setTimeout(() => reject(new Error('no turn:completed within 60s')), 60_000);
         session.onEvent((e) => {
-          if (e.event.type === 'turn.completed' || e.event.type === 'turn.failed') {
+          if (e.event.type === 'turn:completed' || e.event.type === 'turn:failed') {
             clearTimeout(timer);
             resolve();
           }

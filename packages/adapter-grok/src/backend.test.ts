@@ -47,15 +47,15 @@ function fakeControl(bootstrap: AgentEventEnvelope[] = []) {
 }
 
 const ENVELOPE: AgentEventEnvelope = {
-  type: 'state:session-ready',
-  service: 'state',
+  type: 'session:ready',
+  service: 'session',
   sequence: 1,
   sessionId: 'sid',
   timestamp: '2026-07-14T00:00:00.000Z',
   monotonicTime: 0,
   source: 'native-hook',
   confidence: 'authoritative',
-  event: { type: 'session.ready' },
+  event: { type: 'session:ready' },
 };
 
 function envelope(event: AgentEvent, source: AgentEventEnvelope['source'] = 'native-hook'): AgentEventEnvelope {
@@ -119,7 +119,7 @@ describe('createPendingControlSession', () => {
     const projection = projectAgentSession(session);
     const received: AgentEventEnvelope[] = [];
     session.onEvent((event) => {
-      if (event.event.type !== 'monitor.batch') received.push(event);
+      if (event.event.type !== 'monitor:batch') received.push(event);
     });
 
     control.emit(ENVELOPE);
@@ -129,7 +129,7 @@ describe('createPendingControlSession', () => {
     control.emit(ENVELOPE);
 
     expect(received).toHaveLength(2);
-    expect(received.map(({ event }) => event.type)).toEqual(['session.ready', 'session.ready']);
+    expect(received.map(({ event }) => event.type)).toEqual(['session:ready', 'session:ready']);
     expect(projection.state.lifecycle).toBe('ready');
     projection.dispose();
   });
@@ -155,9 +155,9 @@ describe('createPendingControlSession', () => {
       diagnostics: [expect.objectContaining({ code: 'grok-control-attach-failed', message: 'nope' })],
     });
     expect(session.observationLevel()).toBe('terminal-only');
-    expect(events.some(({ event }) => event.type === 'process.exited' || event.type === 'session.exited')).toBe(false);
-    expect(events.find(({ event }) => event.type === 'adapter.native-event')?.event).toMatchObject({
-      type: 'adapter.native-event',
+    expect(events.some(({ event }) => event.type === 'process:exited' || event.type === 'session:exited')).toBe(false);
+    expect(events.find(({ event }) => event.type === 'adapter:native-event')?.event).toMatchObject({
+      type: 'adapter:native-event',
       adapter: 'grok',
       nativeType: 'control.unavailable',
     });
@@ -195,17 +195,17 @@ describe('createPendingControlSession', () => {
     expect(projection.state.lifecycle).toBe('ready');
     expect(session.observationLevel()).toBe('native-log');
     observed.emit({
-      event: { type: 'turn.started', turnId: 'prompt-1', prompt: 'hello' },
+      event: { type: 'turn:started', turnId: 'prompt-1', prompt: 'hello' },
       promptId: 'prompt-1',
       nativeEvent: {},
     });
     observed.emit({
-      event: { type: 'turn.completed', turnId: 'prompt-1', lastAssistantMessage: 'hi' },
+      event: { type: 'turn:completed', turnId: 'prompt-1', lastAssistantMessage: 'hi' },
       promptId: 'prompt-1',
       nativeEvent: {},
     });
 
-    expect(envelopes.map(({ event }) => event.type)).toEqual(['turn.started', 'turn.completed']);
+    expect(envelopes.map(({ event }) => event.type)).toEqual(['turn:started', 'turn:completed']);
     expect(projection.state).toMatchObject({ lifecycle: 'ready', activeTurn: undefined, lastAssistantMessage: 'hi' });
     projection.dispose();
     await session.dispose();
@@ -220,13 +220,19 @@ describe('createPendingControlSession', () => {
     expect(session.onEventCandidate).toBeTypeOf('function');
     const off = session.onEventCandidate!((candidate) => candidates.push(candidate));
     observed.emit({
-      event: { type: 'assistant.message', messageId: 'm1', text: 'hello', final: true, displayOnly: false },
+      event: {
+        type: 'conversation:assistant-message',
+        messageId: 'm1',
+        text: 'hello',
+        final: true,
+        displayOnly: false,
+      },
       promptId: 'prompt-1',
       nativeEvent: { source: 'updates.jsonl' },
     });
     try {
       const assistant = candidates.find(({ type }) => type === 'conversation:assistant-message');
-      expect(assistant?.event.type).toBe('assistant.message');
+      expect(assistant?.event.type).toBe('conversation:assistant-message');
       expect(assistant).not.toHaveProperty('sequence');
       expect(assistant && safeParseAgentEvent(assistant.type, assistant.event).success).toBe(true);
       expect(candidates.every(({ type }) => type.includes(':'))).toBe(true);
@@ -239,14 +245,8 @@ describe('createPendingControlSession', () => {
 
   it('bootstraps the model card and cwd already negotiated by ACP control', async () => {
     const control = fakeControl([
-      envelope(
-        {
-          type: 'session.environment.updated',
-          currentCwd: '/repo',
-          model: { id: 'grok-4.5', displayName: 'Grok 4.5' },
-        },
-        'native-protocol',
-      ),
+      envelope({ type: 'environment:updated', currentCwd: '/repo' }, 'native-protocol'),
+      envelope({ type: 'model:updated', model: { id: 'grok-4.5', displayName: 'Grok 4.5' } }, 'native-protocol'),
     ]);
     const session = createPendingControlSession('sid', 'rt', () => control.session);
     const projection = projectAgentSession(session);
@@ -265,19 +265,19 @@ describe('createPendingControlSession', () => {
     const projection = projectAgentSession(session);
 
     observed.emit({
-      event: { type: 'context-window.updated', usedTokens: 10, capacityTokens: 100, modelId: 'fallback' },
+      event: { type: 'context-window:updated', usedTokens: 10, capacityTokens: 100, modelId: 'fallback' },
       source: 'native-log',
       confidence: 'authoritative',
       nativeEvent: {},
     });
     control.emit(
       envelope(
-        { type: 'context-window.updated', usedTokens: 40, capacityTokens: 100, modelId: 'protocol' },
+        { type: 'context-window:updated', usedTokens: 40, capacityTokens: 100, modelId: 'protocol' },
         'native-protocol',
       ),
     );
     observed.emit({
-      event: { type: 'context-window.updated', usedTokens: 50, capacityTokens: 100, modelId: 'fallback' },
+      event: { type: 'context-window:updated', usedTokens: 50, capacityTokens: 100, modelId: 'fallback' },
       source: 'native-log',
       confidence: 'authoritative',
       nativeEvent: {},
@@ -303,17 +303,17 @@ describe('createPendingControlSession', () => {
     envelopes.length = 0;
     control.emit(
       envelope(
-        { type: 'adapter.native-event', adapter: 'grok', nativeType: 'auto_compact_started' },
+        { type: 'adapter:native-event', adapter: 'grok', nativeType: 'auto_compact_started' },
         'native-protocol',
       ),
     );
     control.emit(
-      envelope({ type: 'adapter.native-event', adapter: 'grok', nativeType: 'subagent_progress' }, 'native-protocol'),
+      envelope({ type: 'adapter:native-event', adapter: 'grok', nativeType: 'subagent_progress' }, 'native-protocol'),
     );
 
     expect(envelopes.map(({ event }) => event)).toEqual([
-      { type: 'adapter.native-event', adapter: 'grok', nativeType: 'auto_compact_started' },
-      { type: 'adapter.native-event', adapter: 'grok', nativeType: 'subagent_progress' },
+      { type: 'adapter:native-event', adapter: 'grok', nativeType: 'auto_compact_started' },
+      { type: 'adapter:native-event', adapter: 'grok', nativeType: 'subagent_progress' },
     ]);
     await session.dispose();
   });
@@ -328,17 +328,17 @@ describe('createPendingControlSession', () => {
     session.onEvent((event) => envelopes.push(event));
 
     control.emit({
-      ...envelope({ type: 'adapter.native-event', adapter: 'acp', nativeType: 'transport.closed' }, 'runtime'),
+      ...envelope({ type: 'adapter:native-event', adapter: 'acp', nativeType: 'transport.closed' }, 'runtime'),
       nativeEvent: { code: 1 },
     });
 
     expect(projection.state.lifecycle).toBe('ready');
     expect(session.observationLevel()).toBe('native-log');
-    expect(envelopes.some(({ event }) => event.type === 'process.exited' || event.type === 'session.exited')).toBe(
+    expect(envelopes.some(({ event }) => event.type === 'process:exited' || event.type === 'session:exited')).toBe(
       false,
     );
-    expect(envelopes.find(({ event }) => event.type === 'adapter.native-event')?.event).toMatchObject({
-      type: 'adapter.native-event',
+    expect(envelopes.find(({ event }) => event.type === 'adapter:native-event')?.event).toMatchObject({
+      type: 'adapter:native-event',
       adapter: 'grok',
       nativeType: 'control.unavailable',
     });

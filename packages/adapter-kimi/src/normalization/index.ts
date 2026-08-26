@@ -5,6 +5,8 @@ export * from './reasoning.js';
 export * from './tool.js';
 export * from './interaction.js';
 export * from './environment.js';
+export * from './model.js';
+export * from './effort.js';
 export * from './context-window.js';
 export * from './delegation.js';
 export * from './adapter.js';

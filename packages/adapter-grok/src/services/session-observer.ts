@@ -243,7 +243,7 @@ export function createGrokSessionObserver(
       ) {
         if (compacted) {
           emit({
-            event: { type: 'context-window.invalidated', reason: 'compacted' },
+            event: { type: 'context-window:invalidated', reason: 'compacted' },
             phase: bootstrap ? 'bootstrap' : 'live',
             source: 'native-log',
             confidence: 'authoritative',
@@ -258,7 +258,7 @@ export function createGrokSessionObserver(
       if (fingerprint === lastSignalsMeasurement) return;
       lastSignalsMeasurement = fingerprint;
       emit({
-        event: { type: 'context-window.updated', usedTokens, capacityTokens, modelId },
+        event: { type: 'context-window:updated', usedTokens, capacityTokens, modelId },
         phase: bootstrap ? 'bootstrap' : 'live',
         source: 'native-log',
         confidence: 'authoritative',
@@ -289,17 +289,16 @@ export function createGrokSessionObserver(
       const fingerprint = `${currentCwd ?? ''}:${modelId ?? ''}`;
       if (fingerprint === lastEnvironment) return;
       lastEnvironment = fingerprint;
-      emit({
-        event: {
-          type: 'session.environment.updated',
-          ...(currentCwd ? { currentCwd } : {}),
-          ...(modelId ? { model: { id: modelId, provider: 'xai' } } : {}),
-        },
-        phase: bootstrap ? 'bootstrap' : 'live',
-        source: 'native-log',
-        confidence: 'authoritative',
+      const observation = {
+        phase: bootstrap ? ('bootstrap' as const) : ('live' as const),
+        source: 'native-log' as const,
+        confidence: 'authoritative' as const,
         nativeEvent: summary,
-      });
+      };
+      if (currentCwd) emit({ ...observation, event: { type: 'environment:updated', currentCwd } });
+      if (modelId) {
+        emit({ ...observation, event: { type: 'model:updated', model: { id: modelId, provider: 'xai' } } });
+      }
     } catch (error) {
       if ((error as NodeJS.ErrnoException).code === 'ENOENT') await locateRelocatedSession();
       else if (error instanceof SyntaxError) return;

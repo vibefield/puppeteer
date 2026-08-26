@@ -22,11 +22,11 @@ export class HermesSessionNormalizer {
     const events: AgentEvent[] = [];
     if (!this.started && nativeSessionId) {
       this.started = true;
-      events.push({ type: 'session.started', nativeSessionId });
+      events.push({ type: 'session:started', nativeSessionId });
     }
     if (!this.ready) {
       this.ready = true;
-      events.push({ type: 'session.ready' });
+      events.push({ type: 'session:ready' });
     }
     return events;
   }

@@ -173,6 +173,7 @@ export interface MonitorEffortFamilyValue {
 
 export interface MonitorModeFamilyValue {
   kind: 'mode';
+  actor?: ActorRunRef;
   modeKind: 'execution' | 'provider-session' | 'provider-permission';
   raw: string;
   normalized?: string;
@@ -264,6 +265,7 @@ export interface MonitorWorkflowFamilyValue {
 
 export interface MonitorCompactionFamilyValue {
   kind: 'compaction';
+  actor?: ActorRunRef;
   active: boolean;
   trigger?: string;
   outcome?: 'completed' | 'cancelled' | 'failed' | 'superseded' | 'unknown';
@@ -271,6 +273,7 @@ export interface MonitorCompactionFamilyValue {
 
 export interface MonitorEnvironmentFamilyValue {
   kind: 'environment';
+  actor?: ActorRunRef;
   /** Null explicitly clears the current cwd; omission leaves the prior fact unchanged. */
   cwd?: string | null;
   git?: AgentGitState | null;

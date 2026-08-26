@@ -164,7 +164,7 @@ export async function prepareHermesTuiSession(
         const emitMonitorBatch = (batch: AdapterMonitorObservationBatch | null): void => {
           if (!batch || sessionDisposed) return;
           publishEvent(
-            { type: 'monitor.batch', batch },
+            { type: 'monitor:batch', batch },
             {
               timestamp: batch.observedAt,
               source: 'native-protocol',

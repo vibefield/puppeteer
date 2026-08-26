@@ -13,7 +13,7 @@ import type {
 import type { MonitorMetricFamily } from '@vibecook/puppeteer-core';
 import {
   claudeContextWindowEvent,
-  claudeEnvironmentEvent,
+  claudeEnvironmentEvents,
   claudeSubagentStatusTasks,
   claudeStatusChannelMetadata,
 } from './status-channel.js';
@@ -350,9 +350,12 @@ export class ClaudeMonitorEvidence {
   }
 
   rootStatusBatch(payload: unknown, observedAt: string, evidenceId: string): AdapterMonitorObservationBatch | null {
-    const environment = claudeEnvironmentEvent(payload);
+    const environmentEvents = claudeEnvironmentEvents(payload);
+    const environment = environmentEvents.find((event) => event.type === 'environment:updated');
+    const model = environmentEvents.find((event) => event.type === 'model:updated');
+    const effort = environmentEvents.find((event) => event.type === 'effort:updated');
     const context = claudeContextWindowEvent(payload);
-    if (!environment && !context) return null;
+    if (environmentEvents.length === 0 && !context) return null;
     const metadata = claudeStatusChannelMetadata(payload);
     if (metadata.nativeSessionId) this.observeNativeSession(metadata.nativeSessionId);
     const nativeSessionId = metadata.nativeSessionId ?? this.options.nativeSessionId();
@@ -367,30 +370,30 @@ export class ClaudeMonitorEvidence {
         }),
       );
     }
-    if (environment?.model) {
+    if (model?.model) {
       updates.push(
         replace('model', [
           {
             key: 'observed',
             value: {
               kind: 'model',
-              providerModelId: environment.model.id,
-              ...(environment.model.displayName ? { displayName: environment.model.displayName } : {}),
+              providerModelId: model.model.id,
+              ...(model.model.displayName ? { displayName: model.model.displayName } : {}),
               intent: 'observed',
             },
           },
         ]),
       );
     }
-    if (environment?.effort !== undefined) {
+    if (effort?.effort !== undefined) {
       updates.push(
         replace(
           'effort',
-          environment?.effort
+          effort.effort
             ? [
                 {
                   key: 'observed',
-                  value: { kind: 'effort', value: environment.effort, intent: 'observed' },
+                  value: { kind: 'effort', value: effort.effort, intent: 'observed' },
                 },
               ]
             : [],
@@ -401,7 +404,7 @@ export class ClaudeMonitorEvidence {
       updates.push(
         replace(
           'context',
-          context?.type === 'context-window.updated'
+          context?.type === 'context-window:updated'
             ? [
                 {
                   key: 'root',

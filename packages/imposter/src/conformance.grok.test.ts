@@ -103,22 +103,24 @@ describe.skipIf(process.platform === 'win32')('the Grok native recipe against `a
 
     expect(terminals).toHaveLength(1);
     terminals[0]!.stdin!.write('\x1b[200~typed in the native terminal\x1b[201~\r');
-    await waitFor(() => events.some((event) => event.event.type === 'turn.completed'), 'terminal-authored turn');
+    await waitFor(() => events.some((event) => event.event.type === 'turn:completed'), 'terminal-authored turn');
 
     const receipt = await session.submitPrompt({ text: 'say hello' });
     expect(receipt.status).toBe('confirmed');
     await waitFor(
-      () => events.filter((event) => event.event.type === 'turn.completed').length >= 2,
+      () => events.filter((event) => event.event.type === 'turn:completed').length >= 2,
       'controller-authored turn completion',
     );
 
     const types = events.map((event) => event.event.type);
     expect(projection.state.lifecycle).toBe('ready');
-    expect(types).toContain('turn.started');
-    expect(types).toContain('assistant.message');
-    expect(types).toContain('turn.completed');
+    expect(types).toContain('turn:started');
+    expect(types).toContain('conversation:assistant-message');
+    expect(types).toContain('turn:completed');
     expect(session.observationLevel()).toBe('native-log');
-    expect(events.find((event) => event.event.type === 'assistant.message')?.source).toBe('native-transcript');
+    expect(events.find((event) => event.event.type === 'conversation:assistant-message')?.source).toBe(
+      'native-transcript',
+    );
 
     const grokHome = launched[0]?.env?.GROK_HOME;
     expect(grokHome).toBeTypeOf('string');

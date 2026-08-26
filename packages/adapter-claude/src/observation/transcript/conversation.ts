@@ -69,7 +69,7 @@ function assistant(record: ClaudeTranscriptRecord, turnId?: string): SemanticObs
   const text = transcriptText(record);
   if (!text) return undefined;
   const event: AssistantMessageEvent = {
-    type: 'assistant.message',
+    type: 'conversation:assistant-message',
     messageId: transcriptRecordId(record),
     ...(turnId ? { turnId } : {}),
     text,
@@ -102,7 +102,7 @@ export function projectClaudeTranscriptConversation(
   const flush = (boundary: 'next-prompt' | 'snapshot-end'): void => {
     if (!current) return;
     history.push(
-      observation({ type: 'turn.started', turnId: current.turnId, prompt: current.prompt }, current.source, {
+      observation({ type: 'turn:started', turnId: current.turnId, prompt: current.prompt }, current.source, {
         turnId: current.turnId,
         replay: true,
       }),
@@ -113,14 +113,14 @@ export function projectClaudeTranscriptConversation(
       observation(
         last
           ? {
-              type: 'turn.completed',
+              type: 'turn:completed',
               turnId: current.turnId,
-              ...(last?.observation.event.type === 'assistant.message'
+              ...(last?.observation.event.type === 'conversation:assistant-message'
                 ? { lastAssistantMessage: last.observation.event.text }
                 : {}),
             }
           : {
-              type: 'turn.failed',
+              type: 'turn:failed',
               turnId: current.turnId,
               error:
                 boundary === 'next-prompt'

@@ -1,8 +1,8 @@
-import type { GrokObservedEvent, GrokObservedFactory, GrokUpdate, GrokUpdateMeta, GrokUpdateRecord } from './types.js';
+import type { GrokObservedEvent, GrokObservedFactory, GrokUpdate, GrokUpdateMeta } from './types.js';
 import { grokTextContent } from './types.js';
 
-/** Owns Grok session/turn correlation and pending user-prompt materialization. */
-export class GrokStateNormalizer {
+/** Owns Grok turn correlation and pending user-prompt materialization. */
+export class GrokTurnNormalizer {
   private readonly startedPrompts = new Set<string>();
   private readonly completedPrompts = new Set<string>();
   private activePrompt: string | undefined;
@@ -10,17 +10,11 @@ export class GrokStateNormalizer {
   private pendingUser: { text: string; timestamp?: string; nativeEvent: unknown } | undefined;
   private fallbackPromptCounter = 0;
 
-  normalizeHook(update: GrokUpdate, sessionId: string | undefined, observed: GrokObservedFactory): GrokObservedEvent[] {
-    if (update.event_name === 'session_start') {
-      return [observed({ type: 'session.started', nativeSessionId: sessionId }, undefined)];
-    }
+  normalizeHook(update: GrokUpdate): GrokObservedEvent[] {
     if (update.event_name === 'user_prompt_submit' && typeof update.prompt_id === 'string') {
       this.pendingPrompt = update.prompt_id;
       this.activePrompt = update.prompt_id;
       return this.materializePendingUser(update.prompt_id);
-    }
-    if (update.event_name === 'session_end') {
-      return [observed({ type: 'session.exited', reason: update.reason as string | undefined }, undefined)];
     }
     return [];
   }
@@ -45,7 +39,7 @@ export class GrokStateNormalizer {
     this.pendingPrompt = undefined;
     if (this.startedPrompts.has(promptId)) return [];
     this.startedPrompts.add(promptId);
-    return [observed({ type: 'turn.started', turnId: promptId, prompt: grokTextContent(update) }, promptId)];
+    return [observed({ type: 'turn:started', turnId: promptId, prompt: grokTextContent(update) }, promptId)];
   }
 
   promptId(update: GrokUpdate, meta: GrokUpdateMeta | undefined): string | undefined {
@@ -77,12 +71,7 @@ export class GrokStateNormalizer {
   }
 
   completionEvent(promptId: string, stopReason: string | undefined, lastAssistantMessage: string | undefined) {
-    return {
-      type: 'turn.completed' as const,
-      turnId: promptId,
-      stopReason,
-      lastAssistantMessage,
-    };
+    return { type: 'turn:completed' as const, turnId: promptId, stopReason, lastAssistantMessage };
   }
 
   materializePendingUser(promptId: string): GrokObservedEvent[] {
@@ -95,7 +84,7 @@ export class GrokStateNormalizer {
     this.startedPrompts.add(promptId);
     return [
       {
-        event: { type: 'turn.started', turnId: promptId, prompt: pending.text },
+        event: { type: 'turn:started', turnId: promptId, prompt: pending.text },
         promptId,
         timestamp: pending.timestamp,
         source: 'native-transcript',

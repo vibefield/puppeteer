@@ -2667,7 +2667,7 @@ async function runSpawnThroughSmoke(agent: BuiltinExecutableAgentKind): Promise<
   const deadline = Date.now() + 30_000;
   let lifecycle: string | undefined;
   // A fresh Kimi session is intentionally lazy: its durable native identity
-  // and session.started record do not exist until the first prompt. Adoption
+  // and session:started record do not exist until the first prompt. Adoption
   // still has to complete before we proceed, and the scripted turn below must
   // then prove the durable bind and ready lifecycle.
   const allowsLazyInitialIdentity = agent === 'kimi' && Boolean(process.env.PUPPETEER_SPAWN_SMOKE_PROMPT);
@@ -2706,27 +2706,27 @@ async function runSpawnThroughSmoke(agent: BuiltinExecutableAgentKind): Promise<
     if (runtimeSessionId !== session.id) return;
     const { event } = envelope;
     switch (event.type) {
-      case 'tool.requested':
+      case 'tool:requested':
         observedToolRequests.set(event.toolCallId, event.tool);
         break;
-      case 'tool.completed':
+      case 'tool:completed':
         observedToolOutcomes.set(event.toolCallId, 'completed');
         break;
-      case 'tool.failed':
+      case 'tool:failed':
         observedToolOutcomes.set(event.toolCallId, 'failed');
         break;
-      case 'permission.requested':
+      case 'interaction:permission-requested':
         observedPermissions.set(event.requestId, {
           ...(event.tool === undefined ? {} : { tool: event.tool }),
           ...(event.toolCallId === undefined ? {} : { toolCallId: event.toolCallId }),
         });
         break;
-      case 'permission.resolved': {
+      case 'interaction:permission-resolved': {
         const prior = observedPermissions.get(event.requestId) ?? {};
         observedPermissions.set(event.requestId, { ...prior, outcome: event.outcome });
         break;
       }
-      case 'session.started':
+      case 'session:started':
         if (event.rebind) {
           observedRebinds.push({
             sequence: envelope.sequence,
@@ -2735,7 +2735,7 @@ async function runSpawnThroughSmoke(agent: BuiltinExecutableAgentKind): Promise<
           });
         }
         break;
-      case 'assistant.message':
+      case 'conversation:assistant-message':
         if (
           clearEventSequence !== undefined &&
           envelope.sequence > clearEventSequence &&
@@ -2744,7 +2744,7 @@ async function runSpawnThroughSmoke(agent: BuiltinExecutableAgentKind): Promise<
           postClearTranscriptAssistant = true;
         }
         break;
-      case 'process.exited':
+      case 'process:exited':
         observedProcessExitReasons.push(event.reason);
         break;
     }
@@ -3121,9 +3121,7 @@ async function runSpawnThroughSmoke(agent: BuiltinExecutableAgentKind): Promise<
     const expectedCompactionOutcome = process.env.PUPPETEER_SPAWN_SMOKE_EXPECT_COMPACTION_OUTCOME?.trim();
     const allowCompactionBoundaryFallback =
       process.env.PUPPETEER_SPAWN_SMOKE_ALLOW_COMPACTION_BOUNDARY_FALLBACK === '1';
-    const compactionFallbackSettleMs = Number(
-      process.env.PUPPETEER_SPAWN_SMOKE_COMPACTION_FALLBACK_SETTLE_MS ?? 1_500,
-    );
+    const compactionFallbackSettleMs = Number(process.env.PUPPETEER_SPAWN_SMOKE_COMPACTION_FALLBACK_SETTLE_MS ?? 1_500);
     const stopAfterPlan = process.env.PUPPETEER_SPAWN_SMOKE_STOP_AFTER_PLAN === '1';
     const planSettleMs = Number(process.env.PUPPETEER_SPAWN_SMOKE_PLAN_SETTLE_MS ?? 1_000);
     const observedTaskIds = new Set<string>();

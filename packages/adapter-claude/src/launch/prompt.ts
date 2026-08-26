@@ -37,11 +37,11 @@ export interface PromptInjectorOptions {
 
 export interface PromptInjector {
   submit(submission: PromptSubmission): Promise<PromptReceipt>;
-  /** Wire from normalized events: every turn.started for this session. */
+  /** Wire from normalized events: every turn:started for this session. */
   handleTurnStarted(turnId: string | undefined, prompt: string | undefined): void;
-  /** Wire from permission.requested/resolved: blocks new injections while true. */
+  /** Wire from interaction:permission-requested/resolved: blocks new injections while true. */
   setPermissionPending(pending: boolean): void;
-  /** Wire from question.requested/resolved independently of permissions. */
+  /** Wire from interaction:question-requested/resolved independently of permissions. */
   setQuestionPending(pending: boolean): void;
   isActive(): boolean;
 }
@@ -126,7 +126,7 @@ export function createPromptInjector(options: PromptInjectorOptions): PromptInje
       if (prompt !== undefined && normalizeText(prompt) === active.expectedPrompt) {
         settle({ status: 'confirmed', turnId });
       }
-      // A non-matching turn.started is someone else's prompt: keep waiting —
+      // A non-matching turn:started is someone else's prompt: keep waiting —
       // timing out as uncertain beats claiming their turn as ours.
     },
 

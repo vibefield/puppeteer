@@ -11,7 +11,7 @@ import type {
   ObservationCoverage,
 } from '@vibecook/puppeteer-core/monitor-spi';
 import type { SessionConfigOption, SessionModeState, SessionNotification } from '@agentclientprotocol/sdk';
-import { acpModelIdentity } from './normalization/environment.js';
+import { acpModelIdentity } from './normalization/model.js';
 
 export { acpElicitationQuestions } from './normalization/interaction.js';
 

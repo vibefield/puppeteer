@@ -5,8 +5,8 @@
  * so observation and control both run over the app-server JSON-RPC:
  *
  *   initialize → initialized → thread/start   (identity: thread.sessionId is the
- *                                              spaghetti join key; thread.path is
- *                                              the rollout file)
+ *                                              runtime/native correlation key;
+ *                                              thread.path is the rollout file)
  *     → onNotification → normalizer → normalized event stream
  *     → onServerRequest → structured approvals (observe + answer)
  *     → submitPrompt = turn/start + exact echoed client id confirmation
@@ -92,7 +92,7 @@ export async function createCodexSession(options: CreateCodexSessionOptions): Pr
 
   function emitMonitorBatch(batch: AdapterMonitorObservationBatch | null): void {
     if (!batch) return;
-    apply({ type: 'monitor.batch', batch }, 'native-protocol', batch);
+    apply({ type: 'monitor:batch', batch }, 'native-protocol', batch);
   }
 
   const capabilitiesBatch = monitorEvidence.capabilitiesBatch(new Date().toISOString());
@@ -134,7 +134,8 @@ export async function createCodexSession(options: CreateCodexSessionOptions): Pr
     }
     for (const event of norm.events) {
       const source =
-        event.type.startsWith('context-window.') || event.type === 'session.environment.updated'
+        event.type.startsWith('context-window:') ||
+        ['environment:updated', 'model:updated', 'effort:updated', 'mode:updated'].includes(event.type)
           ? 'native-protocol'
           : 'native-hook';
       apply(event, source, { method, params });
@@ -152,7 +153,7 @@ export async function createCodexSession(options: CreateCodexSessionOptions): Pr
     emitMonitorBatch(monitorEvidence.railUnavailableBatch(observedAt, detail));
     apply(
       {
-        type: 'adapter.native-event',
+        type: 'adapter:native-event',
         adapter: 'codex',
         nativeType: 'app-server.transport.closed',
       },
@@ -211,23 +212,22 @@ export async function createCodexSession(options: CreateCodexSessionOptions): Pr
         },
       ),
     );
-    apply(
-      {
-        type: 'session.environment.updated',
-        currentCwd,
-        ...(modelId
-          ? {
-              model: {
-                id: modelId,
-                ...(modelNames.get(modelId) ? { displayName: modelNames.get(modelId) } : {}),
-                ...(modelProvider ? { provider: modelProvider } : {}),
-              },
-            }
-          : {}),
-      },
-      'native-protocol',
-      { response: startResult, bootstrap: options.resume ? 'thread/resume' : 'thread/start' },
-    );
+    const bootstrapEvidence = { response: startResult, bootstrap: options.resume ? 'thread/resume' : 'thread/start' };
+    apply({ type: 'environment:updated', currentCwd }, 'native-protocol', bootstrapEvidence);
+    if (modelId) {
+      apply(
+        {
+          type: 'model:updated',
+          model: {
+            id: modelId,
+            ...(modelNames.get(modelId) ? { displayName: modelNames.get(modelId) } : {}),
+            ...(modelProvider ? { provider: modelProvider } : {}),
+          },
+        },
+        'native-protocol',
+        bootstrapEvidence,
+      );
+    }
     bootstrapping = false;
   } catch (error) {
     try {

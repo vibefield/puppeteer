@@ -65,7 +65,7 @@ export class KimiToolNormalizer {
     return {
       events: [
         {
-          type: 'tool.requested',
+          type: 'tool:requested',
           toolCallId: id,
           tool,
           ...(loop.args !== undefined ? { input: loop.args } : {}),
@@ -105,7 +105,7 @@ export class KimiToolNormalizer {
     if (failed) {
       const error = kimiErrorText(output ?? loop.result);
       event = {
-        type: 'tool.failed',
+        type: 'tool:failed',
         toolCallId: id,
         ...(fact?.tool ? { tool: fact.tool } : {}),
         ...(error ? { error } : {}),
@@ -113,7 +113,7 @@ export class KimiToolNormalizer {
       };
     } else {
       event = {
-        type: 'tool.completed',
+        type: 'tool:completed',
         toolCallId: id,
         ...(fact?.tool ? { tool: fact.tool } : {}),
         ...(output !== undefined ? { output } : {}),

@@ -1,4 +1,12 @@
-import type { AgentEventConfidence, AgentEventSource, AgentEventSourceRef } from '../events/contract.js';
+import { z } from 'zod';
+import {
+  AgentEventConfidenceSchema,
+  AgentEventSourceRefSchema,
+  AgentEventSourceSchema,
+  type AgentEventConfidence,
+  type AgentEventSource,
+  type AgentEventSourceRef,
+} from '../events/contract.js';
 import { agentServiceEventType, type AgentEvent, type AgentServiceEventType } from '../events/catalog.js';
 import { createEnvelopeStamper, type AgentEventEnvelope } from '../events/envelope.js';
 
@@ -16,6 +24,8 @@ export interface AdapterEventCandidateFields<T extends AgentEvent> {
   turnId?: string;
   agentId?: string;
   agentType?: string;
+  actorKey?: string;
+  actorRole?: 'child' | 'auxiliary' | 'unknown';
   providerVersion?: string;
   timestamp: string;
   monotonicTime: number;
@@ -31,10 +41,47 @@ export type AdapterEventCandidate<T extends AgentEvent = AgentEvent> = T extends
   ? AdapterEventCandidateFields<T> & { type: AgentServiceEventType<T> }
   : never;
 
+const NonEmptyStringSchema = z.string().trim().min(1);
+
+/** Runtime schema for candidate correlation/evidence metadata; event payload validation is route-specific. */
+export const AdapterEventCandidateSchema = z
+  .strictObject({
+    type: NonEmptyStringSchema,
+    eventId: NonEmptyStringSchema.optional(),
+    sourceEventRef: AgentEventSourceRefSchema.optional(),
+    sessionId: NonEmptyStringSchema,
+    nativeSessionId: NonEmptyStringSchema.optional(),
+    promptId: NonEmptyStringSchema.optional(),
+    turnId: NonEmptyStringSchema.optional(),
+    agentId: NonEmptyStringSchema.optional(),
+    agentType: NonEmptyStringSchema.optional(),
+    actorKey: NonEmptyStringSchema.optional(),
+    actorRole: z.enum(['child', 'auxiliary', 'unknown']).optional(),
+    providerVersion: NonEmptyStringSchema.optional(),
+    timestamp: z.iso.datetime({ offset: true }),
+    monotonicTime: z.number().finite().nonnegative(),
+    source: AgentEventSourceSchema,
+    confidence: AgentEventConfidenceSchema,
+    replay: z.boolean().optional(),
+    event: z.unknown(),
+    nativeEvent: z.unknown().optional(),
+  })
+  .superRefine((candidate, context) => {
+    if (candidate.agentId && candidate.actorKey) {
+      context.addIssue({ code: 'custom', message: 'candidate cannot carry both exact agentId and derived actorKey' });
+    }
+    if (candidate.actorRole && !candidate.agentId && !candidate.actorKey) {
+      context.addIssue({ code: 'custom', message: 'actorRole requires agentId or actorKey' });
+    }
+    if (candidate.eventId && candidate.sourceEventRef && candidate.eventId !== candidate.sourceEventRef.eventId) {
+      context.addIssue({ code: 'custom', message: 'eventId must match sourceEventRef.eventId' });
+    }
+  });
+
 export function createAdapterEventCandidate<T extends AgentEvent>(
   fields: AdapterEventCandidateFields<T>,
 ): AdapterEventCandidate<T> {
-  return { type: agentServiceEventType(fields.event), ...fields } as AdapterEventCandidate<T>;
+  return { ...fields, type: agentServiceEventType(fields.event) } as AdapterEventCandidate<T>;
 }
 
 export type AdapterEventCandidateListener = (candidate: AdapterEventCandidate) => void;
@@ -47,23 +94,39 @@ export class BufferedAdapterEventSource {
   readonly #candidateListeners = new Set<AdapterEventCandidateListener>();
   readonly #legacyListeners = new Set<(envelope: AgentEventEnvelope) => void>();
   readonly #legacyStamper = createEnvelopeStamper();
-  #pending: AdapterEventCandidate[] = [];
-  #attached = false;
+  readonly #pendingCapacity: number;
+  #candidatePending: AdapterEventCandidate[] = [];
+  #legacyPending: AdapterEventCandidate[] = [];
+  #candidateAttached = false;
+  #legacyAttached = false;
   #closed = false;
+
+  constructor(options: { pendingCapacity?: number } = {}) {
+    this.#pendingCapacity = options.pendingCapacity ?? 256;
+    if (!Number.isSafeInteger(this.#pendingCapacity) || this.#pendingCapacity < 1) {
+      throw new RangeError('adapter event pendingCapacity must be a positive safe integer');
+    }
+  }
 
   emit(candidate: AdapterEventCandidate): void {
     if (this.#closed) return;
-    if (!this.#attached) {
-      this.#pending.push(candidate);
-      return;
-    }
-    this.deliver(candidate);
+    Object.freeze(candidate.event);
+    Object.freeze(candidate);
+    if (this.#candidateAttached) this.deliverCandidate(candidate);
+    else this.buffer(this.#candidatePending, candidate);
+    if (this.#legacyAttached) this.deliverLegacy(candidate);
+    else this.buffer(this.#legacyPending, candidate);
   }
 
   onCandidate(listener: AdapterEventCandidateListener): () => void {
     if (this.#closed) return () => undefined;
     this.#candidateListeners.add(listener);
-    this.attach();
+    if (!this.#candidateAttached) {
+      this.#candidateAttached = true;
+      const pending = this.#candidatePending;
+      this.#candidatePending = [];
+      for (const candidate of pending) this.deliverCandidate(candidate);
+    }
     return () => this.#candidateListeners.delete(listener);
   }
 
@@ -71,26 +134,29 @@ export class BufferedAdapterEventSource {
   onEvent(listener: (envelope: AgentEventEnvelope) => void): () => void {
     if (this.#closed) return () => undefined;
     this.#legacyListeners.add(listener);
-    this.attach();
+    if (!this.#legacyAttached) {
+      this.#legacyAttached = true;
+      const pending = this.#legacyPending;
+      this.#legacyPending = [];
+      for (const candidate of pending) this.deliverLegacy(candidate);
+    }
     return () => this.#legacyListeners.delete(listener);
   }
 
   close(): void {
     this.#closed = true;
-    this.#pending = [];
+    this.#candidatePending = [];
+    this.#legacyPending = [];
     this.#candidateListeners.clear();
     this.#legacyListeners.clear();
   }
 
-  private attach(): void {
-    if (this.#attached) return;
-    this.#attached = true;
-    const pending = this.#pending;
-    this.#pending = [];
-    for (const candidate of pending) this.deliver(candidate);
+  private buffer(buffer: AdapterEventCandidate[], candidate: AdapterEventCandidate): void {
+    buffer.push(candidate);
+    if (buffer.length > this.#pendingCapacity) buffer.splice(0, buffer.length - this.#pendingCapacity);
   }
 
-  private deliver(candidate: AdapterEventCandidate): void {
+  private deliverCandidate(candidate: AdapterEventCandidate): void {
     for (const listener of [...this.#candidateListeners]) {
       try {
         listener(candidate);
@@ -98,9 +164,11 @@ export class BufferedAdapterEventSource {
         // Adapter ingestion cannot be affected by a consumer fault.
       }
     }
+  }
 
-    if (this.#legacyListeners.size === 0) return;
+  private deliverLegacy(candidate: AdapterEventCandidate): void {
     const envelope = this.#legacyStamper.next<AgentEvent>(candidate);
+    Object.freeze(envelope);
     for (const listener of [...this.#legacyListeners]) {
       try {
         listener(envelope);

@@ -6,7 +6,7 @@ const SID = 'sess-1';
 const note = (update: SessionNotification['update']): SessionNotification => ({ sessionId: SID, update });
 
 describe('AcpNotificationNormalizer', () => {
-  it('accumulates agent_message_chunk deltas into a single assistant.message', () => {
+  it('accumulates agent_message_chunk deltas into a single conversation:assistant-message', () => {
     const n = new AcpNotificationNormalizer();
     const a = n.normalize(
       note({ sessionUpdate: 'agent_message_chunk', messageId: 'm1', content: { type: 'text', text: 'po' } }),
@@ -16,10 +16,10 @@ describe('AcpNotificationNormalizer', () => {
     );
 
     expect(a.events).toEqual([
-      { type: 'assistant.message', messageId: 'm1', text: 'po', final: false, displayOnly: false },
+      { type: 'conversation:assistant-message', messageId: 'm1', text: 'po', final: false, displayOnly: false },
     ]);
     expect(b.events).toEqual([
-      { type: 'assistant.message', messageId: 'm1', text: 'pong', final: false, displayOnly: false },
+      { type: 'conversation:assistant-message', messageId: 'm1', text: 'pong', final: false, displayOnly: false },
     ]);
     expect(n.assistantText('m1')).toBe('pong');
   });
@@ -38,12 +38,12 @@ describe('AcpNotificationNormalizer', () => {
     const next = n.normalize(
       note({ sessionUpdate: 'agent_thought_chunk', messageId: 'thought-1', content: { type: 'text', text: 'more' } }),
     );
-    expect(first.events).toEqual([{ type: 'reasoning.started', reasoningId: 'thought-1' }]);
-    expect(next.events).toEqual([{ type: 'reasoning.progress', reasoningId: 'thought-1' }]);
+    expect(first.events).toEqual([{ type: 'reasoning:started', reasoningId: 'thought-1' }]);
+    expect(next.events).toEqual([{ type: 'reasoning:progress', reasoningId: 'thought-1' }]);
     expect(JSON.stringify([...first.events, ...next.events])).not.toContain('secret');
   });
 
-  it('maps tool_call → tool.started and tool_call_update(completed) → tool.completed', () => {
+  it('maps tool_call → tool:started and tool_call_update(completed) → tool:completed', () => {
     const n = new AcpNotificationNormalizer();
     const started = n.normalize(
       note({ sessionUpdate: 'tool_call', toolCallId: 'tc1', title: 'run', kind: 'execute', status: 'in_progress' }),
@@ -54,7 +54,7 @@ describe('AcpNotificationNormalizer', () => {
 
     expect(started.events).toEqual([
       {
-        type: 'tool.started',
+        type: 'tool:started',
         toolCallId: 'tc1',
         tool: 'execute',
         input: undefined,
@@ -63,7 +63,7 @@ describe('AcpNotificationNormalizer', () => {
     ]);
     expect(done.events).toEqual([
       {
-        type: 'tool.completed',
+        type: 'tool:completed',
         toolCallId: 'tc1',
         tool: undefined,
         output: 'ok',
@@ -72,7 +72,7 @@ describe('AcpNotificationNormalizer', () => {
     ]);
   });
 
-  it('emits tool.started AND tool.completed when a tool_call arrives already completed', () => {
+  it('emits tool:started AND tool:completed when a tool_call arrives already completed', () => {
     const n = new AcpNotificationNormalizer();
     const r = n.normalize(
       note({
@@ -86,14 +86,14 @@ describe('AcpNotificationNormalizer', () => {
     );
     expect(r.events).toEqual([
       {
-        type: 'tool.started',
+        type: 'tool:started',
         toolCallId: 'tc2',
         tool: 'read',
         input: undefined,
         presentation: { kind: 'file-read', title: 'read', detail: undefined },
       },
       {
-        type: 'tool.completed',
+        type: 'tool:completed',
         toolCallId: 'tc2',
         tool: 'read',
         output: 'x',
@@ -102,12 +102,12 @@ describe('AcpNotificationNormalizer', () => {
     ]);
   });
 
-  it('maps tool_call_update(failed) → tool.failed', () => {
+  it('maps tool_call_update(failed) → tool:failed', () => {
     const n = new AcpNotificationNormalizer();
     const r = n.normalize(note({ sessionUpdate: 'tool_call_update', toolCallId: 'tc3', status: 'failed' }));
     expect(r.events).toEqual([
       {
-        type: 'tool.failed',
+        type: 'tool:failed',
         toolCallId: 'tc3',
         tool: undefined,
         presentation: { kind: 'other', title: 'Using tool', detail: undefined },
@@ -115,7 +115,7 @@ describe('AcpNotificationNormalizer', () => {
     ]);
   });
 
-  it('drops intermediate tool_call_update(in_progress) — covered by tool.started', () => {
+  it('drops intermediate tool_call_update(in_progress) — covered by tool:started', () => {
     const n = new AcpNotificationNormalizer();
     const r = n.normalize(note({ sessionUpdate: 'tool_call_update', toolCallId: 'tc4', status: 'in_progress' }));
     expect(r.events).toEqual([]);
@@ -124,13 +124,13 @@ describe('AcpNotificationNormalizer', () => {
   it('maps usage_update to the provider-neutral context window event', () => {
     const n = new AcpNotificationNormalizer();
     const r = n.normalize(note({ sessionUpdate: 'usage_update', used: 53_000, size: 200_000 }));
-    expect(r.events).toEqual([{ type: 'context-window.updated', usedTokens: 53_000, capacityTokens: 200_000 }]);
+    expect(r.events).toEqual([{ type: 'context-window:updated', usedTokens: 53_000, capacityTokens: 200_000 }]);
   });
 
   it('retains malformed context readings without manufacturing a zero', () => {
     const n = new AcpNotificationNormalizer();
     const r = n.normalize(note({ sessionUpdate: 'usage_update', used: Number.NaN, size: 0 }));
-    expect(r.events).toEqual([{ type: 'adapter.native-event', adapter: 'acp', nativeType: 'usage_update' }]);
+    expect(r.events).toEqual([{ type: 'adapter:native-event', adapter: 'acp', nativeType: 'usage_update' }]);
   });
 
   it('maps the standard model config selector to id and model-card name', () => {
@@ -153,9 +153,7 @@ describe('AcpNotificationNormalizer', () => {
         ],
       }),
     );
-    expect(r.events).toEqual([
-      { type: 'session.environment.updated', model: { id: 'grok-4.5', displayName: 'Grok 4.5' } },
-    ]);
+    expect(r.events).toEqual([{ type: 'model:updated', model: { id: 'grok-4.5', displayName: 'Grok 4.5' } }]);
   });
 
   it('does not infer a model from provider-controlled labels without the standard category', () => {
@@ -174,14 +172,14 @@ describe('AcpNotificationNormalizer', () => {
         ],
       }),
     );
-    expect(r.events).toEqual([{ type: 'adapter.native-event', adapter: 'acp', nativeType: 'config_option_update' }]);
+    expect(r.events).toEqual([{ type: 'adapter:native-event', adapter: 'acp', nativeType: 'config_option_update' }]);
   });
 
   it('retains unmodeled kinds (available_commands_update) as native-events (ADR-008)', () => {
     const n = new AcpNotificationNormalizer();
     const r = n.normalize(note({ sessionUpdate: 'available_commands_update', availableCommands: [] }));
     expect(r.events).toEqual([
-      { type: 'adapter.native-event', adapter: 'acp', nativeType: 'available_commands_update' },
+      { type: 'adapter:native-event', adapter: 'acp', nativeType: 'available_commands_update' },
     ]);
   });
 });

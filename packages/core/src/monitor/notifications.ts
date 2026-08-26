@@ -73,7 +73,7 @@ function compareState(
   if (!provisionalInput && (!previous.plan || (previous.plan.provisional && !next.plan?.provisional)) && next.plan) {
     result.push(notification(runtimeRunId, input, 'plan.created', 'plan'));
   } else if (!provisionalInput && previous.plan && next.plan && !same(previous.plan, next.plan)) {
-    result.push(notification(runtimeRunId, input, 'plan.updated', 'plan'));
+    result.push(notification(runtimeRunId, input, 'planning:updated', 'plan'));
   }
 
   const priorTasks = byId(previous.tasks);
@@ -81,11 +81,11 @@ function compareState(
     const prior = priorTasks.get(task.id);
     if (provisionalInput) continue;
     if ((!prior || prior.provisional) && task.status === 'completed' && !task.provisional) {
-      result.push(notification(runtimeRunId, input, 'task.completed', task.id, task.description));
+      result.push(notification(runtimeRunId, input, 'delegation:task-completed', task.id, task.description));
     } else if (!prior || (prior.provisional && !task.provisional)) {
-      result.push(notification(runtimeRunId, input, 'task.created', task.id, task.description));
+      result.push(notification(runtimeRunId, input, 'delegation:task-created', task.id, task.description));
     } else if (prior.status !== 'completed' && task.status === 'completed') {
-      result.push(notification(runtimeRunId, input, 'task.completed', task.id, task.description));
+      result.push(notification(runtimeRunId, input, 'delegation:task-completed', task.id, task.description));
     }
   }
 
@@ -95,16 +95,16 @@ function compareState(
     const prior = priorSubagents.get(subagent.id);
     if (provisionalInput) continue;
     if (!prior && !subagent.active) {
-      result.push(notification(runtimeRunId, input, 'subagent.stopped', subagent.id, subagent.type));
+      result.push(notification(runtimeRunId, input, 'delegation:subagent-stopped', subagent.id, subagent.type));
     } else if ((!prior || !prior.active) && subagent.active) {
-      result.push(notification(runtimeRunId, input, 'subagent.started', subagent.id, subagent.type));
+      result.push(notification(runtimeRunId, input, 'delegation:subagent-started', subagent.id, subagent.type));
     } else if (prior?.active && !subagent.active) {
-      result.push(notification(runtimeRunId, input, 'subagent.stopped', subagent.id, subagent.type));
+      result.push(notification(runtimeRunId, input, 'delegation:subagent-stopped', subagent.id, subagent.type));
     }
   }
   for (const subagent of previous.subagents) {
     if (!provisionalInput && subagent.active && !nextSubagents.has(subagent.id)) {
-      result.push(notification(runtimeRunId, input, 'subagent.stopped', subagent.id, subagent.type));
+      result.push(notification(runtimeRunId, input, 'delegation:subagent-stopped', subagent.id, subagent.type));
     }
   }
 
@@ -145,7 +145,7 @@ function compareState(
   }
 
   if (!provisionalInput && !previous.compaction.active && next.compaction.active) {
-    result.push(notification(runtimeRunId, input, 'compaction.started', `compaction:${next.compaction.count}`));
+    result.push(notification(runtimeRunId, input, 'compaction:started', `compaction:${next.compaction.count}`));
   } else if (
     !provisionalInput &&
     next.compaction.lastOutcome === 'completed' &&
@@ -155,7 +155,7 @@ function compareState(
         previous.compaction.lastAt !== next.compaction.lastAt &&
         next.compaction.lastAt !== undefined))
   ) {
-    result.push(notification(runtimeRunId, input, 'compaction.completed', `compaction:${next.compaction.count}`));
+    result.push(notification(runtimeRunId, input, 'compaction:completed', `compaction:${next.compaction.count}`));
   }
 
   if (previous.environment.cwd !== next.environment.cwd) {

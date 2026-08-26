@@ -104,5 +104,5 @@ export function kimiErrorText(value: unknown): string | undefined {
 }
 
 export function kimiNativeEvent(nativeType: string): AgentEvent {
-  return { type: 'adapter.native-event', adapter: 'kimi', nativeType };
+  return { type: 'adapter:native-event', adapter: 'kimi', nativeType };
 }

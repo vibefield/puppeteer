@@ -1,10 +1,10 @@
 import { describe, expect, it } from 'vitest';
 import { agentServiceEventType, safeParseAgentEvent } from '@vibecook/puppeteer-core';
-import { CodexStateNormalizer } from './state.js';
+import { CodexToolNormalizer } from './tool.js';
 
-describe('CodexStateNormalizer', () => {
+describe('CodexToolNormalizer', () => {
   it('emits schema-valid command lifecycle events', () => {
-    const normalizer = new CodexStateNormalizer();
+    const normalizer = new CodexToolNormalizer();
     const started = normalizer.normalize({
       method: 'item/started',
       params: { item: { type: 'commandExecution', id: 'cmd-1', command: ['pnpm', 'test'] } },
@@ -25,8 +25,8 @@ describe('CodexStateNormalizer', () => {
     const events = [...started, ...failed];
 
     expect(events).toMatchObject([
-      { type: 'tool.started', toolCallId: 'cmd-1' },
-      { type: 'tool.failed', toolCallId: 'cmd-1' },
+      { type: 'tool:started', toolCallId: 'cmd-1' },
+      { type: 'tool:failed', toolCallId: 'cmd-1' },
     ]);
     expect(failed[0]).not.toHaveProperty('output');
     for (const event of events) {

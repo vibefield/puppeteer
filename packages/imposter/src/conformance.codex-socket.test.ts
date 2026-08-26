@@ -90,13 +90,14 @@ describe.skipIf(process.platform === 'win32')('the codex imposter, served over a
     expect(session.sessionId).toMatch(/^[0-9a-f-]{36}$/);
 
     await session.submitPrompt({ text: 'summarise the repo' });
-    await waitFor(() => events.some((envelope) => envelope.event.type === 'turn.completed'), 'a completed turn');
+    await waitFor(() => events.some((envelope) => envelope.event.type === 'turn:completed'), 'a completed turn');
 
-    const assistant = events.find((envelope) => envelope.event.type === 'assistant.message');
+    const assistant = events.find((envelope) => envelope.event.type === 'conversation:assistant-message');
     expect(assistant).toBeDefined();
     // Frames are not lines: an assistant reply that arrived intact proves the
     // WS framing round-tripped, not merely that something connected.
-    if (assistant?.event.type === 'assistant.message') expect(assistant.event.text.length).toBeGreaterThan(0);
+    if (assistant?.event.type === 'conversation:assistant-message')
+      expect(assistant.event.text.length).toBeGreaterThan(0);
   });
 
   it('serves several clients at once, because the TUI joins beside the controller', async () => {

@@ -65,7 +65,10 @@ export class AgentConversationService implements AgentProjectionService<AgentCon
   private readonly lastAssistantByTurn = new Map<string, ConversationAssistantMessage>();
 
   accepts(envelope: AgentEventEnvelope): boolean {
-    return envelope.service === 'state' || envelope.service === 'conversation' || envelope.service === 'notification';
+    if ((envelope.agentId || envelope.actorKey) && envelope.service !== 'delegation') return false;
+    return ['turn', 'conversation', 'reasoning', 'tool', 'interaction', 'delegation', 'notification'].includes(
+      envelope.service,
+    );
   }
 
   consume(envelope: AgentEventEnvelope): void {
@@ -74,7 +77,7 @@ export class AgentConversationService implements AgentProjectionService<AgentCon
     const correlatedTurn = turnKey(envelope, 'turnId' in event ? event.turnId : undefined);
 
     switch (event.type) {
-      case 'turn.started':
+      case 'turn:started':
         if (event.prompt?.trim()) {
           this.items.push({
             id: `user:${correlatedTurn ?? envelope.sequence}`,
@@ -85,7 +88,7 @@ export class AgentConversationService implements AgentProjectionService<AgentCon
         }
         break;
 
-      case 'assistant.message': {
+      case 'conversation:assistant-message': {
         const messageKey = `${correlatedTurn ?? 'none'}:${event.messageId ?? 'current'}`;
         let item = this.assistantByMessage.get(messageKey);
         if (!item && !event.messageId && correlatedTurn) item = this.lastAssistantByTurn.get(correlatedTurn);
@@ -106,9 +109,9 @@ export class AgentConversationService implements AgentProjectionService<AgentCon
         break;
       }
 
-      case 'reasoning.started':
-      case 'reasoning.progress':
-      case 'reasoning.summary': {
+      case 'reasoning:started':
+      case 'reasoning:progress':
+      case 'reasoning:summary': {
         const key = `reasoning:${event.reasoningId ?? correlatedTurn ?? 'current'}`;
         const activity = this.activity(key, correlatedTurn, {
           activity: 'reasoning',
@@ -118,11 +121,11 @@ export class AgentConversationService implements AgentProjectionService<AgentCon
         });
         activity.status = 'running';
         activity.confidence = envelope.confidence;
-        if (event.type === 'reasoning.summary') activity.summary = event.text;
+        if (event.type === 'reasoning:summary') activity.summary = event.text;
         break;
       }
 
-      case 'reasoning.completed': {
+      case 'reasoning:completed': {
         const key = `reasoning:${event.reasoningId ?? correlatedTurn ?? 'current'}`;
         const activity = this.activities.get(key);
         if (activity) {
@@ -132,44 +135,44 @@ export class AgentConversationService implements AgentProjectionService<AgentCon
         break;
       }
 
-      case 'tool.requested':
-      case 'tool.started': {
+      case 'tool:requested':
+      case 'tool:started': {
         const key = `tool:${event.toolCallId}`;
         const shown = event.presentation ?? fallbackPresentation(event.tool);
         const activity = this.activity(key, correlatedTurn, {
           activity: shown.kind,
-          status: event.type === 'tool.requested' ? 'requested' : 'running',
+          status: event.type === 'tool:requested' ? 'requested' : 'running',
           title: shown.title,
           detail: shown.detail,
           confidence: envelope.confidence,
         });
-        activity.status = event.type === 'tool.requested' ? 'requested' : 'running';
+        activity.status = event.type === 'tool:requested' ? 'requested' : 'running';
         activity.title = shown.title;
         activity.detail = shown.detail ?? activity.detail;
         activity.activity = shown.kind;
         break;
       }
 
-      case 'tool.completed':
-      case 'tool.failed': {
+      case 'tool:completed':
+      case 'tool:failed': {
         const key = `tool:${event.toolCallId}`;
         const shown = event.presentation ?? fallbackPresentation(event.tool);
         const existing = this.activities.get(key);
         const activity = this.activity(key, correlatedTurn, {
           activity: shown.kind,
-          status: event.type === 'tool.failed' ? 'failed' : 'completed',
+          status: event.type === 'tool:failed' ? 'failed' : 'completed',
           title: shown.title,
           detail: shown.detail,
           confidence: envelope.confidence,
         });
-        activity.status = event.type === 'tool.failed' ? 'failed' : 'completed';
+        activity.status = event.type === 'tool:failed' ? 'failed' : 'completed';
         if (event.presentation || !existing) activity.title = shown.title;
         activity.detail = shown.detail ?? activity.detail;
         if (shown.kind !== 'other' || activity.activity === 'other') activity.activity = shown.kind;
         break;
       }
 
-      case 'permission.requested':
+      case 'interaction:permission-requested':
         this.activity(`permission:${event.requestId}`, correlatedTurn, {
           activity: 'permission',
           status: 'requested',
@@ -178,7 +181,7 @@ export class AgentConversationService implements AgentProjectionService<AgentCon
         });
         break;
 
-      case 'permission.resolved': {
+      case 'interaction:permission-resolved': {
         const activity = this.activities.get(`permission:${event.requestId}`);
         if (activity) {
           activity.status = event.outcome === 'allowed' ? 'completed' : 'failed';
@@ -187,7 +190,7 @@ export class AgentConversationService implements AgentProjectionService<AgentCon
         break;
       }
 
-      case 'subagent.started':
+      case 'delegation:subagent-started':
         this.activity(`subagent:${event.subagentId}`, correlatedTurn, {
           activity: 'subagent',
           status: 'running',
@@ -196,7 +199,7 @@ export class AgentConversationService implements AgentProjectionService<AgentCon
         });
         break;
 
-      case 'subagent.stopped': {
+      case 'delegation:subagent-stopped': {
         const activity = this.activities.get(`subagent:${event.subagentId}`);
         if (activity) {
           activity.status = 'completed';
@@ -205,7 +208,7 @@ export class AgentConversationService implements AgentProjectionService<AgentCon
         break;
       }
 
-      case 'task.created':
+      case 'delegation:task-created':
         this.activity(`task:${event.taskId}`, correlatedTurn, {
           activity: 'task',
           status: 'running',
@@ -214,17 +217,17 @@ export class AgentConversationService implements AgentProjectionService<AgentCon
         });
         break;
 
-      case 'task.completed': {
+      case 'delegation:task-completed': {
         const activity = this.activities.get(`task:${event.taskId}`);
         if (activity) activity.status = 'completed';
         break;
       }
 
-      case 'turn.completed':
+      case 'turn:completed':
         this.sealTurn(correlatedTurn);
         break;
 
-      case 'turn.failed':
+      case 'turn:failed':
         this.sealTurn(correlatedTurn);
         this.items.push({
           id: `notice:${envelope.sequence}`,
@@ -234,7 +237,7 @@ export class AgentConversationService implements AgentProjectionService<AgentCon
         });
         break;
 
-      case 'notification':
+      case 'notification:received':
         if (event.message) {
           this.items.push({
             id: `notice:${envelope.sequence}`,

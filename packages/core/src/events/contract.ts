@@ -2,6 +2,15 @@ import { z } from 'zod';
 
 /** Shared execution and evidence vocabulary used by every event category. */
 
+/**
+ * Minimal structural contract implemented by every normalized event. Category
+ * modules refine `type` to one canonical `category:event-name` literal and own
+ * the rest of the payload schema. Runtime metadata belongs on the envelope.
+ */
+export interface AgentEventContract<Type extends `${string}:${string}` = `${string}:${string}`> {
+  type: Type;
+}
+
 /** DESIGN ADR-001 — native-tui is a first-class mode, not a fallback. */
 export const AgentExecutionModeSchema = z.enum(['native-tui', 'structured', 'acp']);
 export type AgentExecutionMode = z.infer<typeof AgentExecutionModeSchema>;
@@ -35,14 +44,21 @@ export const AgentEventConfidenceSchema = z.enum(['authoritative', 'derived', 'i
 export type AgentEventConfidence = z.infer<typeof AgentEventConfidenceSchema>;
 
 /** Stable source-owned identity retained when another layer restamps delivery order. */
-export const AgentEventSourceRefSchema = z.strictObject({
-  namespace: z.string(),
-  eventId: z.string(),
-  revisionKey: z.string().optional(),
-  sourceGeneration: z.number().optional(),
-  cursorStart: z.number().optional(),
-  cursorEnd: z.number().optional(),
-});
+const SourcePositionSchema = z.number().int().nonnegative().safe();
+
+export const AgentEventSourceRefSchema = z
+  .strictObject({
+    namespace: z.string().trim().min(1),
+    eventId: z.string().trim().min(1),
+    revisionKey: z.string().trim().min(1).optional(),
+    sourceGeneration: SourcePositionSchema.optional(),
+    cursorStart: SourcePositionSchema.optional(),
+    cursorEnd: SourcePositionSchema.optional(),
+  })
+  .refine(
+    ({ cursorStart, cursorEnd }) => cursorStart === undefined || cursorEnd === undefined || cursorEnd >= cursorStart,
+    { message: 'cursorEnd must be greater than or equal to cursorStart', path: ['cursorEnd'] },
+  );
 export type AgentEventSourceRef = z.infer<typeof AgentEventSourceRefSchema>;
 
 /** DESIGN §21.4 — process exit and semantic turn completion are separate facts. */

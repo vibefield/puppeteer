@@ -365,7 +365,7 @@ export class GrokMonitorEvidence {
     let quality: AdapterMonitorObservationBatch['quality'] = 'exact';
     let provisional = false;
 
-    if (event.type === 'context-window.updated') {
+    if (event.type === 'context-window:updated') {
       this.contextCapacity = event.capacityTokens;
       updates.push(
         upsert('context', 'root', {
@@ -385,31 +385,30 @@ export class GrokMonitorEvidence {
           }),
         );
       }
-    } else if (event.type === 'context-window.invalidated') {
+    } else if (event.type === 'context-window:invalidated') {
       updates.push(retract('context', 'root'));
       if (event.reason === 'compacted') {
         updates.push(upsert('compaction', 'root', { kind: 'compaction', active: false, trigger: 'signals-counter' }));
         quality = 'strong';
       }
-    } else if (event.type === 'session.environment.updated') {
+    } else if (event.type === 'environment:updated') {
       if (event.currentCwd !== undefined) {
         updates.push(upsert('environment', 'root', { kind: 'environment', cwd: event.currentCwd }));
       }
-      if (event.model) {
-        updates.push(
-          upsert('model', 'observed', {
-            kind: 'model',
-            providerModelId: event.model.id,
-            ...(event.model.displayName ? { displayName: event.model.displayName } : {}),
-            intent: 'observed',
-          }),
-        );
-      }
+    } else if (event.type === 'model:updated' && event.model) {
+      updates.push(
+        upsert('model', event.intent ?? 'observed', {
+          kind: 'model',
+          providerModelId: event.model.id,
+          ...(event.model.displayName ? { displayName: event.model.displayName } : {}),
+          intent: event.intent ?? 'observed',
+        }),
+      );
     }
 
     const isTurnCompletedEvent =
-      event.type === 'turn.completed' ||
-      (event.type === 'adapter.native-event' && event.adapter === 'grok' && event.nativeType === 'turn_completed');
+      event.type === 'turn:completed' ||
+      (event.type === 'adapter:native-event' && event.adapter === 'grok' && event.nativeType === 'turn_completed');
     if (isTurnCompletedEvent && kind === 'turn_completed' && update) {
       const usage = promptUsage(update);
       const usagePromptId = str(update.prompt_id) ?? promptId;

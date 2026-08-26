@@ -20,7 +20,7 @@
  * is settled here.
  */
 
-import type { InteractionStateEvent } from '@vibecook/puppeteer-core';
+import type { InteractionEvent } from '@vibecook/puppeteer-core';
 
 export type CodexApprovalDecision = 'approved' | 'denied';
 
@@ -99,7 +99,7 @@ export const KNOWN_SERVER_REQUESTS: readonly string[] = [
 
 export interface CodexApprovalServiceOptions {
   decide?: (request: CodexApprovalRequest) => CodexApprovalDecision | Promise<CodexApprovalDecision>;
-  publish(event: InteractionStateEvent, nativeEvent: unknown): void;
+  publish(event: InteractionEvent, nativeEvent: unknown): void;
   isDisposed(): boolean;
 }
 
@@ -116,12 +116,12 @@ export class CodexApprovalService {
     const requestId = String(id);
     const nativeEvent = { method, params, id };
     this.options.publish(
-      { type: 'permission.requested', requestId, tool: method, input: params, presentation: 'host-ui' },
+      { type: 'interaction:permission-requested', requestId, tool: method, input: params, presentation: 'host-ui' },
       nativeEvent,
     );
     const decision = this.options.decide ? await this.options.decide({ method, params, requestId: id }) : 'denied';
     this.options.publish(
-      { type: 'permission.resolved', requestId, outcome: decision === 'approved' ? 'allowed' : 'denied' },
+      { type: 'interaction:permission-resolved', requestId, outcome: decision === 'approved' ? 'allowed' : 'denied' },
       nativeEvent,
     );
     return approvalResponse(method, decision);

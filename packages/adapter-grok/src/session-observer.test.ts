@@ -55,19 +55,19 @@ describe('GrokUpdateNormalizer', () => {
         sessionId: 'grok-session',
         update: { sessionUpdate: 'auto_compact_started' },
       }),
-    ).toEqual([{ type: 'adapter.native-event', adapter: 'grok', nativeType: 'auto_compact_started' }]);
+    ).toEqual([{ type: 'adapter:native-event', adapter: 'grok', nativeType: 'auto_compact_started' }]);
   });
 
   it('frames two terminal-authored turns with stable, distinct message identities', () => {
     const normalizer = new GrokUpdateNormalizer();
     const events = twoTurnRecords().flatMap((entry) => normalizer.normalize(entry));
 
-    expect(events.filter(({ event }) => event.type === 'turn.started').map(({ event }) => event)).toEqual([
-      { type: 'turn.started', turnId: 'prompt-1', prompt: 'first question' },
-      { type: 'turn.started', turnId: 'prompt-2', prompt: 'second question' },
+    expect(events.filter(({ event }) => event.type === 'turn:started').map(({ event }) => event)).toEqual([
+      { type: 'turn:started', turnId: 'prompt-1', prompt: 'first question' },
+      { type: 'turn:started', turnId: 'prompt-2', prompt: 'second question' },
     ]);
     const assistant = events
-      .filter(({ event }) => event.type === 'assistant.message' && event.final)
+      .filter(({ event }) => event.type === 'conversation:assistant-message' && event.final)
       .map(({ event, promptId }) => ({ event, promptId }));
     expect(assistant).toEqual([
       {
@@ -87,11 +87,11 @@ describe('GrokUpdateNormalizer', () => {
         }),
       },
     ]);
-    expect(events.filter(({ event }) => event.type === 'turn.completed').map(({ promptId }) => promptId)).toEqual([
+    expect(events.filter(({ event }) => event.type === 'turn:completed').map(({ promptId }) => promptId)).toEqual([
       'prompt-1',
       'prompt-2',
     ]);
-    expect(events.some(({ event }) => event.type === 'reasoning.summary')).toBe(false);
+    expect(events.some(({ event }) => event.type === 'reasoning:summary')).toBe(false);
   });
 
   it('correlates a user echo even when no user-prompt hook supplies the UUID', () => {
@@ -113,9 +113,9 @@ describe('GrokUpdateNormalizer', () => {
       ),
     );
     expect(events.map(({ event }) => event)).toEqual([
-      { type: 'turn.started', turnId: 'real-prompt', prompt: 'hookless question' },
+      { type: 'turn:started', turnId: 'real-prompt', prompt: 'hookless question' },
       expect.objectContaining({
-        type: 'assistant.message',
+        type: 'conversation:assistant-message',
         messageId: 'grok-assistant:real-prompt',
         turnId: 'real-prompt',
         text: 'hookless answer',
@@ -137,12 +137,12 @@ describe('GrokUpdateNormalizer', () => {
     );
 
     expect(started.map(({ event }) => event)).toEqual([
-      { type: 'subagent.started', subagentId: 'child-1', agentType: 'explore' },
+      { type: 'delegation:subagent-started', subagentId: 'child-1', agentType: 'explore' },
     ]);
     expect(progress.map(({ event }) => event)).toEqual([
-      { type: 'adapter.native-event', adapter: 'grok', nativeType: 'subagent_progress' },
+      { type: 'adapter:native-event', adapter: 'grok', nativeType: 'subagent_progress' },
     ]);
-    expect(stopped.map(({ event }) => event)).toEqual([{ type: 'subagent.stopped', subagentId: 'child-1' }]);
+    expect(stopped.map(({ event }) => event)).toEqual([{ type: 'delegation:subagent-stopped', subagentId: 'child-1' }]);
   });
 
   it('retains every native compact phase without inventing a normalized Core state', () => {
@@ -160,7 +160,7 @@ describe('GrokUpdateNormalizer', () => {
         expect.objectContaining({
           promptId: 'prompt-1',
           source: 'native-log',
-          event: { type: 'adapter.native-event', adapter: 'grok', nativeType },
+          event: { type: 'adapter:native-event', adapter: 'grok', nativeType },
         }),
       ),
     );
@@ -207,8 +207,8 @@ describe('createGrokSessionObserver', () => {
 
     expect(firstCount).toBeGreaterThan(0);
     expect(received).toHaveLength(firstCount);
-    expect(received.filter(({ event }) => event.type === 'turn.started')).toHaveLength(2);
-    expect(received.filter(({ event }) => event.type === 'turn.completed')).toHaveLength(2);
+    expect(received.filter(({ event }) => event.type === 'turn:started')).toHaveLength(2);
+    expect(received.filter(({ event }) => event.type === 'turn:completed')).toHaveLength(2);
     expect(received.every(({ phase }) => phase === 'bootstrap')).toBe(true);
   });
 
@@ -231,7 +231,7 @@ describe('createGrokSessionObserver', () => {
     expect(received).toEqual([
       expect.objectContaining({
         phase: 'live',
-        event: expect.objectContaining({ type: 'session.started' }),
+        event: expect.objectContaining({ type: 'session:started' }),
       }),
     ]);
   });
@@ -263,7 +263,7 @@ describe('createGrokSessionObserver', () => {
 
     expect(errors).toHaveLength(1);
     expect(errors[0]?.message).toContain('512-byte safety limit');
-    expect(received.map(({ event }) => event.type)).toEqual(['session.started']);
+    expect(received.map(({ event }) => event.type)).toEqual(['session:started']);
   });
 
   it('reads exact context usage from signals.json, retries partial rewrites, and deduplicates', async () => {
@@ -301,7 +301,7 @@ describe('createGrokSessionObserver', () => {
     expect(received).toEqual([
       {
         event: {
-          type: 'context-window.updated',
+          type: 'context-window:updated',
           usedTokens: 18_415,
           capacityTokens: 500_000,
           modelId: 'grok-4.5',
@@ -334,8 +334,8 @@ describe('createGrokSessionObserver', () => {
     observer.stop();
 
     expect(received.map(({ event }) => event)).toEqual([
-      { type: 'context-window.updated', usedTokens: 100, capacityTokens: 1_000, modelId: undefined },
-      { type: 'context-window.invalidated', reason: 'compacted' },
+      { type: 'context-window:updated', usedTokens: 100, capacityTokens: 1_000, modelId: undefined },
+      { type: 'context-window:invalidated', reason: 'compacted' },
     ]);
   });
 
@@ -356,11 +356,14 @@ describe('createGrokSessionObserver', () => {
 
     expect(received).toEqual([
       {
-        event: {
-          type: 'session.environment.updated',
-          currentCwd: '/repo',
-          model: { id: 'grok-4.5', provider: 'xai' },
-        },
+        event: { type: 'environment:updated', currentCwd: '/repo' },
+        phase: 'bootstrap',
+        source: 'native-log',
+        confidence: 'authoritative',
+        nativeEvent: { info: { cwd: '/repo' }, current_model_id: 'grok-4.5' },
+      },
+      {
+        event: { type: 'model:updated', model: { id: 'grok-4.5', provider: 'xai' } },
         phase: 'bootstrap',
         source: 'native-log',
         confidence: 'authoritative',

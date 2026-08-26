@@ -41,18 +41,19 @@ import {
 } from './launch/prepare.js';
 import { createPromptInjector, type PromptInjector } from './launch/prompt.js';
 import { observeClaudeStatusLineAccountUsage } from './observation/account-usage.js';
-import { claudeContextWindowEvent, claudeEnvironmentEvent } from './observation/status-channel.js';
+import { claudeContextWindowEvent, claudeEnvironmentEvents } from './observation/status-channel.js';
 import { ClaudeMonitorEvidence } from './observation/monitor-evidence.js';
 import {
   decodeClaudeOtelLogs,
   isClaudeOtelLogsVerified,
-  normalizeClaudeOtelEnvironment,
+  normalizeClaudeOtelModel,
   normalizeClaudeOtelUsage,
   normalizeClaudeOtelWorkflow,
   otelString,
   supportsClaudeOtelLogs,
 } from './observation/otel/index.js';
 import { ClaudeTranscriptObservationProvider } from './observation/transcript/provider.js';
+import { ClaudeUsageReconciler, type ClaudeUsageEvidence } from './observation/usage-reconciler.js';
 import { claudePermissionMode } from './provider-modes.js';
 import { ClaudeEventSource, type ClaudeEventPublication } from './services/event-source.js';
 import type {
@@ -62,6 +63,23 @@ import type {
 } from './observation/semantic-provider.js';
 
 const TOKEN_ENV_VAR = 'PUPPETEER_HOOK_TOKEN';
+const MAX_OTEL_ACTOR_FINGERPRINTS = 4_096;
+const MAX_OTEL_WORKFLOW_FINGERPRINTS = 1_024;
+
+function rememberFingerprint(
+  fingerprints: Map<string, string>,
+  key: string,
+  fingerprint: string,
+  capacity: number,
+): void {
+  fingerprints.delete(key);
+  fingerprints.set(key, fingerprint);
+  while (fingerprints.size > capacity) {
+    const oldest = fingerprints.keys().next().value as string | undefined;
+    if (oldest === undefined) break;
+    fingerprints.delete(oldest);
+  }
+}
 
 function hookEventConfidence(
   hookEventName: string,
@@ -69,14 +87,14 @@ function hookEventConfidence(
   payload: ClaudeHookPayload,
 ): AgentEventConfidence {
   if (
-    event.type === 'question.requested' ||
-    (event.type === 'plan.updated' && event.provisional) ||
-    (event.type === 'task.updated' && event.provisional) ||
-    event.type === 'teammate.idle' ||
-    (hookEventName === 'PreCompact' && event.type === 'compaction.started') ||
+    event.type === 'interaction:question-requested' ||
+    (event.type === 'planning:updated' && event.provisional) ||
+    (event.type === 'delegation:task-updated' && event.provisional) ||
+    event.type === 'delegation:teammate-idle' ||
+    (hookEventName === 'PreCompact' && event.type === 'compaction:started') ||
     (['Stop', 'StopFailure', 'SessionEnd', 'PreCompact', 'UserPromptSubmit'].includes(hookEventName) &&
-      event.type === 'compaction.completed') ||
-    (['tool.requested', 'tool.started', 'tool.completed', 'tool.failed'].includes(event.type) &&
+      event.type === 'compaction:completed') ||
+    (['tool:requested', 'tool:started', 'tool:completed', 'tool:failed'].includes(event.type) &&
       typeof payload.tool_use_id !== 'string')
   ) {
     return 'inferred';
@@ -337,9 +355,8 @@ function createPreparedClaudeSession(
   let configuredIntentPublished = false;
   let observedStatusEnvironmentKey: string | undefined;
   let observedStatusContextKey: string | undefined;
-  const otelUsageIds = new Set<string>();
-  const observedOtelUsage = new Map<string, string>();
-  const observedOtelEnvironment = new Map<string, string>();
+  const usageReconciler = new ClaudeUsageReconciler();
+  const observedOtelModels = new Map<string, string>();
   const observedOtelWorkflows = new Map<string, string>();
 
   const injector: PromptInjector = createPromptInjector({
@@ -353,7 +370,7 @@ function createPreparedClaudeSession(
 
   function emitMonitorBatch(batch: AdapterMonitorObservationBatch): void {
     apply(
-      { type: 'monitor.batch', batch },
+      { type: 'monitor:batch', batch },
       {
         source: 'native-protocol',
         timestamp: batch.observedAt,
@@ -391,26 +408,26 @@ function createPreparedClaudeSession(
   function apply(event: AgentEvent, meta: ClaudeEventPublication): void {
     // Injector wiring rides the normalized stream, not raw payloads.
     switch (event.type) {
-      case 'turn.started':
+      case 'turn:started':
         injector.handleTurnStarted(event.turnId, event.prompt);
         break;
-      case 'permission.requested':
+      case 'interaction:permission-requested':
         pendingPermissionIds.add(event.requestId);
         injector.setPermissionPending(pendingPermissionIds.size > 0);
         break;
-      case 'permission.resolved':
+      case 'interaction:permission-resolved':
         pendingPermissionIds.delete(event.requestId);
         injector.setPermissionPending(pendingPermissionIds.size > 0);
         break;
-      case 'question.requested':
+      case 'interaction:question-requested':
         pendingQuestionIds.add(event.requestId);
         injector.setQuestionPending(pendingQuestionIds.size > 0);
         break;
-      case 'question.resolved':
+      case 'interaction:question-resolved':
         pendingQuestionIds.delete(event.requestId);
         injector.setQuestionPending(pendingQuestionIds.size > 0);
         break;
-      case 'session.started':
+      case 'session:started':
         if (!event.rebind) break;
         pendingPermissionIds.clear();
         pendingQuestionIds.clear();
@@ -419,9 +436,9 @@ function createPreparedClaudeSession(
         break;
       // A native boundary is authoritative even if an older Claude release
       // omitted a resolution signal for one request.
-      case 'turn.completed':
-      case 'turn.failed':
-      case 'session.exited':
+      case 'turn:completed':
+      case 'turn:failed':
+      case 'session:exited':
         pendingPermissionIds.clear();
         pendingQuestionIds.clear();
         injector.setPermissionPending(false);
@@ -432,22 +449,36 @@ function createPreparedClaudeSession(
     events.publish(event, meta);
   }
 
+  function publishUsageEvidence(kind: 'otel' | 'transcript', evidence: ClaudeUsageEvidence): void {
+    const reconciled = usageReconciler.accept(kind, evidence);
+    if (reconciled) apply(reconciled.event, reconciled.publication);
+  }
+
   function publishConfiguredIntent(): void {
     if (configuredIntentPublished) return;
     configuredIntentPublished = true;
+    const publication = {
+      source: 'runtime' as const,
+      timestamp: new Date().toISOString(),
+      providerVersion: options.providerVersion,
+    };
+    if (options.model) {
+      apply(
+        { type: 'model:updated', intent: 'configured', model: { id: options.model, provider: 'anthropic' } },
+        publication,
+      );
+    }
+    if (options.effort) {
+      apply({ type: 'effort:updated', intent: 'configured', effort: options.effort }, publication);
+    }
     apply(
       {
-        type: 'session.environment.updated',
+        type: 'mode:updated',
         intent: 'configured',
-        ...(options.model ? { model: { id: options.model, provider: 'anthropic' } } : {}),
-        ...(options.effort ? { effort: options.effort } : {}),
-        providerPermissionMode: claudePermissionMode(options.permissionMode ?? 'default'),
+        modeKind: 'provider-permission',
+        mode: claudePermissionMode(options.permissionMode ?? 'default'),
       },
-      {
-        source: 'runtime',
-        timestamp: new Date().toISOString(),
-        providerVersion: options.providerVersion,
-      },
+      publication,
     );
   }
 
@@ -460,7 +491,7 @@ function createPreparedClaudeSession(
     capabilitiesBatch = monitorEvidence.hookRailUnavailableBatch(observedAt, reason, capabilitiesBatch.capabilities);
     emitMonitorBatch(capabilitiesBatch);
     apply(
-      { type: 'adapter.native-event', adapter: 'claude-code', nativeType: 'hook-bridge.unavailable' },
+      { type: 'adapter:native-event', adapter: 'claude-code', nativeType: 'hook-bridge.unavailable' },
       {
         source: 'runtime',
         timestamp: observedAt,
@@ -478,40 +509,60 @@ function createPreparedClaudeSession(
       if (otelString(record, 'session.id') !== nativeSessionId()) continue;
 
       const usage = normalizeClaudeOtelUsage(record);
-      const environment = normalizeClaudeOtelEnvironment(record);
+      const model = normalizeClaudeOtelModel(record);
       const workflow = normalizeClaudeOtelWorkflow(record);
-      if (!usage && !environment && !workflow) continue;
+      if (!usage && !model && !workflow) {
+        apply(
+          {
+            type: 'adapter:native-event',
+            adapter: 'claude-code',
+            nativeType: `otel:${otelString(record, 'event.name') ?? record.body ?? 'log'}`,
+          },
+          {
+            source: 'native-telemetry',
+            timestamp: record.timestamp,
+            promptId: otelString(record, 'prompt.id'),
+            providerVersion: record.providerVersion ?? options.providerVersion,
+            confidence: 'authoritative',
+            native: record,
+          },
+        );
+        if (observation === 'terminal-only') observation = 'native-log';
+        continue;
+      }
       if (observation === 'terminal-only') observation = 'native-log';
 
       if (usage) {
-        otelUsageIds.add(usage.event.usageId);
-        const fingerprint = JSON.stringify(usage.event);
-        if (observedOtelUsage.get(usage.event.usageId) !== fingerprint) {
-          observedOtelUsage.set(usage.event.usageId, fingerprint);
-          apply(usage.event, {
+        publishUsageEvidence('otel', {
+          event: usage.event,
+          publication: {
             source: 'native-telemetry',
             timestamp: usage.timestamp,
             promptId: usage.promptId,
             agentId: usage.agentId,
             agentType: usage.agentType,
+            actorKey: usage.actorKey,
+            actorRole: usage.actorRole,
             providerVersion: usage.providerVersion ?? options.providerVersion,
             confidence: 'authoritative',
             native: usage.nativeEvent,
-          });
-        }
+          },
+        });
       }
 
-      if (environment) {
-        const key = environment.agentId ?? 'root';
-        const fingerprint = JSON.stringify(environment.event);
-        if (observedOtelEnvironment.get(key) !== fingerprint) {
-          observedOtelEnvironment.set(key, fingerprint);
-          apply(environment.event, {
+      if (model) {
+        const key = model.agentId ?? model.actorKey ?? 'root';
+        const fingerprint = JSON.stringify(model.event);
+        if (observedOtelModels.get(key) !== fingerprint) {
+          rememberFingerprint(observedOtelModels, key, fingerprint, MAX_OTEL_ACTOR_FINGERPRINTS);
+          apply(model.event, {
             source: 'native-telemetry',
-            timestamp: environment.timestamp,
+            timestamp: model.timestamp,
             promptId: otelString(record, 'prompt.id'),
-            agentId: environment.agentId,
-            agentType: environment.agentType,
+            agentId: model.agentId,
+            agentType: model.agentType,
+            actorKey: model.actorKey,
+            actorRole: model.actorRole,
             providerVersion: record.providerVersion ?? options.providerVersion,
             confidence: 'authoritative',
             native: record,
@@ -522,7 +573,12 @@ function createPreparedClaudeSession(
       if (workflow) {
         const fingerprint = JSON.stringify(workflow.event);
         if (observedOtelWorkflows.get(workflow.event.workflowId) !== fingerprint) {
-          observedOtelWorkflows.set(workflow.event.workflowId, fingerprint);
+          rememberFingerprint(
+            observedOtelWorkflows,
+            workflow.event.workflowId,
+            fingerprint,
+            MAX_OTEL_WORKFLOW_FINGERPRINTS,
+          );
           apply(workflow.event, {
             source: 'native-telemetry',
             timestamp: workflow.timestamp,
@@ -562,10 +618,22 @@ function createPreparedClaudeSession(
       semanticHandle = handle;
       handle.onEvent((semantic) => {
         if (disposed || generation !== semanticGeneration) return;
-        // OTLP is the lower-latency copy of the same settled request. A
-        // transcript observation that arrives first uses the same usage id and
-        // is corrected in place; one arriving later is redundant.
-        if (semantic.event.type === 'tokens.used' && otelUsageIds.has(semantic.event.usageId)) return;
+        if (semantic.event.type === 'usage:tokens-used') {
+          publishUsageEvidence('transcript', {
+            event: semantic.event,
+            publication: {
+              source: 'native-transcript',
+              timestamp: semantic.timestamp,
+              promptId: semantic.promptId,
+              turnId: semantic.turnId,
+              agentId: semantic.agentId,
+              agentType: semantic.agentType,
+              native: semantic.nativeEvent,
+              replay: semantic.replay,
+            },
+          });
+          return;
+        }
         apply(semantic.event, {
           source: 'native-transcript',
           timestamp: semantic.timestamp,
@@ -608,7 +676,7 @@ function createPreparedClaudeSession(
         if (semanticAttachment === nextAttachment) semanticAttachment = undefined;
         historyBootstrap = undefined;
         apply(
-          { type: 'adapter.native-event', adapter: 'claude-code', nativeType: 'semantic-observer.unavailable' },
+          { type: 'adapter:native-event', adapter: 'claude-code', nativeType: 'semantic-observer.unavailable' },
           {
             source: 'runtime',
             timestamp: new Date().toISOString(),
@@ -663,7 +731,7 @@ function createPreparedClaudeSession(
         }
       }
       for (const event of normalized.events) {
-        if (event.type === 'context-window.invalidated') {
+        if (event.type === 'context-window:invalidated') {
           emitMonitorBatch(
             monitorEvidence.rootContextInvalidationBatch(hookEnvelope.receivedAt, hookEnvelope.requestId),
           );
@@ -740,23 +808,25 @@ function createPreparedClaudeSession(
     );
     if (monitorBatch) emitMonitorBatch(monitorBatch);
 
-    const environment = claudeEnvironmentEvent(statusEnvelope.body);
-    if (environment) {
-      const environmentKey = JSON.stringify(environment);
+    const environmentEvents = claudeEnvironmentEvents(statusEnvelope.body);
+    if (environmentEvents.length > 0) {
+      const environmentKey = JSON.stringify(environmentEvents);
       if (environmentKey !== observedStatusEnvironmentKey) {
         observedStatusEnvironmentKey = environmentKey;
-        apply(environment, {
-          source: 'native-statusline',
-          timestamp: statusEnvelope.receivedAt,
-          providerVersion: payloadVersion(statusEnvelope.body),
-          native: statusEnvelope.body,
-        });
+        for (const event of environmentEvents) {
+          apply(event, {
+            source: 'native-statusline',
+            timestamp: statusEnvelope.receivedAt,
+            providerVersion: payloadVersion(statusEnvelope.body),
+            native: statusEnvelope.body,
+          });
+        }
       }
     }
 
     const contextEvent = claudeContextWindowEvent(statusEnvelope.body);
     if (!contextEvent) return;
-    if (contextEvent.type === 'context-window.invalidated') {
+    if (contextEvent.type === 'context-window:invalidated') {
       if (!observedStatusContextKey) return;
       observedStatusContextKey = undefined;
     } else {

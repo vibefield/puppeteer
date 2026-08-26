@@ -31,13 +31,13 @@ export class AcpPromptService {
   }
 
   observe(event: AgentEvent): void {
-    if (event.type === 'assistant.message') this.assistantText = event.text;
+    if (event.type === 'conversation:assistant-message') this.assistantText = event.text;
   }
 
   sealReplayedAssistant(nativeEvent: unknown): void {
     if (!this.assistantText) return;
     this.options.publish(
-      { type: 'assistant.message', text: this.assistantText, final: true, displayOnly: false },
+      { type: 'conversation:assistant-message', text: this.assistantText, final: true, displayOnly: false },
       'native-protocol',
       nativeEvent,
       'derived',
@@ -49,7 +49,7 @@ export class AcpPromptService {
     const turnId = `acp-turn-${++this.turnCounter}`;
     this.turnId = turnId;
     this.assistantText = '';
-    this.options.publish({ type: 'turn.started', turnId, prompt: submission.text }, 'native-hook');
+    this.options.publish({ type: 'turn:started', turnId, prompt: submission.text }, 'native-hook');
 
     void Promise.resolve(
       this.options.request({ sessionId: this.options.sessionId(), prompt: [{ type: 'text', text: submission.text }] }),
@@ -59,7 +59,7 @@ export class AcpPromptService {
         this.options.settleElicitations('superseded', response);
         this.options.publish(
           {
-            type: 'turn.completed',
+            type: 'turn:completed',
             turnId,
             stopReason: response.stopReason,
             lastAssistantMessage: this.assistantText || undefined,
@@ -72,7 +72,7 @@ export class AcpPromptService {
         this.closeReasoning();
         this.options.settleElicitations('failed', { method: 'session/prompt', outcome: 'failed' });
         this.options.publish(
-          { type: 'turn.failed', turnId, error: error instanceof Error ? error.message : String(error) },
+          { type: 'turn:failed', turnId, error: error instanceof Error ? error.message : String(error) },
           'native-hook',
         );
       });
@@ -83,7 +83,7 @@ export class AcpPromptService {
     const reasoning = this.options.completeReasoning();
     if (!reasoning.active) return;
     this.options.publish(
-      { type: 'reasoning.completed', reasoningId: reasoning.reasoningId },
+      { type: 'reasoning:completed', reasoningId: reasoning.reasoningId },
       'native-hook',
       nativeEvent,
       'derived',

@@ -9,11 +9,11 @@ import { scriptedAcpConnector } from './scripted-connector.js';
 
 const SID = '019f5e50-ce8b-7152-abcd-000000000001';
 
-/** Drive one turn to completion, resolving when turn.completed is observed. */
+/** Drive one turn to completion, resolving when turn:completed is observed. */
 async function driveTurn(session: Awaited<ReturnType<typeof createAcpSession>>, text: string): Promise<void> {
   const done = new Promise<void>((resolve) => {
     const off = session.onEvent((e) => {
-      if (e.event.type === 'turn.completed' || e.event.type === 'turn.failed') {
+      if (e.event.type === 'turn:completed' || e.event.type === 'turn:failed') {
         off();
         resolve();
       }
@@ -81,10 +81,10 @@ describe('createAcpSession', () => {
       expect(receipt.status).toBe('confirmed');
       if (receipt.status === 'confirmed') expect(receipt.turnId).toBe('acp-turn-1');
 
-      // wait for turn.completed
+      // wait for turn:completed
       await new Promise<void>((resolve) => {
         const stop = session.onEvent((e) => {
-          if (e.event.type === 'turn.completed') {
+          if (e.event.type === 'turn:completed') {
             stop();
             resolve();
           }
@@ -114,7 +114,7 @@ describe('createAcpSession', () => {
     try {
       await driveTurn(session, 'say pong');
       const assistant = candidates.find(({ type }) => type === 'conversation:assistant-message');
-      expect(assistant?.event.type).toBe('assistant.message');
+      expect(assistant?.event.type).toBe('conversation:assistant-message');
       expect(assistant).not.toHaveProperty('sequence');
       expect(assistant && safeParseAgentEvent(assistant.type, assistant.event).success).toBe(true);
       expect(candidates.every(({ type }) => type.includes(':'))).toBe(true);
@@ -152,10 +152,10 @@ describe('createAcpSession', () => {
     const off = session.onEvent((envelope) => envelopes.push(envelope));
     try {
       await driveTurn(session, 'think first');
-      const started = envelopes.find((envelope) => envelope.event.type === 'reasoning.started');
-      const completed = envelopes.find((envelope) => envelope.event.type === 'reasoning.completed');
-      const answer = envelopes.find((envelope) => envelope.event.type === 'assistant.message');
-      expect(started?.event).toEqual({ type: 'reasoning.started', reasoningId: 'thought-1' });
+      const started = envelopes.find((envelope) => envelope.event.type === 'reasoning:started');
+      const completed = envelopes.find((envelope) => envelope.event.type === 'reasoning:completed');
+      const answer = envelopes.find((envelope) => envelope.event.type === 'conversation:assistant-message');
+      expect(started?.event).toEqual({ type: 'reasoning:started', reasoningId: 'thought-1' });
       expect(started?.nativeEvent).toMatchObject({
         update: { sessionUpdate: 'agent_thought_chunk', content: { text: 'private thought text' } },
       });
@@ -230,7 +230,9 @@ describe('createAcpSession', () => {
         ],
       });
       expect(permissionResponse).toEqual({ outcome: { outcome: 'selected', optionId: 'allow' } });
-      expect(events).toEqual(expect.arrayContaining(['permission.requested', 'permission.resolved']));
+      expect(events).toEqual(
+        expect.arrayContaining(['interaction:permission-requested', 'interaction:permission-resolved']),
+      );
     } finally {
       off();
       await session.dispose();
@@ -303,9 +305,9 @@ describe('createAcpSession', () => {
       });
       expect(elicitationResponse).toEqual({ action: 'accept', content: { database: 'sqlite' } });
       expect(events.map(({ event }) => event.type)).toEqual(
-        expect.arrayContaining(['question.requested', 'question.resolved']),
+        expect.arrayContaining(['interaction:question-requested', 'interaction:question-resolved']),
       );
-      expect(events.find(({ event }) => event.type === 'question.resolved')?.event).toMatchObject({
+      expect(events.find(({ event }) => event.type === 'interaction:question-resolved')?.event).toMatchObject({
         outcome: 'answered',
       });
     } finally {

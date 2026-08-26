@@ -229,7 +229,7 @@ export function createKimiSessionObserver(options: KimiSessionObserverOptions): 
     }
     emit({
       event: {
-        type: 'session.started',
+        type: 'session:started',
         nativeSessionId: bound.sessionId,
         ...(typeof state?.title === 'string' ? { title: state.title } : {}),
         startSource: 'native-wire-bind',
@@ -242,7 +242,7 @@ export function createKimiSessionObserver(options: KimiSessionObserverOptions): 
     const currentCwd =
       typeof state?.cwd === 'string' ? state.cwd : typeof state?.workDir === 'string' ? state.workDir : bound.workDir;
     emit({
-      event: { type: 'session.environment.updated', currentCwd },
+      event: { type: 'environment:updated', currentCwd },
       source: 'native-log',
       confidence: 'authoritative',
       nativeEvent: state ?? { sessionId: bound.sessionId, sessionDir: bound.sessionDir },
@@ -289,7 +289,7 @@ export function createKimiSessionObserver(options: KimiSessionObserverOptions): 
       const message = `Kimi session discovery is ambiguous: ${matches.map((item) => item.sessionId).join(', ')}`;
       report(new Error(message));
       emit({
-        event: { type: 'adapter.native-event', adapter: 'kimi', nativeType: 'session-discovery-ambiguous' },
+        event: { type: 'adapter:native-event', adapter: 'kimi', nativeType: 'session-discovery-ambiguous' },
         source: 'runtime',
         confidence: 'authoritative',
         nativeEvent: {
@@ -303,7 +303,7 @@ export function createKimiSessionObserver(options: KimiSessionObserverOptions): 
   const emitInvalidLine = (journal: JournalState, line: Buffer, reason: string, replay: boolean): void => {
     report(new Error(`invalid Kimi wire record in ${journal.path}: ${reason}`));
     emit({
-      event: { type: 'adapter.native-event', adapter: 'kimi', nativeType: 'invalid-wire-record' },
+      event: { type: 'adapter:native-event', adapter: 'kimi', nativeType: 'invalid-wire-record' },
       source: 'native-log',
       confidence: 'authoritative',
       replay,
@@ -374,7 +374,7 @@ export function createKimiSessionObserver(options: KimiSessionObserverOptions): 
       if (journal.pending.length + fragment.length > maxRecordBytes) {
         report(new Error(`Kimi wire record exceeds the ${maxRecordBytes}-byte safety limit in ${journal.path}`));
         emit({
-          event: { type: 'adapter.native-event', adapter: 'kimi', nativeType: 'oversized-wire-record' },
+          event: { type: 'adapter:native-event', adapter: 'kimi', nativeType: 'oversized-wire-record' },
           source: 'native-log',
           confidence: 'authoritative',
           replay: lineEnd <= journal.replayBoundary,
@@ -412,7 +412,7 @@ export function createKimiSessionObserver(options: KimiSessionObserverOptions): 
       });
       if (offset > 0) {
         emit({
-          event: { type: 'adapter.native-event', adapter: 'kimi', nativeType: 'replay-window-truncated' },
+          event: { type: 'adapter:native-event', adapter: 'kimi', nativeType: 'replay-window-truncated' },
           source: 'runtime',
           confidence: 'authoritative',
           replay: true,

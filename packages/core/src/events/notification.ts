@@ -1,7 +1,7 @@
 import { z } from 'zod';
 
 export const NativeNotificationEventSchema = z.strictObject({
-  type: z.literal('notification'),
+  type: z.literal('notification:received'),
   message: z.string().optional(),
   notificationType: z.string().optional(),
 });

@@ -166,7 +166,7 @@ async function imposterSession(
 
 async function codexImposterHarness(resume?: string, existingRoot?: string): Promise<AgentSessionHarness> {
   const started = await imposterSession('approved', 'happy-turn', resume, existingRoot);
-  await waitFor(() => started.events.some((event) => event.event.type === 'session.started'), 'session.started');
+  await waitFor(() => started.events.some((event) => event.event.type === 'session:started'), 'session:started');
   if (resume) {
     await waitFor(
       () => started.projection.state.lastAssistantMessage === 'imposter: ok',
@@ -187,7 +187,7 @@ async function codexImposterHarness(resume?: string, existingRoot?: string): Pro
     driveTurn: async (prompt) => {
       const completed = new Promise<void>((resolve) => {
         const off = started.session.onEvent((event) => {
-          if (event.event.type === 'turn.completed') {
+          if (event.event.type === 'turn:completed') {
             off();
             resolve();
           }
@@ -210,28 +210,28 @@ describe('the codex imposter, driven by the real adapter', () => {
     session = started.session;
     expect(session.sessionId).toMatch(/^[0-9a-f-]{36}$/);
     await waitFor(
-      () => started.events.some((envelope) => envelope.event.type === 'session.started'),
-      'session.started',
+      () => started.events.some((envelope) => envelope.event.type === 'session:started'),
+      'session:started',
     );
   });
 
   it('runs a whole turn through the ops the claude persona also uses', async () => {
     const started = await imposterSession();
     session = started.session;
-    await waitFor(() => started.events.some((e) => e.event.type === 'session.started'), 'session.started');
+    await waitFor(() => started.events.some((e) => e.event.type === 'session:started'), 'session:started');
 
     const receipt = await session.submitPrompt({ text: 'summarise the repo' });
     // A structured driver confirms deterministically — no `uncertain` here, and
     // that difference from claude's guarded paste is the point of §2.1.
     expect(receipt.status).toBe('confirmed');
 
-    await waitFor(() => started.events.some((e) => e.event.type === 'turn.completed'), 'turn.completed');
+    await waitFor(() => started.events.some((e) => e.event.type === 'turn:completed'), 'turn:completed');
     const types = started.events.map((envelope) => envelope.event.type);
-    expect(types).toContain('turn.started');
-    expect(types).toContain('assistant.message');
-    expect(types).toContain('turn.completed');
+    expect(types).toContain('turn:started');
+    expect(types).toContain('conversation:assistant-message');
+    expect(types).toContain('turn:completed');
 
-    // The reducer reaches `ready` on turn.completed, because codex has no
+    // The reducer reaches `ready` on turn:completed, because codex has no
     // boot-ready notification and the persona does not invent one.
     expect(started.projection.state.lifecycle).toBe('ready');
     expect(started.projection.state.lastAssistantMessage).toBe('imposter: ok');
@@ -243,14 +243,14 @@ describe('the codex imposter, driven by the real adapter', () => {
     // past the answer. `await: true` on the binding is what suspends the op.
     const started = await imposterSession('approved', 'approval-turn');
     session = started.session;
-    await waitFor(() => started.events.some((e) => e.event.type === 'session.started'), 'session.started');
+    await waitFor(() => started.events.some((e) => e.event.type === 'session:started'), 'session:started');
 
     await session.submitPrompt({ text: 'fetch a page' });
-    await waitFor(() => started.events.some((e) => e.event.type === 'turn.completed'), 'turn.completed');
+    await waitFor(() => started.events.some((e) => e.event.type === 'turn:completed'), 'turn:completed');
 
     expect(started.approvals).toEqual(['item/commandExecution/requestApproval']);
     const outcomes = started.events
-      .filter((envelope) => envelope.event.type === 'permission.resolved')
+      .filter((envelope) => envelope.event.type === 'interaction:permission-resolved')
       .map((envelope) => (envelope.event as { outcome: string }).outcome);
     expect(outcomes).toEqual(['allowed']);
     // The turn ran ON past the approval, which is the whole point of awaiting.
@@ -260,13 +260,13 @@ describe('the codex imposter, driven by the real adapter', () => {
   it('completes the same round-trip when the client denies it', async () => {
     const started = await imposterSession('denied', 'approval-turn');
     session = started.session;
-    await waitFor(() => started.events.some((e) => e.event.type === 'session.started'), 'session.started');
+    await waitFor(() => started.events.some((e) => e.event.type === 'session:started'), 'session:started');
 
     await session.submitPrompt({ text: 'fetch a page' });
-    await waitFor(() => started.events.some((e) => e.event.type === 'turn.completed'), 'turn.completed');
+    await waitFor(() => started.events.some((e) => e.event.type === 'turn:completed'), 'turn:completed');
 
     const outcomes = started.events
-      .filter((envelope) => envelope.event.type === 'permission.resolved')
+      .filter((envelope) => envelope.event.type === 'interaction:permission-resolved')
       .map((envelope) => (envelope.event as { outcome: string }).outcome);
     // `decline` rather than `cancel`: both are accepted by the real vendor, but
     // cancel ends the turn and decline lets the agent continue (findings C1d).
@@ -281,9 +281,9 @@ describe('the codex imposter, driven by the real adapter', () => {
     // before `then` moved from a microtask to `setImmediate`.
     const started = await imposterSession();
     session = started.session;
-    await waitFor(() => started.events.some((e) => e.event.type === 'session.started'), 'session.started');
-    const sessionStarted = started.events.find((e) => e.event.type === 'session.started')!;
-    expect(sessionStarted.event.type === 'session.started' && sessionStarted.event.nativeSessionId).toBe(
+    await waitFor(() => started.events.some((e) => e.event.type === 'session:started'), 'session:started');
+    const sessionStarted = started.events.find((e) => e.event.type === 'session:started')!;
+    expect(sessionStarted.event.type === 'session:started' && sessionStarted.event.nativeSessionId).toBe(
       session.sessionId,
     );
   });

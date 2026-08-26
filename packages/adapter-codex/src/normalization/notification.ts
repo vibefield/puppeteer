@@ -7,7 +7,7 @@ export class CodexNotificationEventNormalizer {
     if (input.method !== 'error') return { handled: false, events: [] };
     return {
       handled: true,
-      events: [{ type: 'notification', message: str(input.params.message), notificationType: 'error' }],
+      events: [{ type: 'notification:received', message: str(input.params.message), notificationType: 'error' }],
     };
   }
 }

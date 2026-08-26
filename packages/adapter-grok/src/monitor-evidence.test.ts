@@ -33,7 +33,7 @@ function observed(event: AgentEvent, nativeEvent: unknown, promptId?: string): G
 
 function envelope(update: Record<string, unknown>, event?: AgentEvent): AgentEventEnvelope {
   const normalized = event ?? {
-    type: 'adapter.native-event',
+    type: 'adapter:native-event',
     adapter: 'grok',
     nativeType: String(update.sessionUpdate),
   };
@@ -85,7 +85,7 @@ describe('GrokMonitorEvidence', () => {
     const projector = evidence();
     const usage = projector.observedBatch(
       observed(
-        { type: 'turn.completed', turnId: 'prompt-1', stopReason: 'end_turn' },
+        { type: 'turn:completed', turnId: 'prompt-1', stopReason: 'end_turn' },
         record(
           {
             sessionUpdate: 'turn_completed',
@@ -118,7 +118,7 @@ describe('GrokMonitorEvidence', () => {
 
     const context = projector.observedBatch(
       observed(
-        { type: 'context-window.updated', usedTokens: 13, capacityTokens: 131_072, modelId: 'grok-4.5' },
+        { type: 'context-window:updated', usedTokens: 13, capacityTokens: 131_072, modelId: 'grok-4.5' },
         {
           contextTokensUsed: 13,
           contextWindowTokens: 131_072,
@@ -215,7 +215,7 @@ describe('GrokMonitorEvidence', () => {
     const projector = evidence();
     const spawned = projector.observedBatch(
       observed(
-        { type: 'subagent.started', subagentId: 'child-1', agentType: 'explore' },
+        { type: 'delegation:subagent-started', subagentId: 'child-1', agentType: 'explore' },
         record({
           sessionUpdate: 'subagent_spawned',
           subagent_id: 'child-1',
@@ -229,7 +229,7 @@ describe('GrokMonitorEvidence', () => {
     );
     const progress = projector.observedBatch(
       observed(
-        { type: 'adapter.native-event', adapter: 'grok', nativeType: 'subagent_progress' },
+        { type: 'adapter:native-event', adapter: 'grok', nativeType: 'subagent_progress' },
         record({
           sessionUpdate: 'subagent_progress',
           subagent_id: 'child-1',
@@ -243,7 +243,7 @@ describe('GrokMonitorEvidence', () => {
     );
     const finished = projector.observedBatch(
       observed(
-        { type: 'subagent.stopped', subagentId: 'child-1' },
+        { type: 'delegation:subagent-stopped', subagentId: 'child-1' },
         record({
           sessionUpdate: 'subagent_finished',
           subagent_id: 'child-1',

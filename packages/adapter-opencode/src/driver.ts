@@ -169,7 +169,7 @@ export async function prepareOpenCodeTuiSession(
     const emitMonitorBatch = (batch: AdapterMonitorObservationBatch | null): void => {
       if (!batch || disposed) return;
       events.publish({
-        event: { type: 'monitor.batch', batch },
+        event: { type: 'monitor:batch', batch },
         timestamp: batch.observedAt,
         source: 'native-protocol',
         confidence: 'authoritative',
@@ -188,7 +188,7 @@ export async function prepareOpenCodeTuiSession(
 
     const publishNormalized = (normalized: OpenCodeNormalizedEvent): void => {
       if (disposed) return;
-      if (normalized.event.type === 'turn.started' && normalized.promptId) {
+      if (normalized.event.type === 'turn:started' && normalized.promptId) {
         confirmationGate.confirm(normalized.promptId, normalized.turnId ?? normalized.promptId);
       }
       events.publish(normalized);
@@ -310,14 +310,14 @@ export async function prepareOpenCodeTuiSession(
       },
       onMalformed(data, error) {
         publishRuntime(
-          { type: 'adapter.native-event', adapter: 'opencode', nativeType: 'malformed-sse-record' },
+          { type: 'adapter:native-event', adapter: 'opencode', nativeType: 'malformed-sse-record' },
           { data, error: error.message },
         );
       },
       onError(error) {
         emitMonitorBatch(monitorEvidence.railUnavailableBatch(new Date().toISOString(), error.message));
         publishRuntime(
-          { type: 'adapter.native-event', adapter: 'opencode', nativeType: 'sse-disconnected' },
+          { type: 'adapter:native-event', adapter: 'opencode', nativeType: 'sse-disconnected' },
           { message: error.message },
         );
       },
@@ -365,11 +365,11 @@ export async function prepareOpenCodeTuiSession(
     for (const record of bufferedRecords.splice(0)) ingest(record, {}, 'bootstrap');
     if (droppedBufferedRecords > 0) {
       publishRuntime(
-        { type: 'adapter.native-event', adapter: 'opencode', nativeType: 'initial-sse-buffer-overflow' },
+        { type: 'adapter:native-event', adapter: 'opencode', nativeType: 'initial-sse-buffer-overflow' },
         { droppedRecords: droppedBufferedRecords },
       );
     }
-    publishRuntime({ type: 'session.ready' }, { type: 'opencode-adapter-ready', origin: backend.origin });
+    publishRuntime({ type: 'session:ready' }, { type: 'opencode-adapter-ready', origin: backend.origin });
 
     const sessionID = sessionInfo.id;
     const launchEnvironment: Record<string, string> = {

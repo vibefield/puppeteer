@@ -21,9 +21,9 @@ export class CodexAdapterFallbackNormalizer {
     if (input.method === 'item/started') return [];
     if (input.method === 'item/completed') {
       const itemType = str(rec(input.params.item)?.type) ?? 'unknown';
-      return [{ type: 'adapter.native-event', adapter: 'codex', nativeType: `item/${itemType}` }];
+      return [{ type: 'adapter:native-event', adapter: 'codex', nativeType: `item/${itemType}` }];
     }
 
-    return [{ type: 'adapter.native-event', adapter: 'codex', nativeType: input.method }];
+    return [{ type: 'adapter:native-event', adapter: 'codex', nativeType: input.method }];
   }
 }

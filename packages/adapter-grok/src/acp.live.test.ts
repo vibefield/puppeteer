@@ -94,7 +94,7 @@ describe.skipIf(!live || process.platform !== 'darwin')('Grok native composition
         text: 'Reply with exactly the single word: pong. Do not use any tools.',
       });
       expect(receipt.status).toBe('confirmed');
-      await waitFor(() => events.some(({ event }) => event.type === 'turn.completed'), 'durable turn completion');
+      await waitFor(() => events.some(({ event }) => event.type === 'turn:completed'), 'durable turn completion');
       expect(projection.state.lastAssistantMessage?.toLowerCase()).toContain('pong');
       expect(events.some(({ source }) => source === 'native-transcript')).toBe(true);
       await session.dispose();

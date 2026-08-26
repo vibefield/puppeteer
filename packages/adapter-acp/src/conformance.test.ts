@@ -47,7 +47,7 @@ async function acpHarness(resume?: string): Promise<AcpHarness> {
     driveTurn: async () => {
       const done = new Promise<void>((resolve) => {
         const off = session.onEvent((e) => {
-          if (e.event.type === 'turn.completed') {
+          if (e.event.type === 'turn:completed') {
             off();
             resolve();
           }

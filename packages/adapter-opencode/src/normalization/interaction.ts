@@ -24,7 +24,7 @@ export class OpenCodeInteractionNormalizer {
     const permission = openCodeText(record.properties.permission);
     return {
       event: {
-        type: 'permission.requested',
+        type: 'interaction:permission-requested',
         requestId,
         ...(toolCallId ? { toolCallId } : {}),
         ...(permission ? { tool: permission } : {}),
@@ -45,7 +45,7 @@ export class OpenCodeInteractionNormalizer {
     boundedOpenCodeMapSet(this.permissions, requestId, 'resolved', this.maximum);
     const reply = openCodeText(record.properties.reply);
     const outcome = reply === 'once' || reply === 'always' ? 'allowed' : reply === 'reject' ? 'denied' : 'unknown';
-    return { event: { type: 'permission.resolved', requestId, outcome } };
+    return { event: { type: 'interaction:permission-resolved', requestId, outcome } };
   }
 
   questionAsked(record: OpenCodeSseRecord): OpenCodeInteractionResult | undefined {
@@ -55,7 +55,7 @@ export class OpenCodeInteractionNormalizer {
     boundedOpenCodeMapSet(this.questions, requestId, 'requested', this.maximum);
     const tool = isOpenCodeRecord(record.properties.tool) ? record.properties.tool : undefined;
     return {
-      event: { type: 'question.requested', requestId, questions },
+      event: { type: 'interaction:question-requested', requestId, questions },
       messageId: openCodeText(tool?.messageID),
     };
   }
@@ -66,7 +66,7 @@ export class OpenCodeInteractionNormalizer {
     boundedOpenCodeMapSet(this.questions, requestId, 'resolved', this.maximum);
     return {
       event: {
-        type: 'question.resolved',
+        type: 'interaction:question-resolved',
         requestId,
         outcome: record.type === 'question.replied' ? 'answered' : 'cancelled',
       },

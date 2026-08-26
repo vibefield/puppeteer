@@ -27,7 +27,7 @@ export function projectClaudeTranscriptUsage(record: ClaudeTranscriptRecord): Se
   if (buckets.every((value) => value === undefined)) return undefined;
   const costUsd = transcriptNonNegativeNumber(usage.cost_usd);
   const event: TokensUsedEvent = {
-    type: 'tokens.used',
+    type: 'usage:tokens-used',
     usageId: claudeTranscriptUsageId(record),
     boundary: 'response',
     canonical: true,

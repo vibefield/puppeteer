@@ -261,7 +261,7 @@ function createNormalizer(view: SessionView): NativeNormalizer | undefined {
           ...(normalized.events.length === 0 && entry.event === 'turn/started'
             ? {
                 disposition: 'buffered' as const,
-                explanation: 'Codex defers turn.started until the matching userMessage item supplies the prompt.',
+                explanation: 'Codex defers turn:started until the matching userMessage item supplies the prompt.',
               }
             : {}),
         };
@@ -387,7 +387,7 @@ function createNormalizer(view: SessionView): NativeNormalizer | undefined {
 function dispositionFor(result: NormalizerResult): NormalizationDisposition {
   if (result.disposition) return result.disposition;
   if (result.events.length === 0) return 'no-output';
-  return result.events.every((event) => event.type === 'adapter.native-event') ? 'retained-native' : 'mapped';
+  return result.events.every((event) => event.type === 'adapter:native-event') ? 'retained-native' : 'mapped';
 }
 
 function explanationFor(entry: EmittedEntry, result: NormalizerResult, disposition: NormalizationDisposition): string {
