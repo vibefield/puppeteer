@@ -7,7 +7,6 @@ import {
   claudeEnvironmentEvents,
   claudeSubagentStatusTasks,
   resolveClaudeStatusChannels,
-  resolveClaudeStatusLine,
 } from './status-channel.js';
 
 describe('claudeEnvironmentEvents', () => {
@@ -199,7 +198,7 @@ describe('claudeSubagentStatusTasks', () => {
   });
 });
 
-describe('resolveClaudeStatusLine', () => {
+describe('resolveClaudeStatusChannels', () => {
   it('uses cwd-only project settings and does not inherit status commands from ancestors', async () => {
     const directory = await mkdtemp(join(tmpdir(), 'puppeteer-claude-statusline-'));
     const home = join(directory, 'home');
@@ -220,7 +219,7 @@ describe('resolveClaudeStatusLine', () => {
       JSON.stringify({ statusLine: { type: 'command', command: 'project-line', refreshInterval: 2 } }),
     );
 
-    await expect(resolveClaudeStatusLine(nested, { home })).resolves.toEqual({
+    expect((await resolveClaudeStatusChannels(nested, { home })).statusLine).toEqual({
       type: 'command',
       command: 'user-line',
       padding: 1,
@@ -260,7 +259,9 @@ describe('resolveClaudeStatusLine', () => {
       JSON.stringify({ statusLine: { type: 'command', command: 'relocated-user-line' } }),
     );
 
-    await expect(resolveClaudeStatusLine(directory, { home, configDir, settingSources: ['user'] })).resolves.toEqual({
+    expect(
+      (await resolveClaudeStatusChannels(directory, { home, configDir, settingSources: ['user'] })).statusLine,
+    ).toEqual({
       type: 'command',
       command: 'relocated-user-line',
       padding: undefined,

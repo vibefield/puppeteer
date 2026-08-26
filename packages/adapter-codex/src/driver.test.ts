@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import type { AdapterEventCandidate, AgentEvent } from '@vibecook/puppeteer-core';
-import { projectAgentSession } from '@vibecook/puppeteer-testing';
+import { projectAgentEvents } from '@vibecook/puppeteer-testing';
 import { createCodexSession } from './driver.js';
 import type { Transport } from './transport/app-server-client.js';
 
@@ -161,7 +161,7 @@ describe('createCodexSession', () => {
   it('establishes identity and structured observation from thread/start', async () => {
     const s = scriptedAppServer();
     const session = await createCodexSession({ cwd: '/x', transport: s.transport, model: 'gpt-5.6-sol' });
-    const projection = projectAgentSession(session);
+    const projection = projectAgentEvents(session);
     expect(session.sessionId).toBe(THREAD);
     expect(session.runtimeSessionId).toBe(THREAD);
     expect(session.threadPath()).toBe(ROLLOUT);
@@ -189,7 +189,7 @@ describe('createCodexSession', () => {
   it('submitPrompt drives a turn and reduces to a coherent state', async () => {
     const s = scriptedAppServer();
     const session = await createCodexSession({ cwd: '/x', transport: s.transport });
-    const projection = projectAgentSession(session);
+    const projection = projectAgentEvents(session);
     const events: AgentEvent[] = [];
     const candidates: AdapterEventCandidate[] = [];
     session.events.onCandidate((e) => {
@@ -228,7 +228,7 @@ describe('createCodexSession', () => {
   it('keeps collaboration child notifications off the root reducer while publishing actor evidence', async () => {
     const s = scriptedAppServer();
     const session = await createCodexSession({ cwd: '/x', transport: s.transport });
-    const projection = projectAgentSession(session);
+    const projection = projectAgentEvents(session);
     const events: AgentEvent[] = [];
     const monitorBatches = projection.monitorBatches;
     session.events.onCandidate(({ event }) => events.push(event));
@@ -313,7 +313,7 @@ describe('createCodexSession', () => {
           resolveApproval = resolve;
         }),
     });
-    const projection = projectAgentSession(session);
+    const projection = projectAgentEvents(session);
 
     await session.services.prompt.submit({ text: 'run ls' });
     await flush();
@@ -379,7 +379,7 @@ describe('createCodexSession', () => {
   it('degrades monitor observation without claiming host-process death when the transport closes', async () => {
     const s = scriptedAppServer();
     const session = await createCodexSession({ cwd: '/x', transport: s.transport });
-    const projection = projectAgentSession(session);
+    const projection = projectAgentEvents(session);
     const events: AgentEvent[] = [];
     const monitorBatches = projection.monitorBatches;
     session.events.onCandidate((e) => events.push(e.event));

@@ -1,6 +1,6 @@
 import type { AgentAdapterBinding } from '@vibecook/puppeteer-core';
 import { runAgentMonitorConformance } from '@vibecook/puppeteer-testing/conformance';
-import { createPendingControlSession } from './backend.js';
+import { createPendingControlSession } from './driver.js';
 
 function deferred<T>() {
   let reject!: (error: unknown) => void;
@@ -14,7 +14,7 @@ runAgentMonitorConformance('grok', async () => {
   const control = deferred<AgentAdapterBinding>();
   const session = createPendingControlSession('grok-conformance', 'runtime-conformance', () => control.promise);
   return {
-    session,
+    binding: session,
     async closeObservationRail() {
       control.reject(new Error('synthetic Grok control loss'));
       await new Promise((resolve) => setTimeout(resolve, 0));

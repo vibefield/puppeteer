@@ -1,5 +1,5 @@
 import type { AgentHost, PromptReceipt, PromptSubmission } from '@vibecook/puppeteer-core';
-import type { KimiSessionObserver } from '../session-observer.js';
+import type { KimiSessionObserver } from '../observation/session-observer.js';
 
 export interface KimiPromptServiceOptions {
   host: AgentHost;

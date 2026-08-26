@@ -6,3 +6,4 @@ export * from './reasoning.js';
 export * from './delegation.js';
 export * from './adapter.js';
 export * from './pipeline.js';
+export * from './monitor.js';

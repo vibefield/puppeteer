@@ -13,7 +13,7 @@ import type { AdapterMonitorObservationBatch } from '@vibecook/puppeteer-core/mo
 import { HERMES_ADAPTER_CAPABILITIES } from './detection.js';
 import { startHermesGatewayHost, type HermesGatewayHost } from './launch/gateway-host.js';
 import { buildHermesAttachLaunch } from './launch/recipe.js';
-import { HermesMonitorEvidence } from './monitor-evidence.js';
+import { HermesMonitorEvidence } from './normalization/monitor.js';
 import { HermesGatewayNormalizer } from './normalization/pipeline.js';
 import { HermesEventSource, type HermesEventPublication } from './services/event-source.js';
 import { HermesPromptService } from './services/prompt.js';

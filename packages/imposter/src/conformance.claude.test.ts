@@ -20,8 +20,8 @@ import { fileURLToPath } from 'node:url';
 import { afterEach, describe, expect, it } from 'vitest';
 import type { AdapterEventCandidate } from '@vibecook/puppeteer-core';
 import { createClaudeSession, type ClaudeSession } from '@vibecook/puppeteer-adapter-claude';
-import { projectAgentSession, type TestAgentProjection } from '@vibecook/puppeteer-testing';
-import { runAgentSessionConformance, type AgentSessionHarness } from '@vibecook/puppeteer-testing/conformance';
+import { projectAgentEvents, type TestAgentProjection } from '@vibecook/puppeteer-testing';
+import { runAgentAdapterConformance, type AgentAdapterHarness } from '@vibecook/puppeteer-testing/conformance';
 
 const packageRoot = dirname(dirname(fileURLToPath(import.meta.url)));
 const AI = join(packageRoot, 'bin', 'ai.mjs');
@@ -91,8 +91,8 @@ async function waitFor(predicate: () => boolean, label: string, timeoutMs = 1500
   throw new Error(`timed out waiting for ${label}`);
 }
 
-interface ImposterHarness extends AgentSessionHarness {
-  session: ClaudeSession;
+interface ImposterHarness extends AgentAdapterHarness {
+  binding: ClaudeSession;
   projection: TestAgentProjection;
   imposterHome: string;
   cwd: string;
@@ -145,14 +145,14 @@ async function imposterHarness(
       },
     },
   });
-  const projection = projectAgentSession(session);
+  const projection = projectAgentEvents(session);
 
   await waitFor(() => projection.state.lifecycle === 'ready', 'imposter boot (SessionStart + InstructionsLoaded)');
   if (resume) {
     await waitFor(() => projection.state.lastAssistantMessage === BEHAVIOR.reply, 'resumed Claude transcript history');
   }
   return {
-    session,
+    binding: session,
     projection,
     imposterHome,
     cwd,
@@ -195,22 +195,22 @@ async function imposterHarness(
   };
 }
 
-runAgentSessionConformance('claude-imposter', imposterHarness);
+runAgentAdapterConformance('claude-imposter', imposterHarness);
 
 describe('claude imposter channels', () => {
   it('reaches native-hooks observation with no test-code hooks', async () => {
     const harness = await imposterHarness();
     try {
-      expect(harness.session.observationLevel()).toBe('native-hooks');
+      expect(harness.binding.observationLevel()).toBe('native-hooks');
     } finally {
-      await harness.session.dispose();
+      await harness.binding.dispose();
     }
   });
 
   it('delivers transcript-sourced assistant messages, kept out of the real ~/.claude', async () => {
     const harness = await imposterHarness();
     const messages: AdapterEventCandidate[] = [];
-    harness.session.events.onCandidate((envelope) => {
+    harness.binding.events.onCandidate((envelope) => {
       if (envelope.event.type === 'conversation:assistant-message') messages.push(envelope);
     });
     try {
@@ -224,11 +224,11 @@ describe('claude imposter channels', () => {
         expect(fromTranscript.event.displayOnly).toBe(false);
         expect(fromTranscript.event.text).toBe(BEHAVIOR.reply);
       }
-      const transcriptPath = harness.session.transcriptPath();
+      const transcriptPath = harness.binding.transcriptPath();
       expect(transcriptPath!.startsWith(harness.imposterHome)).toBe(true);
       expect(transcriptPath).not.toContain('.claude');
     } finally {
-      await harness.session.dispose();
+      await harness.binding.dispose();
     }
   });
 
@@ -249,7 +249,7 @@ describe('claude imposter channels', () => {
         'post-turn context-window telemetry',
       );
     } finally {
-      await harness.session.dispose();
+      await harness.binding.dispose();
     }
   });
 });

@@ -3,12 +3,12 @@
 ## Next
 
 Adapter handles no longer expose reducer state or a separate monitor callback.
-Use `projectAgentSession(session)` in low-level adapter tests to consume the one
+Use `projectAgentEvents(binding)` in low-level adapter tests to consume the one
 normalized event stream and inspect its derived `state`, `states`, `envelopes`,
 and `monitorBatches`. Product code should use the runtime-owned `Agent` instead.
 
 Live conformance harnesses that must await startup may attach that projection
-themselves and return it as `AgentSessionHarness.projection`; the shared suite
+themselves and return it as `AgentAdapterHarness.projection`; the shared suite
 then reuses the same first consumer so buffered bootstrap events are reduced
 exactly once.
 
@@ -24,7 +24,7 @@ Claude-specific exports from 0.1.8 are removed:
 - `CapturedHookRecord`
 
 Real-vendor captures are repository evidence, not a reusable test-package API.
-Puppeteer' canonical sanitized Claude captures now live under
+Puppeteer's canonical sanitized Claude captures now live under
 `packages/surface/vendors/claude/captures/`; they are deliberately excluded
 from published tarballs. Tests inside this repository should load those files
 from Surface, as the Claude adapter's `src/test-support/claude-fixtures.ts`
@@ -34,9 +34,10 @@ package.
 
 Synthetic Claude payload construction is adapter-specific. Keep a small local
 builder in Claude adapter test support. The provider-neutral `fakeAgentBin` and
-the `@vibecook/puppeteer-testing/conformance` export are unchanged.
+the `@vibecook/puppeteer-testing/conformance` export path are unchanged. The
+provider-neutral harness names use adapter-binding terminology.
 
-The `AgentSessionHarness` accepted by that conformance export now includes
+The `AgentAdapterHarness` accepted by that conformance export now includes
 `resume()` and `assertNoOrphans()`. Adapter harnesses must exercise their native
 resume path and prove that disposal removes their owned processes, transports,
 observers, and temporary control resources.

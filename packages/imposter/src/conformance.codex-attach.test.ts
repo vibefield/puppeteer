@@ -26,7 +26,7 @@ import {
   wsOverUnixTransport,
   type CodexSession,
 } from '@vibecook/puppeteer-adapter-codex';
-import { projectAgentSession } from '@vibecook/puppeteer-testing';
+import { projectAgentEvents } from '@vibecook/puppeteer-testing';
 
 const AI = join(dirname(dirname(fileURLToPath(import.meta.url))), 'bin', 'ai.mjs');
 
@@ -65,7 +65,7 @@ describe.skipIf(process.platform === 'win32')('a prompt typed in an attached pan
     await server.ready();
 
     session = await createCodexSession({ cwd, transport: wsOverUnixTransport(server.socketPath) });
-    const projection = projectAgentSession(session);
+    const projection = projectAgentEvents(session);
     const events = projection.envelopes;
     const threadId = session.sessionId;
 

@@ -9,7 +9,6 @@
  * this one.
  */
 
-export * from './normalizer.js';
-export * from './monitor-evidence.js';
-export * from './connection.js';
+export * from './normalization/index.js';
+export * from './transport/connection.js';
 export * from './driver.js';

@@ -12,7 +12,7 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { afterEach, describe, expect, it } from 'vitest';
 import { createCodexSession, type Transport } from '@vibecook/puppeteer-adapter-codex';
-import { projectAgentSession } from '@vibecook/puppeteer-testing';
+import { projectAgentEvents } from '@vibecook/puppeteer-testing';
 import { createTranscriptWriter } from '../session/channels/transcript.ts';
 import { createScenarioRunner, scenarioSteps } from '../session/scenario.ts';
 import { loadPersona, personaDirectory } from './load.ts';
@@ -77,7 +77,7 @@ async function scenarioAdapter(directory: string): Promise<{
 async function runScenarioThroughAdapter(name: string, directory: string) {
   const document = JSON.parse(readFileSync(join(scenarioDir, `${name}.json`), 'utf8')) as { name: string };
   const adapter = await scenarioAdapter(directory);
-  const projection = projectAgentSession(adapter.session);
+  const projection = projectAgentEvents(adapter.session);
   const runner = createScenarioRunner({
     emit: async (event, payload) => adapter.emit(event, payload),
     transcript: createTranscriptWriter(join(directory, `${name}.jsonl`)),

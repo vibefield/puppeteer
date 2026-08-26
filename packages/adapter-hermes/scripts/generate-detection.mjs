@@ -9,10 +9,7 @@ import { fileURLToPath } from 'node:url';
 
 const adapterRoot = dirname(dirname(fileURLToPath(import.meta.url)));
 const detection = JSON.parse(
-  readFileSync(
-    join(adapterRoot, '../surface/vendors/hermes/model/hermes@0.20.0/detection.json'),
-    'utf8',
-  ),
+  readFileSync(join(adapterRoot, '../surface/vendors/hermes/model/hermes@0.20.0/detection.json'), 'utf8'),
 );
 
 const flags = detection.launchFlags ?? {};

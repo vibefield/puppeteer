@@ -13,7 +13,7 @@ import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { loadModel } from '@vibecook/puppeteer-surface';
 import { resolveAgentModel } from '../../../scripts/agent-model-selection.mjs';
-import { renderDetectionSurface, renderRegistry } from '../src/generated/registry-render.ts';
+import { renderDetectionSurface, renderRegistry } from './registry-render.ts';
 
 const adapterRoot = dirname(dirname(fileURLToPath(import.meta.url)));
 const modelRoot = resolveAgentModel({ vendor: 'claude' }).modelRoot;

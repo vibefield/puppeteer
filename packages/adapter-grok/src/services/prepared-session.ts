@@ -1,6 +1,6 @@
 import type { AgentAdapterBinding, TerminalSpec } from '@vibecook/puppeteer-core';
-import type { GrokConfiguredIntent } from '../monitor-evidence.js';
-import type { GrokSessionObserver } from '../session-observer.js';
+import type { GrokConfiguredIntent } from '../normalization/monitor.js';
+import type { GrokSessionObserver } from '../normalization/types.js';
 import type { PreparedGrokSession } from '../types.js';
 import { createPendingControlSession } from './control-session.js';
 

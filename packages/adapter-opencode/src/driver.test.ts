@@ -6,7 +6,7 @@ import {
   type AgentHost,
   type TerminalSpec,
 } from '@vibecook/puppeteer-core';
-import { projectAgentSession } from '@vibecook/puppeteer-testing';
+import { projectAgentEvents } from '@vibecook/puppeteer-testing';
 import { createOpenCodeTuiSession, type OpenCodeTuiSession } from './driver.js';
 import { createOpenCodeImposterFixture } from './test-support/imposter.js';
 
@@ -51,7 +51,7 @@ describe('OpenCode native-TUI session composition', () => {
       promptConfirmationTimeoutMs: 2_000,
     });
     sessions.add(session);
-    const projection = projectAgentSession(session);
+    const projection = projectAgentEvents(session);
 
     expect(session.observationLevel()).toBe('structured');
     expect(projection.state.lifecycle).toBe('ready');

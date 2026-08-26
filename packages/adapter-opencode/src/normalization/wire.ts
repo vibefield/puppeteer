@@ -1,4 +1,4 @@
-import type { OpenCodeSseRecord } from '../event-stream.js';
+import type { OpenCodeSseRecord } from '../transport/event-stream.js';
 
 export const isOpenCodeRecord = (value: unknown): value is Record<string, unknown> =>
   value !== null && typeof value === 'object' && !Array.isArray(value);

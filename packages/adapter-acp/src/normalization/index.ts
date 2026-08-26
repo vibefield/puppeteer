@@ -7,3 +7,4 @@ export * from './model.js';
 export * from './interaction.js';
 export * from './adapter.js';
 export * from './pipeline.js';
+export * from './monitor.js';

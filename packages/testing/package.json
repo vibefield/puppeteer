@@ -2,7 +2,7 @@
   "name": "@vibecook/puppeteer-testing",
   "version": "0.1.8",
   "type": "module",
-  "description": "Vendor-neutral test harness and AgentSession conformance suite for Puppeteer adapters.",
+  "description": "Vendor-neutral test harness and AgentAdapterBinding conformance suite for Puppeteer adapters.",
   "license": "MIT",
   "author": "James Yong",
   "repository": {

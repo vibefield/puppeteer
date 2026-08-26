@@ -9,19 +9,7 @@ export {
   probeHermesVersion,
   resolveHermesExecutable,
 } from './detection.js';
-export {
-  HermesGatewayNormalizer,
-  type HermesGatewayEvent,
-  type HermesNormalizationDisposition,
-  type HermesNormalizedRecord,
-} from './normalizer.js';
-export { hermesStructuredQuestions } from './questions.js';
-export {
-  HERMES_MONITOR_CAPABILITIES,
-  HermesMonitorEvidence,
-  type HermesConfiguredIntent,
-  type HermesMonitorEvidenceOptions,
-} from './monitor-evidence.js';
+export * from './normalization/index.js';
 export { buildHermesAttachLaunch, type HermesLaunchRecipeOptions } from './launch/recipe.js';
 export { startHermesGatewayHost, resolveHermesPython, type HermesGatewayHost } from './launch/gateway-host.js';
 export {

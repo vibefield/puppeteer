@@ -11,7 +11,7 @@ import { fileURLToPath } from 'node:url';
 import { afterEach, describe, expect, it } from 'vitest';
 import type { AgentHost, TerminalSpec } from '@vibecook/puppeteer-core';
 import { createGrokBackend, type GrokBackend } from '@vibecook/puppeteer-adapter-grok';
-import { projectAgentSession } from '@vibecook/puppeteer-testing';
+import { projectAgentEvents } from '@vibecook/puppeteer-testing';
 
 const AI = join(dirname(dirname(fileURLToPath(import.meta.url))), 'bin', 'ai.mjs');
 const children = new Set<ChildProcess>();
@@ -86,7 +86,7 @@ describe.skipIf(process.platform === 'win32')('the Grok native recipe against `a
         setTimeout(() => reject(new Error('timed out creating the Grok leader/ACP/TUI composition')), 12_000),
       ),
     ]);
-    const projection = projectAgentSession(session);
+    const projection = projectAgentEvents(session);
     const events = projection.envelopes;
 
     expect(session.sessionId).toMatch(/^[0-9a-f-]{36}$/);

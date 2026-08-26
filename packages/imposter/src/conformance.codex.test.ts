@@ -24,8 +24,8 @@ import { fileURLToPath } from 'node:url';
 import { afterEach, describe, expect, it } from 'vitest';
 import type { AgentEventEnvelope } from '@vibecook/puppeteer-core';
 import { createCodexSession, type CodexSession } from '@vibecook/puppeteer-adapter-codex';
-import { projectAgentSession, type TestAgentProjection } from '@vibecook/puppeteer-testing';
-import { runAgentSessionConformance, type AgentSessionHarness } from '@vibecook/puppeteer-testing/conformance';
+import { projectAgentEvents, type TestAgentProjection } from '@vibecook/puppeteer-testing';
+import { runAgentAdapterConformance, type AgentAdapterHarness } from '@vibecook/puppeteer-testing/conformance';
 
 const AI = join(dirname(dirname(fileURLToPath(import.meta.url))), 'bin', 'ai.mjs');
 
@@ -160,11 +160,11 @@ async function imposterSession(
       return decision;
     },
   });
-  const projection = projectAgentSession(live);
+  const projection = projectAgentEvents(live);
   return { session: live, child, root: cwd, events: projection.envelopes, projection, approvals };
 }
 
-async function codexImposterHarness(resume?: string, existingRoot?: string): Promise<AgentSessionHarness> {
+async function codexImposterHarness(resume?: string, existingRoot?: string): Promise<AgentAdapterHarness> {
   const started = await imposterSession('approved', 'happy-turn', resume, existingRoot);
   await waitFor(() => started.events.some((event) => event.event.type === 'session:started'), 'session:started');
   if (resume) {
@@ -174,7 +174,7 @@ async function codexImposterHarness(resume?: string, existingRoot?: string): Pro
     );
   }
   return {
-    session: started.session,
+    binding: started.session,
     projection: started.projection,
     reply: 'imposter: ok',
     resume: () => codexImposterHarness(started.session.sessionId, started.root),
@@ -202,7 +202,7 @@ async function codexImposterHarness(resume?: string, existingRoot?: string): Pro
   };
 }
 
-runAgentSessionConformance('codex-imposter', codexImposterHarness);
+runAgentAdapterConformance('codex-imposter', codexImposterHarness);
 
 describe('the codex imposter, driven by the real adapter', () => {
   it('serves thread/start and reports the session it created', async () => {

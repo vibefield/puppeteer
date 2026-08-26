@@ -1,16 +1,16 @@
 import {
   runAgentMonitorConformance,
-  runAgentSessionConformance,
-  type AgentSessionHarness,
+  runAgentAdapterConformance,
+  type AgentAdapterHarness,
 } from '@vibecook/puppeteer-testing/conformance';
 import { createAcpSession } from './driver.js';
-import { scriptedAcpConnector } from './scripted-connector.js';
-import type { AcpConnector } from './connection.js';
+import { scriptedAcpConnector } from './test-support/scripted-connector.js';
+import type { AcpConnector } from './transport/connection.js';
 
 const SID = '019f5e50-ce8b-7152-abcd-00000000c0de';
 const REPLY = 'pong';
 
-interface AcpHarness extends AgentSessionHarness {
+interface AcpHarness extends AgentAdapterHarness {
   closeObservationRail(): void;
 }
 
@@ -37,7 +37,7 @@ async function acpHarness(resume?: string): Promise<AcpHarness> {
     resume,
   });
   return {
-    session,
+    binding: session,
     reply: REPLY,
     resume: () => acpHarness(session.sessionId),
     assertNoOrphans: async () => {
@@ -59,8 +59,8 @@ async function acpHarness(resume?: string): Promise<AcpHarness> {
   };
 }
 
-runAgentSessionConformance('acp', acpHarness);
+runAgentAdapterConformance('acp', acpHarness);
 runAgentMonitorConformance('acp', async () => {
   const harness = await acpHarness();
-  return { session: harness.session, closeObservationRail: harness.closeObservationRail };
+  return { binding: harness.binding, closeObservationRail: harness.closeObservationRail };
 });

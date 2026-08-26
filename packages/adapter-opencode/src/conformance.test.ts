@@ -3,8 +3,8 @@ import { afterEach, expect } from 'vitest';
 import type { AdapterEventCandidate, AgentHost } from '@vibecook/puppeteer-core';
 import {
   runAgentMonitorConformance,
-  runAgentSessionConformance,
-  type AgentSessionHarness,
+  runAgentAdapterConformance,
+  type AgentAdapterHarness,
 } from '@vibecook/puppeteer-testing/conformance';
 import { createOpenCodeTuiSession, type OpenCodeTuiSession } from './driver.js';
 import { createOpenCodeImposterFixture, type OpenCodeImposterFixture } from './test-support/imposter.js';
@@ -13,7 +13,7 @@ const REPLY = 'imposter: ok';
 const roots = new Set<string>();
 let runtimeSequence = 0;
 
-interface OpenCodeHarness extends AgentSessionHarness {
+interface OpenCodeHarness extends AgentAdapterHarness {
   closeObservationRail(): Promise<void>;
 }
 
@@ -63,7 +63,7 @@ async function createHarness(existing?: {
   };
 
   return {
-    session,
+    binding: session,
     reply: REPLY,
     resume: () => createHarness({ fixture, sessionID: session.sessionId }),
     async assertNoOrphans() {
@@ -107,8 +107,8 @@ async function createHarness(existing?: {
   };
 }
 
-runAgentSessionConformance('opencode-http-sse', () => createHarness());
+runAgentAdapterConformance('opencode-http-sse', () => createHarness());
 runAgentMonitorConformance('opencode-http-sse', async () => {
   const harness = await createHarness();
-  return { session: harness.session, closeObservationRail: harness.closeObservationRail };
+  return { binding: harness.binding, closeObservationRail: harness.closeObservationRail };
 });

@@ -28,7 +28,7 @@ import {
 import type { AdapterMonitorObservationBatch } from '@vibecook/puppeteer-core/monitor-spi';
 import { AppServerClient, spawnAppServerTransport, type Transport } from './transport/app-server-client.js';
 import { CodexNotificationNormalizer } from './normalization/pipeline.js';
-import { CodexMonitorEvidence } from './observation/monitor-evidence.js';
+import { CodexMonitorEvidence } from './normalization/monitor.js';
 import { CodexApprovalService, type CodexApprovalDecision, type CodexApprovalRequest } from './services/approvals.js';
 import { CodexEventSource } from './services/event-source.js';
 import { CodexPromptService } from './services/prompt.js';

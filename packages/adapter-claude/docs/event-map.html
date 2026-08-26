@@ -260,7 +260,7 @@
       <p class="sub">
         Every raw hook Claude Code can emit, whether we actually receive it, what it normalizes to, how it folds into
         <code>SessionRuntimeState</code>, and what the Godview monitor views end up drawing. Adapter code ground truth is
-        <code>src/generated/registry.ts</code>, <code>src/launch/settings.ts</code>, <code>src/normalizer.ts</code>,
+        <code>src/generated/registry.ts</code>, <code>src/launch/settings.ts</code>, <code>src/normalization/index.ts</code>,
         <code>packages/core/src/state.ts</code>, and <code>apps/godview/src/renderer/</code>. Official vendor surface (full hook catalog + statusline) and our wiring are in
         <a href="#ground-truth">Ground truth</a> below.
       </p>
@@ -1059,7 +1059,7 @@ per tool call in the agentic loop (<code>PreToolUse</code>, <code>PostToolUse</c
               <h3>How puppeteer uses this surface</h3>
               <p>Composition path, wiring gate, normalizer map, and secondary sources. Code ground truth:
                 <code>registry.ts</code>, <code>settings.ts</code>, <code>prepare.ts</code>, <code>hook-bridge.ts</code>,
-                <code>normalizer.ts</code>, <code>driver.ts</code>, <code>prompt.ts</code>, <code>status-channel.ts</code>,
+                <code>normalization/</code>, <code>driver.ts</code>, <code>prompt.ts</code>, <code>status-channel.ts</code>,
                 <code>transcript-observer.ts</code>.</p>
             </div>
           </div>
@@ -1421,7 +1421,7 @@ flowchart LR
 
       <footer>
         Generated against Claude Code 2.1.207 census data. Verify with
-        <code>src/generated/registry.ts</code> · <code>src/normalizer.ts</code> · <code>src/launch/settings.ts</code>.
+        <code>src/generated/registry.ts</code> · <code>src/normalization/index.ts</code> · <code>src/launch/settings.ts</code>.
       </footer>
     </main>
   </body>

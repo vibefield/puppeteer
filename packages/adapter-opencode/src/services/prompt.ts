@@ -1,6 +1,6 @@
 import { randomUUID } from 'node:crypto';
 import type { PromptReceipt, PromptSubmission } from '@vibecook/puppeteer-core';
-import { OpenCodeHttpError, type OpenCodeClient, type OpenCodeModelSelection } from '../client.js';
+import { OpenCodeHttpError, type OpenCodeClient, type OpenCodeModelSelection } from '../transport/client.js';
 
 export interface OpenCodePromptConfirmation {
   matched: boolean;

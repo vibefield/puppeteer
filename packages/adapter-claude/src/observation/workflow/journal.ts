@@ -230,12 +230,3 @@ export function createClaudeWorkflowJournalObserver(
     },
   };
 }
-
-/** One-shot compatibility helper; long-lived providers should reuse the observer. */
-export function observeClaudeWorkflowJournals(
-  transcriptPath: string,
-  nativeSessionId: string,
-  options: { nowMs?: number; runningIdleMs?: number } = {},
-): Promise<ClaudeWorkflowJournalObservation[]> {
-  return createClaudeWorkflowJournalObserver(transcriptPath, nativeSessionId).read(options);
-}

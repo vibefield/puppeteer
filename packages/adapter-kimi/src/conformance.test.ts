@@ -7,12 +7,12 @@ import { afterEach } from 'vitest';
 import type { AdapterEventCandidate, AgentHost } from '@vibecook/puppeteer-core';
 import {
   runAgentMonitorConformance,
-  runAgentSessionConformance,
-  type AgentMonitorSessionHarness,
-  type AgentSessionHarness,
+  runAgentAdapterConformance,
+  type AgentMonitorAdapterHarness,
+  type AgentAdapterHarness,
 } from '@vibecook/puppeteer-testing/conformance';
-import { encodeKimiWorkDirKey } from './session-store.js';
-import { createKimiTuiSession, type KimiTuiSession } from './tui-session.js';
+import { encodeKimiWorkDirKey } from './observation/session-store.js';
+import { createKimiTuiSession, type KimiTuiSession } from './driver.js';
 
 const REPLY = 'kimi adapter conformance reply';
 const roots = new Set<string>();
@@ -131,7 +131,7 @@ async function waitFor(predicate: () => boolean, label: string, timeoutMs = 5_00
   throw new Error(`timed out waiting for ${label}`);
 }
 
-async function createHarness(existing?: DurableStore): Promise<AgentSessionHarness> {
+async function createHarness(existing?: DurableStore): Promise<AgentAdapterHarness> {
   const cwd = existing?.cwd ?? temporaryDirectory('puppeteer-kimi-conformance-cwd-');
   const home = existing?.home ?? temporaryDirectory('puppeteer-kimi-conformance-home-');
   let store = existing;
@@ -164,7 +164,7 @@ async function createHarness(existing?: DurableStore): Promise<AgentSessionHarne
     disposed = true;
   };
   return {
-    session,
+    binding: session,
     reply: REPLY,
     resume: async () => {
       if (!store) throw new Error('cannot resume before Kimi creates its durable session');
@@ -191,9 +191,9 @@ async function createHarness(existing?: DurableStore): Promise<AgentSessionHarne
   };
 }
 
-runAgentSessionConformance('kimi-durable-wire', () => createHarness());
+runAgentAdapterConformance('kimi-durable-wire', () => createHarness());
 
-async function createMonitorHarness(): Promise<AgentMonitorSessionHarness> {
+async function createMonitorHarness(): Promise<AgentMonitorAdapterHarness> {
   const cwd = temporaryDirectory('puppeteer-kimi-monitor-cwd-');
   const home = temporaryDirectory('puppeteer-kimi-monitor-home-');
   const store = createStore(cwd, home);
@@ -213,7 +213,7 @@ async function createMonitorHarness(): Promise<AgentMonitorSessionHarness> {
     pollIntervalMs: 10,
   });
   return {
-    session,
+    binding: session,
     async closeObservationRail() {
       let degraded = false;
       const off = session.events.onCandidate(({ event }) => {

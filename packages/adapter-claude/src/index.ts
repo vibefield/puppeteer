@@ -7,7 +7,7 @@
 
 export * from './generated/registry.js';
 export * from './observation/hook-bridge.js';
-export * from './normalizer.js';
+export * from './normalization/index.js';
 export * from './detection.js';
 export * from './launch/settings.js';
 export * from './launch/prepare.js';
@@ -16,7 +16,6 @@ export * from './observation/semantic-provider.js';
 export * from './observation/otel/index.js';
 export * from './observation/transcript/index.js';
 export * from './observation/workflow/index.js';
-export * from './observation/monitor-evidence.js';
 export {
   CLAUDE_OAUTH_BETA,
   CLAUDE_OAUTH_CLIENT_ID,
@@ -29,6 +28,6 @@ export {
   observeClaudeStatusLineAccountUsage,
   onClaudeAccountUsage,
   type FetchClaudeAccountUsageOptions,
-} from './observation/account-usage.js';
+} from './services/account-usage.js';
 export * from './services/prompt.js';
 export * from './driver.js';

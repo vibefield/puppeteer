@@ -7,8 +7,8 @@ import {
   type PromptSubmission,
 } from '@vibecook/puppeteer-core';
 import type { AdapterMonitorObservationBatch } from '@vibecook/puppeteer-core/monitor-spi';
-import { GrokMonitorEvidence, type GrokConfiguredIntent } from '../monitor-evidence.js';
-import type { GrokObservedEvent, GrokSessionObserver } from '../session-observer.js';
+import { GrokMonitorEvidence, type GrokConfiguredIntent } from '../normalization/monitor.js';
+import type { GrokObservedEvent, GrokSessionObserver } from '../normalization/types.js';
 import { GrokEventSource, type GrokEventPublication } from './event-source.js';
 
 /**

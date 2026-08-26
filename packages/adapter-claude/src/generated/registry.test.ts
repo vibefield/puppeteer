@@ -11,7 +11,7 @@ import { fileURLToPath } from 'node:url';
 import { describe, expect, it } from 'vitest';
 import { loadModel } from '@vibecook/puppeteer-surface';
 import { CLAUDE_SURFACE_VERSION } from './registry.js';
-import { renderDetectionSurface, renderRegistry } from './registry-render.js';
+import { renderDetectionSurface, renderRegistry } from '../../scripts/registry-render.js';
 
 const here = fileURLToPath(new URL('.', import.meta.url));
 const require = createRequire(import.meta.url);

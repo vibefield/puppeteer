@@ -5,7 +5,7 @@ import {
   type AdapterEventCandidate,
   type AgentEvent,
 } from '@vibecook/puppeteer-core';
-import type { KimiObservedEvent } from '../session-observer.js';
+import type { KimiObservedEvent } from '../observation/session-observer.js';
 
 export interface KimiEventSourceOptions {
   sessionId(): string;

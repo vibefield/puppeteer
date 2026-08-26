@@ -8,7 +8,7 @@ export {
   probeOpenCodeVersion,
   resolveOpenCodeExecutable,
 } from './detection.js';
-export { startOpenCodeBackend, type OpenCodeBackend, type StartOpenCodeBackendOptions } from './backend.js';
+export { startOpenCodeBackend, type OpenCodeBackend, type StartOpenCodeBackendOptions } from './launch/backend.js';
 export {
   OpenCodeClient,
   OpenCodeHttpError,
@@ -20,13 +20,13 @@ export {
   type OpenCodeQuestionRequest,
   type OpenCodeSessionInfo,
   type OpenCodeSessionModel,
-} from './client.js';
+} from './transport/client.js';
 export {
   OpenCodeEventStream,
   OpenCodeSseDecoder,
   type OpenCodeEventStreamOptions,
   type OpenCodeSseRecord,
-} from './event-stream.js';
+} from './transport/event-stream.js';
 export {
   projectOpenCodeChild,
   projectOpenCodeHistory,
@@ -34,21 +34,8 @@ export {
   projectOpenCodeQuestion,
   projectOpenCodeStatus,
   type OpenCodeHistoryProjection,
-} from './history.js';
-export {
-  OPENCODE_NORMALIZATION_EVIDENCE,
-  OpenCodeNormalizer,
-  type NormalizeOpenCodeOptions,
-  type OpenCodeNormalizedEvent,
-  type OpenCodeNormalizerOptions,
-} from './normalizer.js';
-export {
-  OPENCODE_MONITOR_CAPABILITIES,
-  OpenCodeMonitorEvidence,
-  openCodeStructuredQuestions,
-  type OpenCodeConfiguredIntent,
-  type OpenCodeMonitorEvidenceOptions,
-} from './monitor-evidence.js';
+} from './observation/history.js';
+export * from './normalization/index.js';
 export {
   createOpenCodeTuiSession,
   OpenCodePromptConfirmationGate,

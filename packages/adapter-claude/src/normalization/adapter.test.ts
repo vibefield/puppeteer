@@ -1,0 +1,794 @@
+import { describe, expect, it } from 'vitest';
+import { fakeClaudeHookPayload, listHookFixtureEvents, loadHookFixtures } from '../test-support/claude-fixtures.js';
+import { ClaudeHookNormalizer, type ClaudeHookPayload } from './pipeline.js';
+import { getHookSpec } from '../generated/registry.js';
+
+const normalizeOne = (body: ClaudeHookPayload) => new ClaudeHookNormalizer().normalize(body);
+
+describe('registry coverage', () => {
+  it('every captured fixture event is registered as verified', () => {
+    for (const event of listHookFixtureEvents()) {
+      const spec = getHookSpec(event);
+      expect(spec, `registry entry for ${event}`).toBeDefined();
+      expect(spec!.confidence).not.toBe('unverified');
+    }
+  });
+});
+
+describe('ClaudeHookNormalizer against captured fixtures', () => {
+  it('normalizes every fixture payload without throwing, extracting the envelope', () => {
+    const normalizer = new ClaudeHookNormalizer();
+    for (const record of loadHookFixtures()) {
+      const result = normalizer.normalize(record as ClaudeHookPayload);
+      expect(result.events.length, record.hook_event_name).toBeGreaterThan(0);
+      expect(result.sessionId).toBe(record.session_id);
+      expect(result.transcriptPath).toBe(record.transcript_path);
+    }
+  });
+
+  it('maps the turn lifecycle: prompt → turn:started, Stop → turn:completed', () => {
+    const [prompt] = loadHookFixtures('UserPromptSubmit');
+    const started = normalizeOne(prompt as ClaudeHookPayload);
+    expect(started.events[0]).toMatchObject({ type: 'turn:started', turnId: prompt.prompt_id, prompt: prompt.prompt });
+
+    const stop = fakeClaudeHookPayload('Stop', {
+      prompt_id: prompt.prompt_id,
+      last_assistant_message: 'complete',
+      stop_hook_active: false,
+    });
+    const completed = normalizeOne(stop as ClaudeHookPayload);
+    expect(completed.events[0]).toMatchObject({
+      type: 'turn:completed',
+      lastAssistantMessage: stop.last_assistant_message,
+    });
+  });
+
+  it('maps tool events with their native ids', () => {
+    const pre = fakeClaudeHookPayload('PreToolUse', {
+      prompt_id: 'prompt-tool',
+      tool_name: 'Read',
+      tool_input: { file_path: '/workspace/README.md' },
+      tool_use_id: 'tool-read',
+    });
+    expect(normalizeOne(pre as ClaudeHookPayload).events.at(-1)).toMatchObject({
+      type: 'tool:requested',
+      toolCallId: pre.tool_use_id,
+      tool: pre.tool_name,
+    });
+
+    const post = fakeClaudeHookPayload('PostToolUse', {
+      prompt_id: 'prompt-tool',
+      tool_name: 'Read',
+      tool_input: { file_path: '/workspace/README.md' },
+      tool_response: { content: 'ok' },
+      tool_use_id: 'tool-read',
+      duration_ms: 12,
+    });
+    expect(normalizeOne(post as ClaudeHookPayload).events[0]).toMatchObject({
+      type: 'tool:completed',
+      toolCallId: post.tool_use_id,
+      durationMs: post.duration_ms,
+    });
+
+    const failure = fakeClaudeHookPayload('PostToolUseFailure', {
+      prompt_id: 'prompt-tool',
+      tool_name: 'Read',
+      tool_input: { file_path: '/workspace/missing' },
+      tool_use_id: 'tool-failed',
+      error: 'not found',
+    });
+    expect(normalizeOne(failure as ClaudeHookPayload).events[0]).toMatchObject({
+      type: 'tool:failed',
+      toolCallId: failure.tool_use_id,
+    });
+  });
+
+  it('classifies native tool names into provider-neutral UI presentations', () => {
+    const command = normalizeOne(
+      fakeClaudeHookPayload('PreToolUse', {
+        tool_name: 'Bash',
+        tool_use_id: 'tool-command',
+        tool_input: { command: 'pnpm test' },
+      }) as ClaudeHookPayload,
+    );
+    const search = normalizeOne(
+      fakeClaudeHookPayload('PreToolUse', {
+        tool_name: 'WebSearch',
+        tool_use_id: 'tool-search',
+        tool_input: { query: 'ACP protocol' },
+      }) as ClaudeHookPayload,
+    );
+    expect(command.events.at(-1)).toMatchObject({
+      presentation: { kind: 'command', title: 'Running command', detail: 'pnpm test' },
+    });
+    expect(search.events.at(-1)).toMatchObject({
+      presentation: { kind: 'web-search', title: 'Searching the web', detail: 'ACP protocol' },
+    });
+  });
+
+  it('surfaces MessageDisplay turn_id for envelope stamping', () => {
+    const [display] = loadHookFixtures('MessageDisplay');
+    const result = normalizeOne(display as ClaudeHookPayload);
+    expect(result.turnId).toBe(display.turn_id);
+    expect(result.promptId).toBe(display.prompt_id);
+    expect(result.events[0]).toMatchObject({ type: 'conversation:assistant-message', messageId: display.message_id });
+  });
+});
+
+describe('MessageDisplay delta accumulation', () => {
+  it('accumulates per message_id and finalizes', () => {
+    const normalizer = new ClaudeHookNormalizer();
+    const chunk = (delta: string, final: boolean) =>
+      normalizer.normalize(
+        fakeClaudeHookPayload('MessageDisplay', {
+          message_id: 'm-1',
+          turn_id: 't-1',
+          delta,
+          final,
+          index: 0,
+        }) as ClaudeHookPayload,
+      ).events[0] as { text: string; final?: boolean };
+
+    expect(chunk('Hel', false).text).toBe('Hel');
+    expect(chunk('lo', false).text).toBe('Hello');
+    const done = chunk('!', true);
+    expect(done.text).toBe('Hello!');
+    expect(done.final).toBe(true);
+    // Buffer cleared: a new message starts fresh.
+    expect(chunk('x', false).text).toBe('x');
+  });
+});
+
+describe('environment telemetry', () => {
+  it('captures startup cwd/model and live CwdChanged updates', () => {
+    const normalizer = new ClaudeHookNormalizer();
+    expect(
+      normalizer.normalize({
+        hook_event_name: 'SessionStart',
+        session_id: 's1',
+        cwd: '/repo',
+        model: 'claude-sonnet-5',
+      }).events,
+    ).toEqual(
+      expect.arrayContaining([
+        { type: 'environment:updated', currentCwd: '/repo' },
+        { type: 'model:updated', model: { id: 'claude-sonnet-5', provider: 'anthropic' } },
+      ]),
+    );
+    expect(
+      normalizer.normalize({ hook_event_name: 'CwdChanged', session_id: 's1', old_cwd: '/repo', new_cwd: '/tmp' })
+        .events,
+    ).toEqual([{ type: 'environment:updated', currentCwd: '/tmp' }]);
+  });
+
+  it('preserves open-ended permission/effort values and actor/version envelope metadata', () => {
+    const normalizer = new ClaudeHookNormalizer();
+    const first = normalizer.normalize(
+      fakeClaudeHookPayload('UserPromptSubmit', {
+        prompt_id: 'p-env',
+        prompt: 'observe me',
+        permission_mode: 'future-manual-plus',
+        effort: { level: 'future-ultra' },
+        agent_id: 'agent-child',
+        agent_type: 'Explore',
+        version: '2.1.999',
+      }),
+    );
+    expect(first).toMatchObject({
+      agentId: 'agent-child',
+      agentType: 'Explore',
+      providerVersion: '2.1.999',
+    });
+    expect(first.events).toEqual(
+      expect.arrayContaining([
+        { type: 'effort:updated', intent: 'observed', effort: 'future-ultra' },
+        {
+          type: 'mode:updated',
+          intent: 'observed',
+          modeKind: 'provider-permission',
+          mode: { raw: 'future-manual-plus' },
+        },
+      ]),
+    );
+
+    const unchanged = normalizer.normalize(
+      fakeClaudeHookPayload('MessageDisplay', {
+        prompt_id: 'p-env',
+        message_id: 'm-env',
+        turn_id: 't-env',
+        delta: 'x',
+        final: true,
+        permission_mode: 'future-manual-plus',
+        effort: { level: 'future-ultra' },
+      }),
+    );
+    expect(
+      unchanged.events.filter((event) => event.type === 'effort:updated' || event.type === 'mode:updated'),
+    ).toEqual([]);
+  });
+});
+
+describe('structured AskUserQuestion lifecycle', () => {
+  const ask = {
+    prompt_id: 'prompt-question',
+    tool_name: 'AskUserQuestion',
+    tool_use_id: 'tool-question',
+    tool_input: {
+      questions: [
+        {
+          header: 'Strategy',
+          question: 'Which approach?',
+          options: [
+            { label: 'Safe', description: 'Use the proven path' },
+            { label: 'Fast', description: '' },
+          ],
+          multiSelect: true,
+        },
+        {
+          id: 'scope',
+          question: 'What scope?',
+          options: [{ label: 'Focused', description: 'Only this package' }],
+          multi_select: false,
+          allow_free_form: false,
+        },
+      ],
+    },
+  };
+
+  it('emits both generic tool evidence and a typed provisional question', () => {
+    const normalizer = new ClaudeHookNormalizer();
+    const result = normalizer.normalize(fakeClaudeHookPayload('PreToolUse', ask));
+    expect(result.events[0]).toMatchObject({ type: 'tool:requested', toolCallId: 'tool-question' });
+    expect(result.events[1]).toEqual({
+      type: 'interaction:question-requested',
+      requestId: 'question:tool-question',
+      questions: [
+        {
+          header: 'Strategy',
+          prompt: 'Which approach?',
+          options: [
+            { label: 'Safe', description: 'Use the proven path' },
+            { label: 'Fast', description: '' },
+          ],
+          allowMultiple: true,
+          allowFreeForm: true,
+        },
+        {
+          id: 'scope',
+          prompt: 'What scope?',
+          options: [{ label: 'Focused', description: 'Only this package' }],
+          allowMultiple: false,
+          allowFreeForm: false,
+        },
+      ],
+    });
+    expect(normalizer.pendingQuestionRequests()).toHaveLength(1);
+  });
+
+  it('answers, fails, cancels, and supersedes only on matching evidence or an owning boundary', () => {
+    const answered = new ClaudeHookNormalizer();
+    answered.normalize(fakeClaudeHookPayload('PreToolUse', ask));
+    expect(
+      answered.normalize(fakeClaudeHookPayload('PostToolUse', { ...ask, tool_response: { answers: ['Safe'] } }))
+        .events[0],
+    ).toEqual({ type: 'interaction:question-resolved', requestId: 'question:tool-question', outcome: 'answered' });
+
+    const failed = new ClaudeHookNormalizer();
+    failed.normalize(fakeClaudeHookPayload('PreToolUse', ask));
+    expect(
+      failed.normalize(fakeClaudeHookPayload('PostToolUseFailure', { ...ask, error: 'dialog failed' })).events[0],
+    ).toEqual({ type: 'interaction:question-resolved', requestId: 'question:tool-question', outcome: 'failed' });
+
+    const cancelled = new ClaudeHookNormalizer();
+    cancelled.normalize(fakeClaudeHookPayload('PreToolUse', ask));
+    expect(
+      cancelled.normalize(fakeClaudeHookPayload('Stop', { prompt_id: ask.prompt_id, last_assistant_message: 'done' }))
+        .events[0],
+    ).toEqual({ type: 'interaction:question-resolved', requestId: 'question:tool-question', outcome: 'cancelled' });
+
+    const superseded = new ClaudeHookNormalizer();
+    superseded.normalize(fakeClaudeHookPayload('PreToolUse', ask));
+    expect(
+      superseded.normalize(
+        fakeClaudeHookPayload('UserPromptSubmit', { prompt_id: 'new-prompt', prompt: 'new request' }),
+      ).events[0],
+    ).toEqual({ type: 'interaction:question-resolved', requestId: 'question:tool-question', outcome: 'superseded' });
+  });
+
+  it('keeps permissions and questions independent', () => {
+    const normalizer = new ClaudeHookNormalizer();
+    normalizer.normalize(fakeClaudeHookPayload('PreToolUse', ask));
+    normalizer.normalize(
+      fakeClaudeHookPayload('PermissionRequest', {
+        prompt_id: ask.prompt_id,
+        tool_name: 'Bash',
+        tool_input: { command: 'pwd' },
+      }),
+    );
+    normalizer.normalize(fakeClaudeHookPayload('PostToolUse', { ...ask, tool_response: { answers: ['Safe'] } }));
+    expect(normalizer.pendingQuestionRequests()).toHaveLength(0);
+    expect(normalizer.pendingPermissionRequests()).toHaveLength(1);
+  });
+
+  it("does not turn Claude's AskUserQuestion picker event into a permission blocker", () => {
+    const normalizer = new ClaudeHookNormalizer();
+    normalizer.normalize(fakeClaudeHookPayload('PreToolUse', ask));
+    const permission = normalizer.normalize(fakeClaudeHookPayload('PermissionRequest', ask));
+
+    expect(permission.events).toEqual([
+      { type: 'adapter:native-event', adapter: 'claude-code', nativeType: 'PermissionRequest' },
+    ]);
+    expect(normalizer.pendingQuestionRequests()).toHaveLength(1);
+    expect(normalizer.pendingPermissionRequests()).toHaveLength(0);
+  });
+});
+
+describe('fast plan/task/team/compaction semantics', () => {
+  it('uses collision-safe fallback tool ids for repeated same-name calls in one prompt', () => {
+    const normalizer = new ClaudeHookNormalizer();
+    const call = () =>
+      normalizer.normalize(
+        fakeClaudeHookPayload('PreToolUse', {
+          prompt_id: 'same-prompt',
+          tool_name: 'Read',
+          tool_input: { file_path: '/tmp/a' },
+          tool_use_id: undefined,
+        }),
+      ).events[0] as { toolCallId: string };
+    expect(call().toolCallId).not.toBe(call().toolCallId);
+  });
+
+  it('projects TodoWrite provisionally and confirms the same snapshot after success', () => {
+    const normalizer = new ClaudeHookNormalizer();
+    const tool = {
+      prompt_id: 'p-plan',
+      agent_id: 'planner',
+      tool_name: 'TodoWrite',
+      tool_use_id: 'todo-1',
+      tool_input: {
+        todos: [
+          { content: 'Inspect code', status: 'in_progress', activeForm: 'Inspecting code' },
+          { content: 'Write tests', status: 'pending', activeForm: 'Writing tests' },
+        ],
+      },
+    };
+    expect(normalizer.normalize(fakeClaudeHookPayload('PreToolUse', tool)).events.at(-1)).toEqual({
+      type: 'planning:updated',
+      planId: 'claude-todos:planner',
+      steps: [
+        { text: 'Inspect code', status: 'in_progress' },
+        { text: 'Write tests', status: 'pending' },
+      ],
+      provisional: true,
+    });
+    expect(
+      normalizer.normalize(fakeClaudeHookPayload('PostToolUse', { ...tool, tool_response: { ok: true } })).events,
+    ).toContainEqual({
+      type: 'planning:updated',
+      planId: 'claude-todos:planner',
+      steps: [
+        { text: 'Inspect code', status: 'in_progress' },
+        { text: 'Write tests', status: 'pending' },
+      ],
+      provisional: false,
+    });
+  });
+
+  it('projects the injected ExitPlanMode Markdown before approval without exposing its native path', () => {
+    const normalizer = new ClaudeHookNormalizer();
+    const tool = {
+      prompt_id: 'p-plan-mode',
+      tool_name: 'ExitPlanMode',
+      tool_use_id: 'exit-plan-1',
+      tool_input: {
+        plan: '# Canary plan\n\n1. Inspect runtime evidence\n2. [x] Keep native paths private\n- Verify projection',
+        planFilePath: '/Users/private/.claude/plans/secret-slug.md',
+        allowedPrompts: [],
+      },
+    };
+
+    const requested = normalizer.normalize(fakeClaudeHookPayload('PreToolUse', tool));
+    expect(requested.events.at(-1)).toEqual({
+      type: 'planning:updated',
+      planId: 'claude-plan:root',
+      steps: [
+        { text: 'Inspect runtime evidence', status: 'pending' },
+        { text: 'Keep native paths private', status: 'completed' },
+        { text: 'Verify projection', status: 'pending' },
+      ],
+      provisional: true,
+    });
+    expect(JSON.stringify(requested.events.at(-1))).not.toContain('secret-slug');
+
+    const completed = normalizer.normalize(
+      fakeClaudeHookPayload('PostToolUse', {
+        ...tool,
+        tool_response: { plan: tool.tool_input.plan, filePath: tool.tool_input.planFilePath },
+      }),
+    );
+    expect(completed.events).toContainEqual({
+      type: 'planning:updated',
+      planId: 'claude-plan:root',
+      steps: [
+        { text: 'Inspect runtime evidence', status: 'pending' },
+        { text: 'Keep native paths private', status: 'completed' },
+        { text: 'Verify projection', status: 'pending' },
+      ],
+      provisional: false,
+    });
+  });
+
+  it('uses a bounded first-line fallback for a prose-only ExitPlanMode plan', () => {
+    const normalizer = new ClaudeHookNormalizer();
+    const plan = normalizer
+      .normalize(
+        fakeClaudeHookPayload('PreToolUse', {
+          tool_name: 'ExitPlanMode',
+          tool_use_id: 'exit-plan-prose',
+          tool_input: { plan: `# ${'x'.repeat(600)}` },
+        }),
+      )
+      .events.at(-1);
+
+    expect(plan).toMatchObject({ type: 'planning:updated', planId: 'claude-plan:root', provisional: true });
+    expect((plan as { steps: Array<{ text: string }> }).steps[0]?.text.length).toBeLessThanOrEqual(512);
+  });
+
+  it('keeps blockable task and teammate hooks provisional until post-tool confirmation', () => {
+    const normalizer = new ClaudeHookNormalizer();
+    normalizer.normalize(
+      fakeClaudeHookPayload('PreToolUse', {
+        prompt_id: 'p-task',
+        tool_name: 'TaskCreate',
+        tool_use_id: 'task-tool',
+        tool_input: { subject: 'Research', description: 'Inspect provider', team_name: 'alpha' },
+      }),
+    );
+    const proposed = normalizer.normalize(
+      fakeClaudeHookPayload('TaskCreated', {
+        prompt_id: 'p-task',
+        task_id: 'task-7',
+        task_subject: 'Research',
+        task_description: 'Inspect provider',
+        team_name: 'alpha',
+        teammate_name: 'researcher',
+      }),
+    );
+    expect(proposed.events[0]).toMatchObject({
+      type: 'delegation:task-updated',
+      taskId: 'task-7',
+      status: 'proposed',
+      provisional: true,
+      teamName: 'alpha',
+      teammateName: 'researcher',
+    });
+    const confirmed = normalizer.normalize(
+      fakeClaudeHookPayload('PostToolUse', {
+        prompt_id: 'p-task',
+        tool_name: 'TaskCreate',
+        tool_use_id: 'task-tool',
+        tool_response: { task_id: 'task-7' },
+      }),
+    );
+    expect(confirmed.events).toContainEqual(
+      expect.objectContaining({
+        type: 'delegation:task-updated',
+        taskId: 'task-7',
+        status: 'pending',
+        provisional: false,
+      }),
+    );
+
+    expect(
+      normalizer.normalize(fakeClaudeHookPayload('TeammateIdle', { team_name: 'alpha', teammate_name: 'researcher' }))
+        .events[0],
+    ).toEqual({ type: 'delegation:teammate-idle', teamName: 'alpha', teammateName: 'researcher' });
+  });
+
+  it('correlates PreCompact and PostCompact and closes a blocked attempt at the turn boundary', () => {
+    const normalizer = new ClaudeHookNormalizer();
+    const started = normalizer.normalize(
+      fakeClaudeHookPayload('PreCompact', { prompt_id: 'p-compact', trigger: 'auto', custom_instructions: '' }),
+    );
+    const compactionId = (started.events[0] as { compactionId: string }).compactionId;
+    expect(started.events[0]).toMatchObject({ type: 'compaction:started', compactionId, trigger: 'auto' });
+    expect(
+      normalizer.normalize(
+        fakeClaudeHookPayload('PostCompact', { prompt_id: 'p-compact', trigger: 'auto', compact_summary: 'summary' }),
+      ).events[0],
+    ).toMatchObject({ type: 'compaction:completed', compactionId, trigger: 'auto', outcome: 'completed' });
+
+    normalizer.normalize(
+      fakeClaudeHookPayload('PreCompact', { prompt_id: 'p-blocked', trigger: 'manual', custom_instructions: '' }),
+    );
+    expect(
+      normalizer.normalize(
+        fakeClaudeHookPayload('Stop', { prompt_id: 'p-blocked', last_assistant_message: 'not compacted' }),
+      ).events[0],
+    ).toMatchObject({ type: 'compaction:completed', trigger: 'manual', outcome: 'cancelled' });
+
+    const boundaryStart = normalizer.normalize(
+      fakeClaudeHookPayload('PreCompact', { trigger: 'manual', custom_instructions: '' }),
+    );
+    const boundaryId = (boundaryStart.events[0] as { compactionId: string }).compactionId;
+    const nextPrompt = normalizer.normalize(
+      fakeClaudeHookPayload('UserPromptSubmit', { prompt_id: 'p-after-compact', prompt: 'continue' }),
+    );
+    expect(nextPrompt.events).toEqual([
+      expect.objectContaining({
+        type: 'compaction:completed',
+        compactionId: boundaryId,
+        trigger: 'manual',
+        outcome: 'unknown',
+      }),
+      expect.objectContaining({ type: 'turn:started', turnId: 'p-after-compact' }),
+    ]);
+    expect(
+      normalizer.normalize(fakeClaudeHookPayload('PostCompact', { trigger: 'manual', compact_summary: 'late' }))
+        .events[0],
+    ).toMatchObject({ type: 'compaction:completed', compactionId: boundaryId, outcome: 'completed' });
+  });
+});
+
+describe('permission correlation (no native request id)', () => {
+  const tool = {
+    prompt_id: 'prompt-permission',
+    tool_name: 'Bash',
+    tool_input: { description: 'say hi', command: 'echo hi' },
+    tool_use_id: 'toolu_permission',
+  };
+
+  it('correlates the current PreToolUse → PermissionRequest order and resolves on execution completion', () => {
+    const normalizer = new ClaudeHookNormalizer();
+    const pre = normalizer.normalize(fakeClaudeHookPayload('PreToolUse', tool) as ClaudeHookPayload);
+    expect(pre.events).toEqual([expect.objectContaining({ type: 'tool:requested', toolCallId: tool.tool_use_id })]);
+
+    const requested = normalizer.normalize(
+      fakeClaudeHookPayload('PermissionRequest', {
+        prompt_id: tool.prompt_id,
+        tool_name: tool.tool_name,
+        // Key order deliberately differs: correlation is canonical, not raw JSON.
+        tool_input: { command: 'echo hi', description: 'say hi' },
+      }) as ClaudeHookPayload,
+    );
+    const requestedEvent = requested.events[0] as { type: string; requestId: string };
+    expect(requestedEvent.type).toBe('interaction:permission-requested');
+    expect(requestedEvent).toMatchObject({ toolCallId: tool.tool_use_id });
+    expect(normalizer.pendingPermissionRequests()).toHaveLength(1);
+
+    const resolved = normalizer.normalize(
+      fakeClaudeHookPayload('PostToolUse', { ...tool, tool_response: { output: 'hi' } }) as ClaudeHookPayload,
+    );
+    expect(resolved.events[0]).toEqual({
+      type: 'interaction:permission-resolved',
+      requestId: requestedEvent.requestId,
+      outcome: 'allowed',
+    });
+    expect(resolved.events[1]).toMatchObject({ type: 'tool:completed', toolCallId: tool.tool_use_id });
+    expect(normalizer.pendingPermissionRequests()).toHaveLength(0);
+  });
+
+  it('tolerates the legacy PermissionRequest → PreToolUse order without claiming allow early', () => {
+    const normalizer = new ClaudeHookNormalizer();
+    const requested = normalizer.normalize(fakeClaudeHookPayload('PermissionRequest', tool) as ClaudeHookPayload);
+    const requestId = (requested.events[0] as { requestId: string }).requestId;
+    const pre = normalizer.normalize(fakeClaudeHookPayload('PreToolUse', tool) as ClaudeHookPayload);
+    expect(pre.events).toEqual([expect.objectContaining({ type: 'tool:requested', toolCallId: tool.tool_use_id })]);
+    expect(normalizer.pendingPermissionRequests()).toHaveLength(1);
+
+    const post = normalizer.normalize(
+      fakeClaudeHookPayload('PostToolUse', { ...tool, tool_response: 'hi' }) as ClaudeHookPayload,
+    );
+    expect(post.events[0]).toEqual({ type: 'interaction:permission-resolved', requestId, outcome: 'allowed' });
+  });
+
+  it('resolves auto-mode PermissionDenied by native tool_use_id', () => {
+    const normalizer = new ClaudeHookNormalizer();
+    normalizer.normalize(fakeClaudeHookPayload('PreToolUse', tool) as ClaudeHookPayload);
+    const requested = normalizer.normalize(fakeClaudeHookPayload('PermissionRequest', tool) as ClaudeHookPayload);
+    const requestId = (requested.events[0] as { requestId: string }).requestId;
+    const denied = normalizer.normalize(
+      fakeClaudeHookPayload('PermissionDenied', { ...tool, reason: 'Blocked by classifier' }) as ClaudeHookPayload,
+    );
+    expect(denied.events).toEqual([{ type: 'interaction:permission-resolved', requestId, outcome: 'denied' }]);
+    expect(normalizer.pendingPermissionRequests()).toHaveLength(0);
+  });
+
+  it('closes a manual denial at the turn boundary so no permission is orphaned', () => {
+    const normalizer = new ClaudeHookNormalizer();
+    const requested = normalizer.normalize(fakeClaudeHookPayload('PermissionRequest', tool) as ClaudeHookPayload);
+    const requestId = (requested.events[0] as { requestId: string }).requestId;
+    const stop = normalizer.normalize(
+      fakeClaudeHookPayload('Stop', {
+        prompt_id: tool.prompt_id,
+        stop_hook_active: false,
+        last_assistant_message: 'Permission denied.',
+      }) as ClaudeHookPayload,
+    );
+    expect(stop.events).toEqual([
+      { type: 'interaction:permission-resolved', requestId, outcome: 'denied' },
+      expect.objectContaining({ type: 'turn:completed', turnId: tool.prompt_id }),
+    ]);
+    expect(stop.diagnostics).toEqual([
+      {
+        code: 'permission-outlived-turn',
+        hookEventName: 'Stop',
+        issues: ['1 pending permission request(s) closed at the owning turn boundary'],
+      },
+    ]);
+    expect(normalizer.pendingPermissionRequests()).toHaveLength(0);
+  });
+
+  it('resolves an evicted request before bounding the permission queue', () => {
+    const normalizer = new ClaudeHookNormalizer();
+    let oldestRequestId = '';
+    for (let index = 0; index < 64; index += 1) {
+      const result = normalizer.normalize(
+        fakeClaudeHookPayload('PermissionRequest', {
+          prompt_id: 'busy-turn',
+          tool_name: 'Bash',
+          tool_input: { command: `echo ${index}` },
+        }) as ClaudeHookPayload,
+      );
+      if (index === 0) oldestRequestId = (result.events[0] as { requestId: string }).requestId;
+    }
+
+    const overflow = normalizer.normalize(
+      fakeClaudeHookPayload('PermissionRequest', {
+        prompt_id: 'busy-turn',
+        tool_name: 'Bash',
+        tool_input: { command: 'echo overflow' },
+      }) as ClaudeHookPayload,
+    );
+    expect(overflow.events).toEqual([
+      { type: 'interaction:permission-resolved', requestId: oldestRequestId, outcome: 'unknown' },
+      expect.objectContaining({ type: 'interaction:permission-requested' }),
+    ]);
+    expect(normalizer.pendingPermissionRequests()).toHaveLength(64);
+
+    const stop = normalizer.normalize(
+      fakeClaudeHookPayload('Stop', { prompt_id: 'busy-turn', last_assistant_message: 'done' }) as ClaudeHookPayload,
+    );
+    expect(stop.events.filter((event) => event.type === 'interaction:permission-resolved')).toHaveLength(64);
+    expect(normalizer.pendingPermissionRequests()).toHaveLength(0);
+  });
+});
+
+describe('SubagentStop re-entrancy', () => {
+  it('normalizes only the first stop per agent; repeats stay native', () => {
+    const normalizer = new ClaudeHookNormalizer();
+    const stop = fakeClaudeHookPayload('SubagentStop', {
+      prompt_id: 'prompt-subagent',
+      agent_id: 'agent-1',
+      agent_type: 'Explore',
+    });
+    expect(normalizer.normalize(stop as ClaudeHookPayload).events[0]).toMatchObject({
+      type: 'delegation:subagent-stopped',
+      subagentId: stop.agent_id,
+    });
+    expect(normalizer.normalize({ ...stop, stop_hook_active: true } as ClaudeHookPayload).events[0]).toMatchObject({
+      type: 'adapter:native-event',
+      nativeType: 'SubagentStop',
+    });
+  });
+
+  it('allows a fresh lifecycle if Claude reuses an agent id', () => {
+    const normalizer = new ClaudeHookNormalizer();
+    const payload = fakeClaudeHookPayload('SubagentStop', { agent_id: 'agent-reused', agent_type: 'Explore' });
+    normalizer.normalize(payload as ClaudeHookPayload);
+    normalizer.normalize(
+      fakeClaudeHookPayload('SubagentStart', { agent_id: 'agent-reused', agent_type: 'Explore' }) as ClaudeHookPayload,
+    );
+    expect(normalizer.normalize(payload as ClaudeHookPayload).events[0]).toEqual({
+      type: 'delegation:subagent-stopped',
+      subagentId: 'agent-reused',
+    });
+  });
+});
+
+describe('Claude 2.1.226 hook additions', () => {
+  it('marks a /clear SessionStart as an in-process native identity rebind', () => {
+    expect(
+      normalizeOne(
+        fakeClaudeHookPayload('SessionStart', {
+          session_id: 'new-native-session',
+          source: 'clear',
+        }),
+      ).events[0],
+    ).toMatchObject({
+      type: 'session:started',
+      nativeSessionId: 'new-native-session',
+      startSource: 'clear',
+      rebind: true,
+    });
+  });
+
+  it('maps workspace mutation and completed compaction hooks', () => {
+    expect(normalizeOne(fakeClaudeHookPayload('DirectoryAdded', { directory: '/workspace/other' })).events).toEqual([
+      { type: 'workspace:changed', paths: ['/workspace/other'] },
+    ]);
+    expect(
+      normalizeOne(fakeClaudeHookPayload('FileChanged', { file_path: '/workspace/.env', event: 'change' })).events,
+    ).toEqual([{ type: 'workspace:changed', paths: ['/workspace/.env'] }]);
+    expect(
+      normalizeOne(fakeClaudeHookPayload('PostCompact', { trigger: 'auto', compact_summary: '...' })).events,
+    ).toEqual([
+      expect.objectContaining({ type: 'compaction:completed', trigger: 'auto', outcome: 'completed' }),
+      { type: 'context-window:invalidated', reason: 'compacted' },
+    ]);
+  });
+
+  it('uses the current TaskCreated subject/description fields', () => {
+    expect(
+      normalizeOne(
+        fakeClaudeHookPayload('TaskCreated', {
+          task_id: 'task-1',
+          task_subject: 'Short subject',
+          task_description: 'Detailed description',
+        }),
+      ).events,
+    ).toEqual([
+      {
+        type: 'delegation:task-updated',
+        taskId: 'task-1',
+        description: 'Detailed description',
+        status: 'proposed',
+        provisional: true,
+      },
+    ]);
+  });
+
+  it('retains new hooks without a portable semantic projection as native events', () => {
+    for (const event of ['Setup', 'UserPromptExpansion', 'PostToolBatch', 'Elicitation', 'ElicitationResult']) {
+      expect(normalizeOne(fakeClaudeHookPayload(event)).events[0]).toEqual({
+        type: 'adapter:native-event',
+        adapter: 'claude-code',
+        nativeType: event,
+      });
+    }
+  });
+});
+
+describe('unknown events (ADR-008)', () => {
+  it('retains unrecognized hook names as adapter:native-event', () => {
+    const result = normalizeOne(fakeClaudeHookPayload('SomeFutureEvent') as ClaudeHookPayload);
+    expect(result.events[0]).toEqual({
+      type: 'adapter:native-event',
+      adapter: 'claude-code',
+      nativeType: 'SomeFutureEvent',
+    });
+  });
+});
+
+describe('malformed known hooks', () => {
+  it('retains the raw hook path and reports missing fields without mutating correlation state', () => {
+    const normalizer = new ClaudeHookNormalizer();
+    const result = normalizer.normalize({
+      session_id: 's1',
+      hook_event_name: 'PreToolUse',
+      tool_use_id: 'tool-1',
+      tool_input: { command: 'pwd' },
+    });
+
+    expect(result.events).toEqual([{ type: 'adapter:native-event', adapter: 'claude-code', nativeType: 'PreToolUse' }]);
+    expect(result.diagnostics).toEqual([
+      {
+        code: 'malformed-known-hook',
+        hookEventName: 'PreToolUse',
+        issues: ['tool_name must be string'],
+      },
+    ]);
+    expect(normalizer.pendingPermissionRequests()).toHaveLength(0);
+  });
+
+  it('does not apply complete Surface schemas to unrelated fields on the live path', () => {
+    const result = normalizeOne({
+      session_id: 's1',
+      hook_event_name: 'PostToolUse',
+      tool_use_id: 'tool-1',
+    });
+
+    expect(result.diagnostics).toEqual([]);
+    expect(result.events[0]).toMatchObject({ type: 'tool:completed', toolCallId: 'tool-1' });
+  });
+});

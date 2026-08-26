@@ -12,3 +12,4 @@ export * from './interaction.js';
 export * from './delegation.js';
 export * from './tool.js';
 export * from './pipeline.js';
+export * from './monitor.js';

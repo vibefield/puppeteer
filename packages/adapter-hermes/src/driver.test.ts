@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { safeParseAgentEvent, type AdapterEventCandidate, type AgentHost } from '@vibecook/puppeteer-core';
-import { projectAgentSession } from '@vibecook/puppeteer-testing';
+import { projectAgentEvents } from '@vibecook/puppeteer-testing';
 import { createHermesTuiSession } from './driver.js';
 import { FakeHermesGateway } from './test-support/fake-gateway.js';
 
@@ -23,7 +23,7 @@ describe('Hermes TUI session driver', () => {
       host: host(),
       transport: gateway,
     });
-    const projection = projectAgentSession(session);
+    const projection = projectAgentEvents(session);
     try {
       expect(session.sessionId).toMatch(/^20260812_/);
       expect(session.observationLevel()).toBe('structured');
@@ -47,7 +47,7 @@ describe('Hermes TUI session driver', () => {
       host: host(),
       transport: new FakeHermesGateway({ announceSession: false }),
     });
-    const projection = projectAgentSession(session);
+    const projection = projectAgentEvents(session);
     try {
       expect(projection.state.lifecycle).toBe('ready');
       expect(session.storedSessionId()).toMatch(/^20260812_/);
@@ -104,7 +104,7 @@ describe('Hermes TUI session driver', () => {
       host: host(),
       transport: gateway,
     });
-    const projection = projectAgentSession(session);
+    const projection = projectAgentEvents(session);
     const batches = projection.monitorBatches;
     const events: string[] = [];
     const offEvent = session.events.onCandidate(({ event }) => events.push(event.type));

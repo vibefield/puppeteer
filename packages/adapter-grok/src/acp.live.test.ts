@@ -14,9 +14,9 @@ import { mkdtempSync, realpathSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import type { AgentHost, TerminalSpec } from '@vibecook/puppeteer-core';
-import { projectAgentSession } from '@vibecook/puppeteer-testing';
+import { projectAgentEvents } from '@vibecook/puppeteer-testing';
 import { describe, expect, it } from 'vitest';
-import { createGrokBackend } from './backend.js';
+import { createGrokBackend } from './driver.js';
 
 const live = process.env.GROK_LIVE === '1';
 const GROK_BIN = process.env.PUPPETEER_GROK_BIN ?? 'grok';
@@ -82,7 +82,7 @@ describe.skipIf(!live || process.platform !== 'darwin')('Grok native composition
 
     try {
       const session = await backend.createSession({ cwd, permissionMode: 'default' });
-      const projection = projectAgentSession(session);
+      const projection = projectAgentEvents(session);
       const events = projection.envelopes;
       const originalId = session.sessionId;
 
@@ -102,7 +102,7 @@ describe.skipIf(!live || process.platform !== 'darwin')('Grok native composition
       children.clear();
 
       const resumed = await backend.createSession({ cwd, resume: originalId });
-      const resumedProjection = projectAgentSession(resumed);
+      const resumedProjection = projectAgentEvents(resumed);
       expect(resumed.sessionId).toBe(originalId);
       expect(launches).toHaveLength(2);
       await waitFor(

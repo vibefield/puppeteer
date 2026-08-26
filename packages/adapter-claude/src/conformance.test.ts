@@ -1,8 +1,8 @@
 import { existsSync, readFileSync } from 'node:fs';
 import {
   runAgentMonitorConformance,
-  runAgentSessionConformance,
-  type AgentSessionHarness,
+  runAgentAdapterConformance,
+  type AgentAdapterHarness,
 } from '@vibecook/puppeteer-testing/conformance';
 import { createClaudeSession } from './driver.js';
 import type { PreparedClaudeSession } from './launch/prepare.js';
@@ -13,7 +13,7 @@ const REPLY = 'done!';
 /** Build a live ClaudeSession driven through its real hook bridge (test-as-Claude). */
 let runtimeCounter = 0;
 
-interface ClaudeConformanceHarness extends AgentSessionHarness {
+interface ClaudeConformanceHarness extends AgentAdapterHarness {
   closeObservationRail(): void;
 }
 
@@ -79,7 +79,7 @@ async function claudeHarness(resume?: string): Promise<ClaudeConformanceHarness>
 
   let turn = 0;
   return {
-    session,
+    binding: session,
     reply: REPLY,
     resume: () => claudeHarness(session.sessionId),
     closeObservationRail: () => closeObservationRail(),
@@ -103,8 +103,8 @@ async function claudeHarness(resume?: string): Promise<ClaudeConformanceHarness>
   };
 }
 
-runAgentSessionConformance('claude', claudeHarness);
+runAgentAdapterConformance('claude', claudeHarness);
 runAgentMonitorConformance('claude-hooks', async () => {
   const harness = await claudeHarness();
-  return { session: harness.session, closeObservationRail: harness.closeObservationRail };
+  return { binding: harness.binding, closeObservationRail: harness.closeObservationRail };
 });

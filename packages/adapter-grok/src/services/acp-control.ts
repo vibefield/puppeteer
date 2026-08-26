@@ -1,6 +1,6 @@
 import { createAcpSession, createStdioAcpConnector } from '@vibecook/puppeteer-adapter-acp';
 import type { AgentAdapterBinding } from '@vibecook/puppeteer-core';
-import { grokExtensionEvents } from '../session-observer.js';
+import { grokExtensionEvents } from '../normalization/adapter.js';
 import type { CreateGrokSessionOptions } from '../types.js';
 
 /** Open ACP control through the shared leader, optionally loading a session. */

@@ -298,22 +298,6 @@ export async function resolveClaudeStatusChannels(
   return resolved;
 }
 
-/** Compatibility helper retained for callers interested only in the root line. */
-export async function resolveClaudeStatusLine(
-  cwd: string,
-  options: ResolveClaudeStatusChannelsOptions = {},
-): Promise<ClaudeStatusLineConfig | undefined> {
-  return (await resolveClaudeStatusChannels(cwd, options)).statusLine;
-}
-
-/** Compatibility helper retained for callers interested only in child rows. */
-export async function resolveClaudeSubagentStatusLine(
-  cwd: string,
-  options: ResolveClaudeStatusChannelsOptions = {},
-): Promise<ClaudeStatusLineConfig | undefined> {
-  return (await resolveClaudeStatusChannels(cwd, options)).subagentStatusLine;
-}
-
 /**
  * Tiny standalone Node program written beside the generated settings file.
  * It reports telemetry and runs the matching original command concurrently,
@@ -364,6 +348,3 @@ if (delegateCommand) {
 const [, code] = await Promise.all([telemetry, delegate]);
 process.exitCode = code;
 `.trimStart();
-
-/** Backward-compatible source constant for the original root-only multiplexer. */
-export const CLAUDE_STATUS_LINE_FORWARDER_SOURCE = CLAUDE_STATUS_CHANNEL_FORWARDER_SOURCE;

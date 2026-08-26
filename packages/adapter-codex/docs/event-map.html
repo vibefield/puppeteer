@@ -242,8 +242,8 @@
         Every <code>ServerNotification</code> the Codex app-server sends, whether we handle it, what it normalizes to,
         how it folds into <code>SessionRuntimeState</code>, and what the Godview monitor views draw. Full official
         app-server catalog and our wiring are in <a href="#ground-truth">Ground truth</a>. Adapter code:
-        <code>src/normalizer.ts</code>, <code>src/observation/observer.ts</code>, <code>src/driver.ts</code>,
-        <code>src/launch/tui-session.ts</code>.
+        <code>src/normalization/index.ts</code>, <code>src/observation/observer.ts</code>, <code>src/driver.ts</code>,
+        <code>src/launch/launch/tui-session.ts</code>.
       </p>
 
 
@@ -2955,7 +2955,7 @@ codex app-server generate-json-schema --out ./schemas</code></pre>
               <h3>How puppeteer uses this surface</h3>
               <p>Only the <span class="tag t-used">Used</span> / <span class="tag t-partial">Partial</span> entries above are wired.
               Code: <code>app-server-client.ts</code>, <code>ws-transport.ts</code>, <code>driver.ts</code>,
-              <code>tui-session.ts</code>, <code>observer.ts</code>, <code>normalizer.ts</code>.</p>
+              <code>launch/tui-session.ts</code>, <code>observer.ts</code>, <code>normalization/</code>.</p>
             </div>
           </div>
           <pre class="flow">// Official getting-started + remote TUI
@@ -3263,7 +3263,7 @@ flowchart LR
       </p>
 
       <footer>
-        Verify with <code>src/normalizer.ts</code> · <code>src/observation/observer.ts</code> ·
+        Verify with <code>src/normalization/index.ts</code> · <code>src/observation/observer.ts</code> ·
         <code>packages/surface/vendors/codex/findings.md</code>.
       </footer>
     </main>

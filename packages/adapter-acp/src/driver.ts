@@ -25,8 +25,8 @@ import type {
   SessionModeState,
   SessionNotification,
 } from '@agentclientprotocol/sdk';
-import type { AcpAgentConnection, AcpConnector } from './connection.js';
-import { AcpMonitorEvidence } from './monitor-evidence.js';
+import type { AcpAgentConnection, AcpConnector } from './transport/connection.js';
+import { AcpMonitorEvidence } from './normalization/monitor.js';
 import { acpModelIdentity } from './normalization/model.js';
 import { AcpNotificationNormalizer } from './normalization/pipeline.js';
 import { AcpApprovalService, type AcpApprovalDecision, type AcpApprovalRequest } from './services/approvals.js';

@@ -15,10 +15,10 @@ import {
   type AdapterEventCandidate,
   type TerminalAutomationOperation,
 } from '@vibecook/puppeteer-core';
-import { projectAgentSession } from '@vibecook/puppeteer-testing';
+import { projectAgentEvents } from '@vibecook/puppeteer-testing';
 import { createClaudeSession, prepareClaudeTuiSession, type ClaudeSession } from './driver.js';
 import type { PreparedClaudeSession } from './launch/prepare.js';
-import type { ClaudeHookDiagnostic } from './normalizer.js';
+import type { ClaudeHookDiagnostic } from './normalization/index.js';
 import type { HookBridge, NativeHookEnvelope } from './observation/hook-bridge.js';
 import type { SemanticObservationProvider } from './observation/semantic-provider.js';
 
@@ -39,7 +39,6 @@ async function startSession(
     providerVersion?: string;
     observeSubagentStatus?: boolean;
     hookRailFaultInjection?: Parameters<typeof createClaudeSession>[0]['hookRailFaultInjection'];
-    onObservationPollHint?: Parameters<typeof createClaudeSession>[0]['onObservationPollHint'];
     semanticProviderFactory?: () => SemanticObservationProvider;
   } = {},
 ) {
@@ -57,7 +56,6 @@ async function startSession(
     providerVersion: options.providerVersion,
     observeSubagentStatus: options.observeSubagentStatus,
     hookRailFaultInjection: options.hookRailFaultInjection,
-    onObservationPollHint: options.onObservationPollHint,
     semanticProviderFactory: options.semanticProviderFactory,
     ports: {
       spawn: async (p) => {
@@ -72,7 +70,7 @@ async function startSession(
     },
   });
   sessions.push(session);
-  const projection = projectAgentSession(session);
+  const projection = projectAgentEvents(session);
 
   const settings = JSON.parse(readFileSync(prepared!.settingsPath, 'utf8')) as {
     hooks: Record<string, Array<{ hooks: Array<{ type: string; url?: string }> }>>;
@@ -130,7 +128,7 @@ async function startSession(
 }
 
 describe('createClaudeSession (full loop, test-as-Claude)', () => {
-  it('keeps the child status channel absent when its rollout gate is disabled', async () => {
+  it('keeps the optional child status channel absent when explicitly disabled', async () => {
     const { prepared } = await startSession({ observeSubagentStatus: false });
     const settings = JSON.parse(readFileSync(prepared.settingsPath, 'utf8')) as {
       subagentStatusLine?: unknown;
@@ -321,13 +319,11 @@ describe('createClaudeSession (full loop, test-as-Claude)', () => {
   });
 
   it('publishes configured intent separately and preserves observed hook actor/version metadata', async () => {
-    const hints: Array<{ hookEventName: string }> = [];
     const { events, hook } = await startSession({
       model: 'configured-sonnet',
       effort: 'high',
       permissionMode: 'plan',
       providerVersion: '2.1.226',
-      onObservationPollHint: (hint) => hints.push(hint),
     });
     const configuredModel = events.find(
       (envelope) => envelope.event.type === 'model:updated' && envelope.event.intent === 'configured',
@@ -390,7 +386,6 @@ describe('createClaudeSession (full loop, test-as-Claude)', () => {
         }),
       }),
     );
-    expect(hints).toContainEqual(expect.objectContaining({ hookEventName: 'UserPromptSubmit' }));
   });
 
   it('blocks injection for a structured question independently from permission lifecycle', async () => {
@@ -637,6 +632,37 @@ describe('createClaudeSession (full loop, test-as-Claude)', () => {
     expect(polls).toBe(3); // initial attach, hook hint, and explicit refresh
   });
 
+  it('routes semantic observer errors through the normalized candidate stream', async () => {
+    let reportError: ((error: Error) => void) | undefined;
+    const provider: SemanticObservationProvider = {
+      capabilities: () => Promise.resolve([]),
+      attach: () =>
+        Promise.resolve({
+          onEvent: () => () => undefined,
+          onBatch: () => () => undefined,
+          onError(listener) {
+            reportError = listener;
+            return () => undefined;
+          },
+          poll: () => Promise.resolve(),
+          readArtifact: () => Promise.resolve({ status: 'unavailable', message: 'not exposed' }),
+          dispose: () => Promise.resolve(),
+        }),
+    };
+    const { events, hook } = await startSession({ semanticProviderFactory: () => provider });
+
+    await hook('SessionStart', { transcript_path: '/tmp/claude-semantic-error.jsonl' });
+    await vi.waitFor(() => expect(reportError).toBeTypeOf('function'));
+    reportError!(Object.assign(new Error('/tmp/private/error'), { code: 'EIO' }));
+
+    expect(events.at(-1)).toMatchObject({
+      source: 'runtime',
+      event: { type: 'adapter:native-event', nativeType: 'semantic-observer.error' },
+      nativeEvent: { name: 'Error', code: 'EIO' },
+    });
+    expect(JSON.stringify(events.at(-1))).not.toContain('/tmp/private/error');
+  });
+
   it('tracks Claude context from status-line JSON and retracts both projections after compaction', async () => {
     const { projection, events, hook, statusLine } = await startSession();
     const monitorBatches = projection.monitorBatches;
@@ -834,7 +860,7 @@ describe('createClaudeSession (full loop, test-as-Claude)', () => {
     });
     const session = await prepared.adopt('rail-pane');
     sessions.push(session);
-    const projection = projectAgentSession(session);
+    const projection = projectAgentEvents(session);
     const events = projection.envelopes;
     const monitorBatches = projection.monitorBatches;
     hookListener?.({
@@ -1028,7 +1054,7 @@ describe('createClaudeSession (full loop, test-as-Claude)', () => {
     expect(prepared.launch.args).not.toContain('--session-id');
     const provisionalId = prepared.sessionId;
     const session = await prepared.adopt('resume-picker-pane');
-    const projection = projectAgentSession(session);
+    const projection = projectAgentEvents(session);
     expect(session.sessionId).toBe(provisionalId);
 
     const settings = JSON.parse(readFileSync(prepared.launch.settingsPath, 'utf8')) as {

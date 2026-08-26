@@ -1,6 +1,6 @@
 import type { AgentEvent } from '@vibecook/puppeteer-core';
-import type { OpenCodeSseRecord } from '../event-stream.js';
-import { openCodeStructuredQuestions } from '../monitor-evidence.js';
+import type { OpenCodeSseRecord } from '../transport/event-stream.js';
+import { openCodeStructuredQuestions } from './monitor.js';
 import { boundedOpenCodeMapSet, isOpenCodeRecord, openCodeText } from './wire.js';
 
 export interface OpenCodeInteractionResult {

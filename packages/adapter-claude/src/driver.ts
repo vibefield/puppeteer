@@ -31,7 +31,7 @@ import {
 } from '@vibecook/puppeteer-core';
 import type { AdapterMonitorObservationBatch } from '@vibecook/puppeteer-core/monitor-spi';
 import { createHookBridge, type HookBridge, type HookBridgeOptions } from './observation/hook-bridge.js';
-import { ClaudeHookNormalizer, type ClaudeHookDiagnostic, type ClaudeHookPayload } from './normalizer.js';
+import { ClaudeHookNormalizer, type ClaudeHookDiagnostic, type ClaudeHookPayload } from './normalization/index.js';
 import {
   prepareClaudeSession,
   cleanupClaudeSession,
@@ -40,9 +40,9 @@ import {
 } from './launch/prepare.js';
 import { createClaudeArtifactService } from './services/artifacts.js';
 import { createPromptInjector, type PromptInjector } from './services/prompt.js';
-import { observeClaudeStatusLineAccountUsage } from './observation/account-usage.js';
+import { observeClaudeStatusLineAccountUsage } from './services/account-usage.js';
 import { claudeContextWindowEvent, claudeEnvironmentEvents } from './observation/status-channel.js';
-import { ClaudeMonitorEvidence } from './observation/monitor-evidence.js';
+import { ClaudeMonitorEvidence } from './normalization/monitor.js';
 import {
   decodeClaudeOtelLogs,
   isClaudeOtelLogsVerified,
@@ -54,7 +54,7 @@ import {
 } from './observation/otel/index.js';
 import { ClaudeTranscriptObservationProvider } from './observation/transcript/provider.js';
 import { ClaudeUsageReconciler, type ClaudeUsageEvidence } from './observation/usage-reconciler.js';
-import { claudePermissionMode } from './provider-modes.js';
+import { claudePermissionMode } from './normalization/mode.js';
 import { ClaudeEventSource, type ClaudeEventPublication } from './services/event-source.js';
 import type {
   SemanticObservationHandle,
@@ -148,8 +148,6 @@ export interface CreateClaudeSessionOptions {
   transcriptPollIntervalMs?: number;
   /** Non-blocking reports for malformed known hooks retained as native evidence. */
   onDiagnostic?: (diagnostic: ClaudeHookDiagnostic) => void;
-  /** Low-latency signal for a semantic observer to poll after a native hook. */
-  onObservationPollHint?: (hint: ClaudeObservationPollHint) => void;
   /** Injectable bridge factory for deterministic transport-failure tests. */
   hookBridgeFactory?: (options: HookBridgeOptions) => HookBridge;
   /**
@@ -160,10 +158,6 @@ export interface CreateClaudeSessionOptions {
   hookRailFaultInjection?: ClaudeHookRailFaultInjection;
   /** Injectable history source; defaults to Claude transcript + workflow journal adapters. */
   semanticProviderFactory?: () => SemanticObservationProvider;
-  /** Optional tap for batches emitted by an injected semantic provider. */
-  onObservationBatch?: (batch: AdapterMonitorObservationBatch) => void;
-  /** Observation errors are reported without terminating Claude. */
-  onObservationError?: (error: Error) => void;
   /** Enable authenticated Claude OTLP request-completion logs. Defaults to true when no exporter conflict exists. */
   observeOtlpUsage?: boolean;
   /** Install and consume Claude's child status channel. Defaults to true for direct adapter callers. */
@@ -174,14 +168,6 @@ export interface ClaudeHookRailFaultInjection {
   afterHookEvent: string;
   occurrence?: number;
   reason?: string;
-}
-
-export interface ClaudeObservationPollHint {
-  hookEventName: string;
-  nativeSessionId?: string;
-  promptId?: string;
-  agentId?: string;
-  agentType?: string;
 }
 
 /**
@@ -646,20 +632,25 @@ function createPreparedClaudeSession(
       });
       handle.onBatch((batch) => {
         if (disposed || generation !== semanticGeneration) return;
-        try {
-          options.onObservationBatch?.(batch);
-        } catch {
-          // Diagnostic taps cannot affect authoritative monitor delivery.
-        }
         emitMonitorBatch(batch);
       });
       handle.onError((error) => {
-        try {
-          options.onObservationError?.(error);
-        } catch {
-          // Error diagnostics cannot affect Claude or source recovery.
-        }
-        // Semantic rail loss degrades its own batches; hooks and the TUI continue.
+        if (disposed || generation !== semanticGeneration) return;
+        apply(
+          { type: 'adapter:native-event', adapter: 'claude-code', nativeType: 'semantic-observer.error' },
+          {
+            source: 'runtime',
+            timestamp: new Date().toISOString(),
+            native: {
+              name: error.name,
+              code:
+                typeof (error as Error & { code?: unknown }).code === 'string'
+                  ? (error as Error & { code: string }).code
+                  : 'unknown',
+            },
+          },
+        );
+        // The semantic rail publishes its own degraded batch; hooks and the TUI continue.
       });
       try {
         await handle.poll();
@@ -746,17 +737,6 @@ function createPreparedClaudeSession(
           confidence: hookEventConfidence(hookEventName, event, body),
           native: body,
         });
-      }
-      try {
-        options.onObservationPollHint?.({
-          hookEventName,
-          nativeSessionId: normalized.sessionId,
-          promptId: normalized.promptId,
-          agentId: normalized.agentId,
-          agentType: normalized.agentType,
-        });
-      } catch {
-        // Poll hints are advisory and cannot affect hook ingestion.
       }
       // Hooks fire near transcript appends — poke the semantic source instead
       // of waiting out its fallback interval.
@@ -920,12 +900,9 @@ export async function createClaudeSession(options: CreateClaudeSessionOptions): 
     resumeInvocation: options.resumeInvocation,
     transcriptPollIntervalMs: options.transcriptPollIntervalMs,
     onDiagnostic: options.onDiagnostic,
-    onObservationPollHint: options.onObservationPollHint,
     hookBridgeFactory: options.hookBridgeFactory,
     hookRailFaultInjection: options.hookRailFaultInjection,
     semanticProviderFactory: options.semanticProviderFactory,
-    onObservationBatch: options.onObservationBatch,
-    onObservationError: options.onObservationError,
     observeOtlpUsage: options.observeOtlpUsage,
     observeSubagentStatus: options.observeSubagentStatus,
     automate: options.ports.automate,

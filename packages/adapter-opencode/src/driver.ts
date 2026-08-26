@@ -9,25 +9,29 @@ import {
   type TerminalSpec,
 } from '@vibecook/puppeteer-core';
 import type { AdapterMonitorObservationBatch } from '@vibecook/puppeteer-core/monitor-spi';
-import { startOpenCodeBackend, type OpenCodeBackend } from './backend.js';
+import { startOpenCodeBackend, type OpenCodeBackend } from './launch/backend.js';
 import {
   OpenCodeClient,
   type OpenCodeModelSelection,
   type OpenCodePermissionRequest,
   type OpenCodeQuestionRequest,
   type OpenCodeSessionInfo,
-} from './client.js';
+} from './transport/client.js';
 import { OPENCODE_LAUNCH_FLAGS, resolveOpenCodeExecutable } from './detection.js';
-import { OpenCodeEventStream, type OpenCodeSseRecord } from './event-stream.js';
+import { OpenCodeEventStream, type OpenCodeSseRecord } from './transport/event-stream.js';
 import {
   projectOpenCodeChild,
   projectOpenCodeHistory,
   projectOpenCodePermission,
   projectOpenCodeQuestion,
   projectOpenCodeStatus,
-} from './history.js';
-import { OpenCodeNormalizer, type NormalizeOpenCodeOptions, type OpenCodeNormalizedEvent } from './normalizer.js';
-import { OpenCodeMonitorEvidence } from './monitor-evidence.js';
+} from './observation/history.js';
+import {
+  OpenCodeNormalizer,
+  type NormalizeOpenCodeOptions,
+  type OpenCodeNormalizedEvent,
+} from './normalization/pipeline.js';
+import { OpenCodeMonitorEvidence } from './normalization/monitor.js';
 import { OpenCodeEventSource, runtimeOpenCodeEvent } from './services/event-source.js';
 import { OpenCodePromptService } from './services/prompt.js';
 

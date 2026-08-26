@@ -1,11 +1,10 @@
 /**
- * Adapter-session conformance suite (DESIGN §26.2).
+ * Low-level adapter-binding conformance suite.
  *
- * Adapter-agnostic assertions that every driver's normalized session must satisfy,
+ * Adapter-agnostic assertions that every driver's normalized binding must satisfy,
  * applied to Claude (hook + PTY) and Codex (structured app-server) through each
- * adapter's own harness. This is what gives the lifted core adapter-session
- * contract (M5 C3) teeth — and what a future Gemini/ACP adapter runs to prove
- * itself against the same bar.
+ * adapter's own harness. This gives the Core `AgentAdapterBinding` contract
+ * executable teeth across structurally different providers.
  *
  * Deliberately tests only the UNIVERSAL contract. Adapter-specific behaviour
  * (Claude's transcript observer, Codex's structured injection determinism) is
@@ -15,7 +14,7 @@
 
 import { describe, it, expect } from 'vitest';
 import { type AgentAdapterBinding, type MonitorMetricFamily, type ObservationLevel } from '@vibecook/puppeteer-core';
-import { projectAgentSession, type TestAgentProjection } from './session-projection.js';
+import { projectAgentEvents, type TestAgentProjection } from './adapter-projection.js';
 
 const OBSERVATION_LEVELS: ObservationLevel[] = [
   'structured',
@@ -34,8 +33,8 @@ async function waitForProjection(predicate: () => boolean, label: string, timeou
   throw new Error(`timed out waiting for ${label}`);
 }
 
-export interface AgentSessionHarness {
-  session: AgentAdapterBinding;
+export interface AgentAdapterHarness {
+  binding: AgentAdapterBinding;
   /** Reuse a projection attached by a harness that must await adapter startup. */
   projection?: TestAgentProjection;
   /** Drive one full user turn; resolves when the turn is observably complete. */
@@ -43,32 +42,32 @@ export interface AgentSessionHarness {
   /** The assistant reply text `driveTurn` produces (for the lastAssistantMessage check). */
   reply: string;
   /** Reopen the same native session through the adapter's real resume path. */
-  resume(): Promise<AgentSessionHarness>;
+  resume(): Promise<AgentAdapterHarness>;
   /** Assert that adapter/harness-owned observation, control, and process resources are gone after dispose. */
   assertNoOrphans(): Promise<void>;
 }
 
 /**
  * Register the conformance `describe` block for one adapter. Call at the top
- * level of an adapter test file: `runAgentSessionConformance('codex', setup)`.
- * `createHarness` returns a fresh, ready-to-drive session per assertion.
+ * level of an adapter test file: `runAgentAdapterConformance('codex', setup)`.
+ * `createHarness` returns a fresh, ready-to-drive binding per assertion.
  */
-export function runAgentSessionConformance(label: string, createHarness: () => Promise<AgentSessionHarness>): void {
-  const projectionFor = (harness: AgentSessionHarness): TestAgentProjection =>
-    harness.projection ?? projectAgentSession(harness.session);
+export function runAgentAdapterConformance(label: string, createHarness: () => Promise<AgentAdapterHarness>): void {
+  const projectionFor = (harness: AgentAdapterHarness): TestAgentProjection =>
+    harness.projection ?? projectAgentEvents(harness.binding);
 
-  describe(`Agent adapter session conformance: ${label}`, () => {
+  describe(`Agent adapter binding conformance: ${label}`, () => {
     it('exposes non-empty session and runtime identities', async () => {
       const h = await createHarness();
       const projection = projectionFor(h);
       try {
-        expect(typeof h.session.sessionId).toBe('string');
-        expect(h.session.sessionId.length).toBeGreaterThan(0);
-        expect(typeof h.session.runtimeSessionId).toBe('string');
-        expect(h.session.runtimeSessionId.length).toBeGreaterThan(0);
+        expect(typeof h.binding.sessionId).toBe('string');
+        expect(h.binding.sessionId.length).toBeGreaterThan(0);
+        expect(typeof h.binding.runtimeSessionId).toBe('string');
+        expect(h.binding.runtimeSessionId.length).toBeGreaterThan(0);
       } finally {
         projection.dispose();
-        await h.session.dispose();
+        await h.binding.dispose();
       }
     });
 
@@ -76,10 +75,10 @@ export function runAgentSessionConformance(label: string, createHarness: () => P
       const h = await createHarness();
       const projection = projectionFor(h);
       try {
-        expect(OBSERVATION_LEVELS).toContain(h.session.observationLevel());
+        expect(OBSERVATION_LEVELS).toContain(h.binding.observationLevel());
       } finally {
         projection.dispose();
-        await h.session.dispose();
+        await h.binding.dispose();
       }
     });
 
@@ -98,7 +97,7 @@ export function runAgentSessionConformance(label: string, createHarness: () => P
         expect(projection.state.tasks.size).toBe(0);
       } finally {
         projection.dispose();
-        await h.session.dispose();
+        await h.binding.dispose();
       }
     });
 
@@ -110,7 +109,7 @@ export function runAgentSessionConformance(label: string, createHarness: () => P
         expect(projection.state.lastAssistantMessage).toBe(h.reply);
       } finally {
         projection.dispose();
-        await h.session.dispose();
+        await h.binding.dispose();
       }
     });
 
@@ -124,25 +123,25 @@ export function runAgentSessionConformance(label: string, createHarness: () => P
         for (let i = 1; i < seqs.length; i++) expect(seqs[i]!).toBeGreaterThan(seqs[i - 1]!);
       } finally {
         projection.dispose();
-        await h.session.dispose();
+        await h.binding.dispose();
       }
     });
 
     it('resumes the same native session and remains usable', async () => {
       const original = await createHarness();
       const originalProjection = projectionFor(original);
-      let resumed: AgentSessionHarness | undefined;
+      let resumed: AgentAdapterHarness | undefined;
       let resumedProjection: TestAgentProjection | undefined;
       try {
         await original.driveTurn('before resume');
-        const nativeSessionId = original.session.sessionId;
-        await original.session.dispose();
+        const nativeSessionId = original.binding.sessionId;
+        await original.binding.dispose();
         await original.assertNoOrphans();
 
         resumed = await original.resume();
         resumedProjection = projectionFor(resumed);
-        expect(resumed.session.sessionId).toBe(nativeSessionId);
-        expect(resumed.session.runtimeSessionId.length).toBeGreaterThan(0);
+        expect(resumed.binding.sessionId).toBe(nativeSessionId);
+        expect(resumed.binding.runtimeSessionId.length).toBeGreaterThan(0);
         await waitForProjection(
           () => resumedProjection?.state.lastAssistantMessage === original.reply,
           'resumed native history',
@@ -156,9 +155,9 @@ export function runAgentSessionConformance(label: string, createHarness: () => P
         expect(resumedProjection.state.lastAssistantMessage).toBe(resumed.reply);
       } finally {
         resumedProjection?.dispose();
-        await resumed?.session.dispose();
+        await resumed?.binding.dispose();
         if (resumed) await resumed.assertNoOrphans();
-        await original.session.dispose();
+        await original.binding.dispose();
         originalProjection.dispose();
         await original.assertNoOrphans();
       }
@@ -168,8 +167,8 @@ export function runAgentSessionConformance(label: string, createHarness: () => P
       const h = await createHarness();
       const projection = projectionFor(h);
       try {
-        await h.session.dispose();
-        await expect(h.session.dispose()).resolves.toBeUndefined();
+        await h.binding.dispose();
+        await expect(h.binding.dispose()).resolves.toBeUndefined();
         await expect(h.assertNoOrphans()).resolves.toBeUndefined();
       } finally {
         projection.dispose();
@@ -192,8 +191,8 @@ const MONITOR_FAMILIES: MonitorMetricFamily[] = [
   'environment',
 ];
 
-export interface AgentMonitorSessionHarness {
-  session: AgentAdapterBinding;
+export interface AgentMonitorAdapterHarness {
+  binding: AgentAdapterBinding;
   /** Simulate loss of only the adapter's structured observation/control rail. */
   closeObservationRail(): void | Promise<void>;
 }
@@ -201,12 +200,12 @@ export interface AgentMonitorSessionHarness {
 /** Shared invariants for adapters publishing the evidence-backed monitor SPI. */
 export function runAgentMonitorConformance(
   label: string,
-  createHarness: () => Promise<AgentMonitorSessionHarness>,
+  createHarness: () => Promise<AgentMonitorAdapterHarness>,
 ): void {
   describe(`Agent monitor conformance: ${label}`, () => {
     it('declares every family and marks initial evidence as bootstrap', async () => {
       const harness = await createHarness();
-      const projection = projectAgentSession(harness.session);
+      const projection = projectAgentEvents(harness.binding);
       try {
         const batches = projection.monitorBatches;
         const capabilities = batches.flatMap((batch) => batch.capabilities ?? []);
@@ -218,13 +217,13 @@ export function runAgentMonitorConformance(
         expect(batches.every(({ phase }) => phase === 'bootstrap')).toBe(true);
       } finally {
         projection.dispose();
-        await harness.session.dispose();
+        await harness.binding.dispose();
       }
     });
 
     it('degrades the rail without emitting process/session death', async () => {
       const harness = await createHarness();
-      const projection = projectAgentSession(harness.session);
+      const projection = projectAgentEvents(harness.binding);
       try {
         await harness.closeObservationRail();
         expect(projection.envelopes.map(({ type }) => type)).not.toContain('process:exited');
@@ -236,7 +235,7 @@ export function runAgentMonitorConformance(
         });
       } finally {
         projection.dispose();
-        await harness.session.dispose();
+        await harness.binding.dispose();
       }
     });
   });

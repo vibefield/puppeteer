@@ -1,8 +1,8 @@
 import {
   runAgentMonitorConformance,
-  runAgentSessionConformance,
-  type AgentMonitorSessionHarness,
-  type AgentSessionHarness,
+  runAgentAdapterConformance,
+  type AgentMonitorAdapterHarness,
+  type AgentAdapterHarness,
 } from '@vibecook/puppeteer-testing/conformance';
 import { createCodexSession } from './driver.js';
 import type { Transport } from './transport/app-server-client.js';
@@ -109,12 +109,12 @@ function scriptedAppServer(reply: string): ScriptedAppServer {
 
 const tick = (): Promise<void> => new Promise((r) => setTimeout(r, 0));
 
-async function codexHarness(resume?: string): Promise<AgentSessionHarness> {
+async function codexHarness(resume?: string): Promise<AgentAdapterHarness> {
   const server = scriptedAppServer(REPLY);
   const session = await createCodexSession({ cwd: '/x', transport: server.transport, resume });
   await tick(); // let the thread/started notification apply -> ready
   return {
-    session,
+    binding: session,
     reply: REPLY,
     resume: () => codexHarness(session.sessionId),
     assertNoOrphans: async () => {
@@ -145,13 +145,13 @@ async function codexHarness(resume?: string): Promise<AgentSessionHarness> {
   };
 }
 
-runAgentSessionConformance('codex', codexHarness);
+runAgentAdapterConformance('codex', codexHarness);
 
-async function codexMonitorHarness(): Promise<AgentMonitorSessionHarness> {
+async function codexMonitorHarness(): Promise<AgentMonitorAdapterHarness> {
   const server = scriptedAppServer(REPLY);
   const session = await createCodexSession({ cwd: '/x', transport: server.transport });
   await tick();
-  return { session, closeObservationRail: () => server.drop() };
+  return { binding: session, closeObservationRail: () => server.drop() };
 }
 
 runAgentMonitorConformance('codex', codexMonitorHarness);

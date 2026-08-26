@@ -29,12 +29,12 @@ import {
 } from '@vibecook/puppeteer-core';
 import type { AdapterMonitorObservationBatch } from '@vibecook/puppeteer-core/monitor-spi';
 import { AppServerClient, type Transport } from '../transport/app-server-client.js';
-import { approvalResponse } from '../control/approvals.js';
+import { approvalResponse } from '../services/approvals.js';
 import type { CodexApprovalDecision, CodexApprovalRequest } from '../driver.js';
 import { CodexNotificationNormalizer } from '../normalization/pipeline.js';
 import { CodexEventSource } from '../services/event-source.js';
 import { readLastCodexContextWindow } from './rollout-context.js';
-import { CodexMonitorEvidence, type CodexConfiguredIntent } from './monitor-evidence.js';
+import { CodexMonitorEvidence, type CodexConfiguredIntent } from '../normalization/monitor.js';
 
 const CLIENT_INFO = { name: 'puppeteer-observer', version: PUPPETEER_VERSION } as const;
 

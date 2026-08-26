@@ -1,11 +1,11 @@
 import { describe, it, expect, vi } from 'vitest';
 import { safeParseAgentEvent, type AdapterEventCandidate } from '@vibecook/puppeteer-core';
-import { projectAgentSession } from '@vibecook/puppeteer-testing';
+import { projectAgentEvents } from '@vibecook/puppeteer-testing';
 import { PROTOCOL_VERSION } from '@agentclientprotocol/sdk';
 import type { Agent, Client, ClientCapabilities, RequestPermissionResponse } from '@agentclientprotocol/sdk';
-import type { AcpConnector } from './connection.js';
+import type { AcpConnector } from './transport/connection.js';
 import { createAcpSession } from './driver.js';
-import { scriptedAcpConnector } from './scripted-connector.js';
+import { scriptedAcpConnector } from './test-support/scripted-connector.js';
 
 const SID = '019f5e50-ce8b-7152-abcd-000000000001';
 
@@ -29,7 +29,7 @@ describe('createAcpSession', () => {
       cwd: '/x',
       connector: scriptedAcpConnector({ sessionId: SID, reply: 'pong' }),
     });
-    const projection = projectAgentSession(session);
+    const projection = projectAgentEvents(session);
     try {
       expect(session.sessionId).toBe(SID);
       expect(session.runtimeSessionId).toBe(SID);
@@ -59,7 +59,7 @@ describe('createAcpSession', () => {
         ],
       }),
     });
-    const projection = projectAgentSession(session);
+    const projection = projectAgentEvents(session);
     try {
       expect(projection.state.environment.model?.value).toEqual({ id: 'grok-4.5', displayName: 'Grok 4.5' });
     } finally {
@@ -74,7 +74,7 @@ describe('createAcpSession', () => {
       connector: scriptedAcpConnector({ sessionId: SID, reply: 'pong' }),
     });
     const lifecycles = new Set<string>();
-    const projection = projectAgentSession(session, (state) => lifecycles.add(state.lifecycle));
+    const projection = projectAgentEvents(session, (state) => lifecycles.add(state.lifecycle));
     lifecycles.add(projection.state.lifecycle);
     try {
       const receipt = await session.services.prompt.submit({ text: 'say pong' });
@@ -130,7 +130,7 @@ describe('createAcpSession', () => {
       cwd: '/x',
       connector: scriptedAcpConnector({ sessionId: SID, reply: 'done', toolTurn: true }),
     });
-    const projection = projectAgentSession(session);
+    const projection = projectAgentEvents(session);
     try {
       await driveTurn(session, 'use a tool');
       expect(projection.state.counters.toolsCompleted).toBe(1);
@@ -147,7 +147,7 @@ describe('createAcpSession', () => {
       cwd: '/x',
       connector: scriptedAcpConnector({ sessionId: SID, reply: 'done', thought: 'private thought text' }),
     });
-    const projection = projectAgentSession(session);
+    const projection = projectAgentEvents(session);
     const envelopes: AdapterEventCandidate[] = [];
     const off = session.events.onCandidate((envelope) => envelopes.push(envelope));
     try {

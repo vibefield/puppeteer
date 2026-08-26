@@ -4,7 +4,8 @@
  * observation and control.
  */
 
-export * from './backend.js';
-export * from './session-observer.js';
-export * from './monitor-evidence.js';
-export * from './account-usage.js';
+export * from './driver.js';
+export * from './observation/session-observer.js';
+export * from './observation/session-discovery.js';
+export * from './normalization/index.js';
+export * from './services/account-usage.js';
