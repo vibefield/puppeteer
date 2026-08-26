@@ -1,12 +1,12 @@
 # Surface ownership, package structure, and continuous adaptation refactor
 
-**Status:** R0–R7 implemented through the guarded candidate/promotion boundary on 2026-08-09; R8 auto-promotion remains intentionally disabled, and legacy baselines still require platform-complete evidence
+**Status:** Archived implementation plan. R0–R7 were delivered through the guarded candidate/promotion boundary on 2026-08-09; current operations live in `docs/guides/surface-adaptation.md`.
 
 **Date:** 2026-08-08
 
 **Scope:** the complete `packages/` topology, `packages/surface`, vendor evidence and models, adapter and imposter boundaries, upstream release reconciliation, support metadata, and README agent-version badges
 
-**Companions:** `docs/archive/EMULATOR.md`, `docs/archive/IMPOSTER.md`, `draft/ADAPTING-AN-AGENT.md`, `draft/NORMALIZATION-DEVKIT.md`, `draft/DESIGN.md`
+**Companions:** `docs/archive/EMULATOR.md`, `docs/archive/IMPOSTER.md`, `docs/guides/adapting-an-agent.md`, `docs/guides/normalization-devkit.md`, `docs/rfcs/004-layered-agent-runtime.md`
 
 This spec starts the next refactoring round. Where the companion drafts say that captures or the Agent Surface Model (ASM) are adapter-owned, this document supersedes them. Their implementation history remains useful; their ownership rule does not.
 
@@ -749,7 +749,7 @@ The delivered repository-wide command surface is:
 pnpm packages:check
 pnpm packages:clean
 pnpm surface:audit
-pnpm surface:detect
+pnpm upstream:detect
 pnpm surface:download --vendor codex --version <version> --platform <platform> --output <path>
 pnpm surface:acquire --vendor codex --version <version> --artifact <platform>=<path> --version-output <platform>=<text>
 pnpm surface:evidence:artifacts --manifest <path> --artifacts <acquisition.json>
@@ -761,7 +761,7 @@ pnpm support:check
 pnpm support:write
 ```
 
-`packages:check` is read-only and validates topology, manifests, the dependency DAG, exports, release-list coverage, and packed ownership rules. `packages:clean` removes generated output only from known workspaces. `surface:audit` is hermetic and checks every selected support/candidate baseline. `surface:detect` performs release metadata discovery only. `surface:download` accepts only reviewed HTTPS origins (including every redirect), bounds the response stream before buffering, and validates binary/archive layouts; `surface:acquire` hashes already downloaded bytes, rejects duplicate platform arguments, and detects same-version republishing. `surface:evidence:artifacts` will update only an identity-matching, already claim-addressable ASM v2 evidence index. `surface:replay` is exact and pre-normalization, failing directional orphan results; `surface:reconcile` classifies artifact completeness plus event/variant/behavior confidence, channel, detector, structural, and behavioral drift without promoting. `surface:verify` aggregates repository gates and platform reports. `surface:promote` refuses unless a machine-readable verification report satisfies §8, the candidate carries a verified artifact/model digest for the complete platform matrix, and the report is bound to the checked-out commit plus the active GitHub Actions workflow, run, and attempt. Promotion persists that attestation in the ledger; legacy baselines instead carry frozen manifest/model digests. The support commands only render and validate ledger-derived documentation.
+`packages:check` is read-only and validates topology, manifests, the dependency DAG, exports, release-list coverage, and packed ownership rules. `packages:clean` removes generated output only from known workspaces. `surface:audit` is hermetic and checks every selected support/candidate baseline. `upstream:detect` performs release metadata discovery only. `surface:download` accepts only reviewed HTTPS origins (including every redirect), bounds the response stream before buffering, and validates binary/archive layouts; `surface:acquire` hashes already downloaded bytes, rejects duplicate platform arguments, and detects same-version republishing. `surface:evidence:artifacts` will update only an identity-matching, already claim-addressable ASM v2 evidence index. `surface:replay` is exact and pre-normalization, failing directional orphan results; `surface:reconcile` classifies artifact completeness plus event/variant/behavior confidence, channel, detector, structural, and behavioral drift without promoting. `surface:verify` aggregates repository gates and platform reports. `surface:promote` refuses unless a machine-readable verification report satisfies §8, the candidate carries a verified artifact/model digest for the complete platform matrix, and the report is bound to the checked-out commit plus the active GitHub Actions workflow, run, and attempt. Promotion persists that attestation in the ledger; legacy baselines instead carry frozen manifest/model digests. The support commands only render and validate ledger-derived documentation.
 
 The watcher and generic workflow do not manufacture a vendor-specific census or
 ASM. A maintainer or vendor-specific generator prepares those semantic changes;

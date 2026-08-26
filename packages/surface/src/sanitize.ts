@@ -1,6 +1,6 @@
 /**
  * Capture sanitiser — the privacy gate between raw evidence and committed
- * fixtures (draft/ADAPTING-AN-AGENT.md step 1, docs/archive/IMPOSTER.md §9.6).
+ * fixtures (docs/guides/adapting-an-agent.md step 1, docs/archive/IMPOSTER.md §9.6).
  *
  * SELF-CONTAINED by design, like model.ts: no relative imports, erasable
  * syntax only, so adapter-local `.mjs` scripts can import it under node type

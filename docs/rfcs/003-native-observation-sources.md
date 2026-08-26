@@ -83,7 +83,7 @@ packages/adapter-claude/src/observation/
   hook-bridge.ts        # authenticated loopback transport service
 ```
 
-Candidate and legacy compatibility buffers are independent rails: a stalled or malformed source cannot block the other. Readers retain bounded state and return snapshots rather than exposing mutable internal buffers.
+Independent native-source queues are isolated: a stalled or malformed source cannot block another observer. Readers retain bounded state and return snapshots rather than exposing mutable internal buffers.
 
 ## Consequences
 

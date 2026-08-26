@@ -1,11 +1,11 @@
 # Puppeteer Agent Emulator & Surface Model — v0.1
 
-**Status:** Archived historical design; active ownership lives in `packages/surface`, `packages/imposter`, and `draft/SURFACE-ADAPTATION-REFACTOR.md`
+**Status:** Archived historical design; active ownership lives in `packages/surface`, `packages/imposter`, and `docs/guides/surface-adaptation.md`
 **Created:** 2026-08-07
-**Companion:** `draft/DESIGN.md` (canonical architecture; this extends §26 Testing Strategy), `draft/ADAPTING-AN-AGENT.md` (the per-adapter workflow this spec enables)
+**Companion:** `docs/archive/DESIGN.md` (historical baseline whose §26 testing strategy this extended), `docs/guides/adapting-an-agent.md` (the current per-adapter workflow)
 **Historical basis:** the former root probe tree was the spike this pipeline graduated into
 
-> **Ownership update (2026-08-08):** `draft/SURFACE-ADAPTATION-REFACTOR.md` supersedes this document wherever it assigns real-vendor captures, models, or reconciliation tooling to adapter packages. The evidence-to-ASM rule remains; its neutral owner is now `packages/surface`.
+> **Ownership update (2026-08-08):** `docs/guides/surface-adaptation.md` supersedes this document wherever it assigns real-vendor captures, models, or reconciliation tooling to adapter packages. The evidence-to-ASM rule remains; its neutral owner is now `packages/surface`.
 
 > ### Superseded in part by `docs/archive/IMPOSTER.md` (I4, 2026-08-08)
 >
@@ -177,7 +177,7 @@ L1 exists only because puppeteer never parses terminal text (ADR-003/-004/-005):
 
 ## 4. Historical emulator-bin contract
 
-This section records the retired P2 proof-of-concept contract. The live design uses the shared Imposter executable and Surface-owned real-vendor models; adapters no longer own emulator bins or model data. See `docs/archive/IMPOSTER.md` and `draft/SURFACE-ADAPTATION-REFACTOR.md`.
+This section records the retired P2 proof-of-concept contract. The live design uses the shared Imposter executable and Surface-owned real-vendor models; adapters no longer own emulator bins or model data. See `docs/archive/IMPOSTER.md` and `docs/guides/surface-adaptation.md`.
 
 The retired design gave each adapter a `surface/emulator/bin.mjs` executable that the adapter spawned **in place of the vendor CLI**, resolved through the existing seams: `PUPPETEER_{CLAUDE,CODEX,GROK}_BIN` or `BuiltinProviderOptions.executables`. Script recipes used a resolved real Node binary so the same `.mjs` worked on POSIX and Windows without shell or `.cmd` quoting.
 

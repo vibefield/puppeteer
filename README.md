@@ -8,6 +8,10 @@ The agent owns its terminal UI. Puppeteer owns the process environment around
 that UI and derives semantic state from native hooks or structured protocols,
 never by scraping terminal text.
 
+See the [layered runtime RFC](docs/rfcs/004-layered-agent-runtime.md) for the
+current architecture and the [documentation map](docs/README.md) for active
+specifications versus historical material.
+
 ## Agent support
 
 <!-- agent-support:start -->
@@ -195,7 +199,7 @@ pnpm pack:check
 ```
 
 To add a new coding agent or adapt a new upstream version, follow the
-[end-to-end agent adaptation workflow](draft/ADAPTING-AN-AGENT.md). It covers
+[end-to-end agent adaptation workflow](docs/guides/adapting-an-agent.md). It covers
 native evidence, Surface modeling, Imposter personas and runflows,
 normalization, conformance, runtime integration, and protected promotion.
 

@@ -2,7 +2,7 @@ Native TUI Coding Agent Runtime
 
 Architecture Design · v0.2 Draft · July 12, 2026 · Revised after Spaghetti-integration review
 
-Status: Canonical architecture baseline; runtime-observation and monitor sections are superseded by `docs/rfcs/001-evidence-backed-runtime-observation.md`
+Status: Archived baseline; current architecture is `docs/rfcs/004-layered-agent-runtime.md`
 Primary language: TypeScript
 Initial host: Electron
 Initial agent integration: Claude Code

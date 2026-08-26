@@ -4,7 +4,7 @@
 
 **Audience:** Developers adding a new built-in agent or adapting a new version of an existing agent
 
-**Companions:** `draft/SURFACE-ADAPTATION-REFACTOR.md` defines ownership and promotion; `docs/archive/EMULATOR.md` defines the Agent Surface Model; `docs/archive/IMPOSTER.md` defines personas and native emulation; `draft/NORMALIZATION-DEVKIT.md` defines the normalization workbench; `draft/DESIGN.md` defines the runtime contract.
+**Companions:** `docs/guides/surface-adaptation.md` defines ownership and promotion; `docs/archive/EMULATOR.md` defines the Agent Surface Model; `docs/archive/IMPOSTER.md` defines personas and native emulation; `docs/guides/normalization-devkit.md` defines the normalization workbench; `docs/rfcs/004-layered-agent-runtime.md` defines the runtime architecture.
 
 This guide is the operational path from an unknown vendor binary to a supported Puppeteer agent. It tells you what to investigate, which artifacts to create, where each fact belongs, how to use the adaptation devkit, what to test, and what must be true before support is promoted.
 
@@ -44,7 +44,7 @@ An agent is not adapted merely because its process launches or one happy-path tu
 4. The `ai` Imposter can reproduce that native contract from a persona and execute realistic and adversarial scenarios.
 5. An adapter observes and controls the real agent, maps native facts into the portable `AgentEvent` contract, and retains unknown native events.
 6. The same normalization can be inspected record by record in the adaptation devkit where the architecture permits pure replay.
-7. The adapter passes the shared `AgentSession` conformance contract, hermetic adapter-against-Imposter tests, and pinned-real tests.
+7. The adapter passes the shared `AgentAdapterBinding` conformance contract, hermetic adapter-against-Imposter tests, and pinned-real tests.
 8. Runtime registration, package publication, upstream detection, and ongoing live reconciliation are wired.
 9. A protected promotion records the exact manifest, model digest, replay digest, tested commit, workflow run, and platform artifact hashes in `support/agents.json`.
 
@@ -656,12 +656,18 @@ packages/adapter-<vendor>/
   src/
     index.ts
     detection.ts
-    normalizer.ts
     driver.ts
+    normalization/
+      index.ts
+      adapter.ts       # native input dispatch and correlation
+      <category>.ts    # one Core event category per file
+      monitor.ts       # correction-aware monitor evidence
+      pipeline.ts
+      types.ts
+    services/          # one upper-level capability per file
     generated/        # evidence-derived runtime projections, when needed
     launch/           # native launch/attach preparation
     observation/      # hooks, logs, transcripts, usage
-    control/          # approvals and human-input translation
     transport/        # protocol/socket/process clients
     test-support/     # synthetic builders, never real captured truth
     conformance.test.ts
@@ -686,23 +692,23 @@ For each native input, make the mapping decision explicit:
 
 ```text
 native record
-  -> validate/parse native envelope
+  -> validate/parse the native envelope
   -> recover native correlation identifiers
-  -> update bounded per-session correlation state
-  -> emit zero, one, or many AgentEvent values
-  -> retain the raw native record on each stamped envelope
-  -> reduce through Core
+  -> update bounded adapter correlation state
+  -> emit zero, one, or many AdapterEventCandidate values
+  -> Runtime validates and stamps immutable AgentEventEnvelope values
+  -> Runtime-owned Agent projects state, conversation, and monitor views
 ```
 
 Rules:
 
-- Use the current event union in `packages/core/src/events.ts`; do not create ad hoc portable names inside an adapter.
+- Use the category contracts in `packages/core/src/events/`; do not create ad hoc portable names inside an adapter.
 - Every mapping must cite a native fact and a product-relevant semantic reason.
 - Preserve distinct identifiers. Do not collapse prompt, assistant-cycle, thread, turn, item, tool, and approval IDs unless evidence proves they are identical.
 - Treat correlation as part of the design. State exactly which keys join records and what happens when a key is absent.
 - Keep per-session buffers bounded. When evicting pending state, resolve or retain it honestly so reducer state cannot leak forever.
 - Handle duplicate, reordered, late, and re-entrant events deterministically.
-- Unknown or unsupported native events become `adapter.native-event`, with the full original record retained in `AgentEventEnvelope.nativeEvent`.
+- Unknown or unsupported native events become `adapter:native-event`, with the full original record retained on the candidate's `nativeEvent` field.
 - An intentionally filtered event, a buffered event, and an unknown retained event are three different outcomes.
 - Never infer semantic state from terminal text.
 - Never infer completion from a “pre” hook or a similarly suggestive name.
@@ -718,7 +724,7 @@ Surface confidence and normalized-envelope confidence answer different questions
 
 Likewise, `ObservationLevel` describes the best current live observation path for the session, not the vendor’s marketing or the theoretical richness of its protocol.
 
-### 7.4 Implement the driver behind `AgentSession`
+### 7.4 Implement the driver behind `AgentAdapterBinding`
 
 The driver owns the complete live composition:
 
@@ -726,9 +732,9 @@ The driver owns the complete live composition:
 - launch or attach through vendor-native flags;
 - any app server, leader, socket, hook bridge, transcript/native-log observer, or state-file observer;
 - native session creation and resume/load;
-- one `EnvelopeStamper` per session and strictly increasing event sequence numbers;
-- honest `source`, `confidence`, `promptId`, `turnId`, `replay`, and `nativeEvent` fields;
-- reduction through `reduceSessionState`;
+- one normalized candidate stream containing honest `source`, `confidence`, `promptId`, `turnId`, `replay`, and `nativeEvent` fields;
+- category normalization delegated to `normalization/<category>.ts`, not embedded in the driver;
+- named `services/<capability>.ts` for prompt, approval, artifact, and other commands;
 - native control and approval decisions;
 - programmatic prompt submission with a truthful `confirmed`, `rejected`, or `uncertain` receipt;
 - idempotent disposal of observation/control resources;
@@ -841,12 +847,12 @@ The pure-normalizer devkit does not currently mirror every transcript/statusline
 
 ## 9. Stage 5 — conform and integrate
 
-### 9.1 Run the shared `AgentSession` contract locally
+### 9.1 Run the shared `AgentAdapterBinding` contract locally
 
 Create `packages/adapter-<vendor>/src/conformance.test.ts` and register:
 
 ```ts
-runAgentSessionConformance('<vendor>', createHarness);
+runAgentAdapterConformance('<vendor>', createHarness);
 ```
 
 The harness must create a fresh session, drive a complete turn, expose the expected reply, resume the same native session, and assert that all adapter-owned resources are gone after disposal.
@@ -886,19 +892,19 @@ Add the new adapter as an Imposter **development** dependency when the E2E test 
 
 Update:
 
-- `packages/runtime/package.json` production dependencies;
-- `packages/runtime/src/types.ts`:
+- `packages/builtin-providers/package.json` production dependencies;
+- `packages/builtin-providers/src/types.ts`:
   - `BuiltinAgentKind`;
   - `BuiltinExecutableAgentKind` when appropriate;
   - `<Vendor>AgentOptions`;
   - `BuiltinCreateAgentSessionOptions` discriminated variant;
-- `packages/runtime/src/providers.ts`:
+- `packages/builtin-providers/src/providers.ts`:
   - executable resolution from `PUPPETEER_<VENDOR>_BIN`;
   - one `AgentProvider` entry;
   - optional account usage;
   - `createSession` and optional `prepareSession`;
   - provider-level resource disposal;
-- `packages/runtime/src/providers.test.ts` mocks, forwarding assertions, preparation behavior, and option typing.
+- `packages/builtin-providers/src/providers.test.ts` mocks, forwarding assertions, preparation behavior, and option typing.
 
 Keep all vendor branching behind `AgentProvider`. Never add provider-specific branches to `packages/runtime/src/runtime.ts`.
 

@@ -3,15 +3,15 @@
 - **Status:** Superseded implementation history — monitor and layered-runtime cutovers complete
 - **Created:** 2026-08-16
 - **Last updated:** 2026-08-26
-- **Companion RFC:** [`001-evidence-backed-runtime-observation.md`](./001-evidence-backed-runtime-observation.md)
+- **Companion RFC:** [`001-evidence-backed-runtime-observation.md`](../rfcs/001-evidence-backed-runtime-observation.md)
 - **Primary target:** Godview beside native provider TUIs
 - **Compatibility target:** one release with the v1 state and IPC bridges available
 
 ## Current implementation status
 
-> **2026-08-26 layered-runtime cutover:** [`RFC-004`](./004-layered-agent-runtime.md) is the current architecture. Monitoring is an invariant of every Agent, Runtime is provider-agnostic, concrete adapter composition lives in `@vibecook/puppeteer-builtin-providers`, adapters publish only unstamped candidates plus named capability services, and portable monitor/React packages own the presentation boundary. The baseline, feature-flag, dependency, and slice descriptions below are retained as dated implementation history.
+> **2026-08-26 layered-runtime cutover:** [`RFC-004`](../rfcs/004-layered-agent-runtime.md) is the current architecture. Monitoring is an invariant of every Agent, Runtime is provider-agnostic, concrete adapter composition lives in `@vibecook/puppeteer-builtin-providers`, adapters publish only unstamped candidates plus named capability services, and portable monitor/React packages own the presentation boundary. The baseline, feature-flag, dependency, and slice descriptions below are retained as dated implementation history.
 
-> **2026-08-25 source cutover:** [`RFC-003`](./003-native-observation-sources.md) retires the Spaghetti runtime dependency. References below to `SPAGHETTI-01`, scoped observers, SDK pins, shadow flags, and Spaghetti-owned live semantics are retained as implementation history, not current architecture. Claude now uses authenticated OTLP logs for settled request usage, transcript JSONL for conversation/history and usage fallback, and workflow journals for exact membership.
+> **2026-08-25 source cutover:** [`RFC-003`](../rfcs/003-native-observation-sources.md) retires the Spaghetti runtime dependency. References below to `SPAGHETTI-01`, scoped observers, SDK pins, shadow flags, and Spaghetti-owned live semantics are retained as implementation history, not current architecture. Claude now uses authenticated OTLP logs for settled request usage, transcript JSONL for conversation/history and usage fallback, and workflow journals for exact membership.
 
 > **2026-08-25 architecture update:** adapter handles now publish only one
 > normalized event stream. Every envelope has a top-level category route such as

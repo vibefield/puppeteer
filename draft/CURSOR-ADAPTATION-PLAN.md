@@ -6,7 +6,7 @@
 | Target | Official Cursor Agent native TUI (`agent`) |
 | Local research artifact | `2026.07.23-e383d2b` (`@anysphere/agent-cli-runtime`, darwin-arm64) |
 | Proposed first pin | `2026.08.11-e8db854` (current `cursor.com/install` payload, 2026-08-11) |
-| Canonical process | [ADAPTING-AN-AGENT.md](./ADAPTING-AN-AGENT.md) |
+| Canonical process | [adapting-an-agent.md](../docs/guides/adapting-an-agent.md) |
 
 This document specializes the repository's first-vendor adaptation process for
 Cursor CLI. It is a plan, not a Surface model and not a promotion record.
@@ -42,10 +42,13 @@ AgentHost PTY ──► one `agent` interactive process
                         Cursor rail arbiter
                               │
                               ▼
-                         Cursor normalizer
+                     Cursor category normalizers
                               │
                               ▼
-                           AgentEvent
+                      AdapterEventCandidate
+                              │
+                              ▼
+                    Runtime validation/event bus
 ```
 
 The first adapter must not:
@@ -170,7 +173,7 @@ Closest implementation precedents:
   not a live stream;
 - Grok / `adapter-acp` only if a later census finds a shared leader that ACP
   and TUI both attach to (none is documented today);
-- the first-vendor bootstrap in `ADAPTING-AN-AGENT.md`, not the
+- the first-vendor bootstrap in [`adapting-an-agent.md`](../docs/guides/adapting-an-agent.md), not the
   already-integrated candidate-refresh workflow.
 
 ## 4. Stable identities
@@ -743,10 +746,11 @@ packages/adapter-cursor/
   src/
     detection.ts          # generated from Surface
     driver.ts
-    normalizer.ts
+    normalization/        # one Core event category per file
+    services/             # event source and prompt capability
     launch/               # isolated dirs, hooks.json, argv
     observation/          # hook collector, transcript tail, store snapshot
-    control/              # only if a proven non-racing gate exists
+    transport/            # only for a proven structured native rail
     conformance.test.ts
     cursor.live.test.ts
 ```

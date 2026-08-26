@@ -13,7 +13,8 @@ Target candidate:
   `9f4337e10da47843f6b550474012a53ba8b30dd665f83b176a5cd479c5f7e859`
 - initial support state: `baseline-pending`
 
-This plan follows the repository invariant from `ADAPTING-AN-AGENT.md`:
+This plan follows the repository invariant from
+[`adapting-an-agent.md`](../docs/guides/adapting-an-agent.md):
 
 > Surface records native evidence. Adapters normalize it. Imposter simulates it.
 > Conformance cross-checks both. Promotion alone declares support.
@@ -40,10 +41,13 @@ native `kimi` process
                     Kimi rail arbiter
                               │
                               ▼
-                       Kimi normalizer
+                    Kimi category normalizers
                               │
                               ▼
-                         Core AgentEvent
+                      AdapterEventCandidate
+                              │
+                              ▼
+                    Runtime validation/event bus
 ```
 
 `kimi acp` remains useful in two roles:
@@ -275,7 +279,7 @@ abrupt-exit fact; it must not be fabricated as successful completion.
 ### E. Conformance and composition
 
 - [x] Replay every sanitized wire capture through the real normalizer.
-- [x] Run shared AgentSession conformance through the adapter against both a
+- [x] Run shared AgentAdapterBinding conformance through the adapter against both a
       deterministic durable store and the real Kimi Imposter subprocess.
 - [ ] Add pinned-real hermetic tests against the acquired 0.34.0 binary.
 - [x] Wire runtime composition, package layout, root scripts, Godview,

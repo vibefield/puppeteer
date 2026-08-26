@@ -1,12 +1,12 @@
 # Puppeteer Implementation Plan — v0.1
 
-**Status:** Draft for review
+**Status:** Archived initial implementation plan
 
 > **Historical host note:** this plan records the original `apps/workbench`
 > implementation target. The current repository host is `apps/godview`; use
-> `draft/ADAPTING-AN-AGENT.md` and current package scripts for live workflows.
+> `docs/guides/adapting-an-agent.md` and current package scripts for live workflows.
 **Created:** 2026-07-12
-**Companion:** `draft/DESIGN.md` (Native TUI Coding Agent Runtime, v0.2 — canonical copy; the one in `~/Projects/project100/temp/` is superseded)
+**Companion:** `docs/archive/DESIGN.md` (historical Native TUI Coding Agent Runtime v0.2 baseline)
 **Sibling:** Spaghetti (`p008/spaghetti`) — the read-only data plane. Boundary: *reads bytes left on disk → spaghetti; holds a live handle to an agent process → puppeteer.*
 
 ---

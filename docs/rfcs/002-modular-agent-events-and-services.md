@@ -104,18 +104,35 @@ packages/core/src/
     adapter.ts
     index.ts
   adapter/
+    binding.ts
     event-candidate.ts
+    index.ts
   services/
+    account-usage.ts
     event-source.ts
     prompt.ts
     artifacts.ts
 
 packages/runtime/src/
-  event-bus.ts
+  events/
+    event-bus.ts
+  host/
+    environment.ts
+  identity/
+    creation-registry.ts
+    runtime-identity.ts
+  monitor/
+    clock.ts
+    handle.ts
+  observation/
+    git.ts
   services/
     state-service.ts
     conversation-service.ts
     monitor-service.ts
+    projection-service.ts
+  agent.ts
+  runtime.ts
 ```
 
 There is no `events/state/` umbrella. Session lifecycle, turns, reasoning, tools, interactions, delegation, planning, and compaction are peer domains. Environment contains only cwd and Git facts; model, effort, and provider mode have independent events so unrelated evidence does not overwrite one another.

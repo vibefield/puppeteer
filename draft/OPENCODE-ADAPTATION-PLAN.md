@@ -3,7 +3,7 @@
 Status: **Stages 1–5 and local Stage 6 reconciliation implemented; protected promotion remains gated**
 Candidate: **OpenCode 1.18.16** (`v1.18.16`, source revision
 `a3647eb025c7615159d417dcc49fc39fdaeba65b`)
-Plan basis: `draft/ADAPTING-AN-AGENT.md` and the captured findings in
+Plan basis: `docs/guides/adapting-an-agent.md` and the captured findings in
 `packages/surface/vendors/opencode/findings.md`
 
 ## 1. Outcome and guardrail
@@ -22,19 +22,21 @@ support remain outputs of the protected promotion transaction only.
 
 ## 2. Repository onboarding summary
 
-The implementation crosses five deliberately separated layers:
+The implementation crosses the repository's deliberately separated layers:
 
 | Layer                       | Responsibility for OpenCode                                                                  |
 | --------------------------- | -------------------------------------------------------------------------------------------- |
 | `packages/surface`          | pinned artifact, raw/sanitized evidence, ASM v2, drift audit                                 |
 | `packages/imposter`         | OpenCode-compatible HTTP/SSE backend and persona scenarios                                   |
 | `packages/adapter-opencode` | backend lifecycle, HTTP/SSE client, normalization, prompt confirmation, native attach recipe |
-| `packages/runtime`          | register the provider behind the existing provider seam                                      |
+| `packages/runtime`          | provider-neutral ingress, private event bus, Agent projections, and lifecycle orchestration  |
+| `packages/builtin-providers` | compose the OpenCode adapter into the optional official-provider runtime                     |
 | apps/support ledger         | developer tooling first; public support only after conformance/promotion                     |
 
-`packages/core` stays zero-I/O. Its current `AgentSession`, event union, reducer,
-and `AgentHost` are already sufficient for the first OpenCode slice. Question
-events remain native rather than forcing a premature cross-vendor core type.
+`packages/core` stays zero-I/O. Its `AgentAdapterBinding`, strict event catalog,
+monitor SPI, and `AgentHost` are sufficient for the OpenCode slice. Native
+questions normalize through the shared `interaction:*` category while the raw
+provider record remains candidate evidence.
 
 ## 3. Stable names
 
@@ -61,7 +63,7 @@ session:
 
 ```text
                          native events        normalized events
-opencode serve ──────── GET /event (SSE) ─── adapter ─────────── runtime
+opencode serve ──────── GET /event (SSE) ─── adapter candidates ─► runtime
       │                        ▲                 │
       │ REST create/history/   │                 │ AgentHost recipe
       │ prompt/abort/control    │                 ▼
@@ -172,9 +174,9 @@ Adapter lifecycle events use `source: runtime` and derived confidence.
 | Native observation                                    | Normalized event/rule                                                                            |
 | ----------------------------------------------------- | ------------------------------------------------------------------------------------------------ |
 | created or verified resumed session                   | `session.started` once                                                                           |
-| fork `session.created` without `parentID`             | independent `session.started`, never `subagent.started`                                          |
-| child `session.created {parentID}` or task metadata `sessionId` | `subagent.started` keyed by the child session ID                                        |
-| child idle/deleted joined through native child ID     | `subagent.stopped` once; do not stop the parent turn                                             |
+| fork `session.created` without `parentID`             | independent `session:started`, never `delegation:subagent-started`                               |
+| child `session.created {parentID}` or task metadata `sessionId` | `delegation:subagent-started` keyed by the child session ID                           |
+| child idle/deleted joined through native child ID     | `delegation:subagent-stopped` once; do not stop the parent turn                                  |
 | completed task carrier with `background:true`         | async handle only; keep the joined subagent active until child idle                              |
 | archived `session.updated`                            | retain native visibility metadata without ending the session                                     |
 | `session.deleted`                                     | terminal removal of that native session identity                                                 |
@@ -351,12 +353,13 @@ Create `packages/adapter-opencode` with focused components:
 
 ```text
 src/
-  backend.ts                 # serve lifecycle, readiness, secret handling
-  client.ts                  # typed REST calls used by the adapter
-  event-stream.ts            # SSE parsing/reconnect/buffering
-  normalizer.ts              # stateful native -> AgentEvent mapping
-  history.ts                 # durable message projection/reconciliation
-  driver.ts                  # AgentSession + prepare/create native TUI recipe
+  launch/backend.ts          # serve lifecycle, readiness, secret handling
+  transport/client.ts        # typed REST calls used by the adapter
+  transport/event-stream.ts  # SSE parsing/reconnect/buffering
+  normalization/             # stateful native -> Core category mappings
+  observation/history.ts     # durable message projection/reconciliation
+  services/                  # normalized event source and prompt capability
+  driver.ts                  # AgentAdapterBinding + prepare/create native TUI recipe
   index.ts
 ```
 
@@ -380,12 +383,12 @@ calls, bounded exact SSE framing and reconnect, revision-aware durable history
 reconciliation (including `GET /session/:id/children`), a stateful ASM-cited
 normalizer, exact message-ID prompt receipts, and the prepared
 `attach --session` native-TUI recipe. Child `session.created {parentID}` and
-task-metadata `sessionId` joins emit `subagent.started`; child idle/deleted
-emits `subagent.stopped`; forks without `parentID` stay independent. A
+task-metadata `sessionId` joins emit `delegation:subagent-started`; child
+idle/deleted emits `delegation:subagent-stopped`; forks without `parentID` stay independent. A
 background task completion does not stop the joined child. The default suite
 covers captured-fixture mappings, foreground/background child lifecycles,
 adversarial ordering/deduplication, prompt timeout, backend auth/cleanup,
-exact attach, restart/resume hydration, and all seven shared `AgentSession`
+exact attach, restart/resume hydration, and all seven shared `AgentAdapterBinding`
 conformance assertions against the real Imposter HTTP/SSE transport. Build,
 typecheck, formatting, and package-layout gates pass; production code contains
 no terminal-output parser and has no runtime Surface dependency.
@@ -420,12 +423,11 @@ records through the stateful OpenCode normalizer while explicitly leaving
 duplicate-id, reconnect, REST hydration, prompt-receipt, and attach behavior to
 adapter conformance.
 
-The full repository test command passes, including 38 runtime tests, 86
-Godview tests, 46 adaptation-devkit tests, all 239 Imposter
-tests, and the OpenCode adapter's 34 default tests (with its pinned-real test
-remaining opt-in). Workspace typecheck/build, all three app bundles,
-package-layout, upstream-config, support-ledger, and OpenCode-scoped formatting
-checks are clean. The explicit adaptation, promotion, and scheduled-live
+The full repository test command passed at implementation time, with the
+pinned-real test remaining opt-in. Current `pnpm test`, `pnpm build`, package
+layout, ground-truth mapping, support-ledger, and formatting gates are the
+authority; this plan does not freeze volatile test counts. The explicit
+adaptation, promotion, and scheduled-live
 workflow seams now include OpenCode with `OPENCODE_LIVE=1` and
 `PUPPETEER_OPENCODE_BIN`; workflow regression tests keep those security-policy
 choices visible.
@@ -483,7 +485,7 @@ Completed Imposter slice:
 Completed adapter/integration/reconciliation slices:
 
 - new `packages/adapter-opencode/**`
-- `packages/runtime/{package.json,src/providers.ts,src/types.ts}` and tests
+- `packages/builtin-providers/{package.json,src/providers.ts,src/types.ts}` and tests
 - workspace lockfile/package-layout expectations
 - application agent enumerations and restore tests
 - explicit adaptation, protected-promotion, and scheduled-live workflow seams

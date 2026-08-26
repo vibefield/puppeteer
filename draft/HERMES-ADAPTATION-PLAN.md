@@ -5,7 +5,7 @@
 | Status            | Stage 0–5 in progress: census, ASM, Imposter, adapter, runtime provider. Not a support claim.    |
 | Target            | Official Hermes Agent native TUI (`hermes --tui`)                                                |
 | Initial candidate | `0.20.0`, GitHub tag `v2026.8.3`, commit `3c27eb6234bf91b8ceee9e9071591b31e9b148cb` (2026-08-03) |
-| Canonical process | [ADAPTING-AN-AGENT.md](./ADAPTING-AN-AGENT.md)                                                   |
+| Canonical process | [adapting-an-agent.md](../docs/guides/adapting-an-agent.md)                                                   |
 
 This document specializes the repository's first-vendor adaptation process for
 Hermes Agent. It is a plan, not a Surface model and not a promotion record.
@@ -40,10 +40,13 @@ AgentHost PTY ──► one `hermes --tui` process tree
                         Hermes rail arbiter
                               │
                               ▼
-                         Hermes normalizer
+                      Hermes category normalizers
                               │
                               ▼
-                           AgentEvent
+                      AdapterEventCandidate
+                              │
+                              ▼
+                    Runtime validation/event bus
 ```
 
 The first adapter must not:
@@ -148,7 +151,7 @@ Closest implementation precedents:
   `uncertain` receipts if attach fails;
 - Grok for ACP composition **only** if a later census finds a shared leader
   that ACP and TUI both attach to (none is documented today);
-- the first-vendor bootstrap in `ADAPTING-AN-AGENT.md`, not the
+- the first-vendor bootstrap in [`adapting-an-agent.md`](../docs/guides/adapting-an-agent.md), not the
   already-integrated candidate-refresh workflow.
 
 ## 4. Stable identities
@@ -607,13 +610,12 @@ packages/adapter-hermes/
   src/
     index.ts
     detection.ts
-    normalizer.ts
     driver.ts
     generated/          # detection/launch facts from Surface
     launch/
-    observation/        # gateway client, hook/webhook collector, db snapshot
-    control/            # approvals only after a single-controller lease
-    transport/          # JSON-RPC client if Gate 0 passes
+    normalization/      # one Core event category per file
+    services/           # event source and prompt capability
+    transport/          # JSON-RPC framing and stdio
     test-support/
     conformance.test.ts
     hermes.live.test.ts
@@ -700,7 +702,7 @@ After adapter-against-Imposter conformance is green:
 
 ### F. Conform, integrate, promote
 
-- [x] Shared `AgentSession` conformance.
+- [x] Shared `AgentAdapterBinding` conformance.
 - [x] Real adapter-against-Imposter lane.
 - [x] Runtime `AgentProvider` entry (no `runtime.ts` branching).
 - [ ] Godview selector and Imposter Control projection.
@@ -728,7 +730,7 @@ Pause implementation rather than guess if any of these occurs:
 ## 18. Suggested first-vendor PR shape
 
 When implementation starts, use the PR template in
-`ADAPTING-AN-AGENT.md` §15. The first PR that only lands Surface + findings
+[`adapting-an-agent.md`](../docs/guides/adapting-an-agent.md) §15. The first PR that only lands Surface + findings
 
 - an honest Gate 0 result is acceptable. Adapter source should not land
   until the winning rail is evidenced.

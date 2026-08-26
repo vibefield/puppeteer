@@ -2,10 +2,10 @@
 
 **Status:** Archived implementation rationale; active behavior lives in `packages/imposter` and Surface-owned vendor models
 **Created:** 2026-08-07
-**Companion:** `docs/archive/EMULATOR.md` (the ASM format and captured-truth pipeline this consumes; its §3–§6 emulator machinery is what this replaces), `draft/ADAPTING-AN-AGENT.md` (the six-step workflow this shortens at steps 3 and 5), `draft/DESIGN.md` (canonical architecture)
+**Companion:** `docs/archive/EMULATOR.md` (the ASM format and captured-truth pipeline this consumes; its §3–§6 emulator machinery is what this replaces), `docs/guides/adapting-an-agent.md` (the six-step workflow this shortens at steps 3 and 5), `docs/rfcs/004-layered-agent-runtime.md` (current architecture)
 **Supersedes:** `packages/emulator` and the per-adapter `surface/emulator/bin.mjs` pattern — the P2/P3 proof of concept, delivered and validated end to end on 2026-08-07, retired per §7
 
-> **Ownership update (2026-08-08):** `draft/SURFACE-ADAPTATION-REFACTOR.md` supersedes this document's adapter-owned ASM decision. Real-vendor evidence and models move to `packages/surface`; Imposter remains a sibling projection and owns only emulation data. The synthetic persona's local model remains the exception.
+> **Ownership update (2026-08-08):** `docs/guides/surface-adaptation.md` supersedes this document's adapter-owned ASM decision. Real-vendor evidence and models move to `packages/surface`; Imposter remains a sibling projection and owns only emulation data. The synthetic persona's local model remains the exception.
 
 ---
 

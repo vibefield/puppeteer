@@ -89,7 +89,7 @@ Run the devkit with:
 pnpm agent-devkit
 ```
 
-The former `pnpm imposter-control` and `pnpm emulator` commands remain aliases.
+`pnpm agent-devkit` is the single canonical command for this application.
 
 ## Honest limits of the first slice
 

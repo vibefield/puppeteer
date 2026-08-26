@@ -5,7 +5,7 @@
 | Status | Stage 1 authorized print-mode/hook census in progress; native-TUI PTY still open |
 | Target | Official Antigravity CLI native TUI (`agy`) |
 | Initial surveyed release | `1.1.12`, observed 2026-08-10 |
-| Canonical process | [ADAPTING-AN-AGENT.md](./ADAPTING-AN-AGENT.md) |
+| Canonical process | [adapting-an-agent.md](../docs/guides/adapting-an-agent.md) |
 
 This document specializes the repository's normal first-vendor adaptation
 process for Antigravity. It is a plan, not a support claim. Any preliminary
@@ -40,10 +40,13 @@ AgentHost PTY -> one official `agy` TUI process
                  `-- status line -> optional, only if safely composable
                                       |
                                       v
-                              stateful normalizer
+                              category normalizers
                                       |
                                       v
-                                AgentEvent
+                           AdapterEventCandidate
+                                      |
+                                      v
+                         Runtime validation/event bus
 ```
 
 The first adapter must not:
@@ -556,12 +559,12 @@ packages/adapter-antigravity/
       prepare.ts
       hooks.ts
       forwarder.ts
-    bridge.ts
-    transcript.ts
-    normalizer.ts
-    prompt-driver.ts
-    tui-session.ts
-    test-support.ts
+    normalization/      # one Core event category per file
+    observation/        # hook and transcript observers
+    services/           # event source and prompt capability
+    transport/          # hook forwarding/framing
+    driver.ts
+    test-support/
     *.test.ts
   test/
     conformance.test.ts
@@ -578,7 +581,7 @@ Responsibilities:
 - tail transcript data across partial writes, truncation, rotation, resume, and
   shutdown;
 - reconcile multiple rails in a stateful normalizer with bounded buffers;
-- implement honest prompt receipts behind `AgentSession`;
+- implement honest prompt receipts behind `AgentAdapterBinding`;
 - expose a provisional session ID until the native conversation UUID is known;
 - preserve unknown native records;
 - support dependency injection for clocks, files, bridge transport, and host;
@@ -718,7 +721,7 @@ overstated receipts/observation levels.
 
 Deliverables:
 
-- shared `AgentSession` conformance;
+- shared `AgentAdapterBinding` conformance;
 - adapter-against-Imposter integration lane;
 - runtime provider and product app wiring;
 - package/publication/release policy;
