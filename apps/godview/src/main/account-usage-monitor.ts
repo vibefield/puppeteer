@@ -1,51 +1,44 @@
-import type { AccountUsageAvailable, AccountUsageFailure, AccountUsageFetchResult } from '@vibecook/puppeteer-core';
-import {
-  ACCOUNT_USAGE_AGENTS,
-  type AccountUsageAgent,
-  type AgentAccountUsage,
-  type AgentAccountUsageBatch,
-} from '../protocol.js';
+import type {
+  AccountUsageAvailable,
+  AccountUsageFailure,
+  AccountUsageFetchResult,
+  AccountUsageProvider,
+} from '@vibecook/puppeteer-core';
+import type { AccountUsageBatch, AccountUsageEntry } from '../protocol.js';
 
-/** Claude OAuth /api/oauth/usage is heavily rate limited; prefer status-line push. */
-const DEFAULT_REFRESH_MS: Record<AccountUsageAgent, number> = {
-  claude: 30 * 60_000,
-  codex: 60_000,
-  grok: 15 * 60_000,
-};
 const MAX_BACKOFF_MS = 30 * 60_000;
-/** While Claude sessions feed status-line rate_limits, defer OAuth polls further. */
-const STATUSLINE_DEFERS_NETWORK_MS = 30 * 60_000;
 
 export interface AccountUsageMonitorOptions {
-  fetchUsage(agent: AccountUsageAgent): Promise<AccountUsageFetchResult>;
-  publish(batch: AgentAccountUsageBatch): void;
+  providers: readonly AccountUsageProvider[];
+  fetchUsage(providerId: string): Promise<AccountUsageFetchResult>;
+  publish(batch: AccountUsageBatch): void;
+  /** Uniform polling override for tests or product-wide policy. */
   refreshMs?: number;
-  refreshMsByAgent?: Partial<Record<AccountUsageAgent, number>>;
   tickMs?: number;
   now?: () => Date;
   onError?: (error: Error) => void;
 }
 
 export interface AccountUsageMonitor {
-  snapshot(): Promise<AgentAccountUsageBatch>;
-  refresh(): Promise<AgentAccountUsageBatch>;
-  /** Apply a push-style update (e.g. Claude status-line rate_limits) without a network poll. */
-  ingest(agent: AccountUsageAgent, result: AccountUsageFetchResult): AgentAccountUsageBatch;
+  snapshot(): Promise<AccountUsageBatch>;
+  refresh(): Promise<AccountUsageBatch>;
+  /** Apply a provider push update without decoding its native transport. */
+  ingest(providerId: string, result: AccountUsageFetchResult): AccountUsageBatch;
   start(): void;
   stop(): void;
 }
 
-function unavailable(agent: AccountUsageAgent): AccountUsageFetchResult {
+function unavailable(provider: AccountUsageProvider): AccountUsageFetchResult {
   return {
     status: 'unavailable',
-    provider: agent,
-    message: `${agent} account usage could not be refreshed`,
+    provider: provider.id,
+    message: `${provider.label} account usage could not be refreshed`,
     retryable: true,
   };
 }
 
 interface ProviderRefreshState {
-  entry?: AgentAccountUsage;
+  entry?: AccountUsageEntry;
   lastAvailable?: AccountUsageAvailable;
   nextRefreshAtMs: number;
   consecutiveFailures: number;
@@ -56,16 +49,12 @@ function finitePositive(value: number, label: string): number {
   return value;
 }
 
-function isStatusLineAvailable(result: AccountUsageFetchResult): result is AccountUsageAvailable {
-  return result.status === 'available' && result.snapshot.source.kind === 'native-statusline';
-}
-
 function publishBatch(
-  entries: AgentAccountUsage[],
+  entries: AccountUsageEntry[],
   refreshedAt: string,
-  publish: (batch: AgentAccountUsageBatch) => void,
+  publish: (batch: AccountUsageBatch) => void,
   onError?: (error: Error) => void,
-): AgentAccountUsageBatch {
+): AccountUsageBatch {
   const batch = { refreshedAt, entries };
   try {
     publish(batch);
@@ -76,30 +65,32 @@ function publishBatch(
 }
 
 export function createAccountUsageMonitor(options: AccountUsageMonitorOptions): AccountUsageMonitor {
-  const refreshMsByAgent = Object.fromEntries(
-    ACCOUNT_USAGE_AGENTS.map((agent) => [
-      agent,
+  const providers = options.providers.map((provider) => ({ ...provider, refresh: { ...provider.refresh } }));
+  const providerById = new Map(providers.map((provider) => [provider.id, provider]));
+  if (providerById.size !== providers.length) throw new Error('account usage provider ids must be unique');
+
+  const refreshMsByProvider = new Map(
+    providers.map((provider) => [
+      provider.id,
       finitePositive(
-        options.refreshMs ?? options.refreshMsByAgent?.[agent] ?? DEFAULT_REFRESH_MS[agent],
-        `${agent} account usage refresh interval`,
+        options.refreshMs ?? provider.refresh.pollIntervalMs,
+        `${provider.id} account usage refresh interval`,
       ),
     ]),
-  ) as Record<AccountUsageAgent, number>;
-  const tickMs = finitePositive(
-    options.tickMs ?? Math.min(...Object.values(refreshMsByAgent)),
-    'account usage polling interval',
   );
+  const defaultTickMs = refreshMsByProvider.size > 0 ? Math.min(...refreshMsByProvider.values()) : 60_000;
+  const tickMs = finitePositive(options.tickMs ?? defaultTickMs, 'account usage polling interval');
 
-  let latest: AgentAccountUsageBatch | undefined;
-  let inFlight: Promise<AgentAccountUsageBatch> | undefined;
+  let latest: AccountUsageBatch | undefined;
+  let inFlight: Promise<AccountUsageBatch> | undefined;
   let timer: ReturnType<typeof setInterval> | undefined;
-  const states = new Map<AccountUsageAgent, ProviderRefreshState>(
-    ACCOUNT_USAGE_AGENTS.map((agent) => [agent, { nextRefreshAtMs: Number.NEGATIVE_INFINITY, consecutiveFailures: 0 }]),
+  const states = new Map<string, ProviderRefreshState>(
+    providers.map((provider) => [provider.id, { nextRefreshAtMs: Number.NEGATIVE_INFINITY, consecutiveFailures: 0 }]),
   );
   const now = options.now ?? (() => new Date());
 
   const nextRefreshAt = (
-    agent: AccountUsageAgent,
+    provider: AccountUsageProvider,
     result: AccountUsageFailure,
     state: ProviderRefreshState,
     completedAtMs: number,
@@ -107,59 +98,62 @@ export function createAccountUsageMonitor(options: AccountUsageMonitorOptions): 
     const providerRetryAt = result.retryAt ? Date.parse(result.retryAt) : Number.NaN;
     if (Number.isFinite(providerRetryAt) && providerRetryAt > completedAtMs) return providerRetryAt;
     const multiplier = result.retryable ? 2 ** Math.min(state.consecutiveFailures, 5) : 1;
-    return completedAtMs + Math.min(refreshMsByAgent[agent] * multiplier, MAX_BACKOFF_MS);
+    return completedAtMs + Math.min(refreshMsByProvider.get(provider.id)! * multiplier, MAX_BACKOFF_MS);
   };
 
-  const materializeBatch = (completedAt: Date): AgentAccountUsageBatch => {
-    const entries = ACCOUNT_USAGE_AGENTS.map(
-      (agent) => states.get(agent)!.entry ?? { agent, result: unavailable(agent) },
+  const materializeBatch = (completedAt: Date): AccountUsageBatch => {
+    const entries = providers.map(
+      (provider): AccountUsageEntry => states.get(provider.id)!.entry ?? { provider, result: unavailable(provider) },
     );
     const batch = publishBatch(entries, completedAt.toISOString(), options.publish, options.onError);
     latest = batch;
     return batch;
   };
 
-  const applyResult = (agent: AccountUsageAgent, result: AccountUsageFetchResult, completedAtMs: number): void => {
-    const state = states.get(agent)!;
+  const applyResult = (
+    provider: AccountUsageProvider,
+    result: AccountUsageFetchResult,
+    completedAtMs: number,
+    pushed: boolean,
+  ): void => {
+    const state = states.get(provider.id)!;
     if (result.status === 'available') {
       state.lastAvailable = result;
-      state.entry = { agent, result };
+      state.entry = { provider, result };
       state.consecutiveFailures = 0;
-      const deferMs = isStatusLineAvailable(result)
-        ? Math.max(refreshMsByAgent[agent], STATUSLINE_DEFERS_NETWORK_MS)
-        : refreshMsByAgent[agent];
-      state.nextRefreshAtMs = completedAtMs + deferMs;
+      const nextPollMs = pushed
+        ? (provider.refresh.pushUpdatePollIntervalMs ?? refreshMsByProvider.get(provider.id)!)
+        : refreshMsByProvider.get(provider.id)!;
+      state.nextRefreshAtMs = completedAtMs + nextPollMs;
       return;
     }
 
     state.entry = state.lastAvailable
-      ? { agent, result: state.lastAvailable, stale: true, refreshFailure: result }
-      : { agent, result };
-    state.nextRefreshAtMs = nextRefreshAt(agent, result, state, completedAtMs);
+      ? { provider, result: state.lastAvailable, stale: true, refreshFailure: result }
+      : { provider, result };
+    state.nextRefreshAtMs = nextRefreshAt(provider, result, state, completedAtMs);
     state.consecutiveFailures += 1;
   };
 
-  const refresh = (): Promise<AgentAccountUsageBatch> => {
+  const refresh = (): Promise<AccountUsageBatch> => {
     if (inFlight) return inFlight;
     const startedAtMs = now().valueOf();
-    const dueAgents = ACCOUNT_USAGE_AGENTS.filter((agent) => states.get(agent)!.nextRefreshAtMs <= startedAtMs);
-    if (dueAgents.length === 0 && latest) return Promise.resolve(latest);
+    const dueProviders = providers.filter((provider) => states.get(provider.id)!.nextRefreshAtMs <= startedAtMs);
+    if (dueProviders.length === 0 && latest) return Promise.resolve(latest);
 
     const request = Promise.all(
-      dueAgents.map(async (agent): Promise<[AccountUsageAgent, AccountUsageFetchResult]> => {
+      dueProviders.map(async (provider): Promise<[AccountUsageProvider, AccountUsageFetchResult]> => {
         try {
-          return [agent, await options.fetchUsage(agent)];
+          return [provider, await options.fetchUsage(provider.id)];
         } catch (error) {
           options.onError?.(error instanceof Error ? error : new Error(String(error)));
-          return [agent, unavailable(agent)];
+          return [provider, unavailable(provider)];
         }
       }),
-    ).then((results): AgentAccountUsageBatch => {
+    ).then((results): AccountUsageBatch => {
       const completedAt = now();
       const completedAtMs = completedAt.valueOf();
-      for (const [agent, result] of results) {
-        applyResult(agent, result, completedAtMs);
-      }
+      for (const [provider, result] of results) applyResult(provider, result, completedAtMs, false);
       return materializeBatch(completedAt);
     });
     inFlight = request;
@@ -177,9 +171,11 @@ export function createAccountUsageMonitor(options: AccountUsageMonitorOptions): 
   return {
     snapshot: () => (latest ? Promise.resolve(latest) : refresh()),
     refresh,
-    ingest(agent, result) {
+    ingest(providerId, result) {
+      const provider = providerById.get(providerId);
+      if (!provider) throw new Error(`unknown account usage provider: ${providerId}`);
       const completedAt = now();
-      applyResult(agent, result, completedAt.valueOf());
+      applyResult(provider, result, completedAt.valueOf(), true);
       return materializeBatch(completedAt);
     },
     start() {

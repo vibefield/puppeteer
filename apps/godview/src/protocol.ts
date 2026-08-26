@@ -2,6 +2,7 @@ import type { SessionSummary } from '@vibecook/ghosttea-protocol';
 import type {
   AccountUsageFailure,
   AccountUsageFetchResult,
+  AccountUsageProvider,
   MonitorArtifactReadResult,
   PromptReceipt as CorePromptReceipt,
 } from '@vibecook/puppeteer-core';
@@ -33,20 +34,17 @@ export type {
   AgentMonitorStateMessage,
   ReadAgentMonitorArtifactRequest,
 } from './main/monitor-ipc.js';
-export const ACCOUNT_USAGE_AGENTS = ['claude', 'codex', 'grok'] as const;
-export type AccountUsageAgent = (typeof ACCOUNT_USAGE_AGENTS)[number];
-
-export interface AgentAccountUsage {
-  agent: AccountUsageAgent;
+export interface AccountUsageEntry {
+  provider: AccountUsageProvider;
   result: AccountUsageFetchResult;
   /** The last good snapshot is retained when a later refresh fails. */
   stale?: boolean;
   refreshFailure?: AccountUsageFailure;
 }
 
-export interface AgentAccountUsageBatch {
+export interface AccountUsageBatch {
   refreshedAt: string;
-  entries: AgentAccountUsage[];
+  entries: AccountUsageEntry[];
 }
 
 export interface CreateAgentSessionOptions {
@@ -133,7 +131,7 @@ export interface PuppeteerBridge {
   startScenarioRecording(runtimeSessionId: string): Promise<StartScenarioRecordingResult>;
   stopScenarioRecording(runtimeSessionId: string): Promise<ScenarioRecordingStatus>;
   onScenarioRecording(cb: (status: ScenarioRecordingStatus) => void): () => void;
-  accountUsage(): Promise<AgentAccountUsageBatch>;
-  refreshAccountUsage(): Promise<AgentAccountUsageBatch>;
-  onAccountUsage(cb: (batch: AgentAccountUsageBatch) => void): () => void;
+  accountUsage(): Promise<AccountUsageBatch>;
+  refreshAccountUsage(): Promise<AccountUsageBatch>;
+  onAccountUsage(cb: (batch: AccountUsageBatch) => void): () => void;
 }

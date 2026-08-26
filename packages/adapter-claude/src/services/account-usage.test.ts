@@ -6,6 +6,7 @@ import {
   CLAUDE_OAUTH_BETA,
   CLAUDE_USAGE_ENDPOINT,
   claudeAccountUsageFromStatusLine,
+  createClaudeAccountUsageService,
   fetchClaudeAccountUsageWithDependencies,
   findClaudeAccessToken,
   getClaudeStatusLineAccountUsage,
@@ -20,6 +21,15 @@ import * as publicApi from '../index.js';
 describe('Claude account usage', () => {
   afterEach(() => {
     resetClaudeAccountUsageObserversForTests();
+  });
+  it('advertises its provider identity, safe polling cadence, and push channel', () => {
+    const service = createClaudeAccountUsageService();
+    expect(service.provider).toEqual({
+      id: 'claude',
+      label: 'Claude',
+      refresh: { pollIntervalMs: 30 * 60_000, pushUpdatePollIntervalMs: 30 * 60_000 },
+    });
+    expect(service.subscribe).toEqual(expect.any(Function));
   });
   it('finds tokens in current and fallback credential layouts', () => {
     expect(findClaudeAccessToken({ claudeAiOauth: { accessToken: ' current-token ' } })).toBe('current-token');
@@ -79,32 +89,33 @@ describe('Claude account usage', () => {
       fetchedAt: '2026-07-23T00:00:00.000Z',
       scope: 'subscription',
       source: { kind: 'oauth-endpoint', stability: 'experimental' },
-      limits: [
+      metrics: [
         {
-          id: 'claude-subscription',
-          windows: [
-            {
-              id: 'five_hour',
-              label: '5-hour',
-              durationMinutes: 300,
-              usedPercent: 12.5,
-              resetsAt: '2027-01-15T08:00:00.000Z',
-            },
-            {
-              id: 'seven_day',
-              label: '7-day',
-              durationMinutes: 10_080,
-              usedPercent: 34,
-              resetsAt: '2027-01-22T08:00:00.000Z',
-            },
-            {
-              id: 'seven_day_opus',
-              label: '7-day opus',
-              durationMinutes: 10_080,
-              usedPercent: 56,
-              resetsAt: '2027-01-22T08:00:00.000Z',
-            },
-          ],
+          id: 'subscription:five_hour:window',
+          label: '5H',
+          description: '5-hour usage',
+          kind: 'window',
+          durationMinutes: 300,
+          usedPercent: 12.5,
+          resetsAt: '2027-01-15T08:00:00.000Z',
+        },
+        {
+          id: 'subscription:seven_day:window',
+          label: '7D',
+          description: '7-day usage',
+          kind: 'window',
+          durationMinutes: 10_080,
+          usedPercent: 34,
+          resetsAt: '2027-01-22T08:00:00.000Z',
+        },
+        {
+          id: 'subscription:seven_day_opus:window',
+          label: 'OPUS',
+          description: '7-day opus usage',
+          kind: 'window',
+          durationMinutes: 10_080,
+          usedPercent: 56,
+          resetsAt: '2027-01-22T08:00:00.000Z',
         },
       ],
     });
@@ -137,54 +148,47 @@ describe('Claude account usage', () => {
       '2026-07-23T00:00:00.000Z',
     );
 
-    expect(snapshot.limits).toEqual([
+    expect(snapshot.metrics).toEqual([
       {
-        id: 'claude-subscription',
-        windows: [
-          {
-            id: 'five_hour',
-            label: '5-hour',
-            durationMinutes: 300,
-            usedPercent: 12,
-            resetsAt: '2027-01-15T08:00:00.000Z',
-          },
-          {
-            id: 'cinder_cove',
-            label: 'Fable 5',
-            usedPercent: 22,
-            resetsAt: '2027-01-22T08:00:00.000Z',
-          },
-        ],
+        id: 'subscription:five_hour:window',
+        label: '5H',
+        description: '5-hour usage',
+        kind: 'window',
+        durationMinutes: 300,
+        usedPercent: 12,
+        resetsAt: '2027-01-15T08:00:00.000Z',
       },
       {
-        id: 'extra_usage',
-        name: 'Usage credits',
-        enabled: true,
-        status: 'enabled',
-        windows: [
-          {
-            id: 'extra_usage',
-            label: 'Usage credits',
-            usedPercent: 25,
-            resetsAt: '2027-01-22T08:00:00.000Z',
-          },
-        ],
-        budget: {
-          limit: '100.00',
-          used: '25.00',
-          resetsAt: '2027-01-22T08:00:00.000Z',
-        },
+        id: 'subscription:cinder_cove:window',
+        label: 'FABLE',
+        description: 'Fable 5 usage',
+        kind: 'window',
+        usedPercent: 22,
+        resetsAt: '2027-01-22T08:00:00.000Z',
       },
       {
-        id: 'cowork_credit',
-        name: 'Claude Code and Cowork credit',
-        windows: [],
-        budget: {
-          limit: '50.00',
-          used: '10.00',
-          remainingPercent: 80,
-          resetsAt: '2027-01-22T08:00:00.000Z',
-        },
+        id: 'extra_usage:window',
+        label: 'CREDIT',
+        description: 'Usage credits usage',
+        kind: 'window',
+        usedPercent: 25,
+        resetsAt: '2027-01-22T08:00:00.000Z',
+      },
+      {
+        id: 'cowork_credit:budget',
+        label: 'CREDIT',
+        description: 'Claude Code and Cowork credit',
+        kind: 'budget',
+        usedPercent: 20,
+        resetsAt: '2027-01-22T08:00:00.000Z',
+      },
+      {
+        id: 'extra_usage:budget',
+        label: 'CREDIT',
+        description: 'Usage credits',
+        kind: 'budget',
+        usedPercent: 25,
+        resetsAt: '2027-01-22T08:00:00.000Z',
       },
     ]);
   });
@@ -296,25 +300,24 @@ describe('Claude account usage', () => {
         fetchedAt: '2026-07-23T18:00:00.000Z',
         scope: 'subscription',
         source: { kind: 'native-statusline', stability: 'documented' },
-        limits: [
+        metrics: [
           {
-            id: 'claude-subscription',
-            windows: [
-              {
-                id: 'five_hour',
-                label: '5-hour',
-                durationMinutes: 300,
-                usedPercent: 23.5,
-                resetsAt: '2027-01-15T08:00:00.000Z',
-              },
-              {
-                id: 'seven_day',
-                label: '7-day',
-                durationMinutes: 10_080,
-                usedPercent: 41.2,
-                resetsAt: '2027-01-22T08:00:00.000Z',
-              },
-            ],
+            id: 'subscription:five_hour:window',
+            label: '5H',
+            description: '5-hour usage',
+            kind: 'window',
+            durationMinutes: 300,
+            usedPercent: 23.5,
+            resetsAt: '2027-01-15T08:00:00.000Z',
+          },
+          {
+            id: 'subscription:seven_day:window',
+            label: '7D',
+            description: '7-day usage',
+            kind: 'window',
+            durationMinutes: 10_080,
+            usedPercent: 41.2,
+            resetsAt: '2027-01-22T08:00:00.000Z',
           },
         ],
       },
@@ -348,7 +351,7 @@ describe('Claude account usage', () => {
       '2026-07-23T18:01:00.000Z',
     );
     expect(listener).toHaveBeenCalledOnce();
-    expect(getClaudeStatusLineAccountUsage()?.snapshot.limits[0]?.windows[0]?.usedPercent).toBe(20);
+    expect(getClaudeStatusLineAccountUsage()?.snapshot.metrics[0]?.usedPercent).toBe(20);
   });
 
   it('does not refresh or rewrite expired OAuth credentials', async () => {

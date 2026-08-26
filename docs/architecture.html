@@ -2124,9 +2124,20 @@ await runtime.dispose();</code></pre>
                 <p>Allows a caller-owned terminal to execute an adapter-authored recipe, then bind the live session.</p>
               </article>
               <article class="api-card">
-                <h3>runtime.accountUsage(provider)</h3>
+                <h3>runtime.accountUsageProviders()</h3>
+                <div class="signature">readonly AccountUsageProvider[]</div>
+                <p>
+                  Enumerates adapter-advertised account-usage capabilities, labels, and refresh policies without a
+                  product-maintained provider list.
+                </p>
+              </article>
+              <article class="api-card">
+                <h3>runtime.accountUsage(providerId)</h3>
                 <div class="signature">Promise&lt;AccountUsageFetchResult&gt;</div>
-                <p>Account-wide quota is separate from any one Agent because provider limits are usually shared.</p>
+                <p>
+                  Returns Zod-validated, adapter-ranked semantic metrics. Native bucket meanings and provider-specific
+                  naming rules never require consumer interpretation.
+                </p>
               </article>
               <article class="api-card">
                 <h3>runtime.dispose()</h3>
@@ -2155,8 +2166,40 @@ interface AgentProvider {
   readonly executionMode?: 'native-tui' | 'structured' | 'acp';
   createSession(options: AgentProviderSessionOptions): Promise&lt;AgentAdapterBinding&gt;;
   prepareSession?(options: AgentProviderSessionOptions): Promise&lt;PreparedProviderSession&gt;;
-  fetchAccountUsage?(): Promise&lt;AccountUsageFetchResult&gt;;
+  readonly accountUsage?: AccountUsageService;
   dispose?(): void | Promise&lt;void&gt;;
+}
+
+interface AccountUsageService {
+  readonly provider: {
+    id: string;
+    label: string;
+    refresh: {
+      pollIntervalMs: number;
+      pushUpdatePollIntervalMs?: number;
+    };
+  };
+  fetch(): Promise&lt;AccountUsageFetchResult&gt;;
+  subscribe?(listener: (result: AccountUsageFetchResult) =&gt; void): () =&gt; void;
+}
+
+interface AccountUsageMetric {
+  id: string;                 <span class="comment">// opaque canonical identity</span>
+  label: string;              <span class="comment">// adapter-normalized semantic label</span>
+  description?: string;
+  kind: 'window' | 'budget';
+  usedPercent: number;
+  durationMinutes?: number;
+  startsAt?: string;
+  resetsAt?: string;
+}
+
+interface AccountUsageSnapshot {
+  provider: string;
+  fetchedAt: string;
+  scope: 'subscription' | 'api' | 'workspace' | 'unknown';
+  source: AccountUsageSource;
+  metrics: AccountUsageMetric[]; <span class="comment">// preserve adapter-ranked order</span>
 }</code></pre>
 
             <div class="callout">

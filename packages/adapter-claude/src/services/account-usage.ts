@@ -5,12 +5,12 @@ import { join } from 'node:path';
 import { promisify } from 'node:util';
 import type {
   AccountUsageAvailable,
-  AccountUsageBudget,
   AccountUsageFetchResult,
-  AccountUsageLimit,
+  AccountUsageMetric,
+  AccountUsageProvider,
+  AccountUsageService,
   AccountUsageSnapshot,
   AccountUsageSource,
-  AccountUsageWindow,
 } from '@vibecook/puppeteer-core';
 
 export const CLAUDE_USAGE_ENDPOINT = 'https://api.anthropic.com/api/oauth/usage';
@@ -309,7 +309,7 @@ function firstTimestamp(window: Record<string, unknown>, keys: readonly string[]
   return undefined;
 }
 
-function windowLabel(id: string): string {
+function metricDescription(id: string): string {
   if (id === 'five_hour') return '5-hour';
   if (id === 'seven_day') return '7-day';
   if (id === 'cinder_cove') return 'Fable 5';
@@ -319,13 +319,36 @@ function windowLabel(id: string): string {
   return id.replaceAll('_', ' ');
 }
 
+function metricLabel(id: string, name?: string): string {
+  if (id === 'five_hour') return '5H';
+  if (id === 'seven_day') return '7D';
+  if (id === 'cinder_cove') return 'FABLE';
+  if (id === 'extra_usage' || /credit/i.test(`${id} ${name ?? ''}`)) return 'CREDIT';
+  if (id === 'overage') return 'OVERAGE';
+  if (id.startsWith('seven_day_')) return id.slice('seven_day_'.length).replaceAll('_', ' ').toUpperCase();
+  return (name ?? id).replaceAll(/[_-]+/g, ' ').trim().toUpperCase() || 'LIMIT';
+}
+
+function metricRank(id: string, kind: AccountUsageMetric['kind']): number {
+  if (id === 'five_hour') return 0;
+  if (id === 'seven_day') return 20;
+  if (id.startsWith('seven_day_')) return 40;
+  if (id === 'cinder_cove') return 50;
+  return kind === 'window' ? 60 : 70;
+}
+
 function windowDurationMinutes(id: string): number | undefined {
   if (id === 'five_hour') return 300;
   if (id === 'seven_day' || id.startsWith('seven_day_')) return 10_080;
   return undefined;
 }
 
-function normalizeWindow(id: string, value: unknown): AccountUsageWindow | undefined {
+interface RankedMetric {
+  metric: AccountUsageMetric;
+  rank: number;
+}
+
+function normalizeWindow(id: string, value: unknown, group = 'subscription'): RankedMetric | undefined {
   const window = rec(value);
   if (!window) return undefined;
   const usedPercent = firstFinite(window, [
@@ -336,25 +359,39 @@ function normalizeWindow(id: string, value: unknown): AccountUsageWindow | undef
     'percent',
   ]);
   const resetsAt = firstTimestamp(window, ['resets_at', 'reset_at', 'reset_time', 'expires_at', 'expiry']);
-  if ((usedPercent === undefined || usedPercent < 0) && resetsAt === undefined) return undefined;
+  if (usedPercent === undefined || usedPercent < 0) return undefined;
   const durationMinutes = windowDurationMinutes(id);
+  const metricId = group === 'subscription' ? `${group}:${id}:window` : `${group}:window`;
   return {
-    id,
-    label: windowLabel(id),
-    ...(durationMinutes !== undefined ? { durationMinutes } : {}),
-    ...(usedPercent !== undefined && usedPercent >= 0 ? { usedPercent } : {}),
-    ...(resetsAt ? { resetsAt } : {}),
+    rank: metricRank(id, 'window'),
+    metric: {
+      id: metricId,
+      label: metricLabel(id),
+      description: `${metricDescription(id)} usage`,
+      kind: 'window',
+      usedPercent,
+      ...(durationMinutes !== undefined ? { durationMinutes } : {}),
+      ...(resetsAt ? { resetsAt } : {}),
+    },
   };
 }
 
-function normalizeBudget(value: unknown): AccountUsageBudget | undefined {
+function normalizeBudget(id: string, name: string, value: unknown): RankedMetric | undefined {
   const budget = rec(value);
   if (!budget) return undefined;
   const limit = firstScalar(budget, ['monthly_limit', 'limit', 'allowed', 'quota']);
   const used = firstScalar(budget, ['used_credits', 'used', 'usage', 'consumed']);
   const reportedRemainingPercent = firstFinite(budget, ['remaining_percentage', 'remaining_percent']);
-  const remainingPercent =
-    reportedRemainingPercent !== undefined && reportedRemainingPercent >= 0 ? reportedRemainingPercent : undefined;
+  const calculatedUsedPercent = (() => {
+    if (reportedRemainingPercent !== undefined && reportedRemainingPercent >= 0) {
+      return Math.max(0, 100 - reportedRemainingPercent);
+    }
+    const numericLimit = Number(limit);
+    const numericUsed = Number(used);
+    return Number.isFinite(numericLimit) && numericLimit > 0 && Number.isFinite(numericUsed) && numericUsed >= 0
+      ? (numericUsed / numericLimit) * 100
+      : undefined;
+  })();
   const resetsAt = firstTimestamp(budget, [
     'resets_at',
     'reset_at',
@@ -363,22 +400,17 @@ function normalizeBudget(value: unknown): AccountUsageBudget | undefined {
     'expires_at',
     'expiry',
   ]);
-  const reached = firstBoolean(budget, ['reached', 'is_exhausted', 'out_of_credits', 'limit_reached']);
-  if (
-    limit === undefined &&
-    used === undefined &&
-    remainingPercent === undefined &&
-    resetsAt === undefined &&
-    reached === undefined
-  ) {
-    return undefined;
-  }
+  if (calculatedUsedPercent === undefined) return undefined;
   return {
-    ...(limit !== undefined ? { limit } : {}),
-    ...(used !== undefined ? { used } : {}),
-    ...(remainingPercent !== undefined ? { remainingPercent } : {}),
-    ...(resetsAt ? { resetsAt } : {}),
-    ...(reached !== undefined ? { reached } : {}),
+    rank: metricRank(id, 'budget'),
+    metric: {
+      id: `${id}:budget`,
+      label: metricLabel(id, name),
+      description: name,
+      kind: 'budget',
+      usedPercent: calculatedUsedPercent,
+      ...(resetsAt ? { resetsAt } : {}),
+    },
   };
 }
 
@@ -393,23 +425,13 @@ function hasBudgetState(value: unknown): boolean {
   );
 }
 
-function normalizeAuxiliaryLimit(id: string, value: unknown): AccountUsageLimit | undefined {
+function normalizeAuxiliaryMetrics(id: string, value: unknown): RankedMetric[] {
   const limit = rec(value);
-  if (!limit) return undefined;
-  const window = normalizeWindow(id, limit);
-  const budget = normalizeBudget(limit);
-  const enabled = firstBoolean(limit, ['is_enabled', 'enabled']);
-  const status = firstString(limit, ['status', 'state', 'disabled_reason', 'overage_disabled_reason']);
-  if (!window && !budget && enabled === undefined && status === undefined) return undefined;
-  const name = firstString(limit, ['display_name', 'label', 'name']) ?? windowLabel(id);
-  return {
-    id,
-    name,
-    windows: window?.usedPercent !== undefined ? [window] : [],
-    ...(enabled !== undefined ? { enabled } : {}),
-    ...(status ? { status } : {}),
-    ...(budget ? { budget } : {}),
-  };
+  if (!limit) return [];
+  const name = firstString(limit, ['display_name', 'label', 'name']) ?? metricDescription(id);
+  const window = normalizeWindow(id, limit, id);
+  const budget = normalizeBudget(id, name, limit);
+  return [window, budget].filter((candidate): candidate is RankedMetric => candidate !== undefined);
 }
 
 function limitEntryId(value: unknown, fallback: string): string {
@@ -421,6 +443,16 @@ function limitEntryId(value: unknown, fallback: string): string {
 const DEFAULT_OAUTH_SOURCE: AccountUsageSource = { kind: 'oauth-endpoint', stability: 'experimental' };
 const STATUSLINE_SOURCE: AccountUsageSource = { kind: 'native-statusline', stability: 'documented' };
 
+export const CLAUDE_ACCOUNT_USAGE_PROVIDER: AccountUsageProvider = {
+  id: 'claude',
+  label: 'Claude',
+  refresh: {
+    // The OAuth endpoint is heavily rate limited; status-line pushes are preferred.
+    pollIntervalMs: 30 * 60_000,
+    pushUpdatePollIntervalMs: 30 * 60_000,
+  },
+};
+
 /** Normalize Claude's experimental OAuth usage response, including optional and future quota families. */
 export function normalizeClaudeAccountUsage(
   value: unknown,
@@ -428,18 +460,17 @@ export function normalizeClaudeAccountUsage(
   source: AccountUsageSource = DEFAULT_OAUTH_SOURCE,
 ): AccountUsageSnapshot {
   const response = rec(value) ?? {};
-  const windows = new Map<string, AccountUsageWindow>();
-  const auxiliaryLimits = new Map<string, AccountUsageLimit>();
+  const metrics = new Map<string, RankedMetric>();
 
   const addWindow = (id: string, candidate: unknown): void => {
-    const window = normalizeWindow(id, candidate);
-    if (window && !auxiliaryLimits.has(id)) windows.set(id, window);
+    const normalized = normalizeWindow(id, candidate);
+    if (normalized) metrics.set(normalized.metric.id, normalized);
   };
   const addAuxiliary = (id: string, candidate: unknown): boolean => {
-    const limit = normalizeAuxiliaryLimit(id, candidate);
-    if (!limit) return false;
-    windows.delete(id);
-    auxiliaryLimits.set(id, limit);
+    const normalized = normalizeAuxiliaryMetrics(id, candidate);
+    if (normalized.length === 0) return false;
+    metrics.delete(`subscription:${id}:window`);
+    for (const entry of normalized) metrics.set(entry.metric.id, entry);
     return true;
   };
   const addStructuredEntry = (id: string, candidate: unknown): void => {
@@ -474,7 +505,7 @@ export function normalizeClaudeAccountUsage(
     if (limitMap) {
       const isSingleLimit =
         normalizeWindow('limits', limitMap) !== undefined ||
-        normalizeBudget(limitMap) !== undefined ||
+        normalizeBudget('limits', metricDescription('limits'), limitMap) !== undefined ||
         firstBoolean(limitMap, ['is_enabled', 'enabled']) !== undefined;
       if (isSingleLimit) addStructuredEntry('limits', limitMap);
       else {
@@ -483,21 +514,14 @@ export function normalizeClaudeAccountUsage(
     }
   }
 
-  const normalizedLimits: AccountUsageLimit[] = [];
-  if (windows.size > 0) {
-    normalizedLimits.push({
-      id: 'claude-subscription',
-      windows: [...windows.values()],
-    });
-  }
-  normalizedLimits.push(...auxiliaryLimits.values());
-
   return {
     provider: 'claude',
     fetchedAt,
     scope: 'subscription',
     source,
-    limits: normalizedLimits,
+    metrics: [...metrics.values()]
+      .sort((left, right) => left.rank - right.rank || left.metric.id.localeCompare(right.metric.id))
+      .map(({ metric }) => metric),
   };
 }
 
@@ -513,7 +537,7 @@ export function claudeAccountUsageFromStatusLine(
   const rateLimits = rec(body?.rate_limits);
   if (!rateLimits) return undefined;
   const snapshot = normalizeClaudeAccountUsage({ rate_limits: rateLimits }, fetchedAt, STATUSLINE_SOURCE);
-  if (snapshot.limits.length === 0) return undefined;
+  if (snapshot.metrics.length === 0) return undefined;
   return { status: 'available', snapshot };
 }
 
@@ -669,7 +693,7 @@ export async function fetchClaudeAccountUsageWithDependencies(
       };
     }
     const snapshot = normalizeClaudeAccountUsage(body, (options.now ?? (() => new Date()))().toISOString());
-    if (snapshot.limits.length === 0) {
+    if (snapshot.metrics.length === 0) {
       return {
         status: 'unavailable',
         provider: 'claude',
@@ -695,4 +719,13 @@ export async function fetchClaudeAccountUsage(
   return fetchClaudeAccountUsageWithDependencies({
     ...(options.timeoutMs !== undefined ? { timeoutMs: options.timeoutMs } : {}),
   });
+}
+
+/** Complete account-usage capability advertised by the Claude adapter. */
+export function createClaudeAccountUsageService(): AccountUsageService {
+  return {
+    provider: CLAUDE_ACCOUNT_USAGE_PROVIDER,
+    fetch: () => fetchClaudeAccountUsage(),
+    subscribe: (listener) => onClaudeAccountUsage(listener),
+  };
 }

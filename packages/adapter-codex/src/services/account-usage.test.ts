@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { fetchCodexAccountUsage, normalizeCodexAccountUsage } from './account-usage.js';
+import { createCodexAccountUsageService, fetchCodexAccountUsage, normalizeCodexAccountUsage } from './account-usage.js';
 import type { Transport } from '../transport/app-server-client.js';
 
 const fixture = {
@@ -57,6 +57,13 @@ function scriptedTransport(respond: (message: Record<string, unknown>) => unknow
 }
 
 describe('Codex account usage', () => {
+  it('advertises its provider identity and polling cadence', () => {
+    expect(createCodexAccountUsageService().provider).toEqual({
+      id: 'codex',
+      label: 'Codex',
+      refresh: { pollIntervalMs: 60_000 },
+    });
+  });
   it('normalizes every metered bucket and labels windows by reported duration', () => {
     const snapshot = normalizeCodexAccountUsage(fixture, '2026-07-23T00:00:00.000Z');
 
@@ -65,38 +72,34 @@ describe('Codex account usage', () => {
       fetchedAt: '2026-07-23T00:00:00.000Z',
       scope: 'subscription',
       source: { kind: 'native-protocol', stability: 'documented' },
-      credits: { resetCreditsAvailable: 2 },
-      limits: [
+      credits: { balance: '12.50', hasCredits: true, unlimited: false, resetCreditsAvailable: 2 },
+      metrics: [
         {
-          id: 'codex',
-          plan: 'plus',
-          credits: { balance: '12.50', hasCredits: true, unlimited: false },
-          windows: [
-            {
-              id: 'primary',
-              usedPercent: 25,
-              durationMinutes: 300,
-              resetsAt: '2027-01-15T08:00:00.000Z',
-            },
-            {
-              id: 'secondary',
-              usedPercent: 40,
-              durationMinutes: 10_080,
-              resetsAt: '2027-01-22T08:00:00.000Z',
-            },
-          ],
+          id: 'codex:primary:window',
+          label: '5H',
+          description: 'codex 5H usage',
+          kind: 'window',
+          usedPercent: 25,
+          durationMinutes: 300,
+          resetsAt: '2027-01-15T08:00:00.000Z',
         },
         {
-          id: 'codex_spark',
-          name: 'Codex Spark',
-          windows: [
-            {
-              id: 'primary',
-              usedPercent: 7,
-              durationMinutes: 10_080,
-              resetsAt: '2027-01-22T08:00:00.000Z',
-            },
-          ],
+          id: 'codex:secondary:window',
+          label: '7D',
+          description: 'codex 7D usage',
+          kind: 'window',
+          usedPercent: 40,
+          durationMinutes: 10_080,
+          resetsAt: '2027-01-22T08:00:00.000Z',
+        },
+        {
+          id: 'codex_spark:primary:window',
+          label: 'SPARK',
+          description: 'Codex Spark SPARK usage',
+          kind: 'window',
+          usedPercent: 7,
+          durationMinutes: 10_080,
+          resetsAt: '2027-01-22T08:00:00.000Z',
         },
       ],
     });
@@ -113,10 +116,14 @@ describe('Codex account usage', () => {
       rateLimitResetCredits: null,
     });
 
-    expect(snapshot.limits).toEqual([
+    expect(snapshot.metrics).toEqual([
       {
-        id: 'codex',
-        windows: [{ id: 'primary', usedPercent: 6, durationMinutes: 10_080 }],
+        id: 'codex:primary:window',
+        label: '7D',
+        description: 'codex 7D usage',
+        kind: 'window',
+        usedPercent: 6,
+        durationMinutes: 10_080,
       },
     ]);
   });
@@ -147,20 +154,14 @@ describe('Codex account usage', () => {
     );
 
     expect(snapshot.scope).toBe('workspace');
-    expect(snapshot.limits).toEqual([
+    expect(snapshot.metrics).toEqual([
       {
-        id: 'workspace',
-        name: 'Workspace allocation',
-        plan: 'team',
-        reached: 'workspace_member_usage_limit_reached',
-        windows: [],
-        budget: {
-          limit: '100.00',
-          used: '80.00',
-          remainingPercent: 20,
-          resetsAt: '2027-01-22T08:00:00.000Z',
-          reached: true,
-        },
+        id: 'workspace:budget',
+        label: 'BUDGET',
+        description: 'Workspace allocation',
+        kind: 'budget',
+        usedPercent: 80,
+        resetsAt: '2027-01-22T08:00:00.000Z',
       },
     ]);
   });
@@ -169,7 +170,7 @@ describe('Codex account usage', () => {
     expect(
       normalizeCodexAccountUsage({
         rateLimits: { limitId: 'codex', planType: 'plus', primary: null, secondary: null },
-      }).limits,
+      }).metrics,
     ).toEqual([]);
   });
 

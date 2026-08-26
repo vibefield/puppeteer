@@ -1,5 +1,7 @@
 import type {
   AccountUsageFetchResult,
+  AccountUsageProvider,
+  AccountUsageService,
   AgentExecutionMode,
   AgentEvent,
   AgentEventEnvelope,
@@ -63,13 +65,8 @@ export interface AgentProvider {
   /** Provider topology; defaults to native-tui for compatibility providers. */
   readonly executionMode?: AgentExecutionMode;
   createSession(options: AgentProviderSessionOptions): Promise<AgentAdapterBinding>;
-  /** Fetch account-wide subscription/API quota state, independent of any session. */
-  fetchAccountUsage?(): Promise<AccountUsageFetchResult>;
-  /**
-   * Optional push channel for live account-usage updates that do not require polling
-   * (e.g. Claude status-line rate_limits). Returns an unsubscribe function.
-   */
-  onAccountUsage?(listener: (result: AccountUsageFetchResult) => void): () => void;
+  /** Adapter-owned account-wide quota capability, independent of any session. */
+  readonly accountUsage?: AccountUsageService;
   /** Optional split-phase launch for caller-owned terminals. Generic ACP intentionally omits this capability. */
   prepareSession?(options: AgentProviderSessionOptions): Promise<PreparedProviderSession>;
   dispose?(): void | Promise<void>;
@@ -313,8 +310,10 @@ export interface AgentRuntime {
   spawn(options: CreateAgentSessionOptions): Promise<SpawnAgentResult>;
   /** Resolve a live Agent by terminal-session id or runtime-run id. */
   agent(id: string): Agent | undefined;
+  /** Enumerate every adapter that advertises account usage. */
+  accountUsageProviders(): readonly AccountUsageProvider[];
   /** Fetch account-wide usage for a provider; concurrent calls for one provider are coalesced. */
-  accountUsage(agent: string): Promise<AccountUsageFetchResult>;
+  accountUsage(providerId: string): Promise<AccountUsageFetchResult>;
   /** @deprecated Compatibility/IPC surface. Use spawn() to receive an Agent. */
   createSession(options: CreateAgentSessionOptions): Promise<CreateAgentSessionResult>;
   prepareSession(options: CreateAgentSessionOptions): Promise<PrepareAgentSessionResult>;
@@ -349,7 +348,7 @@ export interface AgentRuntime {
    * Subscribe to push-style account-usage updates from providers that support them.
    * Independent of session events; account quotas are usually process-global.
    */
-  onAccountUsage(listener: (agent: string, result: AccountUsageFetchResult) => void): () => void;
+  onAccountUsage(listener: (provider: AccountUsageProvider, result: AccountUsageFetchResult) => void): () => void;
   /** @deprecated Call agent(id)?.submitPrompt(submission). */
   submitPrompt(terminalSessionId: string, submission: PromptSubmission): Promise<PromptReceipt>;
   workspaceDiff(terminalSessionId: string): Promise<WorkspaceDiff | null>;

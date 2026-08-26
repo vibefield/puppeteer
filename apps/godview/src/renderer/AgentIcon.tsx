@@ -1,7 +1,5 @@
-import type { AgentSessionInfo } from '../protocol.js';
-
 interface AgentIconProps {
-  agent: AgentSessionInfo['agent'];
+  agent: string;
 }
 
 // SVG geometry from LobeHub Lobe Icons v5.14.0 (MIT):
@@ -47,5 +45,7 @@ export function AgentIcon({ agent }: AgentIconProps) {
       return <span aria-hidden="true">O</span>;
     case 'acp':
       return <span aria-hidden="true">A</span>;
+    default:
+      return <span aria-hidden="true">{agent.slice(0, 1).toUpperCase() || '?'}</span>;
   }
 }

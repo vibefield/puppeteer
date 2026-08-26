@@ -37,7 +37,7 @@ import {
   type AgentWorkspaceRequest,
 } from '@vibecook/puppeteer-runtime';
 import type {
-  AgentAccountUsageBatch,
+  AccountUsageBatch,
   AgentSessionInfo,
   AgentSessionSnapshot,
   CreateAgentSessionOptions,
@@ -777,16 +777,16 @@ const monitorConnection = connectMonitorIpcRelay(agentRuntime, monitorRelay, (er
   process.stderr.write(`[main] monitor IPC: ${error.message}\n`),
 );
 const accountUsageMonitor = createAccountUsageMonitor({
-  fetchUsage: (agent) => agentRuntime.accountUsage(agent),
-  publish: (batch: AgentAccountUsageBatch) => {
+  providers: agentRuntime.accountUsageProviders(),
+  fetchUsage: (providerId) => agentRuntime.accountUsage(providerId),
+  publish: (batch: AccountUsageBatch) => {
     if (!quitting) broadcast('puppeteer:account-usage', batch);
   },
   onError: (error) => process.stderr.write(`[main] account usage: ${error.message}\n`),
 });
-agentRuntime.onAccountUsage((agent, result) => {
+agentRuntime.onAccountUsage((provider, result) => {
   if (quitting) return;
-  if (agent !== 'claude' && agent !== 'codex' && agent !== 'grok') return;
-  accountUsageMonitor.ingest(agent, result);
+  accountUsageMonitor.ingest(provider.id, result);
 });
 function pushWorkspaceFinal(final: AgentWorkspaceFinal): void {
   try {

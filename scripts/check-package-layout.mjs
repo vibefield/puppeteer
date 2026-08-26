@@ -171,6 +171,8 @@ const retiredRepositoryPaths = [
 
 const requiredArchitectureDocuments = [
   'docs/README.md',
+  'docs/architecture.html',
+  'docs/agent-api.html',
   'docs/guides/adapting-an-agent.md',
   'docs/guides/normalization-devkit.md',
   'docs/guides/surface-adaptation.md',
@@ -195,6 +197,41 @@ const requiredLayerPaths = [
   'packages/runtime/src/observation/git.ts',
   'packages/runtime/src/runtime.ts',
 ];
+
+const providerNeutralAccountUsagePaths = [
+  'apps/godview/src/main/account-usage-monitor.ts',
+  'apps/godview/src/renderer/AccountUsagePanel.tsx',
+  'apps/godview/src/renderer/account-usage.ts',
+];
+
+const forbiddenConsumerUsageTokens = [
+  'claude',
+  'codex',
+  'grok',
+  'hermes',
+  'kimi',
+  'opencode',
+  'acp',
+  'five_hour',
+  'seven_day',
+  'cinder_cove',
+  'spark',
+];
+
+export function accountUsageConsumerBoundaryIssues(sources) {
+  const issues = [];
+  for (const [path, source] of sources) {
+    if (/puppeteer-adapter-/i.test(source)) {
+      issues.push(`${path} must not import an agent adapter`);
+    }
+    for (const token of forbiddenConsumerUsageTokens) {
+      if (new RegExp(`\\b${token}\\b`, 'i').test(source)) {
+        issues.push(`${path} contains provider-specific account-usage token ${token}`);
+      }
+    }
+  }
+  return issues;
+}
 
 /** Exact internal production edges are the executable form of the layered architecture. */
 export function architectureDependencyIssues(edges) {
@@ -257,6 +294,15 @@ export function auditPackageLayout(root = scriptRoot) {
   for (const path of requiredLayerPaths) {
     if (!hasPath(root, path)) issues.push(`${path} is required by the layered repository structure`);
   }
+  issues.push(
+    ...accountUsageConsumerBoundaryIssues(
+      new Map(
+        providerNeutralAccountUsagePaths
+          .filter((path) => hasPath(root, path))
+          .map((path) => [path, readFileSync(join(root, path), 'utf8')]),
+      ),
+    ),
+  );
   for (const script of ['emulator', 'emulator:smoke', 'imposter-control', 'imposter-control:smoke', 'surface:detect']) {
     if (rootManifest.scripts?.[script]) issues.push(`root script ${script} is a retired alias`);
   }

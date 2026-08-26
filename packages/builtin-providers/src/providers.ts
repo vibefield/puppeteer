@@ -2,19 +2,18 @@ import { basename } from 'node:path';
 import type { AgentProvider } from '@vibecook/puppeteer-runtime';
 import { createAcpSession, type AcpConnector } from '@vibecook/puppeteer-adapter-acp';
 import {
+  createClaudeAccountUsageService,
   createClaudeSession,
-  fetchClaudeAccountUsage,
-  onClaudeAccountUsage,
   preflightClaudeLaunch,
   prepareClaudeTuiSession,
   type ClaudeHookRailFaultInjection,
 } from '@vibecook/puppeteer-adapter-claude';
 import {
+  createCodexAccountUsageService,
   createCodexTuiSession,
-  fetchCodexAccountUsage,
   prepareCodexTuiSession,
 } from '@vibecook/puppeteer-adapter-codex';
-import { createGrokBackend, fetchGrokAccountUsage, type GrokBackend } from '@vibecook/puppeteer-adapter-grok';
+import { createGrokAccountUsageService, createGrokBackend, type GrokBackend } from '@vibecook/puppeteer-adapter-grok';
 import { createKimiTuiSession, prepareKimiTuiSession } from '@vibecook/puppeteer-adapter-kimi';
 import { createOpenCodeTuiSession, prepareOpenCodeTuiSession } from '@vibecook/puppeteer-adapter-opencode';
 import { createHermesTuiSession, prepareHermesTuiSession } from '@vibecook/puppeteer-adapter-hermes';
@@ -102,8 +101,7 @@ export function createBuiltinProviders(options: BuiltinProviderOptions = {}): Ag
     {
       kind: 'claude',
       executionMode: 'native-tui',
-      fetchAccountUsage: () => fetchClaudeAccountUsage(),
-      onAccountUsage: (listener) => onClaudeAccountUsage(listener),
+      accountUsage: createClaudeAccountUsageService(),
       async createSession({ cwd, resume, title, host, agentOptions }) {
         const launch = agentOptions as ClaudeAgentOptions | undefined;
         const { executable, providerVersion } = await claudeLaunchFor(resume, title, launch);
@@ -162,7 +160,7 @@ export function createBuiltinProviders(options: BuiltinProviderOptions = {}): Ag
     {
       kind: 'codex',
       executionMode: 'native-tui',
-      fetchAccountUsage: () => fetchCodexAccountUsage({ executable: resolved.codex }),
+      accountUsage: createCodexAccountUsageService({ executable: resolved.codex }),
       createSession: ({ cwd, resume, host, agentOptions }) => {
         const launch = agentOptions as CodexAgentOptions | undefined;
         return createCodexTuiSession({
@@ -216,7 +214,7 @@ export function createBuiltinProviders(options: BuiltinProviderOptions = {}): Ag
     {
       kind: 'grok',
       executionMode: 'native-tui',
-      fetchAccountUsage: fetchGrokAccountUsage,
+      accountUsage: createGrokAccountUsageService(),
       createSession: ({ cwd, resume, host, agentOptions }) => {
         const launch = agentOptions as GrokAgentOptions | undefined;
         return grokBackendFor(launch, host).createSession({

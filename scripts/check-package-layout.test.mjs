@@ -3,7 +3,11 @@ import { mkdirSync, mkdtempSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import test from 'node:test';
-import { architectureDependencyIssues, auditPackageLayout } from './check-package-layout.mjs';
+import {
+  accountUsageConsumerBoundaryIssues,
+  architectureDependencyIssues,
+  auditPackageLayout,
+} from './check-package-layout.mjs';
 
 test('the repository package layout satisfies its declared boundaries', () => {
   assert.deepEqual(auditPackageLayout(), []);
@@ -42,6 +46,23 @@ test('the layered dependency checker rejects upward and concrete-provider edges'
       'packages/runtime production dependency @vibecook/puppeteer-adapter-claude violates the layered architecture',
       'packages/imposter production dependency @vibecook/puppeteer-core violates the layered architecture',
       'packages/react production dependency @vibecook/puppeteer-runtime violates the layered architecture',
+    ],
+  );
+});
+
+test('the account-usage consumer boundary rejects provider quirks', () => {
+  assert.deepEqual(
+    accountUsageConsumerBoundaryIssues(
+      new Map([
+        ['generic.ts', "import type { AccountUsageMetric } from '@vibecook/puppeteer-core';"],
+        ['adapter.ts', "import { value } from '@vibecook/puppeteer-adapter-claude';"],
+        ['bucket.ts', "if (window.id === 'five_hour') return '5H';"],
+      ]),
+    ),
+    [
+      'adapter.ts must not import an agent adapter',
+      'adapter.ts contains provider-specific account-usage token claude',
+      'bucket.ts contains provider-specific account-usage token five_hour',
     ],
   );
 });

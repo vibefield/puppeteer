@@ -1,7 +1,7 @@
-import { useEffect, useMemo, useState } from 'react';
-import { ACCOUNT_USAGE_AGENTS, type AgentAccountUsageBatch } from '../protocol.js';
+import { useEffect, useState } from 'react';
+import type { AccountUsageBatch } from '../protocol.js';
 import { AgentIcon } from './AgentIcon.js';
-import { providerAccountUsageView, type AccountUsageMetricView } from './account-usage.js';
+import { accountUsageView, type AccountUsageMetricView } from './account-usage.js';
 
 function UsageMetric({ metric }: { metric: AccountUsageMetricView }) {
   return (
@@ -26,7 +26,7 @@ function UsageMetric({ metric }: { metric: AccountUsageMetricView }) {
 }
 
 export function AccountUsagePanel() {
-  const [batch, setBatch] = useState<AgentAccountUsageBatch>();
+  const [batch, setBatch] = useState<AccountUsageBatch>();
   const [nowMs, setNowMs] = useState(() => Date.now());
 
   useEffect(() => {
@@ -48,17 +48,16 @@ export function AccountUsagePanel() {
     };
   }, []);
 
-  const entries = useMemo(() => new Map(batch?.entries.map((entry) => [entry.agent, entry] as const) ?? []), [batch]);
-  const views = ACCOUNT_USAGE_AGENTS.map((agent) => providerAccountUsageView(agent, entries.get(agent), nowMs));
+  const views = batch?.entries.map((entry) => accountUsageView(entry, nowMs)) ?? [];
 
   return (
     <aside className="account-usage-panel" aria-label="Agent account usage limits">
       <div className="account-usage-providers" aria-live="polite">
         {views.map((view) => (
-          <div className={`account-usage-provider is-${view.state}`} key={view.agent}>
+          <div className={`account-usage-provider is-${view.state}`} key={view.providerId}>
             <span className="account-usage-provider-name">
               <span className="account-usage-provider-icon">
-                <AgentIcon agent={view.agent} />
+                <AgentIcon agent={view.providerId} />
               </span>
               <span className="account-usage-provider-label">
                 <span>{view.label}</span>

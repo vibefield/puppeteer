@@ -1429,9 +1429,16 @@ offAll();</code></pre>
                     <td><p>Looks up a live Agent by terminal-session id or runtime-run id.</p></td>
                   </tr>
                   <tr>
-                    <td class="route">accountUsage(provider)</td>
+                    <td class="route">accountUsageProviders()</td>
+                    <td class="native-type">readonly AccountUsageProvider[]</td>
+                    <td><p>Enumerates adapter-owned usage capabilities, labels, and refresh policies.</p></td>
+                  </tr>
+                  <tr>
+                    <td class="route">accountUsage(providerId)</td>
                     <td class="native-type">Promise&lt;AccountUsageFetchResult&gt;</td>
-                    <td><p>Fetches provider account-wide quotas; deliberately separate from per-agent state.</p></td>
+                    <td>
+                      <p>Fetches provider account-wide, adapter-normalized metrics; separate from per-agent state.</p>
+                    </td>
                   </tr>
                   <tr>
                     <td class="route">prepareSession(options)</td>

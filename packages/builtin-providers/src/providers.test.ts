@@ -4,14 +4,17 @@ import type { AcpConnector } from '@vibecook/puppeteer-adapter-acp';
 
 const adapters = vi.hoisted(() => ({
   createAcpSession: vi.fn(),
+  createClaudeAccountUsageService: vi.fn(),
   createClaudeSession: vi.fn(),
   fetchClaudeAccountUsage: vi.fn(),
   onClaudeAccountUsage: vi.fn(() => () => undefined),
   preflightClaudeLaunch: vi.fn(),
   prepareClaudeTuiSession: vi.fn(),
+  createCodexAccountUsageService: vi.fn(),
   createCodexTuiSession: vi.fn(),
   fetchCodexAccountUsage: vi.fn(),
   prepareCodexTuiSession: vi.fn(),
+  createGrokAccountUsageService: vi.fn(),
   createGrokBackend: vi.fn(),
   fetchGrokAccountUsage: vi.fn(),
   createKimiTuiSession: vi.fn(),
@@ -27,6 +30,7 @@ vi.mock('@vibecook/puppeteer-adapter-acp', () => ({
 }));
 
 vi.mock('@vibecook/puppeteer-adapter-claude', () => ({
+  createClaudeAccountUsageService: adapters.createClaudeAccountUsageService,
   createClaudeSession: adapters.createClaudeSession,
   fetchClaudeAccountUsage: adapters.fetchClaudeAccountUsage,
   onClaudeAccountUsage: adapters.onClaudeAccountUsage,
@@ -35,12 +39,14 @@ vi.mock('@vibecook/puppeteer-adapter-claude', () => ({
 }));
 
 vi.mock('@vibecook/puppeteer-adapter-codex', () => ({
+  createCodexAccountUsageService: adapters.createCodexAccountUsageService,
   createCodexTuiSession: adapters.createCodexTuiSession,
   fetchCodexAccountUsage: adapters.fetchCodexAccountUsage,
   prepareCodexTuiSession: adapters.prepareCodexTuiSession,
 }));
 
 vi.mock('@vibecook/puppeteer-adapter-grok', () => ({
+  createGrokAccountUsageService: adapters.createGrokAccountUsageService,
   createGrokBackend: adapters.createGrokBackend,
   fetchGrokAccountUsage: adapters.fetchGrokAccountUsage,
 }));
@@ -108,6 +114,23 @@ function fakePreparation(kind: string) {
 describe('createBuiltinProviders launch options', () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    adapters.createClaudeAccountUsageService.mockReturnValue({
+      provider: {
+        id: 'claude',
+        label: 'Claude',
+        refresh: { pollIntervalMs: 30 * 60_000, pushUpdatePollIntervalMs: 30 * 60_000 },
+      },
+      fetch: adapters.fetchClaudeAccountUsage,
+      subscribe: adapters.onClaudeAccountUsage,
+    });
+    adapters.createCodexAccountUsageService.mockImplementation((options: { executable?: string } = {}) => ({
+      provider: { id: 'codex', label: 'Codex', refresh: { pollIntervalMs: 60_000 } },
+      fetch: () => adapters.fetchCodexAccountUsage(options),
+    }));
+    adapters.createGrokAccountUsageService.mockReturnValue({
+      provider: { id: 'grok', label: 'Grok', refresh: { pollIntervalMs: 15 * 60_000 } },
+      fetch: adapters.fetchGrokAccountUsage,
+    });
     adapters.createAcpSession.mockResolvedValue(fakeSession('acp'));
     adapters.createClaudeSession.mockResolvedValue(fakeSession('claude'));
     adapters.fetchClaudeAccountUsage.mockResolvedValue({
@@ -275,17 +298,16 @@ describe('createBuiltinProviders launch options', () => {
     const acp = providers.find((provider) => provider.kind === 'acp')!;
     const grok = providers.find((provider) => provider.kind === 'grok')!;
 
-    await claude.fetchAccountUsage!();
-    await codex.fetchAccountUsage!();
-    await grok.fetchAccountUsage!();
+    await claude.accountUsage!.fetch();
+    await codex.accountUsage!.fetch();
+    await grok.accountUsage!.fetch();
 
     expect(adapters.fetchClaudeAccountUsage).toHaveBeenCalledWith();
     expect(adapters.fetchCodexAccountUsage).toHaveBeenCalledWith({ executable: '/opt/codex' });
     expect(adapters.fetchGrokAccountUsage).toHaveBeenCalledWith();
-    expect(acp.fetchAccountUsage).toBeUndefined();
-    expect(claude.onAccountUsage).toEqual(expect.any(Function));
-    expect(codex.onAccountUsage).toBeUndefined();
-    expect(acp.onAccountUsage).toBeUndefined();
+    expect(acp.accountUsage).toBeUndefined();
+    expect(claude.accountUsage?.subscribe).toEqual(expect.any(Function));
+    expect(codex.accountUsage?.subscribe).toBeUndefined();
   });
 
   it('forwards Codex safety posture to the native-TUI thread bootstrap', async () => {
@@ -428,7 +450,7 @@ describe('createBuiltinProviders launch options', () => {
         pollIntervalMs: 25,
       }),
     );
-    expect(kimi.fetchAccountUsage).toBeUndefined();
+    expect(kimi.accountUsage).toBeUndefined();
   });
 
   it('forwards OpenCode private-backend, model, and permission options', async () => {
@@ -473,7 +495,7 @@ describe('createBuiltinProviders launch options', () => {
       backendShutdownTimeoutMs: 500,
       reconnectDelayMs: 25,
     });
-    expect(opencode.fetchAccountUsage).toBeUndefined();
+    expect(opencode.accountUsage).toBeUndefined();
   });
 
   it('forwards Hermes isolated-home, gateway, and attach options', async () => {
@@ -508,7 +530,7 @@ describe('createBuiltinProviders launch options', () => {
         promptConfirmationTimeoutMs: 250,
       }),
     );
-    expect(hermes.fetchAccountUsage).toBeUndefined();
+    expect(hermes.accountUsage).toBeUndefined();
   });
 
   it('exposes prepare/adopt for native providers while generic ACP stays explicitly unsupported', async () => {

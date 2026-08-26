@@ -1,10 +1,10 @@
 import type {
-  AccountUsageBudget,
   AccountUsageCredits,
   AccountUsageFetchResult,
-  AccountUsageLimit,
+  AccountUsageMetric,
+  AccountUsageProvider,
+  AccountUsageService,
   AccountUsageSnapshot,
-  AccountUsageWindow,
 } from '@vibecook/puppeteer-core';
 import { PUPPETEER_VERSION } from '@vibecook/puppeteer-core';
 import {
@@ -15,6 +15,12 @@ import {
 } from '../transport/app-server-client.js';
 
 const CLIENT_INFO = { name: 'puppeteer-account-usage', version: PUPPETEER_VERSION } as const;
+
+export const CODEX_ACCOUNT_USAGE_PROVIDER: AccountUsageProvider = {
+  id: 'codex',
+  label: 'Codex',
+  refresh: { pollIntervalMs: 60_000 },
+};
 
 const rec = (value: unknown): Record<string, unknown> | undefined =>
   value !== null && typeof value === 'object' && !Array.isArray(value) ? (value as Record<string, unknown>) : undefined;
@@ -31,7 +37,39 @@ function unixSecondsIso(value: unknown): string | undefined {
   return Number.isFinite(date.valueOf()) ? date.toISOString() : undefined;
 }
 
-function normalizeWindow(id: 'primary' | 'secondary', value: unknown): AccountUsageWindow | undefined {
+interface RankedMetric {
+  metric: AccountUsageMetric;
+  rank: number;
+}
+
+interface NormalizedLimit {
+  metrics: RankedMetric[];
+  credits?: AccountUsageCredits;
+  workspace: boolean;
+}
+
+function compactLabel(value: string): string {
+  return value
+    .replace(/^codex[\s_-]*/i, '')
+    .replaceAll(/[_-]+/g, ' ')
+    .trim()
+    .toUpperCase();
+}
+
+function specializedLimitLabel(id: string, name: string | undefined): string | undefined {
+  const identity = `${id} ${name ?? ''}`;
+  if (/\bspark\b/i.test(identity)) return 'SPARK';
+  if (/\bmini\b/i.test(identity)) return 'MINI';
+  return undefined;
+}
+
+function normalizeWindow(
+  limitId: string,
+  limitName: string | undefined,
+  id: 'primary' | 'secondary',
+  value: unknown,
+  providerOrder: number,
+): RankedMetric | undefined {
   const window = rec(value);
   if (!window) return undefined;
   const usedPercent = finite(window.usedPercent);
@@ -39,11 +77,25 @@ function normalizeWindow(id: 'primary' | 'secondary', value: unknown): AccountUs
 
   const duration = finite(window.windowDurationMins);
   const resetsAt = unixSecondsIso(window.resetsAt);
+  const specialized = specializedLimitLabel(limitId, limitName);
+  const label = duration === 300 ? '5H' : duration === 10_080 ? (specialized ?? '7D') : compactLabel(id) || 'LIMIT';
+  const rank =
+    duration === 300
+      ? (specialized ? 5 : 0) + providerOrder / 100
+      : duration === 10_080
+        ? 20 + (specialized ? 5 : 0) + providerOrder / 100
+        : 60 + providerOrder / 100;
   return {
-    id,
-    usedPercent,
-    ...(duration !== undefined && duration > 0 ? { durationMinutes: duration } : {}),
-    ...(resetsAt ? { resetsAt } : {}),
+    rank,
+    metric: {
+      id: `${limitId}:${id}:window`,
+      label,
+      description: `${limitName ?? limitId} ${label} usage`,
+      kind: 'window',
+      usedPercent,
+      ...(duration !== undefined && duration > 0 ? { durationMinutes: duration } : {}),
+      ...(resetsAt ? { resetsAt } : {}),
+    },
   };
 }
 
@@ -61,49 +113,55 @@ function normalizeCredits(value: unknown): AccountUsageCredits | undefined {
   };
 }
 
-function normalizeBudget(value: unknown, reachedValue: unknown): AccountUsageBudget | undefined {
+function normalizeBudget(id: string, name: string | undefined, value: unknown): RankedMetric | undefined {
   const budget = rec(value);
   const limit = str(budget?.limit);
   const used = str(budget?.used);
   const reportedRemainingPercent = finite(budget?.remainingPercent);
-  const remainingPercent =
-    reportedRemainingPercent !== undefined && reportedRemainingPercent >= 0 ? reportedRemainingPercent : undefined;
+  const usedPercent = (() => {
+    if (reportedRemainingPercent !== undefined && reportedRemainingPercent >= 0) {
+      return Math.max(0, 100 - reportedRemainingPercent);
+    }
+    const numericLimit = Number(limit);
+    const numericUsed = Number(used);
+    return Number.isFinite(numericLimit) && numericLimit > 0 && Number.isFinite(numericUsed) && numericUsed >= 0
+      ? (numericUsed / numericLimit) * 100
+      : undefined;
+  })();
   const resetsAt = unixSecondsIso(budget?.resetsAt);
-  const reached = typeof reachedValue === 'boolean' ? reachedValue : undefined;
-  const hasBudgetValues =
-    limit !== undefined || used !== undefined || remainingPercent !== undefined || resetsAt !== undefined;
-  if (!hasBudgetValues && reached !== true) return undefined;
+  if (usedPercent === undefined) return undefined;
+  const description = name ?? id;
   return {
-    ...(limit !== undefined ? { limit } : {}),
-    ...(used !== undefined ? { used } : {}),
-    ...(remainingPercent !== undefined ? { remainingPercent } : {}),
-    ...(resetsAt ? { resetsAt } : {}),
-    ...(reached !== undefined ? { reached } : {}),
+    rank: 70,
+    metric: {
+      id: `${id}:budget`,
+      label: /credit/i.test(`${id} ${description}`) ? 'CREDIT' : 'BUDGET',
+      description,
+      kind: 'budget',
+      usedPercent,
+      ...(resetsAt ? { resetsAt } : {}),
+    },
   };
 }
 
-function normalizeLimit(fallbackId: string, value: unknown): AccountUsageLimit | undefined {
+function normalizeLimit(fallbackId: string, value: unknown, providerOrder: number): NormalizedLimit | undefined {
   const limit = rec(value);
   if (!limit) return undefined;
   const id = str(limit.limitId) ?? fallbackId;
-  const windows = [normalizeWindow('primary', limit.primary), normalizeWindow('secondary', limit.secondary)].filter(
-    (window): window is AccountUsageWindow => window !== undefined,
-  );
-
-  const credits = normalizeCredits(limit.credits);
-  const budget = normalizeBudget(limit.individualLimit, limit.spendControlReached);
   const name = str(limit.limitName);
-  const plan = str(limit.planType);
+  const metrics = [
+    normalizeWindow(id, name, 'primary', limit.primary, providerOrder),
+    normalizeWindow(id, name, 'secondary', limit.secondary, providerOrder),
+    normalizeBudget(id, name, limit.individualLimit),
+  ].filter((metric): metric is RankedMetric => metric !== undefined);
+  const credits = normalizeCredits(limit.credits);
   const reached = str(limit.rateLimitReachedType);
-  if (windows.length === 0 && !credits && !budget && !reached) return undefined;
+  const workspace = rec(limit.individualLimit) !== undefined || reached?.startsWith('workspace_') === true;
+  if (metrics.length === 0 && !credits && !reached) return undefined;
   return {
-    id,
-    windows,
-    ...(name ? { name } : {}),
-    ...(plan ? { plan } : {}),
-    ...(reached ? { reached } : {}),
+    metrics,
     ...(credits ? { credits } : {}),
-    ...(budget ? { budget } : {}),
+    workspace,
   };
 }
 
@@ -114,22 +172,26 @@ export function normalizeCodexAccountUsage(value: unknown, fetchedAt = new Date(
   const candidates =
     byId && Object.keys(byId).length > 0 ? Object.entries(byId) : [['codex', response.rateLimits] as const];
   const limits = candidates
-    .map(([id, limit]) => normalizeLimit(id, limit))
-    .filter((limit): limit is AccountUsageLimit => limit !== undefined);
+    .map(([id, limit], index) => normalizeLimit(id, limit, index))
+    .filter((limit): limit is NormalizedLimit => limit !== undefined);
 
   const resetCredits = rec(response.rateLimitResetCredits);
   const resetCreditsAvailable = finite(resetCredits?.availableCount);
+  const limitCredits = limits.find((limit) => limit.credits)?.credits;
   const credits =
-    resetCreditsAvailable !== undefined && resetCreditsAvailable >= 0 ? { resetCreditsAvailable } : undefined;
+    resetCreditsAvailable !== undefined && resetCreditsAvailable >= 0
+      ? { ...limitCredits, resetCreditsAvailable }
+      : limitCredits;
 
   return {
     provider: 'codex',
     fetchedAt,
-    scope: limits.some((limit) => limit.budget || limit.reached?.startsWith('workspace_'))
-      ? 'workspace'
-      : 'subscription',
+    scope: limits.some((limit) => limit.workspace) ? 'workspace' : 'subscription',
     source: { kind: 'native-protocol', stability: 'documented' },
-    limits,
+    metrics: limits
+      .flatMap((limit) => limit.metrics)
+      .sort((left, right) => left.rank - right.rank || left.metric.id.localeCompare(right.metric.id))
+      .map(({ metric }) => metric),
     ...(credits ? { credits } : {}),
   };
 }
@@ -190,7 +252,7 @@ export async function fetchCodexAccountUsage(
     client.notify('initialized');
     const response = await client.request('account/rateLimits/read');
     const snapshot = normalizeCodexAccountUsage(response, (options.now ?? (() => new Date()))().toISOString());
-    if (snapshot.limits.length === 0) {
+    if (snapshot.metrics.length === 0 && !snapshot.credits) {
       return {
         status: 'unavailable',
         provider: 'codex',
@@ -205,4 +267,14 @@ export async function fetchCodexAccountUsage(
     if (client) await client.close();
     else await transport?.close();
   }
+}
+
+/** Complete account-usage capability advertised by the Codex adapter. */
+export function createCodexAccountUsageService(
+  options: Omit<FetchCodexAccountUsageOptions, 'transport'> = {},
+): AccountUsageService {
+  return {
+    provider: CODEX_ACCOUNT_USAGE_PROVIDER,
+    fetch: () => fetchCodexAccountUsage(options),
+  };
 }

@@ -42,6 +42,11 @@ TypeScript remains the contract for callbacks and internal composition:
 
 Zod is therefore used where untrusted runtime data crosses into Core. It is not used to model callbacks or every internal function.
 
+The same boundary rule applies to account usage. Core owns strict schemas for `AccountUsageProvider`,
+`AccountUsageMetric`, and `AccountUsageFetchResult`; each adapter converts native quota buckets into ordered semantic
+metrics and publishes its own refresh policy. Runtime validates results and enumerates participating providers.
+Products do not branch on provider ids, native limit names, or transport kinds to recover usage semantics.
+
 ## Event contract and flow
 
 Every normalized event extends the unified structural contract:
@@ -170,11 +175,15 @@ src/
     prompt.ts
     approvals.ts
     artifacts.ts
+    account-usage.ts
 ```
 
 Only supported categories and capabilities need files. An adapter may delegate a capability instead of copying normalization logic. One native record may produce several candidates; the pipeline owns shared correlation and composes focused category normalizers.
 
 Every adapter returns one `AgentAdapterBinding`. Its `events.onCandidate(...)` source is the only normalized observation rail, while `services.prompt` and optional capabilities such as `services.artifacts` are named command ports. Adapters never publish a stamped `AgentEventEnvelope`; the private per-Agent bus lives in Runtime.
+
+Account usage is provider-scoped rather than session-scoped, so it is composed as `AgentProvider.accountUsage`, not as
+an `AgentAdapterBinding` service. Its implementation still follows the one-capability-per-file adapter convention.
 
 Observation-source code may be organized by native transport when that is the clearest boundary, but normalized event construction still lives in the category module. Artifact readers must be incremental and bounded, and independent evidence rails must fail independently.
 

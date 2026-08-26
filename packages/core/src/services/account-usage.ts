@@ -1,97 +1,129 @@
+import { z } from 'zod';
+
 /**
  * Provider-neutral account usage and quota contracts.
  *
- * Account limits are deliberately separate from Agent: subscription
- * quotas are normally shared by every process and conversation authenticated as
- * the same provider account.
+ * Account limits are deliberately separate from Agent: subscription quotas
+ * are normally shared by every process and conversation authenticated as the
+ * same provider account. Native bucket semantics stop at the adapter boundary;
+ * consumers receive opaque canonical ids plus ordered semantic metrics.
  */
 
-export type AccountUsageScope = 'subscription' | 'api' | 'workspace' | 'unknown';
+const NonEmptyStringSchema = z.string().trim().min(1);
+const NonNegativeNumberSchema = z.number().finite().nonnegative();
+const PositiveSafeIntegerSchema = z.number().int().positive().safe();
+const TimestampSchema = z.iso.datetime({ offset: true });
 
-export interface AccountUsageSource {
+export const AccountUsageScopeSchema = z.enum(['subscription', 'api', 'workspace', 'unknown']);
+export type AccountUsageScope = z.infer<typeof AccountUsageScopeSchema>;
+
+export const AccountUsageSourceSchema = z.strictObject({
   /** How the adapter obtained the snapshot without exposing credentials. */
-  kind: 'native-protocol' | 'native-statusline' | 'oauth-endpoint';
+  kind: z.enum(['native-protocol', 'native-statusline', 'oauth-endpoint']),
   /** Whether the provider publicly documents this integration surface. */
-  stability: 'documented' | 'experimental';
-}
+  stability: z.enum(['documented', 'experimental']),
+});
+export type AccountUsageSource = z.infer<typeof AccountUsageSourceSchema>;
 
-export interface AccountUsageWindow {
-  /** Provider-stable identifier such as `primary`, `five_hour`, or `seven_day_opus`. */
-  id: string;
-  /** Optional display label supplied or derived by the adapter. */
-  label?: string;
-  /** Window length when the provider reports it or its identifier defines it. */
-  durationMinutes?: number;
-  /** Inclusive period start, normalized to ISO 8601 when available. */
-  startsAt?: string;
-  /** Next reset/period end, normalized to ISO 8601 when available. */
-  resetsAt?: string;
-  /** Percentage consumed. Adapters preserve the provider's value rather than estimating tokens. */
-  usedPercent?: number;
-}
+export const AccountUsageMetricKindSchema = z.enum(['window', 'budget']);
+export type AccountUsageMetricKind = z.infer<typeof AccountUsageMetricKindSchema>;
 
-export interface AccountUsageCredits {
-  /** Provider-formatted balance. Kept as a string to avoid losing decimal precision. */
-  balance?: string;
-  hasCredits?: boolean;
-  unlimited?: boolean;
-  /** Available provider-issued rate-limit reset credits, when supported. */
-  resetCreditsAvailable?: number;
-}
+/**
+ * One adapter-normalized meter, already named and ordered for a generic
+ * consumer. The id is opaque outside the adapter; consumers render `label`
+ * and preserve array order.
+ */
+export const AccountUsageMetricSchema = z.strictObject({
+  id: NonEmptyStringSchema,
+  /** Compact semantic label such as `5H`, `7D`, `OPUS`, or `BUDGET`. */
+  label: NonEmptyStringSchema,
+  /** Optional longer provider-neutral explanation for tooltips/accessibility. */
+  description: NonEmptyStringSchema.optional(),
+  kind: AccountUsageMetricKindSchema,
+  /** Percentage consumed. Values above 100 are valid for exceeded budgets. */
+  usedPercent: NonNegativeNumberSchema,
+  /** Rolling/fixed window length when known. */
+  durationMinutes: PositiveSafeIntegerSchema.optional(),
+  startsAt: TimestampSchema.optional(),
+  resetsAt: TimestampSchema.optional(),
+});
+export type AccountUsageMetric = z.infer<typeof AccountUsageMetricSchema>;
 
-export interface AccountUsageBudget {
-  /** Provider-formatted total allowance. Kept as a string to preserve units and decimal precision. */
-  limit?: string;
-  /** Provider-formatted amount consumed. Kept as a string to preserve units and decimal precision. */
-  used?: string;
-  /** Percentage still available when reported directly by the provider. */
-  remainingPercent?: number;
-  /** Budget renewal or expiry, normalized to ISO 8601 when available. */
-  resetsAt?: string;
-  /** Provider-reported exhaustion state. */
-  reached?: boolean;
-}
+export const AccountUsageCreditsSchema = z
+  .strictObject({
+    /** Provider-formatted balance. A string preserves units and decimal precision. */
+    balance: NonEmptyStringSchema.optional(),
+    hasCredits: z.boolean().optional(),
+    unlimited: z.boolean().optional(),
+    /** Available provider-issued rate-limit reset credits, when supported. */
+    resetCreditsAvailable: z.number().int().nonnegative().safe().optional(),
+  })
+  .refine((credits) => Object.values(credits).some((value) => value !== undefined), {
+    message: 'account usage credits must contain at least one value',
+  });
+export type AccountUsageCredits = z.infer<typeof AccountUsageCreditsSchema>;
 
-export interface AccountUsageLimit {
-  /** Provider-stable metered bucket identifier. */
-  id: string;
-  name?: string;
-  plan?: string;
-  /** Provider-reported lifecycle or availability state for optional limits. */
-  status?: string;
-  /** Provider-classified reached/depleted state. */
-  reached?: string;
-  /** Whether an optional/overage quota is enabled for this account. */
-  enabled?: boolean;
-  windows: readonly AccountUsageWindow[];
-  credits?: AccountUsageCredits;
-  /** Absolute spend, credit, or allocation cap associated with this limit. */
-  budget?: AccountUsageBudget;
-}
+export const AccountUsageSnapshotSchema = z
+  .strictObject({
+    provider: NonEmptyStringSchema,
+    fetchedAt: TimestampSchema,
+    scope: AccountUsageScopeSchema,
+    source: AccountUsageSourceSchema,
+    /** Adapter-ranked metrics. Generic consumers preserve this order. */
+    metrics: z.array(AccountUsageMetricSchema),
+    /** Account-wide credits that are not represented by a percentage meter. */
+    credits: AccountUsageCreditsSchema.optional(),
+  })
+  .superRefine((snapshot, context) => {
+    const ids = new Set<string>();
+    snapshot.metrics.forEach((metric, index) => {
+      if (ids.has(metric.id)) {
+        context.addIssue({
+          code: 'custom',
+          message: `duplicate account usage metric id: ${metric.id}`,
+          path: ['metrics', index, 'id'],
+        });
+      }
+      ids.add(metric.id);
+    });
+  });
+export type AccountUsageSnapshot = z.infer<typeof AccountUsageSnapshotSchema>;
 
-export interface AccountUsageSnapshot {
-  provider: string;
-  fetchedAt: string;
-  scope: AccountUsageScope;
-  source: AccountUsageSource;
-  limits: readonly AccountUsageLimit[];
-  /** Account-wide credits that are not owned by one metered bucket. */
-  credits?: AccountUsageCredits;
-}
+export const AccountUsageAvailableSchema = z.strictObject({
+  status: z.literal('available'),
+  snapshot: AccountUsageSnapshotSchema,
+});
+export type AccountUsageAvailable = z.infer<typeof AccountUsageAvailableSchema>;
 
-export interface AccountUsageAvailable {
-  status: 'available';
-  snapshot: AccountUsageSnapshot;
-}
-
-export interface AccountUsageFailure {
-  status: 'unsupported' | 'unauthenticated' | 'unavailable';
-  provider: string;
-  message: string;
-  retryable: boolean;
-  code?: 'rate-limited';
+export const AccountUsageFailureSchema = z.strictObject({
+  status: z.enum(['unsupported', 'unauthenticated', 'unavailable']),
+  provider: NonEmptyStringSchema,
+  message: NonEmptyStringSchema,
+  retryable: z.boolean(),
+  code: z.literal('rate-limited').optional(),
   /** Earliest provider-authorized retry time, normalized from Retry-After when available. */
-  retryAt?: string;
-}
+  retryAt: TimestampSchema.optional(),
+});
+export type AccountUsageFailure = z.infer<typeof AccountUsageFailureSchema>;
 
-export type AccountUsageFetchResult = AccountUsageAvailable | AccountUsageFailure;
+export const AccountUsageFetchResultSchema = z.union([AccountUsageAvailableSchema, AccountUsageFailureSchema]);
+export type AccountUsageFetchResult = z.infer<typeof AccountUsageFetchResultSchema>;
+
+/** Adapter-owned identity and recommended observation cadence. */
+export const AccountUsageProviderSchema = z.strictObject({
+  id: NonEmptyStringSchema,
+  label: NonEmptyStringSchema,
+  refresh: z.strictObject({
+    pollIntervalMs: PositiveSafeIntegerSchema,
+    /** Poll delay after a push update; defaults to `pollIntervalMs`. */
+    pushUpdatePollIntervalMs: PositiveSafeIntegerSchema.optional(),
+  }),
+});
+export type AccountUsageProvider = z.infer<typeof AccountUsageProviderSchema>;
+
+/** One adapter-owned account-usage service, independent of live sessions. */
+export interface AccountUsageService {
+  readonly provider: AccountUsageProvider;
+  fetch(): Promise<AccountUsageFetchResult>;
+  subscribe?(listener: (result: AccountUsageFetchResult) => void): () => void;
+}

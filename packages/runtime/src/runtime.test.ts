@@ -384,26 +384,35 @@ describe('createAgentRuntime', () => {
   it('fetches provider-level account usage without a session and coalesces concurrent reads', async () => {
     const root = await mkdtemp(join(tmpdir(), 'puppeteer-runtime-usage-'));
     const handles = new Map<string, { emit: (event: AgentEventEnvelope) => void }>();
-    const provider = fakeProvider('codex', handles);
     let release: (() => void) | undefined;
     let calls = 0;
-    provider.fetchAccountUsage = async () => {
-      calls += 1;
-      await new Promise<void>((resolve) => {
-        release = resolve;
-      });
-      return {
-        status: 'available',
-        snapshot: {
-          provider: 'codex',
-          fetchedAt: '2026-07-23T00:00:00.000Z',
-          scope: 'subscription',
-          source: { kind: 'native-protocol', stability: 'documented' },
-          limits: [],
+    const provider: AgentProvider = {
+      ...fakeProvider('codex', handles),
+      accountUsage: {
+        provider: { id: 'codex', label: 'Codex', refresh: { pollIntervalMs: 60_000 } },
+        async fetch() {
+          calls += 1;
+          await new Promise<void>((resolve) => {
+            release = resolve;
+          });
+          return {
+            status: 'available',
+            snapshot: {
+              provider: 'codex',
+              fetchedAt: '2026-07-23T00:00:00.000Z',
+              scope: 'subscription',
+              source: { kind: 'native-protocol', stability: 'documented' },
+              metrics: [],
+            },
+          };
         },
-      };
+      },
     };
     const runtime = createAgentRuntime({ host, defaultCwd: root, providers: [provider] });
+
+    expect(runtime.accountUsageProviders()).toEqual([
+      { id: 'codex', label: 'Codex', refresh: { pollIntervalMs: 60_000 } },
+    ]);
 
     const first = runtime.accountUsage('codex');
     const second = runtime.accountUsage('codex');
@@ -420,9 +429,14 @@ describe('createAgentRuntime', () => {
     const root = await mkdtemp(join(tmpdir(), 'puppeteer-runtime-usage-errors-'));
     const handles = new Map<string, { emit: (event: AgentEventEnvelope) => void }>();
     const unsupported = fakeProvider('acp', handles);
-    const broken = fakeProvider('broken', handles);
-    broken.fetchAccountUsage = () => {
-      throw new Error('native secret detail');
+    const broken: AgentProvider = {
+      ...fakeProvider('broken', handles),
+      accountUsage: {
+        provider: { id: 'broken', label: 'Broken', refresh: { pollIntervalMs: 60_000 } },
+        fetch() {
+          throw new Error('native secret detail');
+        },
+      },
     };
     const runtime = createAgentRuntime({
       host,
@@ -453,19 +467,88 @@ describe('createAgentRuntime', () => {
     await runtime.dispose();
   });
 
+  it('rejects invalid or misidentified adapter account-usage output at runtime ingress', async () => {
+    const root = await mkdtemp(join(tmpdir(), 'puppeteer-runtime-usage-validation-'));
+    const handles = new Map<string, { emit: (event: AgentEventEnvelope) => void }>();
+    const onError = vi.fn();
+    const provider: AgentProvider = {
+      ...fakeProvider('example', handles),
+      accountUsage: {
+        provider: { id: 'example', label: 'Example', refresh: { pollIntervalMs: 60_000 } },
+        async fetch() {
+          return {
+            status: 'available',
+            snapshot: {
+              provider: 'different-provider',
+              fetchedAt: 'not-an-iso-timestamp',
+              scope: 'subscription',
+              source: { kind: 'native-protocol', stability: 'documented' },
+              metrics: [{ id: 'bad', label: '', kind: 'window', usedPercent: -1 }],
+            },
+          } as unknown as AccountUsageFetchResult;
+        },
+      },
+    };
+    const runtime = createAgentRuntime({ host, defaultCwd: root, providers: [provider], onError });
+
+    await expect(runtime.accountUsage('example')).resolves.toEqual({
+      status: 'unavailable',
+      provider: 'example',
+      message: 'account usage fetch failed for example',
+      retryable: true,
+    });
+    expect(onError).toHaveBeenCalledWith(expect.objectContaining({ message: expect.stringContaining('validation') }));
+    await runtime.dispose();
+
+    const mismatched: AgentProvider = {
+      ...fakeProvider('one', handles),
+      accountUsage: {
+        provider: { id: 'two', label: 'Two', refresh: { pollIntervalMs: 60_000 } },
+        async fetch() {
+          return {
+            status: 'unsupported',
+            provider: 'two',
+            message: 'unsupported',
+            retryable: false,
+          };
+        },
+      },
+    };
+    expect(() => createAgentRuntime({ host, defaultCwd: root, providers: [mismatched] })).toThrow(
+      'does not match agent provider',
+    );
+  });
+
   it('forwards provider push account-usage updates', async () => {
     const root = await mkdtemp(join(tmpdir(), 'puppeteer-runtime-usage-push-'));
     const handles = new Map<string, { emit: (event: AgentEventEnvelope) => void }>();
-    const provider = fakeProvider('claude', handles);
     const pushListeners = new Set<(result: AccountUsageFetchResult) => void>();
-    provider.onAccountUsage = (listener) => {
-      pushListeners.add(listener);
-      return () => pushListeners.delete(listener);
+    const provider: AgentProvider = {
+      ...fakeProvider('claude', handles),
+      accountUsage: {
+        provider: {
+          id: 'claude',
+          label: 'Claude',
+          refresh: { pollIntervalMs: 60_000, pushUpdatePollIntervalMs: 300_000 },
+        },
+        async fetch() {
+          return {
+            status: 'unavailable',
+            provider: 'claude',
+            message: 'not fetched in this test',
+            retryable: true,
+          };
+        },
+        subscribe(listener) {
+          pushListeners.add(listener);
+          return () => pushListeners.delete(listener);
+        },
+      },
     };
     const runtime = createAgentRuntime({ host, defaultCwd: root, providers: [provider] });
     const seen: Array<{ agent: string; status: string }> = [];
-    const unsubscribe = runtime.onAccountUsage((agent, result) => {
-      seen.push({ agent, status: result.status });
+    const unsubscribe = runtime.onAccountUsage((usageProvider, result) => {
+      seen.push({ agent: usageProvider.id, status: result.status });
     });
 
     for (const listener of pushListeners) {
@@ -476,7 +559,7 @@ describe('createAgentRuntime', () => {
           fetchedAt: '2026-07-23T12:00:00.000Z',
           scope: 'subscription',
           source: { kind: 'native-statusline', stability: 'documented' },
-          limits: [],
+          metrics: [],
         },
       });
     }
@@ -491,7 +574,7 @@ describe('createAgentRuntime', () => {
           fetchedAt: '2026-07-23T12:01:00.000Z',
           scope: 'subscription',
           source: { kind: 'native-statusline', stability: 'documented' },
-          limits: [],
+          metrics: [],
         },
       });
     }

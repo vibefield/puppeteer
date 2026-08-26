@@ -16,13 +16,11 @@ describe.skipIf(!live)('Codex account usage (live)', () => {
     if (result.status !== 'available') return;
 
     expect(result.snapshot.provider).toBe('codex');
-    expect(result.snapshot.limits.length).toBeGreaterThan(0);
-    const windows = result.snapshot.limits.flatMap((limit) => limit.windows);
-    expect(windows.length).toBeGreaterThan(0);
-    for (const window of windows) {
-      expect(window.usedPercent).toBeGreaterThanOrEqual(0);
-      if (window.durationMinutes !== undefined) expect(window.durationMinutes).toBeGreaterThan(0);
-      if (window.resetsAt !== undefined) expect(Number.isFinite(Date.parse(window.resetsAt))).toBe(true);
+    expect(result.snapshot.metrics.length).toBeGreaterThan(0);
+    for (const metric of result.snapshot.metrics) {
+      expect(metric.usedPercent).toBeGreaterThanOrEqual(0);
+      if (metric.durationMinutes !== undefined) expect(metric.durationMinutes).toBeGreaterThan(0);
+      if (metric.resetsAt !== undefined) expect(Number.isFinite(Date.parse(metric.resetsAt))).toBe(true);
     }
   }, 25_000);
 });

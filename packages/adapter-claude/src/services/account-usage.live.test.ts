@@ -16,9 +16,8 @@ describe.skipIf(!live)('Claude account usage (live)', () => {
     if (result.status !== 'available') return;
 
     expect(result.snapshot.provider).toBe('claude');
-    const windows = result.snapshot.limits.flatMap((limit) => limit.windows);
-    expect(windows.some((window) => window.id === 'five_hour')).toBe(true);
-    expect(windows.some((window) => window.id === 'seven_day')).toBe(true);
+    expect(result.snapshot.metrics.some((metric) => metric.label === '5H')).toBe(true);
+    expect(result.snapshot.metrics.some((metric) => metric.label === '7D')).toBe(true);
     expect(JSON.stringify(result)).not.toMatch(/Bearer|access[_-]?token/i);
   }, 15_000);
 });

@@ -3,7 +3,7 @@ import type { SessionSummary } from '@vibecook/ghosttea-protocol';
 import { createGhostteaClipboardBridge, forwardGhostteaRendererPorts } from '@vibecook/ghosttea-electron/preload';
 import type {
   AcknowledgeAgentFailureRequest,
-  AgentAccountUsageBatch,
+  AccountUsageBatch,
   AgentMonitorNotificationMessage,
   AgentMonitorRemovedMessage,
   AgentMonitorStateMessage,
@@ -51,10 +51,10 @@ try {
 }
 
 const puppeteer: PuppeteerBridge = {
-  accountUsage: (): Promise<AgentAccountUsageBatch> => ipcRenderer.invoke('puppeteer:account-usage'),
-  refreshAccountUsage: (): Promise<AgentAccountUsageBatch> => ipcRenderer.invoke('puppeteer:refresh-account-usage'),
-  onAccountUsage: (callback: (batch: AgentAccountUsageBatch) => void): (() => void) => {
-    const listener = (_event: Electron.IpcRendererEvent, batch: AgentAccountUsageBatch): void => callback(batch);
+  accountUsage: (): Promise<AccountUsageBatch> => ipcRenderer.invoke('puppeteer:account-usage'),
+  refreshAccountUsage: (): Promise<AccountUsageBatch> => ipcRenderer.invoke('puppeteer:refresh-account-usage'),
+  onAccountUsage: (callback: (batch: AccountUsageBatch) => void): (() => void) => {
+    const listener = (_event: Electron.IpcRendererEvent, batch: AccountUsageBatch): void => callback(batch);
     ipcRenderer.on('puppeteer:account-usage', listener);
     return () => ipcRenderer.removeListener('puppeteer:account-usage', listener);
   },

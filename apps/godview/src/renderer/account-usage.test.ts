@@ -1,48 +1,51 @@
 import { describe, expect, it } from 'vitest';
-import type { AccountUsageFetchResult } from '@vibecook/puppeteer-core';
-import type { AgentAccountUsage } from '../protocol.js';
-import { formatUsageReset, providerAccountUsageView } from './account-usage.js';
+import type { AccountUsageFetchResult, AccountUsageProvider } from '@vibecook/puppeteer-core';
+import type { AccountUsageEntry } from '../protocol.js';
+import { accountUsageView, formatUsageReset } from './account-usage.js';
 
 const NOW = Date.parse('2026-07-23T20:00:00.000Z');
+const PROVIDER: AccountUsageProvider = {
+  id: 'example-agent',
+  label: 'Example Agent',
+  refresh: { pollIntervalMs: 60_000 },
+};
 
-function entry(agent: AgentAccountUsage['agent'], result: AccountUsageFetchResult): AgentAccountUsage {
-  return { agent, result };
+function entry(result: AccountUsageFetchResult): AccountUsageEntry {
+  return { provider: PROVIDER, result };
 }
 
 describe('account usage display model', () => {
-  it('prioritizes Claude five-hour, weekly, and model-specific windows', () => {
-    const view = providerAccountUsageView(
-      'claude',
-      entry('claude', {
+  it('renders adapter-normalized metrics in supplied order without interpreting provider ids', () => {
+    const view = accountUsageView(
+      entry({
         status: 'available',
         snapshot: {
-          provider: 'claude',
+          provider: PROVIDER.id,
           fetchedAt: '2026-07-23T20:00:00.000Z',
           scope: 'subscription',
-          source: { kind: 'oauth-endpoint', stability: 'experimental' },
-          limits: [
+          source: { kind: 'native-protocol', stability: 'documented' },
+          metrics: [
             {
-              id: 'claude-subscription',
-              windows: [
-                {
-                  id: 'seven_day_opus',
-                  durationMinutes: 10_080,
-                  usedPercent: 56,
-                  resetsAt: '2026-07-25T20:00:00.000Z',
-                },
-                {
-                  id: 'seven_day',
-                  durationMinutes: 10_080,
-                  usedPercent: 34,
-                  resetsAt: '2026-07-26T20:00:00.000Z',
-                },
-                {
-                  id: 'five_hour',
-                  durationMinutes: 300,
-                  usedPercent: 12.5,
-                  resetsAt: '2026-07-23T21:30:00.000Z',
-                },
-              ],
+              id: 'opaque-native-z',
+              label: 'SHORT',
+              description: 'Short rolling window',
+              kind: 'window',
+              usedPercent: 12.5,
+              resetsAt: '2026-07-23T21:30:00.000Z',
+            },
+            {
+              id: 'opaque-native-a',
+              label: 'LONG',
+              description: 'Long rolling window',
+              kind: 'window',
+              usedPercent: 34,
+              resetsAt: '2026-07-26T20:00:00.000Z',
+            },
+            {
+              id: 'opaque-budget',
+              label: 'BUDGET',
+              kind: 'budget',
+              usedPercent: 80,
             },
           ],
         },
@@ -50,85 +53,30 @@ describe('account usage display model', () => {
       NOW,
     );
 
-    expect(view.metrics.map(({ label, value, resetLabel }) => ({ label, value, resetLabel }))).toEqual([
-      { label: '5H', value: '13%', resetLabel: '1h 30m' },
-      { label: '7D', value: '34%', resetLabel: '3d' },
-      { label: 'OPUS', value: '56%', resetLabel: '2d' },
+    expect(view).toMatchObject({ providerId: 'example-agent', label: 'EXAMPLE AGENT', state: 'available' });
+    expect(view.metrics.map(({ key, label, value, resetLabel }) => ({ key, label, value, resetLabel }))).toEqual([
+      { key: 'opaque-native-z', label: 'SHORT', value: '13%', resetLabel: '1h 30m' },
+      { key: 'opaque-native-a', label: 'LONG', value: '34%', resetLabel: '3d' },
+      { key: 'opaque-budget', label: 'BUDGET', value: '80%', resetLabel: undefined },
     ]);
   });
 
-  it('distinguishes Codex weekly buckets and fills an allocation-only account', () => {
-    const view = providerAccountUsageView(
-      'codex',
-      entry('codex', {
-        status: 'available',
-        snapshot: {
-          provider: 'codex',
-          fetchedAt: '2026-07-23T20:00:00.000Z',
-          scope: 'workspace',
-          source: { kind: 'native-protocol', stability: 'documented' },
-          limits: [
-            {
-              id: 'codex_spark',
-              name: 'GPT-5.3-Codex-Spark',
-              windows: [{ id: 'primary', durationMinutes: 10_080, usedPercent: 7 }],
-            },
-            {
-              id: 'codex',
-              windows: [
-                { id: 'primary', durationMinutes: 300, usedPercent: 18 },
-                { id: 'secondary', durationMinutes: 10_080, usedPercent: 42 },
-              ],
-            },
-          ],
-        },
-      }),
-      NOW,
-    );
-    expect(view.metrics.map((metric) => metric.label)).toEqual(['5H', '7D', 'SPARK']);
-
-    const budget = providerAccountUsageView(
-      'codex',
-      entry('codex', {
-        status: 'available',
-        snapshot: {
-          provider: 'codex',
-          fetchedAt: '2026-07-23T20:00:00.000Z',
-          scope: 'workspace',
-          source: { kind: 'native-protocol', stability: 'documented' },
-          limits: [
-            {
-              id: 'workspace',
-              name: 'Workspace allocation',
-              windows: [],
-              budget: { remainingPercent: 20 },
-            },
-          ],
-        },
-      }),
-      NOW,
-    );
-    expect(budget.metrics[0]).toMatchObject({ label: 'BUDGET', usedPercent: 80, value: '80%' });
-  });
-
-  it('shows actionable failure states without leaking adapter messages', () => {
-    const unsupported = providerAccountUsageView(
-      'grok',
-      entry('grok', {
+  it('shows generic actionable failure states without leaking adapter messages', () => {
+    const unsupported = accountUsageView(
+      entry({
         status: 'unsupported',
-        provider: 'grok',
+        provider: PROVIDER.id,
         message: 'private implementation detail',
         retryable: false,
       }),
       NOW,
     );
-    expect(unsupported).toMatchObject({ state: 'unsupported', statusText: 'WEEKLY · NOT EXPOSED' });
+    expect(unsupported).toMatchObject({ state: 'unsupported', statusText: 'NOT EXPOSED' });
 
-    const unauthenticated = providerAccountUsageView(
-      'claude',
-      entry('claude', {
+    const unauthenticated = accountUsageView(
+      entry({
         status: 'unauthenticated',
-        provider: 'claude',
+        provider: PROVIDER.id,
         message: 'private credential path',
         retryable: false,
       }),
@@ -137,12 +85,11 @@ describe('account usage display model', () => {
     expect(unauthenticated.statusText).toBe('SIGN IN REQUIRED');
     expect(JSON.stringify(unauthenticated)).not.toContain('private');
 
-    const rateLimited = providerAccountUsageView(
-      'claude',
-      entry('claude', {
+    const rateLimited = accountUsageView(
+      entry({
         status: 'unavailable',
-        provider: 'claude',
-        message: 'Claude account usage request failed with HTTP 429',
+        provider: PROVIDER.id,
+        message: 'private HTTP 429 body',
         retryable: true,
         code: 'rate-limited',
         retryAt: '2026-07-23T20:47:00.000Z',
@@ -152,31 +99,25 @@ describe('account usage display model', () => {
     expect(rateLimited).toMatchObject({ state: 'rate-limited', statusText: 'RATE LIMITED · 47m' });
   });
 
-  it('keeps stale metrics visible while a provider is rate-limited', () => {
-    const stale = providerAccountUsageView(
-      'claude',
+  it('keeps stale normalized metrics visible while refresh is rate-limited', () => {
+    const stale = accountUsageView(
       {
-        agent: 'claude',
+        provider: PROVIDER,
         stale: true,
         result: {
           status: 'available',
           snapshot: {
-            provider: 'claude',
+            provider: PROVIDER.id,
             fetchedAt: '2026-07-23T19:55:00.000Z',
             scope: 'subscription',
-            source: { kind: 'oauth-endpoint', stability: 'experimental' },
-            limits: [
-              {
-                id: 'claude-subscription',
-                windows: [{ id: 'five_hour', durationMinutes: 300, usedPercent: 25 }],
-              },
-            ],
+            source: { kind: 'native-protocol', stability: 'documented' },
+            metrics: [{ id: 'opaque', label: 'NOW', kind: 'window', usedPercent: 25 }],
           },
         },
         refreshFailure: {
           status: 'unavailable',
-          provider: 'claude',
-          message: 'Claude account usage request failed with HTTP 429',
+          provider: PROVIDER.id,
+          message: 'private rate-limit detail',
           retryable: true,
           code: 'rate-limited',
           retryAt: '2026-07-23T20:47:00.000Z',
@@ -189,7 +130,7 @@ describe('account usage display model', () => {
       state: 'rate-limited',
       badgeText: 'RATE LIMITED',
       badgeTitle: 'Retrying in 47m',
-      metrics: [{ label: '5H', value: '25%' }],
+      metrics: [{ label: 'NOW', value: '25%' }],
     });
   });
 

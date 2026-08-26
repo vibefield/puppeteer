@@ -907,7 +907,7 @@ Update:
 - `packages/builtin-providers/src/providers.ts`:
   - executable resolution from `PUPPETEER_<VENDOR>_BIN`;
   - one `AgentProvider` entry;
-  - optional account usage;
+  - optional adapter-owned `AccountUsageService` composition;
   - `createSession` and optional `prepareSession`;
   - provider-level resource disposal;
 - `packages/builtin-providers/src/providers.test.ts` mocks, forwarding assertions, preparation behavior, and option typing.
@@ -923,9 +923,13 @@ For Godview, review and update the applicable seams under `apps/godview/src/`:
 - `main/main.ts` for accepted, restorable, and auto-created agent lists;
 - `main/spawn-through.ts` for enabled Imposter agents and vendor-native resume parsing;
 - `shim/agent-shim.ts` for vendor executable interception;
-- `protocol.ts` and `main/account-usage-monitor.ts` only if account usage is supported;
-- renderer labels, status presentation, icons, and account-usage presentation where the new agent needs explicit UI treatment;
+- renderer labels, status presentation, and icons only where the product intentionally wants explicit branding;
 - adjacent tests for every changed list or launch rule.
+
+Account usage requires no Godview provider list, renderer bucket mapping, or polling branch. Implement the adapter's
+account-usage service in its own service file: publish an `AccountUsageProvider` descriptor, normalize native quota ids
+into ordered `AccountUsageMetric` records, and compose that service into `AgentProvider.accountUsage`. Runtime validates
+the Zod schema and Godview discovers the capability through `accountUsageProviders()`.
 
 Do not add an Imposter agent to a product’s native-pane allowlist until its real adapter-against-Imposter launch topology has passed conformance. Codex and Grok need more than a persona that can print events: their attach/leader compositions must work end to end.
 
@@ -1161,7 +1165,7 @@ This is the review checklist for files commonly missed during a first adaptation
 
 ### Product applications
 
-- [ ] Godview built-in/restorable lists, shim, spawn-through, and relevant renderer/account-usage seams
+- [ ] Godview built-in/restorable lists, shim, spawn-through, and any intentional provider-branding seams
 - [ ] product-app typecheck, tests, bundle, and smoke for every app changed
 
 ### Automation

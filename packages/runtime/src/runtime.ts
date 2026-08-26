@@ -1,12 +1,15 @@
 import { createHash, randomUUID } from 'node:crypto';
 import { performance } from 'node:perf_hooks';
 import {
+  AccountUsageFetchResultSchema,
+  AccountUsageProviderSchema,
   agentEventCategory,
   agentEventType,
   isAgentEventType,
   safeParseAgentEvent,
   AdapterEventCandidateSchema,
   type AccountUsageFetchResult,
+  type AccountUsageProvider,
   type AdapterEventCandidate,
   type AgentEvent,
   type AgentEventConfidence,
@@ -381,6 +384,17 @@ const MAX_TERMINAL_RUN_INFOS = 1_024;
 
 export function createAgentRuntime(options: AgentRuntimeOptions): AgentRuntime {
   const providers = new Map(options.providers.map((provider) => [provider.kind, provider]));
+  const accountUsageProviders = [...providers.values()].flatMap((provider): AccountUsageProvider[] => {
+    if (!provider.accountUsage) return [];
+    const descriptor = AccountUsageProviderSchema.parse(provider.accountUsage.provider);
+    if (descriptor.id !== provider.kind) {
+      throw new Error(
+        `account usage provider id ${JSON.stringify(descriptor.id)} does not match agent provider ${JSON.stringify(provider.kind)}`,
+      );
+    }
+    return [descriptor];
+  });
+  const accountUsageProvidersById = new Map(accountUsageProviders.map((provider) => [provider.id, provider]));
   const monitorClock = options.monitorClock ?? createSystemMonitorClock();
   const runs = new Map<string, ManagedRun>();
   const terminalFailuresByRunId = new Map<string, TerminalFailureEntry>();
@@ -398,7 +412,7 @@ export function createAgentRuntime(options: AgentRuntimeOptions): AgentRuntime {
   const monitorNotificationListeners = new Set<(notification: MonitorNotification) => void>();
   const monitorRemovedListeners = new Set<(runtimeRunId: string) => void>();
   const acknowledgedFailureBlockers = new Set<string>();
-  const accountUsageListeners = new Set<(agent: string, result: AccountUsageFetchResult) => void>();
+  const accountUsageListeners = new Set<(provider: AccountUsageProvider, result: AccountUsageFetchResult) => void>();
   const accountUsageInflight = new Map<string, Promise<AccountUsageFetchResult>>();
   const preparationTtlMs = options.preparationTtlMs ?? 30_000;
   const terminalFailureCapacity = options.terminalFailureCapacity ?? DEFAULT_TERMINAL_FAILURE_CAPACITY;
@@ -411,6 +425,29 @@ export function createAgentRuntime(options: AgentRuntimeOptions): AgentRuntime {
   let disposed = false;
 
   const report = (err: unknown): void => options.onError?.(err instanceof Error ? err : new Error(String(err)));
+
+  const validateAccountUsageResult = (provider: AccountUsageProvider, value: unknown): AccountUsageFetchResult => {
+    const parsed = AccountUsageFetchResultSchema.safeParse(value);
+    const resultProvider = parsed.success
+      ? 'snapshot' in parsed.data
+        ? parsed.data.snapshot.provider
+        : parsed.data.provider
+      : undefined;
+    if (parsed.success && resultProvider === provider.id) return parsed.data;
+    report(
+      new Error(
+        parsed.success
+          ? `account usage result provider ${JSON.stringify(resultProvider)} does not match ${JSON.stringify(provider.id)}`
+          : `account usage result for ${JSON.stringify(provider.id)} failed schema validation`,
+      ),
+    );
+    return {
+      status: 'unavailable',
+      provider: provider.id,
+      message: `account usage fetch failed for ${provider.id}`,
+      retryable: true,
+    };
+  };
 
   function actionBase(
     run: ManagedRun,
@@ -1099,12 +1136,15 @@ export function createAgentRuntime(options: AgentRuntimeOptions): AgentRuntime {
 
   const providerAccountUsageUnsubs = [...providers.values()]
     .map((provider) => {
-      if (!provider.onAccountUsage) return undefined;
-      return provider.onAccountUsage((result) => {
+      const service = provider.accountUsage;
+      if (!service?.subscribe) return undefined;
+      const descriptor = accountUsageProvidersById.get(provider.kind)!;
+      return service.subscribe((candidate) => {
         if (disposed) return;
+        const result = validateAccountUsageResult(descriptor, candidate);
         for (const listener of accountUsageListeners) {
           try {
-            listener(provider.kind, result);
+            listener(descriptor, result);
           } catch (error) {
             report(error);
           }
@@ -1784,43 +1824,52 @@ export function createAgentRuntime(options: AgentRuntimeOptions): AgentRuntime {
       return sessionsByTerminalId.get(id)?.agent ?? sessionsByRunId.get(id)?.agent;
     },
 
-    async accountUsage(agent): Promise<AccountUsageFetchResult> {
+    accountUsageProviders() {
+      return accountUsageProviders.map((provider) => ({
+        ...provider,
+        refresh: { ...provider.refresh },
+      }));
+    },
+
+    async accountUsage(providerId): Promise<AccountUsageFetchResult> {
       if (disposed) throw new Error('agent runtime is disposed');
-      const existing = accountUsageInflight.get(agent);
+      const existing = accountUsageInflight.get(providerId);
       if (existing) return existing;
 
-      const provider = providers.get(agent);
+      const provider = providers.get(providerId);
       if (!provider) {
         return {
           status: 'unsupported',
-          provider: agent,
-          message: `unknown agent provider: ${agent}`,
+          provider: providerId,
+          message: `unknown agent provider: ${providerId}`,
           retryable: false,
         };
       }
-      if (!provider.fetchAccountUsage) {
+      const service = provider.accountUsage;
+      if (!service) {
         return {
           status: 'unsupported',
-          provider: agent,
-          message: `agent provider does not expose account usage: ${agent}`,
+          provider: providerId,
+          message: `agent provider does not expose account usage: ${providerId}`,
           retryable: false,
         };
       }
 
-      const fetchAccountUsage = provider.fetchAccountUsage;
+      const descriptor = accountUsageProvidersById.get(providerId)!;
       const request = Promise.resolve()
-        .then(() => fetchAccountUsage.call(provider))
+        .then(() => service.fetch())
+        .then((result) => validateAccountUsageResult(descriptor, result))
         .catch((error: unknown): AccountUsageFetchResult => {
           report(error);
           return {
             status: 'unavailable',
-            provider: agent,
-            message: `account usage fetch failed for ${agent}`,
+            provider: providerId,
+            message: `account usage fetch failed for ${providerId}`,
             retryable: true,
           };
         })
-        .finally(() => accountUsageInflight.delete(agent));
-      accountUsageInflight.set(agent, request);
+        .finally(() => accountUsageInflight.delete(providerId));
+      accountUsageInflight.set(providerId, request);
       return request;
     },
 
