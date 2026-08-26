@@ -1,5 +1,5 @@
 import { describe, it, expect, vi } from 'vitest';
-import { safeParseAgentEvent, type AdapterEventCandidate, type AgentEventEnvelope } from '@vibecook/puppeteer-core';
+import { safeParseAgentEvent, type AdapterEventCandidate } from '@vibecook/puppeteer-core';
 import { projectAgentSession } from '@vibecook/puppeteer-testing';
 import { PROTOCOL_VERSION } from '@agentclientprotocol/sdk';
 import type { Agent, Client, ClientCapabilities, RequestPermissionResponse } from '@agentclientprotocol/sdk';
@@ -12,14 +12,14 @@ const SID = '019f5e50-ce8b-7152-abcd-000000000001';
 /** Drive one turn to completion, resolving when turn:completed is observed. */
 async function driveTurn(session: Awaited<ReturnType<typeof createAcpSession>>, text: string): Promise<void> {
   const done = new Promise<void>((resolve) => {
-    const off = session.onEvent((e) => {
+    const off = session.events.onCandidate((e) => {
       if (e.event.type === 'turn:completed' || e.event.type === 'turn:failed') {
         off();
         resolve();
       }
     });
   });
-  await session.submitPrompt({ text });
+  await session.services.prompt.submit({ text });
   await done;
 }
 
@@ -77,13 +77,13 @@ describe('createAcpSession', () => {
     const projection = projectAgentSession(session, (state) => lifecycles.add(state.lifecycle));
     lifecycles.add(projection.state.lifecycle);
     try {
-      const receipt = await session.submitPrompt({ text: 'say pong' });
+      const receipt = await session.services.prompt.submit({ text: 'say pong' });
       expect(receipt.status).toBe('confirmed');
       if (receipt.status === 'confirmed') expect(receipt.turnId).toBe('acp-turn-1');
 
       // wait for turn:completed
       await new Promise<void>((resolve) => {
-        const stop = session.onEvent((e) => {
+        const stop = session.events.onCandidate((e) => {
           if (e.event.type === 'turn:completed') {
             stop();
             resolve();
@@ -109,8 +109,8 @@ describe('createAcpSession', () => {
       connector: scriptedAcpConnector({ sessionId: SID, reply: 'pong' }),
     });
     const candidates: AdapterEventCandidate[] = [];
-    expect(session.onEventCandidate).toBeTypeOf('function');
-    const off = session.onEventCandidate!((candidate) => candidates.push(candidate));
+    expect(session.events.onCandidate).toBeTypeOf('function');
+    const off = session.events.onCandidate!((candidate) => candidates.push(candidate));
     try {
       await driveTurn(session, 'say pong');
       const assistant = candidates.find(({ type }) => type === 'conversation:assistant-message');
@@ -148,8 +148,8 @@ describe('createAcpSession', () => {
       connector: scriptedAcpConnector({ sessionId: SID, reply: 'done', thought: 'private thought text' }),
     });
     const projection = projectAgentSession(session);
-    const envelopes: AgentEventEnvelope[] = [];
-    const off = session.onEvent((envelope) => envelopes.push(envelope));
+    const envelopes: AdapterEventCandidate[] = [];
+    const off = session.events.onCandidate((envelope) => envelopes.push(envelope));
     try {
       await driveTurn(session, 'think first');
       const started = envelopes.find((envelope) => envelope.event.type === 'reasoning:started');
@@ -160,7 +160,7 @@ describe('createAcpSession', () => {
         update: { sessionUpdate: 'agent_thought_chunk', content: { text: 'private thought text' } },
       });
       expect(completed?.confidence).toBe('derived');
-      expect(completed!.sequence).toBeLessThan(answer!.sequence);
+      expect(envelopes.indexOf(completed!)).toBeLessThan(envelopes.indexOf(answer!));
       expect(JSON.stringify(started?.event)).not.toContain('private thought text');
       expect(projection.state.activeReasoning).toBeUndefined();
     } finally {
@@ -215,7 +215,7 @@ describe('createAcpSession', () => {
     const onApproval = vi.fn(() => 'approved' as const);
     const session = await createAcpSession({ cwd: '/x', connector, clientCapabilities, onApproval });
     const events: string[] = [];
-    const off = session.onEvent((envelope) => events.push(envelope.event.type));
+    const off = session.events.onCandidate((envelope) => events.push(envelope.event.type));
 
     try {
       await driveTurn(session, 'write the file');
@@ -280,8 +280,8 @@ describe('createAcpSession', () => {
     };
     const onElicitation = vi.fn(() => ({ action: 'accept' as const, content: { database: 'sqlite' } }));
     const session = await createAcpSession({ cwd: '/x', connector, onElicitation });
-    const events: AgentEventEnvelope[] = [];
-    const off = session.onEvent((envelope) => events.push(envelope));
+    const events: AdapterEventCandidate[] = [];
+    const off = session.events.onCandidate((envelope) => events.push(envelope));
 
     try {
       await driveTurn(session, 'pick one');

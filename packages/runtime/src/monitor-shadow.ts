@@ -48,7 +48,8 @@ function compareOptionalValue<T>(
 }
 
 /**
- * Compares only facts represented by both the legacy reducer and monitor v2.
+ * Compares only facts represented by both the compatibility session reducer
+ * and the canonical agent monitor.
  * Mismatches deliberately contain classifications, never the observed values,
  * so diagnostics cannot become a side channel for cwd or provider metadata.
  */
@@ -60,15 +61,16 @@ export function compareLegacyAndMonitorState(
   const mismatches: MonitorShadowMismatch[] = [];
   const legacyAlive = legacy.lifecycle !== 'exited' && legacy.lifecycle !== 'failed';
   const structuredCloseLag = !options.final && !legacyAlive && monitor.alive;
-  // The terminal-backed v1 path learns that the process exited before the v2
-  // adapter finishes its structured close. That one-way lag is expected until
-  // the removal boundary; v2 becoming dead while v1 is still alive is not.
+  // The terminal-backed compatibility path learns that the process exited
+  // before the adapter finishes its structured close. That one-way lag is
+  // expected until the removal boundary; the inverse transition is not.
   if (legacyAlive !== monitor.alive && (legacyAlive || options.final)) {
     mismatches.push({ family: 'status', fact: 'alive', classification: 'liveness' });
   }
 
-  // A v2 question or semantic failure has no v1 equivalent. Only compare the
-  // headline when v1 has decisive evidence or v2 has no richer blocker.
+  // A structured question or semantic failure has no compatibility-state
+  // equivalent. Compare the headline only when the compatibility state has
+  // decisive evidence or the monitor has no richer blocker.
   let expectedStatus: AgentMonitorState['status'] | undefined;
   if (legacy.permissions.size > 0 || legacy.lifecycle === 'failed') expectedStatus = 'blocked';
   else if (monitor.blockers.length === 0 && monitor.activity?.kind !== 'compacting') {
@@ -81,9 +83,9 @@ export function compareLegacyAndMonitorState(
   if (familySupported(monitor, 'context')) {
     const legacyContext = legacy.contextWindow;
     const nextContext = monitor.context;
-    // Legacy context state requires both occupancy and capacity. Monitor v2
-    // can honestly represent a provider's input occupancy without inventing a
-    // capacity, so that partial v2-only fact has no legacy counterpart.
+    // Compatibility context state requires both occupancy and capacity. The
+    // monitor can honestly represent input occupancy without inventing a
+    // capacity, so that partial fact has no compatibility-state counterpart.
     const nextHasLegacyShape = nextContext?.capacityTokens !== undefined;
     if ((Boolean(legacyContext) && !nextContext) || (!legacyContext && nextHasLegacyShape)) {
       mismatches.push({ family: 'context', fact: 'measurement', classification: 'presence' });

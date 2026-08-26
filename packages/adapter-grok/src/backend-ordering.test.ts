@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import type { AgentAdapterSession, AgentHost } from '@vibecook/puppeteer-core';
+import type { AgentAdapterBinding, AgentHost } from '@vibecook/puppeteer-core';
 import { projectAgentSession } from '@vibecook/puppeteer-testing';
 
 const mocks = vi.hoisted(() => ({
@@ -26,13 +26,13 @@ vi.mock('@vibecook/puppeteer-adapter-acp', async (importOriginal) => ({
 
 import { createGrokBackend } from './backend.js';
 
-function controlSession(sessionId: string): AgentAdapterSession {
+function controlSession(sessionId: string): AgentAdapterBinding {
   return {
     sessionId,
     runtimeSessionId: `control-${sessionId}`,
     observationLevel: () => 'structured',
-    onEvent: () => () => undefined,
-    submitPrompt: async () => ({ status: 'confirmed', turnId: 'turn-1' }),
+    events: { onCandidate: () => () => undefined },
+    services: { prompt: { submit: async () => ({ status: 'confirmed', turnId: 'turn-1' }) } },
     dispose: vi.fn(async () => undefined),
   };
 }

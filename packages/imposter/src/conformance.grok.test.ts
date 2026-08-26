@@ -105,7 +105,7 @@ describe.skipIf(process.platform === 'win32')('the Grok native recipe against `a
     terminals[0]!.stdin!.write('\x1b[200~typed in the native terminal\x1b[201~\r');
     await waitFor(() => events.some((event) => event.event.type === 'turn:completed'), 'terminal-authored turn');
 
-    const receipt = await session.submitPrompt({ text: 'say hello' });
+    const receipt = await session.services.prompt.submit({ text: 'say hello' });
     expect(receipt.status).toBe('confirmed');
     await waitFor(
       () => events.filter((event) => event.event.type === 'turn:completed').length >= 2,

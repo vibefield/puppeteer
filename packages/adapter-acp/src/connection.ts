@@ -10,7 +10,7 @@
  * We use `ClientSideConnection` (a persistent `Agent` handle we hold across many
  * prompts) rather than the newer `client().connectWith(stream, op)` helper: that
  * helper scopes the connection to a single callback, which does not fit an
- * adapter handle whose `submitPrompt()` must drive turns over its whole
+ * adapter binding whose prompt service must drive turns over its whole
  * lifetime. Integration coverage validates this path against real ACP agents.
  */
 

@@ -7,7 +7,7 @@ import { spawn, type ChildProcess } from 'node:child_process';
 import { existsSync, mkdtempSync, realpathSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join, resolve } from 'node:path';
-import type { AgentAdapterSession, TerminalSpec } from '@vibecook/puppeteer-core';
+import type { AgentAdapterBinding, TerminalSpec } from '@vibecook/puppeteer-core';
 import { createGrokSessionObserver, grokUpdatesPath, latestGrokSessionId } from './session-observer.js';
 import { openGrokControl } from './services/acp-control.js';
 import { createPreparedGrokSession } from './services/prepared-session.js';
@@ -155,7 +155,7 @@ export function createGrokBackend(options: CreateGrokBackendOptions): GrokBacken
   return {
     prepareSession,
 
-    async createSession(opts): Promise<AgentAdapterSession> {
+    async createSession(opts): Promise<AgentAdapterBinding> {
       const prepared = await prepareSession(opts);
       try {
         const { runtimeSessionId } = await host.spawnTerminal(prepared.launch);

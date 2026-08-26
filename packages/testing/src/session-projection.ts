@@ -1,6 +1,9 @@
 import {
+  createEnvelopeStamper,
   createInitialSessionState,
   reduceSessionState,
+  type AdapterEventCandidate,
+  type AgentEvent,
   type AgentEventEnvelope,
   type SessionRuntimeState,
 } from '@vibecook/puppeteer-core';
@@ -15,7 +18,9 @@ export interface TestAgentProjection {
 }
 
 export interface TestAgentEventSource {
-  onEvent(listener: (envelope: AgentEventEnvelope) => void): () => void;
+  readonly events: {
+    onCandidate(listener: (candidate: AdapterEventCandidate) => void): () => void;
+  };
 }
 
 /**
@@ -32,7 +37,12 @@ export function projectAgentEvents(
   const states: SessionRuntimeState[] = [];
   const envelopes: AgentEventEnvelope[] = [];
   const monitorBatches: AdapterMonitorObservationBatch[] = [];
-  const unsubscribe = session.onEvent((envelope) => {
+  const stamper = createEnvelopeStamper();
+  const unsubscribe = session.events.onCandidate((candidate) => {
+    const { type: _type, ...fields } = candidate;
+    const envelope = stamper.next<AgentEvent>(
+      fields as Omit<AgentEventEnvelope<AgentEvent>, 'sequence' | 'type' | 'category'>,
+    );
     envelopes.push(envelope);
     if (envelope.event.type === 'monitor:batch') {
       monitorBatches.push(envelope.event.batch);

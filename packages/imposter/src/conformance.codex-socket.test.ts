@@ -21,7 +21,7 @@ import { tmpdir } from 'node:os';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { afterEach, describe, expect, it } from 'vitest';
-import type { AgentEventEnvelope } from '@vibecook/puppeteer-core';
+import type { AdapterEventCandidate } from '@vibecook/puppeteer-core';
 import {
   createCodexSession,
   spawnAppServer,
@@ -80,16 +80,16 @@ describe.skipIf(process.platform === 'win32')('the codex imposter, served over a
     await server.ready();
     expect(existsSync(server.socketPath)).toBe(true);
 
-    const events: AgentEventEnvelope[] = [];
+    const events: AdapterEventCandidate[] = [];
     session = await createCodexSession({ cwd, transport: wsOverUnixTransport(server.socketPath) });
-    session.onEvent((envelope) => events.push(envelope));
+    session.events.onCandidate((envelope) => events.push(envelope));
 
     // A thread exists, which means the handshake completed, `initialize` was
     // answered through the gate, and `thread/start` minted an id — the whole
     // chain the pane path needs, over the wire the pane path uses.
     expect(session.sessionId).toMatch(/^[0-9a-f-]{36}$/);
 
-    await session.submitPrompt({ text: 'summarise the repo' });
+    await session.services.prompt.submit({ text: 'summarise the repo' });
     await waitFor(() => events.some((envelope) => envelope.event.type === 'turn:completed'), 'a completed turn');
 
     const assistant = events.find((envelope) => envelope.event.type === 'conversation:assistant-message');

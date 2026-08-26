@@ -12,7 +12,7 @@ import { mkdtemp, mkdir, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { describe, expect, it } from 'vitest';
-import type { AgentEventEnvelope } from '@vibecook/puppeteer-core';
+import type { AdapterEventCandidate } from '@vibecook/puppeteer-core';
 import { prepareClaudeTuiSession } from './driver.js';
 import { CLAUDE_SURFACE_VERSION } from './generated/registry.js';
 
@@ -52,8 +52,8 @@ describe.skipIf(!live)('Claude pinned artifact (live)', () => {
       automate: async () => ({ accepted: false, reason: 'init-only has no prompt automation' }),
     });
     const session = await prepared.adopt('pinned-real-init');
-    const events: AgentEventEnvelope[] = [];
-    session.onEvent((event) => events.push(event));
+    const events: AdapterEventCandidate[] = [];
+    session.events.onCandidate((event) => events.push(event));
     let child: ChildProcess | undefined;
     try {
       child = spawn(prepared.launch.command, ['--init-only', ...prepared.launch.args], {

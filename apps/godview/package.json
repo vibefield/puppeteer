@@ -18,8 +18,11 @@
   },
   "dependencies": {
     "@parcel/watcher": "^2.5.0",
+    "@vibecook/puppeteer-builtin-providers": "workspace:*",
     "@vibecook/puppeteer-core": "workspace:*",
+    "@vibecook/puppeteer-monitor": "workspace:*",
     "@vibecook/puppeteer-record": "workspace:*",
+    "@vibecook/puppeteer-react": "workspace:*",
     "@vibecook/puppeteer-runtime": "workspace:*",
     "@vibecook/puppeteer-workspaces": "workspace:*",
     "@vibecook/ghosttea-electron": "0.9.3",

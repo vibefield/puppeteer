@@ -43,11 +43,11 @@ describe('createEnvelopeStamper', () => {
       confidence: 'derived' as const,
       event: { type: 'session:ready' as const },
       type: 'tool:started',
-      service: 'tool',
+      category: 'tool',
       sequence: 999,
     };
 
-    expect(stamper.next(fields)).toMatchObject({ type: 'session:ready', service: 'session', sequence: 1 });
+    expect(stamper.next(fields)).toMatchObject({ type: 'session:ready', category: 'session', sequence: 1 });
   });
 
   it('retains stable source event and revision references while assigning delivery order', () => {

@@ -186,14 +186,14 @@ async function codexImposterHarness(resume?: string, existingRoot?: string): Pro
     },
     driveTurn: async (prompt) => {
       const completed = new Promise<void>((resolve) => {
-        const off = started.session.onEvent((event) => {
+        const off = started.session.events.onCandidate((event) => {
           if (event.event.type === 'turn:completed') {
             off();
             resolve();
           }
         });
       });
-      const receipt = await started.session.submitPrompt({ text: prompt });
+      const receipt = await started.session.services.prompt.submit({ text: prompt });
       if (receipt.status !== 'confirmed') {
         throw new Error(`expected confirmed Codex prompt, got ${receipt.status}`);
       }
@@ -220,7 +220,7 @@ describe('the codex imposter, driven by the real adapter', () => {
     session = started.session;
     await waitFor(() => started.events.some((e) => e.event.type === 'session:started'), 'session:started');
 
-    const receipt = await session.submitPrompt({ text: 'summarise the repo' });
+    const receipt = await session.services.prompt.submit({ text: 'summarise the repo' });
     // A structured driver confirms deterministically — no `uncertain` here, and
     // that difference from claude's guarded paste is the point of §2.1.
     expect(receipt.status).toBe('confirmed');
@@ -245,7 +245,7 @@ describe('the codex imposter, driven by the real adapter', () => {
     session = started.session;
     await waitFor(() => started.events.some((e) => e.event.type === 'session:started'), 'session:started');
 
-    await session.submitPrompt({ text: 'fetch a page' });
+    await session.services.prompt.submit({ text: 'fetch a page' });
     await waitFor(() => started.events.some((e) => e.event.type === 'turn:completed'), 'turn:completed');
 
     expect(started.approvals).toEqual(['item/commandExecution/requestApproval']);
@@ -262,7 +262,7 @@ describe('the codex imposter, driven by the real adapter', () => {
     session = started.session;
     await waitFor(() => started.events.some((e) => e.event.type === 'session:started'), 'session:started');
 
-    await session.submitPrompt({ text: 'fetch a page' });
+    await session.services.prompt.submit({ text: 'fetch a page' });
     await waitFor(() => started.events.some((e) => e.event.type === 'turn:completed'), 'turn:completed');
 
     const outcomes = started.events

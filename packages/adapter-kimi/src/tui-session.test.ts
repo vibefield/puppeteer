@@ -117,14 +117,14 @@ describe('Kimi native TUI session', () => {
     });
     const projection = projectAgentSession(session);
     const candidates: AdapterEventCandidate[] = [];
-    expect(session.onEventCandidate).toBeTypeOf('function');
-    const offCandidate = session.onEventCandidate!((candidate) => candidates.push(candidate));
+    expect(session.events.onCandidate).toBeTypeOf('function');
+    const offCandidate = session.events.onCandidate!((candidate) => candidates.push(candidate));
     const monitor = projection.monitorBatches;
     expect(launched).toEqual([
       { command: '/opt/kimi', args: ['--model', 'kimi-k2'], cwd, env: { KIMI_CODE_HOME: home } },
     ]);
     expect(session.sessionId).toMatch(/^kimi-pending-/);
-    await expect(session.submitPrompt({ text: 'ping', confirmationTimeoutMs: 2_000 })).resolves.toEqual({
+    await expect(session.services.prompt.submit({ text: 'ping', confirmationTimeoutMs: 2_000 })).resolves.toEqual({
       status: 'confirmed',
     });
     expect(wroteTurn).toBe(true);
@@ -197,7 +197,7 @@ describe('Kimi native TUI session', () => {
     const projection = projectAgentSession(session);
     await new Promise((resolve) => setTimeout(resolve, 20));
     expect(projection.state).toMatchObject({ lifecycle: 'ready', lastAssistantMessage: 'old reply' });
-    await expect(session.submitPrompt({ text: 'staged', mode: 'paste-only' })).resolves.toEqual({
+    await expect(session.services.prompt.submit({ text: 'staged', mode: 'paste-only' })).resolves.toEqual({
       status: 'uncertain',
       reason: 'prompt text was staged but not submitted',
     });

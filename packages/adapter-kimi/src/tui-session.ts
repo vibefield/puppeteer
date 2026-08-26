@@ -5,7 +5,7 @@ import { resolve } from 'node:path';
 import {
   type AgentEvent,
   type AgentHost,
-  type AgentAdapterSession,
+  type AgentAdapterBinding,
   type AgentTuiSessionOptions,
   type TerminalSpec,
 } from '@vibecook/puppeteer-core';
@@ -43,7 +43,7 @@ export interface CreateKimiTuiSessionOptions extends AgentTuiSessionOptions {
   promptConfirmationTimeoutMs?: number;
 }
 
-export interface KimiTuiSession extends AgentAdapterSession {
+export interface KimiTuiSession extends AgentAdapterBinding {
   /** Absolute native session directory once Kimi lazily creates and binds it. */
   sessionDirectory(): string | undefined;
 }
@@ -216,16 +216,18 @@ export async function prepareKimiTuiSession(options: CreateKimiTuiSessionOptions
         runtimeSessionId,
         observationLevel: () => 'native-log',
         sessionDirectory: () => observer.sessionDirectory(),
-        onEventCandidate(listener) {
-          if (sessionDisposed) return () => undefined;
-          return events.onCandidate(listener);
+        events: {
+          onCandidate(listener) {
+            if (sessionDisposed) return () => undefined;
+            return events.onCandidate(listener);
+          },
         },
-        onEvent(listener) {
-          if (sessionDisposed) return () => undefined;
-          return events.onEvent(listener);
-        },
-        submitPrompt(submission) {
-          return prompts.submit(submission);
+        services: {
+          prompt: {
+            submit(submission) {
+              return prompts.submit(submission);
+            },
+          },
         },
         async dispose() {
           if (sessionDisposed) return;

@@ -120,7 +120,7 @@ async function codexHarness(resume?: string): Promise<AgentSessionHarness> {
     assertNoOrphans: async () => {
       if (!server.closed()) throw new Error('Codex app-server transport survived dispose()');
       let observedLateEvent = false;
-      const off = session.onEvent(() => {
+      const off = session.events.onCandidate(() => {
         observedLateEvent = true;
       });
       server.deliver({ method: 'turn/started', params: { threadId: THREAD, turn: { id: 'late' } } });
@@ -132,14 +132,14 @@ async function codexHarness(resume?: string): Promise<AgentSessionHarness> {
     },
     driveTurn: async () => {
       const done = new Promise<void>((resolve) => {
-        const off = session.onEvent((e) => {
+        const off = session.events.onCandidate((e) => {
           if (e.event.type === 'turn:completed') {
             off();
             resolve();
           }
         });
       });
-      await session.submitPrompt({ text: 'go' });
+      await session.services.prompt.submit({ text: 'go' });
       await done;
     },
   };

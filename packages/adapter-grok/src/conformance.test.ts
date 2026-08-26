@@ -1,4 +1,4 @@
-import type { AgentAdapterSession } from '@vibecook/puppeteer-core';
+import type { AgentAdapterBinding } from '@vibecook/puppeteer-core';
 import { runAgentMonitorConformance } from '@vibecook/puppeteer-testing/conformance';
 import { createPendingControlSession } from './backend.js';
 
@@ -11,7 +11,7 @@ function deferred<T>() {
 }
 
 runAgentMonitorConformance('grok', async () => {
-  const control = deferred<AgentAdapterSession>();
+  const control = deferred<AgentAdapterBinding>();
   const session = createPendingControlSession('grok-conformance', 'runtime-conformance', () => control.promise);
   return {
     session,

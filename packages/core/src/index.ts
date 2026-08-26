@@ -7,10 +7,10 @@
  */
 
 export * from './events.js';
-export * from './event-bus.js';
 export * from './adapter/event-candidate.js';
 export * from './state.js';
 export * from './session.js';
+export * from './services/index.js';
 export * from './host.js';
 export * from './account-usage.js';
 export * from './monitor/index.js';

@@ -46,14 +46,14 @@ async function acpHarness(resume?: string): Promise<AcpHarness> {
     closeObservationRail: () => dropObservationRail(),
     driveTurn: async () => {
       const done = new Promise<void>((resolve) => {
-        const off = session.onEvent((e) => {
+        const off = session.events.onCandidate((e) => {
           if (e.event.type === 'turn:completed') {
             off();
             resolve();
           }
         });
       });
-      await session.submitPrompt({ text: 'go' });
+      await session.services.prompt.submit({ text: 'go' });
       await done;
     },
   };

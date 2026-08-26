@@ -44,9 +44,18 @@ importers:
       '@vibecook/ghosttead':
         specifier: 0.9.3
         version: 0.9.3
+      '@vibecook/puppeteer-builtin-providers':
+        specifier: workspace:*
+        version: link:../../packages/builtin-providers
       '@vibecook/puppeteer-core':
         specifier: workspace:*
         version: link:../../packages/core
+      '@vibecook/puppeteer-monitor':
+        specifier: workspace:*
+        version: link:../../packages/monitor
+      '@vibecook/puppeteer-react':
+        specifier: workspace:*
+        version: link:../../packages/react
       '@vibecook/puppeteer-record':
         specifier: workspace:*
         version: link:../../packages/record
@@ -240,6 +249,40 @@ importers:
         specifier: ^3.0.0
         version: 3.2.7(@types/debug@4.1.13)(@types/node@24.13.3)(tsx@4.23.0)
 
+  packages/builtin-providers:
+    dependencies:
+      '@vibecook/puppeteer-adapter-acp':
+        specifier: workspace:*
+        version: link:../adapter-acp
+      '@vibecook/puppeteer-adapter-claude':
+        specifier: workspace:*
+        version: link:../adapter-claude
+      '@vibecook/puppeteer-adapter-codex':
+        specifier: workspace:*
+        version: link:../adapter-codex
+      '@vibecook/puppeteer-adapter-grok':
+        specifier: workspace:*
+        version: link:../adapter-grok
+      '@vibecook/puppeteer-adapter-hermes':
+        specifier: workspace:*
+        version: link:../adapter-hermes
+      '@vibecook/puppeteer-adapter-kimi':
+        specifier: workspace:*
+        version: link:../adapter-kimi
+      '@vibecook/puppeteer-adapter-opencode':
+        specifier: workspace:*
+        version: link:../adapter-opencode
+      '@vibecook/puppeteer-core':
+        specifier: workspace:*
+        version: link:../core
+      '@vibecook/puppeteer-runtime':
+        specifier: workspace:*
+        version: link:../runtime
+    devDependencies:
+      vitest:
+        specifier: ^3.0.0
+        version: 3.2.7(@types/debug@4.1.13)(@types/node@24.13.3)(tsx@4.23.0)
+
   packages/core:
     dependencies:
       zod:
@@ -287,6 +330,35 @@ importers:
         specifier: workspace:*
         version: link:../testing
 
+  packages/monitor:
+    dependencies:
+      '@vibecook/puppeteer-core':
+        specifier: workspace:*
+        version: link:../core
+    devDependencies:
+      vitest:
+        specifier: ^3.0.0
+        version: 3.2.7(@types/debug@4.1.13)(@types/node@24.13.3)(tsx@4.23.0)
+
+  packages/react:
+    dependencies:
+      '@vibecook/puppeteer-core':
+        specifier: workspace:*
+        version: link:../core
+      '@vibecook/puppeteer-monitor':
+        specifier: workspace:*
+        version: link:../monitor
+    devDependencies:
+      '@types/react':
+        specifier: ^19.2.17
+        version: 19.2.17
+      react:
+        specifier: ^19.2.7
+        version: 19.2.7
+      vitest:
+        specifier: ^3.0.0
+        version: 3.2.7(@types/debug@4.1.13)(@types/node@24.13.3)(tsx@4.23.0)
+
   packages/record:
     dependencies:
       '@vibecook/puppeteer-core':
@@ -295,27 +367,6 @@ importers:
 
   packages/runtime:
     dependencies:
-      '@vibecook/puppeteer-adapter-acp':
-        specifier: workspace:*
-        version: link:../adapter-acp
-      '@vibecook/puppeteer-adapter-claude':
-        specifier: workspace:*
-        version: link:../adapter-claude
-      '@vibecook/puppeteer-adapter-codex':
-        specifier: workspace:*
-        version: link:../adapter-codex
-      '@vibecook/puppeteer-adapter-grok':
-        specifier: workspace:*
-        version: link:../adapter-grok
-      '@vibecook/puppeteer-adapter-hermes':
-        specifier: workspace:*
-        version: link:../adapter-hermes
-      '@vibecook/puppeteer-adapter-kimi':
-        specifier: workspace:*
-        version: link:../adapter-kimi
-      '@vibecook/puppeteer-adapter-opencode':
-        specifier: workspace:*
-        version: link:../adapter-opencode
       '@vibecook/puppeteer-core':
         specifier: workspace:*
         version: link:../core

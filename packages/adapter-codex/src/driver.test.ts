@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import type { AgentEvent, AgentEventEnvelope } from '@vibecook/puppeteer-core';
+import type { AdapterEventCandidate, AgentEvent } from '@vibecook/puppeteer-core';
 import { projectAgentSession } from '@vibecook/puppeteer-testing';
 import { createCodexSession } from './driver.js';
 import type { Transport } from './transport/app-server-client.js';
@@ -191,13 +191,13 @@ describe('createCodexSession', () => {
     const session = await createCodexSession({ cwd: '/x', transport: s.transport });
     const projection = projectAgentSession(session);
     const events: AgentEvent[] = [];
-    const envelopes: AgentEventEnvelope[] = [];
-    session.onEvent((e) => {
+    const candidates: AdapterEventCandidate[] = [];
+    session.events.onCandidate((e) => {
       events.push(e.event);
-      envelopes.push(e);
+      candidates.push(e);
     });
 
-    const receipt = await session.submitPrompt({ text: PROMPT });
+    const receipt = await session.services.prompt.submit({ text: PROMPT });
     expect(receipt.status).toBe('confirmed'); // exact echoed client id, not request acceptance alone
     await flush();
 
@@ -210,7 +210,7 @@ describe('createCodexSession', () => {
     expect(events.some((e) => e.type === 'reasoning:started')).toBe(true);
     expect(events.some((e) => e.type === 'reasoning:summary' && e.text === 'Checked the request.')).toBe(true);
     expect(projection.state.activeReasoning).toBeUndefined();
-    const rawThought = envelopes.find((e) => e.event.type === 'reasoning:progress');
+    const rawThought = candidates.find((e) => e.event.type === 'reasoning:progress');
     expect(rawThought?.nativeEvent).toMatchObject({
       method: 'item/reasoning/textDelta',
       params: { delta: 'private thought text' },
@@ -231,7 +231,7 @@ describe('createCodexSession', () => {
     const projection = projectAgentSession(session);
     const events: AgentEvent[] = [];
     const monitorBatches = projection.monitorBatches;
-    session.onEvent(({ event }) => events.push(event));
+    session.events.onCandidate(({ event }) => events.push(event));
 
     const child = 'child-thread-1';
     s.deliver({
@@ -266,7 +266,7 @@ describe('createCodexSession', () => {
         ),
     ).toBe(true);
 
-    await expect(session.submitPrompt({ text: PROMPT })).resolves.toMatchObject({ status: 'confirmed' });
+    await expect(session.services.prompt.submit({ text: PROMPT })).resolves.toMatchObject({ status: 'confirmed' });
     expect(projection.state.lastAssistantMessage).toBe('pong');
     projection.dispose();
     await session.dispose();
@@ -283,9 +283,9 @@ describe('createCodexSession', () => {
     });
     const events: AgentEvent[] = [];
     const session = await createCodexSession({ cwd: '/x', transport: s.transport, onApproval: () => 'approved' });
-    session.onEvent((e) => events.push(e.event));
+    session.events.onCandidate((e) => events.push(e.event));
 
-    await session.submitPrompt({ text: 'run ls' });
+    await session.services.prompt.submit({ text: 'run ls' });
     await flush();
 
     expect(events.some((e) => e.type === 'interaction:permission-requested' && e.tool === 'execCommandApproval')).toBe(
@@ -315,7 +315,7 @@ describe('createCodexSession', () => {
     });
     const projection = projectAgentSession(session);
 
-    await session.submitPrompt({ text: 'run ls' });
+    await session.services.prompt.submit({ text: 'run ls' });
     await flush();
     expect(projection.state.permissions.size).toBe(1);
     const lastSequence = projection.state.lastSequence;
@@ -332,14 +332,14 @@ describe('createCodexSession', () => {
   it('rejects submitPrompt when turn/start errors (no uncertain)', async () => {
     const s = scriptedAppServer({ turnStartError: { code: -32000, message: 'busy' } });
     const session = await createCodexSession({ cwd: '/x', transport: s.transport });
-    const receipt = await session.submitPrompt({ text: 'x' });
+    const receipt = await session.services.prompt.submit({ text: 'x' });
     expect(receipt).toEqual({ status: 'rejected', reason: 'busy' });
   });
 
   it('does not claim confirmation when the exact client message echo is missing', async () => {
     const s = scriptedAppServer({ onTurnStart: () => undefined });
     const session = await createCodexSession({ cwd: '/x', transport: s.transport });
-    const receipt = await session.submitPrompt({ text: 'x', confirmationTimeoutMs: 10 });
+    const receipt = await session.services.prompt.submit({ text: 'x', confirmationTimeoutMs: 10 });
     expect(receipt).toEqual({
       status: 'uncertain',
       reason: 'turn/start succeeded but no matching clientUserMessageId arrived within 10ms',
@@ -350,7 +350,7 @@ describe('createCodexSession', () => {
   it('settles an in-flight prompt confirmation when the session is disposed', async () => {
     const s = scriptedAppServer({ onTurnStart: () => undefined });
     const session = await createCodexSession({ cwd: '/x', transport: s.transport });
-    const pending = session.submitPrompt({ text: 'x', confirmationTimeoutMs: 10_000 });
+    const pending = session.services.prompt.submit({ text: 'x', confirmationTimeoutMs: 10_000 });
     await flush();
 
     await session.dispose();
@@ -364,7 +364,7 @@ describe('createCodexSession', () => {
   it('settles an in-flight prompt confirmation when the transport closes', async () => {
     const s = scriptedAppServer({ onTurnStart: () => undefined });
     const session = await createCodexSession({ cwd: '/x', transport: s.transport });
-    const pending = session.submitPrompt({ text: 'x', confirmationTimeoutMs: 10_000 });
+    const pending = session.services.prompt.submit({ text: 'x', confirmationTimeoutMs: 10_000 });
     await flush();
 
     s.fireClose({ code: 1, signal: null });
@@ -382,7 +382,7 @@ describe('createCodexSession', () => {
     const projection = projectAgentSession(session);
     const events: AgentEvent[] = [];
     const monitorBatches = projection.monitorBatches;
-    session.onEvent((e) => events.push(e.event));
+    session.events.onCandidate((e) => events.push(e.event));
     s.fireClose();
     await flush();
     expect(session.observationLevel()).toBe('terminal-only');

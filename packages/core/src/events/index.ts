@@ -22,3 +22,4 @@ export * from './monitor.js';
 export * from './adapter.js';
 export * from './catalog.js';
 export * from './envelope.js';
+export * from './subscription.js';

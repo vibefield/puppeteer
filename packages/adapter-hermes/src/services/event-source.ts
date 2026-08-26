@@ -5,7 +5,6 @@ import {
   type AdapterEventCandidate,
   type AgentEvent,
   type AgentEventConfidence,
-  type AgentEventEnvelope,
   type AgentEventSource,
 } from '@vibecook/puppeteer-core';
 
@@ -44,10 +43,6 @@ export class HermesEventSource {
 
   onCandidate(listener: (candidate: AdapterEventCandidate) => void): () => void {
     return this.source.onCandidate(listener);
-  }
-
-  onEvent(listener: (envelope: AgentEventEnvelope) => void): () => void {
-    return this.source.onEvent(listener);
   }
 
   close(): void {

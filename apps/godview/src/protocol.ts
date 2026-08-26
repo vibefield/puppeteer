@@ -16,10 +16,10 @@ import type {
   AgentMonitorRemovedMessage,
   AgentMonitorRendererConfiguration,
   AgentMonitorStateMessage,
-  BuiltinAgentKind,
   LegacySerializedSessionState,
   ReadAgentMonitorArtifactRequest,
 } from '@vibecook/puppeteer-runtime';
+import type { BuiltinAgentKind } from '@vibecook/puppeteer-builtin-providers';
 import type { WorkspaceDiff } from '@vibecook/puppeteer-workspaces';
 
 export type { WorkspaceDiff } from '@vibecook/puppeteer-workspaces';

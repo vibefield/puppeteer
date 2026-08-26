@@ -25,7 +25,7 @@ describe.skipIf(!live)('createCodexSession (live codex app-server)', () => {
       expect(session.sessionId).toMatch(/[0-9a-f-]{36}/);
       expect(session.observationLevel()).toBe('structured');
 
-      const receipt = await session.submitPrompt({
+      const receipt = await session.services.prompt.submit({
         text: 'Reply with exactly the single word: pong. Do not run any commands or use any tools.',
       });
       expect(receipt.status).toBe('confirmed');
@@ -33,7 +33,7 @@ describe.skipIf(!live)('createCodexSession (live codex app-server)', () => {
       // Wait for the turn to complete via the observed event stream.
       await new Promise<void>((resolve, reject) => {
         const timer = setTimeout(() => reject(new Error('no turn:completed within 60s')), 60_000);
-        session.onEvent((e) => {
+        session.events.onCandidate((e) => {
           if (e.event.type === 'turn:completed' || e.event.type === 'turn:failed') {
             clearTimeout(timer);
             resolve();

@@ -1,10 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import {
-  agentEventService,
-  agentServiceEventType,
-  type AgentEvent,
-  type AgentEventEnvelope,
-} from '@vibecook/puppeteer-core';
+import { agentEventType, type AdapterEventCandidate, type AgentEvent } from '@vibecook/puppeteer-core';
 import { GROK_MONITOR_CAPABILITIES, GrokMonitorEvidence } from './monitor-evidence.js';
 import type { GrokObservedEvent } from './session-observer.js';
 
@@ -31,16 +26,14 @@ function observed(event: AgentEvent, nativeEvent: unknown, promptId?: string): G
   return { event, nativeEvent, promptId, timestamp: AT, phase: 'bootstrap' };
 }
 
-function envelope(update: Record<string, unknown>, event?: AgentEvent): AgentEventEnvelope {
+function candidate(update: Record<string, unknown>, event?: AgentEvent): AdapterEventCandidate {
   const normalized = event ?? {
     type: 'adapter:native-event',
     adapter: 'grok',
     nativeType: String(update.sessionUpdate),
   };
   return {
-    type: agentServiceEventType(normalized),
-    service: agentEventService(normalized),
-    sequence: 1,
+    type: agentEventType(normalized),
     sessionId: SESSION,
     nativeSessionId: SESSION,
     timestamp: AT,
@@ -49,7 +42,7 @@ function envelope(update: Record<string, unknown>, event?: AgentEvent): AgentEve
     confidence: 'authoritative',
     event: normalized,
     nativeEvent: { method: '_x.ai/session_notification', params: { sessionId: SESSION, update } },
-  };
+  } as AdapterEventCandidate;
 }
 
 describe('GrokMonitorEvidence', () => {
@@ -158,8 +151,8 @@ describe('GrokMonitorEvidence', () => {
       ]),
     });
 
-    const plan = projector.controlEnvelopeBatch(
-      envelope({
+    const plan = projector.controlCandidateBatch(
+      candidate({
         sessionUpdate: 'plan',
         entries: [
           { content: 'Inspect evidence', priority: 'high', status: 'in_progress' },
@@ -182,18 +175,18 @@ describe('GrokMonitorEvidence', () => {
         },
       ],
     });
-    expect(projector.controlEnvelopeBatch(envelope({ sessionUpdate: 'plan', entries: [] }))).toMatchObject({
+    expect(projector.controlCandidateBatch(candidate({ sessionUpdate: 'plan', entries: [] }))).toMatchObject({
       updates: [{ family: 'planning', operation: 'retract', key: 'plan:root' }],
     });
 
     expect(
-      projector.controlEnvelopeBatch(envelope({ sessionUpdate: 'current_mode_update', currentModeId: 'ask' })),
+      projector.controlCandidateBatch(candidate({ sessionUpdate: 'current_mode_update', currentModeId: 'ask' })),
     ).toMatchObject({
       updates: [{ family: 'mode', value: { raw: 'ask', intent: 'observed' } }],
     });
     expect(
-      projector.controlEnvelopeBatch(
-        envelope({ sessionUpdate: 'model_changed', model_id: 'grok-4.5', reasoning_effort: 'high' }),
+      projector.controlCandidateBatch(
+        candidate({ sessionUpdate: 'model_changed', model_id: 'grok-4.5', reasoning_effort: 'high' }),
       ),
     ).toMatchObject({
       quality: 'unknown',
@@ -284,24 +277,24 @@ describe('GrokMonitorEvidence', () => {
 
   it('maps compaction phases without copying summaries or errors', () => {
     const projector = evidence();
-    const started = projector.controlEnvelopeBatch(
-      envelope({
+    const started = projector.controlCandidateBatch(
+      candidate({
         sessionUpdate: 'auto_compact_started',
         tokens_used: 110_000,
         context_window: 131_072,
         reason: 'context_threshold',
       }),
     );
-    const completed = projector.controlEnvelopeBatch(
-      envelope({
+    const completed = projector.controlCandidateBatch(
+      candidate({
         sessionUpdate: 'auto_compact_completed',
         tokens_before: 110_000,
         tokens_after: 22_000,
         summary_preview: 'private compacted summary',
       }),
     );
-    const failed = projector.controlEnvelopeBatch(
-      envelope({ sessionUpdate: 'auto_compact_failed', error: 'private provider error' }),
+    const failed = projector.controlCandidateBatch(
+      candidate({ sessionUpdate: 'auto_compact_failed', error: 'private provider error' }),
     );
 
     expect(started).toMatchObject({
@@ -330,8 +323,8 @@ describe('GrokMonitorEvidence', () => {
   it('detects generic pending questions but keeps workflow and goal updates raw-only', () => {
     const projector = evidence();
     expect(
-      projector.controlEnvelopeBatch(
-        envelope({ sessionUpdate: 'pending_interaction', tool_call_id: 'question-1', kind: 'question' }),
+      projector.controlCandidateBatch(
+        candidate({ sessionUpdate: 'pending_interaction', tool_call_id: 'question-1', kind: 'question' }),
       ),
     ).toMatchObject({
       quality: 'unknown',
@@ -344,8 +337,8 @@ describe('GrokMonitorEvidence', () => {
       ],
     });
     expect(
-      projector.controlEnvelopeBatch(
-        envelope({
+      projector.controlCandidateBatch(
+        candidate({
           sessionUpdate: 'workflow_updated',
           run_id: 'workflow-1',
           revision: 1,
@@ -354,8 +347,8 @@ describe('GrokMonitorEvidence', () => {
       ),
     ).toBeNull();
     expect(
-      projector.controlEnvelopeBatch(
-        envelope({ sessionUpdate: 'goal_updated', goal_id: 'goal-1', objective: 'private goal' }),
+      projector.controlCandidateBatch(
+        candidate({ sessionUpdate: 'goal_updated', goal_id: 'goal-1', objective: 'private goal' }),
       ),
     ).toBeNull();
   });

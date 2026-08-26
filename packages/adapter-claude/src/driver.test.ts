@@ -13,7 +13,6 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 import {
   safeParseAgentEvent,
   type AdapterEventCandidate,
-  type AgentEventEnvelope,
   type TerminalAutomationOperation,
 } from '@vibecook/puppeteer-core';
 import { projectAgentSession } from '@vibecook/puppeteer-testing';
@@ -179,11 +178,11 @@ describe('createClaudeSession (full loop, test-as-Claude)', () => {
     expect(await prepared.adopt('existing-pane')).toBe(first);
     await expect(prepared.adopt('other-pane')).rejects.toThrow('already adopted');
 
-    const events: AgentEventEnvelope[] = [];
+    const events: AdapterEventCandidate[] = [];
     const candidates: AdapterEventCandidate[] = [];
-    first.onEvent((event) => events.push(event));
-    expect(first.onEventCandidate).toBeTypeOf('function');
-    first.onEventCandidate!((candidate) => candidates.push(candidate));
+    first.events.onCandidate((event) => events.push(event));
+    expect(first.events.onCandidate).toBeTypeOf('function');
+    first.events.onCandidate!((candidate) => candidates.push(candidate));
     const settings = JSON.parse(readFileSync(prepared.launch.settingsPath, 'utf8')) as {
       hooks: Record<string, Array<{ hooks: Array<{ url?: string }> }>>;
     };
@@ -285,7 +284,7 @@ describe('createClaudeSession (full loop, test-as-Claude)', () => {
     const { session, automations, hook } = await startSession();
     await hook('SessionStart', {});
 
-    const receiptPromise = session.submitPrompt({ text: 'injected task' });
+    const receiptPromise = session.services.prompt.submit({ text: 'injected task' });
     expect(automations).toEqual([{ kind: 'paste', text: 'injected task', submit: true }]);
 
     await hook('UserPromptSubmit', { prompt: 'injected task', prompt_id: 'p-9' });
@@ -304,7 +303,7 @@ describe('createClaudeSession (full loop, test-as-Claude)', () => {
     });
     await hook('PermissionRequest', { prompt_id: 'p-2', tool_name: 'Bash', tool_input: { command: 'rm x' } });
 
-    expect((await session.submitPrompt({ text: 'nope' })).status).toBe('rejected');
+    expect((await session.services.prompt.submit({ text: 'nope' })).status).toBe('rejected');
     expect(projection.state.permissions.size).toBe(1);
 
     await hook('PostToolUse', {
@@ -316,7 +315,7 @@ describe('createClaudeSession (full loop, test-as-Claude)', () => {
     });
     expect(projection.state.permissions.size).toBe(0);
 
-    const receipt = session.submitPrompt({ text: 'now fine' });
+    const receipt = session.services.prompt.submit({ text: 'now fine' });
     await hook('UserPromptSubmit', { prompt: 'now fine', prompt_id: 'p-3' });
     expect((await receipt).status).toBe('confirmed');
   });
@@ -417,7 +416,7 @@ describe('createClaudeSession (full loop, test-as-Claude)', () => {
     });
     const requested = events.find((envelope) => envelope.event.type === 'interaction:question-requested');
     expect(requested).toMatchObject({ confidence: 'inferred' });
-    expect((await session.submitPrompt({ text: 'cannot bypass' })).status).toBe('rejected');
+    expect((await session.services.prompt.submit({ text: 'cannot bypass' })).status).toBe('rejected');
 
     await hook('PermissionRequest', {
       prompt_id: 'p-question',
@@ -435,10 +434,10 @@ describe('createClaudeSession (full loop, test-as-Claude)', () => {
         event: { type: 'interaction:question-resolved', requestId: 'question:ask-1', outcome: 'answered' },
       }),
     );
-    expect((await session.submitPrompt({ text: 'permission remains' })).status).toBe('rejected');
+    expect((await session.services.prompt.submit({ text: 'permission remains' })).status).toBe('rejected');
 
     await hook('Stop', { prompt_id: 'p-question', last_assistant_message: 'done' });
-    const receipt = session.submitPrompt({ text: 'both blockers cleared' });
+    const receipt = session.services.prompt.submit({ text: 'both blockers cleared' });
     await hook('UserPromptSubmit', { prompt: 'both blockers cleared', prompt_id: 'p-next' });
     expect((await receipt).status).toBe('confirmed');
   });
@@ -876,7 +875,7 @@ describe('createClaudeSession (full loop, test-as-Claude)', () => {
     });
     const monitorBatches = projection.monitorBatches;
     const degradedObservationLevels: string[] = [];
-    session.onEvent(({ event }) => {
+    session.events.onCandidate(({ event }) => {
       if (event.type === 'monitor:batch' && event.batch.readiness === 'degraded') {
         degradedObservationLevels.push(session.observationLevel());
       }
@@ -972,8 +971,8 @@ describe('createClaudeSession (full loop, test-as-Claude)', () => {
     expect(session.sessionId).toBe(resumeId);
     expect(prepared!.args).toContain('--resume');
     expect(prepared!.args).not.toContain('--session-id');
-    const historyEvents: AgentEventEnvelope[] = [];
-    session.onEvent((event) => historyEvents.push(event));
+    const historyEvents: AdapterEventCandidate[] = [];
+    session.events.onCandidate((event) => historyEvents.push(event));
 
     // The bridge is scoped to the resumed id — a hook for it lands in state.
     const endpoint = (

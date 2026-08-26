@@ -65,9 +65,9 @@ export class AgentConversationService implements AgentProjectionService<AgentCon
   private readonly lastAssistantByTurn = new Map<string, ConversationAssistantMessage>();
 
   accepts(envelope: AgentEventEnvelope): boolean {
-    if ((envelope.agentId || envelope.actorKey) && envelope.service !== 'delegation') return false;
+    if ((envelope.agentId || envelope.actorKey) && envelope.category !== 'delegation') return false;
     return ['turn', 'conversation', 'reasoning', 'tool', 'interaction', 'delegation', 'notification'].includes(
-      envelope.service,
+      envelope.category,
     );
   }
 

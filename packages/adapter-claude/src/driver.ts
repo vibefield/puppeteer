@@ -24,8 +24,7 @@ import { randomUUID } from 'node:crypto';
 import {
   type AgentEvent,
   type AgentEventConfidence,
-  type AgentAdapterSession,
-  type MonitorArtifactReadResult,
+  type AgentAdapterBinding,
   type ObservationLevel,
   type TerminalAutomationOperation,
   type TerminalAutomationResult,
@@ -39,7 +38,8 @@ import {
   hasClaudeOtelExporterConflict,
   type PreparedClaudeSession,
 } from './launch/prepare.js';
-import { createPromptInjector, type PromptInjector } from './launch/prompt.js';
+import { createClaudeArtifactService } from './services/artifacts.js';
+import { createPromptInjector, type PromptInjector } from './services/prompt.js';
 import { observeClaudeStatusLineAccountUsage } from './observation/account-usage.js';
 import { claudeContextWindowEvent, claudeEnvironmentEvents } from './observation/status-channel.js';
 import { ClaudeMonitorEvidence } from './observation/monitor-evidence.js';
@@ -188,12 +188,11 @@ export interface ClaudeObservationPollHint {
  * The core adapter handle (sessionId is the shared native correlation UUID)
  * plus Claude-specific transcript extras.
  */
-export interface ClaudeSession extends AgentAdapterSession {
+export interface ClaudeSession extends AgentAdapterBinding {
   /** Absolute path to this session's transcript JSONL (handed to us by hooks). */
   transcriptPath(): string | undefined;
   /** Force a transcript delta parse now (tests, explicit refresh). */
   pollTranscript(): Promise<void>;
-  readMonitorArtifact(artifactId: string, options: { maxBytes: number }): Promise<MonitorArtifactReadResult>;
 }
 
 export interface PrepareClaudeTuiSessionOptions extends Omit<CreateClaudeSessionOptions, 'ports'> {
@@ -880,26 +879,18 @@ function createPreparedClaudeSession(
         runtimeSessionId,
         observationLevel: () => observation,
         transcriptPath: () => transcriptPath,
-        onEventCandidate(listener) {
-          const unsubscribe = events.onCandidate(listener);
-          publishConfiguredIntent();
-          void publishCapabilities();
-          return unsubscribe;
+        events: {
+          onCandidate(listener) {
+            const unsubscribe = events.onCandidate(listener);
+            publishConfiguredIntent();
+            void publishCapabilities();
+            return unsubscribe;
+          },
         },
-        onEvent(listener) {
-          const unsubscribe = events.onEvent(listener);
-          publishConfiguredIntent();
-          void publishCapabilities();
-          return unsubscribe;
+        services: {
+          prompt: { submit: (submission) => injector.submit(submission) },
+          artifacts: createClaudeArtifactService(() => semanticAttachment),
         },
-        readMonitorArtifact: async (artifactId, artifactOptions) => {
-          const handle = await semanticAttachment;
-          if (!handle) {
-            return { status: 'unavailable', message: 'Claude semantic observation is not attached' };
-          }
-          return handle.readArtifact(artifactId, artifactOptions);
-        },
-        submitPrompt: (submission) => injector.submit(submission),
         pollTranscript: async () => {
           await historyBootstrap;
           const handle = await semanticAttachment;

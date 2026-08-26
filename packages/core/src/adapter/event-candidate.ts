@@ -7,8 +7,7 @@ import {
   type AgentEventSource,
   type AgentEventSourceRef,
 } from '../events/contract.js';
-import { agentServiceEventType, type AgentEvent, type AgentServiceEventType } from '../events/catalog.js';
-import { createEnvelopeStamper, type AgentEventEnvelope } from '../events/envelope.js';
+import { agentEventType, type AgentEvent, type AgentEventTypeFor } from '../events/catalog.js';
 
 /**
  * Normalized adapter output before runtime identity and delivery order exist.
@@ -38,7 +37,7 @@ export interface AdapterEventCandidateFields<T extends AgentEvent> {
 
 /** Distributes over `AgentEvent`, keeping the route and event callback data correlated. */
 export type AdapterEventCandidate<T extends AgentEvent = AgentEvent> = T extends AgentEvent
-  ? AdapterEventCandidateFields<T> & { type: AgentServiceEventType<T> }
+  ? AdapterEventCandidateFields<T> & { type: AgentEventTypeFor<T> }
   : never;
 
 const NonEmptyStringSchema = z.string().trim().min(1);
@@ -81,24 +80,19 @@ export const AdapterEventCandidateSchema = z
 export function createAdapterEventCandidate<T extends AgentEvent>(
   fields: AdapterEventCandidateFields<T>,
 ): AdapterEventCandidate<T> {
-  return { ...fields, type: agentServiceEventType(fields.event) } as AdapterEventCandidate<T>;
+  return { ...fields, type: agentEventType(fields.event) } as AdapterEventCandidate<T>;
 }
 
 export type AdapterEventCandidateListener = (candidate: AdapterEventCandidate) => void;
 
 /**
- * Bootstrap-safe adapter event source. `onCandidate` is the runtime ingress;
- * `onEvent` is a temporary envelope bridge for direct adapter consumers.
+ * Bootstrap-safe adapter event source. Runtime remains the sole envelope owner.
  */
 export class BufferedAdapterEventSource {
   readonly #candidateListeners = new Set<AdapterEventCandidateListener>();
-  readonly #legacyListeners = new Set<(envelope: AgentEventEnvelope) => void>();
-  readonly #legacyStamper = createEnvelopeStamper();
   readonly #pendingCapacity: number;
   #candidatePending: AdapterEventCandidate[] = [];
-  #legacyPending: AdapterEventCandidate[] = [];
   #candidateAttached = false;
-  #legacyAttached = false;
   #closed = false;
 
   constructor(options: { pendingCapacity?: number } = {}) {
@@ -114,8 +108,6 @@ export class BufferedAdapterEventSource {
     Object.freeze(candidate);
     if (this.#candidateAttached) this.deliverCandidate(candidate);
     else this.buffer(this.#candidatePending, candidate);
-    if (this.#legacyAttached) this.deliverLegacy(candidate);
-    else this.buffer(this.#legacyPending, candidate);
   }
 
   onCandidate(listener: AdapterEventCandidateListener): () => void {
@@ -130,25 +122,10 @@ export class BufferedAdapterEventSource {
     return () => this.#candidateListeners.delete(listener);
   }
 
-  /** @deprecated Direct adapter consumers should move to runtime Agent events. */
-  onEvent(listener: (envelope: AgentEventEnvelope) => void): () => void {
-    if (this.#closed) return () => undefined;
-    this.#legacyListeners.add(listener);
-    if (!this.#legacyAttached) {
-      this.#legacyAttached = true;
-      const pending = this.#legacyPending;
-      this.#legacyPending = [];
-      for (const candidate of pending) this.deliverLegacy(candidate);
-    }
-    return () => this.#legacyListeners.delete(listener);
-  }
-
   close(): void {
     this.#closed = true;
     this.#candidatePending = [];
-    this.#legacyPending = [];
     this.#candidateListeners.clear();
-    this.#legacyListeners.clear();
   }
 
   private buffer(buffer: AdapterEventCandidate[], candidate: AdapterEventCandidate): void {
@@ -162,18 +139,6 @@ export class BufferedAdapterEventSource {
         listener(candidate);
       } catch {
         // Adapter ingestion cannot be affected by a consumer fault.
-      }
-    }
-  }
-
-  private deliverLegacy(candidate: AdapterEventCandidate): void {
-    const envelope = this.#legacyStamper.next<AgentEvent>(candidate);
-    Object.freeze(envelope);
-    for (const listener of [...this.#legacyListeners]) {
-      try {
-        listener(envelope);
-      } catch {
-        // Compatibility listeners are isolated from ingestion and each other.
       }
     }
   }

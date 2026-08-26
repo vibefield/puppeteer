@@ -7,7 +7,7 @@ import type {
   AgentHost,
   AgentMonitorHandle,
   AgentMonitorState,
-  AgentAdapterSession,
+  AgentAdapterBinding,
   ExternalRef,
   MonitorArtifactReadResult,
   MonitorNotification,
@@ -28,13 +28,6 @@ import type {
   Workspace,
   WorkspaceSessionMetadata,
 } from '@vibecook/puppeteer-workspaces';
-import type { CreateAcpSessionOptions } from '@vibecook/puppeteer-adapter-acp';
-import type { ClaudeHookDiagnostic, ClaudeSettingSource } from '@vibecook/puppeteer-adapter-claude';
-import type { CreateCodexTuiSessionOptions } from '@vibecook/puppeteer-adapter-codex';
-import type { CreateGrokSessionOptions } from '@vibecook/puppeteer-adapter-grok';
-import type { CreateKimiTuiSessionOptions } from '@vibecook/puppeteer-adapter-kimi';
-import type { CreateOpenCodeTuiSessionOptions } from '@vibecook/puppeteer-adapter-opencode';
-import type { CreateHermesTuiSessionOptions } from '@vibecook/puppeteer-adapter-hermes';
 import type { AgentConversationSnapshot } from './conversation.js';
 import type {
   CreationRequestClaimRef,
@@ -45,75 +38,11 @@ import type { RuntimeCreationOperation } from './identity.js';
 import type { MonitorClock } from './monitor-clock.js';
 import type { Agent } from './agent.js';
 
-/** Built-in provider ids. Applications select one; implementation stays here. */
-export type BuiltinAgentKind = 'claude' | 'codex' | 'acp' | 'grok' | 'kimi' | 'opencode' | 'hermes';
-export type BuiltinExecutableAgentKind = Exclude<BuiltinAgentKind, 'acp'>;
-
-export interface ClaudeAgentOptions {
-  /** Claude Code permission mode. Kept open because the CLI's modes evolve. */
-  permissionMode?: string;
-  /** Claude model alias or full model id. */
-  model?: string;
-  /** Claude effort value. Kept open because provider values evolve. */
-  effort?: string;
-  /** Claude settings layers selected by `--setting-sources`. */
-  settingSources?: readonly ClaudeSettingSource[];
-  /** Claude user configuration root when the launching pane overrides `CLAUDE_CONFIG_DIR`. */
-  configDir?: string;
-  /** Opt into Claude's matcher-gated FileChanged hook. */
-  fileChangeMatcher?: string;
-  /** Observe malformed known hooks without interrupting the native session. */
-  onDiagnostic?: (diagnostic: ClaudeHookDiagnostic) => void;
-  /** Native resume/continue argv retained when the CLI must choose identity interactively. */
-  resumeInvocation?: string[];
-  /**
-   * Binary for this session only, overriding the runtime's configured one.
-   *
-   * The case this exists for is an emulated session beside real ones: an app
-   * points a single session at the puppeteer imposter while every other
-   * session still launches the user's real Claude Code. `PUPPETEER_CLAUDE_BIN`
-   * is the same capability applied to the whole process, which is exactly what
-   * makes it unusable for that.
-   */
-  executable?: string;
-}
-
-/**
- * `executable` is the same per-session override {@link ClaudeAgentOptions}
- * documents, and it reaches further here: the codex recipe spawns a private
- * app-server BESIDE the terminal, so this one binary answers both processes.
- */
-export type CodexAgentOptions = Pick<
-  CreateCodexTuiSessionOptions,
-  'model' | 'sandbox' | 'approvalPolicy' | 'onApproval' | 'resumeInvocation' | 'executable' | 'appServerEnv'
->;
-
-export type AcpAgentOptions = Omit<CreateAcpSessionOptions, 'cwd' | 'resume' | 'connector'> & {
-  /** Per-session connector override; otherwise the runtime's configured ACP connector is used. */
-  connector?: CreateAcpSessionOptions['connector'];
-};
-
-export type GrokAgentOptions = Omit<CreateGrokSessionOptions, 'cwd' | 'resume'> & {
-  /** Per-session Grok binary override; leader, ACP, and TUI all use it. */
-  executable?: string;
-  /** Environment shared across Grok's three processes and persisted-log observer. */
-  appServerEnv?: Record<string, string>;
-};
-
-/** Native Kimi TUI options; runtime identity, cwd, and host stay provider-owned. */
-export type KimiAgentOptions = Omit<CreateKimiTuiSessionOptions, 'cwd' | 'resume' | 'host'>;
-
-/** Native OpenCode options; runtime identity, cwd, title, and host stay provider-owned. */
-export type OpenCodeAgentOptions = Omit<CreateOpenCodeTuiSessionOptions, 'cwd' | 'resume' | 'title' | 'host'>;
-
-/** Native Hermes TUI options; runtime identity, cwd, and host stay provider-owned. */
-export type HermesAgentOptions = Omit<CreateHermesTuiSessionOptions, 'cwd' | 'resume' | 'host' | 'transport'>;
-
 /** Provider-owned live preparation. The runtime keeps this handle private and exposes only its serializable recipe. */
 export interface PreparedProviderSession {
   readonly sessionId: string;
   readonly launch: TerminalSpec;
-  adopt(runtimeSessionId: string): Promise<AgentAdapterSession>;
+  adopt(runtimeSessionId: string): Promise<AgentAdapterBinding>;
   dispose(): void | Promise<void>;
 }
 
@@ -133,7 +62,7 @@ export interface AgentProvider {
   readonly kind: string;
   /** Provider topology; defaults to native-tui for compatibility providers. */
   readonly executionMode?: AgentExecutionMode;
-  createSession(options: AgentProviderSessionOptions): Promise<AgentAdapterSession>;
+  createSession(options: AgentProviderSessionOptions): Promise<AgentAdapterBinding>;
   /** Fetch account-wide subscription/API quota state, independent of any session. */
   fetchAccountUsage?(): Promise<AccountUsageFetchResult>;
   /**
@@ -184,18 +113,6 @@ export interface CreateAgentSessionOptions {
   /** Opaque to the runtime; interpreted only by the selected provider. */
   agentOptions?: unknown;
 }
-
-type BuiltinCreateBase = Omit<CreateAgentSessionOptions, 'agent' | 'agentOptions'>;
-
-/** Type-safe launch options for the turn-key built-in provider set. */
-export type BuiltinCreateAgentSessionOptions =
-  | (BuiltinCreateBase & { agent: 'claude'; agentOptions?: ClaudeAgentOptions })
-  | (BuiltinCreateBase & { agent: 'codex'; agentOptions?: CodexAgentOptions })
-  | (BuiltinCreateBase & { agent: 'acp'; agentOptions?: AcpAgentOptions })
-  | (BuiltinCreateBase & { agent: 'grok'; agentOptions?: GrokAgentOptions })
-  | (BuiltinCreateBase & { agent: 'kimi'; agentOptions?: KimiAgentOptions })
-  | (BuiltinCreateBase & { agent: 'opencode'; agentOptions?: OpenCodeAgentOptions })
-  | (BuiltinCreateBase & { agent: 'hermes'; agentOptions?: HermesAgentOptions });
 
 export interface AgentSessionInfo {
   agent: string;
@@ -343,9 +260,9 @@ export interface AgentRuntimeOptions {
   onError?: (error: Error) => void;
   /** How long an unadopted preparation remains live. Default: 30 seconds. */
   preparationTtlMs?: number;
-  /** Typed rollout flags; omitted values preserve the v1-only runtime. */
+  /** Remaining rollout flags. Agent monitoring itself is always enabled. */
   features?: Partial<RuntimeFeatureFlags>;
-  /** Injectable wall-clock/scheduler used only by monitor v2. */
+  /** Injectable wall-clock/scheduler for agent monitoring. */
   monitorClock?: MonitorClock;
   /** Ordinary monitor publication coalescing. Default: 100 ms. */
   monitorCoalesceMs?: number;
@@ -356,13 +273,14 @@ export interface AgentRuntimeOptions {
 }
 
 export interface RuntimeFeatureFlags {
+  /** @deprecated Agent monitoring is now an invariant and this flag is ignored. */
   agentMonitorStateV2: boolean;
   claudeSubagentStatusObservation: boolean;
   workspaceProvenanceV2: boolean;
 }
 
 export const DEFAULT_RUNTIME_FEATURE_FLAGS: Readonly<RuntimeFeatureFlags> = Object.freeze({
-  agentMonitorStateV2: false,
+  agentMonitorStateV2: true,
   claudeSubagentStatusObservation: false,
   workspaceProvenanceV2: false,
 });
@@ -399,7 +317,7 @@ export interface RestoreAgentSessionOptions {
   runtimeRunId: RuntimeRunId;
   expectedRuntimeEpoch: number;
   agent: string;
-  session: AgentAdapterSession;
+  session: AgentAdapterBinding;
   workspace: Workspace;
   externalRefs?: readonly ExternalRef[];
 }
@@ -453,10 +371,3 @@ export interface AgentRuntime {
   handleProcessExit(terminalSessionId: string, exit: AgentProcessExit): Promise<AgentWorkspaceFinal | undefined>;
   dispose(): Promise<AgentWorkspaceFinal[]>;
 }
-
-/** Built-in runtime facade whose selected agent discriminates its launch options. */
-export type BuiltinAgentRuntime = Omit<AgentRuntime, 'spawn' | 'createSession' | 'prepareSession'> & {
-  spawn(options: BuiltinCreateAgentSessionOptions): Promise<SpawnAgentResult>;
-  createSession(options: BuiltinCreateAgentSessionOptions): Promise<CreateAgentSessionResult>;
-  prepareSession(options: BuiltinCreateAgentSessionOptions): Promise<PrepareAgentSessionResult>;
-};

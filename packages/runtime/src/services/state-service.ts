@@ -70,7 +70,7 @@ export class AgentStateService implements AgentProjectionService<SessionRuntimeS
   private current = createInitialSessionState();
 
   accepts(envelope: AgentEventEnvelope): boolean {
-    return envelope.service !== 'monitor';
+    return envelope.category !== 'monitor';
   }
 
   consume(envelope: AgentEventEnvelope): void {

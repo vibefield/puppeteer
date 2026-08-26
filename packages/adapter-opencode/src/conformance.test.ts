@@ -1,6 +1,6 @@
 import { rmSync } from 'node:fs';
 import { afterEach, expect } from 'vitest';
-import type { AgentEventEnvelope, AgentHost } from '@vibecook/puppeteer-core';
+import type { AdapterEventCandidate, AgentHost } from '@vibecook/puppeteer-core';
 import {
   runAgentMonitorConformance,
   runAgentSessionConformance,
@@ -79,7 +79,7 @@ async function createHarness(existing?: {
           off();
           reject(new Error('timed out waiting for OpenCode observation rail degradation'));
         }, 5_000);
-        const off = session.onEvent(({ event }) => {
+        const off = session.events.onCandidate(({ event }) => {
           if (event.type !== 'monitor:batch' || event.batch.readiness !== 'degraded') return;
           clearTimeout(timer);
           off?.();
@@ -91,11 +91,11 @@ async function createHarness(existing?: {
     },
     async driveTurn(prompt) {
       let completed = false;
-      const off = session.onEvent((envelope: AgentEventEnvelope) => {
+      const off = session.events.onCandidate((envelope: AdapterEventCandidate) => {
         if (!envelope.replay && envelope.event.type === 'turn:completed') completed = true;
       });
       try {
-        const receipt = await session.submitPrompt({ text: prompt });
+        const receipt = await session.services.prompt.submit({ text: prompt });
         if (receipt.status !== 'confirmed') {
           throw new Error(`expected confirmed OpenCode receipt, got ${receipt.status}: ${receipt.reason}`);
         }

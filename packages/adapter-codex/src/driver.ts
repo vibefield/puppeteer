@@ -21,7 +21,7 @@ import {
   PUPPETEER_VERSION,
   type AgentEvent,
   type AgentEventSource,
-  type AgentAdapterSession,
+  type AgentAdapterBinding,
   type ObservationLevel,
   type PromptSubmission,
 } from '@vibecook/puppeteer-core';
@@ -55,7 +55,7 @@ export interface CreateCodexSessionOptions {
   onApproval?: (req: CodexApprovalRequest) => CodexApprovalDecision | Promise<CodexApprovalDecision>;
 }
 
-export interface CodexSession extends AgentAdapterSession {
+export interface CodexSession extends AgentAdapterBinding {
   /** Absolute path to this session's rollout JSONL (the Codex transcript analog). */
   threadPath(): string | undefined;
 }
@@ -243,16 +243,18 @@ export async function createCodexSession(options: CreateCodexSessionOptions): Pr
     runtimeSessionId,
     observationLevel: () => observation,
     threadPath: () => threadPath,
-    onEventCandidate(listener) {
-      if (disposed) return () => undefined;
-      return events.onCandidate(listener);
+    events: {
+      onCandidate(listener) {
+        if (disposed) return () => undefined;
+        return events.onCandidate(listener);
+      },
     },
-    onEvent(listener) {
-      if (disposed) return () => undefined;
-      return events.onEvent(listener);
-    },
-    submitPrompt(submission: PromptSubmission) {
-      return prompts.submit(submission);
+    services: {
+      prompt: {
+        submit(submission: PromptSubmission) {
+          return prompts.submit(submission);
+        },
+      },
     },
     async dispose() {
       if (disposed) return;

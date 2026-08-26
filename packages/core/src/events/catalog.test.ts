@@ -5,8 +5,8 @@ import type { TurnStartedEvent } from './turn.js';
 import {
   agentEventCatalog,
   agentEventPayloadSchema,
-  agentEventService,
-  agentServiceEventType,
+  agentEventCategory,
+  agentEventType,
   parseAgentEvent,
   safeParseAgentEvent,
   type AgentEventForType,
@@ -38,8 +38,8 @@ describe('agentEventCatalog', () => {
 
     expectTypeOf(event).toEqualTypeOf<AgentEventForType<'turn:started'>>();
     expectTypeOf(event).toEqualTypeOf<TurnStartedEvent>();
-    expect(agentServiceEventType(event)).toBe('turn:started');
-    expect(agentEventService(event)).toBe('turn');
+    expect(agentEventType(event)).toBe('turn:started');
+    expect(agentEventCategory(event)).toBe('turn');
 
     expect(agentEventPayloadSchema('turn:started').parse({ turnId: 'turn-1', prompt: 'Refactor this' })).toEqual({
       turnId: 'turn-1',

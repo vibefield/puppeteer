@@ -1,5 +1,5 @@
 import { createAcpSession, createStdioAcpConnector } from '@vibecook/puppeteer-adapter-acp';
-import type { AgentAdapterSession } from '@vibecook/puppeteer-core';
+import type { AgentAdapterBinding } from '@vibecook/puppeteer-core';
 import { grokExtensionEvents } from '../session-observer.js';
 import type { CreateGrokSessionOptions } from '../types.js';
 
@@ -11,7 +11,7 @@ export function openGrokControl(
   sessionId: string | undefined,
   options: Pick<CreateGrokSessionOptions, 'clientCapabilities' | 'onApproval' | 'onElicitation'>,
   env?: NodeJS.ProcessEnv,
-): Promise<AgentAdapterSession> {
+): Promise<AgentAdapterBinding> {
   const args = ['agent', '--leader', '--leader-socket', socketPath, 'stdio'];
   return createAcpSession({
     cwd,

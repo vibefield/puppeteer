@@ -4,7 +4,7 @@ import { randomUUID } from 'node:crypto';
 import { resolve } from 'node:path';
 import {
   type AgentEvent,
-  type AgentAdapterSession,
+  type AgentAdapterBinding,
   type AgentTuiSessionOptions,
   type TerminalSpec,
 } from '@vibecook/puppeteer-core';
@@ -49,7 +49,7 @@ export interface CreateOpenCodeTuiSessionOptions extends AgentTuiSessionOptions 
   reconnectDelayMs?: number;
 }
 
-export interface OpenCodeTuiSession extends AgentAdapterSession {
+export interface OpenCodeTuiSession extends AgentAdapterBinding {
   backendOrigin(): string;
   backendPid(): number | undefined;
   backendRunning(): boolean;
@@ -418,16 +418,18 @@ export async function prepareOpenCodeTuiSession(
           sessionId: sessionID,
           runtimeSessionId,
           observationLevel: () => 'structured',
-          onEventCandidate(listener) {
-            if (disposed) return () => undefined;
-            return events.onCandidate(listener);
+          events: {
+            onCandidate(listener) {
+              if (disposed) return () => undefined;
+              return events.onCandidate(listener);
+            },
           },
-          onEvent(listener) {
-            if (disposed) return () => undefined;
-            return events.onEvent(listener);
-          },
-          submitPrompt(submission) {
-            return prompts.submit(submission);
+          services: {
+            prompt: {
+              submit(submission) {
+                return prompts.submit(submission);
+              },
+            },
           },
           backendOrigin: () => backend!.origin,
           backendPid: () => backend!.pid,

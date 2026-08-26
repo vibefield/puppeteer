@@ -82,7 +82,7 @@ export type AgentEvent =
   | AdapterEvent;
 
 /** Top-level categories on the public `category:event-name` rail. */
-export type AgentEventService =
+export type AgentEventCategory =
   | 'session'
   | 'turn'
   | 'reasoning'
@@ -106,14 +106,14 @@ export type AgentEventService =
   | 'adapter';
 
 interface AgentEventCatalogDefinition {
-  category: AgentEventService;
+  category: AgentEventCategory;
   eventType: AgentEvent['type'];
   schema: z.ZodObject;
   description: string;
 }
 
 function defineAgentEvent<
-  const Category extends AgentEventService,
+  const Category extends AgentEventCategory,
   const EventType extends AgentEvent['type'],
   const Schema extends z.ZodObject,
 >(category: Category, eventType: EventType, schema: Schema, description: string) {
@@ -352,7 +352,7 @@ export const agentEventCatalog = {
     UnknownNativeEventSchema,
     'Unrecognized or degraded provider evidence was retained.',
   ),
-} as const satisfies Record<`${AgentEventService}:${string}`, AgentEventCatalogDefinition>;
+} as const satisfies Record<`${AgentEventCategory}:${string}`, AgentEventCatalogDefinition>;
 
 export type AgentEventCatalog = typeof agentEventCatalog;
 /** Stable public event identifiers. Every identifier follows `category:event-name`. */
@@ -372,7 +372,7 @@ export type AgentEventCatalogRouteCategoryMismatch = AssertNever<
   }[AgentEventType]
 >;
 
-export type AgentEventServiceOf<T extends AgentEvent = AgentEvent> = T extends AgentEvent
+export type AgentEventCategoryOf<T extends AgentEvent = AgentEvent> = T extends AgentEvent
   ? {
       [Type in AgentEventType]: T['type'] extends AgentEventCatalog[Type]['eventType']
         ? AgentEventCatalog[Type]['category']
@@ -380,14 +380,11 @@ export type AgentEventServiceOf<T extends AgentEvent = AgentEvent> = T extends A
     }[AgentEventType]
   : never;
 
-export type AgentServiceEventTypeFor<T extends AgentEvent> = T extends AgentEvent
+export type AgentEventTypeFor<T extends AgentEvent> = T extends AgentEvent
   ? {
       [Type in AgentEventType]: T['type'] extends AgentEventCatalog[Type]['eventType'] ? Type : never;
     }[AgentEventType]
   : never;
-
-/** Compatibility name retained while callers migrate to `AgentEventType`. */
-export type AgentServiceEventType<T extends AgentEvent = AgentEvent> = AgentServiceEventTypeFor<T>;
 
 type CatalogEntry = AgentEventCatalog[AgentEventType];
 
@@ -404,14 +401,14 @@ function definitionForEvent(event: AgentEvent): [AgentEventType, CatalogEntry] |
   return catalogByEventType.get(event.type);
 }
 
-export function agentEventService<T extends AgentEvent>(event: T): AgentEventServiceOf<T> {
+export function agentEventCategory<T extends AgentEvent>(event: T): AgentEventCategoryOf<T> {
   const definition = definitionForEvent(event);
   if (!definition) throw new TypeError(`unregistered canonical agent event: ${String(event.type)}`);
-  return definition[1].category as AgentEventServiceOf<T>;
+  return definition[1].category as AgentEventCategoryOf<T>;
 }
 
-export function agentServiceEventType<T extends AgentEvent>(event: T): AgentServiceEventTypeFor<T> {
-  return event.type as AgentServiceEventTypeFor<T>;
+export function agentEventType<T extends AgentEvent>(event: T): AgentEventTypeFor<T> {
+  return event.type as AgentEventTypeFor<T>;
 }
 
 /** Validate one normalized event against the schema registered for its public route. */

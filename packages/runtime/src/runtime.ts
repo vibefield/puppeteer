@@ -1,8 +1,8 @@
 import { createHash, randomUUID } from 'node:crypto';
 import { performance } from 'node:perf_hooks';
 import {
-  agentEventService,
-  agentServiceEventType,
+  agentEventCategory,
+  agentEventType,
   isAgentEventType,
   safeParseAgentEvent,
   AdapterEventCandidateSchema,
@@ -13,7 +13,7 @@ import {
   type AgentEventEnvelope,
   type AgentEventSource,
   type AgentMonitorState,
-  type AgentAdapterSession,
+  type AgentAdapterBinding,
   type ExternalRef,
   type MonitorNotification,
   type PromptReceipt,
@@ -85,7 +85,7 @@ import { createSystemMonitorClock } from './monitor-clock.js';
 import { AgentMonitorService, type MonitorArtifactAudit } from './services/monitor-service.js';
 
 interface ManagedSession {
-  session: AgentAdapterSession;
+  session: AgentAdapterBinding;
   agent: Agent;
   agentController: AgentController;
   run: ManagedRun;
@@ -178,7 +178,7 @@ interface InflightCreation {
  * have to know that. Prefer the live stream when the session reports one, while
  * retaining transcript messages for native-log-only providers.
  */
-function isCanonicalApplicationEvent(session: AgentAdapterSession, envelope: AgentEventEnvelope): boolean {
+function isCanonicalApplicationEvent(session: AgentAdapterBinding, envelope: AgentEventEnvelope): boolean {
   if (envelope.event.type !== 'conversation:assistant-message' || envelope.source !== 'native-transcript') return true;
   if (envelope.replay) return true;
   const level = session.observationLevel();
@@ -381,7 +381,7 @@ const MAX_TERMINAL_RUN_INFOS = 1_024;
 
 export function createAgentRuntime(options: AgentRuntimeOptions): AgentRuntime {
   const providers = new Map(options.providers.map((provider) => [provider.kind, provider]));
-  const features = { ...DEFAULT_RUNTIME_FEATURE_FLAGS, ...options.features };
+  const features = { ...DEFAULT_RUNTIME_FEATURE_FLAGS, ...options.features, agentMonitorStateV2: true };
   const monitorClock = options.monitorClock ?? createSystemMonitorClock();
   const runs = new Map<string, ManagedRun>();
   const terminalFailuresByRunId = new Map<string, TerminalFailureEntry>();
@@ -483,7 +483,7 @@ export function createAgentRuntime(options: AgentRuntimeOptions): AgentRuntime {
   }
 
   function installRunMonitor(run: ManagedRun): void {
-    if (!features.agentMonitorStateV2 || run.monitor) return;
+    if (run.monitor) return;
     const provider = providers.get(run.identity.providerId);
     run.monitor = new AgentMonitorService({
       runtimeRunId: run.identity.runtimeRunId,
@@ -1291,7 +1291,7 @@ export function createAgentRuntime(options: AgentRuntimeOptions): AgentRuntime {
   ): Promise<AgentWorkspaceFinal | undefined> {
     if (sessionsByTerminalId.get(managed.info.terminalSessionId) !== managed) return undefined;
     const normalizedExitReason = exit ? processExitReason(exit) : undefined;
-    if (exit && features.agentMonitorStateV2) {
+    if (exit) {
       managed.dispatch(
         {
           type: 'process:exited',
@@ -1454,7 +1454,7 @@ export function createAgentRuntime(options: AgentRuntimeOptions): AgentRuntime {
 
   function manageSession(
     provider: AgentProvider,
-    session: AgentAdapterSession,
+    session: AgentAdapterBinding,
     lease: WorkspaceLease,
     run: ManagedRun,
     extras: { preparationId?: string; processId?: number; restored?: boolean } = {},
@@ -1482,6 +1482,7 @@ export function createAgentRuntime(options: AgentRuntimeOptions): AgentRuntime {
     };
     if (extras.preparationId !== undefined) info.preparationId = extras.preparationId;
     if (extras.processId !== undefined) info.processId = extras.processId;
+    if (!run.monitor) throw new Error(`runtime monitor was not installed for run ${run.identity.runtimeRunId}`);
     const agentController = createAgentController({
       adapter: session,
       info,
@@ -1550,8 +1551,8 @@ export function createAgentRuntime(options: AgentRuntimeOptions): AgentRuntime {
       }
       const envelope: RuntimeAgentEventEnvelope = {
         eventId,
-        type: agentServiceEventType(event),
-        service: agentEventService(event),
+        type: agentEventType(event),
+        category: agentEventCategory(event),
         runtimeRunId: run.identity.runtimeRunId,
         runtimeEpoch: run.identity.runtimeEpoch,
         sequence: ++deliverySequence,
@@ -1637,7 +1638,7 @@ export function createAgentRuntime(options: AgentRuntimeOptions): AgentRuntime {
           terminalSessionId: session.runtimeSessionId,
         });
       };
-      const acceptCandidate = (candidate: AdapterEventCandidate, legacyService?: unknown): void => {
+      const acceptCandidate = (candidate: AdapterEventCandidate): void => {
         updateAdapterMetadata();
         const parsedCandidate = AdapterEventCandidateSchema.safeParse(candidate);
         if (!parsedCandidate.success) {
@@ -1653,10 +1654,6 @@ export function createAgentRuntime(options: AgentRuntimeOptions): AgentRuntime {
           report(new Error(`Adapter emitted invalid ${parsedCandidate.data.type}: ${parsed.error.message}`));
           return;
         }
-        if (legacyService !== undefined && legacyService !== agentEventService(parsed.data)) {
-          report(new Error(`Adapter emitted mismatched legacy event category: ${String(legacyService)}`));
-          return;
-        }
         dispatch(
           parsed.data,
           parsedCandidate.data.source,
@@ -1667,45 +1664,7 @@ export function createAgentRuntime(options: AgentRuntimeOptions): AgentRuntime {
         );
       };
 
-      if (session.onEventCandidate) {
-        managed.unsubscribe = session.onEventCandidate(acceptCandidate);
-      } else {
-        managed.unsubscribe = session.onEvent((envelope) => {
-          const priorRuntimeEnvelope = envelope as Partial<RuntimeAgentEventEnvelope>;
-          if (
-            (priorRuntimeEnvelope.runtimeRunId !== undefined &&
-              priorRuntimeEnvelope.runtimeRunId !== run.identity.runtimeRunId) ||
-            (priorRuntimeEnvelope.runtimeEpoch !== undefined &&
-              priorRuntimeEnvelope.runtimeEpoch !== run.identity.runtimeEpoch)
-          ) {
-            return;
-          }
-          acceptCandidate(
-            {
-              type: envelope.type,
-              eventId: envelope.eventId,
-              sourceEventRef: envelope.sourceEventRef,
-              sessionId: envelope.sessionId,
-              nativeSessionId: envelope.nativeSessionId,
-              promptId: envelope.promptId,
-              turnId: envelope.turnId,
-              agentId: envelope.agentId,
-              agentType: envelope.agentType,
-              actorKey: envelope.actorKey,
-              actorRole: envelope.actorRole,
-              providerVersion: envelope.providerVersion,
-              timestamp: envelope.timestamp,
-              monotonicTime: envelope.monotonicTime,
-              source: envelope.source,
-              confidence: envelope.confidence,
-              replay: envelope.replay,
-              event: envelope.event,
-              nativeEvent: envelope.nativeEvent,
-            } as AdapterEventCandidate,
-            envelope.service,
-          );
-        });
-      }
+      managed.unsubscribe = session.events.onCandidate(acceptCandidate);
     } catch (error) {
       sessionsByRunId.delete(run.identity.runtimeRunId);
       sessionsByTerminalId.delete(info.terminalSessionId);
@@ -1886,7 +1845,7 @@ export function createAgentRuntime(options: AgentRuntimeOptions): AgentRuntime {
           return sessionFailure(run, lease.error.code, lease.error.message);
         }
 
-        let session: AgentAdapterSession;
+        let session: AgentAdapterBinding;
         try {
           session = await provider.createSession({
             runtimeRunId: run.identity.runtimeRunId,
@@ -2326,10 +2285,15 @@ export function createAgentRuntime(options: AgentRuntimeOptions): AgentRuntime {
       const run = runs.get(id);
       return run ? runInfo(run) : (terminalFailuresByRunId.get(id)?.info ?? terminalRunInfos.get(id));
     },
-    monitorState: (id) => runs.get(id)?.monitor?.current() ?? terminalFailuresByRunId.get(id)?.monitor.current(),
+    monitorState: (id) =>
+      sessionsByRunId.get(id)?.agent.monitor ??
+      runs.get(id)?.monitor?.current() ??
+      terminalFailuresByRunId.get(id)?.monitor.current(),
     observeMonitor(id) {
+      const agent = sessionsByRunId.get(id)?.agent;
+      if (agent) return agent.observeMonitor();
       const monitor = runs.get(id)?.monitor ?? terminalFailuresByRunId.get(id)?.monitor;
-      if (!monitor) throw new Error(`monitor not found or disabled: ${id}`);
+      if (!monitor) throw new Error(`monitor not found: ${id}`);
       return monitor.observe();
     },
     onMonitorState(listener) {
@@ -2359,6 +2323,8 @@ export function createAgentRuntime(options: AgentRuntimeOptions): AgentRuntime {
       return true;
     },
     readMonitorArtifact(runtimeRunId, artifactId, readOptions) {
+      const agent = sessionsByRunId.get(runtimeRunId)?.agent;
+      if (agent) return agent.readMonitorArtifact(artifactId, readOptions);
       const monitor = runs.get(runtimeRunId)?.monitor ?? terminalFailuresByRunId.get(runtimeRunId)?.monitor;
       return monitor
         ? monitor.readArtifact(artifactId, readOptions)

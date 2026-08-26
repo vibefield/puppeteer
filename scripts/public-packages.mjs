@@ -1,5 +1,7 @@
 export const publicPackages = [
   ['packages/core', '@vibecook/puppeteer-core'],
+  ['packages/monitor', '@vibecook/puppeteer-monitor'],
+  ['packages/react', '@vibecook/puppeteer-react'],
   ['packages/surface', '@vibecook/puppeteer-surface'],
   ['packages/imposter', '@vibecook/puppeteer-imposter'],
   ['packages/record', '@vibecook/puppeteer-record'],
@@ -13,4 +15,5 @@ export const publicPackages = [
   ['packages/adapter-opencode', '@vibecook/puppeteer-adapter-opencode'],
   ['packages/adapter-hermes', '@vibecook/puppeteer-adapter-hermes'],
   ['packages/runtime', '@vibecook/puppeteer-runtime'],
+  ['packages/builtin-providers', '@vibecook/puppeteer-builtin-providers'],
 ];

@@ -3,7 +3,6 @@ import { afterEach, describe, expect, it } from 'vitest';
 import {
   safeParseAgentEvent,
   type AdapterEventCandidate,
-  type AgentEventEnvelope,
   type AgentHost,
   type TerminalSpec,
 } from '@vibecook/puppeteer-core';
@@ -69,18 +68,18 @@ describe('OpenCode native-TUI session composition', () => {
     expect(launch?.args).not.toContain(launch?.env?.OPENCODE_SERVER_PASSWORD);
     expect(launch?.env?.OPENCODE_SERVER_PASSWORD).toBeTruthy();
 
-    const observed: AgentEventEnvelope[] = [];
+    const observed: AdapterEventCandidate[] = [];
     const candidates: AdapterEventCandidate[] = [];
     const monitor = projection.monitorBatches;
-    const off = session.onEvent((event) => observed.push(event));
-    expect(session.onEventCandidate).toBeTypeOf('function');
-    const offCandidate = session.onEventCandidate!((candidate) => candidates.push(candidate));
+    const off = session.events.onCandidate((event) => observed.push(event));
+    expect(session.events.onCandidate).toBeTypeOf('function');
+    const offCandidate = session.events.onCandidate!((candidate) => candidates.push(candidate));
     expect(monitor.length).toBeGreaterThan(0);
     expect(monitor.every((batch) => batch.phase === 'bootstrap')).toBe(true);
     expect(monitor.flatMap((batch) => batch.capabilities ?? [])).toEqual(
       expect.arrayContaining([expect.objectContaining({ family: 'usage', support: 'supported' })]),
     );
-    const receipt = await session.submitPrompt({ text: 'hello from adapter' });
+    const receipt = await session.services.prompt.submit({ text: 'hello from adapter' });
     expect(receipt.status).toBe('confirmed');
     const confirmedTurnID = receipt.status === 'confirmed' ? receipt.turnId : undefined;
     expect(confirmedTurnID).toMatch(/^msg_puppeteer_/);
@@ -113,8 +112,8 @@ describe('OpenCode native-TUI session composition', () => {
           ),
       ),
     ).toBe(true);
-    for (let index = 1; index < observed.length; index++) {
-      expect(observed[index]!.sequence).toBeGreaterThan(observed[index - 1]!.sequence);
+    for (let index = 1; index < projection.envelopes.length; index++) {
+      expect(projection.envelopes[index]!.sequence).toBeGreaterThan(projection.envelopes[index - 1]!.sequence);
     }
 
     const sequence = projection.state.lastSequence;

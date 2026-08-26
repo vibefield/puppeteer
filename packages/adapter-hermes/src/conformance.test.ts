@@ -30,7 +30,7 @@ function host(): AgentHost {
 function waitForTurnSettlement(session: Awaited<ReturnType<typeof createHermesTuiSession>>): Promise<void> {
   return new Promise<void>((resolve, reject) => {
     const timer = setTimeout(() => reject(new Error('turn did not settle')), 2_000);
-    const off = session.onEvent(({ event }) => {
+    const off = session.events.onCandidate(({ event }) => {
       if (event.type === 'turn:completed' || event.type === 'turn:failed') {
         clearTimeout(timer);
         off();
@@ -55,7 +55,7 @@ async function createHarness(
     reply: REPLY,
     async driveTurn(prompt: string) {
       const settled = waitForTurnSettlement(session);
-      const receipt = await session.submitPrompt({ text: prompt });
+      const receipt = await session.services.prompt.submit({ text: prompt });
       if (receipt.status === 'rejected') throw new Error(receipt.reason);
       await settled;
     },

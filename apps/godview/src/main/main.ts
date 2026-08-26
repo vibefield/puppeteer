@@ -27,12 +27,12 @@ import {
 } from '@vibecook/ghosttea-electron/main';
 import type { SessionSummary } from '@vibecook/ghosttea-protocol';
 import type { AgentHost } from '@vibecook/puppeteer-core';
+import { createBuiltinAgentRuntime, type BuiltinExecutableAgentKind } from '@vibecook/puppeteer-builtin-providers';
 import { createActionRecorder } from '@vibecook/puppeteer-record';
 import type { GodviewTheme } from '../appearance-themes.js';
 import {
   buildAgentEnvironment,
   connectMonitorIpcRelay,
-  createBuiltinAgentRuntime,
   acknowledgeAgentFailureForIpc,
   formatMonitorCanaryTrace,
   MonitorIpcRelay,
@@ -42,7 +42,6 @@ import {
   type AgentRuntime,
   type AgentWorkspaceFinal,
   type AgentWorkspaceRequest,
-  type BuiltinExecutableAgentKind,
   type MonitorShadowMismatchReport,
 } from '@vibecook/puppeteer-runtime';
 import type {
@@ -868,7 +867,6 @@ const agentRuntime: AgentRuntime = createBuiltinAgentRuntime({
       }
     : {}),
   features: {
-    agentMonitorStateV2: monitorHostFeatures.monitorV2,
     claudeSubagentStatusObservation: monitorHostFeatures.monitorV2,
     workspaceProvenanceV2: monitorHostFeatures.monitorV2,
   },

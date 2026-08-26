@@ -1,6 +1,7 @@
 import {
-  type AgentAdapterSession,
-  type AgentEventEnvelope,
+  type AdapterEventCandidate,
+  type AgentAdapterBinding,
+  type AgentEvent,
   type ObservationLevel,
   type PromptReceipt,
   type PromptSubmission,
@@ -18,12 +19,12 @@ import { GrokEventSource, type GrokEventPublication } from './event-source.js';
 export function createPendingControlSession(
   sessionId: string,
   runtimeSessionId: string,
-  attach: () => AgentAdapterSession | Promise<AgentAdapterSession>,
+  attach: () => AgentAdapterBinding | Promise<AgentAdapterBinding>,
   observer?: GrokSessionObserver,
   configured: GrokConfiguredIntent = {},
-): AgentAdapterSession {
+): AgentAdapterBinding {
   const events = new GrokEventSource(sessionId);
-  let control: AgentAdapterSession | undefined;
+  let control: AgentAdapterBinding | undefined;
   let disposed = false;
   // TUI conversation and lifecycle are authoritative in Grok's persisted
   // structured log. ACP remains a control/approval side channel.
@@ -45,7 +46,7 @@ export function createPendingControlSession(
   emitMonitorBatch(capabilitiesBatch);
   emitMonitorBatch(monitorEvidence.configuredBatch(configured, new Date().toISOString()));
 
-  function publish(event: AgentEventEnvelope['event'], publication: GrokEventPublication = {}): void {
+  function publish(event: AgentEvent, publication: GrokEventPublication = {}): void {
     events.publish(event, publication);
   }
 
@@ -103,33 +104,37 @@ export function createPendingControlSession(
     emitMonitorBatch(monitorEvidence.controlUnavailableBatch(timestamp, observer !== undefined));
   }
 
-  function bindControl(acp: AgentAdapterSession): AgentAdapterSession | undefined {
+  function bindControl(acp: AgentAdapterBinding): AgentAdapterBinding | undefined {
     if (disposed) {
       void acp.dispose().catch(() => undefined);
       return undefined;
     }
     control = acp;
-    unsubscribeControl = acp.onEvent((envelope) => {
-      if (envelope.event.type === 'monitor:batch') {
+    unsubscribeControl = acp.events.onCandidate((candidate: AdapterEventCandidate) => {
+      if (candidate.event.type === 'monitor:batch') {
         applyObserved(
           {
-            event: envelope.event,
-            timestamp: envelope.timestamp,
-            phase: envelope.replay ? 'bootstrap' : 'live',
-            source: envelope.source,
-            confidence: envelope.confidence,
-            nativeEvent: envelope.nativeEvent,
+            event: candidate.event,
+            timestamp: candidate.timestamp,
+            phase: candidate.replay ? 'bootstrap' : 'live',
+            source: candidate.source,
+            confidence: candidate.confidence,
+            nativeEvent: candidate.nativeEvent,
           },
           true,
         );
         return;
       }
-      emitMonitorBatch(monitorEvidence.controlEnvelopeBatch(envelope));
+      emitMonitorBatch(monitorEvidence.controlCandidateBatch(candidate));
       const acpTransportClosed =
-        envelope.event.type === 'adapter:native-event' &&
-        envelope.event.adapter === 'acp' &&
-        envelope.event.nativeType === 'transport.closed';
-      if (acpTransportClosed || envelope.event.type === 'process:exited' || envelope.event.type === 'session:exited') {
+        candidate.event.type === 'adapter:native-event' &&
+        candidate.event.adapter === 'acp' &&
+        candidate.event.nativeType === 'transport.closed';
+      if (
+        acpTransportClosed ||
+        candidate.event.type === 'process:exited' ||
+        candidate.event.type === 'session:exited'
+      ) {
         degradeControl(new Error('Grok ACP control transport closed'), 'grok-control-closed');
         return;
       }
@@ -142,18 +147,18 @@ export function createPendingControlSession(
         'context-window:invalidated',
         'environment:updated',
       ];
-      const liveNativeTruth = envelope.event.type === 'adapter:native-event' && envelope.event.adapter === 'grok';
-      if (observer && !allowedWithObserver.includes(envelope.event.type) && !liveNativeTruth) return;
-      if (envelope.event.type.startsWith('context-window:')) protocolContextAvailable = true;
+      const liveNativeTruth = candidate.event.type === 'adapter:native-event' && candidate.event.adapter === 'grok';
+      if (observer && !allowedWithObserver.includes(candidate.event.type) && !liveNativeTruth) return;
+      if (candidate.event.type.startsWith('context-window:')) protocolContextAvailable = true;
       applyObserved(
         {
-          event: envelope.event,
-          promptId: envelope.promptId ?? envelope.turnId ?? activeTurnId,
-          timestamp: envelope.timestamp,
-          phase: envelope.replay ? 'bootstrap' : 'live',
-          source: envelope.source,
-          confidence: envelope.confidence,
-          nativeEvent: envelope.nativeEvent,
+          event: candidate.event,
+          promptId: candidate.promptId ?? candidate.turnId ?? activeTurnId,
+          timestamp: candidate.timestamp,
+          phase: candidate.replay ? 'bootstrap' : 'live',
+          source: candidate.source,
+          confidence: candidate.confidence,
+          nativeEvent: candidate.nativeEvent,
         },
         true,
       );
@@ -182,10 +187,10 @@ export function createPendingControlSession(
     void observer.poll();
   }
 
-  let controlReady: Promise<AgentAdapterSession | undefined>;
+  let controlReady: Promise<AgentAdapterBinding | undefined>;
   try {
     const attached = attach();
-    if (typeof (attached as Promise<AgentAdapterSession>).then === 'function') {
+    if (typeof (attached as Promise<AgentAdapterBinding>).then === 'function') {
       controlReady = Promise.resolve(attached)
         .then(bindControl)
         .catch((error: unknown) => {
@@ -193,7 +198,7 @@ export function createPendingControlSession(
           return undefined;
         });
     } else {
-      controlReady = Promise.resolve(bindControl(attached as AgentAdapterSession));
+      controlReady = Promise.resolve(bindControl(attached as AgentAdapterBinding));
     }
   } catch (error) {
     degradeControl(error, 'grok-control-attach-failed');
@@ -204,18 +209,20 @@ export function createPendingControlSession(
     sessionId,
     runtimeSessionId,
     observationLevel: () => observation,
-    onEventCandidate(listener) {
-      if (disposed) return () => undefined;
-      return events.onCandidate(listener);
+    events: {
+      onCandidate(listener) {
+        if (disposed) return () => undefined;
+        return events.onCandidate(listener);
+      },
     },
-    onEvent(listener) {
-      if (disposed) return () => undefined;
-      return events.onEvent(listener);
-    },
-    async submitPrompt(submission: PromptSubmission): Promise<PromptReceipt> {
-      const acp = control ?? (await controlReady.catch(() => undefined));
-      if (!acp) return { status: 'rejected', reason: 'grok control client not attached' };
-      return acp.submitPrompt(submission);
+    services: {
+      prompt: {
+        async submit(submission: PromptSubmission): Promise<PromptReceipt> {
+          const acp = control ?? (await controlReady.catch(() => undefined));
+          if (!acp) return { status: 'rejected', reason: 'grok control client not attached' };
+          return acp.services.prompt.submit(submission);
+        },
+      },
     },
     async dispose() {
       if (disposed) return;

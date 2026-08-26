@@ -85,7 +85,7 @@ describe('createCodexObserver attach resilience', () => {
     const obs = await createCodexObserver({ transport: t.transport });
     const projection = projectAgentEvents(obs);
     const seen: string[] = [];
-    obs.onEvent((e) => seen.push(e.event.type));
+    obs.events.onCandidate((e) => seen.push(e.event.type));
 
     expect(projection.state.lifecycle).toBe('preparing');
     t.deliver(threadStarted); // the TUI created a thread
@@ -121,7 +121,7 @@ describe('createCodexObserver controller-owned bootstrap', () => {
     const t = controllable(0);
     const obs = await createCodexObserver({ transport: t.transport, start: { cwd: '/tmp/ws' } });
     const candidates: AdapterEventCandidate[] = [];
-    const off = obs.onEventCandidate((candidate) => candidates.push(candidate));
+    const off = obs.events.onCandidate((candidate) => candidates.push(candidate));
 
     expect(candidates.some(({ type }) => type === 'session:started')).toBe(true);
     expect(candidates.every(({ type }) => type.includes(':'))).toBe(true);
@@ -179,7 +179,7 @@ describe('createCodexObserver controller-owned bootstrap', () => {
     const projection = projectAgentEvents(obs);
     const events: Array<{ type: string }> = [];
     const monitorBatches = projection.monitorBatches;
-    obs.onEvent(({ event }) => events.push(event));
+    obs.events.onCandidate(({ event }) => events.push(event));
 
     t.fireClose();
 
@@ -201,7 +201,7 @@ describe('createCodexObserver controller-owned bootstrap', () => {
     const projection = projectAgentEvents(obs);
     const events: string[] = [];
     const monitorBatches = projection.monitorBatches;
-    obs.onEvent(({ event }) => events.push(event.type));
+    obs.events.onCandidate(({ event }) => events.push(event.type));
     events.length = 0;
 
     t.deliver({
@@ -245,7 +245,7 @@ describe('createCodexObserver controller-owned bootstrap', () => {
     });
     const projection = projectAgentEvents(obs);
     const events: string[] = [];
-    obs.onEvent((envelope) => events.push(envelope.event.type));
+    obs.events.onCandidate((envelope) => events.push(envelope.event.type));
 
     t.deliver({
       jsonrpc: '2.0',
@@ -447,7 +447,7 @@ describe('createCodexObserver controller-owned bootstrap', () => {
     t.releaseRead();
     const obs = await creating;
     const events: Array<{ replay?: boolean; event: { type: string; text?: string } }> = [];
-    obs.onEvent((envelope) => events.push(envelope));
+    obs.events.onCandidate((envelope) => events.push(envelope));
 
     expect(
       events

@@ -22,9 +22,9 @@
 
 import {
   PUPPETEER_VERSION,
-  type AdapterEventCandidate,
+  type AgentAdapterEventSource,
   type AgentEvent,
-  type AgentEventEnvelope,
+  type AgentEventSource,
   type ObservationLevel,
 } from '@vibecook/puppeteer-core';
 import type { AdapterMonitorObservationBatch } from '@vibecook/puppeteer-core/monitor-spi';
@@ -79,9 +79,7 @@ export interface CodexObserver {
   readonly sessionId: string | undefined;
   observationLevel(): ObservationLevel;
   threadPath(): string | undefined;
-  onEventCandidate(listener: (candidate: AdapterEventCandidate) => void): () => void;
-  /** @deprecated Direct consumers should use runtime Agent events. */
-  onEvent(listener: (envelope: AgentEventEnvelope) => void): () => void;
+  readonly events: AgentAdapterEventSource;
   /** Fires once a thread is picked up and its live stream is open. */
   onThread(listener: (info: CodexThreadInfo) => void): () => void;
   /** Bind a thread discovered by a native TUI resume request. */
@@ -125,7 +123,7 @@ export async function createCodexObserver(opts: CreateCodexObserverOptions): Pro
   const capabilitiesBatch = monitorEvidence.capabilitiesBatch(new Date().toISOString());
   emitMonitorBatch(capabilitiesBatch);
 
-  function apply(event: AgentEvent, source: AgentEventEnvelope['source'], nativeEvent?: unknown, replay = false): void {
+  function apply(event: AgentEvent, source: AgentEventSource, nativeEvent?: unknown, replay = false): void {
     if (event.type === 'context-window:updated') contextWindowObserved = true;
     if (event.type === 'context-window:invalidated') contextWindowObserved = false;
     events.publish(event, source, nativeEvent, 'authoritative', replay);
@@ -403,12 +401,7 @@ export async function createCodexObserver(opts: CreateCodexObserverOptions): Pro
     },
     observationLevel: () => observation,
     threadPath: () => threadPath,
-    onEventCandidate(listener) {
-      return events.onCandidate(listener);
-    },
-    onEvent(listener) {
-      return events.onEvent(listener);
-    },
+    events,
     onThread(listener) {
       threadListeners.add(listener);
       return () => threadListeners.delete(listener);

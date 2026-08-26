@@ -1,6 +1,6 @@
 import { rmSync } from 'node:fs';
 import { afterEach, describe, expect, it } from 'vitest';
-import type { AgentEventEnvelope, AgentHost } from '@vibecook/puppeteer-core';
+import type { AdapterEventCandidate, AgentHost } from '@vibecook/puppeteer-core';
 import { projectAgentSession } from '@vibecook/puppeteer-testing';
 import { createHermesTuiSession, type HermesTuiSession } from './driver.js';
 import { createHermesImposterFixture } from './test-support/imposter.js';
@@ -45,9 +45,9 @@ describe('Hermes adapter against Imposter', () => {
     expect(projection.state.lifecycle).toBe('ready');
     expect(session.storedSessionId()).toBeTruthy();
 
-    const observed: AgentEventEnvelope[] = [];
-    const off = session.onEvent((event) => observed.push(event));
-    const receipt = await session.submitPrompt({ text: 'hello from adapter' });
+    const observed: AdapterEventCandidate[] = [];
+    const off = session.events.onCandidate((event) => observed.push(event));
+    const receipt = await session.services.prompt.submit({ text: 'hello from adapter' });
     if (receipt.status !== 'confirmed') {
       const stderr = (fixture.transport as HermesStdioClient).stderr.join('');
       throw new Error(`expected confirmed, got ${JSON.stringify(receipt)}; stderr=${stderr}`);

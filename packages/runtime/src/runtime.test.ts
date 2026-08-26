@@ -6,8 +6,8 @@ import { join } from 'node:path';
 import { promisify } from 'node:util';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import {
-  agentEventService,
-  agentServiceEventType,
+  agentEventCategory,
+  agentEventType,
   createAdapterEventCandidate,
   createEnvelopeStamper,
   type AccountUsageFetchResult,
@@ -15,7 +15,7 @@ import {
   type AgentEvent,
   type AgentEventEnvelope,
   type AgentHost,
-  type AgentAdapterSession,
+  type AgentAdapterBinding,
   type ObservationLevel,
 } from '@vibecook/puppeteer-core';
 import type { AdapterMonitorObservationBatch } from '@vibecook/puppeteer-core/monitor-spi';
@@ -38,7 +38,7 @@ const execFileAsync = promisify(execFile);
 
 function testEnvelope(
   event: AgentEvent,
-  fields: Partial<Omit<AgentEventEnvelope, 'type' | 'service' | 'event'>> = {},
+  fields: Partial<Omit<AgentEventEnvelope, 'type' | 'category' | 'event'>> = {},
 ): AgentEventEnvelope {
   return {
     sequence: 1,
@@ -48,10 +48,15 @@ function testEnvelope(
     source: 'native-protocol',
     confidence: 'authoritative',
     ...fields,
-    type: agentServiceEventType(event),
-    service: agentEventService(event),
+    type: agentEventType(event),
+    category: agentEventCategory(event),
     event,
   };
+}
+
+function candidateFromEnvelope(envelope: AgentEventEnvelope): AdapterEventCandidate {
+  const { sequence: _sequence, category: _category, ...candidate } = envelope;
+  return candidate as AdapterEventCandidate;
 }
 
 afterEach(() => {
@@ -76,23 +81,29 @@ function fakeProvider(
   let counter = 0;
   return {
     kind,
-    async createSession(): Promise<AgentAdapterSession> {
+    async createSession(): Promise<AgentAdapterBinding> {
       const n = ++counter;
       const runtimeSessionId = `${kind}-runtime-${n}`;
-      const listeners = new Set<(event: AgentEventEnvelope) => void>();
+      const listeners = new Set<(event: AdapterEventCandidate) => void>();
       handles.set(runtimeSessionId, {
-        emit: (event) => listeners.forEach((listener) => listener(event)),
+        emit: (event) => listeners.forEach((listener) => listener(candidateFromEnvelope(event))),
       });
       return {
         sessionId: `${kind}-native-${n}`,
         runtimeSessionId,
         observationLevel: () => observation,
-        onEvent(listener) {
-          listeners.add(listener);
-          return () => listeners.delete(listener);
+        events: {
+          onCandidate(listener) {
+            listeners.add(listener);
+            return () => listeners.delete(listener);
+          },
         },
-        async submitPrompt() {
-          return { status: 'confirmed', turnId: `${kind}-turn` };
+        services: {
+          prompt: {
+            async submit() {
+              return { status: 'confirmed', turnId: `${kind}-turn` };
+            },
+          },
         },
         async dispose() {},
       };
@@ -121,7 +132,7 @@ function preparableProvider(
       hooks.preparedRuntimeRunId = options.runtimeRunId;
       const sessionId = `${kind}-prepared-${hooks.prepareCount}`;
       let disposed = false;
-      let adopted: AgentAdapterSession | undefined;
+      let adopted: AgentAdapterBinding | undefined;
       return {
         sessionId,
         launch: {
@@ -134,17 +145,23 @@ function preparableProvider(
           hooks.adoptCount += 1;
           await hooks.adoptionGate;
           if (adopted) return adopted;
-          const listeners = new Set<(event: AgentEventEnvelope) => void>();
+          const listeners = new Set<(event: AdapterEventCandidate) => void>();
           adopted = {
             sessionId,
             runtimeSessionId,
             observationLevel: () => 'structured',
-            onEvent(listener) {
-              listeners.add(listener);
-              return () => listeners.delete(listener);
+            events: {
+              onCandidate(listener) {
+                listeners.add(listener);
+                return () => listeners.delete(listener);
+              },
             },
-            async submitPrompt() {
-              return { status: 'confirmed', turnId: `${kind}-turn` };
+            services: {
+              prompt: {
+                async submit() {
+                  return { status: 'confirmed', turnId: `${kind}-turn` };
+                },
+              },
             },
             async dispose() {
               if (disposed) return;
@@ -168,29 +185,35 @@ function sessionHarness(
   sessionId: string,
   runtimeSessionId: string,
 ): {
-  session: AgentAdapterSession;
+  session: AgentAdapterBinding;
   emit: (event: AgentEventEnvelope) => void;
 } {
-  const listeners = new Set<(event: AgentEventEnvelope) => void>();
+  const listeners = new Set<(event: AdapterEventCandidate) => void>();
   return {
     session: {
       sessionId,
       runtimeSessionId,
       observationLevel: () => 'structured',
-      onEvent(listener) {
-        listeners.add(listener);
-        return () => listeners.delete(listener);
+      events: {
+        onCandidate(listener) {
+          listeners.add(listener);
+          return () => listeners.delete(listener);
+        },
       },
-      async submitPrompt() {
-        return { status: 'confirmed' };
+      services: {
+        prompt: {
+          async submit() {
+            return { status: 'confirmed' };
+          },
+        },
       },
       async dispose() {},
     },
-    emit: (event) => listeners.forEach((listener) => listener(event)),
+    emit: (event) => listeners.forEach((listener) => listener(candidateFromEnvelope(event))),
   };
 }
 
-function standaloneSession(sessionId: string, runtimeSessionId: string): AgentAdapterSession {
+function standaloneSession(sessionId: string, runtimeSessionId: string): AgentAdapterBinding {
   return sessionHarness(sessionId, runtimeSessionId).session;
 }
 
@@ -287,15 +310,18 @@ describe('createAgentRuntime', () => {
           sessionId: 'candidate-native-1',
           runtimeSessionId: 'candidate-runtime-1',
           observationLevel: () => 'structured',
-          onEventCandidate(listener) {
-            candidateListeners.add(listener);
-            return () => candidateListeners.delete(listener);
+          events: {
+            onCandidate(listener) {
+              candidateListeners.add(listener);
+              return () => candidateListeners.delete(listener);
+            },
           },
-          onEvent() {
-            throw new Error('runtime should prefer candidate ingress');
-          },
-          async submitPrompt() {
-            return { status: 'confirmed' as const };
+          services: {
+            prompt: {
+              async submit() {
+                return { status: 'confirmed' as const };
+              },
+            },
           },
           async dispose() {},
         };
@@ -352,44 +378,6 @@ describe('createAgentRuntime', () => {
     expect(delivered[0]!.sequence).not.toBe(999);
     expect(errors.some((error) => error.message.includes('invalid candidate metadata'))).toBe(true);
     expect(errors.some((error) => error.message.includes('Adapter emitted invalid context-window:updated'))).toBe(true);
-    await runtime.dispose();
-  });
-
-  it('applies the same strict ingress validation to legacy envelope adapters', async () => {
-    const root = await mkdtemp(join(tmpdir(), 'puppeteer-runtime-legacy-ingress-'));
-    const handles = new Map<string, { emit: (event: AgentEventEnvelope) => void }>();
-    const errors: Error[] = [];
-    const runtime = createAgentRuntime({
-      host,
-      defaultCwd: root,
-      providers: [fakeProvider('legacy', handles)],
-      onError: (error) => errors.push(error),
-    });
-    const spawned = await runtime.spawn({ agent: 'legacy', cwd: root });
-    if ('error' in spawned) throw new Error(spawned.error.message);
-    const delivered: AgentEventEnvelope[] = [];
-    spawned.on('*', (envelope) => delivered.push(envelope));
-    const source = handles.get(spawned.terminalSessionId)!;
-
-    source.emit({
-      ...testEnvelope({ type: 'turn:started', turnId: 'bad-time' }),
-      timestamp: 'August 25, 2026',
-    });
-    source.emit({
-      ...testEnvelope({ type: 'turn:started', turnId: 'bad-category' }),
-      service: 'tool',
-    } as AgentEventEnvelope);
-    source.emit({
-      ...testEnvelope({ type: 'context-window:updated', usedTokens: 10, capacityTokens: 100 }),
-      event: { type: 'context-window:updated', usedTokens: 'invalid', capacityTokens: 100 },
-    } as unknown as AgentEventEnvelope);
-    source.emit(testEnvelope({ type: 'turn:started', turnId: 'valid' }));
-
-    expect(delivered).toHaveLength(1);
-    expect(delivered[0]).toMatchObject({ type: 'turn:started', event: { turnId: 'valid' } });
-    expect(errors.some((error) => error.message.includes('invalid candidate metadata'))).toBe(true);
-    expect(errors.some((error) => error.message.includes('mismatched legacy event category'))).toBe(true);
-    expect(errors.some((error) => error.message.includes('invalid context-window:updated'))).toBe(true);
     await runtime.dispose();
   });
 
@@ -566,12 +554,18 @@ describe('createAgentRuntime', () => {
           sessionId,
           runtimeSessionId,
           observationLevel: () => 'structured',
-          onEvent(listener) {
-            for (const envelope of replay) listener(envelope);
-            return () => undefined;
+          events: {
+            onCandidate(listener) {
+              for (const envelope of replay) listener(candidateFromEnvelope(envelope));
+              return () => undefined;
+            },
           },
-          async submitPrompt() {
-            return { status: 'confirmed' };
+          services: {
+            prompt: {
+              async submit() {
+                return { status: 'confirmed' };
+              },
+            },
           },
           async dispose() {},
         };
@@ -710,7 +704,6 @@ describe('createAgentRuntime', () => {
       defaultCwd: root,
       recorder,
       providers: [fakeProvider('one', handles)],
-      features: { agentMonitorStateV2: true },
     });
     const created = await runtime.createSession({ agent: 'one' });
     if ('error' in created) throw new Error('unexpected create failure');
@@ -2094,9 +2087,13 @@ describe('createAgentRuntime', () => {
           sessionId: 'monitor-clean-native',
           runtimeSessionId: 'monitor-clean-terminal',
           observationLevel: () => 'native-hooks',
-          onEvent: () => () => undefined,
-          async submitPrompt() {
-            return { status: 'confirmed' };
+          events: { onCandidate: () => () => undefined },
+          services: {
+            prompt: {
+              async submit() {
+                return { status: 'confirmed' };
+              },
+            },
           },
           async dispose() {
             timeline.push('resource:disposed');
@@ -2108,7 +2105,6 @@ describe('createAgentRuntime', () => {
       host,
       defaultCwd: root,
       providers: [provider],
-      features: { agentMonitorStateV2: true },
     });
     runtime.onMonitorState((state) => {
       if (!state.alive) timeline.push(`state:${state.status}`);
@@ -2143,7 +2139,6 @@ describe('createAgentRuntime', () => {
       host,
       defaultCwd: root,
       providers: [fakeProvider('monitor-host-exit', new Map())],
-      features: { agentMonitorStateV2: true },
     });
     const notices: string[] = [];
     runtime.onMonitorNotification((notice) => notices.push(notice.type));
@@ -2176,7 +2171,7 @@ describe('createAgentRuntime', () => {
       defaultCwd: root,
       recorder,
       providers: [fakeProvider('monitor-unclassified-exit', new Map())],
-      features: { agentMonitorStateV2: true, workspaceProvenanceV2: true },
+      features: { workspaceProvenanceV2: true },
     });
     const notices: string[] = [];
     runtime.onMonitorNotification((notice) => notices.push(notice.type));
@@ -2211,7 +2206,6 @@ describe('createAgentRuntime', () => {
       host,
       defaultCwd: root,
       providers: [fakeProvider('monitor-derived-crash', new Map())],
-      features: { agentMonitorStateV2: true },
     });
 
     const created = await runtime.createSession({ agent: 'monitor-derived-crash' });
@@ -2241,7 +2235,6 @@ describe('createAgentRuntime', () => {
       host,
       defaultCwd: root,
       providers: [fakeProvider('monitor-starting', handles)],
-      features: { agentMonitorStateV2: true },
     });
 
     const created = await runtime.createSession({ agent: 'monitor-starting' });
@@ -2276,9 +2269,13 @@ describe('createAgentRuntime', () => {
           sessionId: 'monitor-crash-native',
           runtimeSessionId: 'monitor-crash-terminal',
           observationLevel: () => 'terminal-only',
-          onEvent: () => () => undefined,
-          async submitPrompt() {
-            return { status: 'confirmed' };
+          events: { onCandidate: () => () => undefined },
+          services: {
+            prompt: {
+              async submit() {
+                return { status: 'confirmed' };
+              },
+            },
           },
           async dispose() {
             timeline.push('resource:disposed');
@@ -2290,7 +2287,6 @@ describe('createAgentRuntime', () => {
       host,
       defaultCwd: root,
       providers: [provider],
-      features: { agentMonitorStateV2: true },
     });
     runtime.onMonitorState((state) => {
       if (!state.alive) timeline.push(`state:${state.status}`);
@@ -2328,9 +2324,13 @@ describe('createAgentRuntime', () => {
           sessionId: `monitor-retention-native-${id}`,
           runtimeSessionId: `monitor-retention-terminal-${id}`,
           observationLevel: () => 'terminal-only',
-          onEvent: () => () => undefined,
-          async submitPrompt() {
-            return { status: 'confirmed' };
+          events: { onCandidate: () => () => undefined },
+          services: {
+            prompt: {
+              async submit() {
+                return { status: 'confirmed' };
+              },
+            },
           },
           async dispose() {},
         };
@@ -2341,7 +2341,6 @@ describe('createAgentRuntime', () => {
       host,
       defaultCwd: root,
       providers: [provider],
-      features: { agentMonitorStateV2: true },
       terminalFailureCapacity: 1,
     });
     runtime.onMonitorRemoved((runtimeRunId) => removed.push(runtimeRunId));
@@ -2367,7 +2366,7 @@ describe('createAgentRuntime', () => {
     const recordRoot = await mkdtemp(join(tmpdir(), 'puppeteer-runtime-monitor-artifact-record-'));
     const path = join(recordRoot, 'actions.jsonl');
     const recorder = createActionRecorder({ path });
-    const eventListeners = new Set<(envelope: AgentEventEnvelope) => void>();
+    const eventListeners = new Set<(candidate: AdapterEventCandidate) => void>();
     let eventSubscriptions = 0;
     let artifactReads = 0;
     const provider: AgentProvider = {
@@ -2377,22 +2376,30 @@ describe('createAgentRuntime', () => {
           sessionId: 'monitor-artifact-native',
           runtimeSessionId: 'monitor-artifact-terminal',
           observationLevel: () => 'native-log',
-          onEvent(listener) {
-            eventSubscriptions += 1;
-            eventListeners.add(listener);
-            return () => eventListeners.delete(listener);
+          events: {
+            onCandidate(listener) {
+              eventSubscriptions += 1;
+              eventListeners.add(listener);
+              return () => eventListeners.delete(listener);
+            },
           },
-          async readMonitorArtifact(artifactId) {
-            artifactReads += 1;
-            return {
-              status: 'ok',
-              artifact: { artifactId, family: 'workflow-definition', availability: 'readable' },
-              encoding: 'utf8',
-              content: 'private workflow body',
-            };
-          },
-          async submitPrompt() {
-            return { status: 'confirmed' };
+          services: {
+            prompt: {
+              async submit() {
+                return { status: 'confirmed' };
+              },
+            },
+            artifacts: {
+              async read(artifactId) {
+                artifactReads += 1;
+                return {
+                  status: 'ok' as const,
+                  artifact: { artifactId, family: 'workflow-definition' as const, availability: 'readable' as const },
+                  encoding: 'utf8' as const,
+                  content: 'private workflow body',
+                };
+              },
+            },
           },
           async dispose() {},
         };
@@ -2403,7 +2410,6 @@ describe('createAgentRuntime', () => {
       defaultCwd: root,
       providers: [provider],
       recorder,
-      features: { agentMonitorStateV2: true },
     });
     const created = await runtime.createSession({ agent: 'monitor-artifact' });
     if ('error' in created) throw new Error('unexpected create failure');
@@ -2448,7 +2454,7 @@ describe('createAgentRuntime', () => {
       { type: 'monitor:batch', batch: observation },
       { sessionId: 'monitor-artifact-native' },
     );
-    for (const listener of eventListeners) listener(semanticEnvelope);
+    for (const listener of eventListeners) listener(candidateFromEnvelope(semanticEnvelope));
 
     await expect(runtime.readMonitorArtifact(created.runtimeRunId, '/tmp/not-an-opaque-id')).resolves.toMatchObject({
       status: 'unavailable',
@@ -2477,17 +2483,25 @@ describe('createAgentRuntime', () => {
     await runtime.dispose();
   });
 
-  it('keeps the v1-only behavior when monitor v2 is disabled', async () => {
-    const root = await mkdtemp(join(tmpdir(), 'puppeteer-runtime-monitor-disabled-'));
+  it('makes the three-state monitor an invariant of every live Agent', async () => {
+    const root = await mkdtemp(join(tmpdir(), 'puppeteer-runtime-monitor-invariant-'));
     const runtime = createAgentRuntime({
       host,
       defaultCwd: root,
-      providers: [fakeProvider('monitor-disabled', new Map())],
+      providers: [fakeProvider('monitor-invariant', new Map())],
+      features: { agentMonitorStateV2: false },
     });
-    const created = await runtime.createSession({ agent: 'monitor-disabled' });
+    const created = await runtime.createSession({ agent: 'monitor-invariant' });
     if ('error' in created) throw new Error('unexpected create failure');
-    expect(runtime.monitorState(created.runtimeRunId)).toBeUndefined();
-    expect(() => runtime.observeMonitor(created.runtimeRunId)).toThrow('monitor not found or disabled');
+    const agent = runtime.agent(created.runtimeRunId);
+    expect(agent).toBeDefined();
+    expect(agent?.monitor).toBe(runtime.monitorState(created.runtimeRunId));
+    expect(agent?.status).toBe(agent?.monitor.status);
+    expect(agent?.alive).toBe(true);
+    expect(agent?.lifecycle).toBe(agent?.state.lifecycle);
+    const handle = agent!.observeMonitor();
+    await expect(handle.ready).resolves.toBe(agent?.monitor);
+    await handle.close();
     await runtime.dispose();
   });
 
@@ -2498,7 +2512,6 @@ describe('createAgentRuntime', () => {
       host,
       defaultCwd: root,
       providers: [],
-      features: { agentMonitorStateV2: true },
     });
     runtime.onMonitorState((state) => states.push({ status: state.status, alive: state.alive }));
 

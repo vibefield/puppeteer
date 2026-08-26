@@ -5,7 +5,7 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import {
   type AgentEvent,
-  type AgentAdapterSession,
+  type AgentAdapterBinding,
   type AgentTuiSessionOptions,
   type TerminalSpec,
 } from '@vibecook/puppeteer-core';
@@ -36,7 +36,7 @@ export interface CreateHermesTuiSessionOptions extends AgentTuiSessionOptions {
   promptConfirmationTimeoutMs?: number;
 }
 
-export interface HermesTuiSession extends AgentAdapterSession {
+export interface HermesTuiSession extends AgentAdapterBinding {
   gatewayUrl(): string | undefined;
   liveSessionId(): string | undefined;
   storedSessionId(): string | undefined;
@@ -266,16 +266,18 @@ export async function prepareHermesTuiSession(
           gatewayUrl: () => gatewayUrl,
           liveSessionId: () => liveSessionId,
           storedSessionId: () => storedSessionId,
-          onEventCandidate(listener) {
-            if (sessionDisposed) return () => undefined;
-            return events.onCandidate(listener);
+          events: {
+            onCandidate(listener) {
+              if (sessionDisposed) return () => undefined;
+              return events.onCandidate(listener);
+            },
           },
-          onEvent(listener) {
-            if (sessionDisposed) return () => undefined;
-            return events.onEvent(listener);
-          },
-          submitPrompt(submission) {
-            return prompts.submit(submission);
+          services: {
+            prompt: {
+              submit(submission) {
+                return prompts.submit(submission);
+              },
+            },
           },
           async dispose() {
             if (sessionDisposed) return;

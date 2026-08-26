@@ -18,7 +18,7 @@ import { tmpdir } from 'node:os';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { afterEach, describe, expect, it } from 'vitest';
-import type { AgentEventEnvelope } from '@vibecook/puppeteer-core';
+import type { AdapterEventCandidate } from '@vibecook/puppeteer-core';
 import { createClaudeSession, type ClaudeSession } from '@vibecook/puppeteer-adapter-claude';
 import { projectAgentSession, type TestAgentProjection } from '@vibecook/puppeteer-testing';
 import { runAgentSessionConformance, type AgentSessionHarness } from '@vibecook/puppeteer-testing/conformance';
@@ -173,13 +173,13 @@ async function imposterHarness(
       // Match the confirmed receipt and exclude replay traffic so the shared
       // conformance assertion observes the state of this turn, not its history.
       const completedTurnIds = new Set<string | undefined>();
-      const off = session.onEvent((envelope: AgentEventEnvelope) => {
+      const off = session.events.onCandidate((envelope: AdapterEventCandidate) => {
         if (!envelope.replay && envelope.event.type === 'turn:completed') {
           completedTurnIds.add(envelope.event.turnId);
         }
       });
       try {
-        const receipt = await session.submitPrompt({ text: prompt });
+        const receipt = await session.services.prompt.submit({ text: prompt });
         if (receipt.status !== 'confirmed') {
           throw new Error(`expected confirmed prompt receipt, got ${receipt.status}: ${receipt.reason ?? ''}`);
         }
@@ -209,8 +209,8 @@ describe('claude imposter channels', () => {
 
   it('delivers transcript-sourced assistant messages, kept out of the real ~/.claude', async () => {
     const harness = await imposterHarness();
-    const messages: AgentEventEnvelope[] = [];
-    harness.session.onEvent((envelope) => {
+    const messages: AdapterEventCandidate[] = [];
+    harness.session.events.onCandidate((envelope) => {
       if (envelope.event.type === 'conversation:assistant-message') messages.push(envelope);
     });
     try {

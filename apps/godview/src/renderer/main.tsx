@@ -554,15 +554,12 @@ function Godview() {
         {godviewMonitorV2 && notifications.length ? (
           <div className="godview-monitor-feed" aria-live="polite" aria-label="Agent monitor notifications">
             {notifications.map((message) => (
-              <div
-                className="godview-monitor-notice"
-                key={`${message.runtimeRunId}:${message.notification.notificationId}`}
-              >
-                <span>{message.notification.summary ?? message.notification.type}</span>
+              <div className="godview-monitor-notice" key={`${message.runtimeRunId}:${message.notificationId}`}>
+                <span>{message.summary ?? message.type}</span>
                 <button
                   type="button"
                   aria-label="Dismiss notification"
-                  onClick={() => dismissNotification(message.runtimeRunId, message.notification.notificationId)}
+                  onClick={() => dismissNotification(message.runtimeRunId, message.notificationId)}
                 >
                   ×
                 </button>

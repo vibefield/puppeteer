@@ -22,7 +22,7 @@ describe('AgentStateService', () => {
     const monitorOnly = {
       ...envelope({ type: 'session:ready' }),
       type: 'monitor:batch',
-      service: 'monitor',
+      category: 'monitor',
     } as unknown as AgentEventEnvelope;
     service.consume(monitorOnly);
 

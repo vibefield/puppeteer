@@ -90,7 +90,7 @@ describe.skipIf(!live || process.platform !== 'darwin')('Grok native composition
       expect(launches[0]?.args).toEqual(expect.arrayContaining(['--leader', '--resume', originalId]));
       expect(session.observationLevel()).toBe('native-log');
 
-      const receipt = await session.submitPrompt({
+      const receipt = await session.services.prompt.submit({
         text: 'Reply with exactly the single word: pong. Do not use any tools.',
       });
       expect(receipt.status).toBe('confirmed');

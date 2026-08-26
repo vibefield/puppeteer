@@ -1,7 +1,6 @@
 import type { BuiltinAgentRuntime } from './types.js';
 import { createBuiltinProviders, type BuiltinProviderOptions } from './providers.js';
-import { createAgentRuntime } from './runtime.js';
-import type { AgentRuntimeOptions } from './types.js';
+import { createAgentRuntime, type AgentRuntimeOptions } from '@vibecook/puppeteer-runtime';
 
 export interface BuiltinAgentRuntimeOptions extends Omit<AgentRuntimeOptions, 'providers'> {
   executables?: BuiltinProviderOptions['executables'];

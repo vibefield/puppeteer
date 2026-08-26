@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { agentEventService, agentServiceEventType, type AgentEvent, type AgentEventEnvelope } from '../events.js';
+import { agentEventCategory, agentEventType, type AgentEvent, type AgentEventEnvelope } from '../events.js';
 import type { MonitorFamilyUpdate, RuntimeMonitorObservationBatch } from './internal-types.js';
 import { projectAgentMonitorState } from './project.js';
 import { createMonitorAccumulatorState, reduceMonitorAccumulator, translateAgentEventEnvelope } from './reduce.js';
@@ -23,8 +23,8 @@ function runtime(
   confidence: AgentEventEnvelope['confidence'] = 'authoritative',
 ) {
   const envelope: AgentEventEnvelope = {
-    type: agentServiceEventType(event),
-    service: agentEventService(event),
+    type: agentEventType(event),
+    category: agentEventCategory(event),
     eventId: `event-${sequence}`,
     sequence,
     sessionId: 'session-1',

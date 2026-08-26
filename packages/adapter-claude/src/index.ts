@@ -30,5 +30,5 @@ export {
   onClaudeAccountUsage,
   type FetchClaudeAccountUsageOptions,
 } from './observation/account-usage.js';
-export * from './launch/prompt.js';
+export * from './services/prompt.js';
 export * from './driver.js';

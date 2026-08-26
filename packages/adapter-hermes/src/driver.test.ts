@@ -28,7 +28,7 @@ describe('Hermes TUI session driver', () => {
       expect(session.sessionId).toMatch(/^20260812_/);
       expect(session.observationLevel()).toBe('structured');
       expect(projection.state.lifecycle).toBe('ready');
-      const receipt = await session.submitPrompt({ text: 'hello' });
+      const receipt = await session.services.prompt.submit({ text: 'hello' });
       expect(receipt.status).toBe('confirmed');
       await new Promise((resolve) => setTimeout(resolve, 0));
       expect(projection.state.lastAssistantMessage).toBe('SURFACE_HERMES_OK');
@@ -64,10 +64,10 @@ describe('Hermes TUI session driver', () => {
       transport: new FakeHermesGateway({ reply: 'candidate reply' }),
     });
     const candidates: AdapterEventCandidate[] = [];
-    expect(session.onEventCandidate).toBeTypeOf('function');
-    const off = session.onEventCandidate!((candidate) => candidates.push(candidate));
+    expect(session.events.onCandidate).toBeTypeOf('function');
+    const off = session.events.onCandidate!((candidate) => candidates.push(candidate));
     try {
-      await session.submitPrompt({ text: 'hello' });
+      await session.services.prompt.submit({ text: 'hello' });
       await new Promise((resolve) => setTimeout(resolve, 0));
       const assistant = candidates.find(({ type }) => type === 'conversation:assistant-message');
       expect(assistant?.event.type).toBe('conversation:assistant-message');
@@ -88,7 +88,9 @@ describe('Hermes TUI session driver', () => {
       transport: new FakeHermesGateway(),
     });
     try {
-      expect(await session.submitPrompt({ text: 'x', mode: 'paste-only' })).toMatchObject({ status: 'rejected' });
+      expect(await session.services.prompt.submit({ text: 'x', mode: 'paste-only' })).toMatchObject({
+        status: 'rejected',
+      });
       expect(session).not.toHaveProperty('replyPermission');
     } finally {
       await session.dispose();
@@ -105,7 +107,7 @@ describe('Hermes TUI session driver', () => {
     const projection = projectAgentSession(session);
     const batches = projection.monitorBatches;
     const events: string[] = [];
-    const offEvent = session.onEvent(({ event }) => events.push(event.type));
+    const offEvent = session.events.onCandidate(({ event }) => events.push(event.type));
     try {
       expect(batches.length).toBeGreaterThan(1);
       expect(batches.every(({ phase }) => phase === 'bootstrap')).toBe(true);
@@ -113,7 +115,7 @@ describe('Hermes TUI session driver', () => {
         expect.arrayContaining(['status', 'usage', 'context', 'model', 'effort', 'mode', 'planning', 'delegation']),
       );
 
-      const receipt = await session.submitPrompt({ text: 'observe this' });
+      const receipt = await session.services.prompt.submit({ text: 'observe this' });
       expect(receipt.status).toBe('confirmed');
       await new Promise((resolve) => setTimeout(resolve, 0));
       expect(

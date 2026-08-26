@@ -1,24 +1,29 @@
 import {
-  AgentEventBus,
-  type AgentAdapterSession,
+  type AgentAdapterBinding,
   type AgentEventEnvelope,
   type AgentEventListener,
   type AgentEventSelector,
   type AgentEnvelopeForSelector,
+  type AgentMonitorHandle,
+  type AgentMonitorState,
+  type AgentMonitorStatus,
+  type MonitorArtifactReadResult,
   type ObservationLevel,
   type PromptReceipt,
   type PromptSubmission,
+  type SessionLifecycle,
   type SessionRuntimeState,
 } from '@vibecook/puppeteer-core';
+import { AgentEventBus } from './event-bus.js';
 import { AgentConversationService, type AgentConversationSnapshot } from './services/conversation-service.js';
 import type { AgentMonitorService } from './services/monitor-service.js';
 import { AgentStateService } from './services/state-service.js';
 import type { AgentSessionInfo, RuntimeAgentEventEnvelope } from './types.js';
 
 export interface AgentOptions {
-  adapter: AgentAdapterSession;
+  adapter: AgentAdapterBinding;
   info: AgentSessionInfo;
-  monitor?: AgentMonitorService;
+  monitor: AgentMonitorService;
   onListenerError?: (error: unknown, envelope: AgentEventEnvelope) => void;
 }
 
@@ -30,12 +35,12 @@ export interface AgentIngestResult {
 const RUNTIME_AGENT_CONSTRUCTOR = Symbol('puppeteer.runtime-agent-constructor');
 
 interface AgentInternals {
-  adapter: AgentAdapterSession;
+  adapter: AgentAdapterBinding;
   info: AgentSessionInfo;
   events: AgentEventBus;
   state: AgentStateService;
   conversation: AgentConversationService;
-  monitor?: AgentMonitorService;
+  monitor: AgentMonitorService;
   disposed: boolean;
 }
 
@@ -99,6 +104,26 @@ export class Agent {
     return internals(this).state.snapshot();
   }
 
+  /** Detailed process/session lifecycle; orthogonal to the three-state operational status. */
+  get lifecycle(): SessionLifecycle {
+    return internals(this).state.currentState().lifecycle;
+  }
+
+  /** Host-owned process liveness. Adapter observation loss never changes this value by itself. */
+  get alive(): boolean {
+    return internals(this).monitor.current().alive;
+  }
+
+  /** Product-facing state machine derived from normalized evidence: idle, working, or blocked. */
+  get status(): AgentMonitorStatus {
+    return internals(this).monitor.current().status;
+  }
+
+  /** Immutable, renderer-safe monitor snapshot for this run. */
+  get monitor(): AgentMonitorState {
+    return internals(this).monitor.current();
+  }
+
   get conversation(): AgentConversationSnapshot {
     return internals(this).conversation.snapshot();
   }
@@ -115,7 +140,19 @@ export class Agent {
   }
 
   submitPrompt(submission: PromptSubmission): Promise<PromptReceipt> {
-    return internals(this).adapter.submitPrompt(submission);
+    return internals(this).adapter.services.prompt.submit(submission);
+  }
+
+  observeMonitor(): AgentMonitorHandle {
+    return internals(this).monitor.observe();
+  }
+
+  readMonitorArtifact(artifactId: string, options?: { maxBytes?: number }): Promise<MonitorArtifactReadResult> {
+    return internals(this).monitor.readArtifact(artifactId, options);
+  }
+
+  acknowledgeFailureBlocker(blockerId: string): boolean {
+    return internals(this).monitor.acknowledgeFailure(blockerId);
   }
 }
 
@@ -143,7 +180,7 @@ export function createAgentController(options: AgentOptions): AgentController {
       const internal = internals(agent);
       const previousState = internal.state.currentState();
       if (acceptOptions.projectMonitor !== false) {
-        internal.monitor?.consume(envelope, { hostProcessEvidence: acceptOptions.hostProcessEvidence });
+        internal.monitor.consume(envelope, { hostProcessEvidence: acceptOptions.hostProcessEvidence });
       }
       if (acceptOptions.projectState !== false) internal.state.consume(envelope);
       if (acceptOptions.projectConversation !== false) internal.conversation.consume(envelope);

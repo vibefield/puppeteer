@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { agentEventService, agentServiceEventType, type AgentEventEnvelope } from '../events.js';
+import { agentEventCategory, agentEventType, type AgentEventEnvelope } from '../events.js';
 import type { MonitorFamilyUpdate, RuntimeMonitorObservationBatch } from './internal-types.js';
 import { createMonitorAccumulatorState, reduceMonitorAccumulator, translateAgentEventEnvelope } from './reduce.js';
 import { projectAgentMonitorState } from './project.js';
@@ -50,8 +50,8 @@ function runtimeEnvelope(
     runtimeRunId: 'run-1',
     runtimeEpoch: 1,
     envelope: {
-      type: agentServiceEventType(event),
-      service: agentEventService(event),
+      type: agentEventType(event),
+      category: agentEventCategory(event),
       eventId: `event-${sequence}`,
       sequence,
       sessionId: 'session-1',

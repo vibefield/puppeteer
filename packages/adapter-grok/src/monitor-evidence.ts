@@ -1,7 +1,7 @@
 /** Grok native-store and ACP facts projected onto the monitor SPI. */
 
 import { randomUUID } from 'node:crypto';
-import type { ActorRunRef, AgentEventEnvelope, MonitorMetricFamily } from '@vibecook/puppeteer-core';
+import type { ActorRunRef, AdapterEventCandidate, AgentEvent, MonitorMetricFamily } from '@vibecook/puppeteer-core';
 import type {
   AdapterMonitorObservationBatch,
   EvidenceRef,
@@ -340,19 +340,20 @@ export class GrokMonitorEvidence {
     );
   }
 
-  controlEnvelopeBatch(envelope: AgentEventEnvelope): AdapterMonitorObservationBatch | null {
-    const replay = envelope.replay === true || rec(nestedUpdate(envelope.nativeEvent)?.params._meta)?.isReplay === true;
+  controlCandidateBatch(candidate: AdapterEventCandidate): AdapterMonitorObservationBatch | null {
+    const replay =
+      candidate.replay === true || rec(nestedUpdate(candidate.nativeEvent)?.params._meta)?.isReplay === true;
     return this.eventBatch(
-      envelope.event,
-      envelope.nativeEvent,
-      envelope.timestamp,
+      candidate.event,
+      candidate.nativeEvent,
+      candidate.timestamp,
       replay ? 'bootstrap' : 'live',
-      envelope.promptId ?? envelope.turnId,
+      candidate.promptId ?? candidate.turnId,
     );
   }
 
   private eventBatch(
-    event: AgentEventEnvelope['event'],
+    event: AgentEvent,
     nativeEvent: unknown,
     observedAt: string,
     phase: 'bootstrap' | 'live',

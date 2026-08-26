@@ -1,4 +1,4 @@
-import type { AgentAdapterSession, TerminalSpec } from '@vibecook/puppeteer-core';
+import type { AgentAdapterBinding, TerminalSpec } from '@vibecook/puppeteer-core';
 import type { GrokConfiguredIntent } from '../monitor-evidence.js';
 import type { GrokSessionObserver } from '../session-observer.js';
 import type { PreparedGrokSession } from '../types.js';
@@ -8,19 +8,19 @@ import { createPendingControlSession } from './control-session.js';
 export function createPreparedGrokSession(
   sessionId: string,
   launch: TerminalSpec,
-  attach: () => AgentAdapterSession | Promise<AgentAdapterSession>,
+  attach: () => AgentAdapterBinding | Promise<AgentAdapterBinding>,
   disposeUnadopted?: () => void | Promise<void>,
   observe?: () => GrokSessionObserver,
   configured: GrokConfiguredIntent = {},
 ): PreparedGrokSession {
   let adoptedRuntimeSessionId: string | undefined;
-  let adoptedSession: AgentAdapterSession | undefined;
+  let adoptedSession: AgentAdapterBinding | undefined;
   let disposed = false;
 
   return {
     sessionId,
     launch,
-    async adopt(runtimeSessionId): Promise<AgentAdapterSession> {
+    async adopt(runtimeSessionId): Promise<AgentAdapterBinding> {
       if (disposed) throw new Error('prepared Grok session is disposed');
       if (adoptedRuntimeSessionId && adoptedRuntimeSessionId !== runtimeSessionId) {
         throw new Error(`prepared Grok session is already adopted by ${adoptedRuntimeSessionId}`);

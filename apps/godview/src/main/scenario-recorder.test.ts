@@ -9,7 +9,7 @@ function envelope(
 ): AgentEventEnvelope {
   return {
     type: 'adapter:native-event',
-    service: 'adapter',
+    category: 'adapter',
     sequence: monotonicTime + 1,
     sessionId: 'real-session',
     timestamp: '2026-08-10T00:00:00.000Z',

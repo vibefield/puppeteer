@@ -6,7 +6,7 @@ import { tmpdir } from 'node:os';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { afterEach } from 'vitest';
-import type { AgentEventEnvelope, AgentHost } from '@vibecook/puppeteer-core';
+import type { AdapterEventCandidate, AgentHost } from '@vibecook/puppeteer-core';
 import { createKimiTuiSession, type KimiTuiSession } from '@vibecook/puppeteer-adapter-kimi';
 import { projectAgentSession, type TestAgentProjection } from '@vibecook/puppeteer-testing';
 import { runAgentSessionConformance, type AgentSessionHarness } from '@vibecook/puppeteer-testing/conformance';
@@ -131,11 +131,11 @@ async function kimiImposterHarness(
     },
     driveTurn: async (prompt) => {
       let completed = false;
-      const off = session.onEvent((envelope: AgentEventEnvelope) => {
+      const off = session.events.onCandidate((envelope: AdapterEventCandidate) => {
         if (!envelope.replay && envelope.event.type === 'turn:completed') completed = true;
       });
       try {
-        const receipt = await session.submitPrompt({ text: prompt });
+        const receipt = await session.services.prompt.submit({ text: prompt });
         if (receipt.status !== 'confirmed') {
           throw new Error(`expected confirmed Kimi prompt receipt, got ${receipt.status}: ${receipt.reason}`);
         }

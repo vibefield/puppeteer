@@ -1,6 +1,6 @@
 import type {
   AgentMonitorState,
-  AgentAdapterSession,
+  AgentAdapterBinding,
   MonitorArtifactReadResult,
   MonitorNotification,
   ObservationLevel,
@@ -105,14 +105,20 @@ function semanticSession(
     sessionId: 'native-1',
     runtimeSessionId: 'terminal-1',
     observationLevel: options.observationLevel ?? (() => 'native-log' as const),
-    async readMonitorArtifact(artifactId: string, readOptions: { maxBytes: number }) {
-      reads += 1;
-      return options.onRead?.(artifactId, readOptions.maxBytes) ?? Promise.resolve({ status: 'unavailable' as const });
+    events: { onCandidate: () => () => undefined },
+    services: {
+      prompt: { submit: async () => ({ status: 'confirmed' as const }) },
+      artifacts: {
+        async read(artifactId: string, readOptions: { maxBytes: number }) {
+          reads += 1;
+          return (
+            options.onRead?.(artifactId, readOptions.maxBytes) ?? Promise.resolve({ status: 'unavailable' as const })
+          );
+        },
+      },
     },
-    onEvent: () => () => undefined,
-    submitPrompt: async () => ({ status: 'confirmed' as const }),
     dispose: async () => undefined,
-  } satisfies AgentAdapterSession;
+  } satisfies AgentAdapterBinding;
   return {
     session,
     reads: () => reads,
@@ -327,7 +333,7 @@ describe('AgentMonitorService', () => {
     monitor.updateRun('running', { alive: true });
     const envelope = {
       type: 'process:exited' as const,
-      service: 'process' as const,
+      category: 'process' as const,
       eventId: 'exit-1',
       runtimeRunId: 'run-1',
       runtimeEpoch: 1,

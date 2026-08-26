@@ -14,7 +14,7 @@
  */
 
 import { describe, it, expect } from 'vitest';
-import { type AgentAdapterSession, type MonitorMetricFamily, type ObservationLevel } from '@vibecook/puppeteer-core';
+import { type AgentAdapterBinding, type MonitorMetricFamily, type ObservationLevel } from '@vibecook/puppeteer-core';
 import { projectAgentSession, type TestAgentProjection } from './session-projection.js';
 
 const OBSERVATION_LEVELS: ObservationLevel[] = [
@@ -35,7 +35,7 @@ async function waitForProjection(predicate: () => boolean, label: string, timeou
 }
 
 export interface AgentSessionHarness {
-  session: AgentAdapterSession;
+  session: AgentAdapterBinding;
   /** Reuse a projection attached by a harness that must await adapter startup. */
   projection?: TestAgentProjection;
   /** Drive one full user turn; resolves when the turn is observably complete. */
@@ -114,7 +114,7 @@ export function runAgentSessionConformance(label: string, createHarness: () => P
       }
     });
 
-    it('stamps observed events with strictly increasing sequence numbers', async () => {
+    it('can be consumed in strictly increasing delivery order', async () => {
       const h = await createHarness();
       const projection = projectionFor(h);
       try {
@@ -193,7 +193,7 @@ const MONITOR_FAMILIES: MonitorMetricFamily[] = [
 ];
 
 export interface AgentMonitorSessionHarness {
-  session: AgentAdapterSession;
+  session: AgentAdapterBinding;
   /** Simulate loss of only the adapter's structured observation/control rail. */
   closeObservationRail(): void | Promise<void>;
 }

@@ -4,7 +4,6 @@ import {
   createAdapterEventCandidate,
   type AdapterEventCandidate,
   type AgentEvent,
-  type AgentEventEnvelope,
 } from '@vibecook/puppeteer-core';
 import type { OpenCodeNormalizedEvent } from '../normalizer.js';
 
@@ -40,10 +39,6 @@ export class OpenCodeEventSource {
 
   onCandidate(listener: (candidate: AdapterEventCandidate) => void): () => void {
     return this.source.onCandidate(listener);
-  }
-
-  onEvent(listener: (envelope: AgentEventEnvelope) => void): () => void {
-    return this.source.onEvent(listener);
   }
 
   close(): void {

@@ -3,7 +3,7 @@ import type {
   AgentExecutionMode,
   AgentMonitorHandle,
   AgentMonitorState,
-  AgentAdapterSession,
+  AgentAdapterBinding,
   MonitorArtifactReadResult,
   MonitorNotification,
   NativeSessionRef,
@@ -128,7 +128,7 @@ export class AgentMonitorService
   private rateTask: MonitorScheduledTask | undefined;
   private freshnessTask: MonitorScheduledTask | undefined;
   private readonly publishedFreshnessBoundaries = new Set<string>();
-  private artifactSession: AgentAdapterSession | undefined;
+  private artifactSession: AgentAdapterBinding | undefined;
   private runtimeInputSequence = 0;
   private started = false;
   private frozen = false;
@@ -231,7 +231,7 @@ export class AgentMonitorService
     this.scheduleFlush();
   }
 
-  attachSession(session: AgentAdapterSession): void {
+  attachSession(session: AgentAdapterBinding): void {
     if (this.closed || this.frozen) return;
     this.detachSession();
     this.artifactSession = session;
@@ -397,7 +397,8 @@ export class AgentMonitorService
         message: 'artifact is not available for this run',
       };
     }
-    if (reference.availability !== 'readable' || !this.artifactSession?.readMonitorArtifact) {
+    const artifactService = this.artifactSession?.services.artifacts;
+    if (reference.availability !== 'readable' || !artifactService) {
       return this.auditedArtifactResult(artifactId, requested, {
         status: 'unavailable',
         artifact: reference,
@@ -410,7 +411,7 @@ export class AgentMonitorService
 
     let result: MonitorArtifactReadResult;
     try {
-      result = await this.artifactSession.readMonitorArtifact(artifactId, { maxBytes: requested });
+      result = await artifactService.read(artifactId, { maxBytes: requested });
     } catch (error) {
       this.report(error);
       result = { status: 'unavailable', artifact: reference, message: 'artifact read failed' };

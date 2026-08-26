@@ -4,10 +4,10 @@ import type { SessionSummary } from '@vibecook/ghosttea-protocol';
 import type {
   AdoptPreparedSessionResult,
   AgentRuntime,
-  BuiltinExecutableAgentKind,
   CreateAgentSessionOptions,
   PreparedAgentSessionInfo,
 } from '@vibecook/puppeteer-runtime';
+import type { BuiltinExecutableAgentKind } from '@vibecook/puppeteer-builtin-providers';
 
 const MAX_REQUEST_BYTES = 64 * 1024;
 

@@ -1,5 +1,5 @@
 import type { CreateAcpSessionOptions } from '@vibecook/puppeteer-adapter-acp';
-import type { AgentAdapterSession, AgentHost, TerminalSpec } from '@vibecook/puppeteer-core';
+import type { AgentAdapterBinding, AgentHost, TerminalSpec } from '@vibecook/puppeteer-core';
 
 export interface CreateGrokBackendOptions {
   /** Grok executable (default `grok`). */
@@ -11,7 +11,7 @@ export interface CreateGrokBackendOptions {
 }
 
 export interface GrokBackend {
-  createSession(options: CreateGrokSessionOptions): Promise<AgentAdapterSession>;
+  createSession(options: CreateGrokSessionOptions): Promise<AgentAdapterBinding>;
   prepareSession(options: CreateGrokSessionOptions): Promise<PreparedGrokSession>;
   dispose(): void;
 }
@@ -31,6 +31,6 @@ export interface CreateGrokSessionOptions {
 export interface PreparedGrokSession {
   readonly sessionId: string;
   readonly launch: TerminalSpec;
-  adopt(runtimeSessionId: string): Promise<AgentAdapterSession>;
+  adopt(runtimeSessionId: string): Promise<AgentAdapterBinding>;
   dispose(): Promise<void>;
 }

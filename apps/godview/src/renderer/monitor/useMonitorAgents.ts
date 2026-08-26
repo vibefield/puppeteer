@@ -1,8 +1,9 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import type { GhostteaWorkspaceContext } from '@vibecook/ghosttea-react/workspace';
-import { isMonitorStateAfterRemoval, isNewerMonitorRevision } from '@vibecook/puppeteer-core';
+import type { MonitorNotification } from '@vibecook/puppeteer-core';
+import { createAgentMonitorStore } from '@vibecook/puppeteer-monitor';
+import { useAgentMonitorStore } from '@vibecook/puppeteer-react';
 import type {
-  AgentMonitorNotificationMessage,
   AgentMonitorRemovedMessage,
   AgentMonitorStateMessage,
   AgentSessionInfo,
@@ -29,7 +30,7 @@ export interface UseMonitorAgentsOptions {
 export interface MonitorAgentsResult {
   agents: readonly MonitorAgent[];
   actions: MonitorActions;
-  notifications: readonly AgentMonitorNotificationMessage[];
+  notifications: readonly MonitorNotification[];
   dismissNotification(runtimeRunId: string, notificationId: string): void;
   godviewMonitorV2: boolean;
 }
@@ -49,7 +50,8 @@ export function useMonitorAgents({
   const [records, setRecords] = useState(() => new Map<string, MonitorAgentRecord>());
   const [terminals, setTerminals] = useState<readonly MonitorTerminalRecord[]>([]);
   const [exitedTerminalIds, setExitedTerminalIds] = useState(() => new Set<string>());
-  const [notifications, setNotifications] = useState<AgentMonitorNotificationMessage[]>([]);
+  const [monitorStore] = useState(() => createAgentMonitorStore({ notificationCapacity: 4 }));
+  const monitorSnapshot = useAgentMonitorStore(monitorStore);
   const [monitorRendererV2, setMonitorRendererV2] = useState<boolean>();
   const [nowMs, setNowMs] = useState(Date.now());
 
@@ -60,10 +62,9 @@ export function useMonitorAgents({
     let publishFrame: number | undefined;
     const current = new Map<string, MonitorAgentRecord>();
     const monitorsByRun = new Map<string, AgentMonitorStateMessage>();
-    const monitorRemovals = new Map<string, AgentMonitorRemovedMessage>();
     const removed = new Set<string>();
     const pendingFinals = new Set<string>();
-    const pendingNotifications: AgentMonitorNotificationMessage[] = [];
+    const pendingNotifications: MonitorNotification[] = [];
     const publish = (): void => {
       if (publishFrame !== undefined) return;
       publishFrame = window.requestAnimationFrame(() => {
@@ -89,11 +90,7 @@ export function useMonitorAgents({
       publish();
     };
     const acceptMonitor = (message: AgentMonitorStateMessage): boolean => {
-      const removal = monitorRemovals.get(message.runtimeRunId);
-      if (removal && !isMonitorStateAfterRemoval(message.state, removal.runtimeEpoch)) return false;
-      const existing = monitorsByRun.get(message.runtimeRunId);
-      if (existing && !isNewerMonitorRevision(message.state, existing.state)) return false;
-      monitorRemovals.delete(message.runtimeRunId);
+      if (!monitorStore.acceptState(message.state)) return false;
       monitorsByRun.set(message.runtimeRunId, message);
       return true;
     };
@@ -110,7 +107,7 @@ export function useMonitorAgents({
       publish();
     };
     const removeMonitor = (message: AgentMonitorRemovedMessage): void => {
-      monitorRemovals.set(message.runtimeRunId, message);
+      if (!monitorStore.remove({ runtimeRunId: message.runtimeRunId, runtimeEpoch: message.runtimeEpoch })) return;
       monitorsByRun.delete(message.runtimeRunId);
       const terminalSessionId =
         message.terminalSessionId ??
@@ -127,20 +124,8 @@ export function useMonitorAgents({
         publish();
       }
     };
-    const publishNotification = (message: AgentMonitorNotificationMessage): void => {
-      if (!alive) return;
-      setNotifications((existing) => {
-        if (
-          existing.some(
-            (notice) =>
-              notice.runtimeRunId === message.runtimeRunId &&
-              notice.notification.notificationId === message.notification.notificationId,
-          )
-        ) {
-          return existing;
-        }
-        return [...existing.slice(-3), message];
-      });
+    const publishNotification = (notification: MonitorNotification): void => {
+      if (alive) monitorStore.acceptNotification(notification);
     };
 
     const unsubscribeSession = window.puppeteer.onAgentSession(remember);
@@ -154,9 +139,9 @@ export function useMonitorAgents({
     const unsubscribeMonitorRemoved = window.puppeteer.onAgentMonitorRemoved(removeMonitor);
     const unsubscribeMonitorNotification = window.puppeteer.onAgentMonitorNotification((message) => {
       if (!configurationReady) {
-        pendingNotifications.push(message);
+        pendingNotifications.push(message.notification);
         if (pendingNotifications.length > 4) pendingNotifications.shift();
-      } else if (rendererV2) publishNotification(message);
+      } else if (rendererV2) publishNotification(message.notification);
     });
 
     void (async () => {
@@ -212,6 +197,7 @@ export function useMonitorAgents({
       unsubscribeMonitorState();
       unsubscribeMonitorRemoved();
       unsubscribeMonitorNotification();
+      monitorStore.clear();
     };
   }, []);
 
@@ -306,18 +292,17 @@ export function useMonitorAgents({
 
   const actions = useMemo<MonitorActions>(() => ({ select, createAt }), [createAt, select]);
 
-  const dismissNotification = useCallback((runtimeRunId: string, notificationId: string): void => {
-    setNotifications((current) =>
-      current.filter(
-        (message) => message.runtimeRunId !== runtimeRunId || message.notification.notificationId !== notificationId,
-      ),
-    );
-  }, []);
+  const dismissNotification = useCallback(
+    (runtimeRunId: string, notificationId: string): void => {
+      monitorStore.dismissNotification(runtimeRunId, notificationId);
+    },
+    [monitorStore],
+  );
 
   return {
     agents,
     actions,
-    notifications,
+    notifications: monitorSnapshot.notifications,
     dismissNotification,
     godviewMonitorV2: monitorRendererV2 === true,
   };

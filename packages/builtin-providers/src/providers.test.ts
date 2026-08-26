@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import type { AgentAdapterSession, AgentHost } from '@vibecook/puppeteer-core';
+import type { AgentAdapterBinding, AgentHost } from '@vibecook/puppeteer-core';
 import type { AcpConnector } from '@vibecook/puppeteer-adapter-acp';
 import type { CreateClaudeSessionOptions } from '@vibecook/puppeteer-adapter-claude';
 
@@ -73,14 +73,18 @@ const host: AgentHost = {
   },
 };
 
-function fakeSession(kind: string): AgentAdapterSession {
+function fakeSession(kind: string): AgentAdapterBinding {
   return {
     sessionId: `${kind}-session`,
     runtimeSessionId: `${kind}-runtime`,
     observationLevel: () => 'structured',
-    onEvent: () => () => undefined,
-    async submitPrompt() {
-      return { status: 'confirmed' };
+    events: { onCandidate: () => () => undefined },
+    services: {
+      prompt: {
+        async submit() {
+          return { status: 'confirmed' };
+        },
+      },
     },
     async dispose() {},
   };

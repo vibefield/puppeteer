@@ -48,21 +48,21 @@ describe.skipIf(!live)('createCodexObserver (live, Model B)', () => {
       // retrying thread/resume can attach — a thread has no rollout before its
       // first user message.
       const turn1 = new Promise<void>((res) => {
-        const off = driver.onEvent((e) => {
+        const off = driver.events.onCandidate((e) => {
           if (e.event.type === 'turn:completed') {
             off();
             res();
           }
         });
       });
-      await driver.submitPrompt({ text: 'Reply with exactly the single word: ready.' });
+      await driver.services.prompt.submit({ text: 'Reply with exactly the single word: ready.' });
       await turn1;
       await attached;
       expect(observer.sessionId).toBe(driver.sessionId);
       expect(observer.observationLevel()).toBe('structured');
 
       // Turn 2 is observed live through the attached stream.
-      await driver.submitPrompt({
+      await driver.services.prompt.submit({
         text: 'Reply with exactly the single word: pong. Do not run any commands or use any tools.',
       });
       await waitFor(() => (projection.state.lastAssistantMessage ?? '').toLowerCase().includes('pong'), 60_000);

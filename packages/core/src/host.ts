@@ -49,7 +49,7 @@ export interface AgentHost {
 /**
  * The options every native-TUI session factory accepts. Each adapter's
  * `createXTuiSession` extends this with its own extras (executable, sandbox, …)
- * and returns an {@link AgentAdapterSession} whose `runtimeSessionId` is the terminal
+ * and returns an {@link AgentAdapterBinding} whose `runtimeSessionId` is the terminal
  * the host spawned or the caller adopted and whose `dispose()` tears down the
  * adapter's own backing services (observer, app-server, leader client).
  */

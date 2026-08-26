@@ -4,7 +4,6 @@ import type { AgentHost } from '@vibecook/puppeteer-core';
 const fakes = vi.hoisted(() => ({
   createObserver: vi.fn(),
   observerOnCandidate: vi.fn(() => () => undefined),
-  observerOnEvent: vi.fn(() => () => undefined),
   observerDispose: vi.fn(),
   serverDispose: vi.fn(),
   serverReady: vi.fn(),
@@ -52,8 +51,7 @@ describe('Codex TUI preparation', () => {
       sessionId: 'thread-1',
       observationLevel: () => 'structured',
       threadPath: () => '/tmp/thread.jsonl',
-      onEventCandidate: fakes.observerOnCandidate,
-      onEvent: fakes.observerOnEvent,
+      events: { onCandidate: fakes.observerOnCandidate },
       attachThread: vi.fn(),
       dispose: fakes.observerDispose,
     });
@@ -89,13 +87,11 @@ describe('Codex TUI preparation', () => {
     const first = await prepared.adopt('existing-pane');
     expect(first.runtimeSessionId).toBe('existing-pane');
     expect(await prepared.adopt('existing-pane')).toBe(first);
-    first.onEvent(() => undefined);
-    first.onEventCandidate?.(() => undefined);
-    expect(fakes.observerOnEvent).toHaveBeenCalledOnce();
+    first.events.onCandidate(() => undefined);
     expect(fakes.observerOnCandidate).toHaveBeenCalledOnce();
     await expect(prepared.adopt('other-pane')).rejects.toThrow('already adopted');
 
-    await first.submitPrompt({ text: 'hello' });
+    await first.services.prompt.submit({ text: 'hello' });
     expect(terminalHost.automateTerminal).toHaveBeenCalledWith('existing-pane', {
       kind: 'paste',
       text: 'hello',
@@ -130,8 +126,7 @@ describe('Codex TUI preparation', () => {
       },
       observationLevel: () => 'structured',
       threadPath: () => undefined,
-      onEventCandidate: fakes.observerOnCandidate,
-      onEvent: fakes.observerOnEvent,
+      events: { onCandidate: fakes.observerOnCandidate },
       attachThread,
       dispose: fakes.observerDispose,
     });

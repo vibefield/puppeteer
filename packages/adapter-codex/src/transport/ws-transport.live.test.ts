@@ -35,14 +35,14 @@ describe.skipIf(!live)('createCodexSession over WS-over-UDS (live app-server)', 
       expect(session.observationLevel()).toBe('structured');
       expect(session.threadPath()).toContain('.codex/sessions/');
 
-      const receipt = await session.submitPrompt({
+      const receipt = await session.services.prompt.submit({
         text: 'Reply with exactly the single word: pong. Do not run any commands or use any tools.',
       });
       expect(receipt.status).toBe('confirmed');
 
       await new Promise<void>((resolve, reject) => {
         const timer = setTimeout(() => reject(new Error('no turn:completed within 60s')), 60_000);
-        session.onEvent((e) => {
+        session.events.onCandidate((e) => {
           if (e.event.type === 'turn:completed' || e.event.type === 'turn:failed') {
             clearTimeout(timer);
             resolve();

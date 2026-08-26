@@ -363,7 +363,7 @@ describe('MonitorIpcRelay', () => {
     });
   });
 
-  it('removes a converged dead v1/v2 pair without a shadow mismatch', () => {
+  it('removes converged compatibility and monitor state without a shadow mismatch', () => {
     const reports: MonitorShadowMismatchReport[] = [];
     const relay = new MonitorIpcRelay({
       enabled: true,
@@ -378,7 +378,7 @@ describe('MonitorIpcRelay', () => {
     expect(reports).toEqual([]);
   });
 
-  it('is inert when monitor v2 is disabled', () => {
+  it('is inert when the presentation relay is disabled', () => {
     const onState = vi.fn();
     const relay = new MonitorIpcRelay({ enabled: false, onState });
     expect(relay.acceptState(monitorState())).toBe(false);

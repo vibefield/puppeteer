@@ -1,5 +1,8 @@
-import type { ComponentType } from 'react';
 import type { SessionSummary } from '@vibecook/ghosttea-protocol';
+import type {
+  AgentMonitorViewDefinition,
+  AgentMonitorViewProps as PortableAgentMonitorViewProps,
+} from '@vibecook/puppeteer-react';
 import type {
   AgentMonitorState,
   AgentMonitorTeamAggregate,
@@ -60,11 +63,7 @@ export interface MonitorActions {
   createAt(position?: { x: number; y: number }): void | Promise<void>;
 }
 
-export interface AgentMonitorProps {
-  agents: readonly MonitorAgent[];
-  parameters: MonitorParameters;
-  actions: MonitorActions;
-}
+export type AgentMonitorProps = PortableAgentMonitorViewProps<MonitorAgent, MonitorActions, MonitorParameters>;
 
 /**
  * A way of looking at the running agents. Adding one is a file plus a line in
@@ -75,9 +74,6 @@ export interface AgentMonitorProps {
  * workspace, or a terminal, which is what keeps it structurally unable to break
  * the invariant that semantics never come from terminal text (DESIGN ADR-003).
  */
-export interface AgentMonitorView {
-  readonly id: string;
-  readonly label: string;
+export interface AgentMonitorView extends AgentMonitorViewDefinition<MonitorAgent, MonitorActions, MonitorParameters> {
   readonly parameterGroups: readonly MonitorParameterGroup[];
-  readonly Component: ComponentType<AgentMonitorProps>;
 }

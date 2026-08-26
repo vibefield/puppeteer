@@ -9,35 +9,8 @@
  * (`createClaudeSession`, `createCodexSession`, and peers) implement these.
  */
 
-import type { AdapterEventCandidate } from './adapter/event-candidate.js';
-import type { AgentEventEnvelope, ObservationLevel } from './events.js';
-import type { MonitorArtifactReadResult } from './monitor/types.js';
-
-/**
- * A programmatic prompt submission (generalized from the Claude guarded
- * injector, DESIGN §17).
- */
-export interface PromptSubmission {
-  text: string;
-  /**
-   * Paste-and-submit (default) appends Enter; paste-only leaves it staged.
-   * Meaningful only to guarded-paste (native-TUI) injectors; structured drivers
-   * submit atomically and ignore it.
-   */
-  mode?: 'paste-and-submit' | 'paste-only';
-  confirmationTimeoutMs?: number;
-}
-
-/**
- * Outcome of a prompt submission. `uncertain` is first-class: a guarded-paste
- * injector cannot always prove the agent accepted exactly our text (DESIGN
- * §17). Structured drivers normally confirm through protocol correlation, but
- * still emit `uncertain` if that proof channel disappears after submission.
- */
-export type PromptReceipt =
-  | { status: 'confirmed'; turnId?: string }
-  | { status: 'rejected'; reason: string }
-  | { status: 'uncertain'; reason: string };
+import type { ObservationLevel } from './events.js';
+import type { AgentAdapterEventSource, AgentArtifactService, AgentPromptService } from './services/index.js';
 
 /**
  * The low-level handle every adapter returns for one live agent process/thread.
@@ -49,23 +22,25 @@ export type PromptReceipt =
  * `dispose()` tears down observation/control only. Adapters MAY extend the
  * handle with native diagnostics, but applications consume runtime Agent.
  */
-export interface AgentAdapterSession {
+export interface AgentAdapterBinding {
   /** Provider-native correlation id shared by its live and durable observation planes. */
   readonly sessionId: string;
   /** The host's id for the terminal session (attach/write/kill routing). */
   readonly runtimeSessionId: string;
   /** Honest, current observation level — never overstated (DESIGN §19.2). */
   observationLevel(): ObservationLevel;
-  /** Runtime-owned ingress. Adapters should implement this before removing legacy envelopes. */
-  onEventCandidate?(listener: (candidate: AdapterEventCandidate) => void): () => void;
-  /** @deprecated Adapters should emit candidates; applications consume runtime Agent envelopes. */
-  onEvent(listener: (envelope: AgentEventEnvelope) => void): () => void;
-  /** Optional resolution of adapter-issued opaque artifact references. */
-  readMonitorArtifact?(artifactId: string, options: { maxBytes: number }): Promise<MonitorArtifactReadResult>;
-  submitPrompt(submission: PromptSubmission): Promise<PromptReceipt>;
+  /** Unstamped normalized facts. Runtime is the only owner of validation and envelopes. */
+  readonly events: AgentAdapterEventSource;
+  /** Explicit upper-level capabilities; commands never travel inside event payloads. */
+  readonly services: {
+    readonly prompt: AgentPromptService;
+    readonly artifacts?: AgentArtifactService;
+  };
   /** Tear down observation/control. Process lifecycle stays with the host. */
   dispose(): Promise<void>;
 }
 
-/** @deprecated Low-level compatibility name. Prefer AgentAdapterSession. */
-export type AgentSession = AgentAdapterSession;
+/** @deprecated Low-level compatibility name. Prefer AgentAdapterBinding. */
+export type AgentAdapterSession = AgentAdapterBinding;
+/** @deprecated Low-level compatibility name. Prefer AgentAdapterBinding. */
+export type AgentSession = AgentAdapterBinding;

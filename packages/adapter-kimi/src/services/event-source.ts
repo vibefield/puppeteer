@@ -4,7 +4,6 @@ import {
   createAdapterEventCandidate,
   type AdapterEventCandidate,
   type AgentEvent,
-  type AgentEventEnvelope,
 } from '@vibecook/puppeteer-core';
 import type { KimiObservedEvent } from '../session-observer.js';
 
@@ -45,10 +44,6 @@ export class KimiEventSource {
 
   onCandidate(listener: (candidate: AdapterEventCandidate) => void): () => void {
     return this.source.onCandidate(listener);
-  }
-
-  onEvent(listener: (envelope: AgentEventEnvelope) => void): () => void {
-    return this.source.onEvent(listener);
   }
 
   close(): void {

@@ -1,5 +1,4 @@
 import { describe, expect, it } from 'vitest';
-import type { AgentEventEnvelope } from '../events.js';
 import {
   AdapterEventCandidateSchema,
   BufferedAdapterEventSource,
@@ -61,47 +60,17 @@ describe('BufferedAdapterEventSource', () => {
 
     expect(seen.map((candidate) => candidate.type)).toEqual(['turn:started']);
     expect('sequence' in seen[0]!).toBe(false);
-    expect('service' in seen[0]!).toBe(false);
+    expect('category' in seen[0]!).toBe(false);
   });
 
-  it('keeps one compatibility envelope for all direct adapter listeners', () => {
-    const source = new BufferedAdapterEventSource();
-    const first: unknown[] = [];
-    const second: unknown[] = [];
-    source.onEvent((envelope) => first.push(envelope));
-    source.onEvent((envelope) => second.push(envelope));
-
-    source.emit(turnStarted('turn-1'));
-
-    expect(first[0]).toBe(second[0]);
-    expect(first[0]).toMatchObject({ type: 'turn:started', service: 'turn', sequence: 1 });
-    expect(Object.isFrozen(first[0])).toBe(true);
-  });
-
-  it('replays bounded bootstrap events independently to candidate and compatibility rails', () => {
-    const source = new BufferedAdapterEventSource();
-    const legacy: unknown[] = [];
-    const candidates: unknown[] = [];
-    source.onEvent((envelope) => legacy.push(envelope));
-    source.emit(turnStarted('turn-1'));
-
-    source.onCandidate((candidate) => candidates.push(candidate));
-
-    expect(legacy).toHaveLength(1);
-    expect(candidates).toHaveLength(1);
-    expect(candidates[0]).toMatchObject({ type: 'turn:started', event: { turnId: 'turn-1' } });
-  });
-
-  it('bounds an unattached compatibility rail', () => {
+  it('bounds bootstrap candidates before runtime ingress attaches', () => {
     const source = new BufferedAdapterEventSource({ pendingCapacity: 2 });
-    source.onCandidate(() => undefined);
     source.emit(turnStarted('turn-1'));
     source.emit(turnStarted('turn-2'));
     source.emit(turnStarted('turn-3'));
-    const legacy: AgentEventEnvelope[] = [];
+    const candidates: ReturnType<typeof turnStarted>[] = [];
+    source.onCandidate((candidate) => candidates.push(candidate as ReturnType<typeof turnStarted>));
 
-    source.onEvent((envelope) => legacy.push(envelope));
-
-    expect(legacy.map(({ event }) => ('turnId' in event ? event.turnId : undefined))).toEqual(['turn-2', 'turn-3']);
+    expect(candidates.map(({ event }) => event.turnId)).toEqual(['turn-2', 'turn-3']);
   });
 });

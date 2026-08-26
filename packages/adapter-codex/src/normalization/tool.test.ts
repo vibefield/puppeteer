@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { agentServiceEventType, safeParseAgentEvent } from '@vibecook/puppeteer-core';
+import { agentEventType, safeParseAgentEvent } from '@vibecook/puppeteer-core';
 import { CodexToolNormalizer } from './tool.js';
 
 describe('CodexToolNormalizer', () => {
@@ -30,7 +30,7 @@ describe('CodexToolNormalizer', () => {
     ]);
     expect(failed[0]).not.toHaveProperty('output');
     for (const event of events) {
-      expect(safeParseAgentEvent(agentServiceEventType(event), event).success).toBe(true);
+      expect(safeParseAgentEvent(agentEventType(event), event).success).toBe(true);
     }
   });
 });

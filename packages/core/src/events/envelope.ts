@@ -1,17 +1,17 @@
 import type { AgentEventConfidence, AgentEventSource, AgentEventSourceRef } from './contract.js';
 import {
-  agentEventService,
-  agentServiceEventType,
+  agentEventCategory,
+  agentEventType,
   type AgentEvent,
-  type AgentEventServiceOf,
-  type AgentServiceEventType,
+  type AgentEventCategoryOf,
+  type AgentEventTypeFor,
 } from './catalog.js';
 
 export interface AgentEventEnvelope<T extends AgentEvent = AgentEvent> {
   /** Namespaced event-bus route. Consumers subscribe to this field, never native event names. */
-  readonly type: AgentServiceEventType<T>;
+  readonly type: AgentEventTypeFor<T>;
   /** Top-level category on the public event rail. */
-  readonly service: AgentEventServiceOf<T>;
+  readonly category: AgentEventCategoryOf<T>;
   /** Stable source identity when the producer has one; sequence remains delivery order only. */
   readonly eventId?: string;
   /** Complete upstream identity/revision reference, when supplied by the producer. */
@@ -46,7 +46,7 @@ export interface AgentEventEnvelope<T extends AgentEvent = AgentEvent> {
 
 export interface EnvelopeStamper {
   next<T extends AgentEvent>(
-    fields: Omit<AgentEventEnvelope<T>, 'sequence' | 'type' | 'service'>,
+    fields: Omit<AgentEventEnvelope<T>, 'sequence' | 'type' | 'category'>,
   ): AgentEventEnvelope<T>;
 }
 
@@ -65,8 +65,8 @@ export function createEnvelopeStamper(initialSequence = 0): EnvelopeStamper {
       return {
         ...fields,
         sequence,
-        type: agentServiceEventType(fields.event),
-        service: agentEventService(fields.event),
+        type: agentEventType(fields.event),
+        category: agentEventCategory(fields.event),
       };
     },
   };

@@ -7,7 +7,7 @@
  */
 
 import {
-  type AgentAdapterSession,
+  type AgentAdapterBinding,
   type AgentEvent,
   type AgentEventConfidence,
   type AgentEventSource,
@@ -54,7 +54,7 @@ export interface CreateAcpSessionOptions {
 }
 
 /** No adapter-specific extras yet; the shared contract is the whole surface. */
-export type AcpSession = AgentAdapterSession;
+export type AcpSession = AgentAdapterBinding;
 
 export async function createAcpSession(options: CreateAcpSessionOptions): Promise<AcpSession> {
   const normalizer = new AcpNotificationNormalizer();
@@ -212,16 +212,18 @@ export async function createAcpSession(options: CreateAcpSessionOptions): Promis
     sessionId,
     runtimeSessionId: sessionId,
     observationLevel: () => observation,
-    onEventCandidate(listener) {
-      if (disposed) return () => undefined;
-      return eventSource.onCandidate(listener);
+    events: {
+      onCandidate(listener) {
+        if (disposed) return () => undefined;
+        return eventSource.onCandidate(listener);
+      },
     },
-    onEvent(listener) {
-      if (disposed) return () => undefined;
-      return eventSource.onEvent(listener);
-    },
-    submitPrompt(submission: PromptSubmission) {
-      return prompts.submit(submission);
+    services: {
+      prompt: {
+        submit(submission: PromptSubmission) {
+          return prompts.submit(submission);
+        },
+      },
     },
     async dispose() {
       if (disposed) return;

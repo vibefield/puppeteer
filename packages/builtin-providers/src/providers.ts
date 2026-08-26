@@ -1,5 +1,6 @@
 import { basename } from 'node:path';
 import type { RuntimeRunId } from '@vibecook/puppeteer-core';
+import type { AgentProvider } from '@vibecook/puppeteer-runtime';
 import { createAcpSession, type AcpConnector } from '@vibecook/puppeteer-adapter-acp';
 import {
   createClaudeSession,
@@ -21,7 +22,6 @@ import { createOpenCodeTuiSession, prepareOpenCodeTuiSession } from '@vibecook/p
 import { createHermesTuiSession, prepareHermesTuiSession } from '@vibecook/puppeteer-adapter-hermes';
 import type {
   AcpAgentOptions,
-  AgentProvider,
   BuiltinExecutableAgentKind,
   ClaudeAgentOptions,
   CodexAgentOptions,
