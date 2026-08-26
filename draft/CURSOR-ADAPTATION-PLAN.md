@@ -15,7 +15,7 @@ evidence before it can support an adapter mapping or a support-ledger change.
 
 Cursor is absent from `support/agents.json`. The generic candidate workflow
 cannot bootstrap a new vendor. The first change is an ordinary reviewed PR
-that may later receive a `baseline-pending` ledger entry. `currentManifest`,
+that may later receive a `baseline-pending` ledger entry. `currentVersion`,
 verification, and public support remain outputs of the protected promotion
 transaction only.
 
@@ -768,7 +768,7 @@ be a production dependency.
 | 3. Emulate | persona, scenarios, exact replay | new channel implementation if needed |
 | 4. Adapt | adapter + focused tests + honest devkit projection | no fake full coverage |
 | 5. Integrate | conformance, Imposter E2E, runtime provider, packaging | Godview only after E2E |
-| 6. Promote | `baseline-pending` then protected four-platform attestation | do not hand-edit `currentManifest` |
+| 6. Promote | `baseline-pending` then protected four-platform attestation | do not hand-edit `currentVersion` |
 
 Do these in order. Never derive Surface from adapter code. Never derive the
 adapter from authored Imposter scenarios.

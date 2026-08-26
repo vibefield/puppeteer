@@ -4,22 +4,22 @@
 
 This guide defines where provider truth lives and how a captured candidate becomes supported. Use [adapting-an-agent.md](adapting-an-agent.md) for the full implementation workflow and [RFC-004](../rfcs/004-layered-agent-runtime.md) for package-layer ownership.
 
-## One authority per provider version
+## One authority per provider
 
-Each captured provider version has one runtime authority:
+Each provider has one stable runtime authority:
 
 ```text
-packages/surface/vendors/<vendor>/model/<vendor>@<version>/groundtruth.json
+packages/surface/vendors/<vendor>/groundtruth.json
 ```
 
-The neighboring manifest, evidence, event, behavior, detection, channel, and capture files are authoring inputs. `groundtruth.json` is the deterministic projection consumers name and digest-lock. Never copy those inputs into an adapter or Imposter persona.
+Versioned manifest, evidence, event, behavior, detection, channel, and capture files remain under the vendor root as authoring inputs. `groundtruth.json` is the deterministic projection consumers name and digest-lock; its embedded manifest identifies the active vendor version, and Git history records every revision. Never place another `groundtruth.json` in a versioned model directory or copy the authoring inputs into an adapter or Imposter persona.
 
 ## Ownership
 
 - `packages/surface` owns vendor artifacts, sanitized captures, evidence indexes, native behavior models, ground-truth generation, and drift audits.
 - `packages/adapter-<vendor>` owns the native-to-Core mapping. Its `groundtruth-map.json` records exactly which promoted or staged ground truth the mapping implements.
 - `packages/imposter` owns synthetic execution and persona scenarios derived from Surface. It does not define provider truth.
-- `support/agents.json` owns support status and the current/candidate pointers.
+- `support/agents.json` owns support status plus `currentVersion` and optional `candidateVersion`; its `groundTruth` path stays fixed.
 - Root scripts and protected workflows own acquisition, verification, reconciliation, and promotion mechanics.
 
 Production adapters do not import Surface. Surface remains a development, generation, conformance, and promotion input, so a runtime deployment does not carry capture data.
@@ -31,7 +31,7 @@ detect release
   -> acquire and hash exact artifacts
   -> capture native rails in isolation
   -> sanitize and index evidence
-  -> generate canonical ground truth
+  -> update the one canonical ground truth
   -> update adapter mapping and Imposter persona
   -> replay, audit, and run conformance
   -> verify every required platform
@@ -64,10 +64,12 @@ pnpm test
 When authoring inputs intentionally change, regenerate with:
 
 ```sh
-pnpm surface:groundtruth:write
+pnpm surface:groundtruth:write -- packages/surface/vendors/<vendor>/model/<vendor>@<version>
 pnpm groundtruth:mapping:write
 pnpm support:write
 ```
+
+Passing the versioned authoring directory explicitly selects the revision to fold into the stable root. Running the command without a path only rebuilds each agent's already-selected canonical revision.
 
 Review generated diffs. Generation proves determinism, not that a native claim is correct.
 

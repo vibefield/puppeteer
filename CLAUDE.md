@@ -18,7 +18,7 @@ Core contracts ──► adapters ──► Runtime ingress/event bus ──► 
 
 The numbered product layers are:
 
-0. `packages/surface`: immutable provider evidence and one canonical `groundtruth.json` per provider version.
+0. `packages/surface`: versioned provider evidence folded into one canonical `groundtruth.json` per provider agent.
 1. `packages/imposter`: native-compatible synthetic behavior derived from Surface, with no Core or adapter dependency.
 2. `packages/adapter-*`: tolerant wire decoding, one category normalizer per file, and one capability service per file.
 3. `packages/runtime`: provider-neutral ingress, identity/deduplication, private per-Agent event bus, and projections.
@@ -84,13 +84,13 @@ Do not add top-level compatibility barrels such as `normalizer.ts`, duplicate se
 
 ## Ground truth and adaptation
 
-One agent version has one runtime authority:
+One agent has one stable runtime authority across releases:
 
 ```text
-packages/surface/vendors/<vendor>/model/<vendor>@<version>/groundtruth.json
+packages/surface/vendors/<vendor>/groundtruth.json
 ```
 
-Neighboring manifests, detection records, channels, evidence, behavior, and event trees are authoring inputs. After changing them, run `pnpm surface:groundtruth:write`; CI runs `pnpm surface:groundtruth:check`. `support/agents.json` is the sole promotion ledger, and README badges are generated from it.
+Versioned manifests, detection records, channels, evidence, behavior, events, and captures under the vendor root are authoring inputs. The canonical document's embedded manifest identifies the active version, and Git history records its evolution. After changing authoring inputs, run `pnpm surface:groundtruth:write`; CI runs `pnpm surface:groundtruth:check`. `support/agents.json` is the sole promotion ledger, and README badges are generated from it.
 
 Use `docs/guides/adapting-an-agent.md` for the end-to-end workflow, `docs/guides/surface-adaptation.md` for evidence/promotion ownership, and `docs/guides/normalization-devkit.md` for the normalization workbench.
 

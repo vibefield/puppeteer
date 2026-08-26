@@ -17,7 +17,7 @@ from terminal text. The finished path must obey the repository invariant:
 This is a new-vendor candidate, so it proceeds as an ordinary reviewed change.
 The generic upstream candidate workflow cannot bootstrap the vendor-specific
 implementation. A `baseline-pending` support-ledger candidate may name the
-reviewed manifest, but `currentManifest`, verification, and verified public
+stable ground-truth path and `candidateVersion`, but `currentVersion`, verification, and verified public
 support remain outputs of the protected promotion transaction only.
 
 ## 2. Repository onboarding summary
@@ -450,8 +450,8 @@ Only after protected conformance succeeds:
 
 `baseline-pending` is the strongest acceptable pre-promotion support state.
 
-Local readiness status (2026-08-11): the reviewed manifest is recorded as
-`baseline-pending`, with no `currentManifest` or verification claim, and the
+Local readiness status (2026-08-11): the reviewed ground truth is recorded as
+`baseline-pending`, with no `currentVersion` or verification claim, and the
 generated README support block is in sync. Exact pre-normalization replay now
 understands OpenCode's native `{id,type,properties}` SSE carriers and correlated
 HTTP request/result carriers. It passes 3,421 frames and 209 results with zero
@@ -494,7 +494,7 @@ Completed adapter/integration/reconciliation slices:
 Protected promotion slice:
 
 - remaining three platform artifact identities and pinned-real reports
-- `currentManifest`, promotion verification, and the generated verified badge
+- `currentVersion`, promotion verification, and the generated verified badge
   **only through the protected Stage 6 workflow**
 
 Concurrent unrelated UI/upstream work currently present in the worktree is
@@ -553,7 +553,7 @@ The remaining support work is the protected promotion path:
 2. execute the complete pinned-real matrix on the declared isolated runners;
 3. review the resulting artifact, Surface, adapter, and replay attestation in
    the protected environment;
-4. let the guarded promotion transaction set `currentManifest`, verification,
+4. let the guarded promotion transaction set `currentVersion`, verification,
    and the generated verified support badge atomically.
 
 Until that workflow succeeds, the implementation remains a complete local

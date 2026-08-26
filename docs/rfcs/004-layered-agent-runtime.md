@@ -36,7 +36,7 @@ Ground truth describes provider-native reality; Core describes Puppeteer’s pro
 
 The numbered product model is therefore:
 
-0. **Ground truth:** one immutable `groundtruth.json` for each provider version.
+0. **Ground truth:** versioned evidence folded into one canonical `groundtruth.json` for each provider agent.
 1. **Imposter:** native-compatible behavior built only from Surface ground truth.
 2. **Adapters:** tolerant native decoders, category normalizers, and explicit capability ports targeting Core.
 3. **Runtime ingress and event bus:** validate candidates, correlate runtime identity, assign delivery order, project state, and route immutable envelopes. The bus is private and per Agent.
@@ -47,7 +47,8 @@ Core contracts are a foundation used by layers 2–5, not a hidden sub-layer of 
 
 ## Ground-truth contract
 
-- A provider version has one canonical `packages/surface/vendors/<provider>/model/<provider>@<version>/groundtruth.json`.
+- A provider has one canonical `packages/surface/vendors/<provider>/groundtruth.json`; its embedded manifest identifies the active version.
+- Versioned `model/<provider>@<version>/` trees are authoring and evidence inputs only. They never contain another canonical ground-truth file; Git history tracks changes to the root document.
 - Imposter depends on Surface and remains provider-native. It does not import Core, adapters, or Runtime.
 - Each supported adapter owns `groundtruth-map.json`. The map locks the ground-truth digest and partitions native names into semantic inputs, observed/control inputs, and an explicitly hashed unmapped remainder.
 - `pnpm groundtruth:mapping:check` fails when ground truth or adapter implementation references drift without review.

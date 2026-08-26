@@ -19,7 +19,7 @@ The invariant is:
 
 Hermes is absent from `support/agents.json`. The generic candidate workflow
 cannot bootstrap a new vendor. The first change is an ordinary reviewed PR
-that may later receive a `baseline-pending` ledger entry. `currentManifest`,
+that may later receive a `baseline-pending` ledger entry. `currentVersion`,
 verification, and public support remain outputs of the protected promotion
 transaction only.
 
@@ -642,7 +642,7 @@ After adapter-against-Imposter conformance is green:
   after the native launch topology works end to end;
 - add Imposter Control `SpawnablePersona` and, if a pure normalizer exists,
   a `createNormalizer` case; otherwise leave the projection `unsupported`;
-- add `support/agents.json` as `baseline-pending` with `candidateManifest`;
+- add `support/agents.json` as `baseline-pending` with the stable `groundTruth` path and `candidateVersion`;
 - run `pnpm support:write` rather than hand-editing README badges;
 - add workflow vendor choices only after the first-vendor seam exists.
 
@@ -709,7 +709,7 @@ After adapter-against-Imposter conformance is green:
 - [ ] `support/agents.json` candidate (`baseline-pending` only).
 - [ ] Opt-in `HERMES_LIVE` / pinned-real lane on the declared platform
       matrix.
-- [ ] Protected promotion only; no ordinary PR edits `currentManifest`.
+- [ ] Protected promotion only; no ordinary PR edits `currentVersion`.
 
 ## 17. Stop conditions
 

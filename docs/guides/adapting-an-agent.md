@@ -12,7 +12,7 @@ The invariant to remember is:
 
 > **Surface records native evidence. Adapters normalize it. Imposter simulates it. Conformance cross-checks both. Promotion alone declares what Puppeteer supports.**
 
-All values written as `<vendor>`, `<version>`, `<manifest>`, `<platform>`, or similar are placeholders. Replace them before running a command; do not type the angle brackets literally.
+All values written as `<vendor>`, `<version>`, `<ground-truth>`, `<platform>`, or similar are placeholders. Replace them before running a command; do not type the angle brackets literally.
 
 ## Contents
 
@@ -46,7 +46,7 @@ An agent is not adapted merely because its process launches or one happy-path tu
 6. The same normalization can be inspected record by record in the adaptation devkit where the architecture permits pure replay.
 7. The adapter passes the shared `AgentAdapterBinding` conformance contract, hermetic adapter-against-Imposter tests, and pinned-real tests.
 8. Runtime registration, package publication, upstream detection, and ongoing live reconciliation are wired.
-9. A protected promotion records the exact manifest, model digest, replay digest, tested commit, workflow run, and platform artifact hashes in `support/agents.json`.
+9. A protected promotion records the exact canonical ground truth, vendor version, model digest, replay digest, tested commit, workflow run, and platform artifact hashes in `support/agents.json`.
 
 Until the last item is complete, use `baseline-pending` or `unsupported`. Do not describe an executable candidate as verified support.
 
@@ -56,7 +56,7 @@ Until the last item is complete, use `baseline-pending` or `unsupported`. Do not
 | ------------------------ | ------------------------------------------------------------- | -------------------------------------------------------------------------------- | -------------------------------------------------------------------------------- |
 | 0. Scope and bootstrap   | Choose the native integration and establish repository seams  | vendor identity, package/persona/support scaffolding plan                        | no unresolved ownership or transport question blocks the design                  |
 | 1. Survey                | Observe the exact vendor artifact                             | raw private captures, sanitized tracked captures, `findings.md`, `upstream.json` | every relied-on channel has admissible evidence and privacy passes               |
-| 2. Model                 | Formalize pinned native truth                                 | ASM v2 under `packages/surface/vendors/<vendor>/model/<vendor>@<version>/`       | model, evidence, behavior, capture, and vendor audit gates pass                  |
+| 2. Model                 | Formalize pinned native truth                                 | versioned ASM v2 inputs plus vendor-root `groundtruth.json`                      | model, evidence, behavior, capture, and vendor audit gates pass                  |
 | 3. Emulate               | Reproduce the native surface independently                    | Imposter persona, behavior pack, scenarios, runflows, optional server table      | persona loads, scenarios validate, replay is exact, native devkit view is honest |
 | 4. Adapt and normalize   | Build the real native integration and portable interpretation | adapter normalizer, driver, detection/launch projections, focused fixtures       | mapping is evidence-traceable; adapter unit and devkit review gates pass         |
 | 5. Conform and integrate | Prove the product contract                                    | shared conformance, Imposter E2E, runtime provider, package wiring               | hermetic/full tests and packaging pass; no resources are orphaned                |
@@ -168,7 +168,7 @@ Therefore, the first adaptation needs an ordinary reviewed candidate PR. That PR
 - the first Surface vendor directory, captures, audit, and ASM;
 - a valid Imposter persona targeting that ASM;
 - the adapter package and tests;
-- a `baseline-pending` entry in `support/agents.json` with `candidateManifest`;
+- a `baseline-pending` entry in `support/agents.json` with stable `groundTruth` and `candidateVersion` fields;
 - runtime, devkit, package, and workflow wiring.
 
 After this seam exists, later releases can use the generic adaptation workflow. Do not merge broken placeholder models or personas just to satisfy the automation.
@@ -320,6 +320,12 @@ packages/surface/vendors/<vendor>/model/<vendor>@<version>/
   behavior.json
   events/
     <exact-native-event-or-method>.json
+```
+
+These files are versioned authoring inputs. Generate the sole runtime authority at `packages/surface/vendors/<vendor>/groundtruth.json`; never add `groundtruth.json` or `groundtruth.html` inside this model directory.
+
+```sh
+pnpm surface:groundtruth:write -- packages/surface/vendors/<vendor>/model/<vendor>@<version>
 ```
 
 For slash-delimited protocol methods, mirror the slash path under `events/`, as Codex does.
@@ -496,7 +502,7 @@ The persona points to Surface; it does not copy the model:
   "vendor": "<vendor>",
   "asm": {
     "package": "@vibecook/puppeteer-surface",
-    "path": "vendors/<vendor>/model/<vendor>@<version>"
+    "path": "vendors/<vendor>"
   },
   "shimNames": ["<vendor-binary>"],
   "envelope": {},
@@ -622,7 +628,7 @@ Run:
 node packages/imposter/bin/ai.mjs --<vendor> --version
 pnpm --filter @vibecook/puppeteer-imposter typecheck
 pnpm --filter @vibecook/puppeteer-imposter test
-pnpm surface:replay --vendor <vendor> --manifest packages/surface/vendors/<vendor>/model/<vendor>@<version>/manifest.json
+pnpm surface:replay --vendor <vendor> --ground-truth packages/surface/vendors/<vendor>/groundtruth.json
 pnpm agent-devkit
 ```
 
@@ -682,9 +688,9 @@ The manifest must match the repository’s public-package contract: lockstep roo
 
 When runtime code needs executable names, version patterns, flags, hook registries, settings entries, or similar stable facts, generate adapter-local TypeScript from the selected Surface model. Follow `packages/adapter-claude/scripts/generate-registry.mjs` and `src/generated/` as the reference.
 
-The active Surface selection intentionally prefers `candidateManifest` over `currentManifest` during review. Use `scripts/agent-model-selection.mjs`; do not hard-code a candidate version in multiple tools.
+The active Surface selection intentionally prefers `candidateVersion` over `currentVersion` during review and always resolves the stable vendor-root `groundTruth` path. Use `scripts/agent-model-selection.mjs`; do not hard-code a candidate version in multiple tools.
 
-Commit generated projections and test them against the selected manifest. Do not import captures or the model from production adapter code.
+Commit generated projections and test them against the selected ground truth. Do not import captures or the model from production adapter code.
 
 ### 7.3 Implement a stateful, evidence-traceable normalizer
 
@@ -931,7 +937,7 @@ For a new public adapter package, update:
 - `release-please-config.json` `extra-files`;
 - the root lockfile through normal pnpm install/update behavior;
 - `packages/runtime/package.json` and any app/Imposter development dependencies;
-- optional adapter `docs/event-map.html`, with metadata pointing to the selected manifest/version.
+- optional adapter `docs/event-map.html`, with metadata pointing to the stable ground-truth path and selected version.
 
 Never hand-bump package versions. All public packages release in lockstep.
 
@@ -977,12 +983,13 @@ For the first vendor, add a reviewed entry to `support/agents.json`:
   "kind": "vendor",
   "adapterPackage": "@vibecook/puppeteer-adapter-<vendor>",
   "persona": "<vendor>",
-  "candidateManifest": "packages/surface/vendors/<vendor>/model/<vendor>@<version>/manifest.json",
+  "groundTruth": "packages/surface/vendors/<vendor>/groundtruth.json",
+  "candidateVersion": "<version>",
   "status": "baseline-pending"
 }
 ```
 
-Do not add `currentManifest` or `verification` by hand. Do not hand-edit the generated README badge block. For a manually added first candidate, render it from the ledger and then validate it:
+Do not add `currentVersion` or `verification` by hand for a first unpromoted candidate. Do not hand-edit the generated README badge block. For a manually added first candidate, render it from the ledger and then validate it:
 
 ```sh
 pnpm support:write
@@ -992,7 +999,7 @@ pnpm support:check
 For a later version of an existing vendor, stage the candidate and align the persona automatically:
 
 ```sh
-node scripts/stage-agent-candidate.mjs --vendor <vendor> --manifest packages/surface/vendors/<vendor>/model/<vendor>@<version>/manifest.json
+node scripts/stage-agent-candidate.mjs --vendor <vendor> --ground-truth packages/surface/vendors/<vendor>/groundtruth.json
 ```
 
 ### 10.2 Attach exact artifacts and reconcile locally
@@ -1000,10 +1007,10 @@ node scripts/stage-agent-candidate.mjs --vendor <vendor> --manifest packages/sur
 Once all reviewed platform artifacts have been acquired:
 
 ```sh
-pnpm surface:evidence:artifacts --manifest <manifest> --artifacts <acquisition.json>
+pnpm surface:evidence:artifacts --ground-truth <ground-truth> --artifacts <acquisition.json>
 pnpm --filter @vibecook/puppeteer-surface surface:evidence:write
-pnpm surface:replay --vendor <vendor> --manifest <manifest>
-pnpm surface:reconcile --vendor <vendor> --manifest <manifest> --artifacts <acquisition.json>
+pnpm surface:replay --vendor <vendor> --ground-truth <ground-truth>
+pnpm surface:reconcile --vendor <vendor> --ground-truth <ground-truth> --artifacts <acquisition.json>
 ```
 
 Reconciliation classifies model, event/variant confidence, channel, behavior, artifact, detector, and replay drift. Its recommendation is input to review, not permission to promote.
@@ -1024,7 +1031,7 @@ gh workflow run agent-adaptation.yml \
   --ref <branch> \
   -f vendor=<vendor> \
   -f version=<version> \
-  -f manifest=<manifest> \
+  -f ground_truth=<ground-truth> \
   -f publish_draft=true
 ```
 
@@ -1051,7 +1058,7 @@ gh workflow run agent-surface-promotion.yml \
   --ref <candidate-ref> \
   -f vendor=<vendor> \
   -f version=<version> \
-  -f manifest=<manifest> \
+  -f ground_truth=<ground-truth> \
   -f confirm=promote
 ```
 
@@ -1064,9 +1071,9 @@ Promotion:
 5. verifies the complete declared platform matrix and repository gates;
 6. enters the protected `agent-surface-promotion` environment for human approval;
 7. atomically updates artifact evidence, `support/agents.json`, and the generated README badge;
-8. records the workflow/run/attempt, candidate commit, manifest, evidence/model/replay digests, and artifact hashes.
+8. records the workflow/run/attempt, candidate commit, canonical ground-truth path and version, evidence/model/replay digests, and artifact hashes.
 
-`pnpm surface:promote` is intentionally inert outside the exact attested GitHub Actions context. Local success is not authority to edit `currentManifest` manually.
+`pnpm surface:promote` is intentionally inert outside the exact attested GitHub Actions context. Local success is not authority to edit `currentVersion` manually.
 
 ### 10.5 Keep the adaptation alive
 
@@ -1076,7 +1083,7 @@ After promotion:
 - the scheduled live workflow runs only on explicitly enabled, credential-isolated runners;
 - a new version starts again at Survey, using the promoted model as a diff baseline;
 - same-version artifact changes and stable-channel rollbacks are incidents, not normal updates to overwrite in place;
-- rollback moves the ledger pointer to a retained verified manifest and regenerates badges; it never deletes evidence or candidate history.
+- rollback rebuilds the canonical root from a retained verified authoring model, moves `currentVersion` through a protected transaction, and regenerates badges; it never deletes evidence or candidate history.
 
 ---
 
@@ -1090,7 +1097,7 @@ Run targeted checks while iterating, then the full matrix before review.
 | Surface types/tests   | `pnpm --filter @vibecook/puppeteer-surface typecheck` and `test`                       | model/sanitizer runtime and vendor fixtures are sound                                           |
 | Vendor audit          | `pnpm --filter @vibecook/puppeteer-surface run surface:audit:<vendor>`                 | selected candidate matches evidence and vendor-specific checks                                  |
 | All Surface           | `pnpm surface:audit`                                                                    | every current/candidate surface remains clean                                                   |
-| Exact replay          | `pnpm surface:replay --vendor <vendor> --manifest <manifest>`                           | captures, model, persona, carriers, directions, and results agree pre-normalization             |
+| Exact replay          | `pnpm surface:replay --vendor <vendor> --ground-truth <ground-truth>`                   | captures, model, persona, carriers, directions, and results agree pre-normalization             |
 | Adapter               | `pnpm --filter @vibecook/puppeteer-adapter-<vendor> typecheck` and `test`              | normalization, driver, transport, and shared conformance pass                                   |
 | Imposter              | `pnpm --filter @vibecook/puppeteer-imposter typecheck` and `test`                      | persona/scenarios and adapter-against-Imposter pass                                             |
 | Runtime               | `pnpm --filter @vibecook/puppeteer-runtime typecheck` and `test`                       | provider and typed options are integrated                                                       |
@@ -1098,7 +1105,7 @@ Run targeted checks while iterating, then the full matrix before review.
 | Devkit smoke          | `pnpm agent-devkit:smoke`                                                               | Electron main process starts and shuts down correctly                                           |
 | Godview, when wired   | `pnpm godview:typecheck`, `godview:test`, `godview:bundle`, and `godview:smoke`         | built-in selection, shim/spawn-through, restore, renderer, bundle, and native launch are usable |
 | Package policy        | `pnpm packages:check`                                                                   | topology, manifests, ownership, release coverage, and dependencies are valid                    |
-| Support policy        | `pnpm support:check`                                                                    | ledger, persona, candidate/current manifest, evidence, and badge agree                          |
+| Support policy        | `pnpm support:check`                                                                    | ledger, persona, canonical ground truth, selected versions, evidence, and badge agree            |
 | Full repository       | `pnpm test`                                                                             | all typechecks, script tests, package tests, and app tests pass                                 |
 | Published shape       | `pnpm pack:check`                                                                       | all public packages build and tarballs contain only allowed files                               |
 
@@ -1120,6 +1127,7 @@ This is the review checklist for files commonly missed during a first adaptation
 - [ ] paired sanitizer and privacy detector tests
 - [ ] sanitized captures under the versioned capture directory
 - [ ] ASM v2 manifest, evidence, detection, channels, events, and behavior
+- [ ] generated vendor-root `groundtruth.json` and `groundtruth.html`, with none inside `model/`
 - [ ] vendor `audit.mjs` and focused model/capture tests
 - [ ] `surface:audit:<vendor>` script in `packages/surface/package.json`
 
@@ -1149,7 +1157,7 @@ This is the review checklist for files commonly missed during a first adaptation
 - [ ] lockfile update
 - [ ] `support/agents.json` candidate entry
 - [ ] generated README support block left to `support:write`/promotion
-- [ ] optional adapter event map tied to the selected Surface manifest
+- [ ] optional adapter event map tied to the selected Surface ground truth
 
 ### Product applications
 
@@ -1230,9 +1238,9 @@ The loader derives `requiresClient` when a scenario performs a server request. A
 
 Use the ledger disposition. `buffered`, `no-output`, `driver-owned`, `retained-native`, and `unsupported` mean different things. Only `error` or an unexplained `no-output` is automatically a bug.
 
-### “`support:check` says the persona and manifest disagree”
+### “`support:check` says the persona and ground truth disagree”
 
-The candidate/current pointer and `persona.json` ASM path must select the same version. Use `stage-agent-candidate.mjs` for an existing vendor; do not update only one side.
+The canonical document, candidate/current version state, and `persona.json` ASM path must select the same agent. Use `stage-agent-candidate.mjs` for an existing vendor; do not update only one side.
 
 ### “The candidate workflow rejects my new agent”
 
