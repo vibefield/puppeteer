@@ -15,7 +15,9 @@ function finiteNonNegative(value: number | undefined): number | undefined {
   return value !== undefined && Number.isFinite(value) && value >= 0 ? value : undefined;
 }
 
-function contribution(value: MonitorUsageFamilyValue): number | undefined {
+function totalContribution(value: MonitorUsageFamilyValue): number | undefined {
+  const total = finiteNonNegative(value.totalTokens);
+  if (total !== undefined) return total;
   const delta = finiteNonNegative(value.deltaTokens);
   if (delta !== undefined) return delta;
 
@@ -24,9 +26,45 @@ function contribution(value: MonitorUsageFamilyValue): number | undefined {
     finiteNonNegative(value.outputTokens),
     finiteNonNegative(value.cacheReadTokens),
     finiteNonNegative(value.cacheCreationTokens),
+    finiteNonNegative(value.reasoningTokens),
   ];
   const known = buckets.filter((bucket): bucket is number => bucket !== undefined);
   return known.length > 0 ? known.reduce((total, bucket) => total + bucket, 0) : undefined;
+}
+
+function meterContribution(value: MonitorUsageFamilyValue): number | undefined {
+  return finiteNonNegative(value.meterTokens) ?? totalContribution(value);
+}
+
+function canonicalTotals(
+  entries: readonly MonitorStoredEntry[],
+): Pick<
+  MonitorUsageAggregate,
+  | 'inputTokens'
+  | 'freshInputTokens'
+  | 'outputTokens'
+  | 'cacheReadTokens'
+  | 'cacheCreationTokens'
+  | 'reasoningTokens'
+  | 'costUsd'
+> {
+  const fields = [
+    'inputTokens',
+    'freshInputTokens',
+    'outputTokens',
+    'cacheReadTokens',
+    'cacheCreationTokens',
+    'reasoningTokens',
+    'costUsd',
+  ] as const;
+  const result: Partial<Record<(typeof fields)[number], number>> = {};
+  for (const field of fields) {
+    const values = entries
+      .map((entry) => finiteNonNegative((entry.value as MonitorUsageFamilyValue)[field]))
+      .filter((value): value is number => value !== undefined);
+    if (values.length > 0) result[field] = values.reduce((total, value) => total + value, 0);
+  }
+  return result;
 }
 
 function atMs(entry: MonitorStoredEntry): number | undefined {
@@ -108,14 +146,17 @@ function projectExplicitRootActorUsage(
 
   const contributions = rootEntries.filter((entry) => {
     const value = entry.value as MonitorUsageFamilyValue;
-    return value.canonical && contribution(value) !== undefined;
+    return value.canonical && totalContribution(value) !== undefined;
   });
   const cumulativeEntry = rootEntries
     .filter((entry) => finiteNonNegative((entry.value as MonitorUsageFamilyValue).cumulativeTokens) !== undefined)
     .at(-1);
   const cumulativeTokens =
     contributions.length > 0
-      ? contributions.reduce((total, entry) => total + (contribution(entry.value as MonitorUsageFamilyValue) ?? 0), 0)
+      ? contributions.reduce(
+          (total, entry) => total + (totalContribution(entry.value as MonitorUsageFamilyValue) ?? 0),
+          0,
+        )
       : cumulativeEntry
         ? finiteNonNegative((cumulativeEntry.value as MonitorUsageFamilyValue).cumulativeTokens)
         : undefined;
@@ -129,7 +170,7 @@ function projectExplicitRootActorUsage(
   if (live.length > 0) {
     burnRatePerMin = Math.max(
       0,
-      live.reduce((total, entry) => total + (contribution(entry.value as MonitorUsageFamilyValue) ?? 0), 0) *
+      live.reduce((total, entry) => total + (meterContribution(entry.value as MonitorUsageFamilyValue) ?? 0), 0) *
         (60_000 / windowMs),
     );
     burnRateBoundary = 'response';
@@ -142,6 +183,7 @@ function projectExplicitRootActorUsage(
   const latest = rootEntries.at(-1);
   return {
     ...(cumulativeTokens !== undefined ? { cumulativeTokens } : {}),
+    ...canonicalTotals(contributions),
     ...(burnRatePerMin !== undefined ? { burnRatePerMin, burnRateWindowMs: windowMs, burnRateBoundary } : {}),
     ...(latest ? { asOf: latest.observedAt } : {}),
   };
@@ -165,7 +207,7 @@ export function projectMonitorUsageLedger(
   const usageEntries = sortUsageEntries(entries.filter((entry) => entry.value.kind === 'usage'));
   const canonicalContributions = usageEntries.filter((entry) => {
     const value = entry.value as MonitorUsageFamilyValue;
-    return value.canonical && contribution(value) !== undefined;
+    return value.canonical && totalContribution(value) !== undefined;
   });
   const canonicalCumulative = usageEntries.filter((entry) => {
     const value = entry.value as MonitorUsageFamilyValue;
@@ -193,7 +235,7 @@ export function projectMonitorUsageLedger(
     let running = 0;
     projectedSamples = canonicalContributions.map((entry) => {
       const value = entry.value as MonitorUsageFamilyValue;
-      const amount = contribution(value) ?? 0;
+      const amount = totalContribution(value) ?? 0;
       running += amount;
       if (value.actor) actorTotals.set(value.actor.runKey, (actorTotals.get(value.actor.runKey) ?? 0) + amount);
       return { at: entry.effectiveAt ?? entry.observedAt, cumulativeTokens: running };
@@ -229,7 +271,7 @@ export function projectMonitorUsageLedger(
   });
   if (liveCanonical.length > 0) {
     const windowTokens = liveCanonical.reduce(
-      (total, entry) => total + (contribution(entry.value as MonitorUsageFamilyValue) ?? 0),
+      (total, entry) => total + (meterContribution(entry.value as MonitorUsageFamilyValue) ?? 0),
       0,
     );
     burnRatePerMin = Math.max(0, windowTokens * (60_000 / windowMs));
@@ -252,12 +294,15 @@ export function projectMonitorUsageLedger(
   for (const [actorRunKey, actorEntries] of byActor) {
     const contributions = actorEntries.filter((entry) => {
       const value = entry.value as MonitorUsageFamilyValue;
-      return value.canonical && contribution(value) !== undefined;
+      return value.canonical && totalContribution(value) !== undefined;
     });
     if (contributions.length > 0) {
       actorTotals.set(
         actorRunKey,
-        contributions.reduce((total, entry) => total + (contribution(entry.value as MonitorUsageFamilyValue) ?? 0), 0),
+        contributions.reduce(
+          (total, entry) => total + (totalContribution(entry.value as MonitorUsageFamilyValue) ?? 0),
+          0,
+        ),
       );
     } else {
       const cumulative = actorEntries
@@ -278,7 +323,7 @@ export function projectMonitorUsageLedger(
         actorRunKey,
         Math.max(
           0,
-          live.reduce((total, entry) => total + (contribution(entry.value as MonitorUsageFamilyValue) ?? 0), 0) *
+          live.reduce((total, entry) => total + (meterContribution(entry.value as MonitorUsageFamilyValue) ?? 0), 0) *
             (60_000 / windowMs),
         ),
       );
@@ -303,6 +348,7 @@ export function projectMonitorUsageLedger(
   return {
     usage: {
       ...(cumulativeTokens !== undefined ? { cumulativeTokens } : {}),
+      ...canonicalTotals(canonicalContributions),
       ...(burnRatePerMin !== undefined ? { burnRatePerMin, burnRateWindowMs: windowMs, burnRateBoundary } : {}),
       ...(rootActor ? { rootActor } : {}),
       samples: bounded.samples,

@@ -82,6 +82,20 @@ describe('createHookBridge', () => {
     expect(children[0].body).toEqual(payload);
   });
 
+  it('routes authenticated OTLP log batches without requiring a hook-shaped session field', async () => {
+    const { bridge: b } = await startBridge();
+    const logs: NativeHookEnvelope[] = [];
+    b.onOtelLogs((event) => logs.push(event));
+    const payload = {
+      resourceLogs: [{ scopeLogs: [{ logRecords: [{ body: { stringValue: 'claude_code.api_request' } }] }] }],
+    };
+
+    const res = await post(b.otelLogsEndpoint(), b.token, JSON.stringify(payload));
+    expect(res.status).toBe(200);
+    expect(logs).toHaveLength(1);
+    expect(logs[0].body).toEqual(payload);
+  });
+
   it('rejects a missing or wrong bearer token with 401 and emits nothing', async () => {
     const { bridge: b, events, errors } = await startBridge();
     const payload = JSON.stringify(fakeClaudeHookPayload('Stop', { session_id: OWNED_SESSION }));

@@ -31,14 +31,14 @@ import type {
   HermesAgentOptions,
 } from './types.js';
 
-export interface ClaudeScopedObservationRuntimeContext {
+export interface ClaudeObservationRuntimeContext {
   runtimeRunId: RuntimeRunId | null;
 }
 
 type AdapterCallbackValue<T> = T extends (value: infer Value) => void ? Value : never;
-type RuntimeScopedCallback<T> = (
+type RuntimeObservationCallback<T> = (
   value: AdapterCallbackValue<NonNullable<T>>,
-  context: ClaudeScopedObservationRuntimeContext,
+  context: ClaudeObservationRuntimeContext,
 ) => void;
 
 export interface BuiltinProviderOptions {
@@ -47,21 +47,18 @@ export interface BuiltinProviderOptions {
   acpConnector?: AcpConnector;
   /** Runtime rollout boundary for Claude settings/status-channel integration. */
   claudeSubagentStatusObservation?: boolean;
-  onClaudeScopedObservationBatch?: RuntimeScopedCallback<CreateClaudeSessionOptions['onScopedObservationBatch']>;
-  onClaudeScopedObservationDiagnostic?: RuntimeScopedCallback<
-    CreateClaudeSessionOptions['onScopedObservationDiagnostic']
-  >;
-  onClaudeScopedObservationError?: RuntimeScopedCallback<CreateClaudeSessionOptions['onScopedObservationError']>;
+  onClaudeObservationBatch?: RuntimeObservationCallback<CreateClaudeSessionOptions['onObservationBatch']>;
+  onClaudeObservationError?: RuntimeObservationCallback<CreateClaudeSessionOptions['onObservationError']>;
   /** Native-canary-only hook rail fault; normal product sessions leave this unset. */
   claudeHookRailFaultInjection?: ClaudeHookRailFaultInjection;
 }
 
-function bindScopedObservationCallback<T>(
-  callback: ((value: T, context: ClaudeScopedObservationRuntimeContext) => void) | undefined,
+function bindObservationCallback<T>(
+  callback: ((value: T, context: ClaudeObservationRuntimeContext) => void) | undefined,
   runtimeRunId: RuntimeRunId | undefined,
 ): ((value: T) => void) | undefined {
   if (!callback) return undefined;
-  const context: ClaudeScopedObservationRuntimeContext = { runtimeRunId: runtimeRunId ?? null };
+  const context: ClaudeObservationRuntimeContext = { runtimeRunId: runtimeRunId ?? null };
   return (value) => callback(value, context);
 }
 
@@ -150,12 +147,8 @@ export function createBuiltinProviders(options: BuiltinProviderOptions = {}): Ag
           resumeInvocation: launch?.resumeInvocation,
           onDiagnostic: launch?.onDiagnostic,
           observeSubagentStatus: options.claudeSubagentStatusObservation ?? false,
-          onScopedObservationBatch: bindScopedObservationCallback(options.onClaudeScopedObservationBatch, runtimeRunId),
-          onScopedObservationDiagnostic: bindScopedObservationCallback(
-            options.onClaudeScopedObservationDiagnostic,
-            runtimeRunId,
-          ),
-          onScopedObservationError: bindScopedObservationCallback(options.onClaudeScopedObservationError, runtimeRunId),
+          onObservationBatch: bindObservationCallback(options.onClaudeObservationBatch, runtimeRunId),
+          onObservationError: bindObservationCallback(options.onClaudeObservationError, runtimeRunId),
           hookRailFaultInjection: options.claudeHookRailFaultInjection,
           ports: {
             spawn: (prepared) => host.spawnTerminal(prepared),
@@ -181,12 +174,8 @@ export function createBuiltinProviders(options: BuiltinProviderOptions = {}): Ag
           resumeInvocation: launch?.resumeInvocation,
           onDiagnostic: launch?.onDiagnostic,
           observeSubagentStatus: options.claudeSubagentStatusObservation ?? false,
-          onScopedObservationBatch: bindScopedObservationCallback(options.onClaudeScopedObservationBatch, runtimeRunId),
-          onScopedObservationDiagnostic: bindScopedObservationCallback(
-            options.onClaudeScopedObservationDiagnostic,
-            runtimeRunId,
-          ),
-          onScopedObservationError: bindScopedObservationCallback(options.onClaudeScopedObservationError, runtimeRunId),
+          onObservationBatch: bindObservationCallback(options.onClaudeObservationBatch, runtimeRunId),
+          onObservationError: bindObservationCallback(options.onClaudeObservationError, runtimeRunId),
           hookRailFaultInjection: options.claudeHookRailFaultInjection,
           automate: host.automateTerminal,
         });

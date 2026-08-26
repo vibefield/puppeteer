@@ -22,7 +22,6 @@
     "@vibecook/puppeteer-record": "workspace:*",
     "@vibecook/puppeteer-runtime": "workspace:*",
     "@vibecook/puppeteer-workspaces": "workspace:*",
-    "@vibecook/spaghetti-sdk": "0.7.0",
     "@vibecook/ghosttea-electron": "0.9.3",
     "@vibecook/ghosttea-native-tabs": "0.9.3",
     "@vibecook/ghosttea-protocol": "0.9.3",

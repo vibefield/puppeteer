@@ -19,7 +19,7 @@ describe('agentEventCatalog', () => {
       [AgentEventType, (typeof agentEventCatalog)[AgentEventType]]
     >;
 
-    expect(entries).toHaveLength(38);
+    expect(entries).toHaveLength(39);
     expect(new Set(entries.map(([, definition]) => definition.legacyType)).size).toBe(entries.length);
 
     for (const [type, definition] of entries) {

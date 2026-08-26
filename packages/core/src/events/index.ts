@@ -3,6 +3,7 @@ export * from './state/index.js';
 export * from './context-window.js';
 export * from './conversation.js';
 export * from './usage.js';
+export * from './workflow.js';
 export * from './environment.js';
 export * from './workspace.js';
 export * from './process.js';

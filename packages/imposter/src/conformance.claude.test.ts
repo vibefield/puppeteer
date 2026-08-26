@@ -4,7 +4,7 @@
  *
  * This runs the whole chain hermetically — settings generation → settings
  * parsing → real HTTP hooks → normalizer → reducer, plus guarded-paste prompt
- * confirmation and the spaghetti-SDK transcript tail — with no claude binary
+ * confirmation and the adapter-owned transcript tail — with no claude binary
  * and no tokens. It is the pipe-and-no-socket path from §4.2, which is exactly
  * what CI runs, so headless has to be first-class rather than a fallback.
  *

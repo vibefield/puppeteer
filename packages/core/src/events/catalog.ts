@@ -41,6 +41,7 @@ import {
   type StateEvent,
 } from './state/index.js';
 import { TokensUsedEventSchema, type UsageEvent } from './usage.js';
+import { WorkflowUpdatedEventSchema, type WorkflowEvent } from './workflow.js';
 import { WorkspaceChangedEventSchema, type WorkspaceEvent } from './workspace.js';
 
 /** Complete normalized event union. Category modules own the individual members. */
@@ -49,6 +50,7 @@ export type AgentEvent =
   | ContextWindowEvent
   | ConversationEvent
   | UsageEvent
+  | WorkflowEvent
   | EnvironmentEvent
   | WorkspaceEvent
   | ProcessEvent
@@ -62,6 +64,7 @@ export type AgentEventService =
   | 'context-window'
   | 'conversation'
   | 'usage'
+  | 'workflow'
   | 'environment'
   | 'workspace'
   | 'process'
@@ -245,6 +248,12 @@ export const agentEventCatalog = {
     'tokens.used',
     TokensUsedEventSchema,
     'The provider reported token consumption.',
+  ),
+  'workflow:updated': defineAgentEvent(
+    'workflow',
+    'workflow.updated',
+    WorkflowUpdatedEventSchema,
+    'A provider workflow and its observed worker membership changed.',
   ),
   'environment:updated': defineAgentEvent(
     'environment',

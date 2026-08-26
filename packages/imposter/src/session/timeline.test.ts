@@ -51,6 +51,23 @@ describe('createOpTimeline', () => {
     expect(record).toMatchObject({ type: 'user', message: { content: 'refactor the parser' } });
   });
 
+  it('writes Claude assistant records with the native message discriminator', async () => {
+    const timeline = build({
+      $sessionId: '01234567-89ab-cdef-0123-456789abcdef',
+      $cwd: '/fixture',
+      $vendorVersion: '2.1.226',
+      $modelId: 'claude-sonnet-5',
+    });
+    timeline.beginTurn();
+    await timeline.run({ op: 'assistant.delta', with: { text: 'done' } });
+
+    const record = JSON.parse(readFileSync(join(dir, 't.jsonl'), 'utf8').trim());
+    expect(record).toMatchObject({
+      type: 'assistant',
+      message: { type: 'message', role: 'assistant', model: 'claude-sonnet-5' },
+    });
+  });
+
   it('presents exactly one frame per op, so the screen cannot claim a turn the wire never saw', async () => {
     const timeline = build();
     const ops = [

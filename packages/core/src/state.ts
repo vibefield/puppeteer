@@ -628,6 +628,7 @@ export function reduceSessionState(state: SessionRuntimeState, envelope: AgentEv
     case 'workspace.changed':
     case 'notification':
     case 'tokens.used':
+    case 'workflow.updated':
     case 'plan.updated':
     case 'compaction.started':
     case 'compaction.completed':

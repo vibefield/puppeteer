@@ -493,6 +493,11 @@
         color: var(--amber);
       }
 
+      .service-workflow {
+        background: var(--purple-bg);
+        color: var(--purple);
+      }
+
       .service-environment,
       .service-workspace {
         background: var(--blue-bg);
@@ -920,8 +925,8 @@
 
         <div class="stats" aria-label="API summary">
           <div class="stat"><strong>1</strong><span>Agent object per runtime run</span></div>
-          <div class="stat"><strong>10</strong><span>top-level event services</span></div>
-          <div class="stat"><strong>38</strong><span>normalized event routes</span></div>
+          <div class="stat"><strong>11</strong><span>top-level event services</span></div>
+          <div class="stat"><strong>39</strong><span>normalized event routes</span></div>
           <div class="stat"><strong>3</strong><span>selector forms</span></div>
         </div>
       </header>
@@ -940,6 +945,7 @@
           <a class="sub-link" href="#service-context-window">context-window</a>
           <a class="sub-link" href="#service-conversation">conversation</a>
           <a class="sub-link" href="#service-usage">usage</a>
+          <a class="sub-link" href="#service-workflow">workflow</a>
           <a class="sub-link" href="#service-environment">environment</a>
           <a class="sub-link" href="#service-workspace">workspace</a>
           <a class="sub-link" href="#service-process">process</a>
@@ -1209,7 +1215,7 @@
 
             <div class="callout">
               <strong>Schema boundary.</strong> Each Core event category owns strict Zod schemas and exports TypeScript
-              types inferred from them. The exhaustive catalog binds all 38
+              types inferred from them. The exhaustive catalog binds all 39
               <span class="mono">category:event-name</span> routes to those schemas. Runtime validation uses Zod once at
               adapter ingress; listener callback narrowing is derived in TypeScript from the same catalog.
             </div>
@@ -1603,6 +1609,7 @@ unsubscribe();</code></pre>
                 <pre><code>type AgentEventSource =
   | 'native-hook'
   | 'native-transcript'
+  | 'native-telemetry'
   | 'native-protocol'
   | 'native-statusline'
   | 'native-log'
@@ -1624,7 +1631,7 @@ unsubscribe();</code></pre>
           <section id="catalog">
             <h2>Complete event catalog</h2>
             <p class="section-note">
-              All 38 public routes are listed below. Expand a row to see the exact normalized payload. Search matches
+              All 39 public routes are listed below. Expand a row to see the exact normalized payload. Search matches
               routes, native payload types, descriptions, and field names.
             </p>
 
@@ -1644,7 +1651,7 @@ unsubscribe();</code></pre>
               <button class="filter-button" type="button" data-filter="other">Other</button>
               <button class="small-button" id="expand-visible" type="button">Expand visible</button>
               <button class="small-button" id="collapse-all" type="button">Collapse</button>
-              <span class="result-count" id="event-count">38 / 38 routes</span>
+              <span class="result-count" id="event-count">39 / 39 routes</span>
             </div>
 
             <div id="event-sections">
@@ -2327,17 +2334,57 @@ unsubscribe();</code></pre>
   usageId: string;
   boundary: 'response' | 'sample';
   canonical: boolean;
+  totalTokens?: number; // full settled provider work
+  meterTokens?: number; // operational burn meter
   cumulativeTokens?: number;
   deltaTokens?: number;
+  costUsd?: number;
   breakdown?: {
     inputTokens?: number;
+    freshInputTokens?: number;
     outputTokens?: number;
     cacheReadTokens?: number;
     cacheCreationTokens?: number;
+    reasoningTokens?: number;
   };
 }</code></pre>
                       <div class="projection-row">
                         <span class="chip">monitor usage</span><span class="chip">burn-rate input</span>
+                      </div>
+                    </div>
+                  </details>
+                </div>
+              </section>
+
+              <section class="service-section" id="service-workflow" data-section-service="workflow">
+                <div class="service-header">
+                  <h3>Workflow service</h3>
+                  <span class="badge service-workflow">1 route</span>
+                  <p>Provider workflow identity, activity, and exact known member state.</p>
+                </div>
+                <div class="event-list">
+                  <details class="event-card" data-service="workflow">
+                    <summary>
+                      <span class="event-title"
+                        ><span class="route">workflow:updated</span
+                        ><span class="native-type">workflow.updated</span></span
+                      ><span class="badge service-workflow">workflow</span>
+                    </summary>
+                    <div class="event-body">
+                      <p>Repeated workflow ids update the same run; omitted members preserve identity-only evidence.</p>
+                      <pre><code>interface WorkflowUpdatedEvent {
+  type: 'workflow.updated';
+  workflowId: string;
+  name?: string;
+  active: boolean;
+  members?: Array&lt;{
+    agentId: string;
+    agentType?: string;
+    state: 'active' | 'completed';
+  }&gt;;
+}</code></pre>
+                      <div class="projection-row">
+                        <span class="chip">monitor workflow</span><span class="chip">actor affiliations</span>
                       </div>
                     </div>
                   </details>

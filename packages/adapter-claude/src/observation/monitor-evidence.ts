@@ -21,7 +21,7 @@ import {
 const STATUS_CONTRACT = 'claude-status-channel@1';
 const MAX_STATUS_SAMPLES = 256;
 
-export const CLAUDE_MONITOR_CAPABILITIES: readonly ObservationCapability[] = [
+const CLAUDE_MONITOR_CAPABILITY_BASE: readonly ObservationCapability[] = [
   {
     family: 'status',
     support: 'supported',
@@ -34,12 +34,12 @@ export const CLAUDE_MONITOR_CAPABILITIES: readonly ObservationCapability[] = [
     family: 'usage',
     support: 'supported',
     actorScope: 'current-actors',
-    latency: 'sample',
-    source: 'spaghetti-rfc012c-and-claude-status',
-    contractVersion: 'spaghetti-sdk@0.7.0-local+rfc012cd',
+    latency: 'response',
+    source: 'claude-otlp-logs-with-transcript-fallback',
+    contractVersion: 'claude-code-api-request@1',
     limitations: [
-      'Per-child attribution requires a typed actor run; child status samples are non-canonical.',
-      'Root usage is canonical response usage and may arrive at transcript file-flush latency.',
+      'Settled requests are exact; Claude exposes no sanctioned intra-response token delta.',
+      'Per-child attribution is present only when Claude emits a native agent id.',
       'Claude tokenSamples omit timestamps, so only callback-time tokenCount is used for child burn rate.',
     ],
   },
@@ -93,12 +93,12 @@ export const CLAUDE_MONITOR_CAPABILITIES: readonly ObservationCapability[] = [
   },
   {
     family: 'workflow',
-    support: 'unsupported',
-    actorScope: 'session',
-    latency: 'historical',
-    source: 'claude-hooks-and-status',
+    support: 'degraded',
+    actorScope: 'current-actors',
+    latency: 'sample',
+    source: 'claude-otel-and-workflow-journals',
     limitations: [
-      'Hooks and status channels do not expose workflow membership; semantic capability is merged separately.',
+      'OTLP supplies workflow identity and name; run journals supply exact worker membership and completion.',
     ],
   },
   {
@@ -118,6 +118,32 @@ export const CLAUDE_MONITOR_CAPABILITIES: readonly ObservationCapability[] = [
     limitations: ['Git/worktree topology remains runtime-owned.'],
   },
 ] as const;
+
+export function claudeMonitorCapabilities(
+  otelUsageEnabled: boolean,
+  unavailableReason = 'Authenticated OTLP request logs are unavailable for this session.',
+  otelUsageVerified = otelUsageEnabled,
+): readonly ObservationCapability[] {
+  if (otelUsageEnabled && otelUsageVerified) return CLAUDE_MONITOR_CAPABILITY_BASE;
+  return CLAUDE_MONITOR_CAPABILITY_BASE.map((capability) =>
+    capability.family === 'usage'
+      ? {
+          ...capability,
+          support: 'degraded' as const,
+          latency: otelUsageEnabled ? ('response' as const) : ('historical' as const),
+          source: otelUsageEnabled ? 'claude-otlp-probe-with-transcript-fallback' : 'claude-transcript-jsonl',
+          limitations: [
+            ...capability.limitations,
+            otelUsageEnabled
+              ? 'The provider version is unknown; OTLP is safely probed and transcript usage remains the fallback.'
+              : unavailableReason,
+          ],
+        }
+      : capability,
+  );
+}
+
+export const CLAUDE_MONITOR_CAPABILITIES = claudeMonitorCapabilities(true);
 
 function nativeAgentActor(nativeSessionId: string, agentId: string, agentType?: string): ActorRunRef {
   return {
@@ -179,6 +205,9 @@ interface ChildSample {
 export interface ClaudeMonitorEvidenceOptions {
   nativeSessionId: () => string;
   epoch?: string;
+  otelUsageEnabled?: boolean;
+  otelUsageUnavailableReason?: string;
+  otelUsageVerified?: boolean;
 }
 
 /** Stateful root/child status batch builder; the original payload stays on the native envelope. */
@@ -195,11 +224,17 @@ export class ClaudeMonitorEvidence {
   private readonly childSamples = new Map<string, ChildSample[]>();
   private readonly nativeAgentTypes = new Map<string, string | undefined>();
   private readonly stoppedNativeAgents = new Set<string>();
+  private readonly capabilities: readonly ObservationCapability[];
 
   constructor(private readonly options: ClaudeMonitorEvidenceOptions) {
     this.currentNativeSessionId = options.nativeSessionId();
     this.baseEpoch = options.epoch ?? `status:${this.currentNativeSessionId}`;
     this.statusEpoch = `${this.baseEpoch}:${this.statusGeneration}`;
+    this.capabilities = claudeMonitorCapabilities(
+      options.otelUsageEnabled !== false,
+      options.otelUsageUnavailableReason,
+      options.otelUsageVerified,
+    );
   }
 
   capabilitiesBatch(observedAt: string): AdapterMonitorObservationBatch {
@@ -223,7 +258,7 @@ export class ClaudeMonitorEvidence {
       updates: [],
       sourceWatermarks: [],
       evidence: [],
-      capabilities: [...CLAUDE_MONITOR_CAPABILITIES],
+      capabilities: [...this.capabilities],
     };
     return batch;
   }
@@ -232,7 +267,7 @@ export class ClaudeMonitorEvidence {
   hookRailUnavailableBatch(
     observedAt: string,
     reason = 'Claude hook bridge unavailable',
-    currentCapabilities: readonly ObservationCapability[] = CLAUDE_MONITOR_CAPABILITIES,
+    currentCapabilities: readonly ObservationCapability[] = this.capabilities,
   ): AdapterMonitorObservationBatch {
     this.capabilitySequence += 1;
     const capabilities = currentCapabilities.map((capability) =>

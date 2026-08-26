@@ -123,6 +123,34 @@ describe('monitor accumulator', () => {
     });
   });
 
+  it('preserves journal workflow members across later identity-only telemetry', () => {
+    const state = apply(initial(), [
+      runtime(
+        {
+          type: 'workflow.updated',
+          workflowId: 'workflow-1',
+          active: false,
+          members: [{ agentId: 'worker-a', agentType: 'researcher', state: 'completed' }],
+        },
+        1,
+        { source: 'native-transcript' },
+      ),
+      runtime({ type: 'workflow.updated', workflowId: 'workflow-1', name: 'research', active: true }, 2, {
+        source: 'native-telemetry',
+      }),
+    ]);
+
+    expect(projectAgentMonitorState(state).workflows).toEqual([
+      {
+        id: 'workflow-1',
+        name: 'research',
+        active: false,
+        actorRunKeys: ['native-1:actor:worker-a'],
+        artifactRefs: [],
+      },
+    ]);
+  });
+
   it('keeps plans and tasks informational while projecting exact activity priority', () => {
     let state = apply(initial(), [
       runtime({ type: 'session.ready' }, 1),
@@ -351,7 +379,7 @@ describe('monitor accumulator', () => {
           support: 'degraded' as const,
           actorScope: 'current-actors' as const,
           latency: 'file-flush' as const,
-          source: 'spaghetti',
+          source: 'semantic-observer',
           limitations: ['bootstrap pending'],
         },
       ],

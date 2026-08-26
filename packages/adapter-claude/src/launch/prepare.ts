@@ -1,8 +1,7 @@
 /**
  * Native Claude session preparation (DESIGN §16.2 steps 4–5, 8; §11
- * PreparedNativeSession). Allocates the runtime session UUID — the
- * puppeteer ↔ spaghetti join contract (§2.1, §14.4): the same UUID keys the
- * transcript on disk and Spaghetti's index — writes the generated hook
+ * PreparedNativeSession). Allocates the runtime session UUID used by hooks,
+ * OTLP records, transcripts, and workflow journals, writes the generated hook
  * settings to a per-session file, and builds the interactive spawn command.
  *
  * The command is native-interactive ONLY (§16.3): never -p/--print/
@@ -35,6 +34,8 @@ export interface PrepareClaudeSessionOptions {
   statusLineEndpoint?: string;
   /** Optional authenticated endpoint enabling visible child/task telemetry. */
   subagentStatusLineEndpoint?: string;
+  /** Optional authenticated OTLP/HTTP JSON log endpoint for settled request usage. */
+  otelLogsEndpoint?: string;
   tokenEnvVar: string;
   /** The bearer token VALUE — placed in `env`, never written to disk. */
   token: string;
@@ -79,6 +80,24 @@ export interface PreparedClaudeSession {
   hookForwarderPath: string;
   statusLineForwarderPath?: string;
   filesToCleanup: string[];
+}
+
+const CLAUDE_OTEL_CONFLICT_KEYS = [
+  'OTEL_LOGS_EXPORTER',
+  'OTEL_EXPORTER_OTLP_ENDPOINT',
+  'OTEL_EXPORTER_OTLP_LOGS_ENDPOINT',
+  'OTEL_EXPORTER_OTLP_PROTOCOL',
+  'OTEL_EXPORTER_OTLP_LOGS_PROTOCOL',
+  'OTEL_EXPORTER_OTLP_COMPRESSION',
+  'OTEL_EXPORTER_OTLP_LOGS_COMPRESSION',
+  'OTEL_EXPORTER_OTLP_HEADERS',
+  'OTEL_EXPORTER_OTLP_LOGS_HEADERS',
+  'OTEL_LOGS_EXPORT_INTERVAL',
+] as const;
+
+/** Do not hijack a caller's exporter. The driver falls back to the transcript when any route is already configured. */
+export function hasClaudeOtelExporterConflict(environment: NodeJS.ProcessEnv = process.env): boolean {
+  return CLAUDE_OTEL_CONFLICT_KEYS.some((key) => Boolean(environment[key]?.trim()));
 }
 
 // A script executable (the emulator bin, PATH shims) is not directly
@@ -244,6 +263,16 @@ export async function prepareClaudeSession(options: PrepareClaudeSessionOptions)
     cwd: options.cwd,
     env: {
       [options.tokenEnvVar]: options.token,
+      ...(options.otelLogsEndpoint
+        ? {
+            CLAUDE_CODE_ENABLE_TELEMETRY: '1',
+            OTEL_LOGS_EXPORTER: 'otlp',
+            OTEL_EXPORTER_OTLP_PROTOCOL: 'http/json',
+            OTEL_EXPORTER_OTLP_LOGS_ENDPOINT: options.otelLogsEndpoint,
+            OTEL_EXPORTER_OTLP_LOGS_HEADERS: `Authorization=Bearer%20${encodeURIComponent(options.token)}`,
+            OTEL_LOGS_EXPORT_INTERVAL: '1000',
+          }
+        : {}),
       ...(claudeConfigDir ? { CLAUDE_CONFIG_DIR: claudeConfigDir } : {}),
       ...(electronAsNodeFallback ? { ELECTRON_RUN_AS_NODE: '1' } : {}),
       ...(options.statusLineEndpoint

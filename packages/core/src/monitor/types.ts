@@ -162,6 +162,13 @@ export interface MonitorUsageSample {
 export interface MonitorUsageAggregate {
   /** Corrected current estimate; source corrections may move it downward. */
   cumulativeTokens?: number;
+  inputTokens?: number;
+  freshInputTokens?: number;
+  outputTokens?: number;
+  cacheReadTokens?: number;
+  cacheCreationTokens?: number;
+  reasoningTokens?: number;
+  costUsd?: number;
   /** Never negative, and never synthesized from a bootstrap baseline. */
   burnRatePerMin?: number;
   burnRateWindowMs?: number;

@@ -1,10 +1,9 @@
 /**
  * Transcript channel — the JSONL file the vendor writes and the adapter's
- * transcript observer tails through the spaghetti SDK.
+ * transcript observer reads directly through the adapter's bounded JSONL service.
  *
  * The imposter's transcript root is NEVER the vendor's real one (`~/.claude`),
- * so imposted sessions stay out of the user's spaghetti index
- * (docs/archive/IMPOSTER.md §7.3 item 5). Choosing that root is the session's job;
+ * so imposted sessions never mix with real agent history. Choosing that root is the session's job;
  * this module only writes where it is told.
  */
 

@@ -56,6 +56,7 @@
         "cwd": "$cwd",
         "version": "$vendorVersion",
         "message": {
+          "type": "message",
           "id": "$uuid:message",
           "role": "assistant",
           "model": "$modelId",

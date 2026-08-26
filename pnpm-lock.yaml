@@ -4,9 +4,6 @@ settings:
   autoInstallPeers: true
   excludeLinksFromLockfile: false
 
-overrides:
-  '@vibecook/spaghetti-sdk@0.7.0': link:../p008/spaghetti/packages/sdk
-
 importers:
 
   .:
@@ -32,18 +29,6 @@ importers:
       '@parcel/watcher':
         specifier: ^2.5.0
         version: 2.5.6
-      '@vibecook/puppeteer-core':
-        specifier: workspace:*
-        version: link:../../packages/core
-      '@vibecook/puppeteer-record':
-        specifier: workspace:*
-        version: link:../../packages/record
-      '@vibecook/puppeteer-runtime':
-        specifier: workspace:*
-        version: link:../../packages/runtime
-      '@vibecook/puppeteer-workspaces':
-        specifier: workspace:*
-        version: link:../../packages/workspaces
       '@vibecook/ghosttea-electron':
         specifier: 0.9.3
         version: 0.9.3(electron@43.1.0)
@@ -59,9 +44,18 @@ importers:
       '@vibecook/ghosttead':
         specifier: 0.9.3
         version: 0.9.3
-      '@vibecook/spaghetti-sdk':
-        specifier: link:../../../p008/spaghetti/packages/sdk
-        version: link:../../../p008/spaghetti/packages/sdk
+      '@vibecook/puppeteer-core':
+        specifier: workspace:*
+        version: link:../../packages/core
+      '@vibecook/puppeteer-record':
+        specifier: workspace:*
+        version: link:../../packages/record
+      '@vibecook/puppeteer-runtime':
+        specifier: workspace:*
+        version: link:../../packages/runtime
+      '@vibecook/puppeteer-workspaces':
+        specifier: workspace:*
+        version: link:../../packages/workspaces
       matter-js:
         specifier: 0.19.0
         version: 0.19.0
@@ -167,9 +161,6 @@ importers:
       '@vibecook/puppeteer-core':
         specifier: workspace:*
         version: link:../core
-      '@vibecook/spaghetti-sdk':
-        specifier: link:../../../p008/spaghetti/packages/sdk
-        version: link:../../../p008/spaghetti/packages/sdk
     devDependencies:
       '@vibecook/puppeteer-surface':
         specifier: workspace:*

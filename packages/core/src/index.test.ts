@@ -37,7 +37,7 @@ describe('createEnvelopeStamper', () => {
     const envelope = createEnvelopeStamper().next({
       eventId: 'provider-event-1',
       sourceEventRef: {
-        namespace: 'spaghetti',
+        namespace: 'provider-semantic',
         eventId: 'provider-event-1',
         revisionKey: 'response-1:2',
         sourceGeneration: 4,

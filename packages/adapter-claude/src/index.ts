@@ -13,7 +13,9 @@ export * from './launch/settings.js';
 export * from './launch/prepare.js';
 export * from './observation/status-channel.js';
 export * from './observation/semantic-provider.js';
-export * from './observation/spaghetti-scoped.js';
+export * from './observation/otel/index.js';
+export * from './observation/transcript/index.js';
+export * from './observation/workflow/index.js';
 export * from './observation/monitor-evidence.js';
 export {
   CLAUDE_OAUTH_BETA,

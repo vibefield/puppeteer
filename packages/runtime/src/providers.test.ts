@@ -204,14 +204,12 @@ describe('createBuiltinProviders launch options', () => {
 
   it('forwards Claude observation options through create and prepare paths', async () => {
     const hookRailFaultInjection = { afterHookEvent: 'Stop', reason: 'runtime canary fault' };
-    const onClaudeScopedObservationBatch = vi.fn();
-    const onClaudeScopedObservationDiagnostic = vi.fn();
-    const onClaudeScopedObservationError = vi.fn();
+    const onClaudeObservationBatch = vi.fn();
+    const onClaudeObservationError = vi.fn();
     const claude = createBuiltinProviders({
       claudeSubagentStatusObservation: true,
-      onClaudeScopedObservationBatch,
-      onClaudeScopedObservationDiagnostic,
-      onClaudeScopedObservationError,
+      onClaudeObservationBatch,
+      onClaudeObservationError,
       claudeHookRailFaultInjection: hookRailFaultInjection,
     }).find((provider) => provider.kind === 'claude')!;
 
@@ -221,42 +219,35 @@ describe('createBuiltinProviders launch options', () => {
     expect(adapters.createClaudeSession).toHaveBeenCalledWith(
       expect.objectContaining({
         observeSubagentStatus: true,
-        onScopedObservationBatch: expect.any(Function),
-        onScopedObservationDiagnostic: expect.any(Function),
-        onScopedObservationError: expect.any(Function),
+        onObservationBatch: expect.any(Function),
+        onObservationError: expect.any(Function),
         hookRailFaultInjection,
       }),
     );
     expect(adapters.prepareClaudeTuiSession).toHaveBeenCalledWith(
       expect.objectContaining({
         observeSubagentStatus: true,
-        onScopedObservationBatch: expect.any(Function),
-        onScopedObservationDiagnostic: expect.any(Function),
-        onScopedObservationError: expect.any(Function),
+        onObservationBatch: expect.any(Function),
+        onObservationError: expect.any(Function),
         hookRailFaultInjection,
       }),
     );
 
     const createdOptions = adapters.createClaudeSession.mock.calls[0]![0] as CreateClaudeSessionOptions;
     const preparedOptions = adapters.prepareClaudeTuiSession.mock.calls[0]![0] as CreateClaudeSessionOptions;
-    const batch = {} as Parameters<NonNullable<CreateClaudeSessionOptions['onScopedObservationBatch']>>[0];
-    const diagnostic = {} as Parameters<NonNullable<CreateClaudeSessionOptions['onScopedObservationDiagnostic']>>[0];
+    const batch = {} as Parameters<NonNullable<CreateClaudeSessionOptions['onObservationBatch']>>[0];
     const error = new Error('observer');
     for (const forwarded of [createdOptions, preparedOptions]) {
-      forwarded.onScopedObservationBatch?.(batch);
-      forwarded.onScopedObservationDiagnostic?.(diagnostic);
-      forwarded.onScopedObservationError?.(error);
+      forwarded.onObservationBatch?.(batch);
+      forwarded.onObservationError?.(error);
     }
-    expect(onClaudeScopedObservationBatch).toHaveBeenNthCalledWith(1, batch, {
+    expect(onClaudeObservationBatch).toHaveBeenNthCalledWith(1, batch, {
       runtimeRunId: 'runtime-create',
     });
-    expect(onClaudeScopedObservationBatch).toHaveBeenNthCalledWith(2, batch, {
+    expect(onClaudeObservationBatch).toHaveBeenNthCalledWith(2, batch, {
       runtimeRunId: 'runtime-prepare',
     });
-    expect(onClaudeScopedObservationDiagnostic).toHaveBeenNthCalledWith(1, diagnostic, {
-      runtimeRunId: 'runtime-create',
-    });
-    expect(onClaudeScopedObservationError).toHaveBeenNthCalledWith(1, error, {
+    expect(onClaudeObservationError).toHaveBeenNthCalledWith(1, error, {
       runtimeRunId: 'runtime-create',
     });
   });

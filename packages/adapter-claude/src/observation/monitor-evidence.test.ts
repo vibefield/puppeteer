@@ -10,7 +10,7 @@ function family(batch: AdapterMonitorObservationBatch, name: MonitorFamilyUpdate
 }
 
 describe('ClaudeMonitorEvidence', () => {
-  it('declares every monitor family and leaves workflow support to the semantic capability merge', () => {
+  it('declares every monitor family including journal-backed workflows', () => {
     const evidence = new ClaudeMonitorEvidence({ nativeSessionId: () => SESSION_ID, epoch: 'status-epoch' });
     const capabilities = evidence.capabilitiesBatch(AT).capabilities ?? [];
     expect(capabilities.map(({ family }) => family).sort()).toEqual(
@@ -28,10 +28,27 @@ describe('ClaudeMonitorEvidence', () => {
         'environment',
       ].sort(),
     );
-    expect(capabilities.find(({ family }) => family === 'workflow')).toMatchObject({ support: 'unsupported' });
+    expect(capabilities.find(({ family }) => family === 'workflow')).toMatchObject({
+      support: 'degraded',
+      source: 'claude-otel-and-workflow-journals',
+    });
   });
 
-  it('marks observable families unavailable when the hook rail is lost without inventing workflow support', () => {
+  it('reports transcript-only usage honestly when OTLP is unavailable', () => {
+    const evidence = new ClaudeMonitorEvidence({
+      nativeSessionId: () => SESSION_ID,
+      otelUsageEnabled: false,
+      otelUsageUnavailableReason: 'known old provider version',
+    });
+    expect(evidence.capabilitiesBatch(AT).capabilities?.find(({ family }) => family === 'usage')).toMatchObject({
+      support: 'degraded',
+      latency: 'historical',
+      source: 'claude-transcript-jsonl',
+      limitations: expect.arrayContaining(['known old provider version']),
+    });
+  });
+
+  it('marks observable families unavailable when the shared bridge is lost', () => {
     const evidence = new ClaudeMonitorEvidence({ nativeSessionId: () => SESSION_ID, epoch: 'status-epoch' });
     evidence.capabilitiesBatch(AT);
     const unavailable = evidence.hookRailUnavailableBatch('2026-08-16T20:00:01.000Z', 'test hook disconnect');
@@ -47,9 +64,9 @@ describe('ClaudeMonitorEvidence', () => {
       support: 'degraded',
     });
     expect(unavailable.capabilities?.find(({ family }) => family === 'workflow')).toMatchObject({
-      support: 'unsupported',
+      support: 'degraded',
     });
-    expect(unavailable.coverage).toHaveLength(10);
+    expect(unavailable.coverage).toHaveLength(11);
     expect(unavailable.coverage?.every(({ completeness }) => completeness === 'unavailable')).toBe(true);
   });
 

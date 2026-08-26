@@ -62,47 +62,6 @@ function cycleIssues(edges, nameToDirectory) {
   return issues;
 }
 
-const SPAGHETTI_SDK = '@vibecook/spaghetti-sdk';
-const EXACT_SEMVER = /^\d+\.\d+\.\d+(?:-[0-9A-Za-z.-]+)?(?:\+[0-9A-Za-z.-]+)?$/;
-
-/** Adapters sharing semantic records must compile against one exact SDK contract. */
-export function spaghettiAdapterPinIssues(manifests) {
-  const issues = [];
-  const pins = [];
-  for (const [directory, manifest] of manifests) {
-    if (!directory.startsWith('packages/adapter-')) continue;
-    const declarations = ['dependencies', 'optionalDependencies', 'devDependencies', 'peerDependencies']
-      .map((section) => ({ section, version: manifest[section]?.[SPAGHETTI_SDK] }))
-      .filter(({ version }) => version !== undefined);
-    const declaredVersions = [...new Set(declarations.map(({ version }) => version))];
-    if (declaredVersions.length > 1) {
-      issues.push(
-        `${directory} declares conflicting ${SPAGHETTI_SDK} pins (${declarations
-          .map(({ section, version }) => `${section}=${String(version)}`)
-          .join(', ')})`,
-      );
-      continue;
-    }
-    const version = declaredVersions[0];
-    if (version === undefined) continue;
-    if (typeof version !== 'string' || !EXACT_SEMVER.test(version)) {
-      issues.push(`${directory} must exactly pin ${SPAGHETTI_SDK}; found ${String(version)}`);
-      continue;
-    }
-    pins.push({ directory, version });
-  }
-  const versions = [...new Set(pins.map(({ version }) => version))].sort();
-  if (versions.length > 1) {
-    issues.push(
-      `${SPAGHETTI_SDK} adapter pins differ: ${pins
-        .sort((left, right) => left.directory.localeCompare(right.directory))
-        .map(({ directory, version }) => `${directory}=${version}`)
-        .join(', ')}`,
-    );
-  }
-  return issues;
-}
-
 export function auditPackageLayout(root = scriptRoot) {
   const issues = [];
   const rootManifest = json(join(root, 'package.json'));
@@ -195,7 +154,6 @@ export function auditPackageLayout(root = scriptRoot) {
   const edges = internalProductionEdges(manifests);
   const nameToDirectory = new Map([...manifests].map(([directory, manifest]) => [manifest.name, directory]));
   issues.push(...cycleIssues(edges, nameToDirectory));
-  issues.push(...spaghettiAdapterPinIssues(manifests));
   for (const [directory, dependencies] of edges) {
     if (directory.startsWith('packages/adapter-') && dependencies.includes('@vibecook/puppeteer-surface')) {
       issues.push(`${directory} must consume generated projections, not Surface at runtime`);

@@ -65,6 +65,38 @@ describe('projectMonitorUsageLedger', () => {
     expect(projection.actorBurnRates.get('child-1')).toBe(40);
   });
 
+  it('keeps settled work, operational meter, and token buckets distinct', () => {
+    const projection = projectMonitorUsageLedger(
+      [
+        usageEntry('otel-response', 20, {
+          boundary: 'response',
+          canonical: true,
+          totalTokens: 150,
+          meterTokens: 25,
+          inputTokens: 20,
+          freshInputTokens: 20,
+          outputTokens: 5,
+          cacheReadTokens: 100,
+          cacheCreationTokens: 25,
+          costUsd: 0.01,
+        }),
+      ],
+      T0 + 30_000,
+    );
+
+    expect(projection.usage).toMatchObject({
+      cumulativeTokens: 150,
+      burnRatePerMin: 25,
+      burnRateBoundary: 'response',
+      inputTokens: 20,
+      freshInputTokens: 20,
+      outputTokens: 5,
+      cacheReadTokens: 100,
+      cacheCreationTokens: 25,
+      costUsd: 0.01,
+    });
+  });
+
   it('derives a sample-boundary rate without adding samples to canonical response usage', () => {
     const sampleProjection = projectMonitorUsageLedger(
       [

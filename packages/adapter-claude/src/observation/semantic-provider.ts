@@ -1,9 +1,9 @@
 /**
  * Adapter-local semantic observation boundary.
  *
- * Implementations own provider records and paths. Only normalized events,
- * correction-aware monitor batches, capabilities, and opaque artifact reads
- * cross this boundary.
+ * Implementations own provider files and polling. Only normalized events,
+ * optional correction-aware monitor batches, capabilities, and opaque artifact
+ * reads cross this boundary.
  */
 
 import type { AgentEvent } from '@vibecook/puppeteer-core';
@@ -35,6 +35,7 @@ export interface SemanticObservationAttachRequest {
   transcriptPath: string;
   /** Existing durable history is installed as a no-notification/no-rate baseline. */
   bootstrap: boolean;
+  /** Zero disables polling; an omitted value lets the provider choose its fallback cadence. */
   pollIntervalMs?: number;
 }
 
@@ -47,7 +48,7 @@ export interface SemanticObservationHandle {
   dispose(): Promise<void>;
 }
 
-/** Stable seam for typed, session-scoped semantic observation. */
+/** Stable seam for session-scoped durable observation; no external SDK contract leaks through it. */
 export interface SemanticObservationProvider {
   capabilities(): Promise<readonly ObservationCapability[]>;
   attach(request: SemanticObservationAttachRequest): Promise<SemanticObservationHandle>;

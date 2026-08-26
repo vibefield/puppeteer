@@ -9,7 +9,8 @@
  * - acknowledges observational events IMMEDIATELY (Claude's hook timeout is
  *   seconds — nothing downstream of the 200 may block the agent)
  * - parses JSON safely; malformed events are logged to the sink, never thrown
- * - rejects events for sessions this bridge does not own
+ * - rejects hook/status events for sessions this bridge does not own; batched
+ *   OTLP records are exact-session filtered by the owning driver after decode
  *
  * Payloads carry no timestamps — `receivedAt` is stamped here and is the
  * ingestion clock retained on the adapter candidate upstream.
@@ -26,15 +27,18 @@ export interface NativeHookEnvelope {
 
 export type NativeStatusLineEnvelope = NativeHookEnvelope;
 export type NativeSubagentStatusLineEnvelope = NativeHookEnvelope;
+export type NativeOtelLogsEnvelope = NativeHookEnvelope;
 
-export type HookBridgeRequestKind = 'hook' | 'statusline' | 'subagent-statusline';
+export type HookBridgeRequestKind = 'hook' | 'statusline' | 'subagent-statusline' | 'otel-logs';
 
 export interface HookBridgeOptions {
-  /** Explicit session allow-list; events for other sessions get 403. */
+  /** Explicit hook/status session allow-list; events for other sessions get 403. */
   allowSession: (sessionId: string, kind: HookBridgeRequestKind, body: Readonly<Record<string, unknown>>) => boolean;
   port?: number;
   token?: string;
   maxBodyBytes?: number;
+  /** OTLP batches can be larger than hooks; defaults to 2 MiB. */
+  maxOtlpBodyBytes?: number;
   onProtocolError?: (kind: 'auth' | 'too-large' | 'malformed' | 'unknown-session', detail: string) => void;
 }
 
@@ -46,10 +50,13 @@ export interface HookBridge {
   statusLineEndpoint(): string;
   /** Authenticated child-status telemetry endpoint on the same loopback server. */
   subagentStatusLineEndpoint(): string;
+  /** Authenticated OTLP/HTTP JSON logs endpoint on the same loopback server. */
+  otelLogsEndpoint(): string;
   start(): Promise<void>;
   onEvent(listener: (envelope: NativeHookEnvelope) => void): () => void;
   onStatusLine(listener: (envelope: NativeStatusLineEnvelope) => void): () => void;
   onSubagentStatusLine(listener: (envelope: NativeSubagentStatusLineEnvelope) => void): () => void;
+  onOtelLogs(listener: (envelope: NativeOtelLogsEnvelope) => void): () => void;
   /** Unexpected listener/server failure; intentional dispose does not fire it. */
   onUnavailable(listener: (reason: string) => void): () => void;
   dispose(): Promise<void>;
@@ -57,6 +64,7 @@ export interface HookBridge {
 
 const HOST = '127.0.0.1';
 const DEFAULT_MAX_BODY = 256 * 1024;
+const DEFAULT_MAX_OTLP_BODY = 2 * 1024 * 1024;
 
 function tokenMatches(header: string | undefined, token: string): boolean {
   if (!header?.startsWith('Bearer ')) return false;
@@ -68,9 +76,11 @@ function tokenMatches(header: string | undefined, token: string): boolean {
 export function createHookBridge(options: HookBridgeOptions): HookBridge {
   const token = options.token ?? randomUUID();
   const maxBody = options.maxBodyBytes ?? DEFAULT_MAX_BODY;
+  const maxOtlpBody = options.maxOtlpBodyBytes ?? DEFAULT_MAX_OTLP_BODY;
   const listeners = new Set<(e: NativeHookEnvelope) => void>();
   const statusLineListeners = new Set<(e: NativeStatusLineEnvelope) => void>();
   const subagentStatusLineListeners = new Set<(e: NativeSubagentStatusLineEnvelope) => void>();
+  const otelLogsListeners = new Set<(e: NativeOtelLogsEnvelope) => void>();
   const unavailableListeners = new Set<(reason: string) => void>();
   let server: Server | null = null;
   let port = 0;
@@ -104,22 +114,27 @@ export function createHookBridge(options: HookBridgeOptions): HookBridge {
   }
 
   function handle(req: IncomingMessage, res: ServerResponse): void {
+    const path = req.url?.split('?', 1)[0];
     const requestKind: HookBridgeRequestKind | undefined =
-      req.url === '/subagent-statusline'
-        ? 'subagent-statusline'
-        : req.url === '/statusline'
-          ? 'statusline'
-          : req.url === '/hooks'
-            ? 'hook'
-            : undefined;
+      path === '/v1/logs'
+        ? 'otel-logs'
+        : path === '/subagent-statusline'
+          ? 'subagent-statusline'
+          : path === '/statusline'
+            ? 'statusline'
+            : path === '/hooks'
+              ? 'hook'
+              : undefined;
     const targetListeners =
-      requestKind === 'subagent-statusline'
-        ? subagentStatusLineListeners
-        : requestKind === 'statusline'
-          ? statusLineListeners
-          : requestKind === 'hook'
-            ? listeners
-            : undefined;
+      requestKind === 'otel-logs'
+        ? otelLogsListeners
+        : requestKind === 'subagent-statusline'
+          ? subagentStatusLineListeners
+          : requestKind === 'statusline'
+            ? statusLineListeners
+            : requestKind === 'hook'
+              ? listeners
+              : undefined;
     if (!requestKind || !targetListeners) {
       res.writeHead(404, { 'content-type': 'application/json' });
       res.end('{}');
@@ -133,10 +148,11 @@ export function createHookBridge(options: HookBridgeOptions): HookBridge {
     const chunks: Buffer[] = [];
     let size = 0;
     let overflowed = false;
+    const bodyLimit = requestKind === 'otel-logs' ? maxOtlpBody : maxBody;
 
     req.on('data', (chunk: Buffer) => {
       size += chunk.length;
-      if (size > maxBody) {
+      if (size > bodyLimit) {
         overflowed = true;
         req.destroy();
         return;
@@ -145,7 +161,7 @@ export function createHookBridge(options: HookBridgeOptions): HookBridge {
     });
 
     req.on('close', () => {
-      if (overflowed) options.onProtocolError?.('too-large', `body exceeded ${maxBody} bytes`);
+      if (overflowed) options.onProtocolError?.('too-large', `body exceeded ${bodyLimit} bytes`);
     });
 
     req.on('end', () => {
@@ -159,10 +175,12 @@ export function createHookBridge(options: HookBridgeOptions): HookBridge {
         return;
       }
 
-      const sessionId = body.session_id;
-      if (typeof sessionId !== 'string' || !options.allowSession(sessionId, requestKind, body)) {
-        reject(res, 403, 'unknown-session', String(sessionId ?? 'missing session_id'));
-        return;
+      if (requestKind !== 'otel-logs') {
+        const sessionId = body.session_id;
+        if (typeof sessionId !== 'string' || !options.allowSession(sessionId, requestKind, body)) {
+          reject(res, 403, 'unknown-session', String(sessionId ?? 'missing session_id'));
+          return;
+        }
       }
 
       // Ack before fan-out: listeners must never hold Claude's hook open.
@@ -189,6 +207,7 @@ export function createHookBridge(options: HookBridgeOptions): HookBridge {
     endpoint: () => `http://${HOST}:${port}/hooks`,
     statusLineEndpoint: () => `http://${HOST}:${port}/statusline`,
     subagentStatusLineEndpoint: () => `http://${HOST}:${port}/subagent-statusline`,
+    otelLogsEndpoint: () => `http://${HOST}:${port}/v1/logs`,
 
     start(): Promise<void> {
       if (server) return Promise.resolve();
@@ -226,6 +245,10 @@ export function createHookBridge(options: HookBridgeOptions): HookBridge {
       subagentStatusLineListeners.add(listener);
       return () => subagentStatusLineListeners.delete(listener);
     },
+    onOtelLogs(listener) {
+      otelLogsListeners.add(listener);
+      return () => otelLogsListeners.delete(listener);
+    },
     onUnavailable(listener) {
       unavailableListeners.add(listener);
       if (unavailableReason) {
@@ -243,6 +266,7 @@ export function createHookBridge(options: HookBridgeOptions): HookBridge {
       listeners.clear();
       statusLineListeners.clear();
       subagentStatusLineListeners.clear();
+      otelLogsListeners.clear();
       unavailableListeners.clear();
       const s = server;
       server = null;

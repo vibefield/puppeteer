@@ -1483,7 +1483,7 @@ describe('createAgentRuntime', () => {
         {
           eventId: 'provider-event-1',
           sourceEventRef: {
-            namespace: 'spaghetti',
+            namespace: 'provider-semantic',
             eventId: 'provider-event-1',
             revisionKey: 'response-1:4',
             sourceGeneration: 3,
@@ -1504,7 +1504,7 @@ describe('createAgentRuntime', () => {
       runtimeEpoch: 1,
       sequence: expect.any(Number),
       sourceEventRef: {
-        namespace: 'spaghetti',
+        namespace: 'provider-semantic',
         eventId: 'provider-event-1',
         revisionKey: 'response-1:4',
         sourceGeneration: 3,

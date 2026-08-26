@@ -20,6 +20,7 @@ export type ObservationLevel = z.infer<typeof ObservationLevelSchema>;
 export const AgentEventSourceSchema = z.enum([
   'native-hook',
   'native-transcript',
+  'native-telemetry',
   'native-protocol',
   'native-statusline',
   'native-log',

@@ -75,7 +75,7 @@ export interface CodexThreadInfo {
 }
 
 export interface CodexObserver {
-  /** The observed thread's id / spaghetti join key (undefined until one attaches). */
+  /** The observed thread's native correlation id (undefined until one attaches). */
   readonly sessionId: string | undefined;
   observationLevel(): ObservationLevel;
   threadPath(): string | undefined;

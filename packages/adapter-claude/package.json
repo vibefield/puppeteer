@@ -45,8 +45,7 @@
     "node": ">=22.18.0"
   },
   "dependencies": {
-    "@vibecook/puppeteer-core": "workspace:*",
-    "@vibecook/spaghetti-sdk": "0.7.0"
+    "@vibecook/puppeteer-core": "workspace:*"
   },
   "devDependencies": {
     "@vibecook/puppeteer-surface": "workspace:*",

@@ -99,6 +99,19 @@ function mergeStoredValue(existing: MonitorStoredEntry | undefined, value: Monit
     if (value.cwd !== undefined && value.cwd !== existing.value.cwd && value.git === undefined) delete merged.git;
     return merged;
   }
+  if (existing.value.kind === 'workflow' && value.kind === 'workflow') {
+    const preserveJournalSnapshot = value.actorRunKeys.length === 0 && existing.value.actorRunKeys.length > 0;
+    return {
+      ...existing.value,
+      ...value,
+      name: value.name ?? existing.value.name,
+      // Identity-only OTLP observations intentionally carry no members. Do
+      // not erase or reopen a more complete journal snapshot when another
+      // request ends; journals own membership and completion.
+      active: preserveJournalSnapshot ? existing.value.active : value.active,
+      actorRunKeys: preserveJournalSnapshot ? existing.value.actorRunKeys : value.actorRunKeys,
+    };
+  }
   return value;
 }
 
@@ -633,7 +646,11 @@ function unexpectedExit(reason: ProcessExitReason): boolean {
   return reason === 'crash' || reason === 'signal' || reason === 'spawn-failed' || reason === 'workspace-failed';
 }
 
-function environmentUpdates(event: SessionEnvironmentUpdatedEvent, at: string): MonitorFamilyUpdate[] {
+function environmentUpdates(
+  event: SessionEnvironmentUpdatedEvent,
+  at: string,
+  actor?: ActorRunRef,
+): MonitorFamilyUpdate[] {
   const updates: MonitorFamilyUpdate[] = [];
   const intent = event.intent ?? 'observed';
   if (event.currentCwd !== undefined || event.git !== undefined) {
@@ -653,12 +670,15 @@ function environmentUpdates(event: SessionEnvironmentUpdatedEvent, at: string): 
         providerModelId: event.model.id,
         ...(event.model.displayName ? { displayName: event.model.displayName } : {}),
         intent,
+        ...(actor ? { actor } : {}),
       }),
     );
   }
   if (event.effort === null) updates.push(retract('effort', intent));
   else if (event.effort !== undefined) {
-    updates.push(upsert('effort', intent, { kind: 'effort', value: event.effort, intent }));
+    updates.push(
+      upsert('effort', intent, { kind: 'effort', value: event.effort, intent, ...(actor ? { actor } : {}) }),
+    );
   }
   const modes = [
     ['provider-session', event.providerSessionMode] as const,
@@ -928,12 +948,17 @@ export function translateAgentEventEnvelope(options: TranslateAgentEventOptions)
           usageId: event.usageId,
           boundary: event.boundary,
           canonical: event.canonical,
+          totalTokens: event.totalTokens,
+          meterTokens: event.meterTokens,
           cumulativeTokens: event.cumulativeTokens,
           deltaTokens: event.deltaTokens,
           inputTokens: event.breakdown?.inputTokens,
+          freshInputTokens: event.breakdown?.freshInputTokens,
           outputTokens: event.breakdown?.outputTokens,
           cacheReadTokens: event.breakdown?.cacheReadTokens,
           cacheCreationTokens: event.breakdown?.cacheCreationTokens,
+          reasoningTokens: event.breakdown?.reasoningTokens,
+          costUsd: event.costUsd,
           ...(actor ? { actor } : {}),
         }),
       );
@@ -1010,8 +1035,47 @@ export function translateAgentEventEnvelope(options: TranslateAgentEventOptions)
         }),
       );
       break;
+    case 'workflow.updated': {
+      const rootSessionKey = envelope.nativeSessionId ?? envelope.sessionId;
+      const members = event.members ?? [];
+      const actorRunKeys = members.map(({ agentId }) => `${rootSessionKey}:actor:${agentId}`);
+      updates.push(
+        upsert('workflow', `workflow:${event.workflowId}`, {
+          kind: 'workflow',
+          workflowId: event.workflowId,
+          ...(event.name ? { name: event.name } : {}),
+          active: event.active,
+          actorRunKeys,
+          artifactRefs: [],
+        }),
+      );
+      for (const member of members) {
+        const memberActor: ActorRunRef = {
+          rootSessionKey,
+          runKey: `${rootSessionKey}:actor:${member.agentId}`,
+          role: 'child',
+          parentRunKey: `${rootSessionKey}:root`,
+          ...(envelope.nativeSessionId ? { nativeSessionId: envelope.nativeSessionId } : {}),
+          nativeAgentId: member.agentId,
+          ...(member.agentType ? { nativeAgentType: member.agentType } : {}),
+        };
+        updates.push(
+          upsert('delegation', `actor:${memberActor.runKey}`, {
+            kind: 'actor',
+            actor: memberActor,
+            state: member.state === 'active' ? 'active' : 'stopped',
+          }),
+          upsert('delegation', `workflow:${event.workflowId}:member:${member.agentId}`, {
+            kind: 'affiliation',
+            actor: memberActor,
+            affiliation: { kind: 'workflow', id: event.workflowId, ...(event.name ? { name: event.name } : {}) },
+          }),
+        );
+      }
+      break;
+    }
     case 'session.environment.updated':
-      updates.push(...environmentUpdates(event, envelope.timestamp));
+      updates.push(...environmentUpdates(event, envelope.timestamp, actor));
       break;
     case 'workspace.changed':
     case 'notification':

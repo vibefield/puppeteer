@@ -134,12 +134,17 @@ export interface MonitorUsageFamilyValue {
   boundary: MonitorUsageBoundary;
   /** Response usage is canonical; samples are compatible low-latency estimates/cross-checks. */
   canonical: boolean;
+  totalTokens?: number;
+  meterTokens?: number;
   cumulativeTokens?: number;
   deltaTokens?: number;
   inputTokens?: number;
+  freshInputTokens?: number;
   outputTokens?: number;
   cacheReadTokens?: number;
   cacheCreationTokens?: number;
+  reasoningTokens?: number;
+  costUsd?: number;
 }
 
 export interface MonitorContextFamilyValue {

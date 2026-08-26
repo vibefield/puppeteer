@@ -25,7 +25,7 @@ export type HookRegistration = 'passive' | 'matcher-required' | 'response-requir
 export type HookConfidence =
   | 'verified-headless' // fired in `-p` runs A–F
   | 'verified-interactive' // fired only under the M1 PTY census
-  | 'unverified'; // name known (spaghetti HookEventName union); never observed
+  | 'unverified'; // name known from provider documentation; never observed
 
 export interface HookEventSpec {
   /** Claude Code `hook_event_name`. */

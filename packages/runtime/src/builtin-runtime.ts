@@ -9,9 +9,8 @@ export interface BuiltinAgentRuntimeOptions extends Omit<AgentRuntimeOptions, 'p
   /** Native-canary-only Claude observation-rail fault injection. */
   claudeHookRailFaultInjection?: BuiltinProviderOptions['claudeHookRailFaultInjection'];
   /** Optional tap of authoritative Claude semantic batches. */
-  onClaudeScopedObservationBatch?: BuiltinProviderOptions['onClaudeScopedObservationBatch'];
-  onClaudeScopedObservationDiagnostic?: BuiltinProviderOptions['onClaudeScopedObservationDiagnostic'];
-  onClaudeScopedObservationError?: BuiltinProviderOptions['onClaudeScopedObservationError'];
+  onClaudeObservationBatch?: BuiltinProviderOptions['onClaudeObservationBatch'];
+  onClaudeObservationError?: BuiltinProviderOptions['onClaudeObservationError'];
 }
 
 /** Turn-key runtime containing every built-in provider behind one interface. */
@@ -22,9 +21,8 @@ export function createBuiltinAgentRuntime(options: BuiltinAgentRuntimeOptions): 
       executables: options.executables,
       acpConnector: options.acpConnector,
       claudeSubagentStatusObservation: options.features?.claudeSubagentStatusObservation ?? false,
-      onClaudeScopedObservationBatch: options.onClaudeScopedObservationBatch,
-      onClaudeScopedObservationDiagnostic: options.onClaudeScopedObservationDiagnostic,
-      onClaudeScopedObservationError: options.onClaudeScopedObservationError,
+      onClaudeObservationBatch: options.onClaudeObservationBatch,
+      onClaudeObservationError: options.onClaudeObservationError,
       claudeHookRailFaultInjection: options.claudeHookRailFaultInjection,
     }),
   });

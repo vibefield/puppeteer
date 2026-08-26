@@ -10,8 +10,9 @@
  *     → ports.spawn (the host carries the hook token in its explicit env grant)
  *     → hook bridge (loopback HTTP; the ONLY session it accepts is ours)
  *     → category normalizers → candidate event source → runtime ingress
- *     → semantic provider (lazy: attached at the first hook payload that hands
- *       us transcript_path; every hook supplies a poll hint)
+ *     → transcript/history + workflow-journal provider (lazy: attached at the
+ *       first hook payload that hands us transcript_path)
+ *     → authenticated OTLP logs (settled request usage, when available)
  *     → prompt injector (uses ports.automate; confirmation and
  *       permission gating wired from the normalized event stream)
  *
@@ -32,15 +33,26 @@ import {
 import type { AdapterMonitorObservationBatch } from '@vibecook/puppeteer-core/monitor-spi';
 import { createHookBridge, type HookBridge, type HookBridgeOptions } from './observation/hook-bridge.js';
 import { ClaudeHookNormalizer, type ClaudeHookDiagnostic, type ClaudeHookPayload } from './normalizer.js';
-import { prepareClaudeSession, cleanupClaudeSession, type PreparedClaudeSession } from './launch/prepare.js';
+import {
+  prepareClaudeSession,
+  cleanupClaudeSession,
+  hasClaudeOtelExporterConflict,
+  type PreparedClaudeSession,
+} from './launch/prepare.js';
 import { createPromptInjector, type PromptInjector } from './launch/prompt.js';
 import { observeClaudeStatusLineAccountUsage } from './observation/account-usage.js';
 import { claudeContextWindowEvent, claudeEnvironmentEvent } from './observation/status-channel.js';
 import { ClaudeMonitorEvidence } from './observation/monitor-evidence.js';
 import {
-  SpaghettiScopedObservationProvider,
-  type SpaghettiScopedObservationDiagnostic,
-} from './observation/spaghetti-scoped.js';
+  decodeClaudeOtelLogs,
+  isClaudeOtelLogsVerified,
+  normalizeClaudeOtelEnvironment,
+  normalizeClaudeOtelUsage,
+  normalizeClaudeOtelWorkflow,
+  otelString,
+  supportsClaudeOtelLogs,
+} from './observation/otel/index.js';
+import { ClaudeTranscriptObservationProvider } from './observation/transcript/provider.js';
 import { claudePermissionMode } from './provider-modes.js';
 import { ClaudeEventSource, type ClaudeEventPublication } from './services/event-source.js';
 import type {
@@ -128,14 +140,14 @@ export interface CreateClaudeSessionOptions {
    * semantic transcript observer alive. Never set this for product sessions.
    */
   hookRailFaultInjection?: ClaudeHookRailFaultInjection;
-  /** Injectable semantic source; defaults to Spaghetti's scoped typed observer. */
+  /** Injectable history source; defaults to Claude transcript + workflow journal adapters. */
   semanticProviderFactory?: () => SemanticObservationProvider;
-  /** Optional tap of the authoritative typed Spaghetti batches for diagnostics. */
-  onScopedObservationBatch?: (batch: AdapterMonitorObservationBatch) => void;
-  /** Bounded RFC-012D control diagnostics. */
-  onScopedObservationDiagnostic?: (diagnostic: SpaghettiScopedObservationDiagnostic) => void;
+  /** Optional tap for batches emitted by an injected semantic provider. */
+  onObservationBatch?: (batch: AdapterMonitorObservationBatch) => void;
   /** Observation errors are reported without terminating Claude. */
-  onScopedObservationError?: (error: Error) => void;
+  onObservationError?: (error: Error) => void;
+  /** Enable authenticated Claude OTLP request-completion logs. Defaults to true when no exporter conflict exists. */
+  observeOtlpUsage?: boolean;
   /** Install and consume Claude's child status channel. Defaults to true for direct adapter callers. */
   observeSubagentStatus?: boolean;
 }
@@ -155,8 +167,8 @@ export interface ClaudeObservationPollHint {
 }
 
 /**
- * The core adapter handle (sessionId is the `--session-id` UUID = the
- * puppeteer ↔ spaghetti join contract) plus Claude-specific transcript extras.
+ * The core adapter handle (sessionId is the shared native correlation UUID)
+ * plus Claude-specific transcript extras.
  */
 export interface ClaudeSession extends AgentAdapterSession {
   /** Absolute path to this session's transcript JSONL (handed to us by hooks). */
@@ -196,6 +208,16 @@ export async function prepareClaudeTuiSession(
   const sessionId = options.resume ?? randomUUID();
   let selectedSessionId = options.resume ?? (options.resumeInvocation ? undefined : sessionId);
   let selectionLocked = options.resume !== undefined;
+  const otelUsageUnavailableReason =
+    options.observeOtlpUsage === false
+      ? 'Authenticated OTLP request logs were disabled by the session option.'
+      : !supportsClaudeOtelLogs(options.providerVersion)
+        ? `Claude ${options.providerVersion} predates the locally verified OTLP log contract.`
+        : hasClaudeOtelExporterConflict()
+          ? 'Authenticated OTLP setup was disabled because the launching environment already owns exporter settings.'
+          : undefined;
+  const otelUsageEnabled = otelUsageUnavailableReason === undefined;
+  const otelUsageVerified = isClaudeOtelLogsVerified(options.providerVersion);
   const bridge: HookBridge = (options.hookBridgeFactory ?? createHookBridge)({
     allowSession: (id, kind, body) => {
       // `/clear` is a native in-process identity rotation regardless of how
@@ -246,6 +268,7 @@ export async function prepareClaudeTuiSession(
       configDir: options.configDir,
       fileChangeMatcher: options.fileChangeMatcher,
       endpoint: bridge.endpoint(),
+      ...(otelUsageEnabled ? { otelLogsEndpoint: bridge.otelLogsEndpoint() } : {}),
       statusLineEndpoint: bridge.statusLineEndpoint(),
       ...(options.observeSubagentStatus === false
         ? {}
@@ -255,7 +278,15 @@ export async function prepareClaudeTuiSession(
     });
 
     try {
-      return createPreparedClaudeSession(options, bridge, prepared, () => selectedSessionId ?? prepared.sessionId);
+      return createPreparedClaudeSession(
+        options,
+        bridge,
+        prepared,
+        () => selectedSessionId ?? prepared.sessionId,
+        otelUsageEnabled,
+        otelUsageUnavailableReason,
+        otelUsageVerified,
+      );
     } catch (error) {
       await cleanupClaudeSession(prepared);
       throw error;
@@ -271,18 +302,22 @@ function createPreparedClaudeSession(
   bridge: HookBridge,
   prepared: PreparedClaudeSession,
   nativeSessionId: () => string = () => prepared.sessionId,
+  otelUsageEnabled = false,
+  otelUsageUnavailableReason?: string,
+  otelUsageVerified = false,
 ): PreparedClaudeTuiSession {
   const normalizer = new ClaudeHookNormalizer();
   const events = new ClaudeEventSource({ sessionId: nativeSessionId, providerVersion: options.providerVersion });
   let observation: ObservationLevel = 'terminal-only';
   let transcriptPath: string | undefined;
-  const semanticProvider =
-    options.semanticProviderFactory?.() ??
-    new SpaghettiScopedObservationProvider({
-      onDiagnostic: options.onScopedObservationDiagnostic,
-    });
+  const semanticProvider = options.semanticProviderFactory?.() ?? new ClaudeTranscriptObservationProvider();
   const semanticCapabilities = Promise.resolve().then(() => semanticProvider.capabilities());
-  const monitorEvidence = new ClaudeMonitorEvidence({ nativeSessionId });
+  const monitorEvidence = new ClaudeMonitorEvidence({
+    nativeSessionId,
+    otelUsageEnabled,
+    otelUsageUnavailableReason,
+    otelUsageVerified,
+  });
   let semanticHandle: SemanticObservationHandle | undefined;
   let semanticAttachment: Promise<SemanticObservationHandle | undefined> | undefined;
   let semanticGeneration = 0;
@@ -302,6 +337,10 @@ function createPreparedClaudeSession(
   let configuredIntentPublished = false;
   let observedStatusEnvironmentKey: string | undefined;
   let observedStatusContextKey: string | undefined;
+  const otelUsageIds = new Set<string>();
+  const observedOtelUsage = new Map<string, string>();
+  const observedOtelEnvironment = new Map<string, string>();
+  const observedOtelWorkflows = new Map<string, string>();
 
   const injector: PromptInjector = createPromptInjector({
     automate: (operation) => {
@@ -433,6 +472,70 @@ function createPreparedClaudeSession(
 
   bridge.onUnavailable(reportHookRailUnavailable);
 
+  bridge.onOtelLogs((otelEnvelope) => {
+    if (!otelUsageEnabled || disposed) return;
+    for (const record of decodeClaudeOtelLogs(otelEnvelope.body, otelEnvelope.receivedAt)) {
+      if (otelString(record, 'session.id') !== nativeSessionId()) continue;
+
+      const usage = normalizeClaudeOtelUsage(record);
+      const environment = normalizeClaudeOtelEnvironment(record);
+      const workflow = normalizeClaudeOtelWorkflow(record);
+      if (!usage && !environment && !workflow) continue;
+      if (observation === 'terminal-only') observation = 'native-log';
+
+      if (usage) {
+        otelUsageIds.add(usage.event.usageId);
+        const fingerprint = JSON.stringify(usage.event);
+        if (observedOtelUsage.get(usage.event.usageId) !== fingerprint) {
+          observedOtelUsage.set(usage.event.usageId, fingerprint);
+          apply(usage.event, {
+            source: 'native-telemetry',
+            timestamp: usage.timestamp,
+            promptId: usage.promptId,
+            agentId: usage.agentId,
+            agentType: usage.agentType,
+            providerVersion: usage.providerVersion ?? options.providerVersion,
+            confidence: 'authoritative',
+            native: usage.nativeEvent,
+          });
+        }
+      }
+
+      if (environment) {
+        const key = environment.agentId ?? 'root';
+        const fingerprint = JSON.stringify(environment.event);
+        if (observedOtelEnvironment.get(key) !== fingerprint) {
+          observedOtelEnvironment.set(key, fingerprint);
+          apply(environment.event, {
+            source: 'native-telemetry',
+            timestamp: environment.timestamp,
+            promptId: otelString(record, 'prompt.id'),
+            agentId: environment.agentId,
+            agentType: environment.agentType,
+            providerVersion: record.providerVersion ?? options.providerVersion,
+            confidence: 'authoritative',
+            native: record,
+          });
+        }
+      }
+
+      if (workflow) {
+        const fingerprint = JSON.stringify(workflow.event);
+        if (observedOtelWorkflows.get(workflow.event.workflowId) !== fingerprint) {
+          observedOtelWorkflows.set(workflow.event.workflowId, fingerprint);
+          apply(workflow.event, {
+            source: 'native-telemetry',
+            timestamp: workflow.timestamp,
+            promptId: otelString(record, 'prompt.id'),
+            providerVersion: record.providerVersion ?? options.providerVersion,
+            confidence: 'authoritative',
+            native: record,
+          });
+        }
+      }
+    }
+  });
+
   function ensureSemanticProvider(path: string): void {
     if (semanticAttachment && transcriptPath === path) return;
     semanticGeneration += 1;
@@ -459,6 +562,10 @@ function createPreparedClaudeSession(
       semanticHandle = handle;
       handle.onEvent((semantic) => {
         if (disposed || generation !== semanticGeneration) return;
+        // OTLP is the lower-latency copy of the same settled request. A
+        // transcript observation that arrives first uses the same usage id and
+        // is corrected in place; one arriving later is redundant.
+        if (semantic.event.type === 'tokens.used' && otelUsageIds.has(semantic.event.usageId)) return;
         apply(semantic.event, {
           source: 'native-transcript',
           timestamp: semantic.timestamp,
@@ -473,7 +580,7 @@ function createPreparedClaudeSession(
       handle.onBatch((batch) => {
         if (disposed || generation !== semanticGeneration) return;
         try {
-          options.onScopedObservationBatch?.(batch);
+          options.onObservationBatch?.(batch);
         } catch {
           // Diagnostic taps cannot affect authoritative monitor delivery.
         }
@@ -481,7 +588,7 @@ function createPreparedClaudeSession(
       });
       handle.onError((error) => {
         try {
-          options.onScopedObservationError?.(error);
+          options.onObservationError?.(error);
         } catch {
           // Error diagnostics cannot affect Claude or source recovery.
         }
@@ -756,9 +863,9 @@ export async function createClaudeSession(options: CreateClaudeSessionOptions): 
     hookBridgeFactory: options.hookBridgeFactory,
     hookRailFaultInjection: options.hookRailFaultInjection,
     semanticProviderFactory: options.semanticProviderFactory,
-    onScopedObservationBatch: options.onScopedObservationBatch,
-    onScopedObservationDiagnostic: options.onScopedObservationDiagnostic,
-    onScopedObservationError: options.onScopedObservationError,
+    onObservationBatch: options.onObservationBatch,
+    onObservationError: options.onObservationError,
+    observeOtlpUsage: options.observeOtlpUsage,
     observeSubagentStatus: options.observeSubagentStatus,
     automate: options.ports.automate,
   });

@@ -6,7 +6,8 @@ UI — lifecycle, observation, guarded control, workspace isolation, receipts �
 state from native side channels, never by reading the screen.
 
 `draft/DESIGN.md` is the canonical architecture (ADRs, §-numbered; comments across the codebase cite
-it). `draft/IMPLEMENTATION-PLAN.md` records what was scoped, deferred, and rejected, and why.
+it), with [`docs/rfcs/002-native-observation-sources.md`](docs/rfcs/002-native-observation-sources.md)
+superseding its live Spaghetti-integration sections. `draft/IMPLEMENTATION-PLAN.md` records what was scoped, deferred, and rejected, and why.
 `draft/SURFACE-ADAPTATION-REFACTOR.md` is the live ownership, package-structure, and continuous
 adaptation spec. `draft/ADAPTING-AN-AGENT.md` is the canonical start-to-finish developer workflow.
 `docs/archive/EMULATOR.md` and `docs/archive/IMPOSTER.md` retain historical rationale but are
@@ -49,9 +50,9 @@ records become worth searching, spaghetti indexes them as one more file source.
 
 ```
 packages/
-  core/          AgentEvent union (38 members) + reduceSessionState + AgentHost + ObservationLevel
+  core/          category-owned AgentEvent schemas + reduceSessionState + AgentHost + ObservationLevel
   runtime/       AgentRuntime — the single app-facing surface; providers, git observer, conversation
-  adapter-claude/  hooks bridge, generated settings, transcript observer (spaghetti SDK), statusline usage
+  adapter-claude/  hooks/status bridge, OTLP usage, transcript history, workflow journals
   adapter-codex/   app-server JSON-RPC over WS-in-UDS, structured driver, TUI attach via --remote
   adapter-acp/     generic ACP driver;  adapter-grok/ layers on it (--leader coexistence)
   workspaces/    direct | exclusive | worktree | copy isolation + final-diff metadata

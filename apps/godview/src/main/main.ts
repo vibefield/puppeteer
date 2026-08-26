@@ -846,13 +846,7 @@ const agentRuntime: AgentRuntime = createBuiltinAgentRuntime({
   defaultCwd: repoRoot,
   executables: realAgentExecutables,
   recorder,
-  ...(monitorHostFeatures.canaryTrace
-    ? {
-        onClaudeScopedObservationDiagnostic: (diagnostic, { runtimeRunId }) =>
-          process.stderr.write(`[claude-semantic] ${JSON.stringify({ runtimeRunId, ...diagnostic })}\n`),
-      }
-    : {}),
-  onClaudeScopedObservationError: (error, { runtimeRunId }) =>
+  onClaudeObservationError: (error, { runtimeRunId }) =>
     process.stderr.write(
       `[claude-semantic] ${JSON.stringify({
         kind: 'error',

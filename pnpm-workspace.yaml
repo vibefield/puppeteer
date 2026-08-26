@@ -1,8 +1,6 @@
 packages:
   - packages/*
   - apps/*
-overrides:
-  '@vibecook/spaghetti-sdk@0.7.0': link:../p008/spaghetti/packages/sdk
 allowBuilds:
   '@parcel/watcher': true
   '@vibecook/truffle': true

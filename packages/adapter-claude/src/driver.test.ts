@@ -420,7 +420,91 @@ describe('createClaudeSession (full loop, test-as-Claude)', () => {
     expect((await receipt).status).toBe('confirmed');
   });
 
-  it('feeds authoritative assistant text and usage from the typed scoped observer', async () => {
+  it('ingests authenticated OTLP request completions as primary exact usage', async () => {
+    const { session, prepared, events, token } = await startSession({ providerVersion: '2.1.245' });
+    expect(prepared.env).toMatchObject({
+      OTEL_LOGS_EXPORTER: 'otlp',
+      OTEL_EXPORTER_OTLP_PROTOCOL: 'http/json',
+      OTEL_LOGS_EXPORT_INTERVAL: '1000',
+    });
+    const attribute = (key: string, value: unknown) => ({
+      key,
+      value: typeof value === 'number' ? { intValue: String(value) } : { stringValue: value },
+    });
+    const otlpBody = JSON.stringify({
+      resourceLogs: [
+        {
+          resource: { attributes: [attribute('service.version', '2.1.245')] },
+          scopeLogs: [
+            {
+              logRecords: [
+                {
+                  body: { stringValue: 'claude_code.api_request' },
+                  attributes: [
+                    attribute('event.name', 'api_request'),
+                    attribute('event.timestamp', '2026-08-25T16:30:14.402Z'),
+                    attribute('session.id', session.sessionId),
+                    attribute('prompt.id', 'prompt-otel'),
+                    attribute('request_id', 'request-otel'),
+                    attribute('model', 'claude-haiku-4-5'),
+                    attribute('input_tokens', 10),
+                    attribute('output_tokens', 5),
+                    attribute('cache_read_tokens', 100),
+                    attribute('cache_creation_tokens', 20),
+                    attribute('user.email', 'must-not-cross@example.com'),
+                  ],
+                },
+              ],
+            },
+          ],
+        },
+      ],
+    });
+    const postOtlp = () =>
+      fetch(prepared.env.OTEL_EXPORTER_OTLP_LOGS_ENDPOINT, {
+        method: 'POST',
+        headers: { 'content-type': 'application/json', authorization: `Bearer ${token}` },
+        body: otlpBody,
+      });
+    const foreignResponse = await fetch(prepared.env.OTEL_EXPORTER_OTLP_LOGS_ENDPOINT, {
+      method: 'POST',
+      headers: { 'content-type': 'application/json', authorization: `Bearer ${token}` },
+      body: otlpBody.replace(session.sessionId, 'foreign-session'),
+    });
+    expect(foreignResponse.status).toBe(200);
+    expect(session.observationLevel()).toBe('terminal-only');
+    expect(events.some(({ event }) => event.type === 'tokens.used')).toBe(false);
+
+    const emptyResponse = await fetch(prepared.env.OTEL_EXPORTER_OTLP_LOGS_ENDPOINT, {
+      method: 'POST',
+      headers: { 'content-type': 'application/json', authorization: `Bearer ${token}` },
+      body: JSON.stringify({ resourceLogs: [] }),
+    });
+    expect(emptyResponse.status).toBe(200);
+    expect(session.observationLevel()).toBe('terminal-only');
+
+    const response = await postOtlp();
+
+    expect(response.status).toBe(200);
+    expect(session.observationLevel()).toBe('native-log');
+    const usage = events.find(({ event }) => event.type === 'tokens.used');
+    expect(usage).toMatchObject({
+      source: 'native-telemetry',
+      promptId: 'prompt-otel',
+      event: {
+        usageId: 'claude-request:request-otel',
+        totalTokens: 135,
+        meterTokens: 15,
+        breakdown: { freshInputTokens: 10, cacheReadTokens: 100 },
+      },
+    });
+    expect(JSON.stringify(usage?.nativeEvent)).not.toContain('must-not-cross@example.com');
+    expect(safeParseAgentEvent('usage:tokens-used', usage!.event).success).toBe(true);
+    expect((await postOtlp()).status).toBe(200);
+    expect(events.filter(({ event }) => event.type === 'tokens.used')).toHaveLength(1);
+  });
+
+  it('feeds authoritative assistant text and fallback usage from the transcript observer', async () => {
     const { session, projection, events, hook } = await startSession();
     const batches = projection.monitorBatches;
     const dir = mkdtempSync(join(tmpdir(), 'driver-transcript-'));
@@ -474,10 +558,14 @@ describe('createClaudeSession (full loop, test-as-Claude)', () => {
           displayOnly: false,
         });
         expect(projection.state.lastAssistantMessage).toBe('authoritative answer');
-        const scoped = JSON.stringify(batches.filter(({ producer }) => producer.id === 'claude:spaghetti-scoped'));
-        expect(scoped).toContain('"canonical":true');
-        expect(scoped).toContain('"inputTokens":12');
-        expect(scoped).toContain('"outputTokens":4');
+        expect(events.find(({ event }) => event.type === 'tokens.used')?.event).toMatchObject({
+          type: 'tokens.used',
+          usageId: 'claude-request:request-1',
+          canonical: true,
+          totalTokens: 21,
+          meterTokens: 16,
+          breakdown: { inputTokens: 12, freshInputTokens: 12, outputTokens: 4 },
+        });
       },
       { timeout: 10_000, interval: 20 },
     );
@@ -692,6 +780,7 @@ describe('createClaudeSession (full loop, test-as-Claude)', () => {
       endpoint: () => 'http://127.0.0.1:9/hooks',
       statusLineEndpoint: () => 'http://127.0.0.1:9/statusline',
       subagentStatusLineEndpoint: () => 'http://127.0.0.1:9/subagent-statusline',
+      otelLogsEndpoint: () => 'http://127.0.0.1:9/v1/logs',
       async start() {},
       onEvent(listener) {
         hookListener = listener;
@@ -703,6 +792,9 @@ describe('createClaudeSession (full loop, test-as-Claude)', () => {
         return () => undefined;
       },
       onSubagentStatusLine() {
+        return () => undefined;
+      },
+      onOtelLogs() {
         return () => undefined;
       },
       onUnavailable(listener) {
@@ -893,6 +985,11 @@ describe('createClaudeSession (full loop, test-as-Claude)', () => {
         type: 'turn.completed',
         turnId: 'history-prompt',
         lastAssistantMessage: 'Use the native resume path.',
+      },
+      {
+        type: 'session.environment.updated',
+        intent: 'observed',
+        model: { id: 'claude-sonnet-local', provider: 'anthropic' },
       },
     ]);
   });

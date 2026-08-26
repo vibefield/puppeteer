@@ -55,7 +55,7 @@ describe('monitor SPI package subpath', () => {
         },
       ],
       sourceWatermarks: [{ sourceId: 'transcript-1', sourceEpoch: 'generation-2', cursor: '4096' }],
-      evidence: [{ namespace: 'spaghetti', id: 'event-1', revisionKey: 'response-1:2' }],
+      evidence: [{ namespace: 'provider-semantic', id: 'event-1', revisionKey: 'response-1:2' }],
     };
     expect(structuredClone(batch)).toEqual(batch);
 

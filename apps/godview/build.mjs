@@ -56,7 +56,7 @@ await Promise.all([
     platform: 'node',
     format: 'cjs',
     target: 'node22',
-    external: ['electron', '@parcel/watcher', '@vibecook/spaghetti-sdk'],
+    external: ['electron', '@parcel/watcher'],
     define: { 'import.meta.url': JSON.stringify(pathToFileURL(join(dist, 'main.cjs')).href) },
   }),
   // The bridge runs as its own ESM process out of dist/. Copying its files

@@ -40,10 +40,12 @@ async function claudeHarness(resume?: string): Promise<ClaudeConformanceHarness>
         endpoint: () => bridge.endpoint(),
         statusLineEndpoint: () => bridge.statusLineEndpoint(),
         subagentStatusLineEndpoint: () => bridge.subagentStatusLineEndpoint(),
+        otelLogsEndpoint: () => bridge.otelLogsEndpoint(),
         start: () => bridge.start(),
         onEvent: (listener) => bridge.onEvent(listener),
         onStatusLine: (listener) => bridge.onStatusLine(listener),
         onSubagentStatusLine: (listener) => bridge.onSubagentStatusLine(listener),
+        onOtelLogs: (listener) => bridge.onOtelLogs(listener),
         onUnavailable(listener) {
           closeObservationRail = () => listener('conformance hook rail loss');
           return bridge.onUnavailable(listener);

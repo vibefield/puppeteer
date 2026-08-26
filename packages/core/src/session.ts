@@ -50,7 +50,7 @@ export type PromptReceipt =
  * handle with native diagnostics, but applications consume runtime Agent.
  */
 export interface AgentAdapterSession {
-  /** Native/join id — the puppeteer ↔ spaghetti correlation key. */
+  /** Provider-native correlation id shared by its live and durable observation planes. */
   readonly sessionId: string;
   /** The host's id for the terminal session (attach/write/kill routing). */
   readonly runtimeSessionId: string;

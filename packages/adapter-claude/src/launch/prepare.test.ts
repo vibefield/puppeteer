@@ -6,6 +6,7 @@ import { join } from 'node:path';
 import { afterEach, describe, expect, it } from 'vitest';
 import {
   cleanupClaudeSession,
+  hasClaudeOtelExporterConflict,
   prepareClaudeSession,
   statusLineForwarderCommand,
   type PreparedClaudeSession,
@@ -69,7 +70,7 @@ describe('prepareClaudeSession', () => {
     expect(p.args).toEqual(expect.arrayContaining(['--session-id', p.sessionId]));
   });
 
-  it('reuses a caller-supplied session id (the spaghetti join contract)', async () => {
+  it('reuses a caller-supplied native correlation id', async () => {
     const p = await prepare({ sessionId: 'fixed-session-id' });
     expect(p.sessionId).toBe('fixed-session-id');
   });
@@ -118,6 +119,26 @@ describe('prepareClaudeSession', () => {
     expect(text).toContain('$PUPPETEER_HOOK_TOKEN');
     expect(readFileSync(p.hookForwarderPath, 'utf8')).not.toContain(BASE.token);
     expect(p.env).toEqual({ PUPPETEER_HOOK_TOKEN: BASE.token });
+  });
+
+  it('configures only authenticated OTLP logs and detects caller-owned exporters', async () => {
+    const p = await prepare({ otelLogsEndpoint: 'http://127.0.0.1:4100/v1/logs' });
+    expect(p.env).toMatchObject({
+      CLAUDE_CODE_ENABLE_TELEMETRY: '1',
+      OTEL_LOGS_EXPORTER: 'otlp',
+      OTEL_EXPORTER_OTLP_PROTOCOL: 'http/json',
+      OTEL_EXPORTER_OTLP_LOGS_ENDPOINT: 'http://127.0.0.1:4100/v1/logs',
+      OTEL_EXPORTER_OTLP_LOGS_HEADERS: `Authorization=Bearer%20${BASE.token}`,
+      OTEL_LOGS_EXPORT_INTERVAL: '1000',
+    });
+    expect(p.env).not.toHaveProperty('OTEL_METRICS_EXPORTER');
+    expect(p.env).not.toHaveProperty('OTEL_TRACES_EXPORTER');
+    expect(readFileSync(p.settingsPath, 'utf8')).not.toContain(BASE.token);
+    expect(hasClaudeOtelExporterConflict({ OTEL_EXPORTER_OTLP_ENDPOINT: 'http://collector:4318' })).toBe(true);
+    expect(hasClaudeOtelExporterConflict({ OTEL_EXPORTER_OTLP_PROTOCOL: 'grpc' })).toBe(true);
+    expect(hasClaudeOtelExporterConflict({ OTEL_EXPORTER_OTLP_LOGS_COMPRESSION: 'gzip' })).toBe(true);
+    expect(hasClaudeOtelExporterConflict({ OTEL_LOGS_EXPORT_INTERVAL: '5000' })).toBe(true);
+    expect(hasClaudeOtelExporterConflict({ CLAUDE_CODE_ENABLE_TELEMETRY: '1' })).toBe(false);
   });
 
   it('posts command-only hooks through the generated Node forwarder', async () => {
