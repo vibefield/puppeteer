@@ -913,9 +913,9 @@
         </div>
 
         <div class="pipeline" aria-label="Agent event pipeline">
-          provider-native evidence&nbsp; → &nbsp;<b class="adapter">adapter normalizer</b>&nbsp; →
-          &nbsp;<b>AgentEventEnvelope</b>&nbsp; → &nbsp;<b class="agent">runtime Agent</b>&nbsp; → &nbsp;state ·
-          conversation · monitor · <b>agent.on(…)</b>
+          provider-native evidence&nbsp; → &nbsp;<b class="adapter">category normalizers</b>&nbsp; →
+          &nbsp;<b>AdapterEventCandidate</b>&nbsp; → &nbsp;<b class="agent">runtime validate + stamp</b>&nbsp; →
+          &nbsp;state · conversation · monitor · <b>agent.on(…)</b>
         </div>
 
         <div class="stats" aria-label="API summary">
@@ -955,8 +955,10 @@
           <section id="architecture">
             <h2>Architecture</h2>
             <p class="section-note">
-              Provider details end at the adapter boundary. Every downstream service consumes the same normalized,
-              ordered envelope, and each runtime run has exactly one owning <span class="mono">Agent</span> instance.
+              Provider details end at category-focused adapter normalizers. Adapters publish unstamped candidates; the
+              runtime validates their strict Core schema, adds runtime identity and sequence, then gives every
+              downstream service the same ordered envelope. Each runtime run has exactly one owning
+              <span class="mono">Agent</span> instance.
             </p>
 
             <figure>
@@ -1044,7 +1046,7 @@
                     font-size="11"
                     font-family="JetBrains Mono"
                   >
-                    normalize
+                    candidate
                   </text>
 
                   <rect
@@ -1200,10 +1202,17 @@
                 </svg>
               </div>
               <figcaption>
-                Adapter handles retain only control-local correlation and observation level. They do not expose a state
-                reducer or a second monitor subscription rail.
+                Adapter handles retain only control-local correlation and observation level. They do not stamp delivery
+                sequence, expose a state reducer, or create a second monitor subscription rail.
               </figcaption>
             </figure>
+
+            <div class="callout">
+              <strong>Schema boundary.</strong> Each Core event category owns strict Zod schemas and exports TypeScript
+              types inferred from them. The exhaustive catalog binds all 38
+              <span class="mono">category:event-name</span> routes to those schemas. Runtime validation uses Zod once at
+              adapter ingress; listener callback narrowing is derived in TypeScript from the same catalog.
+            </div>
           </section>
 
           <section id="quick-start">
@@ -1538,7 +1547,9 @@ unsubscribe();</code></pre>
             <p class="section-note">
               Subscribe using the namespaced envelope <span class="mono">type</span>. Inspect the nested
               <span class="mono">event.type</span> only when discriminating normalized payloads inside a wildcard
-              listener. Raw provider evidence, when retained, stays in <span class="mono">nativeEvent</span>.
+              listener during the compatibility migration. Raw provider evidence, when retained, stays in
+              <span class="mono">nativeEvent</span>. The public event identity always follows
+              <span class="mono">category:event-name</span>.
             </p>
 
             <pre><code>interface AgentEventEnvelope&lt;T extends AgentEvent = AgentEvent&gt; {
@@ -2968,12 +2979,16 @@ type MonitorFamilyUpdate =
             <h3>Adapter author boundary</h3>
             <p class="section-note">
               Applications do not consume this interface directly. It documents the enforced low-level boundary:
-              normalized events plus explicit control—no state getter and no monitor callback.
+              normalized candidates plus explicit control—no state getter, adapter-owned sequence, or monitor callback.
             </p>
             <pre><code>interface AgentAdapterSession {
   readonly sessionId: string;
   readonly runtimeSessionId: string;
   observationLevel(): ObservationLevel;
+  onEventCandidate?(
+    listener: (candidate: AdapterEventCandidate) =&gt; void,
+  ): () =&gt; void;
+  /** @deprecated Applications consume runtime Agent envelopes. */
   onEvent(listener: (envelope: AgentEventEnvelope) =&gt; void): () =&gt; void;
   readMonitorArtifact?(
     artifactId: string,
@@ -2995,8 +3010,8 @@ type MonitorFamilyUpdate =
               <article class="card">
                 <h3>Normalized boundary</h3>
                 <p>
-                  Provider-native names and shapes do not escape as public routes. Unknown evidence is retained
-                  explicitly.
+                  Provider-native names and shapes do not escape as public routes. Strict category schemas validate
+                  every candidate; unknown evidence is retained explicitly.
                 </p>
               </article>
               <article class="card">
@@ -3037,9 +3052,10 @@ type MonitorFamilyUpdate =
       </div>
 
       <footer>
-        Generated from the canonical contracts in <span class="mono">packages/runtime/src/agent.ts</span>,
-        <span class="mono">packages/runtime/src/types.ts</span>, <span class="mono">packages/core/src/events.ts</span>,
-        <span class="mono">packages/core/src/event-bus.ts</span>, and the monitor SPI. Reference date: 2026-08-25.
+        Generated from the canonical contracts in <span class="mono">packages/core/src/events/</span>,
+        <span class="mono">packages/core/src/adapter/event-candidate.ts</span>,
+        <span class="mono">packages/runtime/src/agent.ts</span>,
+        <span class="mono">packages/runtime/src/services/</span>, and the monitor SPI. Reference date: 2026-08-25.
       </footer>
     </div>
 

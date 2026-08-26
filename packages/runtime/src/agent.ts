@@ -1,7 +1,5 @@
 import {
   AgentEventBus,
-  createInitialSessionState,
-  reduceSessionState,
   type AgentAdapterSession,
   type AgentEventEnvelope,
   type AgentEventListener,
@@ -12,12 +10,15 @@ import {
   type PromptSubmission,
   type SessionRuntimeState,
 } from '@vibecook/puppeteer-core';
-import { AgentConversationProjector, type AgentConversationSnapshot } from './conversation.js';
-import type { AgentSessionInfo } from './types.js';
+import { AgentConversationService, type AgentConversationSnapshot } from './services/conversation-service.js';
+import type { AgentMonitorService } from './services/monitor-service.js';
+import { AgentStateService } from './services/state-service.js';
+import type { AgentSessionInfo, RuntimeAgentEventEnvelope } from './types.js';
 
 export interface AgentOptions {
   adapter: AgentAdapterSession;
   info: AgentSessionInfo;
+  monitor?: AgentMonitorService;
   onListenerError?: (error: unknown, envelope: AgentEventEnvelope) => void;
 }
 
@@ -32,8 +33,9 @@ interface AgentInternals {
   adapter: AgentAdapterSession;
   info: AgentSessionInfo;
   events: AgentEventBus;
-  conversation: AgentConversationProjector;
-  state: SessionRuntimeState;
+  state: AgentStateService;
+  conversation: AgentConversationService;
+  monitor?: AgentMonitorService;
   disposed: boolean;
 }
 
@@ -48,7 +50,8 @@ function internals(agent: Agent): AgentInternals {
 /**
  * One runtime-owned agent instance per provider spawn.
  *
- * Adapters publish normalized envelopes; this object is their first consumer.
+ * Adapters publish normalized candidates; runtime ingress validates and stamps
+ * envelopes before this object consumes them.
  * It owns service projection and exposes one `.on(...)` observation surface to
  * applications. No adapter carries a duplicate Core state reducer.
  */
@@ -61,8 +64,9 @@ export class Agent {
       adapter: options.adapter,
       info: options.info,
       events: new AgentEventBus({ onListenerError: options.onListenerError }),
-      conversation: new AgentConversationProjector(),
-      state: createInitialSessionState(),
+      state: new AgentStateService(),
+      conversation: new AgentConversationService(),
+      monitor: options.monitor,
       disposed: false,
     });
   }
@@ -80,7 +84,7 @@ export class Agent {
   }
 
   get state(): SessionRuntimeState {
-    return internals(this).state;
+    return internals(this).state.snapshot();
   }
 
   get conversation(): AgentConversationSnapshot {
@@ -106,8 +110,14 @@ export class Agent {
 export interface AgentController {
   agent: Agent;
   accept(
-    envelope: AgentEventEnvelope,
-    options?: { projectState?: boolean; projectConversation?: boolean; publish?: boolean },
+    envelope: RuntimeAgentEventEnvelope,
+    options?: {
+      projectMonitor?: boolean;
+      projectState?: boolean;
+      projectConversation?: boolean;
+      publish?: boolean;
+      hostProcessEvidence?: boolean;
+    },
   ): AgentIngestResult;
   dispose(): Promise<void>;
 }
@@ -119,15 +129,14 @@ export function createAgentController(options: AgentOptions): AgentController {
     agent,
     accept(envelope, acceptOptions = {}) {
       const internal = internals(agent);
-      const previousState = internal.state;
-      if (acceptOptions.projectState !== false && envelope.service !== 'monitor') {
-        internal.state = reduceSessionState(internal.state, envelope);
+      const previousState = internal.state.snapshot();
+      if (acceptOptions.projectMonitor !== false) {
+        internal.monitor?.consume(envelope, { hostProcessEvidence: acceptOptions.hostProcessEvidence });
       }
-      if (acceptOptions.projectConversation !== false && envelope.service !== 'monitor') {
-        internal.conversation.consume(envelope);
-      }
+      if (acceptOptions.projectState !== false) internal.state.consume(envelope);
+      if (acceptOptions.projectConversation !== false) internal.conversation.consume(envelope);
       if (acceptOptions.publish !== false) internal.events.emit(envelope);
-      return { previousState, state: internal.state };
+      return { previousState, state: internal.state.snapshot() };
     },
     async dispose() {
       const internal = internals(agent);

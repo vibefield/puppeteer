@@ -11,7 +11,7 @@ import {
  * (codex-cli 0.147.0). The point of these tests is that the abstract
  * 'approved' | 'denied' never reaches the wire unchanged.
  */
-describe('approvalResponse', () => {
+describe('Codex approval service responses', () => {
   it('answers the legacy pair with ReviewDecision', () => {
     for (const method of ['execCommandApproval', 'applyPatchApproval']) {
       expect(approvalResponse(method, 'approved')).toEqual({ decision: 'approved' });

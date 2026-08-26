@@ -6,7 +6,7 @@ import {
   type AgentEvent,
   type SessionRuntimeState,
 } from '@vibecook/puppeteer-core';
-import { CodexNotificationNormalizer, type CodexServerNotification } from './normalizer.js';
+import { CodexNotificationNormalizer, type CodexServerNotification } from './pipeline.js';
 
 // Real identifiers + payloads from the C1 live capture
 // (packages/surface/vendors/codex/captures/codex@0.144.2/c1-appserver-capture.jsonl).

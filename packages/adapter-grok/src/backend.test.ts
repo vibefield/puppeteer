@@ -2,6 +2,8 @@ import { describe, expect, it, vi } from 'vitest';
 import {
   agentEventService,
   agentServiceEventType,
+  safeParseAgentEvent,
+  type AdapterEventCandidate,
   type AgentEvent,
   type AgentEventEnvelope,
   type AgentHost,
@@ -208,6 +210,31 @@ describe('createPendingControlSession', () => {
     projection.dispose();
     await session.dispose();
     expect(observed.stopped).toBe(true);
+  });
+
+  it('publishes the merged native-log rail as catalog-routed candidates', async () => {
+    const control = fakeControl();
+    const observed = fakeObserver();
+    const session = createPendingControlSession('sid', 'rt', () => control.session, observed.observer);
+    const candidates: AdapterEventCandidate[] = [];
+    expect(session.onEventCandidate).toBeTypeOf('function');
+    const off = session.onEventCandidate!((candidate) => candidates.push(candidate));
+    observed.emit({
+      event: { type: 'assistant.message', messageId: 'm1', text: 'hello', final: true, displayOnly: false },
+      promptId: 'prompt-1',
+      nativeEvent: { source: 'updates.jsonl' },
+    });
+    try {
+      const assistant = candidates.find(({ type }) => type === 'conversation:assistant-message');
+      expect(assistant?.event.type).toBe('assistant.message');
+      expect(assistant).not.toHaveProperty('sequence');
+      expect(assistant && safeParseAgentEvent(assistant.type, assistant.event).success).toBe(true);
+      expect(candidates.every(({ type }) => type.includes(':'))).toBe(true);
+      expect(candidates.every(({ type, event }) => safeParseAgentEvent(type, event).success)).toBe(true);
+    } finally {
+      off();
+      await session.dispose();
+    }
   });
 
   it('bootstraps the model card and cwd already negotiated by ACP control', async () => {

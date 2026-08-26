@@ -3,16 +3,10 @@
 import { mkdtempSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import { performance } from 'node:perf_hooks';
 import {
-  BufferedAgentEventSource,
-  createEnvelopeStamper,
   type AgentEvent,
-  type AgentEventEnvelope,
   type AgentAdapterSession,
   type AgentTuiSessionOptions,
-  type PromptReceipt,
-  type PromptSubmission,
   type TerminalSpec,
 } from '@vibecook/puppeteer-core';
 import type { AdapterMonitorObservationBatch } from '@vibecook/puppeteer-core/monitor-spi';
@@ -20,7 +14,9 @@ import { HERMES_ADAPTER_CAPABILITIES } from './detection.js';
 import { startHermesGatewayHost, type HermesGatewayHost } from './launch/gateway-host.js';
 import { buildHermesAttachLaunch } from './launch/recipe.js';
 import { HermesMonitorEvidence } from './monitor-evidence.js';
-import { HermesGatewayNormalizer } from './normalizer.js';
+import { HermesGatewayNormalizer } from './normalization/pipeline.js';
+import { HermesEventSource, type HermesEventPublication } from './services/event-source.js';
+import { HermesPromptService } from './services/prompt.js';
 import {
   eventType,
   HermesJsonRpcClient,
@@ -59,10 +55,6 @@ interface HermesSessionResult {
   resumed?: string;
   session_key?: string;
   messages?: Array<{ role?: string; text?: string; content?: string }>;
-}
-
-function isRecord(value: unknown): value is Record<string, unknown> {
-  return value !== null && typeof value === 'object' && !Array.isArray(value);
 }
 
 export async function prepareHermesTuiSession(
@@ -149,44 +141,24 @@ export async function prepareHermesTuiSession(
         if (adopted) return adopted;
         const normalizer = new HermesGatewayNormalizer();
         normalizer.bindStoredSession(liveSessionId, storedSessionId);
-        const stamper = createEnvelopeStamper();
-        const events = new BufferedAgentEventSource();
+        const events = new HermesEventSource(storedSessionId);
         let sessionDisposed = false;
-        let promptInFlight = false;
         let railAvailable = true;
-        let promptStartWaiter: ((turnId: string | undefined) => void) | undefined;
+        const prompts = new HermesPromptService({
+          transport: transport!,
+          liveSessionId,
+          confirmationTimeoutMs: options.promptConfirmationTimeoutMs,
+          isDisposed: () => sessionDisposed,
+        });
         const monitorEvidence = new HermesMonitorEvidence({
           nativeSessionId: () => storedSessionId,
           liveSessionId: () => liveSessionId,
         });
 
-        const publishEvent = (
-          event: AgentEvent,
-          meta: {
-            nativeSessionId?: string;
-            turnId?: string;
-            timestamp: string;
-            source: AgentEventEnvelope['source'];
-            confidence: AgentEventEnvelope['confidence'];
-            replay?: boolean;
-            nativeEvent?: unknown;
-          },
-        ): void => {
+        const publishEvent = (event: AgentEvent, meta: HermesEventPublication): void => {
           if (sessionDisposed) return;
-          const envelope = stamper.next({
-            sessionId: storedSessionId,
-            nativeSessionId: meta.nativeSessionId ?? storedSessionId,
-            ...(meta.turnId ? { turnId: meta.turnId } : {}),
-            timestamp: meta.timestamp,
-            monotonicTime: performance.now(),
-            source: meta.source,
-            confidence: meta.confidence,
-            ...(meta.replay ? { replay: true } : {}),
-            event,
-            nativeEvent: meta.nativeEvent,
-          });
-          if (event.type === 'turn.started') promptStartWaiter?.(event.turnId ?? envelope.turnId);
-          events.emit(envelope);
+          prompts.observe(event);
+          events.publish(event, meta);
         };
 
         const emitMonitorBatch = (batch: AdapterMonitorObservationBatch | null): void => {
@@ -294,58 +266,21 @@ export async function prepareHermesTuiSession(
           gatewayUrl: () => gatewayUrl,
           liveSessionId: () => liveSessionId,
           storedSessionId: () => storedSessionId,
+          onEventCandidate(listener) {
+            if (sessionDisposed) return () => undefined;
+            return events.onCandidate(listener);
+          },
           onEvent(listener) {
             if (sessionDisposed) return () => undefined;
             return events.onEvent(listener);
           },
-          async submitPrompt(submission: PromptSubmission): Promise<PromptReceipt> {
-            if (sessionDisposed) return { status: 'rejected', reason: 'Hermes session is disposed' };
-            if (submission.mode === 'paste-only') {
-              return { status: 'rejected', reason: 'Hermes structured submit does not stage paste-only text' };
-            }
-            if (promptInFlight) return { status: 'rejected', reason: 'another Hermes prompt submission is in flight' };
-            promptInFlight = true;
-            const timeoutMs = submission.confirmationTimeoutMs ?? options.promptConfirmationTimeoutMs ?? 15_000;
-            let cancelStartWait = (): void => undefined;
-            const sawStart = new Promise<{ turnId?: string } | undefined>((resolve) => {
-              let settled = false;
-              const finish = (result: { turnId?: string } | undefined): void => {
-                if (settled) return;
-                settled = true;
-                clearTimeout(timer);
-                promptStartWaiter = undefined;
-                resolve(result);
-              };
-              const timer = setTimeout(() => finish(undefined), timeoutMs);
-              promptStartWaiter = (turnId) => {
-                finish(turnId ? { turnId } : {});
-              };
-              cancelStartWait = () => finish(undefined);
-            });
-            try {
-              const result = await transport!.request('prompt.submit', {
-                session_id: liveSessionId,
-                text: submission.text,
-              });
-              if (!isRecord(result) || result.status !== 'streaming') {
-                return { status: 'uncertain', reason: 'prompt.submit did not return streaming' };
-              }
-              const started = await sawStart;
-              if (!started) {
-                return { status: 'uncertain', reason: `no message.start within ${timeoutMs}ms` };
-              }
-              return { status: 'confirmed', ...started };
-            } catch (error) {
-              return { status: 'rejected', reason: error instanceof Error ? error.message : String(error) };
-            } finally {
-              cancelStartWait();
-              promptInFlight = false;
-            }
+          submitPrompt(submission) {
+            return prompts.submit(submission);
           },
           async dispose() {
             if (sessionDisposed) return;
             sessionDisposed = true;
-            promptStartWaiter = undefined;
+            prompts.dispose();
             off();
             offStatus?.();
             events.close();

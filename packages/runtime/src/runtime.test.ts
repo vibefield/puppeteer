@@ -8,8 +8,10 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 import {
   agentEventService,
   agentServiceEventType,
+  createAdapterEventCandidate,
   createEnvelopeStamper,
   type AccountUsageFetchResult,
+  type AdapterEventCandidate,
   type AgentEvent,
   type AgentEventEnvelope,
   type AgentHost,
@@ -209,9 +211,20 @@ describe('createAgentRuntime', () => {
     const stateEvents: string[] = [];
     const contextEvents: number[] = [];
     const conversationEvents: string[] = [];
+    let stateSeenByListener: string | undefined;
+    let conversationSeenByListener: string | undefined;
     spawned.on('state:*', (envelope) => stateEvents.push(envelope.type));
+    spawned.on('state:turn-started', () => {
+      stateSeenByListener = spawned.state.lifecycle;
+    });
     spawned.on('context-window:updated', (envelope) => contextEvents.push(envelope.event.usedTokens));
-    spawned.on('conversation:*', (envelope) => conversationEvents.push(envelope.event.text));
+    spawned.on('conversation:*', (envelope) => {
+      conversationEvents.push(envelope.event.text);
+      const assistant = spawned.conversation.items.find(
+        (item) => item.kind === 'assistant' && item.markdown === envelope.event.text,
+      );
+      if (assistant?.kind === 'assistant') conversationSeenByListener = assistant.markdown;
+    });
 
     const source = handles.get(spawned.terminalSessionId);
     source?.emit(testEnvelope({ type: 'turn.started', turnId: 'turn-1', prompt: 'hello' }));
@@ -228,8 +241,10 @@ describe('createAgentRuntime', () => {
     source?.emit(testEnvelope({ type: 'turn.completed', turnId: 'turn-1' }));
 
     expect(stateEvents).toEqual(['state:turn-started', 'state:turn-completed']);
+    expect(stateSeenByListener).toBe('running');
     expect(contextEvents).toEqual([25]);
     expect(conversationEvents).toEqual(['hi']);
+    expect(conversationSeenByListener).toBe('hi');
     expect(spawned.state).toMatchObject({ lifecycle: 'ready', lastAssistantMessage: 'hi' });
     expect(spawned.conversation.items).toEqual(
       expect.arrayContaining([
@@ -239,6 +254,83 @@ describe('createAgentRuntime', () => {
     );
     await expect(spawned.submitPrompt({ text: 'again' })).resolves.toMatchObject({ status: 'confirmed' });
 
+    await runtime.dispose();
+  });
+
+  it('validates adapter candidates before assigning runtime delivery order', async () => {
+    const root = await mkdtemp(join(tmpdir(), 'puppeteer-runtime-candidates-'));
+    const candidateListeners = new Set<(candidate: AdapterEventCandidate) => void>();
+    const errors: Error[] = [];
+    const provider: AgentProvider = {
+      kind: 'candidate-provider',
+      async createSession() {
+        return {
+          sessionId: 'candidate-native-1',
+          runtimeSessionId: 'candidate-runtime-1',
+          observationLevel: () => 'structured',
+          onEventCandidate(listener) {
+            candidateListeners.add(listener);
+            return () => candidateListeners.delete(listener);
+          },
+          onEvent() {
+            throw new Error('runtime should prefer candidate ingress');
+          },
+          async submitPrompt() {
+            return { status: 'confirmed' as const };
+          },
+          async dispose() {},
+        };
+      },
+    };
+    const runtime = createAgentRuntime({
+      host,
+      defaultCwd: root,
+      providers: [provider],
+      onError: (error) => errors.push(error),
+    });
+    const spawned = await runtime.spawn({ agent: provider.kind, cwd: root });
+    if ('error' in spawned) throw new Error(spawned.error.message);
+    const delivered: AgentEventEnvelope[] = [];
+    spawned.on('*', (envelope) => delivered.push(envelope));
+
+    const emit = (candidate: AdapterEventCandidate): void => {
+      for (const listener of candidateListeners) listener(candidate);
+    };
+    const started = createAdapterEventCandidate({
+      sessionId: 'candidate-native-1',
+      timestamp: '2026-08-25T00:00:00.000Z',
+      monotonicTime: 10,
+      source: 'native-protocol',
+      confidence: 'authoritative',
+      event: { type: 'turn.started', turnId: 'turn-1' },
+    });
+    emit({ ...started, sequence: 999 } as AdapterEventCandidate);
+    emit({
+      ...createAdapterEventCandidate({
+        sessionId: 'candidate-native-1',
+        timestamp: '2026-08-25T00:00:01.000Z',
+        monotonicTime: 11,
+        source: 'native-protocol',
+        confidence: 'authoritative',
+        event: { type: 'context-window.updated', usedTokens: 10, capacityTokens: 100 },
+      }),
+      event: { type: 'context-window.updated', usedTokens: 'invalid', capacityTokens: 100 },
+    } as unknown as AdapterEventCandidate);
+    emit(
+      createAdapterEventCandidate({
+        sessionId: 'candidate-native-1',
+        timestamp: '2026-08-25T00:00:02.000Z',
+        monotonicTime: 12,
+        source: 'native-protocol',
+        confidence: 'authoritative',
+        event: { type: 'context-window.updated', usedTokens: 20, capacityTokens: 100 },
+      }),
+    );
+
+    expect(delivered.map((envelope) => envelope.type)).toEqual(['state:turn-started', 'context-window:updated']);
+    expect(delivered[1]!.sequence).toBe(delivered[0]!.sequence + 1);
+    expect(delivered[0]!.sequence).not.toBe(999);
+    expect(errors.some((error) => error.message.includes('Adapter emitted invalid context-window:updated'))).toBe(true);
     await runtime.dispose();
   });
 

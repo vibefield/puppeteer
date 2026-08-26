@@ -1,16 +1,11 @@
 import type {
   AgentEvent,
+  AgentEventForType,
   AgentEventEnvelope,
   AgentEventService,
   AgentEventServiceOf,
   AgentServiceEventType,
 } from './events.js';
-
-type EnvelopeForType<Event extends AgentEvent, Type extends AgentServiceEventType> = Event extends AgentEvent
-  ? AgentServiceEventType<Event> extends Type
-    ? AgentEventEnvelope<Event>
-    : never
-  : never;
 
 type EnvelopeForService<Event extends AgentEvent, Service extends AgentEventService> = Event extends AgentEvent
   ? AgentEventServiceOf<Event> extends Service
@@ -18,7 +13,8 @@ type EnvelopeForService<Event extends AgentEvent, Service extends AgentEventServ
     : never
   : never;
 
-export type AgentEnvelopeForType<Type extends AgentServiceEventType> = EnvelopeForType<AgentEvent, Type>;
+/** Exact listener payload inferred from the schema registered for `Type`. */
+export type AgentEnvelopeForType<Type extends AgentServiceEventType> = AgentEventEnvelope<AgentEventForType<Type>>;
 export type AgentEnvelopeForService<Service extends AgentEventService> = EnvelopeForService<AgentEvent, Service>;
 export type AgentEventSelector = '*' | `${AgentEventService}:*` | AgentServiceEventType;
 export type AgentEnvelopeForSelector<Selector extends AgentEventSelector> = Selector extends '*'

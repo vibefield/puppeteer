@@ -1,10 +1,10 @@
 import { describe, expect, it } from 'vitest';
 import { createEnvelopeStamper, type AgentEvent } from '@vibecook/puppeteer-core';
-import { AgentConversationProjector } from './conversation.js';
+import { AgentConversationService } from './services/conversation-service.js';
 
 function project(events: AgentEvent[]) {
   const stamper = createEnvelopeStamper();
-  const projector = new AgentConversationProjector();
+  const projector = new AgentConversationService();
   for (const event of events) {
     projector.consume(
       stamper.next({
@@ -21,7 +21,7 @@ function project(events: AgentEvent[]) {
   return projector.snapshot();
 }
 
-describe('AgentConversationProjector', () => {
+describe('AgentConversationService', () => {
   it('updates streaming Markdown in place instead of creating delta rows', () => {
     const snapshot = project([
       { type: 'turn.started', turnId: 'turn-1', prompt: 'Explain this' },
@@ -69,7 +69,7 @@ describe('AgentConversationProjector', () => {
 
   it('keeps terminal-authored turns as separate user and assistant rows', () => {
     const stamper = createEnvelopeStamper();
-    const projector = new AgentConversationProjector();
+    const projector = new AgentConversationService();
     const consume = (promptId: string, event: AgentEvent): void => {
       projector.consume(
         stamper.next({

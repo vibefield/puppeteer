@@ -2,23 +2,16 @@
 
 import { randomUUID } from 'node:crypto';
 import { resolve } from 'node:path';
-import { performance } from 'node:perf_hooks';
 import {
-  BufferedAgentEventSource,
-  createEnvelopeStamper,
   type AgentEvent,
-  type AgentEventEnvelope,
   type AgentAdapterSession,
   type AgentTuiSessionOptions,
-  type PromptReceipt,
-  type PromptSubmission,
   type TerminalSpec,
 } from '@vibecook/puppeteer-core';
 import type { AdapterMonitorObservationBatch } from '@vibecook/puppeteer-core/monitor-spi';
 import { startOpenCodeBackend, type OpenCodeBackend } from './backend.js';
 import {
   OpenCodeClient,
-  OpenCodeHttpError,
   type OpenCodeModelSelection,
   type OpenCodePermissionRequest,
   type OpenCodeQuestionRequest,
@@ -35,6 +28,10 @@ import {
 } from './history.js';
 import { OpenCodeNormalizer, type NormalizeOpenCodeOptions, type OpenCodeNormalizedEvent } from './normalizer.js';
 import { OpenCodeMonitorEvidence } from './monitor-evidence.js';
+import { OpenCodeEventSource, runtimeOpenCodeEvent } from './services/event-source.js';
+import { OpenCodePromptService } from './services/prompt.js';
+
+export { OpenCodePromptConfirmationGate } from './services/prompt.js';
 
 export interface CreateOpenCodeTuiSessionOptions extends AgentTuiSessionOptions {
   /** OpenCode executable (default `PUPPETEER_OPENCODE_BIN`, then `opencode`). */
@@ -69,63 +66,6 @@ export interface PreparedOpenCodeTuiSession {
   readonly launch: TerminalSpec;
   adopt(runtimeSessionId: string): Promise<OpenCodeTuiSession>;
   dispose(): Promise<void>;
-}
-
-interface PromptConfirmation {
-  matched: boolean;
-  turnId?: string;
-  reason?: string;
-}
-
-interface PendingPromptConfirmation {
-  promise: Promise<PromptConfirmation>;
-  cancel(reason: string): void;
-}
-
-/** Exact-ID confirmation primitive, exported so timeout/correlation behavior is unit-testable. */
-export class OpenCodePromptConfirmationGate {
-  private readonly pending = new Map<string, { resolve(result: PromptConfirmation): void; timer: NodeJS.Timeout }>();
-
-  expect(messageID: string, timeoutMs: number): PendingPromptConfirmation {
-    if (this.pending.has(messageID)) throw new Error(`OpenCode prompt ${messageID} is already awaiting confirmation`);
-    let settle!: (result: PromptConfirmation) => void;
-    const promise = new Promise<PromptConfirmation>((resolvePromise) => {
-      settle = resolvePromise;
-    });
-    const finish = (result: PromptConfirmation): void => {
-      const entry = this.pending.get(messageID);
-      if (!entry) return;
-      clearTimeout(entry.timer);
-      this.pending.delete(messageID);
-      entry.resolve(result);
-    };
-    const timer = setTimeout(
-      () => finish({ matched: false, reason: `no message.updated echo for ${messageID} within ${timeoutMs}ms` }),
-      timeoutMs,
-    );
-    this.pending.set(messageID, { resolve: settle, timer });
-    return {
-      promise,
-      cancel: (reason) => finish({ matched: false, reason }),
-    };
-  }
-
-  confirm(messageID: string, turnId = messageID): boolean {
-    const entry = this.pending.get(messageID);
-    if (!entry) return false;
-    clearTimeout(entry.timer);
-    this.pending.delete(messageID);
-    entry.resolve({ matched: true, turnId });
-    return true;
-  }
-
-  rejectAll(reason: string): void {
-    for (const [messageID, entry] of this.pending) {
-      clearTimeout(entry.timer);
-      this.pending.delete(messageID);
-      entry.resolve({ matched: false, reason });
-    }
-  }
 }
 
 function toPromptModel(model: OpenCodeSessionInfo['model']): OpenCodeModelSelection | undefined {
@@ -199,16 +139,25 @@ export async function prepareOpenCodeTuiSession(
       username: backend.username,
       password: backend.password,
     });
-    const stamper = createEnvelopeStamper();
-    const events = new BufferedAgentEventSource();
-    const confirmationGate = new OpenCodePromptConfirmationGate();
     const provisionalSessionID = `opencode-pending-${randomUUID()}`;
     let sessionInfo: OpenCodeSessionInfo | undefined;
     let normalizer: OpenCodeNormalizer | undefined;
     let liveReady = false;
-    let promptInFlight = false;
     let promptModel = options.model;
     let promptAgent = options.agent ?? 'build';
+    const events = new OpenCodeEventSource({
+      sessionId: () => sessionInfo?.id ?? provisionalSessionID,
+      nativeSessionId: () => sessionInfo?.id,
+    });
+    const prompts = new OpenCodePromptService({
+      client,
+      sessionId: () => sessionInfo?.id ?? provisionalSessionID,
+      agent: () => promptAgent,
+      model: () => promptModel,
+      confirmationTimeoutMs: options.promptConfirmationTimeoutMs,
+      isDisposed: () => disposed,
+    });
+    const confirmationGate = prompts.confirmations;
     let droppedBufferedRecords = 0;
     const bufferedRecords: OpenCodeSseRecord[] = [];
     const MAX_BUFFERED_RECORDS = 4096;
@@ -219,19 +168,13 @@ export async function prepareOpenCodeTuiSession(
 
     const emitMonitorBatch = (batch: AdapterMonitorObservationBatch | null): void => {
       if (!batch || disposed) return;
-      const nativeSessionID = sessionInfo?.id;
-      publishEnvelope(
-        stamper.next({
-          sessionId: nativeSessionID ?? provisionalSessionID,
-          ...(nativeSessionID ? { nativeSessionId: nativeSessionID } : {}),
-          timestamp: batch.observedAt,
-          monotonicTime: performance.now(),
-          source: 'native-protocol',
-          confidence: 'authoritative',
-          event: { type: 'monitor.batch', batch },
-          nativeEvent: batch,
-        }),
-      );
+      events.publish({
+        event: { type: 'monitor.batch', batch },
+        timestamp: batch.observedAt,
+        source: 'native-protocol',
+        confidence: 'authoritative',
+        nativeEvent: batch,
+      });
     };
 
     const capabilitiesBatch = monitorEvidence.capabilitiesBatch(new Date().toISOString());
@@ -243,47 +186,16 @@ export async function prepareOpenCodeTuiSession(
       ),
     );
 
-    function publishEnvelope(envelope: AgentEventEnvelope): void {
-      if (disposed) return;
-      if (envelope.event.type === 'turn.started' && envelope.promptId) {
-        confirmationGate.confirm(envelope.promptId, envelope.turnId ?? envelope.promptId);
-      }
-      events.emit(envelope);
-    }
-
     const publishNormalized = (normalized: OpenCodeNormalizedEvent): void => {
-      const nativeSessionID = sessionInfo?.id;
-      publishEnvelope(
-        stamper.next({
-          sessionId: nativeSessionID ?? provisionalSessionID,
-          ...(nativeSessionID ? { nativeSessionId: nativeSessionID } : {}),
-          ...(normalized.promptId ? { promptId: normalized.promptId } : {}),
-          ...(normalized.turnId ? { turnId: normalized.turnId } : {}),
-          timestamp: normalized.timestamp,
-          monotonicTime: performance.now(),
-          source: normalized.source,
-          confidence: normalized.confidence,
-          ...(normalized.replay === undefined ? {} : { replay: normalized.replay }),
-          event: normalized.event,
-          nativeEvent: normalized.nativeEvent,
-        }),
-      );
+      if (disposed) return;
+      if (normalized.event.type === 'turn.started' && normalized.promptId) {
+        confirmationGate.confirm(normalized.promptId, normalized.turnId ?? normalized.promptId);
+      }
+      events.publish(normalized);
     };
 
     const publishRuntime = (event: AgentEvent, nativeEvent: unknown): void => {
-      const nativeSessionID = sessionInfo?.id;
-      publishEnvelope(
-        stamper.next({
-          sessionId: nativeSessionID ?? provisionalSessionID,
-          ...(nativeSessionID ? { nativeSessionId: nativeSessionID } : {}),
-          timestamp: new Date().toISOString(),
-          monotonicTime: performance.now(),
-          source: 'runtime',
-          confidence: 'derived',
-          event,
-          nativeEvent,
-        }),
-      );
+      if (!disposed) events.publish(runtimeOpenCodeEvent(event, nativeEvent));
     };
 
     const ingest = (
@@ -486,7 +398,7 @@ export async function prepareOpenCodeTuiSession(
     const disposeOwned = async (): Promise<void> => {
       if (disposed) return;
       disposed = true;
-      confirmationGate.rejectAll('OpenCode session observation was disposed');
+      prompts.dispose();
       await stream?.stop();
       await backend?.dispose();
       events.close();
@@ -506,48 +418,16 @@ export async function prepareOpenCodeTuiSession(
           sessionId: sessionID,
           runtimeSessionId,
           observationLevel: () => 'structured',
+          onEventCandidate(listener) {
+            if (disposed) return () => undefined;
+            return events.onCandidate(listener);
+          },
           onEvent(listener) {
             if (disposed) return () => undefined;
             return events.onEvent(listener);
           },
-          async submitPrompt(submission: PromptSubmission): Promise<PromptReceipt> {
-            if (disposed) return { status: 'rejected', reason: 'OpenCode session observation is disposed' };
-            if (promptInFlight) {
-              return { status: 'rejected', reason: 'another OpenCode prompt is awaiting exact message-ID echo' };
-            }
-            promptInFlight = true;
-            const messageID = `msg_puppeteer_${randomUUID().replaceAll('-', '')}`;
-            const expectation = confirmationGate.expect(
-              messageID,
-              submission.confirmationTimeoutMs ?? options.promptConfirmationTimeoutMs ?? 10_000,
-            );
-            try {
-              try {
-                await client.submitPrompt(sessionID, {
-                  messageID,
-                  agent: promptAgent,
-                  ...(promptModel ? { model: promptModel } : {}),
-                  parts: [{ type: 'text', text: submission.text }],
-                });
-              } catch (error) {
-                expectation.cancel('OpenCode prompt request did not complete');
-                if (error instanceof OpenCodeHttpError && error.status >= 400 && error.status < 500) {
-                  return { status: 'rejected', reason: `OpenCode rejected the prompt with status ${error.status}` };
-                }
-                return {
-                  status: 'uncertain',
-                  reason: `OpenCode prompt acceptance could not be determined: ${
-                    error instanceof Error ? error.message : String(error)
-                  }`,
-                };
-              }
-              const confirmation = await expectation.promise;
-              return confirmation.matched
-                ? { status: 'confirmed', ...(confirmation.turnId ? { turnId: confirmation.turnId } : {}) }
-                : { status: 'uncertain', reason: confirmation.reason ?? 'exact OpenCode prompt echo was not observed' };
-            } finally {
-              promptInFlight = false;
-            }
+          submitPrompt(submission) {
+            return prompts.submit(submission);
           },
           backendOrigin: () => backend!.origin,
           backendPid: () => backend!.pid,

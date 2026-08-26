@@ -10,7 +10,12 @@ import { existsSync, mkdirSync, mkdtempSync, readFileSync, writeFileSync } from 
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import type { AgentEventEnvelope, TerminalAutomationOperation } from '@vibecook/puppeteer-core';
+import {
+  safeParseAgentEvent,
+  type AdapterEventCandidate,
+  type AgentEventEnvelope,
+  type TerminalAutomationOperation,
+} from '@vibecook/puppeteer-core';
 import { projectAgentSession } from '@vibecook/puppeteer-testing';
 import { createClaudeSession, prepareClaudeTuiSession, type ClaudeSession } from './driver.js';
 import type { PreparedClaudeSession } from './launch/prepare.js';
@@ -175,7 +180,10 @@ describe('createClaudeSession (full loop, test-as-Claude)', () => {
     await expect(prepared.adopt('other-pane')).rejects.toThrow('already adopted');
 
     const events: AgentEventEnvelope[] = [];
+    const candidates: AdapterEventCandidate[] = [];
     first.onEvent((event) => events.push(event));
+    expect(first.onEventCandidate).toBeTypeOf('function');
+    first.onEventCandidate!((candidate) => candidates.push(candidate));
     const settings = JSON.parse(readFileSync(prepared.launch.settingsPath, 'utf8')) as {
       hooks: Record<string, Array<{ hooks: Array<{ url?: string }> }>>;
     };
@@ -197,6 +205,11 @@ describe('createClaudeSession (full loop, test-as-Claude)', () => {
     expect(response.status).toBe(200);
     expect(first.observationLevel()).toBe('native-hooks');
     expect(events.some((event) => event.event.type === 'turn.started')).toBe(true);
+    const turn = candidates.find(({ type }) => type === 'state:turn-started');
+    expect(turn).not.toHaveProperty('sequence');
+    expect(turn && safeParseAgentEvent(turn.type, turn.event).success).toBe(true);
+    expect(candidates.every(({ type }) => type.includes(':'))).toBe(true);
+    expect(candidates.every(({ type, event }) => safeParseAgentEvent(type, event).success)).toBe(true);
 
     await prepared.dispose();
     expect(existsSync(prepared.launch.settingsPath)).toBe(false);

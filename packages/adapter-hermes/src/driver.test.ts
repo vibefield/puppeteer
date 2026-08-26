@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import type { AgentHost } from '@vibecook/puppeteer-core';
+import { safeParseAgentEvent, type AdapterEventCandidate, type AgentHost } from '@vibecook/puppeteer-core';
 import { projectAgentSession } from '@vibecook/puppeteer-testing';
 import { createHermesTuiSession } from './driver.js';
 import { FakeHermesGateway } from './test-support/fake-gateway.js';
@@ -53,6 +53,30 @@ describe('Hermes TUI session driver', () => {
       expect(session.storedSessionId()).toMatch(/^20260812_/);
     } finally {
       projection.dispose();
+      await session.dispose();
+    }
+  });
+
+  it('publishes gateway output as catalog-routed candidates', async () => {
+    const session = await createHermesTuiSession({
+      cwd: '/work',
+      host: host(),
+      transport: new FakeHermesGateway({ reply: 'candidate reply' }),
+    });
+    const candidates: AdapterEventCandidate[] = [];
+    expect(session.onEventCandidate).toBeTypeOf('function');
+    const off = session.onEventCandidate!((candidate) => candidates.push(candidate));
+    try {
+      await session.submitPrompt({ text: 'hello' });
+      await new Promise((resolve) => setTimeout(resolve, 0));
+      const assistant = candidates.find(({ type }) => type === 'conversation:assistant-message');
+      expect(assistant?.event.type).toBe('assistant.message');
+      expect(assistant).not.toHaveProperty('sequence');
+      expect(assistant && safeParseAgentEvent(assistant.type, assistant.event).success).toBe(true);
+      expect(candidates.every(({ type }) => type.includes(':'))).toBe(true);
+      expect(candidates.every(({ type, event }) => safeParseAgentEvent(type, event).success)).toBe(true);
+    } finally {
+      off();
       await session.dispose();
     }
   });

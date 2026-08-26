@@ -2,7 +2,12 @@ import { appendFile, mkdir, mkdtemp, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import type { AgentHost, TerminalSpec } from '@vibecook/puppeteer-core';
+import {
+  safeParseAgentEvent,
+  type AdapterEventCandidate,
+  type AgentHost,
+  type TerminalSpec,
+} from '@vibecook/puppeteer-core';
 import { projectAgentSession } from '@vibecook/puppeteer-testing';
 import { encodeKimiWorkDirKey, kimiMainWirePath } from './session-store.js';
 import { buildKimiTuiArgs, createKimiTuiSession, prepareKimiTuiSession } from './tui-session.js';
@@ -111,6 +116,9 @@ describe('Kimi native TUI session', () => {
       pollIntervalMs: 60_000,
     });
     const projection = projectAgentSession(session);
+    const candidates: AdapterEventCandidate[] = [];
+    expect(session.onEventCandidate).toBeTypeOf('function');
+    const offCandidate = session.onEventCandidate!((candidate) => candidates.push(candidate));
     const monitor = projection.monitorBatches;
     expect(launched).toEqual([
       { command: '/opt/kimi', args: ['--model', 'kimi-k2'], cwd, env: { KIMI_CODE_HOME: home } },
@@ -122,6 +130,11 @@ describe('Kimi native TUI session', () => {
     expect(wroteTurn).toBe(true);
     expect(session.sessionId).toBe('session-native-1');
     expect(projection.state).toMatchObject({ lifecycle: 'ready', lastAssistantMessage: 'pong', activeTurn: undefined });
+    const assistant = candidates.find(({ type }) => type === 'conversation:assistant-message');
+    expect(assistant).not.toHaveProperty('sequence');
+    expect(assistant && safeParseAgentEvent(assistant.type, assistant.event).success).toBe(true);
+    expect(candidates.every(({ type }) => type.includes(':'))).toBe(true);
+    expect(candidates.every(({ type, event }) => safeParseAgentEvent(type, event).success)).toBe(true);
     expect(session.observationLevel()).toBe('native-log');
     expect(monitor.flatMap((batch) => batch.capabilities ?? [])).toHaveLength(11);
     expect(monitor).toEqual(
@@ -147,6 +160,7 @@ describe('Kimi native TUI session', () => {
         }),
       ]),
     );
+    offCandidate();
     projection.dispose();
     await session.dispose();
     await session.dispose();

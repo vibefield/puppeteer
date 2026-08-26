@@ -8,6 +8,7 @@
 
 export * from './events.js';
 export * from './event-bus.js';
+export * from './adapter/event-candidate.js';
 export * from './state.js';
 export * from './session.js';
 export * from './host.js';

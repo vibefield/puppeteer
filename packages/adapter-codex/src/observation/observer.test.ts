@@ -1,4 +1,5 @@
 import { describe, it, expect, vi } from 'vitest';
+import { safeParseAgentEvent, type AdapterEventCandidate } from '@vibecook/puppeteer-core';
 import { projectAgentEvents } from '@vibecook/puppeteer-testing';
 import { createCodexObserver } from './observer.js';
 import type { Transport } from '../transport/app-server-client.js';
@@ -116,6 +117,21 @@ describe('createCodexObserver attach resilience', () => {
 });
 
 describe('createCodexObserver controller-owned bootstrap', () => {
+  it('publishes the native-TUI observer rail as catalog-routed candidates', async () => {
+    const t = controllable(0);
+    const obs = await createCodexObserver({ transport: t.transport, start: { cwd: '/tmp/ws' } });
+    const candidates: AdapterEventCandidate[] = [];
+    const off = obs.onEventCandidate((candidate) => candidates.push(candidate));
+
+    expect(candidates.some(({ type }) => type === 'state:session-started')).toBe(true);
+    expect(candidates.every(({ type }) => type.includes(':'))).toBe(true);
+    expect(candidates.every((candidate) => !('sequence' in candidate))).toBe(true);
+    expect(candidates.every(({ type, event }) => safeParseAgentEvent(type, event).success)).toBe(true);
+
+    off();
+    await obs.dispose();
+  });
+
   it('start: thread/start → inject_items → resume → ready with session id', async () => {
     const t = controllable(0);
     const obs = await createCodexObserver({

@@ -21,6 +21,7 @@
 
 import { randomUUID } from 'node:crypto';
 import type {
+  AdapterEventCandidate,
   AgentEventEnvelope,
   AgentHost,
   AgentAdapterSession,
@@ -173,6 +174,7 @@ export async function prepareCodexTuiSession(opts: CreateCodexTuiSessionOptions)
         runtimeSessionId,
         observationLevel: () => observer.observationLevel(),
         threadPath: () => observer.threadPath(),
+        onEventCandidate: (listener: (candidate: AdapterEventCandidate) => void) => observer.onEventCandidate(listener),
         onEvent: (listener: (e: AgentEventEnvelope) => void) => observer.onEvent(listener),
         async submitPrompt(submission: PromptSubmission): Promise<PromptReceipt> {
           const result = await host.automateTerminal(runtimeSessionId, {

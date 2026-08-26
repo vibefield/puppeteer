@@ -45,6 +45,9 @@
   "engines": {
     "node": ">=22.18.0"
   },
+  "dependencies": {
+    "zod": "^4.4.3"
+  },
   "devDependencies": {
     "fast-check": "^4.0.0"
   }

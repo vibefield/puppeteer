@@ -2,21 +2,18 @@
 
 import { randomUUID } from 'node:crypto';
 import { resolve } from 'node:path';
-import { performance } from 'node:perf_hooks';
 import {
-  BufferedAgentEventSource,
-  createEnvelopeStamper,
   type AgentEvent,
   type AgentHost,
   type AgentAdapterSession,
   type AgentTuiSessionOptions,
-  type PromptReceipt,
-  type PromptSubmission,
   type TerminalSpec,
 } from '@vibecook/puppeteer-core';
 import type { AdapterMonitorObservationBatch } from '@vibecook/puppeteer-core/monitor-spi';
 import { KimiMonitorEvidence, type KimiConfiguredIntent } from './monitor-evidence.js';
 import { createKimiSessionObserver, type KimiObservedEvent, type KimiObservedRecord } from './session-observer.js';
+import { KimiEventSource } from './services/event-source.js';
+import { KimiPromptService } from './services/prompt.js';
 import {
   captureKimiJournalOffsets,
   findKimiSession,
@@ -141,13 +138,21 @@ export async function prepareKimiTuiSession(options: CreateKimiTuiSessionOptions
         pollIntervalMs: options.pollIntervalMs,
         maxReplayBytes: options.maxReplayBytes,
       });
-      const events = new BufferedAgentEventSource();
-      const stamper = createEnvelopeStamper();
+      const events = new KimiEventSource({
+        sessionId: () => observer.sessionId() ?? provisionalSessionId,
+        nativeSessionId: () => observer.sessionId(),
+      });
       const monitorEvidence = new KimiMonitorEvidence({
         nativeSessionId: () => observer.sessionId() ?? provisionalSessionId,
       });
       let sessionDisposed = false;
-      let promptInFlight = false;
+      const prompts = new KimiPromptService({
+        host: options.host,
+        runtimeSessionId,
+        observer,
+        confirmationTimeoutMs: options.promptConfirmationTimeoutMs,
+        isDisposed: () => sessionDisposed,
+      });
 
       const publishEvent = (
         event: AgentEvent,
@@ -156,22 +161,7 @@ export async function prepareKimiTuiSession(options: CreateKimiTuiSessionOptions
         },
       ): void => {
         if (sessionDisposed) return;
-        const nativeSessionId = observer.sessionId();
-        events.emit(
-          stamper.next({
-            sessionId: nativeSessionId ?? provisionalSessionId,
-            ...(nativeSessionId ? { nativeSessionId } : {}),
-            ...(meta.promptId ? { promptId: meta.promptId } : {}),
-            ...(meta.turnId ? { turnId: meta.turnId } : {}),
-            timestamp: meta.timestamp ?? new Date().toISOString(),
-            monotonicTime: performance.now(),
-            source: meta.source,
-            confidence: meta.confidence,
-            ...(meta.replay !== undefined ? { replay: meta.replay } : {}),
-            event,
-            nativeEvent: meta.nativeEvent,
-          }),
-        );
+        events.publish(event, meta);
       };
 
       const emitMonitorBatch = (batch: AdapterMonitorObservationBatch | null): void => {
@@ -226,48 +216,16 @@ export async function prepareKimiTuiSession(options: CreateKimiTuiSessionOptions
         runtimeSessionId,
         observationLevel: () => 'native-log',
         sessionDirectory: () => observer.sessionDirectory(),
+        onEventCandidate(listener) {
+          if (sessionDisposed) return () => undefined;
+          return events.onCandidate(listener);
+        },
         onEvent(listener) {
           if (sessionDisposed) return () => undefined;
           return events.onEvent(listener);
         },
-        async submitPrompt(submission: PromptSubmission): Promise<PromptReceipt> {
-          if (sessionDisposed) return { status: 'rejected', reason: 'Kimi session observation is disposed' };
-          if (promptInFlight) return { status: 'rejected', reason: 'another Kimi prompt submission is awaiting echo' };
-
-          if (submission.mode === 'paste-only') {
-            const staged = await options.host.automateTerminal(runtimeSessionId, {
-              kind: 'paste',
-              text: submission.text,
-              submit: false,
-            });
-            return staged.accepted
-              ? { status: 'uncertain', reason: 'prompt text was staged but not submitted' }
-              : { status: 'rejected', reason: staged.reason };
-          }
-
-          promptInFlight = true;
-          const expectation = observer.expectPrompt(
-            submission.text,
-            submission.confirmationTimeoutMs ?? options.promptConfirmationTimeoutMs ?? 10_000,
-          );
-          try {
-            const injected = await options.host.automateTerminal(runtimeSessionId, {
-              kind: 'paste',
-              text: submission.text,
-              submit: true,
-            });
-            if (!injected.accepted) {
-              expectation.cancel();
-              return { status: 'rejected', reason: injected.reason };
-            }
-            // Prompt confirmation is intentionally tied to Kimi's durable
-            // `turn.prompt` echo, not to terminal acceptance or rendered text.
-            void observer.poll();
-            const echo = await expectation.promise;
-            return echo.matched ? { status: 'confirmed' } : { status: 'uncertain', reason: echo.reason };
-          } finally {
-            promptInFlight = false;
-          }
+        submitPrompt(submission) {
+          return prompts.submit(submission);
         },
         async dispose() {
           if (sessionDisposed) return;

@@ -10,7 +10,7 @@ export * from './identity.js';
 export * from './creation-registry.js';
 export * from './monitor-clock.js';
 export { MonitorNotificationGapError } from './monitor-handle.js';
-export { DEFAULT_MONITOR_ARTIFACT_MAX_BYTES, MONITOR_ARTIFACT_HARD_MAX_BYTES } from './monitor-hub.js';
+export { DEFAULT_MONITOR_ARTIFACT_MAX_BYTES, MONITOR_ARTIFACT_HARD_MAX_BYTES } from './services/monitor-service.js';
 export * from './monitor-ipc.js';
 export * from './monitor-shadow.js';
 export * from './legacy-state-bridge.js';

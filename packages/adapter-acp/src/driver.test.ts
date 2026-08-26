@@ -1,5 +1,5 @@
 import { describe, it, expect, vi } from 'vitest';
-import type { AgentEventEnvelope } from '@vibecook/puppeteer-core';
+import { safeParseAgentEvent, type AdapterEventCandidate, type AgentEventEnvelope } from '@vibecook/puppeteer-core';
 import { projectAgentSession } from '@vibecook/puppeteer-testing';
 import { PROTOCOL_VERSION } from '@agentclientprotocol/sdk';
 import type { Agent, Client, ClientCapabilities, RequestPermissionResponse } from '@agentclientprotocol/sdk';
@@ -99,6 +99,28 @@ describe('createAcpSession', () => {
       for (let i = 1; i < seqs.length; i++) expect(seqs[i]!).toBeGreaterThan(seqs[i - 1]!);
     } finally {
       projection.dispose();
+      await session.dispose();
+    }
+  });
+
+  it('publishes unstamped, catalog-routed candidates for runtime ingress', async () => {
+    const session = await createAcpSession({
+      cwd: '/x',
+      connector: scriptedAcpConnector({ sessionId: SID, reply: 'pong' }),
+    });
+    const candidates: AdapterEventCandidate[] = [];
+    expect(session.onEventCandidate).toBeTypeOf('function');
+    const off = session.onEventCandidate!((candidate) => candidates.push(candidate));
+    try {
+      await driveTurn(session, 'say pong');
+      const assistant = candidates.find(({ type }) => type === 'conversation:assistant-message');
+      expect(assistant?.event.type).toBe('assistant.message');
+      expect(assistant).not.toHaveProperty('sequence');
+      expect(assistant && safeParseAgentEvent(assistant.type, assistant.event).success).toBe(true);
+      expect(candidates.every(({ type }) => type.includes(':'))).toBe(true);
+      expect(candidates.every(({ type, event }) => safeParseAgentEvent(type, event).success)).toBe(true);
+    } finally {
+      off();
       await session.dispose();
     }
   });

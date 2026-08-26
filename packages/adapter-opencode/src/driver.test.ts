@@ -1,6 +1,12 @@
 import { rmSync } from 'node:fs';
 import { afterEach, describe, expect, it } from 'vitest';
-import type { AgentEventEnvelope, AgentHost, TerminalSpec } from '@vibecook/puppeteer-core';
+import {
+  safeParseAgentEvent,
+  type AdapterEventCandidate,
+  type AgentEventEnvelope,
+  type AgentHost,
+  type TerminalSpec,
+} from '@vibecook/puppeteer-core';
 import { projectAgentSession } from '@vibecook/puppeteer-testing';
 import { createOpenCodeTuiSession, type OpenCodeTuiSession } from './driver.js';
 import { createOpenCodeImposterFixture } from './test-support/imposter.js';
@@ -64,8 +70,11 @@ describe('OpenCode native-TUI session composition', () => {
     expect(launch?.env?.OPENCODE_SERVER_PASSWORD).toBeTruthy();
 
     const observed: AgentEventEnvelope[] = [];
+    const candidates: AdapterEventCandidate[] = [];
     const monitor = projection.monitorBatches;
     const off = session.onEvent((event) => observed.push(event));
+    expect(session.onEventCandidate).toBeTypeOf('function');
+    const offCandidate = session.onEventCandidate!((candidate) => candidates.push(candidate));
     expect(monitor.length).toBeGreaterThan(0);
     expect(monitor.every((batch) => batch.phase === 'bootstrap')).toBe(true);
     expect(monitor.flatMap((batch) => batch.capabilities ?? [])).toEqual(
@@ -86,6 +95,11 @@ describe('OpenCode native-TUI session composition', () => {
       true,
     );
     expect(observed.some((event) => event.event.type === 'turn.completed')).toBe(true);
+    const assistant = candidates.find(({ type }) => type === 'conversation:assistant-message');
+    expect(assistant).not.toHaveProperty('sequence');
+    expect(assistant && safeParseAgentEvent(assistant.type, assistant.event).success).toBe(true);
+    expect(candidates.every(({ type }) => type.includes(':'))).toBe(true);
+    expect(candidates.every(({ type, event }) => safeParseAgentEvent(type, event).success)).toBe(true);
     expect(
       monitor.some(
         (batch) =>
@@ -106,6 +120,7 @@ describe('OpenCode native-TUI session composition', () => {
     const sequence = projection.state.lastSequence;
     await session.reconcile();
     expect(projection.state.lastSequence).toBe(sequence);
+    offCandidate();
     projection.dispose();
   });
 });

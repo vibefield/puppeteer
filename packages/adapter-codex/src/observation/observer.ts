@@ -20,11 +20,9 @@
  * project the conversation it resumed, not appear as an empty new session.
  */
 
-import { performance } from 'node:perf_hooks';
 import {
-  BufferedAgentEventSource,
-  createEnvelopeStamper,
   PUPPETEER_VERSION,
+  type AdapterEventCandidate,
   type AgentEvent,
   type AgentEventEnvelope,
   type ObservationLevel,
@@ -33,7 +31,8 @@ import type { AdapterMonitorObservationBatch } from '@vibecook/puppeteer-core/mo
 import { AppServerClient, type Transport } from '../transport/app-server-client.js';
 import { approvalResponse } from '../control/approvals.js';
 import type { CodexApprovalDecision, CodexApprovalRequest } from '../driver.js';
-import { CodexNotificationNormalizer } from '../normalizer.js';
+import { CodexNotificationNormalizer } from '../normalization/pipeline.js';
+import { CodexEventSource } from '../services/event-source.js';
 import { readLastCodexContextWindow } from './rollout-context.js';
 import { CodexMonitorEvidence, type CodexConfiguredIntent } from './monitor-evidence.js';
 
@@ -80,6 +79,8 @@ export interface CodexObserver {
   readonly sessionId: string | undefined;
   observationLevel(): ObservationLevel;
   threadPath(): string | undefined;
+  onEventCandidate(listener: (candidate: AdapterEventCandidate) => void): () => void;
+  /** @deprecated Direct consumers should use runtime Agent events. */
   onEvent(listener: (envelope: AgentEventEnvelope) => void): () => void;
   /** Fires once a thread is picked up and its live stream is open. */
   onThread(listener: (info: CodexThreadInfo) => void): () => void;
@@ -100,9 +101,6 @@ export async function createCodexObserver(opts: CreateCodexObserverOptions): Pro
     nativeSessionId: () => sessionId,
     modelDisplayName: (modelId) => modelNames.get(modelId),
   });
-  const stamper = createEnvelopeStamper();
-  const events = new BufferedAgentEventSource();
-
   let sessionId: string | undefined;
   let threadPath: string | undefined;
   let currentTurnId: string | undefined;
@@ -112,6 +110,10 @@ export async function createCodexObserver(opts: CreateCodexObserverOptions): Pro
   let railClosed = false;
   let contextWindowObserved = false;
   let observation: ObservationLevel = 'structured';
+  const events = new CodexEventSource({
+    sessionId: () => sessionId ?? '',
+    turnId: () => currentTurnId,
+  });
   const threadListeners = new Set<(info: CodexThreadInfo) => void>();
   const queuedLiveNotifications: Array<{ method: string; params: Record<string, unknown> }> = [];
 
@@ -126,19 +128,7 @@ export async function createCodexObserver(opts: CreateCodexObserverOptions): Pro
   function apply(event: AgentEvent, source: AgentEventEnvelope['source'], nativeEvent?: unknown, replay = false): void {
     if (event.type === 'context-window.updated') contextWindowObserved = true;
     if (event.type === 'context-window.invalidated') contextWindowObserved = false;
-    const envelope = stamper.next({
-      sessionId: sessionId ?? '',
-      nativeSessionId: sessionId,
-      turnId: currentTurnId,
-      timestamp: new Date().toISOString(),
-      monotonicTime: performance.now(),
-      source,
-      confidence: 'authoritative',
-      event,
-      nativeEvent,
-      ...(replay ? { replay: true } : {}),
-    });
-    events.emit(envelope);
+    events.publish(event, source, nativeEvent, 'authoritative', replay);
   }
 
   function consumeNotification(method: string, params: Record<string, unknown>, replayed = false): void {
@@ -413,6 +403,9 @@ export async function createCodexObserver(opts: CreateCodexObserverOptions): Pro
     },
     observationLevel: () => observation,
     threadPath: () => threadPath,
+    onEventCandidate(listener) {
+      return events.onCandidate(listener);
+    },
     onEvent(listener) {
       return events.onEvent(listener);
     },

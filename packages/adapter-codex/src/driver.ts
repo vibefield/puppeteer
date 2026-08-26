@@ -17,39 +17,25 @@
  * Native-TUI automation is owned by the host's ordered semantic input path.
  */
 
-import { performance } from 'node:perf_hooks';
 import {
-  BufferedAgentEventSource,
-  createEnvelopeStamper,
   PUPPETEER_VERSION,
   type AgentEvent,
-  type AgentEventEnvelope,
+  type AgentEventSource,
   type AgentAdapterSession,
   type ObservationLevel,
-  type PromptReceipt,
   type PromptSubmission,
 } from '@vibecook/puppeteer-core';
 import type { AdapterMonitorObservationBatch } from '@vibecook/puppeteer-core/monitor-spi';
-import { approvalResponse } from './control/approvals.js';
-import {
-  AppServerClient,
-  AppServerRequestTimeoutError,
-  spawnAppServerTransport,
-  type Transport,
-} from './transport/app-server-client.js';
-import { CodexNotificationNormalizer } from './normalizer.js';
+import { AppServerClient, spawnAppServerTransport, type Transport } from './transport/app-server-client.js';
+import { CodexNotificationNormalizer } from './normalization/pipeline.js';
 import { CodexMonitorEvidence } from './observation/monitor-evidence.js';
+import { CodexApprovalService, type CodexApprovalDecision, type CodexApprovalRequest } from './services/approvals.js';
+import { CodexEventSource } from './services/event-source.js';
+import { CodexPromptService } from './services/prompt.js';
+
+export type { CodexApprovalDecision, CodexApprovalRequest } from './services/approvals.js';
 
 const CLIENT_INFO = { name: 'puppeteer', version: PUPPETEER_VERSION } as const;
-
-export type CodexApprovalDecision = 'approved' | 'denied';
-
-export interface CodexApprovalRequest {
-  /** The server-request method, e.g. an exec/apply-patch/permission approval. */
-  method: string;
-  params: Record<string, unknown> | undefined;
-  requestId: number | string;
-}
 
 export interface CreateCodexSessionOptions {
   cwd: string;
@@ -78,32 +64,31 @@ const str = (v: unknown): string | undefined => (typeof v === 'string' ? v : und
 const rec = (v: unknown): Record<string, unknown> | undefined =>
   v !== null && typeof v === 'object' && !Array.isArray(v) ? (v as Record<string, unknown>) : undefined;
 
-interface PendingInjection {
-  resolve: (receipt: PromptReceipt) => void;
-  timer?: ReturnType<typeof setTimeout>;
-}
-
 export async function createCodexSession(options: CreateCodexSessionOptions): Promise<CodexSession> {
   const transport = options.transport ?? spawnAppServerTransport({ executable: options.executable });
   const client = new AppServerClient(transport);
   const modelNames = new Map<string, string>();
   const normalizer = new CodexNotificationNormalizer((modelId) => modelNames.get(modelId));
-  const monitorEvidence = new CodexMonitorEvidence({
-    nativeSessionId: () => sessionId || undefined,
-    modelDisplayName: (modelId) => modelNames.get(modelId),
-  });
-  const stamper = createEnvelopeStamper();
-
-  const events = new BufferedAgentEventSource();
   let sessionId = '';
   let runtimeSessionId = '';
   let threadPath: string | undefined;
   let currentTurnId: string | undefined;
-  let injectionCounter = 0;
   let disposed = false;
   let bootstrapping = true;
   let observation: ObservationLevel = 'structured';
-  const pendingInjections = new Map<string, PendingInjection>();
+  const monitorEvidence = new CodexMonitorEvidence({
+    nativeSessionId: () => sessionId || undefined,
+    modelDisplayName: (modelId) => modelNames.get(modelId),
+  });
+  const events = new CodexEventSource({
+    sessionId: () => sessionId,
+    turnId: () => currentTurnId,
+  });
+  const prompts = new CodexPromptService({
+    request: (method, params) => client.request(method, params),
+    runtimeSessionId: () => runtimeSessionId,
+    isDisposed: () => disposed,
+  });
 
   function emitMonitorBatch(batch: AdapterMonitorObservationBatch | null): void {
     if (!batch) return;
@@ -113,29 +98,16 @@ export async function createCodexSession(options: CreateCodexSessionOptions): Pr
   const capabilitiesBatch = monitorEvidence.capabilitiesBatch(new Date().toISOString());
   emitMonitorBatch(capabilitiesBatch);
 
-  function settleInjection(clientUserMessageId: string, receipt: PromptReceipt): void {
-    const pending = pendingInjections.get(clientUserMessageId);
-    if (!pending) return;
-    pendingInjections.delete(clientUserMessageId);
-    if (pending.timer) clearTimeout(pending.timer);
-    pending.resolve(receipt);
+  function apply(event: AgentEvent, source: AgentEventSource, nativeEvent?: unknown): void {
+    if (disposed) return;
+    events.publish(event, source, nativeEvent);
   }
 
-  function apply(event: AgentEvent, source: AgentEventEnvelope['source'], nativeEvent?: unknown): void {
-    if (disposed) return;
-    const envelope = stamper.next({
-      sessionId,
-      nativeSessionId: sessionId,
-      turnId: currentTurnId,
-      timestamp: new Date().toISOString(),
-      monotonicTime: performance.now(),
-      source,
-      confidence: 'authoritative',
-      event,
-      nativeEvent,
-    });
-    events.emit(envelope);
-  }
+  const approvals = new CodexApprovalService({
+    decide: options.onApproval,
+    publish: (event, nativeEvent) => apply(event, 'native-hook', nativeEvent),
+    isDisposed: () => disposed,
+  });
 
   client.onNotification((method, params) => {
     if (disposed) return;
@@ -158,7 +130,7 @@ export async function createCodexSession(options: CreateCodexSessionOptions): Pr
     const norm = normalizer.normalize({ method, params });
     if (norm.turnId) currentTurnId = norm.turnId;
     if (norm.userMessageClientId) {
-      settleInjection(norm.userMessageClientId, { status: 'confirmed', turnId: norm.turnId });
+      prompts.confirm(norm.userMessageClientId, norm.turnId);
     }
     for (const event of norm.events) {
       const source =
@@ -169,35 +141,11 @@ export async function createCodexSession(options: CreateCodexSessionOptions): Pr
     }
   });
 
-  client.onServerRequest(async (method, params, id) => {
-    if (disposed) throw new Error('codex session is disposed');
-    // Structured approval: observe it, decide, answer, record the resolution.
-    const requestId = String(id);
-    apply(
-      { type: 'permission.requested', requestId, tool: method, input: params, presentation: 'host-ui' },
-      'native-hook',
-      { method, params, id },
-    );
-    const decision = options.onApproval ? await options.onApproval({ method, params, requestId: id }) : 'denied';
-    apply(
-      { type: 'permission.resolved', requestId, outcome: decision === 'approved' ? 'allowed' : 'denied' },
-      'native-hook',
-      { method, params, id },
-    );
-    // Translated to this method's own response shape; `{decision}` verbatim was
-    // valid on none of them (approvals.ts). Non-approval server requests throw,
-    // which the client turns into a JSON-RPC error.
-    return approvalResponse(method, decision);
-  });
+  client.onServerRequest((method, params, id) => approvals.handle(method, params, id));
 
   client.onClose(({ code, signal }) => {
     if (disposed) return;
-    for (const clientUserMessageId of [...pendingInjections.keys()]) {
-      settleInjection(clientUserMessageId, {
-        status: 'uncertain',
-        reason: 'app-server transport closed before matching clientUserMessageId arrived',
-      });
-    }
+    prompts.transportClosed();
     observation = 'terminal-only';
     const observedAt = new Date().toISOString();
     const detail = signal ? `signal:${signal}` : code === null ? 'transport closed' : `exit:${code}`;
@@ -295,62 +243,21 @@ export async function createCodexSession(options: CreateCodexSessionOptions): Pr
     runtimeSessionId,
     observationLevel: () => observation,
     threadPath: () => threadPath,
+    onEventCandidate(listener) {
+      if (disposed) return () => undefined;
+      return events.onCandidate(listener);
+    },
     onEvent(listener) {
       if (disposed) return () => undefined;
       return events.onEvent(listener);
     },
-    async submitPrompt(submission: PromptSubmission): Promise<PromptReceipt> {
-      if (disposed) return { status: 'rejected', reason: 'codex session is disposed' };
-      // A successful turn/start means the server accepted the request, but the
-      // exact clientUserMessageId echo is the deterministic confirmation that
-      // this session observed OUR input. Do not claim another concurrent
-      // prompt, or a server that accepted then lost the item, as confirmed.
-      const clientUserMessageId = `puppeteer-inj-${++injectionCounter}`;
-      let resolveReceipt!: (receipt: PromptReceipt) => void;
-      const receipt = new Promise<PromptReceipt>((resolve) => {
-        resolveReceipt = resolve;
-      });
-      pendingInjections.set(clientUserMessageId, { resolve: resolveReceipt });
-      try {
-        await client.request('turn/start', {
-          threadId: runtimeSessionId,
-          input: [{ type: 'text', text: submission.text }],
-          clientUserMessageId,
-        });
-        const pending = pendingInjections.get(clientUserMessageId);
-        if (pending) {
-          const timeoutMs = submission.confirmationTimeoutMs ?? 5000;
-          pending.timer = setTimeout(() => {
-            settleInjection(clientUserMessageId, {
-              status: 'uncertain',
-              reason: `turn/start succeeded but no matching clientUserMessageId arrived within ${timeoutMs}ms`,
-            });
-          }, timeoutMs);
-          pending.timer.unref?.();
-        }
-        return await receipt;
-      } catch (err) {
-        const reason = err instanceof Error ? err.message : String(err);
-        settleInjection(
-          clientUserMessageId,
-          err instanceof AppServerRequestTimeoutError
-            ? { status: 'uncertain', reason }
-            : { status: 'rejected', reason },
-        );
-        // A concurrent transport close or dispose may already have settled a
-        // more precise uncertain outcome before request() rejected.
-        return await receipt;
-      }
+    submitPrompt(submission: PromptSubmission) {
+      return prompts.submit(submission);
     },
     async dispose() {
       if (disposed) return;
       disposed = true;
-      for (const clientUserMessageId of [...pendingInjections.keys()]) {
-        settleInjection(clientUserMessageId, {
-          status: 'uncertain',
-          reason: 'codex session disposed before matching clientUserMessageId arrived',
-        });
-      }
+      prompts.dispose();
       events.close();
       await client.close();
     },

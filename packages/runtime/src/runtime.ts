@@ -3,7 +3,10 @@ import { performance } from 'node:perf_hooks';
 import {
   agentEventService,
   agentServiceEventType,
+  isAgentEventType,
+  safeParseAgentEvent,
   type AccountUsageFetchResult,
+  type AdapterEventCandidate,
   type AgentEvent,
   type AgentEventConfidence,
   type AgentEventEnvelope,
@@ -78,7 +81,7 @@ import type {
   CreationRequestTerminalOutcome,
 } from './creation-registry.js';
 import { createSystemMonitorClock } from './monitor-clock.js';
-import { RuntimeMonitorHub, type MonitorArtifactAudit } from './monitor-hub.js';
+import { AgentMonitorService, type MonitorArtifactAudit } from './services/monitor-service.js';
 
 interface ManagedSession {
   session: AgentAdapterSession;
@@ -148,12 +151,12 @@ interface ManagedRun {
   preparationId?: string;
   terminalOutcome?: CreationRequestTerminalOutcome;
   result?: CreateAgentSessionResult | PrepareAgentSessionResult;
-  monitor?: RuntimeMonitorHub;
+  monitor?: AgentMonitorService;
 }
 
 interface TerminalFailureEntry {
   info: RuntimeRunInfo;
-  monitor: RuntimeMonitorHub;
+  monitor: AgentMonitorService;
 }
 
 interface PreparationTombstone {
@@ -473,7 +476,7 @@ export function createAgentRuntime(options: AgentRuntimeOptions): AgentRuntime {
   function installRunMonitor(run: ManagedRun): void {
     if (!features.agentMonitorStateV2 || run.monitor) return;
     const provider = providers.get(run.identity.providerId);
-    run.monitor = new RuntimeMonitorHub({
+    run.monitor = new AgentMonitorService({
       runtimeRunId: run.identity.runtimeRunId,
       runtimeEpoch: run.identity.runtimeEpoch,
       providerId: run.identity.providerId,
@@ -1470,7 +1473,12 @@ export function createAgentRuntime(options: AgentRuntimeOptions): AgentRuntime {
     };
     if (extras.preparationId !== undefined) info.preparationId = extras.preparationId;
     if (extras.processId !== undefined) info.processId = extras.processId;
-    const agentController = createAgentController({ adapter: session, info, onListenerError: report });
+    const agentController = createAgentController({
+      adapter: session,
+      info,
+      monitor: run.monitor,
+      onListenerError: report,
+    });
     const agent = agentController.agent;
     void recordProcessSpawned(run, session.runtimeSessionId, extras.processId, extras.restored);
     void recordNativeSessionCorrelation(run);
@@ -1513,7 +1521,7 @@ export function createAgentRuntime(options: AgentRuntimeOptions): AgentRuntime {
       source: AgentEventSource,
       confidence: AgentEventConfidence,
       nativeEvent?: unknown,
-      upstream?: AgentEventEnvelope,
+      upstream?: AgentEventEnvelope | AdapterEventCandidate,
       reduceIntoState = true,
       hostProcessEvidence = false,
     ): void => {
@@ -1564,6 +1572,7 @@ export function createAgentRuntime(options: AgentRuntimeOptions): AgentRuntime {
       const previousCwd = agent.state.environment.currentCwd?.value;
       if (!isCanonicalApplicationEvent(session, envelope)) {
         const projected = agentController.accept(envelope, {
+          projectMonitor: false,
           projectState: reduceIntoState,
           projectConversation: false,
           publish: false,
@@ -1572,12 +1581,7 @@ export function createAgentRuntime(options: AgentRuntimeOptions): AgentRuntime {
         if (currentCwd && currentCwd !== previousCwd) gitObserver?.setCwd(currentCwd);
         return;
       }
-      if (envelope.event.type === 'monitor.batch') {
-        run.monitor?.acceptSemantic(envelope.event.batch);
-      } else {
-        run.monitor?.acceptAgentEvent(envelope, { hostProcessEvidence });
-      }
-      const projected = agentController.accept(envelope, { projectState: reduceIntoState });
+      const projected = agentController.accept(envelope, { projectState: reduceIntoState, hostProcessEvidence });
       const currentCwd = projected.state.environment.currentCwd?.value;
       if (currentCwd && currentCwd !== previousCwd) gitObserver?.setCwd(currentCwd);
       for (const listener of listeners) {
@@ -1606,23 +1610,44 @@ export function createAgentRuntime(options: AgentRuntimeOptions): AgentRuntime {
     sessionsByRunId.set(run.identity.runtimeRunId, managed);
     sessionsByTerminalId.set(info.terminalSessionId, managed);
     try {
-      managed.unsubscribe = session.onEvent((envelope) => {
+      const updateAdapterMetadata = (): void => {
         run.monitor?.updateSessionMetadata({
           executionMode: provider.executionMode ?? 'native-tui',
           observationLevel: session.observationLevel(),
           terminalSessionId: session.runtimeSessionId,
         });
-        const priorRuntimeEnvelope = envelope as Partial<RuntimeAgentEventEnvelope>;
-        if (
-          (priorRuntimeEnvelope.runtimeRunId !== undefined &&
-            priorRuntimeEnvelope.runtimeRunId !== run.identity.runtimeRunId) ||
-          (priorRuntimeEnvelope.runtimeEpoch !== undefined &&
-            priorRuntimeEnvelope.runtimeEpoch !== run.identity.runtimeEpoch)
-        ) {
+      };
+      const acceptCandidate = (candidate: AdapterEventCandidate): void => {
+        updateAdapterMetadata();
+        if (!isAgentEventType(candidate.type)) {
+          report(new Error(`Adapter emitted an unregistered event route: ${String(candidate.type)}`));
           return;
         }
-        dispatch(envelope.event, envelope.source, envelope.confidence, envelope.nativeEvent, envelope, true);
-      });
+        const parsed = safeParseAgentEvent(candidate.type, candidate.event);
+        if (!parsed.success) {
+          report(new Error(`Adapter emitted invalid ${candidate.type}: ${parsed.error.message}`));
+          return;
+        }
+        dispatch(parsed.data, candidate.source, candidate.confidence, candidate.nativeEvent, candidate, true);
+      };
+
+      if (session.onEventCandidate) {
+        managed.unsubscribe = session.onEventCandidate(acceptCandidate);
+      } else {
+        managed.unsubscribe = session.onEvent((envelope) => {
+          updateAdapterMetadata();
+          const priorRuntimeEnvelope = envelope as Partial<RuntimeAgentEventEnvelope>;
+          if (
+            (priorRuntimeEnvelope.runtimeRunId !== undefined &&
+              priorRuntimeEnvelope.runtimeRunId !== run.identity.runtimeRunId) ||
+            (priorRuntimeEnvelope.runtimeEpoch !== undefined &&
+              priorRuntimeEnvelope.runtimeEpoch !== run.identity.runtimeEpoch)
+          ) {
+            return;
+          }
+          dispatch(envelope.event, envelope.source, envelope.confidence, envelope.nativeEvent, envelope, true);
+        });
+      }
     } catch (error) {
       sessionsByRunId.delete(run.identity.runtimeRunId);
       sessionsByTerminalId.delete(info.terminalSessionId);

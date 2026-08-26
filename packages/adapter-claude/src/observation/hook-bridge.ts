@@ -12,7 +12,7 @@
  * - rejects events for sessions this bridge does not own
  *
  * Payloads carry no timestamps — `receivedAt` is stamped here and is the
- * ingestion clock for envelope stamping upstream.
+ * ingestion clock retained on the adapter candidate upstream.
  */
 
 import { createServer, type IncomingMessage, type Server, type ServerResponse } from 'node:http';

@@ -250,6 +250,10 @@ importers:
         version: 3.2.7(@types/debug@4.1.13)(@types/node@24.13.3)(tsx@4.23.0)
 
   packages/core:
+    dependencies:
+      zod:
+        specifier: ^4.4.3
+        version: 4.4.3
     devDependencies:
       fast-check:
         specifier: ^4.0.0

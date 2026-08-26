@@ -26,7 +26,7 @@ export interface SemanticObservationEvent {
   agentId?: string;
   agentType?: string;
   replay?: boolean;
-  /** Retained inside the adapter-to-core envelope; never exposed as monitor state. */
+  /** Retained as candidate evidence and later on the runtime envelope; never monitor state. */
   nativeEvent?: unknown;
 }
 

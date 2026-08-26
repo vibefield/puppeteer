@@ -9,6 +9,7 @@
  * (`createClaudeSession`, `createCodexSession`, and peers) implement these.
  */
 
+import type { AdapterEventCandidate } from './adapter/event-candidate.js';
 import type { AgentEventEnvelope, ObservationLevel } from './events.js';
 import type { MonitorArtifactReadResult } from './monitor/types.js';
 
@@ -55,6 +56,9 @@ export interface AgentAdapterSession {
   readonly runtimeSessionId: string;
   /** Honest, current observation level — never overstated (DESIGN §19.2). */
   observationLevel(): ObservationLevel;
+  /** Runtime-owned ingress. Adapters should implement this before removing legacy envelopes. */
+  onEventCandidate?(listener: (candidate: AdapterEventCandidate) => void): () => void;
+  /** @deprecated Adapters should emit candidates; applications consume runtime Agent envelopes. */
   onEvent(listener: (envelope: AgentEventEnvelope) => void): () => void;
   /** Optional resolution of adapter-issued opaque artifact references. */
   readMonitorArtifact?(artifactId: string, options: { maxBytes: number }): Promise<MonitorArtifactReadResult>;

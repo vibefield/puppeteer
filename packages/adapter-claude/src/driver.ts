@@ -9,9 +9,9 @@
  *   prepare (settings + UUID join contract)
  *     → ports.spawn (the host carries the hook token in its explicit env grant)
  *     → hook bridge (loopback HTTP; the ONLY session it accepts is ours)
- *     → normalizer → envelope stamping → normalized event stream
- *     → semantic provider (lazy: attached at the first hook envelope whose
- *       payload hands us transcript_path; every envelope supplies a poll hint)
+ *     → category normalizers → candidate event source → runtime ingress
+ *     → semantic provider (lazy: attached at the first hook payload that hands
+ *       us transcript_path; every hook supplies a poll hint)
  *     → prompt injector (uses ports.automate; confirmation and
  *       permission gating wired from the normalized event stream)
  *
@@ -20,13 +20,9 @@
  */
 
 import { randomUUID } from 'node:crypto';
-import { performance } from 'node:perf_hooks';
 import {
-  BufferedAgentEventSource,
-  createEnvelopeStamper,
   type AgentEvent,
   type AgentEventConfidence,
-  type AgentEventEnvelope,
   type AgentAdapterSession,
   type MonitorArtifactReadResult,
   type ObservationLevel,
@@ -46,6 +42,7 @@ import {
   type SpaghettiScopedObservationDiagnostic,
 } from './observation/spaghetti-scoped.js';
 import { claudePermissionMode } from './provider-modes.js';
+import { ClaudeEventSource, type ClaudeEventPublication } from './services/event-source.js';
 import type {
   SemanticObservationHandle,
   SemanticObservationPollHint,
@@ -276,8 +273,7 @@ function createPreparedClaudeSession(
   nativeSessionId: () => string = () => prepared.sessionId,
 ): PreparedClaudeTuiSession {
   const normalizer = new ClaudeHookNormalizer();
-  const stamper = createEnvelopeStamper();
-  const events = new BufferedAgentEventSource();
+  const events = new ClaudeEventSource({ sessionId: nativeSessionId, providerVersion: options.providerVersion });
   let observation: ObservationLevel = 'terminal-only';
   let transcriptPath: string | undefined;
   const semanticProvider =
@@ -353,37 +349,7 @@ function createPreparedClaudeSession(
     emitMonitorBatch(capabilitiesBatch);
   }
 
-  function apply(
-    event: AgentEvent,
-    meta: {
-      source: AgentEventEnvelope['source'];
-      timestamp: string;
-      promptId?: string;
-      turnId?: string;
-      agentId?: string;
-      agentType?: string;
-      providerVersion?: string;
-      confidence?: AgentEventConfidence;
-      native?: unknown;
-      replay?: boolean;
-    },
-  ): AgentEventEnvelope {
-    const envelope = stamper.next({
-      sessionId: nativeSessionId(),
-      nativeSessionId: nativeSessionId(),
-      promptId: meta.promptId,
-      turnId: meta.turnId,
-      agentId: meta.agentId,
-      agentType: meta.agentType,
-      providerVersion: meta.providerVersion ?? options.providerVersion,
-      timestamp: meta.timestamp,
-      monotonicTime: performance.now(),
-      source: meta.source,
-      confidence: meta.confidence ?? 'authoritative',
-      ...(meta.replay ? { replay: true } : {}),
-      event,
-      nativeEvent: meta.native,
-    });
+  function apply(event: AgentEvent, meta: ClaudeEventPublication): void {
     // Injector wiring rides the normalized stream, not raw payloads.
     switch (event.type) {
       case 'turn.started':
@@ -424,8 +390,7 @@ function createPreparedClaudeSession(
         break;
     }
 
-    events.emit(envelope);
-    return envelope;
+    events.publish(event, meta);
   }
 
   function publishConfiguredIntent(): void {
@@ -738,6 +703,12 @@ function createPreparedClaudeSession(
         runtimeSessionId,
         observationLevel: () => observation,
         transcriptPath: () => transcriptPath,
+        onEventCandidate(listener) {
+          const unsubscribe = events.onCandidate(listener);
+          publishConfiguredIntent();
+          void publishCapabilities();
+          return unsubscribe;
+        },
         onEvent(listener) {
           const unsubscribe = events.onEvent(listener);
           publishConfiguredIntent();

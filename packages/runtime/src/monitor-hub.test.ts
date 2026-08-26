@@ -8,7 +8,11 @@ import type {
 import type { AdapterMonitorObservationBatch, MonitorFamilyUpdate } from '@vibecook/puppeteer-core/monitor-spi';
 import { describe, expect, it, vi } from 'vitest';
 import type { MonitorClock, MonitorScheduledTask } from './monitor-clock.js';
-import { MONITOR_ARTIFACT_HARD_MAX_BYTES, RuntimeMonitorHub, type MonitorArtifactAudit } from './monitor-hub.js';
+import {
+  AgentMonitorService,
+  MONITOR_ARTIFACT_HARD_MAX_BYTES,
+  type MonitorArtifactAudit,
+} from './services/monitor-service.js';
 
 class FakeClock implements MonitorClock {
   private currentMs = Date.parse('2026-08-16T12:00:00.000Z');
@@ -70,7 +74,7 @@ function hub(
   } = {},
 ) {
   const clock = options.clock ?? new FakeClock();
-  const result = new RuntimeMonitorHub({
+  const result = new AgentMonitorService({
     runtimeRunId: 'run-1',
     runtimeEpoch: 1,
     providerId: 'claude',
@@ -113,7 +117,7 @@ function semanticSession(
   };
 }
 
-describe('RuntimeMonitorHub', () => {
+describe('AgentMonitorService', () => {
   it('publishes a synchronous readiness state and coalesces ordinary full-state revisions', () => {
     const states: AgentMonitorState[] = [];
     const { clock, hub: monitor } = hub({ states });
