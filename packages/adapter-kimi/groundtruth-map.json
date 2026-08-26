@@ -1,0 +1,46 @@
+{
+  "format": "puppeteer-adapter-groundtruth-map/1",
+  "provider": "kimi",
+  "adapterPackage": "@vibecook/puppeteer-adapter-kimi",
+  "groundTruth": "packages/surface/vendors/kimi/model/kimi@0.34.0/groundtruth.json",
+  "groundTruthSha256": "0dc9ef4a9fcc8ec46da992919a1644e6da3958a4b5d7a007fc6b35a686def769",
+  "semanticEvents": [
+    "context.append_loop_event",
+    "context.append_message",
+    "context.apply_compaction",
+    "context.clear",
+    "context.undo",
+    "full_compaction.begin",
+    "full_compaction.cancel",
+    "full_compaction.complete",
+    "interaction.request",
+    "interaction.resolved",
+    "llm.request",
+    "llm.tools_snapshot",
+    "metadata",
+    "permission.set_mode",
+    "plan.revision",
+    "plan_mode.cancel",
+    "plan_mode.enter",
+    "plan_mode.exit",
+    "profile.bind",
+    "task.started",
+    "task.terminated",
+    "turn.ended",
+    "turn.prompt",
+    "usage.record"
+  ],
+  "observedOrControlledEvents": [
+    "state.json"
+  ],
+  "unmapped": {
+    "count": 38,
+    "sha256": "5e7c13d9dca8e89971603ff389a5f526005e9acdd39c186e3a5eca6a2f6a5c4b",
+    "policy": "Not consumed by this adapter version. They remain provider-native ground truth and require explicit review when this lock changes."
+  },
+  "totals": {
+    "groundTruth": 63,
+    "semantic": 24,
+    "observedOrControlled": 1
+  }
+}

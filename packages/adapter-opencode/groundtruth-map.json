@@ -1,0 +1,57 @@
+{
+  "format": "puppeteer-adapter-groundtruth-map/1",
+  "provider": "opencode",
+  "adapterPackage": "@vibecook/puppeteer-adapter-opencode",
+  "groundTruth": "packages/surface/vendors/opencode/model/opencode@1.18.16/groundtruth.json",
+  "groundTruthSha256": "682da08a394692df68126414dc748976316c3cf8a2dcf91538325ce45d3685f0",
+  "semanticEvents": [
+    "catalog.updated",
+    "file.edited",
+    "file.watcher.updated",
+    "http/session.get",
+    "integration.connection.updated",
+    "integration.updated",
+    "message.part.delta",
+    "message.part.removed",
+    "message.part.updated",
+    "message.removed",
+    "message.updated",
+    "models-dev.refreshed",
+    "permission.asked",
+    "permission.replied",
+    "plugin.added",
+    "question.asked",
+    "question.rejected",
+    "question.replied",
+    "reference.updated",
+    "server.connected",
+    "server.heartbeat",
+    "session.compacted",
+    "session.created",
+    "session.deleted",
+    "session.diff",
+    "session.error",
+    "session.idle",
+    "session.status",
+    "session.updated",
+    "todo.updated"
+  ],
+  "observedOrControlledEvents": [
+    "http/permission.list",
+    "http/question.list",
+    "http/session.children",
+    "http/session.create",
+    "http/session.messages",
+    "http/session.status"
+  ],
+  "unmapped": {
+    "count": 242,
+    "sha256": "d12a46f244ac1017769b6b708520718d0d2c028943c83999ff975ef78e48159f",
+    "policy": "Not consumed by this adapter version. They remain provider-native ground truth and require explicit review when this lock changes."
+  },
+  "totals": {
+    "groundTruth": 278,
+    "semantic": 30,
+    "observedOrControlled": 6
+  }
+}

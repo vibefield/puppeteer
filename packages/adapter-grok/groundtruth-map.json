@@ -1,0 +1,22 @@
+{
+  "format": "puppeteer-adapter-groundtruth-map/1",
+  "provider": "grok",
+  "adapterPackage": "@vibecook/puppeteer-adapter-grok",
+  "groundTruth": "packages/surface/vendors/grok/model/grok@1.0.0/groundtruth.json",
+  "groundTruthSha256": "43810d7fbbae84f44789c3fda9c44c1fb3f08a0cc55f7dfef260a54b2bbd2a54",
+  "semanticEvents": [],
+  "observedOrControlledEvents": [
+    "signals.json",
+    "summary.json"
+  ],
+  "unmapped": {
+    "count": 14,
+    "sha256": "8c71667abcbfe8221d37f9aead948be0bf5cf691ddf50aa91b1c581f143a000c",
+    "policy": "Not consumed by this adapter version. They remain provider-native ground truth and require explicit review when this lock changes."
+  },
+  "totals": {
+    "groundTruth": 16,
+    "semantic": 0,
+    "observedOrControlled": 2
+  }
+}

@@ -17,7 +17,7 @@
   "scripts": {
     "build": "pnpm -r build",
     "typecheck": "pnpm -r typecheck",
-    "test": "pnpm typecheck && pnpm packages:check && pnpm support:check && node --test scripts/*.test.mjs && pnpm -r test",
+    "test": "pnpm typecheck && pnpm packages:check && pnpm groundtruth:mapping:check && pnpm support:check && node --test scripts/*.test.mjs && pnpm -r test",
     "godview": "pnpm --filter godview start",
     "godview:bundle": "pnpm --filter godview bundle",
     "godview:smoke": "pnpm --filter godview smoke",
@@ -36,6 +36,8 @@
     "surface:groundtruth:check": "pnpm --filter @vibecook/puppeteer-surface run surface:groundtruth:check",
     "surface:groundtruth:write": "pnpm --filter @vibecook/puppeteer-surface run surface:groundtruth:write",
     "surface:groundtruth:render": "pnpm --filter @vibecook/puppeteer-surface run surface:groundtruth:render",
+    "groundtruth:mapping:check": "node scripts/check-adapter-groundtruth-maps.mjs",
+    "groundtruth:mapping:write": "node scripts/check-adapter-groundtruth-maps.mjs --write",
     "packages:check": "node scripts/check-package-layout.mjs",
     "packages:clean": "node scripts/clean-packages.mjs",
     "support:check": "node scripts/render-agent-support.mjs --check",

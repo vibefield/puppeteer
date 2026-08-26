@@ -1,0 +1,52 @@
+{
+  "format": "puppeteer-adapter-groundtruth-map/1",
+  "provider": "claude",
+  "adapterPackage": "@vibecook/puppeteer-adapter-claude",
+  "groundTruth": "packages/surface/vendors/claude/model/claude@2.1.226/groundtruth.json",
+  "groundTruthSha256": "e73c7cf00271a41143bed327cdd5c0cc1534833ef45e7798d9f80946516fe3be",
+  "semanticEvents": [
+    "ConfigChange",
+    "CwdChanged",
+    "DirectoryAdded",
+    "FileChanged",
+    "InstructionsLoaded",
+    "MessageDisplay",
+    "Notification",
+    "PermissionDenied",
+    "PermissionRequest",
+    "PostCompact",
+    "PostToolUse",
+    "PostToolUseFailure",
+    "PreCompact",
+    "PreToolUse",
+    "SessionEnd",
+    "SessionStart",
+    "Stop",
+    "StopFailure",
+    "SubagentStart",
+    "SubagentStop",
+    "TaskCompleted",
+    "TaskCreated",
+    "TeammateIdle",
+    "UserPromptSubmit"
+  ],
+  "observedOrControlledEvents": [
+    "Elicitation",
+    "ElicitationResult",
+    "PostToolBatch",
+    "Setup",
+    "UserPromptExpansion",
+    "WorktreeCreate",
+    "WorktreeRemove"
+  ],
+  "unmapped": {
+    "count": 0,
+    "sha256": "01ba4719c80b6fe911b091a7c05124b64eeece964e09c058ef8f9805daca546b",
+    "policy": "Not consumed by this adapter version. They remain provider-native ground truth and require explicit review when this lock changes."
+  },
+  "totals": {
+    "groundTruth": 31,
+    "semantic": 24,
+    "observedOrControlled": 7
+  }
+}

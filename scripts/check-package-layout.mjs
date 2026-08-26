@@ -37,6 +37,61 @@ function internalProductionEdges(manifests) {
   );
 }
 
+const architectureDependencies = new Map([
+  ['packages/core', []],
+  ['packages/surface', []],
+  ['packages/imposter', ['@vibecook/puppeteer-surface']],
+  ['packages/adapter-acp', ['@vibecook/puppeteer-core']],
+  ['packages/adapter-claude', ['@vibecook/puppeteer-core']],
+  ['packages/adapter-codex', ['@vibecook/puppeteer-core']],
+  ['packages/adapter-grok', ['@vibecook/puppeteer-adapter-acp', '@vibecook/puppeteer-core']],
+  ['packages/adapter-hermes', ['@vibecook/puppeteer-core']],
+  ['packages/adapter-kimi', ['@vibecook/puppeteer-core']],
+  ['packages/adapter-opencode', ['@vibecook/puppeteer-core']],
+  ['packages/record', ['@vibecook/puppeteer-core']],
+  ['packages/testing', ['@vibecook/puppeteer-core']],
+  ['packages/workspaces', []],
+  [
+    'packages/runtime',
+    ['@vibecook/puppeteer-core', '@vibecook/puppeteer-record', '@vibecook/puppeteer-workspaces'],
+  ],
+  [
+    'packages/builtin-providers',
+    [
+      '@vibecook/puppeteer-adapter-acp',
+      '@vibecook/puppeteer-adapter-claude',
+      '@vibecook/puppeteer-adapter-codex',
+      '@vibecook/puppeteer-adapter-grok',
+      '@vibecook/puppeteer-adapter-hermes',
+      '@vibecook/puppeteer-adapter-kimi',
+      '@vibecook/puppeteer-adapter-opencode',
+      '@vibecook/puppeteer-core',
+      '@vibecook/puppeteer-runtime',
+    ],
+  ],
+  ['packages/monitor', ['@vibecook/puppeteer-core']],
+  ['packages/react', ['@vibecook/puppeteer-core', '@vibecook/puppeteer-monitor']],
+]);
+
+/** Exact internal production edges are the executable form of the layered architecture. */
+export function architectureDependencyIssues(edges) {
+  const issues = [];
+  for (const [directory, dependencies] of edges) {
+    const declared = architectureDependencies.get(directory);
+    if (!declared) {
+      issues.push(`${directory} has no layered-architecture dependency rule`);
+      continue;
+    }
+    const allowed = new Set(declared);
+    for (const dependency of dependencies) {
+      if (!allowed.has(dependency)) {
+        issues.push(`${directory} production dependency ${dependency} violates the layered architecture`);
+      }
+    }
+  }
+  return issues;
+}
+
 function cycleIssues(edges, nameToDirectory) {
   const issues = [];
   const visiting = new Set();
@@ -154,6 +209,7 @@ export function auditPackageLayout(root = scriptRoot) {
   const edges = internalProductionEdges(manifests);
   const nameToDirectory = new Map([...manifests].map(([directory, manifest]) => [manifest.name, directory]));
   issues.push(...cycleIssues(edges, nameToDirectory));
+  issues.push(...architectureDependencyIssues(edges));
   for (const [directory, dependencies] of edges) {
     if (directory.startsWith('packages/adapter-') && dependencies.includes('@vibecook/puppeteer-surface')) {
       issues.push(`${directory} must consume generated projections, not Surface at runtime`);
