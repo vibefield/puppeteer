@@ -36,8 +36,9 @@ import {
 } from './wire.js';
 
 /**
- * Claim-addressable sources for every portable mapping in this file. Paths are
- * point into that version's sole canonical `groundtruth.json` document.
+ * Claim-addressable sources for every portable mapping in this file. Paths
+ * point into the agent's sole canonical `groundtruth.json`, whose manifest
+ * identifies the reviewed version.
  * The behavior-node ids carry the independently evidenced semantic ordering.
  */
 export const OPENCODE_NORMALIZATION_EVIDENCE = {

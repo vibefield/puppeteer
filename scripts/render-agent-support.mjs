@@ -1,8 +1,9 @@
 #!/usr/bin/env node
 /** Validate the promotion ledger and deterministically render README badges. */
 import { existsSync, readFileSync, readdirSync, writeFileSync } from 'node:fs';
-import { dirname, join, relative, resolve, sep } from 'node:path';
+import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { buildGroundTruth } from '@vibecook/puppeteer-surface';
 
 const root = dirname(dirname(fileURLToPath(import.meta.url)));
 const START = '<!-- agent-support:start -->';
@@ -17,6 +18,17 @@ function groundTruth(path) {
   if (document.format !== 'puppeteer-groundtruth/1' || !document.manifest) {
     throw new Error(`${path} is not a canonical Surface ground-truth document`);
   }
+  return { document, manifest: document.manifest, evidence: document.evidenceIndex ?? document.legacyEvidenceIndex };
+}
+
+function groundTruthForVersion(repoRoot, agent, version) {
+  const canonical = groundTruth(join(repoRoot, agent.groundTruth));
+  if (canonical.manifest.vendorVersion === version) return canonical;
+  const modelRoot = join(repoRoot, 'packages', 'surface', 'vendors', agent.id, 'model', `${agent.id}@${version}`);
+  if (!existsSync(join(modelRoot, 'manifest.json'))) {
+    throw new Error(`${agent.id}: authoring model does not exist for supported version ${version}`);
+  }
+  const document = buildGroundTruth(modelRoot);
   return { document, manifest: document.manifest, evidence: document.evidenceIndex ?? document.legacyEvidenceIndex };
 }
 
@@ -37,150 +49,190 @@ function packageDirectories(repoRoot) {
   return packages;
 }
 
+function expectedGroundTruth(agent) {
+  return `packages/surface/vendors/${agent.id}/groundtruth.json`;
+}
+
+function validatePersona(repoRoot, agent, issues) {
+  const personaPath = join(repoRoot, 'packages', 'imposter', 'personas', agent.persona ?? '', 'persona.json');
+  if (!existsSync(personaPath)) {
+    issues.push(`${agent.id}: persona does not exist: ${agent.persona ?? '<missing>'}`);
+    return;
+  }
+  const persona = json(personaPath);
+  const expectedPath = `vendors/${agent.id}`;
+  if (persona.asm?.package !== '@vibecook/puppeteer-surface' || persona.asm?.path !== expectedPath) {
+    issues.push(`${agent.id}: persona ASM must target the stable canonical root (${expectedPath})`);
+  }
+}
+
 export function validateSupportLedger(repoRoot = root) {
   const ledgerPath = join(repoRoot, 'support', 'agents.json');
   const ledger = json(ledgerPath);
   const issues = [];
   const ids = new Set();
   const adapters = packageDirectories(repoRoot);
-  if (ledger.schemaVersion !== 1 || !Array.isArray(ledger.agents))
-    issues.push('support ledger must use schemaVersion 1');
+  if (ledger.schemaVersion !== 2 || !Array.isArray(ledger.agents)) {
+    issues.push('support ledger must use schemaVersion 2');
+  }
 
   for (const agent of ledger.agents ?? []) {
     if (ids.has(agent.id)) issues.push(`duplicate support id: ${agent.id}`);
     ids.add(agent.id);
-    if (!adapters.has(agent.adapterPackage))
+    if (!adapters.has(agent.adapterPackage)) {
       issues.push(`${agent.id}: adapter package ${agent.adapterPackage} does not exist`);
+    }
     if (agent.status !== 'legacy-verified' && agent.legacyEvidence !== undefined) {
       issues.push(`${agent.id}: only legacy-verified support may carry a frozen legacy attestation`);
     }
     if (agent.status !== 'verified' && agent.verification !== undefined) {
       issues.push(`${agent.id}: only verified support may carry a promotion attestation`);
     }
-    if (agent.candidateManifest) {
-      const candidatePath = join(repoRoot, agent.candidateManifest);
-      if (!existsSync(candidatePath)) {
-        issues.push(`${agent.id}: candidate manifest does not exist: ${agent.candidateManifest}`);
-      } else {
-        const { manifest: candidate, evidence } = groundTruth(candidatePath);
-        if (candidate.vendor !== agent.id)
-          issues.push(`${agent.id}: candidate manifest declares vendor ${candidate.vendor}`);
-        if (!candidate.vendorVersion) issues.push(`${agent.id}: candidate manifest has no vendorVersion`);
-        if (!evidence) {
-          issues.push(`${agent.id}: candidate manifest has no evidence index`);
-        }
-        const personaPath = join(repoRoot, 'packages', 'imposter', 'personas', agent.persona ?? '', 'persona.json');
-        if (!existsSync(personaPath)) {
-          issues.push(`${agent.id}: candidate persona does not exist: ${agent.persona ?? '<missing>'}`);
-        } else {
-          const persona = json(personaPath);
-          const surfaceRoot = join(repoRoot, 'packages', 'surface');
-          const expectedModel = relative(surfaceRoot, dirname(candidatePath)).split(sep).join('/');
-          if (persona.asm?.package !== '@vibecook/puppeteer-surface' || persona.asm?.path !== expectedModel) {
-            issues.push(`${agent.id}: candidate persona ASM does not match candidate manifest (${expectedModel})`);
-          }
-        }
+
+    const requiresGroundTruth =
+      agent.currentVersion !== undefined ||
+      agent.candidateVersion !== undefined ||
+      ['verified', 'legacy-verified'].includes(agent.status);
+    if (!agent.groundTruth) {
+      if (requiresGroundTruth) issues.push(`${agent.id}: support state has no canonical groundTruth path`);
+      continue;
+    }
+    if (agent.groundTruth !== expectedGroundTruth(agent)) {
+      issues.push(`${agent.id}: groundTruth must be ${expectedGroundTruth(agent)}`);
+      continue;
+    }
+    const groundTruthPath = join(repoRoot, agent.groundTruth);
+    if (!existsSync(groundTruthPath)) {
+      issues.push(`${agent.id}: canonical ground truth does not exist: ${agent.groundTruth}`);
+      continue;
+    }
+
+    let active;
+    try {
+      active = groundTruth(groundTruthPath);
+    } catch (error) {
+      issues.push(`${agent.id}: ${(error instanceof Error ? error : new Error(String(error))).message}`);
+      continue;
+    }
+    if (active.manifest.vendor !== agent.id) {
+      issues.push(`${agent.id}: canonical ground truth declares vendor ${active.manifest.vendor}`);
+    }
+    const activeVersion = agent.candidateVersion ?? agent.currentVersion;
+    if (!activeVersion) {
+      issues.push(`${agent.id}: canonical ground truth has no currentVersion or candidateVersion`);
+    } else if (active.manifest.vendorVersion !== activeVersion) {
+      issues.push(
+        `${agent.id}: canonical ground truth is ${active.manifest.vendorVersion}, support selects ${activeVersion}`,
+      );
+    }
+    if (!active.evidence) issues.push(`${agent.id}: canonical ground truth has no evidence index`);
+    if (agent.persona) validatePersona(repoRoot, agent, issues);
+
+    if (agent.candidateVersion) {
+      if (
+        active.manifest.asmVersion !== 2 ||
+        active.evidence?.evidenceVersion !== 2 ||
+        !active.evidence?.claims?.length
+      ) {
+        issues.push(`${agent.id}: candidate ground truth requires claim-addressable ASM/evidence v2`);
       }
     }
+
     if (!['verified', 'legacy-verified'].includes(agent.status)) continue;
-    if (!agent.currentManifest) {
-      issues.push(`${agent.id}: verified entry has no currentManifest`);
+    if (!agent.currentVersion) {
+      issues.push(`${agent.id}: verified entry has no currentVersion`);
       continue;
     }
-    const manifestPath = join(repoRoot, agent.currentManifest);
-    if (!existsSync(manifestPath)) {
-      issues.push(`${agent.id}: manifest does not exist: ${agent.currentManifest}`);
+
+    let promoted;
+    try {
+      promoted = groundTruthForVersion(repoRoot, agent, agent.currentVersion);
+    } catch (error) {
+      issues.push((error instanceof Error ? error : new Error(String(error))).message);
       continue;
     }
-    const { manifest, evidence } = groundTruth(manifestPath);
-    if (manifest.vendor !== agent.id) issues.push(`${agent.id}: manifest declares vendor ${manifest.vendor}`);
-    if (!manifest.vendorVersion) issues.push(`${agent.id}: manifest has no vendorVersion`);
-    if (!evidence) {
-      issues.push(`${agent.id}: promoted manifest has no evidence index`);
-    } else {
-      if (agent.status === 'verified') {
-        if (manifest.asmVersion !== 2 || evidence.evidenceVersion !== 2 || !evidence.claims?.length) {
-          issues.push(`${agent.id}: verified support requires claim-addressable ASM/evidence v2`);
-        }
-        const upstreamPath = join(repoRoot, 'packages', 'surface', 'vendors', agent.id, 'upstream.json');
-        const requiredPlatforms = existsSync(upstreamPath) ? (json(upstreamPath).platforms ?? []) : [];
-        const verifiedPlatforms = new Set(
-          (evidence.artifacts ?? [])
-            .filter(
-              (artifact) =>
-                artifact.integrity?.status === 'verified' &&
-                /^sha256:[0-9a-f]{64}$/.test(artifact.integrity?.sha256 ?? ''),
-            )
-            .map((artifact) => artifact.platform),
-        );
-        for (const platform of requiredPlatforms) {
-          if (!verifiedPlatforms.has(platform)) {
-            issues.push(`${agent.id}: verified support has no immutable artifact for ${platform}`);
-          }
-        }
-        const attestation = agent.verification;
-        if (
-          attestation?.provider !== 'github-actions' ||
-          attestation.manifest !== agent.currentManifest ||
-          !/^[0-9a-f]{40}$/.test(attestation.candidateCommit ?? '') ||
-          !/^[0-9a-f]{64}$/.test(attestation.replayDigest ?? '') ||
-          attestation.evidenceDigest !== evidence.records?.find((record) => record.kind === 'model-tree')?.sha256 ||
-          typeof attestation.repository !== 'string' ||
-          !attestation.repository ||
-          typeof attestation.workflowRef !== 'string' ||
-          !attestation.workflowRef ||
-          !Array.isArray(attestation.platformArtifacts) ||
-          !/^\d+$/.test(attestation.runId ?? '') ||
-          !/^\d+$/.test(attestation.runAttempt ?? '')
-        ) {
-          issues.push(`${agent.id}: verified support has no durable promotion attestation`);
-        }
-        const reportArtifacts = new Map(
-          (attestation?.platformArtifacts ?? []).map((artifact) => [artifact.platform, artifact.artifactSha256]),
-        );
-        if (reportArtifacts.size !== (attestation?.platformArtifacts ?? []).length) {
-          issues.push(`${agent.id}: promotion attestation repeats a platform artifact`);
-        }
-        if (reportArtifacts.size !== requiredPlatforms.length) {
-          issues.push(`${agent.id}: promotion attestation platform set differs from policy`);
-        }
-        for (const platform of requiredPlatforms) {
-          const digest = (evidence.artifacts ?? []).find((artifact) => artifact.platform === platform)?.integrity
-            ?.sha256;
-          if (reportArtifacts.get(platform) !== digest) {
-            issues.push(`${agent.id}: promotion attestation does not bind the ${platform} artifact`);
-          }
-        }
-      } else {
-        const frozen = agent.legacyEvidence;
-        if (
-          frozen?.kind !== 'pre-asm-v2-baseline' ||
-          frozen.frozenManifest !== agent.currentManifest ||
-          !/^\d{4}-\d{2}-\d{2}$/.test(frozen.frozenOn ?? '') ||
-          typeof frozen.reason !== 'string' ||
-          frozen.reason.length === 0
-        ) {
-          issues.push(`${agent.id}: legacy support must carry an explicit frozen baseline attestation`);
-        }
-        const modelRecord = (evidence.records ?? []).find((record) => record.kind === 'model-tree');
-        if (!/^[0-9a-f]{64}$/.test(frozen?.modelSha256 ?? '') || modelRecord?.sha256 !== frozen?.modelSha256) {
-          issues.push(`${agent.id}: legacy model tree differs from its frozen baseline digest`);
+    if (promoted.manifest.vendor !== agent.id || promoted.manifest.vendorVersion !== agent.currentVersion) {
+      issues.push(`${agent.id}: promoted authoring model identity does not match ${agent.currentVersion}`);
+    }
+    if (!promoted.evidence) {
+      issues.push(`${agent.id}: promoted authoring model has no evidence index`);
+      continue;
+    }
+
+    if (agent.status === 'verified') {
+      if (
+        promoted.manifest.asmVersion !== 2 ||
+        promoted.evidence.evidenceVersion !== 2 ||
+        !promoted.evidence.claims?.length
+      ) {
+        issues.push(`${agent.id}: verified support requires claim-addressable ASM/evidence v2`);
+      }
+      const upstreamPath = join(repoRoot, 'packages', 'surface', 'vendors', agent.id, 'upstream.json');
+      const requiredPlatforms = existsSync(upstreamPath) ? (json(upstreamPath).platforms ?? []) : [];
+      const verifiedPlatforms = new Set(
+        (promoted.evidence.artifacts ?? [])
+          .filter(
+            (artifact) =>
+              artifact.integrity?.status === 'verified' &&
+              /^sha256:[0-9a-f]{64}$/.test(artifact.integrity?.sha256 ?? ''),
+          )
+          .map((artifact) => artifact.platform),
+      );
+      for (const platform of requiredPlatforms) {
+        if (!verifiedPlatforms.has(platform)) {
+          issues.push(`${agent.id}: verified support has no immutable artifact for ${platform}`);
         }
       }
-    }
-    const personaPath = join(repoRoot, 'packages', 'imposter', 'personas', agent.persona ?? '', 'persona.json');
-    if (!existsSync(personaPath)) {
-      issues.push(`${agent.id}: persona does not exist: ${agent.persona ?? '<missing>'}`);
-      continue;
-    }
-    const persona = json(personaPath);
-    const surfaceRoot = join(repoRoot, 'packages', 'surface');
-    const expectedModel = relative(surfaceRoot, dirname(manifestPath)).split(sep).join('/');
-    if (
-      !agent.candidateManifest &&
-      (persona.asm?.package !== '@vibecook/puppeteer-surface' || persona.asm?.path !== expectedModel)
-    ) {
-      issues.push(`${agent.id}: persona ASM does not match promoted manifest (${expectedModel})`);
+      const attestation = agent.verification;
+      if (
+        attestation?.provider !== 'github-actions' ||
+        attestation.groundTruth !== agent.groundTruth ||
+        attestation.vendorVersion !== agent.currentVersion ||
+        !/^[0-9a-f]{40}$/.test(attestation.candidateCommit ?? '') ||
+        !/^[0-9a-f]{64}$/.test(attestation.replayDigest ?? '') ||
+        attestation.evidenceDigest !==
+          promoted.evidence.records?.find((record) => record.kind === 'model-tree')?.sha256 ||
+        typeof attestation.repository !== 'string' ||
+        !attestation.repository ||
+        typeof attestation.workflowRef !== 'string' ||
+        !attestation.workflowRef ||
+        !Array.isArray(attestation.platformArtifacts) ||
+        !/^\d+$/.test(attestation.runId ?? '') ||
+        !/^\d+$/.test(attestation.runAttempt ?? '')
+      ) {
+        issues.push(`${agent.id}: verified support has no durable promotion attestation`);
+      }
+      const reportArtifacts = new Map(
+        (attestation?.platformArtifacts ?? []).map((artifact) => [artifact.platform, artifact.artifactSha256]),
+      );
+      if (reportArtifacts.size !== (attestation?.platformArtifacts ?? []).length) {
+        issues.push(`${agent.id}: promotion attestation repeats a platform artifact`);
+      }
+      if (reportArtifacts.size !== requiredPlatforms.length) {
+        issues.push(`${agent.id}: promotion attestation platform set differs from policy`);
+      }
+      for (const platform of requiredPlatforms) {
+        const digest = (promoted.evidence.artifacts ?? []).find((artifact) => artifact.platform === platform)?.integrity
+          ?.sha256;
+        if (reportArtifacts.get(platform) !== digest) {
+          issues.push(`${agent.id}: promotion attestation does not bind the ${platform} artifact`);
+        }
+      }
+    } else {
+      const frozen = agent.legacyEvidence;
+      if (
+        frozen?.kind !== 'pre-asm-v2-baseline' ||
+        frozen.version !== agent.currentVersion ||
+        !/^\d{4}-\d{2}-\d{2}$/.test(frozen.frozenOn ?? '') ||
+        typeof frozen.reason !== 'string' ||
+        frozen.reason.length === 0
+      ) {
+        issues.push(`${agent.id}: legacy support must carry an explicit frozen baseline attestation`);
+      }
+      const modelRecord = (promoted.evidence.records ?? []).find((record) => record.kind === 'model-tree');
+      if (!/^[0-9a-f]{64}$/.test(frozen?.modelSha256 ?? '') || modelRecord?.sha256 !== frozen?.modelSha256) {
+        issues.push(`${agent.id}: legacy model tree differs from its frozen baseline digest`);
+      }
     }
   }
   return { ledger, issues: issues.sort() };
@@ -194,14 +246,12 @@ export function renderSupportBlock(repoRoot = root) {
     let target = 'support/agents.json';
     let color = 'lightgrey';
     if (['verified', 'legacy-verified'].includes(agent.status)) {
-      const { manifest } = groundTruth(join(repoRoot, agent.currentManifest));
-      message = `${agent.status.replace(/-/g, ' ')} ${manifest.vendorVersion}`;
-      target = agent.currentManifest;
+      message = `${message} ${agent.currentVersion}`;
+      target = agent.groundTruth;
       color = agent.status === 'verified' ? 'blue' : 'orange';
-    } else if (agent.candidateManifest) {
-      const { manifest } = groundTruth(join(repoRoot, agent.candidateManifest));
-      message = `${message} ${manifest.vendorVersion}`;
-      target = agent.candidateManifest;
+    } else if (agent.candidateVersion) {
+      message = `${message} ${agent.candidateVersion}`;
+      target = agent.groundTruth;
     }
     const alt = `${agent.displayName}: ${message}`;
     return `[![${alt}](https://img.shields.io/badge/${shield(agent.displayName)}-${shield(message)}-${color})](${target})`;

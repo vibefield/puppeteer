@@ -420,8 +420,8 @@ export function auditPackageLayout(root = scriptRoot) {
     issues.push('packages/imposter must not own real-vendor Surface evidence');
   }
   const surfaceFiles = manifests.get('packages/surface')?.files ?? [];
-  if (!surfaceFiles.includes('vendors/*/model/**/*')) {
-    issues.push('packages/surface must publish vendors/*/model/**/*');
+  if (JSON.stringify(surfaceFiles) !== JSON.stringify(['dist', 'vendors/*/groundtruth.json'])) {
+    issues.push('packages/surface must publish only dist and canonical vendor ground truth');
   }
   const testingFiles = manifests.get('packages/testing')?.files ?? [];
   if (testingFiles.some((entry) => entry.includes('fixture')))
@@ -444,8 +444,8 @@ export function auditPackageLayout(root = scriptRoot) {
       const mapPath = join(root, directory, 'docs', 'event-map.html');
       if (!existsSync(mapPath)) continue;
       const html = readFileSync(mapPath, 'utf8');
-      const vendorVersion = json(join(root, agent.currentManifest)).manifest?.vendorVersion;
-      if (!html.includes(`name="puppeteer-surface-groundtruth" content="${agent.currentManifest}"`)) {
+      const vendorVersion = agent.currentVersion;
+      if (!html.includes(`name="puppeteer-surface-groundtruth" content="${agent.groundTruth}"`)) {
         issues.push(`${directory}/docs/event-map.html does not name the promoted Surface ground truth`);
       }
       if (!html.includes(`name="puppeteer-last-verified" content="${vendorVersion}"`)) {

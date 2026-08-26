@@ -4,6 +4,7 @@ import { existsSync, readFileSync, writeFileSync } from 'node:fs';
 import { dirname, resolve, sep } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { writeGroundTruthArtifacts } from '../packages/surface/scripts/groundtruth.mjs';
+import { resolveCanonicalGroundTruth } from './agent-model-selection.mjs';
 
 const root = dirname(dirname(fileURLToPath(import.meta.url)));
 
@@ -71,11 +72,14 @@ function flag(name) {
 
 const invokedDirectly = process.argv[1] && fileURLToPath(import.meta.url) === resolve(process.argv[1]);
 if (invokedDirectly) {
-  const manifestPath = safePath(flag('--manifest'));
-  if (!existsSync(manifestPath)) throw new Error('candidate manifest does not exist');
-  const document = json(manifestPath);
-  const manifest = document.manifest ?? document;
-  const evidencePath = resolve(dirname(manifestPath), manifest.evidence ?? '');
+  const groundTruthPath = safePath(flag('--ground-truth'));
+  if (!existsSync(groundTruthPath)) throw new Error('candidate ground truth does not exist');
+  const document = json(groundTruthPath);
+  const manifest = document.manifest ?? {};
+  if (document.format !== 'puppeteer-groundtruth/1') throw new Error('candidate is not canonical ground truth');
+  resolveCanonicalGroundTruth({ repoRoot: root, vendor: manifest.vendor, groundTruthPath });
+  const modelRoot = resolve(dirname(groundTruthPath), 'model', `${manifest.vendor}@${manifest.vendorVersion}`);
+  const evidencePath = resolve(modelRoot, manifest.evidence ?? '');
   if (manifest.evidence !== 'evidence.json' || !existsSync(evidencePath))
     throw new Error('candidate has no evidence.json');
   const upstream = json(resolve(root, 'packages', 'surface', 'vendors', manifest.vendor, 'upstream.json'));
@@ -85,6 +89,6 @@ if (invokedDirectly) {
     requiredPlatforms: upstream.platforms,
   });
   writeFileSync(evidencePath, `${JSON.stringify(evidence, null, 2)}\n`);
-  writeGroundTruthArtifacts(dirname(manifestPath));
+  writeGroundTruthArtifacts(modelRoot);
   console.log(`updated ${evidencePath} with ${evidence.artifacts.length} immutable artifact identities`);
 }

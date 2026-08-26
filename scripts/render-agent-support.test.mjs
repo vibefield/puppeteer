@@ -6,7 +6,7 @@ test('promoted support entries agree with Surface models and Imposter personas',
   assert.deepEqual(validateSupportLedger().issues, []);
 });
 
-test('support badges are derived from promoted manifest versions', () => {
+test('support badges are derived from promoted vendor versions', () => {
   const block = renderSupportBlock();
   assert.match(block, /Claude_Code-legacy_verified_2\.1\.207-orange/);
   assert.match(block, /Codex-legacy_verified_0\.147\.0-orange/);

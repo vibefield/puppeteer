@@ -251,7 +251,7 @@ export interface SurfaceModel {
   behavior: SurfaceBehavior;
 }
 
-/** The only runtime/published authority for one vendor version. */
+/** One agent's canonical runtime snapshot; the manifest identifies its active vendor version. */
 export interface SurfaceGroundTruth extends SurfaceModel {
   format: 'puppeteer-groundtruth/1';
 }

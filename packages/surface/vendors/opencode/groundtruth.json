@@ -281,9 +281,7 @@
         "kind": "model-tree",
         "path": "packages/surface/vendors/opencode/model/opencode@1.18.16",
         "exclude": [
-          "evidence.json",
-          "groundtruth.json",
-          "groundtruth.html"
+          "evidence.json"
         ],
         "digestAlgorithm": "sha256-path-content-v1",
         "sha256": "7e8af1f26163ddc19f76059df56e98568a618f5bfc773145962e336e7cd284bb"

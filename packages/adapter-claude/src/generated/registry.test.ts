@@ -18,29 +18,29 @@ const require = createRequire(import.meta.url);
 const surfaceRoot = dirname(require.resolve('@vibecook/puppeteer-surface/package.json'));
 const repoRoot = join(surfaceRoot, '..', '..');
 const ledger = JSON.parse(readFileSync(join(repoRoot, 'support', 'agents.json'), 'utf8')) as {
-  agents: Array<{ id: string; currentManifest?: string; candidateManifest?: string }>;
+  agents: Array<{ id: string; groundTruth?: string }>;
 };
 const claude = ledger.agents.find((agent) => agent.id === 'claude');
-const manifestPath = claude?.candidateManifest ?? claude?.currentManifest;
-if (!manifestPath) throw new Error('support ledger has no active Claude manifest');
-const modelRoot = dirname(join(repoRoot, manifestPath));
+const groundTruthPath = claude?.groundTruth;
+if (!groundTruthPath) throw new Error('support ledger has no canonical Claude ground truth');
+const vendorRoot = dirname(join(repoRoot, groundTruthPath));
 
 describe('generated registry', () => {
   it('src/generated/registry.ts is byte-identical to a fresh render from the model', () => {
-    const model = loadModel(modelRoot);
+    const model = loadModel(vendorRoot);
     const onDisk = readFileSync(join(here, 'registry.ts'), 'utf8');
     expect(onDisk).toBe(renderRegistry(model));
   });
 
   it('still exposes the registry surface settings.ts and tests rely on', () => {
-    const model = loadModel(modelRoot);
+    const model = loadModel(vendorRoot);
     expect(CLAUDE_SURFACE_VERSION).toBe(model.manifest.vendorVersion);
     expect(model.events).toHaveLength(31);
     expect(model.events.filter((event) => event.confidence !== 'unverified')).toHaveLength(7);
   });
 
   it('keeps the runtime detection projection in sync with Surface', () => {
-    const document = loadModel(modelRoot).detection;
+    const document = loadModel(vendorRoot).detection;
     const onDisk = readFileSync(join(here, 'detection-surface.ts'), 'utf8');
     expect(onDisk).toBe(renderDetectionSurface(document));
   });

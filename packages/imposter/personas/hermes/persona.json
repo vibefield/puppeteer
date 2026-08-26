@@ -2,7 +2,7 @@
   "vendor": "hermes",
   "asm": {
     "package": "@vibecook/puppeteer-surface",
-    "path": "vendors/hermes/model/hermes@0.20.0"
+    "path": "vendors/hermes"
   },
   "shimNames": ["hermes"],
   "jsonrpcEventMethod": "event",

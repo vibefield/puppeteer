@@ -22,7 +22,7 @@ const selected = resolveAgentModel({ vendor: 'codex' });
 const modelDir = selected.modelRoot;
 const capturesDir = selected.capturesRoot;
 
-const model = loadModel(modelDir);
+const model = loadModel(selected.groundTruthPath);
 const schemas = new Map(model.events.map((event) => [event.event, event.payloadSchema]));
 const resultSchemas = new Map(model.events.map((event) => [event.event, event.resultSchema]));
 const recordSchemas = new Map(model.events.map((event) => [event.event, event.recordSchema]));

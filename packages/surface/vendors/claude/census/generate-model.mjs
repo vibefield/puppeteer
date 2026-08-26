@@ -722,9 +722,9 @@ export function generateClaudeModel({ artifact, version, capturedAt, retrievedAt
         id: 'agent-surface-model',
         kind: 'model-tree',
         path: repoRelative(modelRoot),
-        exclude: ['evidence.json', 'groundtruth.json', 'groundtruth.html'],
+        exclude: ['evidence.json'],
         digestAlgorithm: 'sha256-path-content-v1',
-        sha256: digestTree(modelRoot, ['evidence.json', 'groundtruth.json', 'groundtruth.html']),
+        sha256: digestTree(modelRoot, ['evidence.json']),
       },
     ],
     limitations: [

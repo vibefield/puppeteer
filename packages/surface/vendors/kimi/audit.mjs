@@ -12,7 +12,7 @@ import { kimiRules } from './sanitize-captures.mjs';
 const version = '0.34.0';
 const vendorRoot = dirname(fileURLToPath(import.meta.url));
 const capturesRoot = join(vendorRoot, 'captures', `kimi@${version}`);
-const model = loadModel(join(vendorRoot, 'model', `kimi@${version}`));
+const model = loadModel(vendorRoot);
 const sourceReference = JSON.parse(
   readFileSync(join(vendorRoot, 'references', `kimi@${version}`, 'source-contract.json'), 'utf8'),
 );

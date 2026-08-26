@@ -30,7 +30,11 @@ test('promotion binds one complete acquisition through test, verification, and t
   );
   assert.ok(verify.indexOf('pnpm surface:evidence:artifacts') < verify.indexOf('pnpm surface:verify'));
   assert.ok(promote.indexOf('pnpm surface:evidence:artifacts') < promote.indexOf('pnpm surface:promote'));
-  assert.match(promote, /git add -- support\/agents\.json README\.md "\$\{AGENT_MANIFEST%\/\*\}\/evidence\.json"/);
+  assert.ok(
+    promote.includes(
+      'git add -- support/agents.json README.md "$AGENT_GROUND_TRUTH" "${AGENT_GROUND_TRUTH%.json}.html" "${AGENT_GROUND_TRUTH%/*}/model/${AGENT_VENDOR}@${AGENT_VERSION}/evidence.json"',
+    ),
+  );
 });
 
 test('opencode is an explicit reviewed workflow choice with isolated real-artifact lanes', () => {

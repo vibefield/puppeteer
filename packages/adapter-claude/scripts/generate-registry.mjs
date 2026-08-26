@@ -16,11 +16,11 @@ import { resolveAgentModel } from '../../../scripts/agent-model-selection.mjs';
 import { renderDetectionSurface, renderRegistry } from './registry-render.ts';
 
 const adapterRoot = dirname(dirname(fileURLToPath(import.meta.url)));
-const modelRoot = resolveAgentModel({ vendor: 'claude' }).modelRoot;
+const groundTruthPath = resolveAgentModel({ vendor: 'claude' }).groundTruthPath;
 const registryTarget = join(adapterRoot, 'src', 'generated', 'registry.ts');
 const detectionTarget = join(adapterRoot, 'src', 'generated', 'detection-surface.ts');
 
-const model = loadModel(modelRoot);
+const model = loadModel(groundTruthPath);
 writeFileSync(registryTarget, renderRegistry(model));
 writeFileSync(detectionTarget, renderDetectionSurface(model.detection));
 console.log(`generated ${registryTarget}`);

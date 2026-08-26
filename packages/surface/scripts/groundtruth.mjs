@@ -1,11 +1,12 @@
 #!/usr/bin/env node
-/** Build, verify, and visualize one canonical ground-truth document per agent version. */
+/** Build, verify, and visualize one canonical ground-truth document per agent. */
 import { existsSync, readFileSync, readdirSync, writeFileSync } from 'node:fs';
 import { basename, dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { buildGroundTruth, loadGroundTruth } from '@vibecook/puppeteer-surface';
 
 const packageRoot = dirname(dirname(fileURLToPath(import.meta.url)));
+const repositoryRoot = dirname(dirname(packageRoot));
 const vendorsRoot = join(packageRoot, 'vendors');
 const personasRoot = join(dirname(packageRoot), 'imposter', 'personas');
 const commands = new Set(['build', 'check', 'render']);
@@ -212,15 +213,64 @@ export function renderGroundTruth(model) {
   )}${renderBehavior(model)}${renderEvents(model)}${renderEvidence(model)}</main><script>${JS}</script></body></html>\n`;
 }
 
-export function discoverModelRoots() {
+function modelRoots(agentRoot) {
+  const roots = [];
+  const modelsRoot = join(agentRoot, 'model');
+  if (!existsSync(modelsRoot)) return roots;
+  if (existsSync(join(modelsRoot, 'manifest.json'))) return [modelsRoot];
+  for (const entry of readdirSync(modelsRoot, { withFileTypes: true })) {
+    const root = join(modelsRoot, entry.name);
+    if (entry.isDirectory() && existsSync(join(root, 'manifest.json'))) roots.push(root);
+  }
+  return roots.sort((left, right) => basename(left).localeCompare(basename(right), undefined, { numeric: true }));
+}
+
+function agentRootForModel(modelRoot) {
+  const resolvedModelRoot = resolve(modelRoot);
+  const agentRoot =
+    basename(resolvedModelRoot) === 'model'
+      ? dirname(resolvedModelRoot)
+      : basename(dirname(resolvedModelRoot)) === 'model'
+        ? dirname(dirname(resolvedModelRoot))
+        : undefined;
+  if (!agentRoot) throw new Error(`${modelRoot}: authoring models must live in an agent model/ directory`);
+  return { agentRoot, modelRoot: resolvedModelRoot };
+}
+
+function buildAgentGroundTruth(agentRoot, modelRoot) {
+  const document = buildGroundTruth(modelRoot);
+  if (document.manifest.vendor !== basename(agentRoot)) {
+    throw new Error(
+      `${modelRoot}: manifest vendor ${document.manifest.vendor} does not match agent root ${basename(agentRoot)}`,
+    );
+  }
+  if (
+    basename(modelRoot) !== 'model' &&
+    basename(modelRoot) !== `${document.manifest.vendor}@${document.manifest.vendorVersion}`
+  ) {
+    throw new Error(
+      `${modelRoot}: versioned authoring directory must match ${document.manifest.vendor}@${document.manifest.vendorVersion}`,
+    );
+  }
+  return document;
+}
+
+function groundTruthArtifactsUnder(root, current = root) {
+  const artifacts = [];
+  for (const entry of readdirSync(current, { withFileTypes: true })) {
+    const path = join(current, entry.name);
+    if (entry.isDirectory()) artifacts.push(...groundTruthArtifactsUnder(root, path));
+    else if (entry.name === 'groundtruth.json' || entry.name === 'groundtruth.html') artifacts.push(path);
+  }
+  return artifacts;
+}
+
+/** Agent roots own canonical output; their model/ children are authoring inputs only. */
+export function discoverGroundTruthRoots() {
   const roots = [];
   for (const vendor of readdirSync(vendorsRoot, { withFileTypes: true })) {
-    const modelRoot = join(vendorsRoot, vendor.name, 'model');
-    if (!vendor.isDirectory() || !existsSync(modelRoot)) continue;
-    for (const version of readdirSync(modelRoot, { withFileTypes: true })) {
-      const root = join(modelRoot, version.name);
-      if (version.isDirectory() && existsSync(join(root, 'manifest.json'))) roots.push(root);
-    }
+    const root = join(vendorsRoot, vendor.name);
+    if (vendor.isDirectory() && modelRoots(root).length > 0) roots.push(root);
   }
   if (existsSync(personasRoot)) {
     for (const persona of readdirSync(personasRoot, { withFileTypes: true })) {
@@ -228,22 +278,43 @@ export function discoverModelRoots() {
       if (!persona.isDirectory() || !existsSync(personaPath)) continue;
       const document = JSON.parse(readFileSync(personaPath, 'utf8'));
       if (document.asm?.package || typeof document.asm?.path !== 'string') continue;
-      const root = resolve(dirname(personaPath), document.asm.path);
-      if (existsSync(join(root, 'manifest.json'))) roots.push(root);
+      const root = dirname(personaPath);
+      if (modelRoots(root).length > 0) roots.push(root);
     }
   }
   return roots.sort();
 }
 
-export function canonicalJson(modelRoot) {
-  return `${JSON.stringify(buildGroundTruth(modelRoot), null, 2)}\n`;
+function selectedModelRoot(agentRoot) {
+  const roots = modelRoots(agentRoot);
+  if (roots.length === 0) throw new Error(`${agentRoot}: no authoring model`);
+  const groundTruthPath = join(agentRoot, 'groundtruth.json');
+  if (!existsSync(groundTruthPath)) return roots.at(-1);
+  const document = loadGroundTruth(groundTruthPath);
+  const selected = roots.find((root) => {
+    const manifest = JSON.parse(readFileSync(join(root, 'manifest.json'), 'utf8'));
+    return manifest.vendor === document.manifest.vendor && manifest.vendorVersion === document.manifest.vendorVersion;
+  });
+  if (!selected) {
+    throw new Error(
+      `${groundTruthPath}: no authoring model for ${document.manifest.vendor}@${document.manifest.vendorVersion}`,
+    );
+  }
+  return selected;
 }
 
+export function canonicalJson(agentRoot) {
+  const resolvedAgentRoot = resolve(agentRoot);
+  return `${JSON.stringify(buildAgentGroundTruth(resolvedAgentRoot, selectedModelRoot(resolvedAgentRoot)), null, 2)}\n`;
+}
+
+/** Fold one versioned authoring model into its agent root's sole canonical file. */
 export function writeGroundTruthArtifacts(modelRoot) {
-  const jsonPath = join(modelRoot, 'groundtruth.json');
-  const document = buildGroundTruth(modelRoot);
+  const { agentRoot, modelRoot: resolvedModelRoot } = agentRootForModel(modelRoot);
+  const jsonPath = join(agentRoot, 'groundtruth.json');
+  const document = buildAgentGroundTruth(agentRoot, resolvedModelRoot);
   writeFileSync(jsonPath, `${JSON.stringify(document, null, 2)}\n`);
-  const htmlPath = join(modelRoot, 'groundtruth.html');
+  const htmlPath = join(agentRoot, 'groundtruth.html');
   writeFileSync(htmlPath, renderGroundTruth(document));
   return { jsonPath, htmlPath };
 }
@@ -254,15 +325,29 @@ export function renderGroundTruthFile(jsonPath) {
   return htmlPath;
 }
 
-export function checkGroundTruth(modelRoots = discoverModelRoots()) {
+export function checkGroundTruth(agentRoots = discoverGroundTruthRoots()) {
   const issues = [];
-  for (const modelRoot of modelRoots) {
-    const jsonPath = join(modelRoot, 'groundtruth.json');
-    const expectedDocument = buildGroundTruth(modelRoot);
+  for (const input of agentRoots) {
+    const agentRoot = resolve(input);
+    const allowedArtifacts = new Set([join(agentRoot, 'groundtruth.json'), join(agentRoot, 'groundtruth.html')]);
+    for (const path of groundTruthArtifactsUnder(agentRoot)) {
+      if (!allowedArtifacts.has(path)) issues.push(`${path}: canonical artifacts belong at the agent root`);
+    }
+    const jsonPath = join(agentRoot, 'groundtruth.json');
+    if (!existsSync(jsonPath)) {
+      issues.push(`${jsonPath}: missing canonical ground truth`);
+      continue;
+    }
+    let expectedDocument;
+    try {
+      expectedDocument = buildAgentGroundTruth(agentRoot, selectedModelRoot(agentRoot));
+    } catch (error) {
+      issues.push((error instanceof Error ? error : new Error(String(error))).message);
+      continue;
+    }
     const expectedJson = `${JSON.stringify(expectedDocument, null, 2)}\n`;
-    if (!existsSync(jsonPath)) issues.push(`${jsonPath}: missing canonical ground truth`);
-    else if (readFileSync(jsonPath, 'utf8') !== expectedJson) issues.push(`${jsonPath}: stale canonical ground truth`);
-    const htmlPath = join(modelRoot, 'groundtruth.html');
+    if (readFileSync(jsonPath, 'utf8') !== expectedJson) issues.push(`${jsonPath}: stale canonical ground truth`);
+    const htmlPath = join(agentRoot, 'groundtruth.html');
     const expectedHtml = renderGroundTruth(expectedDocument);
     if (!existsSync(htmlPath)) issues.push(`${htmlPath}: missing visualization`);
     else if (readFileSync(htmlPath, 'utf8') !== expectedHtml) issues.push(`${htmlPath}: stale visualization`);
@@ -270,34 +355,55 @@ export function checkGroundTruth(modelRoots = discoverModelRoots()) {
   return issues;
 }
 
-function normalizeRoots(values) {
-  return values.length ? values.map((value) => resolve(value)) : discoverModelRoots();
+function buildInputs(values) {
+  if (!values.length) return discoverGroundTruthRoots().map((agentRoot) => selectedModelRoot(agentRoot));
+  return values.map((value) => {
+    const input = resolveInput(value);
+    return existsSync(join(input, 'manifest.json')) ? input : selectedModelRoot(input);
+  });
+}
+
+function checkInputs(values) {
+  if (!values.length) return discoverGroundTruthRoots();
+  return [
+    ...new Set(
+      values.map((value) => {
+        const input = resolveInput(value);
+        return existsSync(join(input, 'manifest.json')) ? agentRootForModel(input).agentRoot : input;
+      }),
+    ),
+  ];
+}
+
+function resolveInput(value) {
+  const fromWorkingDirectory = resolve(value);
+  return existsSync(fromWorkingDirectory) ? fromWorkingDirectory : resolve(repositoryRoot, value);
 }
 
 const invokedDirectly = process.argv[1] && fileURLToPath(import.meta.url) === resolve(process.argv[1]);
 if (invokedDirectly) {
   const [maybeCommand, ...rest] = process.argv.slice(2);
   const command = commands.has(maybeCommand) ? maybeCommand : 'check';
-  const values = commands.has(maybeCommand) ? rest : process.argv.slice(2);
+  const values = (commands.has(maybeCommand) ? rest : process.argv.slice(2)).filter((value) => value !== '--');
   if (command === 'render') {
     const paths = values.length
-      ? values.map((value) => resolve(value))
-      : discoverModelRoots().map((root) => join(root, 'groundtruth.json'));
+      ? values.map(resolveInput)
+      : discoverGroundTruthRoots().map((root) => join(root, 'groundtruth.json'));
     for (const path of paths) console.log(`wrote ${renderGroundTruthFile(path)}`);
   } else if (command === 'build') {
-    for (const root of normalizeRoots(values)) {
-      const written = writeGroundTruthArtifacts(root);
+    for (const modelRoot of buildInputs(values)) {
+      const written = writeGroundTruthArtifacts(modelRoot);
       console.log(`wrote ${written.jsonPath}`);
       console.log(`wrote ${written.htmlPath}`);
     }
   } else {
-    const roots = normalizeRoots(values);
+    const roots = checkInputs(values);
     const issues = checkGroundTruth(roots);
     if (issues.length) {
       console.error(`surface ground truth: ${issues.length} issue(s)`);
       for (const issue of issues) console.error(`  - ${issue}`);
       process.exit(1);
     }
-    console.log(`surface ground truth: ${roots.length} canonical models clean`);
+    console.log(`surface ground truth: ${roots.length} canonical agents clean`);
   }
 }

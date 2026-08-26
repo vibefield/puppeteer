@@ -2,7 +2,7 @@
   "vendor": "claude",
   "asm": {
     "package": "@vibecook/puppeteer-surface",
-    "path": "vendors/claude/model/claude@2.1.226"
+    "path": "vendors/claude"
   },
   "shimNames": [
     "claude"

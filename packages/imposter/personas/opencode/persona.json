@@ -2,7 +2,7 @@
   "vendor": "opencode",
   "asm": {
     "package": "@vibecook/puppeteer-surface",
-    "path": "vendors/opencode/model/opencode@1.18.16"
+    "path": "vendors/opencode"
   },
   "shimNames": ["opencode"],
   "envelope": {},

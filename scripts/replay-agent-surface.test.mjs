@@ -6,9 +6,7 @@ test('every committed native capture replays exactly through its Imposter person
   for (const vendor of ['claude', 'codex', 'grok', 'kimi', 'opencode']) {
     const report = replayAgentSurface({
       vendor,
-      ...(vendor === 'opencode'
-        ? { manifestPath: 'packages/surface/vendors/opencode/model/opencode@1.18.16/groundtruth.json' }
-        : {}),
+      ...(vendor === 'opencode' ? { groundTruthPath: 'packages/surface/vendors/opencode/groundtruth.json' } : {}),
     });
     assert.equal(report.status, 'passed', `${vendor}: ${JSON.stringify(report.issues, null, 2)}`);
     assert.ok(report.frames > 0, `${vendor} replay produced no frames`);
@@ -19,7 +17,7 @@ test('every committed native capture replays exactly through its Imposter person
 test('hermes replay covers exact tui_gateway and plugin-hook carriers', () => {
   const report = replayAgentSurface({
     vendor: 'hermes',
-    manifestPath: 'packages/surface/vendors/hermes/model/hermes@0.20.0/groundtruth.json',
+    groundTruthPath: 'packages/surface/vendors/hermes/groundtruth.json',
   });
   assert.equal(report.status, 'passed', JSON.stringify(report.issues, null, 2));
   assert.ok(report.frames > 0);
@@ -29,7 +27,7 @@ test('hermes replay covers exact tui_gateway and plugin-hook carriers', () => {
 test('opencode replay covers exact SSE carriers and correlated HTTP results', () => {
   const report = replayAgentSurface({
     vendor: 'opencode',
-    manifestPath: 'packages/surface/vendors/opencode/model/opencode@1.18.16/groundtruth.json',
+    groundTruthPath: 'packages/surface/vendors/opencode/groundtruth.json',
   });
   assert.equal(report.status, 'passed', JSON.stringify(report.issues, null, 2));
   assert.ok(report.frames > 3_000);

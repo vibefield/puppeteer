@@ -2,8 +2,8 @@
   "format": "puppeteer-adapter-groundtruth-map/1",
   "provider": "kimi",
   "adapterPackage": "@vibecook/puppeteer-adapter-kimi",
-  "groundTruth": "packages/surface/vendors/kimi/model/kimi@0.34.0/groundtruth.json",
-  "groundTruthSha256": "0dc9ef4a9fcc8ec46da992919a1644e6da3958a4b5d7a007fc6b35a686def769",
+  "groundTruth": "packages/surface/vendors/kimi/groundtruth.json",
+  "groundTruthSha256": "e32a957ca108ccdd37f5fbb5ecf893662131a0d77ac396aa363915b01f9de85b",
   "semanticEvents": [
     "context.append_loop_event",
     "context.append_message",

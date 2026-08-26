@@ -7,7 +7,7 @@
   "required": ["schemaVersion", "agents"],
   "properties": {
     "$schema": { "type": "string" },
-    "schemaVersion": { "const": 1 },
+    "schemaVersion": { "const": 2 },
     "agents": {
       "type": "array",
       "items": {
@@ -19,16 +19,20 @@
           "displayName": { "type": "string", "minLength": 1 },
           "kind": { "enum": ["vendor", "protocol"] },
           "adapterPackage": { "type": "string", "pattern": "^@vibecook/puppeteer-adapter-" },
-          "persona": { "type": "string" },
-          "currentManifest": { "type": "string" },
-          "candidateManifest": { "type": "string" },
+          "persona": { "type": "string", "pattern": "^[a-z][a-z0-9-]*$" },
+          "groundTruth": {
+            "type": "string",
+            "pattern": "^packages/surface/vendors/[a-z][a-z0-9-]*/groundtruth\\.json$"
+          },
+          "currentVersion": { "type": "string", "minLength": 1 },
+          "candidateVersion": { "type": "string", "minLength": 1 },
           "legacyEvidence": {
             "type": "object",
             "additionalProperties": false,
-            "required": ["kind", "frozenManifest", "modelSha256", "frozenOn", "reason"],
+            "required": ["kind", "version", "modelSha256", "frozenOn", "reason"],
             "properties": {
               "kind": { "const": "pre-asm-v2-baseline" },
-              "frozenManifest": { "type": "string" },
+              "version": { "type": "string", "minLength": 1 },
               "modelSha256": { "type": "string", "pattern": "^[0-9a-f]{64}$" },
               "frozenOn": { "type": "string", "format": "date" },
               "reason": { "type": "string", "minLength": 1 }
@@ -40,7 +44,8 @@
             "required": [
               "provider",
               "candidateCommit",
-              "manifest",
+              "groundTruth",
+              "vendorVersion",
               "evidenceDigest",
               "replayDigest",
               "repository",
@@ -52,7 +57,8 @@
             "properties": {
               "provider": { "const": "github-actions" },
               "candidateCommit": { "type": "string", "pattern": "^[0-9a-f]{40}$" },
-              "manifest": { "type": "string" },
+              "groundTruth": { "type": "string" },
+              "vendorVersion": { "type": "string", "minLength": 1 },
               "evidenceDigest": { "type": "string", "pattern": "^[0-9a-f]{64}$" },
               "replayDigest": { "type": "string", "pattern": "^[0-9a-f]{64}$" },
               "repository": { "type": "string", "minLength": 1 },
@@ -81,7 +87,7 @@
         "allOf": [
           {
             "if": { "properties": { "status": { "enum": ["verified", "legacy-verified"] } } },
-            "then": { "required": ["persona", "currentManifest", "introducedInPuppeteer"] }
+            "then": { "required": ["persona", "groundTruth", "currentVersion", "introducedInPuppeteer"] }
           },
           {
             "if": { "properties": { "status": { "const": "legacy-verified" } }, "required": ["status"] },
@@ -90,6 +96,10 @@
           {
             "if": { "properties": { "status": { "const": "verified" } }, "required": ["status"] },
             "then": { "required": ["verification"] }
+          },
+          {
+            "if": { "required": ["candidateVersion"] },
+            "then": { "required": ["groundTruth", "persona"] }
           }
         ]
       }

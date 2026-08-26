@@ -5,7 +5,7 @@ import { spawnSync } from 'node:child_process';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { auditEvidence } from './check-evidence.mjs';
-import { checkGroundTruth, discoverModelRoots } from './groundtruth.mjs';
+import { checkGroundTruth, discoverGroundTruthRoots } from './groundtruth.mjs';
 
 const packageRoot = dirname(dirname(fileURLToPath(import.meta.url)));
 const vendorsRoot = join(packageRoot, 'vendors');
@@ -28,7 +28,7 @@ if (groundTruthIssues.length > 0) {
   console.error('run `pnpm surface:groundtruth:write` to rebuild canonical JSON and HTML');
   process.exit(1);
 }
-console.log(`surface ground truth: ${discoverModelRoots().length} canonical models clean`);
+console.log(`surface ground truth: ${discoverGroundTruthRoots().length} canonical agents clean`);
 
 if (vendors.length === 0) {
   console.error('surface audit: no vendor audits found');

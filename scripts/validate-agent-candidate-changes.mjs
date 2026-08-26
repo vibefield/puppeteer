@@ -16,6 +16,8 @@ export function validateCandidatePaths({ vendor, version, persona, paths }) {
     `packages/adapter-${vendor}/src/generated/`,
   ];
   const exact = new Set([
+    `packages/surface/vendors/${vendor}/groundtruth.json`,
+    `packages/surface/vendors/${vendor}/groundtruth.html`,
     `packages/surface/vendors/${vendor}/findings.md`,
     `packages/adapter-${vendor}/docs/event-map.html`,
     'support/agents.json',
@@ -29,7 +31,7 @@ export function validateCandidatePaths({ vendor, version, persona, paths }) {
     .sort();
 }
 
-export function validateCandidateLedger({ before, after, vendor, manifest }) {
+export function validateCandidateLedger({ before, after, vendor, groundTruth, version }) {
   const issues = [];
   const beforeById = new Map(before.agents.map((agent) => [agent.id, agent]));
   const afterById = new Map(after.agents.map((agent) => [agent.id, agent]));
@@ -43,12 +45,14 @@ export function validateCandidateLedger({ before, after, vendor, manifest }) {
     }
     const beforeComparable = { ...beforeAgent };
     const afterComparable = { ...afterAgent };
-    delete beforeComparable.candidateManifest;
-    delete afterComparable.candidateManifest;
+    delete beforeComparable.candidateVersion;
+    delete afterComparable.candidateVersion;
+    if (beforeComparable.groundTruth === undefined) delete afterComparable.groundTruth;
     if (JSON.stringify(beforeComparable) !== JSON.stringify(afterComparable)) {
       issues.push(`${vendor} candidate staging changed promoted support fields`);
     }
-    if (afterAgent.candidateManifest !== manifest) issues.push(`${vendor} candidate pointer is not ${manifest}`);
+    if (afterAgent.groundTruth !== groundTruth) issues.push(`${vendor} ground-truth path is not ${groundTruth}`);
+    if (afterAgent.candidateVersion !== version) issues.push(`${vendor} candidate version is not ${version}`);
   }
   return issues.sort();
 }
@@ -81,7 +85,7 @@ const invokedDirectly = process.argv[1] && fileURLToPath(import.meta.url) === re
 if (invokedDirectly) {
   const vendor = flag('--vendor');
   const version = flag('--version');
-  const manifest = flag('--manifest');
+  const groundTruth = flag('--ground-truth');
   const base = flag('--base') ?? 'HEAD';
   const current = JSON.parse(readFileSync(resolve(root, 'support', 'agents.json'), 'utf8'));
   const persona = current.agents.find((agent) => agent.id === vendor)?.persona;
@@ -90,7 +94,7 @@ if (invokedDirectly) {
   );
   const issues = [
     ...validateCandidatePaths({ vendor, version, persona, paths: changedPaths(base) }),
-    ...validateCandidateLedger({ before, after: current, vendor, manifest }),
+    ...validateCandidateLedger({ before, after: current, vendor, groundTruth, version }),
   ].sort();
   if (issues.length > 0) {
     for (const issue of issues) console.error(issue);

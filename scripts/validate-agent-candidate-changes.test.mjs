@@ -13,7 +13,7 @@ test('candidate publisher rejects runtime source and raw evidence changes', () =
       version: '2.0.0',
       persona: 'fake',
       paths: [
-        'packages/surface/vendors/fake/model/fake@2.0.0/groundtruth.json',
+        'packages/surface/vendors/fake/groundtruth.json',
         'packages/surface/vendors/fake/captures-raw/fake@2.0.0/secret.jsonl',
         'packages/adapter-fake/src/normalizer.ts',
       ],
@@ -25,16 +25,40 @@ test('candidate publisher rejects runtime source and raw evidence changes', () =
   );
 });
 
-test('candidate ledger may add only the requested candidate pointer', () => {
-  const before = { agents: [{ id: 'fake', status: 'verified', currentManifest: 'old' }] };
+test('candidate ledger may add only the stable path and requested candidate version', () => {
+  const before = { agents: [{ id: 'fake', status: 'verified', currentVersion: '1.0.0' }] };
   const after = {
-    agents: [{ id: 'fake', status: 'verified', currentManifest: 'old', candidateManifest: 'new' }],
+    agents: [
+      {
+        id: 'fake',
+        status: 'verified',
+        groundTruth: 'packages/surface/vendors/fake/groundtruth.json',
+        currentVersion: '1.0.0',
+        candidateVersion: '2.0.0',
+      },
+    ],
   };
-  assert.deepEqual(validateCandidateLedger({ before, after, vendor: 'fake', manifest: 'new' }), []);
+  assert.deepEqual(
+    validateCandidateLedger({
+      before,
+      after,
+      vendor: 'fake',
+      groundTruth: 'packages/surface/vendors/fake/groundtruth.json',
+      version: '2.0.0',
+    }),
+    [],
+  );
   after.agents[0].status = 'unsupported';
-  assert.deepEqual(validateCandidateLedger({ before, after, vendor: 'fake', manifest: 'new' }), [
-    'fake candidate staging changed promoted support fields',
-  ]);
+  assert.deepEqual(
+    validateCandidateLedger({
+      before,
+      after,
+      vendor: 'fake',
+      groundTruth: 'packages/surface/vendors/fake/groundtruth.json',
+      version: '2.0.0',
+    }),
+    ['fake candidate staging changed promoted support fields'],
+  );
 });
 
 test('changed paths include deletions so the publisher cannot bypass its allowlist', () => {

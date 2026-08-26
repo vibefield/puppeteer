@@ -1,9 +1,10 @@
 #!/usr/bin/env node
 /** Structural/behavioral candidate classification. This prepares evidence; it never promotes support. */
-import { existsSync, readFileSync, writeFileSync } from 'node:fs';
-import { dirname, join, relative, resolve, sep } from 'node:path';
+import { readFileSync, writeFileSync } from 'node:fs';
+import { dirname, join, resolve, sep } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { loadModel } from '@vibecook/puppeteer-surface';
+import { buildGroundTruth, loadModel } from '@vibecook/puppeteer-surface';
+import { resolveCanonicalGroundTruth } from './agent-model-selection.mjs';
 import { replayAgentSurface } from './replay-agent-surface.mjs';
 
 const root = dirname(dirname(fileURLToPath(import.meta.url)));
@@ -140,24 +141,32 @@ function artifactStatusFromEvidence(repoRoot, vendor, model) {
   return { status: missingPlatforms.length === 0 ? 'complete' : 'incomplete', missingPlatforms };
 }
 
-export function reconcileAgentSurface({ repoRoot = root, vendor, manifestPath, artifactReport, detectionReport } = {}) {
+export function reconcileAgentSurface({
+  repoRoot = root,
+  vendor,
+  groundTruthPath,
+  artifactReport,
+  detectionReport,
+} = {}) {
   if (!vendor) throw new Error('vendor is required');
   const ledger = json(join(repoRoot, 'support', 'agents.json'));
   const agent = ledger.agents.find((entry) => entry.id === vendor);
   if (!agent) throw new Error(`support ledger has no ${vendor}`);
-  const candidatePath = manifestPath ?? agent.candidateManifest ?? agent.currentManifest;
-  if (!candidatePath) throw new Error(`${vendor} has no candidate/current manifest`);
-  const candidateAbsolute = safePath(repoRoot, candidatePath);
-  const candidate = loadModel(dirname(candidateAbsolute));
+  const candidatePath = groundTruthPath ?? agent.groundTruth;
+  if (!candidatePath) throw new Error(`${vendor} has no canonical ground truth`);
+  const canonical = resolveCanonicalGroundTruth({ repoRoot, vendor, groundTruthPath: candidatePath });
+  const candidate = loadModel(canonical.groundTruthPath);
   if (candidate.manifest.asmVersion !== 2) throw new Error('reconciliation candidates must use fully traced ASM v2');
   const current =
-    agent.currentManifest && agent.currentManifest !== candidatePath
-      ? loadModel(dirname(safePath(repoRoot, agent.currentManifest)))
-      : agent.currentManifest
+    agent.currentVersion && agent.currentVersion !== candidate.manifest.vendorVersion
+      ? buildGroundTruth(
+          join(repoRoot, 'packages', 'surface', 'vendors', vendor, 'model', `${vendor}@${agent.currentVersion}`),
+        )
+      : agent.currentVersion
         ? candidate
         : undefined;
   const modelDiff = diffSurfaceModels(current, candidate);
-  const replay = replayAgentSurface({ repoRoot, vendor, manifestPath: candidatePath });
+  const replay = replayAgentSurface({ repoRoot, vendor, groundTruthPath: candidatePath });
   const artifacts = artifactReport
     ? json(safePath(repoRoot, artifactReport))
     : artifactStatusFromEvidence(repoRoot, vendor, candidate);
@@ -179,8 +188,8 @@ export function reconcileAgentSurface({ repoRoot = root, vendor, manifestPath, a
     schemaVersion: 1,
     vendor,
     vendorVersion: candidate.manifest.vendorVersion,
-    manifest: relative(repoRoot, candidateAbsolute).split(sep).join('/'),
-    currentManifest: agent.currentManifest ?? null,
+    groundTruth: canonical.groundTruthRelative,
+    currentVersion: agent.currentVersion ?? null,
     classification,
     detectorStatus,
     artifactStatus: artifacts.status,
@@ -213,7 +222,7 @@ const invokedDirectly = process.argv[1] && fileURLToPath(import.meta.url) === re
 if (invokedDirectly) {
   const report = reconcileAgentSurface({
     vendor: flag('--vendor'),
-    manifestPath: flag('--manifest'),
+    groundTruthPath: flag('--ground-truth'),
     artifactReport: flag('--artifacts'),
     detectionReport: flag('--detection'),
   });

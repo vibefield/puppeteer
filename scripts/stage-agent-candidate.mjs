@@ -1,9 +1,10 @@
 #!/usr/bin/env node
-/** Stage a candidate pointer and its Imposter projection without promoting support. */
+/** Stage the version in an agent's stable ground-truth file without promoting support. */
 import { existsSync, readFileSync, writeFileSync } from 'node:fs';
 import { dirname, relative, resolve, sep } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { loadModel } from '@vibecook/puppeteer-surface';
+import { resolveCanonicalGroundTruth } from './agent-model-selection.mjs';
 
 const root = dirname(dirname(fileURLToPath(import.meta.url)));
 
@@ -11,35 +12,25 @@ function json(path) {
   return JSON.parse(readFileSync(path, 'utf8'));
 }
 
-function insideRepo(path) {
-  const absolute = resolve(root, path);
-  if (!absolute.startsWith(`${resolve(root)}${sep}`)) throw new Error(`${path} is outside the repository`);
-  return absolute;
-}
-
-export function stageCandidateDocuments({ ledger, persona, vendor, manifestRelative, surfaceModelPath }) {
+export function stageCandidateDocuments({ ledger, persona, vendor, groundTruthRelative, candidateVersion }) {
   const agent = ledger.agents?.find((entry) => entry.id === vendor);
   if (!agent) throw new Error(`support ledger has no ${vendor} entry`);
-  if (agent.currentManifest === manifestRelative)
+  if (agent.groundTruth && agent.groundTruth !== groundTruthRelative) {
+    throw new Error(`${vendor} already declares a different canonical ground-truth path`);
+  }
+  if (agent.currentVersion === candidateVersion)
     throw new Error('current support cannot also be staged as a candidate');
-  agent.candidateManifest = manifestRelative;
-  persona.asm = { package: '@vibecook/puppeteer-surface', path: surfaceModelPath };
+  agent.groundTruth = groundTruthRelative;
+  agent.candidateVersion = candidateVersion;
+  persona.asm = { package: '@vibecook/puppeteer-surface', path: `vendors/${vendor}` };
   return { ledger, persona, agent };
 }
 
-export function stageAgentCandidate({ vendor, manifestPath }) {
-  const manifestAbsolute = insideRepo(manifestPath);
-  if (!existsSync(manifestAbsolute)) throw new Error(`candidate manifest does not exist: ${manifestPath}`);
-  const model = loadModel(dirname(manifestAbsolute));
-  if (model.manifest.vendor !== vendor) throw new Error('candidate vendor differs from --vendor');
+export function stageAgentCandidate({ vendor, groundTruthPath }) {
+  const canonical = resolveCanonicalGroundTruth({ repoRoot: root, vendor, groundTruthPath });
+  const model = loadModel(canonical.groundTruthPath);
   if (model.manifest.asmVersion !== 2) throw new Error('only a fully traced ASM v2 model may be staged');
-  const manifestRelative = relative(root, manifestAbsolute).split(sep).join('/');
-  if (
-    !manifestRelative.startsWith(`packages/surface/vendors/${vendor}/model/${vendor}@`) ||
-    !manifestRelative.endsWith('/groundtruth.json')
-  ) {
-    throw new Error('candidate ground truth must be in the matching versioned Surface model directory');
-  }
+  const { groundTruthRelative } = canonical;
   const ledgerPath = resolve(root, 'support', 'agents.json');
   const ledgerText = readFileSync(ledgerPath, 'utf8');
   const ledger = JSON.parse(ledgerText);
@@ -49,10 +40,13 @@ export function stageAgentCandidate({ vendor, manifestPath }) {
   if (!existsSync(personaPath)) throw new Error(`${vendor} persona does not exist`);
   const personaText = readFileSync(personaPath, 'utf8');
   const persona = JSON.parse(personaText);
-  const surfaceModelPath = relative(resolve(root, 'packages', 'surface'), dirname(manifestAbsolute))
-    .split(sep)
-    .join('/');
-  stageCandidateDocuments({ ledger, persona, vendor, manifestRelative, surfaceModelPath });
+  stageCandidateDocuments({
+    ledger,
+    persona,
+    vendor,
+    groundTruthRelative,
+    candidateVersion: model.manifest.vendorVersion,
+  });
   try {
     writeFileSync(ledgerPath, `${JSON.stringify(ledger, null, 2)}\n`);
     writeFileSync(personaPath, `${JSON.stringify(persona, null, 2)}\n`);
@@ -61,7 +55,7 @@ export function stageAgentCandidate({ vendor, manifestPath }) {
     writeFileSync(personaPath, personaText);
     throw error;
   }
-  return { manifestRelative, personaPath: relative(root, personaPath).split(sep).join('/') };
+  return { groundTruthRelative, personaPath: relative(root, personaPath).split(sep).join('/') };
 }
 
 function flag(name) {
@@ -71,6 +65,6 @@ function flag(name) {
 
 const invokedDirectly = process.argv[1] && fileURLToPath(import.meta.url) === resolve(process.argv[1]);
 if (invokedDirectly) {
-  const result = stageAgentCandidate({ vendor: flag('--vendor'), manifestPath: flag('--manifest') });
-  console.log(`staged ${result.manifestRelative}; updated ${result.personaPath}; support remains unpromoted`);
+  const result = stageAgentCandidate({ vendor: flag('--vendor'), groundTruthPath: flag('--ground-truth') });
+  console.log(`staged ${result.groundTruthRelative}; updated ${result.personaPath}; support remains unpromoted`);
 }

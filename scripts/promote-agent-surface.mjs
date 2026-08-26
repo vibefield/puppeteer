@@ -119,34 +119,30 @@ export function validateVerificationPlatforms(verification, evidence, requiredPl
 
 export function validatePromotion({
   vendor,
-  manifestPath,
+  groundTruthPath,
   verificationPath,
   currentCommit = execFileSync('git', ['rev-parse', 'HEAD'], { cwd: root, encoding: 'utf8' }).trim(),
   environment = process.env,
 }) {
   const issues = [];
   if (!vendor) return ['--vendor is required'];
-  if (!manifestPath) return ['--manifest is required'];
+  if (!groundTruthPath) return ['--ground-truth is required'];
   if (!verificationPath) return ['--verification is required'];
-  const manifestAbsolute = insideRepo(manifestPath);
+  const groundTruthAbsolute = insideRepo(groundTruthPath);
   const verificationAbsolute = insideRepo(verificationPath);
-  if (!existsSync(manifestAbsolute)) return [`manifest does not exist: ${manifestPath}`];
+  if (!existsSync(groundTruthAbsolute)) return [`ground truth does not exist: ${groundTruthPath}`];
   if (!existsSync(verificationAbsolute)) return [`verification does not exist: ${verificationPath}`];
-  const normalizedManifest = relative(root, manifestAbsolute).split(sep).join('/');
-  if (
-    !normalizedManifest.startsWith(`packages/surface/vendors/${vendor}/model/`) ||
-    !normalizedManifest.endsWith('/groundtruth.json')
-  ) {
-    issues.push('manifest must be a canonical ground truth under the matching Surface vendor');
+  const normalizedGroundTruth = relative(root, groundTruthAbsolute).split(sep).join('/');
+  if (normalizedGroundTruth !== `packages/surface/vendors/${vendor}/groundtruth.json`) {
+    issues.push('ground truth must be the canonical document at the matching Surface vendor root');
   }
-  const groundTruth = json(manifestAbsolute);
+  const groundTruth = json(groundTruthAbsolute);
   const manifest = groundTruth.manifest ?? {};
-  if (groundTruth.format !== 'puppeteer-groundtruth/1')
-    issues.push('manifest is not a canonical ground-truth document');
-  if (manifest.vendor !== vendor) issues.push(`manifest vendor is ${manifest.vendor}`);
+  if (groundTruth.format !== 'puppeteer-groundtruth/1') issues.push('file is not a canonical ground-truth document');
+  if (manifest.vendor !== vendor) issues.push(`ground-truth vendor is ${manifest.vendor}`);
   let model;
   try {
-    model = loadModel(dirname(manifestAbsolute));
+    model = loadModel(groundTruthAbsolute);
   } catch (error) {
     issues.push(error.message);
   }
@@ -156,7 +152,7 @@ export function validatePromotion({
   let evidence = groundTruth.evidenceIndex;
   let requiredPlatforms = [];
   if (!evidence) {
-    issues.push('candidate manifest has no evidence index');
+    issues.push('candidate ground truth has no evidence index');
   } else {
     if (evidence.vendor !== vendor || evidence.vendorVersion !== manifest.vendorVersion)
       issues.push('evidence identity differs from manifest');
@@ -180,10 +176,10 @@ export function validatePromotion({
     verification.schemaVersion !== 1 ||
     verification.vendor !== vendor ||
     verification.vendorVersion !== manifest.vendorVersion ||
-    verification.manifest !== normalizedManifest ||
+    verification.groundTruth !== normalizedGroundTruth ||
     verification.status !== 'passed'
   ) {
-    issues.push('verification identity/status does not match the candidate manifest');
+    issues.push('verification identity/status does not match the candidate ground truth');
   }
   if (!/^[0-9a-f]{64}$/.test(verification.replayDigest ?? '')) {
     issues.push('verification has no exact replay digest');
@@ -196,10 +192,13 @@ export function validatePromotion({
   const ledger = json(resolve(root, 'support/agents.json'));
   const agent = ledger.agents.find((entry) => entry.id === vendor);
   if (!agent) issues.push(`support ledger has no ${vendor} entry`);
+  if (agent?.groundTruth !== normalizedGroundTruth || agent?.candidateVersion !== manifest.vendorVersion) {
+    issues.push('support ledger does not stage this canonical candidate version');
+  }
   if (agent?.persona) {
     const personaPath = resolve(root, 'packages', 'imposter', 'personas', agent.persona, 'persona.json');
     const persona = existsSync(personaPath) ? json(personaPath) : undefined;
-    const expectedModel = relative(resolve(root, 'packages/surface'), dirname(manifestAbsolute)).split(sep).join('/');
+    const expectedModel = `vendors/${vendor}`;
     if (persona?.asm?.package !== '@vibecook/puppeteer-surface' || persona?.asm?.path !== expectedModel) {
       issues.push('Imposter persona must target the candidate before promotion');
     }
@@ -211,7 +210,8 @@ export function supportVerificationFromReport(verification) {
   return {
     provider: verification.attestation.provider,
     candidateCommit: verification.commit,
-    manifest: verification.manifest,
+    groundTruth: verification.groundTruth,
+    vendorVersion: verification.vendorVersion,
     evidenceDigest: verification.attestation.evidenceDigest,
     replayDigest: verification.replayDigest,
     repository: verification.attestation.repository,
@@ -222,12 +222,13 @@ export function supportVerificationFromReport(verification) {
   };
 }
 
-export function promoteLedgerAgent(ledger, vendor, manifest, puppeteerVersion, verification) {
+export function promoteLedgerAgent(ledger, vendor, groundTruth, vendorVersion, puppeteerVersion, verification) {
   const agent = ledger.agents.find((entry) => entry.id === vendor);
   if (!agent) throw new Error(`support ledger has no ${vendor} entry`);
   if (!verification) throw new Error('promotion requires a durable verification attestation');
-  agent.currentManifest = manifest;
-  delete agent.candidateManifest;
+  agent.groundTruth = groundTruth;
+  agent.currentVersion = vendorVersion;
+  delete agent.candidateVersion;
   delete agent.legacyEvidence;
   agent.status = 'verified';
   agent.verification = verification;
@@ -238,9 +239,9 @@ export function promoteLedgerAgent(ledger, vendor, manifest, puppeteerVersion, v
 const invokedDirectly = process.argv[1] && fileURLToPath(import.meta.url) === resolve(process.argv[1]);
 if (invokedDirectly) {
   const vendor = flag('--vendor');
-  const manifest = flag('--manifest');
+  const groundTruth = flag('--ground-truth');
   const verification = flag('--verification');
-  const issues = validatePromotion({ vendor, manifestPath: manifest, verificationPath: verification });
+  const issues = validatePromotion({ vendor, groundTruthPath: groundTruth, verificationPath: verification });
   if (issues.length > 0) {
     console.error(`promotion refused (${issues.length} issue(s)):`);
     for (const issue of issues) console.error(`  - ${issue}`);
@@ -255,7 +256,8 @@ if (invokedDirectly) {
   const agent = promoteLedgerAgent(
     ledger,
     vendor,
-    relative(root, insideRepo(manifest)).split(sep).join('/'),
+    relative(root, insideRepo(groundTruth)).split(sep).join('/'),
+    json(insideRepo(groundTruth)).manifest.vendorVersion,
     json(resolve(root, 'package.json')).version,
     supportVerificationFromReport(json(insideRepo(verification))),
   );
@@ -270,5 +272,5 @@ if (invokedDirectly) {
     writeFileSync(readmePath, oldReadme);
     throw error;
   }
-  console.log(`promoted ${vendor}: ${agent.currentManifest}`);
+  console.log(`promoted ${vendor}: ${agent.groundTruth} at ${agent.currentVersion}`);
 }

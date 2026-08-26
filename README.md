@@ -15,27 +15,30 @@ specifications versus historical material.
 ## Agent support
 
 <!-- agent-support:start -->
-[![Claude Code: legacy verified 2.1.207](https://img.shields.io/badge/Claude_Code-legacy_verified_2.1.207-orange)](packages/surface/vendors/claude/model/claude@2.1.207/groundtruth.json)
-[![Codex: legacy verified 0.147.0](https://img.shields.io/badge/Codex-legacy_verified_0.147.0-orange)](packages/surface/vendors/codex/model/codex@0.147.0/groundtruth.json)
-[![Grok Build: baseline pending 1.0.0](https://img.shields.io/badge/Grok_Build-baseline_pending_1.0.0-lightgrey)](packages/surface/vendors/grok/model/grok@1.0.0/groundtruth.json)
-[![Kimi Code: baseline pending 0.34.0](https://img.shields.io/badge/Kimi_Code-baseline_pending_0.34.0-lightgrey)](packages/surface/vendors/kimi/model/kimi@0.34.0/groundtruth.json)
-[![OpenCode: baseline pending 1.18.16](https://img.shields.io/badge/OpenCode-baseline_pending_1.18.16-lightgrey)](packages/surface/vendors/opencode/model/opencode@1.18.16/groundtruth.json)
+[![Claude Code: legacy verified 2.1.207](https://img.shields.io/badge/Claude_Code-legacy_verified_2.1.207-orange)](packages/surface/vendors/claude/groundtruth.json)
+[![Codex: legacy verified 0.147.0](https://img.shields.io/badge/Codex-legacy_verified_0.147.0-orange)](packages/surface/vendors/codex/groundtruth.json)
+[![Grok Build: baseline pending 1.0.0](https://img.shields.io/badge/Grok_Build-baseline_pending_1.0.0-lightgrey)](packages/surface/vendors/grok/groundtruth.json)
+[![Kimi Code: baseline pending 0.34.0](https://img.shields.io/badge/Kimi_Code-baseline_pending_0.34.0-lightgrey)](packages/surface/vendors/kimi/groundtruth.json)
+[![OpenCode: baseline pending 1.18.16](https://img.shields.io/badge/OpenCode-baseline_pending_1.18.16-lightgrey)](packages/surface/vendors/opencode/groundtruth.json)
 <!-- agent-support:end -->
 
 `verified` means the claim-addressable ASM v2 model and exact artifacts passed the
 full platform matrix, with the workflow/commit/model/replay/platform attestation
 retained in the ledger. `legacy verified` preserves a previously supported baseline
-that predates those gates; its manifest and model digest are frozen, and it cannot
+that predates those gates; its versioned authoring model and digest are frozen, and it cannot
 be changed or re-promoted without satisfying the current gates.
 `baseline pending` is an executable candidate, not a support claim.
 
 A staged candidate intentionally drives checked adapter projections and its
 Imposter persona during review. That lets compatibility code and conformance run
 before promotion; it does not change the supported-version badge, which follows
-only `currentManifest` after the protected promotion gates pass.
+only `currentVersion` after the protected promotion gates pass.
 
-Each badge links to that version's sole runtime authority: `groundtruth.json`.
-Capture-derived split documents remain authoring inputs, and
+Each badge links to the agent's stable runtime authority at its vendor root:
+`groundtruth.json`. During review that document may already describe the staged
+`candidateVersion` while the badge still reports the promoted `currentVersion`.
+Versioned capture-derived documents remain authoring inputs, Git retains every
+change to the canonical file, and
 `pnpm surface:groundtruth:write` deterministically rebuilds both the canonical JSON
 and a self-contained `groundtruth.html` explorer beside it.
 

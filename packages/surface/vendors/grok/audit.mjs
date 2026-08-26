@@ -10,7 +10,7 @@ import { grokRules } from './privacy.mjs';
 const selected = resolveAgentModel({ vendor: 'grok' });
 const modelDir = selected.modelRoot;
 const capturesDir = selected.capturesRoot;
-const model = loadModel(modelDir);
+const model = loadModel(selected.groundTruthPath);
 const schemas = new Map(model.events.map((event) => [event.event, event.payloadSchema]));
 const problems = [];
 let checked = 0;

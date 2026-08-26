@@ -12,8 +12,8 @@ on:
         description: Exact normalized vendor version
         required: true
         type: string
-      manifest:
-        description: Candidate groundtruth.json on the selected workflow ref
+      ground_truth:
+        description: Candidate vendor-root groundtruth.json on the selected workflow ref
         required: true
         type: string
       confirm:
@@ -27,7 +27,7 @@ permissions:
 env:
   AGENT_VENDOR: ${{ inputs.vendor }}
   AGENT_VERSION: ${{ inputs.version }}
-  AGENT_MANIFEST: ${{ inputs.manifest }}
+  AGENT_GROUND_TRUTH: ${{ inputs.ground_truth }}
 
 concurrency:
   group: agent-surface-promotion-${{ inputs.vendor }}
@@ -150,12 +150,12 @@ jobs:
       - name: Bind the complete acquisition to candidate evidence
         run: >-
           pnpm surface:evidence:artifacts
-          --manifest "$AGENT_MANIFEST"
+          --ground-truth "$AGENT_GROUND_TRUTH"
           --artifacts .agent-adaptation/acquisition.json
       - run: >-
           node scripts/stage-agent-candidate.mjs
           --vendor "$AGENT_VENDOR"
-          --manifest "$AGENT_MANIFEST"
+          --ground-truth "$AGENT_GROUND_TRUTH"
       - name: Audit the exact candidate model
         env:
           PUPPETEER_CODEX_BIN: ${{ github.workspace }}/.agent-adaptation/artifacts/${{ matrix.platform }}/${{ matrix.executable }}
@@ -233,12 +233,12 @@ jobs:
       - name: Bind the tested artifacts to candidate evidence
         run: >-
           pnpm surface:evidence:artifacts
-          --manifest "$AGENT_MANIFEST"
+          --ground-truth "$AGENT_GROUND_TRUTH"
           --artifacts .agent-adaptation/acquisition.json
       - run: >-
           pnpm surface:verify
           --vendor "$AGENT_VENDOR"
-          --manifest "$AGENT_MANIFEST"
+          --ground-truth "$AGENT_GROUND_TRUTH"
           --platform-report .agent-adaptation/platforms/darwin-arm64.json
           --platform-report .agent-adaptation/platforms/darwin-x64.json
           --platform-report .agent-adaptation/platforms/linux-x64.json
@@ -279,18 +279,18 @@ jobs:
       - name: Restore the attested artifact evidence
         run: >-
           pnpm surface:evidence:artifacts
-          --manifest "$AGENT_MANIFEST"
+          --ground-truth "$AGENT_GROUND_TRUTH"
           --artifacts .agent-adaptation/acquisition.json
       - name: Invoke the guarded promotion transaction
         run: >-
           pnpm surface:promote
           --vendor "$AGENT_VENDOR"
-          --manifest "$AGENT_MANIFEST"
+          --ground-truth "$AGENT_GROUND_TRUTH"
           --verification .agent-adaptation/verification.json
       - name: Commit artifact evidence, ledger pointer, and generated badge together
         run: |
           git config user.name github-actions[bot]
           git config user.email 41898282+github-actions[bot]@users.noreply.github.com
-          git add -- support/agents.json README.md "${AGENT_MANIFEST%/*}/evidence.json" "${AGENT_MANIFEST%/*}/groundtruth.json" "${AGENT_MANIFEST%/*}/groundtruth.html"
+          git add -- support/agents.json README.md "$AGENT_GROUND_TRUTH" "${AGENT_GROUND_TRUTH%.json}.html" "${AGENT_GROUND_TRUTH%/*}/model/${AGENT_VENDOR}@${AGENT_VERSION}/evidence.json"
           git commit -m "chore(surface): promote ${AGENT_VENDOR} ${AGENT_VERSION}"
           git push origin "HEAD:${GITHUB_REF_NAME}"

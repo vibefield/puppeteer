@@ -2,7 +2,7 @@
   "vendor": "kimi",
   "asm": {
     "package": "@vibecook/puppeteer-surface",
-    "path": "vendors/kimi/model/kimi@0.34.0"
+    "path": "vendors/kimi"
   },
   "shimNames": ["kimi"],
   "envelope": {},

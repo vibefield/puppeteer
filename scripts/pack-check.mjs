@@ -31,14 +31,16 @@ try {
     }
     if (directory === 'packages/surface') {
       const support = JSON.parse(readFileSync(join(root, 'support', 'agents.json'), 'utf8'));
-      const promotedManifests = support.agents
-        .filter((agent) => agent.currentManifest)
-        .map((agent) => `package/${agent.currentManifest.replace(/^packages\/surface\//, '')}`);
-      for (const manifest of promotedManifests) {
-        if (!entries.includes(manifest)) throw new Error(`${packageName} tarball is missing ${manifest}`);
+      const groundTruthFiles = support.agents
+        .filter((agent) => agent.groundTruth)
+        .map((agent) => `package/${agent.groundTruth.replace(/^packages\/surface\//, '')}`);
+      for (const groundTruth of groundTruthFiles) {
+        if (!entries.includes(groundTruth)) throw new Error(`${packageName} tarball is missing ${groundTruth}`);
       }
       const forbidden = entries.find(
-        (entry) => /\/(captures|captures-raw)\//.test(entry) || /\/(findings\.md|upstream\.json)$/.test(entry),
+        (entry) =>
+          /\/(captures|captures-raw|model|probes|references)\//.test(entry) ||
+          /\/(findings\.md|groundtruth\.html|upstream\.json)$/.test(entry),
       );
       if (forbidden) throw new Error(`${packageName} tarball leaks repo-only evidence: ${forbidden}`);
     }

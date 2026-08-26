@@ -6,6 +6,7 @@ import { basename, dirname, join, relative, resolve, sep } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { loadModel, validatePayload } from '@vibecook/puppeteer-surface';
 import { loadPersona } from '../packages/imposter/src/persona/load.ts';
+import { resolveCanonicalGroundTruth } from './agent-model-selection.mjs';
 
 const root = dirname(dirname(fileURLToPath(import.meta.url)));
 
@@ -123,10 +124,10 @@ function httpCorrelation(value) {
   return `${routeKey(value)} ${JSON.stringify(value?.params ?? {})}`;
 }
 
-function manifestForVendor(repoRoot, vendor) {
+function groundTruthForVendor(repoRoot, vendor) {
   const ledger = json(join(repoRoot, 'support', 'agents.json'));
   const agent = ledger.agents.find((entry) => entry.id === vendor);
-  const path = agent?.candidateManifest ?? agent?.currentManifest;
+  const path = agent?.groundTruth;
   if (!path) throw new Error(`support ledger has no canonical ground truth for ${vendor}`);
   return path;
 }
@@ -147,13 +148,12 @@ function normalizePath(repoRoot, path) {
 export function replayAgentSurface({
   repoRoot = root,
   vendor,
-  manifestPath = manifestForVendor(repoRoot, vendor),
+  groundTruthPath = groundTruthForVendor(repoRoot, vendor),
   capturesDir,
 } = {}) {
   if (!vendor) throw new Error('vendor is required');
-  const manifestAbsolute = normalizePath(repoRoot, manifestPath);
-  const model = loadModel(dirname(manifestAbsolute));
-  if (model.manifest.vendor !== vendor) throw new Error(`${manifestPath} is a ${model.manifest.vendor} model`);
+  const canonical = resolveCanonicalGroundTruth({ repoRoot, vendor, groundTruthPath });
+  const model = loadModel(canonical.groundTruthPath);
   const captureAbsolute = capturesDir
     ? normalizePath(repoRoot, capturesDir)
     : join(repoRoot, 'packages', 'surface', 'vendors', vendor, 'captures', `${vendor}@${model.manifest.vendorVersion}`);
@@ -467,7 +467,7 @@ export function replayAgentSurface({
     vendor,
     vendorVersion: model.manifest.vendorVersion,
     asmVersion: model.manifest.asmVersion,
-    manifest: relative(repoRoot, manifestAbsolute).split(sep).join('/'),
+    groundTruth: canonical.groundTruthRelative,
     captures: relative(repoRoot, captureAbsolute).split(sep).join('/'),
     status: issues.length === 0 ? 'passed' : 'failed',
     frames,
@@ -489,7 +489,10 @@ if (invokedDirectly) {
   const ledger = json(join(root, 'support', 'agents.json'));
   const vendors = requested ? [requested] : ledger.agents.filter((agent) => agent.persona).map((agent) => agent.id);
   const reports = vendors.map((vendor) =>
-    replayAgentSurface({ vendor, ...(requested && flag('--manifest') ? { manifestPath: flag('--manifest') } : {}) }),
+    replayAgentSurface({
+      vendor,
+      ...(requested && flag('--ground-truth') ? { groundTruthPath: flag('--ground-truth') } : {}),
+    }),
   );
   const output = flag('--output');
   const serialized = `${JSON.stringify(requested ? reports[0] : reports, null, 2)}\n`;

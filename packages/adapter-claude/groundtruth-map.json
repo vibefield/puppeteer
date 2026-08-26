@@ -2,8 +2,8 @@
   "format": "puppeteer-adapter-groundtruth-map/1",
   "provider": "claude",
   "adapterPackage": "@vibecook/puppeteer-adapter-claude",
-  "groundTruth": "packages/surface/vendors/claude/model/claude@2.1.226/groundtruth.json",
-  "groundTruthSha256": "e73c7cf00271a41143bed327cdd5c0cc1534833ef45e7798d9f80946516fe3be",
+  "groundTruth": "packages/surface/vendors/claude/groundtruth.json",
+  "groundTruthSha256": "39d7ad9ec132402d6aa4384c27c5a4315356af2a936e54f82429663258cf5d4c",
   "semanticEvents": [
     "ConfigChange",
     "CwdChanged",

@@ -131,9 +131,7 @@
         "kind": "model-tree",
         "path": "packages/surface/vendors/kimi/model/kimi@0.34.0",
         "exclude": [
-          "evidence.json",
-          "groundtruth.json",
-          "groundtruth.html"
+          "evidence.json"
         ],
         "digestAlgorithm": "sha256-path-content-v1",
         "sha256": "b85515cb0eb29b6e47f2d23684ab52bf6fa8400461f674c9b48b7afef5f9652f"

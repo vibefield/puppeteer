@@ -124,9 +124,7 @@
         "kind": "model-tree",
         "path": "packages/surface/vendors/hermes/model/hermes@0.20.0",
         "exclude": [
-          "evidence.json",
-          "groundtruth.json",
-          "groundtruth.html"
+          "evidence.json"
         ],
         "digestAlgorithm": "sha256-path-content-v1",
         "sha256": "c90ebff31409c0782a20373ca6d9b67414cf3f817078ba53da335bc563420324"

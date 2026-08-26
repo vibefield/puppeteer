@@ -1,11 +1,12 @@
 #!/usr/bin/env node
 /** Run repository-owned promotion gates and bind them to platform reports plus the active GHA attempt. */
 import { spawnSync, execFileSync } from 'node:child_process';
-import { existsSync, readFileSync, writeFileSync } from 'node:fs';
-import { dirname, join, relative, resolve, sep } from 'node:path';
+import { readFileSync, writeFileSync } from 'node:fs';
+import { dirname, join, resolve, sep } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { loadModel } from '@vibecook/puppeteer-surface';
 import { auditEvidence } from '../packages/surface/scripts/check-evidence.mjs';
+import { resolveCanonicalGroundTruth } from './agent-model-selection.mjs';
 import { replayAgentSurface } from './replay-agent-surface.mjs';
 
 const root = dirname(dirname(fileURLToPath(import.meta.url)));
@@ -97,15 +98,14 @@ function runGate(command, args, repoRoot) {
 export function verifyAgentSurface({
   repoRoot = root,
   vendor,
-  manifestPath,
+  groundTruthPath,
   platformReports = [],
   environment = process.env,
   runCommands = true,
 } = {}) {
-  const manifestAbsolute = safePath(repoRoot, manifestPath);
+  const canonical = resolveCanonicalGroundTruth({ repoRoot, vendor, groundTruthPath });
   const commit = execFileSync('git', ['rev-parse', 'HEAD'], { cwd: repoRoot, encoding: 'utf8' }).trim();
-  const model = loadModel(dirname(manifestAbsolute));
-  if (model.manifest.vendor !== vendor) throw new Error('verification vendor differs from manifest');
+  const model = loadModel(canonical.groundTruthPath);
   const evidence = model.evidenceIndex;
   if (!evidence) throw new Error('verification candidate has no canonical evidence index');
   const upstream = json(join(repoRoot, 'packages', 'surface', 'vendors', vendor, 'upstream.json'));
@@ -127,7 +127,7 @@ export function verifyAgentSurface({
         : undefined,
   });
   const evidenceIssues = auditEvidence({ root: repoRoot });
-  const replay = replayAgentSurface({ repoRoot, vendor, manifestPath });
+  const replay = replayAgentSurface({ repoRoot, vendor, groundTruthPath });
   const commandGates = runCommands
     ? {
         surface: runGate(
@@ -172,7 +172,7 @@ export function verifyAgentSurface({
     schemaVersion: 1,
     vendor,
     vendorVersion: model.manifest.vendorVersion,
-    manifest: relative(repoRoot, manifestAbsolute).split(sep).join('/'),
+    groundTruth: canonical.groundTruthRelative,
     commit,
     status: REQUIRED_VERIFICATION_GATES.every((gate) => gates[gate] === 'passed') ? 'passed' : 'failed',
     gates,
@@ -208,7 +208,7 @@ const invokedDirectly = process.argv[1] && fileURLToPath(import.meta.url) === re
 if (invokedDirectly) {
   const report = verifyAgentSurface({
     vendor: flag('--vendor'),
-    manifestPath: flag('--manifest'),
+    groundTruthPath: flag('--ground-truth'),
     platformReports: values('--platform-report'),
     runCommands: !process.argv.includes('--no-run'),
   });

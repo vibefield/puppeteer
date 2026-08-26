@@ -8,9 +8,8 @@ import { opencodeRules } from './privacy.mjs';
 
 const VERSION = '1.18.16';
 const vendorRoot = dirname(fileURLToPath(import.meta.url));
-const modelRoot = join(vendorRoot, 'model', `opencode@${VERSION}`);
 const capturesRoot = join(vendorRoot, 'captures', `opencode@${VERSION}`);
-const model = loadModel(modelRoot);
+const model = loadModel(vendorRoot);
 const sse = new Map(model.events.filter((event) => event.channel === 'sse').map((event) => [event.event, event]));
 const http = new Map<string, (typeof model.events)[number]>();
 

@@ -12,8 +12,8 @@ on:
         description: Exact normalized vendor version
         required: true
         type: string
-      manifest:
-        description: Versioned ASM v2 groundtruth.json already prepared on the selected ref
+      ground_truth:
+        description: Stable vendor-root groundtruth.json already prepared on the selected ref
         required: true
         type: string
       publish_draft:
@@ -28,7 +28,7 @@ permissions:
 env:
   AGENT_VENDOR: ${{ inputs.vendor }}
   AGENT_VERSION: ${{ inputs.version }}
-  AGENT_MANIFEST: ${{ inputs.manifest }}
+  AGENT_GROUND_TRUTH: ${{ inputs.ground_truth }}
 
 concurrency:
   group: agent-adaptation-${{ inputs.vendor }}-${{ inputs.version }}
@@ -149,14 +149,14 @@ jobs:
       - name: Attach exact artifacts without inventing claims
         run: >-
           pnpm surface:evidence:artifacts
-          --manifest "$AGENT_MANIFEST"
+          --ground-truth "$AGENT_GROUND_TRUTH"
           --artifacts .agent-adaptation/acquisition.json
 
       - name: Stage candidate pointer and Imposter projection
         run: >-
           node scripts/stage-agent-candidate.mjs
           --vendor "$AGENT_VENDOR"
-          --manifest "$AGENT_MANIFEST"
+          --ground-truth "$AGENT_GROUND_TRUTH"
 
       - name: Refresh and audit immutable evidence
         run: pnpm --filter @vibecook/puppeteer-surface surface:evidence:write
@@ -171,7 +171,7 @@ jobs:
         run: >-
           pnpm surface:reconcile
           --vendor "$AGENT_VENDOR"
-          --manifest "$AGENT_MANIFEST"
+          --ground-truth "$AGENT_GROUND_TRUTH"
           --artifacts .agent-adaptation/acquisition.json
           --output "packages/surface/vendors/${AGENT_VENDOR}/candidates/${AGENT_VENDOR}@${AGENT_VERSION}/reconciliation.json"
 
@@ -181,7 +181,7 @@ jobs:
           node scripts/validate-agent-candidate-changes.mjs \
             --vendor "$AGENT_VENDOR" \
             --version "$AGENT_VERSION" \
-            --manifest "$AGENT_MANIFEST" \
+            --ground-truth "$AGENT_GROUND_TRUTH" \
             --base origin/main
 
       - name: Build publisher-safe patch
@@ -220,7 +220,7 @@ jobs:
           node scripts/validate-agent-candidate-changes.mjs \
             --vendor "$AGENT_VENDOR" \
             --version "$AGENT_VERSION" \
-            --manifest "$AGENT_MANIFEST" \
+            --ground-truth "$AGENT_GROUND_TRUTH" \
             --base origin/main
 
       - name: Commit candidate branch

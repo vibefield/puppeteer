@@ -13,7 +13,7 @@ interface CapturedHookRecord {
 }
 
 const selected = resolveAgentModel({ vendor: 'claude' });
-const surfaceModel = loadModel(selected.modelRoot);
+const surfaceModel = loadModel(selected.groundTruthPath);
 const captureRoot = selected.capturesRoot;
 const captureModes = readdirSync(captureRoot, { withFileTypes: true })
   .filter((entry) => entry.isDirectory())

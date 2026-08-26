@@ -658,9 +658,9 @@ if (includeEvidence) {
     id: 'agent-surface-model',
     kind: 'model-tree',
     path: posixRelative(out),
-    exclude: ['evidence.json', 'groundtruth.json', 'groundtruth.html'],
+    exclude: ['evidence.json'],
     digestAlgorithm: 'sha256-path-content-v1',
-    sha256: digestTree(out, ['evidence.json', 'groundtruth.json', 'groundtruth.html']),
+    sha256: digestTree(out, ['evidence.json']),
   };
   writeJson(join(out, 'evidence.json'), {
     evidenceVersion: 2,

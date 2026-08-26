@@ -98,9 +98,7 @@
         "kind": "model-tree",
         "path": "packages/surface/vendors/codex/model/codex@0.147.0",
         "exclude": [
-          "evidence.json",
-          "groundtruth.json",
-          "groundtruth.html"
+          "evidence.json"
         ],
         "digestAlgorithm": "sha256-path-content-v1",
         "sha256": "d4d3bc10031505878233743032fd529fce4741f9228158361d5b6675763904cc"

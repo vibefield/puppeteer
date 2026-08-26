@@ -2,8 +2,8 @@
   "format": "puppeteer-adapter-groundtruth-map/1",
   "provider": "hermes",
   "adapterPackage": "@vibecook/puppeteer-adapter-hermes",
-  "groundTruth": "packages/surface/vendors/hermes/model/hermes@0.20.0/groundtruth.json",
-  "groundTruthSha256": "60cd049d808050f661b8d3a6b42047286dc73a59d55f03178d633f6ff7632976",
+  "groundTruth": "packages/surface/vendors/hermes/groundtruth.json",
+  "groundTruthSha256": "5e924b841c52e4814e5766fd2341a22f12bb7d0d865b2d0925348959062f4c22",
   "semanticEvents": [
     "approval.request",
     "gateway.ready",

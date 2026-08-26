@@ -17,7 +17,7 @@ import { resolveAgentModel } from '../../../../scripts/agent-model-selection.mjs
 import { checkCaptureDirectory } from './sanitize-captures.mjs';
 
 const selected = resolveAgentModel({ vendor: 'claude' });
-const model = loadModel(selected.modelRoot);
+const model = loadModel(selected.groundTruthPath);
 const captures = selected.capturesRoot;
 const report = buildReport(captures, model);
 const privacyIssues = checkCaptureDirectory(captures);

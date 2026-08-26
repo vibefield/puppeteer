@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-/** Conformance lock between immutable provider ground truth and adapter implementation references. */
+/** Digest lock between one canonical provider ground truth and adapter implementation references. */
 import { createHash } from 'node:crypto';
 import { existsSync, readFileSync, readdirSync, writeFileSync } from 'node:fs';
 import { dirname, join, relative } from 'node:path';
@@ -7,14 +7,7 @@ import { fileURLToPath } from 'node:url';
 
 const repositoryRoot = dirname(dirname(fileURLToPath(import.meta.url)));
 
-const adapters = [
-  ['claude', '2.1.226'],
-  ['codex', '0.147.0'],
-  ['grok', '1.0.0'],
-  ['hermes', '0.20.0'],
-  ['kimi', '0.34.0'],
-  ['opencode', '1.18.16'],
-];
+const adapters = ['claude', 'codex', 'grok', 'hermes', 'kimi', 'opencode'];
 
 function sha256(value) {
   return createHash('sha256').update(value).digest('hex');
@@ -46,9 +39,9 @@ function eventDigest(events) {
   return sha256(`${events.join('\n')}\n`);
 }
 
-export function buildAdapterGroundTruthMap(root, provider, version) {
+export function buildAdapterGroundTruthMap(root, provider) {
   const adapterDirectory = join(root, 'packages', `adapter-${provider}`);
-  const groundTruth = `packages/surface/vendors/${provider}/model/${provider}@${version}/groundtruth.json`;
+  const groundTruth = `packages/surface/vendors/${provider}/groundtruth.json`;
   const groundTruthPath = join(root, groundTruth);
   const rawGroundTruth = readFileSync(groundTruthPath, 'utf8');
   const model = JSON.parse(rawGroundTruth);
@@ -95,9 +88,9 @@ export function buildAdapterGroundTruthMap(root, provider, version) {
 
 export function auditAdapterGroundTruthMaps(root = repositoryRoot) {
   const issues = [];
-  for (const [provider, version] of adapters) {
+  for (const provider of adapters) {
     const path = join(root, 'packages', `adapter-${provider}`, 'groundtruth-map.json');
-    const expected = buildAdapterGroundTruthMap(root, provider, version);
+    const expected = buildAdapterGroundTruthMap(root, provider);
     if (!existsSync(path)) {
       issues.push(`${relative(root, path)} is missing`);
       continue;
@@ -111,9 +104,9 @@ export function auditAdapterGroundTruthMaps(root = repositoryRoot) {
 }
 
 function writeMaps(root = repositoryRoot) {
-  for (const [provider, version] of adapters) {
+  for (const provider of adapters) {
     const path = join(root, 'packages', `adapter-${provider}`, 'groundtruth-map.json');
-    const map = buildAdapterGroundTruthMap(root, provider, version);
+    const map = buildAdapterGroundTruthMap(root, provider);
     writeFileSync(path, `${JSON.stringify(map, null, 2)}\n`);
     console.log(`wrote ${relative(root, path)}`);
   }

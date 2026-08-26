@@ -58,7 +58,7 @@ Imposter subprocess.
 This is intentionally staged as a **candidate**, not promoted support. Only
 darwin-arm64 currently has immutable artifact and runtime-census evidence; the
 protected four-platform workflow must attest darwin-arm64, darwin-x64,
-linux-x64, and windows-x64 before `currentManifest` can move.
+linux-x64, and windows-x64 before `currentVersion` can move.
 
 ---
 

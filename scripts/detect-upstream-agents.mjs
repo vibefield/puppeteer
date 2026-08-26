@@ -293,8 +293,7 @@ function promotedVersions(repoRoot) {
   const ledger = json(join(repoRoot, 'support', 'agents.json'));
   return new Map(
     ledger.agents.map((agent) => {
-      if (!agent.currentManifest) return [agent.id, undefined];
-      return [agent.id, json(join(repoRoot, agent.currentManifest)).manifest?.vendorVersion];
+      return [agent.id, agent.currentVersion];
     }),
   );
 }

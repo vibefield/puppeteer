@@ -81,9 +81,9 @@ export function auditHermes() {
   }
   if (existsSync(capturesRoot)) notes.push('sanitized turn captures are present');
 
-  const modelRoot = join(vendorRoot, 'model', `hermes@${VERSION}`);
-  if (existsSync(join(modelRoot, 'groundtruth.json'))) {
-    const model = loadModel(modelRoot);
+  const groundTruthPath = join(vendorRoot, 'groundtruth.json');
+  if (existsSync(groundTruthPath)) {
+    const model = loadModel(vendorRoot);
     const events = new Map(model.events.map((event) => [event.event, event]));
     notes.push(`ASM ${model.events.length} events`);
     for (const leak of checkCaptureDirectory(capturesRoot, hermesRules)) {
@@ -162,7 +162,7 @@ export function auditHermes() {
       }
     }
   } else {
-    problems.push(`ASM is missing: ${modelRoot}`);
+    problems.push(`canonical ground truth is missing: ${groundTruthPath}`);
   }
 
   for (const platform of platformDirs.filter((name) => name !== 'gate0')) {

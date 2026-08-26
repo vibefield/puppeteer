@@ -117,7 +117,7 @@ describe('loadPersona validation', () => {
     vendor: 'broken',
     asm: {
       package: '@vibecook/puppeteer-surface',
-      path: 'vendors/claude/model/claude@2.1.207',
+      path: 'vendors/claude',
     },
     shimNames: ['broken'],
     envelope: { session_id: '$sessionId' },
@@ -152,19 +152,13 @@ describe('loadPersona validation', () => {
   });
 
   it('rejects a served method that is not a modeled client request', () => {
-    const directory = write(
-      { ...validPersona, asm: { ...validPersona.asm, path: 'vendors/codex/model/codex@0.147.0' } },
-      {},
-    );
+    const directory = write({ ...validPersona, asm: { ...validPersona.asm, path: 'vendors/codex' } }, {});
     writeFileSync(join(directory, 'serve.json'), JSON.stringify({ 'thread/started': { result: {} } }));
     expect(() => loadPersona('broken', { directory })).toThrow(/not declare it as a client-to-agent JSON-RPC request/);
   });
 
   it('rejects a served request whose result is not modeled', () => {
-    const directory = write(
-      { ...validPersona, asm: { ...validPersona.asm, path: 'vendors/codex/model/codex@0.147.0' } },
-      {},
-    );
+    const directory = write({ ...validPersona, asm: { ...validPersona.asm, path: 'vendors/codex' } }, {});
     writeFileSync(join(directory, 'serve.json'), JSON.stringify({ 'account/read': { result: {} } }));
     expect(() => loadPersona('broken', { directory })).toThrow(/has no result schema/);
   });

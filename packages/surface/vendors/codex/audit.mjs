@@ -41,7 +41,7 @@ const notes = [];
 // 1. Model vs captures
 // ---------------------------------------------------------------------------
 
-const model = loadModel(modelDir);
+const model = loadModel(selected.groundTruthPath);
 const schemas = new Map(model.events.map((event) => [event.event, event.payloadSchema]));
 const resultSchemas = new Map(model.events.map((event) => [event.event, event.resultSchema]));
 const recordSchemas = new Map(model.events.map((event) => [event.event, event.recordSchema]));

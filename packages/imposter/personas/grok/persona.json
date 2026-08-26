@@ -2,7 +2,7 @@
   "vendor": "grok",
   "asm": {
     "package": "@vibecook/puppeteer-surface",
-    "path": "vendors/grok/model/grok@1.0.0"
+    "path": "vendors/grok"
   },
   "shimNames": ["grok"],
   "envelope": {},

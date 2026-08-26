@@ -2,8 +2,8 @@
   "format": "puppeteer-adapter-groundtruth-map/1",
   "provider": "codex",
   "adapterPackage": "@vibecook/puppeteer-adapter-codex",
-  "groundTruth": "packages/surface/vendors/codex/model/codex@0.147.0/groundtruth.json",
-  "groundTruthSha256": "cf772cd547bd76c6f48237c31f21a4098c502c3b4f6e2465ad7d9ce947e153cb",
+  "groundTruth": "packages/surface/vendors/codex/groundtruth.json",
+  "groundTruthSha256": "0e9813fc2e700e5d4c0851d72aaa54576851235ccda7588f3a282342f34f15c2",
   "semanticEvents": [
     "account/login/completed",
     "account/rateLimits/updated",

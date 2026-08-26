@@ -70,7 +70,7 @@ function compareTrees(expected, actual, label) {
   }
 }
 
-const model = loadModel(modelDir);
+const model = loadModel(vendorRoot);
 if (model.manifest.vendor !== 'opencode' || model.manifest.vendorVersion !== VERSION) {
   problems.push('model identity does not match opencode@1.18.16');
 }

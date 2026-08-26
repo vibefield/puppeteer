@@ -1,11 +1,11 @@
-import { dirname, join } from 'node:path';
+import { dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { describe, expect, it } from 'vitest';
 import { loadModel } from '@vibecook/puppeteer-surface';
 
 const version = '0.20.0';
 const vendorRoot = dirname(fileURLToPath(import.meta.url));
-const model = loadModel(join(vendorRoot, 'model', `hermes@${version}`));
+const model = loadModel(vendorRoot);
 
 describe(`the Hermes ${version} candidate ASM`, () => {
   it('keeps argv, terminal, gateway, hooks, webhooks, state, and ACP rails distinct', () => {

@@ -1,6 +1,6 @@
 {
   "vendor": "synthetic",
-  "asm": { "path": "model" },
+  "asm": { "path": "." },
   "shimNames": ["synthetic"],
   "envelope": {
     "sid": "$sessionId",
