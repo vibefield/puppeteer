@@ -1,13 +1,15 @@
 # RFC-001 Implementation Plan: Runtime Monitor V2
 
-- **Status:** In progress — Stage C monitor validation; local scoped-observer cutover complete
+- **Status:** Superseded implementation history — monitor and layered-runtime cutovers complete
 - **Created:** 2026-08-16
-- **Last updated:** 2026-08-25
+- **Last updated:** 2026-08-26
 - **Companion RFC:** [`001-evidence-backed-runtime-observation.md`](./001-evidence-backed-runtime-observation.md)
 - **Primary target:** Godview beside native provider TUIs
 - **Compatibility target:** one release with the v1 state and IPC bridges available
 
 ## Current implementation status
+
+> **2026-08-26 layered-runtime cutover:** [`RFC-004`](./004-layered-agent-runtime.md) is the current architecture. Monitoring is an invariant of every Agent, Runtime is provider-agnostic, concrete adapter composition lives in `@vibecook/puppeteer-builtin-providers`, adapters publish only unstamped candidates plus named capability services, and portable monitor/React packages own the presentation boundary. The baseline, feature-flag, dependency, and slice descriptions below are retained as dated implementation history.
 
 > **2026-08-25 source cutover:** [`RFC-003`](./003-native-observation-sources.md) retires the Spaghetti runtime dependency. References below to `SPAGHETTI-01`, scoped observers, SDK pins, shadow flags, and Spaghetti-owned live semantics are retained as implementation history, not current architecture. Claude now uses authenticated OTLP logs for settled request usage, transcript JSONL for conversation/history and usage fallback, and workflow journals for exact membership.
 
@@ -291,7 +293,7 @@ The refactor is complete when:
 8. Workspace baseline/finalization and Puppeteer-owned actions are durable, idempotent, completeness-qualified, and usable by VibeField without Puppeteer making contribution claims.
 9. The old serialized `SessionRuntimeState` path can be selected for one release, then is removed.
 
-## 3. Current baseline
+## 3. Historical baseline before cutover
 
 The implementation must account for these current facts rather than assuming a greenfield system:
 
@@ -468,19 +470,23 @@ packages/record/src/
   recorder.ts                serialized, idempotent JSONL append
 ```
 
-### 5.1 Adapter-to-runtime seam
+### 5.1 Adapter-to-runtime seam (updated final form)
 
-`AgentAdapterSession` is now a low-level normalized producer. Atomic semantic
+`AgentAdapterBinding` is the low-level normalized producer. Atomic semantic
 batches use the same event stream as every other adapter observation:
 
 ```ts
-interface AgentAdapterSession {
-  onEvent(listener: (event: AgentEventEnvelope) => void): () => void;
-  readMonitorArtifact?(artifactId: string, options: { maxBytes: number }): Promise<MonitorArtifactReadResult>;
-  submitPrompt(submission: PromptSubmission): Promise<PromptReceipt>;
+interface AgentAdapterBinding {
+  events: {
+    onCandidate(listener: (candidate: AdapterEventCandidate) => void): () => void;
+  };
+  services: {
+    prompt: AgentPromptService;
+    artifacts?: AgentArtifactService;
+  };
 }
 
-type MonitorEvent = { type: 'monitor.batch'; batch: AdapterMonitorObservationBatch };
+type MonitorEvent = { type: 'monitor:batch'; batch: AdapterMonitorObservationBatch };
 ```
 
 An adapter batch has source-local identity. Runtime attaches the managed run identity:

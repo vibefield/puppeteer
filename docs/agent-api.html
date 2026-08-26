@@ -473,59 +473,59 @@
         color: var(--muted);
       }
 
-      .service-session,
-      .service-turn,
-      .service-reasoning,
-      .service-tool,
-      .service-interaction,
-      .service-delegation,
-      .service-planning,
-      .service-compaction {
+      .category-session,
+      .category-turn,
+      .category-reasoning,
+      .category-tool,
+      .category-interaction,
+      .category-delegation,
+      .category-planning,
+      .category-compaction {
         background: var(--copper-bg);
         color: var(--copper);
       }
 
-      .service-context-window {
+      .category-context-window {
         background: var(--teal-bg);
         color: var(--teal);
       }
 
-      .service-conversation {
+      .category-conversation {
         background: var(--purple-bg);
         color: var(--purple);
       }
 
-      .service-usage {
+      .category-usage {
         background: var(--amber-bg);
         color: var(--amber);
       }
 
-      .service-workflow {
+      .category-workflow {
         background: var(--purple-bg);
         color: var(--purple);
       }
 
-      .service-environment,
-      .service-model,
-      .service-effort,
-      .service-mode,
-      .service-workspace {
+      .category-environment,
+      .category-model,
+      .category-effort,
+      .category-mode,
+      .category-workspace {
         background: var(--blue-bg);
         color: var(--blue);
       }
 
-      .service-process,
-      .service-notification {
+      .category-process,
+      .category-notification {
         background: var(--red-bg);
         color: var(--red);
       }
 
-      .service-monitor {
+      .category-monitor {
         background: var(--teal-bg);
         color: var(--teal);
       }
 
-      .service-adapter {
+      .category-adapter {
         background: var(--paper-2);
         color: var(--muted);
       }
@@ -648,22 +648,22 @@
         white-space: nowrap;
       }
 
-      .service-section {
+      .category-section {
         margin: 28px 0 42px;
       }
 
-      .service-header {
+      .category-header {
         display: flex;
         align-items: baseline;
         gap: 9px;
         margin-bottom: 11px;
       }
 
-      .service-header h3 {
+      .category-header h3 {
         margin: 0;
       }
 
-      .service-header p {
+      .category-header p {
         margin: 0;
         color: var(--muted);
         font-size: 13px;
@@ -689,7 +689,7 @@
       }
 
       details.event-card[hidden],
-      .service-section[hidden] {
+      .category-section[hidden] {
         display: none;
       }
 
@@ -920,7 +920,7 @@
             <h1>Agent API &amp; Event Catalog</h1>
             <p class="subtitle">
               One runtime-owned object per provider spawn. Adapters normalize native evidence into a single event rail;
-              the <span class="mono">Agent</span> projects state and conversation, then exposes typed exact, service,
+              the <span class="mono">Agent</span> projects state, conversation, and monitor status, then exposes typed exact, category,
               and catch-all subscriptions through <span class="mono">.on(…)</span>.
             </p>
           </div>
@@ -951,20 +951,20 @@
           <a href="#subscriptions">Subscriptions</a>
           <a href="#envelope">Event envelope</a>
           <a href="#catalog">Event catalog</a>
-          <a class="sub-link" href="#service-behavior">behavior domains</a>
-          <a class="sub-link" href="#service-context-window">context-window</a>
-          <a class="sub-link" href="#service-conversation">conversation</a>
-          <a class="sub-link" href="#service-usage">usage</a>
-          <a class="sub-link" href="#service-workflow">workflow</a>
-          <a class="sub-link" href="#service-environment">environment</a>
-          <a class="sub-link" href="#service-model">model</a>
-          <a class="sub-link" href="#service-effort">effort</a>
-          <a class="sub-link" href="#service-mode">mode</a>
-          <a class="sub-link" href="#service-workspace">workspace</a>
-          <a class="sub-link" href="#service-process">process</a>
-          <a class="sub-link" href="#service-notification">notification</a>
-          <a class="sub-link" href="#service-monitor">monitor</a>
-          <a class="sub-link" href="#service-adapter">adapter</a>
+          <a class="sub-link" href="#category-behavior">behavior domains</a>
+          <a class="sub-link" href="#category-context-window">context-window</a>
+          <a class="sub-link" href="#category-conversation">conversation</a>
+          <a class="sub-link" href="#category-usage">usage</a>
+          <a class="sub-link" href="#category-workflow">workflow</a>
+          <a class="sub-link" href="#category-environment">environment</a>
+          <a class="sub-link" href="#category-model">model</a>
+          <a class="sub-link" href="#category-effort">effort</a>
+          <a class="sub-link" href="#category-mode">mode</a>
+          <a class="sub-link" href="#category-workspace">workspace</a>
+          <a class="sub-link" href="#category-process">process</a>
+          <a class="sub-link" href="#category-notification">notification</a>
+          <a class="sub-link" href="#category-monitor">monitor</a>
+          <a class="sub-link" href="#category-adapter">adapter</a>
           <a href="#snapshots">Snapshots</a>
           <a href="#shared-types">Shared types</a>
           <a href="#semantics">Semantics</a>
@@ -980,12 +980,20 @@
               <span class="mono">Agent</span> instance.
             </p>
 
+            <div class="callout">
+              <strong>Layer rule.</strong> Surface ground truth and provider-neutral Core contracts are independent
+              foundations. Imposter depends only on Surface; adapters target Core and carry digest-locked ground-truth
+              maps; Runtime has no concrete adapter dependencies. Official adapter composition lives in
+              <span class="mono">@vibecook/puppeteer-builtin-providers</span>. See
+              <a href="rfcs/004-layered-agent-runtime.md">RFC 004</a>.
+            </div>
+
             <figure>
               <div class="diagram">
                 <svg
                   viewBox="0 0 1080 430"
                   role="img"
-                  aria-label="Provider adapters normalize native observations into one event stream. The runtime Agent projects state and conversation, sends monitor batches to the monitor reducer, and publishes typed events to exact, service, and catch-all listeners."
+                  aria-label="Provider adapters normalize native observations into one event stream. The runtime Agent projects state and conversation, sends monitor batches to the monitor reducer, and publishes typed events to exact, category, and catch-all listeners."
                 >
                   <defs>
                     <marker
@@ -1192,7 +1200,7 @@
                     OBSERVATION
                   </text>
                   <text x="709" y="215" fill="var(--ink)" font-size="14" font-family="JetBrains Mono">
-                    exact · service:* · *
+                    exact · category:* · *
                   </text>
                   <text x="709" y="234" fill="var(--muted)" font-size="12" font-family="Source Sans 3">
                     typed, synchronous, listener-fault isolated
@@ -1240,7 +1248,7 @@
               Create through the runtime; do not construct <span class="mono">Agent</span> directly. Spawn failures are
               returned as data, so narrow the result before subscribing.
             </p>
-            <pre><code>import { createBuiltinAgentRuntime } from '@vibecook/puppeteer-runtime';
+            <pre><code>import { createBuiltinAgentRuntime } from '@vibecook/puppeteer-builtin-providers';
 
 const runtime = createBuiltinAgentRuntime({ host, defaultCwd: process.cwd() });
 
@@ -1261,11 +1269,12 @@ const offContext = agent.on('context-window:updated', ({ event }) =&gt; {
   console.log(`${event.usedTokens}/${event.capacityTokens}`);
 });
 
-const offAll = agent.on('*', ({ service, type, sequence }) =&gt; {
-  console.log(sequence, service, type);
+const offAll = agent.on('*', ({ category, type, sequence }) =&gt; {
+  console.log(sequence, category, type);
 });
 
 const receipt = await agent.submitPrompt({ text: 'Review this repository' });
+console.log(agent.lifecycle, agent.alive, agent.status, agent.monitor.usage);
 
 offTurns();
 offContext();
@@ -1287,7 +1296,7 @@ offAll();</code></pre>
 
             <div class="cards">
               <article class="card">
-                <span class="badge service-environment">identity</span>
+                <span class="badge category-environment">identity</span>
                 <h3>agent.info</h3>
                 <div class="signature">Readonly&lt;AgentSessionInfo&gt;</div>
                 <p>
@@ -1296,45 +1305,66 @@ offAll();</code></pre>
                 </p>
               </article>
               <article class="card">
-                <span class="badge service-environment">identity</span>
+                <span class="badge category-environment">identity</span>
                 <h3>agent.runtimeRunId</h3>
                 <div class="signature">string</div>
                 <p>Stable runtime-owned identity for this provider invocation.</p>
               </article>
               <article class="card">
-                <span class="badge service-process">routing</span>
+                <span class="badge category-process">routing</span>
                 <h3>agent.terminalSessionId</h3>
                 <div class="signature">string</div>
                 <p>Host terminal/PTY routing identity for the live agent.</p>
               </article>
               <article class="card">
-                <span class="badge service-session">projection</span>
+                <span class="badge category-session">projection</span>
                 <h3>agent.state</h3>
                 <div class="signature">SessionRuntimeState</div>
                 <p>Defensive snapshot of deterministic state after all accepted non-monitor envelopes.</p>
               </article>
               <article class="card">
-                <span class="badge service-conversation">projection</span>
+                <span class="badge category-session">lifecycle</span>
+                <h3>agent.lifecycle / agent.alive</h3>
+                <div class="signature">SessionLifecycle / boolean</div>
+                <p>Detailed normalized session phase and separate host-owned process liveness.</p>
+              </article>
+              <article class="card">
+                <span class="badge category-monitor">three-state status</span>
+                <h3>agent.status / agent.monitor</h3>
+                <div class="signature">AgentMonitorStatus / AgentMonitorState</div>
+                <p>
+                  Operational <span class="mono">idle | working | blocked</span> status and its deeply immutable,
+                  renderer-safe evidence snapshot.
+                </p>
+              </article>
+              <article class="card">
+                <span class="badge category-conversation">projection</span>
                 <h3>agent.conversation</h3>
                 <div class="signature">AgentConversationSnapshot</div>
                 <p>Provider-neutral user, assistant, activity, and notice timeline.</p>
               </article>
               <article class="card">
-                <span class="badge service-adapter">capability</span>
+                <span class="badge category-adapter">capability</span>
                 <h3>agent.observationLevel</h3>
                 <div class="signature">ObservationLevel</div>
                 <p>Current honest fidelity of the adapter’s native evidence surface.</p>
               </article>
               <article class="card">
-                <span class="badge service-monitor">observation</span>
+                <span class="badge category-monitor">observation</span>
+                <h3>agent.observeMonitor()</h3>
+                <div class="signature">AgentMonitorHandle</div>
+                <p>Creates a race-free per-consumer state and notification stream for this run.</p>
+              </article>
+              <article class="card">
+                <span class="badge category-monitor">observation</span>
                 <h3>agent.on(selector, listener)</h3>
                 <div class="signature">() =&gt; void</div>
                 <p>
-                  Subscribe by exact route, service wildcard, or catch-all. Returns an idempotent unsubscribe function.
+                  Subscribe by exact route, category wildcard, or catch-all. Returns an idempotent unsubscribe function.
                 </p>
               </article>
               <article class="card">
-                <span class="badge service-conversation">control</span>
+                <span class="badge category-conversation">control</span>
                 <h3>agent.submitPrompt(submission)</h3>
                 <div class="signature">Promise&lt;PromptReceipt&gt;</div>
                 <p>Submit through the adapter’s structured or guarded native-TUI control channel.</p>
@@ -1347,6 +1377,10 @@ offAll();</code></pre>
   get runtimeRunId(): string;
   get terminalSessionId(): string;
   get state(): SessionRuntimeState;
+  get lifecycle(): SessionLifecycle;
+  get alive(): boolean;
+  get status(): AgentMonitorStatus;
+  get monitor(): AgentMonitorState;
   get conversation(): AgentConversationSnapshot;
   get observationLevel(): ObservationLevel;
 
@@ -1356,6 +1390,12 @@ offAll();</code></pre>
   ): () =&gt; void;
 
   submitPrompt(submission: PromptSubmission): Promise&lt;PromptReceipt&gt;;
+  observeMonitor(): AgentMonitorHandle;
+  readMonitorArtifact(
+    artifactId: string,
+    options?: { maxBytes?: number },
+  ): Promise&lt;MonitorArtifactReadResult&gt;;
+  acknowledgeFailureBlocker(blockerId: string): boolean;
 }</code></pre>
           </section>
 
@@ -1420,12 +1460,12 @@ offAll();</code></pre>
                   <tr>
                     <td class="route">monitorState(id)</td>
                     <td class="native-type">AgentMonitorState | undefined</td>
-                    <td><p>Reads the projected operational monitor snapshot.</p></td>
+                    <td><p>Host/IPC compatibility lookup. Live consumers read <span class="mono">agent.monitor</span>.</p></td>
                   </tr>
                   <tr>
                     <td class="route">observeMonitor(id)</td>
                     <td class="native-type">AgentMonitorHandle</td>
-                    <td><p>Creates a run-scoped monitor consumer handle.</p></td>
+                    <td><p>Host/IPC compatibility lookup. Live consumers call <span class="mono">agent.observeMonitor()</span>.</p></td>
                   </tr>
                   <tr>
                     <td class="route">onMonitorState(listener)</td>
@@ -1525,19 +1565,19 @@ offAll();</code></pre>
 
             <div class="cards">
               <article class="card">
-                <span class="badge service-context-window">exact</span>
+                <span class="badge category-context-window">exact</span>
                 <h3>'context-window:updated'</h3>
                 <div class="signature">AgentEventEnvelope&lt;ContextWindowUpdatedEvent&gt;</div>
                 <p>One public route. Best when a consumer owns one concrete behavior.</p>
               </article>
               <article class="card">
-                <span class="badge service-tool">category</span>
+                <span class="badge category-tool">category</span>
                 <h3>'tool:*'</h3>
-                <div class="signature">AgentEnvelopeForService&lt;'tool'&gt;</div>
+                <div class="signature">AgentEnvelopeForCategory&lt;'tool'&gt;</div>
                 <p>Every route owned by one event category. The nested event remains a discriminated union.</p>
               </article>
               <article class="card">
-                <span class="badge service-adapter">catch-all</span>
+                <span class="badge category-adapter">catch-all</span>
                 <h3>'*'</h3>
                 <div class="signature">AgentEventEnvelope&lt;AgentEvent&gt;</div>
                 <p>Every normalized envelope for logging, diagnostics, replay, or generic instrumentation.</p>
@@ -1546,8 +1586,8 @@ offAll();</code></pre>
 
             <pre><code>type AgentEventSelector =
   | '*'
-  | `${AgentEventService}:*`
-  | AgentServiceEventType;
+  | `${AgentEventCategory}:*`
+  | AgentEventType;
 
 const unsubscribe = agent.on('tool:completed', ({ event }) =&gt; {
   // event is ToolCompletedEvent here
@@ -1576,8 +1616,8 @@ unsubscribe();</code></pre>
             </p>
 
             <pre><code>interface AgentEventEnvelope&lt;T extends AgentEvent = AgentEvent&gt; {
-  type: AgentServiceEventType&lt;T&gt;; // public route, e.g. "turn:started"
-  service: AgentEventServiceOf&lt;T&gt;;
+  type: AgentEventTypeFor&lt;T&gt;; // public route, e.g. "turn:started"
+  category: AgentEventCategoryOf&lt;T&gt;;
   eventId?: string;
   sourceEventRef?: {
     namespace: string;
@@ -1616,17 +1656,17 @@ unsubscribe();</code></pre>
 
             <div class="legend" aria-label="Envelope field interpretation">
               <span class="legend-item"
-                ><span class="badge service-monitor">route</span> type + service drive fan-out</span
+                ><span class="badge category-monitor">route</span> type + category drive fan-out</span
               >
               <span class="legend-item"
-                ><span class="badge service-environment">identity</span> ids correlate run, turn, actor, and
+                ><span class="badge category-environment">identity</span> ids correlate run, turn, actor, and
                 source</span
               >
               <span class="legend-item"
-                ><span class="badge service-usage">evidence</span> source + confidence explain trust</span
+                ><span class="badge category-usage">evidence</span> source + confidence explain trust</span
               >
               <span class="legend-item"
-                ><span class="badge service-adapter">escape hatch</span> nativeEvent retains raw evidence</span
+                ><span class="badge category-adapter">escape hatch</span> nativeEvent retains raw evidence</span
               >
             </div>
 
@@ -1682,19 +1722,19 @@ unsubscribe();</code></pre>
             </div>
 
             <div id="event-sections">
-              <section class="service-section" id="service-behavior" data-section-service="behavior">
-                <div class="service-header">
+              <section class="category-section" id="category-behavior" data-section-category="behavior">
+                <div class="category-header">
                   <h3>Behavior event domains</h3>
-                  <span class="badge service-session">27 routes</span>
+                  <span class="badge category-session">27 routes</span>
                   <p>Eight independent categories for lifecycle, turns, reasoning, tools, interactions, delegation, planning, and compaction.</p>
                 </div>
                 <div class="event-list">
-                  <details class="event-card" data-service="session">
+                  <details class="event-card" data-category="session">
                     <summary>
                       <span class="event-title"
                         ><span class="route">session:started</span
                         ><span class="native-type">session:started</span></span
-                      ><span class="badge service-session">session</span>
+                      ><span class="badge category-session">session</span>
                     </summary>
                     <div class="event-body">
                       <p>
@@ -1714,12 +1754,12 @@ unsubscribe();</code></pre>
                     </div>
                   </details>
 
-                  <details class="event-card" data-service="session">
+                  <details class="event-card" data-category="session">
                     <summary>
                       <span class="event-title"
                         ><span class="route">session:ready</span
                         ><span class="native-type">session:ready</span></span
-                      ><span class="badge service-session">session</span>
+                      ><span class="badge category-session">session</span>
                     </summary>
                     <div class="event-body">
                       <p>The provider is ready to accept work.</p>
@@ -1730,12 +1770,12 @@ unsubscribe();</code></pre>
                     </div>
                   </details>
 
-                  <details class="event-card" data-service="session">
+                  <details class="event-card" data-category="session">
                     <summary>
                       <span class="event-title"
                         ><span class="route">session:exited</span
                         ><span class="native-type">session:exited</span></span
-                      ><span class="badge service-session">session</span>
+                      ><span class="badge category-session">session</span>
                     </summary>
                     <div class="event-body">
                       <p>The semantic provider session ended. This is distinct from host process exit.</p>
@@ -1749,12 +1789,12 @@ unsubscribe();</code></pre>
                     </div>
                   </details>
 
-                  <details class="event-card" data-service="turn">
+                  <details class="event-card" data-category="turn">
                     <summary>
                       <span class="event-title"
                         ><span class="route">turn:started</span
                         ><span class="native-type">turn:started</span></span
-                      ><span class="badge service-turn">turn</span>
+                      ><span class="badge category-turn">turn</span>
                     </summary>
                     <div class="event-body">
                       <p>A user turn began. When present, the prompt also creates a conversation user item.</p>
@@ -1770,12 +1810,12 @@ unsubscribe();</code></pre>
                     </div>
                   </details>
 
-                  <details class="event-card" data-service="turn">
+                  <details class="event-card" data-category="turn">
                     <summary>
                       <span class="event-title"
                         ><span class="route">turn:completed</span
                         ><span class="native-type">turn:completed</span></span
-                      ><span class="badge service-turn">turn</span>
+                      ><span class="badge category-turn">turn</span>
                     </summary>
                     <div class="event-body">
                       <p>The response cycle completed successfully; final assistant text may be carried directly.</p>
@@ -1791,11 +1831,11 @@ unsubscribe();</code></pre>
                     </div>
                   </details>
 
-                  <details class="event-card" data-service="turn">
+                  <details class="event-card" data-category="turn">
                     <summary>
                       <span class="event-title"
                         ><span class="route">turn:failed</span><span class="native-type">turn:failed</span></span
-                      ><span class="badge service-turn">turn</span>
+                      ><span class="badge category-turn">turn</span>
                     </summary>
                     <div class="event-body">
                       <p>The response cycle terminated with a provider-visible failure.</p>
@@ -1810,12 +1850,12 @@ unsubscribe();</code></pre>
                     </div>
                   </details>
 
-                  <details class="event-card" data-service="reasoning">
+                  <details class="event-card" data-category="reasoning">
                     <summary>
                       <span class="event-title"
                         ><span class="route">reasoning:started</span
                         ><span class="native-type">reasoning:started</span></span
-                      ><span class="badge service-reasoning">reasoning</span>
+                      ><span class="badge category-reasoning">reasoning</span>
                     </summary>
                     <div class="event-body">
                       <p>Protocol-authoritative reasoning presence. It never exposes hidden thought text.</p>
@@ -1829,12 +1869,12 @@ unsubscribe();</code></pre>
                     </div>
                   </details>
 
-                  <details class="event-card" data-service="reasoning">
+                  <details class="event-card" data-category="reasoning">
                     <summary>
                       <span class="event-title"
                         ><span class="route">reasoning:progress</span
                         ><span class="native-type">reasoning:progress</span></span
-                      ><span class="badge service-reasoning">reasoning</span>
+                      ><span class="badge category-reasoning">reasoning</span>
                     </summary>
                     <div class="event-body">
                       <p>A reasoning pulse. Any raw provider payload remains only on the envelope.</p>
@@ -1846,12 +1886,12 @@ unsubscribe();</code></pre>
                     </div>
                   </details>
 
-                  <details class="event-card" data-service="reasoning">
+                  <details class="event-card" data-category="reasoning">
                     <summary>
                       <span class="event-title"
                         ><span class="route">reasoning:summary</span
                         ><span class="native-type">reasoning:summary</span></span
-                      ><span class="badge service-reasoning">reasoning</span>
+                      ><span class="badge category-reasoning">reasoning</span>
                     </summary>
                     <div class="event-body">
                       <p>An explicitly user-displayable reasoning summary accumulated by the adapter.</p>
@@ -1865,12 +1905,12 @@ unsubscribe();</code></pre>
                     </div>
                   </details>
 
-                  <details class="event-card" data-service="reasoning">
+                  <details class="event-card" data-category="reasoning">
                     <summary>
                       <span class="event-title"
                         ><span class="route">reasoning:completed</span
                         ><span class="native-type">reasoning:completed</span></span
-                      ><span class="badge service-reasoning">reasoning</span>
+                      ><span class="badge category-reasoning">reasoning</span>
                     </summary>
                     <div class="event-body">
                       <p>The explicit reasoning phase ended.</p>
@@ -1884,12 +1924,12 @@ unsubscribe();</code></pre>
                     </div>
                   </details>
 
-                  <details class="event-card" data-service="tool">
+                  <details class="event-card" data-category="tool">
                     <summary>
                       <span class="event-title"
                         ><span class="route">tool:requested</span
                         ><span class="native-type">tool:requested</span></span
-                      ><span class="badge service-tool">tool</span>
+                      ><span class="badge category-tool">tool</span>
                     </summary>
                     <div class="event-body">
                       <p>A tool call was proposed or requested but may not yet be executing.</p>
@@ -1906,12 +1946,12 @@ unsubscribe();</code></pre>
                     </div>
                   </details>
 
-                  <details class="event-card" data-service="tool">
+                  <details class="event-card" data-category="tool">
                     <summary>
                       <span class="event-title"
                         ><span class="route">tool:started</span
                         ><span class="native-type">tool:started</span></span
-                      ><span class="badge service-tool">tool</span>
+                      ><span class="badge category-tool">tool</span>
                     </summary>
                     <div class="event-body">
                       <p>A structured or ACP provider confirmed that tool execution began.</p>
@@ -1928,12 +1968,12 @@ unsubscribe();</code></pre>
                     </div>
                   </details>
 
-                  <details class="event-card" data-service="tool">
+                  <details class="event-card" data-category="tool">
                     <summary>
                       <span class="event-title"
                         ><span class="route">tool:completed</span
                         ><span class="native-type">tool:completed</span></span
-                      ><span class="badge service-tool">tool</span>
+                      ><span class="badge category-tool">tool</span>
                     </summary>
                     <div class="event-body">
                       <p>A tool call completed successfully.</p>
@@ -1952,11 +1992,11 @@ unsubscribe();</code></pre>
                     </div>
                   </details>
 
-                  <details class="event-card" data-service="tool">
+                  <details class="event-card" data-category="tool">
                     <summary>
                       <span class="event-title"
                         ><span class="route">tool:failed</span><span class="native-type">tool:failed</span></span
-                      ><span class="badge service-tool">tool</span>
+                      ><span class="badge category-tool">tool</span>
                     </summary>
                     <div class="event-body">
                       <p>A tool call terminated unsuccessfully.</p>
@@ -1974,12 +2014,12 @@ unsubscribe();</code></pre>
                     </div>
                   </details>
 
-                  <details class="event-card" data-service="interaction">
+                  <details class="event-card" data-category="interaction">
                     <summary>
                       <span class="event-title"
                         ><span class="route">interaction:permission-requested</span
                         ><span class="native-type">interaction:permission-requested</span></span
-                      ><span class="badge service-interaction">interaction</span>
+                      ><span class="badge category-interaction">interaction</span>
                     </summary>
                     <div class="event-body">
                       <p>The agent requires user or host authorization for a tool action.</p>
@@ -1997,12 +2037,12 @@ unsubscribe();</code></pre>
                     </div>
                   </details>
 
-                  <details class="event-card" data-service="interaction">
+                  <details class="event-card" data-category="interaction">
                     <summary>
                       <span class="event-title"
                         ><span class="route">interaction:permission-resolved</span
                         ><span class="native-type">interaction:permission-resolved</span></span
-                      ><span class="badge service-interaction">interaction</span>
+                      ><span class="badge category-interaction">interaction</span>
                     </summary>
                     <div class="event-body">
                       <p>A pending permission reached a terminal outcome.</p>
@@ -2017,12 +2057,12 @@ unsubscribe();</code></pre>
                     </div>
                   </details>
 
-                  <details class="event-card" data-service="delegation">
+                  <details class="event-card" data-category="delegation">
                     <summary>
                       <span class="event-title"
                         ><span class="route">delegation:subagent-started</span
                         ><span class="native-type">delegation:subagent-started</span></span
-                      ><span class="badge service-delegation">delegation</span>
+                      ><span class="badge category-delegation">delegation</span>
                     </summary>
                     <div class="event-body">
                       <p>A provider-native child actor started delegated work.</p>
@@ -2037,12 +2077,12 @@ unsubscribe();</code></pre>
                     </div>
                   </details>
 
-                  <details class="event-card" data-service="delegation">
+                  <details class="event-card" data-category="delegation">
                     <summary>
                       <span class="event-title"
                         ><span class="route">delegation:subagent-stopped</span
                         ><span class="native-type">delegation:subagent-stopped</span></span
-                      ><span class="badge service-delegation">delegation</span>
+                      ><span class="badge category-delegation">delegation</span>
                     </summary>
                     <div class="event-body">
                       <p>A provider-native child actor stopped.</p>
@@ -2056,12 +2096,12 @@ unsubscribe();</code></pre>
                     </div>
                   </details>
 
-                  <details class="event-card" data-service="delegation">
+                  <details class="event-card" data-category="delegation">
                     <summary>
                       <span class="event-title"
                         ><span class="route">delegation:task-created</span
                         ><span class="native-type">delegation:task-created</span></span
-                      ><span class="badge service-delegation">delegation</span>
+                      ><span class="badge category-delegation">delegation</span>
                     </summary>
                     <div class="event-body">
                       <p>A provider task entered the active task set.</p>
@@ -2078,12 +2118,12 @@ unsubscribe();</code></pre>
                     </div>
                   </details>
 
-                  <details class="event-card" data-service="delegation">
+                  <details class="event-card" data-category="delegation">
                     <summary>
                       <span class="event-title"
                         ><span class="route">delegation:task-completed</span
                         ><span class="native-type">delegation:task-completed</span></span
-                      ><span class="badge service-delegation">delegation</span>
+                      ><span class="badge category-delegation">delegation</span>
                     </summary>
                     <div class="event-body">
                       <p>A provider task completed and leaves the active task set.</p>
@@ -2099,12 +2139,12 @@ unsubscribe();</code></pre>
                     </div>
                   </details>
 
-                  <details class="event-card" data-service="delegation">
+                  <details class="event-card" data-category="delegation">
                     <summary>
                       <span class="event-title"
                         ><span class="route">delegation:task-updated</span
                         ><span class="native-type">delegation:task-updated</span></span
-                      ><span class="badge service-delegation">delegation</span>
+                      ><span class="badge category-delegation">delegation</span>
                     </summary>
                     <div class="event-body">
                       <p>A provider task reported a lifecycle outside the legacy create/complete pair.</p>
@@ -2126,12 +2166,12 @@ unsubscribe();</code></pre>
                     </div>
                   </details>
 
-                  <details class="event-card" data-service="planning">
+                  <details class="event-card" data-category="planning">
                     <summary>
                       <span class="event-title"
                         ><span class="route">planning:updated</span
                         ><span class="native-type">planning:updated</span></span
-                      ><span class="badge service-planning">planning</span>
+                      ><span class="badge category-planning">planning</span>
                     </summary>
                     <div class="event-body">
                       <p>The provider published or replaced its current plan.</p>
@@ -2150,12 +2190,12 @@ unsubscribe();</code></pre>
                     </div>
                   </details>
 
-                  <details class="event-card" data-service="compaction">
+                  <details class="event-card" data-category="compaction">
                     <summary>
                       <span class="event-title"
                         ><span class="route">compaction:started</span
                         ><span class="native-type">compaction:started</span></span
-                      ><span class="badge service-compaction">compaction</span>
+                      ><span class="badge category-compaction">compaction</span>
                     </summary>
                     <div class="event-body">
                       <p>The provider began compacting or summarizing context history.</p>
@@ -2170,12 +2210,12 @@ unsubscribe();</code></pre>
                     </div>
                   </details>
 
-                  <details class="event-card" data-service="compaction">
+                  <details class="event-card" data-category="compaction">
                     <summary>
                       <span class="event-title"
                         ><span class="route">compaction:completed</span
                         ><span class="native-type">compaction:completed</span></span
-                      ><span class="badge service-compaction">compaction</span>
+                      ><span class="badge category-compaction">compaction</span>
                     </summary>
                     <div class="event-body">
                       <p>The compaction operation ended; omitted outcome means a legacy successful completion.</p>
@@ -2192,12 +2232,12 @@ unsubscribe();</code></pre>
                     </div>
                   </details>
 
-                  <details class="event-card" data-service="delegation">
+                  <details class="event-card" data-category="delegation">
                     <summary>
                       <span class="event-title"
                         ><span class="route">delegation:teammate-idle</span
                         ><span class="native-type">delegation:teammate-idle</span></span
-                      ><span class="badge service-delegation">delegation</span>
+                      ><span class="badge category-delegation">delegation</span>
                     </summary>
                     <div class="event-body">
                       <p>A team member became idle. Membership and activity remain separate claims.</p>
@@ -2212,12 +2252,12 @@ unsubscribe();</code></pre>
                     </div>
                   </details>
 
-                  <details class="event-card" data-service="interaction">
+                  <details class="event-card" data-category="interaction">
                     <summary>
                       <span class="event-title"
                         ><span class="route">interaction:question-requested</span
                         ><span class="native-type">interaction:question-requested</span></span
-                      ><span class="badge service-interaction">interaction</span>
+                      ><span class="badge category-interaction">interaction</span>
                     </summary>
                     <div class="event-body">
                       <p>The provider requires one or more structured user answers.</p>
@@ -2232,12 +2272,12 @@ unsubscribe();</code></pre>
                     </div>
                   </details>
 
-                  <details class="event-card" data-service="interaction">
+                  <details class="event-card" data-category="interaction">
                     <summary>
                       <span class="event-title"
                         ><span class="route">interaction:question-resolved</span
                         ><span class="native-type">interaction:question-resolved</span></span
-                      ><span class="badge service-interaction">interaction</span>
+                      ><span class="badge category-interaction">interaction</span>
                     </summary>
                     <div class="event-body">
                       <p>A structured question request reached a terminal outcome.</p>
@@ -2255,19 +2295,19 @@ unsubscribe();</code></pre>
                 </div>
               </section>
 
-              <section class="service-section" id="service-context-window" data-section-service="context-window">
-                <div class="service-header">
-                  <h3>Context-window service</h3>
-                  <span class="badge service-context-window">2 routes</span>
+              <section class="category-section" id="category-context-window" data-section-category="context-window">
+                <div class="category-header">
+                  <h3>Context-window category</h3>
+                  <span class="badge category-context-window">2 routes</span>
                   <p>Current context pressure is distinct from cumulative token burn.</p>
                 </div>
                 <div class="event-list">
-                  <details class="event-card" data-service="context-window">
+                  <details class="event-card" data-category="context-window">
                     <summary>
                       <span class="event-title"
                         ><span class="route">context-window:updated</span
                         ><span class="native-type">context-window:updated</span></span
-                      ><span class="badge service-context-window">context</span>
+                      ><span class="badge category-context-window">context</span>
                     </summary>
                     <div class="event-body">
                       <p>A trustworthy provider context measurement. The reducer derives an exact ratio when needed.</p>
@@ -2285,12 +2325,12 @@ unsubscribe();</code></pre>
                     </div>
                   </details>
 
-                  <details class="event-card" data-service="context-window">
+                  <details class="event-card" data-category="context-window">
                     <summary>
                       <span class="event-title"
                         ><span class="route">context-window:invalidated</span
                         ><span class="native-type">context-window:invalidated</span></span
-                      ><span class="badge service-context-window">context</span>
+                      ><span class="badge category-context-window">context</span>
                     </summary>
                     <div class="event-body">
                       <p>The prior measurement is no longer trustworthy. Invalidation never means zero usage.</p>
@@ -2305,19 +2345,19 @@ unsubscribe();</code></pre>
                 </div>
               </section>
 
-              <section class="service-section" id="service-conversation" data-section-service="conversation">
-                <div class="service-header">
-                  <h3>Conversation service</h3>
-                  <span class="badge service-conversation">1 route</span>
+              <section class="category-section" id="category-conversation" data-section-category="conversation">
+                <div class="category-header">
+                  <h3>Conversation category</h3>
+                  <span class="badge category-conversation">1 route</span>
                   <p>Accumulated, provider-neutral assistant output.</p>
                 </div>
                 <div class="event-list">
-                  <details class="event-card" data-service="conversation">
+                  <details class="event-card" data-category="conversation">
                     <summary>
                       <span class="event-title"
                         ><span class="route">conversation:assistant-message</span
                         ><span class="native-type">conversation:assistant-message</span></span
-                      ><span class="badge service-conversation">conversation</span>
+                      ><span class="badge category-conversation">conversation</span>
                     </summary>
                     <div class="event-body">
                       <p>
@@ -2341,18 +2381,18 @@ unsubscribe();</code></pre>
                 </div>
               </section>
 
-              <section class="service-section" id="service-usage" data-section-service="usage">
-                <div class="service-header">
-                  <h3>Usage service</h3>
-                  <span class="badge service-usage">1 route</span>
+              <section class="category-section" id="category-usage" data-section-category="usage">
+                <div class="category-header">
+                  <h3>Usage category</h3>
+                  <span class="badge category-usage">1 route</span>
                   <p>Session token burn, separate from context-window pressure and account quotas.</p>
                 </div>
                 <div class="event-list">
-                  <details class="event-card" data-service="usage">
+                  <details class="event-card" data-category="usage">
                     <summary>
                       <span class="event-title"
                         ><span class="route">usage:tokens-used</span><span class="native-type">usage:tokens-used</span></span
-                      ><span class="badge service-usage">usage</span>
+                      ><span class="badge category-usage">usage</span>
                     </summary>
                     <div class="event-body">
                       <p>A response- or sample-bound usage fact with stable identity and canonicality.</p>
@@ -2383,19 +2423,19 @@ unsubscribe();</code></pre>
                 </div>
               </section>
 
-              <section class="service-section" id="service-workflow" data-section-service="workflow">
-                <div class="service-header">
-                  <h3>Workflow service</h3>
-                  <span class="badge service-workflow">1 route</span>
+              <section class="category-section" id="category-workflow" data-section-category="workflow">
+                <div class="category-header">
+                  <h3>Workflow category</h3>
+                  <span class="badge category-workflow">1 route</span>
                   <p>Provider workflow identity, activity, and exact known member state.</p>
                 </div>
                 <div class="event-list">
-                  <details class="event-card" data-service="workflow">
+                  <details class="event-card" data-category="workflow">
                     <summary>
                       <span class="event-title"
                         ><span class="route">workflow:updated</span
                         ><span class="native-type">workflow:updated</span></span
-                      ><span class="badge service-workflow">workflow</span>
+                      ><span class="badge category-workflow">workflow</span>
                     </summary>
                     <div class="event-body">
                       <p>Repeated workflow ids update the same run; omitted members preserve identity-only evidence.</p>
@@ -2418,19 +2458,19 @@ unsubscribe();</code></pre>
                 </div>
               </section>
 
-              <section class="service-section" id="service-environment" data-section-service="environment">
-                <div class="service-header">
-                  <h3>Environment service</h3>
-                  <span class="badge service-environment">1 route</span>
+              <section class="category-section" id="category-environment" data-section-category="environment">
+                <div class="category-header">
+                  <h3>Environment category</h3>
+                  <span class="badge category-environment">1 route</span>
                   <p>Sparse filesystem and Git environment updates.</p>
                 </div>
                 <div class="event-list">
-                  <details class="event-card" data-service="environment">
+                  <details class="event-card" data-category="environment">
                     <summary>
                       <span class="event-title"
                         ><span class="route">environment:updated</span
                         ><span class="native-type">environment:updated</span></span
-                      ><span class="badge service-environment">environment</span>
+                      ><span class="badge category-environment">environment</span>
                     </summary>
                     <div class="event-body">
                       <p>Omitted fields preserve prior values; null explicitly clears nullable facts.</p>
@@ -2448,18 +2488,18 @@ unsubscribe();</code></pre>
                 </div>
               </section>
 
-              <section class="service-section" id="service-model" data-section-service="model">
-                <div class="service-header">
-                  <h3>Model service</h3>
-                  <span class="badge service-model">1 route</span>
+              <section class="category-section" id="category-model" data-section-category="model">
+                <div class="category-header">
+                  <h3>Model category</h3>
+                  <span class="badge category-model">1 route</span>
                   <p>Configured intent and effective model observations stay independent from filesystem state.</p>
                 </div>
                 <div class="event-list">
-                  <details class="event-card" data-service="model">
+                  <details class="event-card" data-category="model">
                     <summary>
                       <span class="event-title"
                         ><span class="route">model:updated</span><span class="native-type">model:updated</span></span
-                      ><span class="badge service-model">model</span>
+                      ><span class="badge category-model">model</span>
                     </summary>
                     <div class="event-body">
                       <p>Null explicitly clears the model; intent distinguishes requested configuration from observation.</p>
@@ -2476,18 +2516,18 @@ unsubscribe();</code></pre>
                 </div>
               </section>
 
-              <section class="service-section" id="service-effort" data-section-service="effort">
-                <div class="service-header">
-                  <h3>Effort service</h3>
-                  <span class="badge service-effort">1 route</span>
+              <section class="category-section" id="category-effort" data-section-category="effort">
+                <div class="category-header">
+                  <h3>Effort category</h3>
+                  <span class="badge category-effort">1 route</span>
                   <p>Configured intent and effective reasoning-effort observations.</p>
                 </div>
                 <div class="event-list">
-                  <details class="event-card" data-service="effort">
+                  <details class="event-card" data-category="effort">
                     <summary>
                       <span class="event-title"
                         ><span class="route">effort:updated</span><span class="native-type">effort:updated</span></span
-                      ><span class="badge service-effort">effort</span>
+                      ><span class="badge category-effort">effort</span>
                     </summary>
                     <div class="event-body">
                       <p>Effort is monitor evidence and does not mutate unrelated Agent state.</p>
@@ -2502,18 +2542,18 @@ unsubscribe();</code></pre>
                 </div>
               </section>
 
-              <section class="service-section" id="service-mode" data-section-service="mode">
-                <div class="service-header">
-                  <h3>Mode service</h3>
-                  <span class="badge service-mode">1 route</span>
+              <section class="category-section" id="category-mode" data-section-category="mode">
+                <div class="category-header">
+                  <h3>Mode category</h3>
+                  <span class="badge category-mode">1 route</span>
                   <p>Provider session and permission modes share a focused category with an explicit discriminator.</p>
                 </div>
                 <div class="event-list">
-                  <details class="event-card" data-service="mode">
+                  <details class="event-card" data-category="mode">
                     <summary>
                       <span class="event-title"
                         ><span class="route">mode:updated</span><span class="native-type">mode:updated</span></span
-                      ><span class="badge service-mode">mode</span>
+                      ><span class="badge category-mode">mode</span>
                     </summary>
                     <div class="event-body">
                       <p>The mode kind prevents session and permission settings from overwriting one another.</p>
@@ -2529,19 +2569,19 @@ unsubscribe();</code></pre>
                 </div>
               </section>
 
-              <section class="service-section" id="service-workspace" data-section-service="workspace">
-                <div class="service-header">
-                  <h3>Workspace service</h3>
-                  <span class="badge service-workspace">1 route</span>
+              <section class="category-section" id="category-workspace" data-section-category="workspace">
+                <div class="category-header">
+                  <h3>Workspace category</h3>
+                  <span class="badge category-workspace">1 route</span>
                   <p>Normalized file-change evidence.</p>
                 </div>
                 <div class="event-list">
-                  <details class="event-card" data-service="workspace">
+                  <details class="event-card" data-category="workspace">
                     <summary>
                       <span class="event-title"
                         ><span class="route">workspace:changed</span
                         ><span class="native-type">workspace:changed</span></span
-                      ><span class="badge service-workspace">workspace</span>
+                      ><span class="badge category-workspace">workspace</span>
                     </summary>
                     <div class="event-body">
                       <p>One or more workspace paths changed; paths may be unavailable on coarse evidence surfaces.</p>
@@ -2557,19 +2597,19 @@ unsubscribe();</code></pre>
                 </div>
               </section>
 
-              <section class="service-section" id="service-process" data-section-service="process">
-                <div class="service-header">
-                  <h3>Process service</h3>
-                  <span class="badge service-process">2 routes</span>
+              <section class="category-section" id="category-process" data-section-category="process">
+                <div class="category-header">
+                  <h3>Process category</h3>
+                  <span class="badge category-process">2 routes</span>
                   <p>Host process facts remain separate from semantic session/turn completion.</p>
                 </div>
                 <div class="event-list">
-                  <details class="event-card" data-service="process">
+                  <details class="event-card" data-category="process">
                     <summary>
                       <span class="event-title"
                         ><span class="route">process:started</span
                         ><span class="native-type">process:started</span></span
-                      ><span class="badge service-process">process</span>
+                      ><span class="badge category-process">process</span>
                     </summary>
                     <div class="event-body">
                       <p>The host observed the provider process start.</p>
@@ -2583,11 +2623,11 @@ unsubscribe();</code></pre>
                     </div>
                   </details>
 
-                  <details class="event-card" data-service="process">
+                  <details class="event-card" data-category="process">
                     <summary>
                       <span class="event-title"
                         ><span class="route">process:exited</span><span class="native-type">process:exited</span></span
-                      ><span class="badge service-process">process</span>
+                      ><span class="badge category-process">process</span>
                     </summary>
                     <div class="event-body">
                       <p>The host process ended with normalized reason and optional platform exit details.</p>
@@ -2605,22 +2645,22 @@ unsubscribe();</code></pre>
                 </div>
               </section>
 
-              <section class="service-section" id="service-notification" data-section-service="notification">
-                <div class="service-header">
-                  <h3>Notification service</h3>
-                  <span class="badge service-notification">1 route</span>
+              <section class="category-section" id="category-notification" data-section-category="notification">
+                <div class="category-header">
+                  <h3>Notification category</h3>
+                  <span class="badge category-notification">1 route</span>
                   <p>Provider-native informational notification.</p>
                 </div>
                 <div class="event-list">
-                  <details class="event-card" data-service="notification">
+                  <details class="event-card" data-category="notification">
                     <summary>
                       <span class="event-title"
                         ><span class="route">notification:received</span
                         ><span class="native-type">notification</span></span
-                      ><span class="badge service-notification">notification</span>
+                      ><span class="badge category-notification">notification</span>
                     </summary>
                     <div class="event-body">
-                      <p>A provider notification that does not belong to a more specific semantic service.</p>
+                      <p>A provider notification that does not belong to a more specific semantic category.</p>
                       <pre><code>interface NativeNotificationEvent {
   type: 'notification';
   message?: string;
@@ -2632,18 +2672,18 @@ unsubscribe();</code></pre>
                 </div>
               </section>
 
-              <section class="service-section" id="service-monitor" data-section-service="monitor">
-                <div class="service-header">
-                  <h3>Monitor service</h3>
-                  <span class="badge service-monitor">1 route</span>
+              <section class="category-section" id="category-monitor" data-section-category="monitor">
+                <div class="category-header">
+                  <h3>Monitor category</h3>
+                  <span class="badge category-monitor">1 route</span>
                   <p>Atomic correction/replacement-aware semantic observations on the same adapter stream.</p>
                 </div>
                 <div class="event-list">
-                  <details class="event-card" data-service="monitor">
+                  <details class="event-card" data-category="monitor">
                     <summary>
                       <span class="event-title"
                         ><span class="route">monitor:batch</span><span class="native-type">monitor:batch</span></span
-                      ><span class="badge service-monitor">monitor</span>
+                      ><span class="badge category-monitor">monitor</span>
                     </summary>
                     <div class="event-body">
                       <p>
@@ -2686,19 +2726,19 @@ interface AdapterMonitorObservationBatch {
                 </div>
               </section>
 
-              <section class="service-section" id="service-adapter" data-section-service="adapter">
-                <div class="service-header">
-                  <h3>Adapter service</h3>
-                  <span class="badge service-adapter">1 route</span>
+              <section class="category-section" id="category-adapter" data-section-category="adapter">
+                <div class="category-header">
+                  <h3>Adapter category</h3>
+                  <span class="badge category-adapter">1 route</span>
                   <p>Forward-compatible native evidence and normalized degradation diagnostics.</p>
                 </div>
                 <div class="event-list">
-                  <details class="event-card" data-service="adapter">
+                  <details class="event-card" data-category="adapter">
                     <summary>
                       <span class="event-title"
                         ><span class="route">adapter:native-event</span
                         ><span class="native-type">adapter:native-event</span></span
-                      ><span class="badge service-adapter">adapter</span>
+                      ><span class="badge category-adapter">adapter</span>
                     </summary>
                     <div class="event-body">
                       <p>
@@ -2734,6 +2774,46 @@ interface AdapterMonitorObservationBatch {
               subsequent change. State snapshots preserve JavaScript <span class="mono">Map</span> ergonomics but own
               defensive copies of reducer collections; mutating a returned snapshot cannot alter the Agent. Conversation
               snapshots follow the same copy-on-read rule, while operational monitor snapshots are deeply frozen.
+            </p>
+
+            <h3>AgentMonitorState</h3>
+            <pre><code>type AgentMonitorStatus = 'idle' | 'working' | 'blocked';
+
+interface AgentMonitorState {
+  runtimeRunId: string;
+  runtimeEpoch: number;
+  revision: number;
+  status: AgentMonitorStatus;
+  statusSince: string;
+  alive: boolean;
+  blockers: MonitorBlocker[];
+  activity?: MonitorActivity;
+  usage: MonitorUsageState;
+  context?: MonitorContextState;
+  model?: MonitorModelState;
+  plan?: MonitorPlanState;
+  tasks: MonitorTaskState[];
+  subagents: MonitorSubagentState[];
+  workflows: MonitorWorkflowState[];
+  compaction: MonitorCompactionState;
+  environment: MonitorEnvironmentState;
+  freshness: MonitorFreshnessState;
+}</code></pre>
+            <div class="callout">
+              <strong>Orthogonal state.</strong> <span class="mono">agent.lifecycle</span> retains detailed session
+              phases, <span class="mono">agent.alive</span> comes from the host process, and
+              <span class="mono">agent.status</span> is only the product-facing three-state operational projection.
+              A running, alive Agent may still be blocked on a permission, question, or failure.
+            </div>
+
+            <h3>Portable monitor views</h3>
+            <p class="section-note">
+              <span class="mono">@vibecook/puppeteer-monitor</span> provides transport-neutral revision ordering,
+              removal tombstones, notifications, and an external store.
+              <span class="mono">@vibecook/puppeteer-react</span> provides
+              <span class="mono">useAgentMonitorStore</span>, <span class="mono">useAgentMonitor</span>, and the
+              generic <span class="mono">AgentMonitorViewDefinition</span>. Product views receive projected data and
+              actions; they never import adapters or infer semantics from terminal text.
             </p>
 
             <h3>SessionRuntimeState</h3>
@@ -3132,20 +3212,21 @@ type MonitorFamilyUpdate =
               Applications do not consume this interface directly. It documents the enforced low-level boundary:
               normalized candidates plus explicit control—no state getter, adapter-owned sequence, or monitor callback.
             </p>
-            <pre><code>interface AgentAdapterSession {
+            <pre><code>interface AgentAdapterBinding {
   readonly sessionId: string;
   readonly runtimeSessionId: string;
   observationLevel(): ObservationLevel;
-  onEventCandidate?(
-    listener: (candidate: AdapterEventCandidate) =&gt; void,
-  ): () =&gt; void;
-  /** @deprecated Applications consume runtime Agent envelopes. */
-  onEvent(listener: (envelope: AgentEventEnvelope) =&gt; void): () =&gt; void;
-  readMonitorArtifact?(
-    artifactId: string,
-    options: { maxBytes: number },
-  ): Promise&lt;MonitorArtifactReadResult&gt;;
-  submitPrompt(submission: PromptSubmission): Promise&lt;PromptReceipt&gt;;
+  readonly events: {
+    onCandidate(listener: (candidate: AdapterEventCandidate) =&gt; void): () =&gt; void;
+  };
+  readonly services: {
+    prompt: {
+      submit(submission: PromptSubmission): Promise&lt;PromptReceipt&gt;;
+    };
+    artifacts?: {
+      read(artifactId: string, options: { maxBytes: number }): Promise&lt;MonitorArtifactReadResult&gt;;
+    };
+  };
   dispose(): Promise&lt;void&gt;;
 }</code></pre>
           </section>
@@ -3206,7 +3287,8 @@ type MonitorFamilyUpdate =
         Generated from the canonical contracts in <span class="mono">packages/core/src/events/</span>,
         <span class="mono">packages/core/src/adapter/event-candidate.ts</span>,
         <span class="mono">packages/runtime/src/agent.ts</span>,
-        <span class="mono">packages/runtime/src/services/</span>, and the monitor SPI. Reference date: 2026-08-25.
+        <span class="mono">packages/runtime/src/services/</span>, <span class="mono">packages/monitor</span>,
+        <span class="mono">packages/react</span>, and the monitor SPI. Reference date: 2026-08-26.
       </footer>
     </div>
 
@@ -3253,7 +3335,7 @@ type MonitorFamilyUpdate =
         });
 
         const cards = [...document.querySelectorAll('.event-card')];
-        const sections = [...document.querySelectorAll('.service-section')];
+        const sections = [...document.querySelectorAll('.category-section')];
         const search = document.getElementById('event-search');
         const count = document.getElementById('event-count');
         const noResults = document.getElementById('no-results');
@@ -3271,21 +3353,21 @@ type MonitorFamilyUpdate =
           'compaction',
         ];
 
-        const filterGroup = (service) => {
+        const filterGroup = (category) => {
           if (selectedFilter === 'all') return true;
-          if (selectedFilter === 'behavior') return behaviorCategories.includes(service);
+          if (selectedFilter === 'behavior') return behaviorCategories.includes(category);
           if (selectedFilter === 'other') {
-            return ![...behaviorCategories, 'context-window', 'conversation', 'monitor'].includes(service);
+            return ![...behaviorCategories, 'context-window', 'conversation', 'monitor'].includes(category);
           }
-          return service === selectedFilter;
+          return category === selectedFilter;
         };
 
         const applyFilters = () => {
           const query = search.value.trim().toLowerCase();
           let visible = 0;
           cards.forEach((card) => {
-            const service = card.dataset.service;
-            const matches = filterGroup(service) && (!query || card.textContent.toLowerCase().includes(query));
+            const category = card.dataset.category;
+            const matches = filterGroup(category) && (!query || card.textContent.toLowerCase().includes(query));
             card.hidden = !matches;
             if (matches) visible += 1;
           });

@@ -5,9 +5,9 @@
  * class of data with no other emitter. Injection receipts, workspace finals,
  * exit classifications, and policy conflicts exist nowhere in an agent's
  * transcript (the agent never knew about them), so per the emitter-writes-a-
- * file rule puppeteer writes them down; Spaghetti can index the file later
- * if search is ever wanted. This is NOT a mirror of agent history and never
- * grows into one.
+ * file rule Puppeteer writes them down; an external history service can index
+ * the file later if search is ever wanted. This is NOT a mirror of agent
+ * history and never grows into one.
  */
 
 import type { OwnActionV2 } from './actions-v2.js';

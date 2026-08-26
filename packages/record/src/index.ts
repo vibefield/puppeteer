@@ -1,8 +1,8 @@
 /**
  * @vibecook/puppeteer-record — the own-action record (DESIGN §22.1):
  * an append-only JSONL log of what the runtime itself did. Not a mirror of
- * agent history; Spaghetti indexes agent files, this holds only puppeteer'
- * own actions.
+ * agent history; external history indexers can consume agent files, while
+ * this package holds only Puppeteer's own actions.
  */
 
 export * from './actions.js';

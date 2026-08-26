@@ -45,8 +45,10 @@ update the support ledger and these badges.
 
 ## Packages
 
-- `@vibecook/puppeteer-runtime` — unified runtime and built-in Claude, Codex,
-  ACP, Grok, Kimi, OpenCode, and Hermes integrations.
+- `@vibecook/puppeteer-runtime` — provider-neutral Agent lifecycle, ingress,
+  projections, and private per-Agent event bus.
+- `@vibecook/puppeteer-builtin-providers` — optional composition root for the
+  official Claude, Codex, ACP, Grok, Kimi, OpenCode, and Hermes adapters.
 - `@vibecook/puppeteer-core` — zero-I/O event, state, session, and host
   contracts.
 - `@vibecook/puppeteer-workspaces` — direct, exclusive, worktree, and copy
@@ -60,6 +62,8 @@ update the support ledger and these badges.
   scenario engine.
 - `@vibecook/puppeteer-testing` — vendor-neutral fake agent and adapter
   conformance helpers.
+- `@vibecook/puppeteer-monitor` — transport-neutral monitor external store.
+- `@vibecook/puppeteer-react` — React monitor hooks and portable view contract.
 
 The private Electron applications are development tools, not part of the
 published package graph. Consumers supply an `AgentHost` backed by their own
@@ -68,7 +72,7 @@ terminal service.
 ## Install
 
 ```sh
-pnpm add @vibecook/puppeteer-runtime@0.1.8
+pnpm add @vibecook/puppeteer-runtime@0.1.8 @vibecook/puppeteer-builtin-providers@0.1.8
 ```
 
 Node.js 22.18 or newer is required.
@@ -80,6 +84,9 @@ State, context-window, conversation, usage, environment, workspace, process,
 notification, monitor, and adapter events share that agent's typed event bus:
 
 ```ts
+import { createBuiltinAgentRuntime } from '@vibecook/puppeteer-builtin-providers';
+
+const runtime = createBuiltinAgentRuntime({ host, defaultCwd: process.cwd() });
 const onApproval = async () => 'denied' as const;
 
 const claude = await runtime.spawn({
@@ -92,7 +99,7 @@ const claude = await runtime.spawn({
 });
 if ('error' in claude) throw new Error(claude.error.message);
 
-claude.on('state:*', ({ type }) => console.log(type));
+claude.on('turn:*', ({ type }) => console.log(type));
 claude.on('context-window:updated', ({ event }) => {
   console.log(`${event.usedTokens}/${event.capacityTokens}`);
 });
@@ -122,7 +129,7 @@ const grok = await runtime.spawn({
 if ('error' in grok) throw new Error(grok.error.message);
 ```
 
-Public envelope routes are namespaced (`state:turn-started`,
+Public envelope routes are namespaced (`turn:started`,
 `context-window:updated`, `conversation:assistant-message`, `monitor:batch`,
 and so on). The nested `event` is the normalized provider-neutral payload.
 Adapters expose only this normalized stream and control operations; reducers
@@ -155,7 +162,7 @@ const adopted = await runtime.adoptPrepared(prepared.preparationId, {
 if ('error' in adopted) throw new Error(adopted.error.message);
 
 const agent = runtime.agent(adopted.terminalSessionId)!;
-agent.on('state:*', ({ type }) => console.log(type));
+agent.on('session:*', ({ type }) => console.log(type));
 
 // The shim now chdirs, merges the env delta, and execs command + args exactly.
 await shim.exec(prepared.launch);

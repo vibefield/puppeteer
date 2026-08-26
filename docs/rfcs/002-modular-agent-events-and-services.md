@@ -53,7 +53,7 @@ interface AgentEventContract<Type extends `${string}:${string}`> {
 
 interface AgentEventEnvelope<Event extends AgentEvent> {
   readonly type: Event['type'];
-  readonly service: AgentEventServiceOf<Event>;
+  readonly category: AgentEventCategoryOf<Event>;
   readonly event: Event;
   // runtime identity, ordering, actor attribution, evidence, and correlation
 }
@@ -105,11 +105,17 @@ packages/core/src/
     index.ts
   adapter/
     event-candidate.ts
+  services/
+    event-source.ts
+    prompt.ts
+    artifacts.ts
 
-packages/runtime/src/services/
-  state-service.ts
-  conversation-service.ts
-  monitor-service.ts
+packages/runtime/src/
+  event-bus.ts
+  services/
+    state-service.ts
+    conversation-service.ts
+    monitor-service.ts
 ```
 
 There is no `events/state/` umbrella. Session lifecycle, turns, reasoning, tools, interactions, delegation, planning, and compaction are peer domains. Environment contains only cwd and Git facts; model, effort, and provider mode have independent events so unrelated evidence does not overwrite one another.
@@ -150,6 +156,8 @@ src/
 ```
 
 Only supported categories and capabilities need files. An adapter may delegate a capability instead of copying normalization logic. One native record may produce several candidates; the pipeline owns shared correlation and composes focused category normalizers.
+
+Every adapter returns one `AgentAdapterBinding`. Its `events.onCandidate(...)` source is the only normalized observation rail, while `services.prompt` and optional capabilities such as `services.artifacts` are named command ports. Adapters never publish a stamped `AgentEventEnvelope`; the private per-Agent bus lives in Runtime.
 
 Observation-source code may be organized by native transport when that is the clearest boundary, but normalized event construction still lives in the category module. Artifact readers must be incremental and bounded, and independent evidence rails must fail independently.
 
