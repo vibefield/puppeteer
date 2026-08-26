@@ -1,6 +1,7 @@
 import { existsSync, readdirSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { describe, expect, it } from 'vitest';
+import { loadModel } from '@vibecook/puppeteer-surface';
 import { resolveAgentModel } from '../../../../scripts/agent-model-selection.mjs';
 
 interface CapturedHookRecord {
@@ -12,6 +13,7 @@ interface CapturedHookRecord {
 }
 
 const selected = resolveAgentModel({ vendor: 'claude' });
+const surfaceModel = loadModel(selected.modelRoot);
 const captureRoot = selected.capturesRoot;
 const captureModes = readdirSync(captureRoot, { withFileTypes: true })
   .filter((entry) => entry.isDirectory())
@@ -19,8 +21,9 @@ const captureModes = readdirSync(captureRoot, { withFileTypes: true })
   .sort();
 
 function modelConfidence(event: string): string {
-  const path = join(selected.modelRoot, 'events', `${event}.json`);
-  return (JSON.parse(readFileSync(path, 'utf8')) as { confidence: string }).confidence;
+  const descriptor = surfaceModel.events.find((candidate) => candidate.event === event);
+  if (!descriptor) throw new Error(`canonical ground truth has no ${event} event`);
+  return descriptor.confidence;
 }
 
 function expectCapturedOrUnverified(event: string): CapturedHookRecord[] {
@@ -57,7 +60,7 @@ function loadHookFixtures(event?: string): CapturedHookRecord[] {
 
 describe('captured hook fixtures', () => {
   it('keeps the digest-pinned child status channel and its full task snapshot in the active model', () => {
-    const channels = JSON.parse(readFileSync(join(selected.modelRoot, 'channels.json'), 'utf8')) as {
+    const channels = surfaceModel.channels as {
       channels: Record<
         string,
         {

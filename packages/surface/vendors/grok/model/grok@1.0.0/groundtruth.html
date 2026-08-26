@@ -1,0 +1,441 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8" /><meta name="viewport" content="width=device-width,initial-scale=1" /><meta name="generator" content="@vibecook/puppeteer-surface groundtruth" /><title>grok@1.0.0 ground truth</title><style>
+:root{color-scheme:light;--bg:#f4f2ec;--paper:#fff;--paper2:#f7f6f2;--ink:#25272b;--muted:#6c7077;--line:#ddd9cf;--accent:#9f4c28;--teal:#176b61;--blue:#355b8c;--amber:#8a6418;--red:#a13f45;--shadow:0 12px 36px rgba(30,32,36,.07)}
+:root[data-theme=dark]{color-scheme:dark;--bg:#141619;--paper:#1d2024;--paper2:#25292e;--ink:#e8e6e0;--muted:#a1a6ad;--line:#383c42;--accent:#da815a;--teal:#63b7a9;--blue:#83a8da;--amber:#d2ad58;--red:#df858a;--shadow:0 14px 40px rgba(0,0,0,.25)}
+@media(prefers-color-scheme:dark){:root:not([data-theme=light]){color-scheme:dark;--bg:#141619;--paper:#1d2024;--paper2:#25292e;--ink:#e8e6e0;--muted:#a1a6ad;--line:#383c42;--accent:#da815a;--teal:#63b7a9;--blue:#83a8da;--amber:#d2ad58;--red:#df858a;--shadow:0 14px 40px rgba(0,0,0,.25)}}
+*{box-sizing:border-box}html{scroll-behavior:smooth;scroll-padding-top:1rem}body{margin:0;background:var(--bg);color:var(--ink);font:15px/1.55 Inter,ui-sans-serif,system-ui,-apple-system,sans-serif}code,pre,input,select{font-family:"SFMono-Regular",Consolas,monospace}a{color:var(--teal);text-decoration:none}a:hover{text-decoration:underline}.shell{width:min(1420px,100%);margin:auto;padding:2.5rem 1.5rem 6rem}.hero,.panel{background:var(--paper);border:1px solid var(--line);border-radius:14px;box-shadow:var(--shadow)}.hero{padding:2rem;margin-bottom:1.25rem}.hero-row,.section-heading{display:flex;justify-content:space-between;align-items:flex-start;gap:1rem}.eyebrow{text-transform:uppercase;letter-spacing:.14em;font:700 11px/1.3 "SFMono-Regular",monospace;color:var(--accent)}h1,h2{margin:.28rem 0 0;line-height:1.12}h1{font-size:clamp(2rem,5vw,4.2rem);letter-spacing:-.04em}h2{font-size:1.45rem}.version{color:var(--muted);font-weight:450}.theme{border:1px solid var(--line);background:var(--paper2);color:var(--ink);border-radius:999px;padding:.45rem .75rem;cursor:pointer}.lede{max-width:75ch;color:var(--muted)}.stats{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:.7rem;margin-top:1.5rem}.stat{padding:.85rem;background:var(--paper2);border:1px solid var(--line);border-radius:9px}.stat strong{display:block;font-size:1.35rem}.stat span,.count{color:var(--muted);font-size:.82rem}.nav{display:flex;gap:.5rem;flex-wrap:wrap;margin-top:1.2rem}.nav a{border:1px solid var(--line);border-radius:999px;padding:.35rem .7rem;background:var(--paper2)}.panel{padding:1.5rem;margin:1.25rem 0}.table-wrap{overflow:auto}table{width:100%;border-collapse:collapse}th,td{text-align:left;padding:.6rem .7rem;border-bottom:1px solid var(--line);vertical-align:top}th{color:var(--muted);font-size:.72rem;text-transform:uppercase;letter-spacing:.08em}td pre{margin:0;white-space:pre-wrap;font-size:.76rem}.channel-kind,.relation-kind,.direction,.confidence{display:inline-flex;padding:.12rem .42rem;border-radius:5px;background:var(--paper2);border:1px solid var(--line);font-size:.75rem}.verified-headless{color:var(--teal)}.verified-interactive{color:var(--blue)}.unverified{color:var(--amber)}.lanes{display:grid;gap:.7rem;margin-top:1rem}.lane{display:grid;grid-template-columns:180px 1fr;border:1px solid var(--line);border-radius:9px;overflow:hidden}.lane>header{padding:.7rem;background:var(--paper2);display:flex;flex-direction:column}.lane>header span{color:var(--muted);font-size:.78rem}.lane-track{display:flex;align-items:center;gap:.4rem;padding:.7rem;overflow:auto}.behavior-node{display:flex;flex-direction:column;min-width:145px;padding:.55rem .65rem;border:1px solid var(--line);border-left:3px solid currentColor;border-radius:7px;background:var(--paper)}.behavior-node small{color:var(--muted)}.behavior-node code{font-size:.66rem}.flow-arrow{color:var(--muted)}details>summary{cursor:pointer}.relation-table{margin-top:1rem}.toolbar{display:flex;align-items:end;gap:.65rem;flex-wrap:wrap;margin:1rem 0}.toolbar label{display:flex;flex-direction:column;gap:.2rem}.toolbar label span{color:var(--muted);font-size:.75rem}.toolbar input,.toolbar select,.toolbar button{min-height:38px;border:1px solid var(--line);border-radius:7px;background:var(--paper2);color:var(--ink);padding:.4rem .6rem}.toolbar input{width:min(330px,70vw)}.toolbar button{cursor:pointer}.event-list{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:.6rem}.event-card{border:1px solid var(--line);border-radius:9px;background:var(--paper2);scroll-margin-top:1rem}.event-card[hidden]{display:none}.event-card>details>summary{display:flex;justify-content:space-between;align-items:center;gap:.7rem;padding:.75rem}.event-name{font:600 .86rem "SFMono-Regular",monospace;overflow-wrap:anywhere}.event-meta{display:flex;gap:.35rem}.event-body{padding:.1rem .8rem .8rem;border-top:1px solid var(--line)}dl{margin:.7rem 0}dl>div{display:grid;grid-template-columns:90px 1fr;gap:.5rem}dt{color:var(--muted)}dd{margin:0}.evidence-refs{display:flex;gap:.3rem;flex-wrap:wrap;margin:.65rem 0}.evidence-ref{font:500 .7rem "SFMono-Regular",monospace;border:1px solid var(--line);border-radius:999px;padding:.15rem .4rem}.schema,.variants{margin:.55rem 0}.schema pre{max-height:520px;overflow:auto;padding:.75rem;border:1px solid var(--line);border-radius:7px;background:var(--paper);font-size:.73rem}.variant{padding:.45rem 0;border-bottom:1px solid var(--line)}.claim-list{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:.6rem;margin-top:.7rem}.claim-card{border:1px solid var(--line);border-radius:8px;padding:.7rem;scroll-margin-top:1rem}.claim-card header{display:flex;gap:.5rem;align-items:center;flex-wrap:wrap}.claim-card header>span:nth-child(2){color:var(--muted)}.claim-card p{color:var(--muted)}.empty{text-align:center;color:var(--muted);padding:2rem}.source{margin-top:1rem;color:var(--muted);font-size:.82rem;overflow-wrap:anywhere}
+@media(max-width:800px){.stats{grid-template-columns:repeat(2,1fr)}.event-list,.claim-list{grid-template-columns:1fr}.lane{grid-template-columns:1fr}.hero-row,.section-heading{align-items:stretch}.event-card>details>summary{align-items:flex-start;flex-direction:column}.event-meta{flex-wrap:wrap}}
+</style></head><body><main class="shell"><header class="hero"><div class="hero-row"><div><span class="eyebrow">Agent surface ground truth</span><h1>grok <span class="version">1.0.0</span></h1><p class="lede">One canonical, evidence-backed description of the agent's native transports, events, payload contracts, and behavior topology.</p></div><button class="theme" type="button">Toggle theme</button></div><div class="stats"><div class="stat"><strong>16</strong><span>events</span></div><div class="stat"><strong>6</strong><span>channels</span></div><div class="stat"><strong>34</strong><span>behavior nodes</span></div><div class="stat"><strong>41</strong><span>relations</span></div><div class="stat"><strong>2</strong><span>evidence claims</span></div></div><nav class="nav"><a href="#channels">Channels</a><a href="#behavior">Behavior</a><a href="#events">Events</a><a href="#evidence">Evidence</a></nav><p class="source"><code>puppeteer-groundtruth/1</code> · ASM v2 · generated 2026-08-08 · Controlled census of the installed darwin-arm64 Grok 1.0.0 artifact. The public xai-org/grok-build mirror is supplemental because it does not contain the binary-reported revision; see findings.md.</p></header><section id="channels" class="panel"><div class="section-heading"><div><span class="eyebrow">Transport map</span><h2>Channels</h2></div><span class="count">6</span></div><div class="table-wrap"><table><thead><tr><th>Name</th><th>Kind</th><th>Contract</th></tr></thead><tbody><tr><td><code>argv</code></td><td><span class="channel-kind">argv-env</span></td><td><pre>{
+  &quot;notes&quot;: &quot;The native composition is one long-lived leader plus a leader-attached ACP controller and TUI.&quot;
+}</pre></td></tr><tr><td><code>acp</code></td><td><span class="channel-kind">acp</span></td><td><pre>{
+  &quot;notes&quot;: &quot;Strict JSON-RPC 2.0 NDJSON over stdio. Standard session/update and xAI extension methods are separate observable rails.&quot;
+}</pre></td></tr><tr><td><code>session-log</code></td><td><span class="channel-kind">native-log</span></td><td><pre>{
+  &quot;notes&quot;: &quot;Append-only GROK_HOME/sessions/&lt;encoded-cwd&gt;/&lt;session-id&gt;/updates.jsonl records with timestamp, method, and params.&quot;
+}</pre></td></tr><tr><td><code>session-state</code></td><td><span class="channel-kind">native-state</span></td><td><pre>{
+  &quot;notes&quot;: &quot;Replace-in-place signals.json and summary.json beside updates.jsonl.&quot;
+}</pre></td></tr><tr><td><code>leader</code></td><td><span class="channel-kind">unix-socket</span></td><td><pre>{
+  &quot;notes&quot;: &quot;Coordination socket owned by grok agent leader; it is topology, not a normalized semantic event source.&quot;
+}</pre></td></tr><tr><td><code>terminal</code></td><td><span class="channel-kind">terminal</span></td><td><pre>{
+  &quot;notes&quot;: &quot;Native leader-attached TUI. Semantics are derived from ACP and persisted files, never terminal text.&quot;
+}</pre></td></tr></tbody></table></div></section><section id="behavior" class="panel"><div class="section-heading"><div><span class="eyebrow">Native topology</span><h2>Grok 1.0.0 native ACP and durable-session lifecycle</h2></div><span class="count">34 nodes · 41 relations</span></div><p class="lede">A partial order over Grok&#39;s real rails. Shared methods are distinguished by update.sessionUpdate and nested native fields such as event_name; live ACP, append-only updates, state files, and leader topology are not collapsed into normalized agent states.</p><div class="lanes"><section class="lane"><header><strong>ACP session</strong><code>session</code></header><div class="lane-track"><a class="behavior-node confidence-verified-headless" href="#event-initialize" title="initialize"><span>initialize</span><small>initialize</small></a><span class="flow-arrow">→</span><a class="behavior-node confidence-verified-headless" href="#event-session-new" title="session/new"><span>session/new</span><small>session/new</small></a><span class="flow-arrow">→</span><a class="behavior-node confidence-unverified" href="#event-session-load" title="session/load"><span>session/load</span><small>session/load</small></a><span class="flow-arrow">→</span><a class="behavior-node confidence-verified-headless" href="#event-session-update" title="session/update"><span>session/update</span><small>session/update</small><code>{&quot;update.sessionUpdate&quot;:&quot;available_commands_update&quot;}</code></a><span class="flow-arrow">→</span><a class="behavior-node confidence-verified-headless" href="#event-_x-ai-session_notification" title="_x.ai/session_notification"><span>hook_execution · session_start</span><small>_x.ai/session_notification</small><code>{&quot;update.sessionUpdate&quot;:&quot;hook_execution&quot;,&quot;update.event_name&quot;:&quot;session_start&quot;}</code></a></div></section><section class="lane"><header><strong>Turn stream</strong><code>turn</code></header><div class="lane-track"><a class="behavior-node confidence-verified-headless" href="#event-session-prompt" title="session/prompt"><span>session/prompt</span><small>session/prompt</small></a><span class="flow-arrow">→</span><a class="behavior-node confidence-verified-headless" href="#event-session-update" title="session/update"><span>session/update</span><small>session/update</small><code>{&quot;update.sessionUpdate&quot;:&quot;user_message_chunk&quot;}</code></a><span class="flow-arrow">→</span><a class="behavior-node confidence-verified-headless" href="#event-_x-ai-session_notification" title="_x.ai/session_notification"><span>hook_execution · user_prompt_submit</span><small>_x.ai/session_notification</small><code>{&quot;update.sessionUpdate&quot;:&quot;hook_execution&quot;,&quot;update.event_name&quot;:&quot;user_prompt_submit&quot;}</code></a><span class="flow-arrow">→</span><a class="behavior-node confidence-verified-headless" href="#event-session-update" title="session/update"><span>session/update</span><small>session/update</small><code>{&quot;update.sessionUpdate&quot;:&quot;agent_thought_chunk&quot;}</code></a><span class="flow-arrow">→</span><a class="behavior-node confidence-verified-headless" href="#event-session-update" title="session/update"><span>session/update</span><small>session/update</small><code>{&quot;update.sessionUpdate&quot;:&quot;agent_message_chunk&quot;}</code></a><span class="flow-arrow">→</span><a class="behavior-node confidence-verified-headless" href="#event-_x-ai-session_notification" title="_x.ai/session_notification"><span>_x.ai/session_notification</span><small>_x.ai/session_notification</small><code>{&quot;update.sessionUpdate&quot;:&quot;response_completed&quot;}</code></a><span class="flow-arrow">→</span><a class="behavior-node confidence-verified-headless" href="#event-_x-ai-session_notification" title="_x.ai/session_notification"><span>hook_execution · stop</span><small>_x.ai/session_notification</small><code>{&quot;update.sessionUpdate&quot;:&quot;hook_execution&quot;,&quot;update.event_name&quot;:&quot;stop&quot;}</code></a><span class="flow-arrow">→</span><a class="behavior-node confidence-verified-headless" href="#event-_x-ai-session_notification" title="_x.ai/session_notification"><span>_x.ai/session_notification</span><small>_x.ai/session_notification</small><code>{&quot;update.sessionUpdate&quot;:&quot;turn_completed&quot;}</code></a></div></section><section class="lane"><header><strong>Tools and permission</strong><code>tool</code></header><div class="lane-track"><a class="behavior-node confidence-unverified" href="#event-session-update" title="session/update"><span>session/update</span><small>session/update</small><code>{&quot;update.sessionUpdate&quot;:&quot;tool_call&quot;}</code></a><span class="flow-arrow">→</span><a class="behavior-node confidence-unverified" href="#event-session-request_permission" title="session/request_permission"><span>session/request_permission</span><small>session/request_permission</small></a><span class="flow-arrow">→</span><a class="behavior-node confidence-unverified" href="#event-session-update" title="session/update"><span>session/update</span><small>session/update</small><code>{&quot;update.sessionUpdate&quot;:&quot;tool_call_update&quot;}</code></a></div></section><section class="lane"><header><strong>Subagents / workflow</strong><code>team</code></header><div class="lane-track"><a class="behavior-node confidence-unverified" href="#event-_x-ai-session_notification" title="_x.ai/session_notification"><span>_x.ai/session_notification</span><small>_x.ai/session_notification</small><code>{&quot;update.sessionUpdate&quot;:&quot;subagent_spawned&quot;}</code></a><span class="flow-arrow">→</span><a class="behavior-node confidence-unverified" href="#event-_x-ai-session_notification" title="_x.ai/session_notification"><span>_x.ai/session_notification</span><small>_x.ai/session_notification</small><code>{&quot;update.sessionUpdate&quot;:&quot;subagent_progress&quot;}</code></a><span class="flow-arrow">→</span><a class="behavior-node confidence-unverified" href="#event-_x-ai-session_notification" title="_x.ai/session_notification"><span>_x.ai/session_notification</span><small>_x.ai/session_notification</small><code>{&quot;update.sessionUpdate&quot;:&quot;workflow_updated&quot;}</code></a><span class="flow-arrow">→</span><a class="behavior-node confidence-unverified" href="#event-_x-ai-session_notification" title="_x.ai/session_notification"><span>_x.ai/session_notification</span><small>_x.ai/session_notification</small><code>{&quot;update.sessionUpdate&quot;:&quot;goal_updated&quot;}</code></a><span class="flow-arrow">→</span><a class="behavior-node confidence-unverified" href="#event-_x-ai-session_notification" title="_x.ai/session_notification"><span>_x.ai/session_notification</span><small>_x.ai/session_notification</small><code>{&quot;update.sessionUpdate&quot;:&quot;subagent_finished&quot;}</code></a></div></section><section class="lane"><header><strong>Compaction</strong><code>compact</code></header><div class="lane-track"><a class="behavior-node confidence-unverified" href="#event-_x-ai-session_notification" title="_x.ai/session_notification"><span>_x.ai/session_notification</span><small>_x.ai/session_notification</small><code>{&quot;update.sessionUpdate&quot;:&quot;auto_compact_started&quot;}</code></a><span class="flow-arrow">→</span><a class="behavior-node confidence-unverified" href="#event-_x-ai-session-update" title="_x.ai/session/update"><span>_x.ai/session/update</span><small>_x.ai/session/update</small><code>{&quot;update.sessionUpdate&quot;:&quot;compaction_checkpoint&quot;}</code></a><span class="flow-arrow">→</span><a class="behavior-node confidence-unverified" href="#event-_x-ai-session_notification" title="_x.ai/session_notification"><span>_x.ai/session_notification</span><small>_x.ai/session_notification</small><code>{&quot;update.sessionUpdate&quot;:&quot;auto_compact_completed&quot;}</code></a><span class="flow-arrow">→</span><a class="behavior-node confidence-unverified" href="#event-_x-ai-session_notification" title="_x.ai/session_notification"><span>_x.ai/session_notification</span><small>_x.ai/session_notification</small><code>{&quot;update.sessionUpdate&quot;:&quot;auto_compact_failed&quot;}</code></a><span class="flow-arrow">→</span><a class="behavior-node confidence-unverified" href="#event-_x-ai-session_notification" title="_x.ai/session_notification"><span>_x.ai/session_notification</span><small>_x.ai/session_notification</small><code>{&quot;update.sessionUpdate&quot;:&quot;auto_compact_cancelled&quot;}</code></a></div></section><section class="lane"><header><strong>Persisted truth</strong><code>durable</code></header><div class="lane-track"><a class="behavior-node confidence-verified-headless" href="#event-_x-ai-session-update" title="_x.ai/session/update"><span>_x.ai/session/update</span><small>_x.ai/session/update</small></a><span class="flow-arrow">→</span><a class="behavior-node confidence-verified-headless" href="#event-signals-json" title="signals.json"><span>signals.json</span><small>signals.json</small></a><span class="flow-arrow">→</span><a class="behavior-node confidence-verified-headless" href="#event-summary-json" title="summary.json"><span>summary.json</span><small>summary.json</small></a></div></section><section class="lane"><header><strong>Ambient extensions</strong><code>ambient</code></header><div class="lane-track"><a class="behavior-node confidence-verified-headless" href="#event-_x-ai-models-update" title="_x.ai/models/update"><span>_x.ai/models/update</span><small>_x.ai/models/update</small></a><span class="flow-arrow">→</span><a class="behavior-node confidence-verified-headless" href="#event-_x-ai-settings-update" title="_x.ai/settings/update"><span>_x.ai/settings/update</span><small>_x.ai/settings/update</small></a><span class="flow-arrow">→</span><a class="behavior-node confidence-verified-headless" href="#event-_x-ai-announcements-update" title="_x.ai/announcements/update"><span>_x.ai/announcements/update</span><small>_x.ai/announcements/update</small></a><span class="flow-arrow">→</span><a class="behavior-node confidence-verified-headless" href="#event-_x-ai-mcp-servers_updated" title="_x.ai/mcp/servers_updated"><span>_x.ai/mcp/servers_updated</span><small>_x.ai/mcp/servers_updated</small></a><span class="flow-arrow">→</span><a class="behavior-node confidence-verified-headless" href="#event-_x-ai-mcp-init_progress" title="_x.ai/mcp/init_progress"><span>_x.ai/mcp/init_progress</span><small>_x.ai/mcp/init_progress</small></a></div></section></div><details class="relation-table"><summary>Relation ledger</summary><div class="table-wrap"><table><thead><tr><th>From</th><th>Kind</th><th>To</th><th>Label</th><th>Confidence</th></tr></thead><tbody><tr><td><code>initialize</code></td><td><span class="relation-kind">async</span></td><td><code>models</code></td><td></td><td><span class="confidence verified-headless">verified-headless</span></td></tr><tr><td><code>initialize</code></td><td><span class="relation-kind">async</span></td><td><code>settings</code></td><td></td><td><span class="confidence verified-headless">verified-headless</span></td></tr><tr><td><code>initialize</code></td><td><span class="relation-kind">async</span></td><td><code>announcements</code></td><td></td><td><span class="confidence verified-headless">verified-headless</span></td></tr><tr><td><code>initialize</code></td><td><span class="relation-kind">async</span></td><td><code>mcp-servers</code></td><td></td><td><span class="confidence verified-headless">verified-headless</span></td></tr><tr><td><code>mcp-servers</code></td><td><span class="relation-kind">async</span></td><td><code>mcp-progress</code></td><td></td><td><span class="confidence verified-headless">verified-headless</span></td></tr><tr><td><code>initialize</code></td><td><span class="relation-kind">sequence</span></td><td><code>session-new</code></td><td></td><td><span class="confidence verified-headless">verified-headless</span></td></tr><tr><td><code>initialize</code></td><td><span class="relation-kind">resume</span></td><td><code>session-load</code></td><td></td><td><span class="confidence unverified">unverified</span></td></tr><tr><td><code>session-new</code></td><td><span class="relation-kind">sequence</span></td><td><code>available-commands</code></td><td></td><td><span class="confidence verified-headless">verified-headless</span></td></tr><tr><td><code>available-commands</code></td><td><span class="relation-kind">sequence</span></td><td><code>session-start-hook</code></td><td></td><td><span class="confidence verified-headless">verified-headless</span></td></tr><tr><td><code>session-start-hook</code></td><td><span class="relation-kind">concurrent</span></td><td><code>persisted-update</code></td><td></td><td><span class="confidence verified-headless">verified-headless</span></td></tr><tr><td><code>session-start-hook</code></td><td><span class="relation-kind">sequence</span></td><td><code>prompt</code></td><td></td><td><span class="confidence verified-headless">verified-headless</span></td></tr><tr><td><code>prompt</code></td><td><span class="relation-kind">sequence</span></td><td><code>user-message</code></td><td></td><td><span class="confidence verified-headless">verified-headless</span></td></tr><tr><td><code>prompt</code></td><td><span class="relation-kind">sequence</span></td><td><code>prompt-hook</code></td><td></td><td><span class="confidence verified-headless">verified-headless</span></td></tr><tr><td><code>user-message</code></td><td><span class="relation-kind">conditional</span></td><td><code>thought</code></td><td></td><td><span class="confidence verified-headless">verified-headless</span></td></tr><tr><td><code>thought</code></td><td><span class="relation-kind">loop</span></td><td><code>thought</code></td><td></td><td><span class="confidence verified-headless">verified-headless</span></td></tr><tr><td><code>thought</code></td><td><span class="relation-kind">conditional</span></td><td><code>tool-start</code></td><td></td><td><span class="confidence unverified">unverified</span></td></tr><tr><td><code>tool-start</code></td><td><span class="relation-kind">conditional</span></td><td><code>permission</code></td><td></td><td><span class="confidence unverified">unverified</span></td></tr><tr><td><code>permission</code></td><td><span class="relation-kind">sequence</span></td><td><code>tool-finish</code></td><td></td><td><span class="confidence unverified">unverified</span></td></tr><tr><td><code>tool-start</code></td><td><span class="relation-kind">conditional</span></td><td><code>tool-finish</code></td><td>no permission request</td><td><span class="confidence unverified">unverified</span></td></tr><tr><td><code>thought</code></td><td><span class="relation-kind">conditional</span></td><td><code>assistant</code></td><td></td><td><span class="confidence verified-headless">verified-headless</span></td></tr><tr><td><code>tool-finish</code></td><td><span class="relation-kind">sequence</span></td><td><code>assistant</code></td><td></td><td><span class="confidence unverified">unverified</span></td></tr><tr><td><code>assistant</code></td><td><span class="relation-kind">loop</span></td><td><code>assistant</code></td><td></td><td><span class="confidence verified-headless">verified-headless</span></td></tr><tr><td><code>assistant</code></td><td><span class="relation-kind">sequence</span></td><td><code>response-complete</code></td><td></td><td><span class="confidence verified-headless">verified-headless</span></td></tr><tr><td><code>response-complete</code></td><td><span class="relation-kind">sequence</span></td><td><code>stop-hook</code></td><td></td><td><span class="confidence verified-headless">verified-headless</span></td></tr><tr><td><code>stop-hook</code></td><td><span class="relation-kind">sequence</span></td><td><code>turn-complete</code></td><td></td><td><span class="confidence verified-headless">verified-headless</span></td></tr><tr><td><code>turn-complete</code></td><td><span class="relation-kind">concurrent</span></td><td><code>signals</code></td><td></td><td><span class="confidence verified-headless">verified-headless</span></td></tr><tr><td><code>turn-complete</code></td><td><span class="relation-kind">concurrent</span></td><td><code>summary</code></td><td></td><td><span class="confidence verified-headless">verified-headless</span></td></tr><tr><td><code>turn-complete</code></td><td><span class="relation-kind">loop</span></td><td><code>prompt</code></td><td>next turn</td><td><span class="confidence verified-headless">verified-headless</span></td></tr><tr><td><code>thought</code></td><td><span class="relation-kind">conditional</span></td><td><code>subagent-spawned</code></td><td></td><td><span class="confidence unverified">unverified</span></td></tr><tr><td><code>subagent-spawned</code></td><td><span class="relation-kind">sequence</span></td><td><code>subagent-progress</code></td><td></td><td><span class="confidence unverified">unverified</span></td></tr><tr><td><code>subagent-progress</code></td><td><span class="relation-kind">loop</span></td><td><code>subagent-progress</code></td><td></td><td><span class="confidence unverified">unverified</span></td></tr><tr><td><code>subagent-progress</code></td><td><span class="relation-kind">sequence</span></td><td><code>subagent-finished</code></td><td></td><td><span class="confidence unverified">unverified</span></td></tr><tr><td><code>subagent-spawned</code></td><td><span class="relation-kind">async</span></td><td><code>workflow-updated</code></td><td></td><td><span class="confidence unverified">unverified</span></td></tr><tr><td><code>workflow-updated</code></td><td><span class="relation-kind">async</span></td><td><code>goal-updated</code></td><td></td><td><span class="confidence unverified">unverified</span></td></tr><tr><td><code>subagent-finished</code></td><td><span class="relation-kind">sequence</span></td><td><code>assistant</code></td><td></td><td><span class="confidence unverified">unverified</span></td></tr><tr><td><code>thought</code></td><td><span class="relation-kind">conditional</span></td><td><code>compact-start</code></td><td></td><td><span class="confidence unverified">unverified</span></td></tr><tr><td><code>compact-start</code></td><td><span class="relation-kind">sequence</span></td><td><code>compact-checkpoint</code></td><td></td><td><span class="confidence unverified">unverified</span></td></tr><tr><td><code>compact-checkpoint</code></td><td><span class="relation-kind">conditional</span></td><td><code>compact-complete</code></td><td></td><td><span class="confidence unverified">unverified</span></td></tr><tr><td><code>compact-start</code></td><td><span class="relation-kind">conditional</span></td><td><code>compact-failed</code></td><td></td><td><span class="confidence unverified">unverified</span></td></tr><tr><td><code>compact-start</code></td><td><span class="relation-kind">conditional</span></td><td><code>compact-cancelled</code></td><td></td><td><span class="confidence unverified">unverified</span></td></tr><tr><td><code>compact-complete</code></td><td><span class="relation-kind">sequence</span></td><td><code>assistant</code></td><td></td><td><span class="confidence unverified">unverified</span></td></tr></tbody></table></div></details></section><section id="events" class="panel"><div class="section-heading"><div><span class="eyebrow">Wire catalog</span><h2>Events</h2></div><span id="event-count" class="count">16</span></div><div class="toolbar"><label><span>Search</span><input id="event-search" type="search" placeholder="event, channel, transport…" /></label><label><span>Direction</span><select id="direction-filter"><option value="">all</option><option value="agent-local">agent-local</option><option value="agent-to-client">agent-to-client</option><option value="client-to-agent">client-to-agent</option></select></label><label><span>Confidence</span><select id="confidence-filter"><option value="">all</option><option>verified-headless</option><option>verified-interactive</option><option>unverified</option></select></label><button id="expand-visible" type="button">Expand visible</button><button id="collapse-events" type="button">Collapse</button></div><div id="event-list" class="event-list"><article id="event-_x-ai-announcements-update" class="event-card" data-search="_x.ai/announcements/update agent-to-client jsonrpc-notification verified-headless acp" data-direction="agent-to-client" data-confidence="verified-headless"><details><summary><span class="event-name">_x.ai/announcements/update</span><span class="event-meta"><span class="direction">agent-to-client</span><span class="confidence verified-headless">verified-headless</span></span></summary><div class="event-body"><dl><div><dt>Channel</dt><dd><a href="#channels"><code>acp</code></a></dd></div><div><dt>Transport</dt><dd>jsonrpc-notification</dd></div><div><dt>Trigger</dt><dd>—</dd></div></dl><div class="evidence-refs"><a class="evidence-ref" href="#claim-grok-runtime-headless">grok-runtime-headless</a></div><details class="schema"><summary>Payload schema</summary><pre>{
+  &quot;type&quot;: &quot;object&quot;,
+  &quot;properties&quot;: {
+    &quot;announcements&quot;: {
+      &quot;type&quot;: &quot;array&quot;
+    }
+  },
+  &quot;required&quot;: [
+    &quot;announcements&quot;
+  ]
+}</pre></details></div></details></article><article id="event-_x-ai-mcp-init_progress" class="event-card" data-search="_x.ai/mcp/init_progress agent-to-client jsonrpc-notification verified-headless acp" data-direction="agent-to-client" data-confidence="verified-headless"><details><summary><span class="event-name">_x.ai/mcp/init_progress</span><span class="event-meta"><span class="direction">agent-to-client</span><span class="confidence verified-headless">verified-headless</span></span></summary><div class="event-body"><dl><div><dt>Channel</dt><dd><a href="#channels"><code>acp</code></a></dd></div><div><dt>Transport</dt><dd>jsonrpc-notification</dd></div><div><dt>Trigger</dt><dd>—</dd></div></dl><div class="evidence-refs"><a class="evidence-ref" href="#claim-grok-runtime-headless">grok-runtime-headless</a></div><details class="schema"><summary>Payload schema</summary><pre>{
+  &quot;type&quot;: &quot;object&quot;,
+  &quot;properties&quot;: {
+    &quot;completed&quot;: {
+      &quot;type&quot;: &quot;number&quot;
+    },
+    &quot;total&quot;: {
+      &quot;type&quot;: &quot;number&quot;
+    }
+  },
+  &quot;required&quot;: [
+    &quot;completed&quot;,
+    &quot;total&quot;
+  ]
+}</pre></details></div></details></article><article id="event-_x-ai-mcp-servers_updated" class="event-card" data-search="_x.ai/mcp/servers_updated agent-to-client jsonrpc-notification verified-headless acp" data-direction="agent-to-client" data-confidence="verified-headless"><details><summary><span class="event-name">_x.ai/mcp/servers_updated</span><span class="event-meta"><span class="direction">agent-to-client</span><span class="confidence verified-headless">verified-headless</span></span></summary><div class="event-body"><dl><div><dt>Channel</dt><dd><a href="#channels"><code>acp</code></a></dd></div><div><dt>Transport</dt><dd>jsonrpc-notification</dd></div><div><dt>Trigger</dt><dd>—</dd></div></dl><div class="evidence-refs"><a class="evidence-ref" href="#claim-grok-runtime-headless">grok-runtime-headless</a></div><details class="schema"><summary>Payload schema</summary><pre>{
+  &quot;type&quot;: &quot;object&quot;,
+  &quot;properties&quot;: {
+    &quot;servers&quot;: {
+      &quot;type&quot;: &quot;array&quot;
+    }
+  },
+  &quot;required&quot;: [
+    &quot;servers&quot;
+  ]
+}</pre></details></div></details></article><article id="event-_x-ai-models-update" class="event-card" data-search="_x.ai/models/update agent-to-client jsonrpc-notification verified-headless acp" data-direction="agent-to-client" data-confidence="verified-headless"><details><summary><span class="event-name">_x.ai/models/update</span><span class="event-meta"><span class="direction">agent-to-client</span><span class="confidence verified-headless">verified-headless</span></span></summary><div class="event-body"><dl><div><dt>Channel</dt><dd><a href="#channels"><code>acp</code></a></dd></div><div><dt>Transport</dt><dd>jsonrpc-notification</dd></div><div><dt>Trigger</dt><dd>—</dd></div></dl><div class="evidence-refs"><a class="evidence-ref" href="#claim-grok-runtime-headless">grok-runtime-headless</a></div><details class="schema"><summary>Payload schema</summary><pre>{
+  &quot;type&quot;: &quot;object&quot;,
+  &quot;properties&quot;: {
+    &quot;models&quot;: {
+      &quot;type&quot;: &quot;array&quot;
+    },
+    &quot;currentModelId&quot;: {
+      &quot;type&quot;: &quot;string&quot;
+    }
+  },
+  &quot;required&quot;: [
+    &quot;models&quot;,
+    &quot;currentModelId&quot;
+  ]
+}</pre></details></div></details></article><article id="event-_x-ai-session_notification" class="event-card" data-search="_x.ai/session_notification agent-to-client jsonrpc-notification verified-headless acp" data-direction="agent-to-client" data-confidence="verified-headless"><details><summary><span class="event-name">_x.ai/session_notification</span><span class="event-meta"><span class="direction">agent-to-client</span><span class="confidence verified-headless">verified-headless</span></span></summary><div class="event-body"><dl><div><dt>Channel</dt><dd><a href="#channels"><code>acp</code></a></dd></div><div><dt>Transport</dt><dd>jsonrpc-notification</dd></div><div><dt>Trigger</dt><dd>—</dd></div></dl><p>Installed-artifact spelling for live xAI extensions; do not conflate it with the persisted _x.ai/session/update method.</p><div class="evidence-refs"><a class="evidence-ref" href="#claim-grok-runtime-headless">grok-runtime-headless</a></div><details class="variants"><summary>12 evidenced variants</summary><div class="variant"><code>{&quot;update.sessionUpdate&quot;:&quot;hook_execution&quot;}</code><span class="confidence verified-headless">verified-headless</span><div class="evidence-refs"><a class="evidence-ref" href="#claim-grok-runtime-headless">grok-runtime-headless</a></div></div><div class="variant"><code>{&quot;update.sessionUpdate&quot;:&quot;response_completed&quot;}</code><span class="confidence verified-headless">verified-headless</span><div class="evidence-refs"><a class="evidence-ref" href="#claim-grok-runtime-headless">grok-runtime-headless</a></div></div><div class="variant"><code>{&quot;update.sessionUpdate&quot;:&quot;turn_completed&quot;}</code><span class="confidence verified-headless">verified-headless</span><div class="evidence-refs"><a class="evidence-ref" href="#claim-grok-runtime-headless">grok-runtime-headless</a></div></div><div class="variant"><code>{&quot;update.sessionUpdate&quot;:&quot;subagent_spawned&quot;}</code><span class="confidence unverified">unverified</span><div class="evidence-refs"><a class="evidence-ref" href="#claim-grok-public-mirror-lead">grok-public-mirror-lead</a></div></div><div class="variant"><code>{&quot;update.sessionUpdate&quot;:&quot;subagent_progress&quot;}</code><span class="confidence unverified">unverified</span><div class="evidence-refs"><a class="evidence-ref" href="#claim-grok-public-mirror-lead">grok-public-mirror-lead</a></div></div><div class="variant"><code>{&quot;update.sessionUpdate&quot;:&quot;subagent_finished&quot;}</code><span class="confidence unverified">unverified</span><div class="evidence-refs"><a class="evidence-ref" href="#claim-grok-public-mirror-lead">grok-public-mirror-lead</a></div></div><div class="variant"><code>{&quot;update.sessionUpdate&quot;:&quot;workflow_updated&quot;}</code><span class="confidence unverified">unverified</span><div class="evidence-refs"><a class="evidence-ref" href="#claim-grok-public-mirror-lead">grok-public-mirror-lead</a></div></div><div class="variant"><code>{&quot;update.sessionUpdate&quot;:&quot;goal_updated&quot;}</code><span class="confidence unverified">unverified</span><div class="evidence-refs"><a class="evidence-ref" href="#claim-grok-public-mirror-lead">grok-public-mirror-lead</a></div></div><div class="variant"><code>{&quot;update.sessionUpdate&quot;:&quot;auto_compact_started&quot;}</code><span class="confidence unverified">unverified</span><div class="evidence-refs"><a class="evidence-ref" href="#claim-grok-public-mirror-lead">grok-public-mirror-lead</a></div></div><div class="variant"><code>{&quot;update.sessionUpdate&quot;:&quot;auto_compact_completed&quot;}</code><span class="confidence unverified">unverified</span><div class="evidence-refs"><a class="evidence-ref" href="#claim-grok-public-mirror-lead">grok-public-mirror-lead</a></div></div><div class="variant"><code>{&quot;update.sessionUpdate&quot;:&quot;auto_compact_failed&quot;}</code><span class="confidence unverified">unverified</span><div class="evidence-refs"><a class="evidence-ref" href="#claim-grok-public-mirror-lead">grok-public-mirror-lead</a></div></div><div class="variant"><code>{&quot;update.sessionUpdate&quot;:&quot;auto_compact_cancelled&quot;}</code><span class="confidence unverified">unverified</span><div class="evidence-refs"><a class="evidence-ref" href="#claim-grok-public-mirror-lead">grok-public-mirror-lead</a></div></div></details><details class="schema"><summary>Payload schema</summary><pre>{
+  &quot;type&quot;: &quot;object&quot;,
+  &quot;properties&quot;: {
+    &quot;sessionId&quot;: {
+      &quot;type&quot;: &quot;string&quot;
+    },
+    &quot;update&quot;: {
+      &quot;type&quot;: &quot;object&quot;,
+      &quot;properties&quot;: {
+        &quot;sessionUpdate&quot;: {
+          &quot;type&quot;: &quot;string&quot;,
+          &quot;enum&quot;: [
+            &quot;hook_execution&quot;,
+            &quot;response_completed&quot;,
+            &quot;turn_completed&quot;,
+            &quot;subagent_spawned&quot;,
+            &quot;subagent_progress&quot;,
+            &quot;subagent_finished&quot;,
+            &quot;workflow_updated&quot;,
+            &quot;goal_updated&quot;,
+            &quot;auto_compact_started&quot;,
+            &quot;auto_compact_completed&quot;,
+            &quot;auto_compact_failed&quot;,
+            &quot;auto_compact_cancelled&quot;
+          ]
+        }
+      },
+      &quot;required&quot;: [
+        &quot;sessionUpdate&quot;
+      ]
+    }
+  },
+  &quot;required&quot;: [
+    &quot;sessionId&quot;,
+    &quot;update&quot;
+  ]
+}</pre></details></div></details></article><article id="event-_x-ai-session-update" class="event-card" data-search="_x.ai/session/update agent-local jsonl-record verified-headless session-log" data-direction="agent-local" data-confidence="verified-headless"><details><summary><span class="event-name">_x.ai/session/update</span><span class="event-meta"><span class="direction">agent-local</span><span class="confidence verified-headless">verified-headless</span></span></summary><div class="event-body"><dl><div><dt>Channel</dt><dd><a href="#channels"><code>session-log</code></a></dd></div><div><dt>Transport</dt><dd>jsonl-record</dd></div><div><dt>Trigger</dt><dd>—</dd></div></dl><div class="evidence-refs"><a class="evidence-ref" href="#claim-grok-runtime-headless">grok-runtime-headless</a></div><details class="variants"><summary>8 evidenced variants</summary><div class="variant"><code>{&quot;update.sessionUpdate&quot;:&quot;hook_execution&quot;}</code><span class="confidence verified-headless">verified-headless</span><div class="evidence-refs"><a class="evidence-ref" href="#claim-grok-runtime-headless">grok-runtime-headless</a></div></div><div class="variant"><code>{&quot;update.sessionUpdate&quot;:&quot;response_completed&quot;}</code><span class="confidence unverified">unverified</span><div class="evidence-refs"><a class="evidence-ref" href="#claim-grok-public-mirror-lead">grok-public-mirror-lead</a></div></div><div class="variant"><code>{&quot;update.sessionUpdate&quot;:&quot;turn_completed&quot;}</code><span class="confidence verified-headless">verified-headless</span><div class="evidence-refs"><a class="evidence-ref" href="#claim-grok-runtime-headless">grok-runtime-headless</a></div></div><div class="variant"><code>{&quot;update.sessionUpdate&quot;:&quot;subagent_spawned&quot;}</code><span class="confidence unverified">unverified</span><div class="evidence-refs"><a class="evidence-ref" href="#claim-grok-public-mirror-lead">grok-public-mirror-lead</a></div></div><div class="variant"><code>{&quot;update.sessionUpdate&quot;:&quot;subagent_finished&quot;}</code><span class="confidence unverified">unverified</span><div class="evidence-refs"><a class="evidence-ref" href="#claim-grok-public-mirror-lead">grok-public-mirror-lead</a></div></div><div class="variant"><code>{&quot;update.sessionUpdate&quot;:&quot;workflow_updated&quot;}</code><span class="confidence unverified">unverified</span><div class="evidence-refs"><a class="evidence-ref" href="#claim-grok-public-mirror-lead">grok-public-mirror-lead</a></div></div><div class="variant"><code>{&quot;update.sessionUpdate&quot;:&quot;goal_updated&quot;}</code><span class="confidence unverified">unverified</span><div class="evidence-refs"><a class="evidence-ref" href="#claim-grok-public-mirror-lead">grok-public-mirror-lead</a></div></div><div class="variant"><code>{&quot;update.sessionUpdate&quot;:&quot;compaction_checkpoint&quot;}</code><span class="confidence unverified">unverified</span><div class="evidence-refs"><a class="evidence-ref" href="#claim-grok-public-mirror-lead">grok-public-mirror-lead</a></div></div></details><details class="schema"><summary>Payload schema</summary><pre>{
+  &quot;type&quot;: &quot;object&quot;,
+  &quot;properties&quot;: {
+    &quot;sessionId&quot;: {
+      &quot;type&quot;: &quot;string&quot;
+    },
+    &quot;update&quot;: {
+      &quot;type&quot;: &quot;object&quot;,
+      &quot;properties&quot;: {
+        &quot;sessionUpdate&quot;: {
+          &quot;type&quot;: &quot;string&quot;,
+          &quot;enum&quot;: [
+            &quot;hook_execution&quot;,
+            &quot;response_completed&quot;,
+            &quot;turn_completed&quot;,
+            &quot;subagent_spawned&quot;,
+            &quot;subagent_finished&quot;,
+            &quot;workflow_updated&quot;,
+            &quot;goal_updated&quot;,
+            &quot;compaction_checkpoint&quot;
+          ]
+        }
+      },
+      &quot;required&quot;: [
+        &quot;sessionUpdate&quot;
+      ]
+    },
+    &quot;_meta&quot;: {
+      &quot;type&quot;: &quot;object&quot;
+    }
+  },
+  &quot;required&quot;: [
+    &quot;sessionId&quot;,
+    &quot;update&quot;
+  ]
+}</pre></details><details class="schema"><summary>Carrier schema</summary><pre>{
+  &quot;type&quot;: &quot;object&quot;,
+  &quot;properties&quot;: {
+    &quot;timestamp&quot;: {
+      &quot;type&quot;: &quot;number&quot;,
+      &quot;minimum&quot;: 1000000000000
+    },
+    &quot;method&quot;: {
+      &quot;type&quot;: &quot;string&quot;,
+      &quot;enum&quot;: [
+        &quot;_x.ai/session/update&quot;
+      ]
+    },
+    &quot;params&quot;: {
+      &quot;type&quot;: &quot;object&quot;
+    }
+  },
+  &quot;required&quot;: [
+    &quot;timestamp&quot;,
+    &quot;method&quot;,
+    &quot;params&quot;
+  ]
+}</pre></details></div></details></article><article id="event-_x-ai-settings-update" class="event-card" data-search="_x.ai/settings/update agent-to-client jsonrpc-notification verified-headless acp" data-direction="agent-to-client" data-confidence="verified-headless"><details><summary><span class="event-name">_x.ai/settings/update</span><span class="event-meta"><span class="direction">agent-to-client</span><span class="confidence verified-headless">verified-headless</span></span></summary><div class="event-body"><dl><div><dt>Channel</dt><dd><a href="#channels"><code>acp</code></a></dd></div><div><dt>Transport</dt><dd>jsonrpc-notification</dd></div><div><dt>Trigger</dt><dd>—</dd></div></dl><div class="evidence-refs"><a class="evidence-ref" href="#claim-grok-runtime-headless">grok-runtime-headless</a></div><details class="schema"><summary>Payload schema</summary><pre>{
+  &quot;type&quot;: &quot;object&quot;,
+  &quot;properties&quot;: {
+    &quot;settings&quot;: {
+      &quot;type&quot;: &quot;object&quot;
+    }
+  },
+  &quot;required&quot;: [
+    &quot;settings&quot;
+  ]
+}</pre></details></div></details></article><article id="event-initialize" class="event-card" data-search="initialize client-to-agent jsonrpc-request unverified acp" data-direction="client-to-agent" data-confidence="unverified"><details><summary><span class="event-name">initialize</span><span class="event-meta"><span class="direction">client-to-agent</span><span class="confidence unverified">unverified</span></span></summary><div class="event-body"><dl><div><dt>Channel</dt><dd><a href="#channels"><code>acp</code></a></dd></div><div><dt>Transport</dt><dd>jsonrpc-request</dd></div><div><dt>Trigger</dt><dd>—</dd></div></dl><div class="evidence-refs"><a class="evidence-ref" href="#claim-grok-runtime-headless">grok-runtime-headless</a><a class="evidence-ref" href="#claim-grok-public-mirror-lead">grok-public-mirror-lead</a></div><details class="schema"><summary>Payload schema</summary><pre>{
+  &quot;type&quot;: &quot;object&quot;,
+  &quot;properties&quot;: {
+    &quot;protocolVersion&quot;: {
+      &quot;type&quot;: &quot;number&quot;
+    },
+    &quot;clientCapabilities&quot;: {
+      &quot;type&quot;: &quot;object&quot;
+    }
+  },
+  &quot;required&quot;: [
+    &quot;protocolVersion&quot;,
+    &quot;clientCapabilities&quot;
+  ]
+}</pre></details><details class="schema"><summary>Result schema</summary><pre>{
+  &quot;type&quot;: &quot;object&quot;,
+  &quot;properties&quot;: {
+    &quot;protocolVersion&quot;: {
+      &quot;type&quot;: &quot;number&quot;
+    },
+    &quot;agentCapabilities&quot;: {
+      &quot;type&quot;: &quot;object&quot;
+    },
+    &quot;authMethods&quot;: {
+      &quot;type&quot;: &quot;array&quot;
+    },
+    &quot;_meta&quot;: {
+      &quot;type&quot;: &quot;object&quot;,
+      &quot;properties&quot;: {
+        &quot;agentVersion&quot;: {
+          &quot;type&quot;: &quot;string&quot;
+        }
+      },
+      &quot;required&quot;: [
+        &quot;agentVersion&quot;
+      ]
+    }
+  },
+  &quot;required&quot;: [
+    &quot;protocolVersion&quot;,
+    &quot;agentCapabilities&quot;,
+    &quot;authMethods&quot;,
+    &quot;_meta&quot;
+  ]
+}</pre></details></div></details></article><article id="event-session-cancel" class="event-card" data-search="session/cancel client-to-agent jsonrpc-notification unverified acp" data-direction="client-to-agent" data-confidence="unverified"><details><summary><span class="event-name">session/cancel</span><span class="event-meta"><span class="direction">client-to-agent</span><span class="confidence unverified">unverified</span></span></summary><div class="event-body"><dl><div><dt>Channel</dt><dd><a href="#channels"><code>acp</code></a></dd></div><div><dt>Transport</dt><dd>jsonrpc-notification</dd></div><div><dt>Trigger</dt><dd>—</dd></div></dl><p>ACP-standard cancellation implemented by the adapter path but not exercised in the installed-artifact census.</p><div class="evidence-refs"><a class="evidence-ref" href="#claim-grok-public-mirror-lead">grok-public-mirror-lead</a></div><details class="schema"><summary>Payload schema</summary><pre>{
+  &quot;type&quot;: &quot;object&quot;,
+  &quot;properties&quot;: {
+    &quot;sessionId&quot;: {
+      &quot;type&quot;: &quot;string&quot;
+    }
+  },
+  &quot;required&quot;: [
+    &quot;sessionId&quot;
+  ]
+}</pre></details></div></details></article><article id="event-session-load" class="event-card" data-search="session/load client-to-agent jsonrpc-request unverified acp" data-direction="client-to-agent" data-confidence="unverified"><details><summary><span class="event-name">session/load</span><span class="event-meta"><span class="direction">client-to-agent</span><span class="confidence unverified">unverified</span></span></summary><div class="event-body"><dl><div><dt>Channel</dt><dd><a href="#channels"><code>acp</code></a></dd></div><div><dt>Transport</dt><dd>jsonrpc-request</dd></div><div><dt>Trigger</dt><dd>—</dd></div></dl><p>Advertised by the installed artifact and required by the adapter resume path; a resumed turn was not included in the controlled capture.</p><div class="evidence-refs"><a class="evidence-ref" href="#claim-grok-public-mirror-lead">grok-public-mirror-lead</a></div><details class="schema"><summary>Payload schema</summary><pre>{
+  &quot;type&quot;: &quot;object&quot;,
+  &quot;properties&quot;: {
+    &quot;sessionId&quot;: {
+      &quot;type&quot;: &quot;string&quot;
+    },
+    &quot;cwd&quot;: {
+      &quot;type&quot;: &quot;string&quot;
+    },
+    &quot;mcpServers&quot;: {
+      &quot;type&quot;: &quot;array&quot;
+    }
+  },
+  &quot;required&quot;: [
+    &quot;sessionId&quot;,
+    &quot;cwd&quot;,
+    &quot;mcpServers&quot;
+  ]
+}</pre></details><details class="schema"><summary>Result schema</summary><pre>{
+  &quot;type&quot;: &quot;object&quot;
+}</pre></details></div></details></article><article id="event-session-new" class="event-card" data-search="session/new client-to-agent jsonrpc-request unverified acp" data-direction="client-to-agent" data-confidence="unverified"><details><summary><span class="event-name">session/new</span><span class="event-meta"><span class="direction">client-to-agent</span><span class="confidence unverified">unverified</span></span></summary><div class="event-body"><dl><div><dt>Channel</dt><dd><a href="#channels"><code>acp</code></a></dd></div><div><dt>Transport</dt><dd>jsonrpc-request</dd></div><div><dt>Trigger</dt><dd>—</dd></div></dl><div class="evidence-refs"><a class="evidence-ref" href="#claim-grok-runtime-headless">grok-runtime-headless</a><a class="evidence-ref" href="#claim-grok-public-mirror-lead">grok-public-mirror-lead</a></div><details class="schema"><summary>Payload schema</summary><pre>{
+  &quot;type&quot;: &quot;object&quot;,
+  &quot;properties&quot;: {
+    &quot;cwd&quot;: {
+      &quot;type&quot;: &quot;string&quot;
+    },
+    &quot;mcpServers&quot;: {
+      &quot;type&quot;: &quot;array&quot;
+    }
+  },
+  &quot;required&quot;: [
+    &quot;cwd&quot;,
+    &quot;mcpServers&quot;
+  ]
+}</pre></details><details class="schema"><summary>Result schema</summary><pre>{
+  &quot;type&quot;: &quot;object&quot;,
+  &quot;properties&quot;: {
+    &quot;sessionId&quot;: {
+      &quot;type&quot;: &quot;string&quot;
+    }
+  },
+  &quot;required&quot;: [
+    &quot;sessionId&quot;
+  ]
+}</pre></details></div></details></article><article id="event-session-prompt" class="event-card" data-search="session/prompt client-to-agent jsonrpc-request unverified acp" data-direction="client-to-agent" data-confidence="unverified"><details><summary><span class="event-name">session/prompt</span><span class="event-meta"><span class="direction">client-to-agent</span><span class="confidence unverified">unverified</span></span></summary><div class="event-body"><dl><div><dt>Channel</dt><dd><a href="#channels"><code>acp</code></a></dd></div><div><dt>Transport</dt><dd>jsonrpc-request</dd></div><div><dt>Trigger</dt><dd>—</dd></div></dl><div class="evidence-refs"><a class="evidence-ref" href="#claim-grok-runtime-headless">grok-runtime-headless</a><a class="evidence-ref" href="#claim-grok-public-mirror-lead">grok-public-mirror-lead</a></div><details class="schema"><summary>Payload schema</summary><pre>{
+  &quot;type&quot;: &quot;object&quot;,
+  &quot;properties&quot;: {
+    &quot;sessionId&quot;: {
+      &quot;type&quot;: &quot;string&quot;
+    },
+    &quot;prompt&quot;: {
+      &quot;type&quot;: &quot;array&quot;
+    }
+  },
+  &quot;required&quot;: [
+    &quot;sessionId&quot;,
+    &quot;prompt&quot;
+  ]
+}</pre></details><details class="schema"><summary>Result schema</summary><pre>{
+  &quot;type&quot;: &quot;object&quot;,
+  &quot;properties&quot;: {
+    &quot;stopReason&quot;: {
+      &quot;type&quot;: &quot;string&quot;
+    }
+  },
+  &quot;required&quot;: [
+    &quot;stopReason&quot;
+  ]
+}</pre></details></div></details></article><article id="event-session-request_permission" class="event-card" data-search="session/request_permission agent-to-client jsonrpc-request unverified acp" data-direction="agent-to-client" data-confidence="unverified"><details><summary><span class="event-name">session/request_permission</span><span class="event-meta"><span class="direction">agent-to-client</span><span class="confidence unverified">unverified</span></span></summary><div class="event-body"><dl><div><dt>Channel</dt><dd><a href="#channels"><code>acp</code></a></dd></div><div><dt>Transport</dt><dd>jsonrpc-request</dd></div><div><dt>Trigger</dt><dd>—</dd></div></dl><p>ACP-standard request implemented by the installed client/agent stack but not exercised in the minimal artifact census.</p><div class="evidence-refs"><a class="evidence-ref" href="#claim-grok-public-mirror-lead">grok-public-mirror-lead</a></div><details class="schema"><summary>Payload schema</summary><pre>{
+  &quot;type&quot;: &quot;object&quot;,
+  &quot;properties&quot;: {
+    &quot;sessionId&quot;: {
+      &quot;type&quot;: &quot;string&quot;
+    },
+    &quot;toolCall&quot;: {
+      &quot;type&quot;: &quot;object&quot;
+    },
+    &quot;options&quot;: {
+      &quot;type&quot;: &quot;array&quot;
+    }
+  },
+  &quot;required&quot;: [
+    &quot;sessionId&quot;,
+    &quot;toolCall&quot;,
+    &quot;options&quot;
+  ]
+}</pre></details></div></details></article><article id="event-session-update" class="event-card" data-search="session/update agent-to-client jsonrpc-notification verified-headless acp session-log" data-direction="agent-to-client" data-confidence="verified-headless"><details><summary><span class="event-name">session/update</span><span class="event-meta"><span class="direction">agent-to-client</span><span class="confidence verified-headless">verified-headless</span></span></summary><div class="event-body"><dl><div><dt>Channel</dt><dd><a href="#channels"><code>acp</code></a> <a href="#channels"><code>session-log</code></a></dd></div><div><dt>Transport</dt><dd>jsonrpc-notification</dd></div><div><dt>Trigger</dt><dd>—</dd></div></dl><p>Observed both live over ACP and durably in updates.jsonl; channel is the default trigger rail and channels records both native observations.</p><div class="evidence-refs"><a class="evidence-ref" href="#claim-grok-runtime-headless">grok-runtime-headless</a></div><details class="variants"><summary>6 evidenced variants</summary><div class="variant"><code>{&quot;update.sessionUpdate&quot;:&quot;available_commands_update&quot;}</code><span class="confidence verified-headless">verified-headless</span><div class="evidence-refs"><a class="evidence-ref" href="#claim-grok-runtime-headless">grok-runtime-headless</a></div></div><div class="variant"><code>{&quot;update.sessionUpdate&quot;:&quot;user_message_chunk&quot;}</code><span class="confidence verified-headless">verified-headless</span><div class="evidence-refs"><a class="evidence-ref" href="#claim-grok-runtime-headless">grok-runtime-headless</a></div></div><div class="variant"><code>{&quot;update.sessionUpdate&quot;:&quot;agent_thought_chunk&quot;}</code><span class="confidence verified-headless">verified-headless</span><div class="evidence-refs"><a class="evidence-ref" href="#claim-grok-runtime-headless">grok-runtime-headless</a></div></div><div class="variant"><code>{&quot;update.sessionUpdate&quot;:&quot;agent_message_chunk&quot;}</code><span class="confidence verified-headless">verified-headless</span><div class="evidence-refs"><a class="evidence-ref" href="#claim-grok-runtime-headless">grok-runtime-headless</a></div></div><div class="variant"><code>{&quot;update.sessionUpdate&quot;:&quot;tool_call&quot;}</code><span class="confidence unverified">unverified</span><div class="evidence-refs"><a class="evidence-ref" href="#claim-grok-public-mirror-lead">grok-public-mirror-lead</a></div></div><div class="variant"><code>{&quot;update.sessionUpdate&quot;:&quot;tool_call_update&quot;}</code><span class="confidence unverified">unverified</span><div class="evidence-refs"><a class="evidence-ref" href="#claim-grok-public-mirror-lead">grok-public-mirror-lead</a></div></div></details><details class="schema"><summary>Payload schema</summary><pre>{
+  &quot;type&quot;: &quot;object&quot;,
+  &quot;properties&quot;: {
+    &quot;sessionId&quot;: {
+      &quot;type&quot;: &quot;string&quot;
+    },
+    &quot;update&quot;: {
+      &quot;type&quot;: &quot;object&quot;,
+      &quot;properties&quot;: {
+        &quot;sessionUpdate&quot;: {
+          &quot;type&quot;: &quot;string&quot;,
+          &quot;enum&quot;: [
+            &quot;available_commands_update&quot;,
+            &quot;user_message_chunk&quot;,
+            &quot;agent_thought_chunk&quot;,
+            &quot;agent_message_chunk&quot;,
+            &quot;tool_call&quot;,
+            &quot;tool_call_update&quot;
+          ]
+        }
+      },
+      &quot;required&quot;: [
+        &quot;sessionUpdate&quot;
+      ]
+    },
+    &quot;_meta&quot;: {
+      &quot;type&quot;: &quot;object&quot;
+    }
+  },
+  &quot;required&quot;: [
+    &quot;sessionId&quot;,
+    &quot;update&quot;
+  ]
+}</pre></details><details class="schema"><summary>Carrier schema</summary><pre>{
+  &quot;type&quot;: &quot;object&quot;,
+  &quot;properties&quot;: {
+    &quot;timestamp&quot;: {
+      &quot;type&quot;: &quot;number&quot;,
+      &quot;minimum&quot;: 1000000000000
+    },
+    &quot;method&quot;: {
+      &quot;type&quot;: &quot;string&quot;,
+      &quot;enum&quot;: [
+        &quot;session/update&quot;
+      ]
+    },
+    &quot;params&quot;: {
+      &quot;type&quot;: &quot;object&quot;
+    }
+  },
+  &quot;required&quot;: [
+    &quot;timestamp&quot;,
+    &quot;method&quot;,
+    &quot;params&quot;
+  ]
+}</pre></details></div></details></article><article id="event-signals-json" class="event-card" data-search="signals.json agent-local json-file-replace verified-headless session-state" data-direction="agent-local" data-confidence="verified-headless"><details><summary><span class="event-name">signals.json</span><span class="event-meta"><span class="direction">agent-local</span><span class="confidence verified-headless">verified-headless</span></span></summary><div class="event-body"><dl><div><dt>Channel</dt><dd><a href="#channels"><code>session-state</code></a></dd></div><div><dt>Transport</dt><dd>json-file-replace</dd></div><div><dt>Trigger</dt><dd>—</dd></div></dl><div class="evidence-refs"><a class="evidence-ref" href="#claim-grok-runtime-headless">grok-runtime-headless</a></div><details class="schema"><summary>Payload schema</summary><pre>{
+  &quot;type&quot;: &quot;object&quot;,
+  &quot;properties&quot;: {
+    &quot;contextTokensUsed&quot;: {
+      &quot;type&quot;: &quot;number&quot;
+    },
+    &quot;contextWindowTokens&quot;: {
+      &quot;type&quot;: &quot;number&quot;
+    },
+    &quot;contextWindowUsage&quot;: {
+      &quot;type&quot;: &quot;number&quot;
+    },
+    &quot;primaryModelId&quot;: {
+      &quot;type&quot;: &quot;string&quot;
+    },
+    &quot;compactionCount&quot;: {
+      &quot;type&quot;: &quot;number&quot;
+    },
+    &quot;turnCount&quot;: {
+      &quot;type&quot;: &quot;number&quot;
+    },
+    &quot;toolCallCount&quot;: {
+      &quot;type&quot;: &quot;number&quot;
+    }
+  },
+  &quot;required&quot;: [
+    &quot;contextTokensUsed&quot;,
+    &quot;contextWindowTokens&quot;,
+    &quot;contextWindowUsage&quot;,
+    &quot;primaryModelId&quot;,
+    &quot;compactionCount&quot;,
+    &quot;turnCount&quot;,
+    &quot;toolCallCount&quot;
+  ]
+}</pre></details></div></details></article><article id="event-summary-json" class="event-card" data-search="summary.json agent-local json-file-replace verified-headless session-state" data-direction="agent-local" data-confidence="verified-headless"><details><summary><span class="event-name">summary.json</span><span class="event-meta"><span class="direction">agent-local</span><span class="confidence verified-headless">verified-headless</span></span></summary><div class="event-body"><dl><div><dt>Channel</dt><dd><a href="#channels"><code>session-state</code></a></dd></div><div><dt>Transport</dt><dd>json-file-replace</dd></div><div><dt>Trigger</dt><dd>—</dd></div></dl><div class="evidence-refs"><a class="evidence-ref" href="#claim-grok-runtime-headless">grok-runtime-headless</a></div><details class="schema"><summary>Payload schema</summary><pre>{
+  &quot;type&quot;: &quot;object&quot;,
+  &quot;properties&quot;: {
+    &quot;info&quot;: {
+      &quot;type&quot;: &quot;object&quot;
+    },
+    &quot;current_model_id&quot;: {
+      &quot;type&quot;: &quot;string&quot;
+    },
+    &quot;created_at&quot;: {
+      &quot;type&quot;: &quot;string&quot;
+    },
+    &quot;updated_at&quot;: {
+      &quot;type&quot;: &quot;string&quot;
+    },
+    &quot;num_messages&quot;: {
+      &quot;type&quot;: &quot;number&quot;
+    },
+    &quot;num_chat_messages&quot;: {
+      &quot;type&quot;: &quot;number&quot;
+    },
+    &quot;agent_name&quot;: {
+      &quot;type&quot;: &quot;string&quot;
+    }
+  },
+  &quot;required&quot;: [
+    &quot;info&quot;,
+    &quot;current_model_id&quot;,
+    &quot;created_at&quot;,
+    &quot;updated_at&quot;,
+    &quot;num_messages&quot;,
+    &quot;num_chat_messages&quot;,
+    &quot;agent_name&quot;
+  ]
+}</pre></details></div></details></article></div><p id="empty-events" class="empty" hidden>No events match these filters.</p></section><section id="evidence" class="panel"><div class="section-heading"><div><span class="eyebrow">Provenance</span><h2>Evidence</h2></div><span class="count">v2 · 2 claims</span></div><details open><summary>Digest-pinned records</summary><div class="table-wrap"><table><thead><tr><th>ID</th><th>Kind</th><th>Path / digest</th></tr></thead><tbody><tr><td><code>sanitized-captures</code></td><td>capture-set</td><td><code>sha256:0e1a0286ba6d10b7bf9cf68624ad0ecbe9df45186273f9dc946f7d0bf7161434</code></td></tr><tr><td><code>agent-surface-model</code></td><td>model-tree</td><td><code>sha256:42e41093dc48ce8941670dc29756ffb44c01cb406e09f0c9ea13e1bbb95c32c1</code></td></tr></tbody></table></div></details><details><summary>Claim index</summary><div class="claim-list"><article id="claim-grok-runtime-headless" class="claim-card"><header><code>grok-runtime-headless</code><span>runtime-capture</span><span class="confidence verified-headless">verified-headless</span></header><dl><div><dt>Record</dt><dd>sanitized-captures</dd></div><div><dt>Artifact</dt><dd>installed-grok-1.0.0-darwin-arm64</dd></div><div><dt>Captured</dt><dd>2026-08-08T00:00:00.000Z</dd></div></dl></article><article id="claim-grok-public-mirror-lead" class="claim-card"><header><code>grok-public-mirror-lead</code><span>inference</span><span class="confidence unverified">unverified</span></header><dl><div><dt>Record</dt><dd>—</dd></div><div><dt>Artifact</dt><dd>—</dd></div><div><dt>Captured</dt><dd>—</dd></div></dl><p>Source-only lead from a public mirror whose revision is not the installed artifact&#39;s binary-reported revision. It cannot promote an artifact claim.</p></article></div></details></section></main><script>
+const root=document.documentElement;let saved;try{saved=localStorage.getItem('surface-theme')}catch{}if(saved)root.dataset.theme=saved;
+document.querySelector('.theme').addEventListener('click',()=>{const dark=root.dataset.theme==='dark'||(!root.dataset.theme&&matchMedia('(prefers-color-scheme: dark)').matches);root.dataset.theme=dark?'light':'dark';try{localStorage.setItem('surface-theme',root.dataset.theme)}catch{}});
+const search=document.querySelector('#event-search'),direction=document.querySelector('#direction-filter'),confidence=document.querySelector('#confidence-filter'),cards=[...document.querySelectorAll('.event-card')],count=document.querySelector('#event-count'),empty=document.querySelector('#empty-events');
+function filter(){const q=search.value.trim().toLowerCase();let shown=0;for(const card of cards){const visible=(!q||card.dataset.search.includes(q))&&(!direction.value||card.dataset.direction===direction.value)&&(!confidence.value||card.dataset.confidence===confidence.value);card.hidden=!visible;if(visible)shown++}count.textContent=shown+' / '+cards.length;empty.hidden=shown!==0}
+search.addEventListener('input',filter);direction.addEventListener('change',filter);confidence.addEventListener('change',filter);
+document.querySelector('#expand-visible').addEventListener('click',()=>cards.filter(card=>!card.hidden).forEach(card=>card.firstElementChild.open=true));document.querySelector('#collapse-events').addEventListener('click',()=>cards.forEach(card=>card.firstElementChild.open=false));
+</script></body></html>

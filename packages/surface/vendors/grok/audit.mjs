@@ -40,7 +40,8 @@ for (const file of readdirSync(capturesDir).filter((name) => name.endsWith('.jso
 
 for (const leak of checkCaptureDirectory(capturesDir, grokRules)) problems.push(`privacy: ${leak}`);
 
-const evidence = JSON.parse(readFileSync(join(modelDir, 'evidence.json'), 'utf8'));
+const evidence = model.evidenceIndex;
+if (!evidence) throw new Error('canonical ground truth has no evidence index');
 for (const artifact of evidence.artifacts ?? []) {
   const label = artifact.id ?? artifact.platform ?? 'unnamed artifact';
   if (typeof artifact.versionOutput !== 'string' || !artifact.versionOutput.includes(selected.version)) {

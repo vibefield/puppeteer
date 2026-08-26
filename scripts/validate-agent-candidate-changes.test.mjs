@@ -13,7 +13,7 @@ test('candidate publisher rejects runtime source and raw evidence changes', () =
       version: '2.0.0',
       persona: 'fake',
       paths: [
-        'packages/surface/vendors/fake/model/fake@2.0.0/manifest.json',
+        'packages/surface/vendors/fake/model/fake@2.0.0/groundtruth.json',
         'packages/surface/vendors/fake/captures-raw/fake@2.0.0/secret.jsonl',
         'packages/adapter-fake/src/normalizer.ts',
       ],

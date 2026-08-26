@@ -80,6 +80,17 @@ they do not publish models. Imposter consumes the same promoted Surface model an
 behavior, scenarios, presentation, and synthetic-vendor models. `support/agents.json` is the sole
 promotion ledger; README badges are generated from it. Surface `.mjs` scripts need Node ≥22.18
 (type stripping) and import only self-contained modules.
+
+**One agent version has one ground-truth authority.** Runtime code, adapters, personas, support
+selection, and audits read only
+`packages/surface/vendors/<vendor>/model/<vendor>@<version>/groundtruth.json`. The neighboring
+`manifest.json`, `detection.json`, `channels.json`, `evidence.json`, `behavior.json`, and `events/`
+tree are evidence-bound authoring inputs; never add a downstream reader for them. Run
+`pnpm surface:groundtruth:write` after changing those inputs. It fully validates and deterministically
+rebuilds both `groundtruth.json` and the self-contained sibling `groundtruth.html` visualizer;
+`pnpm surface:groundtruth:check` is the stale-output gate. The invented local
+`packages/imposter/personas/synthetic/model` fixture follows the same canonical-file rule but is
+explicitly not vendor evidence.
 apps/
   godview/       current focus — Electron swarm view (matter.js bubbles, panes, usage panel)
   imposter-control/  Agent adaptation devkit (`pnpm agent-devkit`; legacy `pnpm imposter-control`).
@@ -104,6 +115,8 @@ pnpm format         # prettier --write over packages/*/src (CI runs format:check
 pnpm pack:check     # build + pack every public package into tarballs
 pnpm ai:link        # pnpm add --global ./packages/imposter — then `ai --claude` anywhere
 pnpm surface:audit  # audit every captured vendor model from packages/surface
+pnpm surface:groundtruth:write # rebuild one canonical JSON + self-contained HTML per agent version
+pnpm surface:groundtruth:check # fail when either generated ground-truth artifact is stale
 pnpm surface:download # download one reviewed, allowlisted upstream artifact without executing it
 pnpm surface:acquire # hash/version-bind a complete set of already downloaded platform artifacts
 pnpm surface:replay # exact pre-normalization replay of sanitized captures through the persona contract

@@ -13,7 +13,7 @@ on:
         required: true
         type: string
       manifest:
-        description: Versioned ASM v2 manifest already prepared on the selected ref
+        description: Versioned ASM v2 groundtruth.json already prepared on the selected ref
         required: true
         type: string
       publish_draft:

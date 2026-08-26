@@ -60,7 +60,9 @@
       "kind": "model-tree",
       "path": "packages/surface/vendors/grok/model/grok@1.0.0",
       "exclude": [
-        "evidence.json"
+        "evidence.json",
+        "groundtruth.json",
+        "groundtruth.html"
       ],
       "digestAlgorithm": "sha256-path-content-v1",
       "sha256": "42e41093dc48ce8941670dc29756ffb44c01cb406e09f0c9ea13e1bbb95c32c1"

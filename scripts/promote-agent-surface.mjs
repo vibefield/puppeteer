@@ -135,11 +135,13 @@ export function validatePromotion({
   const normalizedManifest = relative(root, manifestAbsolute).split(sep).join('/');
   if (
     !normalizedManifest.startsWith(`packages/surface/vendors/${vendor}/model/`) ||
-    !normalizedManifest.endsWith('/manifest.json')
+    !normalizedManifest.endsWith('/groundtruth.json')
   ) {
-    issues.push('manifest must be a model manifest under the matching Surface vendor');
+    issues.push('manifest must be a canonical ground truth under the matching Surface vendor');
   }
-  const manifest = json(manifestAbsolute);
+  const groundTruth = json(manifestAbsolute);
+  const manifest = groundTruth.manifest ?? {};
+  if (groundTruth.format !== 'puppeteer-groundtruth/1') issues.push('manifest is not a canonical ground-truth document');
   if (manifest.vendor !== vendor) issues.push(`manifest vendor is ${manifest.vendor}`);
   let model;
   try {
@@ -150,13 +152,11 @@ export function validatePromotion({
   if (model && model.manifest.asmVersion !== 2) {
     issues.push('promotion requires a fully traced ASM v2 candidate');
   }
-  const evidencePath = resolve(dirname(manifestAbsolute), manifest.evidence ?? '');
-  let evidence;
+  let evidence = groundTruth.evidenceIndex;
   let requiredPlatforms = [];
-  if (manifest.evidence !== 'evidence.json' || !existsSync(evidencePath)) {
+  if (!evidence) {
     issues.push('candidate manifest has no evidence index');
   } else {
-    evidence = json(evidencePath);
     if (evidence.vendor !== vendor || evidence.vendorVersion !== manifest.vendorVersion)
       issues.push('evidence identity differs from manifest');
     if (evidence.evidenceVersion !== 2 || !Array.isArray(evidence.claims) || evidence.claims.length === 0) {

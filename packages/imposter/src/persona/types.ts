@@ -2,10 +2,9 @@
  * The persona contract (docs/archive/IMPOSTER.md §3.2).
  *
  * A persona is deliberately thin, because most of what the imposter needs is
- * already captured truth: `detection.json` supplies binary names and the argv
- * surface, `channels.json` says which wires exist, and `events/*.json` supplies
- * event names with payload schemas. Those stay Surface-owned and are loaded
- * from the neutral evidence package.
+ * already captured truth: canonical `groundtruth.json` supplies binary names,
+ * argv surface, channels, event names, and payload schemas. The split source
+ * documents stay Surface-owned authoring inputs and are never read here.
  *
  * What a persona adds is only what the ASM cannot know: which semantic ops map
  * to which channel emissions, and what a session emits at boot.

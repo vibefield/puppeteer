@@ -8,7 +8,7 @@
  * Requires node >= 22.18 (type stripping; on older 22.x use
  * `node --experimental-strip-types scripts/generate-registry.mjs`).
  */
-import { readFileSync, writeFileSync } from 'node:fs';
+import { writeFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { loadModel } from '@vibecook/puppeteer-surface';
@@ -20,10 +20,8 @@ const modelRoot = resolveAgentModel({ vendor: 'claude' }).modelRoot;
 const registryTarget = join(adapterRoot, 'src', 'generated', 'registry.ts');
 const detectionTarget = join(adapterRoot, 'src', 'generated', 'detection-surface.ts');
 
-writeFileSync(registryTarget, renderRegistry(loadModel(modelRoot)));
-writeFileSync(
-  detectionTarget,
-  renderDetectionSurface(JSON.parse(readFileSync(join(modelRoot, 'detection.json'), 'utf8'))),
-);
+const model = loadModel(modelRoot);
+writeFileSync(registryTarget, renderRegistry(model));
+writeFileSync(detectionTarget, renderDetectionSurface(model.detection));
 console.log(`generated ${registryTarget}`);
 console.log(`generated ${detectionTarget}`);

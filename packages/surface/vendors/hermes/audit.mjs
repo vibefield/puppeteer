@@ -82,7 +82,7 @@ export function auditHermes() {
   if (existsSync(capturesRoot)) notes.push('sanitized turn captures are present');
 
   const modelRoot = join(vendorRoot, 'model', `hermes@${VERSION}`);
-  if (existsSync(join(modelRoot, 'manifest.json'))) {
+  if (existsSync(join(modelRoot, 'groundtruth.json'))) {
     const model = loadModel(modelRoot);
     const events = new Map(model.events.map((event) => [event.event, event]));
     notes.push(`ASM ${model.events.length} events`);

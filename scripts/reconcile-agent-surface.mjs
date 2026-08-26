@@ -125,18 +125,8 @@ export function classifyReconciliation({ artifactStatus, replayStatus, modelDiff
 
 function artifactStatusFromEvidence(repoRoot, vendor, model) {
   const upstream = json(join(repoRoot, 'packages', 'surface', 'vendors', vendor, 'upstream.json'));
-  const evidencePath = join(
-    repoRoot,
-    'packages',
-    'surface',
-    'vendors',
-    vendor,
-    'model',
-    `${vendor}@${model.manifest.vendorVersion}`,
-    model.manifest.evidence ?? '',
-  );
-  if (!existsSync(evidencePath)) return { status: 'incomplete', missingPlatforms: upstream.platforms };
-  const evidence = json(evidencePath);
+  const evidence = model.evidenceIndex;
+  if (!evidence) return { status: 'incomplete', missingPlatforms: upstream.platforms };
   const verified = new Set(
     (evidence.artifacts ?? [])
       .filter((artifact) =>

@@ -6,6 +6,7 @@ import { createRequire } from 'node:module';
 import { dirname, join, relative, sep } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { digestTree } from '../../../scripts/check-evidence.mjs';
+import { writeGroundTruthArtifacts } from '../../../scripts/groundtruth.mjs';
 
 const VERSION = '0.34.0';
 
@@ -510,9 +511,9 @@ writeJson(join(modelRoot, 'evidence.json'), {
       id: 'agent-surface-model',
       kind: 'model-tree',
       path: modelRecord,
-      exclude: ['evidence.json'],
+      exclude: ['evidence.json', 'groundtruth.json', 'groundtruth.html'],
       digestAlgorithm: 'sha256-path-content-v1',
-      sha256: digestTree(modelRoot, ['evidence.json']),
+      sha256: digestTree(modelRoot, ['evidence.json', 'groundtruth.json', 'groundtruth.html']),
     },
   ],
   claims: [
@@ -555,5 +556,6 @@ writeJson(join(modelRoot, 'evidence.json'), {
   ],
 });
 formatGenerated(join(modelRoot, 'evidence.json'));
+writeGroundTruthArtifacts(modelRoot);
 
 console.log(`generated Kimi ASM: ${totalSurfaceCount} events at ${modelRoot}`);

@@ -16,6 +16,7 @@ import { existsSync, mkdirSync, readFileSync, readdirSync, rmSync, writeFileSync
 import { dirname, join, relative, resolve, sep } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { digestTree } from '../../../scripts/check-evidence.mjs';
+import { writeGroundTruthArtifacts } from '../../../scripts/groundtruth.mjs';
 
 const VERSION = '1.18.16';
 const PLATFORM = 'darwin-arm64';
@@ -657,9 +658,9 @@ if (includeEvidence) {
     id: 'agent-surface-model',
     kind: 'model-tree',
     path: posixRelative(out),
-    exclude: ['evidence.json'],
+    exclude: ['evidence.json', 'groundtruth.json', 'groundtruth.html'],
     digestAlgorithm: 'sha256-path-content-v1',
-    sha256: digestTree(out, ['evidence.json']),
+    sha256: digestTree(out, ['evidence.json', 'groundtruth.json', 'groundtruth.html']),
   };
   writeJson(join(out, 'evidence.json'), {
     evidenceVersion: 2,
@@ -738,3 +739,4 @@ if (includeEvidence) {
 console.log(`opencode@${VERSION}: ${httpCount} HTTP operation(s), ${sseCount} SSE event type(s)`);
 console.log(`  observed: ${observed.requests.size} HTTP request route(s), ${observed.events.size} SSE event type(s)`);
 console.log(`  -> ${out}`);
+writeGroundTruthArtifacts(out);

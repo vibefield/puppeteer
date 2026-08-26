@@ -40,7 +40,7 @@ describe('generated registry', () => {
   });
 
   it('keeps the runtime detection projection in sync with Surface', () => {
-    const document = JSON.parse(readFileSync(join(modelRoot, 'detection.json'), 'utf8'));
+    const document = loadModel(modelRoot).detection;
     const onDisk = readFileSync(join(here, 'detection-surface.ts'), 'utf8');
     expect(onDisk).toBe(renderDetectionSurface(document));
   });

@@ -15,15 +15,15 @@ test('promotion atomically replaces a candidate pointer instead of leaving stale
       {
         id: 'grok',
         status: 'baseline-pending',
-        candidateManifest: 'old/candidate/manifest.json',
+        candidateManifest: 'old/candidate/groundtruth.json',
         legacyEvidence: { modelSha256: 'stale' },
       },
     ],
   };
   const verification = { candidateCommit: 'a'.repeat(40) };
-  const agent = promoteLedgerAgent(ledger, 'grok', 'new/current/manifest.json', '0.2.0', verification);
+  const agent = promoteLedgerAgent(ledger, 'grok', 'new/current/groundtruth.json', '0.2.0', verification);
   assert.equal(agent.status, 'verified');
-  assert.equal(agent.currentManifest, 'new/current/manifest.json');
+  assert.equal(agent.currentManifest, 'new/current/groundtruth.json');
   assert.equal(agent.candidateManifest, undefined);
   assert.equal(agent.legacyEvidence, undefined);
   assert.equal(agent.verification, verification);
@@ -33,7 +33,7 @@ test('promotion atomically replaces a candidate pointer instead of leaving stale
 test('promotion retains the verification identity after workflow artifacts expire', () => {
   const report = {
     commit: 'a'.repeat(40),
-    manifest: 'packages/surface/vendors/fake/model/fake@1.0.0/manifest.json',
+    manifest: 'packages/surface/vendors/fake/model/fake@1.0.0/groundtruth.json',
     replayDigest: 'b'.repeat(64),
     platformReports: [{ platform: 'linux-x64', artifactSha256: `sha256:${'c'.repeat(64)}` }],
     attestation: {

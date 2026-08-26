@@ -34,7 +34,9 @@
       "kind": "model-tree",
       "path": "packages/surface/vendors/claude/model/claude@2.1.207",
       "exclude": [
-        "evidence.json"
+        "evidence.json",
+        "groundtruth.json",
+        "groundtruth.html"
       ],
       "digestAlgorithm": "sha256-path-content-v1",
       "sha256": "19263fb99a091ad7c99d5b8d9a896328b86712419d19f4ed59c5e8304fc746b5"

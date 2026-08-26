@@ -1,0 +1,380 @@
+{
+  "format": "puppeteer-groundtruth/1",
+  "manifest": {
+    "asmVersion": 1,
+    "vendor": "synthetic",
+    "vendorVersion": "0.0.0",
+    "generatedAt": "2026-08-08",
+    "source": "INVENTED. This vendor does not exist and nothing here was captured. It is a fixture whose only job is to be structurally unlike claude, so the persona contract cannot quietly assume claude's shape. Never treat it as evidence; surface:audit must never see it."
+  },
+  "detection": {
+    "binaryNames": [
+      "synthetic"
+    ],
+    "versionFlag": "-V",
+    "versionOutput": "synthetic 0.0.0 (not a real agent)",
+    "helpFlag": "-h",
+    "probedFlags": {
+      "sessionId": "--sid",
+      "settings": "--config",
+      "name": "--label",
+      "permissionMode": "--guard",
+      "model": "--brain"
+    }
+  },
+  "channels": {
+    "channels": {
+      "argv": {
+        "kind": "argv-env",
+        "notes": "Deliberately different flag names from claude: --sid rather than --session-id."
+      },
+      "event": {
+        "kind": "hook-http",
+        "notes": "Named `event`, not `hook` — the imposter must not hard-code claude's channel names."
+      },
+      "transcript": {
+        "kind": "transcript",
+        "notes": "Present so the transcript channel is exercised. Note there is NO statusline channel: a persona that omits one must not break the session."
+      }
+    }
+  },
+  "events": [
+    {
+      "surface": "synthetic",
+      "surfaceVersion": "0.0.0",
+      "event": "agent.action",
+      "channel": "event",
+      "transport": "http",
+      "trigger": "tool invoked",
+      "payloadSchema": {
+        "type": "object",
+        "required": [
+          "kind",
+          "sid",
+          "workdir",
+          "action",
+          "ref"
+        ],
+        "properties": {
+          "kind": {
+            "type": "string"
+          },
+          "sid": {
+            "type": "string"
+          },
+          "workdir": {
+            "type": "string"
+          },
+          "action": {
+            "type": "string"
+          },
+          "ref": {
+            "type": "string"
+          },
+          "args": {
+            "type": "object"
+          }
+        }
+      },
+      "firstSeen": "0.0.0",
+      "confidence": "unverified",
+      "notes": "Invented. Field names deliberately differ from claude's so a claude-shaped assumption fails loudly.",
+      "channels": [
+        "event"
+      ]
+    },
+    {
+      "surface": "synthetic",
+      "surfaceVersion": "0.0.0",
+      "event": "agent.boot",
+      "channel": "event",
+      "transport": "http",
+      "trigger": "process start",
+      "payloadSchema": {
+        "type": "object",
+        "required": [
+          "kind",
+          "sid",
+          "workdir",
+          "label"
+        ],
+        "properties": {
+          "kind": {
+            "type": "string"
+          },
+          "sid": {
+            "type": "string"
+          },
+          "workdir": {
+            "type": "string"
+          },
+          "label": {
+            "type": "string"
+          }
+        }
+      },
+      "firstSeen": "0.0.0",
+      "confidence": "unverified",
+      "notes": "Invented. Field names deliberately differ from claude's so a claude-shaped assumption fails loudly.",
+      "channels": [
+        "event"
+      ]
+    },
+    {
+      "surface": "synthetic",
+      "surfaceVersion": "0.0.0",
+      "event": "agent.halt",
+      "channel": "event",
+      "transport": "http",
+      "trigger": "process ending",
+      "payloadSchema": {
+        "type": "object",
+        "required": [
+          "kind",
+          "sid",
+          "workdir",
+          "why"
+        ],
+        "properties": {
+          "kind": {
+            "type": "string"
+          },
+          "sid": {
+            "type": "string"
+          },
+          "workdir": {
+            "type": "string"
+          },
+          "why": {
+            "type": "string"
+          }
+        }
+      },
+      "firstSeen": "0.0.0",
+      "confidence": "unverified",
+      "notes": "Invented. Field names deliberately differ from claude's so a claude-shaped assumption fails loudly.",
+      "channels": [
+        "event"
+      ]
+    },
+    {
+      "surface": "synthetic",
+      "surfaceVersion": "0.0.0",
+      "event": "agent.prompt",
+      "channel": "event",
+      "transport": "http",
+      "trigger": "user prompt accepted",
+      "payloadSchema": {
+        "type": "object",
+        "required": [
+          "kind",
+          "sid",
+          "workdir",
+          "utterance"
+        ],
+        "properties": {
+          "kind": {
+            "type": "string"
+          },
+          "sid": {
+            "type": "string"
+          },
+          "workdir": {
+            "type": "string"
+          },
+          "utterance": {
+            "type": "string"
+          }
+        }
+      },
+      "firstSeen": "0.0.0",
+      "confidence": "unverified",
+      "notes": "Invented. Field names deliberately differ from claude's so a claude-shaped assumption fails loudly.",
+      "channels": [
+        "event"
+      ]
+    },
+    {
+      "surface": "synthetic",
+      "surfaceVersion": "0.0.0",
+      "event": "agent.reply",
+      "channel": "event",
+      "transport": "http",
+      "trigger": "assistant replied",
+      "payloadSchema": {
+        "type": "object",
+        "required": [
+          "kind",
+          "sid",
+          "workdir",
+          "utterance",
+          "turn"
+        ],
+        "properties": {
+          "kind": {
+            "type": "string"
+          },
+          "sid": {
+            "type": "string"
+          },
+          "workdir": {
+            "type": "string"
+          },
+          "utterance": {
+            "type": "string"
+          },
+          "turn": {
+            "type": "string"
+          }
+        }
+      },
+      "firstSeen": "0.0.0",
+      "confidence": "unverified",
+      "notes": "Invented. Field names deliberately differ from claude's so a claude-shaped assumption fails loudly.",
+      "channels": [
+        "event"
+      ]
+    },
+    {
+      "surface": "synthetic",
+      "surfaceVersion": "0.0.0",
+      "event": "agent.settled",
+      "channel": "event",
+      "transport": "http",
+      "trigger": "turn finished",
+      "payloadSchema": {
+        "type": "object",
+        "required": [
+          "kind",
+          "sid",
+          "workdir",
+          "turn"
+        ],
+        "properties": {
+          "kind": {
+            "type": "string"
+          },
+          "sid": {
+            "type": "string"
+          },
+          "workdir": {
+            "type": "string"
+          },
+          "turn": {
+            "type": "string"
+          }
+        }
+      },
+      "firstSeen": "0.0.0",
+      "confidence": "unverified",
+      "notes": "Invented. Field names deliberately differ from claude's so a claude-shaped assumption fails loudly.",
+      "channels": [
+        "event"
+      ]
+    }
+  ],
+  "behavior": {
+    "behaviorVersion": 1,
+    "title": "Synthetic native event lifecycle",
+    "description": "The synthetic persona has no external vendor; these are nevertheless its exact native event names and ordering contract.",
+    "source": "packages/imposter/personas/synthetic/behavior/happy-turn.json",
+    "lanes": [
+      {
+        "id": "session",
+        "label": "Session"
+      },
+      {
+        "id": "turn",
+        "label": "Turn"
+      }
+    ],
+    "nodes": [
+      {
+        "id": "boot",
+        "event": "agent.boot",
+        "confidence": "unverified",
+        "lane": "session",
+        "order": 0
+      },
+      {
+        "id": "settled",
+        "event": "agent.settled",
+        "confidence": "unverified",
+        "lane": "session",
+        "order": 1
+      },
+      {
+        "id": "halt",
+        "event": "agent.halt",
+        "confidence": "unverified",
+        "lane": "session",
+        "order": 5
+      },
+      {
+        "id": "prompt",
+        "event": "agent.prompt",
+        "confidence": "unverified",
+        "lane": "turn",
+        "order": 2
+      },
+      {
+        "id": "reply",
+        "event": "agent.reply",
+        "confidence": "unverified",
+        "lane": "turn",
+        "order": 3
+      },
+      {
+        "id": "action",
+        "event": "agent.action",
+        "confidence": "unverified",
+        "lane": "turn",
+        "order": 4
+      }
+    ],
+    "relations": [
+      {
+        "from": "boot",
+        "to": "settled",
+        "kind": "sequence",
+        "confidence": "unverified"
+      },
+      {
+        "from": "settled",
+        "to": "prompt",
+        "kind": "sequence",
+        "confidence": "unverified"
+      },
+      {
+        "from": "prompt",
+        "to": "reply",
+        "kind": "sequence",
+        "confidence": "unverified"
+      },
+      {
+        "from": "reply",
+        "to": "action",
+        "kind": "conditional",
+        "confidence": "unverified"
+      },
+      {
+        "from": "action",
+        "to": "prompt",
+        "kind": "loop",
+        "confidence": "unverified"
+      },
+      {
+        "from": "reply",
+        "to": "prompt",
+        "kind": "loop",
+        "confidence": "unverified"
+      },
+      {
+        "from": "prompt",
+        "to": "halt",
+        "kind": "conditional",
+        "confidence": "unverified"
+      }
+    ]
+  }
+}

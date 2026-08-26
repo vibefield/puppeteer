@@ -13,7 +13,7 @@ on:
         required: true
         type: string
       manifest:
-        description: Candidate manifest on the selected workflow ref
+        description: Candidate groundtruth.json on the selected workflow ref
         required: true
         type: string
       confirm:
@@ -291,6 +291,6 @@ jobs:
         run: |
           git config user.name github-actions[bot]
           git config user.email 41898282+github-actions[bot]@users.noreply.github.com
-          git add -- support/agents.json README.md "${AGENT_MANIFEST%/*}/evidence.json"
+          git add -- support/agents.json README.md "${AGENT_MANIFEST%/*}/evidence.json" "${AGENT_MANIFEST%/*}/groundtruth.json" "${AGENT_MANIFEST%/*}/groundtruth.html"
           git commit -m "chore(surface): promote ${AGENT_VENDOR} ${AGENT_VERSION}"
           git push origin "HEAD:${GITHUB_REF_NAME}"

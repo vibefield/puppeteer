@@ -106,8 +106,8 @@ export function verifyAgentSurface({
   const commit = execFileSync('git', ['rev-parse', 'HEAD'], { cwd: repoRoot, encoding: 'utf8' }).trim();
   const model = loadModel(dirname(manifestAbsolute));
   if (model.manifest.vendor !== vendor) throw new Error('verification vendor differs from manifest');
-  const evidencePath = join(dirname(manifestAbsolute), model.manifest.evidence ?? '');
-  const evidence = json(evidencePath);
+  const evidence = model.evidenceIndex;
+  if (!evidence) throw new Error('verification candidate has no canonical evidence index');
   const upstream = json(join(repoRoot, 'packages', 'surface', 'vendors', vendor, 'upstream.json'));
   const reports = platformReports.map((path) => json(safePath(repoRoot, path)));
   const platformIssues = validatePlatformReports({

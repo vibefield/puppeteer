@@ -151,7 +151,8 @@ for (const [name, rules] of [
   notes.push(`privacy (${name}): ${leaks.length === 0 ? 'clean' : `${leaks.length} issue(s)`}`);
 }
 
-const evidence = JSON.parse(readFileSync(join(modelDir, 'evidence.json'), 'utf8'));
+const evidence = model.evidenceIndex;
+if (!evidence) throw new Error('canonical ground truth has no evidence index');
 for (const record of evidence.records ?? []) {
   const path = resolve(repoRoot, record.path ?? '');
   if (!existsSync(path)) {

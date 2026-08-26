@@ -4,8 +4,11 @@ import { dirname, join } from 'node:path';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import {
   buildReport,
+  buildGroundTruth,
   diffModelVsReport,
-  loadModel,
+  loadGroundTruth,
+  loadModel as loadCanonicalModel,
+  loadModelSources as loadModel,
   validatePayload,
   type PayloadSchema,
   type SurfaceModel,
@@ -260,6 +263,18 @@ describe('loadModel', () => {
     expect(model.events.map((event) => event.event)).toEqual(['SessionStart', 'Stop']);
     expect(model.behavior.title).toBe('Fake native lifecycle');
     expect(model.behavior.nodes.map((node) => node.event)).toEqual(['Stop', 'SessionStart']);
+  });
+
+  it('builds and loads the sole canonical ground-truth document', () => {
+    writeModel(dir, [eventFile({ event: 'Stop' }), eventFile({ event: 'SessionStart' })]);
+    const canonicalPath = join(dir, 'groundtruth.json');
+    writeFileSync(canonicalPath, `${JSON.stringify(buildGroundTruth(dir), null, 2)}\n`);
+
+    expect(loadGroundTruth(canonicalPath).events.map((event) => event.event)).toEqual(['SessionStart', 'Stop']);
+    expect(loadCanonicalModel(dir).format).toBe('puppeteer-groundtruth/1');
+
+    writeFileSync(join(dir, 'manifest.json'), '{broken authoring input');
+    expect(loadCanonicalModel(dir).manifest.vendor).toBe('fake');
   });
 
   it('throws on a malformed event file', () => {

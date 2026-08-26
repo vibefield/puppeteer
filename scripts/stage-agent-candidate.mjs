@@ -35,9 +35,9 @@ export function stageAgentCandidate({ vendor, manifestPath }) {
   const manifestRelative = relative(root, manifestAbsolute).split(sep).join('/');
   if (
     !manifestRelative.startsWith(`packages/surface/vendors/${vendor}/model/${vendor}@`) ||
-    !manifestRelative.endsWith('/manifest.json')
+    !manifestRelative.endsWith('/groundtruth.json')
   ) {
-    throw new Error('candidate manifest must be in the matching versioned Surface model directory');
+    throw new Error('candidate ground truth must be in the matching versioned Surface model directory');
   }
   const ledgerPath = resolve(root, 'support', 'agents.json');
   const ledgerText = readFileSync(ledgerPath, 'utf8');

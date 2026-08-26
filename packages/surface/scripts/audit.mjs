@@ -5,6 +5,7 @@ import { spawnSync } from 'node:child_process';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { auditEvidence } from './check-evidence.mjs';
+import { checkGroundTruth, discoverModelRoots } from './groundtruth.mjs';
 
 const packageRoot = dirname(dirname(fileURLToPath(import.meta.url)));
 const vendorsRoot = join(packageRoot, 'vendors');
@@ -19,6 +20,15 @@ if (evidenceIssues.length > 0) {
   for (const issue of evidenceIssues) console.error(`  - ${issue}`);
   process.exit(1);
 }
+
+const groundTruthIssues = checkGroundTruth();
+if (groundTruthIssues.length > 0) {
+  console.error('surface ground truth is stale or malformed:');
+  for (const issue of groundTruthIssues) console.error(`  - ${issue}`);
+  console.error('run `pnpm surface:groundtruth:write` to rebuild canonical JSON and HTML');
+  process.exit(1);
+}
+console.log(`surface ground truth: ${discoverModelRoots().length} canonical models clean`);
 
 if (vendors.length === 0) {
   console.error('surface audit: no vendor audits found');

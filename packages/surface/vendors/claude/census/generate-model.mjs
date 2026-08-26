@@ -15,6 +15,7 @@ import { arch, platform } from 'node:os';
 import { dirname, join, relative, resolve, sep } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { digestTree } from '../../../scripts/check-evidence.mjs';
+import { writeGroundTruthArtifacts } from '../../../scripts/groundtruth.mjs';
 import { CLAUDE_HOOK_EVENTS } from './harness.mjs';
 
 const scriptPath = fileURLToPath(import.meta.url);
@@ -721,9 +722,9 @@ export function generateClaudeModel({ artifact, version, capturedAt, retrievedAt
         id: 'agent-surface-model',
         kind: 'model-tree',
         path: repoRelative(modelRoot),
-        exclude: ['evidence.json'],
+        exclude: ['evidence.json', 'groundtruth.json', 'groundtruth.html'],
         digestAlgorithm: 'sha256-path-content-v1',
-        sha256: digestTree(modelRoot, ['evidence.json']),
+        sha256: digestTree(modelRoot, ['evidence.json', 'groundtruth.json', 'groundtruth.html']),
       },
     ],
     limitations: [
@@ -732,6 +733,7 @@ export function generateClaudeModel({ artifact, version, capturedAt, retrievedAt
       'The official hook reference is mutable. Its reviewed summary is digest-pinned here, and a future candidate must repeat the review and census rather than inheriting this claim.',
     ],
   });
+  writeGroundTruthArtifacts(modelRoot);
   return { modelRoot, capturedEvents: [...capturedEvents].sort(), artifactDigest };
 }
 

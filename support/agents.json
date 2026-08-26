@@ -8,17 +8,17 @@
       "kind": "vendor",
       "adapterPackage": "@vibecook/puppeteer-adapter-claude",
       "persona": "claude",
-      "currentManifest": "packages/surface/vendors/claude/model/claude@2.1.207/manifest.json",
+      "currentManifest": "packages/surface/vendors/claude/model/claude@2.1.207/groundtruth.json",
       "status": "legacy-verified",
       "legacyEvidence": {
         "kind": "pre-asm-v2-baseline",
-        "frozenManifest": "packages/surface/vendors/claude/model/claude@2.1.207/manifest.json",
+        "frozenManifest": "packages/surface/vendors/claude/model/claude@2.1.207/groundtruth.json",
         "modelSha256": "19263fb99a091ad7c99d5b8d9a896328b86712419d19f4ed59c5e8304fc746b5",
         "frozenOn": "2026-08-09",
         "reason": "Grandfathered support predates claim-addressable ASM v2 and the guarded multi-platform promotion workflow."
       },
       "introducedInPuppeteer": "0.1.8",
-      "candidateManifest": "packages/surface/vendors/claude/model/claude@2.1.226/manifest.json"
+      "candidateManifest": "packages/surface/vendors/claude/model/claude@2.1.226/groundtruth.json"
     },
     {
       "id": "codex",
@@ -26,11 +26,11 @@
       "kind": "vendor",
       "adapterPackage": "@vibecook/puppeteer-adapter-codex",
       "persona": "codex",
-      "currentManifest": "packages/surface/vendors/codex/model/codex@0.147.0/manifest.json",
+      "currentManifest": "packages/surface/vendors/codex/model/codex@0.147.0/groundtruth.json",
       "status": "legacy-verified",
       "legacyEvidence": {
         "kind": "pre-asm-v2-baseline",
-        "frozenManifest": "packages/surface/vendors/codex/model/codex@0.147.0/manifest.json",
+        "frozenManifest": "packages/surface/vendors/codex/model/codex@0.147.0/groundtruth.json",
         "modelSha256": "d4d3bc10031505878233743032fd529fce4741f9228158361d5b6675763904cc",
         "frozenOn": "2026-08-09",
         "reason": "Grandfathered support predates the complete multi-platform artifact attestation required by the guarded promotion workflow."
@@ -43,7 +43,7 @@
       "kind": "vendor",
       "adapterPackage": "@vibecook/puppeteer-adapter-grok",
       "persona": "grok",
-      "candidateManifest": "packages/surface/vendors/grok/model/grok@1.0.0/manifest.json",
+      "candidateManifest": "packages/surface/vendors/grok/model/grok@1.0.0/groundtruth.json",
       "status": "baseline-pending"
     },
     {
@@ -52,7 +52,7 @@
       "kind": "vendor",
       "adapterPackage": "@vibecook/puppeteer-adapter-kimi",
       "persona": "kimi",
-      "candidateManifest": "packages/surface/vendors/kimi/model/kimi@0.34.0/manifest.json",
+      "candidateManifest": "packages/surface/vendors/kimi/model/kimi@0.34.0/groundtruth.json",
       "status": "baseline-pending"
     },
     {
@@ -61,7 +61,7 @@
       "kind": "vendor",
       "adapterPackage": "@vibecook/puppeteer-adapter-opencode",
       "persona": "opencode",
-      "candidateManifest": "packages/surface/vendors/opencode/model/opencode@1.18.16/manifest.json",
+      "candidateManifest": "packages/surface/vendors/opencode/model/opencode@1.18.16/groundtruth.json",
       "status": "baseline-pending"
     }
   ]

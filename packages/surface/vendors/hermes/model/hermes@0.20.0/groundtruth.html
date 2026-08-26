@@ -1,0 +1,2114 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8" /><meta name="viewport" content="width=device-width,initial-scale=1" /><meta name="generator" content="@vibecook/puppeteer-surface groundtruth" /><title>hermes@0.20.0 ground truth</title><style>
+:root{color-scheme:light;--bg:#f4f2ec;--paper:#fff;--paper2:#f7f6f2;--ink:#25272b;--muted:#6c7077;--line:#ddd9cf;--accent:#9f4c28;--teal:#176b61;--blue:#355b8c;--amber:#8a6418;--red:#a13f45;--shadow:0 12px 36px rgba(30,32,36,.07)}
+:root[data-theme=dark]{color-scheme:dark;--bg:#141619;--paper:#1d2024;--paper2:#25292e;--ink:#e8e6e0;--muted:#a1a6ad;--line:#383c42;--accent:#da815a;--teal:#63b7a9;--blue:#83a8da;--amber:#d2ad58;--red:#df858a;--shadow:0 14px 40px rgba(0,0,0,.25)}
+@media(prefers-color-scheme:dark){:root:not([data-theme=light]){color-scheme:dark;--bg:#141619;--paper:#1d2024;--paper2:#25292e;--ink:#e8e6e0;--muted:#a1a6ad;--line:#383c42;--accent:#da815a;--teal:#63b7a9;--blue:#83a8da;--amber:#d2ad58;--red:#df858a;--shadow:0 14px 40px rgba(0,0,0,.25)}}
+*{box-sizing:border-box}html{scroll-behavior:smooth;scroll-padding-top:1rem}body{margin:0;background:var(--bg);color:var(--ink);font:15px/1.55 Inter,ui-sans-serif,system-ui,-apple-system,sans-serif}code,pre,input,select{font-family:"SFMono-Regular",Consolas,monospace}a{color:var(--teal);text-decoration:none}a:hover{text-decoration:underline}.shell{width:min(1420px,100%);margin:auto;padding:2.5rem 1.5rem 6rem}.hero,.panel{background:var(--paper);border:1px solid var(--line);border-radius:14px;box-shadow:var(--shadow)}.hero{padding:2rem;margin-bottom:1.25rem}.hero-row,.section-heading{display:flex;justify-content:space-between;align-items:flex-start;gap:1rem}.eyebrow{text-transform:uppercase;letter-spacing:.14em;font:700 11px/1.3 "SFMono-Regular",monospace;color:var(--accent)}h1,h2{margin:.28rem 0 0;line-height:1.12}h1{font-size:clamp(2rem,5vw,4.2rem);letter-spacing:-.04em}h2{font-size:1.45rem}.version{color:var(--muted);font-weight:450}.theme{border:1px solid var(--line);background:var(--paper2);color:var(--ink);border-radius:999px;padding:.45rem .75rem;cursor:pointer}.lede{max-width:75ch;color:var(--muted)}.stats{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:.7rem;margin-top:1.5rem}.stat{padding:.85rem;background:var(--paper2);border:1px solid var(--line);border-radius:9px}.stat strong{display:block;font-size:1.35rem}.stat span,.count{color:var(--muted);font-size:.82rem}.nav{display:flex;gap:.5rem;flex-wrap:wrap;margin-top:1.2rem}.nav a{border:1px solid var(--line);border-radius:999px;padding:.35rem .7rem;background:var(--paper2)}.panel{padding:1.5rem;margin:1.25rem 0}.table-wrap{overflow:auto}table{width:100%;border-collapse:collapse}th,td{text-align:left;padding:.6rem .7rem;border-bottom:1px solid var(--line);vertical-align:top}th{color:var(--muted);font-size:.72rem;text-transform:uppercase;letter-spacing:.08em}td pre{margin:0;white-space:pre-wrap;font-size:.76rem}.channel-kind,.relation-kind,.direction,.confidence{display:inline-flex;padding:.12rem .42rem;border-radius:5px;background:var(--paper2);border:1px solid var(--line);font-size:.75rem}.verified-headless{color:var(--teal)}.verified-interactive{color:var(--blue)}.unverified{color:var(--amber)}.lanes{display:grid;gap:.7rem;margin-top:1rem}.lane{display:grid;grid-template-columns:180px 1fr;border:1px solid var(--line);border-radius:9px;overflow:hidden}.lane>header{padding:.7rem;background:var(--paper2);display:flex;flex-direction:column}.lane>header span{color:var(--muted);font-size:.78rem}.lane-track{display:flex;align-items:center;gap:.4rem;padding:.7rem;overflow:auto}.behavior-node{display:flex;flex-direction:column;min-width:145px;padding:.55rem .65rem;border:1px solid var(--line);border-left:3px solid currentColor;border-radius:7px;background:var(--paper)}.behavior-node small{color:var(--muted)}.behavior-node code{font-size:.66rem}.flow-arrow{color:var(--muted)}details>summary{cursor:pointer}.relation-table{margin-top:1rem}.toolbar{display:flex;align-items:end;gap:.65rem;flex-wrap:wrap;margin:1rem 0}.toolbar label{display:flex;flex-direction:column;gap:.2rem}.toolbar label span{color:var(--muted);font-size:.75rem}.toolbar input,.toolbar select,.toolbar button{min-height:38px;border:1px solid var(--line);border-radius:7px;background:var(--paper2);color:var(--ink);padding:.4rem .6rem}.toolbar input{width:min(330px,70vw)}.toolbar button{cursor:pointer}.event-list{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:.6rem}.event-card{border:1px solid var(--line);border-radius:9px;background:var(--paper2);scroll-margin-top:1rem}.event-card[hidden]{display:none}.event-card>details>summary{display:flex;justify-content:space-between;align-items:center;gap:.7rem;padding:.75rem}.event-name{font:600 .86rem "SFMono-Regular",monospace;overflow-wrap:anywhere}.event-meta{display:flex;gap:.35rem}.event-body{padding:.1rem .8rem .8rem;border-top:1px solid var(--line)}dl{margin:.7rem 0}dl>div{display:grid;grid-template-columns:90px 1fr;gap:.5rem}dt{color:var(--muted)}dd{margin:0}.evidence-refs{display:flex;gap:.3rem;flex-wrap:wrap;margin:.65rem 0}.evidence-ref{font:500 .7rem "SFMono-Regular",monospace;border:1px solid var(--line);border-radius:999px;padding:.15rem .4rem}.schema,.variants{margin:.55rem 0}.schema pre{max-height:520px;overflow:auto;padding:.75rem;border:1px solid var(--line);border-radius:7px;background:var(--paper);font-size:.73rem}.variant{padding:.45rem 0;border-bottom:1px solid var(--line)}.claim-list{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:.6rem;margin-top:.7rem}.claim-card{border:1px solid var(--line);border-radius:8px;padding:.7rem;scroll-margin-top:1rem}.claim-card header{display:flex;gap:.5rem;align-items:center;flex-wrap:wrap}.claim-card header>span:nth-child(2){color:var(--muted)}.claim-card p{color:var(--muted)}.empty{text-align:center;color:var(--muted);padding:2rem}.source{margin-top:1rem;color:var(--muted);font-size:.82rem;overflow-wrap:anywhere}
+@media(max-width:800px){.stats{grid-template-columns:repeat(2,1fr)}.event-list,.claim-list{grid-template-columns:1fr}.lane{grid-template-columns:1fr}.hero-row,.section-heading{align-items:stretch}.event-card>details>summary{align-items:flex-start;flex-direction:column}.event-meta{flex-wrap:wrap}}
+</style></head><body><main class="shell"><header class="hero"><div class="hero-row"><div><span class="eyebrow">Agent surface ground truth</span><h1>hermes <span class="version">0.20.0</span></h1><p class="lede">One canonical, evidence-backed description of the agent's native transports, events, payload contracts, and behavior topology.</p></div><button class="theme" type="button">Toggle theme</button></div><div class="stats"><div class="stat"><strong>28</strong><span>events</span></div><div class="stat"><strong>7</strong><span>channels</span></div><div class="stat"><strong>29</strong><span>behavior nodes</span></div><div class="stat"><strong>32</strong><span>relations</span></div><div class="stat"><strong>3</strong><span>evidence claims</span></div></div><nav class="nav"><a href="#channels">Channels</a><a href="#behavior">Behavior</a><a href="#events">Events</a><a href="#evidence">Evidence</a></nav><p class="source"><code>puppeteer-groundtruth/1</code> · ASM v2 · generated 2026-08-12 · Hermes Agent 0.20.0 isolated-home stdio tui_gateway census plus identity/Gate 0 probes of the exact v2026.8.3 source revision. Unobserved source methods are omitted rather than marked verified.</p></header><section id="channels" class="panel"><div class="section-heading"><div><span class="eyebrow">Transport map</span><h2>Channels</h2></div><span class="count">7</span></div><div class="table-wrap"><table><thead><tr><th>Name</th><th>Kind</th><th>Contract</th></tr></thead><tbody><tr><td><code>argv</code></td><td><span class="channel-kind">argv-env</span></td><td><pre>{
+  &quot;notes&quot;: &quot;hermes --tui launch, HERMES_HOME isolation, PUPPETEER_HERMES_BIN.&quot;
+}</pre></td></tr><tr><td><code>terminal</code></td><td><span class="channel-kind">terminal</span></td><td><pre>{
+  &quot;notes&quot;: &quot;Native Node Ink TUI. Semantics are never derived from terminal text.&quot;
+}</pre></td></tr><tr><td><code>tui-gateway</code></td><td><span class="channel-kind">jsonrpc-stdio</span></td><td><pre>{
+  &quot;notes&quot;: &quot;JSON-RPC over stdio to tui_gateway.entry, or the same dispatcher over WebSocket handle_ws.&quot;
+}</pre></td></tr><tr><td><code>plugin-hook</code></td><td><span class="channel-kind">hook-callback</span></td><td><pre>{
+  &quot;notes&quot;: &quot;In-process plugin hooks. Default tui_gateway.entry does not load user plugins until discover_plugins runs.&quot;
+}</pre></td></tr><tr><td><code>outbound-webhook</code></td><td><span class="channel-kind">webhook-http</span></td><td><pre>{
+  &quot;notes&quot;: &quot;Notify-only hooks.outbound POSTs. Default tui_gateway.entry does not register them.&quot;
+}</pre></td></tr><tr><td><code>state-db</code></td><td><span class="channel-kind">native-state</span></td><td><pre>{
+  &quot;notes&quot;: &quot;HERMES_HOME/state.db is resume/replay only. Not a live event stream.&quot;
+}</pre></td></tr><tr><td><code>acp</code></td><td><span class="channel-kind">acp</span></td><td><pre>{
+  &quot;notes&quot;: &quot;Separate hermes acp / hermes-acp host. Forbidden beside a native-TUI session.&quot;
+}</pre></td></tr></tbody></table></div></section><section id="behavior" class="panel"><div class="section-heading"><div><span class="eyebrow">Native topology</span><h2>Hermes Agent 0.20.0 native TUI-gateway lifecycle</h2></div><span class="count">29 nodes · 32 relations</span></div><p class="lede">Partial order over stdio tui_gateway JSON-RPC and isolated-home hooks. Live Node TUI attach is the same dispatcher but is not itself a capture in this model.</p><div class="lanes"><section class="lane"><header><strong>Session</strong><code>session</code></header><div class="lane-track"><a class="behavior-node confidence-verified-headless" href="#event-gateway-ready" title="gateway.ready"><span>gateway.ready</span><small>gateway.ready</small></a><span class="flow-arrow">→</span><a class="behavior-node confidence-verified-headless" href="#event-session-create" title="session.create"><span>session.create</span><small>session.create</small></a><span class="flow-arrow">→</span><a class="behavior-node confidence-verified-headless" href="#event-session-resume" title="session.resume"><span>session.resume</span><small>session.resume</small></a><span class="flow-arrow">→</span><a class="behavior-node confidence-verified-headless" href="#event-session-info" title="session.info"><span>session.info</span><small>session.info</small></a><span class="flow-arrow">→</span><a class="behavior-node confidence-verified-headless" href="#event-sessions-changed" title="sessions.changed"><span>sessions.changed</span><small>sessions.changed</small></a></div></section><section class="lane"><header><strong>Turn stream</strong><code>turn</code></header><div class="lane-track"><a class="behavior-node confidence-verified-headless" href="#event-prompt-submit" title="prompt.submit"><span>prompt.submit</span><small>prompt.submit</small></a><span class="flow-arrow">→</span><a class="behavior-node confidence-verified-headless" href="#event-message-start" title="message.start"><span>message.start</span><small>message.start</small></a><span class="flow-arrow">→</span><a class="behavior-node confidence-verified-headless" href="#event-thinking-delta" title="thinking.delta"><span>thinking.delta</span><small>thinking.delta</small></a><span class="flow-arrow">→</span><a class="behavior-node confidence-verified-headless" href="#event-message-delta" title="message.delta"><span>message.delta</span><small>message.delta</small></a><span class="flow-arrow">→</span><a class="behavior-node confidence-verified-headless" href="#event-reasoning-available" title="reasoning.available"><span>reasoning.available</span><small>reasoning.available</small></a><span class="flow-arrow">→</span><a class="behavior-node confidence-verified-headless" href="#event-session-interrupt" title="session.interrupt"><span>session.interrupt</span><small>session.interrupt</small></a><span class="flow-arrow">→</span><a class="behavior-node confidence-verified-headless" href="#event-message-complete" title="message.complete"><span>message.complete</span><small>message.complete</small><code>{&quot;status&quot;:&quot;complete&quot;}</code></a><span class="flow-arrow">→</span><a class="behavior-node confidence-verified-headless" href="#event-message-complete" title="message.complete"><span>message.complete</span><small>message.complete</small><code>{&quot;status&quot;:&quot;interrupted&quot;}</code></a></div></section><section class="lane"><header><strong>Tools and approvals</strong><code>tool</code></header><div class="lane-track"><a class="behavior-node confidence-verified-headless" href="#event-tool-generating" title="tool.generating"><span>tool.generating</span><small>tool.generating</small></a><span class="flow-arrow">→</span><a class="behavior-node confidence-verified-headless" href="#event-tool-start" title="tool.start"><span>tool.start</span><small>tool.start</small></a><span class="flow-arrow">→</span><a class="behavior-node confidence-verified-headless" href="#event-approval-request" title="approval.request"><span>approval.request</span><small>approval.request</small></a><span class="flow-arrow">→</span><a class="behavior-node confidence-verified-headless" href="#event-approval-respond" title="approval.respond"><span>approval.respond</span><small>approval.respond</small></a><span class="flow-arrow">→</span><a class="behavior-node confidence-verified-headless" href="#event-tool-complete" title="tool.complete"><span>tool.complete</span><small>tool.complete</small></a></div></section><section class="lane"><header><strong>Plugin hooks / webhooks</strong><code>hook</code></header><div class="lane-track"><a class="behavior-node confidence-verified-headless" href="#event-on_session_start" title="on_session_start"><span>on_session_start</span><small>on_session_start</small></a><span class="flow-arrow">→</span><a class="behavior-node confidence-verified-headless" href="#event-pre_llm_call" title="pre_llm_call"><span>pre_llm_call</span><small>pre_llm_call</small></a><span class="flow-arrow">→</span><a class="behavior-node confidence-verified-headless" href="#event-pre_api_request" title="pre_api_request"><span>pre_api_request</span><small>pre_api_request</small></a><span class="flow-arrow">→</span><a class="behavior-node confidence-verified-headless" href="#event-pre_tool_call" title="pre_tool_call"><span>pre_tool_call</span><small>pre_tool_call</small></a><span class="flow-arrow">→</span><a class="behavior-node confidence-verified-headless" href="#event-post_api_request" title="post_api_request"><span>post_api_request</span><small>post_api_request</small></a><span class="flow-arrow">→</span><a class="behavior-node confidence-verified-headless" href="#event-pre_approval_request" title="pre_approval_request"><span>pre_approval_request</span><small>pre_approval_request</small></a><span class="flow-arrow">→</span><a class="behavior-node confidence-verified-headless" href="#event-post_approval_response" title="post_approval_response"><span>post_approval_response</span><small>post_approval_response</small></a><span class="flow-arrow">→</span><a class="behavior-node confidence-verified-headless" href="#event-post_llm_call" title="post_llm_call"><span>post_llm_call</span><small>post_llm_call</small></a><span class="flow-arrow">→</span><a class="behavior-node confidence-verified-headless" href="#event-post_tool_call" title="post_tool_call"><span>post_tool_call</span><small>post_tool_call</small></a><span class="flow-arrow">→</span><a class="behavior-node confidence-verified-headless" href="#event-on_session_end" title="on_session_end"><span>on_session_end</span><small>on_session_end</small></a><span class="flow-arrow">→</span><a class="behavior-node confidence-verified-headless" href="#event-on_session_finalize" title="on_session_finalize"><span>on_session_finalize</span><small>on_session_finalize</small></a></div></section></div><details class="relation-table"><summary>Relation ledger</summary><div class="table-wrap"><table><thead><tr><th>From</th><th>Kind</th><th>To</th><th>Label</th><th>Confidence</th></tr></thead><tbody><tr><td><code>gateway-ready</code></td><td><span class="relation-kind">sequence</span></td><td><code>session-create</code></td><td></td><td><span class="confidence verified-headless">verified-headless</span></td></tr><tr><td><code>gateway-ready</code></td><td><span class="relation-kind">resume</span></td><td><code>session-resume</code></td><td>resume of a stored id</td><td><span class="confidence verified-headless">verified-headless</span></td></tr><tr><td><code>session-create</code></td><td><span class="relation-kind">sequence</span></td><td><code>session-info</code></td><td></td><td><span class="confidence verified-headless">verified-headless</span></td></tr><tr><td><code>session-resume</code></td><td><span class="relation-kind">sequence</span></td><td><code>session-info</code></td><td></td><td><span class="confidence verified-headless">verified-headless</span></td></tr><tr><td><code>session-create</code></td><td><span class="relation-kind">async</span></td><td><code>sessions-changed</code></td><td></td><td><span class="confidence verified-headless">verified-headless</span></td></tr><tr><td><code>session-create</code></td><td><span class="relation-kind">async</span></td><td><code>hook-session-start</code></td><td></td><td><span class="confidence verified-headless">verified-headless</span></td></tr><tr><td><code>session-info</code></td><td><span class="relation-kind">sequence</span></td><td><code>prompt-submit</code></td><td></td><td><span class="confidence verified-headless">verified-headless</span></td></tr><tr><td><code>prompt-submit</code></td><td><span class="relation-kind">sequence</span></td><td><code>message-start</code></td><td></td><td><span class="confidence verified-headless">verified-headless</span></td></tr><tr><td><code>prompt-submit</code></td><td><span class="relation-kind">async</span></td><td><code>hook-pre-llm</code></td><td></td><td><span class="confidence verified-headless">verified-headless</span></td></tr><tr><td><code>hook-pre-llm</code></td><td><span class="relation-kind">sequence</span></td><td><code>hook-pre-api</code></td><td></td><td><span class="confidence verified-headless">verified-headless</span></td></tr><tr><td><code>message-start</code></td><td><span class="relation-kind">sequence</span></td><td><code>thinking-delta</code></td><td></td><td><span class="confidence verified-headless">verified-headless</span></td></tr><tr><td><code>thinking-delta</code></td><td><span class="relation-kind">conditional</span></td><td><code>message-delta</code></td><td>no-tool reply</td><td><span class="confidence verified-headless">verified-headless</span></td></tr><tr><td><code>thinking-delta</code></td><td><span class="relation-kind">conditional</span></td><td><code>tool-generating</code></td><td>tool call</td><td><span class="confidence verified-headless">verified-headless</span></td></tr><tr><td><code>tool-generating</code></td><td><span class="relation-kind">sequence</span></td><td><code>tool-start</code></td><td></td><td><span class="confidence verified-headless">verified-headless</span></td></tr><tr><td><code>tool-start</code></td><td><span class="relation-kind">async</span></td><td><code>hook-pre-tool</code></td><td></td><td><span class="confidence verified-headless">verified-headless</span></td></tr><tr><td><code>tool-start</code></td><td><span class="relation-kind">conditional</span></td><td><code>tool-complete</code></td><td>no approval</td><td><span class="confidence verified-headless">verified-headless</span></td></tr><tr><td><code>tool-start</code></td><td><span class="relation-kind">conditional</span></td><td><code>approval-request</code></td><td>dangerous command</td><td><span class="confidence verified-headless">verified-headless</span></td></tr><tr><td><code>approval-request</code></td><td><span class="relation-kind">async</span></td><td><code>hook-pre-approval</code></td><td></td><td><span class="confidence verified-headless">verified-headless</span></td></tr><tr><td><code>approval-request</code></td><td><span class="relation-kind">sequence</span></td><td><code>approval-respond</code></td><td></td><td><span class="confidence verified-headless">verified-headless</span></td></tr><tr><td><code>approval-respond</code></td><td><span class="relation-kind">async</span></td><td><code>hook-post-approval</code></td><td></td><td><span class="confidence verified-headless">verified-headless</span></td></tr><tr><td><code>approval-respond</code></td><td><span class="relation-kind">sequence</span></td><td><code>tool-complete</code></td><td></td><td><span class="confidence verified-headless">verified-headless</span></td></tr><tr><td><code>tool-complete</code></td><td><span class="relation-kind">async</span></td><td><code>hook-post-tool</code></td><td></td><td><span class="confidence verified-headless">verified-headless</span></td></tr><tr><td><code>tool-complete</code></td><td><span class="relation-kind">conditional</span></td><td><code>message-delta</code></td><td>follow-up model call</td><td><span class="confidence verified-headless">verified-headless</span></td></tr><tr><td><code>message-delta</code></td><td><span class="relation-kind">conditional</span></td><td><code>reasoning-available</code></td><td></td><td><span class="confidence verified-headless">verified-headless</span></td></tr><tr><td><code>message-delta</code></td><td><span class="relation-kind">conditional</span></td><td><code>session-interrupt</code></td><td>barge-in</td><td><span class="confidence verified-headless">verified-headless</span></td></tr><tr><td><code>reasoning-available</code></td><td><span class="relation-kind">sequence</span></td><td><code>message-complete</code></td><td></td><td><span class="confidence verified-headless">verified-headless</span></td></tr><tr><td><code>session-interrupt</code></td><td><span class="relation-kind">sequence</span></td><td><code>message-interrupted</code></td><td></td><td><span class="confidence verified-headless">verified-headless</span></td></tr><tr><td><code>hook-pre-api</code></td><td><span class="relation-kind">conditional</span></td><td><code>hook-post-api</code></td><td>provider finished</td><td><span class="confidence verified-headless">verified-headless</span></td></tr><tr><td><code>hook-post-api</code></td><td><span class="relation-kind">conditional</span></td><td><code>hook-post-llm</code></td><td></td><td><span class="confidence verified-headless">verified-headless</span></td></tr><tr><td><code>message-complete</code></td><td><span class="relation-kind">async</span></td><td><code>hook-session-end</code></td><td>gateway teardown</td><td><span class="confidence verified-headless">verified-headless</span></td></tr><tr><td><code>hook-session-end</code></td><td><span class="relation-kind">sequence</span></td><td><code>hook-finalize</code></td><td></td><td><span class="confidence verified-headless">verified-headless</span></td></tr><tr><td><code>session-create</code></td><td><span class="relation-kind">resume</span></td><td><code>session-resume</code></td><td>later process, same stored id</td><td><span class="confidence verified-headless">verified-headless</span></td></tr></tbody></table></div></details></section><section id="events" class="panel"><div class="section-heading"><div><span class="eyebrow">Wire catalog</span><h2>Events</h2></div><span id="event-count" class="count">28</span></div><div class="toolbar"><label><span>Search</span><input id="event-search" type="search" placeholder="event, channel, transport…" /></label><label><span>Direction</span><select id="direction-filter"><option value="">all</option><option value="agent-local">agent-local</option><option value="agent-to-client">agent-to-client</option><option value="client-to-agent">client-to-agent</option></select></label><label><span>Confidence</span><select id="confidence-filter"><option value="">all</option><option>verified-headless</option><option>verified-interactive</option><option>unverified</option></select></label><button id="expand-visible" type="button">Expand visible</button><button id="collapse-events" type="button">Collapse</button></div><div id="event-list" class="event-list"><article id="event-approval-request" class="event-card" data-search="approval.request agent-to-client jsonrpc-notification verified-headless tui-gateway" data-direction="agent-to-client" data-confidence="verified-headless"><details><summary><span class="event-name">approval.request</span><span class="event-meta"><span class="direction">agent-to-client</span><span class="confidence verified-headless">verified-headless</span></span></summary><div class="event-body"><dl><div><dt>Channel</dt><dd><a href="#channels"><code>tui-gateway</code></a></dd></div><div><dt>Transport</dt><dd>jsonrpc-notification</dd></div><div><dt>Trigger</dt><dd>—</dd></div></dl><div class="evidence-refs"><a class="evidence-ref" href="#claim-hermes-runtime-headless">hermes-runtime-headless</a></div><details class="schema"><summary>Payload schema</summary><pre>{
+  &quot;type&quot;: &quot;object&quot;,
+  &quot;properties&quot;: {
+    &quot;choices&quot;: {
+      &quot;type&quot;: &quot;array&quot;,
+      &quot;items&quot;: {
+        &quot;type&quot;: &quot;string&quot;
+      }
+    },
+    &quot;pattern_key&quot;: {
+      &quot;type&quot;: &quot;string&quot;
+    },
+    &quot;allow_permanent&quot;: {
+      &quot;type&quot;: &quot;boolean&quot;
+    },
+    &quot;allow_session&quot;: {
+      &quot;type&quot;: &quot;boolean&quot;
+    },
+    &quot;hasText&quot;: {
+      &quot;type&quot;: &quot;boolean&quot;
+    },
+    &quot;hasContext&quot;: {
+      &quot;type&quot;: &quot;boolean&quot;
+    }
+  },
+  &quot;required&quot;: [
+    &quot;choices&quot;
+  ]
+}</pre></details><details class="schema"><summary>Carrier schema</summary><pre>{
+  &quot;type&quot;: &quot;object&quot;,
+  &quot;properties&quot;: {
+    &quot;jsonrpc&quot;: {
+      &quot;type&quot;: &quot;string&quot;,
+      &quot;enum&quot;: [
+        &quot;2.0&quot;
+      ]
+    },
+    &quot;method&quot;: {
+      &quot;type&quot;: &quot;string&quot;,
+      &quot;enum&quot;: [
+        &quot;event&quot;
+      ]
+    },
+    &quot;params&quot;: {
+      &quot;type&quot;: &quot;object&quot;,
+      &quot;properties&quot;: {
+        &quot;type&quot;: {
+          &quot;type&quot;: &quot;string&quot;,
+          &quot;enum&quot;: [
+            &quot;approval.request&quot;
+          ]
+        },
+        &quot;session_id&quot;: {
+          &quot;type&quot;: &quot;string&quot;
+        },
+        &quot;payload&quot;: {
+          &quot;type&quot;: &quot;object&quot;,
+          &quot;properties&quot;: {
+            &quot;choices&quot;: {
+              &quot;type&quot;: &quot;array&quot;,
+              &quot;items&quot;: {
+                &quot;type&quot;: &quot;string&quot;
+              }
+            },
+            &quot;pattern_key&quot;: {
+              &quot;type&quot;: &quot;string&quot;
+            },
+            &quot;allow_permanent&quot;: {
+              &quot;type&quot;: &quot;boolean&quot;
+            },
+            &quot;allow_session&quot;: {
+              &quot;type&quot;: &quot;boolean&quot;
+            },
+            &quot;hasText&quot;: {
+              &quot;type&quot;: &quot;boolean&quot;
+            },
+            &quot;hasContext&quot;: {
+              &quot;type&quot;: &quot;boolean&quot;
+            }
+          },
+          &quot;required&quot;: [
+            &quot;choices&quot;
+          ]
+        }
+      },
+      &quot;required&quot;: [
+        &quot;type&quot;,
+        &quot;payload&quot;
+      ]
+    }
+  },
+  &quot;required&quot;: [
+    &quot;method&quot;,
+    &quot;params&quot;
+  ]
+}</pre></details></div></details></article><article id="event-approval-respond" class="event-card" data-search="approval.respond client-to-agent jsonrpc-request verified-headless tui-gateway" data-direction="client-to-agent" data-confidence="verified-headless"><details><summary><span class="event-name">approval.respond</span><span class="event-meta"><span class="direction">client-to-agent</span><span class="confidence verified-headless">verified-headless</span></span></summary><div class="event-body"><dl><div><dt>Channel</dt><dd><a href="#channels"><code>tui-gateway</code></a></dd></div><div><dt>Transport</dt><dd>jsonrpc-request</dd></div><div><dt>Trigger</dt><dd>—</dd></div></dl><div class="evidence-refs"><a class="evidence-ref" href="#claim-hermes-runtime-headless">hermes-runtime-headless</a></div><details class="schema"><summary>Payload schema</summary><pre>{
+  &quot;type&quot;: &quot;object&quot;,
+  &quot;properties&quot;: {
+    &quot;session_id&quot;: {
+      &quot;type&quot;: &quot;string&quot;
+    },
+    &quot;choice&quot;: {
+      &quot;type&quot;: &quot;string&quot;
+    },
+    &quot;hasText&quot;: {
+      &quot;type&quot;: &quot;boolean&quot;
+    }
+  },
+  &quot;required&quot;: [
+    &quot;session_id&quot;,
+    &quot;choice&quot;
+  ]
+}</pre></details><details class="schema"><summary>Result schema</summary><pre>{
+  &quot;type&quot;: &quot;object&quot;,
+  &quot;properties&quot;: {
+    &quot;resolved&quot;: {
+      &quot;type&quot;: &quot;number&quot;,
+      &quot;minimum&quot;: 0
+    }
+  },
+  &quot;required&quot;: [
+    &quot;resolved&quot;
+  ]
+}</pre></details><details class="schema"><summary>Carrier schema</summary><pre>{
+  &quot;type&quot;: &quot;object&quot;,
+  &quot;properties&quot;: {
+    &quot;direction&quot;: {
+      &quot;type&quot;: &quot;string&quot;,
+      &quot;enum&quot;: [
+        &quot;client&quot;
+      ]
+    },
+    &quot;jsonrpc&quot;: {
+      &quot;type&quot;: &quot;string&quot;,
+      &quot;enum&quot;: [
+        &quot;2.0&quot;
+      ]
+    },
+    &quot;id&quot;: {
+      &quot;type&quot;: &quot;string&quot;
+    },
+    &quot;method&quot;: {
+      &quot;type&quot;: &quot;string&quot;,
+      &quot;enum&quot;: [
+        &quot;approval.respond&quot;
+      ]
+    },
+    &quot;params&quot;: {
+      &quot;type&quot;: &quot;object&quot;,
+      &quot;properties&quot;: {
+        &quot;session_id&quot;: {
+          &quot;type&quot;: &quot;string&quot;
+        },
+        &quot;choice&quot;: {
+          &quot;type&quot;: &quot;string&quot;
+        },
+        &quot;hasText&quot;: {
+          &quot;type&quot;: &quot;boolean&quot;
+        }
+      },
+      &quot;required&quot;: [
+        &quot;session_id&quot;,
+        &quot;choice&quot;
+      ]
+    }
+  },
+  &quot;required&quot;: [
+    &quot;direction&quot;,
+    &quot;jsonrpc&quot;,
+    &quot;id&quot;,
+    &quot;method&quot;,
+    &quot;params&quot;
+  ]
+}</pre></details></div></details></article><article id="event-gateway-ready" class="event-card" data-search="gateway.ready agent-to-client jsonrpc-notification verified-headless tui-gateway" data-direction="agent-to-client" data-confidence="verified-headless"><details><summary><span class="event-name">gateway.ready</span><span class="event-meta"><span class="direction">agent-to-client</span><span class="confidence verified-headless">verified-headless</span></span></summary><div class="event-body"><dl><div><dt>Channel</dt><dd><a href="#channels"><code>tui-gateway</code></a></dd></div><div><dt>Transport</dt><dd>jsonrpc-notification</dd></div><div><dt>Trigger</dt><dd>—</dd></div></dl><p>Native payload includes skin/branding; sanitized fixtures keep only presence flags.</p><div class="evidence-refs"><a class="evidence-ref" href="#claim-hermes-runtime-headless">hermes-runtime-headless</a></div><details class="schema"><summary>Payload schema</summary><pre>{
+  &quot;type&quot;: &quot;object&quot;,
+  &quot;properties&quot;: {
+    &quot;hasText&quot;: {
+      &quot;type&quot;: &quot;boolean&quot;
+    },
+    &quot;hasContext&quot;: {
+      &quot;type&quot;: &quot;boolean&quot;
+    }
+  }
+}</pre></details><details class="schema"><summary>Carrier schema</summary><pre>{
+  &quot;type&quot;: &quot;object&quot;,
+  &quot;properties&quot;: {
+    &quot;jsonrpc&quot;: {
+      &quot;type&quot;: &quot;string&quot;,
+      &quot;enum&quot;: [
+        &quot;2.0&quot;
+      ]
+    },
+    &quot;method&quot;: {
+      &quot;type&quot;: &quot;string&quot;,
+      &quot;enum&quot;: [
+        &quot;event&quot;
+      ]
+    },
+    &quot;params&quot;: {
+      &quot;type&quot;: &quot;object&quot;,
+      &quot;properties&quot;: {
+        &quot;type&quot;: {
+          &quot;type&quot;: &quot;string&quot;,
+          &quot;enum&quot;: [
+            &quot;gateway.ready&quot;
+          ]
+        },
+        &quot;session_id&quot;: {
+          &quot;type&quot;: &quot;string&quot;
+        },
+        &quot;payload&quot;: {
+          &quot;type&quot;: &quot;object&quot;,
+          &quot;properties&quot;: {
+            &quot;hasText&quot;: {
+              &quot;type&quot;: &quot;boolean&quot;
+            },
+            &quot;hasContext&quot;: {
+              &quot;type&quot;: &quot;boolean&quot;
+            }
+          }
+        }
+      },
+      &quot;required&quot;: [
+        &quot;type&quot;,
+        &quot;payload&quot;
+      ]
+    }
+  },
+  &quot;required&quot;: [
+    &quot;method&quot;,
+    &quot;params&quot;
+  ]
+}</pre></details></div></details></article><article id="event-message-complete" class="event-card" data-search="message.complete agent-to-client jsonrpc-notification verified-headless tui-gateway" data-direction="agent-to-client" data-confidence="verified-headless"><details><summary><span class="event-name">message.complete</span><span class="event-meta"><span class="direction">agent-to-client</span><span class="confidence verified-headless">verified-headless</span></span></summary><div class="event-body"><dl><div><dt>Channel</dt><dd><a href="#channels"><code>tui-gateway</code></a></dd></div><div><dt>Transport</dt><dd>jsonrpc-notification</dd></div><div><dt>Trigger</dt><dd>—</dd></div></dl><div class="evidence-refs"><a class="evidence-ref" href="#claim-hermes-runtime-headless">hermes-runtime-headless</a></div><details class="variants"><summary>2 evidenced variants</summary><div class="variant"><code>{&quot;status&quot;:&quot;complete&quot;}</code><span class="confidence verified-headless">verified-headless</span><div class="evidence-refs"><a class="evidence-ref" href="#claim-hermes-runtime-headless">hermes-runtime-headless</a></div></div><div class="variant"><code>{&quot;status&quot;:&quot;interrupted&quot;}</code><span class="confidence verified-headless">verified-headless</span><div class="evidence-refs"><a class="evidence-ref" href="#claim-hermes-runtime-headless">hermes-runtime-headless</a></div></div></details><details class="schema"><summary>Payload schema</summary><pre>{
+  &quot;type&quot;: &quot;object&quot;,
+  &quot;properties&quot;: {
+    &quot;status&quot;: {
+      &quot;type&quot;: &quot;string&quot;,
+      &quot;enum&quot;: [
+        &quot;complete&quot;,
+        &quot;interrupted&quot;
+      ]
+    },
+    &quot;usage&quot;: {
+      &quot;type&quot;: &quot;object&quot;,
+      &quot;properties&quot;: {
+        &quot;model&quot;: {
+          &quot;type&quot;: &quot;string&quot;
+        },
+        &quot;calls&quot;: {
+          &quot;type&quot;: &quot;number&quot;,
+          &quot;minimum&quot;: 0
+        },
+        &quot;hasTotals&quot;: {
+          &quot;type&quot;: &quot;boolean&quot;
+        }
+      }
+    },
+    &quot;hasText&quot;: {
+      &quot;type&quot;: &quot;boolean&quot;
+    },
+    &quot;hasContext&quot;: {
+      &quot;type&quot;: &quot;boolean&quot;
+    }
+  },
+  &quot;required&quot;: [
+    &quot;status&quot;
+  ]
+}</pre></details><details class="schema"><summary>Carrier schema</summary><pre>{
+  &quot;type&quot;: &quot;object&quot;,
+  &quot;properties&quot;: {
+    &quot;jsonrpc&quot;: {
+      &quot;type&quot;: &quot;string&quot;,
+      &quot;enum&quot;: [
+        &quot;2.0&quot;
+      ]
+    },
+    &quot;method&quot;: {
+      &quot;type&quot;: &quot;string&quot;,
+      &quot;enum&quot;: [
+        &quot;event&quot;
+      ]
+    },
+    &quot;params&quot;: {
+      &quot;type&quot;: &quot;object&quot;,
+      &quot;properties&quot;: {
+        &quot;type&quot;: {
+          &quot;type&quot;: &quot;string&quot;,
+          &quot;enum&quot;: [
+            &quot;message.complete&quot;
+          ]
+        },
+        &quot;session_id&quot;: {
+          &quot;type&quot;: &quot;string&quot;
+        },
+        &quot;payload&quot;: {
+          &quot;type&quot;: &quot;object&quot;,
+          &quot;properties&quot;: {
+            &quot;status&quot;: {
+              &quot;type&quot;: &quot;string&quot;,
+              &quot;enum&quot;: [
+                &quot;complete&quot;,
+                &quot;interrupted&quot;
+              ]
+            },
+            &quot;usage&quot;: {
+              &quot;type&quot;: &quot;object&quot;,
+              &quot;properties&quot;: {
+                &quot;model&quot;: {
+                  &quot;type&quot;: &quot;string&quot;
+                },
+                &quot;calls&quot;: {
+                  &quot;type&quot;: &quot;number&quot;,
+                  &quot;minimum&quot;: 0
+                },
+                &quot;hasTotals&quot;: {
+                  &quot;type&quot;: &quot;boolean&quot;
+                }
+              }
+            },
+            &quot;hasText&quot;: {
+              &quot;type&quot;: &quot;boolean&quot;
+            },
+            &quot;hasContext&quot;: {
+              &quot;type&quot;: &quot;boolean&quot;
+            }
+          },
+          &quot;required&quot;: [
+            &quot;status&quot;
+          ]
+        }
+      },
+      &quot;required&quot;: [
+        &quot;type&quot;,
+        &quot;payload&quot;
+      ]
+    }
+  },
+  &quot;required&quot;: [
+    &quot;method&quot;,
+    &quot;params&quot;
+  ]
+}</pre></details></div></details></article><article id="event-message-delta" class="event-card" data-search="message.delta agent-to-client jsonrpc-notification verified-headless tui-gateway" data-direction="agent-to-client" data-confidence="verified-headless"><details><summary><span class="event-name">message.delta</span><span class="event-meta"><span class="direction">agent-to-client</span><span class="confidence verified-headless">verified-headless</span></span></summary><div class="event-body"><dl><div><dt>Channel</dt><dd><a href="#channels"><code>tui-gateway</code></a></dd></div><div><dt>Transport</dt><dd>jsonrpc-notification</dd></div><div><dt>Trigger</dt><dd>—</dd></div></dl><div class="evidence-refs"><a class="evidence-ref" href="#claim-hermes-runtime-headless">hermes-runtime-headless</a></div><details class="schema"><summary>Payload schema</summary><pre>{
+  &quot;type&quot;: &quot;object&quot;,
+  &quot;properties&quot;: {
+    &quot;hasText&quot;: {
+      &quot;type&quot;: &quot;boolean&quot;
+    },
+    &quot;hasContext&quot;: {
+      &quot;type&quot;: &quot;boolean&quot;
+    }
+  }
+}</pre></details><details class="schema"><summary>Carrier schema</summary><pre>{
+  &quot;type&quot;: &quot;object&quot;,
+  &quot;properties&quot;: {
+    &quot;jsonrpc&quot;: {
+      &quot;type&quot;: &quot;string&quot;,
+      &quot;enum&quot;: [
+        &quot;2.0&quot;
+      ]
+    },
+    &quot;method&quot;: {
+      &quot;type&quot;: &quot;string&quot;,
+      &quot;enum&quot;: [
+        &quot;event&quot;
+      ]
+    },
+    &quot;params&quot;: {
+      &quot;type&quot;: &quot;object&quot;,
+      &quot;properties&quot;: {
+        &quot;type&quot;: {
+          &quot;type&quot;: &quot;string&quot;,
+          &quot;enum&quot;: [
+            &quot;message.delta&quot;
+          ]
+        },
+        &quot;session_id&quot;: {
+          &quot;type&quot;: &quot;string&quot;
+        },
+        &quot;payload&quot;: {
+          &quot;type&quot;: &quot;object&quot;,
+          &quot;properties&quot;: {
+            &quot;hasText&quot;: {
+              &quot;type&quot;: &quot;boolean&quot;
+            },
+            &quot;hasContext&quot;: {
+              &quot;type&quot;: &quot;boolean&quot;
+            }
+          }
+        }
+      },
+      &quot;required&quot;: [
+        &quot;type&quot;,
+        &quot;payload&quot;
+      ]
+    }
+  },
+  &quot;required&quot;: [
+    &quot;method&quot;,
+    &quot;params&quot;
+  ]
+}</pre></details></div></details></article><article id="event-message-start" class="event-card" data-search="message.start agent-to-client jsonrpc-notification verified-headless tui-gateway" data-direction="agent-to-client" data-confidence="verified-headless"><details><summary><span class="event-name">message.start</span><span class="event-meta"><span class="direction">agent-to-client</span><span class="confidence verified-headless">verified-headless</span></span></summary><div class="event-body"><dl><div><dt>Channel</dt><dd><a href="#channels"><code>tui-gateway</code></a></dd></div><div><dt>Transport</dt><dd>jsonrpc-notification</dd></div><div><dt>Trigger</dt><dd>—</dd></div></dl><div class="evidence-refs"><a class="evidence-ref" href="#claim-hermes-runtime-headless">hermes-runtime-headless</a></div><details class="schema"><summary>Payload schema</summary><pre>{
+  &quot;type&quot;: &quot;object&quot;,
+  &quot;properties&quot;: {
+    &quot;hasText&quot;: {
+      &quot;type&quot;: &quot;boolean&quot;
+    },
+    &quot;hasContext&quot;: {
+      &quot;type&quot;: &quot;boolean&quot;
+    }
+  }
+}</pre></details><details class="schema"><summary>Carrier schema</summary><pre>{
+  &quot;type&quot;: &quot;object&quot;,
+  &quot;properties&quot;: {
+    &quot;jsonrpc&quot;: {
+      &quot;type&quot;: &quot;string&quot;,
+      &quot;enum&quot;: [
+        &quot;2.0&quot;
+      ]
+    },
+    &quot;method&quot;: {
+      &quot;type&quot;: &quot;string&quot;,
+      &quot;enum&quot;: [
+        &quot;event&quot;
+      ]
+    },
+    &quot;params&quot;: {
+      &quot;type&quot;: &quot;object&quot;,
+      &quot;properties&quot;: {
+        &quot;type&quot;: {
+          &quot;type&quot;: &quot;string&quot;,
+          &quot;enum&quot;: [
+            &quot;message.start&quot;
+          ]
+        },
+        &quot;session_id&quot;: {
+          &quot;type&quot;: &quot;string&quot;
+        },
+        &quot;payload&quot;: {
+          &quot;type&quot;: &quot;object&quot;,
+          &quot;properties&quot;: {
+            &quot;hasText&quot;: {
+              &quot;type&quot;: &quot;boolean&quot;
+            },
+            &quot;hasContext&quot;: {
+              &quot;type&quot;: &quot;boolean&quot;
+            }
+          }
+        }
+      },
+      &quot;required&quot;: [
+        &quot;type&quot;,
+        &quot;payload&quot;
+      ]
+    }
+  },
+  &quot;required&quot;: [
+    &quot;method&quot;,
+    &quot;params&quot;
+  ]
+}</pre></details></div></details></article><article id="event-on_session_end" class="event-card" data-search="on_session_end agent-local hook-callback verified-headless plugin-hook outbound-webhook" data-direction="agent-local" data-confidence="verified-headless"><details><summary><span class="event-name">on_session_end</span><span class="event-meta"><span class="direction">agent-local</span><span class="confidence verified-headless">verified-headless</span></span></summary><div class="event-body"><dl><div><dt>Channel</dt><dd><a href="#channels"><code>plugin-hook</code></a> <a href="#channels"><code>outbound-webhook</code></a></dd></div><div><dt>Transport</dt><dd>hook-callback</dd></div><div><dt>Trigger</dt><dd>—</dd></div></dl><p>Outbound webhook is a notify-only copy of the same hook name.</p><div class="evidence-refs"><a class="evidence-ref" href="#claim-hermes-runtime-headless">hermes-runtime-headless</a></div><details class="schema"><summary>Payload schema</summary><pre>{
+  &quot;type&quot;: &quot;object&quot;,
+  &quot;properties&quot;: {
+    &quot;hook_event_name&quot;: {
+      &quot;type&quot;: &quot;string&quot;
+    },
+    &quot;session_id&quot;: {
+      &quot;anyOf&quot;: [
+        {
+          &quot;type&quot;: &quot;string&quot;
+        },
+        {
+          &quot;type&quot;: &quot;null&quot;
+        }
+      ]
+    },
+    &quot;tool_name&quot;: {
+      &quot;anyOf&quot;: [
+        {
+          &quot;type&quot;: &quot;string&quot;
+        },
+        {
+          &quot;type&quot;: &quot;null&quot;
+        }
+      ]
+    },
+    &quot;platform&quot;: {
+      &quot;anyOf&quot;: [
+        {
+          &quot;type&quot;: &quot;string&quot;
+        },
+        {
+          &quot;type&quot;: &quot;null&quot;
+        }
+      ]
+    },
+    &quot;choice&quot;: {
+      &quot;anyOf&quot;: [
+        {
+          &quot;type&quot;: &quot;string&quot;
+        },
+        {
+          &quot;type&quot;: &quot;null&quot;
+        }
+      ]
+    },
+    &quot;keys&quot;: {
+      &quot;type&quot;: &quot;array&quot;,
+      &quot;items&quot;: {
+        &quot;type&quot;: &quot;string&quot;
+      }
+    }
+  },
+  &quot;required&quot;: [
+    &quot;hook_event_name&quot;,
+    &quot;keys&quot;
+  ]
+}</pre></details></div></details></article><article id="event-on_session_finalize" class="event-card" data-search="on_session_finalize agent-local hook-callback verified-headless plugin-hook outbound-webhook" data-direction="agent-local" data-confidence="verified-headless"><details><summary><span class="event-name">on_session_finalize</span><span class="event-meta"><span class="direction">agent-local</span><span class="confidence verified-headless">verified-headless</span></span></summary><div class="event-body"><dl><div><dt>Channel</dt><dd><a href="#channels"><code>plugin-hook</code></a> <a href="#channels"><code>outbound-webhook</code></a></dd></div><div><dt>Transport</dt><dd>hook-callback</dd></div><div><dt>Trigger</dt><dd>—</dd></div></dl><p>Outbound webhook is a notify-only copy of the same hook name.</p><div class="evidence-refs"><a class="evidence-ref" href="#claim-hermes-runtime-headless">hermes-runtime-headless</a></div><details class="schema"><summary>Payload schema</summary><pre>{
+  &quot;type&quot;: &quot;object&quot;,
+  &quot;properties&quot;: {
+    &quot;hook_event_name&quot;: {
+      &quot;type&quot;: &quot;string&quot;
+    },
+    &quot;session_id&quot;: {
+      &quot;anyOf&quot;: [
+        {
+          &quot;type&quot;: &quot;string&quot;
+        },
+        {
+          &quot;type&quot;: &quot;null&quot;
+        }
+      ]
+    },
+    &quot;tool_name&quot;: {
+      &quot;anyOf&quot;: [
+        {
+          &quot;type&quot;: &quot;string&quot;
+        },
+        {
+          &quot;type&quot;: &quot;null&quot;
+        }
+      ]
+    },
+    &quot;platform&quot;: {
+      &quot;anyOf&quot;: [
+        {
+          &quot;type&quot;: &quot;string&quot;
+        },
+        {
+          &quot;type&quot;: &quot;null&quot;
+        }
+      ]
+    },
+    &quot;choice&quot;: {
+      &quot;anyOf&quot;: [
+        {
+          &quot;type&quot;: &quot;string&quot;
+        },
+        {
+          &quot;type&quot;: &quot;null&quot;
+        }
+      ]
+    },
+    &quot;keys&quot;: {
+      &quot;type&quot;: &quot;array&quot;,
+      &quot;items&quot;: {
+        &quot;type&quot;: &quot;string&quot;
+      }
+    }
+  },
+  &quot;required&quot;: [
+    &quot;hook_event_name&quot;,
+    &quot;keys&quot;
+  ]
+}</pre></details></div></details></article><article id="event-on_session_start" class="event-card" data-search="on_session_start agent-local hook-callback verified-headless plugin-hook outbound-webhook" data-direction="agent-local" data-confidence="verified-headless"><details><summary><span class="event-name">on_session_start</span><span class="event-meta"><span class="direction">agent-local</span><span class="confidence verified-headless">verified-headless</span></span></summary><div class="event-body"><dl><div><dt>Channel</dt><dd><a href="#channels"><code>plugin-hook</code></a> <a href="#channels"><code>outbound-webhook</code></a></dd></div><div><dt>Transport</dt><dd>hook-callback</dd></div><div><dt>Trigger</dt><dd>—</dd></div></dl><p>Outbound webhook is a notify-only copy of the same hook name.</p><div class="evidence-refs"><a class="evidence-ref" href="#claim-hermes-runtime-headless">hermes-runtime-headless</a></div><details class="schema"><summary>Payload schema</summary><pre>{
+  &quot;type&quot;: &quot;object&quot;,
+  &quot;properties&quot;: {
+    &quot;hook_event_name&quot;: {
+      &quot;type&quot;: &quot;string&quot;
+    },
+    &quot;session_id&quot;: {
+      &quot;anyOf&quot;: [
+        {
+          &quot;type&quot;: &quot;string&quot;
+        },
+        {
+          &quot;type&quot;: &quot;null&quot;
+        }
+      ]
+    },
+    &quot;tool_name&quot;: {
+      &quot;anyOf&quot;: [
+        {
+          &quot;type&quot;: &quot;string&quot;
+        },
+        {
+          &quot;type&quot;: &quot;null&quot;
+        }
+      ]
+    },
+    &quot;platform&quot;: {
+      &quot;anyOf&quot;: [
+        {
+          &quot;type&quot;: &quot;string&quot;
+        },
+        {
+          &quot;type&quot;: &quot;null&quot;
+        }
+      ]
+    },
+    &quot;choice&quot;: {
+      &quot;anyOf&quot;: [
+        {
+          &quot;type&quot;: &quot;string&quot;
+        },
+        {
+          &quot;type&quot;: &quot;null&quot;
+        }
+      ]
+    },
+    &quot;keys&quot;: {
+      &quot;type&quot;: &quot;array&quot;,
+      &quot;items&quot;: {
+        &quot;type&quot;: &quot;string&quot;
+      }
+    }
+  },
+  &quot;required&quot;: [
+    &quot;hook_event_name&quot;,
+    &quot;keys&quot;
+  ]
+}</pre></details></div></details></article><article id="event-post_api_request" class="event-card" data-search="post_api_request agent-local hook-callback verified-headless plugin-hook outbound-webhook" data-direction="agent-local" data-confidence="verified-headless"><details><summary><span class="event-name">post_api_request</span><span class="event-meta"><span class="direction">agent-local</span><span class="confidence verified-headless">verified-headless</span></span></summary><div class="event-body"><dl><div><dt>Channel</dt><dd><a href="#channels"><code>plugin-hook</code></a> <a href="#channels"><code>outbound-webhook</code></a></dd></div><div><dt>Transport</dt><dd>hook-callback</dd></div><div><dt>Trigger</dt><dd>—</dd></div></dl><p>Outbound webhook is a notify-only copy of the same hook name.</p><div class="evidence-refs"><a class="evidence-ref" href="#claim-hermes-runtime-headless">hermes-runtime-headless</a></div><details class="schema"><summary>Payload schema</summary><pre>{
+  &quot;type&quot;: &quot;object&quot;,
+  &quot;properties&quot;: {
+    &quot;hook_event_name&quot;: {
+      &quot;type&quot;: &quot;string&quot;
+    },
+    &quot;session_id&quot;: {
+      &quot;anyOf&quot;: [
+        {
+          &quot;type&quot;: &quot;string&quot;
+        },
+        {
+          &quot;type&quot;: &quot;null&quot;
+        }
+      ]
+    },
+    &quot;tool_name&quot;: {
+      &quot;anyOf&quot;: [
+        {
+          &quot;type&quot;: &quot;string&quot;
+        },
+        {
+          &quot;type&quot;: &quot;null&quot;
+        }
+      ]
+    },
+    &quot;platform&quot;: {
+      &quot;anyOf&quot;: [
+        {
+          &quot;type&quot;: &quot;string&quot;
+        },
+        {
+          &quot;type&quot;: &quot;null&quot;
+        }
+      ]
+    },
+    &quot;choice&quot;: {
+      &quot;anyOf&quot;: [
+        {
+          &quot;type&quot;: &quot;string&quot;
+        },
+        {
+          &quot;type&quot;: &quot;null&quot;
+        }
+      ]
+    },
+    &quot;keys&quot;: {
+      &quot;type&quot;: &quot;array&quot;,
+      &quot;items&quot;: {
+        &quot;type&quot;: &quot;string&quot;
+      }
+    }
+  },
+  &quot;required&quot;: [
+    &quot;hook_event_name&quot;,
+    &quot;keys&quot;
+  ]
+}</pre></details></div></details></article><article id="event-post_approval_response" class="event-card" data-search="post_approval_response agent-local hook-callback verified-headless plugin-hook outbound-webhook" data-direction="agent-local" data-confidence="verified-headless"><details><summary><span class="event-name">post_approval_response</span><span class="event-meta"><span class="direction">agent-local</span><span class="confidence verified-headless">verified-headless</span></span></summary><div class="event-body"><dl><div><dt>Channel</dt><dd><a href="#channels"><code>plugin-hook</code></a> <a href="#channels"><code>outbound-webhook</code></a></dd></div><div><dt>Transport</dt><dd>hook-callback</dd></div><div><dt>Trigger</dt><dd>—</dd></div></dl><p>Outbound webhook is a notify-only copy of the same hook name.</p><div class="evidence-refs"><a class="evidence-ref" href="#claim-hermes-runtime-headless">hermes-runtime-headless</a></div><details class="schema"><summary>Payload schema</summary><pre>{
+  &quot;type&quot;: &quot;object&quot;,
+  &quot;properties&quot;: {
+    &quot;hook_event_name&quot;: {
+      &quot;type&quot;: &quot;string&quot;
+    },
+    &quot;session_id&quot;: {
+      &quot;anyOf&quot;: [
+        {
+          &quot;type&quot;: &quot;string&quot;
+        },
+        {
+          &quot;type&quot;: &quot;null&quot;
+        }
+      ]
+    },
+    &quot;tool_name&quot;: {
+      &quot;anyOf&quot;: [
+        {
+          &quot;type&quot;: &quot;string&quot;
+        },
+        {
+          &quot;type&quot;: &quot;null&quot;
+        }
+      ]
+    },
+    &quot;platform&quot;: {
+      &quot;anyOf&quot;: [
+        {
+          &quot;type&quot;: &quot;string&quot;
+        },
+        {
+          &quot;type&quot;: &quot;null&quot;
+        }
+      ]
+    },
+    &quot;choice&quot;: {
+      &quot;anyOf&quot;: [
+        {
+          &quot;type&quot;: &quot;string&quot;
+        },
+        {
+          &quot;type&quot;: &quot;null&quot;
+        }
+      ]
+    },
+    &quot;keys&quot;: {
+      &quot;type&quot;: &quot;array&quot;,
+      &quot;items&quot;: {
+        &quot;type&quot;: &quot;string&quot;
+      }
+    }
+  },
+  &quot;required&quot;: [
+    &quot;hook_event_name&quot;,
+    &quot;keys&quot;
+  ]
+}</pre></details></div></details></article><article id="event-post_llm_call" class="event-card" data-search="post_llm_call agent-local hook-callback verified-headless plugin-hook outbound-webhook" data-direction="agent-local" data-confidence="verified-headless"><details><summary><span class="event-name">post_llm_call</span><span class="event-meta"><span class="direction">agent-local</span><span class="confidence verified-headless">verified-headless</span></span></summary><div class="event-body"><dl><div><dt>Channel</dt><dd><a href="#channels"><code>plugin-hook</code></a> <a href="#channels"><code>outbound-webhook</code></a></dd></div><div><dt>Transport</dt><dd>hook-callback</dd></div><div><dt>Trigger</dt><dd>—</dd></div></dl><p>Outbound webhook is a notify-only copy of the same hook name.</p><div class="evidence-refs"><a class="evidence-ref" href="#claim-hermes-runtime-headless">hermes-runtime-headless</a></div><details class="schema"><summary>Payload schema</summary><pre>{
+  &quot;type&quot;: &quot;object&quot;,
+  &quot;properties&quot;: {
+    &quot;hook_event_name&quot;: {
+      &quot;type&quot;: &quot;string&quot;
+    },
+    &quot;session_id&quot;: {
+      &quot;anyOf&quot;: [
+        {
+          &quot;type&quot;: &quot;string&quot;
+        },
+        {
+          &quot;type&quot;: &quot;null&quot;
+        }
+      ]
+    },
+    &quot;tool_name&quot;: {
+      &quot;anyOf&quot;: [
+        {
+          &quot;type&quot;: &quot;string&quot;
+        },
+        {
+          &quot;type&quot;: &quot;null&quot;
+        }
+      ]
+    },
+    &quot;platform&quot;: {
+      &quot;anyOf&quot;: [
+        {
+          &quot;type&quot;: &quot;string&quot;
+        },
+        {
+          &quot;type&quot;: &quot;null&quot;
+        }
+      ]
+    },
+    &quot;choice&quot;: {
+      &quot;anyOf&quot;: [
+        {
+          &quot;type&quot;: &quot;string&quot;
+        },
+        {
+          &quot;type&quot;: &quot;null&quot;
+        }
+      ]
+    },
+    &quot;keys&quot;: {
+      &quot;type&quot;: &quot;array&quot;,
+      &quot;items&quot;: {
+        &quot;type&quot;: &quot;string&quot;
+      }
+    }
+  },
+  &quot;required&quot;: [
+    &quot;hook_event_name&quot;,
+    &quot;keys&quot;
+  ]
+}</pre></details></div></details></article><article id="event-post_tool_call" class="event-card" data-search="post_tool_call agent-local hook-callback verified-headless plugin-hook outbound-webhook" data-direction="agent-local" data-confidence="verified-headless"><details><summary><span class="event-name">post_tool_call</span><span class="event-meta"><span class="direction">agent-local</span><span class="confidence verified-headless">verified-headless</span></span></summary><div class="event-body"><dl><div><dt>Channel</dt><dd><a href="#channels"><code>plugin-hook</code></a> <a href="#channels"><code>outbound-webhook</code></a></dd></div><div><dt>Transport</dt><dd>hook-callback</dd></div><div><dt>Trigger</dt><dd>—</dd></div></dl><p>Outbound webhook is a notify-only copy of the same hook name.</p><div class="evidence-refs"><a class="evidence-ref" href="#claim-hermes-runtime-headless">hermes-runtime-headless</a></div><details class="schema"><summary>Payload schema</summary><pre>{
+  &quot;type&quot;: &quot;object&quot;,
+  &quot;properties&quot;: {
+    &quot;hook_event_name&quot;: {
+      &quot;type&quot;: &quot;string&quot;
+    },
+    &quot;session_id&quot;: {
+      &quot;anyOf&quot;: [
+        {
+          &quot;type&quot;: &quot;string&quot;
+        },
+        {
+          &quot;type&quot;: &quot;null&quot;
+        }
+      ]
+    },
+    &quot;tool_name&quot;: {
+      &quot;anyOf&quot;: [
+        {
+          &quot;type&quot;: &quot;string&quot;
+        },
+        {
+          &quot;type&quot;: &quot;null&quot;
+        }
+      ]
+    },
+    &quot;platform&quot;: {
+      &quot;anyOf&quot;: [
+        {
+          &quot;type&quot;: &quot;string&quot;
+        },
+        {
+          &quot;type&quot;: &quot;null&quot;
+        }
+      ]
+    },
+    &quot;choice&quot;: {
+      &quot;anyOf&quot;: [
+        {
+          &quot;type&quot;: &quot;string&quot;
+        },
+        {
+          &quot;type&quot;: &quot;null&quot;
+        }
+      ]
+    },
+    &quot;keys&quot;: {
+      &quot;type&quot;: &quot;array&quot;,
+      &quot;items&quot;: {
+        &quot;type&quot;: &quot;string&quot;
+      }
+    }
+  },
+  &quot;required&quot;: [
+    &quot;hook_event_name&quot;,
+    &quot;keys&quot;
+  ]
+}</pre></details></div></details></article><article id="event-pre_api_request" class="event-card" data-search="pre_api_request agent-local hook-callback verified-headless plugin-hook outbound-webhook" data-direction="agent-local" data-confidence="verified-headless"><details><summary><span class="event-name">pre_api_request</span><span class="event-meta"><span class="direction">agent-local</span><span class="confidence verified-headless">verified-headless</span></span></summary><div class="event-body"><dl><div><dt>Channel</dt><dd><a href="#channels"><code>plugin-hook</code></a> <a href="#channels"><code>outbound-webhook</code></a></dd></div><div><dt>Transport</dt><dd>hook-callback</dd></div><div><dt>Trigger</dt><dd>—</dd></div></dl><p>Outbound webhook is a notify-only copy of the same hook name.</p><div class="evidence-refs"><a class="evidence-ref" href="#claim-hermes-runtime-headless">hermes-runtime-headless</a></div><details class="schema"><summary>Payload schema</summary><pre>{
+  &quot;type&quot;: &quot;object&quot;,
+  &quot;properties&quot;: {
+    &quot;hook_event_name&quot;: {
+      &quot;type&quot;: &quot;string&quot;
+    },
+    &quot;session_id&quot;: {
+      &quot;anyOf&quot;: [
+        {
+          &quot;type&quot;: &quot;string&quot;
+        },
+        {
+          &quot;type&quot;: &quot;null&quot;
+        }
+      ]
+    },
+    &quot;tool_name&quot;: {
+      &quot;anyOf&quot;: [
+        {
+          &quot;type&quot;: &quot;string&quot;
+        },
+        {
+          &quot;type&quot;: &quot;null&quot;
+        }
+      ]
+    },
+    &quot;platform&quot;: {
+      &quot;anyOf&quot;: [
+        {
+          &quot;type&quot;: &quot;string&quot;
+        },
+        {
+          &quot;type&quot;: &quot;null&quot;
+        }
+      ]
+    },
+    &quot;choice&quot;: {
+      &quot;anyOf&quot;: [
+        {
+          &quot;type&quot;: &quot;string&quot;
+        },
+        {
+          &quot;type&quot;: &quot;null&quot;
+        }
+      ]
+    },
+    &quot;keys&quot;: {
+      &quot;type&quot;: &quot;array&quot;,
+      &quot;items&quot;: {
+        &quot;type&quot;: &quot;string&quot;
+      }
+    }
+  },
+  &quot;required&quot;: [
+    &quot;hook_event_name&quot;,
+    &quot;keys&quot;
+  ]
+}</pre></details></div></details></article><article id="event-pre_approval_request" class="event-card" data-search="pre_approval_request agent-local hook-callback verified-headless plugin-hook outbound-webhook" data-direction="agent-local" data-confidence="verified-headless"><details><summary><span class="event-name">pre_approval_request</span><span class="event-meta"><span class="direction">agent-local</span><span class="confidence verified-headless">verified-headless</span></span></summary><div class="event-body"><dl><div><dt>Channel</dt><dd><a href="#channels"><code>plugin-hook</code></a> <a href="#channels"><code>outbound-webhook</code></a></dd></div><div><dt>Transport</dt><dd>hook-callback</dd></div><div><dt>Trigger</dt><dd>—</dd></div></dl><p>Outbound webhook is a notify-only copy of the same hook name.</p><div class="evidence-refs"><a class="evidence-ref" href="#claim-hermes-runtime-headless">hermes-runtime-headless</a></div><details class="schema"><summary>Payload schema</summary><pre>{
+  &quot;type&quot;: &quot;object&quot;,
+  &quot;properties&quot;: {
+    &quot;hook_event_name&quot;: {
+      &quot;type&quot;: &quot;string&quot;
+    },
+    &quot;session_id&quot;: {
+      &quot;anyOf&quot;: [
+        {
+          &quot;type&quot;: &quot;string&quot;
+        },
+        {
+          &quot;type&quot;: &quot;null&quot;
+        }
+      ]
+    },
+    &quot;tool_name&quot;: {
+      &quot;anyOf&quot;: [
+        {
+          &quot;type&quot;: &quot;string&quot;
+        },
+        {
+          &quot;type&quot;: &quot;null&quot;
+        }
+      ]
+    },
+    &quot;platform&quot;: {
+      &quot;anyOf&quot;: [
+        {
+          &quot;type&quot;: &quot;string&quot;
+        },
+        {
+          &quot;type&quot;: &quot;null&quot;
+        }
+      ]
+    },
+    &quot;choice&quot;: {
+      &quot;anyOf&quot;: [
+        {
+          &quot;type&quot;: &quot;string&quot;
+        },
+        {
+          &quot;type&quot;: &quot;null&quot;
+        }
+      ]
+    },
+    &quot;keys&quot;: {
+      &quot;type&quot;: &quot;array&quot;,
+      &quot;items&quot;: {
+        &quot;type&quot;: &quot;string&quot;
+      }
+    }
+  },
+  &quot;required&quot;: [
+    &quot;hook_event_name&quot;,
+    &quot;keys&quot;
+  ]
+}</pre></details></div></details></article><article id="event-pre_llm_call" class="event-card" data-search="pre_llm_call agent-local hook-callback verified-headless plugin-hook outbound-webhook" data-direction="agent-local" data-confidence="verified-headless"><details><summary><span class="event-name">pre_llm_call</span><span class="event-meta"><span class="direction">agent-local</span><span class="confidence verified-headless">verified-headless</span></span></summary><div class="event-body"><dl><div><dt>Channel</dt><dd><a href="#channels"><code>plugin-hook</code></a> <a href="#channels"><code>outbound-webhook</code></a></dd></div><div><dt>Transport</dt><dd>hook-callback</dd></div><div><dt>Trigger</dt><dd>—</dd></div></dl><p>Outbound webhook is a notify-only copy of the same hook name.</p><div class="evidence-refs"><a class="evidence-ref" href="#claim-hermes-runtime-headless">hermes-runtime-headless</a></div><details class="schema"><summary>Payload schema</summary><pre>{
+  &quot;type&quot;: &quot;object&quot;,
+  &quot;properties&quot;: {
+    &quot;hook_event_name&quot;: {
+      &quot;type&quot;: &quot;string&quot;
+    },
+    &quot;session_id&quot;: {
+      &quot;anyOf&quot;: [
+        {
+          &quot;type&quot;: &quot;string&quot;
+        },
+        {
+          &quot;type&quot;: &quot;null&quot;
+        }
+      ]
+    },
+    &quot;tool_name&quot;: {
+      &quot;anyOf&quot;: [
+        {
+          &quot;type&quot;: &quot;string&quot;
+        },
+        {
+          &quot;type&quot;: &quot;null&quot;
+        }
+      ]
+    },
+    &quot;platform&quot;: {
+      &quot;anyOf&quot;: [
+        {
+          &quot;type&quot;: &quot;string&quot;
+        },
+        {
+          &quot;type&quot;: &quot;null&quot;
+        }
+      ]
+    },
+    &quot;choice&quot;: {
+      &quot;anyOf&quot;: [
+        {
+          &quot;type&quot;: &quot;string&quot;
+        },
+        {
+          &quot;type&quot;: &quot;null&quot;
+        }
+      ]
+    },
+    &quot;keys&quot;: {
+      &quot;type&quot;: &quot;array&quot;,
+      &quot;items&quot;: {
+        &quot;type&quot;: &quot;string&quot;
+      }
+    }
+  },
+  &quot;required&quot;: [
+    &quot;hook_event_name&quot;,
+    &quot;keys&quot;
+  ]
+}</pre></details></div></details></article><article id="event-pre_tool_call" class="event-card" data-search="pre_tool_call agent-local hook-callback verified-headless plugin-hook outbound-webhook" data-direction="agent-local" data-confidence="verified-headless"><details><summary><span class="event-name">pre_tool_call</span><span class="event-meta"><span class="direction">agent-local</span><span class="confidence verified-headless">verified-headless</span></span></summary><div class="event-body"><dl><div><dt>Channel</dt><dd><a href="#channels"><code>plugin-hook</code></a> <a href="#channels"><code>outbound-webhook</code></a></dd></div><div><dt>Transport</dt><dd>hook-callback</dd></div><div><dt>Trigger</dt><dd>—</dd></div></dl><p>Outbound webhook is a notify-only copy of the same hook name.</p><div class="evidence-refs"><a class="evidence-ref" href="#claim-hermes-runtime-headless">hermes-runtime-headless</a></div><details class="schema"><summary>Payload schema</summary><pre>{
+  &quot;type&quot;: &quot;object&quot;,
+  &quot;properties&quot;: {
+    &quot;hook_event_name&quot;: {
+      &quot;type&quot;: &quot;string&quot;
+    },
+    &quot;session_id&quot;: {
+      &quot;anyOf&quot;: [
+        {
+          &quot;type&quot;: &quot;string&quot;
+        },
+        {
+          &quot;type&quot;: &quot;null&quot;
+        }
+      ]
+    },
+    &quot;tool_name&quot;: {
+      &quot;anyOf&quot;: [
+        {
+          &quot;type&quot;: &quot;string&quot;
+        },
+        {
+          &quot;type&quot;: &quot;null&quot;
+        }
+      ]
+    },
+    &quot;platform&quot;: {
+      &quot;anyOf&quot;: [
+        {
+          &quot;type&quot;: &quot;string&quot;
+        },
+        {
+          &quot;type&quot;: &quot;null&quot;
+        }
+      ]
+    },
+    &quot;choice&quot;: {
+      &quot;anyOf&quot;: [
+        {
+          &quot;type&quot;: &quot;string&quot;
+        },
+        {
+          &quot;type&quot;: &quot;null&quot;
+        }
+      ]
+    },
+    &quot;keys&quot;: {
+      &quot;type&quot;: &quot;array&quot;,
+      &quot;items&quot;: {
+        &quot;type&quot;: &quot;string&quot;
+      }
+    }
+  },
+  &quot;required&quot;: [
+    &quot;hook_event_name&quot;,
+    &quot;keys&quot;
+  ]
+}</pre></details></div></details></article><article id="event-prompt-submit" class="event-card" data-search="prompt.submit client-to-agent jsonrpc-request verified-headless tui-gateway" data-direction="client-to-agent" data-confidence="verified-headless"><details><summary><span class="event-name">prompt.submit</span><span class="event-meta"><span class="direction">client-to-agent</span><span class="confidence verified-headless">verified-headless</span></span></summary><div class="event-body"><dl><div><dt>Channel</dt><dd><a href="#channels"><code>tui-gateway</code></a></dd></div><div><dt>Transport</dt><dd>jsonrpc-request</dd></div><div><dt>Trigger</dt><dd>—</dd></div></dl><p>Result is only { status: &quot;streaming&quot; }. There is no native prompt id.</p><div class="evidence-refs"><a class="evidence-ref" href="#claim-hermes-runtime-headless">hermes-runtime-headless</a></div><details class="schema"><summary>Payload schema</summary><pre>{
+  &quot;type&quot;: &quot;object&quot;,
+  &quot;properties&quot;: {
+    &quot;session_id&quot;: {
+      &quot;type&quot;: &quot;string&quot;
+    },
+    &quot;cwd&quot;: {
+      &quot;type&quot;: &quot;string&quot;
+    },
+    &quot;source&quot;: {
+      &quot;type&quot;: &quot;string&quot;
+    },
+    &quot;text&quot;: {
+      &quot;type&quot;: &quot;string&quot;
+    },
+    &quot;hasText&quot;: {
+      &quot;type&quot;: &quot;boolean&quot;
+    }
+  },
+  &quot;required&quot;: [
+    &quot;session_id&quot;
+  ]
+}</pre></details><details class="schema"><summary>Result schema</summary><pre>{
+  &quot;type&quot;: &quot;object&quot;,
+  &quot;properties&quot;: {
+    &quot;status&quot;: {
+      &quot;type&quot;: &quot;string&quot;,
+      &quot;enum&quot;: [
+        &quot;streaming&quot;
+      ]
+    }
+  },
+  &quot;required&quot;: [
+    &quot;status&quot;
+  ]
+}</pre></details><details class="schema"><summary>Carrier schema</summary><pre>{
+  &quot;type&quot;: &quot;object&quot;,
+  &quot;properties&quot;: {
+    &quot;direction&quot;: {
+      &quot;type&quot;: &quot;string&quot;,
+      &quot;enum&quot;: [
+        &quot;client&quot;
+      ]
+    },
+    &quot;jsonrpc&quot;: {
+      &quot;type&quot;: &quot;string&quot;,
+      &quot;enum&quot;: [
+        &quot;2.0&quot;
+      ]
+    },
+    &quot;id&quot;: {
+      &quot;type&quot;: &quot;string&quot;
+    },
+    &quot;method&quot;: {
+      &quot;type&quot;: &quot;string&quot;,
+      &quot;enum&quot;: [
+        &quot;prompt.submit&quot;
+      ]
+    },
+    &quot;params&quot;: {
+      &quot;type&quot;: &quot;object&quot;,
+      &quot;properties&quot;: {
+        &quot;session_id&quot;: {
+          &quot;type&quot;: &quot;string&quot;
+        },
+        &quot;cwd&quot;: {
+          &quot;type&quot;: &quot;string&quot;
+        },
+        &quot;source&quot;: {
+          &quot;type&quot;: &quot;string&quot;
+        },
+        &quot;text&quot;: {
+          &quot;type&quot;: &quot;string&quot;
+        },
+        &quot;hasText&quot;: {
+          &quot;type&quot;: &quot;boolean&quot;
+        }
+      },
+      &quot;required&quot;: [
+        &quot;session_id&quot;
+      ]
+    }
+  },
+  &quot;required&quot;: [
+    &quot;direction&quot;,
+    &quot;jsonrpc&quot;,
+    &quot;id&quot;,
+    &quot;method&quot;,
+    &quot;params&quot;
+  ]
+}</pre></details></div></details></article><article id="event-reasoning-available" class="event-card" data-search="reasoning.available agent-to-client jsonrpc-notification verified-headless tui-gateway" data-direction="agent-to-client" data-confidence="verified-headless"><details><summary><span class="event-name">reasoning.available</span><span class="event-meta"><span class="direction">agent-to-client</span><span class="confidence verified-headless">verified-headless</span></span></summary><div class="event-body"><dl><div><dt>Channel</dt><dd><a href="#channels"><code>tui-gateway</code></a></dd></div><div><dt>Transport</dt><dd>jsonrpc-notification</dd></div><div><dt>Trigger</dt><dd>—</dd></div></dl><p>In these captures this echoed the assistant text.</p><div class="evidence-refs"><a class="evidence-ref" href="#claim-hermes-runtime-headless">hermes-runtime-headless</a></div><details class="schema"><summary>Payload schema</summary><pre>{
+  &quot;type&quot;: &quot;object&quot;,
+  &quot;properties&quot;: {
+    &quot;hasText&quot;: {
+      &quot;type&quot;: &quot;boolean&quot;
+    },
+    &quot;hasContext&quot;: {
+      &quot;type&quot;: &quot;boolean&quot;
+    }
+  }
+}</pre></details><details class="schema"><summary>Carrier schema</summary><pre>{
+  &quot;type&quot;: &quot;object&quot;,
+  &quot;properties&quot;: {
+    &quot;jsonrpc&quot;: {
+      &quot;type&quot;: &quot;string&quot;,
+      &quot;enum&quot;: [
+        &quot;2.0&quot;
+      ]
+    },
+    &quot;method&quot;: {
+      &quot;type&quot;: &quot;string&quot;,
+      &quot;enum&quot;: [
+        &quot;event&quot;
+      ]
+    },
+    &quot;params&quot;: {
+      &quot;type&quot;: &quot;object&quot;,
+      &quot;properties&quot;: {
+        &quot;type&quot;: {
+          &quot;type&quot;: &quot;string&quot;,
+          &quot;enum&quot;: [
+            &quot;reasoning.available&quot;
+          ]
+        },
+        &quot;session_id&quot;: {
+          &quot;type&quot;: &quot;string&quot;
+        },
+        &quot;payload&quot;: {
+          &quot;type&quot;: &quot;object&quot;,
+          &quot;properties&quot;: {
+            &quot;hasText&quot;: {
+              &quot;type&quot;: &quot;boolean&quot;
+            },
+            &quot;hasContext&quot;: {
+              &quot;type&quot;: &quot;boolean&quot;
+            }
+          }
+        }
+      },
+      &quot;required&quot;: [
+        &quot;type&quot;,
+        &quot;payload&quot;
+      ]
+    }
+  },
+  &quot;required&quot;: [
+    &quot;method&quot;,
+    &quot;params&quot;
+  ]
+}</pre></details></div></details></article><article id="event-session-create" class="event-card" data-search="session.create client-to-agent jsonrpc-request verified-headless tui-gateway" data-direction="client-to-agent" data-confidence="verified-headless"><details><summary><span class="event-name">session.create</span><span class="event-meta"><span class="direction">client-to-agent</span><span class="confidence verified-headless">verified-headless</span></span></summary><div class="event-body"><dl><div><dt>Channel</dt><dd><a href="#channels"><code>tui-gateway</code></a></dd></div><div><dt>Transport</dt><dd>jsonrpc-request</dd></div><div><dt>Trigger</dt><dd>—</dd></div></dl><div class="evidence-refs"><a class="evidence-ref" href="#claim-hermes-runtime-headless">hermes-runtime-headless</a></div><details class="schema"><summary>Payload schema</summary><pre>{
+  &quot;type&quot;: &quot;object&quot;,
+  &quot;properties&quot;: {
+    &quot;cwd&quot;: {
+      &quot;type&quot;: &quot;string&quot;
+    },
+    &quot;source&quot;: {
+      &quot;type&quot;: &quot;string&quot;
+    },
+    &quot;session_id&quot;: {
+      &quot;type&quot;: &quot;string&quot;
+    },
+    &quot;text&quot;: {
+      &quot;type&quot;: &quot;string&quot;
+    },
+    &quot;hasText&quot;: {
+      &quot;type&quot;: &quot;boolean&quot;
+    }
+  },
+  &quot;required&quot;: [
+    &quot;cwd&quot;,
+    &quot;source&quot;
+  ]
+}</pre></details><details class="schema"><summary>Result schema</summary><pre>{
+  &quot;type&quot;: &quot;object&quot;,
+  &quot;properties&quot;: {
+    &quot;session_id&quot;: {
+      &quot;type&quot;: &quot;string&quot;
+    },
+    &quot;stored_session_id&quot;: {
+      &quot;type&quot;: &quot;string&quot;
+    },
+    &quot;message_count&quot;: {
+      &quot;type&quot;: &quot;number&quot;,
+      &quot;minimum&quot;: 0
+    }
+  },
+  &quot;required&quot;: [
+    &quot;session_id&quot;,
+    &quot;stored_session_id&quot;
+  ]
+}</pre></details><details class="schema"><summary>Carrier schema</summary><pre>{
+  &quot;type&quot;: &quot;object&quot;,
+  &quot;properties&quot;: {
+    &quot;direction&quot;: {
+      &quot;type&quot;: &quot;string&quot;,
+      &quot;enum&quot;: [
+        &quot;client&quot;
+      ]
+    },
+    &quot;jsonrpc&quot;: {
+      &quot;type&quot;: &quot;string&quot;,
+      &quot;enum&quot;: [
+        &quot;2.0&quot;
+      ]
+    },
+    &quot;id&quot;: {
+      &quot;type&quot;: &quot;string&quot;
+    },
+    &quot;method&quot;: {
+      &quot;type&quot;: &quot;string&quot;,
+      &quot;enum&quot;: [
+        &quot;session.create&quot;
+      ]
+    },
+    &quot;params&quot;: {
+      &quot;type&quot;: &quot;object&quot;,
+      &quot;properties&quot;: {
+        &quot;cwd&quot;: {
+          &quot;type&quot;: &quot;string&quot;
+        },
+        &quot;source&quot;: {
+          &quot;type&quot;: &quot;string&quot;
+        },
+        &quot;session_id&quot;: {
+          &quot;type&quot;: &quot;string&quot;
+        },
+        &quot;hasText&quot;: {
+          &quot;type&quot;: &quot;boolean&quot;
+        }
+      },
+      &quot;required&quot;: [
+        &quot;cwd&quot;,
+        &quot;source&quot;
+      ]
+    }
+  },
+  &quot;required&quot;: [
+    &quot;direction&quot;,
+    &quot;jsonrpc&quot;,
+    &quot;id&quot;,
+    &quot;method&quot;,
+    &quot;params&quot;
+  ]
+}</pre></details></div></details></article><article id="event-session-info" class="event-card" data-search="session.info agent-to-client jsonrpc-notification verified-headless tui-gateway" data-direction="agent-to-client" data-confidence="verified-headless"><details><summary><span class="event-name">session.info</span><span class="event-meta"><span class="direction">agent-to-client</span><span class="confidence verified-headless">verified-headless</span></span></summary><div class="event-body"><dl><div><dt>Channel</dt><dd><a href="#channels"><code>tui-gateway</code></a></dd></div><div><dt>Transport</dt><dd>jsonrpc-notification</dd></div><div><dt>Trigger</dt><dd>—</dd></div></dl><div class="evidence-refs"><a class="evidence-ref" href="#claim-hermes-runtime-headless">hermes-runtime-headless</a></div><details class="schema"><summary>Payload schema</summary><pre>{
+  &quot;type&quot;: &quot;object&quot;,
+  &quot;properties&quot;: {
+    &quot;model&quot;: {
+      &quot;type&quot;: &quot;string&quot;
+    },
+    &quot;provider&quot;: {
+      &quot;type&quot;: &quot;string&quot;
+    },
+    &quot;approval_mode&quot;: {
+      &quot;type&quot;: &quot;string&quot;
+    },
+    &quot;version&quot;: {
+      &quot;type&quot;: &quot;string&quot;
+    },
+    &quot;cwd&quot;: {
+      &quot;type&quot;: &quot;string&quot;
+    },
+    &quot;stored_session_id&quot;: {
+      &quot;type&quot;: &quot;string&quot;
+    },
+    &quot;running&quot;: {
+      &quot;type&quot;: &quot;boolean&quot;
+    },
+    &quot;toolNames&quot;: {
+      &quot;type&quot;: &quot;array&quot;,
+      &quot;items&quot;: {
+        &quot;type&quot;: &quot;string&quot;
+      }
+    },
+    &quot;usage&quot;: {
+      &quot;type&quot;: &quot;object&quot;,
+      &quot;properties&quot;: {
+        &quot;model&quot;: {
+          &quot;type&quot;: &quot;string&quot;
+        },
+        &quot;calls&quot;: {
+          &quot;type&quot;: &quot;number&quot;,
+          &quot;minimum&quot;: 0
+        },
+        &quot;hasTotals&quot;: {
+          &quot;type&quot;: &quot;boolean&quot;
+        }
+      }
+    },
+    &quot;hasText&quot;: {
+      &quot;type&quot;: &quot;boolean&quot;
+    }
+  },
+  &quot;required&quot;: [
+    &quot;model&quot;,
+    &quot;stored_session_id&quot;,
+    &quot;running&quot;
+  ]
+}</pre></details><details class="schema"><summary>Carrier schema</summary><pre>{
+  &quot;type&quot;: &quot;object&quot;,
+  &quot;properties&quot;: {
+    &quot;jsonrpc&quot;: {
+      &quot;type&quot;: &quot;string&quot;,
+      &quot;enum&quot;: [
+        &quot;2.0&quot;
+      ]
+    },
+    &quot;method&quot;: {
+      &quot;type&quot;: &quot;string&quot;,
+      &quot;enum&quot;: [
+        &quot;event&quot;
+      ]
+    },
+    &quot;params&quot;: {
+      &quot;type&quot;: &quot;object&quot;,
+      &quot;properties&quot;: {
+        &quot;type&quot;: {
+          &quot;type&quot;: &quot;string&quot;,
+          &quot;enum&quot;: [
+            &quot;session.info&quot;
+          ]
+        },
+        &quot;session_id&quot;: {
+          &quot;type&quot;: &quot;string&quot;
+        },
+        &quot;payload&quot;: {
+          &quot;type&quot;: &quot;object&quot;,
+          &quot;properties&quot;: {
+            &quot;model&quot;: {
+              &quot;type&quot;: &quot;string&quot;
+            },
+            &quot;provider&quot;: {
+              &quot;type&quot;: &quot;string&quot;
+            },
+            &quot;approval_mode&quot;: {
+              &quot;type&quot;: &quot;string&quot;
+            },
+            &quot;version&quot;: {
+              &quot;type&quot;: &quot;string&quot;
+            },
+            &quot;cwd&quot;: {
+              &quot;type&quot;: &quot;string&quot;
+            },
+            &quot;stored_session_id&quot;: {
+              &quot;type&quot;: &quot;string&quot;
+            },
+            &quot;running&quot;: {
+              &quot;type&quot;: &quot;boolean&quot;
+            },
+            &quot;toolNames&quot;: {
+              &quot;type&quot;: &quot;array&quot;,
+              &quot;items&quot;: {
+                &quot;type&quot;: &quot;string&quot;
+              }
+            },
+            &quot;usage&quot;: {
+              &quot;type&quot;: &quot;object&quot;,
+              &quot;properties&quot;: {
+                &quot;model&quot;: {
+                  &quot;type&quot;: &quot;string&quot;
+                },
+                &quot;calls&quot;: {
+                  &quot;type&quot;: &quot;number&quot;,
+                  &quot;minimum&quot;: 0
+                },
+                &quot;hasTotals&quot;: {
+                  &quot;type&quot;: &quot;boolean&quot;
+                }
+              }
+            },
+            &quot;hasText&quot;: {
+              &quot;type&quot;: &quot;boolean&quot;
+            }
+          },
+          &quot;required&quot;: [
+            &quot;model&quot;,
+            &quot;stored_session_id&quot;,
+            &quot;running&quot;
+          ]
+        }
+      },
+      &quot;required&quot;: [
+        &quot;type&quot;,
+        &quot;payload&quot;
+      ]
+    }
+  },
+  &quot;required&quot;: [
+    &quot;method&quot;,
+    &quot;params&quot;
+  ]
+}</pre></details></div></details></article><article id="event-session-interrupt" class="event-card" data-search="session.interrupt client-to-agent jsonrpc-request verified-headless tui-gateway" data-direction="client-to-agent" data-confidence="verified-headless"><details><summary><span class="event-name">session.interrupt</span><span class="event-meta"><span class="direction">client-to-agent</span><span class="confidence verified-headless">verified-headless</span></span></summary><div class="event-body"><dl><div><dt>Channel</dt><dd><a href="#channels"><code>tui-gateway</code></a></dd></div><div><dt>Transport</dt><dd>jsonrpc-request</dd></div><div><dt>Trigger</dt><dd>—</dd></div></dl><p>RPC write is not the stop. Wait for message.complete status interrupted.</p><div class="evidence-refs"><a class="evidence-ref" href="#claim-hermes-runtime-headless">hermes-runtime-headless</a></div><details class="schema"><summary>Payload schema</summary><pre>{
+  &quot;type&quot;: &quot;object&quot;,
+  &quot;properties&quot;: {
+    &quot;session_id&quot;: {
+      &quot;type&quot;: &quot;string&quot;
+    },
+    &quot;hasText&quot;: {
+      &quot;type&quot;: &quot;boolean&quot;
+    }
+  },
+  &quot;required&quot;: [
+    &quot;session_id&quot;
+  ]
+}</pre></details><details class="schema"><summary>Result schema</summary><pre>{
+  &quot;type&quot;: &quot;object&quot;,
+  &quot;properties&quot;: {
+    &quot;status&quot;: {
+      &quot;type&quot;: &quot;string&quot;,
+      &quot;enum&quot;: [
+        &quot;interrupted&quot;
+      ]
+    }
+  },
+  &quot;required&quot;: [
+    &quot;status&quot;
+  ]
+}</pre></details><details class="schema"><summary>Carrier schema</summary><pre>{
+  &quot;type&quot;: &quot;object&quot;,
+  &quot;properties&quot;: {
+    &quot;direction&quot;: {
+      &quot;type&quot;: &quot;string&quot;,
+      &quot;enum&quot;: [
+        &quot;client&quot;
+      ]
+    },
+    &quot;jsonrpc&quot;: {
+      &quot;type&quot;: &quot;string&quot;,
+      &quot;enum&quot;: [
+        &quot;2.0&quot;
+      ]
+    },
+    &quot;id&quot;: {
+      &quot;type&quot;: &quot;string&quot;
+    },
+    &quot;method&quot;: {
+      &quot;type&quot;: &quot;string&quot;,
+      &quot;enum&quot;: [
+        &quot;session.interrupt&quot;
+      ]
+    },
+    &quot;params&quot;: {
+      &quot;type&quot;: &quot;object&quot;,
+      &quot;properties&quot;: {
+        &quot;session_id&quot;: {
+          &quot;type&quot;: &quot;string&quot;
+        },
+        &quot;hasText&quot;: {
+          &quot;type&quot;: &quot;boolean&quot;
+        }
+      },
+      &quot;required&quot;: [
+        &quot;session_id&quot;
+      ]
+    }
+  },
+  &quot;required&quot;: [
+    &quot;direction&quot;,
+    &quot;jsonrpc&quot;,
+    &quot;id&quot;,
+    &quot;method&quot;,
+    &quot;params&quot;
+  ]
+}</pre></details></div></details></article><article id="event-session-resume" class="event-card" data-search="session.resume client-to-agent jsonrpc-request verified-headless tui-gateway" data-direction="client-to-agent" data-confidence="verified-headless"><details><summary><span class="event-name">session.resume</span><span class="event-meta"><span class="direction">client-to-agent</span><span class="confidence verified-headless">verified-headless</span></span></summary><div class="event-body"><dl><div><dt>Channel</dt><dd><a href="#channels"><code>tui-gateway</code></a></dd></div><div><dt>Transport</dt><dd>jsonrpc-request</dd></div><div><dt>Trigger</dt><dd>—</dd></div></dl><div class="evidence-refs"><a class="evidence-ref" href="#claim-hermes-runtime-headless">hermes-runtime-headless</a></div><details class="schema"><summary>Payload schema</summary><pre>{
+  &quot;type&quot;: &quot;object&quot;,
+  &quot;properties&quot;: {
+    &quot;session_id&quot;: {
+      &quot;type&quot;: &quot;string&quot;
+    },
+    &quot;cwd&quot;: {
+      &quot;type&quot;: &quot;string&quot;
+    },
+    &quot;source&quot;: {
+      &quot;type&quot;: &quot;string&quot;
+    },
+    &quot;text&quot;: {
+      &quot;type&quot;: &quot;string&quot;
+    },
+    &quot;hasText&quot;: {
+      &quot;type&quot;: &quot;boolean&quot;
+    }
+  },
+  &quot;required&quot;: [
+    &quot;session_id&quot;,
+    &quot;cwd&quot;
+  ]
+}</pre></details><details class="schema"><summary>Result schema</summary><pre>{
+  &quot;type&quot;: &quot;object&quot;,
+  &quot;properties&quot;: {
+    &quot;session_id&quot;: {
+      &quot;type&quot;: &quot;string&quot;
+    },
+    &quot;stored_session_id&quot;: {
+      &quot;type&quot;: &quot;string&quot;
+    },
+    &quot;session_key&quot;: {
+      &quot;type&quot;: &quot;string&quot;
+    },
+    &quot;resumed&quot;: {
+      &quot;type&quot;: &quot;string&quot;
+    },
+    &quot;status&quot;: {
+      &quot;type&quot;: &quot;string&quot;
+    },
+    &quot;message_count&quot;: {
+      &quot;type&quot;: &quot;number&quot;,
+      &quot;minimum&quot;: 0
+    },
+    &quot;running&quot;: {
+      &quot;type&quot;: &quot;boolean&quot;
+    }
+  },
+  &quot;required&quot;: [
+    &quot;session_id&quot;,
+    &quot;status&quot;
+  ]
+}</pre></details><details class="schema"><summary>Carrier schema</summary><pre>{
+  &quot;type&quot;: &quot;object&quot;,
+  &quot;properties&quot;: {
+    &quot;direction&quot;: {
+      &quot;type&quot;: &quot;string&quot;,
+      &quot;enum&quot;: [
+        &quot;client&quot;
+      ]
+    },
+    &quot;jsonrpc&quot;: {
+      &quot;type&quot;: &quot;string&quot;,
+      &quot;enum&quot;: [
+        &quot;2.0&quot;
+      ]
+    },
+    &quot;id&quot;: {
+      &quot;type&quot;: &quot;string&quot;
+    },
+    &quot;method&quot;: {
+      &quot;type&quot;: &quot;string&quot;,
+      &quot;enum&quot;: [
+        &quot;session.resume&quot;
+      ]
+    },
+    &quot;params&quot;: {
+      &quot;type&quot;: &quot;object&quot;,
+      &quot;properties&quot;: {
+        &quot;session_id&quot;: {
+          &quot;type&quot;: &quot;string&quot;
+        },
+        &quot;cwd&quot;: {
+          &quot;type&quot;: &quot;string&quot;
+        },
+        &quot;source&quot;: {
+          &quot;type&quot;: &quot;string&quot;
+        },
+        &quot;hasText&quot;: {
+          &quot;type&quot;: &quot;boolean&quot;
+        }
+      },
+      &quot;required&quot;: [
+        &quot;session_id&quot;,
+        &quot;cwd&quot;
+      ]
+    }
+  },
+  &quot;required&quot;: [
+    &quot;direction&quot;,
+    &quot;jsonrpc&quot;,
+    &quot;id&quot;,
+    &quot;method&quot;,
+    &quot;params&quot;
+  ]
+}</pre></details></div></details></article><article id="event-sessions-changed" class="event-card" data-search="sessions.changed agent-to-client jsonrpc-notification verified-headless tui-gateway" data-direction="agent-to-client" data-confidence="verified-headless"><details><summary><span class="event-name">sessions.changed</span><span class="event-meta"><span class="direction">agent-to-client</span><span class="confidence verified-headless">verified-headless</span></span></summary><div class="event-body"><dl><div><dt>Channel</dt><dd><a href="#channels"><code>tui-gateway</code></a></dd></div><div><dt>Transport</dt><dd>jsonrpc-notification</dd></div><div><dt>Trigger</dt><dd>—</dd></div></dl><div class="evidence-refs"><a class="evidence-ref" href="#claim-hermes-runtime-headless">hermes-runtime-headless</a></div><details class="schema"><summary>Payload schema</summary><pre>{
+  &quot;type&quot;: &quot;object&quot;,
+  &quot;properties&quot;: {
+    &quot;hasText&quot;: {
+      &quot;type&quot;: &quot;boolean&quot;
+    },
+    &quot;hasContext&quot;: {
+      &quot;type&quot;: &quot;boolean&quot;
+    }
+  }
+}</pre></details><details class="schema"><summary>Carrier schema</summary><pre>{
+  &quot;type&quot;: &quot;object&quot;,
+  &quot;properties&quot;: {
+    &quot;jsonrpc&quot;: {
+      &quot;type&quot;: &quot;string&quot;,
+      &quot;enum&quot;: [
+        &quot;2.0&quot;
+      ]
+    },
+    &quot;method&quot;: {
+      &quot;type&quot;: &quot;string&quot;,
+      &quot;enum&quot;: [
+        &quot;event&quot;
+      ]
+    },
+    &quot;params&quot;: {
+      &quot;type&quot;: &quot;object&quot;,
+      &quot;properties&quot;: {
+        &quot;type&quot;: {
+          &quot;type&quot;: &quot;string&quot;,
+          &quot;enum&quot;: [
+            &quot;sessions.changed&quot;
+          ]
+        },
+        &quot;session_id&quot;: {
+          &quot;type&quot;: &quot;string&quot;
+        },
+        &quot;payload&quot;: {
+          &quot;type&quot;: &quot;object&quot;,
+          &quot;properties&quot;: {
+            &quot;hasText&quot;: {
+              &quot;type&quot;: &quot;boolean&quot;
+            },
+            &quot;hasContext&quot;: {
+              &quot;type&quot;: &quot;boolean&quot;
+            }
+          }
+        }
+      },
+      &quot;required&quot;: [
+        &quot;type&quot;,
+        &quot;payload&quot;
+      ]
+    }
+  },
+  &quot;required&quot;: [
+    &quot;method&quot;,
+    &quot;params&quot;
+  ]
+}</pre></details></div></details></article><article id="event-thinking-delta" class="event-card" data-search="thinking.delta agent-to-client jsonrpc-notification verified-headless tui-gateway" data-direction="agent-to-client" data-confidence="verified-headless"><details><summary><span class="event-name">thinking.delta</span><span class="event-meta"><span class="direction">agent-to-client</span><span class="confidence verified-headless">verified-headless</span></span></summary><div class="event-body"><dl><div><dt>Channel</dt><dd><a href="#channels"><code>tui-gateway</code></a></dd></div><div><dt>Transport</dt><dd>jsonrpc-notification</dd></div><div><dt>Trigger</dt><dd>—</dd></div></dl><p>UI spinner text, not model reasoning.</p><div class="evidence-refs"><a class="evidence-ref" href="#claim-hermes-runtime-headless">hermes-runtime-headless</a></div><details class="schema"><summary>Payload schema</summary><pre>{
+  &quot;type&quot;: &quot;object&quot;,
+  &quot;properties&quot;: {
+    &quot;hasText&quot;: {
+      &quot;type&quot;: &quot;boolean&quot;
+    },
+    &quot;hasContext&quot;: {
+      &quot;type&quot;: &quot;boolean&quot;
+    }
+  }
+}</pre></details><details class="schema"><summary>Carrier schema</summary><pre>{
+  &quot;type&quot;: &quot;object&quot;,
+  &quot;properties&quot;: {
+    &quot;jsonrpc&quot;: {
+      &quot;type&quot;: &quot;string&quot;,
+      &quot;enum&quot;: [
+        &quot;2.0&quot;
+      ]
+    },
+    &quot;method&quot;: {
+      &quot;type&quot;: &quot;string&quot;,
+      &quot;enum&quot;: [
+        &quot;event&quot;
+      ]
+    },
+    &quot;params&quot;: {
+      &quot;type&quot;: &quot;object&quot;,
+      &quot;properties&quot;: {
+        &quot;type&quot;: {
+          &quot;type&quot;: &quot;string&quot;,
+          &quot;enum&quot;: [
+            &quot;thinking.delta&quot;
+          ]
+        },
+        &quot;session_id&quot;: {
+          &quot;type&quot;: &quot;string&quot;
+        },
+        &quot;payload&quot;: {
+          &quot;type&quot;: &quot;object&quot;,
+          &quot;properties&quot;: {
+            &quot;hasText&quot;: {
+              &quot;type&quot;: &quot;boolean&quot;
+            },
+            &quot;hasContext&quot;: {
+              &quot;type&quot;: &quot;boolean&quot;
+            }
+          }
+        }
+      },
+      &quot;required&quot;: [
+        &quot;type&quot;,
+        &quot;payload&quot;
+      ]
+    }
+  },
+  &quot;required&quot;: [
+    &quot;method&quot;,
+    &quot;params&quot;
+  ]
+}</pre></details></div></details></article><article id="event-tool-complete" class="event-card" data-search="tool.complete agent-to-client jsonrpc-notification verified-headless tui-gateway" data-direction="agent-to-client" data-confidence="verified-headless"><details><summary><span class="event-name">tool.complete</span><span class="event-meta"><span class="direction">agent-to-client</span><span class="confidence verified-headless">verified-headless</span></span></summary><div class="event-body"><dl><div><dt>Channel</dt><dd><a href="#channels"><code>tui-gateway</code></a></dd></div><div><dt>Transport</dt><dd>jsonrpc-notification</dd></div><div><dt>Trigger</dt><dd>—</dd></div></dl><div class="evidence-refs"><a class="evidence-ref" href="#claim-hermes-runtime-headless">hermes-runtime-headless</a></div><details class="schema"><summary>Payload schema</summary><pre>{
+  &quot;type&quot;: &quot;object&quot;,
+  &quot;properties&quot;: {
+    &quot;name&quot;: {
+      &quot;type&quot;: &quot;string&quot;
+    },
+    &quot;tool_id&quot;: {
+      &quot;type&quot;: &quot;string&quot;
+    },
+    &quot;duration_s&quot;: {
+      &quot;type&quot;: &quot;number&quot;,
+      &quot;minimum&quot;: 0
+    },
+    &quot;result&quot;: {
+      &quot;type&quot;: &quot;object&quot;,
+      &quot;properties&quot;: {
+        &quot;exit_code&quot;: {
+          &quot;type&quot;: &quot;number&quot;
+        },
+        &quot;status&quot;: {
+          &quot;type&quot;: &quot;string&quot;
+        },
+        &quot;hasOutput&quot;: {
+          &quot;type&quot;: &quot;boolean&quot;
+        },
+        &quot;hasError&quot;: {
+          &quot;type&quot;: &quot;boolean&quot;
+        }
+      }
+    },
+    &quot;hasText&quot;: {
+      &quot;type&quot;: &quot;boolean&quot;
+    },
+    &quot;hasContext&quot;: {
+      &quot;type&quot;: &quot;boolean&quot;
+    }
+  },
+  &quot;required&quot;: [
+    &quot;name&quot;,
+    &quot;tool_id&quot;
+  ]
+}</pre></details><details class="schema"><summary>Carrier schema</summary><pre>{
+  &quot;type&quot;: &quot;object&quot;,
+  &quot;properties&quot;: {
+    &quot;jsonrpc&quot;: {
+      &quot;type&quot;: &quot;string&quot;,
+      &quot;enum&quot;: [
+        &quot;2.0&quot;
+      ]
+    },
+    &quot;method&quot;: {
+      &quot;type&quot;: &quot;string&quot;,
+      &quot;enum&quot;: [
+        &quot;event&quot;
+      ]
+    },
+    &quot;params&quot;: {
+      &quot;type&quot;: &quot;object&quot;,
+      &quot;properties&quot;: {
+        &quot;type&quot;: {
+          &quot;type&quot;: &quot;string&quot;,
+          &quot;enum&quot;: [
+            &quot;tool.complete&quot;
+          ]
+        },
+        &quot;session_id&quot;: {
+          &quot;type&quot;: &quot;string&quot;
+        },
+        &quot;payload&quot;: {
+          &quot;type&quot;: &quot;object&quot;,
+          &quot;properties&quot;: {
+            &quot;name&quot;: {
+              &quot;type&quot;: &quot;string&quot;
+            },
+            &quot;tool_id&quot;: {
+              &quot;type&quot;: &quot;string&quot;
+            },
+            &quot;duration_s&quot;: {
+              &quot;type&quot;: &quot;number&quot;,
+              &quot;minimum&quot;: 0
+            },
+            &quot;result&quot;: {
+              &quot;type&quot;: &quot;object&quot;,
+              &quot;properties&quot;: {
+                &quot;exit_code&quot;: {
+                  &quot;type&quot;: &quot;number&quot;
+                },
+                &quot;status&quot;: {
+                  &quot;type&quot;: &quot;string&quot;
+                },
+                &quot;hasOutput&quot;: {
+                  &quot;type&quot;: &quot;boolean&quot;
+                },
+                &quot;hasError&quot;: {
+                  &quot;type&quot;: &quot;boolean&quot;
+                }
+              }
+            },
+            &quot;hasText&quot;: {
+              &quot;type&quot;: &quot;boolean&quot;
+            },
+            &quot;hasContext&quot;: {
+              &quot;type&quot;: &quot;boolean&quot;
+            }
+          },
+          &quot;required&quot;: [
+            &quot;name&quot;,
+            &quot;tool_id&quot;
+          ]
+        }
+      },
+      &quot;required&quot;: [
+        &quot;type&quot;,
+        &quot;payload&quot;
+      ]
+    }
+  },
+  &quot;required&quot;: [
+    &quot;method&quot;,
+    &quot;params&quot;
+  ]
+}</pre></details></div></details></article><article id="event-tool-generating" class="event-card" data-search="tool.generating agent-to-client jsonrpc-notification verified-headless tui-gateway" data-direction="agent-to-client" data-confidence="verified-headless"><details><summary><span class="event-name">tool.generating</span><span class="event-meta"><span class="direction">agent-to-client</span><span class="confidence verified-headless">verified-headless</span></span></summary><div class="event-body"><dl><div><dt>Channel</dt><dd><a href="#channels"><code>tui-gateway</code></a></dd></div><div><dt>Transport</dt><dd>jsonrpc-notification</dd></div><div><dt>Trigger</dt><dd>—</dd></div></dl><div class="evidence-refs"><a class="evidence-ref" href="#claim-hermes-runtime-headless">hermes-runtime-headless</a></div><details class="schema"><summary>Payload schema</summary><pre>{
+  &quot;type&quot;: &quot;object&quot;,
+  &quot;properties&quot;: {
+    &quot;name&quot;: {
+      &quot;type&quot;: &quot;string&quot;
+    },
+    &quot;hasText&quot;: {
+      &quot;type&quot;: &quot;boolean&quot;
+    },
+    &quot;hasContext&quot;: {
+      &quot;type&quot;: &quot;boolean&quot;
+    }
+  },
+  &quot;required&quot;: [
+    &quot;name&quot;
+  ]
+}</pre></details><details class="schema"><summary>Carrier schema</summary><pre>{
+  &quot;type&quot;: &quot;object&quot;,
+  &quot;properties&quot;: {
+    &quot;jsonrpc&quot;: {
+      &quot;type&quot;: &quot;string&quot;,
+      &quot;enum&quot;: [
+        &quot;2.0&quot;
+      ]
+    },
+    &quot;method&quot;: {
+      &quot;type&quot;: &quot;string&quot;,
+      &quot;enum&quot;: [
+        &quot;event&quot;
+      ]
+    },
+    &quot;params&quot;: {
+      &quot;type&quot;: &quot;object&quot;,
+      &quot;properties&quot;: {
+        &quot;type&quot;: {
+          &quot;type&quot;: &quot;string&quot;,
+          &quot;enum&quot;: [
+            &quot;tool.generating&quot;
+          ]
+        },
+        &quot;session_id&quot;: {
+          &quot;type&quot;: &quot;string&quot;
+        },
+        &quot;payload&quot;: {
+          &quot;type&quot;: &quot;object&quot;,
+          &quot;properties&quot;: {
+            &quot;name&quot;: {
+              &quot;type&quot;: &quot;string&quot;
+            },
+            &quot;hasText&quot;: {
+              &quot;type&quot;: &quot;boolean&quot;
+            },
+            &quot;hasContext&quot;: {
+              &quot;type&quot;: &quot;boolean&quot;
+            }
+          },
+          &quot;required&quot;: [
+            &quot;name&quot;
+          ]
+        }
+      },
+      &quot;required&quot;: [
+        &quot;type&quot;,
+        &quot;payload&quot;
+      ]
+    }
+  },
+  &quot;required&quot;: [
+    &quot;method&quot;,
+    &quot;params&quot;
+  ]
+}</pre></details></div></details></article><article id="event-tool-start" class="event-card" data-search="tool.start agent-to-client jsonrpc-notification verified-headless tui-gateway" data-direction="agent-to-client" data-confidence="verified-headless"><details><summary><span class="event-name">tool.start</span><span class="event-meta"><span class="direction">agent-to-client</span><span class="confidence verified-headless">verified-headless</span></span></summary><div class="event-body"><dl><div><dt>Channel</dt><dd><a href="#channels"><code>tui-gateway</code></a></dd></div><div><dt>Transport</dt><dd>jsonrpc-notification</dd></div><div><dt>Trigger</dt><dd>—</dd></div></dl><div class="evidence-refs"><a class="evidence-ref" href="#claim-hermes-runtime-headless">hermes-runtime-headless</a></div><details class="schema"><summary>Payload schema</summary><pre>{
+  &quot;type&quot;: &quot;object&quot;,
+  &quot;properties&quot;: {
+    &quot;name&quot;: {
+      &quot;type&quot;: &quot;string&quot;
+    },
+    &quot;tool_id&quot;: {
+      &quot;type&quot;: &quot;string&quot;
+    },
+    &quot;duration_s&quot;: {
+      &quot;type&quot;: &quot;number&quot;,
+      &quot;minimum&quot;: 0
+    },
+    &quot;result&quot;: {
+      &quot;type&quot;: &quot;object&quot;,
+      &quot;properties&quot;: {
+        &quot;exit_code&quot;: {
+          &quot;type&quot;: &quot;number&quot;
+        },
+        &quot;status&quot;: {
+          &quot;type&quot;: &quot;string&quot;
+        },
+        &quot;hasOutput&quot;: {
+          &quot;type&quot;: &quot;boolean&quot;
+        },
+        &quot;hasError&quot;: {
+          &quot;type&quot;: &quot;boolean&quot;
+        }
+      }
+    },
+    &quot;hasText&quot;: {
+      &quot;type&quot;: &quot;boolean&quot;
+    },
+    &quot;hasContext&quot;: {
+      &quot;type&quot;: &quot;boolean&quot;
+    }
+  },
+  &quot;required&quot;: [
+    &quot;name&quot;,
+    &quot;tool_id&quot;
+  ]
+}</pre></details><details class="schema"><summary>Carrier schema</summary><pre>{
+  &quot;type&quot;: &quot;object&quot;,
+  &quot;properties&quot;: {
+    &quot;jsonrpc&quot;: {
+      &quot;type&quot;: &quot;string&quot;,
+      &quot;enum&quot;: [
+        &quot;2.0&quot;
+      ]
+    },
+    &quot;method&quot;: {
+      &quot;type&quot;: &quot;string&quot;,
+      &quot;enum&quot;: [
+        &quot;event&quot;
+      ]
+    },
+    &quot;params&quot;: {
+      &quot;type&quot;: &quot;object&quot;,
+      &quot;properties&quot;: {
+        &quot;type&quot;: {
+          &quot;type&quot;: &quot;string&quot;,
+          &quot;enum&quot;: [
+            &quot;tool.start&quot;
+          ]
+        },
+        &quot;session_id&quot;: {
+          &quot;type&quot;: &quot;string&quot;
+        },
+        &quot;payload&quot;: {
+          &quot;type&quot;: &quot;object&quot;,
+          &quot;properties&quot;: {
+            &quot;name&quot;: {
+              &quot;type&quot;: &quot;string&quot;
+            },
+            &quot;tool_id&quot;: {
+              &quot;type&quot;: &quot;string&quot;
+            },
+            &quot;duration_s&quot;: {
+              &quot;type&quot;: &quot;number&quot;,
+              &quot;minimum&quot;: 0
+            },
+            &quot;result&quot;: {
+              &quot;type&quot;: &quot;object&quot;,
+              &quot;properties&quot;: {
+                &quot;exit_code&quot;: {
+                  &quot;type&quot;: &quot;number&quot;
+                },
+                &quot;status&quot;: {
+                  &quot;type&quot;: &quot;string&quot;
+                },
+                &quot;hasOutput&quot;: {
+                  &quot;type&quot;: &quot;boolean&quot;
+                },
+                &quot;hasError&quot;: {
+                  &quot;type&quot;: &quot;boolean&quot;
+                }
+              }
+            },
+            &quot;hasText&quot;: {
+              &quot;type&quot;: &quot;boolean&quot;
+            },
+            &quot;hasContext&quot;: {
+              &quot;type&quot;: &quot;boolean&quot;
+            }
+          },
+          &quot;required&quot;: [
+            &quot;name&quot;,
+            &quot;tool_id&quot;
+          ]
+        }
+      },
+      &quot;required&quot;: [
+        &quot;type&quot;,
+        &quot;payload&quot;
+      ]
+    }
+  },
+  &quot;required&quot;: [
+    &quot;method&quot;,
+    &quot;params&quot;
+  ]
+}</pre></details></div></details></article></div><p id="empty-events" class="empty" hidden>No events match these filters.</p></section><section id="evidence" class="panel"><div class="section-heading"><div><span class="eyebrow">Provenance</span><h2>Evidence</h2></div><span class="count">v2 · 3 claims</span></div><details open><summary>Digest-pinned records</summary><div class="table-wrap"><table><thead><tr><th>ID</th><th>Kind</th><th>Path / digest</th></tr></thead><tbody><tr><td><code>sanitized-captures</code></td><td>capture-set</td><td><code>sha256:152321f47c2fde6f4645d52af984f3377cd307bd3d67bc8ab69efa39f2a6d2da</code></td></tr><tr><td><code>identity-probes</code></td><td>probe-set</td><td><code>sha256:e1efd4cad0a6478c2c7c54b401204edb672e48d10651f310c272fafb26d6d4ea</code></td></tr><tr><td><code>agent-surface-model</code></td><td>model-tree</td><td><code>sha256:c90ebff31409c0782a20373ca6d9b67414cf3f817078ba53da335bc563420324</code></td></tr></tbody></table></div></details><details><summary>Claim index</summary><div class="claim-list"><article id="claim-hermes-runtime-headless" class="claim-card"><header><code>hermes-runtime-headless</code><span>runtime-capture</span><span class="confidence verified-headless">verified-headless</span></header><dl><div><dt>Record</dt><dd>sanitized-captures</dd></div><div><dt>Artifact</dt><dd>hermes-0.20.0-source-revision</dd></div><div><dt>Captured</dt><dd>2026-08-12T13:29:19.000Z</dd></div></dl></article><article id="claim-hermes-identity-probe" class="claim-card"><header><code>hermes-identity-probe</code><span>binary-probe</span><span class="confidence verified-headless">verified-headless</span></header><dl><div><dt>Record</dt><dd>identity-probes</dd></div><div><dt>Artifact</dt><dd>hermes-0.20.0-source-revision</dd></div><div><dt>Captured</dt><dd>2026-08-12T18:56:46.921Z</dd></div></dl></article><article id="claim-hermes-exact-source" class="claim-card"><header><code>hermes-exact-source</code><span>exact-source</span><span class="confidence unverified">unverified</span></header><dl><div><dt>Record</dt><dd>—</dd></div><div><dt>Artifact</dt><dd>—</dd></div><div><dt>Captured</dt><dd>—</dd></div></dl><p>Pinned checkout lead for unobserved methods. It cannot promote a runtime claim.</p></article></div></details></section></main><script>
+const root=document.documentElement;let saved;try{saved=localStorage.getItem('surface-theme')}catch{}if(saved)root.dataset.theme=saved;
+document.querySelector('.theme').addEventListener('click',()=>{const dark=root.dataset.theme==='dark'||(!root.dataset.theme&&matchMedia('(prefers-color-scheme: dark)').matches);root.dataset.theme=dark?'light':'dark';try{localStorage.setItem('surface-theme',root.dataset.theme)}catch{}});
+const search=document.querySelector('#event-search'),direction=document.querySelector('#direction-filter'),confidence=document.querySelector('#confidence-filter'),cards=[...document.querySelectorAll('.event-card')],count=document.querySelector('#event-count'),empty=document.querySelector('#empty-events');
+function filter(){const q=search.value.trim().toLowerCase();let shown=0;for(const card of cards){const visible=(!q||card.dataset.search.includes(q))&&(!direction.value||card.dataset.direction===direction.value)&&(!confidence.value||card.dataset.confidence===confidence.value);card.hidden=!visible;if(visible)shown++}count.textContent=shown+' / '+cards.length;empty.hidden=shown!==0}
+search.addEventListener('input',filter);direction.addEventListener('change',filter);confidence.addEventListener('change',filter);
+document.querySelector('#expand-visible').addEventListener('click',()=>cards.filter(card=>!card.hidden).forEach(card=>card.firstElementChild.open=true));document.querySelector('#collapse-events').addEventListener('click',()=>cards.forEach(card=>card.firstElementChild.open=false));
+</script></body></html>

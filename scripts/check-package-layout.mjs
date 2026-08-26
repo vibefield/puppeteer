@@ -202,9 +202,9 @@ export function auditPackageLayout(root = scriptRoot) {
       const mapPath = join(root, directory, 'docs', 'event-map.html');
       if (!existsSync(mapPath)) continue;
       const html = readFileSync(mapPath, 'utf8');
-      const vendorVersion = json(join(root, agent.currentManifest)).vendorVersion;
-      if (!html.includes(`name="puppeteer-surface-manifest" content="${agent.currentManifest}"`)) {
-        issues.push(`${directory}/docs/event-map.html does not name the promoted Surface manifest`);
+      const vendorVersion = json(join(root, agent.currentManifest)).manifest?.vendorVersion;
+      if (!html.includes(`name="puppeteer-surface-groundtruth" content="${agent.currentManifest}"`)) {
+        issues.push(`${directory}/docs/event-map.html does not name the promoted Surface ground truth`);
       }
       if (!html.includes(`name="puppeteer-last-verified" content="${vendorVersion}"`)) {
         issues.push(`${directory}/docs/event-map.html lastVerified does not match ${vendorVersion}`);

@@ -36,42 +36,58 @@ import {
 
 /**
  * Claim-addressable sources for every portable mapping in this file. Paths are
- * relative to `packages/surface/vendors/opencode/model/opencode@1.18.16/`.
+ * point into that version's sole canonical `groundtruth.json` document.
  * The behavior-node ids carry the independently evidenced semantic ordering.
  */
 export const OPENCODE_NORMALIZATION_EVIDENCE = {
-  session: ['events/session.created.json', 'events/session.updated.json', 'behavior.json#session-created'],
-  turn: ['events/message.updated.json', 'events/session.status.json', 'behavior.json#user-message'],
+  session: [
+    'groundtruth.json#events/session.created',
+    'groundtruth.json#events/session.updated',
+    'groundtruth.json#behavior/nodes/session-created',
+  ],
+  turn: [
+    'groundtruth.json#events/message.updated',
+    'groundtruth.json#events/session.status',
+    'groundtruth.json#behavior/nodes/user-message',
+  ],
   assistant: [
-    'events/message.part.updated.json',
-    'events/message.part.delta.json',
-    'behavior.json#assistant-message',
-    'behavior.json#text-delta',
+    'groundtruth.json#events/message.part.updated',
+    'groundtruth.json#events/message.part.delta',
+    'groundtruth.json#behavior/nodes/assistant-message',
+    'groundtruth.json#behavior/nodes/text-delta',
   ],
-  reasoning: ['events/message.part.updated.json', 'events/message.part.delta.json', 'behavior.json#reasoning-part'],
-  tool: ['events/message.part.updated.json', 'behavior.json#tool-pending'],
-  permission: ['events/permission.asked.json', 'events/permission.replied.json', 'behavior.json#permission-asked'],
+  reasoning: [
+    'groundtruth.json#events/message.part.updated',
+    'groundtruth.json#events/message.part.delta',
+    'groundtruth.json#behavior/nodes/reasoning-part',
+  ],
+  tool: ['groundtruth.json#events/message.part.updated', 'groundtruth.json#behavior/nodes/tool-pending'],
+  permission: [
+    'groundtruth.json#events/permission.asked',
+    'groundtruth.json#events/permission.replied',
+    'groundtruth.json#behavior/nodes/permission-asked',
+  ],
   question: [
-    'events/question.asked.json',
-    'events/question.replied.json',
-    'events/question.rejected.json',
-    'behavior.json#question-asked',
+    'groundtruth.json#events/question.asked',
+    'groundtruth.json#events/question.replied',
+    'groundtruth.json#events/question.rejected',
+    'groundtruth.json#behavior/nodes/question-asked',
   ],
-  failure: ['events/session.error.json', 'behavior.json#session-error'],
+  failure: ['groundtruth.json#events/session.error', 'groundtruth.json#behavior/nodes/session-error'],
   context: [
-    'events/message.part.updated.json',
-    'events/session.compacted.json',
-    'behavior.json#session-compacted-manual',
-    'behavior.json#session-compacted-auto',
-    'behavior.json#session-compacted-overflow',
+    'groundtruth.json#events/message.part.updated',
+    'groundtruth.json#events/session.compacted',
+    'groundtruth.json#behavior/nodes/session-compacted-manual',
+    'groundtruth.json#behavior/nodes/session-compacted-auto',
+    'groundtruth.json#behavior/nodes/session-compacted-overflow',
   ],
-  deletion: ['events/session.deleted.json', 'behavior.json#session-deleted'],
+  deletion: ['groundtruth.json#events/session.deleted', 'groundtruth.json#behavior/nodes/session-deleted'],
   subagent: [
-    'events/session.created.json',
-    'events/session.idle.json',
-    'behavior.json#subagent-child-created',
-    'behavior.json#subagent-child-idle',
-    'behavior.json#subagent-background-task-completed',
+    'groundtruth.json#events/session.created',
+    'groundtruth.json#events/session.idle',
+    'groundtruth.json#behavior/nodes/subagent-child-created',
+    'groundtruth.json#behavior/nodes/subagent-child-idle',
+    'groundtruth.json#behavior/nodes/subagent-background-task-completed',
   ],
 } as const;
 

@@ -3,6 +3,7 @@
 import { existsSync, readFileSync, writeFileSync } from 'node:fs';
 import { dirname, resolve, sep } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { writeGroundTruthArtifacts } from '../packages/surface/scripts/groundtruth.mjs';
 
 const root = dirname(dirname(fileURLToPath(import.meta.url)));
 
@@ -70,7 +71,8 @@ const invokedDirectly = process.argv[1] && fileURLToPath(import.meta.url) === re
 if (invokedDirectly) {
   const manifestPath = safePath(flag('--manifest'));
   if (!existsSync(manifestPath)) throw new Error('candidate manifest does not exist');
-  const manifest = json(manifestPath);
+  const document = json(manifestPath);
+  const manifest = document.manifest ?? document;
   const evidencePath = resolve(dirname(manifestPath), manifest.evidence ?? '');
   if (manifest.evidence !== 'evidence.json' || !existsSync(evidencePath)) throw new Error('candidate has no evidence.json');
   const upstream = json(resolve(root, 'packages', 'surface', 'vendors', manifest.vendor, 'upstream.json'));
@@ -80,5 +82,6 @@ if (invokedDirectly) {
     requiredPlatforms: upstream.platforms,
   });
   writeFileSync(evidencePath, `${JSON.stringify(evidence, null, 2)}\n`);
+  writeGroundTruthArtifacts(dirname(manifestPath));
   console.log(`updated ${evidencePath} with ${evidence.artifacts.length} immutable artifact identities`);
 }

@@ -127,7 +127,7 @@ function manifestForVendor(repoRoot, vendor) {
   const ledger = json(join(repoRoot, 'support', 'agents.json'));
   const agent = ledger.agents.find((entry) => entry.id === vendor);
   const path = agent?.candidateManifest ?? agent?.currentManifest;
-  if (!path) throw new Error(`support ledger has no model manifest for ${vendor}`);
+  if (!path) throw new Error(`support ledger has no canonical ground truth for ${vendor}`);
   return path;
 }
 

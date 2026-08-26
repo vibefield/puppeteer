@@ -1,0 +1,2654 @@
+{
+  "format": "puppeteer-groundtruth/1",
+  "manifest": {
+    "asmVersion": 2,
+    "vendor": "grok",
+    "vendorVersion": "1.0.0",
+    "generatedAt": "2026-08-08",
+    "source": "Controlled census of the installed darwin-arm64 Grok 1.0.0 artifact. The public xai-org/grok-build mirror is supplemental because it does not contain the binary-reported revision; see findings.md.",
+    "evidence": "evidence.json"
+  },
+  "detection": {
+    "executables": [
+      "grok"
+    ],
+    "envVar": "PUPPETEER_GROK_BIN",
+    "versionFlag": "--version",
+    "versionOutput": "grok 1.0.0 (3cd0d0cbcebe) [stable]",
+    "versionPattern": "^grok (\\d+\\.\\d+\\.\\d+) \\(([0-9a-f]+)\\) \\[(stable|alpha)\\]$",
+    "helpFlag": "--help",
+    "launchFlags": {
+      "leader": "leader",
+      "leaderSocket": "--leader-socket",
+      "sessionId": "--session-id",
+      "resume": "--resume",
+      "model": "--model",
+      "permissionMode": "--permission-mode",
+      "sandbox": "--sandbox"
+    }
+  },
+  "channels": {
+    "channels": {
+      "argv": {
+        "kind": "argv-env",
+        "notes": "The native composition is one long-lived leader plus a leader-attached ACP controller and TUI."
+      },
+      "acp": {
+        "kind": "acp",
+        "notes": "Strict JSON-RPC 2.0 NDJSON over stdio. Standard session/update and xAI extension methods are separate observable rails."
+      },
+      "session-log": {
+        "kind": "native-log",
+        "notes": "Append-only GROK_HOME/sessions/<encoded-cwd>/<session-id>/updates.jsonl records with timestamp, method, and params."
+      },
+      "session-state": {
+        "kind": "native-state",
+        "notes": "Replace-in-place signals.json and summary.json beside updates.jsonl."
+      },
+      "leader": {
+        "kind": "unix-socket",
+        "notes": "Coordination socket owned by grok agent leader; it is topology, not a normalized semantic event source."
+      },
+      "terminal": {
+        "kind": "terminal",
+        "notes": "Native leader-attached TUI. Semantics are derived from ACP and persisted files, never terminal text."
+      }
+    }
+  },
+  "evidenceIndex": {
+    "evidenceVersion": 2,
+    "vendor": "grok",
+    "vendorVersion": "1.0.0",
+    "artifacts": [
+      {
+        "id": "installed-grok-1.0.0-darwin-arm64",
+        "platform": "darwin-arm64",
+        "channel": "stable",
+        "acquiredAt": "2026-08-08T00:00:00.000Z",
+        "versionOutput": "grok 1.0.0 (3cd0d0cbcebe) [stable]",
+        "integrity": {
+          "status": "verified",
+          "sha256": "sha256:13c7f4f0b9abb00bf38216302ea4bab31f03e13555e3576620eca1de572a8d21"
+        }
+      }
+    ],
+    "sourceReferences": [
+      {
+        "repository": "https://github.com/xai-org/grok-build",
+        "revision": "3cd0d0cbcebe",
+        "relation": "binary-reported-revision-not-present-in-public-mirror"
+      },
+      {
+        "repository": "https://github.com/xai-org/grok-build",
+        "revision": "8a14c91d88875a831a38b3a066b1683116bcb31c",
+        "relation": "public-mirror-commit",
+        "sourceRevision": "27b3c66635e2c0bf213429a36ab916f25d59df20"
+      }
+    ],
+    "claims": [
+      {
+        "id": "grok-runtime-headless",
+        "kind": "runtime-capture",
+        "confidence": "verified-headless",
+        "record": "sanitized-captures",
+        "artifact": "installed-grok-1.0.0-darwin-arm64",
+        "platform": "darwin-arm64",
+        "harness": "controlled ACP, PTY, leader, and native-store census documented in packages/surface/vendors/grok/findings.md",
+        "capturedAt": "2026-08-08T00:00:00.000Z"
+      },
+      {
+        "id": "grok-public-mirror-lead",
+        "kind": "inference",
+        "confidence": "unverified",
+        "sourceReference": 1,
+        "notes": "Source-only lead from a public mirror whose revision is not the installed artifact's binary-reported revision. It cannot promote an artifact claim."
+      }
+    ],
+    "records": [
+      {
+        "id": "sanitized-captures",
+        "kind": "capture-set",
+        "path": "packages/surface/vendors/grok/captures/grok@1.0.0",
+        "digestAlgorithm": "sha256-path-content-v1",
+        "sha256": "0e1a0286ba6d10b7bf9cf68624ad0ecbe9df45186273f9dc946f7d0bf7161434"
+      },
+      {
+        "id": "agent-surface-model",
+        "kind": "model-tree",
+        "path": "packages/surface/vendors/grok/model/grok@1.0.0",
+        "exclude": [
+          "evidence.json",
+          "groundtruth.json",
+          "groundtruth.html"
+        ],
+        "digestAlgorithm": "sha256-path-content-v1",
+        "sha256": "42e41093dc48ce8941670dc29756ffb44c01cb406e09f0c9ea13e1bbb95c32c1"
+      }
+    ],
+    "limitations": [
+      "The exact binary-reported source revision is absent from the public source mirror, so source-to-artifact equivalence is unverified and this candidate is not promoted in support/agents.json.",
+      "Compaction, subagent, workflow, and goal lifecycle names are source-backed but were not forced in the installed-artifact census; their behavior nodes remain unverified.",
+      "Only darwin-arm64 has artifact integrity and controlled-census evidence for this candidate."
+    ]
+  },
+  "events": [
+    {
+      "surface": "grok",
+      "surfaceVersion": "1.0.0",
+      "event": "_x.ai/announcements/update",
+      "channel": "acp",
+      "transport": "jsonrpc-notification",
+      "payloadSchema": {
+        "type": "object",
+        "properties": {
+          "announcements": {
+            "type": "array"
+          }
+        },
+        "required": [
+          "announcements"
+        ]
+      },
+      "confidence": "verified-headless",
+      "firstSeen": "1.0.0",
+      "lastVerified": "1.0.0",
+      "fixture": "captures/grok@1.0.0/handshake.jsonl",
+      "direction": "agent-to-client",
+      "evidence": {
+        "existence": [
+          "grok-runtime-headless"
+        ],
+        "shape": [
+          "grok-runtime-headless"
+        ]
+      },
+      "channels": [
+        "acp"
+      ]
+    },
+    {
+      "surface": "grok",
+      "surfaceVersion": "1.0.0",
+      "event": "_x.ai/mcp/init_progress",
+      "channel": "acp",
+      "transport": "jsonrpc-notification",
+      "payloadSchema": {
+        "type": "object",
+        "properties": {
+          "completed": {
+            "type": "number"
+          },
+          "total": {
+            "type": "number"
+          }
+        },
+        "required": [
+          "completed",
+          "total"
+        ]
+      },
+      "confidence": "verified-headless",
+      "firstSeen": "1.0.0",
+      "lastVerified": "1.0.0",
+      "fixture": "captures/grok@1.0.0/handshake.jsonl",
+      "direction": "agent-to-client",
+      "evidence": {
+        "existence": [
+          "grok-runtime-headless"
+        ],
+        "shape": [
+          "grok-runtime-headless"
+        ]
+      },
+      "channels": [
+        "acp"
+      ]
+    },
+    {
+      "surface": "grok",
+      "surfaceVersion": "1.0.0",
+      "event": "_x.ai/mcp/servers_updated",
+      "channel": "acp",
+      "transport": "jsonrpc-notification",
+      "payloadSchema": {
+        "type": "object",
+        "properties": {
+          "servers": {
+            "type": "array"
+          }
+        },
+        "required": [
+          "servers"
+        ]
+      },
+      "confidence": "verified-headless",
+      "firstSeen": "1.0.0",
+      "lastVerified": "1.0.0",
+      "fixture": "captures/grok@1.0.0/handshake.jsonl",
+      "direction": "agent-to-client",
+      "evidence": {
+        "existence": [
+          "grok-runtime-headless"
+        ],
+        "shape": [
+          "grok-runtime-headless"
+        ]
+      },
+      "channels": [
+        "acp"
+      ]
+    },
+    {
+      "surface": "grok",
+      "surfaceVersion": "1.0.0",
+      "event": "_x.ai/models/update",
+      "channel": "acp",
+      "transport": "jsonrpc-notification",
+      "payloadSchema": {
+        "type": "object",
+        "properties": {
+          "models": {
+            "type": "array"
+          },
+          "currentModelId": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "models",
+          "currentModelId"
+        ]
+      },
+      "confidence": "verified-headless",
+      "firstSeen": "1.0.0",
+      "lastVerified": "1.0.0",
+      "fixture": "captures/grok@1.0.0/handshake.jsonl",
+      "direction": "agent-to-client",
+      "evidence": {
+        "existence": [
+          "grok-runtime-headless"
+        ],
+        "shape": [
+          "grok-runtime-headless"
+        ]
+      },
+      "channels": [
+        "acp"
+      ]
+    },
+    {
+      "surface": "grok",
+      "surfaceVersion": "1.0.0",
+      "event": "_x.ai/session_notification",
+      "channel": "acp",
+      "transport": "jsonrpc-notification",
+      "payloadSchema": {
+        "type": "object",
+        "properties": {
+          "sessionId": {
+            "type": "string"
+          },
+          "update": {
+            "type": "object",
+            "properties": {
+              "sessionUpdate": {
+                "type": "string",
+                "enum": [
+                  "hook_execution",
+                  "response_completed",
+                  "turn_completed",
+                  "subagent_spawned",
+                  "subagent_progress",
+                  "subagent_finished",
+                  "workflow_updated",
+                  "goal_updated",
+                  "auto_compact_started",
+                  "auto_compact_completed",
+                  "auto_compact_failed",
+                  "auto_compact_cancelled"
+                ]
+              }
+            },
+            "required": [
+              "sessionUpdate"
+            ]
+          }
+        },
+        "required": [
+          "sessionId",
+          "update"
+        ]
+      },
+      "confidence": "verified-headless",
+      "firstSeen": "1.0.0",
+      "lastVerified": "1.0.0",
+      "fixture": "captures/grok@1.0.0/turn.jsonl",
+      "notes": "Installed-artifact spelling for live xAI extensions; do not conflate it with the persisted _x.ai/session/update method.",
+      "direction": "agent-to-client",
+      "evidence": {
+        "existence": [
+          "grok-runtime-headless"
+        ],
+        "shape": [
+          "grok-runtime-headless"
+        ]
+      },
+      "variants": [
+        {
+          "match": {
+            "update.sessionUpdate": "hook_execution"
+          },
+          "evidence": {
+            "existence": [
+              "grok-runtime-headless"
+            ],
+            "shape": [
+              "grok-runtime-headless"
+            ]
+          },
+          "confidence": "verified-headless"
+        },
+        {
+          "match": {
+            "update.sessionUpdate": "response_completed"
+          },
+          "evidence": {
+            "existence": [
+              "grok-runtime-headless"
+            ],
+            "shape": [
+              "grok-runtime-headless"
+            ]
+          },
+          "confidence": "verified-headless"
+        },
+        {
+          "match": {
+            "update.sessionUpdate": "turn_completed"
+          },
+          "evidence": {
+            "existence": [
+              "grok-runtime-headless"
+            ],
+            "shape": [
+              "grok-runtime-headless"
+            ]
+          },
+          "confidence": "verified-headless"
+        },
+        {
+          "match": {
+            "update.sessionUpdate": "subagent_spawned"
+          },
+          "evidence": {
+            "existence": [
+              "grok-public-mirror-lead"
+            ],
+            "shape": [
+              "grok-public-mirror-lead"
+            ]
+          },
+          "confidence": "unverified"
+        },
+        {
+          "match": {
+            "update.sessionUpdate": "subagent_progress"
+          },
+          "evidence": {
+            "existence": [
+              "grok-public-mirror-lead"
+            ],
+            "shape": [
+              "grok-public-mirror-lead"
+            ]
+          },
+          "confidence": "unverified"
+        },
+        {
+          "match": {
+            "update.sessionUpdate": "subagent_finished"
+          },
+          "evidence": {
+            "existence": [
+              "grok-public-mirror-lead"
+            ],
+            "shape": [
+              "grok-public-mirror-lead"
+            ]
+          },
+          "confidence": "unverified"
+        },
+        {
+          "match": {
+            "update.sessionUpdate": "workflow_updated"
+          },
+          "evidence": {
+            "existence": [
+              "grok-public-mirror-lead"
+            ],
+            "shape": [
+              "grok-public-mirror-lead"
+            ]
+          },
+          "confidence": "unverified"
+        },
+        {
+          "match": {
+            "update.sessionUpdate": "goal_updated"
+          },
+          "evidence": {
+            "existence": [
+              "grok-public-mirror-lead"
+            ],
+            "shape": [
+              "grok-public-mirror-lead"
+            ]
+          },
+          "confidence": "unverified"
+        },
+        {
+          "match": {
+            "update.sessionUpdate": "auto_compact_started"
+          },
+          "evidence": {
+            "existence": [
+              "grok-public-mirror-lead"
+            ],
+            "shape": [
+              "grok-public-mirror-lead"
+            ]
+          },
+          "confidence": "unverified"
+        },
+        {
+          "match": {
+            "update.sessionUpdate": "auto_compact_completed"
+          },
+          "evidence": {
+            "existence": [
+              "grok-public-mirror-lead"
+            ],
+            "shape": [
+              "grok-public-mirror-lead"
+            ]
+          },
+          "confidence": "unverified"
+        },
+        {
+          "match": {
+            "update.sessionUpdate": "auto_compact_failed"
+          },
+          "evidence": {
+            "existence": [
+              "grok-public-mirror-lead"
+            ],
+            "shape": [
+              "grok-public-mirror-lead"
+            ]
+          },
+          "confidence": "unverified"
+        },
+        {
+          "match": {
+            "update.sessionUpdate": "auto_compact_cancelled"
+          },
+          "evidence": {
+            "existence": [
+              "grok-public-mirror-lead"
+            ],
+            "shape": [
+              "grok-public-mirror-lead"
+            ]
+          },
+          "confidence": "unverified"
+        }
+      ],
+      "channels": [
+        "acp"
+      ]
+    },
+    {
+      "surface": "grok",
+      "surfaceVersion": "1.0.0",
+      "event": "_x.ai/session/update",
+      "channel": "session-log",
+      "transport": "jsonl-record",
+      "payloadSchema": {
+        "type": "object",
+        "properties": {
+          "sessionId": {
+            "type": "string"
+          },
+          "update": {
+            "type": "object",
+            "properties": {
+              "sessionUpdate": {
+                "type": "string",
+                "enum": [
+                  "hook_execution",
+                  "response_completed",
+                  "turn_completed",
+                  "subagent_spawned",
+                  "subagent_finished",
+                  "workflow_updated",
+                  "goal_updated",
+                  "compaction_checkpoint"
+                ]
+              }
+            },
+            "required": [
+              "sessionUpdate"
+            ]
+          },
+          "_meta": {
+            "type": "object"
+          }
+        },
+        "required": [
+          "sessionId",
+          "update"
+        ]
+      },
+      "confidence": "verified-headless",
+      "firstSeen": "1.0.0",
+      "lastVerified": "1.0.0",
+      "fixture": "captures/grok@1.0.0/persisted.jsonl",
+      "direction": "agent-local",
+      "evidence": {
+        "existence": [
+          "grok-runtime-headless"
+        ],
+        "shape": [
+          "grok-runtime-headless"
+        ],
+        "carrier": [
+          "grok-runtime-headless"
+        ]
+      },
+      "recordSchema": {
+        "type": "object",
+        "properties": {
+          "timestamp": {
+            "type": "number",
+            "minimum": 1000000000000
+          },
+          "method": {
+            "type": "string",
+            "enum": [
+              "_x.ai/session/update"
+            ]
+          },
+          "params": {
+            "type": "object"
+          }
+        },
+        "required": [
+          "timestamp",
+          "method",
+          "params"
+        ]
+      },
+      "variants": [
+        {
+          "match": {
+            "update.sessionUpdate": "hook_execution"
+          },
+          "evidence": {
+            "existence": [
+              "grok-runtime-headless"
+            ],
+            "shape": [
+              "grok-runtime-headless"
+            ]
+          },
+          "confidence": "verified-headless"
+        },
+        {
+          "match": {
+            "update.sessionUpdate": "response_completed"
+          },
+          "evidence": {
+            "existence": [
+              "grok-public-mirror-lead"
+            ],
+            "shape": [
+              "grok-public-mirror-lead"
+            ]
+          },
+          "confidence": "unverified"
+        },
+        {
+          "match": {
+            "update.sessionUpdate": "turn_completed"
+          },
+          "evidence": {
+            "existence": [
+              "grok-runtime-headless"
+            ],
+            "shape": [
+              "grok-runtime-headless"
+            ]
+          },
+          "confidence": "verified-headless"
+        },
+        {
+          "match": {
+            "update.sessionUpdate": "subagent_spawned"
+          },
+          "evidence": {
+            "existence": [
+              "grok-public-mirror-lead"
+            ],
+            "shape": [
+              "grok-public-mirror-lead"
+            ]
+          },
+          "confidence": "unverified"
+        },
+        {
+          "match": {
+            "update.sessionUpdate": "subagent_finished"
+          },
+          "evidence": {
+            "existence": [
+              "grok-public-mirror-lead"
+            ],
+            "shape": [
+              "grok-public-mirror-lead"
+            ]
+          },
+          "confidence": "unverified"
+        },
+        {
+          "match": {
+            "update.sessionUpdate": "workflow_updated"
+          },
+          "evidence": {
+            "existence": [
+              "grok-public-mirror-lead"
+            ],
+            "shape": [
+              "grok-public-mirror-lead"
+            ]
+          },
+          "confidence": "unverified"
+        },
+        {
+          "match": {
+            "update.sessionUpdate": "goal_updated"
+          },
+          "evidence": {
+            "existence": [
+              "grok-public-mirror-lead"
+            ],
+            "shape": [
+              "grok-public-mirror-lead"
+            ]
+          },
+          "confidence": "unverified"
+        },
+        {
+          "match": {
+            "update.sessionUpdate": "compaction_checkpoint"
+          },
+          "evidence": {
+            "existence": [
+              "grok-public-mirror-lead"
+            ],
+            "shape": [
+              "grok-public-mirror-lead"
+            ]
+          },
+          "confidence": "unverified"
+        }
+      ],
+      "channels": [
+        "session-log"
+      ]
+    },
+    {
+      "surface": "grok",
+      "surfaceVersion": "1.0.0",
+      "event": "_x.ai/settings/update",
+      "channel": "acp",
+      "transport": "jsonrpc-notification",
+      "payloadSchema": {
+        "type": "object",
+        "properties": {
+          "settings": {
+            "type": "object"
+          }
+        },
+        "required": [
+          "settings"
+        ]
+      },
+      "confidence": "verified-headless",
+      "firstSeen": "1.0.0",
+      "lastVerified": "1.0.0",
+      "fixture": "captures/grok@1.0.0/handshake.jsonl",
+      "direction": "agent-to-client",
+      "evidence": {
+        "existence": [
+          "grok-runtime-headless"
+        ],
+        "shape": [
+          "grok-runtime-headless"
+        ]
+      },
+      "channels": [
+        "acp"
+      ]
+    },
+    {
+      "surface": "grok",
+      "surfaceVersion": "1.0.0",
+      "event": "initialize",
+      "channel": "acp",
+      "transport": "jsonrpc-request",
+      "payloadSchema": {
+        "type": "object",
+        "properties": {
+          "protocolVersion": {
+            "type": "number"
+          },
+          "clientCapabilities": {
+            "type": "object"
+          }
+        },
+        "required": [
+          "protocolVersion",
+          "clientCapabilities"
+        ]
+      },
+      "resultSchema": {
+        "type": "object",
+        "properties": {
+          "protocolVersion": {
+            "type": "number"
+          },
+          "agentCapabilities": {
+            "type": "object"
+          },
+          "authMethods": {
+            "type": "array"
+          },
+          "_meta": {
+            "type": "object",
+            "properties": {
+              "agentVersion": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "agentVersion"
+            ]
+          }
+        },
+        "required": [
+          "protocolVersion",
+          "agentCapabilities",
+          "authMethods",
+          "_meta"
+        ]
+      },
+      "confidence": "unverified",
+      "firstSeen": "1.0.0",
+      "lastVerified": "1.0.0",
+      "fixture": "captures/grok@1.0.0/handshake.jsonl",
+      "direction": "client-to-agent",
+      "evidence": {
+        "existence": [
+          "grok-runtime-headless"
+        ],
+        "shape": [
+          "grok-runtime-headless"
+        ],
+        "result": [
+          "grok-public-mirror-lead"
+        ]
+      },
+      "channels": [
+        "acp"
+      ]
+    },
+    {
+      "surface": "grok",
+      "surfaceVersion": "1.0.0",
+      "event": "session/cancel",
+      "channel": "acp",
+      "transport": "jsonrpc-notification",
+      "payloadSchema": {
+        "type": "object",
+        "properties": {
+          "sessionId": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "sessionId"
+        ]
+      },
+      "confidence": "unverified",
+      "notes": "ACP-standard cancellation implemented by the adapter path but not exercised in the installed-artifact census.",
+      "direction": "client-to-agent",
+      "evidence": {
+        "existence": [
+          "grok-public-mirror-lead"
+        ],
+        "shape": [
+          "grok-public-mirror-lead"
+        ]
+      },
+      "channels": [
+        "acp"
+      ]
+    },
+    {
+      "surface": "grok",
+      "surfaceVersion": "1.0.0",
+      "event": "session/load",
+      "channel": "acp",
+      "transport": "jsonrpc-request",
+      "payloadSchema": {
+        "type": "object",
+        "properties": {
+          "sessionId": {
+            "type": "string"
+          },
+          "cwd": {
+            "type": "string"
+          },
+          "mcpServers": {
+            "type": "array"
+          }
+        },
+        "required": [
+          "sessionId",
+          "cwd",
+          "mcpServers"
+        ]
+      },
+      "resultSchema": {
+        "type": "object"
+      },
+      "confidence": "unverified",
+      "notes": "Advertised by the installed artifact and required by the adapter resume path; a resumed turn was not included in the controlled capture.",
+      "direction": "client-to-agent",
+      "evidence": {
+        "existence": [
+          "grok-public-mirror-lead"
+        ],
+        "shape": [
+          "grok-public-mirror-lead"
+        ],
+        "result": [
+          "grok-public-mirror-lead"
+        ]
+      },
+      "channels": [
+        "acp"
+      ]
+    },
+    {
+      "surface": "grok",
+      "surfaceVersion": "1.0.0",
+      "event": "session/new",
+      "channel": "acp",
+      "transport": "jsonrpc-request",
+      "payloadSchema": {
+        "type": "object",
+        "properties": {
+          "cwd": {
+            "type": "string"
+          },
+          "mcpServers": {
+            "type": "array"
+          }
+        },
+        "required": [
+          "cwd",
+          "mcpServers"
+        ]
+      },
+      "resultSchema": {
+        "type": "object",
+        "properties": {
+          "sessionId": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "sessionId"
+        ]
+      },
+      "confidence": "unverified",
+      "firstSeen": "1.0.0",
+      "lastVerified": "1.0.0",
+      "fixture": "captures/grok@1.0.0/handshake.jsonl",
+      "direction": "client-to-agent",
+      "evidence": {
+        "existence": [
+          "grok-runtime-headless"
+        ],
+        "shape": [
+          "grok-runtime-headless"
+        ],
+        "result": [
+          "grok-public-mirror-lead"
+        ]
+      },
+      "channels": [
+        "acp"
+      ]
+    },
+    {
+      "surface": "grok",
+      "surfaceVersion": "1.0.0",
+      "event": "session/prompt",
+      "channel": "acp",
+      "transport": "jsonrpc-request",
+      "payloadSchema": {
+        "type": "object",
+        "properties": {
+          "sessionId": {
+            "type": "string"
+          },
+          "prompt": {
+            "type": "array"
+          }
+        },
+        "required": [
+          "sessionId",
+          "prompt"
+        ]
+      },
+      "resultSchema": {
+        "type": "object",
+        "properties": {
+          "stopReason": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "stopReason"
+        ]
+      },
+      "confidence": "unverified",
+      "firstSeen": "1.0.0",
+      "lastVerified": "1.0.0",
+      "fixture": "captures/grok@1.0.0/turn.jsonl",
+      "direction": "client-to-agent",
+      "evidence": {
+        "existence": [
+          "grok-runtime-headless"
+        ],
+        "shape": [
+          "grok-runtime-headless"
+        ],
+        "result": [
+          "grok-public-mirror-lead"
+        ]
+      },
+      "channels": [
+        "acp"
+      ]
+    },
+    {
+      "surface": "grok",
+      "surfaceVersion": "1.0.0",
+      "event": "session/request_permission",
+      "channel": "acp",
+      "transport": "jsonrpc-request",
+      "payloadSchema": {
+        "type": "object",
+        "properties": {
+          "sessionId": {
+            "type": "string"
+          },
+          "toolCall": {
+            "type": "object"
+          },
+          "options": {
+            "type": "array"
+          }
+        },
+        "required": [
+          "sessionId",
+          "toolCall",
+          "options"
+        ]
+      },
+      "confidence": "unverified",
+      "notes": "ACP-standard request implemented by the installed client/agent stack but not exercised in the minimal artifact census.",
+      "direction": "agent-to-client",
+      "evidence": {
+        "existence": [
+          "grok-public-mirror-lead"
+        ],
+        "shape": [
+          "grok-public-mirror-lead"
+        ]
+      },
+      "channels": [
+        "acp"
+      ]
+    },
+    {
+      "surface": "grok",
+      "surfaceVersion": "1.0.0",
+      "event": "session/update",
+      "channel": "acp",
+      "channels": [
+        "acp",
+        "session-log"
+      ],
+      "transport": "jsonrpc-notification",
+      "payloadSchema": {
+        "type": "object",
+        "properties": {
+          "sessionId": {
+            "type": "string"
+          },
+          "update": {
+            "type": "object",
+            "properties": {
+              "sessionUpdate": {
+                "type": "string",
+                "enum": [
+                  "available_commands_update",
+                  "user_message_chunk",
+                  "agent_thought_chunk",
+                  "agent_message_chunk",
+                  "tool_call",
+                  "tool_call_update"
+                ]
+              }
+            },
+            "required": [
+              "sessionUpdate"
+            ]
+          },
+          "_meta": {
+            "type": "object"
+          }
+        },
+        "required": [
+          "sessionId",
+          "update"
+        ]
+      },
+      "confidence": "verified-headless",
+      "firstSeen": "1.0.0",
+      "lastVerified": "1.0.0",
+      "fixture": "captures/grok@1.0.0/turn.jsonl",
+      "notes": "Observed both live over ACP and durably in updates.jsonl; channel is the default trigger rail and channels records both native observations.",
+      "direction": "agent-to-client",
+      "evidence": {
+        "existence": [
+          "grok-runtime-headless"
+        ],
+        "shape": [
+          "grok-runtime-headless"
+        ],
+        "carrier": [
+          "grok-runtime-headless"
+        ]
+      },
+      "recordSchema": {
+        "type": "object",
+        "properties": {
+          "timestamp": {
+            "type": "number",
+            "minimum": 1000000000000
+          },
+          "method": {
+            "type": "string",
+            "enum": [
+              "session/update"
+            ]
+          },
+          "params": {
+            "type": "object"
+          }
+        },
+        "required": [
+          "timestamp",
+          "method",
+          "params"
+        ]
+      },
+      "variants": [
+        {
+          "match": {
+            "update.sessionUpdate": "available_commands_update"
+          },
+          "evidence": {
+            "existence": [
+              "grok-runtime-headless"
+            ],
+            "shape": [
+              "grok-runtime-headless"
+            ]
+          },
+          "confidence": "verified-headless"
+        },
+        {
+          "match": {
+            "update.sessionUpdate": "user_message_chunk"
+          },
+          "evidence": {
+            "existence": [
+              "grok-runtime-headless"
+            ],
+            "shape": [
+              "grok-runtime-headless"
+            ]
+          },
+          "confidence": "verified-headless"
+        },
+        {
+          "match": {
+            "update.sessionUpdate": "agent_thought_chunk"
+          },
+          "evidence": {
+            "existence": [
+              "grok-runtime-headless"
+            ],
+            "shape": [
+              "grok-runtime-headless"
+            ]
+          },
+          "confidence": "verified-headless"
+        },
+        {
+          "match": {
+            "update.sessionUpdate": "agent_message_chunk"
+          },
+          "evidence": {
+            "existence": [
+              "grok-runtime-headless"
+            ],
+            "shape": [
+              "grok-runtime-headless"
+            ]
+          },
+          "confidence": "verified-headless"
+        },
+        {
+          "match": {
+            "update.sessionUpdate": "tool_call"
+          },
+          "evidence": {
+            "existence": [
+              "grok-public-mirror-lead"
+            ],
+            "shape": [
+              "grok-public-mirror-lead"
+            ]
+          },
+          "confidence": "unverified"
+        },
+        {
+          "match": {
+            "update.sessionUpdate": "tool_call_update"
+          },
+          "evidence": {
+            "existence": [
+              "grok-public-mirror-lead"
+            ],
+            "shape": [
+              "grok-public-mirror-lead"
+            ]
+          },
+          "confidence": "unverified"
+        }
+      ],
+      "recordChannel": "session-log"
+    },
+    {
+      "surface": "grok",
+      "surfaceVersion": "1.0.0",
+      "event": "signals.json",
+      "channel": "session-state",
+      "transport": "json-file-replace",
+      "payloadSchema": {
+        "type": "object",
+        "properties": {
+          "contextTokensUsed": {
+            "type": "number"
+          },
+          "contextWindowTokens": {
+            "type": "number"
+          },
+          "contextWindowUsage": {
+            "type": "number"
+          },
+          "primaryModelId": {
+            "type": "string"
+          },
+          "compactionCount": {
+            "type": "number"
+          },
+          "turnCount": {
+            "type": "number"
+          },
+          "toolCallCount": {
+            "type": "number"
+          }
+        },
+        "required": [
+          "contextTokensUsed",
+          "contextWindowTokens",
+          "contextWindowUsage",
+          "primaryModelId",
+          "compactionCount",
+          "turnCount",
+          "toolCallCount"
+        ]
+      },
+      "confidence": "verified-headless",
+      "firstSeen": "1.0.0",
+      "lastVerified": "1.0.0",
+      "fixture": "captures/grok@1.0.0/state.jsonl",
+      "direction": "agent-local",
+      "evidence": {
+        "existence": [
+          "grok-runtime-headless"
+        ],
+        "shape": [
+          "grok-runtime-headless"
+        ]
+      },
+      "channels": [
+        "session-state"
+      ]
+    },
+    {
+      "surface": "grok",
+      "surfaceVersion": "1.0.0",
+      "event": "summary.json",
+      "channel": "session-state",
+      "transport": "json-file-replace",
+      "payloadSchema": {
+        "type": "object",
+        "properties": {
+          "info": {
+            "type": "object"
+          },
+          "current_model_id": {
+            "type": "string"
+          },
+          "created_at": {
+            "type": "string"
+          },
+          "updated_at": {
+            "type": "string"
+          },
+          "num_messages": {
+            "type": "number"
+          },
+          "num_chat_messages": {
+            "type": "number"
+          },
+          "agent_name": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "info",
+          "current_model_id",
+          "created_at",
+          "updated_at",
+          "num_messages",
+          "num_chat_messages",
+          "agent_name"
+        ]
+      },
+      "confidence": "verified-headless",
+      "firstSeen": "1.0.0",
+      "lastVerified": "1.0.0",
+      "fixture": "captures/grok@1.0.0/state.jsonl",
+      "direction": "agent-local",
+      "evidence": {
+        "existence": [
+          "grok-runtime-headless"
+        ],
+        "shape": [
+          "grok-runtime-headless"
+        ]
+      },
+      "channels": [
+        "session-state"
+      ]
+    }
+  ],
+  "behavior": {
+    "behaviorVersion": 1,
+    "title": "Grok 1.0.0 native ACP and durable-session lifecycle",
+    "description": "A partial order over Grok's real rails. Shared methods are distinguished by update.sessionUpdate and nested native fields such as event_name; live ACP, append-only updates, state files, and leader topology are not collapsed into normalized agent states.",
+    "source": "Installed-artifact controlled census. Compact/subagent/workflow names are supplemental public-source evidence and remain unverified because the binary revision is not published in the mirror.",
+    "lanes": [
+      {
+        "id": "session",
+        "label": "ACP session"
+      },
+      {
+        "id": "turn",
+        "label": "Turn stream"
+      },
+      {
+        "id": "tool",
+        "label": "Tools and permission"
+      },
+      {
+        "id": "team",
+        "label": "Subagents / workflow"
+      },
+      {
+        "id": "compact",
+        "label": "Compaction"
+      },
+      {
+        "id": "durable",
+        "label": "Persisted truth"
+      },
+      {
+        "id": "ambient",
+        "label": "Ambient extensions"
+      }
+    ],
+    "nodes": [
+      {
+        "id": "initialize",
+        "event": "initialize",
+        "confidence": "verified-headless",
+        "lane": "session",
+        "order": 0,
+        "evidence": {
+          "existence": [
+            "grok-runtime-headless"
+          ],
+          "shape": [
+            "grok-runtime-headless"
+          ]
+        }
+      },
+      {
+        "id": "session-new",
+        "event": "session/new",
+        "confidence": "verified-headless",
+        "lane": "session",
+        "order": 1,
+        "evidence": {
+          "existence": [
+            "grok-runtime-headless"
+          ],
+          "shape": [
+            "grok-runtime-headless"
+          ]
+        }
+      },
+      {
+        "id": "session-load",
+        "event": "session/load",
+        "confidence": "unverified",
+        "lane": "session",
+        "order": 1,
+        "evidence": {
+          "existence": [
+            "grok-public-mirror-lead"
+          ],
+          "shape": [
+            "grok-public-mirror-lead"
+          ]
+        }
+      },
+      {
+        "id": "session-start-hook",
+        "event": "_x.ai/session_notification",
+        "confidence": "verified-headless",
+        "lane": "session",
+        "order": 3,
+        "label": "hook_execution · session_start",
+        "match": {
+          "update.sessionUpdate": "hook_execution",
+          "update.event_name": "session_start"
+        },
+        "evidence": {
+          "existence": [
+            "grok-runtime-headless"
+          ],
+          "shape": [
+            "grok-runtime-headless"
+          ]
+        }
+      },
+      {
+        "id": "available-commands",
+        "event": "session/update",
+        "confidence": "verified-headless",
+        "lane": "session",
+        "order": 2,
+        "match": {
+          "update.sessionUpdate": "available_commands_update"
+        },
+        "evidence": {
+          "existence": [
+            "grok-runtime-headless"
+          ],
+          "shape": [
+            "grok-runtime-headless"
+          ]
+        }
+      },
+      {
+        "id": "prompt",
+        "event": "session/prompt",
+        "confidence": "verified-headless",
+        "lane": "turn",
+        "order": 4,
+        "evidence": {
+          "existence": [
+            "grok-runtime-headless"
+          ],
+          "shape": [
+            "grok-runtime-headless"
+          ]
+        }
+      },
+      {
+        "id": "user-message",
+        "event": "session/update",
+        "confidence": "verified-headless",
+        "lane": "turn",
+        "order": 5,
+        "match": {
+          "update.sessionUpdate": "user_message_chunk"
+        },
+        "evidence": {
+          "existence": [
+            "grok-runtime-headless"
+          ],
+          "shape": [
+            "grok-runtime-headless"
+          ]
+        }
+      },
+      {
+        "id": "prompt-hook",
+        "event": "_x.ai/session_notification",
+        "confidence": "verified-headless",
+        "lane": "turn",
+        "order": 5,
+        "label": "hook_execution · user_prompt_submit",
+        "match": {
+          "update.sessionUpdate": "hook_execution",
+          "update.event_name": "user_prompt_submit"
+        },
+        "evidence": {
+          "existence": [
+            "grok-runtime-headless"
+          ],
+          "shape": [
+            "grok-runtime-headless"
+          ]
+        }
+      },
+      {
+        "id": "thought",
+        "event": "session/update",
+        "confidence": "verified-headless",
+        "lane": "turn",
+        "order": 6,
+        "match": {
+          "update.sessionUpdate": "agent_thought_chunk"
+        },
+        "evidence": {
+          "existence": [
+            "grok-runtime-headless"
+          ],
+          "shape": [
+            "grok-runtime-headless"
+          ]
+        }
+      },
+      {
+        "id": "assistant",
+        "event": "session/update",
+        "confidence": "verified-headless",
+        "lane": "turn",
+        "order": 9,
+        "match": {
+          "update.sessionUpdate": "agent_message_chunk"
+        },
+        "evidence": {
+          "existence": [
+            "grok-runtime-headless"
+          ],
+          "shape": [
+            "grok-runtime-headless"
+          ]
+        }
+      },
+      {
+        "id": "response-complete",
+        "event": "_x.ai/session_notification",
+        "confidence": "verified-headless",
+        "lane": "turn",
+        "order": 10,
+        "match": {
+          "update.sessionUpdate": "response_completed"
+        },
+        "evidence": {
+          "existence": [
+            "grok-runtime-headless"
+          ],
+          "shape": [
+            "grok-runtime-headless"
+          ]
+        }
+      },
+      {
+        "id": "stop-hook",
+        "event": "_x.ai/session_notification",
+        "confidence": "verified-headless",
+        "lane": "turn",
+        "order": 11,
+        "label": "hook_execution · stop",
+        "match": {
+          "update.sessionUpdate": "hook_execution",
+          "update.event_name": "stop"
+        },
+        "evidence": {
+          "existence": [
+            "grok-runtime-headless"
+          ],
+          "shape": [
+            "grok-runtime-headless"
+          ]
+        }
+      },
+      {
+        "id": "turn-complete",
+        "event": "_x.ai/session_notification",
+        "confidence": "verified-headless",
+        "lane": "turn",
+        "order": 12,
+        "match": {
+          "update.sessionUpdate": "turn_completed"
+        },
+        "evidence": {
+          "existence": [
+            "grok-runtime-headless"
+          ],
+          "shape": [
+            "grok-runtime-headless"
+          ]
+        }
+      },
+      {
+        "id": "tool-start",
+        "event": "session/update",
+        "confidence": "unverified",
+        "lane": "tool",
+        "order": 7,
+        "match": {
+          "update.sessionUpdate": "tool_call"
+        },
+        "evidence": {
+          "existence": [
+            "grok-public-mirror-lead"
+          ],
+          "shape": [
+            "grok-public-mirror-lead"
+          ]
+        }
+      },
+      {
+        "id": "permission",
+        "event": "session/request_permission",
+        "confidence": "unverified",
+        "lane": "tool",
+        "order": 8,
+        "evidence": {
+          "existence": [
+            "grok-public-mirror-lead"
+          ],
+          "shape": [
+            "grok-public-mirror-lead"
+          ]
+        }
+      },
+      {
+        "id": "tool-finish",
+        "event": "session/update",
+        "confidence": "unverified",
+        "lane": "tool",
+        "order": 9,
+        "match": {
+          "update.sessionUpdate": "tool_call_update"
+        },
+        "evidence": {
+          "existence": [
+            "grok-public-mirror-lead"
+          ],
+          "shape": [
+            "grok-public-mirror-lead"
+          ]
+        }
+      },
+      {
+        "id": "subagent-spawned",
+        "event": "_x.ai/session_notification",
+        "confidence": "unverified",
+        "lane": "team",
+        "order": 7,
+        "match": {
+          "update.sessionUpdate": "subagent_spawned"
+        },
+        "source": "xai-org/grok-build supplemental public source",
+        "evidence": {
+          "existence": [
+            "grok-public-mirror-lead"
+          ],
+          "shape": [
+            "grok-public-mirror-lead"
+          ]
+        }
+      },
+      {
+        "id": "subagent-progress",
+        "event": "_x.ai/session_notification",
+        "confidence": "unverified",
+        "lane": "team",
+        "order": 8,
+        "match": {
+          "update.sessionUpdate": "subagent_progress"
+        },
+        "source": "xai-org/grok-build supplemental public source",
+        "evidence": {
+          "existence": [
+            "grok-public-mirror-lead"
+          ],
+          "shape": [
+            "grok-public-mirror-lead"
+          ]
+        }
+      },
+      {
+        "id": "subagent-finished",
+        "event": "_x.ai/session_notification",
+        "confidence": "unverified",
+        "lane": "team",
+        "order": 9,
+        "match": {
+          "update.sessionUpdate": "subagent_finished"
+        },
+        "source": "xai-org/grok-build supplemental public source",
+        "evidence": {
+          "existence": [
+            "grok-public-mirror-lead"
+          ],
+          "shape": [
+            "grok-public-mirror-lead"
+          ]
+        }
+      },
+      {
+        "id": "workflow-updated",
+        "event": "_x.ai/session_notification",
+        "confidence": "unverified",
+        "lane": "team",
+        "order": 8,
+        "match": {
+          "update.sessionUpdate": "workflow_updated"
+        },
+        "source": "newer xai-org/grok-build supplemental public source",
+        "evidence": {
+          "existence": [
+            "grok-public-mirror-lead"
+          ],
+          "shape": [
+            "grok-public-mirror-lead"
+          ]
+        }
+      },
+      {
+        "id": "goal-updated",
+        "event": "_x.ai/session_notification",
+        "confidence": "unverified",
+        "lane": "team",
+        "order": 8,
+        "match": {
+          "update.sessionUpdate": "goal_updated"
+        },
+        "source": "newer xai-org/grok-build supplemental public source",
+        "evidence": {
+          "existence": [
+            "grok-public-mirror-lead"
+          ],
+          "shape": [
+            "grok-public-mirror-lead"
+          ]
+        }
+      },
+      {
+        "id": "compact-start",
+        "event": "_x.ai/session_notification",
+        "confidence": "unverified",
+        "lane": "compact",
+        "order": 6,
+        "match": {
+          "update.sessionUpdate": "auto_compact_started"
+        },
+        "source": "xai-org/grok-build supplemental public source",
+        "evidence": {
+          "existence": [
+            "grok-public-mirror-lead"
+          ],
+          "shape": [
+            "grok-public-mirror-lead"
+          ]
+        }
+      },
+      {
+        "id": "compact-complete",
+        "event": "_x.ai/session_notification",
+        "confidence": "unverified",
+        "lane": "compact",
+        "order": 8,
+        "match": {
+          "update.sessionUpdate": "auto_compact_completed"
+        },
+        "source": "xai-org/grok-build supplemental public source",
+        "evidence": {
+          "existence": [
+            "grok-public-mirror-lead"
+          ],
+          "shape": [
+            "grok-public-mirror-lead"
+          ]
+        }
+      },
+      {
+        "id": "compact-failed",
+        "event": "_x.ai/session_notification",
+        "confidence": "unverified",
+        "lane": "compact",
+        "order": 8,
+        "match": {
+          "update.sessionUpdate": "auto_compact_failed"
+        },
+        "source": "xai-org/grok-build supplemental public source",
+        "evidence": {
+          "existence": [
+            "grok-public-mirror-lead"
+          ],
+          "shape": [
+            "grok-public-mirror-lead"
+          ]
+        }
+      },
+      {
+        "id": "compact-cancelled",
+        "event": "_x.ai/session_notification",
+        "confidence": "unverified",
+        "lane": "compact",
+        "order": 8,
+        "match": {
+          "update.sessionUpdate": "auto_compact_cancelled"
+        },
+        "source": "xai-org/grok-build supplemental public source",
+        "evidence": {
+          "existence": [
+            "grok-public-mirror-lead"
+          ],
+          "shape": [
+            "grok-public-mirror-lead"
+          ]
+        }
+      },
+      {
+        "id": "compact-checkpoint",
+        "event": "_x.ai/session/update",
+        "confidence": "unverified",
+        "lane": "compact",
+        "order": 7,
+        "match": {
+          "update.sessionUpdate": "compaction_checkpoint"
+        },
+        "source": "xai-org/grok-build supplemental public source; persist-only",
+        "evidence": {
+          "existence": [
+            "grok-public-mirror-lead"
+          ],
+          "shape": [
+            "grok-public-mirror-lead"
+          ]
+        }
+      },
+      {
+        "id": "persisted-update",
+        "event": "_x.ai/session/update",
+        "confidence": "verified-headless",
+        "lane": "durable",
+        "order": 5,
+        "evidence": {
+          "existence": [
+            "grok-runtime-headless"
+          ],
+          "shape": [
+            "grok-runtime-headless"
+          ]
+        }
+      },
+      {
+        "id": "signals",
+        "event": "signals.json",
+        "confidence": "verified-headless",
+        "lane": "durable",
+        "order": 11,
+        "evidence": {
+          "existence": [
+            "grok-runtime-headless"
+          ],
+          "shape": [
+            "grok-runtime-headless"
+          ]
+        }
+      },
+      {
+        "id": "summary",
+        "event": "summary.json",
+        "confidence": "verified-headless",
+        "lane": "durable",
+        "order": 11,
+        "evidence": {
+          "existence": [
+            "grok-runtime-headless"
+          ],
+          "shape": [
+            "grok-runtime-headless"
+          ]
+        }
+      },
+      {
+        "id": "models",
+        "event": "_x.ai/models/update",
+        "confidence": "verified-headless",
+        "lane": "ambient",
+        "order": 1,
+        "evidence": {
+          "existence": [
+            "grok-runtime-headless"
+          ],
+          "shape": [
+            "grok-runtime-headless"
+          ]
+        }
+      },
+      {
+        "id": "settings",
+        "event": "_x.ai/settings/update",
+        "confidence": "verified-headless",
+        "lane": "ambient",
+        "order": 1,
+        "evidence": {
+          "existence": [
+            "grok-runtime-headless"
+          ],
+          "shape": [
+            "grok-runtime-headless"
+          ]
+        }
+      },
+      {
+        "id": "announcements",
+        "event": "_x.ai/announcements/update",
+        "confidence": "verified-headless",
+        "lane": "ambient",
+        "order": 1,
+        "evidence": {
+          "existence": [
+            "grok-runtime-headless"
+          ],
+          "shape": [
+            "grok-runtime-headless"
+          ]
+        }
+      },
+      {
+        "id": "mcp-servers",
+        "event": "_x.ai/mcp/servers_updated",
+        "confidence": "verified-headless",
+        "lane": "ambient",
+        "order": 1,
+        "evidence": {
+          "existence": [
+            "grok-runtime-headless"
+          ],
+          "shape": [
+            "grok-runtime-headless"
+          ]
+        }
+      },
+      {
+        "id": "mcp-progress",
+        "event": "_x.ai/mcp/init_progress",
+        "confidence": "verified-headless",
+        "lane": "ambient",
+        "order": 2,
+        "evidence": {
+          "existence": [
+            "grok-runtime-headless"
+          ],
+          "shape": [
+            "grok-runtime-headless"
+          ]
+        }
+      }
+    ],
+    "relations": [
+      {
+        "from": "initialize",
+        "to": "models",
+        "kind": "async",
+        "confidence": "verified-headless",
+        "evidence": {
+          "existence": [
+            "grok-runtime-headless"
+          ],
+          "shape": [
+            "grok-runtime-headless"
+          ],
+          "ordering": [
+            "grok-runtime-headless"
+          ]
+        }
+      },
+      {
+        "from": "initialize",
+        "to": "settings",
+        "kind": "async",
+        "confidence": "verified-headless",
+        "evidence": {
+          "existence": [
+            "grok-runtime-headless"
+          ],
+          "shape": [
+            "grok-runtime-headless"
+          ],
+          "ordering": [
+            "grok-runtime-headless"
+          ]
+        }
+      },
+      {
+        "from": "initialize",
+        "to": "announcements",
+        "kind": "async",
+        "confidence": "verified-headless",
+        "evidence": {
+          "existence": [
+            "grok-runtime-headless"
+          ],
+          "shape": [
+            "grok-runtime-headless"
+          ],
+          "ordering": [
+            "grok-runtime-headless"
+          ]
+        }
+      },
+      {
+        "from": "initialize",
+        "to": "mcp-servers",
+        "kind": "async",
+        "confidence": "verified-headless",
+        "evidence": {
+          "existence": [
+            "grok-runtime-headless"
+          ],
+          "shape": [
+            "grok-runtime-headless"
+          ],
+          "ordering": [
+            "grok-runtime-headless"
+          ]
+        }
+      },
+      {
+        "from": "mcp-servers",
+        "to": "mcp-progress",
+        "kind": "async",
+        "confidence": "verified-headless",
+        "evidence": {
+          "existence": [
+            "grok-runtime-headless"
+          ],
+          "shape": [
+            "grok-runtime-headless"
+          ],
+          "ordering": [
+            "grok-runtime-headless"
+          ]
+        }
+      },
+      {
+        "from": "initialize",
+        "to": "session-new",
+        "kind": "sequence",
+        "confidence": "verified-headless",
+        "evidence": {
+          "existence": [
+            "grok-runtime-headless"
+          ],
+          "shape": [
+            "grok-runtime-headless"
+          ],
+          "ordering": [
+            "grok-runtime-headless"
+          ]
+        }
+      },
+      {
+        "from": "initialize",
+        "to": "session-load",
+        "kind": "resume",
+        "confidence": "unverified",
+        "evidence": {
+          "existence": [
+            "grok-public-mirror-lead"
+          ],
+          "shape": [
+            "grok-public-mirror-lead"
+          ],
+          "ordering": [
+            "grok-public-mirror-lead"
+          ]
+        }
+      },
+      {
+        "from": "session-new",
+        "to": "available-commands",
+        "kind": "sequence",
+        "confidence": "verified-headless",
+        "evidence": {
+          "existence": [
+            "grok-runtime-headless"
+          ],
+          "shape": [
+            "grok-runtime-headless"
+          ],
+          "ordering": [
+            "grok-runtime-headless"
+          ]
+        }
+      },
+      {
+        "from": "available-commands",
+        "to": "session-start-hook",
+        "kind": "sequence",
+        "confidence": "verified-headless",
+        "evidence": {
+          "existence": [
+            "grok-runtime-headless"
+          ],
+          "shape": [
+            "grok-runtime-headless"
+          ],
+          "ordering": [
+            "grok-runtime-headless"
+          ]
+        }
+      },
+      {
+        "from": "session-start-hook",
+        "to": "persisted-update",
+        "kind": "concurrent",
+        "confidence": "verified-headless",
+        "evidence": {
+          "existence": [
+            "grok-runtime-headless"
+          ],
+          "shape": [
+            "grok-runtime-headless"
+          ],
+          "ordering": [
+            "grok-runtime-headless"
+          ]
+        }
+      },
+      {
+        "from": "session-start-hook",
+        "to": "prompt",
+        "kind": "sequence",
+        "confidence": "verified-headless",
+        "evidence": {
+          "existence": [
+            "grok-runtime-headless"
+          ],
+          "shape": [
+            "grok-runtime-headless"
+          ],
+          "ordering": [
+            "grok-runtime-headless"
+          ]
+        }
+      },
+      {
+        "from": "prompt",
+        "to": "user-message",
+        "kind": "sequence",
+        "confidence": "verified-headless",
+        "evidence": {
+          "existence": [
+            "grok-runtime-headless"
+          ],
+          "shape": [
+            "grok-runtime-headless"
+          ],
+          "ordering": [
+            "grok-runtime-headless"
+          ]
+        }
+      },
+      {
+        "from": "prompt",
+        "to": "prompt-hook",
+        "kind": "sequence",
+        "confidence": "verified-headless",
+        "evidence": {
+          "existence": [
+            "grok-runtime-headless"
+          ],
+          "shape": [
+            "grok-runtime-headless"
+          ],
+          "ordering": [
+            "grok-runtime-headless"
+          ]
+        }
+      },
+      {
+        "from": "user-message",
+        "to": "thought",
+        "kind": "conditional",
+        "confidence": "verified-headless",
+        "evidence": {
+          "existence": [
+            "grok-runtime-headless"
+          ],
+          "shape": [
+            "grok-runtime-headless"
+          ],
+          "ordering": [
+            "grok-runtime-headless"
+          ]
+        }
+      },
+      {
+        "from": "thought",
+        "to": "thought",
+        "kind": "loop",
+        "confidence": "verified-headless",
+        "evidence": {
+          "existence": [
+            "grok-runtime-headless"
+          ],
+          "shape": [
+            "grok-runtime-headless"
+          ],
+          "ordering": [
+            "grok-runtime-headless"
+          ]
+        }
+      },
+      {
+        "from": "thought",
+        "to": "tool-start",
+        "kind": "conditional",
+        "confidence": "unverified",
+        "evidence": {
+          "existence": [
+            "grok-public-mirror-lead"
+          ],
+          "shape": [
+            "grok-public-mirror-lead"
+          ],
+          "ordering": [
+            "grok-public-mirror-lead"
+          ]
+        }
+      },
+      {
+        "from": "tool-start",
+        "to": "permission",
+        "kind": "conditional",
+        "confidence": "unverified",
+        "evidence": {
+          "existence": [
+            "grok-public-mirror-lead"
+          ],
+          "shape": [
+            "grok-public-mirror-lead"
+          ],
+          "ordering": [
+            "grok-public-mirror-lead"
+          ]
+        }
+      },
+      {
+        "from": "permission",
+        "to": "tool-finish",
+        "kind": "sequence",
+        "confidence": "unverified",
+        "evidence": {
+          "existence": [
+            "grok-public-mirror-lead"
+          ],
+          "shape": [
+            "grok-public-mirror-lead"
+          ],
+          "ordering": [
+            "grok-public-mirror-lead"
+          ]
+        }
+      },
+      {
+        "from": "tool-start",
+        "to": "tool-finish",
+        "kind": "conditional",
+        "label": "no permission request",
+        "confidence": "unverified",
+        "evidence": {
+          "existence": [
+            "grok-public-mirror-lead"
+          ],
+          "shape": [
+            "grok-public-mirror-lead"
+          ],
+          "ordering": [
+            "grok-public-mirror-lead"
+          ]
+        }
+      },
+      {
+        "from": "thought",
+        "to": "assistant",
+        "kind": "conditional",
+        "confidence": "verified-headless",
+        "evidence": {
+          "existence": [
+            "grok-runtime-headless"
+          ],
+          "shape": [
+            "grok-runtime-headless"
+          ],
+          "ordering": [
+            "grok-runtime-headless"
+          ]
+        }
+      },
+      {
+        "from": "tool-finish",
+        "to": "assistant",
+        "kind": "sequence",
+        "confidence": "unverified",
+        "evidence": {
+          "existence": [
+            "grok-public-mirror-lead"
+          ],
+          "shape": [
+            "grok-public-mirror-lead"
+          ],
+          "ordering": [
+            "grok-public-mirror-lead"
+          ]
+        }
+      },
+      {
+        "from": "assistant",
+        "to": "assistant",
+        "kind": "loop",
+        "confidence": "verified-headless",
+        "evidence": {
+          "existence": [
+            "grok-runtime-headless"
+          ],
+          "shape": [
+            "grok-runtime-headless"
+          ],
+          "ordering": [
+            "grok-runtime-headless"
+          ]
+        }
+      },
+      {
+        "from": "assistant",
+        "to": "response-complete",
+        "kind": "sequence",
+        "confidence": "verified-headless",
+        "evidence": {
+          "existence": [
+            "grok-runtime-headless"
+          ],
+          "shape": [
+            "grok-runtime-headless"
+          ],
+          "ordering": [
+            "grok-runtime-headless"
+          ]
+        }
+      },
+      {
+        "from": "response-complete",
+        "to": "stop-hook",
+        "kind": "sequence",
+        "confidence": "verified-headless",
+        "evidence": {
+          "existence": [
+            "grok-runtime-headless"
+          ],
+          "shape": [
+            "grok-runtime-headless"
+          ],
+          "ordering": [
+            "grok-runtime-headless"
+          ]
+        }
+      },
+      {
+        "from": "stop-hook",
+        "to": "turn-complete",
+        "kind": "sequence",
+        "confidence": "verified-headless",
+        "evidence": {
+          "existence": [
+            "grok-runtime-headless"
+          ],
+          "shape": [
+            "grok-runtime-headless"
+          ],
+          "ordering": [
+            "grok-runtime-headless"
+          ]
+        }
+      },
+      {
+        "from": "turn-complete",
+        "to": "signals",
+        "kind": "concurrent",
+        "confidence": "verified-headless",
+        "evidence": {
+          "existence": [
+            "grok-runtime-headless"
+          ],
+          "shape": [
+            "grok-runtime-headless"
+          ],
+          "ordering": [
+            "grok-runtime-headless"
+          ]
+        }
+      },
+      {
+        "from": "turn-complete",
+        "to": "summary",
+        "kind": "concurrent",
+        "confidence": "verified-headless",
+        "evidence": {
+          "existence": [
+            "grok-runtime-headless"
+          ],
+          "shape": [
+            "grok-runtime-headless"
+          ],
+          "ordering": [
+            "grok-runtime-headless"
+          ]
+        }
+      },
+      {
+        "from": "turn-complete",
+        "to": "prompt",
+        "kind": "loop",
+        "label": "next turn",
+        "confidence": "verified-headless",
+        "evidence": {
+          "existence": [
+            "grok-runtime-headless"
+          ],
+          "shape": [
+            "grok-runtime-headless"
+          ],
+          "ordering": [
+            "grok-runtime-headless"
+          ]
+        }
+      },
+      {
+        "from": "thought",
+        "to": "subagent-spawned",
+        "kind": "conditional",
+        "confidence": "unverified",
+        "evidence": {
+          "existence": [
+            "grok-public-mirror-lead"
+          ],
+          "shape": [
+            "grok-public-mirror-lead"
+          ],
+          "ordering": [
+            "grok-public-mirror-lead"
+          ]
+        }
+      },
+      {
+        "from": "subagent-spawned",
+        "to": "subagent-progress",
+        "kind": "sequence",
+        "confidence": "unverified",
+        "evidence": {
+          "existence": [
+            "grok-public-mirror-lead"
+          ],
+          "shape": [
+            "grok-public-mirror-lead"
+          ],
+          "ordering": [
+            "grok-public-mirror-lead"
+          ]
+        }
+      },
+      {
+        "from": "subagent-progress",
+        "to": "subagent-progress",
+        "kind": "loop",
+        "confidence": "unverified",
+        "evidence": {
+          "existence": [
+            "grok-public-mirror-lead"
+          ],
+          "shape": [
+            "grok-public-mirror-lead"
+          ],
+          "ordering": [
+            "grok-public-mirror-lead"
+          ]
+        }
+      },
+      {
+        "from": "subagent-progress",
+        "to": "subagent-finished",
+        "kind": "sequence",
+        "confidence": "unverified",
+        "evidence": {
+          "existence": [
+            "grok-public-mirror-lead"
+          ],
+          "shape": [
+            "grok-public-mirror-lead"
+          ],
+          "ordering": [
+            "grok-public-mirror-lead"
+          ]
+        }
+      },
+      {
+        "from": "subagent-spawned",
+        "to": "workflow-updated",
+        "kind": "async",
+        "confidence": "unverified",
+        "evidence": {
+          "existence": [
+            "grok-public-mirror-lead"
+          ],
+          "shape": [
+            "grok-public-mirror-lead"
+          ],
+          "ordering": [
+            "grok-public-mirror-lead"
+          ]
+        }
+      },
+      {
+        "from": "workflow-updated",
+        "to": "goal-updated",
+        "kind": "async",
+        "confidence": "unverified",
+        "evidence": {
+          "existence": [
+            "grok-public-mirror-lead"
+          ],
+          "shape": [
+            "grok-public-mirror-lead"
+          ],
+          "ordering": [
+            "grok-public-mirror-lead"
+          ]
+        }
+      },
+      {
+        "from": "subagent-finished",
+        "to": "assistant",
+        "kind": "sequence",
+        "confidence": "unverified",
+        "evidence": {
+          "existence": [
+            "grok-public-mirror-lead"
+          ],
+          "shape": [
+            "grok-public-mirror-lead"
+          ],
+          "ordering": [
+            "grok-public-mirror-lead"
+          ]
+        }
+      },
+      {
+        "from": "thought",
+        "to": "compact-start",
+        "kind": "conditional",
+        "confidence": "unverified",
+        "evidence": {
+          "existence": [
+            "grok-public-mirror-lead"
+          ],
+          "shape": [
+            "grok-public-mirror-lead"
+          ],
+          "ordering": [
+            "grok-public-mirror-lead"
+          ]
+        }
+      },
+      {
+        "from": "compact-start",
+        "to": "compact-checkpoint",
+        "kind": "sequence",
+        "confidence": "unverified",
+        "evidence": {
+          "existence": [
+            "grok-public-mirror-lead"
+          ],
+          "shape": [
+            "grok-public-mirror-lead"
+          ],
+          "ordering": [
+            "grok-public-mirror-lead"
+          ]
+        }
+      },
+      {
+        "from": "compact-checkpoint",
+        "to": "compact-complete",
+        "kind": "conditional",
+        "confidence": "unverified",
+        "evidence": {
+          "existence": [
+            "grok-public-mirror-lead"
+          ],
+          "shape": [
+            "grok-public-mirror-lead"
+          ],
+          "ordering": [
+            "grok-public-mirror-lead"
+          ]
+        }
+      },
+      {
+        "from": "compact-start",
+        "to": "compact-failed",
+        "kind": "conditional",
+        "confidence": "unverified",
+        "evidence": {
+          "existence": [
+            "grok-public-mirror-lead"
+          ],
+          "shape": [
+            "grok-public-mirror-lead"
+          ],
+          "ordering": [
+            "grok-public-mirror-lead"
+          ]
+        }
+      },
+      {
+        "from": "compact-start",
+        "to": "compact-cancelled",
+        "kind": "conditional",
+        "confidence": "unverified",
+        "evidence": {
+          "existence": [
+            "grok-public-mirror-lead"
+          ],
+          "shape": [
+            "grok-public-mirror-lead"
+          ],
+          "ordering": [
+            "grok-public-mirror-lead"
+          ]
+        }
+      },
+      {
+        "from": "compact-complete",
+        "to": "assistant",
+        "kind": "sequence",
+        "confidence": "unverified",
+        "evidence": {
+          "existence": [
+            "grok-public-mirror-lead"
+          ],
+          "shape": [
+            "grok-public-mirror-lead"
+          ],
+          "ordering": [
+            "grok-public-mirror-lead"
+          ]
+        }
+      }
+    ]
+  }
+}

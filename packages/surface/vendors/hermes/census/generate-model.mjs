@@ -11,6 +11,7 @@ import { createRequire } from 'node:module';
 import { dirname, join, relative, sep } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { digestTree } from '../../../scripts/check-evidence.mjs';
+import { writeGroundTruthArtifacts } from '../../../scripts/groundtruth.mjs';
 import { RELEASE_TAG, SOURCE_REVISION, VERSION } from './harness.mjs';
 
 const vendorRoot = dirname(dirname(fileURLToPath(import.meta.url)));
@@ -673,9 +674,9 @@ writeJson(join(modelRoot, 'evidence.json'), {
       id: 'agent-surface-model',
       kind: 'model-tree',
       path: posix(modelRoot),
-      exclude: ['evidence.json'],
+      exclude: ['evidence.json', 'groundtruth.json', 'groundtruth.html'],
       digestAlgorithm: 'sha256-path-content-v1',
-      sha256: digestTree(modelRoot, ['evidence.json']),
+      sha256: digestTree(modelRoot, ['evidence.json', 'groundtruth.json', 'groundtruth.html']),
     },
   ],
   claims: [
@@ -718,4 +719,5 @@ writeJson(join(modelRoot, 'evidence.json'), {
 });
 
 formatGenerated(join(modelRoot, 'evidence.json'));
+writeGroundTruthArtifacts(modelRoot);
 console.log(`wrote Hermes ${VERSION} ASM under ${posix(modelRoot)}`);

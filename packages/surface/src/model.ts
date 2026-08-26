@@ -120,6 +120,17 @@ export interface SurfaceEvidenceIndex {
   [extra: string]: unknown;
 }
 
+/** Provenance retained by readable ASM v1 baselines without claim-addressable evidence. */
+export interface SurfaceLegacyEvidenceIndex {
+  evidenceVersion: 1;
+  vendor: string;
+  vendorVersion: string;
+  artifacts: Array<{ id: string; [extra: string]: unknown }>;
+  sourceReferences: Array<Record<string, unknown>>;
+  records: Array<{ id: string; [extra: string]: unknown }>;
+  [extra: string]: unknown;
+}
+
 /** Evidence is attached to the precise assertion it supports, not one whole event. */
 export interface SurfaceClaimEvidence {
   existence: readonly string[];
@@ -232,11 +243,20 @@ export interface SurfaceModel {
   channels: SurfaceChannels;
   /** Present for ASM v2; v1 models remain readable as legacy inputs. */
   evidenceIndex?: SurfaceEvidenceIndex;
+  /** Preserved in canonical documents for legacy ASM v1 models. */
+  legacyEvidenceIndex?: SurfaceLegacyEvidenceIndex;
   /** Sorted by event name for deterministic output. */
   events: SurfaceEventFile[];
   /** Versioned, vendor-native event topology rendered by Imposter Control. */
   behavior: SurfaceBehavior;
 }
+
+/** The only runtime/published authority for one vendor version. */
+export interface SurfaceGroundTruth extends SurfaceModel {
+  format: 'puppeteer-groundtruth/1';
+}
+
+export const SURFACE_GROUND_TRUTH_FORMAT = 'puppeteer-groundtruth/1' as const;
 
 // ---------------------------------------------------------------------------
 // Surface report (built from captures)
@@ -619,12 +639,13 @@ function confidenceAtRank(rank: number): SurfaceConfidence {
   return 'unverified';
 }
 
-function loadEvidenceIndex(
+function validateEvidenceIndex(
   path: string,
+  value: unknown,
   vendor: string,
   vendorVersion: string,
 ): { index: SurfaceEvidenceIndex; claims: Map<string, SurfaceEvidenceClaimRecord> } {
-  const raw = requireObject(path, readJsonFile(path));
+  const raw = requireObject(path, value);
   requireFields(path, raw, [
     'evidenceVersion',
     'vendor',
@@ -707,6 +728,14 @@ function loadEvidenceIndex(
     claims.set(id, claim as unknown as SurfaceEvidenceClaimRecord);
   }
   return { index: raw as unknown as SurfaceEvidenceIndex, claims };
+}
+
+function loadEvidenceIndex(
+  path: string,
+  vendor: string,
+  vendorVersion: string,
+): { index: SurfaceEvidenceIndex; claims: Map<string, SurfaceEvidenceClaimRecord> } {
+  return validateEvidenceIndex(path, readJsonFile(path), vendor, vendorVersion);
 }
 
 function validateClaimEvidence(
@@ -889,8 +918,13 @@ function eventDocumentFiles(dir: string, prefix = ''): Array<{ path: string; nam
   return found;
 }
 
-/** Load a model directory, including required behavior.json. Throws on malformed input. */
-export function loadModel(dir: string): SurfaceModel {
+/**
+ * Load and fully validate the split authoring documents for one model.
+ *
+ * Runtime consumers must use loadModel(), which reads only groundtruth.json.
+ * This entrypoint exists for the ground-truth builder and source-focused tests.
+ */
+export function loadModelSources(dir: string): SurfaceModel {
   const manifestPath = join(dir, 'manifest.json');
   const manifest = requireObject(manifestPath, readJsonFile(manifestPath));
   requireFields(manifestPath, manifest, ['asmVersion', 'vendor', 'vendorVersion', 'generatedAt']);
@@ -1080,6 +1114,168 @@ export function loadModel(dir: string): SurfaceModel {
     events,
     behavior,
   };
+}
+
+function validateLegacyEvidenceIndex(
+  path: string,
+  value: unknown,
+  vendor: string,
+  vendorVersion: string,
+): SurfaceLegacyEvidenceIndex {
+  const raw = requireObject(path, value);
+  requireFields(path, raw, ['evidenceVersion', 'vendor', 'vendorVersion', 'artifacts', 'sourceReferences', 'records']);
+  if (raw.evidenceVersion !== 1) throw new Error(`ASM: ${path} must use evidenceVersion 1 for an ASM v1 model`);
+  if (raw.vendor !== vendor || raw.vendorVersion !== vendorVersion) {
+    throw new Error(`ASM: ${path} evidence identity does not match manifest ${vendor}@${vendorVersion}`);
+  }
+  if (!Array.isArray(raw.artifacts) || !Array.isArray(raw.sourceReferences) || !Array.isArray(raw.records)) {
+    throw new Error(`ASM: ${path} artifacts, sourceReferences, and records must be arrays`);
+  }
+  return raw as unknown as SurfaceLegacyEvidenceIndex;
+}
+
+/** Build the canonical in-memory document from fully validated authoring inputs. */
+export function buildGroundTruth(dir: string): SurfaceGroundTruth {
+  const model = loadModelSources(dir);
+  let legacyEvidenceIndex: SurfaceLegacyEvidenceIndex | undefined;
+  if (model.manifest.asmVersion === 1 && model.manifest.evidence) {
+    const evidencePath = join(dir, model.manifest.evidence);
+    legacyEvidenceIndex = validateLegacyEvidenceIndex(
+      evidencePath,
+      readJsonFile(evidencePath),
+      model.manifest.vendor,
+      model.manifest.vendorVersion,
+    );
+  }
+  return {
+    format: SURFACE_GROUND_TRUTH_FORMAT,
+    ...model,
+    ...(legacyEvidenceIndex === undefined ? {} : { legacyEvidenceIndex }),
+  };
+}
+
+/** Load one canonical groundtruth.json file. Split source documents are never consulted. */
+export function loadGroundTruth(path: string): SurfaceGroundTruth {
+  const document = requireObject(path, readJsonFile(path));
+  requireFields(path, document, ['format', 'manifest', 'detection', 'channels', 'events', 'behavior']);
+  if (document.format !== SURFACE_GROUND_TRUTH_FORMAT) {
+    throw new Error(`ASM: ${path} has unsupported ground-truth format ${String(document.format)}`);
+  }
+
+  const manifest = requireObject(path, document.manifest, 'field "manifest"');
+  requireFields(path, manifest, ['asmVersion', 'vendor', 'vendorVersion', 'generatedAt']);
+  if (manifest.asmVersion !== 1 && manifest.asmVersion !== 2) {
+    throw new Error(`ASM: ${path} has unsupported asmVersion ${String(manifest.asmVersion)}`);
+  }
+  const asmVersion = manifest.asmVersion;
+  const vendor = requireString(path, manifest, 'vendor');
+  const vendorVersion = requireString(path, manifest, 'vendorVersion');
+  const generatedAt = requireString(path, manifest, 'generatedAt');
+  if (!Number.isFinite(Date.parse(generatedAt))) {
+    throw new Error(`ASM: ${path} field "generatedAt" must be an ISO date or timestamp`);
+  }
+
+  const detection = requireObject(path, document.detection, 'field "detection"');
+  const channelsDocument = requireObject(path, document.channels, 'field "channels"');
+  const channelRecords = requireObject(path, channelsDocument.channels, 'field "channels.channels"');
+  if (Object.keys(channelRecords).length === 0) throw new Error(`ASM: ${path} must declare at least one channel`);
+  for (const [name, rawChannel] of Object.entries(channelRecords)) {
+    requireString(path, requireObject(path, rawChannel, `channel "${name}"`), 'kind');
+  }
+
+  let evidenceIndex: SurfaceEvidenceIndex | undefined;
+  let legacyEvidenceIndex: SurfaceLegacyEvidenceIndex | undefined;
+  let evidenceClaims = new Map<string, SurfaceEvidenceClaimRecord>();
+  if (asmVersion === 2) {
+    if (document.evidenceIndex === undefined) throw new Error(`ASM: ${path} ASM v2 requires an evidence index`);
+    const loaded = validateEvidenceIndex(path, document.evidenceIndex, vendor, vendorVersion);
+    evidenceIndex = loaded.index;
+    evidenceClaims = loaded.claims;
+  } else if (document.legacyEvidenceIndex !== undefined) {
+    legacyEvidenceIndex = validateLegacyEvidenceIndex(path, document.legacyEvidenceIndex, vendor, vendorVersion);
+  }
+
+  if (!Array.isArray(document.events) || document.events.length === 0) {
+    throw new Error(`ASM: ${path} events must be a non-empty array`);
+  }
+  const events: SurfaceEventFile[] = [];
+  const eventNames = new Set<string>();
+  for (const [index, rawEvent] of document.events.entries()) {
+    const label = `${path}#events[${index}]`;
+    const event = requireObject(label, rawEvent);
+    requireFields(label, event, ['surface', 'surfaceVersion', 'event', 'channel', 'confidence']);
+    const surface = requireString(label, event, 'surface');
+    const surfaceVersion = requireString(label, event, 'surfaceVersion');
+    const eventName = requireString(label, event, 'event');
+    const channel = requireString(label, event, 'channel');
+    const channels = event.channels === undefined ? [channel] : validateStringArray(label, event.channels, 'channels');
+    if (surface !== vendor || surfaceVersion !== vendorVersion) {
+      throw new Error(`ASM: ${label} surface identity does not match manifest ${vendor}@${vendorVersion}`);
+    }
+    if (eventNames.has(eventName)) throw new Error(`ASM: duplicate event "${eventName}"`);
+    eventNames.add(eventName);
+    if (!channels.includes(channel))
+      throw new Error(`ASM: ${label} channels must include primary channel "${channel}"`);
+    if (new Set(channels).size !== channels.length) throw new Error(`ASM: ${label} channels contains duplicates`);
+    for (const declaredChannel of channels) {
+      if (!Object.hasOwn(channelRecords, declaredChannel)) {
+        throw new Error(`ASM: ${label} references unknown channel "${declaredChannel}"`);
+      }
+    }
+    const confidence = requireString(label, event, 'confidence');
+    if (!surfaceConfidences.has(confidence as SurfaceConfidence)) {
+      throw new Error(`ASM: ${label} has unsupported confidence "${confidence}"`);
+    }
+    if (event.payloadSchema !== undefined) event.payloadSchema = validatePayloadSchema(label, event.payloadSchema);
+    if (event.resultSchema !== undefined) event.resultSchema = validatePayloadSchema(label, event.resultSchema);
+    if (event.recordSchema !== undefined) event.recordSchema = validatePayloadSchema(label, event.recordSchema);
+    if (asmVersion === 2) {
+      const direction = requireString(label, event, 'direction');
+      if (!surfaceDirections.has(direction as SurfaceDirection)) {
+        throw new Error(`ASM: ${label} direction must be client-to-agent|agent-to-client|agent-local`);
+      }
+      const requiredEvidence: (keyof SurfaceClaimEvidence)[] = ['existence', 'shape'];
+      if (event.resultSchema !== undefined) requiredEvidence.push('result');
+      if (event.recordSchema !== undefined) requiredEvidence.push('carrier');
+      const resolved = validateClaimEvidence(label, event.evidence, 'event evidence', evidenceClaims, requiredEvidence);
+      if (confidence !== resolved.confidence) {
+        throw new Error(`ASM: ${label} confidence must be computed as ${resolved.confidence}, got ${confidence}`);
+      }
+      event.evidence = resolved.evidence;
+      if (event.variants !== undefined) {
+        event.variants = validateEventVariants(
+          label,
+          event.variants,
+          event.payloadSchema as PayloadSchema | undefined,
+          evidenceClaims,
+        );
+      }
+    }
+    event.channels = channels;
+    events.push(event as unknown as SurfaceEventFile);
+  }
+  const sortedNames = [...eventNames].sort((left, right) => left.localeCompare(right));
+  if (events.some((event, index) => event.event !== sortedNames[index])) {
+    throw new Error(`ASM: ${path} events must be sorted by event name`);
+  }
+  const behavior = validateBehavior(path, document.behavior, eventNames, asmVersion, evidenceClaims);
+
+  return {
+    format: SURFACE_GROUND_TRUTH_FORMAT,
+    manifest: manifest as unknown as SurfaceManifest,
+    detection: detection as SurfaceDetection,
+    channels: channelsDocument as unknown as SurfaceChannels,
+    ...(evidenceIndex === undefined ? {} : { evidenceIndex }),
+    ...(legacyEvidenceIndex === undefined ? {} : { legacyEvidenceIndex }),
+    events,
+    behavior,
+  };
+}
+
+/** Load the sole runtime authority for a model directory (or an explicit canonical file). */
+export function loadModel(pathOrDir: string): SurfaceGroundTruth {
+  const path = statSync(pathOrDir).isDirectory() ? join(pathOrDir, 'groundtruth.json') : pathOrDir;
+  return loadGroundTruth(path);
 }
 
 // ---------------------------------------------------------------------------

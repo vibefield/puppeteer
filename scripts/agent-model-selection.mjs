@@ -38,10 +38,14 @@ export function resolveAgentModel({ repoRoot = root, vendor, selection = 'active
       : selection === 'current'
         ? agent.currentManifest
         : (agent.candidateManifest ?? agent.currentManifest);
-  if (!manifestRelative) throw new Error(`${vendor} has no ${selection} Surface manifest`);
+  if (!manifestRelative) throw new Error(`${vendor} has no ${selection} Surface ground truth`);
   const manifestPath = insideRepo(repoRoot, manifestRelative);
-  if (!existsSync(manifestPath)) throw new Error(`${vendor} Surface manifest does not exist: ${manifestRelative}`);
-  const manifest = json(manifestPath);
+  if (!existsSync(manifestPath)) throw new Error(`${vendor} Surface ground truth does not exist: ${manifestRelative}`);
+  const groundTruth = json(manifestPath);
+  const manifest = groundTruth.manifest;
+  if (!manifest || groundTruth.format !== 'puppeteer-groundtruth/1') {
+    throw new Error(`${manifestRelative} is not a canonical Surface ground truth document`);
+  }
   if (manifest.vendor !== vendor || typeof manifest.vendorVersion !== 'string') {
     throw new Error(`${manifestRelative} does not identify ${vendor}`);
   }
@@ -57,10 +61,10 @@ export function resolveAgentModel({ repoRoot = root, vendor, selection = 'active
     vendor,
     'model',
     `${vendor}@${manifest.vendorVersion}`,
-    'manifest.json',
+    'groundtruth.json',
   );
   if (manifestPath !== canonicalManifest) {
-    throw new Error(`${manifestRelative} is not the canonical ${vendor} Surface manifest path`);
+    throw new Error(`${manifestRelative} is not the canonical ${vendor} Surface ground-truth path`);
   }
   const surfaceRoot = join(repoRoot, 'packages', 'surface');
   const capturesRoot = join(surfaceRoot, 'vendors', vendor, 'captures', `${vendor}@${manifest.vendorVersion}`);

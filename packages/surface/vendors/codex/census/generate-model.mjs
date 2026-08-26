@@ -38,6 +38,7 @@ import { existsSync, mkdirSync, mkdtempSync, readFileSync, readdirSync, rmSync, 
 import { tmpdir } from 'node:os';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { writeGroundTruthArtifacts } from '../../../scripts/groundtruth.mjs';
 import { CODEX_VERSION } from './harness.mjs';
 
 const surfaceRoot = join(dirname(fileURLToPath(import.meta.url)), '..');
@@ -399,3 +400,4 @@ console.log(
 );
 console.log(`  verified-headless: ${verified}   unverified: ${total - verified}`);
 console.log(`  -> ${out}`);
+writeGroundTruthArtifacts(out);

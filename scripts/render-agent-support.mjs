@@ -12,6 +12,14 @@ function json(path) {
   return JSON.parse(readFileSync(path, 'utf8'));
 }
 
+function groundTruth(path) {
+  const document = json(path);
+  if (document.format !== 'puppeteer-groundtruth/1' || !document.manifest) {
+    throw new Error(`${path} is not a canonical Surface ground-truth document`);
+  }
+  return { document, manifest: document.manifest, evidence: document.evidenceIndex ?? document.legacyEvidenceIndex };
+}
+
 function shield(value) {
   return value.replace(/-/g, '--').replace(/_/g, '__').replace(/ /g, '_');
 }
@@ -54,11 +62,11 @@ export function validateSupportLedger(repoRoot = root) {
       if (!existsSync(candidatePath)) {
         issues.push(`${agent.id}: candidate manifest does not exist: ${agent.candidateManifest}`);
       } else {
-        const candidate = json(candidatePath);
+        const { manifest: candidate, evidence } = groundTruth(candidatePath);
         if (candidate.vendor !== agent.id)
           issues.push(`${agent.id}: candidate manifest declares vendor ${candidate.vendor}`);
         if (!candidate.vendorVersion) issues.push(`${agent.id}: candidate manifest has no vendorVersion`);
-        if (!candidate.evidence || !existsSync(join(dirname(candidatePath), candidate.evidence))) {
+        if (!evidence) {
           issues.push(`${agent.id}: candidate manifest has no evidence index`);
         }
         const personaPath = join(repoRoot, 'packages', 'imposter', 'personas', agent.persona ?? '', 'persona.json');
@@ -84,14 +92,12 @@ export function validateSupportLedger(repoRoot = root) {
       issues.push(`${agent.id}: manifest does not exist: ${agent.currentManifest}`);
       continue;
     }
-    const manifest = json(manifestPath);
+    const { manifest, evidence } = groundTruth(manifestPath);
     if (manifest.vendor !== agent.id) issues.push(`${agent.id}: manifest declares vendor ${manifest.vendor}`);
     if (!manifest.vendorVersion) issues.push(`${agent.id}: manifest has no vendorVersion`);
-    const evidencePath = join(dirname(manifestPath), manifest.evidence ?? '');
-    if (!manifest.evidence || !existsSync(evidencePath)) {
+    if (!evidence) {
       issues.push(`${agent.id}: promoted manifest has no evidence index`);
     } else {
-      const evidence = json(evidencePath);
       if (agent.status === 'verified') {
         if (manifest.asmVersion !== 2 || evidence.evidenceVersion !== 2 || !evidence.claims?.length) {
           issues.push(`${agent.id}: verified support requires claim-addressable ASM/evidence v2`);
@@ -188,12 +194,12 @@ export function renderSupportBlock(repoRoot = root) {
     let target = 'support/agents.json';
     let color = 'lightgrey';
     if (['verified', 'legacy-verified'].includes(agent.status)) {
-      const manifest = json(join(repoRoot, agent.currentManifest));
+      const { manifest } = groundTruth(join(repoRoot, agent.currentManifest));
       message = `${agent.status.replace(/-/g, ' ')} ${manifest.vendorVersion}`;
       target = agent.currentManifest;
       color = agent.status === 'verified' ? 'blue' : 'orange';
     } else if (agent.candidateManifest) {
-      const manifest = json(join(repoRoot, agent.candidateManifest));
+      const { manifest } = groundTruth(join(repoRoot, agent.candidateManifest));
       message = `${message} ${manifest.vendorVersion}`;
       target = agent.candidateManifest;
     }

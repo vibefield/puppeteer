@@ -1,0 +1,4116 @@
+{
+  "format": "puppeteer-groundtruth/1",
+  "manifest": {
+    "asmVersion": 2,
+    "vendor": "hermes",
+    "vendorVersion": "0.20.0",
+    "generatedAt": "2026-08-12",
+    "source": "Hermes Agent 0.20.0 isolated-home stdio tui_gateway census plus identity/Gate 0 probes of the exact v2026.8.3 source revision. Unobserved source methods are omitted rather than marked verified.",
+    "evidence": "evidence.json"
+  },
+  "detection": {
+    "executables": [
+      "hermes"
+    ],
+    "envVar": "PUPPETEER_HERMES_BIN",
+    "versionFlag": "--version",
+    "versionOutput": "Hermes Agent v0.20.0 (2026.8.3)",
+    "versionPattern": "^Hermes Agent v(\\d+\\.\\d+\\.\\d+) \\((\\d{4}\\.\\d{1,2}\\.\\d{1,2})\\)$",
+    "helpFlag": "--help",
+    "isolatedHomeEnv": "HERMES_HOME",
+    "probedFlags": {
+      "--tui": "--tui",
+      "--cli": "--cli",
+      "--resume": "--resume",
+      "--continue": "--continue",
+      "--worktree": "--worktree",
+      "--yolo": "--yolo",
+      "--ignore-user-config": "--ignore-user-config",
+      "--ignore-rules": "--ignore-rules",
+      "--safe-mode": "--safe-mode",
+      "--version": "--version"
+    },
+    "launchFlags": {
+      "tui": "--tui",
+      "cli": "--cli",
+      "resume": "--resume",
+      "continue": "--continue",
+      "worktree": "--worktree",
+      "yolo": "--yolo",
+      "ignoreUserConfig": "--ignore-user-config",
+      "ignoreRules": "--ignore-rules",
+      "safeMode": "--safe-mode",
+      "acp": "acp"
+    }
+  },
+  "channels": {
+    "channels": {
+      "argv": {
+        "kind": "argv-env",
+        "notes": "hermes --tui launch, HERMES_HOME isolation, PUPPETEER_HERMES_BIN."
+      },
+      "terminal": {
+        "kind": "terminal",
+        "notes": "Native Node Ink TUI. Semantics are never derived from terminal text."
+      },
+      "tui-gateway": {
+        "kind": "jsonrpc-stdio",
+        "notes": "JSON-RPC over stdio to tui_gateway.entry, or the same dispatcher over WebSocket handle_ws."
+      },
+      "plugin-hook": {
+        "kind": "hook-callback",
+        "notes": "In-process plugin hooks. Default tui_gateway.entry does not load user plugins until discover_plugins runs."
+      },
+      "outbound-webhook": {
+        "kind": "webhook-http",
+        "notes": "Notify-only hooks.outbound POSTs. Default tui_gateway.entry does not register them."
+      },
+      "state-db": {
+        "kind": "native-state",
+        "notes": "HERMES_HOME/state.db is resume/replay only. Not a live event stream."
+      },
+      "acp": {
+        "kind": "acp",
+        "notes": "Separate hermes acp / hermes-acp host. Forbidden beside a native-TUI session."
+      }
+    }
+  },
+  "evidenceIndex": {
+    "evidenceVersion": 2,
+    "vendor": "hermes",
+    "vendorVersion": "0.20.0",
+    "artifacts": [
+      {
+        "id": "hermes-0.20.0-source-revision",
+        "platform": "darwin-arm64",
+        "channel": "stable",
+        "acquiredAt": "2026-08-12T18:56:46.921Z",
+        "versionOutput": "Hermes Agent v0.20.0 (2026.8.3)",
+        "identity": "source-revision-and-lockfile",
+        "integrity": {
+          "status": "verified",
+          "sha256": "sha256:64d1085ee1c23caf0ae0d9e65c73e280f466362ed43fdda1531f18f3af1d9869"
+        },
+        "notes": "Source-revision pin. Integrity is pyproject.toml of the tagged checkout, not the console-script wrapper.",
+        "uvLockSha256": "aab3c83f71b683507a590b6315b23bdc0abd6b63b76b2349eae15bf00dfbaf2b"
+      }
+    ],
+    "sourceReferences": [
+      {
+        "repository": "https://github.com/NousResearch/hermes-agent",
+        "revision": "3c27eb6234bf91b8ceee9e9071591b31e9b148cb",
+        "relation": "exact-release",
+        "tag": "v2026.8.3",
+        "tagObject": "7de39e700d2c329e15d32eb0b96e2f7cdd9fbdb2"
+      }
+    ],
+    "records": [
+      {
+        "id": "sanitized-captures",
+        "kind": "capture-set",
+        "path": "packages/surface/vendors/hermes/captures/hermes@0.20.0",
+        "digestAlgorithm": "sha256-path-content-v1",
+        "sha256": "152321f47c2fde6f4645d52af984f3377cd307bd3d67bc8ab69efa39f2a6d2da"
+      },
+      {
+        "id": "identity-probes",
+        "kind": "probe-set",
+        "path": "packages/surface/vendors/hermes/probes/hermes@0.20.0",
+        "digestAlgorithm": "sha256-path-content-v1",
+        "sha256": "e1efd4cad0a6478c2c7c54b401204edb672e48d10651f310c272fafb26d6d4ea"
+      },
+      {
+        "id": "agent-surface-model",
+        "kind": "model-tree",
+        "path": "packages/surface/vendors/hermes/model/hermes@0.20.0",
+        "exclude": [
+          "evidence.json",
+          "groundtruth.json",
+          "groundtruth.html"
+        ],
+        "digestAlgorithm": "sha256-path-content-v1",
+        "sha256": "c90ebff31409c0782a20373ca6d9b67414cf3f817078ba53da335bc563420324"
+      }
+    ],
+    "claims": [
+      {
+        "id": "hermes-runtime-headless",
+        "kind": "runtime-capture",
+        "confidence": "verified-headless",
+        "record": "sanitized-captures",
+        "artifact": "hermes-0.20.0-source-revision",
+        "platform": "darwin-arm64",
+        "harness": "isolated HERMES_HOME, loopback OpenAI-compatible provider, stdio tui_gateway census sidecar, plugin-hook dump and outbound webhook collector",
+        "capturedAt": "2026-08-12T13:29:19.000Z"
+      },
+      {
+        "id": "hermes-identity-probe",
+        "kind": "binary-probe",
+        "confidence": "verified-headless",
+        "record": "identity-probes",
+        "artifact": "hermes-0.20.0-source-revision",
+        "platform": "darwin-arm64",
+        "harness": "source pin, --version, --help, rejected option, hermes acp --version/--check, Gate 0 process trees",
+        "capturedAt": "2026-08-12T18:56:46.921Z"
+      },
+      {
+        "id": "hermes-exact-source",
+        "kind": "exact-source",
+        "confidence": "unverified",
+        "sourceReference": 0,
+        "notes": "Pinned checkout lead for unobserved methods. It cannot promote a runtime claim."
+      }
+    ],
+    "limitations": [
+      "Only darwin-arm64 executed the source-revision checkout. Other platforms are declared execution environments, not separately captured binaries.",
+      "Turn captures are stdio tui_gateway, not a live hermes --tui PTY with a Node viewer attached.",
+      "Plugin hooks and outbound webhooks required the census sidecar. Default tui_gateway.entry does not register them.",
+      "Unobserved source methods (session.compress, prompt.background, clarify.respond, subagent.*, allow-once/always) are omitted from events/.",
+      "state.db was used for resume identity but was not snapshotted as a live event carrier."
+    ]
+  },
+  "events": [
+    {
+      "surface": "hermes",
+      "surfaceVersion": "0.20.0",
+      "event": "approval.request",
+      "firstSeen": "0.20.0",
+      "lastVerified": "0.20.0",
+      "channel": "tui-gateway",
+      "channels": [
+        "tui-gateway"
+      ],
+      "transport": "jsonrpc-notification",
+      "direction": "agent-to-client",
+      "payloadSchema": {
+        "type": "object",
+        "properties": {
+          "choices": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "pattern_key": {
+            "type": "string"
+          },
+          "allow_permanent": {
+            "type": "boolean"
+          },
+          "allow_session": {
+            "type": "boolean"
+          },
+          "hasText": {
+            "type": "boolean"
+          },
+          "hasContext": {
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "choices"
+        ]
+      },
+      "recordSchema": {
+        "type": "object",
+        "properties": {
+          "jsonrpc": {
+            "type": "string",
+            "enum": [
+              "2.0"
+            ]
+          },
+          "method": {
+            "type": "string",
+            "enum": [
+              "event"
+            ]
+          },
+          "params": {
+            "type": "object",
+            "properties": {
+              "type": {
+                "type": "string",
+                "enum": [
+                  "approval.request"
+                ]
+              },
+              "session_id": {
+                "type": "string"
+              },
+              "payload": {
+                "type": "object",
+                "properties": {
+                  "choices": {
+                    "type": "array",
+                    "items": {
+                      "type": "string"
+                    }
+                  },
+                  "pattern_key": {
+                    "type": "string"
+                  },
+                  "allow_permanent": {
+                    "type": "boolean"
+                  },
+                  "allow_session": {
+                    "type": "boolean"
+                  },
+                  "hasText": {
+                    "type": "boolean"
+                  },
+                  "hasContext": {
+                    "type": "boolean"
+                  }
+                },
+                "required": [
+                  "choices"
+                ]
+              }
+            },
+            "required": [
+              "type",
+              "payload"
+            ]
+          }
+        },
+        "required": [
+          "method",
+          "params"
+        ]
+      },
+      "recordChannel": "tui-gateway",
+      "evidence": {
+        "existence": [
+          "hermes-runtime-headless"
+        ],
+        "shape": [
+          "hermes-runtime-headless"
+        ],
+        "carrier": [
+          "hermes-runtime-headless"
+        ]
+      },
+      "confidence": "verified-headless",
+      "fixture": "captures/hermes@0.20.0/permission-deny/rpc.jsonl"
+    },
+    {
+      "surface": "hermes",
+      "surfaceVersion": "0.20.0",
+      "event": "approval.respond",
+      "firstSeen": "0.20.0",
+      "lastVerified": "0.20.0",
+      "channel": "tui-gateway",
+      "channels": [
+        "tui-gateway"
+      ],
+      "transport": "jsonrpc-request",
+      "direction": "client-to-agent",
+      "payloadSchema": {
+        "type": "object",
+        "properties": {
+          "session_id": {
+            "type": "string"
+          },
+          "choice": {
+            "type": "string"
+          },
+          "hasText": {
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "session_id",
+          "choice"
+        ]
+      },
+      "resultSchema": {
+        "type": "object",
+        "properties": {
+          "resolved": {
+            "type": "number",
+            "minimum": 0
+          }
+        },
+        "required": [
+          "resolved"
+        ]
+      },
+      "recordSchema": {
+        "type": "object",
+        "properties": {
+          "direction": {
+            "type": "string",
+            "enum": [
+              "client"
+            ]
+          },
+          "jsonrpc": {
+            "type": "string",
+            "enum": [
+              "2.0"
+            ]
+          },
+          "id": {
+            "type": "string"
+          },
+          "method": {
+            "type": "string",
+            "enum": [
+              "approval.respond"
+            ]
+          },
+          "params": {
+            "type": "object",
+            "properties": {
+              "session_id": {
+                "type": "string"
+              },
+              "choice": {
+                "type": "string"
+              },
+              "hasText": {
+                "type": "boolean"
+              }
+            },
+            "required": [
+              "session_id",
+              "choice"
+            ]
+          }
+        },
+        "required": [
+          "direction",
+          "jsonrpc",
+          "id",
+          "method",
+          "params"
+        ]
+      },
+      "recordChannel": "tui-gateway",
+      "evidence": {
+        "existence": [
+          "hermes-runtime-headless"
+        ],
+        "shape": [
+          "hermes-runtime-headless"
+        ],
+        "result": [
+          "hermes-runtime-headless"
+        ],
+        "carrier": [
+          "hermes-runtime-headless"
+        ]
+      },
+      "confidence": "verified-headless",
+      "fixture": "captures/hermes@0.20.0/permission-deny/rpc.jsonl"
+    },
+    {
+      "surface": "hermes",
+      "surfaceVersion": "0.20.0",
+      "event": "gateway.ready",
+      "firstSeen": "0.20.0",
+      "lastVerified": "0.20.0",
+      "channel": "tui-gateway",
+      "channels": [
+        "tui-gateway"
+      ],
+      "transport": "jsonrpc-notification",
+      "direction": "agent-to-client",
+      "payloadSchema": {
+        "type": "object",
+        "properties": {
+          "hasText": {
+            "type": "boolean"
+          },
+          "hasContext": {
+            "type": "boolean"
+          }
+        }
+      },
+      "recordSchema": {
+        "type": "object",
+        "properties": {
+          "jsonrpc": {
+            "type": "string",
+            "enum": [
+              "2.0"
+            ]
+          },
+          "method": {
+            "type": "string",
+            "enum": [
+              "event"
+            ]
+          },
+          "params": {
+            "type": "object",
+            "properties": {
+              "type": {
+                "type": "string",
+                "enum": [
+                  "gateway.ready"
+                ]
+              },
+              "session_id": {
+                "type": "string"
+              },
+              "payload": {
+                "type": "object",
+                "properties": {
+                  "hasText": {
+                    "type": "boolean"
+                  },
+                  "hasContext": {
+                    "type": "boolean"
+                  }
+                }
+              }
+            },
+            "required": [
+              "type",
+              "payload"
+            ]
+          }
+        },
+        "required": [
+          "method",
+          "params"
+        ]
+      },
+      "recordChannel": "tui-gateway",
+      "evidence": {
+        "existence": [
+          "hermes-runtime-headless"
+        ],
+        "shape": [
+          "hermes-runtime-headless"
+        ],
+        "carrier": [
+          "hermes-runtime-headless"
+        ]
+      },
+      "confidence": "verified-headless",
+      "fixture": "captures/hermes@0.20.0/basic-turn/rpc.jsonl",
+      "notes": "Native payload includes skin/branding; sanitized fixtures keep only presence flags."
+    },
+    {
+      "surface": "hermes",
+      "surfaceVersion": "0.20.0",
+      "event": "message.complete",
+      "firstSeen": "0.20.0",
+      "lastVerified": "0.20.0",
+      "channel": "tui-gateway",
+      "channels": [
+        "tui-gateway"
+      ],
+      "transport": "jsonrpc-notification",
+      "direction": "agent-to-client",
+      "payloadSchema": {
+        "type": "object",
+        "properties": {
+          "status": {
+            "type": "string",
+            "enum": [
+              "complete",
+              "interrupted"
+            ]
+          },
+          "usage": {
+            "type": "object",
+            "properties": {
+              "model": {
+                "type": "string"
+              },
+              "calls": {
+                "type": "number",
+                "minimum": 0
+              },
+              "hasTotals": {
+                "type": "boolean"
+              }
+            }
+          },
+          "hasText": {
+            "type": "boolean"
+          },
+          "hasContext": {
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "status"
+        ]
+      },
+      "recordSchema": {
+        "type": "object",
+        "properties": {
+          "jsonrpc": {
+            "type": "string",
+            "enum": [
+              "2.0"
+            ]
+          },
+          "method": {
+            "type": "string",
+            "enum": [
+              "event"
+            ]
+          },
+          "params": {
+            "type": "object",
+            "properties": {
+              "type": {
+                "type": "string",
+                "enum": [
+                  "message.complete"
+                ]
+              },
+              "session_id": {
+                "type": "string"
+              },
+              "payload": {
+                "type": "object",
+                "properties": {
+                  "status": {
+                    "type": "string",
+                    "enum": [
+                      "complete",
+                      "interrupted"
+                    ]
+                  },
+                  "usage": {
+                    "type": "object",
+                    "properties": {
+                      "model": {
+                        "type": "string"
+                      },
+                      "calls": {
+                        "type": "number",
+                        "minimum": 0
+                      },
+                      "hasTotals": {
+                        "type": "boolean"
+                      }
+                    }
+                  },
+                  "hasText": {
+                    "type": "boolean"
+                  },
+                  "hasContext": {
+                    "type": "boolean"
+                  }
+                },
+                "required": [
+                  "status"
+                ]
+              }
+            },
+            "required": [
+              "type",
+              "payload"
+            ]
+          }
+        },
+        "required": [
+          "method",
+          "params"
+        ]
+      },
+      "recordChannel": "tui-gateway",
+      "evidence": {
+        "existence": [
+          "hermes-runtime-headless"
+        ],
+        "shape": [
+          "hermes-runtime-headless"
+        ],
+        "carrier": [
+          "hermes-runtime-headless"
+        ]
+      },
+      "confidence": "verified-headless",
+      "variants": [
+        {
+          "match": {
+            "status": "complete"
+          },
+          "evidence": {
+            "existence": [
+              "hermes-runtime-headless"
+            ],
+            "shape": [
+              "hermes-runtime-headless"
+            ]
+          },
+          "confidence": "verified-headless"
+        },
+        {
+          "match": {
+            "status": "interrupted"
+          },
+          "evidence": {
+            "existence": [
+              "hermes-runtime-headless"
+            ],
+            "shape": [
+              "hermes-runtime-headless"
+            ]
+          },
+          "confidence": "verified-headless"
+        }
+      ],
+      "fixture": "captures/hermes@0.20.0/interrupt/rpc.jsonl"
+    },
+    {
+      "surface": "hermes",
+      "surfaceVersion": "0.20.0",
+      "event": "message.delta",
+      "firstSeen": "0.20.0",
+      "lastVerified": "0.20.0",
+      "channel": "tui-gateway",
+      "channels": [
+        "tui-gateway"
+      ],
+      "transport": "jsonrpc-notification",
+      "direction": "agent-to-client",
+      "payloadSchema": {
+        "type": "object",
+        "properties": {
+          "hasText": {
+            "type": "boolean"
+          },
+          "hasContext": {
+            "type": "boolean"
+          }
+        }
+      },
+      "recordSchema": {
+        "type": "object",
+        "properties": {
+          "jsonrpc": {
+            "type": "string",
+            "enum": [
+              "2.0"
+            ]
+          },
+          "method": {
+            "type": "string",
+            "enum": [
+              "event"
+            ]
+          },
+          "params": {
+            "type": "object",
+            "properties": {
+              "type": {
+                "type": "string",
+                "enum": [
+                  "message.delta"
+                ]
+              },
+              "session_id": {
+                "type": "string"
+              },
+              "payload": {
+                "type": "object",
+                "properties": {
+                  "hasText": {
+                    "type": "boolean"
+                  },
+                  "hasContext": {
+                    "type": "boolean"
+                  }
+                }
+              }
+            },
+            "required": [
+              "type",
+              "payload"
+            ]
+          }
+        },
+        "required": [
+          "method",
+          "params"
+        ]
+      },
+      "recordChannel": "tui-gateway",
+      "evidence": {
+        "existence": [
+          "hermes-runtime-headless"
+        ],
+        "shape": [
+          "hermes-runtime-headless"
+        ],
+        "carrier": [
+          "hermes-runtime-headless"
+        ]
+      },
+      "confidence": "verified-headless",
+      "fixture": "captures/hermes@0.20.0/basic-turn/rpc.jsonl"
+    },
+    {
+      "surface": "hermes",
+      "surfaceVersion": "0.20.0",
+      "event": "message.start",
+      "firstSeen": "0.20.0",
+      "lastVerified": "0.20.0",
+      "channel": "tui-gateway",
+      "channels": [
+        "tui-gateway"
+      ],
+      "transport": "jsonrpc-notification",
+      "direction": "agent-to-client",
+      "payloadSchema": {
+        "type": "object",
+        "properties": {
+          "hasText": {
+            "type": "boolean"
+          },
+          "hasContext": {
+            "type": "boolean"
+          }
+        }
+      },
+      "recordSchema": {
+        "type": "object",
+        "properties": {
+          "jsonrpc": {
+            "type": "string",
+            "enum": [
+              "2.0"
+            ]
+          },
+          "method": {
+            "type": "string",
+            "enum": [
+              "event"
+            ]
+          },
+          "params": {
+            "type": "object",
+            "properties": {
+              "type": {
+                "type": "string",
+                "enum": [
+                  "message.start"
+                ]
+              },
+              "session_id": {
+                "type": "string"
+              },
+              "payload": {
+                "type": "object",
+                "properties": {
+                  "hasText": {
+                    "type": "boolean"
+                  },
+                  "hasContext": {
+                    "type": "boolean"
+                  }
+                }
+              }
+            },
+            "required": [
+              "type",
+              "payload"
+            ]
+          }
+        },
+        "required": [
+          "method",
+          "params"
+        ]
+      },
+      "recordChannel": "tui-gateway",
+      "evidence": {
+        "existence": [
+          "hermes-runtime-headless"
+        ],
+        "shape": [
+          "hermes-runtime-headless"
+        ],
+        "carrier": [
+          "hermes-runtime-headless"
+        ]
+      },
+      "confidence": "verified-headless",
+      "fixture": "captures/hermes@0.20.0/basic-turn/rpc.jsonl"
+    },
+    {
+      "surface": "hermes",
+      "surfaceVersion": "0.20.0",
+      "event": "on_session_end",
+      "firstSeen": "0.20.0",
+      "lastVerified": "0.20.0",
+      "channel": "plugin-hook",
+      "channels": [
+        "plugin-hook",
+        "outbound-webhook"
+      ],
+      "transport": "hook-callback",
+      "direction": "agent-local",
+      "payloadSchema": {
+        "type": "object",
+        "properties": {
+          "hook_event_name": {
+            "type": "string"
+          },
+          "session_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "tool_name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "platform": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "choice": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "keys": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        },
+        "required": [
+          "hook_event_name",
+          "keys"
+        ]
+      },
+      "evidence": {
+        "existence": [
+          "hermes-runtime-headless"
+        ],
+        "shape": [
+          "hermes-runtime-headless"
+        ]
+      },
+      "confidence": "verified-headless",
+      "fixture": "captures/hermes@0.20.0/basic-turn/plugin-hooks.jsonl",
+      "notes": "Outbound webhook is a notify-only copy of the same hook name."
+    },
+    {
+      "surface": "hermes",
+      "surfaceVersion": "0.20.0",
+      "event": "on_session_finalize",
+      "firstSeen": "0.20.0",
+      "lastVerified": "0.20.0",
+      "channel": "plugin-hook",
+      "channels": [
+        "plugin-hook",
+        "outbound-webhook"
+      ],
+      "transport": "hook-callback",
+      "direction": "agent-local",
+      "payloadSchema": {
+        "type": "object",
+        "properties": {
+          "hook_event_name": {
+            "type": "string"
+          },
+          "session_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "tool_name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "platform": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "choice": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "keys": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        },
+        "required": [
+          "hook_event_name",
+          "keys"
+        ]
+      },
+      "evidence": {
+        "existence": [
+          "hermes-runtime-headless"
+        ],
+        "shape": [
+          "hermes-runtime-headless"
+        ]
+      },
+      "confidence": "verified-headless",
+      "fixture": "captures/hermes@0.20.0/basic-turn/plugin-hooks.jsonl",
+      "notes": "Outbound webhook is a notify-only copy of the same hook name."
+    },
+    {
+      "surface": "hermes",
+      "surfaceVersion": "0.20.0",
+      "event": "on_session_start",
+      "firstSeen": "0.20.0",
+      "lastVerified": "0.20.0",
+      "channel": "plugin-hook",
+      "channels": [
+        "plugin-hook",
+        "outbound-webhook"
+      ],
+      "transport": "hook-callback",
+      "direction": "agent-local",
+      "payloadSchema": {
+        "type": "object",
+        "properties": {
+          "hook_event_name": {
+            "type": "string"
+          },
+          "session_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "tool_name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "platform": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "choice": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "keys": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        },
+        "required": [
+          "hook_event_name",
+          "keys"
+        ]
+      },
+      "evidence": {
+        "existence": [
+          "hermes-runtime-headless"
+        ],
+        "shape": [
+          "hermes-runtime-headless"
+        ]
+      },
+      "confidence": "verified-headless",
+      "fixture": "captures/hermes@0.20.0/basic-turn/plugin-hooks.jsonl",
+      "notes": "Outbound webhook is a notify-only copy of the same hook name."
+    },
+    {
+      "surface": "hermes",
+      "surfaceVersion": "0.20.0",
+      "event": "post_api_request",
+      "firstSeen": "0.20.0",
+      "lastVerified": "0.20.0",
+      "channel": "plugin-hook",
+      "channels": [
+        "plugin-hook",
+        "outbound-webhook"
+      ],
+      "transport": "hook-callback",
+      "direction": "agent-local",
+      "payloadSchema": {
+        "type": "object",
+        "properties": {
+          "hook_event_name": {
+            "type": "string"
+          },
+          "session_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "tool_name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "platform": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "choice": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "keys": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        },
+        "required": [
+          "hook_event_name",
+          "keys"
+        ]
+      },
+      "evidence": {
+        "existence": [
+          "hermes-runtime-headless"
+        ],
+        "shape": [
+          "hermes-runtime-headless"
+        ]
+      },
+      "confidence": "verified-headless",
+      "fixture": "captures/hermes@0.20.0/basic-turn/plugin-hooks.jsonl",
+      "notes": "Outbound webhook is a notify-only copy of the same hook name."
+    },
+    {
+      "surface": "hermes",
+      "surfaceVersion": "0.20.0",
+      "event": "post_approval_response",
+      "firstSeen": "0.20.0",
+      "lastVerified": "0.20.0",
+      "channel": "plugin-hook",
+      "channels": [
+        "plugin-hook",
+        "outbound-webhook"
+      ],
+      "transport": "hook-callback",
+      "direction": "agent-local",
+      "payloadSchema": {
+        "type": "object",
+        "properties": {
+          "hook_event_name": {
+            "type": "string"
+          },
+          "session_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "tool_name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "platform": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "choice": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "keys": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        },
+        "required": [
+          "hook_event_name",
+          "keys"
+        ]
+      },
+      "evidence": {
+        "existence": [
+          "hermes-runtime-headless"
+        ],
+        "shape": [
+          "hermes-runtime-headless"
+        ]
+      },
+      "confidence": "verified-headless",
+      "fixture": "captures/hermes@0.20.0/permission-deny/plugin-hooks.jsonl",
+      "notes": "Outbound webhook is a notify-only copy of the same hook name."
+    },
+    {
+      "surface": "hermes",
+      "surfaceVersion": "0.20.0",
+      "event": "post_llm_call",
+      "firstSeen": "0.20.0",
+      "lastVerified": "0.20.0",
+      "channel": "plugin-hook",
+      "channels": [
+        "plugin-hook",
+        "outbound-webhook"
+      ],
+      "transport": "hook-callback",
+      "direction": "agent-local",
+      "payloadSchema": {
+        "type": "object",
+        "properties": {
+          "hook_event_name": {
+            "type": "string"
+          },
+          "session_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "tool_name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "platform": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "choice": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "keys": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        },
+        "required": [
+          "hook_event_name",
+          "keys"
+        ]
+      },
+      "evidence": {
+        "existence": [
+          "hermes-runtime-headless"
+        ],
+        "shape": [
+          "hermes-runtime-headless"
+        ]
+      },
+      "confidence": "verified-headless",
+      "fixture": "captures/hermes@0.20.0/basic-turn/plugin-hooks.jsonl",
+      "notes": "Outbound webhook is a notify-only copy of the same hook name."
+    },
+    {
+      "surface": "hermes",
+      "surfaceVersion": "0.20.0",
+      "event": "post_tool_call",
+      "firstSeen": "0.20.0",
+      "lastVerified": "0.20.0",
+      "channel": "plugin-hook",
+      "channels": [
+        "plugin-hook",
+        "outbound-webhook"
+      ],
+      "transport": "hook-callback",
+      "direction": "agent-local",
+      "payloadSchema": {
+        "type": "object",
+        "properties": {
+          "hook_event_name": {
+            "type": "string"
+          },
+          "session_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "tool_name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "platform": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "choice": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "keys": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        },
+        "required": [
+          "hook_event_name",
+          "keys"
+        ]
+      },
+      "evidence": {
+        "existence": [
+          "hermes-runtime-headless"
+        ],
+        "shape": [
+          "hermes-runtime-headless"
+        ]
+      },
+      "confidence": "verified-headless",
+      "fixture": "captures/hermes@0.20.0/tool-success/plugin-hooks.jsonl",
+      "notes": "Outbound webhook is a notify-only copy of the same hook name."
+    },
+    {
+      "surface": "hermes",
+      "surfaceVersion": "0.20.0",
+      "event": "pre_api_request",
+      "firstSeen": "0.20.0",
+      "lastVerified": "0.20.0",
+      "channel": "plugin-hook",
+      "channels": [
+        "plugin-hook",
+        "outbound-webhook"
+      ],
+      "transport": "hook-callback",
+      "direction": "agent-local",
+      "payloadSchema": {
+        "type": "object",
+        "properties": {
+          "hook_event_name": {
+            "type": "string"
+          },
+          "session_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "tool_name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "platform": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "choice": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "keys": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        },
+        "required": [
+          "hook_event_name",
+          "keys"
+        ]
+      },
+      "evidence": {
+        "existence": [
+          "hermes-runtime-headless"
+        ],
+        "shape": [
+          "hermes-runtime-headless"
+        ]
+      },
+      "confidence": "verified-headless",
+      "fixture": "captures/hermes@0.20.0/basic-turn/plugin-hooks.jsonl",
+      "notes": "Outbound webhook is a notify-only copy of the same hook name."
+    },
+    {
+      "surface": "hermes",
+      "surfaceVersion": "0.20.0",
+      "event": "pre_approval_request",
+      "firstSeen": "0.20.0",
+      "lastVerified": "0.20.0",
+      "channel": "plugin-hook",
+      "channels": [
+        "plugin-hook",
+        "outbound-webhook"
+      ],
+      "transport": "hook-callback",
+      "direction": "agent-local",
+      "payloadSchema": {
+        "type": "object",
+        "properties": {
+          "hook_event_name": {
+            "type": "string"
+          },
+          "session_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "tool_name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "platform": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "choice": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "keys": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        },
+        "required": [
+          "hook_event_name",
+          "keys"
+        ]
+      },
+      "evidence": {
+        "existence": [
+          "hermes-runtime-headless"
+        ],
+        "shape": [
+          "hermes-runtime-headless"
+        ]
+      },
+      "confidence": "verified-headless",
+      "fixture": "captures/hermes@0.20.0/permission-deny/plugin-hooks.jsonl",
+      "notes": "Outbound webhook is a notify-only copy of the same hook name."
+    },
+    {
+      "surface": "hermes",
+      "surfaceVersion": "0.20.0",
+      "event": "pre_llm_call",
+      "firstSeen": "0.20.0",
+      "lastVerified": "0.20.0",
+      "channel": "plugin-hook",
+      "channels": [
+        "plugin-hook",
+        "outbound-webhook"
+      ],
+      "transport": "hook-callback",
+      "direction": "agent-local",
+      "payloadSchema": {
+        "type": "object",
+        "properties": {
+          "hook_event_name": {
+            "type": "string"
+          },
+          "session_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "tool_name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "platform": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "choice": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "keys": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        },
+        "required": [
+          "hook_event_name",
+          "keys"
+        ]
+      },
+      "evidence": {
+        "existence": [
+          "hermes-runtime-headless"
+        ],
+        "shape": [
+          "hermes-runtime-headless"
+        ]
+      },
+      "confidence": "verified-headless",
+      "fixture": "captures/hermes@0.20.0/basic-turn/plugin-hooks.jsonl",
+      "notes": "Outbound webhook is a notify-only copy of the same hook name."
+    },
+    {
+      "surface": "hermes",
+      "surfaceVersion": "0.20.0",
+      "event": "pre_tool_call",
+      "firstSeen": "0.20.0",
+      "lastVerified": "0.20.0",
+      "channel": "plugin-hook",
+      "channels": [
+        "plugin-hook",
+        "outbound-webhook"
+      ],
+      "transport": "hook-callback",
+      "direction": "agent-local",
+      "payloadSchema": {
+        "type": "object",
+        "properties": {
+          "hook_event_name": {
+            "type": "string"
+          },
+          "session_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "tool_name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "platform": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "choice": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "keys": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        },
+        "required": [
+          "hook_event_name",
+          "keys"
+        ]
+      },
+      "evidence": {
+        "existence": [
+          "hermes-runtime-headless"
+        ],
+        "shape": [
+          "hermes-runtime-headless"
+        ]
+      },
+      "confidence": "verified-headless",
+      "fixture": "captures/hermes@0.20.0/tool-success/plugin-hooks.jsonl",
+      "notes": "Outbound webhook is a notify-only copy of the same hook name."
+    },
+    {
+      "surface": "hermes",
+      "surfaceVersion": "0.20.0",
+      "event": "prompt.submit",
+      "firstSeen": "0.20.0",
+      "lastVerified": "0.20.0",
+      "channel": "tui-gateway",
+      "channels": [
+        "tui-gateway"
+      ],
+      "transport": "jsonrpc-request",
+      "direction": "client-to-agent",
+      "payloadSchema": {
+        "type": "object",
+        "properties": {
+          "session_id": {
+            "type": "string"
+          },
+          "cwd": {
+            "type": "string"
+          },
+          "source": {
+            "type": "string"
+          },
+          "text": {
+            "type": "string"
+          },
+          "hasText": {
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "session_id"
+        ]
+      },
+      "resultSchema": {
+        "type": "object",
+        "properties": {
+          "status": {
+            "type": "string",
+            "enum": [
+              "streaming"
+            ]
+          }
+        },
+        "required": [
+          "status"
+        ]
+      },
+      "recordSchema": {
+        "type": "object",
+        "properties": {
+          "direction": {
+            "type": "string",
+            "enum": [
+              "client"
+            ]
+          },
+          "jsonrpc": {
+            "type": "string",
+            "enum": [
+              "2.0"
+            ]
+          },
+          "id": {
+            "type": "string"
+          },
+          "method": {
+            "type": "string",
+            "enum": [
+              "prompt.submit"
+            ]
+          },
+          "params": {
+            "type": "object",
+            "properties": {
+              "session_id": {
+                "type": "string"
+              },
+              "cwd": {
+                "type": "string"
+              },
+              "source": {
+                "type": "string"
+              },
+              "text": {
+                "type": "string"
+              },
+              "hasText": {
+                "type": "boolean"
+              }
+            },
+            "required": [
+              "session_id"
+            ]
+          }
+        },
+        "required": [
+          "direction",
+          "jsonrpc",
+          "id",
+          "method",
+          "params"
+        ]
+      },
+      "recordChannel": "tui-gateway",
+      "evidence": {
+        "existence": [
+          "hermes-runtime-headless"
+        ],
+        "shape": [
+          "hermes-runtime-headless"
+        ],
+        "result": [
+          "hermes-runtime-headless"
+        ],
+        "carrier": [
+          "hermes-runtime-headless"
+        ]
+      },
+      "confidence": "verified-headless",
+      "fixture": "captures/hermes@0.20.0/basic-turn/rpc.jsonl",
+      "notes": "Result is only { status: \"streaming\" }. There is no native prompt id."
+    },
+    {
+      "surface": "hermes",
+      "surfaceVersion": "0.20.0",
+      "event": "reasoning.available",
+      "firstSeen": "0.20.0",
+      "lastVerified": "0.20.0",
+      "channel": "tui-gateway",
+      "channels": [
+        "tui-gateway"
+      ],
+      "transport": "jsonrpc-notification",
+      "direction": "agent-to-client",
+      "payloadSchema": {
+        "type": "object",
+        "properties": {
+          "hasText": {
+            "type": "boolean"
+          },
+          "hasContext": {
+            "type": "boolean"
+          }
+        }
+      },
+      "recordSchema": {
+        "type": "object",
+        "properties": {
+          "jsonrpc": {
+            "type": "string",
+            "enum": [
+              "2.0"
+            ]
+          },
+          "method": {
+            "type": "string",
+            "enum": [
+              "event"
+            ]
+          },
+          "params": {
+            "type": "object",
+            "properties": {
+              "type": {
+                "type": "string",
+                "enum": [
+                  "reasoning.available"
+                ]
+              },
+              "session_id": {
+                "type": "string"
+              },
+              "payload": {
+                "type": "object",
+                "properties": {
+                  "hasText": {
+                    "type": "boolean"
+                  },
+                  "hasContext": {
+                    "type": "boolean"
+                  }
+                }
+              }
+            },
+            "required": [
+              "type",
+              "payload"
+            ]
+          }
+        },
+        "required": [
+          "method",
+          "params"
+        ]
+      },
+      "recordChannel": "tui-gateway",
+      "evidence": {
+        "existence": [
+          "hermes-runtime-headless"
+        ],
+        "shape": [
+          "hermes-runtime-headless"
+        ],
+        "carrier": [
+          "hermes-runtime-headless"
+        ]
+      },
+      "confidence": "verified-headless",
+      "fixture": "captures/hermes@0.20.0/basic-turn/rpc.jsonl",
+      "notes": "In these captures this echoed the assistant text."
+    },
+    {
+      "surface": "hermes",
+      "surfaceVersion": "0.20.0",
+      "event": "session.create",
+      "firstSeen": "0.20.0",
+      "lastVerified": "0.20.0",
+      "channel": "tui-gateway",
+      "channels": [
+        "tui-gateway"
+      ],
+      "transport": "jsonrpc-request",
+      "direction": "client-to-agent",
+      "payloadSchema": {
+        "type": "object",
+        "properties": {
+          "cwd": {
+            "type": "string"
+          },
+          "source": {
+            "type": "string"
+          },
+          "session_id": {
+            "type": "string"
+          },
+          "text": {
+            "type": "string"
+          },
+          "hasText": {
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "cwd",
+          "source"
+        ]
+      },
+      "resultSchema": {
+        "type": "object",
+        "properties": {
+          "session_id": {
+            "type": "string"
+          },
+          "stored_session_id": {
+            "type": "string"
+          },
+          "message_count": {
+            "type": "number",
+            "minimum": 0
+          }
+        },
+        "required": [
+          "session_id",
+          "stored_session_id"
+        ]
+      },
+      "recordSchema": {
+        "type": "object",
+        "properties": {
+          "direction": {
+            "type": "string",
+            "enum": [
+              "client"
+            ]
+          },
+          "jsonrpc": {
+            "type": "string",
+            "enum": [
+              "2.0"
+            ]
+          },
+          "id": {
+            "type": "string"
+          },
+          "method": {
+            "type": "string",
+            "enum": [
+              "session.create"
+            ]
+          },
+          "params": {
+            "type": "object",
+            "properties": {
+              "cwd": {
+                "type": "string"
+              },
+              "source": {
+                "type": "string"
+              },
+              "session_id": {
+                "type": "string"
+              },
+              "hasText": {
+                "type": "boolean"
+              }
+            },
+            "required": [
+              "cwd",
+              "source"
+            ]
+          }
+        },
+        "required": [
+          "direction",
+          "jsonrpc",
+          "id",
+          "method",
+          "params"
+        ]
+      },
+      "recordChannel": "tui-gateway",
+      "evidence": {
+        "existence": [
+          "hermes-runtime-headless"
+        ],
+        "shape": [
+          "hermes-runtime-headless"
+        ],
+        "result": [
+          "hermes-runtime-headless"
+        ],
+        "carrier": [
+          "hermes-runtime-headless"
+        ]
+      },
+      "confidence": "verified-headless",
+      "fixture": "captures/hermes@0.20.0/basic-turn/rpc.jsonl"
+    },
+    {
+      "surface": "hermes",
+      "surfaceVersion": "0.20.0",
+      "event": "session.info",
+      "firstSeen": "0.20.0",
+      "lastVerified": "0.20.0",
+      "channel": "tui-gateway",
+      "channels": [
+        "tui-gateway"
+      ],
+      "transport": "jsonrpc-notification",
+      "direction": "agent-to-client",
+      "payloadSchema": {
+        "type": "object",
+        "properties": {
+          "model": {
+            "type": "string"
+          },
+          "provider": {
+            "type": "string"
+          },
+          "approval_mode": {
+            "type": "string"
+          },
+          "version": {
+            "type": "string"
+          },
+          "cwd": {
+            "type": "string"
+          },
+          "stored_session_id": {
+            "type": "string"
+          },
+          "running": {
+            "type": "boolean"
+          },
+          "toolNames": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "usage": {
+            "type": "object",
+            "properties": {
+              "model": {
+                "type": "string"
+              },
+              "calls": {
+                "type": "number",
+                "minimum": 0
+              },
+              "hasTotals": {
+                "type": "boolean"
+              }
+            }
+          },
+          "hasText": {
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "model",
+          "stored_session_id",
+          "running"
+        ]
+      },
+      "recordSchema": {
+        "type": "object",
+        "properties": {
+          "jsonrpc": {
+            "type": "string",
+            "enum": [
+              "2.0"
+            ]
+          },
+          "method": {
+            "type": "string",
+            "enum": [
+              "event"
+            ]
+          },
+          "params": {
+            "type": "object",
+            "properties": {
+              "type": {
+                "type": "string",
+                "enum": [
+                  "session.info"
+                ]
+              },
+              "session_id": {
+                "type": "string"
+              },
+              "payload": {
+                "type": "object",
+                "properties": {
+                  "model": {
+                    "type": "string"
+                  },
+                  "provider": {
+                    "type": "string"
+                  },
+                  "approval_mode": {
+                    "type": "string"
+                  },
+                  "version": {
+                    "type": "string"
+                  },
+                  "cwd": {
+                    "type": "string"
+                  },
+                  "stored_session_id": {
+                    "type": "string"
+                  },
+                  "running": {
+                    "type": "boolean"
+                  },
+                  "toolNames": {
+                    "type": "array",
+                    "items": {
+                      "type": "string"
+                    }
+                  },
+                  "usage": {
+                    "type": "object",
+                    "properties": {
+                      "model": {
+                        "type": "string"
+                      },
+                      "calls": {
+                        "type": "number",
+                        "minimum": 0
+                      },
+                      "hasTotals": {
+                        "type": "boolean"
+                      }
+                    }
+                  },
+                  "hasText": {
+                    "type": "boolean"
+                  }
+                },
+                "required": [
+                  "model",
+                  "stored_session_id",
+                  "running"
+                ]
+              }
+            },
+            "required": [
+              "type",
+              "payload"
+            ]
+          }
+        },
+        "required": [
+          "method",
+          "params"
+        ]
+      },
+      "recordChannel": "tui-gateway",
+      "evidence": {
+        "existence": [
+          "hermes-runtime-headless"
+        ],
+        "shape": [
+          "hermes-runtime-headless"
+        ],
+        "carrier": [
+          "hermes-runtime-headless"
+        ]
+      },
+      "confidence": "verified-headless",
+      "fixture": "captures/hermes@0.20.0/basic-turn/rpc.jsonl"
+    },
+    {
+      "surface": "hermes",
+      "surfaceVersion": "0.20.0",
+      "event": "session.interrupt",
+      "firstSeen": "0.20.0",
+      "lastVerified": "0.20.0",
+      "channel": "tui-gateway",
+      "channels": [
+        "tui-gateway"
+      ],
+      "transport": "jsonrpc-request",
+      "direction": "client-to-agent",
+      "payloadSchema": {
+        "type": "object",
+        "properties": {
+          "session_id": {
+            "type": "string"
+          },
+          "hasText": {
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "session_id"
+        ]
+      },
+      "resultSchema": {
+        "type": "object",
+        "properties": {
+          "status": {
+            "type": "string",
+            "enum": [
+              "interrupted"
+            ]
+          }
+        },
+        "required": [
+          "status"
+        ]
+      },
+      "recordSchema": {
+        "type": "object",
+        "properties": {
+          "direction": {
+            "type": "string",
+            "enum": [
+              "client"
+            ]
+          },
+          "jsonrpc": {
+            "type": "string",
+            "enum": [
+              "2.0"
+            ]
+          },
+          "id": {
+            "type": "string"
+          },
+          "method": {
+            "type": "string",
+            "enum": [
+              "session.interrupt"
+            ]
+          },
+          "params": {
+            "type": "object",
+            "properties": {
+              "session_id": {
+                "type": "string"
+              },
+              "hasText": {
+                "type": "boolean"
+              }
+            },
+            "required": [
+              "session_id"
+            ]
+          }
+        },
+        "required": [
+          "direction",
+          "jsonrpc",
+          "id",
+          "method",
+          "params"
+        ]
+      },
+      "recordChannel": "tui-gateway",
+      "evidence": {
+        "existence": [
+          "hermes-runtime-headless"
+        ],
+        "shape": [
+          "hermes-runtime-headless"
+        ],
+        "result": [
+          "hermes-runtime-headless"
+        ],
+        "carrier": [
+          "hermes-runtime-headless"
+        ]
+      },
+      "confidence": "verified-headless",
+      "fixture": "captures/hermes@0.20.0/interrupt/rpc.jsonl",
+      "notes": "RPC write is not the stop. Wait for message.complete status interrupted."
+    },
+    {
+      "surface": "hermes",
+      "surfaceVersion": "0.20.0",
+      "event": "session.resume",
+      "firstSeen": "0.20.0",
+      "lastVerified": "0.20.0",
+      "channel": "tui-gateway",
+      "channels": [
+        "tui-gateway"
+      ],
+      "transport": "jsonrpc-request",
+      "direction": "client-to-agent",
+      "payloadSchema": {
+        "type": "object",
+        "properties": {
+          "session_id": {
+            "type": "string"
+          },
+          "cwd": {
+            "type": "string"
+          },
+          "source": {
+            "type": "string"
+          },
+          "text": {
+            "type": "string"
+          },
+          "hasText": {
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "session_id",
+          "cwd"
+        ]
+      },
+      "resultSchema": {
+        "type": "object",
+        "properties": {
+          "session_id": {
+            "type": "string"
+          },
+          "stored_session_id": {
+            "type": "string"
+          },
+          "session_key": {
+            "type": "string"
+          },
+          "resumed": {
+            "type": "string"
+          },
+          "status": {
+            "type": "string"
+          },
+          "message_count": {
+            "type": "number",
+            "minimum": 0
+          },
+          "running": {
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "session_id",
+          "status"
+        ]
+      },
+      "recordSchema": {
+        "type": "object",
+        "properties": {
+          "direction": {
+            "type": "string",
+            "enum": [
+              "client"
+            ]
+          },
+          "jsonrpc": {
+            "type": "string",
+            "enum": [
+              "2.0"
+            ]
+          },
+          "id": {
+            "type": "string"
+          },
+          "method": {
+            "type": "string",
+            "enum": [
+              "session.resume"
+            ]
+          },
+          "params": {
+            "type": "object",
+            "properties": {
+              "session_id": {
+                "type": "string"
+              },
+              "cwd": {
+                "type": "string"
+              },
+              "source": {
+                "type": "string"
+              },
+              "hasText": {
+                "type": "boolean"
+              }
+            },
+            "required": [
+              "session_id",
+              "cwd"
+            ]
+          }
+        },
+        "required": [
+          "direction",
+          "jsonrpc",
+          "id",
+          "method",
+          "params"
+        ]
+      },
+      "recordChannel": "tui-gateway",
+      "evidence": {
+        "existence": [
+          "hermes-runtime-headless"
+        ],
+        "shape": [
+          "hermes-runtime-headless"
+        ],
+        "result": [
+          "hermes-runtime-headless"
+        ],
+        "carrier": [
+          "hermes-runtime-headless"
+        ]
+      },
+      "confidence": "verified-headless",
+      "fixture": "captures/hermes@0.20.0/resume-turn/rpc.jsonl"
+    },
+    {
+      "surface": "hermes",
+      "surfaceVersion": "0.20.0",
+      "event": "sessions.changed",
+      "firstSeen": "0.20.0",
+      "lastVerified": "0.20.0",
+      "channel": "tui-gateway",
+      "channels": [
+        "tui-gateway"
+      ],
+      "transport": "jsonrpc-notification",
+      "direction": "agent-to-client",
+      "payloadSchema": {
+        "type": "object",
+        "properties": {
+          "hasText": {
+            "type": "boolean"
+          },
+          "hasContext": {
+            "type": "boolean"
+          }
+        }
+      },
+      "recordSchema": {
+        "type": "object",
+        "properties": {
+          "jsonrpc": {
+            "type": "string",
+            "enum": [
+              "2.0"
+            ]
+          },
+          "method": {
+            "type": "string",
+            "enum": [
+              "event"
+            ]
+          },
+          "params": {
+            "type": "object",
+            "properties": {
+              "type": {
+                "type": "string",
+                "enum": [
+                  "sessions.changed"
+                ]
+              },
+              "session_id": {
+                "type": "string"
+              },
+              "payload": {
+                "type": "object",
+                "properties": {
+                  "hasText": {
+                    "type": "boolean"
+                  },
+                  "hasContext": {
+                    "type": "boolean"
+                  }
+                }
+              }
+            },
+            "required": [
+              "type",
+              "payload"
+            ]
+          }
+        },
+        "required": [
+          "method",
+          "params"
+        ]
+      },
+      "recordChannel": "tui-gateway",
+      "evidence": {
+        "existence": [
+          "hermes-runtime-headless"
+        ],
+        "shape": [
+          "hermes-runtime-headless"
+        ],
+        "carrier": [
+          "hermes-runtime-headless"
+        ]
+      },
+      "confidence": "verified-headless",
+      "fixture": "captures/hermes@0.20.0/basic-turn/rpc.jsonl"
+    },
+    {
+      "surface": "hermes",
+      "surfaceVersion": "0.20.0",
+      "event": "thinking.delta",
+      "firstSeen": "0.20.0",
+      "lastVerified": "0.20.0",
+      "channel": "tui-gateway",
+      "channels": [
+        "tui-gateway"
+      ],
+      "transport": "jsonrpc-notification",
+      "direction": "agent-to-client",
+      "payloadSchema": {
+        "type": "object",
+        "properties": {
+          "hasText": {
+            "type": "boolean"
+          },
+          "hasContext": {
+            "type": "boolean"
+          }
+        }
+      },
+      "recordSchema": {
+        "type": "object",
+        "properties": {
+          "jsonrpc": {
+            "type": "string",
+            "enum": [
+              "2.0"
+            ]
+          },
+          "method": {
+            "type": "string",
+            "enum": [
+              "event"
+            ]
+          },
+          "params": {
+            "type": "object",
+            "properties": {
+              "type": {
+                "type": "string",
+                "enum": [
+                  "thinking.delta"
+                ]
+              },
+              "session_id": {
+                "type": "string"
+              },
+              "payload": {
+                "type": "object",
+                "properties": {
+                  "hasText": {
+                    "type": "boolean"
+                  },
+                  "hasContext": {
+                    "type": "boolean"
+                  }
+                }
+              }
+            },
+            "required": [
+              "type",
+              "payload"
+            ]
+          }
+        },
+        "required": [
+          "method",
+          "params"
+        ]
+      },
+      "recordChannel": "tui-gateway",
+      "evidence": {
+        "existence": [
+          "hermes-runtime-headless"
+        ],
+        "shape": [
+          "hermes-runtime-headless"
+        ],
+        "carrier": [
+          "hermes-runtime-headless"
+        ]
+      },
+      "confidence": "verified-headless",
+      "fixture": "captures/hermes@0.20.0/basic-turn/rpc.jsonl",
+      "notes": "UI spinner text, not model reasoning."
+    },
+    {
+      "surface": "hermes",
+      "surfaceVersion": "0.20.0",
+      "event": "tool.complete",
+      "firstSeen": "0.20.0",
+      "lastVerified": "0.20.0",
+      "channel": "tui-gateway",
+      "channels": [
+        "tui-gateway"
+      ],
+      "transport": "jsonrpc-notification",
+      "direction": "agent-to-client",
+      "payloadSchema": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string"
+          },
+          "tool_id": {
+            "type": "string"
+          },
+          "duration_s": {
+            "type": "number",
+            "minimum": 0
+          },
+          "result": {
+            "type": "object",
+            "properties": {
+              "exit_code": {
+                "type": "number"
+              },
+              "status": {
+                "type": "string"
+              },
+              "hasOutput": {
+                "type": "boolean"
+              },
+              "hasError": {
+                "type": "boolean"
+              }
+            }
+          },
+          "hasText": {
+            "type": "boolean"
+          },
+          "hasContext": {
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "name",
+          "tool_id"
+        ]
+      },
+      "recordSchema": {
+        "type": "object",
+        "properties": {
+          "jsonrpc": {
+            "type": "string",
+            "enum": [
+              "2.0"
+            ]
+          },
+          "method": {
+            "type": "string",
+            "enum": [
+              "event"
+            ]
+          },
+          "params": {
+            "type": "object",
+            "properties": {
+              "type": {
+                "type": "string",
+                "enum": [
+                  "tool.complete"
+                ]
+              },
+              "session_id": {
+                "type": "string"
+              },
+              "payload": {
+                "type": "object",
+                "properties": {
+                  "name": {
+                    "type": "string"
+                  },
+                  "tool_id": {
+                    "type": "string"
+                  },
+                  "duration_s": {
+                    "type": "number",
+                    "minimum": 0
+                  },
+                  "result": {
+                    "type": "object",
+                    "properties": {
+                      "exit_code": {
+                        "type": "number"
+                      },
+                      "status": {
+                        "type": "string"
+                      },
+                      "hasOutput": {
+                        "type": "boolean"
+                      },
+                      "hasError": {
+                        "type": "boolean"
+                      }
+                    }
+                  },
+                  "hasText": {
+                    "type": "boolean"
+                  },
+                  "hasContext": {
+                    "type": "boolean"
+                  }
+                },
+                "required": [
+                  "name",
+                  "tool_id"
+                ]
+              }
+            },
+            "required": [
+              "type",
+              "payload"
+            ]
+          }
+        },
+        "required": [
+          "method",
+          "params"
+        ]
+      },
+      "recordChannel": "tui-gateway",
+      "evidence": {
+        "existence": [
+          "hermes-runtime-headless"
+        ],
+        "shape": [
+          "hermes-runtime-headless"
+        ],
+        "carrier": [
+          "hermes-runtime-headless"
+        ]
+      },
+      "confidence": "verified-headless",
+      "fixture": "captures/hermes@0.20.0/tool-success/rpc.jsonl"
+    },
+    {
+      "surface": "hermes",
+      "surfaceVersion": "0.20.0",
+      "event": "tool.generating",
+      "firstSeen": "0.20.0",
+      "lastVerified": "0.20.0",
+      "channel": "tui-gateway",
+      "channels": [
+        "tui-gateway"
+      ],
+      "transport": "jsonrpc-notification",
+      "direction": "agent-to-client",
+      "payloadSchema": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string"
+          },
+          "hasText": {
+            "type": "boolean"
+          },
+          "hasContext": {
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "name"
+        ]
+      },
+      "recordSchema": {
+        "type": "object",
+        "properties": {
+          "jsonrpc": {
+            "type": "string",
+            "enum": [
+              "2.0"
+            ]
+          },
+          "method": {
+            "type": "string",
+            "enum": [
+              "event"
+            ]
+          },
+          "params": {
+            "type": "object",
+            "properties": {
+              "type": {
+                "type": "string",
+                "enum": [
+                  "tool.generating"
+                ]
+              },
+              "session_id": {
+                "type": "string"
+              },
+              "payload": {
+                "type": "object",
+                "properties": {
+                  "name": {
+                    "type": "string"
+                  },
+                  "hasText": {
+                    "type": "boolean"
+                  },
+                  "hasContext": {
+                    "type": "boolean"
+                  }
+                },
+                "required": [
+                  "name"
+                ]
+              }
+            },
+            "required": [
+              "type",
+              "payload"
+            ]
+          }
+        },
+        "required": [
+          "method",
+          "params"
+        ]
+      },
+      "recordChannel": "tui-gateway",
+      "evidence": {
+        "existence": [
+          "hermes-runtime-headless"
+        ],
+        "shape": [
+          "hermes-runtime-headless"
+        ],
+        "carrier": [
+          "hermes-runtime-headless"
+        ]
+      },
+      "confidence": "verified-headless",
+      "fixture": "captures/hermes@0.20.0/tool-success/rpc.jsonl"
+    },
+    {
+      "surface": "hermes",
+      "surfaceVersion": "0.20.0",
+      "event": "tool.start",
+      "firstSeen": "0.20.0",
+      "lastVerified": "0.20.0",
+      "channel": "tui-gateway",
+      "channels": [
+        "tui-gateway"
+      ],
+      "transport": "jsonrpc-notification",
+      "direction": "agent-to-client",
+      "payloadSchema": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string"
+          },
+          "tool_id": {
+            "type": "string"
+          },
+          "duration_s": {
+            "type": "number",
+            "minimum": 0
+          },
+          "result": {
+            "type": "object",
+            "properties": {
+              "exit_code": {
+                "type": "number"
+              },
+              "status": {
+                "type": "string"
+              },
+              "hasOutput": {
+                "type": "boolean"
+              },
+              "hasError": {
+                "type": "boolean"
+              }
+            }
+          },
+          "hasText": {
+            "type": "boolean"
+          },
+          "hasContext": {
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "name",
+          "tool_id"
+        ]
+      },
+      "recordSchema": {
+        "type": "object",
+        "properties": {
+          "jsonrpc": {
+            "type": "string",
+            "enum": [
+              "2.0"
+            ]
+          },
+          "method": {
+            "type": "string",
+            "enum": [
+              "event"
+            ]
+          },
+          "params": {
+            "type": "object",
+            "properties": {
+              "type": {
+                "type": "string",
+                "enum": [
+                  "tool.start"
+                ]
+              },
+              "session_id": {
+                "type": "string"
+              },
+              "payload": {
+                "type": "object",
+                "properties": {
+                  "name": {
+                    "type": "string"
+                  },
+                  "tool_id": {
+                    "type": "string"
+                  },
+                  "duration_s": {
+                    "type": "number",
+                    "minimum": 0
+                  },
+                  "result": {
+                    "type": "object",
+                    "properties": {
+                      "exit_code": {
+                        "type": "number"
+                      },
+                      "status": {
+                        "type": "string"
+                      },
+                      "hasOutput": {
+                        "type": "boolean"
+                      },
+                      "hasError": {
+                        "type": "boolean"
+                      }
+                    }
+                  },
+                  "hasText": {
+                    "type": "boolean"
+                  },
+                  "hasContext": {
+                    "type": "boolean"
+                  }
+                },
+                "required": [
+                  "name",
+                  "tool_id"
+                ]
+              }
+            },
+            "required": [
+              "type",
+              "payload"
+            ]
+          }
+        },
+        "required": [
+          "method",
+          "params"
+        ]
+      },
+      "recordChannel": "tui-gateway",
+      "evidence": {
+        "existence": [
+          "hermes-runtime-headless"
+        ],
+        "shape": [
+          "hermes-runtime-headless"
+        ],
+        "carrier": [
+          "hermes-runtime-headless"
+        ]
+      },
+      "confidence": "verified-headless",
+      "fixture": "captures/hermes@0.20.0/tool-success/rpc.jsonl"
+    }
+  ],
+  "behavior": {
+    "behaviorVersion": 1,
+    "title": "Hermes Agent 0.20.0 native TUI-gateway lifecycle",
+    "description": "Partial order over stdio tui_gateway JSON-RPC and isolated-home hooks. Live Node TUI attach is the same dispatcher but is not itself a capture in this model.",
+    "source": "Hermetic Hermes 0.20.0 turn census. Unobserved source methods are omitted.",
+    "lanes": [
+      {
+        "id": "session",
+        "label": "Session"
+      },
+      {
+        "id": "turn",
+        "label": "Turn stream"
+      },
+      {
+        "id": "tool",
+        "label": "Tools and approvals"
+      },
+      {
+        "id": "hook",
+        "label": "Plugin hooks / webhooks"
+      }
+    ],
+    "nodes": [
+      {
+        "id": "gateway-ready",
+        "event": "gateway.ready",
+        "lane": "session",
+        "order": 0,
+        "confidence": "verified-headless",
+        "evidence": {
+          "existence": [
+            "hermes-runtime-headless"
+          ],
+          "shape": [
+            "hermes-runtime-headless"
+          ]
+        }
+      },
+      {
+        "id": "session-create",
+        "event": "session.create",
+        "lane": "session",
+        "order": 1,
+        "confidence": "verified-headless",
+        "evidence": {
+          "existence": [
+            "hermes-runtime-headless"
+          ],
+          "shape": [
+            "hermes-runtime-headless"
+          ]
+        }
+      },
+      {
+        "id": "session-resume",
+        "event": "session.resume",
+        "lane": "session",
+        "order": 1,
+        "confidence": "verified-headless",
+        "evidence": {
+          "existence": [
+            "hermes-runtime-headless"
+          ],
+          "shape": [
+            "hermes-runtime-headless"
+          ]
+        }
+      },
+      {
+        "id": "session-info",
+        "event": "session.info",
+        "lane": "session",
+        "order": 2,
+        "confidence": "verified-headless",
+        "evidence": {
+          "existence": [
+            "hermes-runtime-headless"
+          ],
+          "shape": [
+            "hermes-runtime-headless"
+          ]
+        }
+      },
+      {
+        "id": "sessions-changed",
+        "event": "sessions.changed",
+        "lane": "session",
+        "order": 3,
+        "confidence": "verified-headless",
+        "evidence": {
+          "existence": [
+            "hermes-runtime-headless"
+          ],
+          "shape": [
+            "hermes-runtime-headless"
+          ]
+        }
+      },
+      {
+        "id": "prompt-submit",
+        "event": "prompt.submit",
+        "lane": "turn",
+        "order": 4,
+        "confidence": "verified-headless",
+        "evidence": {
+          "existence": [
+            "hermes-runtime-headless"
+          ],
+          "shape": [
+            "hermes-runtime-headless"
+          ]
+        }
+      },
+      {
+        "id": "message-start",
+        "event": "message.start",
+        "lane": "turn",
+        "order": 5,
+        "confidence": "verified-headless",
+        "evidence": {
+          "existence": [
+            "hermes-runtime-headless"
+          ],
+          "shape": [
+            "hermes-runtime-headless"
+          ]
+        }
+      },
+      {
+        "id": "thinking-delta",
+        "event": "thinking.delta",
+        "lane": "turn",
+        "order": 6,
+        "confidence": "verified-headless",
+        "evidence": {
+          "existence": [
+            "hermes-runtime-headless"
+          ],
+          "shape": [
+            "hermes-runtime-headless"
+          ]
+        }
+      },
+      {
+        "id": "message-delta",
+        "event": "message.delta",
+        "lane": "turn",
+        "order": 7,
+        "confidence": "verified-headless",
+        "evidence": {
+          "existence": [
+            "hermes-runtime-headless"
+          ],
+          "shape": [
+            "hermes-runtime-headless"
+          ]
+        }
+      },
+      {
+        "id": "reasoning-available",
+        "event": "reasoning.available",
+        "lane": "turn",
+        "order": 8,
+        "confidence": "verified-headless",
+        "evidence": {
+          "existence": [
+            "hermes-runtime-headless"
+          ],
+          "shape": [
+            "hermes-runtime-headless"
+          ]
+        }
+      },
+      {
+        "id": "message-complete",
+        "event": "message.complete",
+        "lane": "turn",
+        "order": 9,
+        "confidence": "verified-headless",
+        "evidence": {
+          "existence": [
+            "hermes-runtime-headless"
+          ],
+          "shape": [
+            "hermes-runtime-headless"
+          ]
+        },
+        "match": {
+          "status": "complete"
+        }
+      },
+      {
+        "id": "message-interrupted",
+        "event": "message.complete",
+        "lane": "turn",
+        "order": 9,
+        "confidence": "verified-headless",
+        "evidence": {
+          "existence": [
+            "hermes-runtime-headless"
+          ],
+          "shape": [
+            "hermes-runtime-headless"
+          ]
+        },
+        "match": {
+          "status": "interrupted"
+        }
+      },
+      {
+        "id": "session-interrupt",
+        "event": "session.interrupt",
+        "lane": "turn",
+        "order": 8,
+        "confidence": "verified-headless",
+        "evidence": {
+          "existence": [
+            "hermes-runtime-headless"
+          ],
+          "shape": [
+            "hermes-runtime-headless"
+          ]
+        }
+      },
+      {
+        "id": "tool-generating",
+        "event": "tool.generating",
+        "lane": "tool",
+        "order": 6,
+        "confidence": "verified-headless",
+        "evidence": {
+          "existence": [
+            "hermes-runtime-headless"
+          ],
+          "shape": [
+            "hermes-runtime-headless"
+          ]
+        }
+      },
+      {
+        "id": "tool-start",
+        "event": "tool.start",
+        "lane": "tool",
+        "order": 7,
+        "confidence": "verified-headless",
+        "evidence": {
+          "existence": [
+            "hermes-runtime-headless"
+          ],
+          "shape": [
+            "hermes-runtime-headless"
+          ]
+        }
+      },
+      {
+        "id": "approval-request",
+        "event": "approval.request",
+        "lane": "tool",
+        "order": 8,
+        "confidence": "verified-headless",
+        "evidence": {
+          "existence": [
+            "hermes-runtime-headless"
+          ],
+          "shape": [
+            "hermes-runtime-headless"
+          ]
+        }
+      },
+      {
+        "id": "approval-respond",
+        "event": "approval.respond",
+        "lane": "tool",
+        "order": 8,
+        "confidence": "verified-headless",
+        "evidence": {
+          "existence": [
+            "hermes-runtime-headless"
+          ],
+          "shape": [
+            "hermes-runtime-headless"
+          ]
+        }
+      },
+      {
+        "id": "tool-complete",
+        "event": "tool.complete",
+        "lane": "tool",
+        "order": 9,
+        "confidence": "verified-headless",
+        "evidence": {
+          "existence": [
+            "hermes-runtime-headless"
+          ],
+          "shape": [
+            "hermes-runtime-headless"
+          ]
+        }
+      },
+      {
+        "id": "hook-session-start",
+        "event": "on_session_start",
+        "lane": "hook",
+        "order": 1,
+        "confidence": "verified-headless",
+        "evidence": {
+          "existence": [
+            "hermes-runtime-headless"
+          ],
+          "shape": [
+            "hermes-runtime-headless"
+          ]
+        }
+      },
+      {
+        "id": "hook-pre-llm",
+        "event": "pre_llm_call",
+        "lane": "hook",
+        "order": 4,
+        "confidence": "verified-headless",
+        "evidence": {
+          "existence": [
+            "hermes-runtime-headless"
+          ],
+          "shape": [
+            "hermes-runtime-headless"
+          ]
+        }
+      },
+      {
+        "id": "hook-pre-api",
+        "event": "pre_api_request",
+        "lane": "hook",
+        "order": 5,
+        "confidence": "verified-headless",
+        "evidence": {
+          "existence": [
+            "hermes-runtime-headless"
+          ],
+          "shape": [
+            "hermes-runtime-headless"
+          ]
+        }
+      },
+      {
+        "id": "hook-post-api",
+        "event": "post_api_request",
+        "lane": "hook",
+        "order": 8,
+        "confidence": "verified-headless",
+        "evidence": {
+          "existence": [
+            "hermes-runtime-headless"
+          ],
+          "shape": [
+            "hermes-runtime-headless"
+          ]
+        }
+      },
+      {
+        "id": "hook-post-llm",
+        "event": "post_llm_call",
+        "lane": "hook",
+        "order": 9,
+        "confidence": "verified-headless",
+        "evidence": {
+          "existence": [
+            "hermes-runtime-headless"
+          ],
+          "shape": [
+            "hermes-runtime-headless"
+          ]
+        }
+      },
+      {
+        "id": "hook-pre-tool",
+        "event": "pre_tool_call",
+        "lane": "hook",
+        "order": 7,
+        "confidence": "verified-headless",
+        "evidence": {
+          "existence": [
+            "hermes-runtime-headless"
+          ],
+          "shape": [
+            "hermes-runtime-headless"
+          ]
+        }
+      },
+      {
+        "id": "hook-pre-approval",
+        "event": "pre_approval_request",
+        "lane": "hook",
+        "order": 8,
+        "confidence": "verified-headless",
+        "evidence": {
+          "existence": [
+            "hermes-runtime-headless"
+          ],
+          "shape": [
+            "hermes-runtime-headless"
+          ]
+        }
+      },
+      {
+        "id": "hook-post-approval",
+        "event": "post_approval_response",
+        "lane": "hook",
+        "order": 8,
+        "confidence": "verified-headless",
+        "evidence": {
+          "existence": [
+            "hermes-runtime-headless"
+          ],
+          "shape": [
+            "hermes-runtime-headless"
+          ]
+        }
+      },
+      {
+        "id": "hook-post-tool",
+        "event": "post_tool_call",
+        "lane": "hook",
+        "order": 9,
+        "confidence": "verified-headless",
+        "evidence": {
+          "existence": [
+            "hermes-runtime-headless"
+          ],
+          "shape": [
+            "hermes-runtime-headless"
+          ]
+        }
+      },
+      {
+        "id": "hook-session-end",
+        "event": "on_session_end",
+        "lane": "hook",
+        "order": 10,
+        "confidence": "verified-headless",
+        "evidence": {
+          "existence": [
+            "hermes-runtime-headless"
+          ],
+          "shape": [
+            "hermes-runtime-headless"
+          ]
+        }
+      },
+      {
+        "id": "hook-finalize",
+        "event": "on_session_finalize",
+        "lane": "hook",
+        "order": 11,
+        "confidence": "verified-headless",
+        "evidence": {
+          "existence": [
+            "hermes-runtime-headless"
+          ],
+          "shape": [
+            "hermes-runtime-headless"
+          ]
+        }
+      }
+    ],
+    "relations": [
+      {
+        "from": "gateway-ready",
+        "to": "session-create",
+        "kind": "sequence",
+        "confidence": "verified-headless",
+        "evidence": {
+          "existence": [
+            "hermes-runtime-headless"
+          ],
+          "shape": [
+            "hermes-runtime-headless"
+          ],
+          "ordering": [
+            "hermes-runtime-headless"
+          ]
+        }
+      },
+      {
+        "from": "gateway-ready",
+        "to": "session-resume",
+        "kind": "resume",
+        "label": "resume of a stored id",
+        "confidence": "verified-headless",
+        "evidence": {
+          "existence": [
+            "hermes-runtime-headless"
+          ],
+          "shape": [
+            "hermes-runtime-headless"
+          ],
+          "ordering": [
+            "hermes-runtime-headless"
+          ]
+        }
+      },
+      {
+        "from": "session-create",
+        "to": "session-info",
+        "kind": "sequence",
+        "confidence": "verified-headless",
+        "evidence": {
+          "existence": [
+            "hermes-runtime-headless"
+          ],
+          "shape": [
+            "hermes-runtime-headless"
+          ],
+          "ordering": [
+            "hermes-runtime-headless"
+          ]
+        }
+      },
+      {
+        "from": "session-resume",
+        "to": "session-info",
+        "kind": "sequence",
+        "confidence": "verified-headless",
+        "evidence": {
+          "existence": [
+            "hermes-runtime-headless"
+          ],
+          "shape": [
+            "hermes-runtime-headless"
+          ],
+          "ordering": [
+            "hermes-runtime-headless"
+          ]
+        }
+      },
+      {
+        "from": "session-create",
+        "to": "sessions-changed",
+        "kind": "async",
+        "confidence": "verified-headless",
+        "evidence": {
+          "existence": [
+            "hermes-runtime-headless"
+          ],
+          "shape": [
+            "hermes-runtime-headless"
+          ],
+          "ordering": [
+            "hermes-runtime-headless"
+          ]
+        }
+      },
+      {
+        "from": "session-create",
+        "to": "hook-session-start",
+        "kind": "async",
+        "confidence": "verified-headless",
+        "evidence": {
+          "existence": [
+            "hermes-runtime-headless"
+          ],
+          "shape": [
+            "hermes-runtime-headless"
+          ],
+          "ordering": [
+            "hermes-runtime-headless"
+          ]
+        }
+      },
+      {
+        "from": "session-info",
+        "to": "prompt-submit",
+        "kind": "sequence",
+        "confidence": "verified-headless",
+        "evidence": {
+          "existence": [
+            "hermes-runtime-headless"
+          ],
+          "shape": [
+            "hermes-runtime-headless"
+          ],
+          "ordering": [
+            "hermes-runtime-headless"
+          ]
+        }
+      },
+      {
+        "from": "prompt-submit",
+        "to": "message-start",
+        "kind": "sequence",
+        "confidence": "verified-headless",
+        "evidence": {
+          "existence": [
+            "hermes-runtime-headless"
+          ],
+          "shape": [
+            "hermes-runtime-headless"
+          ],
+          "ordering": [
+            "hermes-runtime-headless"
+          ]
+        }
+      },
+      {
+        "from": "prompt-submit",
+        "to": "hook-pre-llm",
+        "kind": "async",
+        "confidence": "verified-headless",
+        "evidence": {
+          "existence": [
+            "hermes-runtime-headless"
+          ],
+          "shape": [
+            "hermes-runtime-headless"
+          ],
+          "ordering": [
+            "hermes-runtime-headless"
+          ]
+        }
+      },
+      {
+        "from": "hook-pre-llm",
+        "to": "hook-pre-api",
+        "kind": "sequence",
+        "confidence": "verified-headless",
+        "evidence": {
+          "existence": [
+            "hermes-runtime-headless"
+          ],
+          "shape": [
+            "hermes-runtime-headless"
+          ],
+          "ordering": [
+            "hermes-runtime-headless"
+          ]
+        }
+      },
+      {
+        "from": "message-start",
+        "to": "thinking-delta",
+        "kind": "sequence",
+        "confidence": "verified-headless",
+        "evidence": {
+          "existence": [
+            "hermes-runtime-headless"
+          ],
+          "shape": [
+            "hermes-runtime-headless"
+          ],
+          "ordering": [
+            "hermes-runtime-headless"
+          ]
+        }
+      },
+      {
+        "from": "thinking-delta",
+        "to": "message-delta",
+        "kind": "conditional",
+        "label": "no-tool reply",
+        "confidence": "verified-headless",
+        "evidence": {
+          "existence": [
+            "hermes-runtime-headless"
+          ],
+          "shape": [
+            "hermes-runtime-headless"
+          ],
+          "ordering": [
+            "hermes-runtime-headless"
+          ]
+        }
+      },
+      {
+        "from": "thinking-delta",
+        "to": "tool-generating",
+        "kind": "conditional",
+        "label": "tool call",
+        "confidence": "verified-headless",
+        "evidence": {
+          "existence": [
+            "hermes-runtime-headless"
+          ],
+          "shape": [
+            "hermes-runtime-headless"
+          ],
+          "ordering": [
+            "hermes-runtime-headless"
+          ]
+        }
+      },
+      {
+        "from": "tool-generating",
+        "to": "tool-start",
+        "kind": "sequence",
+        "confidence": "verified-headless",
+        "evidence": {
+          "existence": [
+            "hermes-runtime-headless"
+          ],
+          "shape": [
+            "hermes-runtime-headless"
+          ],
+          "ordering": [
+            "hermes-runtime-headless"
+          ]
+        }
+      },
+      {
+        "from": "tool-start",
+        "to": "hook-pre-tool",
+        "kind": "async",
+        "confidence": "verified-headless",
+        "evidence": {
+          "existence": [
+            "hermes-runtime-headless"
+          ],
+          "shape": [
+            "hermes-runtime-headless"
+          ],
+          "ordering": [
+            "hermes-runtime-headless"
+          ]
+        }
+      },
+      {
+        "from": "tool-start",
+        "to": "tool-complete",
+        "kind": "conditional",
+        "label": "no approval",
+        "confidence": "verified-headless",
+        "evidence": {
+          "existence": [
+            "hermes-runtime-headless"
+          ],
+          "shape": [
+            "hermes-runtime-headless"
+          ],
+          "ordering": [
+            "hermes-runtime-headless"
+          ]
+        }
+      },
+      {
+        "from": "tool-start",
+        "to": "approval-request",
+        "kind": "conditional",
+        "label": "dangerous command",
+        "confidence": "verified-headless",
+        "evidence": {
+          "existence": [
+            "hermes-runtime-headless"
+          ],
+          "shape": [
+            "hermes-runtime-headless"
+          ],
+          "ordering": [
+            "hermes-runtime-headless"
+          ]
+        }
+      },
+      {
+        "from": "approval-request",
+        "to": "hook-pre-approval",
+        "kind": "async",
+        "confidence": "verified-headless",
+        "evidence": {
+          "existence": [
+            "hermes-runtime-headless"
+          ],
+          "shape": [
+            "hermes-runtime-headless"
+          ],
+          "ordering": [
+            "hermes-runtime-headless"
+          ]
+        }
+      },
+      {
+        "from": "approval-request",
+        "to": "approval-respond",
+        "kind": "sequence",
+        "confidence": "verified-headless",
+        "evidence": {
+          "existence": [
+            "hermes-runtime-headless"
+          ],
+          "shape": [
+            "hermes-runtime-headless"
+          ],
+          "ordering": [
+            "hermes-runtime-headless"
+          ]
+        }
+      },
+      {
+        "from": "approval-respond",
+        "to": "hook-post-approval",
+        "kind": "async",
+        "confidence": "verified-headless",
+        "evidence": {
+          "existence": [
+            "hermes-runtime-headless"
+          ],
+          "shape": [
+            "hermes-runtime-headless"
+          ],
+          "ordering": [
+            "hermes-runtime-headless"
+          ]
+        }
+      },
+      {
+        "from": "approval-respond",
+        "to": "tool-complete",
+        "kind": "sequence",
+        "confidence": "verified-headless",
+        "evidence": {
+          "existence": [
+            "hermes-runtime-headless"
+          ],
+          "shape": [
+            "hermes-runtime-headless"
+          ],
+          "ordering": [
+            "hermes-runtime-headless"
+          ]
+        }
+      },
+      {
+        "from": "tool-complete",
+        "to": "hook-post-tool",
+        "kind": "async",
+        "confidence": "verified-headless",
+        "evidence": {
+          "existence": [
+            "hermes-runtime-headless"
+          ],
+          "shape": [
+            "hermes-runtime-headless"
+          ],
+          "ordering": [
+            "hermes-runtime-headless"
+          ]
+        }
+      },
+      {
+        "from": "tool-complete",
+        "to": "message-delta",
+        "kind": "conditional",
+        "label": "follow-up model call",
+        "confidence": "verified-headless",
+        "evidence": {
+          "existence": [
+            "hermes-runtime-headless"
+          ],
+          "shape": [
+            "hermes-runtime-headless"
+          ],
+          "ordering": [
+            "hermes-runtime-headless"
+          ]
+        }
+      },
+      {
+        "from": "message-delta",
+        "to": "reasoning-available",
+        "kind": "conditional",
+        "confidence": "verified-headless",
+        "evidence": {
+          "existence": [
+            "hermes-runtime-headless"
+          ],
+          "shape": [
+            "hermes-runtime-headless"
+          ],
+          "ordering": [
+            "hermes-runtime-headless"
+          ]
+        }
+      },
+      {
+        "from": "message-delta",
+        "to": "session-interrupt",
+        "kind": "conditional",
+        "label": "barge-in",
+        "confidence": "verified-headless",
+        "evidence": {
+          "existence": [
+            "hermes-runtime-headless"
+          ],
+          "shape": [
+            "hermes-runtime-headless"
+          ],
+          "ordering": [
+            "hermes-runtime-headless"
+          ]
+        }
+      },
+      {
+        "from": "reasoning-available",
+        "to": "message-complete",
+        "kind": "sequence",
+        "confidence": "verified-headless",
+        "evidence": {
+          "existence": [
+            "hermes-runtime-headless"
+          ],
+          "shape": [
+            "hermes-runtime-headless"
+          ],
+          "ordering": [
+            "hermes-runtime-headless"
+          ]
+        }
+      },
+      {
+        "from": "session-interrupt",
+        "to": "message-interrupted",
+        "kind": "sequence",
+        "confidence": "verified-headless",
+        "evidence": {
+          "existence": [
+            "hermes-runtime-headless"
+          ],
+          "shape": [
+            "hermes-runtime-headless"
+          ],
+          "ordering": [
+            "hermes-runtime-headless"
+          ]
+        }
+      },
+      {
+        "from": "hook-pre-api",
+        "to": "hook-post-api",
+        "kind": "conditional",
+        "label": "provider finished",
+        "confidence": "verified-headless",
+        "evidence": {
+          "existence": [
+            "hermes-runtime-headless"
+          ],
+          "shape": [
+            "hermes-runtime-headless"
+          ],
+          "ordering": [
+            "hermes-runtime-headless"
+          ]
+        }
+      },
+      {
+        "from": "hook-post-api",
+        "to": "hook-post-llm",
+        "kind": "conditional",
+        "confidence": "verified-headless",
+        "evidence": {
+          "existence": [
+            "hermes-runtime-headless"
+          ],
+          "shape": [
+            "hermes-runtime-headless"
+          ],
+          "ordering": [
+            "hermes-runtime-headless"
+          ]
+        }
+      },
+      {
+        "from": "message-complete",
+        "to": "hook-session-end",
+        "kind": "async",
+        "label": "gateway teardown",
+        "confidence": "verified-headless",
+        "evidence": {
+          "existence": [
+            "hermes-runtime-headless"
+          ],
+          "shape": [
+            "hermes-runtime-headless"
+          ],
+          "ordering": [
+            "hermes-runtime-headless"
+          ]
+        }
+      },
+      {
+        "from": "hook-session-end",
+        "to": "hook-finalize",
+        "kind": "sequence",
+        "confidence": "verified-headless",
+        "evidence": {
+          "existence": [
+            "hermes-runtime-headless"
+          ],
+          "shape": [
+            "hermes-runtime-headless"
+          ],
+          "ordering": [
+            "hermes-runtime-headless"
+          ]
+        }
+      },
+      {
+        "from": "session-create",
+        "to": "session-resume",
+        "kind": "resume",
+        "label": "later process, same stored id",
+        "confidence": "verified-headless",
+        "evidence": {
+          "existence": [
+            "hermes-runtime-headless"
+          ],
+          "shape": [
+            "hermes-runtime-headless"
+          ],
+          "ordering": [
+            "hermes-runtime-headless"
+          ]
+        }
+      }
+    ]
+  }
+}

@@ -8,7 +8,7 @@ test('staging changes only the candidate pointer and persona ASM projection', ()
       {
         id: 'fake',
         status: 'legacy-verified',
-        currentManifest: 'old/manifest.json',
+        currentManifest: 'old/groundtruth.json',
         persona: 'fake',
       },
     ],
@@ -18,14 +18,14 @@ test('staging changes only the candidate pointer and persona ASM projection', ()
     ledger,
     persona,
     vendor: 'fake',
-    manifestRelative: 'new/manifest.json',
+    manifestRelative: 'new/groundtruth.json',
     surfaceModelPath: 'vendors/fake/model/fake@2.0.0',
   });
   assert.deepEqual(ledger.agents[0], {
     id: 'fake',
     status: 'legacy-verified',
-    currentManifest: 'old/manifest.json',
-    candidateManifest: 'new/manifest.json',
+    currentManifest: 'old/groundtruth.json',
+    candidateManifest: 'new/groundtruth.json',
     persona: 'fake',
   });
   assert.deepEqual(persona.asm, {
