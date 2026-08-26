@@ -130,7 +130,11 @@ export function verifyAgentSurface({
   const replay = replayAgentSurface({ repoRoot, vendor, manifestPath });
   const commandGates = runCommands
     ? {
-        surface: runGate('pnpm', ['--filter', '@vibecook/puppeteer-surface', 'run', `surface:audit:${vendor}`], repoRoot),
+        surface: runGate(
+          'pnpm',
+          ['--filter', '@vibecook/puppeteer-surface', 'run', `surface:audit:${vendor}`],
+          repoRoot,
+        ),
         adapter: runGate('pnpm', ['--filter', `@vibecook/puppeteer-adapter-${vendor}`, 'test'], repoRoot),
         imposter: runGate('pnpm', ['--filter', '@vibecook/puppeteer-imposter', 'test'], repoRoot),
         packages: runGate('pnpm', ['packages:check'], repoRoot),
@@ -149,12 +153,10 @@ export function verifyAgentSurface({
     adapterFixtures: !runCommands || passed(commandGates.adapter) ? 'passed' : 'failed',
     imposter: !runCommands || passed(commandGates.imposter) ? 'passed' : 'failed',
     replayDiff: replay.status === 'passed' ? 'passed' : 'failed',
-    hermetic:
-      !runCommands || (passed(commandGates.adapter) && passed(commandGates.imposter)) ? 'passed' : 'failed',
+    hermetic: !runCommands || (passed(commandGates.adapter) && passed(commandGates.imposter)) ? 'passed' : 'failed',
     pinnedArtifact: platformIssues.length === 0 ? 'passed' : 'failed',
     platforms: platformIssues.length === 0 ? 'passed' : 'failed',
-    packaging:
-      !runCommands || (passed(commandGates.packages) && passed(commandGates.pack)) ? 'passed' : 'failed',
+    packaging: !runCommands || (passed(commandGates.packages) && passed(commandGates.pack)) ? 'passed' : 'failed',
     documentation: !runCommands || passed(commandGates.docs) ? 'passed' : 'failed',
   };
   const modelDigest = evidence.records?.find((record) => record.kind === 'model-tree')?.sha256;

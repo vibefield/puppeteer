@@ -141,7 +141,8 @@ export function validatePromotion({
   }
   const groundTruth = json(manifestAbsolute);
   const manifest = groundTruth.manifest ?? {};
-  if (groundTruth.format !== 'puppeteer-groundtruth/1') issues.push('manifest is not a canonical ground-truth document');
+  if (groundTruth.format !== 'puppeteer-groundtruth/1')
+    issues.push('manifest is not a canonical ground-truth document');
   if (manifest.vendor !== vendor) issues.push(`manifest vendor is ${manifest.vendor}`);
   let model;
   try {

@@ -7,11 +7,14 @@
 import { rmSync } from 'node:fs';
 import { afterEach, describe, expect, it } from 'vitest';
 import { createControlPlane, type ControlPlane } from './plane.js';
-import { createClaudeSpawner, createPersonaSpawner } from './spawner.js';
+import { createPersonaSpawner } from './spawner.js';
 import { controlPaths, waitFor } from './testing.js';
 
 const tmps: string[] = [];
 let plane: ControlPlane | undefined;
+
+const createTestClaudeSpawner = (options: Parameters<typeof createPersonaSpawner>[2]) =>
+  createPersonaSpawner('claude', 'Claude native surface', options);
 
 afterEach(async () => {
   await plane?.stop();
@@ -40,7 +43,10 @@ describe.skipIf(!posix)('persona spawner', () => {
   it('spawns a Claude session that joins with native truth and no normalized state', async () => {
     const paths = controlPaths();
     tmps.push(paths.root);
-    const spawner = createClaudeSpawner({ controlSocketPath: paths.socketPath, controlTokenPath: paths.tokenPath });
+    const spawner = createTestClaudeSpawner({
+      controlSocketPath: paths.socketPath,
+      controlTokenPath: paths.tokenPath,
+    });
     plane = createControlPlane({ socketPath: paths.socketPath, tokenPath: paths.tokenPath, spawners: [spawner] });
     await plane.start();
 

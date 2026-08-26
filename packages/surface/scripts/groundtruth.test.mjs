@@ -2,12 +2,7 @@ import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { describe, expect, it } from 'vitest';
 import { loadGroundTruth } from '@vibecook/puppeteer-surface';
-import {
-  canonicalJson,
-  checkGroundTruth,
-  discoverModelRoots,
-  renderGroundTruth,
-} from './groundtruth.mjs';
+import { canonicalJson, checkGroundTruth, discoverModelRoots, renderGroundTruth } from './groundtruth.mjs';
 
 describe('canonical Surface ground truth', () => {
   it('matches every split authoring model and generated visualization', () => {

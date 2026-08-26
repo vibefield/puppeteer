@@ -43,7 +43,9 @@ export function probeAgentArtifact({ artifact, version, output, home, environmen
     windowsHide: true,
   });
   if (result.error || result.status !== 0) {
-    throw new Error(`artifact version probe failed: ${result.error?.message ?? result.stderr ?? `exit ${result.status}`}`);
+    throw new Error(
+      `artifact version probe failed: ${result.error?.message ?? result.stderr ?? `exit ${result.status}`}`,
+    );
   }
   const value = validateVersionOutput(result.stdout || result.stderr, version);
   mkdirSync(dirname(outputPath), { recursive: true });

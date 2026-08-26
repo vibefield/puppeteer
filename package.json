@@ -27,10 +27,6 @@
     "godview:typecheck": "pnpm --filter godview typecheck",
     "agent-devkit": "pnpm --filter imposter-control start",
     "agent-devkit:smoke": "pnpm --filter imposter-control smoke",
-    "imposter-control": "pnpm agent-devkit",
-    "imposter-control:smoke": "pnpm agent-devkit:smoke",
-    "emulator": "pnpm agent-devkit",
-    "emulator:smoke": "pnpm agent-devkit:smoke",
     "ai:link": "pnpm add --global ./packages/imposter",
     "surface:audit": "pnpm --filter @vibecook/puppeteer-surface run surface:audit",
     "surface:groundtruth:check": "pnpm --filter @vibecook/puppeteer-surface run surface:groundtruth:check",
@@ -44,7 +40,6 @@
     "support:write": "node scripts/render-agent-support.mjs --write",
     "upstream:check": "node scripts/detect-upstream-agents.mjs --check-config",
     "upstream:detect": "node scripts/detect-upstream-agents.mjs",
-    "surface:detect": "pnpm upstream:detect",
     "surface:acquire": "node scripts/acquire-agent-artifacts.mjs",
     "surface:download": "node scripts/download-agent-artifact.mjs",
     "surface:evidence:artifacts": "node scripts/update-agent-evidence-artifacts.mjs",
@@ -55,8 +50,8 @@
     "pack:check": "pnpm build && node scripts/pack-check.mjs",
     "release:publish": "pnpm -r --filter './packages/**' typecheck && pnpm -r --filter './packages/**' test && pnpm -r --filter './packages/**' build && node scripts/publish-packages.mjs",
     "release:trust": "node scripts/trust-packages.mjs",
-    "format:check": "prettier --check \"packages/*/src/**/*.{ts,tsx}\"",
-    "format": "prettier --write \"packages/*/src/**/*.{ts,tsx}\""
+    "format:check": "prettier --check \"packages/*/src/**/*.{ts,tsx}\" \"packages/*/scripts/**/*.{ts,tsx,mjs}\" \"apps/*/src/**/*.{ts,tsx}\" \"apps/*/*.{ts,mjs}\" \"scripts/**/*.mjs\"",
+    "format": "prettier --write \"packages/*/src/**/*.{ts,tsx}\" \"packages/*/scripts/**/*.{ts,tsx,mjs}\" \"apps/*/src/**/*.{ts,tsx}\" \"apps/*/*.{ts,mjs}\" \"scripts/**/*.mjs\""
   },
   "engines": {
     "node": ">=22.18.0"

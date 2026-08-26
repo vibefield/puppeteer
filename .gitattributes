@@ -1,8 +1,8 @@
 # Check every text file out with LF, on every platform.
 #
 # Several tests here assert that a GENERATED file is byte-identical to what its
-# generator produces — `adapter-claude/src/registry.ts` against
-# `surface/generate-registry.mjs`, and the sanitized captures against the
+# generator produces — `packages/adapter-claude/src/generated/registry.ts`
+# against its package generator, and sanitized captures against the
 # sanitiser. Generators write `\n`. Without this, a Windows checkout rewrites
 # those files to CRLF and the comparison fails on line endings rather than on
 # content, which is both a false alarm and one that can never be fixed in the

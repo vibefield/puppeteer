@@ -114,8 +114,3 @@ export function createPersonaSpawner(
     },
   };
 }
-
-/** Backward-compatible test/helper name for the original single persona. */
-export function createClaudeSpawner(options: PersonaSpawnerOptions = {}): ReturnType<typeof createPersonaSpawner> {
-  return createPersonaSpawner('claude', 'Claude native surface', options);
-}

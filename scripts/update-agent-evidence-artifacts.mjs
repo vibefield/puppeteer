@@ -49,7 +49,9 @@ export function mergeArtifactReport({ evidence, report, requiredPlatforms }) {
       integrity: { status: 'verified', sha256: artifact.sha256 },
     };
   });
-  const oldArtifacts = new Map((existingByPlatform.size ? [...existingByPlatform.values()] : []).map((item) => [item.id, item]));
+  const oldArtifacts = new Map(
+    (existingByPlatform.size ? [...existingByPlatform.values()] : []).map((item) => [item.id, item]),
+  );
   for (const claim of evidence.claims) {
     if (!claim.artifact) continue;
     const old = oldArtifacts.get(claim.artifact);
@@ -74,7 +76,8 @@ if (invokedDirectly) {
   const document = json(manifestPath);
   const manifest = document.manifest ?? document;
   const evidencePath = resolve(dirname(manifestPath), manifest.evidence ?? '');
-  if (manifest.evidence !== 'evidence.json' || !existsSync(evidencePath)) throw new Error('candidate has no evidence.json');
+  if (manifest.evidence !== 'evidence.json' || !existsSync(evidencePath))
+    throw new Error('candidate has no evidence.json');
   const upstream = json(resolve(root, 'packages', 'surface', 'vendors', manifest.vendor, 'upstream.json'));
   const evidence = mergeArtifactReport({
     evidence: json(evidencePath),

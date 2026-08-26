@@ -10,17 +10,17 @@
 import { rmSync } from 'node:fs';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { createControlPlane, type ControlPlane } from './plane.js';
-import { createClaudeSpawner } from './spawner.js';
+import { createPersonaSpawner } from './spawner.js';
 import { controlPaths, waitFor } from './testing.js';
 
 let plane: ControlPlane;
-let spawner: ReturnType<typeof createClaudeSpawner> | undefined;
+let spawner: ReturnType<typeof createPersonaSpawner> | undefined;
 const tmps: string[] = [];
 
 beforeEach(async () => {
   const paths = controlPaths();
   tmps.push(paths.root);
-  spawner = createClaudeSpawner({
+  spawner = createPersonaSpawner('claude', 'Claude native surface', {
     controlSocketPath: paths.socketPath,
     controlTokenPath: paths.tokenPath,
   });

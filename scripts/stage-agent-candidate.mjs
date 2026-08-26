@@ -20,7 +20,8 @@ function insideRepo(path) {
 export function stageCandidateDocuments({ ledger, persona, vendor, manifestRelative, surfaceModelPath }) {
   const agent = ledger.agents?.find((entry) => entry.id === vendor);
   if (!agent) throw new Error(`support ledger has no ${vendor} entry`);
-  if (agent.currentManifest === manifestRelative) throw new Error('current support cannot also be staged as a candidate');
+  if (agent.currentManifest === manifestRelative)
+    throw new Error('current support cannot also be staged as a candidate');
   agent.candidateManifest = manifestRelative;
   persona.asm = { package: '@vibecook/puppeteer-surface', path: surfaceModelPath };
   return { ledger, persona, agent };

@@ -42,8 +42,15 @@ try {
       );
       if (forbidden) throw new Error(`${packageName} tarball leaks repo-only evidence: ${forbidden}`);
     }
-    if (directory.startsWith('packages/adapter-') && entries.some((entry) => entry.startsWith('package/surface/'))) {
-      throw new Error(`${packageName} tarball contains forbidden Surface data`);
+    if (directory.startsWith('packages/adapter-')) {
+      const forbidden = entries.find(
+        (entry) =>
+          entry.startsWith('package/surface/') ||
+          entry.startsWith('package/scripts/') ||
+          entry.includes('/test-support/') ||
+          /\.(?:live\.)?test\.(?:js|d\.ts|js\.map|d\.ts\.map)$/.test(entry),
+      );
+      if (forbidden) throw new Error(`${packageName} tarball leaks repository-only adapter content: ${forbidden}`);
     }
     if (directory === 'packages/testing' && entries.some((entry) => entry.startsWith('package/fixtures/'))) {
       throw new Error(`${packageName} tarball contains vendor fixtures`);

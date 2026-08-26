@@ -9,15 +9,22 @@ test('the repository package layout satisfies its declared boundaries', () => {
   assert.deepEqual(auditPackageLayout(), []);
 });
 
-test('the checker rejects a direct orphan package directory', () => {
+test('the checker rejects direct orphan package and application directories', () => {
   const fixture = mkdtempSync(join(tmpdir(), 'puppeteer-layout-'));
   mkdirSync(join(fixture, 'packages', 'orphan'), { recursive: true });
+  mkdirSync(join(fixture, 'apps', 'orphan'), { recursive: true });
   writeFileSync(join(fixture, 'package.json'), JSON.stringify({ version: '1.0.0' }));
   writeFileSync(
     join(fixture, 'release-please-config.json'),
     JSON.stringify({ packages: { '.': { 'extra-files': [] } } }),
   );
-  assert.ok(auditPackageLayout(fixture).some((issue) => issue.includes('has no package.json')));
+  const issues = auditPackageLayout(fixture);
+  assert.ok(
+    issues.some((issue) => issue === 'packages/orphan has no package.json (orphan/category directories are forbidden)'),
+  );
+  assert.ok(
+    issues.some((issue) => issue === 'apps/orphan has no package.json (orphan application directories are forbidden)'),
+  );
 });
 
 test('the layered dependency checker rejects upward and concrete-provider edges', () => {

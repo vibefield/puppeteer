@@ -8,6 +8,7 @@
   "author": "James Yong",
   "main": "./dist/main.cjs",
   "scripts": {
+    "build": "pnpm bundle",
     "bundle": "node build.mjs",
     "start": "pnpm bundle && electron .",
     "smoke": "pnpm bundle && electron . --smoke",

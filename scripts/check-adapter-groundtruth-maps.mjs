@@ -61,13 +61,12 @@ export function buildAdapterGroundTruthMap(root, provider, version) {
     source: readFileSync(path, 'utf8'),
   }));
   const semanticSources = sources.filter(
-    ({ path }) => path.includes('normalization/') || path.endsWith('normalizer.ts') || path.endsWith('monitor-evidence.ts'),
+    ({ path }) =>
+      path.includes('normalization/') || path.endsWith('normalizer.ts') || path.endsWith('monitor-evidence.ts'),
   );
   const semanticEvents = events.filter((event) => semanticSources.some(({ source }) => quoted(source, event)));
   const observedOrControlledEvents = events.filter(
-    (event) =>
-      !semanticEvents.includes(event) &&
-      sources.some(({ source }) => quoted(source, event)),
+    (event) => !semanticEvents.includes(event) && sources.some(({ source }) => quoted(source, event)),
   );
   const mapped = new Set([...semanticEvents, ...observedOrControlledEvents]);
   const unmappedEvents = events.filter((event) => !mapped.has(event));
@@ -120,7 +119,8 @@ function writeMaps(root = repositoryRoot) {
   }
 }
 
-const invokedDirectly = process.argv[1] && fileURLToPath(import.meta.url) === join(repositoryRoot, relative(repositoryRoot, process.argv[1]));
+const invokedDirectly =
+  process.argv[1] && fileURLToPath(import.meta.url) === join(repositoryRoot, relative(repositoryRoot, process.argv[1]));
 if (invokedDirectly) {
   if (process.argv.includes('--write')) {
     writeMaps();

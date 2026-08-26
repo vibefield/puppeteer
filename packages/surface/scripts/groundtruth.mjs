@@ -28,7 +28,13 @@ function pretty(value) {
 }
 
 function evidenceBadges(evidence = {}) {
-  const refs = [...new Set(Object.values(evidence).flat().filter((value) => typeof value === 'string'))];
+  const refs = [
+    ...new Set(
+      Object.values(evidence)
+        .flat()
+        .filter((value) => typeof value === 'string'),
+    ),
+  ];
   if (refs.length === 0) return '';
   return `<div class="evidence-refs">${refs
     .map((ref) => `<a class="evidence-ref" href="#claim-${slug(ref)}">${escapeHtml(ref)}</a>`)
@@ -91,21 +97,15 @@ function renderChannels(model) {
         )}</pre></td></tr>`,
     )
     .join('');
-  return `<section id="channels" class="panel"><div class="section-heading"><div><span class="eyebrow">Transport map</span><h2>Channels</h2></div><span class="count">${Object.keys(
-    model.channels.channels,
-  ).length}</span></div><div class="table-wrap"><table><thead><tr><th>Name</th><th>Kind</th><th>Contract</th></tr></thead><tbody>${rows}</tbody></table></div></section>`;
+  return `<section id="channels" class="panel"><div class="section-heading"><div><span class="eyebrow">Transport map</span><h2>Channels</h2></div><span class="count">${
+    Object.keys(model.channels.channels).length
+  }</span></div><div class="table-wrap"><table><thead><tr><th>Name</th><th>Kind</th><th>Contract</th></tr></thead><tbody>${rows}</tbody></table></div></section>`;
 }
 
 function renderEvents(model) {
   const cards = model.events
     .map((event) => {
-      const search = [
-        event.event,
-        event.direction,
-        event.transport,
-        event.confidence,
-        ...(event.channels ?? []),
-      ]
+      const search = [event.event, event.direction, event.transport, event.confidence, ...(event.channels ?? [])]
         .filter(Boolean)
         .join(' ')
         .toLowerCase();
@@ -127,7 +127,9 @@ function renderEvents(model) {
         event.direction ?? 'legacy',
       )}</span><span class="confidence ${slug(event.confidence)}">${escapeHtml(event.confidence)}</span></span></summary><div class="event-body"><dl><div><dt>Channel</dt><dd>${event.channels
         .map((channel) => `<a href="#channels"><code>${escapeHtml(channel)}</code></a>`)
-        .join(' ')}</dd></div><div><dt>Transport</dt><dd>${escapeHtml(event.transport ?? '—')}</dd></div><div><dt>Trigger</dt><dd>${escapeHtml(
+        .join(
+          ' ',
+        )}</dd></div><div><dt>Transport</dt><dd>${escapeHtml(event.transport ?? '—')}</dd></div><div><dt>Trigger</dt><dd>${escapeHtml(
         event.trigger ?? '—',
       )}</dd></div></dl>${event.notes ? `<p>${escapeHtml(event.notes)}</p>` : ''}${evidenceBadges(
         event.evidence,
@@ -140,7 +142,9 @@ function renderEvents(model) {
   const directions = [...new Set(model.events.map((event) => event.direction ?? 'legacy'))].sort();
   return `<section id="events" class="panel"><div class="section-heading"><div><span class="eyebrow">Wire catalog</span><h2>Events</h2></div><span id="event-count" class="count">${model.events.length}</span></div><div class="toolbar"><label><span>Search</span><input id="event-search" type="search" placeholder="event, channel, transport…" /></label><label><span>Direction</span><select id="direction-filter"><option value="">all</option>${directions
     .map((direction) => `<option value="${escapeHtml(direction)}">${escapeHtml(direction)}</option>`)
-    .join('')}</select></label><label><span>Confidence</span><select id="confidence-filter"><option value="">all</option><option>verified-headless</option><option>verified-interactive</option><option>unverified</option></select></label><button id="expand-visible" type="button">Expand visible</button><button id="collapse-events" type="button">Collapse</button></div><div id="event-list" class="event-list">${cards}</div><p id="empty-events" class="empty" hidden>No events match these filters.</p></section>`;
+    .join(
+      '',
+    )}</select></label><label><span>Confidence</span><select id="confidence-filter"><option value="">all</option><option>verified-headless</option><option>verified-interactive</option><option>unverified</option></select></label><button id="expand-visible" type="button">Expand visible</button><button id="collapse-events" type="button">Collapse</button></div><div id="event-list" class="event-list">${cards}</div><p id="empty-events" class="empty" hidden>No events match these filters.</p></section>`;
 }
 
 function renderEvidence(model) {
@@ -151,7 +155,7 @@ function renderEvidence(model) {
     .map(
       (record) =>
         `<tr><td><code>${escapeHtml(record.id)}</code></td><td>${escapeHtml(record.kind ?? '')}</td><td><code>${escapeHtml(
-          record.sha256 ? `sha256:${record.sha256}` : record.path ?? '',
+          record.sha256 ? `sha256:${record.sha256}` : (record.path ?? ''),
         )}</code></td></tr>`,
     )
     .join('');
