@@ -42,8 +42,12 @@ The `AgentAdapterHarness` accepted by that conformance export now includes
 resume path and prove that disposal removes their owned processes, transports,
 observers, and temporary control resources.
 
-Resume conformance now also requires the resumed handle to expose the prior
-assistant reply before a new turn is submitted. Reusing an identifier while
-returning a fresh empty session no longer passes. Likewise, `assertNoOrphans()`
-must only inspect post-dispose state; destructive fallback cleanup cannot run
-before the assertion.
+Resume conformance requires the resumed handle to expose the prior assistant
+reply before a new turn is submitted unless the harness explicitly declares
+`resumeHistory: 'identity-only'`. That exception is for native surfaces such as
+Hermes `tui_gateway` that verify durable identity and message count but expose
+no replayable conversation payload; it must be backed by Surface evidence, not
+used to hide an adapter gap. All resume modes still prove the same native ID
+and a usable next turn. Likewise, `assertNoOrphans()` must only inspect
+post-dispose state; destructive fallback cleanup cannot run before the
+assertion.

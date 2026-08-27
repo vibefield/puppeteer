@@ -22,7 +22,7 @@
       "$liveSessionId": "$uuid:live",
       "$storedSessionId": "$params.session_id"
     },
-    "then": [{ "op": "session.ready" }],
+    "then": [{ "op": "session.start" }, { "op": "session.ready" }],
     "result": {
       "session_id": "$liveSessionId",
       "resumed": "$storedSessionId",

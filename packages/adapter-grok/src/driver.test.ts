@@ -210,6 +210,26 @@ describe('createPendingControlSession', () => {
     expect(observed.stopped).toBe(true);
   });
 
+  it('does not terminate a resumed binding from the prior terminal attachment exit', async () => {
+    const control = fakeControl();
+    const observed = fakeObserver();
+    const session = createPendingControlSession('sid', 'rt-resumed', () => control.session, observed.observer);
+    const projection = projectAgentEvents(session);
+
+    observed.emit({
+      event: { type: 'session:exited', reason: 'other' },
+      phase: 'bootstrap',
+      source: 'native-log',
+      confidence: 'authoritative',
+      nativeEvent: { event_name: 'session_end' },
+    });
+
+    expect(projection.envelopes.some(({ event }) => event.type === 'session:exited')).toBe(false);
+    expect(projection.state.lifecycle).toBe('ready');
+    projection.dispose();
+    await session.dispose();
+  });
+
   it('publishes the merged native-log rail as catalog-routed candidates', async () => {
     const control = fakeControl();
     const observed = fakeObserver();

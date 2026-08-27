@@ -11,51 +11,69 @@ export interface FakeHermesGatewayOptions {
   reply?: string;
   /** When false, session.create/resume omit session.info so the driver must acknowledge from the RPC result. */
   announceSession?: boolean;
+  /** Durable vendor state shared by distinct gateway process lifetimes. */
+  state?: FakeHermesGatewayState;
+}
+
+export interface FakeHermesGatewayState {
+  nextLive: number;
+  storedId: string;
+  messages: Array<{ role: string; text: string }>;
+  inputTokens: number;
+  outputTokens: number;
+  calls: number;
+}
+
+export function createFakeHermesGatewayState(): FakeHermesGatewayState {
+  return {
+    nextLive: 1,
+    storedId: '20260812_000000_c0ffee',
+    messages: [],
+    inputTokens: 0,
+    outputTokens: 0,
+    calls: 0,
+  };
 }
 
 export class FakeHermesGateway implements HermesGatewayTransport {
   readonly frames: HermesGatewayFrame[] = [];
   private readonly listeners = new Set<(frame: HermesGatewayFrame) => void>();
   private readonly statusListeners = new Set<(status: HermesGatewayRailStatus) => void>();
-  private nextLive = 1;
-  private storedId = '20260812_000000_c0ffee';
   private liveId = 'abcd1234';
-  private messages: Array<{ role: string; text: string }> = [];
-  private inputTokens = 0;
-  private outputTokens = 0;
-  private calls = 0;
   private connected = true;
   closed = false;
   readonly reply: string;
 
   private readonly announceSession: boolean;
+  private readonly state: FakeHermesGatewayState;
 
   constructor(options: FakeHermesGatewayOptions = {}) {
     this.reply = options.reply ?? 'SURFACE_HERMES_OK';
     this.announceSession = options.announceSession !== false;
+    this.state = options.state ?? createFakeHermesGatewayState();
   }
 
   private sessionInfo(running: boolean): Record<string, unknown> {
-    const total = this.inputTokens + this.outputTokens;
+    const total = this.state.inputTokens + this.state.outputTokens;
     return {
       model: 'puppeteer-hermes-census',
       provider: 'custom',
       reasoning_effort: 'medium',
       approval_mode: 'manual',
       yolo: false,
-      stored_session_id: this.storedId,
+      stored_session_id: this.state.storedId,
       cwd: '/workspace',
       running,
       usage: {
-        input: this.inputTokens,
-        output: this.outputTokens,
+        input: this.state.inputTokens,
+        output: this.state.outputTokens,
         reasoning: 0,
-        prompt: this.inputTokens,
-        completion: this.outputTokens,
+        prompt: this.state.inputTokens,
+        completion: this.state.outputTokens,
         total,
-        calls: this.calls,
+        calls: this.state.calls,
         compressions: 0,
-        ...(this.calls > 0
+        ...(this.state.calls > 0
           ? { context_used: total, context_max: 120_000, context_percent: (total / 120_000) * 100 }
           : {}),
       },
@@ -76,22 +94,22 @@ export class FakeHermesGateway implements HermesGatewayTransport {
   async request(method: string, params: Record<string, unknown> = {}): Promise<unknown> {
     if (this.closed || !this.connected) throw new Error('fake gateway closed');
     if (method === 'session.create') {
-      this.liveId = `live${this.nextLive++}`;
-      this.storedId = `20260812_000000_${this.liveId.slice(-6)}`;
-      this.messages = [];
-      this.inputTokens = 0;
-      this.outputTokens = 0;
-      this.calls = 0;
+      this.liveId = `live${this.state.nextLive++}`;
+      this.state.storedId = `20260812_000000_${this.liveId.slice(-6)}`;
+      this.state.messages = [];
+      this.state.inputTokens = 0;
+      this.state.outputTokens = 0;
+      this.state.calls = 0;
       if (this.announceSession) {
         queueMicrotask(() => {
           this.emit('session.info', { ...this.sessionInfo(false), cwd: String(params.cwd ?? '/workspace') });
         });
       }
-      return { session_id: this.liveId, stored_session_id: this.storedId, message_count: 0 };
+      return { session_id: this.liveId, stored_session_id: this.state.storedId, message_count: 0 };
     }
     if (method === 'session.resume') {
-      this.liveId = `live${this.nextLive++}`;
-      this.storedId = String(params.session_id ?? this.storedId);
+      this.liveId = `live${this.state.nextLive++}`;
+      this.state.storedId = String(params.session_id ?? this.state.storedId);
       if (this.announceSession) {
         queueMicrotask(() => {
           this.emit('session.info', this.sessionInfo(false));
@@ -99,21 +117,20 @@ export class FakeHermesGateway implements HermesGatewayTransport {
       }
       return {
         session_id: this.liveId,
-        resumed: this.storedId,
-        session_key: this.storedId,
+        resumed: this.state.storedId,
+        session_key: this.state.storedId,
         status: 'idle',
-        message_count: this.messages.length,
-        messages: this.messages,
+        message_count: this.state.messages.length,
         running: false,
       };
     }
     if (method === 'prompt.submit') {
       const text = String(params.text ?? '');
-      this.messages.push({ role: 'user', text });
-      this.messages.push({ role: 'assistant', text: this.reply });
-      this.inputTokens += 24;
-      this.outputTokens += 6;
-      this.calls += 1;
+      this.state.messages.push({ role: 'user', text });
+      this.state.messages.push({ role: 'assistant', text: this.reply });
+      this.state.inputTokens += 24;
+      this.state.outputTokens += 6;
+      this.state.calls += 1;
       queueMicrotask(() => {
         this.emit('message.start');
         this.emit('message.delta', { text: this.reply });

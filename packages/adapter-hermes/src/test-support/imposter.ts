@@ -12,11 +12,13 @@ export interface HermesImposterFixture {
   transport: HermesGatewayTransport;
 }
 
+export type HermesImposterLocation = Pick<HermesImposterFixture, 'root' | 'cwd' | 'home'>;
+
 /** Drive the real Hermes Imposter persona as a stdio tui_gateway. */
-export function createHermesImposterFixture(): HermesImposterFixture {
-  const root = realpathSync(mkdtempSync(join(tmpdir(), 'puppeteer-hermes-adapter-')));
-  const cwd = join(root, 'workspace');
-  const home = join(root, 'imposter-home');
+export function createHermesImposterFixture(location?: HermesImposterLocation): HermesImposterFixture {
+  const root = location?.root ?? realpathSync(mkdtempSync(join(tmpdir(), 'puppeteer-hermes-adapter-')));
+  const cwd = location?.cwd ?? join(root, 'workspace');
+  const home = location?.home ?? join(root, 'imposter-home');
   mkdirSync(cwd, { recursive: true });
   mkdirSync(home, { recursive: true });
   const imposter = resolve(dirname(fileURLToPath(import.meta.url)), '../../../imposter/bin/ai.mjs');

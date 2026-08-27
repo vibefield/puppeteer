@@ -2,10 +2,12 @@ import { rmSync } from 'node:fs';
 import { afterEach, describe, expect, it } from 'vitest';
 import type { AdapterEventCandidate, AgentHost } from '@vibecook/puppeteer-core';
 import { projectAgentEvents } from '@vibecook/puppeteer-testing';
+import { runAgentAdapterConformance, type AgentAdapterHarness } from '@vibecook/puppeteer-testing/conformance';
 import { createHermesTuiSession, type HermesTuiSession } from './driver.js';
-import { createHermesImposterFixture } from './test-support/imposter.js';
+import { createHermesImposterFixture, type HermesImposterLocation } from './test-support/imposter.js';
 import type { HermesStdioClient } from './transport/stdio.js';
 
+const REPLY = 'SURFACE_HERMES_OK';
 const sessions = new Set<HermesTuiSession>();
 const roots = new Set<string>();
 
@@ -26,6 +28,55 @@ function host(): AgentHost {
     },
   };
 }
+
+async function createImposterHarness(location?: HermesImposterLocation, resume?: string): Promise<AgentAdapterHarness> {
+  const fixture = createHermesImposterFixture(location);
+  roots.add(fixture.root);
+  const session = await createHermesTuiSession({
+    cwd: fixture.cwd,
+    host: host(),
+    transport: fixture.transport,
+    hermesHome: fixture.home,
+    ...(resume ? { resume } : {}),
+    promptConfirmationTimeoutMs: 5_000,
+  });
+  sessions.add(session);
+  const projection = projectAgentEvents(session);
+  const storedSessionId = session.storedSessionId() ?? session.sessionId;
+  const persistentLocation = { root: fixture.root, cwd: fixture.cwd, home: fixture.home };
+
+  return {
+    binding: session,
+    projection,
+    reply: REPLY,
+    resumeHistory: 'identity-only',
+    async driveTurn(prompt: string) {
+      const completedBefore = projection.envelopes.filter(({ event }) => event.type === 'turn:completed').length;
+      const receipt = await session.services.prompt.submit({ text: prompt });
+      if (receipt.status !== 'confirmed') {
+        const stderr = (fixture.transport as HermesStdioClient).stderr.join('');
+        throw new Error(`expected confirmed, got ${JSON.stringify(receipt)}; stderr=${stderr}`);
+      }
+      const deadline = Date.now() + 5_000;
+      while (
+        Date.now() < deadline &&
+        (projection.envelopes.filter(({ event }) => event.type === 'turn:completed').length <= completedBefore ||
+          projection.state.lastAssistantMessage !== REPLY)
+      ) {
+        await new Promise((resolve) => setTimeout(resolve, 20));
+      }
+      expect(projection.state.lastAssistantMessage).toBe(REPLY);
+    },
+    async resume() {
+      return createImposterHarness(persistentLocation, storedSessionId);
+    },
+    async assertNoOrphans() {
+      expect((fixture.transport as HermesStdioClient).processExited()).toBe(true);
+    },
+  };
+}
+
+runAgentAdapterConformance('hermes-imposter', createImposterHarness);
 
 describe('Hermes adapter against Imposter', () => {
   it('creates a session on the Imposter gateway and confirms a happy turn', async () => {

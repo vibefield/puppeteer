@@ -23,6 +23,9 @@ describe('Hermes native persona', () => {
         .filter((name) => name !== '$server')
         .sort(),
     ).toEqual(['approval.respond', 'prompt.submit', 'session.create', 'session.interrupt', 'session.resume']);
+    expect(persona.serve?.['session.resume']).toMatchObject({
+      then: [{ op: 'session.start' }, { op: 'session.ready' }],
+    });
   });
 
   it('boots to ready and emits gateway.ready then session.info', async () => {

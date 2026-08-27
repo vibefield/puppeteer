@@ -51,6 +51,10 @@ export function createPendingControlSession(
   }
 
   function applyObserved(observed: GrokObservedEvent, monitorAlreadyObserved = false): void {
+    // A Grok session is durable across terminal attachments. Replaying the
+    // previous pane's session_end would incorrectly terminate the newly
+    // resumed binding before its live control rail can serve another turn.
+    if (observed.phase === 'bootstrap' && observed.event.type === 'session:exited') return;
     if (
       protocolContextAvailable &&
       observed.source === 'native-log' &&

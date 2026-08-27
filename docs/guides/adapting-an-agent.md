@@ -872,7 +872,7 @@ The shared suite verifies:
 - no active turn, reasoning, tool, permission, subagent, or task after completion;
 - final assistant text in `lastAssistantMessage`;
 - strictly increasing envelope sequences;
-- resume of the same native ID with observable history continuity and a usable next turn;
+- resume of the same native ID and a usable next turn, plus observable history continuity when the native surface exposes replayable conversation facts;
 - idempotent disposal and no orphaned resources.
 
 Adapter-specific contracts—approval policy, launch topology, transcript behavior, request routing, account usage, and prompt certainty—need separate tests.
@@ -886,7 +886,7 @@ Exercise:
 - detection and launch arguments;
 - native channel setup;
 - one full turn through the shared conformance suite;
-- resume with durable history;
+- resume with durable history, or an evidence-backed `identity-only` declaration when the native observation surface exposes identity but no replay payload;
 - approval requests and client decisions;
 - terminal/controller/leader coexistence if applicable;
 - cleanup of processes, sockets, generated settings, and temporary stores.
@@ -981,7 +981,7 @@ The adapter is integration-complete when:
 - adapter-against-Imposter conformance passes without vendor software;
 - runtime provider tests and typed options pass;
 - every product app that exposes the agent passes its selector, shim, launch, restore, and presentation tests;
-- resume restores native history, not merely the same ID;
+- resume restores native history when the Surface exposes it; an `identity-only` exception names the evidence-backed limitation and leaves history continuity to Runtime recording;
 - disposal leaves no processes, sockets, observers, settings, or stores orphaned;
 - package layout and tarball checks pass;
 - the pinned-real lane exists and is opt-in/credential-isolated.
@@ -1229,7 +1229,7 @@ This is the review checklist for files commonly missed during a first adaptation
 - [ ] Adapter-local shared conformance is green.
 - [ ] Real adapter-against-Imposter conformance is green with no vendor dependency.
 - [ ] Pinned-real conformance is green on every required platform.
-- [ ] Resume restores observable history and disposal leaves no orphans.
+- [ ] Resume restores observable history, or has an evidence-backed `identity-only` declaration; disposal leaves no orphans.
 - [ ] Runtime provider and typed options are registered without branching in `runtime.ts`.
 - [ ] Package, support, upstream, full test, build, and pack gates pass.
 - [ ] The protected promotion records the complete attestation and generates the support badge.

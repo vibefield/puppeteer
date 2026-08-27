@@ -7,8 +7,12 @@ import {
   runAgentAdapterConformance,
   type AgentAdapterHarness,
 } from '@vibecook/puppeteer-testing/conformance';
-import { createHermesTuiSession, type HermesTuiSession } from './driver.js';
-import { FakeHermesGateway } from './test-support/fake-gateway.js';
+import { createHermesTuiSession } from './driver.js';
+import {
+  createFakeHermesGatewayState,
+  FakeHermesGateway,
+  type FakeHermesGatewayState,
+} from './test-support/fake-gateway.js';
 
 const REPLY = 'hermes adapter conformance reply';
 
@@ -42,8 +46,9 @@ function waitForTurnSettlement(session: Awaited<ReturnType<typeof createHermesTu
 
 async function createHarness(
   resumeId?: string,
-  gateway = new FakeHermesGateway({ reply: REPLY }),
+  state: FakeHermesGatewayState = createFakeHermesGatewayState(),
 ): Promise<HermesHarness> {
+  const gateway = new FakeHermesGateway({ reply: REPLY, state });
   const session = await createHermesTuiSession({
     cwd: '/work',
     host: host(),
@@ -53,6 +58,7 @@ async function createHarness(
   return {
     binding: session,
     reply: REPLY,
+    resumeHistory: 'identity-only',
     async driveTurn(prompt: string) {
       const settled = waitForTurnSettlement(session);
       const receipt = await session.services.prompt.submit({ text: prompt });
@@ -61,11 +67,10 @@ async function createHarness(
     },
     async resume() {
       const stored = session.storedSessionId() ?? session.sessionId;
-      await session.dispose();
-      return createHarness(stored, gateway);
+      return createHarness(stored, state);
     },
     async assertNoOrphans() {
-      expect(gateway.closed || resumeId !== undefined || true).toBe(true);
+      expect(gateway.closed).toBe(true);
     },
     closeObservationRail() {
       gateway.disconnect('conformance rail loss');
@@ -73,28 +78,7 @@ async function createHarness(
   };
 }
 
-// resume() currently closes the shared fake; keep a gateway that survives dispose.
-function createResumableHarness(): Promise<AgentAdapterHarness> {
-  const gateway = new FakeHermesGateway({ reply: REPLY });
-  const originalClose = gateway.close.bind(gateway);
-  let allowClose = false;
-  gateway.close = async () => {
-    if (allowClose) await originalClose();
-  };
-  return createHarness(undefined, gateway).then((harness) => ({
-    ...harness,
-    async resume() {
-      const stored = (harness.binding as HermesTuiSession).storedSessionId() ?? harness.binding.sessionId;
-      await harness.binding.dispose();
-      return createHarness(stored, gateway);
-    },
-    async assertNoOrphans() {
-      allowClose = true;
-    },
-  }));
-}
-
-runAgentAdapterConformance('hermes', createResumableHarness);
+runAgentAdapterConformance('hermes', createHarness);
 runAgentMonitorConformance('hermes-tui-gateway', async () => {
   const harness = await createHarness();
   return { binding: harness.binding, closeObservationRail: harness.closeObservationRail };

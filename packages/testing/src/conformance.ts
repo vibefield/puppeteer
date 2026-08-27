@@ -43,6 +43,8 @@ export interface AgentAdapterHarness {
   reply: string;
   /** Reopen the same native session through the adapter's real resume path. */
   resume(): Promise<AgentAdapterHarness>;
+  /** Whether this native observation surface can replay prior conversation facts. Defaults to observable. */
+  resumeHistory?: 'observable' | 'identity-only';
   /** Assert that adapter/harness-owned observation, control, and process resources are gone after dispose. */
   assertNoOrphans(): Promise<void>;
 }
@@ -142,14 +144,16 @@ export function runAgentAdapterConformance(label: string, createHarness: () => P
         resumedProjection = projectionFor(resumed);
         expect(resumed.binding.sessionId).toBe(nativeSessionId);
         expect(resumed.binding.runtimeSessionId.length).toBeGreaterThan(0);
-        await waitForProjection(
-          () => resumedProjection?.state.lastAssistantMessage === original.reply,
-          'resumed native history',
-        );
-        expect(
-          resumedProjection.state.lastAssistantMessage,
-          'resume must restore observable native history, not merely reuse the session id',
-        ).toBe(original.reply);
+        if (original.resumeHistory !== 'identity-only') {
+          await waitForProjection(
+            () => resumedProjection?.state.lastAssistantMessage === original.reply,
+            'resumed native history',
+          );
+          expect(
+            resumedProjection.state.lastAssistantMessage,
+            'an observable-history adapter must restore native history, not merely reuse the session id',
+          ).toBe(original.reply);
+        }
         await resumed.driveTurn('after resume');
         expect(resumedProjection.state.lifecycle).toBe('ready');
         expect(resumedProjection.state.lastAssistantMessage).toBe(resumed.reply);

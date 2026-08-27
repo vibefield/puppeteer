@@ -4,19 +4,20 @@
  * This is the gate for exposing Grok Imposter through Godview.
  */
 import { spawn, type ChildProcess } from 'node:child_process';
-import { mkdtempSync, readFileSync, realpathSync, rmSync } from 'node:fs';
+import { existsSync, mkdirSync, mkdtempSync, readFileSync, realpathSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { afterEach, describe, expect, it } from 'vitest';
-import type { AgentHost, TerminalSpec } from '@vibecook/puppeteer-core';
+import type { AgentAdapterBinding, AgentHost, TerminalSpec } from '@vibecook/puppeteer-core';
 import { createGrokBackend, type GrokBackend } from '@vibecook/puppeteer-adapter-grok';
 import { projectAgentEvents } from '@vibecook/puppeteer-testing';
+import { runAgentAdapterConformance, type AgentAdapterHarness } from '@vibecook/puppeteer-testing/conformance';
 
 const AI = join(dirname(dirname(fileURLToPath(import.meta.url))), 'bin', 'ai.mjs');
 const children = new Set<ChildProcess>();
 const roots = new Set<string>();
-let backend: GrokBackend | undefined;
+const backends = new Set<GrokBackend>();
 
 async function reap(child: ChildProcess): Promise<void> {
   if (child.exitCode !== null || child.signalCode !== null) return;
@@ -28,8 +29,8 @@ async function reap(child: ChildProcess): Promise<void> {
 }
 
 afterEach(async () => {
-  backend?.dispose();
-  backend = undefined;
+  for (const backend of backends) backend.dispose();
+  backends.clear();
   await Promise.all([...children].map(reap));
   children.clear();
   for (const root of roots) rmSync(root, { recursive: true, force: true, maxRetries: 20, retryDelay: 50 });
@@ -60,11 +61,95 @@ function spawningHost(launched: TerminalSpec[], terminals: ChildProcess[]): Agen
         child.once('spawn', resolve);
         child.once('error', reject);
       });
-      return { runtimeSessionId: 'grok-imposter-pane' };
+      return { runtimeSessionId: `grok-imposter-pane-${child.pid ?? 'unknown'}` };
     },
     automateTerminal: async () => ({ accepted: true }),
   };
 }
+
+interface GrokHarnessContext {
+  cwd: string;
+  home: string;
+}
+
+function createHarnessContext(): GrokHarnessContext {
+  const root = realpathSync(mkdtempSync(join(tmpdir(), 'puppeteer-grok-conformance-')));
+  roots.add(root);
+  const cwd = join(root, 'workspace');
+  const home = join(root, 'home');
+  mkdirSync(cwd, { recursive: true });
+  mkdirSync(home, { recursive: true });
+  return { cwd, home };
+}
+
+async function createGrokHarness(
+  context: GrokHarnessContext = createHarnessContext(),
+  resume?: string,
+): Promise<AgentAdapterHarness> {
+  const launched: TerminalSpec[] = [];
+  const terminals: ChildProcess[] = [];
+  const backend = createGrokBackend({
+    executable: AI,
+    host: spawningHost(launched, terminals),
+    appServerEnv: {
+      AI_PERSONA: 'grok',
+      GROK_HOME: context.home,
+      PUPPETEER_IMPOSTER_HOME: context.home,
+      PUPPETEER_IMPOSTER_TUI: 'off',
+    },
+  });
+  backends.add(backend);
+
+  let session: AgentAdapterBinding;
+  try {
+    session = await Promise.race([
+      backend.createSession({ cwd: context.cwd, ...(resume ? { resume } : {}) }),
+      new Promise<never>((_, reject) =>
+        setTimeout(() => reject(new Error('timed out creating the Grok conformance composition')), 12_000),
+      ),
+    ]);
+  } catch (error) {
+    backend.dispose();
+    backends.delete(backend);
+    await Promise.all(terminals.map(reap));
+    throw error;
+  }
+
+  const projection = projectAgentEvents(session);
+  const nativeSessionId = session.sessionId;
+  return {
+    binding: session,
+    projection,
+    reply: 'imposter: ok',
+    async driveTurn(prompt: string) {
+      const completedBefore = projection.envelopes.filter(({ event }) => event.type === 'turn:completed').length;
+      const receipt = await session.services.prompt.submit({ text: prompt });
+      if (receipt.status === 'rejected') throw new Error(receipt.reason);
+      await waitFor(
+        () =>
+          projection.envelopes.filter(({ event }) => event.type === 'turn:completed').length > completedBefore &&
+          projection.state.lastAssistantMessage === 'imposter: ok',
+        'Grok conformance turn',
+      );
+    },
+    async resume() {
+      return createGrokHarness(context, nativeSessionId);
+    },
+    async assertNoOrphans() {
+      backend.dispose();
+      backends.delete(backend);
+      await Promise.all(terminals.map(reap));
+      expect(terminals.every((child) => child.exitCode !== null || child.signalCode !== null)).toBe(true);
+      for (const launch of launched) {
+        const socketFlag = launch.args.indexOf('--leader-socket');
+        const socketPath = socketFlag >= 0 ? launch.args[socketFlag + 1] : undefined;
+        if (socketPath) expect(existsSync(dirname(socketPath))).toBe(false);
+      }
+    },
+  };
+}
+
+if (process.platform !== 'win32') runAgentAdapterConformance('grok-imposter', createGrokHarness);
 
 describe.skipIf(process.platform === 'win32')('the Grok native recipe against `ai`', () => {
   it('converges leader, ACP, terminal, and persisted-log observation on one session', async () => {
@@ -72,13 +157,14 @@ describe.skipIf(process.platform === 'win32')('the Grok native recipe against `a
     roots.add(cwd);
     const launched: TerminalSpec[] = [];
     const terminals: ChildProcess[] = [];
-    backend = createGrokBackend({
+    const backend = createGrokBackend({
       executable: AI,
       host: spawningHost(launched, terminals),
       // The backend expands this into one isolated PUPPETEER_IMPOSTER_HOME /
       // GROK_HOME shared by every child and the observer.
       appServerEnv: { AI_PERSONA: 'grok', PUPPETEER_IMPOSTER_TUI: 'off' },
     });
+    backends.add(backend);
 
     const session = await Promise.race([
       backend.createSession({ cwd }),
