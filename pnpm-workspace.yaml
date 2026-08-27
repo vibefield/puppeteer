@@ -7,6 +7,9 @@ allowBuilds:
   better-sqlite3: true
   electron: true
   esbuild: true
+  # Live adapter tests need a real PTY; its official prebuild selector and
+  # macOS helper-permission repair are the only lifecycle scripts we permit.
+  node-pty: true
 minimumReleaseAgeExclude:
   - '@vibecook/ghosttea@0.9.3'
   - '@vibecook/ghosttea-electron@0.9.3'
