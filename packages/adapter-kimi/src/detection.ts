@@ -1,6 +1,8 @@
 import { execFile } from 'node:child_process';
 
 export const KIMI_SURFACE_VERSION = '0.34.0';
+export const KIMI_EXECUTABLE_ENV = 'PUPPETEER_KIMI_BIN';
+export const KIMI_DEFAULT_EXECUTABLE = 'kimi';
 
 export const KIMI_ADAPTER_CAPABILITIES = Object.freeze({
   executionMode: 'native-tui' as const,
@@ -20,14 +22,20 @@ export interface KimiInstallationDetection {
   capabilities: typeof KIMI_ADAPTER_CAPABILITIES;
 }
 
+/** Resolve the adapter-owned native executable without leaking provider policy to consumers. */
+export function resolveKimiExecutable(explicit?: string, environment: NodeJS.ProcessEnv = process.env): string {
+  return explicit ?? environment[KIMI_EXECUTABLE_ENV] ?? KIMI_DEFAULT_EXECUTABLE;
+}
+
 export function parseKimiVersion(output: string): string | undefined {
   return output.match(/(?:^|\s)v?(\d+\.\d+\.\d+(?:-[0-9A-Za-z.-]+)?)(?:\s|$)/m)?.[1];
 }
 
 export function detectKimiInstallation(
-  executable = 'kimi',
+  explicitExecutable?: string,
   options: { timeoutMs?: number; env?: NodeJS.ProcessEnv } = {},
 ): Promise<KimiInstallationDetection> {
+  const executable = resolveKimiExecutable(explicitExecutable, options.env ?? process.env);
   return new Promise((resolve, reject) => {
     execFile(
       executable,

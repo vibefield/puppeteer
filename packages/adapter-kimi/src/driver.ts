@@ -10,6 +10,7 @@ import {
   type TerminalSpec,
 } from '@vibecook/puppeteer-core';
 import type { AdapterMonitorObservationBatch } from '@vibecook/puppeteer-core/monitor-spi';
+import { resolveKimiExecutable } from './detection.js';
 import { KimiMonitorEvidence, type KimiConfiguredIntent } from './normalization/monitor.js';
 import {
   createKimiSessionObserver,
@@ -95,7 +96,7 @@ function resolvedLaunchEnvironment(
 
 /** Prepare the launch recipe and immutable discovery/replay baseline without spawning a PTY. */
 export async function prepareKimiTuiSession(options: CreateKimiTuiSessionOptions): Promise<PreparedKimiTuiSession> {
-  const executable = options.executable ?? 'kimi';
+  const executable = resolveKimiExecutable(options.executable);
   const configuredHome = options.kimiHome ?? options.env?.KIMI_CODE_HOME;
   const kimiHome = resolveKimiHome(configuredHome);
   const env = resolvedLaunchEnvironment(options, kimiHome);
