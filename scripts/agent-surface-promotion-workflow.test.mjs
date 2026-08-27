@@ -12,6 +12,7 @@ const protectedLiveTests = Object.fromEntries(
   Object.entries({
     claude: 'pinned-real.live.test.ts',
     codex: 'driver.live.test.ts',
+    hermes: 'driver.live.test.ts',
     kimi: 'driver.live.test.ts',
     opencode: 'opencode.live.test.ts',
   }).map(([vendor, file]) => [
@@ -54,7 +55,7 @@ test('promotion binds one complete acquisition through test, verification, and t
 
 test('opencode is an explicit reviewed workflow choice with isolated real-artifact lanes', () => {
   assert.match(adaptation, /options: \[claude, codex, grok, hermes, kimi, opencode\]/);
-  assert.match(workflow, /options: \[claude, codex, kimi, opencode\]/);
+  assert.match(workflow, /options: \[claude, codex, hermes, kimi, opencode\]/);
   assert.match(workflow, /if: \$\{\{ inputs\.vendor == 'opencode' \}\}/);
   assert.match(workflow, /OPENCODE_LIVE: '1'/);
   assert.match(workflow, /PUPPETEER_OPENCODE_BIN:/);
@@ -67,7 +68,7 @@ test('opencode is an explicit reviewed workflow choice with isolated real-artifa
 });
 
 test('Kimi uses the same exact artifact for its cross-platform native-TUI adapter lane', () => {
-  assert.match(workflow, /options: \[claude, codex, kimi, opencode\]/);
+  assert.match(workflow, /options: \[claude, codex, hermes, kimi, opencode\]/);
   assert.match(workflow, /if: \$\{\{ inputs\.vendor == 'kimi' \}\}/);
   assert.match(workflow, /KIMI_LIVE: '1'/);
   assert.match(workflow, /PUPPETEER_KIMI_BIN:/);
@@ -81,7 +82,7 @@ test('every protected provider writes its artifact-bound receipt from an execute
   for (const [vendor, source] of Object.entries(protectedLiveTests)) {
     assert.match(source, /attestLiveAdapter/);
     assert.match(source, new RegExp(`vendor: '${vendor}'`));
-    assert.match(source, /artifact: executable/);
+    assert.match(source, vendor === 'hermes' ? /artifact: promotionArtifact/ : /artifact: executable/);
   }
 });
 
@@ -93,7 +94,9 @@ test('Grok adaptation remains available without claiming a skipped cross-platfor
   assert.match(live, /GROK_LIVE: '1'/);
 });
 
-test('source-only Hermes has a generic adaptation lane without an unearned promotion lane', () => {
+test('source-built Hermes is reconstructed generically before its protected native-TUI lane', () => {
+  const acquire = job('acquire', 'assemble');
+  const pinnedReal = job('pinned-real', 'verify');
   assert.match(adaptation, /options: \[claude, codex, grok, hermes, kimi, opencode\]/);
   assert.match(adaptation, /scripts\/resolve-agent-acquisition\.mjs/);
   assert.match(adaptation, /scripts\/materialize-installed-console\.mjs/);
@@ -105,10 +108,28 @@ test('source-only Hermes has a generic adaptation lane without an unearned promo
   assert.match(adaptation, /--node node/);
   assert.match(adaptation, /--npm npm/);
   assert.doesNotMatch(adaptation, /inputs\.vendor == 'hermes'/);
-  assert.doesNotMatch(workflow, /options: \[[^\]]*hermes/);
+  assert.match(workflow, /options: \[claude, codex, hermes, kimi, opencode\]/);
+  assert.match(workflow, /source_reference:/);
+  assert.match(acquire, /scripts\/resolve-agent-acquisition\.mjs/);
+  assert.match(acquire, /scripts\/materialize-installed-console\.mjs/);
+  assert.match(acquire, /name: promotion-source-\$\{\{ matrix\.platform \}\}/);
+  assert.doesNotMatch(acquire, /inputs\.vendor == 'hermes'/);
+  assert.doesNotMatch(acquire, /\$AGENT_/);
+  assert.match(pinnedReal, /name: promotion-source-\$\{\{ matrix\.platform \}\}/);
+  assert.match(pinnedReal, /Reconstruct locked installed console on the protected runner/);
+  assert.match(pinnedReal, /scripts\/verify-installed-console-reconstruction\.mjs/);
+  assert.match(pinnedReal, /if: \$\{\{ inputs\.vendor == 'hermes' \}\}/);
+  assert.match(pinnedReal, /HERMES_LIVE: '1'/);
+  assert.match(pinnedReal, /PUPPETEER_HERMES_BIN:/);
+  assert.match(pinnedReal, /HERMES_PYTHON:/);
+  assert.match(pinnedReal, /HERMES_TUI_DIR:/);
+  assert.match(pinnedReal, /@vibecook\/puppeteer-adapter-hermes test/);
+  assert.doesNotMatch(pinnedReal, /\$AGENT_/);
   assert.match(live, /hermes-surface:/);
   assert.match(live, /if: \$\{\{ vars\.HERMES_LIVE_ENABLED == 'true' \}\}/);
   assert.match(live, /packages\/surface\/vendors\/hermes\/census\/turn-census\.mjs/);
-  assert.match(live, /kimi-live:/);
-  assert.match(live, /controlled Kimi Surface census/);
+  assert.match(live, /HERMES_LIVE: '1'/);
+  assert.match(live, /HERMES_TUI_DIR: \$\{\{ vars\.HERMES_TUI_DIR \}\}/);
+  assert.match(protectedLiveTests.hermes, /testId: 'hermes:native-tui-gateway'/);
+  assert.match(protectedLiveTests.hermes, /host\.output\(session!\.runtimeSessionId\)\.includes\(RESPONSE_MARKER\)/);
 });

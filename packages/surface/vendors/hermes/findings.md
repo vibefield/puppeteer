@@ -54,9 +54,17 @@ an untracked first-launch npm install/build.
 A local path-independence check of the exact tag produced the same 3,689,441-byte
 bundle at two different checkout paths, SHA-256
 `a1bb291b54cc62ab8f51c05c87dae9fecd5f1fd6a916a8f1f656c1df4ddd9c30`.
-That check validates the recipe; it is not four-platform promotion evidence.
-The complete acquisition workflow still needs a successful run, and the
-pinned-real native-TUI lane remains a separate promotion gate.
+Two complete fresh materializations also produced byte-identical 16,195-byte
+`installed-console.json` manifests, SHA-256
+`dad293b2e3ef56f433275f6ab6b05c11bfe9dc95f24496985ddd5301ad2f96f9`.
+
+The guarded promotion workflow now retains each platform's reviewed source
+archive, independently reconstructs the installed console on its protected
+runner, revalidates both runtime bundles, and requires the reconstructed
+manifest bytes to match the acquisition manifest before executing the adapter.
+These local checks validate the recipe and protected gate; they are not
+four-platform promotion evidence. The complete protected workflow still needs
+a successful run on every required platform.
 
 ## Identity probes (`darwin-arm64`)
 
@@ -115,6 +123,31 @@ Two WebSocket clients can share the module-global session table. Approvals
 must stay native-TUI unless a single-controller lease is proven. Do not
 let the adapter and the TUI both answer `approval.respond`.
 
+The exact 0.20.0 implementation stores one transport on each live session.
+`session.resume` and `prompt.submit` rebind that scalar transport to the current
+WebSocket, so attaching the native TUI otherwise steals subsequent events from
+the adapter observer. Puppeteer's gateway host is private to one binding and
+tees only session-scoped `event` notifications to its connected observer and
+viewer. RPC results remain request-local, and the adapter still does not answer
+approval requests.
+
+### Exact adapter/native-TUI proof (`darwin-arm64`)
+
+An opt-in live adapter test materialized the reviewed `v2026.8.3` source with
+Python `3.11.9`, uv `0.9.28`, Node `22.22.0`, and npm `10.9.4`, then launched
+the real `hermes --tui` in a PTY against the bundled Node viewer. With a
+disposable `HERMES_HOME` and loopback OpenAI-compatible provider, one prompt:
+
+- was confirmed through the adapter's structured `prompt.submit` service;
+- produced a normalized `turn:completed` and assistant message on the adapter
+  observer;
+- rendered the same response marker in the real native TUI; and
+- made exactly one model-turn request.
+
+The test emitted the artifact-bound receipt
+`hermes:native-tui-gateway` against the composite manifest above. This is one
+local execution-host proof; the protected four-platform lane remains pending.
+
 ### ACP isolation
 
 `hermes acp` / `hermes-acp` is a separate stdio ACP server. It was not
@@ -124,14 +157,14 @@ second `AIAgent`. Forbidden as the native-TUI control plane.
 
 ### Gate 0 verdict
 
-| Question                      | Result                                                             |
-| ----------------------------- | ------------------------------------------------------------------ |
-| Default process tree          | Proven: wrapper → Node TUI → `tui_gateway.entry`                   |
-| Who owns stdio JSON-RPC       | Node TUI ↔ `tui_gateway.entry`                                     |
+| Question                      | Result                                                            |
+| ----------------------------- | ----------------------------------------------------------------- |
+| Default process tree          | Proven: wrapper → Node TUI → `tui_gateway.entry`                  |
+| Who owns stdio JSON-RPC       | Node TUI ↔ `tui_gateway.entry`                                    |
 | Same-session attach           | Proven via Puppeteer-owned `handle_ws` + `HERMES_TUI_GATEWAY_URL` |
-| Official public attach API    | No. Dashboard/Desktop internal only                                |
-| Second client races approvals | Yes, if both call `approval.respond`                               |
-| Does ACP join the TUI session | No evidence it does; treat as a separate host                      |
+| Official public attach API    | No. Dashboard/Desktop internal only                               |
+| Second client races approvals | Yes, if both call `approval.respond`                              |
+| Does ACP join the TUI session | No evidence it does; treat as a separate host                     |
 
 **First adapter rail:** structured observation/control through a
 Puppeteer-owned loopback `handle_ws` host, with `hermes --tui` attached as
@@ -169,13 +202,13 @@ later `message.start` on that live session. Prompt receipts must stay
 
 ### Observed JSON-RPC events
 
-| Scenario          | Distinct event types observed                                                                                         |
-| ----------------- | --------------------------------------------------------------------------------------------------------------------- |
-| basic-turn        | `gateway.ready`, `session.info`, `message.start`, `thinking.delta`, `sessions.changed`, `message.delta`, `reasoning.available`, `message.complete` |
-| tool-success      | plus `tool.generating`, `tool.start`, `tool.complete`                                                                 |
-| permission-deny   | plus `approval.request`                                                                                               |
-| interrupt         | `session.interrupt` result `interrupted`; `message.complete` status `interrupted`                                     |
-| resume-turn       | `session.resume` then the basic-turn stream set                                                                       |
+| Scenario        | Distinct event types observed                                                                                                                      |
+| --------------- | -------------------------------------------------------------------------------------------------------------------------------------------------- |
+| basic-turn      | `gateway.ready`, `session.info`, `message.start`, `thinking.delta`, `sessions.changed`, `message.delta`, `reasoning.available`, `message.complete` |
+| tool-success    | plus `tool.generating`, `tool.start`, `tool.complete`                                                                                              |
+| permission-deny | plus `approval.request`                                                                                                                            |
+| interrupt       | `session.interrupt` result `interrupted`; `message.complete` status `interrupted`                                                                  |
+| resume-turn     | `session.resume` then the basic-turn stream set                                                                                                    |
 
 `thinking.delta` is a UI spinner string (`(⊙_⊙) pondering...`), not model
 reasoning. `reasoning.available` echoed the assistant text in these runs.
@@ -235,8 +268,8 @@ side effect of detection.
 
 ## Unverified / next census
 
-- the same turns through the attached `HERMES_TUI_GATEWAY_URL` WebSocket
-  (stdio and WS share `handle_ws`; still unproven as a live TUI attach);
+- tool, denial, interrupt, and resume scenarios through the attached real TUI
+  (the basic turn is proven by the live adapter test);
 - `approval.respond` while a real Node TUI is also attached;
 - allow once / session / always, smart auto-allow/deny, approval timeout;
 - `--resume` on `hermes --tui` itself (RPC resume is proven);
@@ -248,10 +281,11 @@ side effect of detection.
 
 The stdio event map is modeled in `model/hermes@0.20.0/` (28 events).
 `@vibecook/puppeteer-adapter-hermes` now owns a TUI-gateway client, a
-stateful normalizer, and an attach recipe (`hermes --tui` +
-`HERMES_TUI_GATEWAY_URL`). Approvals stay `native-tui`. Prompt receipts
-confirm only a following `message.start` on that live session; otherwise
-they stay `uncertain`. Imposter `ai --hermes` is the interactive preview;
-`ai --hermes tui-gateway` is the stdio double of the owned gateway, not a
-native Hermes CLI subcommand. This is still not a support or promotion
-claim.
+stateful normalizer, a private event fan-out host, and an attach recipe
+(`hermes --tui` + `HERMES_TUI_GATEWAY_URL`). Approvals stay `native-tui`.
+Prompt receipts confirm only a following `message.start` on that live session;
+otherwise they stay `uncertain`. Imposter `ai --hermes` is the interactive
+preview; `ai --hermes tui-gateway` is the stdio double of the owned gateway,
+not a native Hermes CLI subcommand. The protected reconstruction and live-TUI
+lane is implemented but has not completed on every platform, so this is still
+not a support or promotion claim.

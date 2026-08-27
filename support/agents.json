@@ -63,8 +63,7 @@
       "candidateVersion": "0.20.0",
       "status": "baseline-pending",
       "blockers": [
-        "The generic four-platform locked Python console plus Node TUI runtime-bundle acquisition lane has not yet produced a complete workflow run.",
-        "No four-platform adapter-through-real-native-TUI promotion lane has passed."
+        "The protected four-platform locked installed-console reconstruction and adapter-through-real-native-TUI lane is implemented but has not yet completed successfully for every required platform."
       ]
     },
     {

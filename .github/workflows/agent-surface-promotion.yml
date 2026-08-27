@@ -7,12 +7,17 @@ on:
         description: Candidate vendor
         required: true
         type: choice
-        # Grok and Hermes remain intentionally absent until their ledger
-        # blockers have real cross-platform adapter-through-TUI lanes.
-        options: [claude, codex, kimi, opencode]
+        # Grok remains intentionally absent until its ledger blocker has a
+        # real cross-platform adapter-through-TUI lane.
+        options: [claude, codex, hermes, kimi, opencode]
       version:
         description: Exact normalized vendor version
         required: true
+        type: string
+      source_reference:
+        description: Exact release tag/reference; required only by a source-revision policy
+        required: false
+        default: ''
         type: string
       ground_truth:
         description: Candidate vendor-root groundtruth.json on the selected workflow ref
@@ -44,18 +49,14 @@ jobs:
         include:
           - platform: darwin-arm64
             runner: macos-14
-            executable: agent
           - platform: darwin-x64
             runner: macos-15-intel
-            executable: agent
           - platform: linux-x64
             runner: ubuntu-24.04
-            executable: agent
           - platform: windows-x64
             runner: windows-2025
-            executable: agent.exe
     runs-on: ${{ matrix.runner }}
-    timeout-minutes: 15
+    timeout-minutes: 30
     steps:
       - uses: actions/checkout@v6
         with:
@@ -63,24 +64,93 @@ jobs:
       - uses: actions/setup-node@v6
         with:
           node-version: 22.18.0
-      - run: >-
-          node scripts/download-agent-artifact.mjs
-          --vendor "$AGENT_VENDOR"
-          --version "$AGENT_VERSION"
+
+      - name: Resolve declarative acquisition policy
+        id: policy
+        run: >-
+          node scripts/resolve-agent-acquisition.mjs
+          --vendor "${{ inputs.vendor }}"
           --platform "${{ matrix.platform }}"
-          --output ".agent-adaptation/artifacts/${{ matrix.platform }}/${{ matrix.executable }}"
+          --source-reference "${{ inputs.source_reference }}"
+          --github-output
+
+      - uses: actions/setup-python@v6
+        if: ${{ steps.policy.outputs.artifactKind == 'installed-console' }}
+        with:
+          python-version: ${{ steps.policy.outputs.pythonVersion }}
+
+      - uses: astral-sh/setup-uv@c771a70e6277c0a99b617c7a806ffedaca235ff9 # v9.0.0
+        if: ${{ steps.policy.outputs.artifactKind == 'installed-console' }}
+        with:
+          version: ${{ steps.policy.outputs.uvVersion }}
+          enable-cache: false
+
+      - uses: actions/setup-node@v6
+        if: ${{ steps.policy.outputs.nodeVersion != '' }}
+        with:
+          node-version: ${{ steps.policy.outputs.nodeVersion }}
+
+      - name: Download reviewed standalone executable bytes
+        if: ${{ steps.policy.outputs.artifactKind == 'standalone-executable' }}
+        run: >-
+          node scripts/download-agent-artifact.mjs
+          --vendor "${{ inputs.vendor }}"
+          --version "${{ inputs.version }}"
+          --platform "${{ matrix.platform }}"
+          --output ".agent-adaptation/artifacts/${{ matrix.platform }}/${{ steps.policy.outputs.outputName }}"
           --metadata ".agent-adaptation/artifacts/${{ matrix.platform }}/download.json"
-      - run: >-
+
+      - name: Probe exact version in a disposable home
+        if: ${{ steps.policy.outputs.artifactKind == 'standalone-executable' }}
+        run: >-
           node scripts/probe-agent-artifact.mjs
-          --artifact ".agent-adaptation/artifacts/${{ matrix.platform }}/${{ matrix.executable }}"
+          --artifact ".agent-adaptation/artifacts/${{ matrix.platform }}/${{ steps.policy.outputs.outputName }}"
           --metadata ".agent-adaptation/artifacts/${{ matrix.platform }}/download.json"
-          --version "$AGENT_VERSION"
+          --version "${{ inputs.version }}"
           --output ".agent-adaptation/artifacts/${{ matrix.platform }}/version.txt"
           --home ".agent-adaptation/home/${{ matrix.platform }}"
+
+      - name: Download reviewed source archive bytes
+        if: ${{ steps.policy.outputs.artifactKind == 'installed-console' }}
+        run: >-
+          node scripts/download-agent-artifact.mjs
+          --vendor "${{ inputs.vendor }}"
+          --version "${{ inputs.version }}"
+          --platform "${{ matrix.platform }}"
+          --tag "${{ inputs.source_reference }}"
+          --output ".agent-adaptation/source/${{ matrix.platform }}/${{ steps.policy.outputs.sourceFile }}"
+          --metadata ".agent-adaptation/source/${{ matrix.platform }}/download.json"
+
+      - name: Materialize and attest locked installed console
+        if: ${{ steps.policy.outputs.artifactKind == 'installed-console' }}
+        run: >-
+          node scripts/materialize-installed-console.mjs
+          --vendor "${{ inputs.vendor }}"
+          --version "${{ inputs.version }}"
+          --platform "${{ matrix.platform }}"
+          --source-archive ".agent-adaptation/source/${{ matrix.platform }}/${{ steps.policy.outputs.sourceFile }}"
+          --source-metadata ".agent-adaptation/source/${{ matrix.platform }}/download.json"
+          --work ".agent-adaptation/work/${{ matrix.platform }}"
+          --output ".agent-adaptation/artifacts/${{ matrix.platform }}/${{ steps.policy.outputs.outputName }}"
+          --metadata ".agent-adaptation/artifacts/${{ matrix.platform }}/download.json"
+          --version-output ".agent-adaptation/artifacts/${{ matrix.platform }}/version.txt"
+          --python python
+          --uv uv
+          --node node
+          --npm npm
+
       - uses: actions/upload-artifact@v4
         with:
           name: promotion-artifact-${{ matrix.platform }}
           path: .agent-adaptation/artifacts
+          include-hidden-files: true
+          retention-days: 1
+
+      - uses: actions/upload-artifact@v4
+        if: ${{ steps.policy.outputs.artifactKind == 'installed-console' }}
+        with:
+          name: promotion-source-${{ matrix.platform }}
+          path: .agent-adaptation/source/${{ matrix.platform }}
           include-hidden-files: true
           retention-days: 1
 
@@ -98,8 +168,8 @@ jobs:
           merge-multiple: true
       - run: >-
           node scripts/assemble-agent-artifacts.mjs
-          --vendor "$AGENT_VENDOR"
-          --version "$AGENT_VERSION"
+          --vendor "${{ inputs.vendor }}"
+          --version "${{ inputs.version }}"
           --directory .agent-adaptation/artifacts
           --output .agent-adaptation/acquisition.json
       - uses: actions/upload-artifact@v4
@@ -117,23 +187,18 @@ jobs:
         include:
           - platform: darwin-arm64
             runner: [self-hosted, puppeteer-agent-live, macOS, ARM64]
-            executable: agent
           - platform: darwin-x64
             runner: [self-hosted, puppeteer-agent-live, macOS, X64]
-            executable: agent
           - platform: linux-x64
             runner: [self-hosted, puppeteer-agent-live, Linux, X64]
-            executable: agent
           - platform: windows-x64
             runner: [self-hosted, puppeteer-agent-live, Windows, X64]
-            executable: agent.exe
     runs-on: ${{ matrix.runner }}
-    timeout-minutes: 30
+    timeout-minutes: 45
     env:
       PUPPETEER_LIVE_RECEIPT: ${{ github.workspace }}/.agent-adaptation/adapter-real-${{ matrix.platform }}.json
       PUPPETEER_LIVE_VENDOR: ${{ inputs.vendor }}
       PUPPETEER_LIVE_PLATFORM: ${{ matrix.platform }}
-      PUPPETEER_LIVE_ARTIFACT: ${{ github.workspace }}/.agent-adaptation/artifacts/${{ matrix.platform }}/${{ matrix.executable }}
     steps:
       - uses: actions/checkout@v6
         with:
@@ -145,59 +210,136 @@ jobs:
         with:
           node-version: 22.18.0
           cache: pnpm
+
+      - name: Resolve declarative acquisition policy
+        id: policy
+        run: >-
+          node scripts/resolve-agent-acquisition.mjs
+          --vendor "${{ inputs.vendor }}"
+          --platform "${{ matrix.platform }}"
+          --source-reference "${{ inputs.source_reference }}"
+          --github-output
+
       - run: pnpm install --frozen-lockfile --filter './packages/**'
+
+      - uses: actions/setup-python@v6
+        if: ${{ steps.policy.outputs.artifactKind == 'installed-console' }}
+        with:
+          python-version: ${{ steps.policy.outputs.pythonVersion }}
+
+      - uses: astral-sh/setup-uv@c771a70e6277c0a99b617c7a806ffedaca235ff9 # v9.0.0
+        if: ${{ steps.policy.outputs.artifactKind == 'installed-console' }}
+        with:
+          version: ${{ steps.policy.outputs.uvVersion }}
+          enable-cache: false
+
+      - uses: actions/setup-node@v6
+        if: ${{ steps.policy.outputs.nodeVersion != '' }}
+        with:
+          node-version: ${{ steps.policy.outputs.nodeVersion }}
+
       - uses: actions/download-artifact@v5
         with:
           pattern: promotion-artifact-*
           path: .agent-adaptation/artifacts
           merge-multiple: true
+
+      - uses: actions/download-artifact@v5
+        if: ${{ steps.policy.outputs.artifactKind == 'installed-console' }}
+        with:
+          name: promotion-source-${{ matrix.platform }}
+          path: .agent-adaptation/source/${{ matrix.platform }}
+
       - uses: actions/download-artifact@v5
         with:
           name: promotion-acquisition
           path: .agent-adaptation
+
+      - name: Reconstruct locked installed console on the protected runner
+        if: ${{ steps.policy.outputs.artifactKind == 'installed-console' }}
+        run: >-
+          node scripts/materialize-installed-console.mjs
+          --vendor "${{ inputs.vendor }}"
+          --version "${{ inputs.version }}"
+          --platform "${{ matrix.platform }}"
+          --source-archive ".agent-adaptation/source/${{ matrix.platform }}/${{ steps.policy.outputs.sourceFile }}"
+          --source-metadata ".agent-adaptation/source/${{ matrix.platform }}/download.json"
+          --work ".agent-adaptation/live-work/${{ matrix.platform }}"
+          --output ".agent-adaptation/live-artifacts/${{ matrix.platform }}/${{ steps.policy.outputs.outputName }}"
+          --metadata ".agent-adaptation/live-artifacts/${{ matrix.platform }}/download.json"
+          --version-output ".agent-adaptation/live-artifacts/${{ matrix.platform }}/version.txt"
+          --python python
+          --uv uv
+          --node node
+          --npm npm
+
+      - name: Match reconstructed console and runtime to acquired identity
+        if: ${{ steps.policy.outputs.artifactKind == 'installed-console' }}
+        run: >-
+          node scripts/verify-installed-console-reconstruction.mjs
+          --vendor "${{ inputs.vendor }}"
+          --version "${{ inputs.version }}"
+          --platform "${{ matrix.platform }}"
+          --expected ".agent-adaptation/artifacts/${{ matrix.platform }}/${{ steps.policy.outputs.outputName }}"
+          --actual ".agent-adaptation/live-artifacts/${{ matrix.platform }}/${{ steps.policy.outputs.outputName }}"
+
       - name: Bind the complete acquisition to candidate evidence
         run: >-
           pnpm surface:evidence:artifacts
-          --ground-truth "$AGENT_GROUND_TRUTH"
+          --ground-truth "${{ inputs.ground_truth }}"
           --artifacts .agent-adaptation/acquisition.json
       - run: >-
           node scripts/stage-agent-candidate.mjs
-          --vendor "$AGENT_VENDOR"
-          --ground-truth "$AGENT_GROUND_TRUTH"
+          --vendor "${{ inputs.vendor }}"
+          --ground-truth "${{ inputs.ground_truth }}"
       - name: Audit the exact candidate model
         env:
-          PUPPETEER_CODEX_BIN: ${{ github.workspace }}/.agent-adaptation/artifacts/${{ matrix.platform }}/${{ matrix.executable }}
-          PUPPETEER_KIMI_BIN: ${{ github.workspace }}/.agent-adaptation/artifacts/${{ matrix.platform }}/${{ matrix.executable }}
-          PUPPETEER_OPENCODE_BIN: ${{ github.workspace }}/.agent-adaptation/artifacts/${{ matrix.platform }}/${{ matrix.executable }}
-        run: pnpm --filter @vibecook/puppeteer-surface run "surface:audit:${AGENT_VENDOR}"
+          PUPPETEER_CODEX_BIN: ${{ github.workspace }}/.agent-adaptation/artifacts/${{ matrix.platform }}/${{ steps.policy.outputs.outputName }}
+          PUPPETEER_HERMES_BIN: ${{ github.workspace }}/.agent-adaptation/live-work/${{ matrix.platform }}/python-environment/${{ steps.policy.outputs.consolePath }}
+          PUPPETEER_KIMI_BIN: ${{ github.workspace }}/.agent-adaptation/artifacts/${{ matrix.platform }}/${{ steps.policy.outputs.outputName }}
+          PUPPETEER_OPENCODE_BIN: ${{ github.workspace }}/.agent-adaptation/artifacts/${{ matrix.platform }}/${{ steps.policy.outputs.outputName }}
+        run: pnpm --filter @vibecook/puppeteer-surface run "surface:audit:${{ inputs.vendor }}"
       - name: Claude pinned-real lane
         if: ${{ inputs.vendor == 'claude' }}
         env:
           PUPPETEER_REAL_CLAUDE: '1'
-          PUPPETEER_CLAUDE_BIN: ${{ github.workspace }}/.agent-adaptation/artifacts/${{ matrix.platform }}/${{ matrix.executable }}
+          PUPPETEER_CLAUDE_BIN: ${{ github.workspace }}/.agent-adaptation/artifacts/${{ matrix.platform }}/${{ steps.policy.outputs.outputName }}
+          PUPPETEER_LIVE_ARTIFACT: ${{ github.workspace }}/.agent-adaptation/artifacts/${{ matrix.platform }}/${{ steps.policy.outputs.outputName }}
         run: pnpm --filter @vibecook/puppeteer-adapter-claude test
       - name: Codex pinned-real lane
         if: ${{ inputs.vendor == 'codex' }}
         env:
           CODEX_LIVE: '1'
-          PUPPETEER_CODEX_BIN: ${{ github.workspace }}/.agent-adaptation/artifacts/${{ matrix.platform }}/${{ matrix.executable }}
+          PUPPETEER_CODEX_BIN: ${{ github.workspace }}/.agent-adaptation/artifacts/${{ matrix.platform }}/${{ steps.policy.outputs.outputName }}
+          PUPPETEER_LIVE_ARTIFACT: ${{ github.workspace }}/.agent-adaptation/artifacts/${{ matrix.platform }}/${{ steps.policy.outputs.outputName }}
         run: pnpm --filter @vibecook/puppeteer-adapter-codex test
+      - name: Hermes pinned-real native-TUI lane
+        if: ${{ inputs.vendor == 'hermes' }}
+        env:
+          HERMES_LIVE: '1'
+          PUPPETEER_HERMES_BIN: ${{ github.workspace }}/.agent-adaptation/live-work/${{ matrix.platform }}/python-environment/${{ steps.policy.outputs.consolePath }}
+          HERMES_PYTHON: ${{ github.workspace }}/.agent-adaptation/live-work/${{ matrix.platform }}/python-environment/${{ steps.policy.outputs.pythonPath }}
+          HERMES_TUI_DIR: ${{ github.workspace }}/.agent-adaptation/live-artifacts/${{ matrix.platform }}/${{ steps.policy.outputs.runtimeRoot }}
+          PUPPETEER_LIVE_ARTIFACT: ${{ github.workspace }}/.agent-adaptation/artifacts/${{ matrix.platform }}/${{ steps.policy.outputs.outputName }}
+        run: pnpm --filter @vibecook/puppeteer-adapter-hermes test
       - name: OpenCode pinned-real native-TUI lane
         if: ${{ inputs.vendor == 'opencode' }}
         env:
           OPENCODE_LIVE: '1'
-          PUPPETEER_OPENCODE_BIN: ${{ github.workspace }}/.agent-adaptation/artifacts/${{ matrix.platform }}/${{ matrix.executable }}
+          PUPPETEER_OPENCODE_BIN: ${{ github.workspace }}/.agent-adaptation/artifacts/${{ matrix.platform }}/${{ steps.policy.outputs.outputName }}
+          PUPPETEER_LIVE_ARTIFACT: ${{ github.workspace }}/.agent-adaptation/artifacts/${{ matrix.platform }}/${{ steps.policy.outputs.outputName }}
         run: pnpm --filter @vibecook/puppeteer-adapter-opencode test
       - name: Kimi pinned-real native-TUI lane
         if: ${{ inputs.vendor == 'kimi' }}
         env:
           KIMI_LIVE: '1'
-          PUPPETEER_KIMI_BIN: ${{ github.workspace }}/.agent-adaptation/artifacts/${{ matrix.platform }}/${{ matrix.executable }}
+          PUPPETEER_KIMI_BIN: ${{ github.workspace }}/.agent-adaptation/artifacts/${{ matrix.platform }}/${{ steps.policy.outputs.outputName }}
+          PUPPETEER_LIVE_ARTIFACT: ${{ github.workspace }}/.agent-adaptation/artifacts/${{ matrix.platform }}/${{ steps.policy.outputs.outputName }}
         run: pnpm --filter @vibecook/puppeteer-adapter-kimi test
       - run: >-
           node scripts/write-platform-verification.mjs
           --artifacts .agent-adaptation/acquisition.json
-          --artifact ".agent-adaptation/artifacts/${{ matrix.platform }}/${{ matrix.executable }}"
+          --artifact ".agent-adaptation/artifacts/${{ matrix.platform }}/${{ steps.policy.outputs.outputName }}"
           --version-output-file ".agent-adaptation/artifacts/${{ matrix.platform }}/version.txt"
           --adapter-receipt ".agent-adaptation/adapter-real-${{ matrix.platform }}.json"
           --platform "${{ matrix.platform }}"

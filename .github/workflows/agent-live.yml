@@ -114,7 +114,12 @@ jobs:
           --checkout "${{ vars.HERMES_CHECKOUT }}"
           --scenario basic-turn
           --output .agent-live/hermes@0.20.0
-      - name: Recheck the adapter against the pinned normalized contract
+      - name: Recheck the adapter through the pinned native TUI
+        env:
+          HERMES_LIVE: '1'
+          PUPPETEER_HERMES_BIN: ${{ vars.HERMES_BIN }}
+          HERMES_PYTHON: ${{ vars.HERMES_PYTHON }}
+          HERMES_TUI_DIR: ${{ vars.HERMES_TUI_DIR }}
         run: pnpm --filter @vibecook/puppeteer-adapter-hermes test
 
   kimi-live:
