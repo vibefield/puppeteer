@@ -18,13 +18,25 @@ vi.mock('../observation/observer.js', () => ({
   createCodexObserver: fakes.createObserver,
 }));
 
-vi.mock('../transport/ws-transport.js', () => ({
+vi.mock('../transport/app-server-process.js', () => ({
   spawnAppServer: fakes.spawnServer,
-  wsOverUnixTransport: vi.fn(() => fakes.transport),
-  createUnixWebSocketTapProxy: vi.fn((_upstream: string, onClientMessage: (message: unknown) => void) => {
-    fakes.tapClientMessage = onClientMessage;
-    return { socketPath: '/tmp/codex-tap.sock', ready: fakes.tapReady, dispose: fakes.tapDispose };
-  }),
+}));
+
+vi.mock('../transport/ws-transport.js', () => ({
+  connectAppServerEndpoint: vi.fn(() => fakes.transport),
+  appServerRemoteAddress: vi.fn((endpoint: { kind: string; path?: string; url?: string }) =>
+    endpoint.kind === 'unix' ? `unix://${endpoint.path}` : endpoint.url,
+  ),
+  createWebSocketTapProxy: vi.fn(
+    (_upstream: { kind: string; path?: string; url?: string }, onClientMessage: (message: unknown) => void) => {
+      fakes.tapClientMessage = onClientMessage;
+      return {
+        endpoint: () => ({ kind: 'unix', path: '/tmp/codex-tap.sock' }),
+        ready: fakes.tapReady,
+        dispose: fakes.tapDispose,
+      };
+    },
+  ),
 }));
 
 import { createCodexTuiSession, prepareCodexTuiSession } from './tui-session.js';
@@ -40,10 +52,12 @@ describe('Codex TUI preparation', () => {
   beforeEach(() => {
     vi.clearAllMocks();
     fakes.serverReady.mockResolvedValue(undefined);
+    fakes.serverDispose.mockResolvedValue(undefined);
     fakes.tapReady.mockResolvedValue(undefined);
+    fakes.tapDispose.mockResolvedValue(undefined);
     fakes.observerDispose.mockResolvedValue(undefined);
     fakes.spawnServer.mockReturnValue({
-      socketPath: '/tmp/codex.sock',
+      endpoint: () => ({ kind: 'unix', path: '/tmp/codex.sock' }),
       ready: fakes.serverReady,
       dispose: fakes.serverDispose,
     });
@@ -106,7 +120,7 @@ describe('Codex TUI preparation', () => {
 
   it('preserves the managed createSession spawn path through the same preparation', async () => {
     const terminalHost = host();
-    const session = await createCodexTuiSession({ cwd: '/work/repo', host: terminalHost });
+    const session = await createCodexTuiSession({ cwd: '/work/repo', host: terminalHost, executable: 'codex' });
 
     expect(terminalHost.spawnTerminal).toHaveBeenCalledWith({
       command: 'codex',

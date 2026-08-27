@@ -12,7 +12,8 @@ import { join } from 'node:path';
 import { projectAgentEvents } from '@vibecook/puppeteer-testing';
 import { createCodexSession } from '../driver.js';
 import { createCodexObserver } from './observer.js';
-import { spawnAppServer, wsOverUnixTransport } from '../transport/ws-transport.js';
+import { spawnAppServer } from '../transport/app-server-process.js';
+import { connectAppServerEndpoint } from '../transport/ws-transport.js';
 
 const live = process.env.CODEX_LIVE === '1';
 
@@ -31,7 +32,7 @@ describe.skipIf(!live)('createCodexObserver (live, Model B)', () => {
     const cwd = mkdtempSync(join(realpathSync(tmpdir()), 'codex-obs-'));
 
     // Observer connects first and waits for a thread to appear.
-    const observer = await createCodexObserver({ transport: wsOverUnixTransport(server.socketPath) });
+    const observer = await createCodexObserver({ transport: connectAppServerEndpoint(server.endpoint()) });
     const projection = projectAgentEvents(observer);
     const attached = new Promise<void>((res) => observer.onThread(() => res()));
 
@@ -40,7 +41,7 @@ describe.skipIf(!live)('createCodexObserver (live, Model B)', () => {
       cwd,
       sandbox: 'read-only',
       approvalPolicy: 'never',
-      transport: wsOverUnixTransport(server.socketPath),
+      transport: connectAppServerEndpoint(server.endpoint()),
     });
 
     try {
@@ -71,7 +72,7 @@ describe.skipIf(!live)('createCodexObserver (live, Model B)', () => {
       projection.dispose();
       await observer.dispose();
       await driver.dispose();
-      server.dispose();
+      await server.dispose();
     }
   }, 90_000);
 });

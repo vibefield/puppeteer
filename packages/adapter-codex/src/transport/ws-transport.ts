@@ -1,24 +1,22 @@
 /**
- * WebSocket-over-UDS transport for the Codex app-server (M5 C6).
+ * Local WebSocket transport for the Codex app-server (M5 C6).
  *
  * The app-server's socket transports (unix AND tcp) frame JSON-RPC as
  * WebSocket; only stdio:// is NDJSON (CODEX-SURFACE-FINDINGS §8). For the
- * desktop host we run one `codex app-server --listen unix://<sock>` and connect a
- * controller over it — UDS is preferred (no port, filesystem-scoped, not
- * network-exposed). Node's built-in WebSocket is TCP-only, so this is a small
- * hand-rolled WS client (handshake + RFC-6455 framing) exposed as a `Transport`,
- * so `createCodexSession` drives it unchanged via the injected-transport seam.
+ * desktop host we run one private app-server and connect a controller over it.
+ * POSIX uses a Unix socket (no port, filesystem-scoped); Windows uses an
+ * ephemeral loopback WebSocket because Codex does not expose a named-pipe
+ * listener. The same small RFC-6455 client handles both byte transports and is
+ * exposed as a `Transport`, so `createCodexSession` stays endpoint-agnostic.
  *
  * Localhost/UDS needs no auth token (the bearer is for remote/pairing).
  */
 
 import net from 'node:net';
 import crypto from 'node:crypto';
-import { spawn, type ChildProcess } from 'node:child_process';
-import { existsSync, realpathSync, rmSync } from 'node:fs';
+import { realpathSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import { resolveCodexExecutable } from '../detection.js';
 import type { Transport } from './app-server-client.js';
 
 // ─── RFC 6455 framing ──────────────────────────────────────────────────────
@@ -151,6 +149,11 @@ export interface WsUnixTransportOptions {
   host?: string;
 }
 
+interface RawWebSocketTransportOptions {
+  host: string;
+  requestTarget?: string;
+}
+
 /**
  * Connect to a listening `codex app-server` over a unix socket and expose it as
  * a `Transport`. Messages are delivered/sent as already-parsed JSON objects
@@ -158,6 +161,24 @@ export interface WsUnixTransportOptions {
  * are queued and flushed on open.
  */
 export function wsOverUnixTransport(socketPath: string, opts: WsUnixTransportOptions = {}): Transport {
+  return websocketTransport(net.connect(socketPath), { host: opts.host ?? 'localhost' });
+}
+
+/** Connect to a TCP WebSocket endpoint exposed by a loopback app-server. */
+export function wsOverTcpTransport(remoteAddress: string): Transport {
+  const endpoint = new URL(remoteAddress);
+  if (endpoint.protocol !== 'ws:') throw new Error(`expected a ws:// app-server endpoint, got ${remoteAddress}`);
+  if (endpoint.username || endpoint.password)
+    throw new Error('app-server WebSocket endpoint must not contain credentials');
+  const port = endpoint.port ? Number(endpoint.port) : 80;
+  const hostname = endpoint.hostname.startsWith('[') ? endpoint.hostname.slice(1, -1) : endpoint.hostname;
+  return websocketTransport(net.connect({ host: hostname, port }), {
+    host: endpoint.host,
+    requestTarget: `${endpoint.pathname}${endpoint.search}`,
+  });
+}
+
+function websocketTransport(sock: net.Socket, opts: RawWebSocketTransportOptions): Transport {
   let onMsg: ((m: unknown) => void) | undefined;
   let onCls: ((info: { code: number | null; signal: string | null }) => void) | undefined;
   let closedEmitted = false;
@@ -168,7 +189,6 @@ export function wsOverUnixTransport(socketPath: string, opts: WsUnixTransportOpt
   let open = false;
   const sendQueue: string[] = [];
 
-  const sock = net.connect(socketPath);
   sock.setNoDelay(true);
 
   const emitClose = (info: { code: number | null; signal: string | null }): void => {
@@ -202,8 +222,8 @@ export function wsOverUnixTransport(socketPath: string, opts: WsUnixTransportOpt
   sock.on('connect', () => {
     const key = crypto.randomBytes(16).toString('base64');
     sock.write(
-      `GET / HTTP/1.1\r\n` +
-        `Host: ${opts.host ?? 'localhost'}\r\n` +
+      `GET ${opts.requestTarget ?? '/'} HTTP/1.1\r\n` +
+        `Host: ${opts.host}\r\n` +
         `Upgrade: websocket\r\n` +
         `Connection: Upgrade\r\n` +
         `Sec-WebSocket-Key: ${key}\r\n` +
@@ -258,33 +278,69 @@ export function wsOverUnixTransport(socketPath: string, opts: WsUnixTransportOpt
   };
 }
 
-export interface UnixWebSocketTapProxy {
-  socketPath: string;
-  ready(): Promise<void>;
-  dispose(): void;
+export type AppServerEndpoint =
+  { readonly kind: 'unix'; readonly path: string } | { readonly kind: 'websocket'; readonly url: string };
+
+export function appServerRemoteAddress(endpoint: AppServerEndpoint): string {
+  return endpoint.kind === 'unix' ? `unix://${endpoint.path}` : endpoint.url;
 }
 
+export function connectAppServerEndpoint(endpoint: AppServerEndpoint): Transport {
+  return endpoint.kind === 'unix' ? wsOverUnixTransport(endpoint.path) : wsOverTcpTransport(endpoint.url);
+}
+
+function connectEndpoint(endpoint: AppServerEndpoint): net.Socket {
+  if (endpoint.kind === 'unix') return net.connect(endpoint.path);
+  const parsed = new URL(endpoint.url);
+  if (parsed.protocol !== 'ws:' || !parsed.port)
+    throw new Error(`invalid app-server WebSocket endpoint: ${endpoint.url}`);
+  const hostname = parsed.hostname.startsWith('[') ? parsed.hostname.slice(1, -1) : parsed.hostname;
+  return net.connect({ host: hostname, port: Number(parsed.port) });
+}
+
+export interface WebSocketTapProxy {
+  /** Available after `ready()`; the native TUI connects to this endpoint. */
+  endpoint(): AppServerEndpoint;
+  ready(): Promise<void>;
+  dispose(): Promise<void>;
+}
+
+let tapCounter = 0;
+
 /**
- * Transparent UDS proxy for a native Codex TUI connection. Bytes remain
+ * Transparent local proxy for a native Codex TUI connection. Bytes remain
  * untouched; client WebSocket text frames are decoded only to discover which
- * thread a native resume picker selected.
+ * thread a native resume picker selected. The proxy mirrors the upstream
+ * endpoint kind, so the picker works over both POSIX UDS and Windows loopback.
  */
-export function createUnixWebSocketTapProxy(
-  upstreamPath: string,
+export function createWebSocketTapProxy(
+  upstreamEndpoint: AppServerEndpoint,
   onClientMessage: (message: unknown) => void,
-): UnixWebSocketTapProxy {
-  const realTmp = realpathSync(tmpdir());
-  const socketPath = join(realTmp, `cx-tap-${process.pid}-${sockCounter++}.sock`);
-  let disposed = false;
+): WebSocketTapProxy {
+  const socketPath =
+    upstreamEndpoint.kind === 'unix'
+      ? join(realpathSync(tmpdir()), `cx-tap-${process.pid}-${tapCounter++}.sock`)
+      : undefined;
+  let localEndpoint: AppServerEndpoint | undefined = socketPath ? { kind: 'unix', path: socketPath } : undefined;
+  let disposal: Promise<void> | undefined;
   let resolveReady!: () => void;
   let rejectReady!: (error: Error) => void;
   let readySettled = false;
+  let readySucceeded = false;
   const readyPromise = new Promise<void>((resolve, reject) => {
     resolveReady = resolve;
     rejectReady = reject;
   });
+  void readyPromise.catch(() => undefined);
+  const sockets = new Set<net.Socket>();
+  const track = (socket: net.Socket): void => {
+    sockets.add(socket);
+    socket.once('close', () => sockets.delete(socket));
+  };
   const server = net.createServer((downstream) => {
-    const upstream = net.connect(upstreamPath);
+    const upstream = connectEndpoint(upstreamEndpoint);
+    track(downstream);
+    track(upstream);
     let decoder = new FrameDecoder();
     let upgraded = false;
     let requestHeaders = Buffer.alloc(0);
@@ -326,92 +382,73 @@ export function createUnixWebSocketTapProxy(
     upstream.on('error', close);
   });
   server.on('error', (error) => {
-    if (!readySettled) {
-      readySettled = true;
-      rejectReady(error);
-    }
+    if (readySettled) return;
+    readySettled = true;
+    rejectReady(error);
   });
-  server.listen(socketPath, () => {
+  const listening = (): void => {
+    if (!localEndpoint) {
+      const address = server.address();
+      if (!address || typeof address === 'string') {
+        readySettled = true;
+        rejectReady(new Error('Codex WebSocket tap did not bind a TCP port'));
+        return;
+      }
+      localEndpoint = { kind: 'websocket', url: `ws://127.0.0.1:${address.port}` };
+    }
+    readySucceeded = true;
     readySettled = true;
     resolveReady();
-  });
+  };
+  if (socketPath) server.listen(socketPath, listening);
+  else server.listen(0, '127.0.0.1', listening);
 
   return {
-    socketPath,
+    endpoint() {
+      if (!localEndpoint || !readySucceeded) throw new Error('Codex WebSocket tap endpoint requested before ready');
+      return localEndpoint;
+    },
     ready: () => readyPromise,
     dispose() {
-      if (disposed) return;
-      disposed = true;
-      server.close();
-      rmSync(socketPath, { force: true });
+      if (disposal) return disposal;
+      for (const socket of sockets) socket.destroy();
+      disposal = new Promise<void>((resolve) => {
+        const finish = (): void => {
+          if (socketPath) rmSync(socketPath, { force: true });
+          resolve();
+        };
+        if (!server.listening) finish();
+        else server.close(finish);
+      });
+      if (!readySettled) {
+        readySettled = true;
+        rejectReady(new Error('Codex WebSocket tap disposed before ready'));
+      }
+      return disposal;
     },
   };
 }
 
-// ─── app-server process ──────────────────────────────────────────────────────
-
-let sockCounter = 0;
-
-export interface AppServerHandle {
-  /** The unix socket the app-server is listening on. */
-  socketPath: string;
-  process: ChildProcess;
-  /** Resolves once the socket file exists (or rejects on timeout / early exit). */
-  ready(timeoutMs?: number): Promise<void>;
-  /** SIGTERM the app-server. */
-  dispose(): void;
+/** @deprecated Prefer the endpoint-neutral `createWebSocketTapProxy`. */
+export interface UnixWebSocketTapProxy {
+  readonly socketPath: string;
+  ready(): Promise<void>;
+  dispose(): Promise<void>;
 }
 
-/**
- * Spawn `codex app-server --listen unix://<sock>`. The socket path defaults to a
- * fresh file under the REAL temp dir (macOS `/tmp` is a symlink the app-server's
- * lstat rejects — CODEX-SURFACE-FINDINGS §8).
- */
-export function spawnAppServer(opts?: {
-  executable?: string;
-  socketPath?: string;
-  /**
-   * Extra environment for the app-server child, merged over this process's own.
-   *
-   * This child is private to the recipe — a caller has no other way to reach
-   * it, since it is not the terminal and carries no launch spec. That matters
-   * for anything the binary reads from the environment rather than argv, which
-   * is how the puppeteer imposter is told which vendor to be (docs/archive/IMPOSTER.md §6).
-   */
-  env?: Record<string, string>;
-}): AppServerHandle {
-  const realTmp = realpathSync(tmpdir());
-  const socketPath = opts?.socketPath ?? join(realTmp, `puppeteer-codex-${process.pid}-${sockCounter++}.sock`);
-  const child = spawn(resolveCodexExecutable(opts?.executable), ['app-server', '--listen', `unix://${socketPath}`], {
-    stdio: ['ignore', 'ignore', 'pipe'],
-    ...(opts?.env ? { env: { ...process.env, ...opts.env } } : {}),
-  });
-
+/** @deprecated Prefer the endpoint-neutral `createWebSocketTapProxy`. */
+export function createUnixWebSocketTapProxy(
+  upstreamPath: string,
+  onClientMessage: (message: unknown) => void,
+): UnixWebSocketTapProxy {
+  const proxy = createWebSocketTapProxy({ kind: 'unix', path: upstreamPath }, onClientMessage);
   return {
-    socketPath,
-    process: child,
-    ready: (timeoutMs = 8000) =>
-      new Promise<void>((resolve, reject) => {
-        const t0 = Date.now();
-        let exited = false;
-        child.once('exit', (code) => {
-          exited = true;
-          reject(new Error(`app-server exited before ready (code ${code})`));
-        });
-        const tick = (): void => {
-          if (exited) return;
-          if (existsSync(socketPath)) return resolve();
-          if (Date.now() - t0 > timeoutMs) return reject(new Error('app-server socket not ready in time'));
-          setTimeout(tick, 100);
-        };
-        tick();
-      }),
-    dispose: () => {
-      try {
-        child.kill('SIGTERM');
-      } catch {
-        /* already gone */
-      }
+    get socketPath() {
+      const endpoint = proxy.endpoint();
+      if (endpoint.kind !== 'unix') throw new Error('Codex Unix tap unexpectedly selected a TCP endpoint');
+      return endpoint.path;
     },
+    ready: () => proxy.ready(),
+    dispose: () => proxy.dispose(),
   };
 }

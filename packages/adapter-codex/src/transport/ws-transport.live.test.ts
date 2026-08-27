@@ -1,6 +1,6 @@
 /**
  * Opt-in live test — the full C6 transport foundation against the REAL
- * `codex app-server`: spawn it on a unix socket, connect the WS-over-UDS
+ * `codex app-server`: spawn its platform-local endpoint, connect the normalized
  * transport, and drive createCodexSession through it. Skipped unless
  * CODEX_LIVE=1.
  *
@@ -13,12 +13,13 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { projectAgentEvents } from '@vibecook/puppeteer-testing';
 import { createCodexSession } from '../driver.js';
-import { spawnAppServer, wsOverUnixTransport } from './ws-transport.js';
+import { spawnAppServer } from './app-server-process.js';
+import { connectAppServerEndpoint } from './ws-transport.js';
 
 const live = process.env.CODEX_LIVE === '1';
 
-describe.skipIf(!live)('createCodexSession over WS-over-UDS (live app-server)', () => {
-  it('spawns an app-server on a unix socket and drives a real turn over WebSocket', async () => {
+describe.skipIf(!live)('createCodexSession over a local WebSocket (live app-server)', () => {
+  it('spawns a platform-local app-server and drives a real turn over WebSocket', async () => {
     const server = spawnAppServer();
     await server.ready();
     const cwd = mkdtempSync(join(realpathSync(tmpdir()), 'codex-uds-'));
@@ -27,7 +28,7 @@ describe.skipIf(!live)('createCodexSession over WS-over-UDS (live app-server)', 
       cwd,
       sandbox: 'read-only',
       approvalPolicy: 'never',
-      transport: wsOverUnixTransport(server.socketPath),
+      transport: connectAppServerEndpoint(server.endpoint()),
     });
     const projection = projectAgentEvents(session);
     try {
@@ -54,7 +55,7 @@ describe.skipIf(!live)('createCodexSession over WS-over-UDS (live app-server)', 
     } finally {
       projection.dispose();
       await session.dispose();
-      server.dispose();
+      await server.dispose();
     }
   }, 70_000);
 });
