@@ -62,6 +62,8 @@ test('opencode is an explicit reviewed workflow choice with isolated real-artifa
   assert.match(live, /opencode-live:/);
   assert.match(live, /if: \$\{\{ vars\.OPENCODE_LIVE_ENABLED == 'true' \}\}/);
   assert.match(live, /PUPPETEER_OPENCODE_BIN: \$\{\{ vars\.OPENCODE_BIN \}\}/);
+  assert.match(protectedLiveTests.opencode, /testId: 'opencode:native-tui-wire'/);
+  assert.match(protectedLiveTests.opencode, /host\.output\(session!\.runtimeSessionId\)\.includes\(RESPONSE_MARKER\)/);
 });
 
 test('Kimi uses the same exact artifact for its cross-platform native-TUI adapter lane', () => {

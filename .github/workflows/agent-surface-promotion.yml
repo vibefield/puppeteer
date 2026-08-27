@@ -182,7 +182,7 @@ jobs:
           CODEX_LIVE: '1'
           PUPPETEER_CODEX_BIN: ${{ github.workspace }}/.agent-adaptation/artifacts/${{ matrix.platform }}/${{ matrix.executable }}
         run: pnpm --filter @vibecook/puppeteer-adapter-codex test
-      - name: OpenCode pinned-real lane
+      - name: OpenCode pinned-real native-TUI lane
         if: ${{ inputs.vendor == 'opencode' }}
         env:
           OPENCODE_LIVE: '1'

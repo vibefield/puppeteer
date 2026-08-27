@@ -4,8 +4,9 @@
 > complete; pinned darwin-arm64 survey complete**, pinned to OpenCode
 > **1.18.16**.
 > These findings are evidence for an adapter candidate; they do not declare
-> runtime support. Protected promotion remains gated on the remaining three
-> platform artifacts and the isolated pinned-real matrix.
+> runtime support. The protected real-native-TUI matrix is implemented, but
+> promotion remains gated on successful immutable-artifact runs on all four
+> required platforms.
 
 ## 1. Candidate identity
 
@@ -69,6 +70,15 @@ The adapter recipe should therefore generate a random password per backend,
 pass it only through child-process environment, bind loopback on port `0`, and
 leave mDNS/CORS disabled. Passwords must never enter argv, logs, fixtures, or
 session metadata.
+
+The adapter's opt-in promotion test now executes that complete recipe rather
+than substituting a fake terminal host. Against the exact darwin-arm64
+1.18.16 artifact it created the private backend and exact session, attached
+the real TUI through a PTY, submitted through the normalized prompt service,
+observed completion over HTTP/SSE, and confirmed that the TUI rendered the
+same controlled response. The resulting promotion receipt is bound to the
+executable digest. This local proof validates the lane; it is not a substitute
+for the four required protected workflow results.
 
 ## 4. Confirmed HTTP/SSE carrier
 
@@ -629,11 +639,11 @@ path, but does not justify inventing a capacity for an unknown model.
 
 ## 15. Survey scope and deferred platform expansion
 
-The initial adapter candidate is explicitly scoped to the probed
-`darwin-arm64` artifact. The behavioral survey for that scope is complete.
-Support on darwin-x64, linux-x64, and windows-x64 requires independent governed
-artifact acquisition, hashes, launch probes, and drift review before those
-platforms can be promoted; they are not inferred from the arm64 capture.
+The behavioral survey and complete adapter-through-native-TUI proof are
+currently scoped to the probed `darwin-arm64` artifact. Support on darwin-x64,
+linux-x64, and windows-x64 still requires successful governed acquisition,
+immutable hashes, exact launch/turn receipts, and drift review in the protected
+matrix; none is inferred from the arm64 run.
 
 The standalone snapshot part is a settled exact-release limitation, not a
 missing synthetic probe: it has no runtime producer in 1.18.16 and remains

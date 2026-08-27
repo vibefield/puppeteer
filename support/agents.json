@@ -90,7 +90,7 @@
       "candidateVersion": "1.18.16",
       "status": "baseline-pending",
       "blockers": [
-        "The complete four-platform pinned-real promotion and immutable artifact attestation have not passed."
+        "The protected four-platform adapter-through-real-native-TUI lane is implemented but has not yet completed successfully for every required platform."
       ]
     }
   ]
