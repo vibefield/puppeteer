@@ -5,6 +5,7 @@
  */
 
 export * from './driver.js';
+export * from './detection.js';
 export * from './observation/session-observer.js';
 export * from './observation/session-discovery.js';
 export * from './normalization/index.js';
