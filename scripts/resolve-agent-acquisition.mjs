@@ -25,6 +25,7 @@ export function resolveAgentAcquisition(config, { vendor, platform, sourceRefere
   if (!['tar.gz', 'zip'].includes(config.acquisition.sourceArchive?.format)) {
     throw new Error('unsupported source archive format');
   }
+  const scriptsDirectory = platform === 'windows-x64' ? 'Scripts' : 'bin';
   return {
     artifactKind: 'installed-console',
     outputName: 'installed-console.json',
@@ -32,10 +33,13 @@ export function resolveAgentAcquisition(config, { vendor, platform, sourceRefere
     sourceReference,
     pythonVersion: installed.pythonVersion,
     uvVersion: installed.uvVersion,
+    consolePath: `${scriptsDirectory}/${installed.consoleScript}${platform === 'windows-x64' ? '.exe' : ''}`,
+    pythonPath: `${scriptsDirectory}/python${platform === 'windows-x64' ? '.exe' : ''}`,
     ...(installed.runtimeBundle
       ? {
           nodeVersion: installed.runtimeBundle.nodeVersion,
           npmVersion: installed.runtimeBundle.npmVersion,
+          runtimeRoot: 'runtime',
         }
       : {}),
   };

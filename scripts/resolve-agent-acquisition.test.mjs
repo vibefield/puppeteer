@@ -49,6 +49,8 @@ test('source acquisition exposes only its declarative installed-console toolchai
       sourceReference: 'v1.2.3',
       pythonVersion: '3.11.9',
       uvVersion: '0.9.28',
+      consolePath: 'bin/fake',
+      pythonPath: 'bin/python',
     },
   );
 });
@@ -106,4 +108,34 @@ test('source acquisition exposes a separately pinned runtime-bundle toolchain wh
 
   assert.equal(resolved.nodeVersion, '22.22.0');
   assert.equal(resolved.npmVersion, '10.9.4');
+  assert.equal(resolved.consolePath, 'bin/hermes');
+  assert.equal(resolved.pythonPath, 'bin/python');
+  assert.equal(resolved.runtimeRoot, 'runtime');
+});
+
+test('source acquisition exposes platform-correct Windows launcher paths', () => {
+  const installedConsole = {
+    strategy: 'python-uv-lock',
+    pythonVersion: '3.11.9',
+    uvVersion: '0.9.28',
+    projectFile: 'pyproject.toml',
+    lockFile: 'uv.lock',
+    distribution: 'fake',
+    consoleScript: 'fake',
+    installMode: 'non-editable',
+    generatedSourcePaths: [],
+    versionOutput: 'single-line',
+    isolatedHomeEnvironment: ['FAKE_HOME'],
+  };
+  const resolved = resolveAgentAcquisition(
+    {
+      vendor: 'fake',
+      platforms: ['windows-x64'],
+      acquisition: { strategy: 'source-revision', sourceArchive: { format: 'zip' }, installedConsole },
+    },
+    { vendor: 'fake', platform: 'windows-x64', sourceReference: 'v1.2.3' },
+  );
+
+  assert.equal(resolved.consolePath, 'Scripts/fake.exe');
+  assert.equal(resolved.pythonPath, 'Scripts/python.exe');
 });
