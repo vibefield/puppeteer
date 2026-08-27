@@ -142,7 +142,10 @@ jobs:
           --version 0.34.0
           --scenario basic-turn
           --output .agent-live/kimi@0.34.0
-      - name: Recheck the Kimi adapter against the captured 0.34.0 contract
+      - name: Run the Kimi adapter through the real native TUI and durable wire
+        env:
+          KIMI_LIVE: '1'
+          PUPPETEER_KIMI_BIN: ${{ vars.KIMI_BIN }}
         run: pnpm --filter @vibecook/puppeteer-adapter-kimi test
 
   opencode-live:

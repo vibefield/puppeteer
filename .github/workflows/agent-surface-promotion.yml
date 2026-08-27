@@ -7,9 +7,9 @@ on:
         description: Candidate vendor
         required: true
         type: choice
-        # Grok, Kimi, and Hermes remain intentionally absent until their ledger
+        # Grok and Hermes remain intentionally absent until their ledger
         # blockers have real cross-platform adapter-through-TUI lanes.
-        options: [claude, codex, opencode]
+        options: [claude, codex, kimi, opencode]
       version:
         description: Exact normalized vendor version
         required: true
@@ -167,6 +167,7 @@ jobs:
       - name: Audit the exact candidate model
         env:
           PUPPETEER_CODEX_BIN: ${{ github.workspace }}/.agent-adaptation/artifacts/${{ matrix.platform }}/${{ matrix.executable }}
+          PUPPETEER_KIMI_BIN: ${{ github.workspace }}/.agent-adaptation/artifacts/${{ matrix.platform }}/${{ matrix.executable }}
           PUPPETEER_OPENCODE_BIN: ${{ github.workspace }}/.agent-adaptation/artifacts/${{ matrix.platform }}/${{ matrix.executable }}
         run: pnpm --filter @vibecook/puppeteer-surface run "surface:audit:${AGENT_VENDOR}"
       - name: Claude pinned-real lane
@@ -187,6 +188,12 @@ jobs:
           OPENCODE_LIVE: '1'
           PUPPETEER_OPENCODE_BIN: ${{ github.workspace }}/.agent-adaptation/artifacts/${{ matrix.platform }}/${{ matrix.executable }}
         run: pnpm --filter @vibecook/puppeteer-adapter-opencode test
+      - name: Kimi pinned-real native-TUI lane
+        if: ${{ inputs.vendor == 'kimi' }}
+        env:
+          KIMI_LIVE: '1'
+          PUPPETEER_KIMI_BIN: ${{ github.workspace }}/.agent-adaptation/artifacts/${{ matrix.platform }}/${{ matrix.executable }}
+        run: pnpm --filter @vibecook/puppeteer-adapter-kimi test
       - run: >-
           node scripts/write-platform-verification.mjs
           --artifacts .agent-adaptation/acquisition.json

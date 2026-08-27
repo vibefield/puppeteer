@@ -172,9 +172,9 @@ created session only through a unique matching durable prompt, observes all
 agent journals with bounded append-safe tailing, normalizes the main journal,
 retains non-main and unknown records, and confirms injected prompts only after
 `turn.prompt` is durable. Disposal performs one final bounded journal read.
-The shared `AgentHost` contract does not yet notify adapters of process exit,
-so the host must still sequence disposal after terminal exit for that read to
-serve as an exit drain.
+Runtime owns the host process lifecycle, records process exit, and then
+disposes the binding, so that final read serves as the durable-wire exit drain
+without making the adapter invent a process-exit event.
 
 The Kimi Imposter independently materializes the observed nested main journal,
 replace-in-place session state, and root-level `session_index.jsonl`. Its index
@@ -185,8 +185,10 @@ existing session is resumed.
 
 The following remain explicitly unverified:
 
-- true interactive TUI startup, first-prompt session discovery, resize, and
-  clean/abrupt exit;
+- interactive resize and clean/abrupt exit, plus native-TUI behavior outside
+  the locally exercised exact darwin-arm64 artifact (startup, explicit folder
+  trust, first-prompt discovery, and a basic turn now pass through the real
+  adapter lane locally);
 - guarded paste confirmation under manual user input;
 - permission accept/deny and question answer/dismiss paths;
 - prompt queueing and steer;
@@ -215,11 +217,15 @@ pre-normalization replay, a wire-first adapter, an Imposter persona, shared
 AgentSession conformance, and runtime/Godview/devkit composition.
 These are candidate implementation facts, not a promotion claim.
 
-The remaining gates are the interactive scenarios listed above, automatic
-process-exit/drain integration, exact protected artifact reacquisition,
-declared-platform pinned-real adapter reports, and evidence reconciliation.
-Support remains `baseline-pending`; only the protected promotion workflow may
-change it to `verified`.
+The remaining gates are the interactive scenarios listed above, a successful
+exact protected artifact reacquisition, successful adapter-through-native-TUI
+reports on every declared platform, and evidence reconciliation. Runtime host
+teardown now sequences process-exit handling and the adapter's final bounded
+durable-wire drain. The protected lane itself now drives the real TUI through
+a cross-platform PTY against a credential-free loopback model backend, but its
+four platform reports do not exist until that workflow succeeds. Support
+remains `baseline-pending`; only the protected promotion workflow may change
+it to `verified`.
 
 The local no-run promotion audit passes identity, privacy, model,
 adapter-fixture, Imposter, exact-replay, hermetic, packaging, and documentation

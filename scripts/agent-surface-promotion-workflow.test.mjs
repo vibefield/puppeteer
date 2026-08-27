@@ -9,22 +9,14 @@ const workflow = readFileSync(resolve(root, '.github/workflows/agent-surface-pro
 const adaptation = readFileSync(resolve(root, '.github/workflows/agent-adaptation.yml'), 'utf8');
 const live = readFileSync(resolve(root, '.github/workflows/agent-live.yml'), 'utf8');
 const protectedLiveTests = Object.fromEntries(
-  ['claude', 'codex', 'opencode'].map((vendor) => [
+  Object.entries({
+    claude: 'pinned-real.live.test.ts',
+    codex: 'driver.live.test.ts',
+    kimi: 'driver.live.test.ts',
+    opencode: 'opencode.live.test.ts',
+  }).map(([vendor, file]) => [
     vendor,
-    readFileSync(
-      resolve(
-        root,
-        'packages',
-        `adapter-${vendor}`,
-        'src',
-        vendor === 'claude'
-          ? 'pinned-real.live.test.ts'
-          : vendor === 'codex'
-            ? 'driver.live.test.ts'
-            : 'opencode.live.test.ts',
-      ),
-      'utf8',
-    ),
+    readFileSync(resolve(root, 'packages', `adapter-${vendor}`, 'src', file), 'utf8'),
   ]),
 );
 
@@ -62,7 +54,7 @@ test('promotion binds one complete acquisition through test, verification, and t
 
 test('opencode is an explicit reviewed workflow choice with isolated real-artifact lanes', () => {
   assert.match(adaptation, /options: \[claude, codex, grok, hermes, kimi, opencode\]/);
-  assert.match(workflow, /options: \[claude, codex, opencode\]/);
+  assert.match(workflow, /options: \[claude, codex, kimi, opencode\]/);
   assert.match(workflow, /if: \$\{\{ inputs\.vendor == 'opencode' \}\}/);
   assert.match(workflow, /OPENCODE_LIVE: '1'/);
   assert.match(workflow, /PUPPETEER_OPENCODE_BIN:/);
@@ -70,6 +62,17 @@ test('opencode is an explicit reviewed workflow choice with isolated real-artifa
   assert.match(live, /opencode-live:/);
   assert.match(live, /if: \$\{\{ vars\.OPENCODE_LIVE_ENABLED == 'true' \}\}/);
   assert.match(live, /PUPPETEER_OPENCODE_BIN: \$\{\{ vars\.OPENCODE_BIN \}\}/);
+});
+
+test('Kimi uses the same exact artifact for its cross-platform native-TUI adapter lane', () => {
+  assert.match(workflow, /options: \[claude, codex, kimi, opencode\]/);
+  assert.match(workflow, /if: \$\{\{ inputs\.vendor == 'kimi' \}\}/);
+  assert.match(workflow, /KIMI_LIVE: '1'/);
+  assert.match(workflow, /PUPPETEER_KIMI_BIN:/);
+  assert.match(workflow, /@vibecook\/puppeteer-adapter-kimi test/);
+  assert.match(live, /kimi-live:/);
+  assert.match(live, /KIMI_LIVE: '1'/);
+  assert.match(live, /PUPPETEER_KIMI_BIN: \$\{\{ vars\.KIMI_BIN \}\}/);
 });
 
 test('every protected provider writes its artifact-bound receipt from an executed live test', () => {
@@ -100,7 +103,6 @@ test('source-only Hermes has a generic adaptation lane without an unearned promo
   assert.match(adaptation, /--node node/);
   assert.match(adaptation, /--npm npm/);
   assert.doesNotMatch(adaptation, /inputs\.vendor == 'hermes'/);
-  assert.doesNotMatch(workflow, /options: \[[^\]]*kimi/);
   assert.doesNotMatch(workflow, /options: \[[^\]]*hermes/);
   assert.match(live, /hermes-surface:/);
   assert.match(live, /if: \$\{\{ vars\.HERMES_LIVE_ENABLED == 'true' \}\}/);
