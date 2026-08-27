@@ -1,122 +1,139 @@
 /**
- * Opt-in live coverage of the complete Grok product recipe: shared leader,
- * native terminal viewer, ACP controller, durable-log observer, and resume.
+ * Opt-in proof of Grok's complete adapter-owned composition: the exact native
+ * TUI in a PTY, one shared leader, ACP control, durable-log normalization, and
+ * resume. Model traffic and user state remain isolated, so the lane needs no
+ * credentials or external model access.
  *
- *   GROK_LIVE=1 pnpm --filter @vibecook/puppeteer-adapter-grok test
- *
- * A self-hosted reconciliation runner should set GROK_LIVE_HOME to an isolated,
- * pre-authenticated Grok home. Without it the installed binary's normal home is
- * used and Grok retains the session just as it does for an interactive launch.
+ *   GROK_LIVE=1 PUPPETEER_GROK_BIN=/absolute/path/to/grok pnpm test
  */
 
-import { spawn, type ChildProcess } from 'node:child_process';
-import { mkdtempSync, realpathSync, rmSync } from 'node:fs';
+import { mkdirSync, mkdtempSync, realpathSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import type { AgentHost, TerminalSpec } from '@vibecook/puppeteer-core';
 import { projectAgentEvents } from '@vibecook/puppeteer-testing';
+import { attestLiveAdapter } from '@vibecook/puppeteer-testing/live-attestation';
 import { describe, expect, it } from 'vitest';
+import { detectGrokInstallation, resolveGrokExecutable } from './detection.js';
 import { createGrokBackend } from './driver.js';
+import {
+  classifyGrokLiveModelRequest,
+  GROK_LIVE_MODEL,
+  GROK_LIVE_RESPONSE_MARKER,
+  isolatedGrokLiveEnvironment,
+  startGrokLoopbackProvider,
+  writeGrokLiveConfiguration,
+} from './test-support/live-model.js';
+import { GrokLivePtyHost, waitFor } from './test-support/live-pty-host.js';
 
 const live = process.env.GROK_LIVE === '1';
-const GROK_BIN = process.env.PUPPETEER_GROK_BIN ?? 'grok';
 
-async function waitFor(predicate: () => boolean, label: string, timeoutMs = 60_000): Promise<void> {
-  const deadline = Date.now() + timeoutMs;
-  while (Date.now() < deadline) {
-    if (predicate()) return;
-    await new Promise((resolve) => setTimeout(resolve, 50));
-  }
-  throw new Error(`timed out waiting for ${label}`);
-}
-
-function terminalHost(children: Set<ChildProcess>, launches: TerminalSpec[]): AgentHost {
-  return {
-    async spawnTerminal(spec) {
-      launches.push(spec);
-      // macOS `script` supplies the PTY that the real native viewer expects.
-      // This lane is intentionally Darwin-only until the declared Windows and
-      // Linux viewer recipes have their own acquired-artifact evidence.
-      const child = spawn('script', ['-q', '/dev/null', spec.command, ...spec.args], {
-        cwd: spec.cwd,
-        env: { ...process.env, ...spec.env },
-        detached: true,
-        stdio: ['ignore', 'ignore', 'pipe'],
-      });
-      children.add(child);
-      await new Promise<void>((resolve, reject) => {
-        child.once('spawn', resolve);
-        child.once('error', reject);
-      });
-      return { runtimeSessionId: `grok-live-terminal-${child.pid ?? 'unknown'}` };
-    },
-    automateTerminal: async () => ({ accepted: true }),
-  };
-}
-
-async function reap(child: ChildProcess): Promise<void> {
-  if (child.exitCode !== null || child.signalCode !== null) return;
-  try {
-    if (child.pid) process.kill(-child.pid, 'SIGTERM');
-    else child.kill('SIGTERM');
-  } catch {
-    child.kill('SIGKILL');
-  }
-  await Promise.race([
-    new Promise<void>((resolve) => child.once('exit', () => resolve())),
-    new Promise<void>((resolve) => setTimeout(resolve, 2_000)),
-  ]);
-}
-
-describe.skipIf(!live || process.platform !== 'darwin')('Grok native composition (live)', () => {
-  it('shares one session across leader, TUI, ACP, durable observation, and resume', async () => {
-    const cwd = realpathSync(mkdtempSync(join(tmpdir(), 'grok-composition-live-')));
-    const children = new Set<ChildProcess>();
-    const launches: TerminalSpec[] = [];
-    const liveHome = process.env.GROK_LIVE_HOME;
-    const backend = createGrokBackend({
-      executable: GROK_BIN,
-      host: terminalHost(children, launches),
-      ...(liveHome ? { appServerEnv: { GROK_HOME: liveHome } } : {}),
-    });
-
+describe.runIf(live)('Grok adapter through real native TUI (live)', () => {
+  it('shares one exact session across leader, ACP, durable observation, TUI, and resume', async () => {
+    const root = realpathSync(mkdtempSync(join(realpathSync(tmpdir()), 'puppeteer-grok-live-')));
+    const grokHome = join(root, 'grok-home');
+    const cwd = join(root, 'workspace');
+    for (const directory of [grokHome, cwd, join(root, 'tmp')]) mkdirSync(directory, { recursive: true });
+    const provider = await startGrokLoopbackProvider();
+    writeGrokLiveConfiguration(grokHome, provider.baseUrl);
+    const environment = isolatedGrokLiveEnvironment(root, grokHome, provider.baseUrl);
+    const executable = resolveGrokExecutable();
+    const host = new GrokLivePtyHost();
+    const backend = createGrokBackend({ executable, host, appServerEnv: environment });
+    let session: Awaited<ReturnType<typeof backend.createSession>> | undefined;
+    let projection: ReturnType<typeof projectAgentEvents> | undefined;
+    let resumed: Awaited<ReturnType<typeof backend.createSession>> | undefined;
+    let resumedProjection: ReturnType<typeof projectAgentEvents> | undefined;
     try {
-      const session = await backend.createSession({ cwd, permissionMode: 'default' });
-      const projection = projectAgentEvents(session);
-      const events = projection.envelopes;
-      const originalId = session.sessionId;
+      const installation = await detectGrokInstallation(executable, { env: environment });
+      expect(installation.exactTarget).toBe(true);
 
-      expect(launches).toHaveLength(1);
-      expect(launches[0]?.args).toEqual(expect.arrayContaining(['--leader', '--resume', originalId]));
+      session = await backend.createSession({ cwd, model: GROK_LIVE_MODEL, permissionMode: 'default' });
+      projection = projectAgentEvents(session);
+      const sessionId = session.sessionId;
+      expect(host.launches).toHaveLength(1);
+      expect(host.launches[0]?.args).toEqual(
+        expect.arrayContaining(['--model', GROK_LIVE_MODEL, '--leader', '--resume', sessionId]),
+      );
       expect(session.observationLevel()).toBe('native-log');
 
       const receipt = await session.services.prompt.submit({
-        text: 'Reply with exactly the single word: pong. Do not use any tools.',
+        text: `Reply with exactly ${GROK_LIVE_RESPONSE_MARKER} and do not use tools.`,
       });
-      expect(receipt.status).toBe('confirmed');
-      await waitFor(() => events.some(({ event }) => event.type === 'turn:completed'), 'durable turn completion');
-      expect(projection.state.lastAssistantMessage?.toLowerCase()).toContain('pong');
-      expect(events.some(({ source }) => source === 'native-transcript')).toBe(true);
-      await session.dispose();
-      await Promise.all([...children].map(reap));
-      children.clear();
-
-      const resumed = await backend.createSession({ cwd, resume: originalId });
-      const resumedProjection = projectAgentEvents(resumed);
-      expect(resumed.sessionId).toBe(originalId);
-      expect(launches).toHaveLength(2);
+      expect(receipt, host.output(session.runtimeSessionId)).toEqual({
+        status: 'confirmed',
+        turnId: expect.any(String),
+      });
+      try {
+        await waitFor(
+          () => projection!.envelopes.some(({ event }) => event.type === 'turn:completed'),
+          'normalized durable turn completion',
+        );
+      } catch (cause) {
+        const requestSummary = provider.requests.map(({ url, body }) => ({
+          url,
+          model: body && typeof body === 'object' ? (body as { model?: unknown }).model : undefined,
+          kind: classifyGrokLiveModelRequest(body),
+        }));
+        throw new Error(
+          `Grok durable completion diagnostics: requests=${JSON.stringify(requestSummary)} ` +
+            `events=${JSON.stringify(projection.envelopes.map(({ event }) => event.type))} ` +
+            `tui=${JSON.stringify(host.output(session.runtimeSessionId).slice(-2_000))}`,
+          { cause },
+        );
+      }
       await waitFor(
-        () => (resumedProjection.state.lastAssistantMessage ?? '').toLowerCase().includes('pong'),
+        () => host.output(session!.runtimeSessionId).includes(GROK_LIVE_RESPONSE_MARKER),
+        'response in the real native TUI',
+      );
+      expect(projection.state.lastAssistantMessage).toContain(GROK_LIVE_RESPONSE_MARKER);
+      expect(projection.envelopes.some(({ source }) => source === 'native-transcript')).toBe(true);
+
+      const originalRuntimeSessionId = session.runtimeSessionId;
+      projection.dispose();
+      projection = undefined;
+      await session.dispose();
+      session = undefined;
+      await host.disposeTerminal(originalRuntimeSessionId);
+
+      resumed = await backend.createSession({
+        cwd,
+        resume: sessionId,
+        model: GROK_LIVE_MODEL,
+        permissionMode: 'default',
+      });
+      resumedProjection = projectAgentEvents(resumed);
+      expect(resumed.sessionId).toBe(sessionId);
+      expect(host.launches).toHaveLength(2);
+      expect(host.launches[1]?.args).toEqual(expect.arrayContaining(['--resume', sessionId]));
+      await waitFor(
+        () => (resumedProjection!.state.lastAssistantMessage ?? '').includes(GROK_LIVE_RESPONSE_MARKER),
         'resumed durable history',
       );
-      expect(resumed.observationLevel()).toBe('native-log');
-      resumedProjection.dispose();
-      await resumed.dispose();
-      projection.dispose();
+      await waitFor(
+        () => host.output(resumed!.runtimeSessionId).includes(GROK_LIVE_RESPONSE_MARKER),
+        'resumed history in the real native TUI',
+      );
+
+      const semanticTurnRequests = provider.requests.filter(
+        ({ url, body }) => url?.startsWith('/v1/chat/completions') && classifyGrokLiveModelRequest(body) === 'turn',
+      );
+      expect(semanticTurnRequests).toHaveLength(1);
+      expect(semanticTurnRequests[0]?.body).toMatchObject({ model: GROK_LIVE_MODEL, stream: true });
+      expect(
+        provider.requests.every(({ url }) =>
+          ['/v1/chat/completions', '/v1/responses', '/v1/models'].some((route) => url?.startsWith(route)),
+        ),
+      ).toBe(true);
+      await attestLiveAdapter({ vendor: 'grok', artifact: executable, testId: 'grok:native-tui-leader' });
     } finally {
+      resumedProjection?.dispose();
+      await resumed?.dispose();
+      projection?.dispose();
+      await session?.dispose();
+      await host.dispose();
       backend.dispose();
-      await Promise.all([...children].map(reap));
-      rmSync(cwd, { recursive: true, force: true });
+      await provider.close();
+      rmSync(root, { recursive: true, force: true, maxRetries: 20, retryDelay: 50 });
     }
   }, 120_000);
 });
