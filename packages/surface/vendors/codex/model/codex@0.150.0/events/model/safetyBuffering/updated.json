@@ -1,0 +1,75 @@
+{
+  "surface": "codex",
+  "surfaceVersion": "0.150.0",
+  "event": "model/safetyBuffering/updated",
+  "channel": "appserver",
+  "transport": "jsonrpc-notification",
+  "direction": "agent-to-client",
+  "payloadSchema": {
+    "type": "object",
+    "properties": {
+      "fasterModel": {},
+      "model": {
+        "type": "string"
+      },
+      "reasons": {
+        "type": "array"
+      },
+      "showBufferingUi": {
+        "type": "boolean"
+      },
+      "threadId": {
+        "type": "string"
+      },
+      "turnId": {
+        "type": "string"
+      },
+      "useCases": {
+        "type": "array"
+      }
+    },
+    "required": [
+      "model",
+      "reasons",
+      "showBufferingUi",
+      "threadId",
+      "turnId",
+      "useCases"
+    ]
+  },
+  "recordSchema": {
+    "type": "object",
+    "properties": {
+      "method": {
+        "type": "string",
+        "enum": [
+          "model/safetyBuffering/updated"
+        ]
+      },
+      "params": {
+        "type": "object"
+      },
+      "emittedAtMs": {
+        "type": "number",
+        "minimum": 1000000000000
+      }
+    },
+    "required": [
+      "method",
+      "params",
+      "emittedAtMs"
+    ]
+  },
+  "evidence": {
+    "existence": [
+      "codex-generated-schema"
+    ],
+    "shape": [
+      "codex-generated-schema"
+    ],
+    "carrier": [
+      "codex-runtime-headless"
+    ]
+  },
+  "confidence": "unverified"
+}

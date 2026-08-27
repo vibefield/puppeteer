@@ -1,0 +1,90 @@
+{
+  "surface": "codex",
+  "surfaceVersion": "0.150.0",
+  "event": "turn/start",
+  "channel": "appserver",
+  "transport": "jsonrpc-request",
+  "direction": "client-to-agent",
+  "payloadSchema": {
+    "type": "object",
+    "properties": {
+      "additionalContext": {},
+      "approvalPolicy": {},
+      "approvalsReviewer": {},
+      "clientUserMessageId": {},
+      "collaborationMode": {},
+      "cwd": {},
+      "effort": {},
+      "environments": {},
+      "input": {
+        "type": "array"
+      },
+      "model": {},
+      "multiAgentMode": {},
+      "outputSchema": {},
+      "permissions": {},
+      "personality": {},
+      "responsesapiClientMetadata": {},
+      "runtimeWorkspaceRoots": {},
+      "sandboxPolicy": {},
+      "serviceTier": {},
+      "summary": {},
+      "threadId": {
+        "type": "string"
+      }
+    },
+    "required": [
+      "input",
+      "threadId"
+    ]
+  },
+  "resultSchema": {
+    "type": "object",
+    "properties": {
+      "turn": {
+        "type": "object"
+      }
+    },
+    "required": [
+      "turn"
+    ]
+  },
+  "recordSchema": {
+    "type": "object",
+    "properties": {
+      "method": {
+        "type": "string",
+        "enum": [
+          "turn/start"
+        ]
+      },
+      "params": {
+        "type": "object"
+      },
+      "id": {}
+    },
+    "required": [
+      "method",
+      "params",
+      "id"
+    ]
+  },
+  "evidence": {
+    "existence": [
+      "codex-runtime-headless"
+    ],
+    "shape": [
+      "codex-runtime-headless"
+    ],
+    "result": [
+      "codex-runtime-headless"
+    ],
+    "carrier": [
+      "codex-runtime-headless"
+    ]
+  },
+  "confidence": "verified-headless",
+  "firstSeen": "0.150.0",
+  "lastVerified": "0.150.0",
+  "fixture": "captures/codex@0.150.0/protocol-approval-accept.jsonl"
+}

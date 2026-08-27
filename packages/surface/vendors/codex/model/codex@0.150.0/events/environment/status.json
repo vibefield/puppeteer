@@ -1,0 +1,52 @@
+{
+  "surface": "codex",
+  "surfaceVersion": "0.150.0",
+  "event": "environment/status",
+  "channel": "appserver",
+  "transport": "jsonrpc-request",
+  "direction": "client-to-agent",
+  "trigger": "Reads the current status of a configured execution environment.",
+  "payloadSchema": {
+    "type": "object",
+    "properties": {
+      "environmentId": {
+        "type": "string"
+      }
+    },
+    "required": [
+      "environmentId"
+    ]
+  },
+  "recordSchema": {
+    "type": "object",
+    "properties": {
+      "method": {
+        "type": "string",
+        "enum": [
+          "environment/status"
+        ]
+      },
+      "params": {
+        "type": "object"
+      },
+      "id": {}
+    },
+    "required": [
+      "method",
+      "params",
+      "id"
+    ]
+  },
+  "evidence": {
+    "existence": [
+      "codex-generated-schema"
+    ],
+    "shape": [
+      "codex-generated-schema"
+    ],
+    "carrier": [
+      "codex-generated-schema"
+    ]
+  },
+  "confidence": "unverified"
+}

@@ -1,0 +1,85 @@
+{
+  "surface": "codex",
+  "surfaceVersion": "0.150.0",
+  "event": "item/tool/call",
+  "channel": "appserver",
+  "transport": "jsonrpc-request",
+  "direction": "agent-to-client",
+  "trigger": "Execute a dynamic tool call on the client.",
+  "payloadSchema": {
+    "type": "object",
+    "properties": {
+      "arguments": {},
+      "callId": {
+        "type": "string"
+      },
+      "namespace": {},
+      "threadId": {
+        "type": "string"
+      },
+      "tool": {
+        "type": "string"
+      },
+      "turnId": {
+        "type": "string"
+      }
+    },
+    "required": [
+      "arguments",
+      "callId",
+      "threadId",
+      "tool",
+      "turnId"
+    ]
+  },
+  "resultSchema": {
+    "type": "object",
+    "properties": {
+      "contentItems": {
+        "type": "array"
+      },
+      "success": {
+        "type": "boolean"
+      }
+    },
+    "required": [
+      "contentItems",
+      "success"
+    ]
+  },
+  "recordSchema": {
+    "type": "object",
+    "properties": {
+      "method": {
+        "type": "string",
+        "enum": [
+          "item/tool/call"
+        ]
+      },
+      "params": {
+        "type": "object"
+      },
+      "id": {}
+    },
+    "required": [
+      "method",
+      "params",
+      "id"
+    ]
+  },
+  "evidence": {
+    "existence": [
+      "codex-generated-schema"
+    ],
+    "shape": [
+      "codex-generated-schema"
+    ],
+    "result": [
+      "codex-generated-schema"
+    ],
+    "carrier": [
+      "codex-generated-schema"
+    ]
+  },
+  "confidence": "unverified"
+}

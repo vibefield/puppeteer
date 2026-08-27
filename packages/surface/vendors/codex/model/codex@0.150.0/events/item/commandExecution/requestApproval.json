@@ -1,0 +1,91 @@
+{
+  "surface": "codex",
+  "surfaceVersion": "0.150.0",
+  "event": "item/commandExecution/requestApproval",
+  "channel": "appserver",
+  "transport": "jsonrpc-request",
+  "direction": "agent-to-client",
+  "trigger": "NEW APIs Sent when approval is requested for a specific command execution. This request is used for Turns started via turn/start.",
+  "payloadSchema": {
+    "type": "object",
+    "properties": {
+      "additionalPermissions": {},
+      "approvalId": {},
+      "availableDecisions": {},
+      "command": {},
+      "commandActions": {},
+      "cwd": {},
+      "environmentId": {},
+      "itemId": {
+        "type": "string"
+      },
+      "kind": {},
+      "networkApprovalContext": {},
+      "proposedExecpolicyAmendment": {},
+      "proposedNetworkPolicyAmendments": {},
+      "reason": {},
+      "startedAtMs": {
+        "type": "number"
+      },
+      "threadId": {
+        "type": "string"
+      },
+      "turnId": {
+        "type": "string"
+      }
+    },
+    "required": [
+      "itemId",
+      "startedAtMs",
+      "threadId",
+      "turnId"
+    ]
+  },
+  "resultSchema": {
+    "type": "object",
+    "properties": {
+      "decision": {}
+    },
+    "required": [
+      "decision"
+    ]
+  },
+  "recordSchema": {
+    "type": "object",
+    "properties": {
+      "method": {
+        "type": "string",
+        "enum": [
+          "item/commandExecution/requestApproval"
+        ]
+      },
+      "params": {
+        "type": "object"
+      },
+      "id": {}
+    },
+    "required": [
+      "method",
+      "params",
+      "id"
+    ]
+  },
+  "evidence": {
+    "existence": [
+      "codex-runtime-headless"
+    ],
+    "shape": [
+      "codex-runtime-headless"
+    ],
+    "result": [
+      "codex-runtime-headless"
+    ],
+    "carrier": [
+      "codex-runtime-headless"
+    ]
+  },
+  "confidence": "verified-headless",
+  "firstSeen": "0.150.0",
+  "lastVerified": "0.150.0",
+  "fixture": "captures/codex@0.150.0/approval-accept.jsonl"
+}

@@ -1,0 +1,76 @@
+{
+  "surface": "codex",
+  "surfaceVersion": "0.150.0",
+  "event": "thread/fork",
+  "channel": "appserver",
+  "transport": "jsonrpc-request",
+  "direction": "client-to-agent",
+  "payloadSchema": {
+    "type": "object",
+    "properties": {
+      "approvalPolicy": {},
+      "approvalsReviewer": {},
+      "baseInstructions": {},
+      "beforeTurnId": {},
+      "config": {},
+      "cwd": {},
+      "deferGoalContinuation": {
+        "type": "boolean"
+      },
+      "developerInstructions": {},
+      "ephemeral": {
+        "type": "boolean"
+      },
+      "excludeTurns": {
+        "type": "boolean"
+      },
+      "lastTurnId": {},
+      "model": {},
+      "modelProvider": {},
+      "path": {},
+      "permissions": {},
+      "runtimeWorkspaceRoots": {},
+      "sandbox": {},
+      "serviceTier": {},
+      "threadId": {
+        "type": "string"
+      },
+      "threadSource": {}
+    },
+    "required": [
+      "threadId"
+    ]
+  },
+  "recordSchema": {
+    "type": "object",
+    "properties": {
+      "method": {
+        "type": "string",
+        "enum": [
+          "thread/fork"
+        ]
+      },
+      "params": {
+        "type": "object"
+      },
+      "id": {}
+    },
+    "required": [
+      "method",
+      "params",
+      "id"
+    ]
+  },
+  "evidence": {
+    "existence": [
+      "codex-generated-schema"
+    ],
+    "shape": [
+      "codex-generated-schema"
+    ],
+    "carrier": [
+      "codex-generated-schema"
+    ]
+  },
+  "confidence": "unverified"
+}

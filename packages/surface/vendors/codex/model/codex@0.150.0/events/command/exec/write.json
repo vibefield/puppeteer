@@ -1,0 +1,56 @@
+{
+  "surface": "codex",
+  "surfaceVersion": "0.150.0",
+  "event": "command/exec/write",
+  "channel": "appserver",
+  "transport": "jsonrpc-request",
+  "direction": "client-to-agent",
+  "trigger": "Write stdin bytes to a running `command/exec` session or close stdin.",
+  "payloadSchema": {
+    "type": "object",
+    "properties": {
+      "closeStdin": {
+        "type": "boolean"
+      },
+      "deltaBase64": {},
+      "processId": {
+        "type": "string"
+      }
+    },
+    "required": [
+      "processId"
+    ]
+  },
+  "recordSchema": {
+    "type": "object",
+    "properties": {
+      "method": {
+        "type": "string",
+        "enum": [
+          "command/exec/write"
+        ]
+      },
+      "params": {
+        "type": "object"
+      },
+      "id": {}
+    },
+    "required": [
+      "method",
+      "params",
+      "id"
+    ]
+  },
+  "evidence": {
+    "existence": [
+      "codex-generated-schema"
+    ],
+    "shape": [
+      "codex-generated-schema"
+    ],
+    "carrier": [
+      "codex-generated-schema"
+    ]
+  },
+  "confidence": "unverified"
+}

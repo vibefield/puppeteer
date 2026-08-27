@@ -1,0 +1,74 @@
+{
+  "surface": "codex",
+  "surfaceVersion": "0.150.0",
+  "event": "applyPatchApproval",
+  "channel": "appserver",
+  "transport": "jsonrpc-request",
+  "direction": "agent-to-client",
+  "trigger": "DEPRECATED APIs below Request to approve a patch. This request is used for Turns started via the legacy APIs (i.e. SendUserTurn, SendUserMessage).",
+  "payloadSchema": {
+    "type": "object",
+    "properties": {
+      "callId": {
+        "type": "string"
+      },
+      "conversationId": {
+        "type": "string"
+      },
+      "fileChanges": {
+        "type": "object"
+      },
+      "grantRoot": {},
+      "reason": {}
+    },
+    "required": [
+      "callId",
+      "conversationId",
+      "fileChanges"
+    ]
+  },
+  "resultSchema": {
+    "type": "object",
+    "properties": {
+      "decision": {}
+    },
+    "required": [
+      "decision"
+    ]
+  },
+  "recordSchema": {
+    "type": "object",
+    "properties": {
+      "method": {
+        "type": "string",
+        "enum": [
+          "applyPatchApproval"
+        ]
+      },
+      "params": {
+        "type": "object"
+      },
+      "id": {}
+    },
+    "required": [
+      "method",
+      "params",
+      "id"
+    ]
+  },
+  "evidence": {
+    "existence": [
+      "codex-generated-schema"
+    ],
+    "shape": [
+      "codex-generated-schema"
+    ],
+    "result": [
+      "codex-generated-schema"
+    ],
+    "carrier": [
+      "codex-generated-schema"
+    ]
+  },
+  "confidence": "unverified"
+}

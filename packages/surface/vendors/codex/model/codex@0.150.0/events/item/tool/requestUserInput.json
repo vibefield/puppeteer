@@ -1,0 +1,83 @@
+{
+  "surface": "codex",
+  "surfaceVersion": "0.150.0",
+  "event": "item/tool/requestUserInput",
+  "channel": "appserver",
+  "transport": "jsonrpc-request",
+  "direction": "agent-to-client",
+  "trigger": "EXPERIMENTAL - Request input from the user for a tool call.",
+  "payloadSchema": {
+    "type": "object",
+    "properties": {
+      "autoResolutionMs": {},
+      "isBlocking": {
+        "type": "boolean"
+      },
+      "itemId": {
+        "type": "string"
+      },
+      "questions": {
+        "type": "array"
+      },
+      "threadId": {
+        "type": "string"
+      },
+      "turnId": {
+        "type": "string"
+      }
+    },
+    "required": [
+      "isBlocking",
+      "itemId",
+      "questions",
+      "threadId",
+      "turnId"
+    ]
+  },
+  "resultSchema": {
+    "type": "object",
+    "properties": {
+      "answers": {
+        "type": "object"
+      }
+    },
+    "required": [
+      "answers"
+    ]
+  },
+  "recordSchema": {
+    "type": "object",
+    "properties": {
+      "method": {
+        "type": "string",
+        "enum": [
+          "item/tool/requestUserInput"
+        ]
+      },
+      "params": {
+        "type": "object"
+      },
+      "id": {}
+    },
+    "required": [
+      "method",
+      "params",
+      "id"
+    ]
+  },
+  "evidence": {
+    "existence": [
+      "codex-generated-schema"
+    ],
+    "shape": [
+      "codex-generated-schema"
+    ],
+    "result": [
+      "codex-generated-schema"
+    ],
+    "carrier": [
+      "codex-generated-schema"
+    ]
+  },
+  "confidence": "unverified"
+}

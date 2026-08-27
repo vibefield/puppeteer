@@ -1,7 +1,7 @@
 /**
  * Server-request responses, per the vendor's own generated schema
- * (`codex app-server generate-json-schema`, verified against codex-cli
- * 0.147.0 on 2026-08-07).
+ * (`codex app-server generate-json-schema`, reverified against codex-cli
+ * 0.150.0 by the pinned hermetic approval census on 2026-08-27).
  *
  * `CodexApprovalDecision` ('approved' | 'denied') stays the ABSTRACT contract
  * callers program against. What changed is that it is no longer written to the
@@ -32,7 +32,7 @@ export interface CodexApprovalRequest {
 
 /**
  * Legacy pair answering with `ReviewDecision`. Deprecated upstream but still
- * present in 0.147.0, and still what an older app-server sends.
+ * present in 0.150.0, and still what an older app-server sends.
  */
 const REVIEW_DECISION_METHODS = new Set(['execCommandApproval', 'applyPatchApproval']);
 

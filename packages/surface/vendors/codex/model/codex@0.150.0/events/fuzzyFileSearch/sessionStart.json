@@ -1,0 +1,55 @@
+{
+  "surface": "codex",
+  "surfaceVersion": "0.150.0",
+  "event": "fuzzyFileSearch/sessionStart",
+  "channel": "appserver",
+  "transport": "jsonrpc-request",
+  "direction": "client-to-agent",
+  "payloadSchema": {
+    "type": "object",
+    "properties": {
+      "roots": {
+        "type": "array"
+      },
+      "sessionId": {
+        "type": "string"
+      }
+    },
+    "required": [
+      "roots",
+      "sessionId"
+    ]
+  },
+  "recordSchema": {
+    "type": "object",
+    "properties": {
+      "method": {
+        "type": "string",
+        "enum": [
+          "fuzzyFileSearch/sessionStart"
+        ]
+      },
+      "params": {
+        "type": "object"
+      },
+      "id": {}
+    },
+    "required": [
+      "method",
+      "params",
+      "id"
+    ]
+  },
+  "evidence": {
+    "existence": [
+      "codex-generated-schema"
+    ],
+    "shape": [
+      "codex-generated-schema"
+    ],
+    "carrier": [
+      "codex-generated-schema"
+    ]
+  },
+  "confidence": "unverified"
+}

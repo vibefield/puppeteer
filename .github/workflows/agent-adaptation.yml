@@ -7,6 +7,8 @@ on:
         description: Candidate vendor
         required: true
         type: choice
+        # Hermes releases are source archives, not standalone executables;
+        # support/agents.json records the missing installed-console acquisition gate.
         options: [claude, codex, grok, kimi, opencode]
       version:
         description: Exact normalized vendor version

@@ -1,0 +1,62 @@
+{
+  "surface": "codex",
+  "surfaceVersion": "0.150.0",
+  "event": "fuzzyFileSearch/sessionUpdated",
+  "channel": "appserver",
+  "transport": "jsonrpc-notification",
+  "direction": "agent-to-client",
+  "payloadSchema": {
+    "type": "object",
+    "properties": {
+      "files": {
+        "type": "array"
+      },
+      "query": {
+        "type": "string"
+      },
+      "sessionId": {
+        "type": "string"
+      }
+    },
+    "required": [
+      "files",
+      "query",
+      "sessionId"
+    ]
+  },
+  "recordSchema": {
+    "type": "object",
+    "properties": {
+      "method": {
+        "type": "string",
+        "enum": [
+          "fuzzyFileSearch/sessionUpdated"
+        ]
+      },
+      "params": {
+        "type": "object"
+      },
+      "emittedAtMs": {
+        "type": "number",
+        "minimum": 1000000000000
+      }
+    },
+    "required": [
+      "method",
+      "params",
+      "emittedAtMs"
+    ]
+  },
+  "evidence": {
+    "existence": [
+      "codex-generated-schema"
+    ],
+    "shape": [
+      "codex-generated-schema"
+    ],
+    "carrier": [
+      "codex-runtime-headless"
+    ]
+  },
+  "confidence": "unverified"
+}

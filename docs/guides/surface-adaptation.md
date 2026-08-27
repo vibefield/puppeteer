@@ -47,7 +47,7 @@ Detection is read-only. Candidate analysis may prepare a reviewable change, but 
 - Preserve provenance from each modeled claim to its evidence and artifact identity.
 - Keep unknown native records when they may be semantically meaningful.
 - Never infer portable semantics from terminal text.
-- A candidate with incomplete platform or native-interactive evidence remains `baseline-pending`; it is not a support claim.
+- A candidate with incomplete platform or native-interactive evidence remains `baseline-pending`; it is not a support claim. Its concrete promotion gaps live in the entry's required `blockers` list, so a missing workflow lane is visible policy rather than tribal knowledge.
 
 ## Required checks
 

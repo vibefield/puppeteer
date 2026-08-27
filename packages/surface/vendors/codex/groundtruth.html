@@ -1,17 +1,55 @@
 <!doctype html>
-<html lang="en"><head><meta charset="utf-8" /><meta name="viewport" content="width=device-width,initial-scale=1" /><meta name="generator" content="@vibecook/puppeteer-surface groundtruth" /><title>codex@0.147.0 ground truth</title><style>
+<html lang="en"><head><meta charset="utf-8" /><meta name="viewport" content="width=device-width,initial-scale=1" /><meta name="generator" content="@vibecook/puppeteer-surface groundtruth" /><title>codex@0.150.0 ground truth</title><style>
 :root{color-scheme:light;--bg:#f4f2ec;--paper:#fff;--paper2:#f7f6f2;--ink:#25272b;--muted:#6c7077;--line:#ddd9cf;--accent:#9f4c28;--teal:#176b61;--blue:#355b8c;--amber:#8a6418;--red:#a13f45;--shadow:0 12px 36px rgba(30,32,36,.07)}
 :root[data-theme=dark]{color-scheme:dark;--bg:#141619;--paper:#1d2024;--paper2:#25292e;--ink:#e8e6e0;--muted:#a1a6ad;--line:#383c42;--accent:#da815a;--teal:#63b7a9;--blue:#83a8da;--amber:#d2ad58;--red:#df858a;--shadow:0 14px 40px rgba(0,0,0,.25)}
 @media(prefers-color-scheme:dark){:root:not([data-theme=light]){color-scheme:dark;--bg:#141619;--paper:#1d2024;--paper2:#25292e;--ink:#e8e6e0;--muted:#a1a6ad;--line:#383c42;--accent:#da815a;--teal:#63b7a9;--blue:#83a8da;--amber:#d2ad58;--red:#df858a;--shadow:0 14px 40px rgba(0,0,0,.25)}}
 *{box-sizing:border-box}html{scroll-behavior:smooth;scroll-padding-top:1rem}body{margin:0;background:var(--bg);color:var(--ink);font:15px/1.55 Inter,ui-sans-serif,system-ui,-apple-system,sans-serif}code,pre,input,select{font-family:"SFMono-Regular",Consolas,monospace}a{color:var(--teal);text-decoration:none}a:hover{text-decoration:underline}.shell{width:min(1420px,100%);margin:auto;padding:2.5rem 1.5rem 6rem}.hero,.panel{background:var(--paper);border:1px solid var(--line);border-radius:14px;box-shadow:var(--shadow)}.hero{padding:2rem;margin-bottom:1.25rem}.hero-row,.section-heading{display:flex;justify-content:space-between;align-items:flex-start;gap:1rem}.eyebrow{text-transform:uppercase;letter-spacing:.14em;font:700 11px/1.3 "SFMono-Regular",monospace;color:var(--accent)}h1,h2{margin:.28rem 0 0;line-height:1.12}h1{font-size:clamp(2rem,5vw,4.2rem);letter-spacing:-.04em}h2{font-size:1.45rem}.version{color:var(--muted);font-weight:450}.theme{border:1px solid var(--line);background:var(--paper2);color:var(--ink);border-radius:999px;padding:.45rem .75rem;cursor:pointer}.lede{max-width:75ch;color:var(--muted)}.stats{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:.7rem;margin-top:1.5rem}.stat{padding:.85rem;background:var(--paper2);border:1px solid var(--line);border-radius:9px}.stat strong{display:block;font-size:1.35rem}.stat span,.count{color:var(--muted);font-size:.82rem}.nav{display:flex;gap:.5rem;flex-wrap:wrap;margin-top:1.2rem}.nav a{border:1px solid var(--line);border-radius:999px;padding:.35rem .7rem;background:var(--paper2)}.panel{padding:1.5rem;margin:1.25rem 0}.table-wrap{overflow:auto}table{width:100%;border-collapse:collapse}th,td{text-align:left;padding:.6rem .7rem;border-bottom:1px solid var(--line);vertical-align:top}th{color:var(--muted);font-size:.72rem;text-transform:uppercase;letter-spacing:.08em}td pre{margin:0;white-space:pre-wrap;font-size:.76rem}.channel-kind,.relation-kind,.direction,.confidence{display:inline-flex;padding:.12rem .42rem;border-radius:5px;background:var(--paper2);border:1px solid var(--line);font-size:.75rem}.verified-headless{color:var(--teal)}.verified-interactive{color:var(--blue)}.unverified{color:var(--amber)}.lanes{display:grid;gap:.7rem;margin-top:1rem}.lane{display:grid;grid-template-columns:180px 1fr;border:1px solid var(--line);border-radius:9px;overflow:hidden}.lane>header{padding:.7rem;background:var(--paper2);display:flex;flex-direction:column}.lane>header span{color:var(--muted);font-size:.78rem}.lane-track{display:flex;align-items:center;gap:.4rem;padding:.7rem;overflow:auto}.behavior-node{display:flex;flex-direction:column;min-width:145px;padding:.55rem .65rem;border:1px solid var(--line);border-left:3px solid currentColor;border-radius:7px;background:var(--paper)}.behavior-node small{color:var(--muted)}.behavior-node code{font-size:.66rem}.flow-arrow{color:var(--muted)}details>summary{cursor:pointer}.relation-table{margin-top:1rem}.toolbar{display:flex;align-items:end;gap:.65rem;flex-wrap:wrap;margin:1rem 0}.toolbar label{display:flex;flex-direction:column;gap:.2rem}.toolbar label span{color:var(--muted);font-size:.75rem}.toolbar input,.toolbar select,.toolbar button{min-height:38px;border:1px solid var(--line);border-radius:7px;background:var(--paper2);color:var(--ink);padding:.4rem .6rem}.toolbar input{width:min(330px,70vw)}.toolbar button{cursor:pointer}.event-list{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:.6rem}.event-card{border:1px solid var(--line);border-radius:9px;background:var(--paper2);scroll-margin-top:1rem}.event-card[hidden]{display:none}.event-card>details>summary{display:flex;justify-content:space-between;align-items:center;gap:.7rem;padding:.75rem}.event-name{font:600 .86rem "SFMono-Regular",monospace;overflow-wrap:anywhere}.event-meta{display:flex;gap:.35rem}.event-body{padding:.1rem .8rem .8rem;border-top:1px solid var(--line)}dl{margin:.7rem 0}dl>div{display:grid;grid-template-columns:90px 1fr;gap:.5rem}dt{color:var(--muted)}dd{margin:0}.evidence-refs{display:flex;gap:.3rem;flex-wrap:wrap;margin:.65rem 0}.evidence-ref{font:500 .7rem "SFMono-Regular",monospace;border:1px solid var(--line);border-radius:999px;padding:.15rem .4rem}.schema,.variants{margin:.55rem 0}.schema pre{max-height:520px;overflow:auto;padding:.75rem;border:1px solid var(--line);border-radius:7px;background:var(--paper);font-size:.73rem}.variant{padding:.45rem 0;border-bottom:1px solid var(--line)}.claim-list{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:.6rem;margin-top:.7rem}.claim-card{border:1px solid var(--line);border-radius:8px;padding:.7rem;scroll-margin-top:1rem}.claim-card header{display:flex;gap:.5rem;align-items:center;flex-wrap:wrap}.claim-card header>span:nth-child(2){color:var(--muted)}.claim-card p{color:var(--muted)}.empty{text-align:center;color:var(--muted);padding:2rem}.source{margin-top:1rem;color:var(--muted);font-size:.82rem;overflow-wrap:anywhere}
 @media(max-width:800px){.stats{grid-template-columns:repeat(2,1fr)}.event-list,.claim-list{grid-template-columns:1fr}.lane{grid-template-columns:1fr}.hero-row,.section-heading{align-items:stretch}.event-card>details>summary{align-items:flex-start;flex-direction:column}.event-meta{flex-wrap:wrap}}
-</style></head><body><main class="shell"><header class="hero"><div class="hero-row"><div><span class="eyebrow">Agent surface ground truth</span><h1>codex <span class="version">0.147.0</span></h1><p class="lede">One canonical, evidence-backed description of the agent's native transports, events, payload contracts, and behavior topology.</p></div><button class="theme" type="button">Toggle theme</button></div><div class="stats"><div class="stat"><strong>215</strong><span>events</span></div><div class="stat"><strong>3</strong><span>channels</span></div><div class="stat"><strong>26</strong><span>behavior nodes</span></div><div class="stat"><strong>39</strong><span>relations</span></div><div class="stat"><strong>2</strong><span>evidence claims</span></div></div><nav class="nav"><a href="#channels">Channels</a><a href="#behavior">Behavior</a><a href="#events">Events</a><a href="#evidence">Evidence</a></nav><p class="source"><code>puppeteer-groundtruth/1</code> · ASM v2 · generated 2026-08-09 · GENERATED by packages/surface/vendors/codex/census/generate-model.mjs. Shapes are the vendor&#39;s own `codex app-server generate-json-schema` output; confidence is from the hermetic census in packages/surface/vendors/codex/census/harness.mjs (packages/surface/vendors/codex/findings.md C1d). Never hand-edit: regenerate.</p></header><section id="channels" class="panel"><div class="section-heading"><div><span class="eyebrow">Transport map</span><h2>Channels</h2></div><span class="count">3</span></div><div class="table-wrap"><table><thead><tr><th>Name</th><th>Kind</th><th>Contract</th></tr></thead><tbody><tr><td><code>argv</code></td><td><span class="channel-kind">argv-env</span></td><td><pre>{
+</style></head><body><main class="shell"><header class="hero"><div class="hero-row"><div><span class="eyebrow">Agent surface ground truth</span><h1>codex <span class="version">0.150.0</span></h1><p class="lede">One canonical, evidence-backed description of the agent's native transports, events, payload contracts, and behavior topology.</p></div><button class="theme" type="button">Toggle theme</button></div><div class="stats"><div class="stat"><strong>244</strong><span>events</span></div><div class="stat"><strong>3</strong><span>channels</span></div><div class="stat"><strong>26</strong><span>behavior nodes</span></div><div class="stat"><strong>39</strong><span>relations</span></div><div class="stat"><strong>2</strong><span>evidence claims</span></div></div><nav class="nav"><a href="#channels">Channels</a><a href="#behavior">Behavior</a><a href="#events">Events</a><a href="#evidence">Evidence</a></nav><p class="source"><code>puppeteer-groundtruth/1</code> · ASM v2 · generated 2026-08-27 · GENERATED by packages/surface/vendors/codex/census/generate-model.mjs. Shapes are the vendor&#39;s own `codex app-server generate-json-schema` output; confidence is from the hermetic census in packages/surface/vendors/codex/census/harness.mjs (packages/surface/vendors/codex/findings.md C1d). Never hand-edit: regenerate.</p></header><section id="channels" class="panel"><div class="section-heading"><div><span class="eyebrow">Transport map</span><h2>Channels</h2></div><span class="count">3</span></div><div class="table-wrap"><table><thead><tr><th>Name</th><th>Kind</th><th>Contract</th></tr></thead><tbody><tr><td><code>argv</code></td><td><span class="channel-kind">argv-env</span></td><td><pre>{
   &quot;notes&quot;: &quot;The adapter launches `codex app-server` and configures it with repeated `-c key=value`. There is no session id at spawn: the thread id arrives on thread/started (C0 §3).&quot;
 }</pre></td></tr><tr><td><code>appserver</code></td><td><span class="channel-kind">app-server</span></td><td><pre>{
   &quot;notes&quot;: &quot;NDJSON over stdio, JSON-RPC-2.0-SHAPED but not conformant: `jsonrpc` is omitted on server output and merely tolerated on input, and the generated JSONRPCRequest requires only id+method. A strict JSON-RPC library will not work unmodified (C1b finding 5).&quot;
 }</pre></td></tr><tr><td><code>terminal</code></td><td><span class="channel-kind">terminal</span></td><td><pre>{
   &quot;notes&quot;: &quot;The native ratatui TUI, attached over `--remote` (C0 §8). Semantics are never derived from it (ADR-003); it exists so a human can watch.&quot;
-}</pre></td></tr></tbody></table></div></section><section id="behavior" class="panel"><div class="section-heading"><div><span class="eyebrow">Native topology</span><h2>Codex app-server native protocol lifecycle</h2></div><span class="count">26 nodes · 39 relations</span></div><p class="lede">Observable app-server methods and payload-discriminated item lifecycles for codex-cli 0.147.0. Repeated item/started and item/completed nodes are distinguished by native item.type, not normalized categories. Node confidence applies to the event plus selector claim, not merely to the shared method name.</p><div class="lanes"><section class="lane"><header><strong>Thread</strong><code>thread</code></header><div class="lane-track"><a class="behavior-node confidence-verified-headless" href="#event-thread-started" title="thread/started"><span>thread/started</span><small>thread/started</small></a><span class="flow-arrow">→</span><a class="behavior-node confidence-unverified" href="#event-thread-settings-updated" title="thread/settings/updated"><span>thread/settings/updated</span><small>thread/settings/updated</small></a><span class="flow-arrow">→</span><a class="behavior-node confidence-verified-headless" href="#event-thread-status-changed" title="May repeat asynchronously throughout a turn; not a single exclusive lifecycle node."><span>thread/status/changed</span><small>thread/status/changed</small></a><span class="flow-arrow">→</span><a class="behavior-node confidence-unverified" href="#event-thread-closed" title="thread/closed"><span>thread/closed</span><small>thread/closed</small></a></div></section><section class="lane"><header><strong>Turn</strong><code>turn</code></header><div class="lane-track"><a class="behavior-node confidence-verified-headless" href="#event-turn-started" title="turn/started"><span>turn/started</span><small>turn/started</small></a><span class="flow-arrow">→</span><a class="behavior-node confidence-verified-headless" href="#event-turn-completed" title="turn/completed"><span>turn/completed</span><small>turn/completed</small></a></div></section><section class="lane"><header><strong>Native items</strong><code>items</code></header><div class="lane-track"><a class="behavior-node confidence-verified-headless" href="#event-item-started" title="item/started"><span>item/started · userMessage</span><small>item/started</small><code>{&quot;item.type&quot;:&quot;userMessage&quot;}</code></a><span class="flow-arrow">→</span><a class="behavior-node confidence-verified-headless" href="#event-item-completed" title="item/completed"><span>item/completed · userMessage</span><small>item/completed</small><code>{&quot;item.type&quot;:&quot;userMessage&quot;}</code></a><span class="flow-arrow">→</span><a class="behavior-node confidence-unverified" href="#event-item-started" title="item/started"><span>item/started · reasoning</span><small>item/started</small><code>{&quot;item.type&quot;:&quot;reasoning&quot;}</code></a><span class="flow-arrow">→</span><a class="behavior-node confidence-unverified" href="#event-item-completed" title="item/completed"><span>item/completed · reasoning</span><small>item/completed</small><code>{&quot;item.type&quot;:&quot;reasoning&quot;}</code></a><span class="flow-arrow">→</span><a class="behavior-node confidence-verified-headless" href="#event-item-started" title="item/started"><span>item/started · commandExecution</span><small>item/started</small><code>{&quot;item.type&quot;:&quot;commandExecution&quot;}</code></a><span class="flow-arrow">→</span><a class="behavior-node confidence-verified-headless" href="#event-item-completed" title="item/completed"><span>item/completed · commandExecution</span><small>item/completed</small><code>{&quot;item.type&quot;:&quot;commandExecution&quot;}</code></a><span class="flow-arrow">→</span><a class="behavior-node confidence-verified-headless" href="#event-item-started" title="item/started"><span>item/started · agentMessage</span><small>item/started</small><code>{&quot;item.type&quot;:&quot;agentMessage&quot;}</code></a><span class="flow-arrow">→</span><a class="behavior-node confidence-unverified" href="#event-item-agentMessage-delta" title="item/agentMessage/delta"><span>item/agentMessage/delta</span><small>item/agentMessage/delta</small></a><span class="flow-arrow">→</span><a class="behavior-node confidence-verified-headless" href="#event-item-completed" title="item/completed"><span>item/completed · agentMessage</span><small>item/completed</small><code>{&quot;item.type&quot;:&quot;agentMessage&quot;}</code></a></div></section><section class="lane"><header><strong>Server requests</strong><code>approval</code></header><div class="lane-track"><a class="behavior-node confidence-verified-headless" href="#event-item-commandExecution-requestApproval" title="item/commandExecution/requestApproval"><span>item/commandExecution/requestApproval</span><small>item/commandExecution/requestApproval</small></a><span class="flow-arrow">→</span><a class="behavior-node confidence-verified-headless" href="#event-serverRequest-resolved" title="serverRequest/resolved"><span>serverRequest/resolved</span><small>serverRequest/resolved</small></a></div></section><section class="lane"><header><strong>Context maintenance</strong><code>maintenance</code></header><div class="lane-track"><a class="behavior-node confidence-unverified" href="#event-item-started" title="Native item start for compaction; declared by the schema but not exercised in the pinned census."><span>item/started · contextCompaction</span><small>item/started</small><code>{&quot;item.type&quot;:&quot;contextCompaction&quot;}</code></a><span class="flow-arrow">→</span><a class="behavior-node confidence-unverified" href="#event-item-completed" title="Native item completion for compaction; declared by the schema but not exercised in the pinned census."><span>item/completed · contextCompaction</span><small>item/completed</small><code>{&quot;item.type&quot;:&quot;contextCompaction&quot;}</code></a><span class="flow-arrow">→</span><a class="behavior-node confidence-unverified" href="#event-thread-compacted" title="Deprecated completion notification retained by the native schema."><span>thread/compacted</span><small>thread/compacted</small></a><span class="flow-arrow">→</span><a class="behavior-node confidence-verified-headless" href="#event-thread-tokenUsage-updated" title="thread/tokenUsage/updated"><span>thread/tokenUsage/updated</span><small>thread/tokenUsage/updated</small></a></div></section><section class="lane"><header><strong>Ambient notifications</strong><code>ambient</code></header><div class="lane-track"><a class="behavior-node confidence-verified-headless" href="#event-remoteControl-status-changed" title="remoteControl/status/changed"><span>remoteControl/status/changed</span><small>remoteControl/status/changed</small></a><span class="flow-arrow">→</span><a class="behavior-node confidence-unverified" href="#event-mcpServer-startupStatus-updated" title="mcpServer/startupStatus/updated"><span>mcpServer/startupStatus/updated</span><small>mcpServer/startupStatus/updated</small></a><span class="flow-arrow">→</span><a class="behavior-node confidence-unverified" href="#event-warning" title="warning"><span>warning</span><small>warning</small></a><span class="flow-arrow">→</span><a class="behavior-node confidence-verified-headless" href="#event-account-rateLimits-updated" title="account/rateLimits/updated"><span>account/rateLimits/updated</span><small>account/rateLimits/updated</small></a><span class="flow-arrow">→</span><a class="behavior-node confidence-unverified" href="#event-error" title="error"><span>error</span><small>error</small></a></div></section></div><details class="relation-table"><summary>Relation ledger</summary><div class="table-wrap"><table><thead><tr><th>From</th><th>Kind</th><th>To</th><th>Label</th><th>Confidence</th></tr></thead><tbody><tr><td><code>thread-start</code></td><td><span class="relation-kind">async</span></td><td><code>thread-settings</code></td><td></td><td><span class="confidence unverified">unverified</span></td></tr><tr><td><code>thread-start</code></td><td><span class="relation-kind">async</span></td><td><code>thread-status</code></td><td></td><td><span class="confidence verified-headless">verified-headless</span></td></tr><tr><td><code>thread-status</code></td><td><span class="relation-kind">loop</span></td><td><code>thread-status</code></td><td></td><td><span class="confidence verified-headless">verified-headless</span></td></tr><tr><td><code>thread-start</code></td><td><span class="relation-kind">sequence</span></td><td><code>turn-start</code></td><td></td><td><span class="confidence verified-headless">verified-headless</span></td></tr><tr><td><code>turn-start</code></td><td><span class="relation-kind">sequence</span></td><td><code>user-start</code></td><td></td><td><span class="confidence verified-headless">verified-headless</span></td></tr><tr><td><code>user-start</code></td><td><span class="relation-kind">sequence</span></td><td><code>user-complete</code></td><td></td><td><span class="confidence verified-headless">verified-headless</span></td></tr><tr><td><code>user-complete</code></td><td><span class="relation-kind">conditional</span></td><td><code>reasoning-start</code></td><td></td><td><span class="confidence unverified">unverified</span></td></tr><tr><td><code>reasoning-start</code></td><td><span class="relation-kind">sequence</span></td><td><code>reasoning-complete</code></td><td></td><td><span class="confidence unverified">unverified</span></td></tr><tr><td><code>reasoning-complete</code></td><td><span class="relation-kind">conditional</span></td><td><code>command-start</code></td><td></td><td><span class="confidence unverified">unverified</span></td></tr><tr><td><code>reasoning-complete</code></td><td><span class="relation-kind">conditional</span></td><td><code>agent-message-start</code></td><td></td><td><span class="confidence unverified">unverified</span></td></tr><tr><td><code>user-complete</code></td><td><span class="relation-kind">conditional</span></td><td><code>command-start</code></td><td></td><td><span class="confidence verified-headless">verified-headless</span></td></tr><tr><td><code>user-complete</code></td><td><span class="relation-kind">conditional</span></td><td><code>agent-message-start</code></td><td></td><td><span class="confidence verified-headless">verified-headless</span></td></tr><tr><td><code>command-start</code></td><td><span class="relation-kind">conditional</span></td><td><code>approval-request</code></td><td></td><td><span class="confidence verified-headless">verified-headless</span></td></tr><tr><td><code>approval-request</code></td><td><span class="relation-kind">sequence</span></td><td><code>approval-resolved</code></td><td></td><td><span class="confidence verified-headless">verified-headless</span></td></tr><tr><td><code>approval-resolved</code></td><td><span class="relation-kind">sequence</span></td><td><code>command-complete</code></td><td></td><td><span class="confidence verified-headless">verified-headless</span></td></tr><tr><td><code>command-start</code></td><td><span class="relation-kind">conditional</span></td><td><code>command-complete</code></td><td>no approval</td><td><span class="confidence verified-headless">verified-headless</span></td></tr><tr><td><code>command-complete</code></td><td><span class="relation-kind">sequence</span></td><td><code>token-usage</code></td><td></td><td><span class="confidence verified-headless">verified-headless</span></td></tr><tr><td><code>command-complete</code></td><td><span class="relation-kind">sequence</span></td><td><code>agent-message-start</code></td><td></td><td><span class="confidence verified-headless">verified-headless</span></td></tr><tr><td><code>agent-message-start</code></td><td><span class="relation-kind">conditional</span></td><td><code>message-delta</code></td><td></td><td><span class="confidence unverified">unverified</span></td></tr><tr><td><code>message-delta</code></td><td><span class="relation-kind">loop</span></td><td><code>message-delta</code></td><td></td><td><span class="confidence unverified">unverified</span></td></tr><tr><td><code>message-delta</code></td><td><span class="relation-kind">sequence</span></td><td><code>agent-message-complete</code></td><td></td><td><span class="confidence unverified">unverified</span></td></tr><tr><td><code>agent-message-start</code></td><td><span class="relation-kind">sequence</span></td><td><code>agent-message-complete</code></td><td>no delta observed</td><td><span class="confidence verified-headless">verified-headless</span></td></tr><tr><td><code>agent-message-complete</code></td><td><span class="relation-kind">sequence</span></td><td><code>token-usage</code></td><td></td><td><span class="confidence verified-headless">verified-headless</span></td></tr><tr><td><code>token-usage</code></td><td><span class="relation-kind">sequence</span></td><td><code>rate-limits</code></td><td></td><td><span class="confidence verified-headless">verified-headless</span></td></tr><tr><td><code>token-usage</code></td><td><span class="relation-kind">conditional</span></td><td><code>agent-message-start</code></td><td>after tool usage</td><td><span class="confidence verified-headless">verified-headless</span></td></tr><tr><td><code>token-usage</code></td><td><span class="relation-kind">conditional</span></td><td><code>turn-complete</code></td><td>final usage</td><td><span class="confidence verified-headless">verified-headless</span></td></tr><tr><td><code>rate-limits</code></td><td><span class="relation-kind">conditional</span></td><td><code>agent-message-start</code></td><td></td><td><span class="confidence verified-headless">verified-headless</span></td></tr><tr><td><code>rate-limits</code></td><td><span class="relation-kind">conditional</span></td><td><code>turn-complete</code></td><td></td><td><span class="confidence verified-headless">verified-headless</span></td></tr><tr><td><code>agent-message-complete</code></td><td><span class="relation-kind">sequence</span></td><td><code>turn-complete</code></td><td></td><td><span class="confidence verified-headless">verified-headless</span></td></tr><tr><td><code>turn-complete</code></td><td><span class="relation-kind">loop</span></td><td><code>turn-start</code></td><td>next turn</td><td><span class="confidence verified-headless">verified-headless</span></td></tr><tr><td><code>turn-complete</code></td><td><span class="relation-kind">conditional</span></td><td><code>thread-closed</code></td><td></td><td><span class="confidence unverified">unverified</span></td></tr><tr><td><code>turn-start</code></td><td><span class="relation-kind">conditional</span></td><td><code>compact-start</code></td><td></td><td><span class="confidence unverified">unverified</span></td></tr><tr><td><code>compact-start</code></td><td><span class="relation-kind">sequence</span></td><td><code>compact-complete</code></td><td></td><td><span class="confidence unverified">unverified</span></td></tr><tr><td><code>compact-complete</code></td><td><span class="relation-kind">conditional</span></td><td><code>thread-compacted</code></td><td></td><td><span class="confidence unverified">unverified</span></td></tr><tr><td><code>compact-complete</code></td><td><span class="relation-kind">sequence</span></td><td><code>token-usage</code></td><td></td><td><span class="confidence unverified">unverified</span></td></tr><tr><td><code>remote-status</code></td><td><span class="relation-kind">sequence</span></td><td><code>thread-start</code></td><td></td><td><span class="confidence verified-headless">verified-headless</span></td></tr><tr><td><code>thread-start</code></td><td><span class="relation-kind">async</span></td><td><code>mcp-startup</code></td><td></td><td><span class="confidence unverified">unverified</span></td></tr><tr><td><code>thread-start</code></td><td><span class="relation-kind">async</span></td><td><code>warning</code></td><td></td><td><span class="confidence unverified">unverified</span></td></tr><tr><td><code>thread-start</code></td><td><span class="relation-kind">async</span></td><td><code>error</code></td><td></td><td><span class="confidence unverified">unverified</span></td></tr></tbody></table></div></details></section><section id="events" class="panel"><div class="section-heading"><div><span class="eyebrow">Wire catalog</span><h2>Events</h2></div><span id="event-count" class="count">215</span></div><div class="toolbar"><label><span>Search</span><input id="event-search" type="search" placeholder="event, channel, transport…" /></label><label><span>Direction</span><select id="direction-filter"><option value="">all</option><option value="agent-to-client">agent-to-client</option><option value="client-to-agent">client-to-agent</option></select></label><label><span>Confidence</span><select id="confidence-filter"><option value="">all</option><option>verified-headless</option><option>verified-interactive</option><option>unverified</option></select></label><button id="expand-visible" type="button">Expand visible</button><button id="collapse-events" type="button">Collapse</button></div><div id="event-list" class="event-list"><article id="event-account-chatgptAuthTokens-refresh" class="event-card" data-search="account/chatgptauthtokens/refresh agent-to-client jsonrpc-request unverified appserver" data-direction="agent-to-client" data-confidence="unverified"><details><summary><span class="event-name">account/chatgptAuthTokens/refresh</span><span class="event-meta"><span class="direction">agent-to-client</span><span class="confidence unverified">unverified</span></span></summary><div class="event-body"><dl><div><dt>Channel</dt><dd><a href="#channels"><code>appserver</code></a></dd></div><div><dt>Transport</dt><dd>jsonrpc-request</dd></div><div><dt>Trigger</dt><dd>—</dd></div></dl><div class="evidence-refs"><a class="evidence-ref" href="#claim-codex-generated-schema">codex-generated-schema</a></div><details class="schema"><summary>Payload schema</summary><pre>{
+}</pre></td></tr></tbody></table></div></section><section id="behavior" class="panel"><div class="section-heading"><div><span class="eyebrow">Native topology</span><h2>Codex app-server native protocol lifecycle</h2></div><span class="count">26 nodes · 39 relations</span></div><p class="lede">Observable app-server methods and payload-discriminated item lifecycles for codex-cli 0.147.0. Repeated item/started and item/completed nodes are distinguished by native item.type, not normalized categories. Node confidence applies to the event plus selector claim, not merely to the shared method name.</p><div class="lanes"><section class="lane"><header><strong>Thread</strong><code>thread</code></header><div class="lane-track"><a class="behavior-node confidence-verified-headless" href="#event-thread-started" title="thread/started"><span>thread/started</span><small>thread/started</small></a><span class="flow-arrow">→</span><a class="behavior-node confidence-unverified" href="#event-thread-settings-updated" title="thread/settings/updated"><span>thread/settings/updated</span><small>thread/settings/updated</small></a><span class="flow-arrow">→</span><a class="behavior-node confidence-verified-headless" href="#event-thread-status-changed" title="May repeat asynchronously throughout a turn; not a single exclusive lifecycle node."><span>thread/status/changed</span><small>thread/status/changed</small></a><span class="flow-arrow">→</span><a class="behavior-node confidence-unverified" href="#event-thread-closed" title="thread/closed"><span>thread/closed</span><small>thread/closed</small></a></div></section><section class="lane"><header><strong>Turn</strong><code>turn</code></header><div class="lane-track"><a class="behavior-node confidence-verified-headless" href="#event-turn-started" title="turn/started"><span>turn/started</span><small>turn/started</small></a><span class="flow-arrow">→</span><a class="behavior-node confidence-verified-headless" href="#event-turn-completed" title="turn/completed"><span>turn/completed</span><small>turn/completed</small></a></div></section><section class="lane"><header><strong>Native items</strong><code>items</code></header><div class="lane-track"><a class="behavior-node confidence-verified-headless" href="#event-item-started" title="item/started"><span>item/started · userMessage</span><small>item/started</small><code>{&quot;item.type&quot;:&quot;userMessage&quot;}</code></a><span class="flow-arrow">→</span><a class="behavior-node confidence-verified-headless" href="#event-item-completed" title="item/completed"><span>item/completed · userMessage</span><small>item/completed</small><code>{&quot;item.type&quot;:&quot;userMessage&quot;}</code></a><span class="flow-arrow">→</span><a class="behavior-node confidence-unverified" href="#event-item-started" title="item/started"><span>item/started · reasoning</span><small>item/started</small><code>{&quot;item.type&quot;:&quot;reasoning&quot;}</code></a><span class="flow-arrow">→</span><a class="behavior-node confidence-unverified" href="#event-item-completed" title="item/completed"><span>item/completed · reasoning</span><small>item/completed</small><code>{&quot;item.type&quot;:&quot;reasoning&quot;}</code></a><span class="flow-arrow">→</span><a class="behavior-node confidence-verified-headless" href="#event-item-started" title="item/started"><span>item/started · commandExecution</span><small>item/started</small><code>{&quot;item.type&quot;:&quot;commandExecution&quot;}</code></a><span class="flow-arrow">→</span><a class="behavior-node confidence-verified-headless" href="#event-item-completed" title="item/completed"><span>item/completed · commandExecution</span><small>item/completed</small><code>{&quot;item.type&quot;:&quot;commandExecution&quot;}</code></a><span class="flow-arrow">→</span><a class="behavior-node confidence-verified-headless" href="#event-item-started" title="item/started"><span>item/started · agentMessage</span><small>item/started</small><code>{&quot;item.type&quot;:&quot;agentMessage&quot;}</code></a><span class="flow-arrow">→</span><a class="behavior-node confidence-unverified" href="#event-item-agentMessage-delta" title="item/agentMessage/delta"><span>item/agentMessage/delta</span><small>item/agentMessage/delta</small></a><span class="flow-arrow">→</span><a class="behavior-node confidence-verified-headless" href="#event-item-completed" title="item/completed"><span>item/completed · agentMessage</span><small>item/completed</small><code>{&quot;item.type&quot;:&quot;agentMessage&quot;}</code></a></div></section><section class="lane"><header><strong>Server requests</strong><code>approval</code></header><div class="lane-track"><a class="behavior-node confidence-verified-headless" href="#event-item-commandExecution-requestApproval" title="item/commandExecution/requestApproval"><span>item/commandExecution/requestApproval</span><small>item/commandExecution/requestApproval</small></a><span class="flow-arrow">→</span><a class="behavior-node confidence-verified-headless" href="#event-serverRequest-resolved" title="serverRequest/resolved"><span>serverRequest/resolved</span><small>serverRequest/resolved</small></a></div></section><section class="lane"><header><strong>Context maintenance</strong><code>maintenance</code></header><div class="lane-track"><a class="behavior-node confidence-unverified" href="#event-item-started" title="Native item start for compaction; declared by the schema but not exercised in the pinned census."><span>item/started · contextCompaction</span><small>item/started</small><code>{&quot;item.type&quot;:&quot;contextCompaction&quot;}</code></a><span class="flow-arrow">→</span><a class="behavior-node confidence-unverified" href="#event-item-completed" title="Native item completion for compaction; declared by the schema but not exercised in the pinned census."><span>item/completed · contextCompaction</span><small>item/completed</small><code>{&quot;item.type&quot;:&quot;contextCompaction&quot;}</code></a><span class="flow-arrow">→</span><a class="behavior-node confidence-unverified" href="#event-thread-compacted" title="Deprecated completion notification retained by the native schema."><span>thread/compacted</span><small>thread/compacted</small></a><span class="flow-arrow">→</span><a class="behavior-node confidence-verified-headless" href="#event-thread-tokenUsage-updated" title="thread/tokenUsage/updated"><span>thread/tokenUsage/updated</span><small>thread/tokenUsage/updated</small></a></div></section><section class="lane"><header><strong>Ambient notifications</strong><code>ambient</code></header><div class="lane-track"><a class="behavior-node confidence-verified-headless" href="#event-remoteControl-status-changed" title="remoteControl/status/changed"><span>remoteControl/status/changed</span><small>remoteControl/status/changed</small></a><span class="flow-arrow">→</span><a class="behavior-node confidence-unverified" href="#event-mcpServer-startupStatus-updated" title="mcpServer/startupStatus/updated"><span>mcpServer/startupStatus/updated</span><small>mcpServer/startupStatus/updated</small></a><span class="flow-arrow">→</span><a class="behavior-node confidence-unverified" href="#event-warning" title="warning"><span>warning</span><small>warning</small></a><span class="flow-arrow">→</span><a class="behavior-node confidence-verified-headless" href="#event-account-rateLimits-updated" title="account/rateLimits/updated"><span>account/rateLimits/updated</span><small>account/rateLimits/updated</small></a><span class="flow-arrow">→</span><a class="behavior-node confidence-unverified" href="#event-error" title="error"><span>error</span><small>error</small></a></div></section></div><details class="relation-table"><summary>Relation ledger</summary><div class="table-wrap"><table><thead><tr><th>From</th><th>Kind</th><th>To</th><th>Label</th><th>Confidence</th></tr></thead><tbody><tr><td><code>thread-start</code></td><td><span class="relation-kind">async</span></td><td><code>thread-settings</code></td><td></td><td><span class="confidence unverified">unverified</span></td></tr><tr><td><code>thread-start</code></td><td><span class="relation-kind">async</span></td><td><code>thread-status</code></td><td></td><td><span class="confidence verified-headless">verified-headless</span></td></tr><tr><td><code>thread-status</code></td><td><span class="relation-kind">loop</span></td><td><code>thread-status</code></td><td></td><td><span class="confidence verified-headless">verified-headless</span></td></tr><tr><td><code>thread-start</code></td><td><span class="relation-kind">sequence</span></td><td><code>turn-start</code></td><td></td><td><span class="confidence verified-headless">verified-headless</span></td></tr><tr><td><code>turn-start</code></td><td><span class="relation-kind">sequence</span></td><td><code>user-start</code></td><td></td><td><span class="confidence verified-headless">verified-headless</span></td></tr><tr><td><code>user-start</code></td><td><span class="relation-kind">sequence</span></td><td><code>user-complete</code></td><td></td><td><span class="confidence verified-headless">verified-headless</span></td></tr><tr><td><code>user-complete</code></td><td><span class="relation-kind">conditional</span></td><td><code>reasoning-start</code></td><td></td><td><span class="confidence unverified">unverified</span></td></tr><tr><td><code>reasoning-start</code></td><td><span class="relation-kind">sequence</span></td><td><code>reasoning-complete</code></td><td></td><td><span class="confidence unverified">unverified</span></td></tr><tr><td><code>reasoning-complete</code></td><td><span class="relation-kind">conditional</span></td><td><code>command-start</code></td><td></td><td><span class="confidence unverified">unverified</span></td></tr><tr><td><code>reasoning-complete</code></td><td><span class="relation-kind">conditional</span></td><td><code>agent-message-start</code></td><td></td><td><span class="confidence unverified">unverified</span></td></tr><tr><td><code>user-complete</code></td><td><span class="relation-kind">conditional</span></td><td><code>command-start</code></td><td></td><td><span class="confidence verified-headless">verified-headless</span></td></tr><tr><td><code>user-complete</code></td><td><span class="relation-kind">conditional</span></td><td><code>agent-message-start</code></td><td></td><td><span class="confidence verified-headless">verified-headless</span></td></tr><tr><td><code>command-start</code></td><td><span class="relation-kind">conditional</span></td><td><code>approval-request</code></td><td></td><td><span class="confidence verified-headless">verified-headless</span></td></tr><tr><td><code>approval-request</code></td><td><span class="relation-kind">sequence</span></td><td><code>approval-resolved</code></td><td></td><td><span class="confidence verified-headless">verified-headless</span></td></tr><tr><td><code>approval-resolved</code></td><td><span class="relation-kind">sequence</span></td><td><code>command-complete</code></td><td></td><td><span class="confidence verified-headless">verified-headless</span></td></tr><tr><td><code>command-start</code></td><td><span class="relation-kind">conditional</span></td><td><code>command-complete</code></td><td>no approval</td><td><span class="confidence verified-headless">verified-headless</span></td></tr><tr><td><code>command-complete</code></td><td><span class="relation-kind">sequence</span></td><td><code>token-usage</code></td><td></td><td><span class="confidence verified-headless">verified-headless</span></td></tr><tr><td><code>command-complete</code></td><td><span class="relation-kind">sequence</span></td><td><code>agent-message-start</code></td><td></td><td><span class="confidence verified-headless">verified-headless</span></td></tr><tr><td><code>agent-message-start</code></td><td><span class="relation-kind">conditional</span></td><td><code>message-delta</code></td><td></td><td><span class="confidence unverified">unverified</span></td></tr><tr><td><code>message-delta</code></td><td><span class="relation-kind">loop</span></td><td><code>message-delta</code></td><td></td><td><span class="confidence unverified">unverified</span></td></tr><tr><td><code>message-delta</code></td><td><span class="relation-kind">sequence</span></td><td><code>agent-message-complete</code></td><td></td><td><span class="confidence unverified">unverified</span></td></tr><tr><td><code>agent-message-start</code></td><td><span class="relation-kind">sequence</span></td><td><code>agent-message-complete</code></td><td>no delta observed</td><td><span class="confidence verified-headless">verified-headless</span></td></tr><tr><td><code>agent-message-complete</code></td><td><span class="relation-kind">sequence</span></td><td><code>token-usage</code></td><td></td><td><span class="confidence verified-headless">verified-headless</span></td></tr><tr><td><code>token-usage</code></td><td><span class="relation-kind">sequence</span></td><td><code>rate-limits</code></td><td></td><td><span class="confidence verified-headless">verified-headless</span></td></tr><tr><td><code>token-usage</code></td><td><span class="relation-kind">conditional</span></td><td><code>agent-message-start</code></td><td>after tool usage</td><td><span class="confidence verified-headless">verified-headless</span></td></tr><tr><td><code>token-usage</code></td><td><span class="relation-kind">conditional</span></td><td><code>turn-complete</code></td><td>final usage</td><td><span class="confidence verified-headless">verified-headless</span></td></tr><tr><td><code>rate-limits</code></td><td><span class="relation-kind">conditional</span></td><td><code>agent-message-start</code></td><td></td><td><span class="confidence verified-headless">verified-headless</span></td></tr><tr><td><code>rate-limits</code></td><td><span class="relation-kind">conditional</span></td><td><code>turn-complete</code></td><td></td><td><span class="confidence verified-headless">verified-headless</span></td></tr><tr><td><code>agent-message-complete</code></td><td><span class="relation-kind">sequence</span></td><td><code>turn-complete</code></td><td></td><td><span class="confidence verified-headless">verified-headless</span></td></tr><tr><td><code>turn-complete</code></td><td><span class="relation-kind">loop</span></td><td><code>turn-start</code></td><td>next turn</td><td><span class="confidence verified-headless">verified-headless</span></td></tr><tr><td><code>turn-complete</code></td><td><span class="relation-kind">conditional</span></td><td><code>thread-closed</code></td><td></td><td><span class="confidence unverified">unverified</span></td></tr><tr><td><code>turn-start</code></td><td><span class="relation-kind">conditional</span></td><td><code>compact-start</code></td><td></td><td><span class="confidence unverified">unverified</span></td></tr><tr><td><code>compact-start</code></td><td><span class="relation-kind">sequence</span></td><td><code>compact-complete</code></td><td></td><td><span class="confidence unverified">unverified</span></td></tr><tr><td><code>compact-complete</code></td><td><span class="relation-kind">conditional</span></td><td><code>thread-compacted</code></td><td></td><td><span class="confidence unverified">unverified</span></td></tr><tr><td><code>compact-complete</code></td><td><span class="relation-kind">sequence</span></td><td><code>token-usage</code></td><td></td><td><span class="confidence unverified">unverified</span></td></tr><tr><td><code>remote-status</code></td><td><span class="relation-kind">sequence</span></td><td><code>thread-start</code></td><td></td><td><span class="confidence verified-headless">verified-headless</span></td></tr><tr><td><code>thread-start</code></td><td><span class="relation-kind">async</span></td><td><code>mcp-startup</code></td><td></td><td><span class="confidence unverified">unverified</span></td></tr><tr><td><code>thread-start</code></td><td><span class="relation-kind">async</span></td><td><code>warning</code></td><td></td><td><span class="confidence unverified">unverified</span></td></tr><tr><td><code>thread-start</code></td><td><span class="relation-kind">async</span></td><td><code>error</code></td><td></td><td><span class="confidence unverified">unverified</span></td></tr></tbody></table></div></details></section><section id="events" class="panel"><div class="section-heading"><div><span class="eyebrow">Wire catalog</span><h2>Events</h2></div><span id="event-count" class="count">244</span></div><div class="toolbar"><label><span>Search</span><input id="event-search" type="search" placeholder="event, channel, transport…" /></label><label><span>Direction</span><select id="direction-filter"><option value="">all</option><option value="agent-to-client">agent-to-client</option><option value="client-to-agent">client-to-agent</option></select></label><label><span>Confidence</span><select id="confidence-filter"><option value="">all</option><option>verified-headless</option><option>verified-interactive</option><option>unverified</option></select></label><button id="expand-visible" type="button">Expand visible</button><button id="collapse-events" type="button">Collapse</button></div><div id="event-list" class="event-list"><article id="event-account-bedrock-discover" class="event-card" data-search="account/bedrock/discover client-to-agent jsonrpc-request unverified appserver" data-direction="client-to-agent" data-confidence="unverified"><details><summary><span class="event-name">account/bedrock/discover</span><span class="event-meta"><span class="direction">client-to-agent</span><span class="confidence unverified">unverified</span></span></summary><div class="event-body"><dl><div><dt>Channel</dt><dd><a href="#channels"><code>appserver</code></a></dd></div><div><dt>Transport</dt><dd>jsonrpc-request</dd></div><div><dt>Trigger</dt><dd>—</dd></div></dl><div class="evidence-refs"><a class="evidence-ref" href="#claim-codex-generated-schema">codex-generated-schema</a></div><details class="schema"><summary>Carrier schema</summary><pre>{
+  &quot;type&quot;: &quot;object&quot;,
+  &quot;properties&quot;: {
+    &quot;method&quot;: {
+      &quot;type&quot;: &quot;string&quot;,
+      &quot;enum&quot;: [
+        &quot;account/bedrock/discover&quot;
+      ]
+    },
+    &quot;params&quot;: {
+      &quot;type&quot;: &quot;object&quot;
+    },
+    &quot;id&quot;: {}
+  },
+  &quot;required&quot;: [
+    &quot;method&quot;,
+    &quot;params&quot;,
+    &quot;id&quot;
+  ]
+}</pre></details></div></details></article><article id="event-account-bedrock-setup" class="event-card" data-search="account/bedrock/setup client-to-agent jsonrpc-request unverified appserver" data-direction="client-to-agent" data-confidence="unverified"><details><summary><span class="event-name">account/bedrock/setup</span><span class="event-meta"><span class="direction">client-to-agent</span><span class="confidence unverified">unverified</span></span></summary><div class="event-body"><dl><div><dt>Channel</dt><dd><a href="#channels"><code>appserver</code></a></dd></div><div><dt>Transport</dt><dd>jsonrpc-request</dd></div><div><dt>Trigger</dt><dd>—</dd></div></dl><div class="evidence-refs"><a class="evidence-ref" href="#claim-codex-generated-schema">codex-generated-schema</a></div><details class="schema"><summary>Carrier schema</summary><pre>{
+  &quot;type&quot;: &quot;object&quot;,
+  &quot;properties&quot;: {
+    &quot;method&quot;: {
+      &quot;type&quot;: &quot;string&quot;,
+      &quot;enum&quot;: [
+        &quot;account/bedrock/setup&quot;
+      ]
+    },
+    &quot;params&quot;: {
+      &quot;type&quot;: &quot;object&quot;
+    },
+    &quot;id&quot;: {}
+  },
+  &quot;required&quot;: [
+    &quot;method&quot;,
+    &quot;params&quot;,
+    &quot;id&quot;
+  ]
+}</pre></details></div></details></article><article id="event-account-chatgptAuthTokens-refresh" class="event-card" data-search="account/chatgptauthtokens/refresh agent-to-client jsonrpc-request unverified appserver" data-direction="agent-to-client" data-confidence="unverified"><details><summary><span class="event-name">account/chatgptAuthTokens/refresh</span><span class="event-meta"><span class="direction">agent-to-client</span><span class="confidence unverified">unverified</span></span></summary><div class="event-body"><dl><div><dt>Channel</dt><dd><a href="#channels"><code>appserver</code></a></dd></div><div><dt>Transport</dt><dd>jsonrpc-request</dd></div><div><dt>Trigger</dt><dd>—</dd></div></dl><div class="evidence-refs"><a class="evidence-ref" href="#claim-codex-generated-schema">codex-generated-schema</a></div><details class="schema"><summary>Payload schema</summary><pre>{
   &quot;type&quot;: &quot;object&quot;,
   &quot;properties&quot;: {
     &quot;previousAccountId&quot;: {},
@@ -466,7 +504,8 @@
     },
     &quot;includeTools&quot;: {
       &quot;type&quot;: &quot;boolean&quot;
-    }
+    },
+    &quot;threadId&quot;: {}
   },
   &quot;required&quot;: [
     &quot;appIds&quot;
@@ -565,6 +604,46 @@
     &quot;method&quot;,
     &quot;params&quot;,
     &quot;id&quot;
+  ]
+}</pre></details></div></details></article><article id="event-autoApprovalReview-strictReviewRequired" class="event-card" data-search="autoapprovalreview/strictreviewrequired agent-to-client jsonrpc-notification unverified appserver" data-direction="agent-to-client" data-confidence="unverified"><details><summary><span class="event-name">autoApprovalReview/strictReviewRequired</span><span class="event-meta"><span class="direction">agent-to-client</span><span class="confidence unverified">unverified</span></span></summary><div class="event-body"><dl><div><dt>Channel</dt><dd><a href="#channels"><code>appserver</code></a></dd></div><div><dt>Transport</dt><dd>jsonrpc-notification</dd></div><div><dt>Trigger</dt><dd>—</dd></div></dl><div class="evidence-refs"><a class="evidence-ref" href="#claim-codex-generated-schema">codex-generated-schema</a><a class="evidence-ref" href="#claim-codex-runtime-headless">codex-runtime-headless</a></div><details class="schema"><summary>Payload schema</summary><pre>{
+  &quot;type&quot;: &quot;object&quot;,
+  &quot;properties&quot;: {
+    &quot;startedAtMs&quot;: {
+      &quot;type&quot;: &quot;number&quot;
+    },
+    &quot;threadId&quot;: {
+      &quot;type&quot;: &quot;string&quot;
+    },
+    &quot;turnId&quot;: {
+      &quot;type&quot;: &quot;string&quot;
+    }
+  },
+  &quot;required&quot;: [
+    &quot;startedAtMs&quot;,
+    &quot;threadId&quot;,
+    &quot;turnId&quot;
+  ]
+}</pre></details><details class="schema"><summary>Carrier schema</summary><pre>{
+  &quot;type&quot;: &quot;object&quot;,
+  &quot;properties&quot;: {
+    &quot;method&quot;: {
+      &quot;type&quot;: &quot;string&quot;,
+      &quot;enum&quot;: [
+        &quot;autoApprovalReview/strictReviewRequired&quot;
+      ]
+    },
+    &quot;params&quot;: {
+      &quot;type&quot;: &quot;object&quot;
+    },
+    &quot;emittedAtMs&quot;: {
+      &quot;type&quot;: &quot;number&quot;,
+      &quot;minimum&quot;: 1000000000000
+    }
+  },
+  &quot;required&quot;: [
+    &quot;method&quot;,
+    &quot;params&quot;,
+    &quot;emittedAtMs&quot;
   ]
 }</pre></details></div></details></article><article id="event-collaborationMode-list" class="event-card" data-search="collaborationmode/list client-to-agent jsonrpc-request unverified appserver" data-direction="client-to-agent" data-confidence="unverified"><details><summary><span class="event-name">collaborationMode/list</span><span class="event-meta"><span class="direction">client-to-agent</span><span class="confidence unverified">unverified</span></span></summary><div class="event-body"><dl><div><dt>Channel</dt><dd><a href="#channels"><code>appserver</code></a></dd></div><div><dt>Transport</dt><dd>jsonrpc-request</dd></div><div><dt>Trigger</dt><dd>Lists collaboration mode presets.</dd></div></dl><div class="evidence-refs"><a class="evidence-ref" href="#claim-codex-generated-schema">codex-generated-schema</a></div><details class="schema"><summary>Carrier schema</summary><pre>{
   &quot;type&quot;: &quot;object&quot;,
@@ -2396,6 +2475,7 @@
     &quot;itemId&quot;: {
       &quot;type&quot;: &quot;string&quot;
     },
+    &quot;kind&quot;: {},
     &quot;networkApprovalContext&quot;: {},
     &quot;proposedExecpolicyAmendment&quot;: {},
     &quot;proposedNetworkPolicyAmendments&quot;: {},
@@ -3255,9 +3335,119 @@
     &quot;params&quot;,
     &quot;id&quot;
   ]
+}</pre></details></div></details></article><article id="event-mcpServer-event-stream-notification" class="event-card" data-search="mcpserver/event/stream/notification agent-to-client jsonrpc-notification unverified appserver" data-direction="agent-to-client" data-confidence="unverified"><details><summary><span class="event-name">mcpServer/event/stream/notification</span><span class="event-meta"><span class="direction">agent-to-client</span><span class="confidence unverified">unverified</span></span></summary><div class="event-body"><dl><div><dt>Channel</dt><dd><a href="#channels"><code>appserver</code></a></dd></div><div><dt>Transport</dt><dd>jsonrpc-notification</dd></div><div><dt>Trigger</dt><dd>—</dd></div></dl><div class="evidence-refs"><a class="evidence-ref" href="#claim-codex-generated-schema">codex-generated-schema</a><a class="evidence-ref" href="#claim-codex-runtime-headless">codex-runtime-headless</a></div><details class="schema"><summary>Payload schema</summary><pre>{
+  &quot;type&quot;: &quot;object&quot;,
+  &quot;properties&quot;: {
+    &quot;notification&quot;: {
+      &quot;type&quot;: &quot;object&quot;
+    },
+    &quot;subscriptionId&quot;: {
+      &quot;type&quot;: &quot;string&quot;
+    }
+  },
+  &quot;required&quot;: [
+    &quot;notification&quot;,
+    &quot;subscriptionId&quot;
+  ]
+}</pre></details><details class="schema"><summary>Carrier schema</summary><pre>{
+  &quot;type&quot;: &quot;object&quot;,
+  &quot;properties&quot;: {
+    &quot;method&quot;: {
+      &quot;type&quot;: &quot;string&quot;,
+      &quot;enum&quot;: [
+        &quot;mcpServer/event/stream/notification&quot;
+      ]
+    },
+    &quot;params&quot;: {
+      &quot;type&quot;: &quot;object&quot;
+    },
+    &quot;emittedAtMs&quot;: {
+      &quot;type&quot;: &quot;number&quot;,
+      &quot;minimum&quot;: 1000000000000
+    }
+  },
+  &quot;required&quot;: [
+    &quot;method&quot;,
+    &quot;params&quot;,
+    &quot;emittedAtMs&quot;
+  ]
+}</pre></details></div></details></article><article id="event-mcpServer-event-stream-start" class="event-card" data-search="mcpserver/event/stream/start client-to-agent jsonrpc-request unverified appserver" data-direction="client-to-agent" data-confidence="unverified"><details><summary><span class="event-name">mcpServer/event/stream/start</span><span class="event-meta"><span class="direction">client-to-agent</span><span class="confidence unverified">unverified</span></span></summary><div class="event-body"><dl><div><dt>Channel</dt><dd><a href="#channels"><code>appserver</code></a></dd></div><div><dt>Transport</dt><dd>jsonrpc-request</dd></div><div><dt>Trigger</dt><dd>—</dd></div></dl><div class="evidence-refs"><a class="evidence-ref" href="#claim-codex-generated-schema">codex-generated-schema</a></div><details class="schema"><summary>Payload schema</summary><pre>{
+  &quot;type&quot;: &quot;object&quot;,
+  &quot;properties&quot;: {
+    &quot;_meta&quot;: {},
+    &quot;arguments&quot;: {},
+    &quot;name&quot;: {
+      &quot;type&quot;: &quot;string&quot;
+    },
+    &quot;server&quot;: {
+      &quot;type&quot;: &quot;string&quot;
+    },
+    &quot;subscriptionId&quot;: {
+      &quot;type&quot;: &quot;string&quot;
+    },
+    &quot;threadId&quot;: {
+      &quot;type&quot;: &quot;string&quot;
+    }
+  },
+  &quot;required&quot;: [
+    &quot;arguments&quot;,
+    &quot;name&quot;,
+    &quot;server&quot;,
+    &quot;subscriptionId&quot;,
+    &quot;threadId&quot;
+  ]
+}</pre></details><details class="schema"><summary>Carrier schema</summary><pre>{
+  &quot;type&quot;: &quot;object&quot;,
+  &quot;properties&quot;: {
+    &quot;method&quot;: {
+      &quot;type&quot;: &quot;string&quot;,
+      &quot;enum&quot;: [
+        &quot;mcpServer/event/stream/start&quot;
+      ]
+    },
+    &quot;params&quot;: {
+      &quot;type&quot;: &quot;object&quot;
+    },
+    &quot;id&quot;: {}
+  },
+  &quot;required&quot;: [
+    &quot;method&quot;,
+    &quot;params&quot;,
+    &quot;id&quot;
+  ]
+}</pre></details></div></details></article><article id="event-mcpServer-event-stream-stop" class="event-card" data-search="mcpserver/event/stream/stop client-to-agent jsonrpc-request unverified appserver" data-direction="client-to-agent" data-confidence="unverified"><details><summary><span class="event-name">mcpServer/event/stream/stop</span><span class="event-meta"><span class="direction">client-to-agent</span><span class="confidence unverified">unverified</span></span></summary><div class="event-body"><dl><div><dt>Channel</dt><dd><a href="#channels"><code>appserver</code></a></dd></div><div><dt>Transport</dt><dd>jsonrpc-request</dd></div><div><dt>Trigger</dt><dd>—</dd></div></dl><div class="evidence-refs"><a class="evidence-ref" href="#claim-codex-generated-schema">codex-generated-schema</a></div><details class="schema"><summary>Payload schema</summary><pre>{
+  &quot;type&quot;: &quot;object&quot;,
+  &quot;properties&quot;: {
+    &quot;subscriptionId&quot;: {
+      &quot;type&quot;: &quot;string&quot;
+    }
+  },
+  &quot;required&quot;: [
+    &quot;subscriptionId&quot;
+  ]
+}</pre></details><details class="schema"><summary>Carrier schema</summary><pre>{
+  &quot;type&quot;: &quot;object&quot;,
+  &quot;properties&quot;: {
+    &quot;method&quot;: {
+      &quot;type&quot;: &quot;string&quot;,
+      &quot;enum&quot;: [
+        &quot;mcpServer/event/stream/stop&quot;
+      ]
+    },
+    &quot;params&quot;: {
+      &quot;type&quot;: &quot;object&quot;
+    },
+    &quot;id&quot;: {}
+  },
+  &quot;required&quot;: [
+    &quot;method&quot;,
+    &quot;params&quot;,
+    &quot;id&quot;
+  ]
 }</pre></details></div></details></article><article id="event-mcpServer-oauth-login" class="event-card" data-search="mcpserver/oauth/login client-to-agent jsonrpc-request unverified appserver" data-direction="client-to-agent" data-confidence="unverified"><details><summary><span class="event-name">mcpServer/oauth/login</span><span class="event-meta"><span class="direction">client-to-agent</span><span class="confidence unverified">unverified</span></span></summary><div class="event-body"><dl><div><dt>Channel</dt><dd><a href="#channels"><code>appserver</code></a></dd></div><div><dt>Transport</dt><dd>jsonrpc-request</dd></div><div><dt>Trigger</dt><dd>—</dd></div></dl><div class="evidence-refs"><a class="evidence-ref" href="#claim-codex-generated-schema">codex-generated-schema</a></div><details class="schema"><summary>Payload schema</summary><pre>{
   &quot;type&quot;: &quot;object&quot;,
   &quot;properties&quot;: {
+    &quot;clientRegistration&quot;: {},
     &quot;name&quot;: {
       &quot;type&quot;: &quot;string&quot;
     },
@@ -3328,6 +3518,8 @@
 }</pre></details></div></details></article><article id="event-mcpServer-resource-read" class="event-card" data-search="mcpserver/resource/read client-to-agent jsonrpc-request unverified appserver" data-direction="client-to-agent" data-confidence="unverified"><details><summary><span class="event-name">mcpServer/resource/read</span><span class="event-meta"><span class="direction">client-to-agent</span><span class="confidence unverified">unverified</span></span></summary><div class="event-body"><dl><div><dt>Channel</dt><dd><a href="#channels"><code>appserver</code></a></dd></div><div><dt>Transport</dt><dd>jsonrpc-request</dd></div><div><dt>Trigger</dt><dd>—</dd></div></dl><div class="evidence-refs"><a class="evidence-ref" href="#claim-codex-generated-schema">codex-generated-schema</a></div><details class="schema"><summary>Payload schema</summary><pre>{
   &quot;type&quot;: &quot;object&quot;,
   &quot;properties&quot;: {
+    &quot;connectorId&quot;: {},
+    &quot;originCallId&quot;: {},
     &quot;server&quot;: {
       &quot;type&quot;: &quot;string&quot;
     },
@@ -3733,6 +3925,7 @@
 }</pre></details></div></details></article><article id="event-plugin-install" class="event-card" data-search="plugin/install client-to-agent jsonrpc-request unverified appserver" data-direction="client-to-agent" data-confidence="unverified"><details><summary><span class="event-name">plugin/install</span><span class="event-meta"><span class="direction">client-to-agent</span><span class="confidence unverified">unverified</span></span></summary><div class="event-body"><dl><div><dt>Channel</dt><dd><a href="#channels"><code>appserver</code></a></dd></div><div><dt>Transport</dt><dd>jsonrpc-request</dd></div><div><dt>Trigger</dt><dd>—</dd></div></dl><div class="evidence-refs"><a class="evidence-ref" href="#claim-codex-generated-schema">codex-generated-schema</a></div><details class="schema"><summary>Payload schema</summary><pre>{
   &quot;type&quot;: &quot;object&quot;,
   &quot;properties&quot;: {
+    &quot;installAttemptId&quot;: {},
     &quot;marketplacePath&quot;: {},
     &quot;pluginName&quot;: {
       &quot;type&quot;: &quot;string&quot;
@@ -4325,6 +4518,264 @@
     &quot;params&quot;,
     &quot;id&quot;
   ]
+}</pre></details></div></details></article><article id="event-project-changed" class="event-card" data-search="project/changed agent-to-client jsonrpc-notification unverified appserver" data-direction="agent-to-client" data-confidence="unverified"><details><summary><span class="event-name">project/changed</span><span class="event-meta"><span class="direction">agent-to-client</span><span class="confidence unverified">unverified</span></span></summary><div class="event-body"><dl><div><dt>Channel</dt><dd><a href="#channels"><code>appserver</code></a></dd></div><div><dt>Transport</dt><dd>jsonrpc-notification</dd></div><div><dt>Trigger</dt><dd>—</dd></div></dl><div class="evidence-refs"><a class="evidence-ref" href="#claim-codex-generated-schema">codex-generated-schema</a><a class="evidence-ref" href="#claim-codex-runtime-headless">codex-runtime-headless</a></div><details class="schema"><summary>Payload schema</summary><pre>{
+  &quot;type&quot;: &quot;object&quot;,
+  &quot;properties&quot;: {
+    &quot;changeType&quot;: {
+      &quot;type&quot;: &quot;string&quot;
+    },
+    &quot;projectId&quot;: {
+      &quot;type&quot;: &quot;string&quot;
+    }
+  },
+  &quot;required&quot;: [
+    &quot;changeType&quot;,
+    &quot;projectId&quot;
+  ]
+}</pre></details><details class="schema"><summary>Carrier schema</summary><pre>{
+  &quot;type&quot;: &quot;object&quot;,
+  &quot;properties&quot;: {
+    &quot;method&quot;: {
+      &quot;type&quot;: &quot;string&quot;,
+      &quot;enum&quot;: [
+        &quot;project/changed&quot;
+      ]
+    },
+    &quot;params&quot;: {
+      &quot;type&quot;: &quot;object&quot;
+    },
+    &quot;emittedAtMs&quot;: {
+      &quot;type&quot;: &quot;number&quot;,
+      &quot;minimum&quot;: 1000000000000
+    }
+  },
+  &quot;required&quot;: [
+    &quot;method&quot;,
+    &quot;params&quot;,
+    &quot;emittedAtMs&quot;
+  ]
+}</pre></details></div></details></article><article id="event-project-create" class="event-card" data-search="project/create client-to-agent jsonrpc-request unverified appserver" data-direction="client-to-agent" data-confidence="unverified"><details><summary><span class="event-name">project/create</span><span class="event-meta"><span class="direction">client-to-agent</span><span class="confidence unverified">unverified</span></span></summary><div class="event-body"><dl><div><dt>Channel</dt><dd><a href="#channels"><code>appserver</code></a></dd></div><div><dt>Transport</dt><dd>jsonrpc-request</dd></div><div><dt>Trigger</dt><dd>—</dd></div></dl><div class="evidence-refs"><a class="evidence-ref" href="#claim-codex-generated-schema">codex-generated-schema</a></div><details class="schema"><summary>Payload schema</summary><pre>{
+  &quot;type&quot;: &quot;object&quot;,
+  &quot;properties&quot;: {
+    &quot;idempotencyKey&quot;: {
+      &quot;type&quot;: &quot;string&quot;
+    },
+    &quot;metadata&quot;: {},
+    &quot;name&quot;: {
+      &quot;type&quot;: &quot;string&quot;
+    },
+    &quot;roots&quot;: {
+      &quot;type&quot;: &quot;array&quot;
+    }
+  },
+  &quot;required&quot;: [
+    &quot;idempotencyKey&quot;,
+    &quot;name&quot;,
+    &quot;roots&quot;
+  ]
+}</pre></details><details class="schema"><summary>Carrier schema</summary><pre>{
+  &quot;type&quot;: &quot;object&quot;,
+  &quot;properties&quot;: {
+    &quot;method&quot;: {
+      &quot;type&quot;: &quot;string&quot;,
+      &quot;enum&quot;: [
+        &quot;project/create&quot;
+      ]
+    },
+    &quot;params&quot;: {
+      &quot;type&quot;: &quot;object&quot;
+    },
+    &quot;id&quot;: {}
+  },
+  &quot;required&quot;: [
+    &quot;method&quot;,
+    &quot;params&quot;,
+    &quot;id&quot;
+  ]
+}</pre></details></div></details></article><article id="event-project-delete" class="event-card" data-search="project/delete client-to-agent jsonrpc-request unverified appserver" data-direction="client-to-agent" data-confidence="unverified"><details><summary><span class="event-name">project/delete</span><span class="event-meta"><span class="direction">client-to-agent</span><span class="confidence unverified">unverified</span></span></summary><div class="event-body"><dl><div><dt>Channel</dt><dd><a href="#channels"><code>appserver</code></a></dd></div><div><dt>Transport</dt><dd>jsonrpc-request</dd></div><div><dt>Trigger</dt><dd>—</dd></div></dl><div class="evidence-refs"><a class="evidence-ref" href="#claim-codex-generated-schema">codex-generated-schema</a></div><details class="schema"><summary>Payload schema</summary><pre>{
+  &quot;type&quot;: &quot;object&quot;,
+  &quot;properties&quot;: {
+    &quot;projectId&quot;: {
+      &quot;type&quot;: &quot;string&quot;
+    }
+  },
+  &quot;required&quot;: [
+    &quot;projectId&quot;
+  ]
+}</pre></details><details class="schema"><summary>Carrier schema</summary><pre>{
+  &quot;type&quot;: &quot;object&quot;,
+  &quot;properties&quot;: {
+    &quot;method&quot;: {
+      &quot;type&quot;: &quot;string&quot;,
+      &quot;enum&quot;: [
+        &quot;project/delete&quot;
+      ]
+    },
+    &quot;params&quot;: {
+      &quot;type&quot;: &quot;object&quot;
+    },
+    &quot;id&quot;: {}
+  },
+  &quot;required&quot;: [
+    &quot;method&quot;,
+    &quot;params&quot;,
+    &quot;id&quot;
+  ]
+}</pre></details></div></details></article><article id="event-project-import" class="event-card" data-search="project/import client-to-agent jsonrpc-request unverified appserver" data-direction="client-to-agent" data-confidence="unverified"><details><summary><span class="event-name">project/import</span><span class="event-meta"><span class="direction">client-to-agent</span><span class="confidence unverified">unverified</span></span></summary><div class="event-body"><dl><div><dt>Channel</dt><dd><a href="#channels"><code>appserver</code></a></dd></div><div><dt>Transport</dt><dd>jsonrpc-request</dd></div><div><dt>Trigger</dt><dd>—</dd></div></dl><div class="evidence-refs"><a class="evidence-ref" href="#claim-codex-generated-schema">codex-generated-schema</a></div><details class="schema"><summary>Payload schema</summary><pre>{
+  &quot;type&quot;: &quot;object&quot;,
+  &quot;properties&quot;: {
+    &quot;idempotencyKey&quot;: {
+      &quot;type&quot;: &quot;string&quot;
+    },
+    &quot;metadata&quot;: {},
+    &quot;name&quot;: {
+      &quot;type&quot;: &quot;string&quot;
+    },
+    &quot;roots&quot;: {
+      &quot;type&quot;: &quot;array&quot;
+    },
+    &quot;threads&quot;: {}
+  },
+  &quot;required&quot;: [
+    &quot;idempotencyKey&quot;,
+    &quot;name&quot;,
+    &quot;roots&quot;
+  ]
+}</pre></details><details class="schema"><summary>Carrier schema</summary><pre>{
+  &quot;type&quot;: &quot;object&quot;,
+  &quot;properties&quot;: {
+    &quot;method&quot;: {
+      &quot;type&quot;: &quot;string&quot;,
+      &quot;enum&quot;: [
+        &quot;project/import&quot;
+      ]
+    },
+    &quot;params&quot;: {
+      &quot;type&quot;: &quot;object&quot;
+    },
+    &quot;id&quot;: {}
+  },
+  &quot;required&quot;: [
+    &quot;method&quot;,
+    &quot;params&quot;,
+    &quot;id&quot;
+  ]
+}</pre></details></div></details></article><article id="event-project-list" class="event-card" data-search="project/list client-to-agent jsonrpc-request unverified appserver" data-direction="client-to-agent" data-confidence="unverified"><details><summary><span class="event-name">project/list</span><span class="event-meta"><span class="direction">client-to-agent</span><span class="confidence unverified">unverified</span></span></summary><div class="event-body"><dl><div><dt>Channel</dt><dd><a href="#channels"><code>appserver</code></a></dd></div><div><dt>Transport</dt><dd>jsonrpc-request</dd></div><div><dt>Trigger</dt><dd>—</dd></div></dl><div class="evidence-refs"><a class="evidence-ref" href="#claim-codex-generated-schema">codex-generated-schema</a></div><details class="schema"><summary>Payload schema</summary><pre>{
+  &quot;type&quot;: &quot;object&quot;,
+  &quot;properties&quot;: {
+    &quot;cursor&quot;: {},
+    &quot;limit&quot;: {}
+  }
+}</pre></details><details class="schema"><summary>Carrier schema</summary><pre>{
+  &quot;type&quot;: &quot;object&quot;,
+  &quot;properties&quot;: {
+    &quot;method&quot;: {
+      &quot;type&quot;: &quot;string&quot;,
+      &quot;enum&quot;: [
+        &quot;project/list&quot;
+      ]
+    },
+    &quot;params&quot;: {
+      &quot;type&quot;: &quot;object&quot;
+    },
+    &quot;id&quot;: {}
+  },
+  &quot;required&quot;: [
+    &quot;method&quot;,
+    &quot;params&quot;,
+    &quot;id&quot;
+  ]
+}</pre></details></div></details></article><article id="event-project-move" class="event-card" data-search="project/move client-to-agent jsonrpc-request unverified appserver" data-direction="client-to-agent" data-confidence="unverified"><details><summary><span class="event-name">project/move</span><span class="event-meta"><span class="direction">client-to-agent</span><span class="confidence unverified">unverified</span></span></summary><div class="event-body"><dl><div><dt>Channel</dt><dd><a href="#channels"><code>appserver</code></a></dd></div><div><dt>Transport</dt><dd>jsonrpc-request</dd></div><div><dt>Trigger</dt><dd>—</dd></div></dl><div class="evidence-refs"><a class="evidence-ref" href="#claim-codex-generated-schema">codex-generated-schema</a></div><details class="schema"><summary>Payload schema</summary><pre>{
+  &quot;type&quot;: &quot;object&quot;,
+  &quot;properties&quot;: {
+    &quot;beforeProjectId&quot;: {},
+    &quot;projectId&quot;: {
+      &quot;type&quot;: &quot;string&quot;
+    }
+  },
+  &quot;required&quot;: [
+    &quot;projectId&quot;
+  ]
+}</pre></details><details class="schema"><summary>Carrier schema</summary><pre>{
+  &quot;type&quot;: &quot;object&quot;,
+  &quot;properties&quot;: {
+    &quot;method&quot;: {
+      &quot;type&quot;: &quot;string&quot;,
+      &quot;enum&quot;: [
+        &quot;project/move&quot;
+      ]
+    },
+    &quot;params&quot;: {
+      &quot;type&quot;: &quot;object&quot;
+    },
+    &quot;id&quot;: {}
+  },
+  &quot;required&quot;: [
+    &quot;method&quot;,
+    &quot;params&quot;,
+    &quot;id&quot;
+  ]
+}</pre></details></div></details></article><article id="event-project-read" class="event-card" data-search="project/read client-to-agent jsonrpc-request unverified appserver" data-direction="client-to-agent" data-confidence="unverified"><details><summary><span class="event-name">project/read</span><span class="event-meta"><span class="direction">client-to-agent</span><span class="confidence unverified">unverified</span></span></summary><div class="event-body"><dl><div><dt>Channel</dt><dd><a href="#channels"><code>appserver</code></a></dd></div><div><dt>Transport</dt><dd>jsonrpc-request</dd></div><div><dt>Trigger</dt><dd>—</dd></div></dl><div class="evidence-refs"><a class="evidence-ref" href="#claim-codex-generated-schema">codex-generated-schema</a></div><details class="schema"><summary>Payload schema</summary><pre>{
+  &quot;type&quot;: &quot;object&quot;,
+  &quot;properties&quot;: {
+    &quot;projectId&quot;: {
+      &quot;type&quot;: &quot;string&quot;
+    }
+  },
+  &quot;required&quot;: [
+    &quot;projectId&quot;
+  ]
+}</pre></details><details class="schema"><summary>Carrier schema</summary><pre>{
+  &quot;type&quot;: &quot;object&quot;,
+  &quot;properties&quot;: {
+    &quot;method&quot;: {
+      &quot;type&quot;: &quot;string&quot;,
+      &quot;enum&quot;: [
+        &quot;project/read&quot;
+      ]
+    },
+    &quot;params&quot;: {
+      &quot;type&quot;: &quot;object&quot;
+    },
+    &quot;id&quot;: {}
+  },
+  &quot;required&quot;: [
+    &quot;method&quot;,
+    &quot;params&quot;,
+    &quot;id&quot;
+  ]
+}</pre></details></div></details></article><article id="event-project-update" class="event-card" data-search="project/update client-to-agent jsonrpc-request unverified appserver" data-direction="client-to-agent" data-confidence="unverified"><details><summary><span class="event-name">project/update</span><span class="event-meta"><span class="direction">client-to-agent</span><span class="confidence unverified">unverified</span></span></summary><div class="event-body"><dl><div><dt>Channel</dt><dd><a href="#channels"><code>appserver</code></a></dd></div><div><dt>Transport</dt><dd>jsonrpc-request</dd></div><div><dt>Trigger</dt><dd>—</dd></div></dl><div class="evidence-refs"><a class="evidence-ref" href="#claim-codex-generated-schema">codex-generated-schema</a></div><details class="schema"><summary>Payload schema</summary><pre>{
+  &quot;type&quot;: &quot;object&quot;,
+  &quot;properties&quot;: {
+    &quot;metadata&quot;: {},
+    &quot;name&quot;: {},
+    &quot;projectId&quot;: {
+      &quot;type&quot;: &quot;string&quot;
+    },
+    &quot;roots&quot;: {}
+  },
+  &quot;required&quot;: [
+    &quot;projectId&quot;
+  ]
+}</pre></details><details class="schema"><summary>Carrier schema</summary><pre>{
+  &quot;type&quot;: &quot;object&quot;,
+  &quot;properties&quot;: {
+    &quot;method&quot;: {
+      &quot;type&quot;: &quot;string&quot;,
+      &quot;enum&quot;: [
+        &quot;project/update&quot;
+      ]
+    },
+    &quot;params&quot;: {
+      &quot;type&quot;: &quot;object&quot;
+    },
+    &quot;id&quot;: {}
+  },
+  &quot;required&quot;: [
+    &quot;method&quot;,
+    &quot;params&quot;,
+    &quot;id&quot;
+  ]
 }</pre></details></div></details></article><article id="event-remoteControl-client-list" class="event-card" data-search="remotecontrol/client/list client-to-agent jsonrpc-request unverified appserver" data-direction="client-to-agent" data-confidence="unverified"><details><summary><span class="event-name">remoteControl/client/list</span><span class="event-meta"><span class="direction">client-to-agent</span><span class="confidence unverified">unverified</span></span></summary><div class="event-body"><dl><div><dt>Channel</dt><dd><a href="#channels"><code>appserver</code></a></dd></div><div><dt>Transport</dt><dd>jsonrpc-request</dd></div><div><dt>Trigger</dt><dd>—</dd></div></dl><div class="evidence-refs"><a class="evidence-ref" href="#claim-codex-generated-schema">codex-generated-schema</a></div><details class="schema"><summary>Payload schema</summary><pre>{
   &quot;type&quot;: &quot;object&quot;,
   &quot;properties&quot;: {
@@ -4561,6 +5012,25 @@
       &quot;type&quot;: &quot;string&quot;,
       &quot;enum&quot;: [
         &quot;review/start&quot;
+      ]
+    },
+    &quot;params&quot;: {
+      &quot;type&quot;: &quot;object&quot;
+    },
+    &quot;id&quot;: {}
+  },
+  &quot;required&quot;: [
+    &quot;method&quot;,
+    &quot;params&quot;,
+    &quot;id&quot;
+  ]
+}</pre></details></div></details></article><article id="event-server-diagnostics" class="event-card" data-search="server/diagnostics client-to-agent jsonrpc-request unverified appserver" data-direction="client-to-agent" data-confidence="unverified"><details><summary><span class="event-name">server/diagnostics</span><span class="event-meta"><span class="direction">client-to-agent</span><span class="confidence unverified">unverified</span></span></summary><div class="event-body"><dl><div><dt>Channel</dt><dd><a href="#channels"><code>appserver</code></a></dd></div><div><dt>Transport</dt><dd>jsonrpc-request</dd></div><div><dt>Trigger</dt><dd>Read content-free, process-local diagnostics.</dd></div></dl><div class="evidence-refs"><a class="evidence-ref" href="#claim-codex-generated-schema">codex-generated-schema</a></div><details class="schema"><summary>Carrier schema</summary><pre>{
+  &quot;type&quot;: &quot;object&quot;,
+  &quot;properties&quot;: {
+    &quot;method&quot;: {
+      &quot;type&quot;: &quot;string&quot;,
+      &quot;enum&quot;: [
+        &quot;server/diagnostics&quot;
       ]
     },
     &quot;params&quot;: {
@@ -5486,6 +5956,7 @@ This is used by external helpers to pause timeout accounting while a user approv
     &quot;limit&quot;: {},
     &quot;modelProviders&quot;: {},
     &quot;parentThreadId&quot;: {},
+    &quot;projectId&quot;: {},
     &quot;searchTerm&quot;: {},
     &quot;sectionId&quot;: {},
     &quot;sortDirection&quot;: {},
@@ -5576,6 +6047,7 @@ This is used by external helpers to pause timeout accounting while a user approv
   &quot;type&quot;: &quot;object&quot;,
   &quot;properties&quot;: {
     &quot;gitInfo&quot;: {},
+    &quot;projectId&quot;: {},
     &quot;threadId&quot;: {
       &quot;type&quot;: &quot;string&quot;
     }
@@ -5667,6 +6139,273 @@ This is used by external helpers to pause timeout accounting while a user approv
     &quot;method&quot;,
     &quot;params&quot;,
     &quot;emittedAtMs&quot;
+  ]
+}</pre></details></div></details></article><article id="event-thread-project-updated" class="event-card" data-search="thread/project/updated agent-to-client jsonrpc-notification unverified appserver" data-direction="agent-to-client" data-confidence="unverified"><details><summary><span class="event-name">thread/project/updated</span><span class="event-meta"><span class="direction">agent-to-client</span><span class="confidence unverified">unverified</span></span></summary><div class="event-body"><dl><div><dt>Channel</dt><dd><a href="#channels"><code>appserver</code></a></dd></div><div><dt>Transport</dt><dd>jsonrpc-notification</dd></div><div><dt>Trigger</dt><dd>—</dd></div></dl><div class="evidence-refs"><a class="evidence-ref" href="#claim-codex-generated-schema">codex-generated-schema</a><a class="evidence-ref" href="#claim-codex-runtime-headless">codex-runtime-headless</a></div><details class="schema"><summary>Payload schema</summary><pre>{
+  &quot;type&quot;: &quot;object&quot;,
+  &quot;properties&quot;: {
+    &quot;projectId&quot;: {},
+    &quot;threadId&quot;: {
+      &quot;type&quot;: &quot;string&quot;
+    }
+  },
+  &quot;required&quot;: [
+    &quot;projectId&quot;,
+    &quot;threadId&quot;
+  ]
+}</pre></details><details class="schema"><summary>Carrier schema</summary><pre>{
+  &quot;type&quot;: &quot;object&quot;,
+  &quot;properties&quot;: {
+    &quot;method&quot;: {
+      &quot;type&quot;: &quot;string&quot;,
+      &quot;enum&quot;: [
+        &quot;thread/project/updated&quot;
+      ]
+    },
+    &quot;params&quot;: {
+      &quot;type&quot;: &quot;object&quot;
+    },
+    &quot;emittedAtMs&quot;: {
+      &quot;type&quot;: &quot;number&quot;,
+      &quot;minimum&quot;: 1000000000000
+    }
+  },
+  &quot;required&quot;: [
+    &quot;method&quot;,
+    &quot;params&quot;,
+    &quot;emittedAtMs&quot;
+  ]
+}</pre></details></div></details></article><article id="event-thread-queue-add" class="event-card" data-search="thread/queue/add client-to-agent jsonrpc-request unverified appserver" data-direction="client-to-agent" data-confidence="unverified"><details><summary><span class="event-name">thread/queue/add</span><span class="event-meta"><span class="direction">client-to-agent</span><span class="confidence unverified">unverified</span></span></summary><div class="event-body"><dl><div><dt>Channel</dt><dd><a href="#channels"><code>appserver</code></a></dd></div><div><dt>Transport</dt><dd>jsonrpc-request</dd></div><div><dt>Trigger</dt><dd>—</dd></div></dl><div class="evidence-refs"><a class="evidence-ref" href="#claim-codex-generated-schema">codex-generated-schema</a></div><details class="schema"><summary>Payload schema</summary><pre>{
+  &quot;type&quot;: &quot;object&quot;,
+  &quot;properties&quot;: {
+    &quot;clientUserMessageId&quot;: {
+      &quot;type&quot;: &quot;string&quot;
+    },
+    &quot;input&quot;: {
+      &quot;type&quot;: &quot;array&quot;
+    },
+    &quot;threadId&quot;: {
+      &quot;type&quot;: &quot;string&quot;
+    }
+  },
+  &quot;required&quot;: [
+    &quot;clientUserMessageId&quot;,
+    &quot;input&quot;,
+    &quot;threadId&quot;
+  ]
+}</pre></details><details class="schema"><summary>Carrier schema</summary><pre>{
+  &quot;type&quot;: &quot;object&quot;,
+  &quot;properties&quot;: {
+    &quot;method&quot;: {
+      &quot;type&quot;: &quot;string&quot;,
+      &quot;enum&quot;: [
+        &quot;thread/queue/add&quot;
+      ]
+    },
+    &quot;params&quot;: {
+      &quot;type&quot;: &quot;object&quot;
+    },
+    &quot;id&quot;: {}
+  },
+  &quot;required&quot;: [
+    &quot;method&quot;,
+    &quot;params&quot;,
+    &quot;id&quot;
+  ]
+}</pre></details></div></details></article><article id="event-thread-queue-changed" class="event-card" data-search="thread/queue/changed agent-to-client jsonrpc-notification unverified appserver" data-direction="agent-to-client" data-confidence="unverified"><details><summary><span class="event-name">thread/queue/changed</span><span class="event-meta"><span class="direction">agent-to-client</span><span class="confidence unverified">unverified</span></span></summary><div class="event-body"><dl><div><dt>Channel</dt><dd><a href="#channels"><code>appserver</code></a></dd></div><div><dt>Transport</dt><dd>jsonrpc-notification</dd></div><div><dt>Trigger</dt><dd>—</dd></div></dl><div class="evidence-refs"><a class="evidence-ref" href="#claim-codex-generated-schema">codex-generated-schema</a><a class="evidence-ref" href="#claim-codex-runtime-headless">codex-runtime-headless</a></div><details class="schema"><summary>Payload schema</summary><pre>{
+  &quot;type&quot;: &quot;object&quot;,
+  &quot;properties&quot;: {
+    &quot;threadId&quot;: {
+      &quot;type&quot;: &quot;string&quot;
+    }
+  },
+  &quot;required&quot;: [
+    &quot;threadId&quot;
+  ]
+}</pre></details><details class="schema"><summary>Carrier schema</summary><pre>{
+  &quot;type&quot;: &quot;object&quot;,
+  &quot;properties&quot;: {
+    &quot;method&quot;: {
+      &quot;type&quot;: &quot;string&quot;,
+      &quot;enum&quot;: [
+        &quot;thread/queue/changed&quot;
+      ]
+    },
+    &quot;params&quot;: {
+      &quot;type&quot;: &quot;object&quot;
+    },
+    &quot;emittedAtMs&quot;: {
+      &quot;type&quot;: &quot;number&quot;,
+      &quot;minimum&quot;: 1000000000000
+    }
+  },
+  &quot;required&quot;: [
+    &quot;method&quot;,
+    &quot;params&quot;,
+    &quot;emittedAtMs&quot;
+  ]
+}</pre></details></div></details></article><article id="event-thread-queue-delete" class="event-card" data-search="thread/queue/delete client-to-agent jsonrpc-request unverified appserver" data-direction="client-to-agent" data-confidence="unverified"><details><summary><span class="event-name">thread/queue/delete</span><span class="event-meta"><span class="direction">client-to-agent</span><span class="confidence unverified">unverified</span></span></summary><div class="event-body"><dl><div><dt>Channel</dt><dd><a href="#channels"><code>appserver</code></a></dd></div><div><dt>Transport</dt><dd>jsonrpc-request</dd></div><div><dt>Trigger</dt><dd>—</dd></div></dl><div class="evidence-refs"><a class="evidence-ref" href="#claim-codex-generated-schema">codex-generated-schema</a></div><details class="schema"><summary>Payload schema</summary><pre>{
+  &quot;type&quot;: &quot;object&quot;,
+  &quot;properties&quot;: {
+    &quot;queuedSubmissionId&quot;: {
+      &quot;type&quot;: &quot;string&quot;
+    },
+    &quot;threadId&quot;: {
+      &quot;type&quot;: &quot;string&quot;
+    }
+  },
+  &quot;required&quot;: [
+    &quot;queuedSubmissionId&quot;,
+    &quot;threadId&quot;
+  ]
+}</pre></details><details class="schema"><summary>Carrier schema</summary><pre>{
+  &quot;type&quot;: &quot;object&quot;,
+  &quot;properties&quot;: {
+    &quot;method&quot;: {
+      &quot;type&quot;: &quot;string&quot;,
+      &quot;enum&quot;: [
+        &quot;thread/queue/delete&quot;
+      ]
+    },
+    &quot;params&quot;: {
+      &quot;type&quot;: &quot;object&quot;
+    },
+    &quot;id&quot;: {}
+  },
+  &quot;required&quot;: [
+    &quot;method&quot;,
+    &quot;params&quot;,
+    &quot;id&quot;
+  ]
+}</pre></details></div></details></article><article id="event-thread-queue-list" class="event-card" data-search="thread/queue/list client-to-agent jsonrpc-request unverified appserver" data-direction="client-to-agent" data-confidence="unverified"><details><summary><span class="event-name">thread/queue/list</span><span class="event-meta"><span class="direction">client-to-agent</span><span class="confidence unverified">unverified</span></span></summary><div class="event-body"><dl><div><dt>Channel</dt><dd><a href="#channels"><code>appserver</code></a></dd></div><div><dt>Transport</dt><dd>jsonrpc-request</dd></div><div><dt>Trigger</dt><dd>—</dd></div></dl><div class="evidence-refs"><a class="evidence-ref" href="#claim-codex-generated-schema">codex-generated-schema</a></div><details class="schema"><summary>Payload schema</summary><pre>{
+  &quot;type&quot;: &quot;object&quot;,
+  &quot;properties&quot;: {
+    &quot;cursor&quot;: {},
+    &quot;limit&quot;: {},
+    &quot;threadId&quot;: {
+      &quot;type&quot;: &quot;string&quot;
+    }
+  },
+  &quot;required&quot;: [
+    &quot;threadId&quot;
+  ]
+}</pre></details><details class="schema"><summary>Carrier schema</summary><pre>{
+  &quot;type&quot;: &quot;object&quot;,
+  &quot;properties&quot;: {
+    &quot;method&quot;: {
+      &quot;type&quot;: &quot;string&quot;,
+      &quot;enum&quot;: [
+        &quot;thread/queue/list&quot;
+      ]
+    },
+    &quot;params&quot;: {
+      &quot;type&quot;: &quot;object&quot;
+    },
+    &quot;id&quot;: {}
+  },
+  &quot;required&quot;: [
+    &quot;method&quot;,
+    &quot;params&quot;,
+    &quot;id&quot;
+  ]
+}</pre></details></div></details></article><article id="event-thread-queue-reorder" class="event-card" data-search="thread/queue/reorder client-to-agent jsonrpc-request unverified appserver" data-direction="client-to-agent" data-confidence="unverified"><details><summary><span class="event-name">thread/queue/reorder</span><span class="event-meta"><span class="direction">client-to-agent</span><span class="confidence unverified">unverified</span></span></summary><div class="event-body"><dl><div><dt>Channel</dt><dd><a href="#channels"><code>appserver</code></a></dd></div><div><dt>Transport</dt><dd>jsonrpc-request</dd></div><div><dt>Trigger</dt><dd>—</dd></div></dl><div class="evidence-refs"><a class="evidence-ref" href="#claim-codex-generated-schema">codex-generated-schema</a></div><details class="schema"><summary>Payload schema</summary><pre>{
+  &quot;type&quot;: &quot;object&quot;,
+  &quot;properties&quot;: {
+    &quot;queuedSubmissionIds&quot;: {
+      &quot;type&quot;: &quot;array&quot;
+    },
+    &quot;threadId&quot;: {
+      &quot;type&quot;: &quot;string&quot;
+    }
+  },
+  &quot;required&quot;: [
+    &quot;queuedSubmissionIds&quot;,
+    &quot;threadId&quot;
+  ]
+}</pre></details><details class="schema"><summary>Carrier schema</summary><pre>{
+  &quot;type&quot;: &quot;object&quot;,
+  &quot;properties&quot;: {
+    &quot;method&quot;: {
+      &quot;type&quot;: &quot;string&quot;,
+      &quot;enum&quot;: [
+        &quot;thread/queue/reorder&quot;
+      ]
+    },
+    &quot;params&quot;: {
+      &quot;type&quot;: &quot;object&quot;
+    },
+    &quot;id&quot;: {}
+  },
+  &quot;required&quot;: [
+    &quot;method&quot;,
+    &quot;params&quot;,
+    &quot;id&quot;
+  ]
+}</pre></details></div></details></article><article id="event-thread-queue-start" class="event-card" data-search="thread/queue/start client-to-agent jsonrpc-request unverified appserver" data-direction="client-to-agent" data-confidence="unverified"><details><summary><span class="event-name">thread/queue/start</span><span class="event-meta"><span class="direction">client-to-agent</span><span class="confidence unverified">unverified</span></span></summary><div class="event-body"><dl><div><dt>Channel</dt><dd><a href="#channels"><code>appserver</code></a></dd></div><div><dt>Transport</dt><dd>jsonrpc-request</dd></div><div><dt>Trigger</dt><dd>—</dd></div></dl><div class="evidence-refs"><a class="evidence-ref" href="#claim-codex-generated-schema">codex-generated-schema</a></div><details class="schema"><summary>Payload schema</summary><pre>{
+  &quot;type&quot;: &quot;object&quot;,
+  &quot;properties&quot;: {
+    &quot;queuedSubmissionId&quot;: {},
+    &quot;threadId&quot;: {
+      &quot;type&quot;: &quot;string&quot;
+    }
+  },
+  &quot;required&quot;: [
+    &quot;threadId&quot;
+  ]
+}</pre></details><details class="schema"><summary>Carrier schema</summary><pre>{
+  &quot;type&quot;: &quot;object&quot;,
+  &quot;properties&quot;: {
+    &quot;method&quot;: {
+      &quot;type&quot;: &quot;string&quot;,
+      &quot;enum&quot;: [
+        &quot;thread/queue/start&quot;
+      ]
+    },
+    &quot;params&quot;: {
+      &quot;type&quot;: &quot;object&quot;
+    },
+    &quot;id&quot;: {}
+  },
+  &quot;required&quot;: [
+    &quot;method&quot;,
+    &quot;params&quot;,
+    &quot;id&quot;
+  ]
+}</pre></details></div></details></article><article id="event-thread-queue-update" class="event-card" data-search="thread/queue/update client-to-agent jsonrpc-request unverified appserver" data-direction="client-to-agent" data-confidence="unverified"><details><summary><span class="event-name">thread/queue/update</span><span class="event-meta"><span class="direction">client-to-agent</span><span class="confidence unverified">unverified</span></span></summary><div class="event-body"><dl><div><dt>Channel</dt><dd><a href="#channels"><code>appserver</code></a></dd></div><div><dt>Transport</dt><dd>jsonrpc-request</dd></div><div><dt>Trigger</dt><dd>—</dd></div></dl><div class="evidence-refs"><a class="evidence-ref" href="#claim-codex-generated-schema">codex-generated-schema</a></div><details class="schema"><summary>Payload schema</summary><pre>{
+  &quot;type&quot;: &quot;object&quot;,
+  &quot;properties&quot;: {
+    &quot;input&quot;: {
+      &quot;type&quot;: &quot;array&quot;
+    },
+    &quot;queuedSubmissionId&quot;: {
+      &quot;type&quot;: &quot;string&quot;
+    },
+    &quot;threadId&quot;: {
+      &quot;type&quot;: &quot;string&quot;
+    }
+  },
+  &quot;required&quot;: [
+    &quot;input&quot;,
+    &quot;queuedSubmissionId&quot;,
+    &quot;threadId&quot;
+  ]
+}</pre></details><details class="schema"><summary>Carrier schema</summary><pre>{
+  &quot;type&quot;: &quot;object&quot;,
+  &quot;properties&quot;: {
+    &quot;method&quot;: {
+      &quot;type&quot;: &quot;string&quot;,
+      &quot;enum&quot;: [
+        &quot;thread/queue/update&quot;
+      ]
+    },
+    &quot;params&quot;: {
+      &quot;type&quot;: &quot;object&quot;
+    },
+    &quot;id&quot;: {}
+  },
+  &quot;required&quot;: [
+    &quot;method&quot;,
+    &quot;params&quot;,
+    &quot;id&quot;
   ]
 }</pre></details></div></details></article><article id="event-thread-read" class="event-card" data-search="thread/read client-to-agent jsonrpc-request unverified appserver" data-direction="client-to-agent" data-confidence="unverified"><details><summary><span class="event-name">thread/read</span><span class="event-meta"><span class="direction">client-to-agent</span><span class="confidence unverified">unverified</span></span></summary><div class="event-body"><dl><div><dt>Channel</dt><dd><a href="#channels"><code>appserver</code></a></dd></div><div><dt>Transport</dt><dd>jsonrpc-request</dd></div><div><dt>Trigger</dt><dd>—</dd></div></dl><div class="evidence-refs"><a class="evidence-ref" href="#claim-codex-generated-schema">codex-generated-schema</a></div><details class="schema"><summary>Payload schema</summary><pre>{
   &quot;type&quot;: &quot;object&quot;,
@@ -5864,6 +6603,118 @@ This is used by external helpers to pause timeout accounting while a user approv
       &quot;type&quot;: &quot;string&quot;,
       &quot;enum&quot;: [
         &quot;thread/realtime/error&quot;
+      ]
+    },
+    &quot;params&quot;: {
+      &quot;type&quot;: &quot;object&quot;
+    },
+    &quot;emittedAtMs&quot;: {
+      &quot;type&quot;: &quot;number&quot;,
+      &quot;minimum&quot;: 1000000000000
+    }
+  },
+  &quot;required&quot;: [
+    &quot;method&quot;,
+    &quot;params&quot;,
+    &quot;emittedAtMs&quot;
+  ]
+}</pre></details></div></details></article><article id="event-thread-realtime-item-completed" class="event-card" data-search="thread/realtime/item/completed agent-to-client jsonrpc-notification unverified appserver" data-direction="agent-to-client" data-confidence="unverified"><details><summary><span class="event-name">thread/realtime/item/completed</span><span class="event-meta"><span class="direction">agent-to-client</span><span class="confidence unverified">unverified</span></span></summary><div class="event-body"><dl><div><dt>Channel</dt><dd><a href="#channels"><code>appserver</code></a></dd></div><div><dt>Transport</dt><dd>jsonrpc-notification</dd></div><div><dt>Trigger</dt><dd>—</dd></div></dl><div class="evidence-refs"><a class="evidence-ref" href="#claim-codex-generated-schema">codex-generated-schema</a><a class="evidence-ref" href="#claim-codex-runtime-headless">codex-runtime-headless</a></div><details class="schema"><summary>Payload schema</summary><pre>{
+  &quot;type&quot;: &quot;object&quot;,
+  &quot;properties&quot;: {
+    &quot;item&quot;: {
+      &quot;type&quot;: &quot;object&quot;
+    },
+    &quot;threadId&quot;: {
+      &quot;type&quot;: &quot;string&quot;
+    }
+  },
+  &quot;required&quot;: [
+    &quot;item&quot;,
+    &quot;threadId&quot;
+  ]
+}</pre></details><details class="schema"><summary>Carrier schema</summary><pre>{
+  &quot;type&quot;: &quot;object&quot;,
+  &quot;properties&quot;: {
+    &quot;method&quot;: {
+      &quot;type&quot;: &quot;string&quot;,
+      &quot;enum&quot;: [
+        &quot;thread/realtime/item/completed&quot;
+      ]
+    },
+    &quot;params&quot;: {
+      &quot;type&quot;: &quot;object&quot;
+    },
+    &quot;emittedAtMs&quot;: {
+      &quot;type&quot;: &quot;number&quot;,
+      &quot;minimum&quot;: 1000000000000
+    }
+  },
+  &quot;required&quot;: [
+    &quot;method&quot;,
+    &quot;params&quot;,
+    &quot;emittedAtMs&quot;
+  ]
+}</pre></details></div></details></article><article id="event-thread-realtime-item-started" class="event-card" data-search="thread/realtime/item/started agent-to-client jsonrpc-notification unverified appserver" data-direction="agent-to-client" data-confidence="unverified"><details><summary><span class="event-name">thread/realtime/item/started</span><span class="event-meta"><span class="direction">agent-to-client</span><span class="confidence unverified">unverified</span></span></summary><div class="event-body"><dl><div><dt>Channel</dt><dd><a href="#channels"><code>appserver</code></a></dd></div><div><dt>Transport</dt><dd>jsonrpc-notification</dd></div><div><dt>Trigger</dt><dd>—</dd></div></dl><div class="evidence-refs"><a class="evidence-ref" href="#claim-codex-generated-schema">codex-generated-schema</a><a class="evidence-ref" href="#claim-codex-runtime-headless">codex-runtime-headless</a></div><details class="schema"><summary>Payload schema</summary><pre>{
+  &quot;type&quot;: &quot;object&quot;,
+  &quot;properties&quot;: {
+    &quot;item&quot;: {
+      &quot;type&quot;: &quot;object&quot;
+    },
+    &quot;threadId&quot;: {
+      &quot;type&quot;: &quot;string&quot;
+    }
+  },
+  &quot;required&quot;: [
+    &quot;item&quot;,
+    &quot;threadId&quot;
+  ]
+}</pre></details><details class="schema"><summary>Carrier schema</summary><pre>{
+  &quot;type&quot;: &quot;object&quot;,
+  &quot;properties&quot;: {
+    &quot;method&quot;: {
+      &quot;type&quot;: &quot;string&quot;,
+      &quot;enum&quot;: [
+        &quot;thread/realtime/item/started&quot;
+      ]
+    },
+    &quot;params&quot;: {
+      &quot;type&quot;: &quot;object&quot;
+    },
+    &quot;emittedAtMs&quot;: {
+      &quot;type&quot;: &quot;number&quot;,
+      &quot;minimum&quot;: 1000000000000
+    }
+  },
+  &quot;required&quot;: [
+    &quot;method&quot;,
+    &quot;params&quot;,
+    &quot;emittedAtMs&quot;
+  ]
+}</pre></details></div></details></article><article id="event-thread-realtime-item-transcript-delta" class="event-card" data-search="thread/realtime/item/transcript/delta agent-to-client jsonrpc-notification unverified appserver" data-direction="agent-to-client" data-confidence="unverified"><details><summary><span class="event-name">thread/realtime/item/transcript/delta</span><span class="event-meta"><span class="direction">agent-to-client</span><span class="confidence unverified">unverified</span></span></summary><div class="event-body"><dl><div><dt>Channel</dt><dd><a href="#channels"><code>appserver</code></a></dd></div><div><dt>Transport</dt><dd>jsonrpc-notification</dd></div><div><dt>Trigger</dt><dd>—</dd></div></dl><div class="evidence-refs"><a class="evidence-ref" href="#claim-codex-generated-schema">codex-generated-schema</a><a class="evidence-ref" href="#claim-codex-runtime-headless">codex-runtime-headless</a></div><details class="schema"><summary>Payload schema</summary><pre>{
+  &quot;type&quot;: &quot;object&quot;,
+  &quot;properties&quot;: {
+    &quot;delta&quot;: {
+      &quot;type&quot;: &quot;string&quot;
+    },
+    &quot;itemId&quot;: {
+      &quot;type&quot;: &quot;string&quot;
+    },
+    &quot;threadId&quot;: {
+      &quot;type&quot;: &quot;string&quot;
+    }
+  },
+  &quot;required&quot;: [
+    &quot;delta&quot;,
+    &quot;itemId&quot;,
+    &quot;threadId&quot;
+  ]
+}</pre></details><details class="schema"><summary>Carrier schema</summary><pre>{
+  &quot;type&quot;: &quot;object&quot;,
+  &quot;properties&quot;: {
+    &quot;method&quot;: {
+      &quot;type&quot;: &quot;string&quot;,
+      &quot;enum&quot;: [
+        &quot;thread/realtime/item/transcript/delta&quot;
       ]
     },
     &quot;params&quot;: {
@@ -6287,6 +7138,71 @@ This is used by external helpers to pause timeout accounting while a user approv
     &quot;params&quot;,
     &quot;id&quot;
   ]
+}</pre></details></div></details></article><article id="event-thread-revert" class="event-card" data-search="thread/revert client-to-agent jsonrpc-request unverified appserver" data-direction="client-to-agent" data-confidence="unverified"><details><summary><span class="event-name">thread/revert</span><span class="event-meta"><span class="direction">client-to-agent</span><span class="confidence unverified">unverified</span></span></summary><div class="event-body"><dl><div><dt>Channel</dt><dd><a href="#channels"><code>appserver</code></a></dd></div><div><dt>Transport</dt><dd>jsonrpc-request</dd></div><div><dt>Trigger</dt><dd>—</dd></div></dl><div class="evidence-refs"><a class="evidence-ref" href="#claim-codex-generated-schema">codex-generated-schema</a></div><details class="schema"><summary>Payload schema</summary><pre>{
+  &quot;type&quot;: &quot;object&quot;,
+  &quot;properties&quot;: {
+    &quot;beforeTurnId&quot;: {
+      &quot;type&quot;: &quot;string&quot;
+    },
+    &quot;threadId&quot;: {
+      &quot;type&quot;: &quot;string&quot;
+    }
+  },
+  &quot;required&quot;: [
+    &quot;beforeTurnId&quot;,
+    &quot;threadId&quot;
+  ]
+}</pre></details><details class="schema"><summary>Carrier schema</summary><pre>{
+  &quot;type&quot;: &quot;object&quot;,
+  &quot;properties&quot;: {
+    &quot;method&quot;: {
+      &quot;type&quot;: &quot;string&quot;,
+      &quot;enum&quot;: [
+        &quot;thread/revert&quot;
+      ]
+    },
+    &quot;params&quot;: {
+      &quot;type&quot;: &quot;object&quot;
+    },
+    &quot;id&quot;: {}
+  },
+  &quot;required&quot;: [
+    &quot;method&quot;,
+    &quot;params&quot;,
+    &quot;id&quot;
+  ]
+}</pre></details></div></details></article><article id="event-thread-reverted" class="event-card" data-search="thread/reverted agent-to-client jsonrpc-notification unverified appserver" data-direction="agent-to-client" data-confidence="unverified"><details><summary><span class="event-name">thread/reverted</span><span class="event-meta"><span class="direction">agent-to-client</span><span class="confidence unverified">unverified</span></span></summary><div class="event-body"><dl><div><dt>Channel</dt><dd><a href="#channels"><code>appserver</code></a></dd></div><div><dt>Transport</dt><dd>jsonrpc-notification</dd></div><div><dt>Trigger</dt><dd>—</dd></div></dl><div class="evidence-refs"><a class="evidence-ref" href="#claim-codex-generated-schema">codex-generated-schema</a><a class="evidence-ref" href="#claim-codex-runtime-headless">codex-runtime-headless</a></div><details class="schema"><summary>Payload schema</summary><pre>{
+  &quot;type&quot;: &quot;object&quot;,
+  &quot;properties&quot;: {
+    &quot;threadId&quot;: {
+      &quot;type&quot;: &quot;string&quot;
+    }
+  },
+  &quot;required&quot;: [
+    &quot;threadId&quot;
+  ]
+}</pre></details><details class="schema"><summary>Carrier schema</summary><pre>{
+  &quot;type&quot;: &quot;object&quot;,
+  &quot;properties&quot;: {
+    &quot;method&quot;: {
+      &quot;type&quot;: &quot;string&quot;,
+      &quot;enum&quot;: [
+        &quot;thread/reverted&quot;
+      ]
+    },
+    &quot;params&quot;: {
+      &quot;type&quot;: &quot;object&quot;
+    },
+    &quot;emittedAtMs&quot;: {
+      &quot;type&quot;: &quot;number&quot;,
+      &quot;minimum&quot;: 1000000000000
+    }
+  },
+  &quot;required&quot;: [
+    &quot;method&quot;,
+    &quot;params&quot;,
+    &quot;emittedAtMs&quot;
+  ]
 }</pre></details></div></details></article><article id="event-thread-rollback" class="event-card" data-search="thread/rollback client-to-agent jsonrpc-request unverified appserver" data-direction="client-to-agent" data-confidence="unverified"><details><summary><span class="event-name">thread/rollback</span><span class="event-meta"><span class="direction">client-to-agent</span><span class="confidence unverified">unverified</span></span></summary><div class="event-body"><dl><div><dt>Channel</dt><dd><a href="#channels"><code>appserver</code></a></dd></div><div><dt>Transport</dt><dd>jsonrpc-request</dd></div><div><dt>Trigger</dt><dd>—</dd></div></dl><div class="evidence-refs"><a class="evidence-ref" href="#claim-codex-generated-schema">codex-generated-schema</a></div><details class="schema"><summary>Payload schema</summary><pre>{
   &quot;type&quot;: &quot;object&quot;,
   &quot;properties&quot;: {
@@ -6557,6 +7473,7 @@ This is used by external helpers to pause timeout accounting while a user approv
     &quot;multiAgentMode&quot;: {},
     &quot;permissions&quot;: {},
     &quot;personality&quot;: {},
+    &quot;projectId&quot;: {},
     &quot;runtimeWorkspaceRoots&quot;: {},
     &quot;sandbox&quot;: {},
     &quot;selectedCapabilityRoots&quot;: {},
@@ -6689,6 +7606,37 @@ This is used by external helpers to pause timeout accounting while a user approv
     &quot;method&quot;,
     &quot;params&quot;,
     &quot;emittedAtMs&quot;
+  ]
+}</pre></details></div></details></article><article id="event-thread-timeline-list" class="event-card" data-search="thread/timeline/list client-to-agent jsonrpc-request unverified appserver" data-direction="client-to-agent" data-confidence="unverified"><details><summary><span class="event-name">thread/timeline/list</span><span class="event-meta"><span class="direction">client-to-agent</span><span class="confidence unverified">unverified</span></span></summary><div class="event-body"><dl><div><dt>Channel</dt><dd><a href="#channels"><code>appserver</code></a></dd></div><div><dt>Transport</dt><dd>jsonrpc-request</dd></div><div><dt>Trigger</dt><dd>—</dd></div></dl><div class="evidence-refs"><a class="evidence-ref" href="#claim-codex-generated-schema">codex-generated-schema</a></div><details class="schema"><summary>Payload schema</summary><pre>{
+  &quot;type&quot;: &quot;object&quot;,
+  &quot;properties&quot;: {
+    &quot;cursor&quot;: {},
+    &quot;limit&quot;: {},
+    &quot;threadId&quot;: {
+      &quot;type&quot;: &quot;string&quot;
+    }
+  },
+  &quot;required&quot;: [
+    &quot;threadId&quot;
+  ]
+}</pre></details><details class="schema"><summary>Carrier schema</summary><pre>{
+  &quot;type&quot;: &quot;object&quot;,
+  &quot;properties&quot;: {
+    &quot;method&quot;: {
+      &quot;type&quot;: &quot;string&quot;,
+      &quot;enum&quot;: [
+        &quot;thread/timeline/list&quot;
+      ]
+    },
+    &quot;params&quot;: {
+      &quot;type&quot;: &quot;object&quot;
+    },
+    &quot;id&quot;: {}
+  },
+  &quot;required&quot;: [
+    &quot;method&quot;,
+    &quot;params&quot;,
+    &quot;id&quot;
   ]
 }</pre></details></div></details></article><article id="event-thread-tokenUsage-updated" class="event-card" data-search="thread/tokenusage/updated agent-to-client jsonrpc-notification verified-headless appserver" data-direction="agent-to-client" data-confidence="verified-headless"><details><summary><span class="event-name">thread/tokenUsage/updated</span><span class="event-meta"><span class="direction">agent-to-client</span><span class="confidence verified-headless">verified-headless</span></span></summary><div class="event-body"><dl><div><dt>Channel</dt><dd><a href="#channels"><code>appserver</code></a></dd></div><div><dt>Transport</dt><dd>jsonrpc-notification</dd></div><div><dt>Trigger</dt><dd>—</dd></div></dl><div class="evidence-refs"><a class="evidence-ref" href="#claim-codex-runtime-headless">codex-runtime-headless</a></div><details class="schema"><summary>Payload schema</summary><pre>{
   &quot;type&quot;: &quot;object&quot;,
@@ -6856,6 +7804,7 @@ This is used by external helpers to pause timeout accounting while a user approv
 }</pre></details></div></details></article><article id="event-threadSection-create" class="event-card" data-search="threadsection/create client-to-agent jsonrpc-request unverified appserver" data-direction="client-to-agent" data-confidence="unverified"><details><summary><span class="event-name">threadSection/create</span><span class="event-meta"><span class="direction">client-to-agent</span><span class="confidence unverified">unverified</span></span></summary><div class="event-body"><dl><div><dt>Channel</dt><dd><a href="#channels"><code>appserver</code></a></dd></div><div><dt>Transport</dt><dd>jsonrpc-request</dd></div><div><dt>Trigger</dt><dd>—</dd></div></dl><div class="evidence-refs"><a class="evidence-ref" href="#claim-codex-generated-schema">codex-generated-schema</a></div><details class="schema"><summary>Payload schema</summary><pre>{
   &quot;type&quot;: &quot;object&quot;,
   &quot;properties&quot;: {
+    &quot;appearance&quot;: {},
     &quot;name&quot;: {
       &quot;type&quot;: &quot;string&quot;
     }
@@ -6939,6 +7888,7 @@ This is used by external helpers to pause timeout accounting while a user approv
 }</pre></details></div></details></article><article id="event-threadSection-update" class="event-card" data-search="threadsection/update client-to-agent jsonrpc-request unverified appserver" data-direction="client-to-agent" data-confidence="unverified"><details><summary><span class="event-name">threadSection/update</span><span class="event-meta"><span class="direction">client-to-agent</span><span class="confidence unverified">unverified</span></span></summary><div class="event-body"><dl><div><dt>Channel</dt><dd><a href="#channels"><code>appserver</code></a></dd></div><div><dt>Transport</dt><dd>jsonrpc-request</dd></div><div><dt>Trigger</dt><dd>—</dd></div></dl><div class="evidence-refs"><a class="evidence-ref" href="#claim-codex-generated-schema">codex-generated-schema</a></div><details class="schema"><summary>Payload schema</summary><pre>{
   &quot;type&quot;: &quot;object&quot;,
   &quot;properties&quot;: {
+    &quot;appearance&quot;: {},
     &quot;name&quot;: {
       &quot;type&quot;: &quot;string&quot;
     },
@@ -7453,7 +8403,7 @@ This is used by external helpers to pause timeout accounting while a user approv
     &quot;params&quot;,
     &quot;id&quot;
   ]
-}</pre></details></div></details></article></div><p id="empty-events" class="empty" hidden>No events match these filters.</p></section><section id="evidence" class="panel"><div class="section-heading"><div><span class="eyebrow">Provenance</span><h2>Evidence</h2></div><span class="count">v2 · 2 claims</span></div><details open><summary>Digest-pinned records</summary><div class="table-wrap"><table><thead><tr><th>ID</th><th>Kind</th><th>Path / digest</th></tr></thead><tbody><tr><td><code>sanitized-captures</code></td><td>capture-set</td><td><code>sha256:76a04ba78725b79de188289f23d1996b968b56d9e606c9e63c2b0828cbd9eda1</code></td></tr><tr><td><code>agent-surface-model</code></td><td>model-tree</td><td><code>sha256:d4d3bc10031505878233743032fd529fce4741f9228158361d5b6675763904cc</code></td></tr></tbody></table></div></details><details><summary>Claim index</summary><div class="claim-list"><article id="claim-codex-runtime-headless" class="claim-card"><header><code>codex-runtime-headless</code><span>runtime-capture</span><span class="confidence verified-headless">verified-headless</span></header><dl><div><dt>Record</dt><dd>sanitized-captures</dd></div><div><dt>Artifact</dt><dd>installed-codex-0.147.0-darwin-arm64</dd></div><div><dt>Captured</dt><dd>2026-08-09T18:45:00.000Z</dd></div></dl></article><article id="claim-codex-generated-schema" class="claim-card"><header><code>codex-generated-schema</code><span>generated-schema</span><span class="confidence unverified">unverified</span></header><dl><div><dt>Record</dt><dd>—</dd></div><div><dt>Artifact</dt><dd>installed-codex-0.147.0-darwin-arm64</dd></div><div><dt>Captured</dt><dd>—</dd></div></dl></article></div></details></section></main><script>
+}</pre></details></div></details></article></div><p id="empty-events" class="empty" hidden>No events match these filters.</p></section><section id="evidence" class="panel"><div class="section-heading"><div><span class="eyebrow">Provenance</span><h2>Evidence</h2></div><span class="count">v2 · 2 claims</span></div><details open><summary>Digest-pinned records</summary><div class="table-wrap"><table><thead><tr><th>ID</th><th>Kind</th><th>Path / digest</th></tr></thead><tbody><tr><td><code>sanitized-captures</code></td><td>capture-set</td><td><code>sha256:76b34a5298f6e4f706c1579c218aecdc8f5ba3e5e5f2e24d1980e954bd6cc7ca</code></td></tr><tr><td><code>agent-surface-model</code></td><td>model-tree</td><td><code>sha256:04bf086629d3837eeca05f713137301c9e624259e1bde4094ff31cba6b22487f</code></td></tr></tbody></table></div></details><details><summary>Claim index</summary><div class="claim-list"><article id="claim-codex-runtime-headless" class="claim-card"><header><code>codex-runtime-headless</code><span>runtime-capture</span><span class="confidence verified-headless">verified-headless</span></header><dl><div><dt>Record</dt><dd>sanitized-captures</dd></div><div><dt>Artifact</dt><dd>installed-codex-0.150.0-darwin-arm64</dd></div><div><dt>Captured</dt><dd>2026-08-27T07:23:08.000Z</dd></div></dl></article><article id="claim-codex-generated-schema" class="claim-card"><header><code>codex-generated-schema</code><span>generated-schema</span><span class="confidence unverified">unverified</span></header><dl><div><dt>Record</dt><dd>—</dd></div><div><dt>Artifact</dt><dd>installed-codex-0.150.0-darwin-arm64</dd></div><div><dt>Captured</dt><dd>—</dd></div></dl></article></div></details></section></main><script>
 const root=document.documentElement;let saved;try{saved=localStorage.getItem('surface-theme')}catch{}if(saved)root.dataset.theme=saved;
 document.querySelector('.theme').addEventListener('click',()=>{const dark=root.dataset.theme==='dark'||(!root.dataset.theme&&matchMedia('(prefers-color-scheme: dark)').matches);root.dataset.theme=dark?'light':'dark';try{localStorage.setItem('surface-theme',root.dataset.theme)}catch{}});
 const search=document.querySelector('#event-search'),direction=document.querySelector('#direction-filter'),confidence=document.querySelector('#confidence-filter'),cards=[...document.querySelectorAll('.event-card')],count=document.querySelector('#event-count'),empty=document.querySelector('#empty-events');

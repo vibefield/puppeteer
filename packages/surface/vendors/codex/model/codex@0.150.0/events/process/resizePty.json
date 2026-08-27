@@ -1,0 +1,54 @@
+{
+  "surface": "codex",
+  "surfaceVersion": "0.150.0",
+  "event": "process/resizePty",
+  "channel": "appserver",
+  "transport": "jsonrpc-request",
+  "direction": "client-to-agent",
+  "trigger": "Resize a running PTY-backed `process/spawn` session by client-supplied `processHandle`.",
+  "payloadSchema": {
+    "type": "object",
+    "properties": {
+      "processHandle": {
+        "type": "string"
+      },
+      "size": {}
+    },
+    "required": [
+      "processHandle",
+      "size"
+    ]
+  },
+  "recordSchema": {
+    "type": "object",
+    "properties": {
+      "method": {
+        "type": "string",
+        "enum": [
+          "process/resizePty"
+        ]
+      },
+      "params": {
+        "type": "object"
+      },
+      "id": {}
+    },
+    "required": [
+      "method",
+      "params",
+      "id"
+    ]
+  },
+  "evidence": {
+    "existence": [
+      "codex-generated-schema"
+    ],
+    "shape": [
+      "codex-generated-schema"
+    ],
+    "carrier": [
+      "codex-generated-schema"
+    ]
+  },
+  "confidence": "unverified"
+}

@@ -1,0 +1,52 @@
+{
+  "surface": "codex",
+  "surfaceVersion": "0.150.0",
+  "event": "command/exec/terminate",
+  "channel": "appserver",
+  "transport": "jsonrpc-request",
+  "direction": "client-to-agent",
+  "trigger": "Terminate a running `command/exec` session by client-supplied `processId`.",
+  "payloadSchema": {
+    "type": "object",
+    "properties": {
+      "processId": {
+        "type": "string"
+      }
+    },
+    "required": [
+      "processId"
+    ]
+  },
+  "recordSchema": {
+    "type": "object",
+    "properties": {
+      "method": {
+        "type": "string",
+        "enum": [
+          "command/exec/terminate"
+        ]
+      },
+      "params": {
+        "type": "object"
+      },
+      "id": {}
+    },
+    "required": [
+      "method",
+      "params",
+      "id"
+    ]
+  },
+  "evidence": {
+    "existence": [
+      "codex-generated-schema"
+    ],
+    "shape": [
+      "codex-generated-schema"
+    ],
+    "carrier": [
+      "codex-generated-schema"
+    ]
+  },
+  "confidence": "unverified"
+}

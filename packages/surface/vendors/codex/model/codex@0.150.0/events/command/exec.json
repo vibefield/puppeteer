@@ -1,0 +1,75 @@
+{
+  "surface": "codex",
+  "surfaceVersion": "0.150.0",
+  "event": "command/exec",
+  "channel": "appserver",
+  "transport": "jsonrpc-request",
+  "direction": "client-to-agent",
+  "trigger": "Execute a standalone command (argv vector) under the server's sandbox.",
+  "payloadSchema": {
+    "type": "object",
+    "properties": {
+      "command": {
+        "type": "array"
+      },
+      "cwd": {},
+      "disableOutputCap": {
+        "type": "boolean"
+      },
+      "disableTimeout": {
+        "type": "boolean"
+      },
+      "env": {},
+      "outputBytesCap": {},
+      "permissionProfile": {},
+      "processId": {},
+      "sandboxPolicy": {},
+      "size": {},
+      "streamStdin": {
+        "type": "boolean"
+      },
+      "streamStdoutStderr": {
+        "type": "boolean"
+      },
+      "timeoutMs": {},
+      "tty": {
+        "type": "boolean"
+      }
+    },
+    "required": [
+      "command"
+    ]
+  },
+  "recordSchema": {
+    "type": "object",
+    "properties": {
+      "method": {
+        "type": "string",
+        "enum": [
+          "command/exec"
+        ]
+      },
+      "params": {
+        "type": "object"
+      },
+      "id": {}
+    },
+    "required": [
+      "method",
+      "params",
+      "id"
+    ]
+  },
+  "evidence": {
+    "existence": [
+      "codex-generated-schema"
+    ],
+    "shape": [
+      "codex-generated-schema"
+    ],
+    "carrier": [
+      "codex-generated-schema"
+    ]
+  },
+  "confidence": "unverified"
+}

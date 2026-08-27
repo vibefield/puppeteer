@@ -1,0 +1,80 @@
+{
+  "surface": "codex",
+  "surfaceVersion": "0.150.0",
+  "event": "item/fileChange/requestApproval",
+  "channel": "appserver",
+  "transport": "jsonrpc-request",
+  "direction": "agent-to-client",
+  "trigger": "Sent when approval is requested for a specific file change. This request is used for Turns started via turn/start.",
+  "payloadSchema": {
+    "type": "object",
+    "properties": {
+      "grantRoot": {},
+      "itemId": {
+        "type": "string"
+      },
+      "reason": {},
+      "startedAtMs": {
+        "type": "number"
+      },
+      "threadId": {
+        "type": "string"
+      },
+      "turnId": {
+        "type": "string"
+      }
+    },
+    "required": [
+      "itemId",
+      "startedAtMs",
+      "threadId",
+      "turnId"
+    ]
+  },
+  "resultSchema": {
+    "type": "object",
+    "properties": {
+      "decision": {
+        "type": "string"
+      }
+    },
+    "required": [
+      "decision"
+    ]
+  },
+  "recordSchema": {
+    "type": "object",
+    "properties": {
+      "method": {
+        "type": "string",
+        "enum": [
+          "item/fileChange/requestApproval"
+        ]
+      },
+      "params": {
+        "type": "object"
+      },
+      "id": {}
+    },
+    "required": [
+      "method",
+      "params",
+      "id"
+    ]
+  },
+  "evidence": {
+    "existence": [
+      "codex-generated-schema"
+    ],
+    "shape": [
+      "codex-generated-schema"
+    ],
+    "result": [
+      "codex-generated-schema"
+    ],
+    "carrier": [
+      "codex-generated-schema"
+    ]
+  },
+  "confidence": "unverified"
+}

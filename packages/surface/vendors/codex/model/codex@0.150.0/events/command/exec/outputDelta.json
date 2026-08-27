@@ -1,0 +1,65 @@
+{
+  "surface": "codex",
+  "surfaceVersion": "0.150.0",
+  "event": "command/exec/outputDelta",
+  "channel": "appserver",
+  "transport": "jsonrpc-notification",
+  "direction": "agent-to-client",
+  "trigger": "Stream base64-encoded stdout/stderr chunks for a running `command/exec` session.",
+  "payloadSchema": {
+    "type": "object",
+    "properties": {
+      "capReached": {
+        "type": "boolean"
+      },
+      "deltaBase64": {
+        "type": "string"
+      },
+      "processId": {
+        "type": "string"
+      },
+      "stream": {}
+    },
+    "required": [
+      "capReached",
+      "deltaBase64",
+      "processId",
+      "stream"
+    ]
+  },
+  "recordSchema": {
+    "type": "object",
+    "properties": {
+      "method": {
+        "type": "string",
+        "enum": [
+          "command/exec/outputDelta"
+        ]
+      },
+      "params": {
+        "type": "object"
+      },
+      "emittedAtMs": {
+        "type": "number",
+        "minimum": 1000000000000
+      }
+    },
+    "required": [
+      "method",
+      "params",
+      "emittedAtMs"
+    ]
+  },
+  "evidence": {
+    "existence": [
+      "codex-generated-schema"
+    ],
+    "shape": [
+      "codex-generated-schema"
+    ],
+    "carrier": [
+      "codex-runtime-headless"
+    ]
+  },
+  "confidence": "unverified"
+}

@@ -8,7 +8,7 @@ import {
 
 /**
  * Vocabularies verified against `codex app-server generate-json-schema`
- * (codex-cli 0.147.0). The point of these tests is that the abstract
+ * (codex-cli 0.150.0). The point of these tests is that the abstract
  * 'approved' | 'denied' never reaches the wire unchanged.
  */
 describe('Codex approval service responses', () => {

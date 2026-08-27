@@ -1,0 +1,73 @@
+{
+  "schemaVersion": 1,
+  "vendor": "codex",
+  "vendorVersion": "0.150.0",
+  "groundTruth": "packages/surface/vendors/codex/groundtruth.json",
+  "currentVersion": "0.147.0",
+  "classification": "unsafe-or-unknown",
+  "detectorStatus": "candidate",
+  "artifactStatus": "incomplete",
+  "missingPlatforms": [
+    "darwin-x64",
+    "linux-x64",
+    "windows-x64"
+  ],
+  "replay": {
+    "status": "passed",
+    "frames": 152,
+    "results": 14,
+    "digest": "8fcbae5ad5cd80bd4054ee56518909c0c9bdbe5e90a777767dd843951d9e7c1b",
+    "issues": []
+  },
+  "modelDiff": {
+    "added": [
+      "account/bedrock/discover",
+      "account/bedrock/setup",
+      "autoApprovalReview/strictReviewRequired",
+      "mcpServer/event/stream/notification",
+      "mcpServer/event/stream/start",
+      "mcpServer/event/stream/stop",
+      "project/changed",
+      "project/create",
+      "project/delete",
+      "project/import",
+      "project/list",
+      "project/move",
+      "project/read",
+      "project/update",
+      "server/diagnostics",
+      "thread/project/updated",
+      "thread/queue/add",
+      "thread/queue/changed",
+      "thread/queue/delete",
+      "thread/queue/list",
+      "thread/queue/reorder",
+      "thread/queue/start",
+      "thread/queue/update",
+      "thread/realtime/item/completed",
+      "thread/realtime/item/started",
+      "thread/realtime/item/transcript/delta",
+      "thread/revert",
+      "thread/reverted",
+      "thread/timeline/list"
+    ],
+    "removed": [],
+    "changed": [
+      "app/read",
+      "item/commandExecution/requestApproval",
+      "mcpServer/oauth/login",
+      "mcpServer/resource/read",
+      "plugin/install",
+      "thread/list",
+      "thread/metadata/update",
+      "thread/start",
+      "threadSection/create",
+      "threadSection/update"
+    ],
+    "behaviorChanged": false,
+    "channelsChanged": false,
+    "detectionChanged": false,
+    "baselineMissing": false
+  },
+  "recommendation": "quarantine the candidate and do not change support metadata"
+}

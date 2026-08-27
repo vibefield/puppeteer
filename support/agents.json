@@ -37,7 +37,8 @@
         "frozenOn": "2026-08-09",
         "reason": "Grandfathered support predates the complete multi-platform artifact attestation required by the guarded promotion workflow."
       },
-      "introducedInPuppeteer": "0.1.8"
+      "introducedInPuppeteer": "0.1.8",
+      "candidateVersion": "0.150.0"
     },
     {
       "id": "grok",
@@ -47,7 +48,24 @@
       "persona": "grok",
       "groundTruth": "packages/surface/vendors/grok/groundtruth.json",
       "candidateVersion": "1.0.0",
-      "status": "baseline-pending"
+      "status": "baseline-pending",
+      "blockers": [
+        "The complete four-platform pinned-real promotion and immutable artifact attestation have not passed."
+      ]
+    },
+    {
+      "id": "hermes",
+      "displayName": "Hermes Agent",
+      "kind": "vendor",
+      "adapterPackage": "@vibecook/puppeteer-adapter-hermes",
+      "persona": "hermes",
+      "groundTruth": "packages/surface/vendors/hermes/groundtruth.json",
+      "candidateVersion": "0.20.0",
+      "status": "baseline-pending",
+      "blockers": [
+        "The source-only Python release needs a reproducible installed-console artifact contract before the generic acquisition and version-probe workflow can consume it.",
+        "No four-platform adapter-through-real-native-TUI promotion lane has passed."
+      ]
     },
     {
       "id": "kimi",
@@ -57,7 +75,10 @@
       "persona": "kimi",
       "groundTruth": "packages/surface/vendors/kimi/groundtruth.json",
       "candidateVersion": "0.34.0",
-      "status": "baseline-pending"
+      "status": "baseline-pending",
+      "blockers": [
+        "The live workflow re-runs the controlled Surface census, but no adapter-through-real-native-TUI PTY lane covers every required platform."
+      ]
     },
     {
       "id": "opencode",
@@ -67,7 +88,10 @@
       "persona": "opencode",
       "groundTruth": "packages/surface/vendors/opencode/groundtruth.json",
       "candidateVersion": "1.18.16",
-      "status": "baseline-pending"
+      "status": "baseline-pending",
+      "blockers": [
+        "The complete four-platform pinned-real promotion and immutable artifact attestation have not passed."
+      ]
     }
   ]
 }

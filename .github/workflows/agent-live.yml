@@ -83,6 +83,40 @@ jobs:
           GROK_LIVE_HOME: ${{ vars.GROK_LIVE_HOME }}
         run: pnpm --filter @vibecook/puppeteer-adapter-grok test
 
+  hermes-surface:
+    if: ${{ vars.HERMES_LIVE_ENABLED == 'true' }}
+    runs-on: [self-hosted, puppeteer-agent-live, macOS, ARM64]
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          persist-credentials: false
+      - uses: pnpm/action-setup@v6
+        with:
+          version: 10.34.5
+      - uses: actions/setup-node@v6
+        with:
+          node-version: 22.18.0
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile --filter './packages/**'
+      - name: Prepare isolated Hermes census state
+        run: mkdir -p .agent-live/hermes-home
+      - name: Recheck the pinned installed-console identity
+        run: >-
+          node packages/surface/vendors/hermes/census/harness.mjs
+          --hermes-bin "${{ vars.HERMES_BIN }}"
+          --home .agent-live/hermes-home
+          --checkout "${{ vars.HERMES_CHECKOUT }}"
+      - name: Re-run the controlled tui_gateway Surface census
+        run: >-
+          node packages/surface/vendors/hermes/census/turn-census.mjs
+          --python "${{ vars.HERMES_PYTHON }}"
+          --checkout "${{ vars.HERMES_CHECKOUT }}"
+          --scenario basic-turn
+          --output .agent-live/hermes@0.20.0
+      - name: Recheck the adapter against the pinned normalized contract
+        run: pnpm --filter @vibecook/puppeteer-adapter-hermes test
+
   kimi-live:
     if: ${{ vars.KIMI_LIVE_ENABLED == 'true' }}
     runs-on: [self-hosted, puppeteer-agent-live, macOS, ARM64]
@@ -99,7 +133,7 @@ jobs:
           node-version: 22.18.0
           cache: pnpm
       - run: pnpm install --frozen-lockfile --filter './packages/**'
-      - name: Run the hermetic Kimi wire census against the installed binary
+      - name: Run the controlled Kimi Surface census against the installed binary
         env:
           PUPPETEER_KIMI_BIN: ${{ vars.KIMI_BIN }}
         run: >-

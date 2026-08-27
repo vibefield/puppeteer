@@ -26,6 +26,12 @@
           },
           "currentVersion": { "type": "string", "minLength": 1 },
           "candidateVersion": { "type": "string", "minLength": 1 },
+          "blockers": {
+            "type": "array",
+            "minItems": 1,
+            "uniqueItems": true,
+            "items": { "type": "string", "minLength": 1, "maxLength": 512 }
+          },
           "legacyEvidence": {
             "type": "object",
             "additionalProperties": false,
@@ -100,6 +106,10 @@
           {
             "if": { "required": ["candidateVersion"] },
             "then": { "required": ["groundTruth", "persona"] }
+          },
+          {
+            "if": { "properties": { "status": { "const": "baseline-pending" } }, "required": ["status"] },
+            "then": { "required": ["blockers"] }
           }
         ]
       }

@@ -88,6 +88,12 @@ export function validateSupportLedger(repoRoot = root) {
     if (agent.status !== 'verified' && agent.verification !== undefined) {
       issues.push(`${agent.id}: only verified support may carry a promotion attestation`);
     }
+    if (agent.status === 'baseline-pending' && (!Array.isArray(agent.blockers) || agent.blockers.length === 0)) {
+      issues.push(`${agent.id}: baseline-pending support must name at least one promotion blocker`);
+    }
+    if (agent.status !== 'baseline-pending' && agent.blockers !== undefined) {
+      issues.push(`${agent.id}: only baseline-pending support may carry promotion blockers`);
+    }
 
     const requiresGroundTruth =
       agent.currentVersion !== undefined ||

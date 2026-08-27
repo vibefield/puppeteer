@@ -1,0 +1,71 @@
+{
+  "surface": "codex",
+  "surfaceVersion": "0.150.0",
+  "event": "account/chatgptAuthTokens/refresh",
+  "channel": "appserver",
+  "transport": "jsonrpc-request",
+  "direction": "agent-to-client",
+  "payloadSchema": {
+    "type": "object",
+    "properties": {
+      "previousAccountId": {},
+      "reason": {
+        "type": "string"
+      }
+    },
+    "required": [
+      "reason"
+    ]
+  },
+  "resultSchema": {
+    "type": "object",
+    "properties": {
+      "accessToken": {
+        "type": "string"
+      },
+      "chatgptAccountId": {
+        "type": "string"
+      },
+      "chatgptPlanType": {}
+    },
+    "required": [
+      "accessToken",
+      "chatgptAccountId"
+    ]
+  },
+  "recordSchema": {
+    "type": "object",
+    "properties": {
+      "method": {
+        "type": "string",
+        "enum": [
+          "account/chatgptAuthTokens/refresh"
+        ]
+      },
+      "params": {
+        "type": "object"
+      },
+      "id": {}
+    },
+    "required": [
+      "method",
+      "params",
+      "id"
+    ]
+  },
+  "evidence": {
+    "existence": [
+      "codex-generated-schema"
+    ],
+    "shape": [
+      "codex-generated-schema"
+    ],
+    "result": [
+      "codex-generated-schema"
+    ],
+    "carrier": [
+      "codex-generated-schema"
+    ]
+  },
+  "confidence": "unverified"
+}

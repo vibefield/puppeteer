@@ -48,3 +48,14 @@ test('opencode is an explicit reviewed workflow choice with isolated real-artifa
   assert.match(live, /if: \$\{\{ vars\.OPENCODE_LIVE_ENABLED == 'true' \}\}/);
   assert.match(live, /PUPPETEER_OPENCODE_BIN: \$\{\{ vars\.OPENCODE_BIN \}\}/);
 });
+
+test('pending Kimi and Hermes work is surfaced without granting an unearned promotion lane', () => {
+  assert.match(adaptation, /options: \[claude, codex, grok, kimi, opencode\]/);
+  assert.doesNotMatch(workflow, /options: \[[^\]]*kimi/);
+  assert.doesNotMatch(workflow, /options: \[[^\]]*hermes/);
+  assert.match(live, /hermes-surface:/);
+  assert.match(live, /if: \$\{\{ vars\.HERMES_LIVE_ENABLED == 'true' \}\}/);
+  assert.match(live, /packages\/surface\/vendors\/hermes\/census\/turn-census\.mjs/);
+  assert.match(live, /kimi-live:/);
+  assert.match(live, /controlled Kimi Surface census/);
+});

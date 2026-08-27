@@ -3,7 +3,7 @@
   "provider": "codex",
   "adapterPackage": "@vibecook/puppeteer-adapter-codex",
   "groundTruth": "packages/surface/vendors/codex/groundtruth.json",
-  "groundTruthSha256": "0e9813fc2e700e5d4c0851d72aaa54576851235ccda7588f3a282342f34f15c2",
+  "groundTruthSha256": "3c79556b87167adce785768067aa03117bc915044c155e8547b0f1bbfb363103",
   "semanticEvents": [
     "account/login/completed",
     "account/rateLimits/updated",
@@ -54,12 +54,12 @@
     "turn/start"
   ],
   "unmapped": {
-    "count": 170,
-    "sha256": "e4c6a3dc784eb1c5cbef0253bc79eb8bf122e1e2a9e58fa44dbb294da1858786",
+    "count": 199,
+    "sha256": "f03019b448b93dfc66969ac1f56c395300574fdd699cf3be107ec5873299530e",
     "policy": "Not consumed by this adapter version. They remain provider-native ground truth and require explicit review when this lock changes."
   },
   "totals": {
-    "groundTruth": 215,
+    "groundTruth": 244,
     "semantic": 25,
     "observedOrControlled": 20
   }
