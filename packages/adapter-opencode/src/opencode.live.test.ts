@@ -4,6 +4,8 @@ import { join } from 'node:path';
 import { afterEach, describe, expect, it } from 'vitest';
 import type { AgentHost } from '@vibecook/puppeteer-core';
 import { projectAgentEvents } from '@vibecook/puppeteer-testing';
+import { attestLiveAdapter } from '@vibecook/puppeteer-testing/live-attestation';
+import { resolveOpenCodeExecutable } from './detection.js';
 import { createOpenCodeTuiSession, type OpenCodeTuiSession } from './driver.js';
 
 const roots = new Set<string>();
@@ -28,12 +30,14 @@ describe.runIf(process.env.OPENCODE_LIVE === '1')('pinned real OpenCode smoke', 
         return { accepted: false, reason: 'not used by structured OpenCode control' };
       },
     };
-    const session = await createOpenCodeTuiSession({ cwd, host });
+    const executable = resolveOpenCodeExecutable();
+    const session = await createOpenCodeTuiSession({ cwd, host, executable });
     sessions.add(session);
     const projection = projectAgentEvents(session);
     expect(session.sessionId).toMatch(/^ses_/);
     expect(projection.state.lifecycle).toBe('ready');
     expect(session.observationLevel()).toBe('structured');
+    await attestLiveAdapter({ vendor: 'opencode', artifact: executable, testId: 'opencode:private-backend' });
     projection.dispose();
   });
 });

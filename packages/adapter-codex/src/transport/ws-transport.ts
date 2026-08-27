@@ -18,6 +18,7 @@ import { spawn, type ChildProcess } from 'node:child_process';
 import { existsSync, realpathSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
+import { resolveCodexExecutable } from '../detection.js';
 import type { Transport } from './app-server-client.js';
 
 // ─── RFC 6455 framing ──────────────────────────────────────────────────────
@@ -381,7 +382,7 @@ export function spawnAppServer(opts?: {
 }): AppServerHandle {
   const realTmp = realpathSync(tmpdir());
   const socketPath = opts?.socketPath ?? join(realTmp, `puppeteer-codex-${process.pid}-${sockCounter++}.sock`);
-  const child = spawn(opts?.executable ?? 'codex', ['app-server', '--listen', `unix://${socketPath}`], {
+  const child = spawn(resolveCodexExecutable(opts?.executable), ['app-server', '--listen', `unix://${socketPath}`], {
     stdio: ['ignore', 'ignore', 'pipe'],
     ...(opts?.env ? { env: { ...process.env, ...opts.env } } : {}),
   });

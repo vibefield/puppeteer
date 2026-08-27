@@ -15,6 +15,7 @@
 
 import { spawn } from 'node:child_process';
 import { createInterface } from 'node:readline';
+import { resolveCodexExecutable } from '../detection.js';
 
 export interface Transport {
   send(message: unknown): void;
@@ -207,7 +208,7 @@ function positiveTimeout(value: number): number {
 
 /** Default transport: spawn `codex app-server` and speak newline-delimited JSON over stdio. */
 export function spawnAppServerTransport(opts?: { executable?: string; args?: string[] }): Transport {
-  const child = spawn(opts?.executable ?? 'codex', ['app-server', ...(opts?.args ?? [])], {
+  const child = spawn(resolveCodexExecutable(opts?.executable), ['app-server', ...(opts?.args ?? [])], {
     stdio: ['pipe', 'pipe', 'pipe'],
   });
   const rl = createInterface({ input: child.stdout });

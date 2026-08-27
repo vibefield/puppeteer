@@ -13,6 +13,7 @@ function flag(name) {
 }
 
 function safePath(path) {
+  if (typeof path !== 'string' || !path) throw new Error('repository path is required');
   const absolute = resolve(root, path);
   if (!absolute.startsWith(`${resolve(root)}${sep}`)) throw new Error(`${path} is outside the repository`);
   return absolute;
@@ -23,6 +24,7 @@ export function platformVerification({
   platform,
   artifactSha256,
   actualVersionOutput,
+  adapterReceipt,
   checks,
   environment = process.env,
 }) {
@@ -36,7 +38,20 @@ export function platformVerification({
     boundedVersion.length <= 256 &&
     !/[\r\n]/.test(boundedVersion) &&
     boundedVersion === artifact.versionOutput;
-  const resolvedChecks = { ...checks, binaryVersion: binaryPassed ? 'passed' : 'failed' };
+  const adapterPassed =
+    adapterReceipt?.schemaVersion === 1 &&
+    adapterReceipt.check === 'adapter-real' &&
+    adapterReceipt.vendor === artifactReport.vendor &&
+    adapterReceipt.platform === platform &&
+    adapterReceipt.artifactSha256 === artifactSha256 &&
+    typeof adapterReceipt.testId === 'string' &&
+    /^[a-z][a-z0-9-]*(?::[a-z][a-z0-9-]*)+$/.test(adapterReceipt.testId) &&
+    adapterReceipt.testId.startsWith(`${artifactReport.vendor}:`);
+  const resolvedChecks = {
+    ...checks,
+    binaryVersion: binaryPassed ? 'passed' : 'failed',
+    adapterReal: adapterPassed ? 'passed' : 'failed',
+  };
   const missing = required.filter((gate) => resolvedChecks?.[gate] !== 'passed');
   return {
     schemaVersion: 1,
@@ -64,14 +79,15 @@ if (invokedDirectly) {
   const artifactBytes = readFileSync(safePath(flag('--artifact')));
   const artifactSha256 = `sha256:${createHash('sha256').update(artifactBytes).digest('hex')}`;
   const actualVersionOutput = readFileSync(safePath(flag('--version-output-file')), 'utf8').trim();
+  const adapterReceipt = JSON.parse(readFileSync(safePath(flag('--adapter-receipt')), 'utf8'));
   const report = platformVerification({
     artifactReport,
     platform: flag('--platform'),
     artifactSha256,
     actualVersionOutput,
+    adapterReceipt,
     checks: {
       surfaceAudit: flag('--surface-audit') === 'passed' ? 'passed' : 'failed',
-      adapterReal: flag('--adapter-real') === 'passed' ? 'passed' : 'failed',
     },
   });
   writeFileSync(safePath(flag('--output')), `${JSON.stringify(report, null, 2)}\n`);

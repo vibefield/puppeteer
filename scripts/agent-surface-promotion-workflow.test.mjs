@@ -8,6 +8,25 @@ const root = dirname(dirname(fileURLToPath(import.meta.url)));
 const workflow = readFileSync(resolve(root, '.github/workflows/agent-surface-promotion.yml'), 'utf8');
 const adaptation = readFileSync(resolve(root, '.github/workflows/agent-adaptation.yml'), 'utf8');
 const live = readFileSync(resolve(root, '.github/workflows/agent-live.yml'), 'utf8');
+const protectedLiveTests = Object.fromEntries(
+  ['claude', 'codex', 'opencode'].map((vendor) => [
+    vendor,
+    readFileSync(
+      resolve(
+        root,
+        'packages',
+        `adapter-${vendor}`,
+        'src',
+        vendor === 'claude'
+          ? 'pinned-real.live.test.ts'
+          : vendor === 'codex'
+            ? 'driver.live.test.ts'
+            : 'opencode.live.test.ts',
+      ),
+      'utf8',
+    ),
+  ]),
+);
 
 function job(name, next) {
   const start = workflow.indexOf(`\n  ${name}:`);
@@ -28,6 +47,10 @@ test('promotion binds one complete acquisition through test, verification, and t
   assert.ok(
     pinnedReal.indexOf('pnpm surface:evidence:artifacts') < pinnedReal.indexOf('Audit the exact candidate model'),
   );
+  assert.match(pinnedReal, /PUPPETEER_LIVE_ARTIFACT:/);
+  assert.match(pinnedReal, /PUPPETEER_LIVE_RECEIPT:/);
+  assert.match(pinnedReal, /--adapter-receipt/);
+  assert.doesNotMatch(pinnedReal, /--adapter-real passed/);
   assert.ok(verify.indexOf('pnpm surface:evidence:artifacts') < verify.indexOf('pnpm surface:verify'));
   assert.ok(promote.indexOf('pnpm surface:evidence:artifacts') < promote.indexOf('pnpm surface:promote'));
   assert.ok(
@@ -39,7 +62,7 @@ test('promotion binds one complete acquisition through test, verification, and t
 
 test('opencode is an explicit reviewed workflow choice with isolated real-artifact lanes', () => {
   assert.match(adaptation, /options: \[claude, codex, grok, hermes, kimi, opencode\]/);
-  assert.match(workflow, /options: \[claude, codex, grok, opencode\]/);
+  assert.match(workflow, /options: \[claude, codex, opencode\]/);
   assert.match(workflow, /if: \$\{\{ inputs\.vendor == 'opencode' \}\}/);
   assert.match(workflow, /OPENCODE_LIVE: '1'/);
   assert.match(workflow, /PUPPETEER_OPENCODE_BIN:/);
@@ -47,6 +70,22 @@ test('opencode is an explicit reviewed workflow choice with isolated real-artifa
   assert.match(live, /opencode-live:/);
   assert.match(live, /if: \$\{\{ vars\.OPENCODE_LIVE_ENABLED == 'true' \}\}/);
   assert.match(live, /PUPPETEER_OPENCODE_BIN: \$\{\{ vars\.OPENCODE_BIN \}\}/);
+});
+
+test('every protected provider writes its artifact-bound receipt from an executed live test', () => {
+  for (const [vendor, source] of Object.entries(protectedLiveTests)) {
+    assert.match(source, /attestLiveAdapter/);
+    assert.match(source, new RegExp(`vendor: '${vendor}'`));
+    assert.match(source, /artifact: executable/);
+  }
+});
+
+test('Grok adaptation remains available without claiming a skipped cross-platform promotion lane', () => {
+  assert.match(adaptation, /options: \[claude, codex, grok, hermes, kimi, opencode\]/);
+  assert.doesNotMatch(workflow, /options: \[[^\]]*grok/);
+  assert.doesNotMatch(workflow, /Grok pinned-real lane|inputs\.vendor == 'grok'/);
+  assert.match(live, /grok-live:/);
+  assert.match(live, /GROK_LIVE: '1'/);
 });
 
 test('source-only Hermes has a generic adaptation lane without an unearned promotion lane', () => {

@@ -12,6 +12,8 @@ import { mkdtempSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { projectAgentEvents } from '@vibecook/puppeteer-testing';
+import { attestLiveAdapter } from '@vibecook/puppeteer-testing/live-attestation';
+import { resolveCodexExecutable } from './detection.js';
 import { createCodexSession } from './driver.js';
 
 const live = process.env.CODEX_LIVE === '1';
@@ -19,7 +21,8 @@ const live = process.env.CODEX_LIVE === '1';
 describe.skipIf(!live)('createCodexSession (live codex app-server)', () => {
   it('drives a real turn and observes the assistant reply', async () => {
     const cwd = mkdtempSync(join(tmpdir(), 'codex-live-'));
-    const session = await createCodexSession({ cwd, sandbox: 'read-only', approvalPolicy: 'never' });
+    const executable = resolveCodexExecutable();
+    const session = await createCodexSession({ cwd, executable, sandbox: 'read-only', approvalPolicy: 'never' });
     const projection = projectAgentEvents(session);
     try {
       expect(session.sessionId).toMatch(/[0-9a-f-]{36}/);
@@ -43,6 +46,7 @@ describe.skipIf(!live)('createCodexSession (live codex app-server)', () => {
 
       expect(projection.state.lastAssistantMessage?.toLowerCase()).toContain('pong');
       expect(session.threadPath()).toContain('.codex/sessions/');
+      await attestLiveAdapter({ vendor: 'codex', artifact: executable, testId: 'codex:app-server' });
     } finally {
       projection.dispose();
       await session.dispose();

@@ -988,12 +988,19 @@ Never hand-bump package versions. All public packages release in lockstep.
 For a new vendor, update the hard-coded orchestration seams:
 
 - `.github/workflows/agent-adaptation.yml` vendor choices;
-- `.github/workflows/agent-surface-promotion.yml` vendor choices and the vendor-specific pinned-real lane/environment;
 - `.github/workflows/agent-live.yml` scheduled real-artifact job and enablement variables;
 - `packages/surface/package.json` vendor audit script;
 - any vendor-specific live-test environment variable documentation.
 
-The scheduled upstream detector discovers `upstream.json` definitions, but workflow dispatch choices and pinned-real commands are deliberately explicit security policy.
+Add the vendor to `.github/workflows/agent-surface-promotion.yml` only after every declared platform has a real
+adapter-through-native-agent lane. That lane must launch the exact artifact supplied through
+`PUPPETEER_LIVE_ARTIFACT` and, after its behavioral assertions pass, emit the write-once artifact-bound receipt through
+`@vibecook/puppeteer-testing/live-attestation`. A skipped, unit-only, census-only, or different-binary test is not a
+promotion lane.
+
+The scheduled upstream detector discovers `upstream.json` definitions, but promotion dispatch choices and pinned-real
+commands are deliberately explicit security policy. A vendor may remain adaptation-complete and `baseline-pending`
+while it is absent from protected promotion.
 
 ### Conformance/integration exit gate
 
@@ -1107,11 +1114,12 @@ Promotion:
 1. reacquires the exact bytes on hosted runners;
 2. executes each platform artifact on credential-isolated self-hosted runners;
 3. runs the vendor Surface audit and real adapter suite;
-4. creates per-platform verification reports;
-5. verifies the complete declared platform matrix and repository gates;
-6. enters the protected `agent-surface-promotion` environment for human approval;
-7. atomically updates artifact evidence, `support/agents.json`, and the generated README badge;
-8. records the workflow/run/attempt, candidate commit, canonical ground-truth path and version, evidence/model/replay digests, and artifact hashes.
+4. requires the executed live test to bind its test id to the SHA-256 of the exact workflow artifact;
+5. creates per-platform verification reports from that receipt rather than a caller-supplied passing flag;
+6. verifies the complete declared platform matrix and repository gates;
+7. enters the protected `agent-surface-promotion` environment for human approval;
+8. atomically updates artifact evidence, `support/agents.json`, and the generated README badge;
+9. records the workflow/run/attempt, candidate commit, canonical ground-truth path and version, evidence/model/replay digests, and artifact hashes.
 
 `pnpm surface:promote` is intentionally inert outside the exact attested GitHub Actions context. Local success is not authority to edit `currentVersion` manually.
 

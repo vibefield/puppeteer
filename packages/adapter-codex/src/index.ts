@@ -8,6 +8,7 @@
  */
 
 export * from './normalization/index.js';
+export * from './detection.js';
 export * from './observation/rollout-context.js';
 export * from './transport/app-server-client.js';
 export * from './services/account-usage.js';

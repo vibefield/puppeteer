@@ -14,7 +14,15 @@ test('platform verification binds the tested job to the acquired artifact digest
     platform: 'linux-x64',
     artifactSha256: digest,
     actualVersionOutput: 'fake 1.2.3',
-    checks: { surfaceAudit: 'passed', adapterReal: 'passed' },
+    adapterReceipt: {
+      schemaVersion: 1,
+      check: 'adapter-real',
+      vendor: 'fake',
+      platform: 'linux-x64',
+      artifactSha256: digest,
+      testId: 'fake:real',
+    },
+    checks: { surfaceAudit: 'passed' },
     environment: { GITHUB_RUN_ID: '123' },
   });
   assert.equal(report.status, 'passed');
@@ -40,10 +48,35 @@ test('platform verification refuses a different binary or self-asserted version 
     platform: 'linux-x64',
     artifactSha256: `sha256:${'b'.repeat(64)}`,
     actualVersionOutput: 'fake 1.2.3',
+    adapterReceipt: {
+      schemaVersion: 1,
+      check: 'adapter-real',
+      vendor: 'fake',
+      platform: 'linux-x64',
+      artifactSha256: `sha256:${'b'.repeat(64)}`,
+      testId: 'fake:real',
+    },
     checks: { binaryVersion: 'passed', surfaceAudit: 'passed', adapterReal: 'passed' },
   });
   assert.equal(report.status, 'failed');
   assert.equal(report.checks.binaryVersion, 'failed');
+});
+
+test('a passing adapter string cannot substitute for an artifact-bound live receipt', () => {
+  const digest = `sha256:${'a'.repeat(64)}`;
+  const report = platformVerification({
+    artifactReport: {
+      vendor: 'fake',
+      version: '1.2.3',
+      artifacts: [{ platform: 'linux-x64', sha256: digest, versionOutput: 'fake 1.2.3' }],
+    },
+    platform: 'linux-x64',
+    artifactSha256: digest,
+    actualVersionOutput: 'fake 1.2.3',
+    checks: { surfaceAudit: 'passed', adapterReal: 'passed' },
+  });
+  assert.equal(report.status, 'failed');
+  assert.equal(report.checks.adapterReal, 'failed');
 });
 
 test('a passing string cannot substitute for a missing platform or mismatched digest', () => {

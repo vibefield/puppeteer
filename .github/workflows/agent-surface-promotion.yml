@@ -7,9 +7,9 @@ on:
         description: Candidate vendor
         required: true
         type: choice
-        # Kimi and Hermes remain intentionally absent until their ledger
+        # Grok, Kimi, and Hermes remain intentionally absent until their ledger
         # blockers have real cross-platform adapter-through-TUI lanes.
-        options: [claude, codex, grok, opencode]
+        options: [claude, codex, opencode]
       version:
         description: Exact normalized vendor version
         required: true
@@ -129,6 +129,11 @@ jobs:
             executable: agent.exe
     runs-on: ${{ matrix.runner }}
     timeout-minutes: 30
+    env:
+      PUPPETEER_LIVE_RECEIPT: ${{ github.workspace }}/.agent-adaptation/adapter-real-${{ matrix.platform }}.json
+      PUPPETEER_LIVE_VENDOR: ${{ inputs.vendor }}
+      PUPPETEER_LIVE_PLATFORM: ${{ matrix.platform }}
+      PUPPETEER_LIVE_ARTIFACT: ${{ github.workspace }}/.agent-adaptation/artifacts/${{ matrix.platform }}/${{ matrix.executable }}
     steps:
       - uses: actions/checkout@v6
         with:
@@ -176,13 +181,6 @@ jobs:
           CODEX_LIVE: '1'
           PUPPETEER_CODEX_BIN: ${{ github.workspace }}/.agent-adaptation/artifacts/${{ matrix.platform }}/${{ matrix.executable }}
         run: pnpm --filter @vibecook/puppeteer-adapter-codex test
-      - name: Grok pinned-real lane
-        if: ${{ inputs.vendor == 'grok' }}
-        env:
-          GROK_LIVE: '1'
-          PUPPETEER_GROK_BIN: ${{ github.workspace }}/.agent-adaptation/artifacts/${{ matrix.platform }}/${{ matrix.executable }}
-          GROK_LIVE_HOME: ${{ vars.GROK_LIVE_HOME }}
-        run: pnpm --filter @vibecook/puppeteer-adapter-grok test
       - name: OpenCode pinned-real lane
         if: ${{ inputs.vendor == 'opencode' }}
         env:
@@ -194,9 +192,9 @@ jobs:
           --artifacts .agent-adaptation/acquisition.json
           --artifact ".agent-adaptation/artifacts/${{ matrix.platform }}/${{ matrix.executable }}"
           --version-output-file ".agent-adaptation/artifacts/${{ matrix.platform }}/version.txt"
+          --adapter-receipt ".agent-adaptation/adapter-real-${{ matrix.platform }}.json"
           --platform "${{ matrix.platform }}"
           --surface-audit passed
-          --adapter-real passed
           --output ".agent-adaptation/${{ matrix.platform }}.json"
       - uses: actions/upload-artifact@v4
         with:

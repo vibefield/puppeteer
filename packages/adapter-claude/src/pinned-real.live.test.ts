@@ -13,6 +13,7 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { describe, expect, it } from 'vitest';
 import type { AdapterEventCandidate } from '@vibecook/puppeteer-core';
+import { attestLiveAdapter } from '@vibecook/puppeteer-testing/live-attestation';
 import { prepareClaudeTuiSession } from './driver.js';
 import { CLAUDE_SURFACE_VERSION } from './generated/registry.js';
 
@@ -76,6 +77,7 @@ describe.skipIf(!live)('Claude pinned artifact (live)', () => {
         events.some((event) => event.event.type === 'adapter:native-event' && event.event.nativeType === 'Setup'),
       ).toBe(true);
       expect(session.observationLevel()).toBe('native-hooks');
+      await attestLiveAdapter({ vendor: 'claude', artifact: executable, testId: 'claude:init-hooks' });
     } finally {
       if (child && child.exitCode === null && child.signalCode === null) child.kill('SIGKILL');
       await session.dispose();

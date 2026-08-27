@@ -28,6 +28,7 @@ import type {
   PromptSubmission,
   TerminalSpec,
 } from '@vibecook/puppeteer-core';
+import { resolveCodexExecutable } from '../detection.js';
 import { createCodexObserver } from '../observation/observer.js';
 import type { CodexApprovalDecision, CodexApprovalRequest } from '../driver.js';
 import { createUnixWebSocketTapProxy, spawnAppServer, type UnixWebSocketTapProxy } from '../transport/ws-transport.js';
@@ -76,7 +77,7 @@ export async function prepareCodexTuiSession(opts: CreateCodexTuiSessionOptions)
   if (opts.resume && opts.resumeInvocation) {
     throw new Error('Codex preparation accepts resume or resumeInvocation, not both');
   }
-  const executable = opts.executable ?? 'codex';
+  const executable = resolveCodexExecutable(opts.executable);
   const host: AgentHost = opts.host;
 
   const server = spawnAppServer({ executable, ...(opts.appServerEnv ? { env: opts.appServerEnv } : {}) });
