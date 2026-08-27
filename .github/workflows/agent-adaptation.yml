@@ -87,6 +87,11 @@ jobs:
           version: ${{ steps.policy.outputs.uvVersion }}
           enable-cache: false
 
+      - uses: actions/setup-node@v6
+        if: ${{ steps.policy.outputs.nodeVersion != '' }}
+        with:
+          node-version: ${{ steps.policy.outputs.nodeVersion }}
+
       - name: Download reviewed standalone executable bytes
         if: ${{ steps.policy.outputs.artifactKind == 'standalone-executable' }}
         run: >-
@@ -133,6 +138,8 @@ jobs:
           --version-output ".agent-adaptation/artifacts/${{ matrix.platform }}/version.txt"
           --python python
           --uv uv
+          --node node
+          --npm npm
 
       - uses: actions/upload-artifact@v4
         with:

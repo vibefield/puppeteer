@@ -95,6 +95,10 @@ test('source-only Hermes has a generic adaptation lane without an unearned promo
   assert.match(adaptation, /steps\.policy\.outputs\.outputName/);
   assert.match(adaptation, /steps\.policy\.outputs\.artifactKind == 'installed-console'/);
   assert.match(adaptation, /astral-sh\/setup-uv@c771a70e6277c0a99b617c7a806ffedaca235ff9/);
+  assert.match(adaptation, /steps\.policy\.outputs\.nodeVersion != ''/);
+  assert.match(adaptation, /node-version: \$\{\{ steps\.policy\.outputs\.nodeVersion \}\}/);
+  assert.match(adaptation, /--node node/);
+  assert.match(adaptation, /--npm npm/);
   assert.doesNotMatch(adaptation, /inputs\.vendor == 'hermes'/);
   assert.doesNotMatch(workflow, /options: \[[^\]]*kimi/);
   assert.doesNotMatch(workflow, /options: \[[^\]]*hermes/);

@@ -186,6 +186,80 @@
                       ]
                     }
                   }
+                },
+                "runtimeBundle": {
+                  "type": "object",
+                  "additionalProperties": false,
+                  "required": [
+                    "strategy",
+                    "nodeVersion",
+                    "npmVersion",
+                    "packageFile",
+                    "lockFile",
+                    "workspace",
+                    "workspacePackageFile",
+                    "buildFile",
+                    "outputFile",
+                    "environmentVariable",
+                    "maxBytes"
+                  ],
+                  "properties": {
+                    "strategy": { "const": "node-npm-lock-bundle" },
+                    "nodeVersion": { "type": "string", "pattern": "^\\d+\\.\\d+\\.\\d+$" },
+                    "npmVersion": { "type": "string", "pattern": "^\\d+\\.\\d+\\.\\d+$" },
+                    "packageFile": {
+                      "type": "string",
+                      "pattern": "^(?!\\.{1,2}(?:/|$))(?!.*\\/\\.{1,2}(?:\\/|$))[A-Za-z0-9._-]+(?:/[A-Za-z0-9._-]+)*$"
+                    },
+                    "lockFile": {
+                      "type": "string",
+                      "pattern": "^(?!\\.{1,2}(?:/|$))(?!.*\\/\\.{1,2}(?:\\/|$))[A-Za-z0-9._-]+(?:/[A-Za-z0-9._-]+)*$"
+                    },
+                    "workspace": {
+                      "type": "string",
+                      "pattern": "^(?!\\.{1,2}(?:/|$))(?!.*\\/\\.{1,2}(?:\\/|$))[A-Za-z0-9._-]+(?:/[A-Za-z0-9._-]+)*$"
+                    },
+                    "workspacePackageFile": {
+                      "type": "string",
+                      "pattern": "^(?!\\.{1,2}(?:/|$))(?!.*\\/\\.{1,2}(?:\\/|$))[A-Za-z0-9._-]+(?:/[A-Za-z0-9._-]+)*$"
+                    },
+                    "buildFile": {
+                      "type": "string",
+                      "pattern": "^(?!\\.{1,2}(?:/|$))(?!.*\\/\\.{1,2}(?:\\/|$))[A-Za-z0-9._-]+(?:/[A-Za-z0-9._-]+)*$"
+                    },
+                    "outputFile": {
+                      "type": "string",
+                      "pattern": "^(?!\\.{1,2}(?:/|$))(?!.*\\/\\.{1,2}(?:\\/|$))[A-Za-z0-9._-]+(?:/[A-Za-z0-9._-]+)*$"
+                    },
+                    "environmentVariable": {
+                      "type": "string",
+                      "pattern": "^[A-Z][A-Z0-9_]*$",
+                      "not": {
+                        "enum": [
+                          "COMSPEC",
+                          "HOME",
+                          "HTTP_PROXY",
+                          "HTTPS_PROXY",
+                          "LANG",
+                          "LC_ALL",
+                          "NO_COLOR",
+                          "NO_PROXY",
+                          "PATH",
+                          "PATHEXT",
+                          "SSL_CERT_DIR",
+                          "SSL_CERT_FILE",
+                          "SYSTEMROOT",
+                          "SystemRoot",
+                          "TEMP",
+                          "TMP",
+                          "TMPDIR",
+                          "USERPROFILE",
+                          "WINDIR"
+                        ]
+                      }
+                    },
+                    "maxBytes": { "type": "integer", "minimum": 1, "maximum": 134217728 }
+                  }
                 }
               }
             }

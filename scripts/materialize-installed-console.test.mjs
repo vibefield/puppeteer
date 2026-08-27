@@ -1,11 +1,20 @@
 import assert from 'node:assert/strict';
 import { createHash } from 'node:crypto';
+import { mkdirSync, mkdtempSync, writeFileSync } from 'node:fs';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
 import test from 'node:test';
 import {
   createInstalledConsoleManifest,
   normalizeInstalledVersionOutput,
   validatePythonUvLockPolicy,
 } from './lib/installed-console-contract.mjs';
+import {
+  createNodeRuntimeBundleManifest,
+  inventoryRuntimeBundle,
+  validateNodeRuntimeBundlePolicy,
+  verifyRuntimeBundleFiles,
+} from './lib/runtime-bundle-contract.mjs';
 
 const digest = (character) => `sha256:${character.repeat(64)}`;
 const sha256 = (value) => `sha256:${createHash('sha256').update(value).digest('hex')}`;
@@ -22,6 +31,20 @@ const policy = {
   generatedSourcePaths: ['hermes_agent.egg-info'],
   versionOutput: 'first-line',
   isolatedHomeEnvironment: ['HERMES_HOME'],
+};
+
+const runtimePolicy = {
+  strategy: 'node-npm-lock-bundle',
+  nodeVersion: '22.22.0',
+  npmVersion: '10.9.4',
+  packageFile: 'package.json',
+  lockFile: 'package-lock.json',
+  workspace: 'ui-tui',
+  workspacePackageFile: 'ui-tui/package.json',
+  buildFile: 'ui-tui/scripts/build.mjs',
+  outputFile: 'ui-tui/dist/entry.js',
+  environmentVariable: 'HERMES_TUI_DIR',
+  maxBytes: 32 * 1024 * 1024,
 };
 
 const distributions = [{ name: 'hermes-agent', version: '0.20.0', fileCount: 50, filesSha256: digest('4') }];
@@ -90,6 +113,8 @@ test('installed-console manifests bind source, runtime, environment, console ent
   });
 
   assert.equal(manifest.artifactKind, 'installed-console');
+  assert.equal(manifest.schemaVersion, 2);
+  assert.equal(manifest.identityAlgorithm, 'sha256-installed-console-manifest-v2');
   assert.equal(manifest.source.archiveSha256, digest('a'));
   assert.equal(manifest.source.tree.sha256, digest('d'));
   assert.equal(manifest.source.generated.sha256, digest('e'));
@@ -100,6 +125,53 @@ test('installed-console manifests bind source, runtime, environment, console ent
   assert.equal(manifest.console.bindingSha256, inventory.console.bindingSha256);
   assert.equal(manifest.console.versionOutput, 'Hermes Agent v0.20.0 (2026.8.3)');
   assert.doesNotMatch(JSON.stringify(manifest), /private\/path/);
+});
+
+test('installed-console manifests bind and recheck a source-built runtime bundle', () => {
+  const artifactRoot = mkdtempSync(join(tmpdir(), 'puppeteer-runtime-bundle-'));
+  const runtimeRoot = join(artifactRoot, 'runtime');
+  const entry = join(runtimeRoot, 'dist', 'entry.js');
+  mkdirSync(join(runtimeRoot, 'dist'), { recursive: true });
+  writeFileSync(entry, 'export const runtime = true;\n');
+  const runtimeBundle = createNodeRuntimeBundleManifest({
+    policy: runtimePolicy,
+    nodeExecutableSha256: digest('8'),
+    source: {
+      packageFile: { path: 'package.json', sha256: digest('5') },
+      lockFile: { path: 'package-lock.json', sha256: digest('6') },
+      workspacePackageFile: { path: 'ui-tui/package.json', sha256: digest('7') },
+      buildFile: { path: 'ui-tui/scripts/build.mjs', sha256: digest('9') },
+    },
+    artifact: inventoryRuntimeBundle(runtimeRoot, 'dist/entry.js'),
+  });
+  const manifest = createInstalledConsoleManifest({
+    vendor: 'hermes',
+    version: '0.20.0',
+    platform: 'darwin-arm64',
+    downloadMetadata: { sourceReference: 'v2026.8.3', archiveRoot: 'hermes-agent-2026.8.3' },
+    archiveSha256: digest('a'),
+    sourceTreeSha256: digest('d'),
+    generatedSource: {
+      roots: ['hermes_agent.egg-info'],
+      fileCount: 7,
+      digestAlgorithm: 'sha256-generated-source-trees-v1',
+      sha256: digest('e'),
+    },
+    projectFileSha256: digest('b'),
+    lockFileSha256: digest('c'),
+    policy: { ...policy, runtimeBundle: runtimePolicy },
+    inventory,
+    runtimeBundle,
+    versionOutput: 'Hermes Agent v0.20.0',
+  });
+
+  assert.equal(manifest.runtimeBundle.artifact.entry, 'runtime/dist/entry.js');
+  assert.deepEqual(
+    verifyRuntimeBundleFiles(manifest.runtimeBundle, artifactRoot, runtimePolicy),
+    manifest.runtimeBundle.artifact,
+  );
+  writeFileSync(entry, 'tampered\n');
+  assert.throws(() => verifyRuntimeBundleFiles(manifest.runtimeBundle, artifactRoot, runtimePolicy), /bytes differ/);
 });
 
 test('installed-console version normalization is explicit and exact', () => {
@@ -196,5 +268,22 @@ test('installed-console policies reject traversal, overlapping output roots, and
   assert.throws(
     () => validatePythonUvLockPolicy({ ...policy, isolatedHomeEnvironment: ['HOME'] }),
     /unsafe or reserved/,
+  );
+  assert.throws(
+    () => validateNodeRuntimeBundlePolicy({ ...runtimePolicy, buildFile: '../build.mjs' }),
+    /safe relative path/,
+  );
+  assert.throws(
+    () => validateNodeRuntimeBundlePolicy({ ...runtimePolicy, environmentVariable: 'PATH' }),
+    /unsafe or reserved/,
+  );
+  assert.throws(
+    () =>
+      validatePythonUvLockPolicy({
+        ...policy,
+        isolatedHomeEnvironment: ['HERMES_TUI_DIR'],
+        runtimeBundle: runtimePolicy,
+      }),
+    /must not also be an isolated home/,
   );
 });

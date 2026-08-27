@@ -1,6 +1,7 @@
 /** Deterministic schema and validation for source-materialized console artifacts. */
 import { createHash } from 'node:crypto';
 import { validateVersionOutput } from '../probe-agent-artifact.mjs';
+import { validateNodeRuntimeBundleManifest, validateNodeRuntimeBundlePolicy } from './runtime-bundle-contract.mjs';
 
 const sha256Pattern = /^sha256:[0-9a-f]{64}$/;
 const reservedEnvironment = new Set([
@@ -77,12 +78,18 @@ export function validatePythonUvLockPolicy(policy) {
   ) {
     throw new Error('isolatedHomeEnvironment contains an unsafe or reserved name');
   }
+  if (policy.runtimeBundle !== undefined) {
+    validateNodeRuntimeBundlePolicy(policy.runtimeBundle);
+    if (isolated.includes(policy.runtimeBundle.environmentVariable)) {
+      throw new Error('runtimeBundle environmentVariable must not also be an isolated home');
+    }
+  }
   return policy;
 }
 
 function validateInventory(inventory, policy, version) {
   validatePythonUvLockPolicy(policy);
-  if (inventory?.schemaVersion !== 1) throw new Error('Python inventory has an unsupported schema');
+  if (inventory?.pythonInventorySchemaVersion !== 1) throw new Error('Python inventory has an unsupported schema');
   if (inventory.runtime?.implementation !== 'cpython') throw new Error('installed console must use CPython');
   if (inventory.runtime?.pythonVersion !== policy.pythonVersion) {
     throw new Error(
@@ -203,9 +210,9 @@ export function validateInstalledConsoleManifest(
   { vendor, version, platform, versionOutput = manifest?.console?.versionOutput, policy },
 ) {
   if (
-    manifest?.schemaVersion !== 1 ||
+    manifest?.schemaVersion !== 2 ||
     manifest.artifactKind !== 'installed-console' ||
-    manifest.identityAlgorithm !== 'sha256-installed-console-manifest-v1' ||
+    manifest.identityAlgorithm !== 'sha256-installed-console-manifest-v2' ||
     manifest.vendor !== vendor ||
     manifest.version !== version ||
     manifest.platform !== platform
@@ -246,6 +253,8 @@ export function validateInstalledConsoleManifest(
     throw new Error('installed-console materialization differs from its reviewed policy');
   }
   validateInventory(manifest, policy, version);
+  if (policy?.runtimeBundle) validateNodeRuntimeBundleManifest(manifest.runtimeBundle, policy.runtimeBundle);
+  else if (manifest.runtimeBundle !== undefined) throw new Error('installed-console has an unreviewed runtime bundle');
   const normalizedVersionOutput = normalizeInstalledVersionOutput(versionOutput, version, policy.versionOutput);
   if (manifest.console.versionOutput !== normalizedVersionOutput) {
     throw new Error('installed-console version output differs from its manifest');
@@ -265,14 +274,15 @@ export function createInstalledConsoleManifest({
   lockFileSha256,
   policy,
   inventory,
+  runtimeBundle,
   versionOutput,
 }) {
   validatePythonUvLockPolicy(policy);
   const normalizedVersionOutput = normalizeInstalledVersionOutput(versionOutput, version, policy.versionOutput);
   const manifest = {
-    schemaVersion: 1,
+    schemaVersion: 2,
     artifactKind: 'installed-console',
-    identityAlgorithm: 'sha256-installed-console-manifest-v1',
+    identityAlgorithm: 'sha256-installed-console-manifest-v2',
     vendor,
     version,
     platform,
@@ -294,9 +304,11 @@ export function createInstalledConsoleManifest({
       editable: policy.installMode === 'editable',
       defaultGroups: false,
     },
+    pythonInventorySchemaVersion: inventory.schemaVersion,
     runtime: inventory.runtime,
     environment: inventory.environment,
     console: { ...inventory.console, versionOutput: normalizedVersionOutput },
+    ...(policy.runtimeBundle ? { runtimeBundle } : {}),
   };
   return validateInstalledConsoleManifest(manifest, { vendor, version, platform, policy });
 }

@@ -30,7 +30,14 @@
         "https://codeload.github.com/NousResearch/hermes-agent/tar.gz/refs/tags/${tag}"
       ],
       "format": "tar.gz",
-      "rootFiles": ["pyproject.toml", "uv.lock"],
+      "rootFiles": [
+        "pyproject.toml",
+        "uv.lock",
+        "package.json",
+        "package-lock.json",
+        "ui-tui/package.json",
+        "ui-tui/scripts/build.mjs"
+      ],
       "maxExtractedBytes": 1073741824
     },
     "installedConsole": {
@@ -44,7 +51,20 @@
       "installMode": "editable",
       "generatedSourcePaths": ["hermes_agent.egg-info"],
       "versionOutput": "first-line",
-      "isolatedHomeEnvironment": ["HERMES_HOME"]
+      "isolatedHomeEnvironment": ["HERMES_HOME"],
+      "runtimeBundle": {
+        "strategy": "node-npm-lock-bundle",
+        "nodeVersion": "22.22.0",
+        "npmVersion": "10.9.4",
+        "packageFile": "package.json",
+        "lockFile": "package-lock.json",
+        "workspace": "ui-tui",
+        "workspacePackageFile": "ui-tui/package.json",
+        "buildFile": "ui-tui/scripts/build.mjs",
+        "outputFile": "ui-tui/dist/entry.js",
+        "environmentVariable": "HERMES_TUI_DIR",
+        "maxBytes": 33554432
+      }
     }
   },
   "analysis": [

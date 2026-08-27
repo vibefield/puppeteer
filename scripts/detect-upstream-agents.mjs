@@ -114,6 +114,12 @@ function validateInstalledConsole(label, installedConsole, sourceArchive, issues
       issues.push(`${label}: installedConsole ${field} must be a reviewed sourceArchive root file`);
     }
   }
+  for (const field of ['packageFile', 'lockFile', 'workspacePackageFile', 'buildFile']) {
+    const path = installedConsole?.runtimeBundle?.[field];
+    if (path !== undefined && safeRelativePath(path) && !(sourceArchive?.rootFiles ?? []).includes(path)) {
+      issues.push(`${label}: installedConsole runtimeBundle ${field} must be a reviewed sourceArchive root file`);
+    }
+  }
 }
 
 function validateAcquisitionHosts(label, acquisition, issues) {

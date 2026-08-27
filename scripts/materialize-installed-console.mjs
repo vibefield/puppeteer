@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-/** Materialize and attest a locked Python console from a reviewed source archive. */
+/** Materialize and attest a locked source-installed console and its declared runtime bundles. */
 import { spawnSync } from 'node:child_process';
 import { createHash } from 'node:crypto';
 import {
@@ -17,6 +17,7 @@ import { dirname, join, relative, resolve, sep } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { digestTree } from '../packages/surface/scripts/check-evidence.mjs';
 import { createInstalledConsoleManifest, validatePythonUvLockPolicy } from './lib/installed-console-contract.mjs';
+import { materializeNodeRuntimeBundle } from './lib/materialize-runtime-bundle.mjs';
 
 const root = dirname(dirname(fileURLToPath(import.meta.url)));
 const pythonTool = resolve(root, 'scripts', 'lib', 'python-console-tool.py');
@@ -188,6 +189,8 @@ export function materializeInstalledConsole({
   versionOutput,
   python = 'python',
   uv = 'uv',
+  node = 'node',
+  npm = 'npm',
   environment = process.env,
 }) {
   if (!/^[a-z][a-z0-9-]*$/.test(vendor ?? '')) throw new Error('invalid vendor');
@@ -216,6 +219,8 @@ export function materializeInstalledConsole({
 
   const pythonCommand = command(python);
   const uvCommand = command(uv);
+  const nodeCommand = command(node);
+  const npmCommand = command(npm);
   mkdirSync(workRoot, { recursive: true });
   const env = isolatedEnvironment(workRoot, policy.isolatedHomeEnvironment, environment);
   const pythonVersionText = run(pythonCommand, ['--version'], { env, label: 'Python identity probe' }).trim();
@@ -311,6 +316,40 @@ export function materializeInstalledConsole({
     maxBuffer: 4_096,
     label: 'installed console version probe',
   });
+  let runtimeBundle;
+  if (policy.runtimeBundle) {
+    const runtimeProjectRoot = join(workRoot, 'runtime-project');
+    run(
+      pythonCommand,
+      [
+        pythonTool,
+        'extract',
+        '--archive',
+        archivePath,
+        '--format',
+        sourcePolicy.format,
+        '--archive-root',
+        downloadMetadata.archiveRoot,
+        '--destination',
+        runtimeProjectRoot,
+        '--max-extracted-bytes',
+        String(sourcePolicy.maxExtractedBytes),
+      ],
+      { env, label: 'runtime bundle source extraction' },
+    );
+    if (`sha256:${digestTree(runtimeProjectRoot)}` !== sourceTreeSha256) {
+      throw new Error('runtime bundle extraction differs from the installed-console source tree');
+    }
+    runtimeBundle = materializeNodeRuntimeBundle({
+      projectRoot: runtimeProjectRoot,
+      artifactRoot: dirname(outputPath),
+      policy: policy.runtimeBundle,
+      node: nodeCommand,
+      npm: npmCommand,
+      environment: env,
+      run,
+    });
+  }
   const manifest = createInstalledConsoleManifest({
     vendor,
     version,
@@ -323,6 +362,7 @@ export function materializeInstalledConsole({
     lockFileSha256: sha256File(lockFile),
     policy,
     inventory,
+    runtimeBundle,
     versionOutput: observedVersion,
   });
   const serialized = `${JSON.stringify(manifest, null, 2)}\n`;
@@ -340,6 +380,12 @@ export function materializeInstalledConsole({
     sourceUrl: downloadMetadata.sourceUrl,
     sourceReference: downloadMetadata.sourceReference,
     sourceArchiveSha256: manifest.source.archiveSha256,
+    ...(manifest.runtimeBundle
+      ? {
+          runtimeRoot: portablePath(repoRoot, join(dirname(outputPath), manifest.runtimeBundle.artifact.root)),
+          runtimeSha256: manifest.runtimeBundle.artifact.sha256,
+        }
+      : {}),
   };
   writeFileSync(metadataPath, `${JSON.stringify(metadata, null, 2)}\n`);
   return { manifest, metadata };
@@ -364,6 +410,8 @@ if (invokedDirectly) {
     versionOutput: flag('--version-output'),
     python: flag('--python', 'python'),
     uv: flag('--uv', 'uv'),
+    node: flag('--node', 'node'),
+    npm: flag('--npm', 'npm'),
   });
   console.log(JSON.stringify(result.metadata));
 }

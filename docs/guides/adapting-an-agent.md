@@ -240,10 +240,13 @@ pnpm surface:materialize \
   --work <disposable-work-directory> \
   --output <bundle>/installed-console.json \
   --metadata <bundle>/download.json --version-output <bundle>/version.txt \
-  --python <exact-python> --uv <exact-uv>
+  --python <exact-python> --uv <exact-uv> \
+  --node <exact-node-if-required> --npm <exact-npm-if-required>
 ```
 
-The command extracts only regular files beneath the reviewed archive root, enforces the expanded-size bound, performs an exact frozen `uv sync` in the declared editable or non-editable mode with default dependency groups disabled, and probes in an isolated home. Its immutable artifact is `installed-console.json`, which binds the source archive and full unchanged source tree, project and lock files, exact CPython executable and standard library, installed distribution file digests, a verified direct-URL binding back to that source tree, a canonical console-script-to-entry-point binding, and the observed version. Path-shaped generated launcher bytes are deliberately excluded from product identity; the launcher must still exist inside the environment and pass the bounded version probe. The disposable environment itself is neither the identity nor uploaded as evidence.
+The command extracts only regular files beneath the reviewed archive root, enforces the expanded-size bound, performs an exact frozen `uv sync` in the declared editable or non-editable mode with default dependency groups disabled, and probes in an isolated home. Its immutable artifact is `installed-console.json`, which binds the source archive and full unchanged source tree, project and lock files, exact CPython executable and standard library, installed distribution file digests, a verified direct-URL binding back to that source tree, a canonical console-script-to-entry-point binding, and the observed version. Path-shaped generated launcher bytes are deliberately excluded from product identity; the launcher must still exist inside the environment and pass the bounded version probe. The disposable Python environment itself is neither the identity nor uploaded as evidence.
+
+If the console launches a separately built frontend or native-viewer runtime, declare a `runtimeBundle` instead of letting the first user launch build it implicitly. The supported `node-npm-lock-bundle` strategy uses an exact Node/npm pair, a clean workspace install from the reviewed npm lock, dependency lifecycle scripts disabled, and one reviewed build entrypoint. It builds from a fresh extraction, rejects source changes outside dependency and output directories, copies only the bounded runtime output beside the manifest, and binds both the bundle tree and entry file digests into `installed-console.json`. Assembly re-hashes those uploaded runtime bytes. A Python-only manifest must therefore never be treated as proof of a console whose native TUI also requires Node assets.
 
 ### 4.2 Build a vendor-owned census harness
 

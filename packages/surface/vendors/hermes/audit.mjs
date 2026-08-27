@@ -48,8 +48,17 @@ export function auditHermes() {
   }
   const sourceArchive = upstream.acquisition?.sourceArchive;
   const installedConsole = upstream.acquisition?.installedConsole;
+  const runtimeBundle = installedConsole?.runtimeBundle;
   if (
-    JSON.stringify(sourceArchive?.rootFiles) !== JSON.stringify(['pyproject.toml', 'uv.lock']) ||
+    JSON.stringify(sourceArchive?.rootFiles) !==
+      JSON.stringify([
+        'pyproject.toml',
+        'uv.lock',
+        'package.json',
+        'package-lock.json',
+        'ui-tui/package.json',
+        'ui-tui/scripts/build.mjs',
+      ]) ||
     !Number.isInteger(sourceArchive?.maxExtractedBytes)
   ) {
     problems.push('source archive must review the bounded project and lockfile root');
@@ -64,7 +73,17 @@ export function auditHermes() {
     JSON.stringify(installedConsole.generatedSourcePaths) !== JSON.stringify(['hermes_agent.egg-info']) ||
     installedConsole.versionOutput !== 'first-line' ||
     !/^3\.11\.\d+$/.test(installedConsole.pythonVersion ?? '') ||
-    !/^\d+\.\d+\.\d+$/.test(installedConsole.uvVersion ?? '')
+    !/^\d+\.\d+\.\d+$/.test(installedConsole.uvVersion ?? '') ||
+    runtimeBundle?.strategy !== 'node-npm-lock-bundle' ||
+    runtimeBundle.nodeVersion !== '22.22.0' ||
+    runtimeBundle.npmVersion !== '10.9.4' ||
+    runtimeBundle.packageFile !== 'package.json' ||
+    runtimeBundle.lockFile !== 'package-lock.json' ||
+    runtimeBundle.workspace !== 'ui-tui' ||
+    runtimeBundle.workspacePackageFile !== 'ui-tui/package.json' ||
+    runtimeBundle.buildFile !== 'ui-tui/scripts/build.mjs' ||
+    runtimeBundle.outputFile !== 'ui-tui/dist/entry.js' ||
+    runtimeBundle.environmentVariable !== 'HERMES_TUI_DIR'
   ) {
     problems.push('installed-console materialization policy is incomplete');
   }

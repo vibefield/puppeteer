@@ -1,7 +1,8 @@
 # Hermes Agent 0.20.0 Surface findings
 
-Status: Stage 0–2. Gate 0, hermetic turn census, and an ASM v2 candidate on
-`darwin-arm64`. This is not an adapter, support entry, or promotion claim.
+Status: candidate adaptation through Gate 0, hermetic turn census, ASM v2,
+adapter conformance, and Imposter conformance. The support ledger entry remains
+`baseline-pending`; none of this is a promotion claim.
 
 Candidate pin:
 
@@ -23,8 +24,9 @@ Hermes is a Python source checkout plus `uv`, not four platform binaries.
 URL templated on `${tag}`, with the usual Puppeteer platforms listed as
 **execution environments** for that same archive. Per-platform artifact
 maps are forbidden for this vendor. The archive contract reviews
-`pyproject.toml` and `uv.lock` at one project root, then declares the
-separate `python-uv-lock` installed-console recipe.
+`pyproject.toml`, `uv.lock`, the root npm package/lock, and the TUI package and
+build entrypoint at one project root. It then declares a `python-uv-lock`
+installed-console recipe plus a separate `node-npm-lock-bundle` runtime recipe.
 
 `hermes` and `hermes-acp` on PATH are setuptools console scripts (~330
 bytes). Product identity is the pinned commit and lockfile, not those
@@ -39,7 +41,21 @@ and attest a composite `installed-console.json` identity on every execution
 platform. The source tree must remain byte-for-byte unchanged during install;
 checkout paths in editable pointers are normalized before hashing, while generated
 launcher wrappers are represented by their canonical console-script binding.
-That four-platform lane still needs a successful workflow run, and the
+
+The same manifest now binds the native TUI bytes that the Python console
+actually launches. A fresh source extraction is installed from
+`package-lock.json` with Node `22.22.0`, its bundled npm `10.9.4`, and dependency
+lifecycle scripts disabled. Puppeteer invokes only the reviewed
+`ui-tui/scripts/build.mjs`, rejects changes outside `node_modules` and
+`ui-tui/dist`, uploads the bounded `runtime/dist/entry.js`, and re-hashes it
+during acquisition assembly. This prevents a Python-only identity from hiding
+an untracked first-launch npm install/build.
+
+A local path-independence check of the exact tag produced the same 3,689,441-byte
+bundle at two different checkout paths, SHA-256
+`a1bb291b54cc62ab8f51c05c87dae9fecd5f1fd6a916a8f1f656c1df4ddd9c30`.
+That check validates the recipe; it is not four-platform promotion evidence.
+The complete acquisition workflow still needs a successful run, and the
 pinned-real native-TUI lane remains a separate promotion gate.
 
 ## Identity probes (`darwin-arm64`)

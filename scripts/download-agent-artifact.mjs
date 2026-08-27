@@ -177,6 +177,25 @@ function extractExecutable(archiveBytes, spec, output) {
   }
 }
 
+export function resolveSourceArchiveRoot(entries, rootFiles) {
+  const anchor = rootFiles[0];
+  const candidates = new Set(
+    entries
+      .filter((entry) => entry === anchor || entry.endsWith(`/${anchor}`))
+      .map((entry) => entry.slice(0, entry.length - anchor.length).replace(/\/$/, '')),
+  );
+  const valid = [...candidates].filter((root) =>
+    rootFiles.every((rootFile) => {
+      const expected = root === '.' || root === '' ? rootFile : `${root}/${rootFile}`;
+      return entries.filter((entry) => entry === expected).length === 1;
+    }),
+  );
+  if (valid.length !== 1) {
+    throw new Error(`source archive must contain exactly one reviewed project root (found ${valid.length})`);
+  }
+  return valid[0] || '.';
+}
+
 function inspectSourceArchive(archiveBytes, spec, output) {
   const archive = `${output}.download.${spec.format === 'zip' ? 'zip' : 'tar.gz'}`;
   writeFileSync(archive, archiveBytes);
@@ -184,18 +203,7 @@ function inspectSourceArchive(archiveBytes, spec, output) {
     const listing = listArchive(archive, spec.format);
     const entries = listing.entries.split('\n').filter(Boolean);
     if (entries.some((entry) => !safeArchiveEntry(entry))) throw new Error('archive contains an unsafe path');
-    const markerEntries = spec.rootFiles.map((rootFile) => {
-      const matches = entries.filter((entry) => entry === rootFile || entry.endsWith(`/${rootFile}`));
-      if (matches.length !== 1) {
-        throw new Error(`source archive must contain exactly one root ${rootFile} (found ${matches.length})`);
-      }
-      return { rootFile, entry: matches[0] };
-    });
-    const roots = new Set(
-      markerEntries.map(({ rootFile, entry }) => entry.slice(0, entry.length - rootFile.length).replace(/\/$/, '')),
-    );
-    if (roots.size !== 1) throw new Error('source archive root files do not share one project root');
-    return [...roots][0] || '.';
+    return resolveSourceArchiveRoot(entries, spec.rootFiles);
   } finally {
     rmSync(archive, { force: true });
   }

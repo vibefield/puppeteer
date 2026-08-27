@@ -3,7 +3,11 @@ import { existsSync, mkdirSync, mkdtempSync, readFileSync, writeFileSync } from 
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import test from 'node:test';
-import { downloadAgentArtifact, resolveArtifactDownload } from './download-agent-artifact.mjs';
+import {
+  downloadAgentArtifact,
+  resolveArtifactDownload,
+  resolveSourceArchiveRoot,
+} from './download-agent-artifact.mjs';
 
 const config = {
   vendor: 'fake',
@@ -185,9 +189,25 @@ test('source downloads reject archives without the reviewed project-root files',
         arrayBuffer: async () => archive,
       }),
     }),
-    /exactly one root pyproject\.toml/,
+    /exactly one reviewed project root/,
   );
   assert.equal(existsSync(join(repoRoot, 'artifacts', 'source.zip')), false);
+});
+
+test('source root resolution distinguishes root package metadata from nested workspaces', () => {
+  assert.equal(
+    resolveSourceArchiveRoot(
+      [
+        'release/pyproject.toml',
+        'release/package.json',
+        'release/ui-tui/package.json',
+        'release/other/package.json',
+        'release/ui-tui/scripts/build.mjs',
+      ],
+      ['pyproject.toml', 'package.json', 'ui-tui/package.json', 'ui-tui/scripts/build.mjs'],
+    ),
+    'release',
+  );
 });
 
 test('downloader extracts one reviewed executable from a ZIP release', async () => {

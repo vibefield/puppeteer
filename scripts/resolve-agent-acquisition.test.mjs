@@ -67,3 +67,43 @@ test('source acquisition fails closed without its exact release reference', () =
     /requires --source-reference/,
   );
 });
+
+test('source acquisition exposes a separately pinned runtime-bundle toolchain when required', () => {
+  const installedConsole = {
+    strategy: 'python-uv-lock',
+    pythonVersion: '3.11.9',
+    uvVersion: '0.9.28',
+    projectFile: 'pyproject.toml',
+    lockFile: 'uv.lock',
+    distribution: 'hermes-agent',
+    consoleScript: 'hermes',
+    installMode: 'editable',
+    generatedSourcePaths: ['hermes_agent.egg-info'],
+    versionOutput: 'first-line',
+    isolatedHomeEnvironment: ['HERMES_HOME'],
+    runtimeBundle: {
+      strategy: 'node-npm-lock-bundle',
+      nodeVersion: '22.22.0',
+      npmVersion: '10.9.4',
+      packageFile: 'package.json',
+      lockFile: 'package-lock.json',
+      workspace: 'ui-tui',
+      workspacePackageFile: 'ui-tui/package.json',
+      buildFile: 'ui-tui/scripts/build.mjs',
+      outputFile: 'ui-tui/dist/entry.js',
+      environmentVariable: 'HERMES_TUI_DIR',
+      maxBytes: 33_554_432,
+    },
+  };
+  const resolved = resolveAgentAcquisition(
+    {
+      vendor: 'hermes',
+      platforms: ['darwin-arm64'],
+      acquisition: { strategy: 'source-revision', sourceArchive: { format: 'tar.gz' }, installedConsole },
+    },
+    { vendor: 'hermes', platform: 'darwin-arm64', sourceReference: 'v2026.8.3' },
+  );
+
+  assert.equal(resolved.nodeVersion, '22.22.0');
+  assert.equal(resolved.npmVersion, '10.9.4');
+});

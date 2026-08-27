@@ -5,6 +5,7 @@ import { existsSync, readFileSync, readdirSync, statSync, writeFileSync } from '
 import { basename, dirname, join, relative, resolve, sep } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { validateInstalledConsoleManifest } from './lib/installed-console-contract.mjs';
+import { verifyRuntimeBundleFiles } from './lib/runtime-bundle-contract.mjs';
 
 const root = dirname(dirname(fileURLToPath(import.meta.url)));
 
@@ -59,6 +60,14 @@ function installedConsoleIdentity(manifest) {
     environmentSha256: manifest.environment.sha256,
     consoleEntryPoint: manifest.console.entryPoint,
     consoleBindingSha256: manifest.console.bindingSha256,
+    ...(manifest.runtimeBundle
+      ? {
+          runtimeNodeVersion: manifest.runtimeBundle.nodeVersion,
+          runtimeNodeExecutableSha256: manifest.runtimeBundle.nodeExecutableSha256,
+          runtimeBundleSha256: manifest.runtimeBundle.artifact.sha256,
+          runtimeEntrySha256: manifest.runtimeBundle.artifact.entrySha256,
+        }
+      : {}),
   };
 }
 
@@ -119,6 +128,13 @@ export function acquireAgentArtifacts({ repoRoot = root, vendor, version, artifa
           versionOutput,
           policy: upstream.acquisition.installedConsole,
         });
+        if (manifest.runtimeBundle) {
+          verifyRuntimeBundleFiles(
+            manifest.runtimeBundle,
+            dirname(absolute),
+            upstream.acquisition.installedConsole.runtimeBundle,
+          );
+        }
         identity = installedConsoleIdentity(manifest);
       } catch (error) {
         issues.push(`${platform} installed-console manifest is invalid: ${error.message}`);

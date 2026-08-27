@@ -5,6 +5,7 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import test from 'node:test';
 import { acquireAgentArtifacts, assignmentMap } from './acquire-agent-artifacts.mjs';
+import { createNodeRuntimeBundleManifest, inventoryRuntimeBundle } from './lib/runtime-bundle-contract.mjs';
 
 function fixture() {
   const repoRoot = mkdtempSync(join(tmpdir(), 'puppeteer-acquire-'));
@@ -85,6 +86,19 @@ test('source-only acquisition refuses archive bytes without an installed-console
 
 test('source-only acquisition binds a composite installed-console manifest instead of wrapper bytes', () => {
   const { repoRoot, vendorRoot, first } = fixture();
+  const runtimePolicy = {
+    strategy: 'node-npm-lock-bundle',
+    nodeVersion: '22.22.0',
+    npmVersion: '10.9.4',
+    packageFile: 'package.json',
+    lockFile: 'package-lock.json',
+    workspace: 'ui-tui',
+    workspacePackageFile: 'ui-tui/package.json',
+    buildFile: 'ui-tui/scripts/build.mjs',
+    outputFile: 'ui-tui/dist/entry.js',
+    environmentVariable: 'FAKE_TUI_DIR',
+    maxBytes: 1_024,
+  };
   writeFileSync(
     join(vendorRoot, 'upstream.json'),
     JSON.stringify({
@@ -103,6 +117,7 @@ test('source-only acquisition binds a composite installed-console manifest inste
           generatedSourcePaths: ['fake.egg-info'],
           versionOutput: 'first-line',
           isolatedHomeEnvironment: ['FAKE_HOME'],
+          runtimeBundle: runtimePolicy,
         },
       },
     }),
@@ -123,12 +138,26 @@ test('source-only acquisition binds a composite installed-console manifest inste
     .update('sha256-console-binding-v1\0')
     .update(JSON.stringify(consoleBinding))
     .digest('hex')}`;
+  const runtimeRoot = join(repoRoot, 'runtime');
+  mkdirSync(join(runtimeRoot, 'dist'), { recursive: true });
+  writeFileSync(join(runtimeRoot, 'dist', 'entry.js'), 'export const fake = true;\n');
+  const runtimeBundle = createNodeRuntimeBundleManifest({
+    policy: runtimePolicy,
+    nodeExecutableSha256: digest('f'),
+    source: {
+      packageFile: { path: 'package.json', sha256: digest('5') },
+      lockFile: { path: 'package-lock.json', sha256: digest('6') },
+      workspacePackageFile: { path: 'ui-tui/package.json', sha256: digest('7') },
+      buildFile: { path: 'ui-tui/scripts/build.mjs', sha256: digest('8') },
+    },
+    artifact: inventoryRuntimeBundle(runtimeRoot, 'dist/entry.js'),
+  });
   writeFileSync(
     first,
     JSON.stringify({
-      schemaVersion: 1,
+      schemaVersion: 2,
       artifactKind: 'installed-console',
-      identityAlgorithm: 'sha256-installed-console-manifest-v1',
+      identityAlgorithm: 'sha256-installed-console-manifest-v2',
       vendor: 'fake',
       version: '1.2.3',
       platform: 'darwin-arm64',
@@ -155,6 +184,7 @@ test('source-only acquisition binds a composite installed-console manifest inste
         editable: true,
         defaultGroups: false,
       },
+      pythonInventorySchemaVersion: 1,
       runtime: {
         implementation: 'cpython',
         pythonVersion: '3.11.9',
@@ -184,6 +214,7 @@ test('source-only acquisition binds a composite installed-console manifest inste
         bindingSha256,
         versionOutput: 'fake 1.2.3',
       },
+      runtimeBundle,
     }),
   );
   const report = acquireAgentArtifacts({
@@ -199,4 +230,15 @@ test('source-only acquisition binds a composite installed-console manifest inste
   assert.equal(report.artifacts[0].identity.pythonStandardLibrarySha256, digest('e'));
   assert.equal(report.artifacts[0].identity.environmentSha256, environmentSha256);
   assert.equal(report.artifacts[0].identity.consoleBindingSha256, bindingSha256);
+  assert.equal(report.artifacts[0].identity.runtimeBundleSha256, runtimeBundle.artifact.sha256);
+  assert.equal(report.artifacts[0].identity.runtimeNodeVersion, '22.22.0');
+  writeFileSync(join(runtimeRoot, 'dist', 'entry.js'), 'tampered\n');
+  const tampered = acquireAgentArtifacts({
+    repoRoot,
+    vendor: 'fake',
+    version: '1.2.3',
+    artifacts: [{ platform: 'darwin-arm64', path: first, versionOutput: 'fake 1.2.3' }],
+  });
+  assert.equal(tampered.status, 'incomplete');
+  assert.ok(tampered.issues.some((issue) => issue.includes('runtime bundle bytes differ')));
 });

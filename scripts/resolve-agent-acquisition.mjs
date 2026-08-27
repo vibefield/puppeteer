@@ -32,6 +32,12 @@ export function resolveAgentAcquisition(config, { vendor, platform, sourceRefere
     sourceReference,
     pythonVersion: installed.pythonVersion,
     uvVersion: installed.uvVersion,
+    ...(installed.runtimeBundle
+      ? {
+          nodeVersion: installed.runtimeBundle.nodeVersion,
+          npmVersion: installed.runtimeBundle.npmVersion,
+        }
+      : {}),
   };
 }
 
