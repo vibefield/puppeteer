@@ -42,6 +42,7 @@
     "upstream:detect": "node scripts/detect-upstream-agents.mjs",
     "surface:acquire": "node scripts/acquire-agent-artifacts.mjs",
     "surface:download": "node scripts/download-agent-artifact.mjs",
+    "surface:materialize": "node scripts/materialize-installed-console.mjs",
     "surface:evidence:artifacts": "node scripts/update-agent-evidence-artifacts.mjs",
     "surface:replay": "node scripts/replay-agent-surface.mjs",
     "surface:reconcile": "node scripts/reconcile-agent-surface.mjs",

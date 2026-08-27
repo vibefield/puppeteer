@@ -231,6 +231,20 @@ pnpm surface:download --vendor <vendor> --version <version> --platform <platform
 
 The downloader retains and identifies those bytes as a source archive. The standalone version probe and executable attestation reject it; a reviewed source-install lane must materialize and attest the declared console before anything executes. Never name a console-script wrapper in `sourceArchive.executableBasenames`: wrapper bytes are not the product identity.
 
+For the supported `python-uv-lock` recipe, materialization is explicit:
+
+```sh
+pnpm surface:materialize \
+  --vendor <vendor> --version <version> --platform <platform> \
+  --source-archive <source-archive> --source-metadata <download.json> \
+  --work <disposable-work-directory> \
+  --output <bundle>/installed-console.json \
+  --metadata <bundle>/download.json --version-output <bundle>/version.txt \
+  --python <exact-python> --uv <exact-uv>
+```
+
+The command extracts only regular files beneath the reviewed archive root, enforces the expanded-size bound, performs an exact frozen `uv sync` in the declared editable or non-editable mode with default dependency groups disabled, and probes in an isolated home. Its immutable artifact is `installed-console.json`, which binds the source archive and full unchanged source tree, project and lock files, exact CPython executable and standard library, installed distribution file digests, a verified direct-URL binding back to that source tree, a canonical console-script-to-entry-point binding, and the observed version. Path-shaped generated launcher bytes are deliberately excluded from product identity; the launcher must still exist inside the environment and pass the bounded version probe. The disposable environment itself is neither the identity nor uploaded as evidence.
+
 ### 4.2 Build a vendor-owned census harness
 
 Create the vendor-specific tools under:
