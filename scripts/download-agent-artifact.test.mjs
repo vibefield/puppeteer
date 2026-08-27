@@ -60,9 +60,9 @@ function storedZip(entry, content) {
 }
 
 test('artifact URLs expand only the reviewed version field and host', () => {
-  assert.deepEqual(resolveArtifactDownload(config, 'linux-x64', '1.2.3').urls, [
-    'https://downloads.example.test/1.2.3/fake',
-  ]);
+  const resolved = resolveArtifactDownload(config, 'linux-x64', '1.2.3');
+  assert.equal(resolved.artifactKind, 'standalone-executable');
+  assert.deepEqual(resolved.urls, ['https://downloads.example.test/1.2.3/fake']);
 });
 
 test('downloader writes bounded bytes but never runs them', async () => {
@@ -71,7 +71,7 @@ test('downloader writes bounded bytes but never runs them', async () => {
   mkdirSync(upstream, { recursive: true });
   writeFileSync(join(upstream, 'upstream.json'), JSON.stringify(config));
   let calls = 0;
-  await downloadAgentArtifact({
+  const metadata = await downloadAgentArtifact({
     repoRoot,
     vendor: 'fake',
     version: '1.2.3',
@@ -90,6 +90,104 @@ test('downloader writes bounded bytes but never runs them', async () => {
   });
   assert.equal(calls, 1);
   assert.equal(readFileSync(join(repoRoot, 'artifacts', 'fake'), 'utf8'), 'bytes');
+  assert.equal(metadata.artifactKind, 'standalone-executable');
+});
+
+test('source downloads require an exact tag and retain the reviewed archive bytes', async () => {
+  const repoRoot = mkdtempSync(join(tmpdir(), 'puppeteer-download-source-'));
+  const upstream = join(repoRoot, 'packages', 'surface', 'vendors', 'fake');
+  const sourceConfig = {
+    vendor: 'fake',
+    platforms: ['linux-x64'],
+    acquisition: {
+      strategy: 'source-revision',
+      allowedHosts: ['downloads.example.test'],
+      maxBytes: 1_000,
+      sourceArchive: {
+        urls: ['https://downloads.example.test/refs/${tag}.zip'],
+        format: 'zip',
+        rootFiles: ['pyproject.toml'],
+      },
+    },
+  };
+  mkdirSync(upstream, { recursive: true });
+  writeFileSync(join(upstream, 'upstream.json'), JSON.stringify(sourceConfig));
+  const archive = storedZip('fake-v1.2.3/pyproject.toml', '[project]');
+
+  await assert.rejects(
+    downloadAgentArtifact({
+      repoRoot,
+      vendor: 'fake',
+      version: '1.2.3',
+      platform: 'linux-x64',
+      output: 'artifacts/source.zip',
+      fetchImpl: async () => assert.fail('a tag-less source URL must fail before download'),
+    }),
+    /normalized release tag is required/,
+  );
+
+  const metadata = await downloadAgentArtifact({
+    repoRoot,
+    vendor: 'fake',
+    version: '1.2.3',
+    platform: 'linux-x64',
+    tag: 'v1.2.3',
+    output: 'artifacts/source.zip',
+    fetchImpl: async (url) => ({
+      ok: true,
+      status: 200,
+      url,
+      headers: new Headers({ 'content-length': String(archive.length) }),
+      arrayBuffer: async () => archive,
+    }),
+  });
+
+  assert.deepEqual(readFileSync(join(repoRoot, 'artifacts', 'source.zip')), archive);
+  assert.equal(metadata.artifactKind, 'source-archive');
+  assert.equal(metadata.sourceReference, 'v1.2.3');
+  assert.equal(metadata.archiveRoot, 'fake-v1.2.3');
+});
+
+test('source downloads reject archives without the reviewed project-root files', async () => {
+  const repoRoot = mkdtempSync(join(tmpdir(), 'puppeteer-download-source-root-'));
+  const upstream = join(repoRoot, 'packages', 'surface', 'vendors', 'fake');
+  const sourceConfig = {
+    vendor: 'fake',
+    platforms: ['linux-x64'],
+    acquisition: {
+      strategy: 'source-revision',
+      allowedHosts: ['downloads.example.test'],
+      maxBytes: 1_000,
+      sourceArchive: {
+        urls: ['https://downloads.example.test/refs/${tag}.zip'],
+        format: 'zip',
+        rootFiles: ['pyproject.toml'],
+      },
+    },
+  };
+  mkdirSync(upstream, { recursive: true });
+  writeFileSync(join(upstream, 'upstream.json'), JSON.stringify(sourceConfig));
+  const archive = storedZip('fake-v1.2.3/README.md', 'missing project metadata');
+
+  await assert.rejects(
+    downloadAgentArtifact({
+      repoRoot,
+      vendor: 'fake',
+      version: '1.2.3',
+      platform: 'linux-x64',
+      tag: 'v1.2.3',
+      output: 'artifacts/source.zip',
+      fetchImpl: async (url) => ({
+        ok: true,
+        status: 200,
+        url,
+        headers: new Headers({ 'content-length': String(archive.length) }),
+        arrayBuffer: async () => archive,
+      }),
+    }),
+    /exactly one root pyproject\.toml/,
+  );
+  assert.equal(existsSync(join(repoRoot, 'artifacts', 'source.zip')), false);
 });
 
 test('downloader extracts one reviewed executable from a ZIP release', async () => {

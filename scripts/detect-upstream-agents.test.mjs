@@ -203,6 +203,20 @@ test('reports same-version republishes and rollbacks while retaining platform wo
     if (url.includes('api.github.com/repos/anthropics')) {
       return response(JSON.stringify([{ tag_name: 'v2.1.207', prerelease: false, draft: false, id: 3 }]));
     }
+    if (url.includes('api.github.com/repos/NousResearch/hermes-agent')) {
+      return response(
+        JSON.stringify([
+          {
+            tag_name: 'v2026.8.3',
+            name: 'Hermes Agent v0.20.0 (2026.8.3)',
+            prerelease: false,
+            draft: false,
+            id: 4,
+          },
+        ]),
+        'application/json',
+      );
+    }
     if (url.includes('downloads.claude.ai')) return response('2.1.207');
     if (url.endsWith('/stable')) return response(grokStable);
     if (url.endsWith('/alpha')) return response('1.1.0-alpha.1');
@@ -223,6 +237,12 @@ test('reports same-version republishes and rollbacks while retaining platform wo
   assert.ok(grokRepublished.workItems.every((item) => item.key.endsWith(grokRepublished.signalDigest)));
   assert.ok(grokRepublished.workItems.every((item) => item.acquisition.urls.every((url) => url.includes('1.0.0'))));
   assert.equal(Object.keys(state.releases['grok@1.0.0'].observations).length, 2);
+  const hermes = republished.agents.find((agent) => agent.vendor === 'hermes');
+  assert.equal(hermes.sourceRelation.expectedReference, 'v2026.8.3');
+  assert.ok(hermes.workItems.every((item) => item.acquisition.kind === 'source-archive'));
+  assert.ok(hermes.workItems.every((item) => item.acquisition.urls[0].includes('v2026.8.3')));
+  assert.ok(hermes.workItems.every((item) => item.acquisition.nextArtifact.kind === 'installed-console'));
+  assert.ok(hermes.workItems.every((item) => item.acquisition.nextArtifact.strategy === 'python-uv-lock'));
 
   grokStable = '0.9.0 rollback';
   const rollback = await detectUpstreamAgents({

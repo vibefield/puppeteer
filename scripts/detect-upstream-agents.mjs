@@ -55,7 +55,7 @@ function validateUrlTemplates(label, templates, hosts, issues, { requireVersion 
   }
 }
 
-function validateArchiveSpec(label, archive, hosts, issues, { formats, requireVersion = true }) {
+function validateExecutableArchiveSpec(label, archive, hosts, issues, { formats, requireVersion = true }) {
   if (!formats.includes(archive?.format)) {
     issues.push(`${label} has an unsupported artifact format`);
   }
@@ -67,6 +67,47 @@ function validateArchiveSpec(label, archive, hosts, issues, { formats, requireVe
     issues.push(`${label} has unsafe executable basenames`);
   }
   validateUrlTemplates(label, archive?.urls, hosts, issues, { requireVersion });
+}
+
+function safeRelativePath(path) {
+  return typeof path === 'string' && /^[A-Za-z0-9._-]+(?:\/[A-Za-z0-9._-]+)*$/.test(path);
+}
+
+function validateSourceArchiveSpec(label, archive, hosts, issues) {
+  if (!['tar.gz', 'zip'].includes(archive?.format)) {
+    issues.push(`${label} has an unsupported artifact format`);
+  }
+  if (
+    !Array.isArray(archive?.rootFiles) ||
+    archive.rootFiles.length === 0 ||
+    new Set(archive.rootFiles).size !== archive.rootFiles.length ||
+    archive.rootFiles.some((path) => !safeRelativePath(path))
+  ) {
+    issues.push(`${label} has unsafe or duplicate project-root files`);
+  }
+  validateUrlTemplates(label, archive?.urls, hosts, issues, { requireVersion: false });
+}
+
+function validateInstalledConsole(label, installedConsole, sourceArchive, issues) {
+  if (installedConsole?.strategy !== 'python-uv-lock') {
+    issues.push(`${label}: installedConsole must use python-uv-lock`);
+    return;
+  }
+  if (!/^3\.\d+(?:\.\d+)?$/.test(installedConsole.pythonVersion ?? '')) {
+    issues.push(`${label}: installedConsole needs a normalized Python 3 version`);
+  }
+  for (const field of ['projectFile', 'lockFile']) {
+    if (!safeRelativePath(installedConsole[field])) {
+      issues.push(`${label}: installedConsole ${field} must be a safe relative path`);
+    } else if (!(sourceArchive?.rootFiles ?? []).includes(installedConsole[field])) {
+      issues.push(`${label}: installedConsole ${field} must be a reviewed sourceArchive root file`);
+    }
+  }
+  for (const field of ['distribution', 'consoleScript']) {
+    if (!/^[A-Za-z0-9._-]+$/.test(installedConsole[field] ?? '')) {
+      issues.push(`${label}: installedConsole ${field} must be normalized`);
+    }
+  }
 }
 
 function validateAcquisitionHosts(label, acquisition, issues) {
@@ -91,7 +132,7 @@ function validateAcquisition(label, config, issues) {
         issues.push(`${label}: acquisition has no artifact for ${platform}`);
         continue;
       }
-      validateArchiveSpec(`${label}: ${platform}`, artifact, hosts, issues, {
+      validateExecutableArchiveSpec(`${label}: ${platform}`, artifact, hosts, issues, {
         formats: ['binary', 'tar.gz', 'zip'],
       });
     }
@@ -111,10 +152,8 @@ function validateAcquisition(label, config, issues) {
       issues.push(`${label}: source-revision acquisition needs sourceArchive`);
       return;
     }
-    validateArchiveSpec(`${label}: sourceArchive`, acquisition.sourceArchive, hosts, issues, {
-      formats: ['tar.gz', 'zip'],
-      requireVersion: false,
-    });
+    validateSourceArchiveSpec(`${label}: sourceArchive`, acquisition.sourceArchive, hosts, issues);
+    validateInstalledConsole(label, acquisition.installedConsole, acquisition.sourceArchive, issues);
     return;
   }
   issues.push(`${label}: acquisition must use https-template or source-revision`);
@@ -368,6 +407,11 @@ function acquisitionWorkItems(config, version, signalDigest, tag) {
         kind: 'source-archive',
         format: archive.format,
         urls: archive.urls.map(expand),
+        nextArtifact: {
+          kind: 'installed-console',
+          status: 'awaiting-source-install',
+          ...config.acquisition.installedConsole,
+        },
       },
     }));
   }

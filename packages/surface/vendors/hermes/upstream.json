@@ -27,7 +27,15 @@
     "sourceArchive": {
       "urls": ["https://github.com/NousResearch/hermes-agent/archive/refs/tags/${tag}.tar.gz"],
       "format": "tar.gz",
-      "executableBasenames": ["hermes"]
+      "rootFiles": ["pyproject.toml", "uv.lock"]
+    },
+    "installedConsole": {
+      "strategy": "python-uv-lock",
+      "pythonVersion": "3.11",
+      "projectFile": "pyproject.toml",
+      "lockFile": "uv.lock",
+      "distribution": "hermes-agent",
+      "consoleScript": "hermes"
     }
   },
   "analysis": [

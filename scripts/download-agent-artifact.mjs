@@ -21,12 +21,13 @@ function safePath(repoRoot, path) {
 export function resolveArtifactDownload(config, platform, version, { tag } = {}) {
   if (!/^\d+\.\d+\.\d+(?:[-.][0-9A-Za-z.-]+)?$/.test(version ?? '')) throw new Error('invalid version');
   if (!(config.platforms ?? []).includes(platform)) throw new Error(`unsupported platform ${platform}`);
-  const artifact =
-    config.acquisition?.strategy === 'source-revision'
-      ? config.acquisition.sourceArchive
-      : config.acquisition?.artifacts?.[platform];
+  const sourceArchive = config.acquisition?.strategy === 'source-revision';
+  const artifact = sourceArchive ? config.acquisition.sourceArchive : config.acquisition?.artifacts?.[platform];
   if (!artifact) throw new Error(`unsupported platform ${platform}`);
   const urls = artifact.urls.map((template) => {
+    if (template.includes('${tag}') && !/^[A-Za-z0-9][A-Za-z0-9._-]{0,127}$/.test(tag ?? '')) {
+      throw new Error('a normalized release tag is required');
+    }
     const expanded = template.replaceAll('${version}', version).replaceAll('${tag}', tag ?? '');
     if (expanded.includes('${')) throw new Error(`unsupported URL template in ${platform}`);
     const url = new URL(expanded);
@@ -35,7 +36,13 @@ export function resolveArtifactDownload(config, platform, version, { tag } = {})
     }
     return url.href;
   });
-  return { ...artifact, urls, maxBytes: config.acquisition.maxBytes, allowedHosts: config.acquisition.allowedHosts };
+  return {
+    ...artifact,
+    artifactKind: sourceArchive ? 'source-archive' : 'standalone-executable',
+    urls,
+    maxBytes: config.acquisition.maxBytes,
+    allowedHosts: config.acquisition.allowedHosts,
+  };
 }
 
 async function fetchArtifact(spec, fetchImpl) {
@@ -170,26 +177,67 @@ function extractExecutable(archiveBytes, spec, output) {
   }
 }
 
-export async function downloadAgentArtifact({ repoRoot = root, vendor, version, platform, output, fetchImpl = fetch }) {
+function inspectSourceArchive(archiveBytes, spec, output) {
+  const archive = `${output}.download.${spec.format === 'zip' ? 'zip' : 'tar.gz'}`;
+  writeFileSync(archive, archiveBytes);
+  try {
+    const listing = listArchive(archive, spec.format);
+    const entries = listing.entries.split('\n').filter(Boolean);
+    if (entries.some((entry) => !safeArchiveEntry(entry))) throw new Error('archive contains an unsafe path');
+    const markerEntries = spec.rootFiles.map((rootFile) => {
+      const matches = entries.filter((entry) => entry === rootFile || entry.endsWith(`/${rootFile}`));
+      if (matches.length !== 1) {
+        throw new Error(`source archive must contain exactly one root ${rootFile} (found ${matches.length})`);
+      }
+      return { rootFile, entry: matches[0] };
+    });
+    const roots = new Set(
+      markerEntries.map(({ rootFile, entry }) => entry.slice(0, entry.length - rootFile.length).replace(/\/$/, '')),
+    );
+    if (roots.size !== 1) throw new Error('source archive root files do not share one project root');
+    return [...roots][0] || '.';
+  } finally {
+    rmSync(archive, { force: true });
+  }
+}
+
+export async function downloadAgentArtifact({
+  repoRoot = root,
+  vendor,
+  version,
+  platform,
+  tag,
+  output,
+  fetchImpl = fetch,
+}) {
   if (!/^[a-z][a-z0-9-]*$/.test(vendor ?? '')) throw new Error('invalid vendor');
   const configPath = resolve(repoRoot, 'packages', 'surface', 'vendors', vendor, 'upstream.json');
   const config = json(configPath);
   if (config.vendor !== vendor) throw new Error('upstream configuration vendor mismatch');
-  const spec = resolveArtifactDownload(config, platform, version);
+  const spec = resolveArtifactDownload(config, platform, version, { tag });
   const destination = safePath(repoRoot, output);
   mkdirSync(dirname(destination), { recursive: true });
   const downloaded = await fetchArtifact(spec, fetchImpl);
-  const executable =
-    spec.format === 'binary' ? downloaded.bytes : extractExecutable(downloaded.bytes, spec, destination);
-  writeFileSync(destination, executable);
-  if (platform !== 'windows-x64') chmodSync(destination, 0o755);
+  const artifact =
+    spec.artifactKind === 'source-archive'
+      ? downloaded.bytes
+      : spec.format === 'binary'
+        ? downloaded.bytes
+        : extractExecutable(downloaded.bytes, spec, destination);
+  const archiveRoot =
+    spec.artifactKind === 'source-archive' ? inspectSourceArchive(artifact, spec, destination) : undefined;
+  writeFileSync(destination, artifact);
+  if (spec.artifactKind === 'standalone-executable' && platform !== 'windows-x64') chmodSync(destination, 0o755);
   return {
     schemaVersion: 1,
     vendor,
     version,
     platform,
+    artifactKind: spec.artifactKind,
+    ...(tag ? { sourceReference: tag } : {}),
+    ...(archiveRoot ? { archiveRoot } : {}),
     output,
-    bytes: executable.length,
+    bytes: artifact.length,
     sourceUrl: downloaded.sourceUrl,
   };
 }
@@ -205,6 +253,7 @@ if (invokedDirectly) {
     vendor: flag('--vendor'),
     version: flag('--version'),
     platform: flag('--platform'),
+    tag: flag('--tag'),
     output: flag('--output'),
   });
   const metadata = flag('--metadata');

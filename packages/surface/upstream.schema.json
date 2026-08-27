@@ -82,7 +82,7 @@
         {
           "type": "object",
           "additionalProperties": false,
-          "required": ["strategy", "allowedHosts", "maxBytes", "sourceArchive"],
+          "required": ["strategy", "allowedHosts", "maxBytes", "sourceArchive", "installedConsole"],
           "properties": {
             "strategy": { "const": "source-revision" },
             "allowedHosts": { "type": "array", "minItems": 1, "items": { "type": "string" } },
@@ -90,7 +90,7 @@
             "sourceArchive": {
               "type": "object",
               "additionalProperties": false,
-              "required": ["urls", "format", "executableBasenames"],
+              "required": ["urls", "format", "rootFiles"],
               "properties": {
                 "urls": {
                   "type": "array",
@@ -101,11 +101,40 @@
                   }
                 },
                 "format": { "enum": ["tar.gz", "zip"] },
-                "executableBasenames": {
+                "rootFiles": {
                   "type": "array",
                   "minItems": 1,
-                  "items": { "type": "string", "pattern": "^[A-Za-z0-9._-]+$" }
+                  "items": {
+                    "type": "string",
+                    "pattern": "^[A-Za-z0-9._-]+(?:/[A-Za-z0-9._-]+)*$"
+                  }
                 }
+              }
+            },
+            "installedConsole": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": [
+                "strategy",
+                "pythonVersion",
+                "projectFile",
+                "lockFile",
+                "distribution",
+                "consoleScript"
+              ],
+              "properties": {
+                "strategy": { "const": "python-uv-lock" },
+                "pythonVersion": { "type": "string", "pattern": "^3\\.\\d+(?:\\.\\d+)?$" },
+                "projectFile": {
+                  "type": "string",
+                  "pattern": "^[A-Za-z0-9._-]+(?:/[A-Za-z0-9._-]+)*$"
+                },
+                "lockFile": {
+                  "type": "string",
+                  "pattern": "^[A-Za-z0-9._-]+(?:/[A-Za-z0-9._-]+)*$"
+                },
+                "distribution": { "type": "string", "pattern": "^[A-Za-z0-9._-]+$" },
+                "consoleScript": { "type": "string", "pattern": "^[A-Za-z0-9._-]+$" }
               }
             }
           }
