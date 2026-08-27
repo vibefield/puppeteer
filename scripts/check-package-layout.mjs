@@ -589,6 +589,7 @@ export function auditPackageLayout(root = scriptRoot) {
       'src/driver.ts',
       'src/normalization/adapter.ts',
       'src/normalization/index.ts',
+      'src/normalization/monitor-capabilities.ts',
       'src/normalization/monitor.ts',
       'src/normalization/pipeline.ts',
       'src/services/event-source.ts',
