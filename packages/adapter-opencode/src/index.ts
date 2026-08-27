@@ -9,6 +9,7 @@ export {
   resolveOpenCodeExecutable,
 } from './detection.js';
 export { startOpenCodeBackend, type OpenCodeBackend, type StartOpenCodeBackendOptions } from './launch/backend.js';
+export * from './launch/native-invocation.js';
 export {
   OpenCodeClient,
   OpenCodeHttpError,

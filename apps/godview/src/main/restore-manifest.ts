@@ -13,8 +13,8 @@ import type { AgentSessionInfo } from '@vibecook/puppeteer-runtime';
  *
  * Deliberately excludes argv and environment. Launch environments can carry
  * session bearer tokens, and DESIGN §22.2 forbids persisting secrets in command
- * arguments or session metadata. Everything here is recoverable from a cwd, an
- * agent kind, and a native session id.
+ * arguments or session metadata. Everything here is recoverable from a cwd, a
+ * provider id, and a native session id.
  */
 export const RESTORE_MANIFEST_VERSION = 1 as const;
 
@@ -71,7 +71,7 @@ export interface RestoreWindowInput {
 }
 
 export interface RestoreAgentInput {
-  info: Pick<AgentSessionInfo, 'agent' | 'sessionId' | 'workspace'>;
+  info: Pick<AgentSessionInfo, 'provider' | 'sessionId' | 'workspace'>;
   session: Pick<SessionSummary, 'exited'>;
 }
 
@@ -108,7 +108,7 @@ function describePane(
   return {
     sessionId,
     kind: 'agent',
-    agent: agent.info.agent,
+    agent: agent.info.provider.id,
     nativeSessionId: agent.info.sessionId,
     ...(cwd ? { cwd } : {}),
     workspace: {

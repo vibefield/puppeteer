@@ -15,3 +15,4 @@ export * from './transport/ws-transport.js';
 export * from './driver.js';
 export * from './observation/observer.js';
 export * from './launch/tui-session.js';
+export * from './launch/native-invocation.js';

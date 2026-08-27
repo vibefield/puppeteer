@@ -30,7 +30,7 @@ function session(id: string, overrides: Partial<SessionSummary> = {}): SessionSu
 function agent(sessionId: string, overrides: Partial<RestoreAgentInput['info']> = {}): RestoreAgentInput {
   return {
     info: {
-      agent: 'claude',
+      provider: { id: 'claude', label: 'Claude' },
       sessionId: `native-${sessionId}`,
       workspace: { mode: 'direct', root: '/repo', sourcePath: '/repo' },
       ...overrides,

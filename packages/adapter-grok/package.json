@@ -42,7 +42,8 @@
   },
   "dependencies": {
     "@vibecook/puppeteer-adapter-acp": "workspace:*",
-    "@vibecook/puppeteer-core": "workspace:*"
+    "@vibecook/puppeteer-core": "workspace:*",
+    "zod": "^4.4.3"
   },
   "devDependencies": {
     "@vibecook/puppeteer-testing": "workspace:*"

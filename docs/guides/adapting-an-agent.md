@@ -98,7 +98,7 @@ release metadata + shipped artifacts + exact source/schema + official docs
 | Devkit         | independent native view plus an optional downstream normalization projection                                                     | mutation of native records, a second production state API                                    |
 | Core           | portable event/session contracts and a pure reducer                                                                              | vendor-specific I/O or terminal scraping                                                     |
 | Runtime        | provider composition and application-facing lifecycle                                                                            | vendor-specific branches in `runtime.ts`                                                     |
-| Support ledger | the exact baseline Puppeteer currently promotes                                                                                 | “latest upstream” versions that have not passed promotion                                    |
+| Support ledger | the exact baseline Puppeteer currently promotes                                                                                  | “latest upstream” versions that have not passed promotion                                    |
 
 ### Keep the four graphs distinct
 
@@ -119,14 +119,14 @@ Never use an Imposter scenario or scenario-driver transition as evidence that a 
 
 Choose these once and use them consistently:
 
-| Token               | Rule                                                            | Example                             |
-| ------------------- | --------------------------------------------------------------- | ----------------------------------- |
-| `<vendor>`          | lowercase letters, digits, and hyphens; stable product identity | `claude`, `codex`, `grok`           |
-| `<version>`         | exact normalized vendor artifact version                        | `2.1.226`                           |
-| display name        | user-facing vendor/product name                                 | `Claude Code`                       |
-| adapter package     | `@vibecook/puppeteer-adapter-<vendor>`                         | `@vibecook/puppeteer-adapter-grok` |
-| executable override | `PUPPETEER_<VENDOR>_BIN`                                       | `PUPPETEER_GROK_BIN`               |
-| persona selector    | `ai --<vendor>` and a vendor-named shim                         | `ai --codex`                        |
+| Token               | Rule                                                            | Example                            |
+| ------------------- | --------------------------------------------------------------- | ---------------------------------- |
+| `<vendor>`          | lowercase letters, digits, and hyphens; stable product identity | `claude`, `codex`, `grok`          |
+| `<version>`         | exact normalized vendor artifact version                        | `2.1.226`                          |
+| display name        | user-facing vendor/product name                                 | `Claude Code`                      |
+| adapter package     | `@vibecook/puppeteer-adapter-<vendor>`                          | `@vibecook/puppeteer-adapter-grok` |
+| executable override | `PUPPETEER_<VENDOR>_BIN`                                        | `PUPPETEER_GROK_BIN`               |
+| persona selector    | `ai --<vendor>` and a vendor-named shim                         | `ai --codex`                       |
 
 Track the vendor artifact version, artifact SHA-256/protocol identity, ASM format version, and Puppeteer package version separately. They answer different questions and must never be collapsed into one “version.”
 
@@ -673,6 +673,7 @@ packages/adapter-<vendor>/
     services/          # one upper-level capability per file
     generated/        # evidence-derived runtime projections, when needed
     launch/           # native launch/attach preparation
+      native-invocation.ts # vendor argv/env normalization + continuation codec
     observation/      # hooks, logs, transcripts, usage
     transport/        # protocol/socket/process clients
     test-support/     # synthetic builders, never real captured truth
@@ -906,25 +907,38 @@ Update:
   - `BuiltinCreateAgentSessionOptions` discriminated variant;
 - `packages/builtin-providers/src/providers.ts`:
   - executable resolution from `PUPPETEER_<VENDOR>_BIN`;
-  - one `AgentProvider` entry;
+  - one `AgentProvider` entry with a strict `{ id, label }` descriptor;
   - optional adapter-owned `AccountUsageService` composition;
   - `createSession` and optional `prepareSession`;
+  - one `launch.provider` descriptor declaring resume, native commands, the safe environment allow-list, and any
+    conformant Imposter topology;
+  - `launch.normalizeInvocation` delegated to the adapter's `launch/native-invocation.ts`;
+  - an opaque, credential-free continuation codec when resume depends on an agent home/configuration root or
+    implementation topology. Its JSON payload crosses persistence and therefore uses a strict, versioned Zod schema;
   - provider-level resource disposal;
 - `packages/builtin-providers/src/providers.test.ts` mocks, forwarding assertions, preparation behavior, and option typing.
 
 Keep all vendor branching behind `AgentProvider`. Never add provider-specific branches to `packages/runtime/src/runtime.ts`.
+The public built-in option facade may expose user intent such as model or permission posture; it must not expose
+executables, raw environment maps, app-server wiring, native resume argv, or provider store paths.
 
 ### 9.4 Wire product applications that expose built-in agents
 
-Runtime registration makes the provider available to consumers; it does not automatically add a button, PATH shim, restore policy, or native-pane launch recipe to each application.
+Runtime registration makes provider-neutral identity and launch capability available to consumers. Godview discovers
+provider ids and display labels through `providers()` and
+`launchProviders()`, creates shims from declared commands, forwards only declared environment names, and hands the
+intent to `prepareInvocation()`. Its spawn-through host owns authentication, PID-to-terminal matching, adoption,
+fallback, and `exec`; it must not parse vendor argv, choose adapter transports, or assemble provider options.
 
-For Godview, review and update the applicable seams under `apps/godview/src/`:
+Resume uses the `AgentContinuation` returned on every `AgentSessionInfo`: persist it opaquely and pass it to
+`runtime.resume()`. Product snapshots must not split it back into provider id, native session id, and launch
+provenance. Runtime preserves the generic `native | imposter` distinction; the adapter alone captures and restores
+any credential-free state it needs. Every advertised Imposter path must use a host-owned durable state root so resume
+cannot silently switch implementations or lose history after the temporary shim directory is removed.
 
-- `main/main.ts` for accepted, restorable, and auto-created agent lists;
-- `main/spawn-through.ts` for enabled Imposter agents and vendor-native resume parsing;
-- `shim/agent-shim.ts` for vendor executable interception;
-- renderer labels, status presentation, and icons only where the product intentionally wants explicit branding;
-- adjacent tests for every changed list or launch rule.
+Product code should change only for optional artwork isolated in the branding map or a product choice that is
+independent of provider mechanics. A new provider must work through the generic icon fallback and must not require
+editing a Godview label switch, restorable list, shim union, argv parser, environment branch, or Imposter allow-list.
 
 Account usage requires no Godview provider list, renderer bucket mapping, or polling branch. Implement the adapter's
 account-usage service in its own service file: publish an `AccountUsageProvider` descriptor, normalize native quota ids
@@ -1095,23 +1109,23 @@ After promotion:
 
 Run targeted checks while iterating, then the full matrix before review.
 
-| Area                  | Command                                                                                 | What it proves                                                                                  |
-| --------------------- | --------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------- |
-| Detector config       | `pnpm upstream:check`                                                                   | every `upstream.json` satisfies policy                                                          |
-| Surface types/tests   | `pnpm --filter @vibecook/puppeteer-surface typecheck` and `test`                       | model/sanitizer runtime and vendor fixtures are sound                                           |
-| Vendor audit          | `pnpm --filter @vibecook/puppeteer-surface run surface:audit:<vendor>`                 | selected candidate matches evidence and vendor-specific checks                                  |
-| All Surface           | `pnpm surface:audit`                                                                    | every current/candidate surface remains clean                                                   |
-| Exact replay          | `pnpm surface:replay --vendor <vendor> --ground-truth <ground-truth>`                   | captures, model, persona, carriers, directions, and results agree pre-normalization             |
-| Adapter               | `pnpm --filter @vibecook/puppeteer-adapter-<vendor> typecheck` and `test`              | normalization, driver, transport, and shared conformance pass                                   |
-| Imposter              | `pnpm --filter @vibecook/puppeteer-imposter typecheck` and `test`                      | persona/scenarios and adapter-against-Imposter pass                                             |
-| Runtime               | `pnpm --filter @vibecook/puppeteer-runtime typecheck` and `test`                       | provider and typed options are integrated                                                       |
-| Devkit                | `pnpm --filter imposter-control typecheck`, `test`, and `bundle`                        | spawner, native plane, projection, and browser bundle agree                                     |
-| Devkit smoke          | `pnpm agent-devkit:smoke`                                                               | Electron main process starts and shuts down correctly                                           |
-| Godview, when wired   | `pnpm godview:typecheck`, `godview:test`, `godview:bundle`, and `godview:smoke`         | built-in selection, shim/spawn-through, restore, renderer, bundle, and native launch are usable |
-| Package policy        | `pnpm packages:check`                                                                   | topology, manifests, ownership, release coverage, and dependencies are valid                    |
-| Support policy        | `pnpm support:check`                                                                    | ledger, persona, canonical ground truth, selected versions, evidence, and badge agree            |
-| Full repository       | `pnpm test`                                                                             | all typechecks, script tests, package tests, and app tests pass                                 |
-| Published shape       | `pnpm pack:check`                                                                       | all public packages build and tarballs contain only allowed files                               |
+| Area                | Command                                                                         | What it proves                                                                                  |
+| ------------------- | ------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------- |
+| Detector config     | `pnpm upstream:check`                                                           | every `upstream.json` satisfies policy                                                          |
+| Surface types/tests | `pnpm --filter @vibecook/puppeteer-surface typecheck` and `test`                | model/sanitizer runtime and vendor fixtures are sound                                           |
+| Vendor audit        | `pnpm --filter @vibecook/puppeteer-surface run surface:audit:<vendor>`          | selected candidate matches evidence and vendor-specific checks                                  |
+| All Surface         | `pnpm surface:audit`                                                            | every current/candidate surface remains clean                                                   |
+| Exact replay        | `pnpm surface:replay --vendor <vendor> --ground-truth <ground-truth>`           | captures, model, persona, carriers, directions, and results agree pre-normalization             |
+| Adapter             | `pnpm --filter @vibecook/puppeteer-adapter-<vendor> typecheck` and `test`       | normalization, driver, transport, and shared conformance pass                                   |
+| Imposter            | `pnpm --filter @vibecook/puppeteer-imposter typecheck` and `test`               | persona/scenarios and adapter-against-Imposter pass                                             |
+| Runtime             | `pnpm --filter @vibecook/puppeteer-runtime typecheck` and `test`                | provider and typed options are integrated                                                       |
+| Devkit              | `pnpm --filter imposter-control typecheck`, `test`, and `bundle`                | spawner, native plane, projection, and browser bundle agree                                     |
+| Devkit smoke        | `pnpm agent-devkit:smoke`                                                       | Electron main process starts and shuts down correctly                                           |
+| Godview, when wired | `pnpm godview:typecheck`, `godview:test`, `godview:bundle`, and `godview:smoke` | built-in selection, shim/spawn-through, restore, renderer, bundle, and native launch are usable |
+| Package policy      | `pnpm packages:check`                                                           | topology, manifests, ownership, release coverage, and dependencies are valid                    |
+| Support policy      | `pnpm support:check`                                                            | ledger, persona, canonical ground truth, selected versions, evidence, and badge agree           |
+| Full repository     | `pnpm test`                                                                     | all typechecks, script tests, package tests, and app tests pass                                 |
+| Published shape     | `pnpm pack:check`                                                               | all public packages build and tarballs contain only allowed files                               |
 
 Run live tests only against an explicitly selected artifact in an isolated environment. Existing examples use `PUPPETEER_REAL_CLAUDE=1`, `CODEX_LIVE=1`, and `GROK_LIVE=1`; define and document the equivalent for a new vendor.
 
@@ -1165,7 +1179,8 @@ This is the review checklist for files commonly missed during a first adaptation
 
 ### Product applications
 
-- [ ] Godview built-in/restorable lists, shim, spawn-through, and any intentional provider-branding seams
+- [ ] launch descriptor, native-invocation normalizer, continuation codec, and adjacent adapter tests
+- [ ] Godview product branding only; no provider mechanics in shim, spawn-through, or restore
 - [ ] product-app typecheck, tests, bundle, and smoke for every app changed
 
 ### Automation

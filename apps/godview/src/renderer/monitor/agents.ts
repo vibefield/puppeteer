@@ -6,13 +6,7 @@ import {
   type AgentMonitorState,
 } from '@vibecook/puppeteer-core';
 import type { AgentMonitorStateMessage, AgentSessionInfo } from '../../protocol.js';
-import {
-  agentColor,
-  classifyTerminalStatus,
-  projectLabel,
-  providerLabel,
-  type AgentVisualStatus,
-} from '../agent-status.js';
+import { agentColor, classifyTerminalStatus, projectLabel, type AgentVisualStatus } from '../agent-status.js';
 import { folderName } from '../folder-name.js';
 import type { PaneAttachment } from '../pane-attachments.js';
 import type { MonitorAgent } from './types.js';
@@ -107,8 +101,7 @@ export function monitorAgentFromSession(
     ...(recency === 'stale' ? { stale: true } : {}),
     ...(cwd ? { cwd } : {}),
     agent: {
-      kind: info.agent,
-      provider: providerLabel(info.agent),
+      provider: { ...info.provider },
       ...(current.model ? { model: current.model.displayName || current.model.id } : {}),
       ...(branch ? { branch } : {}),
       ...(current.context ? { contextWindow: current.context } : {}),

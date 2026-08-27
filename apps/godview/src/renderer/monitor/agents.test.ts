@@ -57,6 +57,7 @@ function agentRecord(
   const runtimeRunId = `run-${runtimeSessionId}`;
   return {
     info: {
+      provider: { id: 'codex', label: 'Codex' },
       agent: 'codex',
       runtimeRunId,
       runtimeEpoch: 1,
@@ -87,7 +88,7 @@ describe('monitor agent assembly', () => {
     expect(assembled).toHaveLength(1);
     // The same body, so a view's placement survives the promotion.
     expect(assembled[0]!.id).toBe('terminal-a');
-    expect(assembled[0]!.agent?.kind).toBe('codex');
+    expect(assembled[0]!.agent?.provider).toEqual({ id: 'codex', label: 'Codex' });
   });
 
   it('shows only records backed by the canonical monitor projection', () => {

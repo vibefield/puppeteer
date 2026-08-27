@@ -79,8 +79,7 @@ describe('GodviewTabRegistry', () => {
       exited: false,
       descriptor: {
         kind: 'agent' as const,
-        agent: 'claude',
-        nativeSessionId: 'native',
+        continuation: { providerId: 'claude', nativeSessionId: 'native', implementation: 'native' as const },
         cwd: '/repo',
         workspace: { mode: 'direct', root: '/repo', sourcePath: '/repo' },
       },

@@ -1,8 +1,9 @@
 import { describe, expect, it } from 'vitest';
 import type { AgentSessionInfo } from '../protocol.js';
-import { agentColor, classifyTerminalStatus, projectLabel, providerLabel } from './agent-status.js';
+import { agentColor, classifyTerminalStatus, projectLabel } from './agent-status.js';
 
 const info = {
+  provider: { id: 'codex', label: 'Codex' },
   agent: 'codex',
   sessionId: 'native-1',
   runtimeSessionId: 'session-1',
@@ -18,13 +19,15 @@ describe('Godview agent status', () => {
     expect(classifyTerminalStatus(undefined)).toBe('idle');
   });
 
-  it('labels a session from its workspace and its provider from its kind', () => {
+  it('labels a session from its workspace and falls back to adapter-authored provider metadata', () => {
     expect(projectLabel(info)).toBe('godview');
     expect(projectLabel(info, '/project/godview/packages/app')).toBe('app');
-    expect(providerLabel('codex')).toBe('Codex');
-    expect(providerLabel('hermes')).toBe('Hermes');
-    expect(providerLabel('kimi')).toBe('Kimi');
-    expect(providerLabel('opencode')).toBe('OpenCode');
+    const providerFallback = {
+      ...info,
+      workspace: { ...info.workspace, root: '', sourcePath: '' },
+      session: { ...info.session, cwd: null },
+    };
+    expect(projectLabel(providerFallback)).toBe('Codex');
   });
 
   it('assigns a stable per-session relationship color', () => {

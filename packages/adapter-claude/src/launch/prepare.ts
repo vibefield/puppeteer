@@ -40,6 +40,8 @@ export interface PrepareClaudeSessionOptions {
   /** The bearer token VALUE — placed in `env`, never written to disk. */
   token: string;
   executable?: string;
+  /** Adapter-normalized additions; generated hook/auth values always win. */
+  env?: Record<string, string>;
   permissionMode?: string;
   /** Model alias or full model id passed to Claude Code's `--model`. */
   model?: string;
@@ -262,6 +264,7 @@ export async function prepareClaudeSession(options: PrepareClaudeSessionOptions)
     args: isScript ? [executable, ...args] : args,
     cwd: options.cwd,
     env: {
+      ...(options.env ?? {}),
       [options.tokenEnvVar]: options.token,
       ...(options.otelLogsEndpoint
         ? {

@@ -13,7 +13,7 @@ import {
   writeFileSync,
 } from 'node:fs';
 import { open as openFile, writeFile } from 'node:fs/promises';
-import { basename, delimiter, isAbsolute, join, relative, resolve, sep } from 'node:path';
+import { basename, delimiter, isAbsolute, join, resolve } from 'node:path';
 import { app, BrowserWindow, clipboard, dialog, ipcMain, Menu, nativeTheme, powerMonitor, shell } from 'electron';
 import {
   allSettledWithin,
@@ -27,7 +27,7 @@ import {
 } from '@vibecook/ghosttea-electron/main';
 import type { SessionSummary } from '@vibecook/ghosttea-protocol';
 import type { AgentHost } from '@vibecook/puppeteer-core';
-import { createBuiltinAgentRuntime, type BuiltinExecutableAgentKind } from '@vibecook/puppeteer-builtin-providers';
+import { createBuiltinAgentRuntime } from '@vibecook/puppeteer-builtin-providers';
 import { createActionRecorder } from '@vibecook/puppeteer-record';
 import type { GodviewTheme } from '../appearance-themes.js';
 import {
@@ -35,6 +35,8 @@ import {
   type AgentRuntime,
   type AgentWorkspaceFinal,
   type AgentWorkspaceRequest,
+  type ResumeAgentOptions,
+  type SpawnAgentResult,
 } from '@vibecook/puppeteer-runtime';
 import type {
   AccountUsageBatch,
@@ -44,8 +46,6 @@ import type {
   CreateAgentSessionResult,
   PaneRehydrationRequest,
   PromptReceipt,
-  ScenarioRecordingStatus,
-  StartScenarioRecordingResult,
   SubmitPromptOptions,
   TerminalSessionHandoff,
 } from '../protocol.js';
@@ -110,20 +110,16 @@ import {
   readPaneRecoveryMetadata,
   readRestoreWorkspaceDocument,
   restoreWorkspaceSessionIds,
-  restoredAgentOptions,
   snapshotAgent,
   snapshotReferencedSessionIds,
   summarizeRestoreSnapshot,
   type RestoreDescriptor,
-  type RestoreAgentLaunchProvenance,
   type RestoreSnapshot,
   type RestoreSnapshotAgent,
   type RestoreSnapshotAgentInput,
   type RestoreWorkspaceDocument,
 } from '../restore-snapshot.js';
-import { claudeRestoreLaunchProvenance } from './restore-launch.js';
 import { discardDurableRestoreState, readDurableRestoreState, writeDurableRestoreState } from './restore-store.js';
-import { createClaudeScenarioRecorder, type RecordedClaudeScenario } from './scenario-recorder.js';
 
 declare const __dirname: string;
 
@@ -138,21 +134,12 @@ const RESTORE_SMOKE_ARGUMENT = process.argv.find(
 );
 const RESTORE_SMOKE = RESTORE_SMOKE_ARGUMENT !== undefined;
 const RESTORE_SMOKE_PHASE = RESTORE_SMOKE_ARGUMENT?.split('=', 2)[1];
-const AGENT_SMOKE = process.env.PUPPETEER_AGENT_SMOKE as BuiltinExecutableAgentKind | undefined;
-const SPAWN_THROUGH_SMOKE = process.argv
-  .find((argument) => argument.startsWith('--spawn-through-smoke='))
-  ?.slice('--spawn-through-smoke='.length) as BuiltinExecutableAgentKind | undefined;
-const CLAUDE_RAIL_FAILURE_SMOKE =
-  SPAWN_THROUGH_SMOKE === 'claude' && process.env.PUPPETEER_SPAWN_SMOKE_EXPECT_RAIL_FAILURE === '1';
-const CLAUDE_RAIL_FAILURE_OCCURRENCE = (() => {
-  const raw = process.env.PUPPETEER_SPAWN_SMOKE_RAIL_FAILURE_OCCURRENCE?.trim();
-  if (!raw) return undefined;
-  const occurrence = Number(raw);
-  if (!Number.isSafeInteger(occurrence) || occurrence < 1 || occurrence > 100) {
-    throw new Error('PUPPETEER_SPAWN_SMOKE_RAIL_FAILURE_OCCURRENCE must be an integer from 1 through 100');
-  }
-  return occurrence;
-})();
+const AGENT_SMOKE = process.env.PUPPETEER_AGENT_SMOKE?.trim() || undefined;
+const SPAWN_THROUGH_SMOKE =
+  process.argv
+    .find((argument) => argument.startsWith('--spawn-through-smoke='))
+    ?.slice('--spawn-through-smoke='.length)
+    .trim() || undefined;
 const appRoot = resolve(__dirname, '..');
 const repoRoot = resolve(appRoot, '../..');
 const ghostteadBinaryName = process.platform === 'win32' ? 'ghosttead.exe' : 'ghosttead';
@@ -181,14 +168,6 @@ function executableOnOriginalPath(command: string): string | undefined {
   }
   return undefined;
 }
-
-const realAgentExecutables: Partial<Record<BuiltinExecutableAgentKind, string>> = Object.fromEntries(
-  (['claude', 'codex', 'grok', 'kimi', 'opencode'] as const).flatMap((agent) => {
-    const configured = process.env[`PUPPETEER_${agent.toUpperCase()}_BIN`] ?? agent;
-    const executable = executableOnOriginalPath(configured);
-    return executable ? [[agent, executable]] : [];
-  }),
-);
 
 /**
  * The puppeteer imposter, found the same way the real agents are.
@@ -259,22 +238,12 @@ const pendingTerminalHandoffs = new Map<string, { window: BrowserWindow; timer: 
 interface AgentRecord {
   info: AgentSessionInfo;
   session: SessionSummary;
-  /** Safe launch provenance needed to resume against the same provider identity. */
-  launch?: RestoreAgentLaunchProvenance;
   /** The terminal can remain open after its adopted agent child exits. */
   agentProcessAlive: boolean;
   final?: AgentWorkspaceFinal;
 }
 
-/** Main-only provider options used by trusted restore wiring, never renderer IPC. */
-type InternalCreateAgentSessionOptions = CreateAgentSessionOptions & { agentOptions?: unknown };
-
 const agentRecords = new Map<string, AgentRecord>();
-const scenarioRecorder = createClaudeScenarioRecorder();
-const scenarioRecordingFlushTimers = new Map<string, NodeJS.Timeout>();
-// Checkpoint at activity bursts without rewriting a growing JSON document for
-// every streaming MessageDisplay delta.
-const SCENARIO_RECORDING_FLUSH_MS = 1_000;
 
 const RESTORE_CHECKPOINT_DEBOUNCE_MS = 250;
 const restoreStateDirectory = join(app.getPath('userData'), 'restore-state');
@@ -322,118 +291,6 @@ const monitorRelay = new MonitorIpcRelay({
     }
   },
 });
-
-function scenarioNameFromPath(filePath: string): string {
-  const stem = basename(filePath).replace(/\.json$/i, '');
-  return (
-    stem
-      .toLowerCase()
-      .replace(/[^a-z0-9]+/g, '-')
-      .replace(/^-+|-+$/g, '')
-      .slice(0, 128) || 'recorded-claude-session'
-  );
-}
-
-function writeScenarioRecording(filePath: string, document: RecordedClaudeScenario): void {
-  writeFileSync(filePath, `${JSON.stringify(document, null, 2)}\n`, { mode: 0o600 });
-}
-
-function publishScenarioRecording(status: ScenarioRecordingStatus): void {
-  broadcast('puppeteer:scenario-recording', status);
-}
-
-function clearScenarioRecordingFlush(runtimeSessionId: string): void {
-  const timer = scenarioRecordingFlushTimers.get(runtimeSessionId);
-  if (timer) clearTimeout(timer);
-  scenarioRecordingFlushTimers.delete(runtimeSessionId);
-}
-
-function flushScenarioRecording(runtimeSessionId: string): ScenarioRecordingStatus | undefined {
-  const status = scenarioRecorder.status(runtimeSessionId);
-  const document = scenarioRecorder.document(runtimeSessionId);
-  if (!status || !document) return undefined;
-  writeScenarioRecording(status.filePath, document);
-  publishScenarioRecording(status);
-  return status;
-}
-
-function scheduleScenarioRecordingFlush(runtimeSessionId: string): void {
-  if (scenarioRecordingFlushTimers.has(runtimeSessionId)) return;
-  const timer = setTimeout(() => {
-    scenarioRecordingFlushTimers.delete(runtimeSessionId);
-    try {
-      flushScenarioRecording(runtimeSessionId);
-    } catch (error) {
-      const status = scenarioRecorder.status(runtimeSessionId);
-      const message = error instanceof Error ? error.message : String(error);
-      if (status) publishScenarioRecording({ ...status, error: message });
-      process.stderr.write(`[main] scenario recording flush failed: ${message}\n`);
-    }
-  }, SCENARIO_RECORDING_FLUSH_MS);
-  timer.unref?.();
-  scenarioRecordingFlushTimers.set(runtimeSessionId, timer);
-}
-
-function finishScenarioRecording(runtimeSessionId: string): ScenarioRecordingStatus | undefined {
-  clearScenarioRecordingFlush(runtimeSessionId);
-  const stoppedAt = new Date().toISOString();
-  const status = scenarioRecorder.status(runtimeSessionId);
-  const document = scenarioRecorder.document(runtimeSessionId, true, stoppedAt);
-  if (!status || !document) return undefined;
-  try {
-    writeScenarioRecording(status.filePath, document);
-  } catch (error) {
-    const message = error instanceof Error ? error.message : String(error);
-    publishScenarioRecording({ ...status, error: message });
-    throw error;
-  }
-  const stopped = scenarioRecorder.stop(runtimeSessionId, stoppedAt)!;
-  publishScenarioRecording(stopped);
-  return stopped;
-}
-
-async function startScenarioRecording(
-  runtimeSessionId: string,
-  owner?: BrowserWindow,
-): Promise<StartScenarioRecordingResult> {
-  const record = agentRecords.get(runtimeSessionId);
-  if (!record || record.info.agent !== 'claude') throw new Error('scenario recording requires a live Claude session');
-  if (record.info.emulated) throw new Error('scenario recording is available only for real Claude sessions');
-  const existing = scenarioRecorder.status(runtimeSessionId);
-  if (existing) return { cancelled: false, status: existing };
-
-  const directory = join(app.getPath('documents'), 'Puppeteer Scenarios');
-  mkdirSync(directory, { recursive: true, mode: 0o700 });
-  const stamp = new Date()
-    .toISOString()
-    .replace(/[-:]/g, '')
-    .replace(/\.\d{3}Z$/, 'Z');
-  const dialogOptions: Electron.SaveDialogOptions = {
-    title: 'Record Claude hooks as an Imposter scenario',
-    message: 'Recorded hooks may contain prompts, tool input and output, and local paths.',
-    defaultPath: join(directory, `recorded-claude-${stamp}.json`),
-    filters: [{ name: 'Imposter scenario', extensions: ['json'] }],
-  };
-  const selection = owner
-    ? await dialog.showSaveDialog(owner, dialogOptions)
-    : await dialog.showSaveDialog(dialogOptions);
-  if (selection.canceled || !selection.filePath) return { cancelled: true };
-  const filePath = selection.filePath.toLowerCase().endsWith('.json')
-    ? selection.filePath
-    : `${selection.filePath}.json`;
-  const status = scenarioRecorder.start({
-    runtimeSessionId,
-    filePath,
-    name: scenarioNameFromPath(filePath),
-  });
-  try {
-    flushScenarioRecording(runtimeSessionId);
-  } catch (error) {
-    scenarioRecorder.stop(runtimeSessionId);
-    throw error;
-  }
-  return { cancelled: false, status };
-}
 
 function loadAppearanceProfiles(): { profiles: AppearanceProfiles; persisted: boolean } {
   if (!existsSync(terminalAppearanceProfilesPath)) {
@@ -760,17 +617,8 @@ const recorder = createActionRecorder({
 const agentRuntime: AgentRuntime = createBuiltinAgentRuntime({
   host,
   defaultCwd: repoRoot,
-  executables: realAgentExecutables,
   recorder,
-  ...(CLAUDE_RAIL_FAILURE_SMOKE
-    ? {
-        claudeHookRailFaultInjection: {
-          afterHookEvent: process.env.PUPPETEER_SPAWN_SMOKE_RAIL_FAILURE_AFTER_HOOK?.trim() || 'Stop',
-          ...(CLAUDE_RAIL_FAILURE_OCCURRENCE === undefined ? {} : { occurrence: CLAUDE_RAIL_FAILURE_OCCURRENCE }),
-          reason: 'Godview native canary observation-rail fault',
-        },
-      }
-    : {}),
+  imposterExecutable,
   onError: (error) => process.stderr.write(`[main] agent runtime: ${error.message}\n`),
 });
 const monitorConnection = connectMonitorIpcRelay(agentRuntime, monitorRelay, (error) =>
@@ -789,11 +637,6 @@ agentRuntime.onAccountUsage((provider, result) => {
   accountUsageMonitor.ingest(provider.id, result);
 });
 function pushWorkspaceFinal(final: AgentWorkspaceFinal): void {
-  try {
-    finishScenarioRecording(final.runtimeSessionId);
-  } catch (error) {
-    process.stderr.write(`[main] scenario recording finalization failed: ${String(error)}\n`);
-  }
   const record = agentRecords.get(final.runtimeSessionId);
   if (record) record.final = final;
   broadcast('puppeteer:workspace-final', final);
@@ -902,8 +745,7 @@ function commitRestoreCheckpoint(): RestoreSnapshot | undefined {
     for (const pending of pendingRestoreAgents.values()) {
       checkpointAgents.set(pending.runtimeSessionId, {
         info: {
-          agent: pending.agent as AgentSessionInfo['agent'],
-          sessionId: pending.nativeSessionId,
+          continuation: { ...pending.continuation },
           runtimeSessionId: pending.runtimeSessionId,
           workspace: pending.workspace as AgentSessionInfo['workspace'],
         },
@@ -1079,13 +921,10 @@ async function openInitialWindows(): Promise<void> {
   scheduleRestoreCheckpoint(true);
 }
 
-function rememberAgent(info: AgentSessionInfo, session: SessionSummary, launch?: RestoreAgentLaunchProvenance): void {
-  agentRecords.set(info.runtimeSessionId, { info, session, ...(launch ? { launch } : {}), agentProcessAlive: true });
+function rememberAgent(info: AgentSessionInfo, session: SessionSummary): void {
+  agentRecords.set(info.runtimeSessionId, { info, session, agentProcessAlive: true });
   const agent = agentRuntime.agent(info.runtimeSessionId);
-  agent?.on('*', (envelope) => {
-    if (scenarioRecorder.capture(info.runtimeSessionId, envelope)) {
-      scheduleScenarioRecordingFlush(info.runtimeSessionId);
-    }
+  agent?.on('*', () => {
     const runtimeInfo = agent.info;
     const record = agentRecords.get(info.runtimeSessionId);
     if (record && record.info.nativeSession.id !== runtimeInfo.nativeSession.id) {
@@ -1093,6 +932,7 @@ function rememberAgent(info: AgentSessionInfo, session: SessionSummary, launch?:
         ...record.info,
         nativeSession: { ...runtimeInfo.nativeSession },
         nativeSessionRevision: runtimeInfo.nativeSessionRevision,
+        continuation: { ...runtimeInfo.continuation },
         sessionId: runtimeInfo.nativeSession.id,
       };
       scheduleRestoreCheckpoint(true);
@@ -1120,7 +960,7 @@ function onSessionExited(event: SessionExitedEvent, preserveAgentForRecovery = f
   stopAdoptedProcessMonitor(event.sessionId);
   const record = agentRecords.get(event.sessionId);
   if (record && preserveAgentForRecovery) {
-    const descriptor = paneRecoveryMetadata(record.session, record.info, record.launch).descriptor;
+    const descriptor = paneRecoveryMetadata(record.session, record.info).descriptor;
     if (descriptor.kind === 'agent') {
       pendingRestoreAgents.set(event.sessionId, { runtimeSessionId: event.sessionId, ...descriptor });
     }
@@ -1258,8 +1098,6 @@ function recoverBackend(): Promise<void> {
   });
   return recoveringBackend;
 }
-
-const RESTORABLE_AGENTS: readonly string[] = ['claude', 'codex', 'grok', 'kimi', 'opencode', 'acp'];
 
 function defaultShell(): string {
   return process.platform === 'win32' ? (process.env.COMSPEC ?? 'powershell.exe') : (process.env.SHELL ?? '/bin/zsh');
@@ -1399,8 +1237,19 @@ function descriptorForRehydration(request: PaneRehydrationRequest): RestoreDescr
 
   const legacyPane = restoreManifest && restorePaneFor(restoreManifest, request.sessionId);
   if (!legacyPane) return undefined;
-  const { sessionId: _sessionId, ...descriptor } = legacyPane;
-  return descriptor;
+  if (legacyPane.kind === 'terminal') {
+    return { kind: 'terminal', ...(legacyPane.cwd ? { cwd: legacyPane.cwd } : {}) };
+  }
+  return {
+    kind: 'agent',
+    continuation: {
+      providerId: legacyPane.agent,
+      nativeSessionId: legacyPane.nativeSessionId,
+      implementation: 'native',
+    },
+    ...(legacyPane.cwd ? { cwd: legacyPane.cwd } : {}),
+    workspace: legacyPane.workspace,
+  };
 }
 
 async function recoverDescriptor(
@@ -1413,33 +1262,35 @@ async function recoverDescriptor(
   const client = backend?.automation;
   if (!client) return null;
 
-  if (descriptor.kind === 'agent' && RESTORABLE_AGENTS.includes(descriptor.agent)) {
+  if (
+    descriptor.kind === 'agent' &&
+    agentRuntime
+      .launchProviders()
+      .some((provider) => provider.id === descriptor.continuation.providerId && provider.resume)
+  ) {
     try {
-      const agentOptions = restoredAgentOptions(descriptor);
-      const result = await createAgentSession(
+      const result = await resumeAgentSession(
         {
-          agent: descriptor.agent,
+          continuation: descriptor.continuation,
           ...(descriptor.cwd ? { cwd: descriptor.cwd } : {}),
-          resume: descriptor.nativeSessionId,
           workspace: restoredWorkspaceRequest(descriptor),
-          ...(agentOptions ? { agentOptions } : {}),
-        } as InternalCreateAgentSessionOptions,
+        },
         owner,
         originSessionId,
       );
       if (!('error' in result)) return result.session;
-      console.warn(`[main] could not resume ${descriptor.agent}: ${result.error.message}`);
+      console.warn(`[main] could not resume ${descriptor.continuation.providerId}: ${result.error.message}`);
       if (!shellFallback) return null;
     } catch (error) {
-      console.error(`[main] failed to resume ${descriptor.agent}`, error);
+      console.error(`[main] failed to resume ${descriptor.continuation.providerId}`, error);
       if (!shellFallback) return null;
     }
   } else if (descriptor.kind === 'agent') {
     if (!shellFallback) {
-      console.warn(`[main] cannot restore unsupported agent ${descriptor.agent}`);
+      console.warn(`[main] cannot restore unsupported agent ${descriptor.continuation.providerId}`);
       return null;
     }
-    console.warn(`[main] replacing unsupported agent ${descriptor.agent} with a shell`);
+    console.warn(`[main] replacing unsupported agent ${descriptor.continuation.providerId} with a shell`);
   }
 
   try {
@@ -1527,31 +1378,39 @@ async function restoreDetachedAgents(snapshot: RestoreSnapshot): Promise<void> {
 }
 
 async function createAgentSession(
-  options: InternalCreateAgentSessionOptions,
+  options: CreateAgentSessionOptions,
   owner?: BrowserWindow,
   restoringSessionId?: string,
 ): Promise<CreateAgentSessionResult> {
-  const spawned = await agentRuntime.spawn(options);
+  return registerSpawnedAgent(await agentRuntime.spawn(options), owner, restoringSessionId);
+}
+
+async function resumeAgentSession(
+  options: ResumeAgentOptions,
+  owner?: BrowserWindow,
+  restoringSessionId?: string,
+): Promise<CreateAgentSessionResult> {
+  return registerSpawnedAgent(await agentRuntime.resume(options), owner, restoringSessionId);
+}
+
+async function registerSpawnedAgent(
+  spawned: SpawnAgentResult,
+  owner?: BrowserWindow,
+  restoringSessionId?: string,
+): Promise<CreateAgentSessionResult> {
   if ('error' in spawned) return spawned;
   const result = spawned.info;
   const session = await backend!.automation.getSession(result.runtimeSessionId);
-  const info: AgentSessionInfo = { ...result, agent: result.agent as AgentSessionInfo['agent'], session };
-  const rawAgentOptions =
-    options.agentOptions !== null && typeof options.agentOptions === 'object'
-      ? (options.agentOptions as Record<string, unknown>)
-      : undefined;
-  const configuredClaudeDirectory =
-    options.agent === 'claude'
-      ? typeof rawAgentOptions?.configDir === 'string'
-        ? rawAgentOptions.configDir
-        : process.env.CLAUDE_CONFIG_DIR
-      : undefined;
-  const launch = claudeRestoreLaunchProvenance(configuredClaudeDirectory, result.workspace.root);
+  const info: AgentSessionInfo = {
+    ...result,
+    provider: { ...result.provider },
+    session,
+  };
   if (restoringSessionId) {
     pendingRestoreAgents.delete(restoringSessionId);
     setRestoredSessionAlias(restoredSessionAliases, restoringSessionId, result.runtimeSessionId);
   }
-  rememberAgent(info, session, launch);
+  rememberAgent(info, session);
   if (owner) tabs.get(owner)?.sessionIds.add(result.runtimeSessionId);
   return info;
 }
@@ -1561,11 +1420,6 @@ async function handleSpawnThroughRequest(request: SpawnThroughRequest): Promise<
     const runtimeSessionId = adoptedPreparationSessions.get(request.preparationId);
     await agentRuntime.cancelPrepared(request.preparationId);
     if (runtimeSessionId) {
-      try {
-        finishScenarioRecording(runtimeSessionId);
-      } catch (error) {
-        process.stderr.write(`[main] scenario recording finalization failed: ${String(error)}\n`);
-      }
       stopAdoptedProcessMonitor(runtimeSessionId);
       managedTerminalIds.delete(runtimeSessionId);
       agentRecords.delete(runtimeSessionId);
@@ -1578,24 +1432,21 @@ async function handleSpawnThroughRequest(request: SpawnThroughRequest): Promise<
   return prepareSpawnThroughLaunch(request, {
     runtime: agentRuntime,
     imposterBin: () => imposterExecutable,
-    imposterHome: (agent) => {
-      if (!spawnThroughDirectory) return undefined;
-      const directory = join(spawnThroughDirectory, 'imposter', agent);
+    imposterStateRoot: (providerId) => {
+      const directory = join(app.getPath('userData'), 'imposter', providerId);
       mkdirSync(directory, { recursive: true, mode: 0o700 });
+      chmodSync(directory, 0o700);
       return directory;
     },
     listSessions: () => backend!.automation.listSessions(),
     onAdopted: ({ info: adopted, session, processId, preparationId }) => {
       const info: AgentSessionInfo = {
         ...adopted,
-        agent: adopted.agent as AgentSessionInfo['agent'],
-        ...(request.imposter ? { emulated: true } : {}),
+        provider: { ...adopted.provider },
         session,
       };
       managedTerminalIds.add(session.id);
-      const launch =
-        request.agent === 'claude' ? claudeRestoreLaunchProvenance(request.claudeConfigDir, request.cwd) : undefined;
-      rememberAgent(info, session, launch);
+      rememberAgent(info, session);
       monitorAdoptedProcess(session.id, processId, preparationId);
     },
   });
@@ -1603,10 +1454,25 @@ async function handleSpawnThroughRequest(request: SpawnThroughRequest): Promise<
 
 async function initializeSpawnThrough(): Promise<void> {
   if (spawnThroughGateway || process.platform === 'win32') return;
-  // `ai` is shimmed on its own terms: an emulated pane needs no real agent
-  // installed at all, so a machine with only the imposter still gets
-  // spawn-through. The shim reads its own name to tell the two apart.
-  const names = [...(Object.keys(realAgentExecutables) as string[]), ...(imposterExecutable ? ['ai'] : [])];
+  const availableNames = new Set<string>();
+  const launchProviders = agentRuntime.launchProviders().flatMap((provider) => {
+    const capability = provider.nativeInvocation;
+    if (!capability) return [];
+    let hasAvailableCommand = false;
+    const commands = capability.commands.map((command) => {
+      const executable = executableOnOriginalPath(command.executable);
+      if (executable) {
+        hasAvailableCommand = true;
+        availableNames.add(command.name);
+      }
+      return { ...command, executable: executable ?? command.executable };
+    });
+    const canImpersonate = Boolean(imposterExecutable && capability.imposter);
+    if (!hasAvailableCommand && !canImpersonate) return [];
+    return [{ ...provider, nativeInvocation: { ...capability, commands } }];
+  });
+  const canUseImposter = launchProviders.some((provider) => provider.nativeInvocation?.imposter !== undefined);
+  const names = [...availableNames, ...(canUseImposter ? ['ai'] : [])];
   if (names.length === 0) return;
   const token = randomBytes(32).toString('hex');
   spawnThroughGateway = await startSpawnThroughGateway(token, handleSpawnThroughRequest);
@@ -1638,6 +1504,8 @@ async function initializeSpawnThrough(): Promise<void> {
     PUPPETEER_SPAWN_TOKEN: token,
     PUPPETEER_SHIM_DIR: spawnThroughDirectory,
     PUPPETEER_ORIGINAL_ZDOTDIR: process.env.ZDOTDIR ?? '',
+    PUPPETEER_LAUNCH_PROVIDERS: JSON.stringify(launchProviders),
+    ...(imposterExecutable ? { PUPPETEER_IMPOSTER_EXECUTABLE: imposterExecutable } : {}),
     PATH: `${spawnThroughDirectory}${delimiter}${originalPath}`,
     ZDOTDIR: zDotDirectory,
   };
@@ -1696,22 +1564,6 @@ function registerIpc(): void {
   ipcMain.handle('puppeteer:workspace-diff', (_event, runtimeSessionId: string) =>
     agentRuntime.workspaceDiff(runtimeSessionId),
   );
-  ipcMain.handle('puppeteer:scenario-recordings', (): ScenarioRecordingStatus[] => scenarioRecorder.statuses());
-  ipcMain.handle('puppeteer:start-scenario-recording', (event, runtimeSessionId: unknown) => {
-    if (typeof runtimeSessionId !== 'string' || !runtimeSessionId) {
-      throw new Error('runtimeSessionId is required');
-    }
-    const owner = BrowserWindow.fromWebContents(event.sender);
-    return startScenarioRecording(runtimeSessionId, owner && tabs.get(owner) ? owner : undefined);
-  });
-  ipcMain.handle('puppeteer:stop-scenario-recording', (_event, runtimeSessionId: unknown) => {
-    if (typeof runtimeSessionId !== 'string' || !runtimeSessionId) {
-      throw new Error('runtimeSessionId is required');
-    }
-    const status = finishScenarioRecording(runtimeSessionId);
-    if (!status) throw new Error('scenario recording is not active');
-    return status;
-  });
 }
 
 ipcMain.on('terminal-context-menu', (event, canCopy: boolean) => {
@@ -2443,9 +2295,11 @@ async function runRestoreSmoke(): Promise<void> {
  * `--spawn-through-smoke=<agent>` with `ai --<agent>` for Imposter integration;
  * that path owns the per-session persona environment as well as the binary.
  */
-async function runAgentSmoke(agent: BuiltinExecutableAgentKind): Promise<void> {
+async function runAgentSmoke(providerId: string): Promise<void> {
   await ensureBackend();
-  const result = await createAgentSession({ agent, cwd: repoRoot });
+  const provider = agentRuntime.providers().find((candidate) => candidate.id === providerId);
+  if (!provider) throw new Error(`unknown agent provider: ${providerId}`);
+  const result = await createAgentSession({ agent: provider.id, cwd: repoRoot });
   if ('error' in result)
     throw new Error(`agent smoke createSession failed: ${result.error.code} ${result.error.message}`);
   // Watch for the spawned process dying so the failure says WHY, not just none.
@@ -2465,48 +2319,44 @@ async function runAgentSmoke(agent: BuiltinExecutableAgentKind): Promise<void> {
     await new Promise((resolveDelay) => setTimeout(resolveDelay, 100));
   }
   if (lifecycle !== 'ready') {
-    throw new Error(`${agent} did not become ready (lifecycle=${lifecycle ?? 'none'}; ${exitInfo ?? 'process alive'})`);
+    throw new Error(
+      `${provider.label} did not become ready (lifecycle=${lifecycle ?? 'none'}; ${exitInfo ?? 'process alive'})`,
+    );
   }
-  console.log(`AGENT SMOKE OK ${agent} ${result.sessionId}`);
+  console.log(`AGENT SMOKE OK ${provider.id} ${result.sessionId}`);
   // Diagnostic hold (PUPPETEER_AGENT_SMOKE_HOLD_MS): keep the session alive
   // so external observers (e.g. the Imposter control plane) can see it.
   const holdMs = Number(process.env.PUPPETEER_AGENT_SMOKE_HOLD_MS ?? 0);
   if (holdMs > 0) await new Promise((resolveDelay) => setTimeout(resolveDelay, holdMs));
 }
 
-async function runSpawnThroughSmoke(agent: BuiltinExecutableAgentKind): Promise<void> {
-  const launchCommand = process.env.PUPPETEER_SPAWN_SMOKE_COMMAND ?? agent;
-  const commandWords = launchCommand.trim().split(/\s+/u);
-  const usesInstalledImposter =
-    Boolean(imposterExecutable) && commandWords[0] === 'ai' && commandWords[1] === `--${agent}`;
-  if (!realAgentExecutables[agent] && !usesInstalledImposter) throw new Error(`${agent} is not installed`);
+async function runSpawnThroughSmoke(providerId: string): Promise<void> {
+  const provider = agentRuntime.providers().find((candidate) => candidate.id === providerId);
+  if (!provider) throw new Error('unknown agent provider: ' + providerId);
+  const launch = agentRuntime.launchProviders().find((candidate) => candidate.id === provider.id)?.nativeInvocation;
+  if (!launch) throw new Error(provider.label + ' does not advertise native terminal invocation');
+
+  const launchCommand = process.env.PUPPETEER_SPAWN_SMOKE_COMMAND?.trim() || launch.commands[0]?.name;
+  if (!launchCommand) throw new Error(provider.label + ' has no advertised launch command');
+  const commandWords = launchCommand.split(/\s+/u);
+  const usesImposter =
+    Boolean(imposterExecutable && launch.imposter) &&
+    commandWords[0] === 'ai' &&
+    commandWords[1] === '--' + provider.id;
+  const usesNative = launch.commands.some(
+    (command) => command.name === commandWords[0] && executableOnOriginalPath(command.executable) !== undefined,
+  );
+  if (!usesNative && !usesImposter) throw new Error(provider.label + ' is not installed');
+
   const configuredCwd = process.env.PUPPETEER_SPAWN_SMOKE_CWD?.trim();
   const smokeCwd = configuredCwd || repoRoot;
   if (!isAbsolute(smokeCwd)) throw new Error('PUPPETEER_SPAWN_SMOKE_CWD must be absolute');
   try {
     accessSync(smokeCwd, constants.R_OK | constants.X_OK);
   } catch {
-    throw new Error(`spawn-through smoke cwd is not an accessible directory: ${smokeCwd}`);
+    throw new Error('spawn-through smoke cwd is not an accessible directory: ' + smokeCwd);
   }
-  const expectedDelegateMarkers = (process.env.PUPPETEER_SPAWN_SMOKE_EXPECT_DELEGATE_MARKERS ?? '')
-    .split('|')
-    .map((value) => value.trim())
-    .filter(Boolean)
-    .map((marker) => {
-      if (!isAbsolute(marker)) throw new Error('spawn-through delegate marker paths must be absolute');
-      const markerPath = resolve(marker);
-      const fromCwd = relative(resolve(smokeCwd), markerPath);
-      if (fromCwd === '' || fromCwd === '..' || fromCwd.startsWith(`..${sep}`) || isAbsolute(fromCwd)) {
-        throw new Error(`spawn-through delegate marker must be inside the smoke cwd: ${markerPath}`);
-      }
-      let initialSize = 0;
-      try {
-        initialSize = statSync(markerPath).size;
-      } catch (error) {
-        if ((error as NodeJS.ErrnoException).code !== 'ENOENT') throw error;
-      }
-      return { path: markerPath, initialSize };
-    });
+
   await ensureBackend();
   const session = await backend!.automation.createSession({
     executable:
@@ -2520,1160 +2370,54 @@ async function runSpawnThroughSmoke(agent: BuiltinExecutableAgentKind): Promise<
     programKind: 'interactive-shell',
   });
   const submitted = await backend!.automation.pasteAndSubmit(session.id, launchCommand);
-  if (!submitted.accepted) throw new Error(`spawn-through smoke input was rejected: ${submitted.reason}`);
-  const pickerDelayMs = Number(process.env.PUPPETEER_SPAWN_SMOKE_PICKER_ACCEPT_MS ?? 0);
-  if (pickerDelayMs > 0) {
-    await new Promise((resolveDelay) => setTimeout(resolveDelay, pickerDelayMs));
-    const accepted = await backend!.automation.pasteAndSubmit(session.id, '');
-    if (!accepted.accepted) throw new Error(`spawn-through smoke picker input was rejected: ${accepted.reason}`);
-  }
-  const deadline = Date.now() + 30_000;
-  let lifecycle: string | undefined;
-  // A fresh Kimi session is intentionally lazy: its durable native identity
-  // and session:started record do not exist until the first prompt. Adoption
-  // still has to complete before we proceed, and the scripted turn below must
-  // then prove the durable bind and ready lifecycle.
-  const allowsLazyInitialIdentity = agent === 'kimi' && Boolean(process.env.PUPPETEER_SPAWN_SMOKE_PROMPT);
-  while (Date.now() < deadline) {
-    lifecycle = agentRuntime.agent(session.id)?.lifecycle;
-    if (
-      agentRecords.has(session.id) &&
-      lifecycle &&
-      (allowsLazyInitialIdentity || !['preparing', 'starting'].includes(lifecycle))
-    ) {
-      break;
-    }
-    await new Promise((resolveDelay) => setTimeout(resolveDelay, 100));
-  }
-  const record = agentRecords.get(session.id);
-  if (!record || record.info.agent !== agent || !record.info.preparationId) {
-    throw new Error(`${agent} was not adopted into the shell terminal`);
-  }
-  if (!lifecycle || (!allowsLazyInitialIdentity && ['preparing', 'starting'].includes(lifecycle))) {
-    throw new Error(`${agent} was adopted but structured control did not become ready`);
-  }
-  if (lifecycle === 'failed' || lifecycle === 'exited') {
-    throw new Error(`${agent} entered terminal lifecycle ${lifecycle}`);
-  }
-  const observedToolRequests = new Map<string, string>();
-  const observedToolOutcomes = new Map<string, 'completed' | 'failed'>();
-  const observedPermissions = new Map<
-    string,
-    { tool?: string; toolCallId?: string; outcome?: 'allowed' | 'denied' | 'dismissed' | 'unknown' }
-  >();
-  const observedRebinds: Array<{ sequence: number; nativeSessionId?: string; startSource?: string }> = [];
-  const observedProcessExitReasons: string[] = [];
-  let clearEventSequence: number | undefined;
-  let postClearTranscriptAssistant = false;
+  if (!submitted.accepted) throw new Error('spawn-through smoke input was rejected: ' + submitted.reason);
+
+  const record = await until(
+    provider.label + ' to be adopted into its shell terminal',
+    async () => {
+      const candidate = agentRecords.get(session.id);
+      return candidate?.info.provider.id === provider.id && candidate.info.preparationId ? candidate : undefined;
+    },
+    30_000,
+  );
   const smokeAgent = agentRuntime.agent(session.id);
-  if (!smokeAgent) throw new Error(`${agent} runtime Agent is unavailable`);
-  const unsubscribeSmokeEvents = smokeAgent.on('*', (envelope) => {
-    const { event } = envelope;
-    switch (event.type) {
-      case 'tool:requested':
-        observedToolRequests.set(event.toolCallId, event.tool);
-        break;
-      case 'tool:completed':
-        observedToolOutcomes.set(event.toolCallId, 'completed');
-        break;
-      case 'tool:failed':
-        observedToolOutcomes.set(event.toolCallId, 'failed');
-        break;
-      case 'interaction:permission-requested':
-        observedPermissions.set(event.requestId, {
-          ...(event.tool === undefined ? {} : { tool: event.tool }),
-          ...(event.toolCallId === undefined ? {} : { toolCallId: event.toolCallId }),
-        });
-        break;
-      case 'interaction:permission-resolved': {
-        const prior = observedPermissions.get(event.requestId) ?? {};
-        observedPermissions.set(event.requestId, { ...prior, outcome: event.outcome });
-        break;
-      }
-      case 'session:started':
-        if (event.rebind) {
-          observedRebinds.push({
-            sequence: envelope.sequence,
-            ...(event.nativeSessionId === undefined ? {} : { nativeSessionId: event.nativeSessionId }),
-            ...(event.startSource === undefined ? {} : { startSource: event.startSource }),
-          });
-        }
-        break;
-      case 'conversation:assistant-message':
-        if (
-          clearEventSequence !== undefined &&
-          envelope.sequence > clearEventSequence &&
-          envelope.source === 'native-transcript'
-        ) {
-          postClearTranscriptAssistant = true;
-        }
-        break;
-      case 'process:exited':
-        observedProcessExitReasons.push(event.reason);
-        break;
-    }
-  });
-  const expectedModel = process.env.PUPPETEER_SPAWN_SMOKE_EXPECT_MODEL?.trim().toLowerCase() || undefined;
-  const expectedEffort = process.env.PUPPETEER_SPAWN_SMOKE_EXPECT_EFFORT?.trim().toLowerCase() || undefined;
-  const expectedPermission =
-    process.env.PUPPETEER_SPAWN_SMOKE_EXPECT_PERMISSION_MODE?.trim().toLowerCase() || undefined;
-  const expectedModelIntent =
-    process.env.PUPPETEER_SPAWN_SMOKE_EXPECT_MODEL_INTENT?.trim().toLowerCase() ||
-    (expectedModel ? 'observed' : undefined);
-  const expectedEffortIntent =
-    process.env.PUPPETEER_SPAWN_SMOKE_EXPECT_EFFORT_INTENT?.trim().toLowerCase() ||
-    (expectedEffort ? 'configured' : undefined);
-  const expectedPermissionIntent =
-    process.env.PUPPETEER_SPAWN_SMOKE_EXPECT_PERMISSION_MODE_INTENT?.trim().toLowerCase() ||
-    (expectedPermission ? 'configured' : undefined);
-  if (
-    [expectedModelIntent, expectedEffortIntent, expectedPermissionIntent].some(
-      (intent) => intent !== undefined && intent !== 'configured' && intent !== 'observed',
-    )
-  ) {
-    throw new Error('initial model/effort/permission intent must be configured or observed');
-  }
-  const includesExpected = (values: Array<string | undefined>, expected: string | undefined): boolean =>
-    expected === undefined || values.some((value) => value?.toLowerCase().includes(expected));
-  const equalsExpected = (values: Array<string | undefined>, expected: string | undefined): boolean =>
-    expected === undefined || values.some((value) => value?.toLowerCase() === expected);
-  type MonitorConfigurationExpectation = {
-    model?: string;
-    modelIntent?: string;
-    configuredModel?: string;
-    effort?: string;
-    effortIntent?: string;
-    configuredEffort?: string;
-    permission?: string;
-    permissionIntent?: string;
-    configuredPermission?: string;
-  };
-  const monitorMatchesConfiguration = (
-    monitor: ReturnType<typeof agentRuntime.monitorState>,
-    expected: MonitorConfigurationExpectation,
-  ): boolean =>
-    includesExpected([monitor?.model?.id, monitor?.model?.displayName], expected.model) &&
-    equalsExpected([monitor?.model?.intent], expected.modelIntent) &&
-    includesExpected(
-      [monitor?.model?.configured?.id, monitor?.model?.configured?.displayName],
-      expected.configuredModel,
-    ) &&
-    equalsExpected([monitor?.effort?.value], expected.effort) &&
-    equalsExpected([monitor?.effort?.intent], expected.effortIntent) &&
-    equalsExpected([monitor?.effort?.configured], expected.configuredEffort) &&
-    equalsExpected(
-      [monitor?.modes.providerPermission?.raw, monitor?.modes.providerPermission?.normalized],
-      expected.permission,
-    ) &&
-    equalsExpected([monitor?.modes.providerPermission?.intent], expected.permissionIntent) &&
-    equalsExpected(
-      [monitor?.modes.providerPermission?.configured?.raw, monitor?.modes.providerPermission?.configured?.normalized],
-      expected.configuredPermission,
-    );
-  const initialExpectation: MonitorConfigurationExpectation = {
-    ...(expectedModel
-      ? expectedModelIntent === 'configured'
-        ? { configuredModel: expectedModel }
-        : { model: expectedModel, modelIntent: expectedModelIntent }
-      : {}),
-    ...(expectedEffort
-      ? expectedEffortIntent === 'configured'
-        ? { configuredEffort: expectedEffort }
-        : { effort: expectedEffort, effortIntent: expectedEffortIntent }
-      : {}),
-    ...(expectedPermission
-      ? expectedPermissionIntent === 'configured'
-        ? { configuredPermission: expectedPermission }
-        : { permission: expectedPermission, permissionIntent: expectedPermissionIntent }
-      : {}),
-  };
-  if (expectedModel || expectedEffort || expectedPermission) {
-    const expectationDeadline = Date.now() + 20_000;
-    let monitor = agentRuntime.monitorState(record.info.runtimeRunId);
-    while (Date.now() < expectationDeadline) {
-      monitor = agentRuntime.monitorState(record.info.runtimeRunId);
-      if (monitorMatchesConfiguration(monitor, initialExpectation)) {
-        break;
-      }
-      await new Promise((resolveDelay) => setTimeout(resolveDelay, 100));
-    }
-    if (!monitorMatchesConfiguration(monitor, initialExpectation)) {
-      throw new Error(
-        `${agent} monitor did not confirm the requested model/effort/mode: ${JSON.stringify({
-          expected: initialExpectation,
-          observed: { model: monitor?.model, effort: monitor?.effort, modes: monitor?.modes },
-        })}`,
-      );
-    }
-    console.log(
-      `SPAWN-THROUGH CONFIG OK ${JSON.stringify({ model: monitor?.model, effort: monitor?.effort, modes: monitor?.modes })}`,
-    );
-  }
-  const configCommands = (process.env.PUPPETEER_SPAWN_SMOKE_CONFIG_COMMANDS ?? '')
-    .split('|')
-    .map((value) => value.trim())
-    .filter(Boolean);
-  const configExpectationSpecs = (process.env.PUPPETEER_SPAWN_SMOKE_CONFIG_EXPECTATIONS ?? '')
-    .split('|')
-    .map((value) => value.trim())
-    .filter(Boolean);
-  if (configCommands.length !== configExpectationSpecs.length) {
-    throw new Error('config smoke commands and expectations must have the same length');
-  }
-  if (configCommands.length > 0) {
-    const configSettleMs = Number(process.env.PUPPETEER_SPAWN_SMOKE_CONFIG_SETTLE_MS ?? 8_000);
-    if (!Number.isSafeInteger(configSettleMs) || configSettleMs < 0 || configSettleMs > 120_000) {
-      throw new Error('PUPPETEER_SPAWN_SMOKE_CONFIG_SETTLE_MS must be 0 through 120000');
-    }
-    await new Promise((resolveDelay) => setTimeout(resolveDelay, configSettleMs));
-  }
-  for (const [index, command] of configCommands.entries()) {
-    if (!/^\/(?:model|effort)\b/.test(command)) {
-      throw new Error(`unsupported config smoke command ${command}`);
-    }
-    const expected: MonitorConfigurationExpectation = {};
-    for (const assignment of configExpectationSpecs[index]!.split(',')) {
-      const separator = assignment.indexOf('=');
-      const key = assignment.slice(0, separator).trim() as keyof typeof expected;
-      const value = assignment
-        .slice(separator + 1)
-        .trim()
-        .toLowerCase();
-      if (
-        separator <= 0 ||
-        !['model', 'modelIntent', 'effort', 'effortIntent', 'permission', 'permissionIntent'].includes(key) ||
-        !value
-      ) {
-        throw new Error(`invalid config smoke expectation ${assignment}`);
-      }
-      expected[key] = value;
-    }
-    const before = agentRuntime.monitorState(record.info.runtimeRunId);
-    if (monitorMatchesConfiguration(before, expected)) {
-      throw new Error(`config smoke step ${index + 1} already matched before ${command}`);
-    }
-    const submittedConfig = await backend!.automation.pasteAndSubmit(session.id, command);
-    if (!submittedConfig.accepted) {
-      throw new Error(`config smoke command was rejected: ${submittedConfig.reason}`);
-    }
-    const configDeadline = Date.now() + 20_000;
-    let observed = agentRuntime.monitorState(record.info.runtimeRunId);
-    while (Date.now() < configDeadline) {
-      observed = agentRuntime.monitorState(record.info.runtimeRunId);
-      if (monitorMatchesConfiguration(observed, expected)) break;
-      await new Promise((resolveDelay) => setTimeout(resolveDelay, 100));
-    }
-    if (!monitorMatchesConfiguration(observed, expected)) {
-      throw new Error(
-        `config smoke step ${index + 1} was not observed: ${JSON.stringify({ command, expected, observed })}`,
-      );
-    }
-    console.log(
-      `SPAWN-THROUGH CONFIG CHANGE OK ${JSON.stringify({ command, model: observed?.model, effort: observed?.effort, modes: observed?.modes })}`,
-    );
-  }
-  if (process.env.PUPPETEER_SPAWN_SMOKE_REQUIRE_HISTORY === '1') {
-    const conversation = agentRuntime.agent(session.id)?.conversation;
-    const hasUser = conversation?.items.some((item) => item.kind === 'user');
-    const hasAssistant = conversation?.items.some((item) => item.kind === 'assistant');
-    if (!hasUser || !hasAssistant) {
-      throw new Error(`${agent} resumed but did not project its existing conversation history`);
-    }
-  }
-  const prompt = process.env.PUPPETEER_SPAWN_SMOKE_PROMPT;
+  if (!smokeAgent) throw new Error(provider.label + ' runtime Agent is unavailable after adoption');
+
+  const prompt = process.env.PUPPETEER_SPAWN_SMOKE_PROMPT?.trim();
   if (prompt) {
-    await new Promise((resolveDelay) => setTimeout(resolveDelay, 8_000));
-    const shiftTabCount = Number(process.env.PUPPETEER_SPAWN_SMOKE_SHIFT_TAB_COUNT ?? 0);
-    if (!Number.isSafeInteger(shiftTabCount) || shiftTabCount < 0 || shiftTabCount > 8) {
-      throw new Error('PUPPETEER_SPAWN_SMOKE_SHIFT_TAB_COUNT must be an integer from 0 through 8');
+    const receipt = await smokeAgent.submitPrompt({ text: prompt });
+    if (receipt.status === 'rejected') {
+      throw new Error('spawn-through smoke prompt was rejected: ' + receipt.reason);
     }
-    for (let count = 0; count < shiftTabCount; count += 1) {
-      const cycled = await backend!.automation.sendText(session.id, '\x1b[Z');
-      if (!cycled.accepted) throw new Error(`spawn-through smoke mode cycle was rejected: ${cycled.reason}`);
-      await new Promise((resolveDelay) => setTimeout(resolveDelay, 500));
+    const expectedReply = process.env.PUPPETEER_SPAWN_SMOKE_EXPECT_REPLY?.trim();
+    const waitMs = Number(process.env.PUPPETEER_SPAWN_SMOKE_WAIT_MS ?? 45_000);
+    if (!Number.isFinite(waitMs) || waitMs <= 0 || waitMs > 120_000) {
+      throw new Error('PUPPETEER_SPAWN_SMOKE_WAIT_MS must be greater than 0 and at most 120000');
     }
-    const expectedPermissionAfterPrompt =
-      process.env.PUPPETEER_SPAWN_SMOKE_EXPECT_PERMISSION_MODE_AFTER_PROMPT?.trim().toLowerCase() || undefined;
-    const expectedQuestion = process.env.PUPPETEER_SPAWN_SMOKE_EXPECT_QUESTION?.trim() || undefined;
-    const expectedQuestionChoices = (process.env.PUPPETEER_SPAWN_SMOKE_EXPECT_QUESTION_CHOICES ?? '')
-      .split('|')
-      .map((choice) => choice.trim())
-      .filter(Boolean);
-    const optionalQuestionBoolean = (name: string): boolean | undefined => {
-      const raw = process.env[name]?.trim();
-      if (!raw) return undefined;
-      if (raw === '1') return true;
-      if (raw === '0') return false;
-      throw new Error(`${name} must be 0 or 1`);
-    };
-    const expectedQuestionAllowMultiple = optionalQuestionBoolean(
-      'PUPPETEER_SPAWN_SMOKE_EXPECT_QUESTION_ALLOW_MULTIPLE',
+    await until(
+      provider.label + ' to publish a normalized conversation turn',
+      async () => {
+        const conversation = smokeAgent.conversation;
+        const hasPrompt = conversation.items.some((item) => item.kind === 'user' && item.text === prompt);
+        const replies = conversation.items.flatMap((item) => (item.kind === 'assistant' ? [item.markdown.trim()] : []));
+        const hasReply = expectedReply ? replies.includes(expectedReply) : replies.length > 0;
+        return hasPrompt && hasReply && !conversation.responding && smokeAgent.lifecycle === 'ready' ? true : undefined;
+      },
+      waitMs,
     );
-    const expectedQuestionAllowFreeForm = optionalQuestionBoolean(
-      'PUPPETEER_SPAWN_SMOKE_EXPECT_QUESTION_ALLOW_FREE_FORM',
-    );
-    const questionInput = process.env.PUPPETEER_SPAWN_SMOKE_QUESTION_INPUT?.trim() || undefined;
-    const questionSettleMs = Number(process.env.PUPPETEER_SPAWN_SMOKE_QUESTION_SETTLE_MS ?? 1_000);
-    if (!Number.isSafeInteger(questionSettleMs) || questionSettleMs < 0 || questionSettleMs > 10_000) {
-      throw new Error('PUPPETEER_SPAWN_SMOKE_QUESTION_SETTLE_MS must be 0 through 10000');
-    }
-    const questionNavigationHoldMs = Number(process.env.PUPPETEER_SPAWN_SMOKE_QUESTION_NAVIGATION_HOLD_MS ?? 0);
-    if (
-      !Number.isSafeInteger(questionNavigationHoldMs) ||
-      questionNavigationHoldMs < 0 ||
-      questionNavigationHoldMs > 120_000
-    ) {
-      throw new Error('PUPPETEER_SPAWN_SMOKE_QUESTION_NAVIGATION_HOLD_MS must be 0 through 120000');
-    }
-    const questionKey = process.env.PUPPETEER_SPAWN_SMOKE_QUESTION_KEY ?? 'enter';
-    const questionKeys = ['enter', 'down-enter', 'space-enter', 'multi-first-two', 'other-text'];
-    if (expectedQuestion && !questionKeys.includes(questionKey)) {
-      throw new Error(`unsupported spawn-through smoke question key ${questionKey}`);
-    }
-    if (expectedQuestion && questionKey === 'other-text' && !questionInput) {
-      throw new Error('other-text question smoke requires PUPPETEER_SPAWN_SMOKE_QUESTION_INPUT');
-    }
-    let questionKeyView: { viewId: string; attachmentEpoch: number; inputSequence: number } | undefined;
-    const sendQuestionKey = async (key: 'Space' | 'ArrowDown' | 'Tab' | 'Enter'): Promise<void> => {
-      if (!questionKeyView) {
-        const viewId = `spawn-smoke-question-${session.id}`;
-        const attached = await backend!.automation.request({ type: 'attach-session', sessionId: session.id, viewId });
-        if (attached.type !== 'view-attached' || !attached.readWrite) {
-          throw new Error(`spawn-through smoke could not attach question input view: ${JSON.stringify(attached)}`);
-        }
-        questionKeyView = { viewId, attachmentEpoch: attached.attachmentEpoch, inputSequence: 0 };
-        questionKeyView.inputSequence += 1;
-        const focused = await backend!.automation.request({
-          type: 'focus',
-          sessionId: session.id,
-          viewId: questionKeyView.viewId,
-          attachmentEpoch: questionKeyView.attachmentEpoch,
-          inputSequence: questionKeyView.inputSequence,
-          focused: true,
-        });
-        if (focused.type !== 'ok') {
-          throw new Error(`spawn-through smoke could not focus question input view: ${JSON.stringify(focused)}`);
-        }
-      }
-      const event =
-        key === 'Space'
-          ? { key: ' ', code: 'Space', unshiftedCodepoint: 32 }
-          : key === 'ArrowDown'
-            ? { key: 'ArrowDown', code: 'ArrowDown', unshiftedCodepoint: 0 }
-            : key === 'Tab'
-              ? { key: 'Tab', code: 'Tab', unshiftedCodepoint: 0 }
-              : { key: 'Enter', code: 'Enter', unshiftedCodepoint: 0 };
-      for (const type of ['down', 'up'] as const) {
-        questionKeyView.inputSequence += 1;
-        const result = await backend!.automation.request({
-          type: 'send-key',
-          sessionId: session.id,
-          viewId: questionKeyView.viewId,
-          attachmentEpoch: questionKeyView.attachmentEpoch,
-          inputSequence: questionKeyView.inputSequence,
-          event: {
-            type,
-            ...event,
-            location: 0,
-            repeat: false,
-            shift: false,
-            control: false,
-            alt: false,
-            meta: false,
-            timestamp: Date.now(),
-          },
-        });
-        if (result.type !== 'ok') {
-          throw new Error(`spawn-through smoke question key was rejected: ${JSON.stringify(result)}`);
-        }
-      }
-    };
-    const detachQuestionKeyView = async (): Promise<void> => {
-      if (!questionKeyView) return;
-      const { viewId } = questionKeyView;
-      questionKeyView = undefined;
-      const result = await backend!.automation.request({ type: 'detach-session', sessionId: session.id, viewId });
-      if (result.type !== 'ok') {
-        throw new Error(`spawn-through smoke could not detach question input view: ${JSON.stringify(result)}`);
-      }
-    };
-    let questionObserved = false;
-    let questionBlockerId: string | undefined;
-    const prompts = [
-      prompt,
-      process.env.PUPPETEER_SPAWN_SMOKE_PROMPT_2,
-      process.env.PUPPETEER_SPAWN_SMOKE_PROMPT_3,
-    ].filter((value): value is string => Boolean(value));
-    const interPromptSettleMs = Number(process.env.PUPPETEER_SPAWN_SMOKE_INTER_PROMPT_SETTLE_MS ?? 500);
-    if (!Number.isFinite(interPromptSettleMs) || interPromptSettleMs < 0 || interPromptSettleMs > 120_000) {
-      throw new Error('PUPPETEER_SPAWN_SMOKE_INTER_PROMPT_SETTLE_MS must be 0 through 120000');
-    }
-    const expectedReplies = [
-      process.env.PUPPETEER_SPAWN_SMOKE_EXPECT_REPLY,
-      process.env.PUPPETEER_SPAWN_SMOKE_EXPECT_REPLY_2,
-      process.env.PUPPETEER_SPAWN_SMOKE_EXPECT_REPLY_3,
-    ].map((value) => value?.trim() || undefined);
-    const expectedToolName = process.env.PUPPETEER_SPAWN_SMOKE_EXPECT_TOOL?.trim() || undefined;
-    const expectedToolCount = Number(
-      process.env.PUPPETEER_SPAWN_SMOKE_EXPECT_TOOL_COUNT ?? (expectedToolName ? '1' : '0'),
-    );
-    if (!Number.isSafeInteger(expectedToolCount) || expectedToolCount < 0 || expectedToolCount > 20) {
-      throw new Error('PUPPETEER_SPAWN_SMOKE_EXPECT_TOOL_COUNT must be an integer from 0 through 20');
-    }
-    const expectedToolOutcome = process.env.PUPPETEER_SPAWN_SMOKE_EXPECT_TOOL_OUTCOME?.trim().toLowerCase() as
-      'completed' | 'failed' | 'denied' | undefined;
-    if (expectedToolOutcome && !['completed', 'failed', 'denied'].includes(expectedToolOutcome)) {
-      throw new Error('PUPPETEER_SPAWN_SMOKE_EXPECT_TOOL_OUTCOME must be completed, failed, or denied');
-    }
-    const allowHookDenial = process.env.PUPPETEER_SPAWN_SMOKE_ALLOW_HOOK_DENIAL === '1';
-    if (allowHookDenial && expectedToolOutcome !== 'denied') {
-      throw new Error('PUPPETEER_SPAWN_SMOKE_ALLOW_HOOK_DENIAL requires a denied tool outcome');
-    }
-    if (expectedToolOutcome === 'denied' && !allowHookDenial) {
-      throw new Error('denied tool smoke requires PUPPETEER_SPAWN_SMOKE_ALLOW_HOOK_DENIAL=1');
-    }
-    if ((expectedToolCount > 0 || expectedToolOutcome) && !expectedToolName) {
-      throw new Error('tool count/outcome expectations require PUPPETEER_SPAWN_SMOKE_EXPECT_TOOL');
-    }
-    const expectClear = process.env.PUPPETEER_SPAWN_SMOKE_EXPECT_CLEAR === '1';
-    const requirePostClearTranscript = process.env.PUPPETEER_SPAWN_SMOKE_REQUIRE_POST_CLEAR_TRANSCRIPT === '1';
-    const clearPromptIndex = prompts.findIndex((value) => value.trim() === '/clear');
-    if (expectClear && (clearPromptIndex < 0 || clearPromptIndex === prompts.length - 1)) {
-      throw new Error('clear smoke requires /clear followed by another scripted prompt');
-    }
-    if (requirePostClearTranscript && !expectClear) {
-      throw new Error('post-clear transcript smoke requires PUPPETEER_SPAWN_SMOKE_EXPECT_CLEAR=1');
-    }
-    const expectedTask = process.env.PUPPETEER_SPAWN_SMOKE_EXPECT_TASK?.trim() || undefined;
-    const expectedTaskStatuses = (process.env.PUPPETEER_SPAWN_SMOKE_EXPECT_TASK_STATUSES ?? '')
-      .split('|')
-      .map((status) => status.trim())
-      .filter(Boolean);
-    const expectedPlanSteps = (process.env.PUPPETEER_SPAWN_SMOKE_EXPECT_PLAN_STEPS ?? '')
-      .split('|')
-      .map((step) => step.trim())
-      .filter(Boolean);
-    const expectedSubagentType = process.env.PUPPETEER_SPAWN_SMOKE_EXPECT_SUBAGENT_TYPE?.trim() || undefined;
-    const expectedSubagentModel = process.env.PUPPETEER_SPAWN_SMOKE_EXPECT_SUBAGENT_MODEL?.trim() || undefined;
-    const requireSubagentTelemetry = process.env.PUPPETEER_SPAWN_SMOKE_REQUIRE_SUBAGENT_TELEMETRY === '1';
-    const expectedTeamMember = process.env.PUPPETEER_SPAWN_SMOKE_EXPECT_TEAM_MEMBER?.trim() || undefined;
-    const expectedTeamMemberModel = process.env.PUPPETEER_SPAWN_SMOKE_EXPECT_TEAM_MEMBER_MODEL?.trim() || undefined;
-    const expectedTeamMemberEffort = process.env.PUPPETEER_SPAWN_SMOKE_EXPECT_TEAM_MEMBER_EFFORT?.trim() || undefined;
-    const requireTeamMemberTelemetry = process.env.PUPPETEER_SPAWN_SMOKE_REQUIRE_TEAM_MEMBER_TELEMETRY === '1';
-    const requireTeamMemberContext = process.env.PUPPETEER_SPAWN_SMOKE_REQUIRE_TEAM_MEMBER_CONTEXT === '1';
-    const expectTeamMemberIdle = process.env.PUPPETEER_SPAWN_SMOKE_EXPECT_TEAM_MEMBER_IDLE === '1';
-    if (
-      !expectedTeamMember &&
-      (expectedTeamMemberModel ||
-        expectedTeamMemberEffort ||
-        requireTeamMemberTelemetry ||
-        requireTeamMemberContext ||
-        expectTeamMemberIdle)
-    ) {
-      throw new Error('team-member smoke expectations require PUPPETEER_SPAWN_SMOKE_EXPECT_TEAM_MEMBER');
-    }
-    const expectRailFailure = process.env.PUPPETEER_SPAWN_SMOKE_EXPECT_RAIL_FAILURE === '1';
-    if (requirePostClearTranscript && !expectRailFailure) {
-      throw new Error(
-        'post-clear transcript smoke requires an observation-rail fault so canonical event filtering exposes the transcript copy',
-      );
-    }
-    if (expectRailFailure && prompts.length < 2) {
-      throw new Error('rail-failure smoke requires a second prompt proving the native TUI remains usable');
-    }
-    const expectCompaction = process.env.PUPPETEER_SPAWN_SMOKE_EXPECT_COMPACTION === '1';
-    const expectedCompactionOutcome = process.env.PUPPETEER_SPAWN_SMOKE_EXPECT_COMPACTION_OUTCOME?.trim();
-    const allowCompactionBoundaryFallback =
-      process.env.PUPPETEER_SPAWN_SMOKE_ALLOW_COMPACTION_BOUNDARY_FALLBACK === '1';
-    const compactionFallbackSettleMs = Number(process.env.PUPPETEER_SPAWN_SMOKE_COMPACTION_FALLBACK_SETTLE_MS ?? 1_500);
-    const stopAfterPlan = process.env.PUPPETEER_SPAWN_SMOKE_STOP_AFTER_PLAN === '1';
-    const planSettleMs = Number(process.env.PUPPETEER_SPAWN_SMOKE_PLAN_SETTLE_MS ?? 1_000);
-    const observedTaskIds = new Set<string>();
-    const observedTaskStatuses = new Set<string>();
-    const observedSubagentIds = new Set<string>();
-    const observedSubagentModels = new Set<string>();
-    const observedSubagentObservedModels = new Set<string>();
-    let observedSubagentActive = false;
-    let observedSubagentStopped = false;
-    let observedSubagentActivity = false;
-    let observedSubagentUsage = false;
-    let observedSubagentBurnRate = false;
-    let observedSubagentContext = false;
-    const observedTeamMemberIds = new Set<string>();
-    const observedTeamMemberModels = new Set<string>();
-    const observedTeamMemberObservedModels = new Set<string>();
-    const observedTeamMemberEfforts = new Set<string>();
-    const observedTeamMemberObservedEfforts = new Set<string>();
-    let observedDurableTeamMembership = false;
-    let observedTeamMemberActive = false;
-    let observedTeamMemberIdle = false;
-    let observedTeamMemberActivity = false;
-    let observedTeamMemberUsage = false;
-    let observedTeamMemberBurnRate = false;
-    let observedTeamMemberContext = false;
-    let observedCompactionActive = false;
-    let observedCompactionEnded = false;
-    let observedCompactionOutcome: string | undefined;
-    let observedRailFailure = false;
-    let observedRailFailureLevel: string | undefined;
-    let observedRailFailureFamilies: string[] = [];
-    let compactionStartedAt: number | undefined;
-    const compactionCountBefore = agentRuntime.monitorState(record.info.runtimeRunId)?.compaction.count ?? 0;
-    let observedPlan: NonNullable<ReturnType<typeof agentRuntime.monitorState>>['plan'] | undefined;
-    let planObservedAt: number | undefined;
-    let stoppedAfterPlan = false;
-    for (const [index, smokePrompt] of prompts.entries()) {
-      // The transcript/state boundary can precede Claude's final input-editor
-      // redraw by one frame. Avoid appending the next scripted prompt to the
-      // just-submitted editor contents.
-      if (index > 0 && interPromptSettleMs > 0) {
-        await new Promise((resolveDelay) => setTimeout(resolveDelay, interPromptSettleMs));
-      }
-      const compactionCommand = expectCompaction && smokePrompt.trim().startsWith('/compact');
-      const clearCommand = smokePrompt.trim() === '/clear';
-      const currentBeforeClear = clearCommand ? agentRuntime.agent(session.id)?.info : undefined;
-      const nativeBeforeClear = currentBeforeClear
-        ? {
-            nativeSession: { ...currentBeforeClear.nativeSession },
-            nativeSessionRevision: currentBeforeClear.nativeSessionRevision,
-          }
-        : undefined;
-      const before = agentRuntime.agent(session.id)?.conversation;
-      const assistantCount = before?.items.filter((item) => item.kind === 'assistant').length ?? 0;
-      // `/clear` is a native input command. Send it as literal terminal typing
-      // rather than bracketed paste so Claude's command dispatcher owns it.
-      const promptResult = clearCommand
-        ? await backend!.automation.sendText(session.id, `${smokePrompt}\r`)
-        : await backend!.automation.pasteAndSubmit(session.id, smokePrompt);
-      if (!promptResult.accepted) throw new Error(`spawn-through smoke prompt was rejected: ${promptResult.reason}`);
-      const observationMs = Number(process.env.PUPPETEER_SPAWN_SMOKE_WAIT_MS ?? 45_000);
-      const turnDeadline = Date.now() + observationMs;
-      if (clearCommand) {
-        if (!nativeBeforeClear) throw new Error(`${agent} lost runtime identity before /clear`);
-        let info = agentRuntime.agent(session.id)?.info;
-        let rebind = observedRebinds.find(
-          (candidate) =>
-            candidate.nativeSessionId !== undefined && candidate.nativeSessionId !== nativeBeforeClear.nativeSession.id,
-        );
-        while (Date.now() < turnDeadline) {
-          info = agentRuntime.agent(session.id)?.info;
-          rebind = observedRebinds.find(
-            (candidate) =>
-              candidate.nativeSessionId !== undefined &&
-              candidate.nativeSessionId !== nativeBeforeClear.nativeSession.id,
-          );
-          if (
-            info &&
-            info.nativeSession.id !== nativeBeforeClear.nativeSession.id &&
-            info.nativeSessionRevision > nativeBeforeClear.nativeSessionRevision &&
-            rebind?.startSource === 'clear' &&
-            agentRuntime.agent(session.id)?.lifecycle === 'ready'
-          ) {
-            break;
-          }
-          await new Promise((resolveDelay) => setTimeout(resolveDelay, 100));
-        }
-        if (
-          !info ||
-          info.nativeSession.id === nativeBeforeClear.nativeSession.id ||
-          info.nativeSessionRevision <= nativeBeforeClear.nativeSessionRevision ||
-          rebind?.startSource !== 'clear' ||
-          agentRuntime.agent(session.id)?.lifecycle !== 'ready'
-        ) {
-          throw new Error(
-            `${agent} did not rebind native identity after /clear: ${JSON.stringify({ before: nativeBeforeClear, after: info, rebind, state: agentRuntime.agent(session.id)?.state })}`,
-          );
-        }
-        clearEventSequence = rebind.sequence;
-        console.log(
-          `SPAWN-THROUGH CLEAR OK ${JSON.stringify({ before: nativeBeforeClear.nativeSession, beforeRevision: nativeBeforeClear.nativeSessionRevision, after: info.nativeSession, afterRevision: info.nativeSessionRevision })}`,
-        );
-        continue;
-      }
-      let conversation = agentRuntime.agent(session.id)?.conversation;
-      while (Date.now() < turnDeadline) {
-        const state = agentRuntime.agent(session.id)?.state;
-        const monitor = agentRuntime.monitorState(record.info.runtimeRunId);
-        conversation = agentRuntime.agent(session.id)?.conversation;
-        if (expectCompaction && monitor) {
-          if (monitor.compaction.active) {
-            observedCompactionActive = true;
-            compactionStartedAt ??= Date.now();
-          }
-          if (
-            observedCompactionActive &&
-            !monitor.compaction.active &&
-            monitor.compaction.count > compactionCountBefore &&
-            monitor.compaction.lastAt
-          ) {
-            observedCompactionEnded = true;
-            observedCompactionOutcome = monitor.compaction.lastOutcome;
-          }
-        }
-        if (expectRailFailure && monitor?.alive && state && !['failed', 'exited'].includes(state.lifecycle)) {
-          const degradedFamilies = Object.entries(monitor.freshness.families)
-            .filter(
-              ([, freshness]) =>
-                freshness?.support === 'degraded' &&
-                freshness.availability !== 'available' &&
-                freshness.reason?.includes('native canary observation-rail fault'),
-            )
-            .map(([family]) => family);
-          if (degradedFamilies.length > 0) {
-            observedRailFailure = true;
-            observedRailFailureLevel = monitor.freshness.level;
-            observedRailFailureFamilies = degradedFamilies;
-          }
-        }
-        if (expectedTask) {
-          for (const task of monitor?.tasks ?? []) {
-            if ([task.id, task.description].some((value) => value?.includes(expectedTask))) {
-              observedTaskIds.add(task.id);
-            }
-          }
-          for (const task of monitor?.tasks ?? []) {
-            if (observedTaskIds.has(task.id)) observedTaskStatuses.add(task.status);
-          }
-        }
-        if (expectedSubagentType) {
-          for (const subagent of monitor?.subagents ?? []) {
-            if (subagent.type?.toLowerCase().includes(expectedSubagentType.toLowerCase())) {
-              observedSubagentIds.add(subagent.id);
-            }
-          }
-          for (const subagent of monitor?.subagents ?? []) {
-            if (!observedSubagentIds.has(subagent.id)) continue;
-            if (subagent.active) observedSubagentActive = true;
-            else observedSubagentStopped = true;
-            if (subagent.activity) observedSubagentActivity = true;
-            if (subagent.cumulativeTokens !== undefined && subagent.cumulativeTokens > 0) {
-              observedSubagentUsage = true;
-            }
-            if (subagent.burnRatePerMin !== undefined && subagent.burnRatePerMin > 0) {
-              observedSubagentBurnRate = true;
-            }
-            if (subagent.contextPercent !== undefined) observedSubagentContext = true;
-            if (subagent.modelId) {
-              observedSubagentModels.add(subagent.modelId);
-              if (subagent.modelIntent === 'observed') observedSubagentObservedModels.add(subagent.modelId);
-            }
-          }
-        }
-        if (expectedTeamMember) {
-          const matchingMembers = (monitor?.team?.teammates ?? []).filter((member) =>
-            [member.id, member.name].some((value) => value?.toLowerCase().includes(expectedTeamMember.toLowerCase())),
-          );
-          for (const member of matchingMembers) {
-            observedTeamMemberIds.add(member.id);
-            if (!monitor?.team?.provisional && !member.provisional) observedDurableTeamMembership = true;
-            if (member.idle === false) observedTeamMemberActive = true;
-            if (member.idle === true) observedTeamMemberIdle = true;
-            if (member.activity) observedTeamMemberActivity = true;
-            if (member.cumulativeTokens !== undefined && member.cumulativeTokens > 0) {
-              observedTeamMemberUsage = true;
-            }
-            if (member.burnRatePerMin !== undefined && member.burnRatePerMin > 0) {
-              observedTeamMemberBurnRate = true;
-            }
-            if (member.contextPercent !== undefined) observedTeamMemberContext = true;
-            if (member.modelId) {
-              observedTeamMemberModels.add(member.modelId);
-              if (member.modelIntent === 'observed') observedTeamMemberObservedModels.add(member.modelId);
-            }
-            if (member.effort) {
-              observedTeamMemberEfforts.add(member.effort);
-              if (member.effortIntent === 'observed') observedTeamMemberObservedEfforts.add(member.effort);
-            }
-          }
-        }
-        if (!observedPlan && monitor?.plan) {
-          const matched = expectedPlanSteps.every((expected) =>
-            monitor.plan?.steps.some((step) => step.text.includes(expected)),
-          );
-          if (matched) {
-            observedPlan = monitor.plan;
-            planObservedAt = Date.now();
-            console.log(`SPAWN-THROUGH PLAN OK ${JSON.stringify(monitor.plan)}`);
-          }
-        }
-        if (stopAfterPlan && observedPlan && Date.now() - (planObservedAt ?? Date.now()) >= planSettleMs) {
-          stoppedAfterPlan = true;
-          break;
-        }
-        if (expectedQuestion && !questionObserved) {
-          const questionBlocker = monitor?.blockers.find(
-            (blocker) =>
-              blocker.kind === 'question' &&
-              blocker.questions.some((question) => question.prompt.includes(expectedQuestion)),
-          );
-          if (questionBlocker?.kind === 'question') {
-            const matchedQuestion = questionBlocker.questions.find((question) =>
-              question.prompt.includes(expectedQuestion),
-            );
-            if (!matchedQuestion) throw new Error(`${agent} question blocker lost its matching question`);
-            const labels = matchedQuestion.options?.map((option) => option.label) ?? [];
-            if (!expectedQuestionChoices.every((choice) => labels.includes(choice))) {
-              throw new Error(
-                `${agent} question choices did not match: ${JSON.stringify({ expectedQuestionChoices, labels })}`,
-              );
-            }
-            if (
-              expectedQuestionAllowMultiple !== undefined &&
-              matchedQuestion.allowMultiple !== expectedQuestionAllowMultiple
-            ) {
-              throw new Error(
-                `${agent} question multi-select did not match: ${JSON.stringify({ expectedQuestionAllowMultiple, question: matchedQuestion })}`,
-              );
-            }
-            if (
-              expectedQuestionAllowFreeForm !== undefined &&
-              matchedQuestion.allowFreeForm !== expectedQuestionAllowFreeForm
-            ) {
-              throw new Error(
-                `${agent} question free-form did not match: ${JSON.stringify({ expectedQuestionAllowFreeForm, question: matchedQuestion })}`,
-              );
-            }
-            if (monitor?.status !== 'blocked' || monitor.blockers.some((blocker) => blocker.kind === 'permission')) {
-              throw new Error(`${agent} structured question was not projected as a distinct question blocker`);
-            }
-            console.log(`SPAWN-THROUGH QUESTION OK ${JSON.stringify(questionBlocker.questions)}`);
-            questionBlockerId = questionBlocker.id;
-            // PreToolUse is observable just before Claude finishes activating
-            // its Confirmation key context. Let that native UI boundary settle
-            // before sending picker navigation.
-            if (questionSettleMs > 0) {
-              await new Promise((resolveDelay) => setTimeout(resolveDelay, questionSettleMs));
-            }
-            const navigation =
-              questionKey === 'down-enter'
-                ? (['ArrowDown'] as const)
-                : questionKey === 'space-enter'
-                  ? (['Space'] as const)
-                  : questionKey === 'multi-first-two'
-                    ? (['Space', 'ArrowDown', 'Space', 'Tab', 'Enter'] as const)
-                    : questionKey === 'other-text'
-                      ? Array.from({ length: labels.length }, () => 'ArrowDown' as const)
-                      : ([] as const);
-            for (const key of navigation) {
-              await sendQuestionKey(key);
-              await new Promise((resolveDelay) => setTimeout(resolveDelay, key === 'Enter' ? 500 : 150));
-            }
-            if (questionNavigationHoldMs > 0) {
-              await new Promise((resolveDelay) => setTimeout(resolveDelay, questionNavigationHoldMs));
-            }
-            if (questionKey === 'other-text') {
-              // Moving onto Claude's built-in "Type something" choice opens
-              // its editor immediately. Submitting an extra Enter here would
-              // accept an empty answer before the canary text is pasted.
-              await detachQuestionKeyView();
-              await new Promise((resolveDelay) => setTimeout(resolveDelay, 500));
-              const customAnswer = await backend!.automation.pasteAndSubmit(session.id, questionInput!);
-              if (!customAnswer.accepted) {
-                throw new Error(`spawn-through smoke custom question input was rejected: ${customAnswer.reason}`);
-              }
-            } else {
-              await sendQuestionKey('Enter');
-              await detachQuestionKeyView();
-            }
-            questionObserved = true;
-          }
-        }
-        const hasUser = conversation?.items.some((item) => item.kind === 'user' && item.text === smokePrompt);
-        const inputBoundaryObserved = hasUser || (expectRailFailure && observedRailFailure && index > 0);
-        const nextAssistantCount = conversation?.items.filter((item) => item.kind === 'assistant').length ?? 0;
-        const expectedReply = expectedReplies[index];
-        const replyObserved =
-          !expectedReply ||
-          (conversation?.items
-            .flatMap((item) => (item.kind === 'assistant' ? [item.markdown.trim()] : []))
-            .slice(assistantCount)
-            .includes(expectedReply) ??
-            false);
-        const subagentModelObserved =
-          !expectedSubagentModel ||
-          [...observedSubagentObservedModels].some((model) =>
-            model.toLowerCase().includes(expectedSubagentModel.toLowerCase()),
-          );
-        const subagentTelemetryObserved =
-          !requireSubagentTelemetry ||
-          (observedSubagentActivity &&
-            observedSubagentUsage &&
-            observedSubagentBurnRate &&
-            observedSubagentContext &&
-            subagentModelObserved);
-        const subagentLifecycleObserved =
-          !expectedSubagentType || (observedSubagentActive && observedSubagentStopped && subagentTelemetryObserved);
-        const teamMemberModelObserved =
-          !expectedTeamMemberModel ||
-          [...observedTeamMemberObservedModels].some((model) =>
-            model.toLowerCase().includes(expectedTeamMemberModel.toLowerCase()),
-          );
-        const teamMemberEffortObserved =
-          !expectedTeamMemberEffort ||
-          [...observedTeamMemberObservedEfforts].some((effort) =>
-            effort.toLowerCase().includes(expectedTeamMemberEffort.toLowerCase()),
-          );
-        const teamMemberTelemetryObserved =
-          !requireTeamMemberTelemetry ||
-          (observedTeamMemberActivity &&
-            observedTeamMemberUsage &&
-            observedTeamMemberBurnRate &&
-            teamMemberModelObserved &&
-            teamMemberEffortObserved);
-        const teamMemberLifecycleObserved =
-          !expectedTeamMember ||
-          (observedTeamMemberIds.size > 0 &&
-            observedDurableTeamMembership &&
-            (!expectTeamMemberIdle || observedTeamMemberIdle) &&
-            (!requireTeamMemberContext || observedTeamMemberContext) &&
-            teamMemberTelemetryObserved &&
-            teamMemberModelObserved &&
-            teamMemberEffortObserved);
-        const promptConfigurationObserved = monitorMatchesConfiguration(monitor, {
-          permission: expectedPermissionAfterPrompt,
-          permissionIntent: expectedPermissionAfterPrompt ? 'observed' : undefined,
-        });
-        const questionStillPending =
-          expectedQuestion !== undefined &&
-          (monitor?.blockers.some(
-            (blocker) =>
-              blocker.kind === 'question' &&
-              (blocker.id === questionBlockerId ||
-                blocker.questions.some((question) => question.prompt.includes(expectedQuestion))),
-          ) ??
-            false);
-        const questionResolutionObserved = !expectedQuestion || (questionObserved && !questionStillPending);
-        if (compactionCommand && observedCompactionEnded && state?.lifecycle === 'ready') break;
-        if (
-          compactionCommand &&
-          allowCompactionBoundaryFallback &&
-          observedCompactionActive &&
-          Date.now() - (compactionStartedAt ?? Date.now()) >= compactionFallbackSettleMs &&
-          state?.lifecycle === 'ready'
-        ) {
-          break;
-        }
-        if (
-          inputBoundaryObserved &&
-          nextAssistantCount > assistantCount &&
-          !conversation?.responding &&
-          state?.lifecycle === 'ready' &&
-          replyObserved &&
-          promptConfigurationObserved &&
-          questionResolutionObserved &&
-          subagentLifecycleObserved &&
-          teamMemberLifecycleObserved
-        ) {
-          break;
-        }
-        await new Promise((resolveDelay) => setTimeout(resolveDelay, 100));
-      }
-      if (stoppedAfterPlan) break;
-      if (compactionCommand) {
-        if (!observedCompactionActive || (!observedCompactionEnded && !allowCompactionBoundaryFallback)) {
-          throw new Error(
-            `${agent} did not expose the expected compaction lifecycle: ${JSON.stringify({ observedCompactionActive, observedCompactionEnded, compaction: agentRuntime.monitorState(record.info.runtimeRunId)?.compaction })}`,
-          );
-        }
-        console.log(
-          `SPAWN-THROUGH COMPACTION STARTED ${JSON.stringify(agentRuntime.monitorState(record.info.runtimeRunId)?.compaction)}`,
-        );
-        continue;
-      }
-      const state = agentRuntime.agent(session.id)?.state;
-      const hasUser = conversation?.items.some((item) => item.kind === 'user' && item.text === smokePrompt);
-      const inputBoundaryObserved = hasUser || (expectRailFailure && observedRailFailure && index > 0);
-      const nextAssistantCount = conversation?.items.filter((item) => item.kind === 'assistant').length ?? 0;
-      const monitor = agentRuntime.monitorState(record.info.runtimeRunId);
-      if (expectedQuestion && index === 0) {
-        if (!questionObserved) throw new Error(`${agent} did not expose the expected structured question`);
-        const unresolvedQuestion = monitor?.blockers.find(
-          (blocker) =>
-            blocker.kind === 'question' &&
-            (blocker.id === questionBlockerId ||
-              blocker.questions.some((question) => question.prompt.includes(expectedQuestion))),
-        );
-        if (unresolvedQuestion) {
-          throw new Error(
-            `${agent} did not resolve the expected structured question: ${JSON.stringify(unresolvedQuestion)}`,
-          );
-        }
-      }
-      const promptConfigurationObserved = monitorMatchesConfiguration(monitor, {
-        permission: expectedPermissionAfterPrompt,
-        permissionIntent: expectedPermissionAfterPrompt ? 'observed' : undefined,
-      });
-      if (
-        !inputBoundaryObserved ||
-        nextAssistantCount <= assistantCount ||
-        conversation?.responding ||
-        state?.lifecycle !== 'ready' ||
-        !promptConfigurationObserved
-      ) {
-        throw new Error(
-          `${agent} prompt ${index + 1} did not project as a completed conversation turn: ${JSON.stringify({ state, conversation, expectedPermissionAfterPrompt, modes: monitor?.modes })}`,
-        );
-      }
-      const expectedReply = expectedReplies[index];
-      if (expectedReply) {
-        const replies =
-          conversation?.items
-            .flatMap((item) => (item.kind === 'assistant' ? [item.markdown.trim()] : []))
-            .slice(assistantCount) ?? [];
-        if (!replies.includes(expectedReply)) {
-          throw new Error(
-            `${agent} prompt ${index + 1} did not produce the expected reply: ${JSON.stringify({ expectedReply, replies })}`,
-          );
-        }
-      }
-    }
-    if (expectedToolName) {
-      const matchingTools = [...observedToolRequests.entries()].filter(
-        ([, name]) => name.toLowerCase() === expectedToolName.toLowerCase(),
-      );
-      if (matchingTools.length !== expectedToolCount) {
-        throw new Error(
-          `${agent} did not expose the exact expected tool count: ${JSON.stringify({ expectedToolName, expectedToolCount, observed: matchingTools })}`,
-        );
-      }
-      if (expectedToolOutcome === 'completed' || expectedToolOutcome === 'failed') {
-        const mismatches = matchingTools.filter(
-          ([toolCallId]) => observedToolOutcomes.get(toolCallId) !== expectedToolOutcome,
-        );
-        if (mismatches.length > 0) {
-          throw new Error(
-            `${agent} tool outcomes did not match: ${JSON.stringify({ expectedToolOutcome, mismatches, observed: [...observedToolOutcomes] })}`,
-          );
-        }
-      } else if (expectedToolOutcome === 'denied') {
-        const matchingIds = new Set(matchingTools.map(([toolCallId]) => toolCallId));
-        const denied = [...observedPermissions.values()].some(
-          (permission) =>
-            permission.tool?.toLowerCase() === expectedToolName.toLowerCase() &&
-            permission.toolCallId !== undefined &&
-            matchingIds.has(permission.toolCallId) &&
-            permission.outcome === 'denied',
-        );
-        if (!denied) {
-          throw new Error(
-            `${agent} did not expose the expected denied permission/tool correlation: ${JSON.stringify({ allowHookDenial, permissions: [...observedPermissions] })}`,
-          );
-        }
-      }
-      console.log(
-        `SPAWN-THROUGH TOOL OK ${JSON.stringify({ tool: expectedToolName, count: matchingTools.length, outcome: expectedToolOutcome, ids: matchingTools.map(([id]) => id) })}`,
-      );
-    }
-    if (requirePostClearTranscript && (clearEventSequence === undefined || !postClearTranscriptAssistant)) {
-      throw new Error(
-        `${agent} did not prove post-/clear semantic observer reattachment: ${JSON.stringify({ clearEventSequence, postClearTranscriptAssistant, rebinds: observedRebinds })}`,
-      );
-    }
-    if (requirePostClearTranscript) {
-      console.log(
-        `SPAWN-THROUGH TRANSCRIPT REATTACH OK ${JSON.stringify({ clearEventSequence, postClearTranscriptAssistant })}`,
-      );
-    }
-    if (expectedPlanSteps.length > 0 && !observedPlan) {
-      throw new Error(`${agent} did not expose the expected plan steps: ${JSON.stringify(expectedPlanSteps)}`);
-    }
-    if (
-      expectCompaction &&
-      (!observedCompactionEnded ||
-        (expectedCompactionOutcome !== undefined && observedCompactionOutcome !== expectedCompactionOutcome))
-    ) {
-      throw new Error(
-        `${agent} did not expose the expected /compact outcome: ${JSON.stringify({ expectedCompactionOutcome, observedCompactionActive, observedCompactionEnded, observedCompactionOutcome, compaction: agentRuntime.monitorState(record.info.runtimeRunId)?.compaction })}`,
-      );
-    }
-    if (expectCompaction) {
-      console.log(
-        `SPAWN-THROUGH COMPACTION OK ${JSON.stringify(agentRuntime.monitorState(record.info.runtimeRunId)?.compaction)}`,
-      );
-    }
-    if (expectRailFailure) {
-      const monitor = agentRuntime.monitorState(record.info.runtimeRunId);
-      const state = agentRuntime.agent(session.id)?.state;
-      if (
-        !observedRailFailure ||
-        !monitor?.alive ||
-        !state ||
-        ['failed', 'exited'].includes(state.lifecycle) ||
-        monitor.freshness.level === 'native-hooks'
-      ) {
-        throw new Error(
-          `${agent} did not preserve liveness while degrading the observation rail: ${JSON.stringify({ observedRailFailure, observedRailFailureLevel, observedRailFailureFamilies, state, monitor })}`,
-        );
-      }
-      console.log(
-        `SPAWN-THROUGH RAIL FAILURE OK ${JSON.stringify({ alive: monitor.alive, lifecycle: state.lifecycle, level: monitor.freshness.level, families: observedRailFailureFamilies })}`,
-      );
-    }
-    if (expectedTask) {
-      const missingStatuses = expectedTaskStatuses.filter((status) => !observedTaskStatuses.has(status));
-      if (missingStatuses.length > 0 || observedTaskStatuses.size === 0) {
-        throw new Error(
-          `${agent} did not expose the expected task lifecycle: ${JSON.stringify({ expectedTask, expectedTaskStatuses, observedTaskStatuses: [...observedTaskStatuses], missingStatuses })}`,
-        );
-      }
-      console.log(
-        `SPAWN-THROUGH TASK OK ${JSON.stringify({ expectedTask, taskIds: [...observedTaskIds], statuses: [...observedTaskStatuses] })}`,
-      );
-    }
-    if (expectedSubagentType) {
-      const modelObserved =
-        !expectedSubagentModel ||
-        [...observedSubagentObservedModels].some((model) =>
-          model.toLowerCase().includes(expectedSubagentModel.toLowerCase()),
-        );
-      const lifecycleObserved = observedSubagentActive && observedSubagentStopped;
-      const telemetryObserved =
-        !requireSubagentTelemetry ||
-        (observedSubagentActivity &&
-          observedSubagentUsage &&
-          observedSubagentBurnRate &&
-          observedSubagentContext &&
-          modelObserved);
-      if (observedSubagentIds.size === 0 || !lifecycleObserved || !modelObserved || !telemetryObserved) {
-        throw new Error(
-          `${agent} did not expose the expected subagent lifecycle and telemetry: ${JSON.stringify({ expectedSubagentType, expectedSubagentModel, requireSubagentTelemetry, ids: [...observedSubagentIds], models: [...observedSubagentModels], observedModels: [...observedSubagentObservedModels], observedSubagentActive, observedSubagentStopped, observedSubagentActivity, observedSubagentUsage, observedSubagentBurnRate, observedSubagentContext })}`,
-        );
-      }
-      console.log(
-        `SPAWN-THROUGH SUBAGENT OK ${JSON.stringify({ type: expectedSubagentType, ids: [...observedSubagentIds], models: [...observedSubagentModels], telemetry: requireSubagentTelemetry })}`,
-      );
-    }
-    if (expectedTeamMember) {
-      const modelObserved =
-        !expectedTeamMemberModel ||
-        [...observedTeamMemberObservedModels].some((model) =>
-          model.toLowerCase().includes(expectedTeamMemberModel.toLowerCase()),
-        );
-      const effortObserved =
-        !expectedTeamMemberEffort ||
-        [...observedTeamMemberObservedEfforts].some((effort) =>
-          effort.toLowerCase().includes(expectedTeamMemberEffort.toLowerCase()),
-        );
-      const telemetryObserved =
-        !requireTeamMemberTelemetry ||
-        (observedTeamMemberActivity &&
-          observedTeamMemberUsage &&
-          observedTeamMemberBurnRate &&
-          modelObserved &&
-          effortObserved);
-      if (
-        observedTeamMemberIds.size === 0 ||
-        !observedDurableTeamMembership ||
-        (expectTeamMemberIdle && !observedTeamMemberIdle) ||
-        (requireTeamMemberContext && !observedTeamMemberContext) ||
-        !modelObserved ||
-        !effortObserved ||
-        !telemetryObserved
-      ) {
-        throw new Error(
-          `${agent} did not expose the expected team member and telemetry: ${JSON.stringify({ expectedTeamMember, expectedTeamMemberModel, expectedTeamMemberEffort, requireTeamMemberTelemetry, requireTeamMemberContext, expectTeamMemberIdle, ids: [...observedTeamMemberIds], models: [...observedTeamMemberModels], observedModels: [...observedTeamMemberObservedModels], efforts: [...observedTeamMemberEfforts], observedEfforts: [...observedTeamMemberObservedEfforts], observedDurableTeamMembership, observedTeamMemberActive, observedTeamMemberIdle, observedTeamMemberActivity, observedTeamMemberUsage, observedTeamMemberBurnRate, observedTeamMemberContext })}`,
-        );
-      }
-      console.log(
-        `SPAWN-THROUGH TEAM MEMBER OK ${JSON.stringify({ member: expectedTeamMember, ids: [...observedTeamMemberIds], models: [...observedTeamMemberModels], efforts: [...observedTeamMemberEfforts], active: observedTeamMemberActive, idle: observedTeamMemberIdle, telemetry: requireTeamMemberTelemetry })}`,
-      );
-    }
-    console.log(`SPAWN-THROUGH CONVERSATION ${JSON.stringify(agentRuntime.agent(session.id)?.conversation)}`);
-  }
-  if (expectedDelegateMarkers.length > 0) {
-    const markerDeadline = Date.now() + 20_000;
-    let missing = expectedDelegateMarkers;
-    while (Date.now() < markerDeadline) {
-      missing = expectedDelegateMarkers.filter(({ path, initialSize }) => {
-        try {
-          return statSync(path).size <= initialSize;
-        } catch {
-          return true;
-        }
-      });
-      if (missing.length === 0) break;
-      await new Promise((resolveDelay) => setTimeout(resolveDelay, 100));
-    }
-    if (missing.length > 0) {
-      throw new Error(
-        `${agent} did not invoke expected status delegates: ${missing.map(({ path }) => path).join(', ')}`,
-      );
-    }
-    console.log(`SPAWN-THROUGH STATUS DELEGATES OK ${JSON.stringify(expectedDelegateMarkers.map(({ path }) => path))}`);
-  }
-  const exitMode = process.env.PUPPETEER_SPAWN_SMOKE_EXIT_MODE?.trim().toLowerCase() || 'host';
-  if (!['host', 'clean', 'crash'].includes(exitMode)) {
-    throw new Error('PUPPETEER_SPAWN_SMOKE_EXIT_MODE must be host, clean, or crash');
-  }
-  const expectedExitReason = exitMode === 'host' ? 'runtime-terminated' : exitMode === 'clean' ? 'completed' : 'crash';
-  if (exitMode === 'clean') {
-    const exitSettleMs = Number(process.env.PUPPETEER_SPAWN_SMOKE_EXIT_SETTLE_MS ?? 8_000);
-    if (!Number.isSafeInteger(exitSettleMs) || exitSettleMs < 0 || exitSettleMs > 120_000) {
-      throw new Error('PUPPETEER_SPAWN_SMOKE_EXIT_SETTLE_MS must be 0 through 120000');
-    }
-    if (exitSettleMs > 0) await new Promise((resolveDelay) => setTimeout(resolveDelay, exitSettleMs));
-    const submittedExit = await backend!.automation.pasteAndSubmit(session.id, '/exit');
-    if (!submittedExit.accepted) throw new Error(`spawn-through native exit was rejected: ${submittedExit.reason}`);
-    const processId = record.info.processId;
-    if (!processId) throw new Error(`${agent} native-exit canary has no adopted process identity`);
-    const exitDeadline = Date.now() + 20_000;
-    while (
-      Date.now() < exitDeadline &&
-      (processIsAlive(processId) || agentRuntime.agent(session.id)?.lifecycle !== 'exited')
-    ) {
-      await new Promise((resolveDelay) => setTimeout(resolveDelay, 100));
-    }
-    if (processIsAlive(processId) || agentRuntime.agent(session.id)?.lifecycle !== 'exited') {
-      throw new Error(
-        `${agent} did not emit SessionEnd and exit its adopted process after /exit: ${JSON.stringify({ processId, state: agentRuntime.agent(session.id)?.state })}`,
-      );
-    }
-    finishAdoptedProcess(session.id, 'completed');
-    if (exitCleanups.size > 0) await Promise.all([...exitCleanups]);
-    const shellExit = await backend!.automation.terminateAndWait(session.id, 'application', 5_000);
-    await onSessionExited(shellExit);
-  } else if (exitMode === 'crash') {
-    const processId = record.info.processId;
-    if (!processId) throw new Error(`${agent} crash canary has no adopted process identity`);
-    process.kill(processId, 'SIGKILL');
-    const crashDeadline = Date.now() + 10_000;
-    while (Date.now() < crashDeadline && processIsAlive(processId)) {
-      await new Promise((resolveDelay) => setTimeout(resolveDelay, 100));
-    }
-    if (processIsAlive(processId)) throw new Error(`${agent} crash canary process ${processId} survived SIGKILL`);
-    finishAdoptedProcess(session.id, 'crash');
-    if (exitCleanups.size > 0) await Promise.all([...exitCleanups]);
-    const retained = agentRuntime.monitorState(record.info.runtimeRunId);
-    if (
-      retained?.alive !== false ||
-      retained.status !== 'blocked' ||
-      !retained.blockers.some(
-        (blocker) => blocker.kind === 'failure' && blocker.id === 'run:runtime' && blocker.failure?.code === 'crash',
-      )
-    ) {
-      throw new Error(`${agent} crash did not retain the expected failure blocker: ${JSON.stringify(retained)}`);
-    }
-    console.log(`SPAWN-THROUGH CRASH RETENTION OK ${JSON.stringify(retained.blockers)}`);
-    if (!(await agentRuntime.acknowledgeFailureBlocker(record.info.runtimeRunId, 'run:runtime'))) {
-      throw new Error(`${agent} retained crash blocker could not be acknowledged`);
-    }
-    const shellExit = await backend!.automation.terminateAndWait(session.id, 'application', 5_000);
-    await onSessionExited(shellExit);
   } else {
-    const exited = await backend!.automation.terminateAndWait(session.id, 'application', 5_000);
-    await onSessionExited(exited);
-  }
-  if (exitCleanups.size > 0) await Promise.all([...exitCleanups]);
-  if (!observedProcessExitReasons.includes(expectedExitReason)) {
-    throw new Error(
-      `${agent} did not expose expected process exit reason ${expectedExitReason}: ${JSON.stringify(observedProcessExitReasons)}`,
+    await until(
+      provider.label + ' structured control to become ready',
+      async () => (smokeAgent.lifecycle === 'ready' ? true : undefined),
+      30_000,
     );
   }
-  if (monitorRelay.hasRun(record.info.runtimeRunId)) {
-    throw new Error(`${agent} monitor was not removed at the final canary boundary`);
-  }
-  unsubscribeSmokeEvents();
-  console.log(`SPAWN-THROUGH SMOKE OK ${agent} ${record.info.sessionId} exit=${exitMode}`);
+
+  const exited = await backend!.automation.terminateAndWait(session.id, 'application', 5_000);
+  await onSessionExited(exited);
+  if (exitCleanups.size > 0) await Promise.all([...exitCleanups]);
+  if (agentRuntime.agent(session.id)) throw new Error(provider.label + ' remained registered after host termination');
+  console.log('SPAWN-THROUGH SMOKE OK ' + provider.id + ' ' + record.info.sessionId);
 }
 
 function shutdown(): Promise<void> {
@@ -3714,13 +2458,6 @@ function shutdown(): Promise<void> {
     const finals = await agentRuntime.dispose();
     for (const final of finals) pushWorkspaceFinal(final);
     await monitorConnection.close();
-    for (const status of scenarioRecorder.statuses()) {
-      try {
-        finishScenarioRecording(status.runtimeSessionId);
-      } catch (error) {
-        process.stderr.write(`[main] scenario recording shutdown flush failed: ${String(error)}\n`);
-      }
-    }
     backend?.stop();
     backend = undefined;
     await spawnThroughGateway?.close().catch(() => undefined);
@@ -3779,16 +2516,23 @@ app
     }
     accountUsageMonitor.start();
     await openInitialWindows();
-    // Emulator/dev flow: PUPPETEER_AUTOCREATE_AGENTS=claude[,codex,…] creates
-    // agent sessions at startup. The shim spawn-through path is POSIX-only, so
-    // on Windows this is the way to get an agent session in the swarm.
-    for (const agent of (process.env.PUPPETEER_AUTOCREATE_AGENTS ?? '')
+    // Development flow: create only provider ids advertised by Runtime. The
+    // shim spawn-through path is POSIX-only, so this also supports Windows.
+    const availableProviders = new Map(agentRuntime.providers().map((provider) => [provider.id, provider]));
+    for (const providerId of (process.env.PUPPETEER_AUTOCREATE_AGENTS ?? '')
       .split(',')
       .map((value) => value.trim())
       .filter(Boolean)) {
-      void createAgentSession({ agent: agent as BuiltinExecutableAgentKind, cwd: repoRoot }).catch((error) =>
-        console.error(`[main] autocreate ${agent} failed`, error),
-      );
+      const provider = availableProviders.get(providerId);
+      if (!provider) {
+        console.error(`[main] autocreate ignored unknown provider ${providerId}`);
+        continue;
+      }
+      void createAgentSession({ agent: provider.id, cwd: repoRoot })
+        .then((result) => {
+          if ('error' in result) console.error(`[main] autocreate ${provider.label} failed: ${result.error.message}`);
+        })
+        .catch((error) => console.error(`[main] autocreate ${provider.label} failed`, error));
     }
   })
   .catch((error) => {

@@ -15,8 +15,6 @@ import type {
   PromptReceipt,
   ReadAgentMonitorArtifactRequest,
   PaneRehydrationRequest,
-  ScenarioRecordingStatus,
-  StartScenarioRecordingResult,
   SubmitPromptOptions,
   TerminalSessionHandoff,
   WorkspaceDiff,
@@ -92,16 +90,6 @@ const puppeteer: PuppeteerBridge = {
     const listener = (_event: Electron.IpcRendererEvent, final: WorkspaceFinalEvent): void => callback(final);
     ipcRenderer.on('puppeteer:workspace-final', listener);
     return () => ipcRenderer.removeListener('puppeteer:workspace-final', listener);
-  },
-  scenarioRecordings: (): Promise<ScenarioRecordingStatus[]> => ipcRenderer.invoke('puppeteer:scenario-recordings'),
-  startScenarioRecording: (runtimeSessionId: string): Promise<StartScenarioRecordingResult> =>
-    ipcRenderer.invoke('puppeteer:start-scenario-recording', runtimeSessionId),
-  stopScenarioRecording: (runtimeSessionId: string): Promise<ScenarioRecordingStatus> =>
-    ipcRenderer.invoke('puppeteer:stop-scenario-recording', runtimeSessionId),
-  onScenarioRecording: (callback: (status: ScenarioRecordingStatus) => void): (() => void) => {
-    const listener = (_event: Electron.IpcRendererEvent, status: ScenarioRecordingStatus): void => callback(status);
-    ipcRenderer.on('puppeteer:scenario-recording', listener);
-    return () => ipcRenderer.removeListener('puppeteer:scenario-recording', listener);
   },
 };
 

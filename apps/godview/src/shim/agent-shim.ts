@@ -1,10 +1,7 @@
 import { constants, accessSync } from 'node:fs';
 import { createConnection } from 'node:net';
-import { delimiter, dirname, isAbsolute, join, resolve } from 'node:path';
-
-type Agent = 'claude' | 'codex' | 'grok' | 'kimi' | 'opencode';
-
-const AGENTS: readonly Agent[] = ['claude', 'codex', 'grok', 'kimi', 'opencode'];
+import { basename, delimiter, dirname, isAbsolute, join, resolve } from 'node:path';
+import { AgentLaunchProviderSchema, type AgentLaunchProvider } from '@vibecook/puppeteer-core';
 
 interface ExecResponse {
   action: 'exec';
@@ -16,28 +13,51 @@ type Response = ExecResponse | { action: 'fallback'; reason: string } | { action
 
 const shimPath = resolve(process.argv[1]!);
 const shimDirectory = dirname(shimPath);
-const invokedAs = shimPath.split('/').at(-1)!;
+const invokedAs = basename(shimPath);
+
+function readLaunchProviders(): AgentLaunchProvider[] {
+  try {
+    const parsed = AgentLaunchProviderSchema.array().safeParse(
+      JSON.parse(process.env.PUPPETEER_LAUNCH_PROVIDERS ?? '[]'),
+    );
+    return parsed.success ? parsed.data : [];
+  } catch {
+    return [];
+  }
+}
+
+const launchProviders = readLaunchProviders();
+const commandRoutes = new Map(
+  launchProviders.flatMap((provider) =>
+    (provider.nativeInvocation?.commands ?? []).map((command) => [command.name, { provider, command }] as const),
+  ),
+);
+const imposterProviders = new Map(
+  launchProviders
+    .filter((provider) => provider.nativeInvocation?.imposter !== undefined)
+    .map((provider) => [provider.id, provider]),
+);
 
 /**
- * `ai --claude` is the imposter's own invocation, so the vendor comes from the
+ * `ai --<provider>` is the imposter's own invocation, so the provider comes from the
  * flag rather than from the shim's name, and the flag is stripped before the
  * rest of argv is handed on — everything after it belongs to the vendor, just
- * as it does under a vendor-named shim.
+ * as it does under a provider-named shim.
  *
- * The real `ai` still has to exist on PATH for this to run at all: the shim
+ * The configured `ai` still has to exist for this to run at all: the shim
  * execs it, and falls back to it when Godview declines. The package manager
  * puts it there — `pnpm ai:link`, and nothing of ours (docs/archive/IMPOSTER.md §11.1).
  */
 const imposter = invokedAs === 'ai';
 const originalArgv = process.argv.slice(2);
 const flagIndex = imposter
-  ? originalArgv.findIndex((argument) => argument.startsWith('--') && AGENTS.includes(argument.slice(2) as Agent))
+  ? originalArgv.findIndex((argument) => argument.startsWith('--') && imposterProviders.has(argument.slice(2)))
   : -1;
-const agent: Agent | undefined = imposter
+const provider = imposter
   ? flagIndex >= 0
-    ? (originalArgv[flagIndex]!.slice(2) as Agent)
+    ? imposterProviders.get(originalArgv[flagIndex]!.slice(2))
     : undefined
-  : (invokedAs as Agent);
+  : commandRoutes.get(invokedAs)?.provider;
 const forwardedArgv = flagIndex >= 0 ? originalArgv.filter((_, index) => index !== flagIndex) : originalArgv;
 const originalCwd = process.cwd();
 
@@ -76,6 +96,8 @@ function execEnvironment(extra: Record<string, string> = {}): Record<string, str
   delete environment.PUPPETEER_SPAWN_TOKEN;
   delete environment.PUPPETEER_SHIM_DIR;
   delete environment.PUPPETEER_ORIGINAL_ZDOTDIR;
+  delete environment.PUPPETEER_LAUNCH_PROVIDERS;
+  delete environment.PUPPETEER_IMPOSTER_EXECUTABLE;
   return environment;
 }
 
@@ -94,7 +116,7 @@ function fallback(realExecutable: string): never {
     exec(realExecutable, originalArgv, originalCwd);
   } catch (error) {
     process.stderr.write(
-      `puppeteer: could not launch ${agent}: ${error instanceof Error ? error.message : String(error)}\n`,
+      `puppeteer: could not launch ${provider?.id ?? invokedAs}: ${error instanceof Error ? error.message : String(error)}\n`,
     );
     process.exit(127);
   }
@@ -136,24 +158,31 @@ function request(payload: object): Promise<Response> {
 }
 
 async function main(): Promise<never> {
-  const realExecutable = executableOnPath(invokedAs, cleanPath());
+  const configuredExecutable = imposter
+    ? (process.env.PUPPETEER_IMPOSTER_EXECUTABLE ?? 'ai')
+    : (commandRoutes.get(invokedAs)?.command.executable ?? invokedAs);
+  const realExecutable = executableOnPath(configuredExecutable, cleanPath());
   if (!realExecutable) {
-    process.stderr.write(`puppeteer: ${invokedAs} is not installed outside the Godview shim path\n`);
+    process.stderr.write(`puppeteer: ${configuredExecutable} is not installed outside the Godview shim path\n`);
     process.exit(127);
   }
   // `ai` with no persona flag is the imposter's own error to report, not
   // something to guess at: hand it straight through and let it say so.
-  if (!agent || !AGENTS.includes(agent)) return fallback(realExecutable);
+  if (!provider?.nativeInvocation) return fallback(realExecutable);
   try {
-    const claudeConfigDir = agent === 'claude' ? process.env.CLAUDE_CONFIG_DIR?.trim() : undefined;
+    const environment: Record<string, string> = {};
+    for (const name of provider.nativeInvocation.environmentVariables) {
+      const value = process.env[name];
+      if (typeof value === 'string') environment[name] = value;
+    }
     const response = await request({
       type: 'launch',
-      agent,
+      providerId: provider.id,
       cwd: originalCwd,
       argv: forwardedArgv,
+      environment,
       pid: process.pid,
       parentPid: process.ppid,
-      ...(claudeConfigDir ? { claudeConfigDir: resolve(originalCwd, claudeConfigDir) } : {}),
       ...(imposter ? { imposter: true } : {}),
     });
     if (response.action !== 'exec') return fallback(realExecutable);

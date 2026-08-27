@@ -38,7 +38,7 @@ export function AgentList({ agents, parameters, actions }: AgentMonitorProps) {
       {ordered.length === 0 ? (
         <div className="godview-list-empty">
           <span>NO ACTIVE AGENTS</span>
-          <small>Launch Claude, Codex, or Grok from a terminal pane.</small>
+          <small>Launch an agent from a terminal pane.</small>
         </div>
       ) : (
         <ul className="godview-list-rows">
@@ -67,9 +67,9 @@ export function AgentList({ agents, parameters, actions }: AgentMonitorProps) {
                     {facet ? (
                       <>
                         <i aria-hidden="true">
-                          <AgentIcon agent={facet.kind} />
+                          <AgentIcon providerId={facet.provider.id} />
                         </i>
-                        {facet.model ?? facet.provider}
+                        {facet.model ?? facet.provider.label}
                       </>
                     ) : (
                       <span className="godview-list-terminal">terminal</span>

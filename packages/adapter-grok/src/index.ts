@@ -9,3 +9,4 @@ export * from './observation/session-observer.js';
 export * from './observation/session-discovery.js';
 export * from './normalization/index.js';
 export * from './services/account-usage.js';
+export * from './launch/native-invocation.js';

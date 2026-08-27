@@ -68,6 +68,7 @@ describe('Codex TUI preparation', () => {
       sandbox: 'read-only',
       approvalPolicy: 'never',
       onApproval,
+      env: { CODEX_HOME: '/profiles/codex', AI_PERSONA: 'codex' },
     });
 
     expect(terminalHost.spawnTerminal).not.toHaveBeenCalled();
@@ -76,6 +77,7 @@ describe('Codex TUI preparation', () => {
       command: '/opt/codex',
       args: ['resume', 'thread-1', '--remote', 'unix:///tmp/codex.sock'],
       cwd: '/work/repo',
+      env: { CODEX_HOME: '/profiles/codex', AI_PERSONA: 'codex' },
     });
     expect(fakes.createObserver).toHaveBeenCalledWith(
       expect.objectContaining({

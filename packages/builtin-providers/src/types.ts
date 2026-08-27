@@ -7,9 +7,9 @@ import type { CreateKimiTuiSessionOptions } from '@vibecook/puppeteer-adapter-ki
 import type { CreateOpenCodeTuiSessionOptions } from '@vibecook/puppeteer-adapter-opencode';
 import type {
   AgentRuntime,
-  CreateAgentSessionOptions,
   CreateAgentSessionResult,
   PrepareAgentSessionResult,
+  SpawnAgentOptions,
   SpawnAgentResult,
 } from '@vibecook/puppeteer-runtime';
 
@@ -22,33 +22,35 @@ export interface ClaudeAgentOptions {
   model?: string;
   effort?: string;
   settingSources?: readonly ClaudeSettingSource[];
-  configDir?: string;
   fileChangeMatcher?: string;
   onDiagnostic?: (diagnostic: ClaudeHookDiagnostic) => void;
-  resumeInvocation?: string[];
-  /** Per-session binary override, including a native-compatible Imposter executable. */
-  executable?: string;
 }
 
 export type CodexAgentOptions = Pick<
   CreateCodexTuiSessionOptions,
-  'model' | 'sandbox' | 'approvalPolicy' | 'onApproval' | 'resumeInvocation' | 'executable' | 'appServerEnv'
+  'model' | 'sandbox' | 'approvalPolicy' | 'onApproval'
 >;
 
 export type AcpAgentOptions = Omit<CreateAcpSessionOptions, 'cwd' | 'resume' | 'connector'> & {
   connector?: CreateAcpSessionOptions['connector'];
 };
 
-export type GrokAgentOptions = Omit<CreateGrokSessionOptions, 'cwd' | 'resume'> & {
-  executable?: string;
-  appServerEnv?: Record<string, string>;
-};
+export type GrokAgentOptions = Pick<
+  CreateGrokSessionOptions,
+  'model' | 'permissionMode' | 'sandbox' | 'clientCapabilities' | 'onApproval' | 'onElicitation'
+>;
 
-export type KimiAgentOptions = Omit<CreateKimiTuiSessionOptions, 'cwd' | 'resume' | 'host'>;
-export type OpenCodeAgentOptions = Omit<CreateOpenCodeTuiSessionOptions, 'cwd' | 'resume' | 'title' | 'host'>;
-export type HermesAgentOptions = Omit<CreateHermesTuiSessionOptions, 'cwd' | 'resume' | 'host' | 'transport'>;
+export type KimiAgentOptions = Pick<
+  CreateKimiTuiSessionOptions,
+  'model' | 'permissionMode' | 'plan' | 'agent' | 'agentFile' | 'promptConfirmationTimeoutMs'
+>;
+export type OpenCodeAgentOptions = Pick<
+  CreateOpenCodeTuiSessionOptions,
+  'agent' | 'model' | 'permission' | 'contextWindowCapacityTokens' | 'promptConfirmationTimeoutMs'
+>;
+export type HermesAgentOptions = Pick<CreateHermesTuiSessionOptions, 'yolo' | 'promptConfirmationTimeoutMs'>;
 
-type BuiltinCreateBase = Omit<CreateAgentSessionOptions, 'agent' | 'agentOptions'>;
+type BuiltinCreateBase = Omit<SpawnAgentOptions, 'agent' | 'agentOptions'>;
 
 export type BuiltinCreateAgentSessionOptions =
   | (BuiltinCreateBase & { agent: 'claude'; agentOptions?: ClaudeAgentOptions })

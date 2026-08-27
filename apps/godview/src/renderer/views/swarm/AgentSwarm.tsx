@@ -429,7 +429,7 @@ export function AgentSwarm({ agents, parameters, actions }: AgentMonitorProps) {
       {agents.length === 0 ? (
         <div className="godview-swarm-empty">
           <span>NO ACTIVE AGENTS</span>
-          <small>Launch Claude, Codex, or Grok from a terminal pane.</small>
+          <small>Launch an agent from a terminal pane.</small>
         </div>
       ) : null}
       {agents.map((agent) => {
@@ -468,10 +468,12 @@ export function AgentSwarm({ agents, parameters, actions }: AgentMonitorProps) {
               aria-current={agent.active ? 'true' : undefined}
               aria-label={
                 facet
-                  ? `${agent.project}, ${facet.model ?? facet.provider}, ${agent.status}: ${agent.detail}, ${contextLabel}`
+                  ? `${agent.project}, ${facet.model ?? facet.provider.label}, ${agent.status}: ${agent.detail}, ${contextLabel}`
                   : `${agent.project}, unassigned terminal, ${agent.status}`
               }
-              title={facet ? `${agent.project} · ${facet.model ?? facet.provider} · ${agent.detail}` : agent.detail}
+              title={
+                facet ? `${agent.project} · ${facet.model ?? facet.provider.label} · ${agent.detail}` : agent.detail
+              }
               onPointerDown={(event) => {
                 const wrapper = bodiesRef.current.get(agent.id);
                 const world = worldRef.current;
@@ -559,13 +561,13 @@ export function AgentSwarm({ agents, parameters, actions }: AgentMonitorProps) {
               ) : null}
               {facet ? (
                 <span className="agent-bubble-glyph" aria-hidden="true">
-                  <AgentIcon agent={facet.kind} />
+                  <AgentIcon providerId={facet.provider.id} />
                 </span>
               ) : null}
               <span className="agent-bubble-copy">
                 {facet?.branch ? <span className="agent-bubble-branch">{facet.branch}</span> : null}
                 <strong>{agent.project}</strong>
-                {facet ? <span className="agent-bubble-provider">{facet.model ?? facet.provider}</span> : null}
+                {facet ? <span className="agent-bubble-provider">{facet.model ?? facet.provider.label}</span> : null}
               </span>
               {facet ? <span className="agent-bubble-context">{contextLabel}</span> : null}
             </button>

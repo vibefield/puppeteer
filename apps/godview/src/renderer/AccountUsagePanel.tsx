@@ -57,7 +57,7 @@ export function AccountUsagePanel() {
           <div className={`account-usage-provider is-${view.state}`} key={view.providerId}>
             <span className="account-usage-provider-name">
               <span className="account-usage-provider-icon">
-                <AgentIcon agent={view.providerId} />
+                <AgentIcon providerId={view.providerId} />
               </span>
               <span className="account-usage-provider-label">
                 <span>{view.label}</span>

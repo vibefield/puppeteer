@@ -105,7 +105,11 @@ const architectureDependencies = new Map([
 
 const retiredRepositoryPaths = [
   'apps/godview/src/main/latest-value-queue.ts',
+  'apps/godview/src/main/restore-launch.ts',
+  'apps/godview/src/main/scenario-recorder.test.ts',
+  'apps/godview/src/main/scenario-recorder.ts',
   'apps/godview/src/renderer/legacy-agent-state.ts',
+  'apps/godview/src/renderer/ScenarioRecordingControl.tsx',
   'apps/emulator',
   'docs/monitor-v2-canary.md',
   'draft/DESIGN.md',
@@ -183,10 +187,18 @@ const requiredArchitectureDocuments = [
 ];
 
 const requiredLayerPaths = [
+  'packages/adapter-claude/src/launch/native-invocation.ts',
+  'packages/adapter-codex/src/launch/native-invocation.ts',
+  'packages/adapter-grok/src/launch/native-invocation.ts',
+  'packages/adapter-hermes/src/launch/native-invocation.ts',
+  'packages/adapter-kimi/src/launch/native-invocation.ts',
+  'packages/adapter-opencode/src/launch/native-invocation.ts',
   'packages/core/src/adapter/binding.ts',
   'packages/core/src/adapter/index.ts',
   'packages/core/src/events/index.ts',
   'packages/core/src/services/index.ts',
+  'packages/core/src/services/launch.ts',
+  'packages/core/src/services/provider.ts',
   'packages/runtime/src/agent.ts',
   'packages/runtime/src/events/event-bus.ts',
   'packages/runtime/src/host/environment.ts',
@@ -218,6 +230,71 @@ const forbiddenConsumerUsageTokens = [
   'spark',
 ];
 
+const providerNeutralLaunchPaths = [
+  'apps/godview/src/main/spawn-through.ts',
+  'apps/godview/src/shim/agent-shim.ts',
+  'apps/godview/src/restore-snapshot.ts',
+];
+
+const providerNeutralLaunchHostPaths = ['apps/godview/src/main/main.ts'];
+
+const forbiddenConsumerLaunchTokens = [
+  'claude',
+  'codex',
+  'grok',
+  'hermes',
+  'kimi',
+  'opencode',
+  'resumeInvocation',
+  'resumeLatest',
+  'appServerEnv',
+  'kimiHome',
+  'hermesHome',
+  'AI_PERSONA',
+  'CLAUDE_CONFIG_DIR',
+  'CODEX_HOME',
+  'GROK_HOME',
+  'KIMI_CODE_HOME',
+  'HERMES_HOME',
+  'agentOptions',
+];
+
+const forbiddenPrivateLaunchTokens = forbiddenConsumerLaunchTokens.slice(6);
+
+const godviewBrandingPaths = new Set(['apps/godview/src/renderer/AgentIcon.tsx']);
+const godviewCompositionRootPaths = new Set(['apps/godview/src/main/main.ts']);
+const forbiddenGodviewWireTokens = [
+  'claudeHookRailFaultInjection',
+  'hook_event_name',
+  'nativeEvent',
+  'ScenarioRecording',
+  'transcript_path',
+];
+
+function productionTypeScriptSources(root, directory) {
+  const sources = new Map();
+  const absoluteRoot = join(root, directory);
+  if (!existsSync(absoluteRoot)) return sources;
+
+  function visit(absoluteDirectory) {
+    for (const entry of readdirSync(absoluteDirectory, { withFileTypes: true })) {
+      const absolutePath = join(absoluteDirectory, entry.name);
+      if (entry.isDirectory()) {
+        visit(absolutePath);
+        continue;
+      }
+      if (!entry.isFile() || !/\.(?:ts|tsx)$/u.test(entry.name) || /\.(?:test|spec)\.(?:ts|tsx)$/u.test(entry.name)) {
+        continue;
+      }
+      const path = relative(root, absolutePath).replaceAll('\\', '/');
+      sources.set(path, readFileSync(absolutePath, 'utf8'));
+    }
+  }
+
+  visit(absoluteRoot);
+  return sources;
+}
+
 export function accountUsageConsumerBoundaryIssues(sources) {
   const issues = [];
   for (const [path, source] of sources) {
@@ -228,6 +305,63 @@ export function accountUsageConsumerBoundaryIssues(sources) {
       if (new RegExp(`\\b${token}\\b`, 'i').test(source)) {
         issues.push(`${path} contains provider-specific account-usage token ${token}`);
       }
+    }
+  }
+  return issues;
+}
+
+export function launchConsumerBoundaryIssues(sources) {
+  const issues = [];
+  for (const [path, source] of sources) {
+    if (/puppeteer-adapter-/i.test(source)) issues.push(`${path} must not import an agent adapter`);
+    for (const token of forbiddenConsumerLaunchTokens) {
+      if (new RegExp(`\\b${token}\\b`, 'i').test(source)) {
+        issues.push(`${path} contains provider-specific launch token ${token}`);
+      }
+    }
+  }
+  return issues;
+}
+
+/** Main may brand providers, but it still must not reconstruct any provider's private launch recipe. */
+export function launchHostBoundaryIssues(sources) {
+  const issues = [];
+  for (const [path, source] of sources) {
+    if (/puppeteer-adapter-/i.test(source)) issues.push(`${path} must not import an agent adapter`);
+    for (const token of forbiddenPrivateLaunchTokens) {
+      if (new RegExp(`\\b${token}\\b`, 'i').test(source)) {
+        issues.push(`${path} contains private launch token ${token}`);
+      }
+    }
+  }
+  return issues;
+}
+
+/**
+ * Godview is a consumer of normalized providers. Concrete provider names are
+ * allowed only in its optional visual-branding map; provider package assembly
+ * is allowed only in the main-process composition root.
+ */
+export function godviewConsumerBoundaryIssues(sources) {
+  const issues = [];
+  const providerTokens = new Set([...forbiddenConsumerUsageTokens, ...forbiddenConsumerLaunchTokens]);
+  for (const [path, source] of sources) {
+    if (/puppeteer-adapter-/iu.test(source)) issues.push(`${path} must not import an agent adapter`);
+    if (/puppeteer-builtin-providers/iu.test(source) && !godviewCompositionRootPaths.has(path)) {
+      issues.push(`${path} may not compose built-in providers outside Godview's main composition root`);
+    }
+    if (!godviewBrandingPaths.has(path)) {
+      for (const token of providerTokens) {
+        if (new RegExp(`\\b${token}\\b`, 'iu').test(source)) {
+          issues.push(`${path} contains provider-specific Godview token ${token}`);
+        }
+      }
+    }
+    for (const token of forbiddenGodviewWireTokens) {
+      if (source.includes(token)) issues.push(`${path} contains provider-native wire token ${token}`);
+    }
+    for (const command of ['/clear', '/compact', '/exit']) {
+      if (source.includes(command)) issues.push(`${path} contains provider-native terminal command ${command}`);
     }
   }
   return issues;
@@ -303,6 +437,25 @@ export function auditPackageLayout(root = scriptRoot) {
       ),
     ),
   );
+  issues.push(
+    ...launchConsumerBoundaryIssues(
+      new Map(
+        providerNeutralLaunchPaths
+          .filter((path) => hasPath(root, path))
+          .map((path) => [path, readFileSync(join(root, path), 'utf8')]),
+      ),
+    ),
+  );
+  issues.push(
+    ...launchHostBoundaryIssues(
+      new Map(
+        providerNeutralLaunchHostPaths
+          .filter((path) => hasPath(root, path))
+          .map((path) => [path, readFileSync(join(root, path), 'utf8')]),
+      ),
+    ),
+  );
+  issues.push(...godviewConsumerBoundaryIssues(productionTypeScriptSources(root, 'apps/godview/src')));
   for (const script of ['emulator', 'emulator:smoke', 'imposter-control', 'imposter-control:smoke', 'surface:detect']) {
     if (rootManifest.scripts?.[script]) issues.push(`root script ${script} is a retired alias`);
   }

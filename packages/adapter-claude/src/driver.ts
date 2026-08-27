@@ -124,6 +124,8 @@ export interface CreateClaudeSessionOptions {
   ports: ClaudeSessionPorts;
   title?: string;
   executable?: string;
+  /** Adapter-normalized launch environment; runtime consumers do not configure this directly. */
+  env?: Record<string, string>;
   permissionMode?: string;
   /** Model alias or full model id passed through to Claude Code. */
   model?: string;
@@ -264,6 +266,7 @@ export async function prepareClaudeTuiSession(
       resumeInvocation: options.resumeInvocation,
       title: options.title,
       executable: options.executable,
+      env: options.env,
       permissionMode: options.permissionMode,
       model: options.model,
       effort: options.effort,
@@ -889,6 +892,7 @@ export async function createClaudeSession(options: CreateClaudeSessionOptions): 
     cwd: options.cwd,
     title: options.title,
     executable: options.executable,
+    env: options.env,
     permissionMode: options.permissionMode,
     model: options.model,
     effort: options.effort,

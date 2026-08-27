@@ -3,6 +3,10 @@ import { performance } from 'node:perf_hooks';
 import {
   AccountUsageFetchResultSchema,
   AccountUsageProviderSchema,
+  AgentContinuationSchema,
+  AgentLaunchProviderSchema,
+  AgentNativeInvocationSchema,
+  AgentProviderDescriptorSchema,
   agentEventCategory,
   agentEventType,
   isAgentEventType,
@@ -15,8 +19,11 @@ import {
   type AgentEventConfidence,
   type AgentEventEnvelope,
   type AgentEventSource,
+  type AgentContinuation,
+  type AgentLaunchProvider,
   type AgentMonitorState,
   type AgentAdapterBinding,
+  type AgentProviderDescriptor,
   type ExternalRef,
   type MonitorNotification,
   type PromptReceipt,
@@ -50,6 +57,7 @@ import type {
   AdoptPreparedSessionResult,
   AgentProcessExit,
   AgentProvider,
+  AgentProviderSessionOptions,
   AgentRuntime,
   AgentRuntimeOptions,
   AgentSessionFailure,
@@ -151,6 +159,8 @@ interface ManagedRun {
   nativeSessionClaim?: RevisionedNativeSessionClaim;
   nativeSessionRecordId?: string;
   recordedNativeSessionRevision?: number;
+  continuationState?: string;
+  launchImplementation?: AgentContinuation['implementation'];
   creationClaim?: CreationRequestClaimRef;
   preparationId?: string;
   terminalOutcome?: CreationRequestTerminalOutcome;
@@ -315,6 +325,26 @@ function cloneLaunch(launch: TerminalSpec): TerminalSpec {
   };
 }
 
+function cloneLaunchProvider(provider: AgentLaunchProvider): AgentLaunchProvider {
+  return {
+    ...provider,
+    ...(provider.nativeInvocation
+      ? {
+          nativeInvocation: {
+            ...provider.nativeInvocation,
+            commands: provider.nativeInvocation.commands.map((command) => ({ ...command })),
+            environmentVariables: [...provider.nativeInvocation.environmentVariables],
+            ...(provider.nativeInvocation.imposter ? { imposter: { ...provider.nativeInvocation.imposter } } : {}),
+          },
+        }
+      : {}),
+  };
+}
+
+function cloneProviderDescriptor(provider: AgentProviderDescriptor): AgentProviderDescriptor {
+  return { ...provider };
+}
+
 function identityFields(identity: RuntimeRunIdentity): {
   runtimeRunId: string;
   runtimeEpoch: number;
@@ -383,13 +413,55 @@ const DEFAULT_TERMINAL_FAILURE_CAPACITY = 256;
 const MAX_TERMINAL_RUN_INFOS = 1_024;
 
 export function createAgentRuntime(options: AgentRuntimeOptions): AgentRuntime {
-  const providers = new Map(options.providers.map((provider) => [provider.kind, provider]));
+  const providers = new Map<string, AgentProvider>();
+  for (const configuredProvider of options.providers) {
+    const descriptor = AgentProviderDescriptorSchema.parse(configuredProvider.descriptor);
+    const provider: AgentProvider = { ...configuredProvider, descriptor };
+    if (providers.has(descriptor.id)) {
+      throw new Error(`duplicate agent provider: ${JSON.stringify(descriptor.id)}`);
+    }
+    providers.set(descriptor.id, provider);
+  }
+  const providerCatalog = [...providers.values()].map((provider) => provider.descriptor);
+  const launchProviders = [...providers.values()].flatMap((provider): AgentLaunchProvider[] => {
+    if (!provider.launch) return [];
+    const descriptor = AgentLaunchProviderSchema.parse(provider.launch.provider);
+    if (descriptor.id !== provider.descriptor.id || descriptor.label !== provider.descriptor.label) {
+      throw new Error(
+        `launch provider ${JSON.stringify({ id: descriptor.id, label: descriptor.label })} does not match agent provider ${JSON.stringify(provider.descriptor)}`,
+      );
+    }
+    if (descriptor.nativeInvocation && !provider.launch.normalizeInvocation) {
+      throw new Error(
+        `launch provider ${JSON.stringify(provider.descriptor.id)} advertises native invocation without a normalizer`,
+      );
+    }
+    if (descriptor.nativeInvocation?.imposter && !provider.launch.continuation) {
+      throw new Error(
+        `launch provider ${JSON.stringify(provider.descriptor.id)} advertises an imposter without a continuation codec`,
+      );
+    }
+    return [descriptor];
+  });
+  const launchCommandOwners = new Map<string, string>();
+  for (const descriptor of launchProviders) {
+    for (const command of descriptor.nativeInvocation?.commands ?? []) {
+      const existingOwner = launchCommandOwners.get(command.name);
+      if (existingOwner) {
+        throw new Error(
+          `native launch command ${JSON.stringify(command.name)} is advertised by both ${JSON.stringify(existingOwner)} and ${JSON.stringify(descriptor.id)}`,
+        );
+      }
+      launchCommandOwners.set(command.name, descriptor.id);
+    }
+  }
+  const launchProvidersById = new Map(launchProviders.map((provider) => [provider.id, provider]));
   const accountUsageProviders = [...providers.values()].flatMap((provider): AccountUsageProvider[] => {
     if (!provider.accountUsage) return [];
     const descriptor = AccountUsageProviderSchema.parse(provider.accountUsage.provider);
-    if (descriptor.id !== provider.kind) {
+    if (descriptor.id !== provider.descriptor.id || descriptor.label !== provider.descriptor.label) {
       throw new Error(
-        `account usage provider id ${JSON.stringify(descriptor.id)} does not match agent provider ${JSON.stringify(provider.kind)}`,
+        `account usage provider ${JSON.stringify({ id: descriptor.id, label: descriptor.label })} does not match agent provider ${JSON.stringify(provider.descriptor)}`,
       );
     }
     return [descriptor];
@@ -425,6 +497,26 @@ export function createAgentRuntime(options: AgentRuntimeOptions): AgentRuntime {
   let disposed = false;
 
   const report = (err: unknown): void => options.onError?.(err instanceof Error ? err : new Error(String(err)));
+
+  function continuationFor(provider: AgentProvider, nativeSessionId: string, run: ManagedRun): AgentContinuation {
+    return AgentContinuationSchema.parse({
+      providerId: provider.descriptor.id,
+      nativeSessionId,
+      implementation: run.launchImplementation ?? 'native',
+      ...(run.continuationState === undefined ? {} : { state: run.continuationState }),
+    });
+  }
+
+  function captureContinuationState(
+    provider: AgentProvider,
+    providerOptions: AgentProviderSessionOptions,
+    run: ManagedRun,
+  ): void {
+    run.continuationState = provider.launch?.continuation?.capture(providerOptions);
+    // Validate before a provider allocates process/socket resources. The final
+    // continuation is rebuilt with authoritative native identity afterward.
+    continuationFor(provider, 'pending-native-session', run);
+  }
 
   const validateAccountUsageResult = (provider: AccountUsageProvider, value: unknown): AccountUsageFetchResult => {
     const parsed = AccountUsageFetchResultSchema.safeParse(value);
@@ -1138,7 +1230,7 @@ export function createAgentRuntime(options: AgentRuntimeOptions): AgentRuntime {
     .map((provider) => {
       const service = provider.accountUsage;
       if (!service?.subscribe) return undefined;
-      const descriptor = accountUsageProvidersById.get(provider.kind)!;
+      const descriptor = accountUsageProvidersById.get(provider.descriptor.id)!;
       return service.subscribe((candidate) => {
         if (disposed) return;
         const result = validateAccountUsageResult(descriptor, candidate);
@@ -1507,16 +1599,18 @@ export function createAgentRuntime(options: AgentRuntimeOptions): AgentRuntime {
       throw new Error(`runtime run already has an active agent session: ${run.identity.runtimeRunId}`);
     }
     const initialNativeClaim =
-      run.nativeSessionClaim ?? createNativeSessionClaim(provider.kind, session.sessionId, 'observed');
+      run.nativeSessionClaim ?? createNativeSessionClaim(provider.descriptor.id, session.sessionId, 'observed');
     run.nativeSessionClaim = initialNativeClaim;
     run.terminalSessionId = session.runtimeSessionId;
     run.status = 'active';
     const info: AgentSessionInfo = {
-      agent: provider.kind,
+      provider: cloneProviderDescriptor(provider.descriptor),
+      agent: provider.descriptor.id,
       ...identityFields(run.identity),
       terminalSessionId: session.runtimeSessionId,
       nativeSession: { ...initialNativeClaim.value },
       nativeSessionRevision: initialNativeClaim.revision,
+      continuation: continuationFor(provider, initialNativeClaim.value.id, run),
       sessionId: session.sessionId,
       runtimeSessionId: session.runtimeSessionId,
       workspace: workspaceInfo(lease.workspace),
@@ -1559,7 +1653,7 @@ export function createAgentRuntime(options: AgentRuntimeOptions): AgentRuntime {
     ): void => {
       const current = run.nativeSessionClaim!;
       const next = reviseNativeSessionClaim(current, {
-        namespace: provider.kind,
+        namespace: provider.descriptor.id,
         id: nativeSessionId,
         basis: 'observed',
         quality: 'exact',
@@ -1568,6 +1662,7 @@ export function createAgentRuntime(options: AgentRuntimeOptions): AgentRuntime {
       run.nativeSessionClaim = next;
       info.nativeSession = { ...next.value };
       info.nativeSessionRevision = next.revision;
+      info.continuation = continuationFor(provider, next.value.id, run);
       info.sessionId = next.value.id;
       run.monitor?.updateRun(activeMonitorLifecycle(agent.state.lifecycle), { alive: true, nativeSession: next.value });
       void recordNativeSessionCorrelation(run, effectiveAt, evidence);
@@ -1584,7 +1679,7 @@ export function createAgentRuntime(options: AgentRuntimeOptions): AgentRuntime {
     ): void => {
       const sourceEventRef =
         upstream?.sourceEventRef ??
-        (upstream?.eventId ? { namespace: provider.kind, eventId: upstream.eventId } : undefined);
+        (upstream?.eventId ? { namespace: provider.descriptor.id, eventId: upstream.eventId } : undefined);
       const eventId = sourceEventRef ? sourceDerivedEventId(run.identity.runtimeRunId, sourceEventRef) : randomUUID();
       if (sourceEventRef) {
         if (seenSourceEventIds.has(eventId)) return;
@@ -1805,23 +1900,67 @@ export function createAgentRuntime(options: AgentRuntimeOptions): AgentRuntime {
     return { cancelled: true };
   }
 
+  async function spawnAgent(request: CreateAgentSessionOptions): Promise<Agent | AgentSessionFailure> {
+    const created = await runtime.createSession(request);
+    if ('error' in created) return created;
+    const agent = sessionsByTerminalId.get(created.terminalSessionId)?.agent;
+    if (!agent) {
+      return sessionFailure(
+        runs.get(created.runtimeRunId)!,
+        'AGENT_SESSION_CREATE_FAILED',
+        'agent session was created without a runtime Agent instance',
+      );
+    }
+    return agent;
+  }
+
   const runtime: AgentRuntime = {
-    async spawn(request) {
-      const created = await runtime.createSession(request);
-      if ('error' in created) return created;
-      const agent = sessionsByTerminalId.get(created.terminalSessionId)?.agent;
-      if (!agent) {
-        return sessionFailure(
-          runs.get(created.runtimeRunId)!,
-          'AGENT_SESSION_CREATE_FAILED',
-          'agent session was created without a runtime Agent instance',
-        );
+    spawn: spawnAgent,
+
+    async resume(request) {
+      const continuation = AgentContinuationSchema.parse(request.continuation);
+      const provider = providers.get(continuation.providerId);
+      const descriptor = launchProvidersById.get(continuation.providerId);
+      const spawnRequest: CreateAgentSessionOptions = {
+        agent: continuation.providerId,
+        cwd: request.cwd,
+        title: request.title,
+        creationRequestId: request.creationRequestId,
+        externalRefs: request.externalRefs,
+        workspace: request.workspace,
+        resume: continuation.nativeSessionId,
+      };
+      if (!provider) return spawnAgent(spawnRequest);
+      if (descriptor && !descriptor.resume) {
+        throw new Error(`agent provider does not support resume: ${continuation.providerId}`);
       }
-      return agent;
+      if (continuation.implementation === 'imposter' && !descriptor?.nativeInvocation?.imposter) {
+        throw new Error(`agent provider cannot restore an imposter continuation: ${continuation.providerId}`);
+      }
+      if (continuation.state !== undefined && !provider.launch?.continuation) {
+        throw new Error(`agent provider cannot restore continuation state: ${continuation.providerId}`);
+      }
+      const cwd = request.cwd ?? options.defaultCwd;
+      const agentOptions = provider.launch?.continuation?.restore(continuation.state, { cwd });
+      const resumed = await spawnAgent({
+        ...spawnRequest,
+        ...(agentOptions === undefined ? {} : { agentOptions }),
+      });
+      if ('error' in resumed) return resumed;
+      const managed = sessionsByRunId.get(resumed.runtimeRunId);
+      if (managed) {
+        managed.run.launchImplementation = continuation.implementation;
+        managed.info.continuation = continuationFor(provider, managed.info.nativeSession.id, managed.run);
+      }
+      return resumed;
     },
 
     agent(id) {
       return sessionsByTerminalId.get(id)?.agent ?? sessionsByRunId.get(id)?.agent;
+    },
+
+    providers() {
+      return providerCatalog.map(cloneProviderDescriptor);
     },
 
     accountUsageProviders() {
@@ -1829,6 +1968,10 @@ export function createAgentRuntime(options: AgentRuntimeOptions): AgentRuntime {
         ...provider,
         refresh: { ...provider.refresh },
       }));
+    },
+
+    launchProviders() {
+      return launchProviders.map(cloneLaunchProvider);
     },
 
     async accountUsage(providerId): Promise<AccountUsageFetchResult> {
@@ -1900,16 +2043,18 @@ export function createAgentRuntime(options: AgentRuntimeOptions): AgentRuntime {
           return sessionFailure(run, lease.error.code, lease.error.message);
         }
 
+        const providerOptions = {
+          runtimeRunId: run.identity.runtimeRunId,
+          cwd: lease.workspace.root,
+          resume: request.resume,
+          title: request.title,
+          host: options.host,
+          agentOptions: request.agentOptions,
+        };
         let session: AgentAdapterBinding;
         try {
-          session = await provider.createSession({
-            runtimeRunId: run.identity.runtimeRunId,
-            cwd: lease.workspace.root,
-            resume: request.resume,
-            title: request.title,
-            host: options.host,
-            agentOptions: request.agentOptions,
-          });
+          captureContinuationState(provider, providerOptions, run);
+          session = await provider.createSession(providerOptions);
         } catch (error) {
           report(error);
           await markRunTerminal(
@@ -1939,6 +2084,82 @@ export function createAgentRuntime(options: AgentRuntimeOptions): AgentRuntime {
           return sessionFailure(run, 'AGENT_SESSION_CREATE_FAILED', `agent session binding failed: ${request.agent}`);
         }
       });
+    },
+
+    async prepareInvocation(request) {
+      if (disposed) throw new Error('agent runtime is disposed');
+      const parsed = AgentNativeInvocationSchema.safeParse({
+        providerId: request.providerId,
+        cwd: request.cwd,
+        argv: request.argv,
+        environment: request.environment,
+        implementation: request.implementation,
+      });
+      if (!parsed.success) {
+        return preparationFailure('INVALID_NATIVE_INVOCATION', 'native invocation failed schema validation');
+      }
+      const invocation = parsed.data;
+      const provider = providers.get(invocation.providerId);
+      const service = provider?.launch;
+      const capability = launchProvidersById.get(invocation.providerId)?.nativeInvocation;
+      if (!provider || !service?.normalizeInvocation || !capability || !provider.prepareSession) {
+        return preparationFailure(
+          'NATIVE_INVOCATION_UNSUPPORTED',
+          `agent provider does not support native terminal invocation: ${invocation.providerId}`,
+        );
+      }
+      const allowedEnvironment = new Set(capability.environmentVariables);
+      const unexpectedEnvironment = Object.keys(invocation.environment).find((name) => !allowedEnvironment.has(name));
+      if (unexpectedEnvironment) {
+        return preparationFailure(
+          'INVALID_NATIVE_INVOCATION',
+          `native invocation environment is not accepted by ${invocation.providerId}: ${unexpectedEnvironment}`,
+        );
+      }
+      if (invocation.implementation.kind === 'imposter') {
+        const imposter = capability.imposter;
+        const validStateRoot =
+          imposter?.state === 'isolated-root'
+            ? invocation.implementation.stateRoot !== undefined
+            : invocation.implementation.stateRoot === undefined;
+        if (!imposter || !validStateRoot) {
+          return preparationFailure(
+            'INVALID_NATIVE_INVOCATION',
+            `imposter implementation does not match ${invocation.providerId} launch capabilities`,
+          );
+        }
+      }
+
+      let normalized;
+      try {
+        normalized = service.normalizeInvocation(invocation);
+      } catch (error) {
+        report(error);
+        return preparationFailure(
+          'INVALID_NATIVE_INVOCATION',
+          `native invocation normalization failed for ${invocation.providerId}`,
+        );
+      }
+      if (normalized.status === 'rejected') {
+        return preparationFailure('INVALID_NATIVE_INVOCATION', normalized.reason);
+      }
+      const result = await runtime.prepareSession({
+        agent: invocation.providerId,
+        cwd: invocation.cwd,
+        title: request.title,
+        creationRequestId: request.creationRequestId,
+        externalRefs: request.externalRefs,
+        workspace: request.workspace,
+        resume: normalized.resume,
+        ...(normalized.options === undefined ? {} : { agentOptions: normalized.options }),
+      });
+      if ('error' in result) return result;
+      const run = runs.get(result.runtimeRunId);
+      if (run) {
+        run.launchImplementation = invocation.implementation.kind;
+        result.continuation = continuationFor(provider, result.nativeSession.id, run);
+      }
+      return result;
     },
 
     prepareSession(request: CreateAgentSessionOptions): Promise<PrepareAgentSessionResult> {
@@ -1977,16 +2198,18 @@ export function createAgentRuntime(options: AgentRuntimeOptions): AgentRuntime {
           return preparationFailure(lease.error.code, lease.error.message, run);
         }
 
+        const providerOptions = {
+          runtimeRunId: run.identity.runtimeRunId,
+          cwd: lease.workspace.root,
+          resume: request.resume,
+          title: request.title,
+          host: options.host,
+          agentOptions: request.agentOptions,
+        };
         let prepared: PreparedProviderSession;
         try {
-          prepared = await provider.prepareSession({
-            runtimeRunId: run.identity.runtimeRunId,
-            cwd: lease.workspace.root,
-            resume: request.resume,
-            title: request.title,
-            host: options.host,
-            agentOptions: request.agentOptions,
-          });
+          captureContinuationState(provider, providerOptions, run);
+          prepared = await provider.prepareSession(providerOptions);
         } catch (error) {
           report(error);
           await markRunTerminal(
@@ -2006,7 +2229,7 @@ export function createAgentRuntime(options: AgentRuntimeOptions): AgentRuntime {
 
         const preparationId = randomUUID();
         const expiresAtMs = Date.now() + preparationTtlMs;
-        const nativeSessionClaim = createNativeSessionClaim(provider.kind, prepared.sessionId, 'observed');
+        const nativeSessionClaim = createNativeSessionClaim(provider.descriptor.id, prepared.sessionId, 'observed');
         run.nativeSessionClaim = nativeSessionClaim;
         await recordNativeSessionCorrelation(run);
         run.preparationId = preparationId;
@@ -2014,10 +2237,11 @@ export function createAgentRuntime(options: AgentRuntimeOptions): AgentRuntime {
         run.monitor?.updateRun('starting', { alive: true, nativeSession: nativeSessionClaim.value });
         const publicInfo: PreparedAgentSessionInfo = {
           preparationId,
-          agent: provider.kind,
+          agent: provider.descriptor.id,
           ...identityFields(run.identity),
           nativeSession: { ...nativeSessionClaim.value },
           nativeSessionRevision: nativeSessionClaim.revision,
+          continuation: continuationFor(provider, nativeSessionClaim.value.id, run),
           sessionId: prepared.sessionId,
           launch: cloneLaunch(prepared.launch),
           workspace: workspaceInfo(lease.workspace),

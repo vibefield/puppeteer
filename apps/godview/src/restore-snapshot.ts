@@ -1,7 +1,9 @@
 import type { SessionSummary } from '@vibecook/ghosttea-protocol';
+import { AgentContinuationSchema, type AgentContinuation } from '@vibecook/puppeteer-core';
 import type { AgentSessionInfo } from './protocol.js';
 
-export const RESTORE_SNAPSHOT_VERSION = 2 as const;
+export const RESTORE_SNAPSHOT_VERSION = 3 as const;
+const LEGACY_RESTORE_SNAPSHOT_VERSION = 2 as const;
 export const PANE_RECOVERY_METADATA_VERSION = 1 as const;
 export const MAX_RESTORE_PANES_PER_WINDOW = 512;
 const MAX_RESTORE_WINDOWS = 64;
@@ -17,28 +19,13 @@ export interface RestoreAgentWorkspace {
   branch?: string;
 }
 
-/**
- * Provider-specific launch provenance that is both necessary for a faithful
- * resume and safe to persist. This deliberately cannot contain argv,
- * environment maps, or credentials.
- */
-export interface RestoreClaudeLaunchProvenance {
-  kind: 'claude';
-  /** Absolute Claude configuration root; selects the matching credential namespace. */
-  configDir: string;
-}
-
-export type RestoreAgentLaunchProvenance = RestoreClaudeLaunchProvenance;
-
 export type RestoreDescriptor =
   | { kind: 'terminal'; cwd?: string }
   | {
       kind: 'agent';
-      agent: string;
-      nativeSessionId: string;
+      continuation: AgentContinuation;
       cwd?: string;
       workspace: RestoreAgentWorkspace;
-      launch?: RestoreAgentLaunchProvenance;
     };
 
 export interface PaneRecoveryMetadataV1 {
@@ -103,10 +90,8 @@ export interface RestoreSnapshotWindowInput {
 }
 
 export interface RestoreSnapshotAgentInput {
-  info: Pick<AgentSessionInfo, 'agent' | 'sessionId' | 'runtimeSessionId' | 'workspace'>;
+  info: Pick<AgentSessionInfo, 'continuation' | 'runtimeSessionId' | 'workspace'>;
   session: Pick<SessionSummary, 'cwd' | 'exited'>;
-  /** Sanitized provider launch provenance; never opaque agent options. */
-  launch?: RestoreAgentLaunchProvenance;
   /** False once the managed agent child returned to its still-open shell pane. */
   agentProcessAlive?: boolean;
 }
@@ -153,25 +138,30 @@ function parseWorkspace(value: unknown): RestoreAgentWorkspace | undefined {
   return { mode, root, sourcePath, ...(branch ? { branch } : {}) };
 }
 
-function isAbsoluteFilesystemPath(value: string): boolean {
-  return value.startsWith('/') || value.startsWith('\\\\') || /^[A-Za-z]:[\\/]/u.test(value);
-}
+function parseContinuation(value: Record<string, unknown>): AgentContinuation | undefined {
+  const current = AgentContinuationSchema.safeParse(value.continuation);
+  if (current.success) return current.data;
 
-function parseRestoreLaunch(value: unknown, agent: string): RestoreAgentLaunchProvenance | null | undefined {
-  if (value === undefined) return undefined;
-  if (!isRecord(value) || value.kind !== 'claude' || agent !== 'claude') return null;
-  const configDir = usable(value.configDir);
-  if (!configDir || !isAbsoluteFilesystemPath(configDir)) return null;
-  return { kind: 'claude', configDir };
-}
-
-/** Translate persisted safe provenance back to the provider's narrow launch options. */
-export function restoredAgentOptions(
-  descriptor: Extract<RestoreDescriptor, { kind: 'agent' }>,
-): Record<string, string> | undefined {
-  return descriptor.agent === 'claude' && descriptor.launch?.kind === 'claude'
-    ? { configDir: descriptor.launch.configDir }
-    : undefined;
+  // One generic migration for former V2 descriptors. Provider-specific launch
+  // provenance becomes opaque state and is interpreted only by that adapter.
+  const providerId = usable(value.agent);
+  const nativeSessionId = usable(value.nativeSessionId);
+  if (!providerId || !nativeSessionId) return undefined;
+  let state: string | undefined;
+  if (value.launch !== undefined) {
+    try {
+      state = JSON.stringify(value.launch);
+    } catch {
+      return undefined;
+    }
+    if (state.length > MAX_RESTORE_STRING) return undefined;
+  }
+  const legacy = AgentContinuationSchema.safeParse({
+    providerId,
+    nativeSessionId,
+    ...(state === undefined ? {} : { state }),
+  });
+  return legacy.success ? legacy.data : undefined;
 }
 
 export function readRestoreDescriptor(value: unknown): RestoreDescriptor | undefined {
@@ -179,19 +169,14 @@ export function readRestoreDescriptor(value: unknown): RestoreDescriptor | undef
   const cwd = usable(value.cwd);
   if (value.kind === 'terminal') return { kind: 'terminal', ...(cwd ? { cwd } : {}) };
   if (value.kind !== 'agent') return undefined;
-  const agent = usable(value.agent);
-  const nativeSessionId = usable(value.nativeSessionId);
+  const continuation = parseContinuation(value);
   const workspace = parseWorkspace(value.workspace);
-  if (!agent || !nativeSessionId || !workspace) return undefined;
-  const launch = parseRestoreLaunch(value.launch, agent);
-  if (launch === null) return undefined;
+  if (!continuation || !workspace) return undefined;
   return {
     kind: 'agent',
-    agent,
-    nativeSessionId,
+    continuation,
     ...(cwd ? { cwd } : {}),
     workspace,
-    ...(launch ? { launch } : {}),
   };
 }
 
@@ -213,12 +198,10 @@ function descriptorForAgent(agent: RestoreSnapshotAgentInput): RestoreSnapshotAg
   const workspace = agent.info.workspace;
   const cwd = usable(workspace.sourcePath) ?? usable(workspace.root) ?? usable(agent.session.cwd);
   const branch = usable(workspace.branch);
-  const launch = parseRestoreLaunch(agent.launch, agent.info.agent) ?? undefined;
   return {
     runtimeSessionId: agent.info.runtimeSessionId,
     kind: 'agent',
-    agent: agent.info.agent,
-    nativeSessionId: agent.info.sessionId,
+    continuation: { ...agent.info.continuation },
     ...(cwd ? { cwd } : {}),
     workspace: {
       mode: workspace.mode,
@@ -226,18 +209,16 @@ function descriptorForAgent(agent: RestoreSnapshotAgentInput): RestoreSnapshotAg
       sourcePath: workspace.sourcePath,
       ...(branch ? { branch } : {}),
     },
-    ...(launch ? { launch } : {}),
   };
 }
 
 export function paneRecoveryMetadata(
   session: Pick<SessionSummary, 'id' | 'cwd' | 'exited'>,
-  agent?: Pick<AgentSessionInfo, 'agent' | 'sessionId' | 'runtimeSessionId' | 'workspace'>,
-  launch?: RestoreAgentLaunchProvenance,
+  agent?: Pick<AgentSessionInfo, 'continuation' | 'runtimeSessionId' | 'workspace'>,
 ): PaneRecoveryMetadataV1 {
   let paneDescriptor: RestoreDescriptor;
   if (agent) {
-    const { runtimeSessionId: _runtimeSessionId, ...descriptor } = descriptorForAgent({ info: agent, session, launch });
+    const { runtimeSessionId: _runtimeSessionId, ...descriptor } = descriptorForAgent({ info: agent, session });
     paneDescriptor = descriptor;
   } else {
     const cwd = usable(session.cwd);
@@ -470,7 +451,12 @@ function readSnapshotAgent(value: unknown): RestoreSnapshotAgent | undefined {
 }
 
 export function readRestoreSnapshot(value: unknown): RestoreSnapshot | undefined {
-  if (!isRecord(value) || value.version !== RESTORE_SNAPSHOT_VERSION) return undefined;
+  if (
+    !isRecord(value) ||
+    (value.version !== RESTORE_SNAPSHOT_VERSION && value.version !== LEGACY_RESTORE_SNAPSHOT_VERSION)
+  ) {
+    return undefined;
+  }
   if (!Array.isArray(value.windows) || !Array.isArray(value.agents)) return undefined;
   if (value.windows.length > MAX_RESTORE_WINDOWS || value.agents.length > MAX_RESTORE_AGENTS) return undefined;
   const agents: RestoreSnapshotAgent[] = [];
@@ -517,7 +503,10 @@ export function summarizeRestoreSnapshot(snapshot: RestoreSnapshot): RestoreSnap
     windows: snapshot.windows.length,
     agents: snapshot.agents.length,
     terminals,
-    entries: snapshot.agents.map((agent) => ({ agent: agent.agent, ...(agent.cwd ? { cwd: agent.cwd } : {}) })),
+    entries: snapshot.agents.map((agent) => ({
+      agent: agent.continuation.providerId,
+      ...(agent.cwd ? { cwd: agent.cwd } : {}),
+    })),
   };
 }
 

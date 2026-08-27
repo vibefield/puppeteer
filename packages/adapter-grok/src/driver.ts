@@ -26,9 +26,10 @@ export function createGrokBackend(options: CreateGrokBackendOptions): GrokBacken
   let ownedImposterHome: string | undefined;
   const childExtras = options.appServerEnv ? { ...options.appServerEnv } : undefined;
   // All three Grok processes and the parent-side observer must share one home.
-  // Godview intentionally supplies only AI_PERSONA; allocate the isolation root
-  // here, where the full multi-process recipe is owned, and clean it with the
-  // backend. Real Grok launches (no appServerEnv) retain normal GROK_HOME rules.
+  // The native-invocation service supplies a host-owned durable root. A direct
+  // adapter caller that selects the persona without one gets an adapter-owned
+  // ephemeral root, cleaned with the backend. Real Grok launches retain normal
+  // GROK_HOME rules.
   if (childExtras?.AI_PERSONA === 'grok') {
     if (
       childExtras.PUPPETEER_IMPOSTER_HOME &&

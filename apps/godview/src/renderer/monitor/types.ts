@@ -4,20 +4,20 @@ import type {
   AgentMonitorViewProps as PortableAgentMonitorViewProps,
 } from '@vibecook/puppeteer-react';
 import type {
+  AgentProviderDescriptor,
   AgentMonitorState,
   AgentMonitorTeamAggregate,
   MonitorContextState,
   MonitorRecency,
 } from '@vibecook/puppeteer-core';
-import type { AgentKind, AgentSessionInfo } from '../../protocol.js';
+import type { AgentSessionInfo } from '../../protocol.js';
 import type { AgentVisualStatus } from '../agent-status.js';
 import type { PaneAttachment } from '../pane-attachments.js';
 import type { MonitorParameterGroup, MonitorParameters } from './parameters.js';
 
 /** The agent half of a monitored session; absent while a terminal holds no agent. */
 export interface MonitorAgentFacet {
-  kind: AgentKind;
-  provider: string;
+  provider: AgentProviderDescriptor;
   model?: string;
   branch?: string;
   contextWindow?: MonitorContextState;

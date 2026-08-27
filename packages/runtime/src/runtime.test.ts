@@ -80,7 +80,7 @@ function fakeProvider(
 ): AgentProvider {
   let counter = 0;
   return {
-    kind,
+    descriptor: { id: kind, label: kind },
     async createSession(): Promise<AgentAdapterBinding> {
       const n = ++counter;
       const runtimeSessionId = `${kind}-runtime-${n}`;
@@ -218,6 +218,174 @@ function standaloneSession(sessionId: string, runtimeSessionId: string): AgentAd
 }
 
 describe('createAgentRuntime', () => {
+  it('normalizes native invocations and resumes opaque continuations without provider quirks in callers', async () => {
+    const root = await mkdtemp(join(tmpdir(), 'puppeteer-runtime-launch-'));
+    const hooks = { prepareCount: 0, adoptCount: 0, disposeCount: 0 };
+    const normalizeInvocation = vi.fn(() => ({
+      status: 'accepted' as const,
+      resume: 'native-selected',
+      options: { profileRoot: '/profiles/example' },
+    }));
+    const restore = vi.fn((state: string | undefined) => ({ profileRoot: JSON.parse(state!).profileRoot }));
+    const provider: AgentProvider = {
+      ...preparableProvider('example', hooks),
+      descriptor: { id: 'example', label: 'Example' },
+      launch: {
+        provider: {
+          id: 'example',
+          label: 'Example',
+          resume: true,
+          nativeInvocation: {
+            commands: [{ name: 'example', executable: '/opt/example' }],
+            environmentVariables: ['EXAMPLE_HOME'],
+            imposter: { state: 'isolated-root' },
+          },
+        },
+        normalizeInvocation,
+        continuation: {
+          capture: ({ agentOptions }) => {
+            const profileRoot = (agentOptions as { profileRoot?: string } | undefined)?.profileRoot;
+            return profileRoot ? JSON.stringify({ profileRoot }) : undefined;
+          },
+          restore,
+        },
+      },
+    };
+    const runtime = createAgentRuntime({ host, defaultCwd: root, providers: [provider] });
+
+    expect(runtime.launchProviders()).toEqual([provider.launch!.provider]);
+    const prepared = await runtime.prepareInvocation({
+      providerId: 'example',
+      cwd: root,
+      argv: ['--resume', 'native-selected'],
+      environment: { EXAMPLE_HOME: '/profiles/example' },
+      implementation: { kind: 'imposter', executable: '/opt/ai', stateRoot: '/profiles/imposter' },
+    });
+    if ('error' in prepared) throw new Error(prepared.error.message);
+    expect(normalizeInvocation).toHaveBeenCalledWith({
+      providerId: 'example',
+      cwd: root,
+      argv: ['--resume', 'native-selected'],
+      environment: { EXAMPLE_HOME: '/profiles/example' },
+      implementation: { kind: 'imposter', executable: '/opt/ai', stateRoot: '/profiles/imposter' },
+    });
+    expect(prepared.continuation).toEqual({
+      providerId: 'example',
+      nativeSessionId: 'example-prepared-1',
+      implementation: 'imposter',
+      state: JSON.stringify({ profileRoot: '/profiles/example' }),
+    });
+
+    const resumed = await runtime.resume({ continuation: prepared.continuation, cwd: root });
+    if ('error' in resumed) throw new Error(resumed.error.message);
+    expect(restore).toHaveBeenCalledWith(prepared.continuation.state, { cwd: root });
+    expect(resumed.info.continuation).toMatchObject({
+      providerId: 'example',
+      implementation: 'imposter',
+      state: prepared.continuation.state,
+    });
+
+    await runtime.cancelPrepared(prepared.preparationId);
+    await runtime.dispose();
+    await rm(root, { recursive: true, force: true });
+  });
+
+  it('rejects undeclared invocation environment before calling an adapter', async () => {
+    const normalizeInvocation = vi.fn(() => ({ status: 'accepted' as const }));
+    const provider: AgentProvider = {
+      ...preparableProvider('example', { prepareCount: 0, adoptCount: 0, disposeCount: 0 }),
+      descriptor: { id: 'example', label: 'Example' },
+      launch: {
+        provider: {
+          id: 'example',
+          label: 'Example',
+          resume: true,
+          nativeInvocation: {
+            commands: [{ name: 'example', executable: 'example' }],
+            environmentVariables: [],
+          },
+        },
+        normalizeInvocation,
+      },
+    };
+    const runtime = createAgentRuntime({ host, defaultCwd: '/repo', providers: [provider] });
+    await expect(
+      runtime.prepareInvocation({
+        providerId: 'example',
+        cwd: '/repo',
+        argv: [],
+        environment: { SECRET: 'no' },
+        implementation: { kind: 'native' },
+      }),
+    ).resolves.toMatchObject({ error: { code: 'INVALID_NATIVE_INVOCATION' } });
+    expect(normalizeInvocation).not.toHaveBeenCalled();
+    await runtime.dispose();
+  });
+
+  it('rejects duplicate provider ids and ambiguous native command ownership at construction', () => {
+    const provider = (kind: string, command: string): AgentProvider => ({
+      ...fakeProvider(kind, new Map()),
+      launch: {
+        provider: {
+          id: kind,
+          label: kind,
+          resume: true,
+          nativeInvocation: {
+            commands: [{ name: command, executable: `/opt/${command}` }],
+            environmentVariables: [],
+          },
+        },
+        normalizeInvocation: () => ({ status: 'accepted' }),
+      },
+    });
+
+    expect(() =>
+      createAgentRuntime({ host, defaultCwd: '/repo', providers: [provider('one', 'one'), provider('one', 'two')] }),
+    ).toThrow('duplicate agent provider');
+    expect(() =>
+      createAgentRuntime({
+        host,
+        defaultCwd: '/repo',
+        providers: [provider('one', 'agent'), provider('two', 'agent')],
+      }),
+    ).toThrow('advertised by both');
+
+    const nonDurableImposter = provider('imposter-without-codec', 'imposter-without-codec');
+    nonDurableImposter.launch!.provider.nativeInvocation!.imposter = { state: 'isolated-root' };
+    expect(() => createAgentRuntime({ host, defaultCwd: '/repo', providers: [nonDurableImposter] })).toThrow(
+      'advertises an imposter without a continuation codec',
+    );
+
+    const mislabeledLaunch = provider('mislabeled', 'mislabeled');
+    mislabeledLaunch.launch!.provider.label = 'Different label';
+    expect(() => createAgentRuntime({ host, defaultCwd: '/repo', providers: [mislabeledLaunch] })).toThrow(
+      'does not match agent provider',
+    );
+  });
+
+  it('validates and defensively exposes the open provider catalog on sessions and Runtime', async () => {
+    const root = await mkdtemp(join(tmpdir(), 'puppeteer-runtime-providers-'));
+    const handles = new Map<string, { emit: (event: AgentEventEnvelope) => void }>();
+    const configured = fakeProvider('company.agent-v2', handles);
+    configured.descriptor.label = 'Company Agent';
+    const runtime = createAgentRuntime({ host, defaultCwd: root, providers: [configured] });
+
+    const firstCatalog = runtime.providers();
+    expect(firstCatalog).toEqual([{ id: 'company.agent-v2', label: 'Company Agent' }]);
+    firstCatalog[0]!.label = 'mutated consumer copy';
+    expect(runtime.providers()).toEqual([{ id: 'company.agent-v2', label: 'Company Agent' }]);
+
+    const spawned = await runtime.spawn({ agent: 'company.agent-v2', cwd: root });
+    if ('error' in spawned) throw new Error(spawned.error.message);
+    expect(spawned.info.provider).toEqual({ id: 'company.agent-v2', label: 'Company Agent' });
+    const info = spawned.info;
+    info.provider.label = 'mutated session copy';
+    expect(spawned.info.provider.label).toBe('Company Agent');
+
+    await runtime.dispose();
+    await rm(root, { recursive: true, force: true });
+  });
+
   it('spawns one Agent instance and observes namespaced service events through Agent.on()', async () => {
     const root = await mkdtemp(join(tmpdir(), 'puppeteer-runtime-agent-api-'));
     const handles = new Map<string, { emit: (event: AgentEventEnvelope) => void }>();
@@ -304,7 +472,7 @@ describe('createAgentRuntime', () => {
     const candidateListeners = new Set<(candidate: AdapterEventCandidate) => void>();
     const errors: Error[] = [];
     const provider: AgentProvider = {
-      kind: 'candidate-provider',
+      descriptor: { id: 'candidate-provider', label: 'Candidate Provider' },
       async createSession() {
         return {
           sessionId: 'candidate-native-1',
@@ -333,7 +501,7 @@ describe('createAgentRuntime', () => {
       providers: [provider],
       onError: (error) => errors.push(error),
     });
-    const spawned = await runtime.spawn({ agent: provider.kind, cwd: root });
+    const spawned = await runtime.spawn({ agent: provider.descriptor.id, cwd: root });
     if ('error' in spawned) throw new Error(spawned.error.message);
     const delivered: AgentEventEnvelope[] = [];
     spawned.on('*', (envelope) => delivered.push(envelope));
@@ -388,6 +556,7 @@ describe('createAgentRuntime', () => {
     let calls = 0;
     const provider: AgentProvider = {
       ...fakeProvider('codex', handles),
+      descriptor: { id: 'codex', label: 'Codex' },
       accountUsage: {
         provider: { id: 'codex', label: 'Codex', refresh: { pollIntervalMs: 60_000 } },
         async fetch() {
@@ -431,6 +600,7 @@ describe('createAgentRuntime', () => {
     const unsupported = fakeProvider('acp', handles);
     const broken: AgentProvider = {
       ...fakeProvider('broken', handles),
+      descriptor: { id: 'broken', label: 'Broken' },
       accountUsage: {
         provider: { id: 'broken', label: 'Broken', refresh: { pollIntervalMs: 60_000 } },
         fetch() {
@@ -473,6 +643,7 @@ describe('createAgentRuntime', () => {
     const onError = vi.fn();
     const provider: AgentProvider = {
       ...fakeProvider('example', handles),
+      descriptor: { id: 'example', label: 'Example' },
       accountUsage: {
         provider: { id: 'example', label: 'Example', refresh: { pollIntervalMs: 60_000 } },
         async fetch() {
@@ -525,6 +696,7 @@ describe('createAgentRuntime', () => {
     const pushListeners = new Set<(result: AccountUsageFetchResult) => void>();
     const provider: AgentProvider = {
       ...fakeProvider('claude', handles),
+      descriptor: { id: 'claude', label: 'Claude' },
       accountUsage: {
         provider: {
           id: 'claude',
@@ -631,7 +803,7 @@ describe('createAgentRuntime', () => {
       stamp({ type: 'turn:completed', turnId: 'history-turn' }),
     ];
     const provider: AgentProvider = {
-      kind: 'replay',
+      descriptor: { id: 'replay', label: 'Replay' },
       async createSession() {
         return {
           sessionId,
@@ -1201,7 +1373,7 @@ describe('createAgentRuntime', () => {
     const root = await mkdtemp(join(tmpdir(), 'puppeteer-runtime-options-'));
     let received: unknown;
     const provider: AgentProvider = {
-      kind: 'one',
+      descriptor: { id: 'one', label: 'One' },
       async createSession(options) {
         received = options.agentOptions;
         return fakeProvider('one', new Map()).createSession(options);
@@ -1531,7 +1703,7 @@ describe('createAgentRuntime', () => {
       recorder,
       providers: [
         {
-          kind: 'broken',
+          descriptor: { id: 'broken', label: 'Broken' },
           async createSession() {
             calls += 1;
             throw new Error('provider secret detail');
@@ -1738,7 +1910,7 @@ describe('createAgentRuntime', () => {
     const root = await mkdtemp(join(tmpdir(), 'puppeteer-runtime-resume-identity-'));
     let counter = 0;
     const provider: AgentProvider = {
-      kind: 'one',
+      descriptor: { id: 'one', label: 'One' },
       async createSession(options) {
         return standaloneSession(options.resume ?? 'new-native', `terminal-${++counter}`);
       },
@@ -2157,7 +2329,7 @@ describe('createAgentRuntime', () => {
     const root = await mkdtemp(join(tmpdir(), 'puppeteer-runtime-monitor-clean-'));
     const timeline: string[] = [];
     const provider: AgentProvider = {
-      kind: 'monitor-clean',
+      descriptor: { id: 'monitor-clean', label: 'Monitor Clean' },
       executionMode: 'native-tui',
       async createSession() {
         return {
@@ -2339,7 +2511,7 @@ describe('createAgentRuntime', () => {
     const root = await mkdtemp(join(tmpdir(), 'puppeteer-runtime-monitor-crash-'));
     const timeline: string[] = [];
     const provider: AgentProvider = {
-      kind: 'monitor-crash',
+      descriptor: { id: 'monitor-crash', label: 'Monitor Crash' },
       async createSession() {
         return {
           sessionId: 'monitor-crash-native',
@@ -2393,7 +2565,7 @@ describe('createAgentRuntime', () => {
     const root = await mkdtemp(join(tmpdir(), 'puppeteer-runtime-monitor-retention-'));
     let sequence = 0;
     const provider: AgentProvider = {
-      kind: 'monitor-retention',
+      descriptor: { id: 'monitor-retention', label: 'Monitor Retention' },
       async createSession() {
         const id = ++sequence;
         return {
@@ -2446,7 +2618,7 @@ describe('createAgentRuntime', () => {
     let eventSubscriptions = 0;
     let artifactReads = 0;
     const provider: AgentProvider = {
-      kind: 'monitor-artifact',
+      descriptor: { id: 'monitor-artifact', label: 'Monitor Artifact' },
       async createSession() {
         return {
           sessionId: 'monitor-artifact-native',

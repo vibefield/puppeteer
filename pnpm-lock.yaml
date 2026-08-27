@@ -170,6 +170,9 @@ importers:
       '@vibecook/puppeteer-core':
         specifier: workspace:*
         version: link:../core
+      zod:
+        specifier: ^4.4.3
+        version: 4.4.3
     devDependencies:
       '@vibecook/puppeteer-surface':
         specifier: workspace:*
@@ -183,6 +186,9 @@ importers:
       '@vibecook/puppeteer-core':
         specifier: workspace:*
         version: link:../core
+      zod:
+        specifier: ^4.4.3
+        version: 4.4.3
     devDependencies:
       '@vibecook/puppeteer-surface':
         specifier: workspace:*
@@ -199,6 +205,9 @@ importers:
       '@vibecook/puppeteer-core':
         specifier: workspace:*
         version: link:../core
+      zod:
+        specifier: ^4.4.3
+        version: 4.4.3
     devDependencies:
       '@vibecook/puppeteer-testing':
         specifier: workspace:*
@@ -209,6 +218,9 @@ importers:
       '@vibecook/puppeteer-core':
         specifier: workspace:*
         version: link:../core
+      zod:
+        specifier: ^4.4.3
+        version: 4.4.3
     devDependencies:
       '@vibecook/puppeteer-surface':
         specifier: workspace:*
@@ -225,6 +237,9 @@ importers:
       '@vibecook/puppeteer-core':
         specifier: workspace:*
         version: link:../core
+      zod:
+        specifier: ^4.4.3
+        version: 4.4.3
     devDependencies:
       '@vibecook/puppeteer-testing':
         specifier: workspace:*
@@ -238,6 +253,9 @@ importers:
       '@vibecook/puppeteer-core':
         specifier: workspace:*
         version: link:../core
+      zod:
+        specifier: ^4.4.3
+        version: 4.4.3
     devDependencies:
       '@vibecook/puppeteer-surface':
         specifier: workspace:*

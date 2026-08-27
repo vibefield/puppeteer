@@ -20,14 +20,13 @@ function directory(): string {
 
 function snapshot(updatedAtMs: number): RestoreSnapshot {
   return {
-    version: 2,
+    version: 3,
     updatedAtMs,
     agents: [
       {
         runtimeSessionId: 'terminal-agent',
         kind: 'agent',
-        agent: 'claude',
-        nativeSessionId: 'native-agent',
+        continuation: { providerId: 'claude', nativeSessionId: 'native-agent', implementation: 'native' },
         cwd: '/repo',
         workspace: { mode: 'direct', root: '/repo', sourcePath: '/repo' },
       },

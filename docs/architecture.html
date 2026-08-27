@@ -2097,6 +2097,8 @@ if ('error' in result) {
   });
 
   const receipt = await agent.submitPrompt({ text: 'Review this change.' });
+  const continuation = agent.info.continuation;
+  const resumed = await runtime.resume({ continuation });
   unsubscribe();
 }
 
@@ -2114,14 +2116,35 @@ await runtime.dispose();</code></pre>
                 <p>Primary creation API. Operational failure is renderable data, not an untyped exception.</p>
               </article>
               <article class="api-card">
+                <h3>runtime.resume(options)</h3>
+                <div class="signature">Promise&lt;Agent | AgentSessionFailure&gt;</div>
+                <p>
+                  Resumes one opaque AgentContinuation. Runtime preserves only the generic native-versus-Imposter
+                  identity; adapters restore their own executable, profile, store, and transport topology.
+                </p>
+              </article>
+              <article class="api-card">
                 <h3>runtime.agent(id)</h3>
                 <div class="signature">Agent | undefined</div>
                 <p>Find a live Agent by runtime-run or terminal-session identity.</p>
               </article>
               <article class="api-card">
-                <h3>prepareSession / adoptPrepared</h3>
-                <div class="signature">split-phase launch</div>
-                <p>Allows a caller-owned terminal to execute an adapter-authored recipe, then bind the live session.</p>
+                <h3>runtime.providers()</h3>
+                <div class="signature">readonly AgentProviderDescriptor[]</div>
+                <p>
+                  Enumerates open, adapter-authored provider identities and display labels. Products never maintain a
+                  closed provider union or label switch.
+                </p>
+              </article>
+              <article class="api-card">
+                <h3>prepareInvocation / adoptPrepared</h3>
+                <div class="signature">terminal-host SPI</div>
+                <p>Lets an adapter normalize shell intent and author the recipe before a host binds its terminal.</p>
+              </article>
+              <article class="api-card">
+                <h3>runtime.launchProviders()</h3>
+                <div class="signature">readonly AgentLaunchProvider[]</div>
+                <p>Descriptor-driven command, environment allow-list, resume, and conformant Imposter discovery.</p>
               </article>
               <article class="api-card">
                 <h3>runtime.accountUsageProviders()</h3>
@@ -2162,12 +2185,28 @@ const runtime = createAgentRuntime({
 });
 
 interface AgentProvider {
-  readonly kind: string;
+  readonly descriptor: AgentProviderDescriptor; <span class="comment">// strict Zod data contract</span>
   readonly executionMode?: 'native-tui' | 'structured' | 'acp';
   createSession(options: AgentProviderSessionOptions): Promise&lt;AgentAdapterBinding&gt;;
   prepareSession?(options: AgentProviderSessionOptions): Promise&lt;PreparedProviderSession&gt;;
+  readonly launch?: AgentProviderLaunchService;
   readonly accountUsage?: AccountUsageService;
   dispose?(): void | Promise&lt;void&gt;;
+}
+
+interface AgentProviderDescriptor {
+  id: string;                 <span class="comment">// stable and opaque outside the adapter/runtime</span>
+  label: string;              <span class="comment">// adapter-authored consumer display label</span>
+}
+
+interface AgentProviderLaunchService {
+  readonly provider: AgentLaunchProvider; <span class="comment">// strict Zod data contract</span>
+  normalizeInvocation?(input: AgentNativeInvocation): AgentNativeInvocationResolution;
+  readonly continuation?: {
+    <span class="comment">// adapter state is also strict, versioned Zod data</span>
+    capture(options: AgentProviderSessionOptions): string | undefined;
+    restore(state: string | undefined, options: { cwd: string }): unknown;
+  };
 }
 
 interface AccountUsageService {

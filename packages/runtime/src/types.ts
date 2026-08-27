@@ -2,11 +2,16 @@ import type {
   AccountUsageFetchResult,
   AccountUsageProvider,
   AccountUsageService,
+  AgentContinuation,
   AgentExecutionMode,
   AgentEvent,
   AgentEventEnvelope,
   AgentEventSourceRef,
   AgentHost,
+  AgentLaunchProvider,
+  AgentNativeInvocation,
+  AgentNativeInvocationResolution,
+  AgentProviderDescriptor,
   AgentMonitorHandle,
   AgentMonitorState,
   AgentAdapterBinding,
@@ -59,14 +64,29 @@ export interface AgentProviderSessionOptions {
   agentOptions?: unknown;
 }
 
+/** Provider-private continuation codec. Its state is opaque above the adapter boundary. */
+export interface AgentProviderContinuationCodec {
+  capture(options: AgentProviderSessionOptions): string | undefined;
+  restore(state: string | undefined, options: { cwd: string }): unknown;
+}
+
+/** Adapter-owned native launch service consumed by the generic runtime host SPI. */
+export interface AgentProviderLaunchService {
+  readonly provider: AgentLaunchProvider;
+  normalizeInvocation?(invocation: AgentNativeInvocation): AgentNativeInvocationResolution;
+  readonly continuation?: AgentProviderContinuationCodec;
+}
+
 /** A provider is the only adapter-specific seam the unified runtime consumes. */
 export interface AgentProvider {
-  readonly kind: string;
+  readonly descriptor: AgentProviderDescriptor;
   /** Provider topology; defaults to native-tui for compatibility providers. */
   readonly executionMode?: AgentExecutionMode;
   createSession(options: AgentProviderSessionOptions): Promise<AgentAdapterBinding>;
   /** Adapter-owned account-wide quota capability, independent of any session. */
   readonly accountUsage?: AccountUsageService;
+  /** Adapter-owned CLI grammar, transport topology, and continuation semantics. */
+  readonly launch?: AgentProviderLaunchService;
   /** Optional split-phase launch for caller-owned terminals. Generic ACP intentionally omits this capability. */
   prepareSession?(options: AgentProviderSessionOptions): Promise<PreparedProviderSession>;
   dispose?(): void | Promise<void>;
@@ -99,6 +119,7 @@ export interface AgentWorkspaceInfo {
 export interface CreateAgentSessionOptions {
   agent: string;
   cwd?: string;
+  /** @deprecated Consumer resume uses runtime.resume({ continuation }); retained for provider/compatibility calls. */
   resume?: string;
   title?: string;
   /** Caller-scoped idempotency key. Requires a durable creation registry. */
@@ -111,13 +132,39 @@ export interface CreateAgentSessionOptions {
   agentOptions?: unknown;
 }
 
+/** Consumer-facing spawn request. Native resume identity is accepted only through resume(). */
+export type SpawnAgentOptions = Omit<CreateAgentSessionOptions, 'resume'>;
+
+/** Consumer-facing resume request: no provider argv, environment, or transport knobs. */
+export interface ResumeAgentOptions {
+  continuation: AgentContinuation;
+  cwd?: string;
+  title?: string;
+  creationRequestId?: string;
+  externalRefs?: readonly ExternalRef[];
+  workspace?: AgentWorkspaceRequest;
+}
+
+/** Host-only native invocation request. Adapters normalize it before normal preparation. */
+export interface PrepareAgentInvocationOptions extends AgentNativeInvocation {
+  title?: string;
+  creationRequestId?: string;
+  externalRefs?: readonly ExternalRef[];
+  workspace?: AgentWorkspaceRequest;
+}
+
 export interface AgentSessionInfo {
+  /** Validated consumer-facing provider identity and label. */
+  provider: AgentProviderDescriptor;
+  /** @deprecated Use provider.id. */
   agent: string;
   runtimeRunId: RuntimeRunId;
   runtimeEpoch: number;
   terminalSessionId: string;
   nativeSession: NativeSessionRef;
   nativeSessionRevision: number;
+  /** Persist this opaque token and pass it to resume(); never inspect adapter state. */
+  continuation: AgentContinuation;
   externalRefs: ExternalRef[];
   /** @deprecated Use nativeSession.id. */
   sessionId: string;
@@ -174,7 +221,9 @@ export type PreparationErrorCode =
   | 'PREPARATION_CANCELLED'
   | 'PREPARATION_ALREADY_ADOPTED'
   | 'RUNTIME_SESSION_CONFLICT'
-  | 'PREPARATION_ADOPT_FAILED';
+  | 'PREPARATION_ADOPT_FAILED'
+  | 'NATIVE_INVOCATION_UNSUPPORTED'
+  | 'INVALID_NATIVE_INVOCATION';
 
 export interface PreparationFailure {
   runtimeRunId?: RuntimeRunId;
@@ -191,6 +240,7 @@ export interface PreparedAgentSessionInfo {
   runtimeEpoch: number;
   nativeSession: NativeSessionRef;
   nativeSessionRevision: number;
+  continuation: AgentContinuation;
   externalRefs: ExternalRef[];
   /** @deprecated Use nativeSession.id. */
   sessionId: string;
@@ -307,15 +357,24 @@ export interface RestoreAgentSessionOptions {
 /** The single application-facing surface for every agent provider. */
 export interface AgentRuntime {
   /** Primary API: spawn one provider and receive its per-run Agent event surface. */
-  spawn(options: CreateAgentSessionOptions): Promise<SpawnAgentResult>;
+  spawn(options: SpawnAgentOptions): Promise<SpawnAgentResult>;
+  /** Resume an opaque continuation without provider-specific launch knowledge. */
+  resume(options: ResumeAgentOptions): Promise<SpawnAgentResult>;
   /** Resolve a live Agent by terminal-session id or runtime-run id. */
   agent(id: string): Agent | undefined;
+  /** Enumerate every composed provider without exposing adapter implementation details. */
+  providers(): readonly AgentProviderDescriptor[];
   /** Enumerate every adapter that advertises account usage. */
   accountUsageProviders(): readonly AccountUsageProvider[];
   /** Fetch account-wide usage for a provider; concurrent calls for one provider are coalesced. */
   accountUsage(providerId: string): Promise<AccountUsageFetchResult>;
+  /** Enumerate adapter-declared launch capabilities for terminal hosts and product discovery. */
+  launchProviders(): readonly AgentLaunchProvider[];
   /** @deprecated Compatibility/IPC surface. Use spawn() to receive an Agent. */
   createSession(options: CreateAgentSessionOptions): Promise<CreateAgentSessionResult>;
+  /** Host SPI: normalize a native CLI invocation and prepare its adapter-owned recipe. */
+  prepareInvocation(options: PrepareAgentInvocationOptions): Promise<PrepareAgentSessionResult>;
+  /** Low-level provider-composition API. Terminal hosts use prepareInvocation(). */
   prepareSession(options: CreateAgentSessionOptions): Promise<PrepareAgentSessionResult>;
   adoptPrepared(preparationId: string, options: AdoptPreparedSessionOptions): Promise<AdoptPreparedSessionResult>;
   restoreSession(options: RestoreAgentSessionOptions): Promise<CreateAgentSessionResult>;

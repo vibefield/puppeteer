@@ -1,10 +1,11 @@
 interface AgentIconProps {
-  agent: string;
+  providerId: string;
 }
 
 // SVG geometry from LobeHub Lobe Icons v5.14.0 (MIT):
 // https://github.com/lobehub/lobe-icons
-export function AgentIcon({ agent }: AgentIconProps) {
+/** Optional Godview-owned branding. Never use this registry to select behavior. */
+export function AgentIcon({ providerId }: AgentIconProps) {
   const common = {
     'aria-hidden': true,
     fill: 'currentColor',
@@ -14,7 +15,7 @@ export function AgentIcon({ agent }: AgentIconProps) {
     xmlns: 'http://www.w3.org/2000/svg',
   } as const;
 
-  switch (agent) {
+  switch (providerId) {
     case 'claude':
       return (
         <svg {...common} fillRule="evenodd">
@@ -46,6 +47,6 @@ export function AgentIcon({ agent }: AgentIconProps) {
     case 'acp':
       return <span aria-hidden="true">A</span>;
     default:
-      return <span aria-hidden="true">{agent.slice(0, 1).toUpperCase() || '?'}</span>;
+      return <span aria-hidden="true">{providerId.slice(0, 1).toUpperCase() || '?'}</span>;
   }
 }

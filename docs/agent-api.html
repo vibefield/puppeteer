@@ -920,8 +920,8 @@
             <h1>Agent API &amp; Event Catalog</h1>
             <p class="subtitle">
               One runtime-owned object per provider spawn. Adapters normalize native evidence into a single event rail;
-              the <span class="mono">Agent</span> projects state, conversation, and monitor status, then exposes typed exact, category,
-              and catch-all subscriptions through <span class="mono">.on(…)</span>.
+              the <span class="mono">Agent</span> projects state, conversation, and monitor status, then exposes typed
+              exact, category, and catch-all subscriptions through <span class="mono">.on(…)</span>.
             </p>
           </div>
           <button class="theme-button" id="theme-toggle" type="button" aria-label="Toggle color theme">Theme</button>
@@ -1277,6 +1277,10 @@ const offAll = agent.on('*', ({ category, type, sequence }) =&gt; {
 const receipt = await agent.submitPrompt({ text: 'Review this repository' });
 console.log(agent.lifecycle, agent.alive, agent.status, agent.monitor.usage);
 
+// Persist this as one opaque value; adapter-specific resume state stays private.
+const continuation = agent.info.continuation;
+const resumed = await runtime.resume({ continuation });
+
 offTurns();
 offContext();
 offAll();</code></pre>
@@ -1403,9 +1407,9 @@ offAll();</code></pre>
           <section id="runtime">
             <h2>Runtime entry points</h2>
             <p class="section-note">
-              <span class="mono">spawn()</span> and <span class="mono">agent()</span> are the primary object-oriented
-              entry points. The wider runtime also owns creation, host lifecycle, workspace, monitor, and compatibility
-              operations.
+              <span class="mono">spawn()</span>, <span class="mono">resume()</span>, and
+              <span class="mono">agent()</span> are the primary object-oriented entry points. The wider runtime also
+              owns host lifecycle, workspace, monitor, and compatibility operations.
             </p>
 
             <div class="table-wrap">
@@ -1424,9 +1428,23 @@ offAll();</code></pre>
                     <td><p>Primary API. Starts one provider and returns its owning Agent.</p></td>
                   </tr>
                   <tr>
+                    <td class="route">resume(options)</td>
+                    <td class="native-type">Promise&lt;Agent | AgentSessionFailure&gt;</td>
+                    <td>
+                      <p>Resumes an opaque AgentContinuation without provider argv, paths, or transport options.</p>
+                    </td>
+                  </tr>
+                  <tr>
                     <td class="route">agent(id)</td>
                     <td class="native-type">Agent | undefined</td>
                     <td><p>Looks up a live Agent by terminal-session id or runtime-run id.</p></td>
+                  </tr>
+                  <tr>
+                    <td class="route">providers()</td>
+                    <td class="native-type">readonly AgentProviderDescriptor[]</td>
+                    <td>
+                      <p>Enumerates adapter-authored provider ids and display labels without a closed product union.</p>
+                    </td>
                   </tr>
                   <tr>
                     <td class="route">accountUsageProviders()</td>
@@ -1441,9 +1459,23 @@ offAll();</code></pre>
                     </td>
                   </tr>
                   <tr>
+                    <td class="route">launchProviders()</td>
+                    <td class="native-type">readonly AgentLaunchProvider[]</td>
+                    <td><p>Enumerates adapter-declared resume and native-terminal capabilities.</p></td>
+                  </tr>
+                  <tr>
+                    <td class="route">prepareInvocation(options)</td>
+                    <td class="native-type">Promise&lt;PrepareAgentSessionResult&gt;</td>
+                    <td>
+                      <p>
+                        Host SPI. Validates shell intent, then delegates argv/environment normalization to the adapter.
+                      </p>
+                    </td>
+                  </tr>
+                  <tr>
                     <td class="route">prepareSession(options)</td>
                     <td class="native-type">Promise&lt;PrepareAgentSessionResult&gt;</td>
-                    <td><p>Allocates a launch recipe for a caller-owned terminal.</p></td>
+                    <td><p>Low-level provider-composition seam. Terminal hosts use prepareInvocation().</p></td>
                   </tr>
                   <tr>
                     <td class="route">adoptPrepared(id, options)</td>
@@ -1468,12 +1500,19 @@ offAll();</code></pre>
                   <tr>
                     <td class="route">monitorState(id)</td>
                     <td class="native-type">AgentMonitorState | undefined</td>
-                    <td><p>Host/IPC compatibility lookup. Live consumers read <span class="mono">agent.monitor</span>.</p></td>
+                    <td>
+                      <p>Host/IPC compatibility lookup. Live consumers read <span class="mono">agent.monitor</span>.</p>
+                    </td>
                   </tr>
                   <tr>
                     <td class="route">observeMonitor(id)</td>
                     <td class="native-type">AgentMonitorHandle</td>
-                    <td><p>Host/IPC compatibility lookup. Live consumers call <span class="mono">agent.observeMonitor()</span>.</p></td>
+                    <td>
+                      <p>
+                        Host/IPC compatibility lookup. Live consumers call
+                        <span class="mono">agent.observeMonitor()</span>.
+                      </p>
+                    </td>
                   </tr>
                   <tr>
                     <td class="route">onMonitorState(listener)</td>
@@ -1534,17 +1573,37 @@ offAll();</code></pre>
             <h3>Spawn input and failure</h3>
             <div class="type-grid">
               <article class="type-card">
-                <h3>CreateAgentSessionOptions</h3>
-                <p>Built-in runtimes narrow <span class="mono">agentOptions</span> by provider discriminator.</p>
-                <pre><code>interface CreateAgentSessionOptions {
+                <h3>SpawnAgentOptions</h3>
+                <p>
+                  Advanced built-in options express user intent; transport and native invocation details are private.
+                </p>
+                <pre><code>interface SpawnAgentOptions {
   agent: string;
   cwd?: string;
-  resume?: string;
   title?: string;
   creationRequestId?: string;
   externalRefs?: readonly ExternalRef[];
   workspace?: AgentWorkspaceRequest;
   agentOptions?: unknown;
+}</code></pre>
+              </article>
+              <article class="type-card">
+                <h3>AgentContinuation + ResumeAgentOptions</h3>
+                <p>
+                  The state string is adapter-versioned and credential-free. Consumers store and return it unchanged.
+                </p>
+                <pre><code>interface AgentContinuation {
+  providerId: string;
+  nativeSessionId: string;
+  implementation: 'native' | 'imposter';
+  state?: string;
+}
+
+interface ResumeAgentOptions {
+  continuation: AgentContinuation;
+  cwd?: string;
+  title?: string;
+  workspace?: AgentWorkspaceRequest;
 }</code></pre>
               </article>
               <article class="type-card">
@@ -1734,7 +1793,10 @@ unsubscribe();</code></pre>
                 <div class="category-header">
                   <h3>Behavior event domains</h3>
                   <span class="badge category-session">27 routes</span>
-                  <p>Eight independent categories for lifecycle, turns, reasoning, tools, interactions, delegation, planning, and compaction.</p>
+                  <p>
+                    Eight independent categories for lifecycle, turns, reasoning, tools, interactions, delegation,
+                    planning, and compaction.
+                  </p>
                 </div>
                 <div class="event-list">
                   <details class="event-card" data-category="session">
@@ -1765,8 +1827,7 @@ unsubscribe();</code></pre>
                   <details class="event-card" data-category="session">
                     <summary>
                       <span class="event-title"
-                        ><span class="route">session:ready</span
-                        ><span class="native-type">session:ready</span></span
+                        ><span class="route">session:ready</span><span class="native-type">session:ready</span></span
                       ><span class="badge category-session">session</span>
                     </summary>
                     <div class="event-body">
@@ -1781,8 +1842,7 @@ unsubscribe();</code></pre>
                   <details class="event-card" data-category="session">
                     <summary>
                       <span class="event-title"
-                        ><span class="route">session:exited</span
-                        ><span class="native-type">session:exited</span></span
+                        ><span class="route">session:exited</span><span class="native-type">session:exited</span></span
                       ><span class="badge category-session">session</span>
                     </summary>
                     <div class="event-body">
@@ -1800,8 +1860,7 @@ unsubscribe();</code></pre>
                   <details class="event-card" data-category="turn">
                     <summary>
                       <span class="event-title"
-                        ><span class="route">turn:started</span
-                        ><span class="native-type">turn:started</span></span
+                        ><span class="route">turn:started</span><span class="native-type">turn:started</span></span
                       ><span class="badge category-turn">turn</span>
                     </summary>
                     <div class="event-body">
@@ -1821,8 +1880,7 @@ unsubscribe();</code></pre>
                   <details class="event-card" data-category="turn">
                     <summary>
                       <span class="event-title"
-                        ><span class="route">turn:completed</span
-                        ><span class="native-type">turn:completed</span></span
+                        ><span class="route">turn:completed</span><span class="native-type">turn:completed</span></span
                       ><span class="badge category-turn">turn</span>
                     </summary>
                     <div class="event-body">
@@ -1935,8 +1993,7 @@ unsubscribe();</code></pre>
                   <details class="event-card" data-category="tool">
                     <summary>
                       <span class="event-title"
-                        ><span class="route">tool:requested</span
-                        ><span class="native-type">tool:requested</span></span
+                        ><span class="route">tool:requested</span><span class="native-type">tool:requested</span></span
                       ><span class="badge category-tool">tool</span>
                     </summary>
                     <div class="event-body">
@@ -1957,8 +2014,7 @@ unsubscribe();</code></pre>
                   <details class="event-card" data-category="tool">
                     <summary>
                       <span class="event-title"
-                        ><span class="route">tool:started</span
-                        ><span class="native-type">tool:started</span></span
+                        ><span class="route">tool:started</span><span class="native-type">tool:started</span></span
                       ><span class="badge category-tool">tool</span>
                     </summary>
                     <div class="event-body">
@@ -1979,8 +2035,7 @@ unsubscribe();</code></pre>
                   <details class="event-card" data-category="tool">
                     <summary>
                       <span class="event-title"
-                        ><span class="route">tool:completed</span
-                        ><span class="native-type">tool:completed</span></span
+                        ><span class="route">tool:completed</span><span class="native-type">tool:completed</span></span
                       ><span class="badge category-tool">tool</span>
                     </summary>
                     <div class="event-body">
@@ -2399,7 +2454,8 @@ unsubscribe();</code></pre>
                   <details class="event-card" data-category="usage">
                     <summary>
                       <span class="event-title"
-                        ><span class="route">usage:tokens-used</span><span class="native-type">usage:tokens-used</span></span
+                        ><span class="route">usage:tokens-used</span
+                        ><span class="native-type">usage:tokens-used</span></span
                       ><span class="badge category-usage">usage</span>
                     </summary>
                     <div class="event-body">
@@ -2510,7 +2566,9 @@ unsubscribe();</code></pre>
                       ><span class="badge category-model">model</span>
                     </summary>
                     <div class="event-body">
-                      <p>Null explicitly clears the model; intent distinguishes requested configuration from observation.</p>
+                      <p>
+                        Null explicitly clears the model; intent distinguishes requested configuration from observation.
+                      </p>
                       <pre><code>interface ModelUpdatedEvent {
   type: 'model:updated';
   intent?: 'configured' | 'observed';
@@ -2810,8 +2868,8 @@ interface AgentMonitorState {
             <div class="callout">
               <strong>Orthogonal state.</strong> <span class="mono">agent.lifecycle</span> retains detailed session
               phases, <span class="mono">agent.alive</span> comes from the host process, and
-              <span class="mono">agent.status</span> is only the product-facing three-state operational projection.
-              A running, alive Agent may still be blocked on a permission, question, or failure.
+              <span class="mono">agent.status</span> is only the product-facing three-state operational projection. A
+              running, alive Agent may still be blocked on a permission, question, or failure.
             </div>
 
             <h3>Portable monitor views</h3>
@@ -2819,9 +2877,9 @@ interface AgentMonitorState {
               <span class="mono">@vibecook/puppeteer-monitor</span> provides transport-neutral revision ordering,
               removal tombstones, notifications, and an external store.
               <span class="mono">@vibecook/puppeteer-react</span> provides
-              <span class="mono">useAgentMonitorStore</span>, <span class="mono">useAgentMonitor</span>, and the
-              generic <span class="mono">AgentMonitorViewDefinition</span>. Product views receive projected data and
-              actions; they never import adapters or infer semantics from terminal text.
+              <span class="mono">useAgentMonitorStore</span>, <span class="mono">useAgentMonitor</span>, and the generic
+              <span class="mono">AgentMonitorViewDefinition</span>. Product views receive projected data and actions;
+              they never import adapters or infer semantics from terminal text.
             </p>
 
             <h3>SessionRuntimeState</h3>
@@ -2960,13 +3018,20 @@ type PromptReceipt =
 
               <article class="type-card">
                 <h3>AgentSessionInfo</h3>
-                <pre><code>interface AgentSessionInfo {
-  agent: string;
+                <pre><code>interface AgentProviderDescriptor {
+  id: string;
+  label: string;
+}
+
+interface AgentSessionInfo {
+  provider: AgentProviderDescriptor;
+  agent: string;            // deprecated: use provider.id
   runtimeRunId: string;
   runtimeEpoch: number;
   terminalSessionId: string;
   nativeSession: NativeSessionRef;
   nativeSessionRevision: number;
+  continuation: AgentContinuation;
   externalRefs: ExternalRef[];
   sessionId: string;        // deprecated alias
   runtimeSessionId: string; // deprecated alias

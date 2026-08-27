@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { AgentProviderDescriptorSchema, AgentProviderIdSchema } from './provider.js';
 
 /**
  * Provider-neutral account usage and quota contracts.
@@ -65,7 +66,7 @@ export type AccountUsageCredits = z.infer<typeof AccountUsageCreditsSchema>;
 
 export const AccountUsageSnapshotSchema = z
   .strictObject({
-    provider: NonEmptyStringSchema,
+    provider: AgentProviderIdSchema,
     fetchedAt: TimestampSchema,
     scope: AccountUsageScopeSchema,
     source: AccountUsageSourceSchema,
@@ -97,7 +98,7 @@ export type AccountUsageAvailable = z.infer<typeof AccountUsageAvailableSchema>;
 
 export const AccountUsageFailureSchema = z.strictObject({
   status: z.enum(['unsupported', 'unauthenticated', 'unavailable']),
-  provider: NonEmptyStringSchema,
+  provider: AgentProviderIdSchema,
   message: NonEmptyStringSchema,
   retryable: z.boolean(),
   code: z.literal('rate-limited').optional(),
@@ -111,8 +112,7 @@ export type AccountUsageFetchResult = z.infer<typeof AccountUsageFetchResultSche
 
 /** Adapter-owned identity and recommended observation cadence. */
 export const AccountUsageProviderSchema = z.strictObject({
-  id: NonEmptyStringSchema,
-  label: NonEmptyStringSchema,
+  ...AgentProviderDescriptorSchema.shape,
   refresh: z.strictObject({
     pollIntervalMs: PositiveSafeIntegerSchema,
     /** Poll delay after a push update; defaults to `pollIntervalMs`. */

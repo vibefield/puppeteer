@@ -3,20 +3,18 @@ import { createBuiltinProviders, type BuiltinProviderOptions } from './providers
 import { createAgentRuntime, type AgentRuntimeOptions } from '@vibecook/puppeteer-runtime';
 
 export interface BuiltinAgentRuntimeOptions extends Omit<AgentRuntimeOptions, 'providers'> {
-  executables?: BuiltinProviderOptions['executables'];
+  imposterExecutable?: BuiltinProviderOptions['imposterExecutable'];
   acpConnector?: BuiltinProviderOptions['acpConnector'];
-  /** Native-canary-only Claude observation-rail fault injection. */
-  claudeHookRailFaultInjection?: BuiltinProviderOptions['claudeHookRailFaultInjection'];
 }
 
 /** Turn-key runtime containing every built-in provider behind one interface. */
 export function createBuiltinAgentRuntime(options: BuiltinAgentRuntimeOptions): BuiltinAgentRuntime {
+  const { imposterExecutable, acpConnector, ...runtimeOptions } = options;
   return createAgentRuntime({
-    ...options,
+    ...runtimeOptions,
     providers: createBuiltinProviders({
-      executables: options.executables,
-      acpConnector: options.acpConnector,
-      claudeHookRailFaultInjection: options.claudeHookRailFaultInjection,
+      imposterExecutable,
+      acpConnector,
     }),
   });
 }

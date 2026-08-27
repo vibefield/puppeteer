@@ -29,7 +29,6 @@ import { paneRecoveryMetadata } from '../restore-snapshot.js';
 import type { TerminalSessionHandoff } from '../protocol.js';
 import { AccountUsagePanel } from './AccountUsagePanel.js';
 import { AgentMonitorInspector } from './AgentMonitorInspector.js';
-import { ScenarioRecordingControl } from './ScenarioRecordingControl.js';
 import { TweakPanel, type TweakSection } from './TweakPanel.js';
 import type { AgentVisualStatus } from './agent-status.js';
 import { MONITOR_CHROME_ATTRIBUTE, MONITOR_STAGE_CLASS } from './monitor/chrome.js';
@@ -497,7 +496,6 @@ function Godview() {
             <small>AGENT TOPOLOGY</small>
           </div>
           <div className="godview-header-actions">
-            <ScenarioRecordingControl agent={activeAgent} />
             <select
               className="godview-view-switch"
               aria-label="Monitor view"

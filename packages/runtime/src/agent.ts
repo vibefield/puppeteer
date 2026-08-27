@@ -57,7 +57,9 @@ function internals(agent: Agent): AgentInternals {
 export function cloneAgentSessionInfo(info: AgentSessionInfo): AgentSessionInfo {
   return {
     ...info,
+    provider: { ...info.provider },
     nativeSession: { ...info.nativeSession },
+    continuation: { ...info.continuation },
     externalRefs: info.externalRefs.map((reference) => ({ ...reference })),
     workspace: {
       ...info.workspace,

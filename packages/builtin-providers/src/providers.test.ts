@@ -10,19 +10,37 @@ const adapters = vi.hoisted(() => ({
   onClaudeAccountUsage: vi.fn(() => () => undefined),
   preflightClaudeLaunch: vi.fn(),
   prepareClaudeTuiSession: vi.fn(),
+  normalizeClaudeNativeInvocation: vi.fn(() => ({ status: 'accepted' })),
+  captureClaudeContinuationState: vi.fn(),
+  restoreClaudeContinuationState: vi.fn(),
   createCodexAccountUsageService: vi.fn(),
   createCodexTuiSession: vi.fn(),
   fetchCodexAccountUsage: vi.fn(),
   prepareCodexTuiSession: vi.fn(),
+  normalizeCodexNativeInvocation: vi.fn(() => ({ status: 'accepted' })),
+  captureCodexContinuationState: vi.fn(),
+  restoreCodexContinuationState: vi.fn(),
   createGrokAccountUsageService: vi.fn(),
   createGrokBackend: vi.fn(),
   fetchGrokAccountUsage: vi.fn(),
+  normalizeGrokNativeInvocation: vi.fn(() => ({ status: 'accepted' })),
+  captureGrokContinuationState: vi.fn(),
+  restoreGrokContinuationState: vi.fn(),
   createKimiTuiSession: vi.fn(),
   prepareKimiTuiSession: vi.fn(),
+  normalizeKimiNativeInvocation: vi.fn(() => ({ status: 'accepted' })),
+  captureKimiContinuationState: vi.fn(),
+  restoreKimiContinuationState: vi.fn(),
   createOpenCodeTuiSession: vi.fn(),
   prepareOpenCodeTuiSession: vi.fn(),
+  normalizeOpenCodeNativeInvocation: vi.fn(() => ({ status: 'accepted' })),
+  captureOpenCodeContinuationState: vi.fn(),
+  restoreOpenCodeContinuationState: vi.fn(),
   createHermesTuiSession: vi.fn(),
   prepareHermesTuiSession: vi.fn(),
+  normalizeHermesNativeInvocation: vi.fn(() => ({ status: 'accepted' })),
+  captureHermesContinuationState: vi.fn(),
+  restoreHermesContinuationState: vi.fn(),
 }));
 
 vi.mock('@vibecook/puppeteer-adapter-acp', () => ({
@@ -36,6 +54,9 @@ vi.mock('@vibecook/puppeteer-adapter-claude', () => ({
   onClaudeAccountUsage: adapters.onClaudeAccountUsage,
   preflightClaudeLaunch: adapters.preflightClaudeLaunch,
   prepareClaudeTuiSession: adapters.prepareClaudeTuiSession,
+  normalizeClaudeNativeInvocation: adapters.normalizeClaudeNativeInvocation,
+  captureClaudeContinuationState: adapters.captureClaudeContinuationState,
+  restoreClaudeContinuationState: adapters.restoreClaudeContinuationState,
 }));
 
 vi.mock('@vibecook/puppeteer-adapter-codex', () => ({
@@ -43,27 +64,42 @@ vi.mock('@vibecook/puppeteer-adapter-codex', () => ({
   createCodexTuiSession: adapters.createCodexTuiSession,
   fetchCodexAccountUsage: adapters.fetchCodexAccountUsage,
   prepareCodexTuiSession: adapters.prepareCodexTuiSession,
+  normalizeCodexNativeInvocation: adapters.normalizeCodexNativeInvocation,
+  captureCodexContinuationState: adapters.captureCodexContinuationState,
+  restoreCodexContinuationState: adapters.restoreCodexContinuationState,
 }));
 
 vi.mock('@vibecook/puppeteer-adapter-grok', () => ({
   createGrokAccountUsageService: adapters.createGrokAccountUsageService,
   createGrokBackend: adapters.createGrokBackend,
   fetchGrokAccountUsage: adapters.fetchGrokAccountUsage,
+  normalizeGrokNativeInvocation: adapters.normalizeGrokNativeInvocation,
+  captureGrokContinuationState: adapters.captureGrokContinuationState,
+  restoreGrokContinuationState: adapters.restoreGrokContinuationState,
 }));
 
 vi.mock('@vibecook/puppeteer-adapter-kimi', () => ({
   createKimiTuiSession: adapters.createKimiTuiSession,
   prepareKimiTuiSession: adapters.prepareKimiTuiSession,
+  normalizeKimiNativeInvocation: adapters.normalizeKimiNativeInvocation,
+  captureKimiContinuationState: adapters.captureKimiContinuationState,
+  restoreKimiContinuationState: adapters.restoreKimiContinuationState,
 }));
 
 vi.mock('@vibecook/puppeteer-adapter-opencode', () => ({
   createOpenCodeTuiSession: adapters.createOpenCodeTuiSession,
   prepareOpenCodeTuiSession: adapters.prepareOpenCodeTuiSession,
+  normalizeOpenCodeNativeInvocation: adapters.normalizeOpenCodeNativeInvocation,
+  captureOpenCodeContinuationState: adapters.captureOpenCodeContinuationState,
+  restoreOpenCodeContinuationState: adapters.restoreOpenCodeContinuationState,
 }));
 
 vi.mock('@vibecook/puppeteer-adapter-hermes', () => ({
   createHermesTuiSession: adapters.createHermesTuiSession,
   prepareHermesTuiSession: adapters.prepareHermesTuiSession,
+  normalizeHermesNativeInvocation: adapters.normalizeHermesNativeInvocation,
+  captureHermesContinuationState: adapters.captureHermesContinuationState,
+  restoreHermesContinuationState: adapters.restoreHermesContinuationState,
 }));
 
 import { createBuiltinProviders } from './providers.js';
@@ -184,7 +220,7 @@ describe('createBuiltinProviders launch options', () => {
 
   it('forwards Claude model and permission mode to the native driver', async () => {
     const claude = createBuiltinProviders({ executables: { claude: '/opt/claude' } }).find(
-      (provider) => provider.kind === 'claude',
+      (provider) => provider.descriptor.id === 'claude',
     )!;
 
     const onDiagnostic = vi.fn();
@@ -228,32 +264,9 @@ describe('createBuiltinProviders launch options', () => {
     );
   });
 
-  it('forwards Claude canary fault injection through create and prepare paths', async () => {
-    const hookRailFaultInjection = { afterHookEvent: 'Stop', reason: 'runtime canary fault' };
-    const claude = createBuiltinProviders({
-      claudeHookRailFaultInjection: hookRailFaultInjection,
-    }).find((provider) => provider.kind === 'claude')!;
-
-    await claude.createSession({ runtimeRunId: 'runtime-create', cwd: '/work/repo', host });
-    await claude.prepareSession!({ runtimeRunId: 'runtime-prepare', cwd: '/work/repo', host });
-
-    expect(adapters.createClaudeSession).toHaveBeenCalledWith(
-      expect.objectContaining({
-        observeSubagentStatus: true,
-        hookRailFaultInjection,
-      }),
-    );
-    expect(adapters.prepareClaudeTuiSession).toHaveBeenCalledWith(
-      expect.objectContaining({
-        observeSubagentStatus: true,
-        hookRailFaultInjection,
-      }),
-    );
-  });
-
   it('does not spawn Claude when capability preflight fails', async () => {
     const claude = createBuiltinProviders({ executables: { claude: '/old/claude' } }).find(
-      (provider) => provider.kind === 'claude',
+      (provider) => provider.descriptor.id === 'claude',
     )!;
     const error = Object.assign(new Error('missing --settings'), {
       name: 'ClaudeCapabilityError',
@@ -267,7 +280,7 @@ describe('createBuiltinProviders launch options', () => {
   });
 
   it('leaves alternate per-session Claude executables to their owning launcher contract', async () => {
-    const claude = createBuiltinProviders().find((provider) => provider.kind === 'claude')!;
+    const claude = createBuiltinProviders().find((provider) => provider.descriptor.id === 'claude')!;
 
     await claude.createSession({
       cwd: '/work/repo',
@@ -281,7 +294,7 @@ describe('createBuiltinProviders launch options', () => {
 
   it('still preflights custom-named Claude wrappers', async () => {
     const claude = createBuiltinProviders({ executables: { claude: '/opt/company-claude' } }).find(
-      (provider) => provider.kind === 'claude',
+      (provider) => provider.descriptor.id === 'claude',
     )!;
 
     await claude.createSession({ cwd: '/work/repo', host });
@@ -293,10 +306,10 @@ describe('createBuiltinProviders launch options', () => {
 
   it('exposes provider-level account usage independently of sessions', async () => {
     const providers = createBuiltinProviders({ executables: { codex: '/opt/codex' } });
-    const claude = providers.find((provider) => provider.kind === 'claude')!;
-    const codex = providers.find((provider) => provider.kind === 'codex')!;
-    const acp = providers.find((provider) => provider.kind === 'acp')!;
-    const grok = providers.find((provider) => provider.kind === 'grok')!;
+    const claude = providers.find((provider) => provider.descriptor.id === 'claude')!;
+    const codex = providers.find((provider) => provider.descriptor.id === 'codex')!;
+    const acp = providers.find((provider) => provider.descriptor.id === 'acp')!;
+    const grok = providers.find((provider) => provider.descriptor.id === 'grok')!;
 
     await claude.accountUsage!.fetch();
     await codex.accountUsage!.fetch();
@@ -310,9 +323,29 @@ describe('createBuiltinProviders launch options', () => {
     expect(codex.accountUsage?.subscribe).toBeUndefined();
   });
 
+  it('advertises only durable Imposter routes and resolves opaque continuation topology in adapters', () => {
+    const providers = createBuiltinProviders({ imposterExecutable: '/opt/ai' });
+    const imposterProviders = providers
+      .filter((provider) => provider.launch?.provider.nativeInvocation?.imposter)
+      .map((provider) => [provider.descriptor.id, provider.launch!.provider.nativeInvocation!.imposter] as const);
+
+    expect(imposterProviders).toEqual([
+      ['claude', { state: 'isolated-root' }],
+      ['codex', { state: 'isolated-root' }],
+      ['grok', { state: 'isolated-root' }],
+      ['kimi', { state: 'isolated-root' }],
+      ['opencode', { state: 'isolated-root' }],
+    ]);
+    const opencode = providers.find((provider) => provider.descriptor.id === 'opencode')!;
+    opencode.launch!.continuation!.restore('opaque-state', { cwd: '/repo' });
+    expect(adapters.restoreOpenCodeContinuationState).toHaveBeenCalledWith('opaque-state', {
+      imposterExecutable: '/opt/ai',
+    });
+  });
+
   it('forwards Codex safety posture to the native-TUI thread bootstrap', async () => {
     const codex = createBuiltinProviders({ executables: { codex: '/opt/codex' } }).find(
-      (provider) => provider.kind === 'codex',
+      (provider) => provider.descriptor.id === 'codex',
     )!;
 
     const onApproval = vi.fn(() => 'approved' as const);
@@ -339,7 +372,9 @@ describe('createBuiltinProviders launch options', () => {
     const onApproval = vi.fn(() => 'approved' as const);
     const onElicitation = vi.fn(() => ({ action: 'decline' as const }));
     const clientCapabilities = { terminal: true };
-    const acp = createBuiltinProviders({ acpConnector: connector }).find((provider) => provider.kind === 'acp')!;
+    const acp = createBuiltinProviders({ acpConnector: connector }).find(
+      (provider) => provider.descriptor.id === 'acp',
+    )!;
 
     await acp.createSession({
       cwd: '/work/repo',
@@ -363,7 +398,7 @@ describe('createBuiltinProviders launch options', () => {
     const onElicitation = vi.fn(() => ({ action: 'decline' as const }));
     const clientCapabilities = { terminal: true };
     const providers = createBuiltinProviders({ executables: { grok: '/opt/grok' } });
-    const grok = providers.find((provider) => provider.kind === 'grok')!;
+    const grok = providers.find((provider) => provider.descriptor.id === 'grok')!;
 
     await grok.createSession({
       cwd: '/work/repo',
@@ -394,7 +429,7 @@ describe('createBuiltinProviders launch options', () => {
 
   it('isolates and reuses Grok backends by per-session executable and environment', async () => {
     const providers = createBuiltinProviders({ executables: { grok: '/opt/grok' } });
-    const grok = providers.find((provider) => provider.kind === 'grok')!;
+    const grok = providers.find((provider) => provider.descriptor.id === 'grok')!;
     const appServerEnv = { AI_PERSONA: 'grok', GROK_HOME: '/tmp/grok-home' };
 
     await grok.createSession({
@@ -417,7 +452,7 @@ describe('createBuiltinProviders launch options', () => {
 
   it('forwards Kimi native launch, durable-store, and permission options', async () => {
     const kimi = createBuiltinProviders({ executables: { kimi: '/opt/kimi' } }).find(
-      (provider) => provider.kind === 'kimi',
+      (provider) => provider.descriptor.id === 'kimi',
     )!;
     const env = { KIMI_CODE_HOME: '/tmp/kimi-home', AI_PERSONA: 'kimi' };
 
@@ -455,7 +490,7 @@ describe('createBuiltinProviders launch options', () => {
 
   it('forwards OpenCode private-backend, model, and permission options', async () => {
     const opencode = createBuiltinProviders({ executables: { opencode: '/opt/opencode' } }).find(
-      (provider) => provider.kind === 'opencode',
+      (provider) => provider.descriptor.id === 'opencode',
     )!;
     const env = { OPENCODE_CONFIG_DIR: '/tmp/opencode-config' };
     const model = { providerID: 'imposter', modelID: 'opencode-imposter', variant: 'fast' };
@@ -500,7 +535,7 @@ describe('createBuiltinProviders launch options', () => {
 
   it('forwards Hermes isolated-home, gateway, and attach options', async () => {
     const hermes = createBuiltinProviders({ executables: { hermes: '/opt/hermes' } }).find(
-      (provider) => provider.kind === 'hermes',
+      (provider) => provider.descriptor.id === 'hermes',
     )!;
     const env = { HERMES_HOME: '/tmp/hermes-home', AI_PERSONA: 'hermes' };
 
@@ -544,13 +579,13 @@ describe('createBuiltinProviders launch options', () => {
         hermes: '/opt/hermes',
       },
     });
-    const claude = providers.find((provider) => provider.kind === 'claude')!;
-    const codex = providers.find((provider) => provider.kind === 'codex')!;
-    const acp = providers.find((provider) => provider.kind === 'acp')!;
-    const grok = providers.find((provider) => provider.kind === 'grok')!;
-    const kimi = providers.find((provider) => provider.kind === 'kimi')!;
-    const opencode = providers.find((provider) => provider.kind === 'opencode')!;
-    const hermes = providers.find((provider) => provider.kind === 'hermes')!;
+    const claude = providers.find((provider) => provider.descriptor.id === 'claude')!;
+    const codex = providers.find((provider) => provider.descriptor.id === 'codex')!;
+    const acp = providers.find((provider) => provider.descriptor.id === 'acp')!;
+    const grok = providers.find((provider) => provider.descriptor.id === 'grok')!;
+    const kimi = providers.find((provider) => provider.descriptor.id === 'kimi')!;
+    const opencode = providers.find((provider) => provider.descriptor.id === 'opencode')!;
+    const hermes = providers.find((provider) => provider.descriptor.id === 'hermes')!;
 
     const claudePrepared = await claude.prepareSession!({
       cwd: '/work/repo',
@@ -690,7 +725,7 @@ void typedOpenCodeRequest;
 
 const typedHermesRequest: BuiltinCreateAgentSessionOptions = {
   agent: 'hermes',
-  agentOptions: { hermesHome: '/tmp/hermes-home', yolo: false },
+  agentOptions: { yolo: false },
 };
 void typedHermesRequest;
 

@@ -36,12 +36,14 @@ import { wsOverUnixTransport } from '../transport/ws-transport.js';
 export interface CreateCodexTuiSessionOptions extends AgentTuiSessionOptions {
   /** Codex executable (default `codex`). */
   executable?: string;
+  /** Extra environment for the user-visible TUI process. */
+  env?: Record<string, string>;
   /**
    * Extra environment for the PRIVATE app-server, merged over this process's.
    *
-   * Deliberately not applied to the TUI as well: a caller owns the terminal's
-   * environment through the returned launch spec, and this is the one process
-   * in the recipe it cannot otherwise reach.
+   * This remains separate from `env` because tests and advanced hosts may need
+   * to configure only the backing service. Native-invocation normalization
+   * supplies both when the complete recipe must share a profile or persona.
    */
   appServerEnv?: Record<string, string>;
   /** Choose which thread to attach to when several appear (passive observer only). */
@@ -143,7 +145,12 @@ export async function prepareCodexTuiSession(opts: CreateCodexTuiSessionOptions)
     ? [...opts.resumeInvocation, '--remote', remoteAddr]
     : ['resume', threadId, '--remote', remoteAddr];
 
-  const launch: TerminalSpec = { command: executable, args, cwd: opts.cwd };
+  const launch: TerminalSpec = {
+    command: executable,
+    args,
+    cwd: opts.cwd,
+    ...(opts.env ? { env: { ...opts.env } } : {}),
+  };
   let adoptedRuntimeSessionId: string | undefined;
   let adoptedSession: CodexTuiSession | undefined;
   let disposed = false;

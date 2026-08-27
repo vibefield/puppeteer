@@ -3,6 +3,7 @@ import type {
   AccountUsageFailure,
   AccountUsageFetchResult,
   AccountUsageProvider,
+  AgentProviderDescriptor,
   MonitorArtifactReadResult,
   PromptReceipt as CorePromptReceipt,
 } from '@vibecook/puppeteer-core';
@@ -19,11 +20,10 @@ import type {
   AgentMonitorStateMessage,
   ReadAgentMonitorArtifactRequest,
 } from './main/monitor-ipc.js';
-import type { BuiltinAgentKind } from '@vibecook/puppeteer-builtin-providers';
 import type { WorkspaceDiff } from '@vibecook/puppeteer-workspaces';
 
 export type { WorkspaceDiff } from '@vibecook/puppeteer-workspaces';
-export type AgentKind = BuiltinAgentKind;
+export type AgentKind = AgentProviderDescriptor['id'];
 export type WorkspaceInfo = AgentWorkspaceInfo;
 export type PromptReceipt = CorePromptReceipt;
 export type WorkspaceFinalEvent = AgentWorkspaceFinal;
@@ -57,13 +57,9 @@ export interface CreateAgentSessionOptions {
     resumeBranch?: string;
     resumeRoot?: string;
   };
-  resume?: string;
 }
 
-export interface AgentSessionInfo extends Omit<RuntimeAgentSessionInfo, 'agent'> {
-  agent: AgentKind;
-  /** True only when Godview deliberately launched the Puppeteer Imposter for this pane. */
-  emulated?: boolean;
+export interface AgentSessionInfo extends RuntimeAgentSessionInfo {
   session: SessionSummary;
 }
 
@@ -80,21 +76,6 @@ export interface SubmitPromptOptions {
   runtimeSessionId: string;
   text: string;
 }
-
-export interface ScenarioRecordingStatus {
-  runtimeSessionId: string;
-  active: boolean;
-  filePath: string;
-  fileName: string;
-  startedAt: string;
-  updatedAt: string;
-  eventCount: number;
-  droppedEventCount: number;
-  truncated: boolean;
-  error?: string;
-}
-
-export type StartScenarioRecordingResult = { cancelled: true } | { cancelled: false; status: ScenarioRecordingStatus };
 
 export interface PaneRehydrationRequest {
   meta: unknown;
@@ -127,10 +108,6 @@ export interface PuppeteerBridge {
   readAgentMonitorArtifact(request: ReadAgentMonitorArtifactRequest): Promise<MonitorArtifactReadResult>;
   workspaceDiff(runtimeSessionId: string): Promise<WorkspaceDiff | null>;
   onWorkspaceFinal(cb: (event: WorkspaceFinalEvent) => void): () => void;
-  scenarioRecordings(): Promise<ScenarioRecordingStatus[]>;
-  startScenarioRecording(runtimeSessionId: string): Promise<StartScenarioRecordingResult>;
-  stopScenarioRecording(runtimeSessionId: string): Promise<ScenarioRecordingStatus>;
-  onScenarioRecording(cb: (status: ScenarioRecordingStatus) => void): () => void;
   accountUsage(): Promise<AccountUsageBatch>;
   refreshAccountUsage(): Promise<AccountUsageBatch>;
   onAccountUsage(cb: (batch: AccountUsageBatch) => void): () => void;

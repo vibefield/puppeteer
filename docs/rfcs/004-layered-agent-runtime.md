@@ -77,6 +77,33 @@ interface AgentAdapterBinding {
 
 Strict Zod schemas validate runtime data at the Core boundary. TypeScript defines callback narrowing and internal composition. Provider-native decoding stays tolerant because upstream wire formats are versioned evidence, not trusted Core values.
 
+Every `AgentProvider` declares one strict `AgentProviderDescriptor` (`id`, `label`). Runtime validates it once, requires
+launch and account-usage capabilities to repeat the same identity, exposes defensive copies through `providers()`, and
+places the descriptor on every `AgentSessionInfo`. Provider ids are open and opaque to products; display copy comes from
+the adapter-authored label. A product may keep an isolated optional artwork map, but behavior must never branch on it.
+
+### Launch and continuation boundary
+
+Native launch grammar is another adapter concern. Each built-in provider may expose an `AgentProviderLaunchService` with:
+
+- a Zod-validated `AgentLaunchProvider` descriptor for resume support, intercepted command names, a complete safe
+  environment allow-list, and any conformance-gated Imposter topology;
+- a pure native-invocation normalizer implemented in that adapter's `launch/native-invocation.ts`;
+- an optional continuation codec for credential-free provider state such as an effective configuration, durable
+  Imposter root, or data root. The opaque JSON is validated by a strict, versioned adapter-owned Zod schema.
+
+Runtime exposes `spawn()` and `resume({ continuation })` to products. `AgentContinuation` is one opaque persisted value;
+products do not reconstruct native argv or `agentOptions`. It exposes only a generic `native | imposter` identity;
+provider topology remains opaque. Terminal hosts use the separate `launchProviders()` →
+`prepareInvocation()` → `adoptPrepared()` SPI. The host authenticates requests, finds the containing terminal, resolves
+trusted executables/state roots, and performs `exec`; the adapter parses argv and chooses hooks, app servers, ACP,
+sockets, durable logs, private HTTP/SSE services, or gateway attachment.
+
+Godview therefore contains no built-in provider list, native resume parser, environment branch, transport switch,
+Imposter allow-list, or provider label switch. A repository-wide production-source check rejects provider mechanics and
+names everywhere under Godview except its isolated optional icon-branding map; built-in composition is confined to the
+main-process composition root.
+
 ## Runtime and Agent ownership
 
 Runtime is provider-agnostic. It has no concrete adapter dependencies; `@vibecook/puppeteer-builtin-providers` is the optional composition root that imports official adapters and Runtime.

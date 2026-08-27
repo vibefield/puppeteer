@@ -18,26 +18,7 @@ export function classifyTerminalStatus(
 
 export function projectLabel(info: AgentSessionInfo, currentCwd?: string): string {
   const path = currentCwd || info.workspace.sourcePath || info.workspace.root || info.session.cwd || '';
-  return folderName(path, info.agent);
-}
-
-export function providerLabel(agent: AgentSessionInfo['agent']): string {
-  switch (agent) {
-    case 'claude':
-      return 'Claude';
-    case 'codex':
-      return 'Codex';
-    case 'grok':
-      return 'Grok';
-    case 'hermes':
-      return 'Hermes';
-    case 'kimi':
-      return 'Kimi';
-    case 'opencode':
-      return 'OpenCode';
-    case 'acp':
-      return 'ACP';
-  }
+  return folderName(path, info.provider.label);
 }
 
 export function agentColor(id: string): string {

@@ -9,12 +9,9 @@ import {
   readRestoreSnapshot,
   readRestoreWorkspaceDocument,
   replaceRestoreWorkspaceSession,
-  restoredAgentOptions,
   snapshotReferencedSessionIds,
   summarizeRestoreSnapshot,
-  type RestoreAgentLaunchProvenance,
 } from './restore-snapshot.js';
-import { claudeRestoreLaunchProvenance } from './main/restore-launch.js';
 
 function session(id: string, overrides: Partial<SessionSummary> = {}): SessionSummary {
   return {
@@ -43,12 +40,14 @@ function session(id: string, overrides: Partial<SessionSummary> = {}): SessionSu
 
 function agent(runtimeSessionId: string, nativeSessionId = `native-${runtimeSessionId}`): AgentSessionInfo {
   return {
+    provider: { id: 'claude', label: 'Claude' },
     agent: 'claude',
     runtimeRunId: `run-${runtimeSessionId}`,
     runtimeEpoch: 1,
     terminalSessionId: runtimeSessionId,
     nativeSession: { namespace: 'claude', id: nativeSessionId, basis: 'observed', quality: 'exact' },
     nativeSessionRevision: 1,
+    continuation: { providerId: 'claude', nativeSessionId, implementation: 'native' },
     externalRefs: [],
     sessionId: nativeSessionId,
     runtimeSessionId,
@@ -158,6 +157,7 @@ describe('restore snapshot schema', () => {
         },
       ],
     });
+    expect(parsed?.version).toBe(3);
     expect(parsed?.windows[0]?.workspace.root).toMatchObject({
       meta: { descriptor: { kind: 'terminal' } },
     });
@@ -186,54 +186,38 @@ describe('restore snapshot schema', () => {
     expect(readRestoreSnapshot({ ...base, activeWindowSlotId: 'missing' })?.activeWindowSlotId).toBeUndefined();
   });
 
-  it('never persists agent argv, environment, or tokens', () => {
+  it('persists only the runtime continuation contract, never provider launch options', () => {
     const info = agent('agent');
+    info.continuation.implementation = 'imposter';
+    info.continuation.state = JSON.stringify({ version: 2, root: '/opaque-adapter-state' });
     const snapshot = buildRestoreSnapshot({
       windows: [],
-      agents: new Map([
-        [
-          'agent',
-          {
-            info,
-            session: info.session,
-            launch: {
-              kind: 'claude',
-              configDir: '/profiles/claude',
-              token: 'must-not-survive',
-              environment: { SECRET: 'must-not-survive' },
-            } as RestoreAgentLaunchProvenance,
-          },
-        ],
-      ]),
+      agents: new Map([['agent', { info, session: info.session }]]),
       updatedAtMs: 1,
     });
     const serialized = JSON.stringify(snapshot);
-    expect(serialized).not.toMatch(/argv|args|environment|token/i);
-    expect(snapshot.agents[0]?.launch).toEqual({ kind: 'claude', configDir: '/profiles/claude' });
+    expect(serialized).not.toMatch(/argv|args|environment|agentOptions/i);
+    expect(snapshot.agents[0]?.continuation).toEqual(info.continuation);
   });
 
-  it('round-trips only an absolute Claude config root and rebuilds narrow provider options', () => {
-    const info = agent('agent');
-    const launch = claudeRestoreLaunchProvenance('../claude-profile', info.workspace.root);
-    expect(launch).toEqual({ kind: 'claude', configDir: '/worktrees/claude-profile' });
-
-    const metadata = paneRecoveryMetadata(info.session, info, launch);
-    expect(metadata.descriptor).toMatchObject({ launch });
-    if (metadata.descriptor.kind !== 'agent') throw new Error('expected agent descriptor');
-    expect(restoredAgentOptions(metadata.descriptor)).toEqual({ configDir: '/worktrees/claude-profile' });
-
-    expect(
-      readRestoreDescriptor({
-        ...metadata.descriptor,
-        launch: { kind: 'claude', configDir: 'relative/profile' },
-      }),
-    ).toBeUndefined();
-    expect(
-      readRestoreDescriptor({
-        ...metadata.descriptor,
-        agent: 'codex',
-      }),
-    ).toBeUndefined();
+  it('migrates old V2 launch provenance into opaque adapter state without interpreting it', () => {
+    const descriptor = readRestoreDescriptor({
+      kind: 'agent',
+      agent: 'claude',
+      nativeSessionId: 'native-agent',
+      workspace: { mode: 'direct', root: '/repo', sourcePath: '/repo' },
+      launch: { kind: 'claude', configDir: '/profiles/claude' },
+    });
+    expect(descriptor).toEqual({
+      kind: 'agent',
+      continuation: {
+        providerId: 'claude',
+        nativeSessionId: 'native-agent',
+        implementation: 'native',
+        state: JSON.stringify({ kind: 'claude', configDir: '/profiles/claude' }),
+      },
+      workspace: { mode: 'direct', root: '/repo', sourcePath: '/repo' },
+    });
   });
 
   it('keeps agent metadata while a restored pane is rebinding from its old id', () => {
@@ -267,7 +251,10 @@ describe('restore snapshot schema', () => {
     expect(snapshot.windows[0]?.workspace.root).toMatchObject({
       sessionId: 'agent-old',
       meta: {
-        descriptor: { kind: 'agent', nativeSessionId: 'native-agent' },
+        descriptor: {
+          kind: 'agent',
+          continuation: { providerId: 'claude', nativeSessionId: 'native-agent', implementation: 'native' },
+        },
       },
     });
   });
@@ -370,7 +357,7 @@ describe('restore snapshot schema', () => {
       },
     ];
     const base = {
-      version: 2 as const,
+      version: 3 as const,
       updatedAtMs: 1,
       windows,
       agents: [{ runtimeSessionId: 'agent', ...agentPane.descriptor }],

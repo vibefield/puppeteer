@@ -41,7 +41,8 @@
     "node": ">=22.18.0"
   },
   "dependencies": {
-    "@vibecook/puppeteer-core": "workspace:*"
+    "@vibecook/puppeteer-core": "workspace:*",
+    "zod": "^4.4.3"
   },
   "devDependencies": {
     "@vibecook/puppeteer-surface": "workspace:*",

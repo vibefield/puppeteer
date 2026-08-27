@@ -239,71 +239,6 @@ kbd {
   cursor: pointer;
 }
 
-.godview-recording-control {
-  min-width: 0;
-  display: flex;
-  align-items: center;
-  gap: 6px;
-}
-
-.godview-recording-control > span {
-  max-width: 150px;
-  overflow: hidden;
-  color: var(--text-muted);
-  font-size: 8px;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.godview-recording-control > span.is-error {
-  color: #d64b45;
-}
-
-.godview-record-toggle {
-  height: 22px;
-  display: flex;
-  align-items: center;
-  gap: 5px;
-  padding: 0 7px;
-  border: 1px solid var(--panel-border);
-  border-radius: 6px;
-  color: var(--text-muted);
-  background: transparent;
-  font-size: 8px;
-  font-weight: 800;
-  letter-spacing: 0.08em;
-  cursor: pointer;
-}
-
-.godview-record-toggle > i {
-  width: 6px;
-  height: 6px;
-  border-radius: 50%;
-  background: currentColor;
-}
-
-.godview-record-toggle:hover,
-.godview-record-toggle.is-recording {
-  border-color: #d64b45;
-  color: #d64b45;
-  background: color-mix(in srgb, #d64b45 9%, transparent);
-}
-
-.godview-record-toggle.is-recording > i {
-  animation: godview-record-pulse 1.2s ease-in-out infinite;
-}
-
-.godview-record-toggle:disabled {
-  cursor: wait;
-  opacity: 0.55;
-}
-
-@keyframes godview-record-pulse {
-  50% {
-    opacity: 0.25;
-  }
-}
-
 .godview-status-controls {
   min-width: 0;
   display: flex;
@@ -1370,8 +1305,7 @@ kbd {
 
 @media (max-width: 840px) {
   .godview-status-controls kbd,
-  .godview-title small,
-  .godview-recording-control > span {
+  .godview-title small {
     display: none;
   }
 
@@ -1397,7 +1331,6 @@ kbd {
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .godview-record-toggle.is-recording > i,
   .agent-bubble,
   .agent-bubble-core-glow,
   .agent-bubble-particle,

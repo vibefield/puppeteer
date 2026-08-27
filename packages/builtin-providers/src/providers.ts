@@ -1,24 +1,65 @@
 import { basename } from 'node:path';
+import type { AgentProviderDescriptor } from '@vibecook/puppeteer-core';
 import type { AgentProvider } from '@vibecook/puppeteer-runtime';
 import { createAcpSession, type AcpConnector } from '@vibecook/puppeteer-adapter-acp';
 import {
   createClaudeAccountUsageService,
+  captureClaudeContinuationState,
   createClaudeSession,
+  normalizeClaudeNativeInvocation,
   preflightClaudeLaunch,
   prepareClaudeTuiSession,
-  type ClaudeHookRailFaultInjection,
+  restoreClaudeContinuationState,
+  type ClaudeNativeInvocationOptions,
 } from '@vibecook/puppeteer-adapter-claude';
 import {
   createCodexAccountUsageService,
+  captureCodexContinuationState,
   createCodexTuiSession,
+  normalizeCodexNativeInvocation,
   prepareCodexTuiSession,
+  restoreCodexContinuationState,
+  type CodexNativeInvocationOptions,
 } from '@vibecook/puppeteer-adapter-codex';
-import { createGrokAccountUsageService, createGrokBackend, type GrokBackend } from '@vibecook/puppeteer-adapter-grok';
-import { createKimiTuiSession, prepareKimiTuiSession } from '@vibecook/puppeteer-adapter-kimi';
-import { createOpenCodeTuiSession, prepareOpenCodeTuiSession } from '@vibecook/puppeteer-adapter-opencode';
-import { createHermesTuiSession, prepareHermesTuiSession } from '@vibecook/puppeteer-adapter-hermes';
+import {
+  captureGrokContinuationState,
+  createGrokAccountUsageService,
+  createGrokBackend,
+  normalizeGrokNativeInvocation,
+  restoreGrokContinuationState,
+  type GrokBackend,
+  type GrokNativeInvocationOptions,
+} from '@vibecook/puppeteer-adapter-grok';
+import {
+  captureKimiContinuationState,
+  createKimiTuiSession,
+  normalizeKimiNativeInvocation,
+  prepareKimiTuiSession,
+  restoreKimiContinuationState,
+  type CreateKimiTuiSessionOptions,
+  type KimiNativeInvocationOptions,
+} from '@vibecook/puppeteer-adapter-kimi';
+import {
+  captureOpenCodeContinuationState,
+  createOpenCodeTuiSession,
+  normalizeOpenCodeNativeInvocation,
+  prepareOpenCodeTuiSession,
+  restoreOpenCodeContinuationState,
+  type CreateOpenCodeTuiSessionOptions,
+  type OpenCodeNativeInvocationOptions,
+} from '@vibecook/puppeteer-adapter-opencode';
+import {
+  captureHermesContinuationState,
+  createHermesTuiSession,
+  normalizeHermesNativeInvocation,
+  prepareHermesTuiSession,
+  restoreHermesContinuationState,
+  type CreateHermesTuiSessionOptions,
+  type HermesNativeInvocationOptions,
+} from '@vibecook/puppeteer-adapter-hermes';
 import type {
   AcpAgentOptions,
+  BuiltinAgentKind,
   BuiltinExecutableAgentKind,
   ClaudeAgentOptions,
   CodexAgentOptions,
@@ -28,13 +69,36 @@ import type {
   HermesAgentOptions,
 } from './types.js';
 
+type ClaudeProviderOptions = ClaudeAgentOptions & ClaudeNativeInvocationOptions;
+type CodexProviderOptions = CodexAgentOptions & CodexNativeInvocationOptions;
+type GrokProviderOptions = GrokAgentOptions & GrokNativeInvocationOptions;
+type KimiProviderOptions = KimiAgentOptions &
+  KimiNativeInvocationOptions &
+  Pick<CreateKimiTuiSessionOptions, 'pollIntervalMs' | 'maxReplayBytes'>;
+type OpenCodeProviderOptions = OpenCodeAgentOptions &
+  OpenCodeNativeInvocationOptions &
+  Pick<CreateOpenCodeTuiSessionOptions, 'backendStartupTimeoutMs' | 'backendShutdownTimeoutMs' | 'reconnectDelayMs'>;
+type HermesProviderOptions = HermesAgentOptions &
+  HermesNativeInvocationOptions &
+  Pick<CreateHermesTuiSessionOptions, 'executable' | 'python' | 'env' | 'gatewayUrl'>;
+
 export interface BuiltinProviderOptions {
   executables?: Partial<Record<BuiltinExecutableAgentKind, string>>;
+  /** Generic executable used only when an opaque continuation records an Imposter implementation. */
+  imposterExecutable?: string;
   /** Default connector for generic ACP sessions; individual sessions may override it. */
   acpConnector?: AcpConnector;
-  /** Native-canary-only hook rail fault; normal product sessions leave this unset. */
-  claudeHookRailFaultInjection?: ClaudeHookRailFaultInjection;
 }
+
+const BUILTIN_PROVIDER_DESCRIPTORS = {
+  claude: { id: 'claude', label: 'Claude' },
+  codex: { id: 'codex', label: 'Codex' },
+  acp: { id: 'acp', label: 'ACP' },
+  grok: { id: 'grok', label: 'Grok' },
+  kimi: { id: 'kimi', label: 'Kimi' },
+  opencode: { id: 'opencode', label: 'OpenCode' },
+  hermes: { id: 'hermes', label: 'Hermes' },
+} as const satisfies Record<BuiltinAgentKind, AgentProviderDescriptor>;
 
 /**
  * Construct the built-in providers. All CLI-specific recipes and shared service
@@ -53,7 +117,7 @@ export function createBuiltinProviders(options: BuiltinProviderOptions = {}): Ag
   const claudeLaunchFor = async (
     resume: string | undefined,
     title: string | undefined,
-    launch: ClaudeAgentOptions | undefined,
+    launch: ClaudeProviderOptions | undefined,
   ): Promise<{ executable: string; providerVersion?: string }> => {
     const executable = launch?.executable ?? resolved.claude ?? 'claude';
     // The unified Imposter selects its vendor outside Claude's argv surface,
@@ -76,7 +140,7 @@ export function createBuiltinProviders(options: BuiltinProviderOptions = {}): Ag
   };
   const grokBackends = new Map<string, GrokBackend>();
   const grokBackendFor = (
-    launch: GrokAgentOptions | undefined,
+    launch: GrokProviderOptions | undefined,
     host: Parameters<typeof createGrokBackend>[0]['host'],
   ) => {
     const executable = launch?.executable ?? resolved.grok;
@@ -99,17 +163,35 @@ export function createBuiltinProviders(options: BuiltinProviderOptions = {}): Ag
 
   return [
     {
-      kind: 'claude',
+      descriptor: BUILTIN_PROVIDER_DESCRIPTORS.claude,
       executionMode: 'native-tui',
       accountUsage: createClaudeAccountUsageService(),
+      launch: {
+        provider: {
+          ...BUILTIN_PROVIDER_DESCRIPTORS.claude,
+          resume: true,
+          nativeInvocation: {
+            commands: [{ name: 'claude', executable: resolved.claude ?? 'claude' }],
+            environmentVariables: ['CLAUDE_CONFIG_DIR'],
+            imposter: { state: 'isolated-root' },
+          },
+        },
+        normalizeInvocation: normalizeClaudeNativeInvocation,
+        continuation: {
+          capture: ({ agentOptions, cwd }) =>
+            captureClaudeContinuationState(agentOptions as ClaudeProviderOptions | undefined, cwd),
+          restore: (state) => restoreClaudeContinuationState(state, { imposterExecutable: options.imposterExecutable }),
+        },
+      },
       async createSession({ cwd, resume, title, host, agentOptions }) {
-        const launch = agentOptions as ClaudeAgentOptions | undefined;
+        const launch = agentOptions as ClaudeProviderOptions | undefined;
         const { executable, providerVersion } = await claudeLaunchFor(resume, title, launch);
         return createClaudeSession({
           cwd,
           resume,
           title,
           executable,
+          env: launch?.env,
           providerVersion,
           permissionMode: launch?.permissionMode,
           model: launch?.model,
@@ -120,7 +202,6 @@ export function createBuiltinProviders(options: BuiltinProviderOptions = {}): Ag
           resumeInvocation: launch?.resumeInvocation,
           onDiagnostic: launch?.onDiagnostic,
           observeSubagentStatus: true,
-          hookRailFaultInjection: options.claudeHookRailFaultInjection,
           ports: {
             spawn: (prepared) => host.spawnTerminal(prepared),
             automate: host.automateTerminal,
@@ -128,13 +209,14 @@ export function createBuiltinProviders(options: BuiltinProviderOptions = {}): Ag
         });
       },
       async prepareSession({ cwd, resume, title, host, agentOptions }) {
-        const launch = agentOptions as ClaudeAgentOptions | undefined;
+        const launch = agentOptions as ClaudeProviderOptions | undefined;
         const { executable, providerVersion } = await claudeLaunchFor(resume, title, launch);
         const prepared = await prepareClaudeTuiSession({
           cwd,
           resume,
           title,
           executable,
+          env: launch?.env,
           providerVersion,
           permissionMode: launch?.permissionMode,
           model: launch?.model,
@@ -145,7 +227,6 @@ export function createBuiltinProviders(options: BuiltinProviderOptions = {}): Ag
           resumeInvocation: launch?.resumeInvocation,
           onDiagnostic: launch?.onDiagnostic,
           observeSubagentStatus: true,
-          hookRailFaultInjection: options.claudeHookRailFaultInjection,
           automate: host.automateTerminal,
         });
         const { command, args, cwd: launchCwd, env } = prepared.launch;
@@ -158,16 +239,34 @@ export function createBuiltinProviders(options: BuiltinProviderOptions = {}): Ag
       },
     },
     {
-      kind: 'codex',
+      descriptor: BUILTIN_PROVIDER_DESCRIPTORS.codex,
       executionMode: 'native-tui',
       accountUsage: createCodexAccountUsageService({ executable: resolved.codex }),
+      launch: {
+        provider: {
+          ...BUILTIN_PROVIDER_DESCRIPTORS.codex,
+          resume: true,
+          nativeInvocation: {
+            commands: [{ name: 'codex', executable: resolved.codex ?? 'codex' }],
+            environmentVariables: ['CODEX_HOME'],
+            imposter: { state: 'isolated-root' },
+          },
+        },
+        normalizeInvocation: normalizeCodexNativeInvocation,
+        continuation: {
+          capture: ({ agentOptions, cwd }) =>
+            captureCodexContinuationState(agentOptions as CodexProviderOptions | undefined, cwd),
+          restore: (state) => restoreCodexContinuationState(state, { imposterExecutable: options.imposterExecutable }),
+        },
+      },
       createSession: ({ cwd, resume, host, agentOptions }) => {
-        const launch = agentOptions as CodexAgentOptions | undefined;
+        const launch = agentOptions as CodexProviderOptions | undefined;
         return createCodexTuiSession({
           cwd,
           resume,
           executable: launch?.executable ?? resolved.codex,
           host,
+          env: launch?.env,
           model: launch?.model,
           sandbox: launch?.sandbox,
           approvalPolicy: launch?.approvalPolicy,
@@ -177,12 +276,13 @@ export function createBuiltinProviders(options: BuiltinProviderOptions = {}): Ag
         });
       },
       async prepareSession({ cwd, resume, host, agentOptions }) {
-        const launch = agentOptions as CodexAgentOptions | undefined;
+        const launch = agentOptions as CodexProviderOptions | undefined;
         return prepareCodexTuiSession({
           cwd,
           resume,
           executable: launch?.executable ?? resolved.codex,
           host,
+          env: launch?.env,
           model: launch?.model,
           sandbox: launch?.sandbox,
           approvalPolicy: launch?.approvalPolicy,
@@ -193,8 +293,9 @@ export function createBuiltinProviders(options: BuiltinProviderOptions = {}): Ag
       },
     },
     {
-      kind: 'acp',
+      descriptor: BUILTIN_PROVIDER_DESCRIPTORS.acp,
       executionMode: 'acp',
+      launch: { provider: { ...BUILTIN_PROVIDER_DESCRIPTORS.acp, resume: true } },
       createSession: ({ cwd, resume, agentOptions }) => {
         const launch = agentOptions as AcpAgentOptions | undefined;
         const connector = launch?.connector ?? acpConnector;
@@ -212,11 +313,28 @@ export function createBuiltinProviders(options: BuiltinProviderOptions = {}): Ag
       },
     },
     {
-      kind: 'grok',
+      descriptor: BUILTIN_PROVIDER_DESCRIPTORS.grok,
       executionMode: 'native-tui',
       accountUsage: createGrokAccountUsageService(),
+      launch: {
+        provider: {
+          ...BUILTIN_PROVIDER_DESCRIPTORS.grok,
+          resume: true,
+          nativeInvocation: {
+            commands: [{ name: 'grok', executable: resolved.grok ?? 'grok' }],
+            environmentVariables: ['GROK_HOME'],
+            imposter: { state: 'isolated-root' },
+          },
+        },
+        normalizeInvocation: normalizeGrokNativeInvocation,
+        continuation: {
+          capture: ({ agentOptions, cwd }) =>
+            captureGrokContinuationState(agentOptions as GrokProviderOptions | undefined, cwd),
+          restore: (state) => restoreGrokContinuationState(state, { imposterExecutable: options.imposterExecutable }),
+        },
+      },
       createSession: ({ cwd, resume, host, agentOptions }) => {
-        const launch = agentOptions as GrokAgentOptions | undefined;
+        const launch = agentOptions as GrokProviderOptions | undefined;
         return grokBackendFor(launch, host).createSession({
           cwd,
           resume,
@@ -230,7 +348,7 @@ export function createBuiltinProviders(options: BuiltinProviderOptions = {}): Ag
         });
       },
       prepareSession: ({ cwd, resume, host, agentOptions }) => {
-        const launch = agentOptions as GrokAgentOptions | undefined;
+        const launch = agentOptions as GrokProviderOptions | undefined;
         return grokBackendFor(launch, host).prepareSession({
           cwd,
           resume,
@@ -249,10 +367,29 @@ export function createBuiltinProviders(options: BuiltinProviderOptions = {}): Ag
       },
     },
     {
-      kind: 'kimi',
+      descriptor: BUILTIN_PROVIDER_DESCRIPTORS.kimi,
       executionMode: 'native-tui',
+      launch: {
+        provider: {
+          ...BUILTIN_PROVIDER_DESCRIPTORS.kimi,
+          resume: true,
+          nativeInvocation: {
+            commands: [{ name: 'kimi', executable: resolved.kimi ?? 'kimi' }],
+            environmentVariables: ['KIMI_CODE_HOME'],
+            imposter: { state: 'isolated-root' },
+          },
+        },
+        normalizeInvocation: normalizeKimiNativeInvocation,
+        continuation: {
+          capture: ({ agentOptions, cwd }) => {
+            const launch = agentOptions as KimiProviderOptions | undefined;
+            return captureKimiContinuationState(launch, cwd);
+          },
+          restore: (state) => restoreKimiContinuationState(state, { imposterExecutable: options.imposterExecutable }),
+        },
+      },
       createSession: ({ cwd, resume, host, agentOptions }) => {
-        const launch = agentOptions as KimiAgentOptions | undefined;
+        const launch = agentOptions as KimiProviderOptions | undefined;
         return createKimiTuiSession({
           cwd,
           resume,
@@ -271,7 +408,7 @@ export function createBuiltinProviders(options: BuiltinProviderOptions = {}): Ag
         });
       },
       prepareSession: ({ cwd, resume, host, agentOptions }) => {
-        const launch = agentOptions as KimiAgentOptions | undefined;
+        const launch = agentOptions as KimiProviderOptions | undefined;
         return prepareKimiTuiSession({
           cwd,
           resume,
@@ -291,10 +428,28 @@ export function createBuiltinProviders(options: BuiltinProviderOptions = {}): Ag
       },
     },
     {
-      kind: 'opencode',
+      descriptor: BUILTIN_PROVIDER_DESCRIPTORS.opencode,
       executionMode: 'native-tui',
+      launch: {
+        provider: {
+          ...BUILTIN_PROVIDER_DESCRIPTORS.opencode,
+          resume: true,
+          nativeInvocation: {
+            commands: [{ name: 'opencode', executable: resolved.opencode ?? 'opencode' }],
+            environmentVariables: [],
+            imposter: { state: 'isolated-root' },
+          },
+        },
+        normalizeInvocation: normalizeOpenCodeNativeInvocation,
+        continuation: {
+          capture: ({ agentOptions, cwd }) =>
+            captureOpenCodeContinuationState(agentOptions as OpenCodeProviderOptions | undefined, cwd),
+          restore: (state) =>
+            restoreOpenCodeContinuationState(state, { imposterExecutable: options.imposterExecutable }),
+        },
+      },
       createSession: ({ cwd, resume, title, host, agentOptions }) => {
-        const launch = agentOptions as OpenCodeAgentOptions | undefined;
+        const launch = agentOptions as OpenCodeProviderOptions | undefined;
         return createOpenCodeTuiSession({
           cwd,
           resume,
@@ -313,7 +468,7 @@ export function createBuiltinProviders(options: BuiltinProviderOptions = {}): Ag
         });
       },
       prepareSession: ({ cwd, resume, title, host, agentOptions }) => {
-        const launch = agentOptions as OpenCodeAgentOptions | undefined;
+        const launch = agentOptions as OpenCodeProviderOptions | undefined;
         return prepareOpenCodeTuiSession({
           cwd,
           resume,
@@ -333,10 +488,28 @@ export function createBuiltinProviders(options: BuiltinProviderOptions = {}): Ag
       },
     },
     {
-      kind: 'hermes',
+      descriptor: BUILTIN_PROVIDER_DESCRIPTORS.hermes,
       executionMode: 'native-tui',
+      launch: {
+        provider: {
+          ...BUILTIN_PROVIDER_DESCRIPTORS.hermes,
+          resume: true,
+          nativeInvocation: {
+            commands: [{ name: 'hermes', executable: resolved.hermes ?? 'hermes' }],
+            environmentVariables: ['HERMES_HOME'],
+          },
+        },
+        normalizeInvocation: normalizeHermesNativeInvocation,
+        continuation: {
+          capture: ({ agentOptions, cwd }) => {
+            const launch = agentOptions as HermesProviderOptions | undefined;
+            return captureHermesContinuationState(launch?.hermesHome, launch?.env, cwd);
+          },
+          restore: restoreHermesContinuationState,
+        },
+      },
       createSession: ({ cwd, resume, host, agentOptions }) => {
-        const launch = agentOptions as HermesAgentOptions | undefined;
+        const launch = agentOptions as HermesProviderOptions | undefined;
         return createHermesTuiSession({
           cwd,
           resume,
@@ -351,7 +524,7 @@ export function createBuiltinProviders(options: BuiltinProviderOptions = {}): Ag
         });
       },
       prepareSession: ({ cwd, resume, host, agentOptions }) => {
-        const launch = agentOptions as HermesAgentOptions | undefined;
+        const launch = agentOptions as HermesProviderOptions | undefined;
         return prepareHermesTuiSession({
           cwd,
           resume,

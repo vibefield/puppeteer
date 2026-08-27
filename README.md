@@ -96,6 +96,9 @@ import { createBuiltinAgentRuntime } from '@vibecook/puppeteer-builtin-providers
 const runtime = createBuiltinAgentRuntime({ host, defaultCwd: process.cwd() });
 const onApproval = async () => 'denied' as const;
 
+// Open provider catalog for generic pickers and monitoring UIs.
+for (const provider of runtime.providers()) console.log(provider.id, provider.label);
+
 const claude = await runtime.spawn({
   agent: 'claude',
   workspace: { mode: 'worktree', path: process.cwd() },
@@ -112,6 +115,10 @@ claude.on('context-window:updated', ({ event }) => {
 });
 claude.on('conversation:*', ({ event }) => console.log(event.text));
 await claude.submitPrompt({ text: 'Review this repository' });
+
+// Persist this envelope unchanged. Provider-specific state remains opaque.
+const resumedClaude = await runtime.resume({ continuation: claude.info.continuation });
+if ('error' in resumedClaude) throw new Error(resumedClaude.error.message);
 
 const codex = await runtime.spawn({
   agent: 'codex',
@@ -150,14 +157,27 @@ when absent, structured adapters deny approval requests by default.
 
 ## Caller-owned terminal adoption
 
-Claude, Codex, Grok, Kimi, OpenCode, and Hermes support split-phase launch for
-PATH shims and other callers that already own the terminal pane:
+Terminal hosts discover adapter-declared commands with `launchProviders()`, then
+submit provider-neutral shell intent. The selected adapter alone parses native
+argv and environment semantics and authors the split-phase launch recipe:
 
 ```ts
-const prepared = await runtime.prepareSession({
-  agent: 'codex',
+const provider = runtime
+  .launchProviders()
+  .find((candidate) => candidate.nativeInvocation?.commands.some((command) => command.name === invokedAs));
+if (!provider?.nativeInvocation) throw new Error('unsupported native invocation');
+
+const environment = Object.fromEntries(
+  provider.nativeInvocation.environmentVariables.flatMap((name) =>
+    process.env[name] === undefined ? [] : [[name, process.env[name]!]],
+  ),
+);
+const prepared = await runtime.prepareInvocation({
+  providerId: provider.id,
   cwd: process.cwd(),
-  agentOptions: { sandbox: 'workspace-write', onApproval },
+  argv: process.argv.slice(2),
+  environment,
+  implementation: { kind: 'native' },
 });
 if ('error' in prepared) throw new Error(prepared.error.message);
 
@@ -186,11 +206,11 @@ or persisted.
 
 The configured built-in executable should resolve to the real vendor binary,
 not the PATH shim, to avoid recursion. Generic ACP has no universal external
-attachment transport and returns `PREPARATION_UNSUPPORTED`. Callers should also
-fall through to the untouched command when they cannot safely preserve custom
-user arguments. `createSession`, `sessionState`, and runtime-wide `onEvent`
-remain compatibility/IPC surfaces; new application code should use `spawn()`
-and the returned `Agent`.
+attachment transport and does not advertise native invocation. Callers should
+fall through to the untouched command when the adapter rejects custom user
+arguments. `createSession`, `prepareSession`, `sessionState`, and runtime-wide
+`onEvent` remain low-level compatibility/composition surfaces; applications use
+`spawn()`, `resume()`, and the returned `Agent`.
 
 ## Development
 

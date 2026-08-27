@@ -11,6 +11,7 @@ export {
 } from './detection.js';
 export * from './normalization/index.js';
 export { buildHermesAttachLaunch, type HermesLaunchRecipeOptions } from './launch/recipe.js';
+export * from './launch/native-invocation.js';
 export { startHermesGatewayHost, resolveHermesPython, type HermesGatewayHost } from './launch/gateway-host.js';
 export {
   HermesJsonRpcClient,
