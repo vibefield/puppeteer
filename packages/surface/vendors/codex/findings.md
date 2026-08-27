@@ -1,25 +1,29 @@
 # C0 — Codex Surface Findings
 
-> **Current projection (2026-08-09):** the versioned model is now Codex CLI
-> **0.147.0**, ASM/evidence v2, with 215 bidirectional app-server events. The
-> generated model includes request parameters, responses, server-request
-> results, and durable record carriers; fresh hermetic captures replay exactly.
-> The darwin-arm64 binary is pinned by SHA-256. Support remains
-> `legacy-verified`, rather than unqualified `verified`, because darwin-x64,
-> linux-x64, and windows-x64 still require independent artifact acquisition and
-> pinned-real verification. The sections below retain the earlier C0/C1 survey
-> history where it explains design decisions.
+> **Current projection (2026-08-27):** the candidate model is Codex CLI
+> **0.150.0**, ASM/evidence v2, while promoted support remains the grandfathered
+> 0.147.0 baseline. The generated model includes request parameters, responses,
+> server-request results, and durable record carriers; fresh hermetic captures
+> replay exactly. The exact local 0.150.0 binary now also passes the complete
+> adapter composition: one private app-server, structured observation, prompt
+> input through the real native TUI in a PTY, response rendering in that TUI,
+> and native resume against the same durable thread. The deterministic loopback
+> Responses endpoint needs no account credentials or external model access.
+> Protected promotion runs that artifact-bound proof on all four platforms and
+> requires its receipt, but those independent platform runs have not yet all
+> completed. The sections below retain the earlier C0/C1 survey history where
+> it explains design decisions.
 
-> **Adapter and Imposter completion (2026-08-09):** Codex CLI 0.147.0 is the
-> current stable release in OpenAI's official changelog and in the local
-> detector/model baseline. The 215-method surface audits with no drift. The
-> Codex persona now includes late, duplicate, and out-of-order scenarios driven
-> through the real normalizer/reducer; its durable Imposter history is replayed
-> on `thread/resume`; the real adapter runs shared history-continuity and
+> **Adapter and Imposter completion:** the Codex persona includes late,
+> duplicate, and out-of-order scenarios driven through the real
+> normalizer/reducer. Its durable Imposter history is replayed on
+> `thread/resume`; the adapter runs shared history-continuity and
 > observation-only no-orphan conformance directly against
 > `ai --codex app-server`; and prompt confirmation requires the exact echoed
-> `clientUserMessageId`. Protected multi-platform promotion remains a separate
-> attestation requirement, as described above.
+> `clientUserMessageId`. The exact native proof additionally verifies the
+> production `resume <thread> --remote <endpoint>` TUI composition and resumed
+> history. Protected multi-platform promotion remains a separate attestation
+> requirement.
 
 **Probed:** 2026-07-13, Codex CLI **0.144.2** (`codex-cli`), macOS (darwin), Node 24.14.1
 **Method:** `codex --help` + subcommand help; `~/.codex` on-disk inspection; newest rollout record shapes; `codex app-server generate-json-schema --out` (structured protocol dump). Read-only — no live Codex session was spawned (interactive/live confirmations deferred, §6).
@@ -42,21 +46,21 @@ The one thing Codex _lacks_ that Claude has — a dictated `--session-id` — on
 | Question                                                    | Verdict                                                                                                                                                                                                                                                                                                                                                 |
 | ----------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | Dictated session id at spawn (`--session-id` equivalent)    | **NO** — Codex mints its own UUIDv7, embedded in the rollout filename and `session_meta.payload.session_id`. The PTY-path join must be **discovered**, not dictated.                                                                                                                                                                                    |
-| Structured control protocol exists                          | **YES** — `codex app-server` speaks JSON-RPC 2.0 over `stdio://` \| `unix://` \| `ws://IP:PORT` (`--listen`). `generate-ts` / `generate-json-schema` emit versioned bindings → puppeteer can **codegen a typed client**.                                                                                                                               |
+| Structured control protocol exists                          | **YES** — `codex app-server` speaks JSON-RPC 2.0 over `stdio://` \| `unix://` \| `ws://IP:PORT` (`--listen`). `generate-ts` / `generate-json-schema` emit versioned bindings → puppeteer can **codegen a typed client**.                                                                                                                                |
 | Clean session identity via protocol                         | **YES** — `ThreadStartResponse.thread` is the thread id; `TurnStartParams` requires `{ input, threadId }`. No discovered-join race under Strategy B.                                                                                                                                                                                                    |
 | Structured (authoritative) streaming observation            | **YES** — `ServerNotification` union (188 defs): `ItemStarted/CompletedNotification`, `AgentMessageDeltaNotification`, `TurnStarted/CompletedNotification`, `CommandExecOutputDeltaNotification`, `ProcessExitedNotification`, `FileChangePatchUpdatedNotification`, `ReasoningTextDeltaNotification`, `ContextCompactedNotification`, …                |
 | Structured prompt injection (no bracketed-paste guessing)   | **YES** — `TurnStartParams.input` + `clientUserMessageId` → deterministic confirmation when the same id is echoed on the user-message item. Also `ThreadInjectItemsParams`, `TurnSteerParams`. Missing echoes return `uncertain`; request acceptance alone is not proof of observation.                                                                 |
 | Structured approvals (observe AND respond)                  | **YES** — approvals are JSON-RPC **ServerRequests** the client answers: `ExecCommandApprovalParams`, `ApplyPatchApprovalParams`, `FileChangeRequestApprovalParams`, `PermissionsRequestApprovalParams`, `CommandExecutionRequestApprovalParams`, `ToolRequestUserInputParams`. Real request-ids — strictly better than Claude's absence-pattern denial. |
-| Native TUI + structured control on one session              | **LIKELY** — `codex --remote <ws://\|unix://> --remote-auth-token-env <ENV>` attaches the TUI to a running app-server; `codex remote-control start/stop/pair` runs the daemon with a bearer/pairing token. (Mirrors puppeteer' own loopback+token bridge shape.) **Confirm live — §6.**                                                                |
+| Native TUI + structured control on one session              | **CONFIRMED** — the exact 0.150.0 TUI renders and drives the controller-owned thread through `--remote`; normalized structured events, terminal response rendering, and durable resume agree. POSIX uses UDS; Windows selects an ephemeral `127.0.0.1` WebSocket, whose exact composition also passes locally when forced on macOS.                     |
 | Structured resume / fork                                    | **YES** — `ThreadResumeParams` / `ThreadForkParams` (protocol); `codex resume [SESSION_ID] [PROMPT]` / `--last` / `codex fork` (CLI). Resume by UUID, same as Claude.                                                                                                                                                                                   |
 | Command-hook / notify callback (Claude-command-hook analog) | **YES** — `notify = ["<program>", "turn-ended"]` in `config.toml`: Codex invokes a program on events. Also a first-class **hooks** system (`--dangerously-bypass-hook-trust`; `HookStarted/CompletedNotification`, `HookEventName` in the protocol) and **MCP** (`codex mcp-server`, `[mcp_servers]`).                                                  |
-| Transcript is spaghetti-readable (data-plane join)          | **YES** — rollout JSONL under `~/.codex/sessions/YYYY/MM/DD/rollout-<ts>-<uuid>.jsonl`; spaghetti's Codex `AgentSource` already reads it. `session_meta.payload.session_id` = the join key.                                                                                                                                                             |
+| Durable native record is independently readable             | **YES** — rollout JSONL lives under `~/.codex/sessions/YYYY/MM/DD/rollout-<ts>-<uuid>.jsonl`; `session_meta.payload.session_id` is the join key. The adapter does not depend on Spaghetti: app-server notifications are authoritative live observation, while the rollout is durable history/provenance.                                                |
 
 **Go/no-go on the structured driver: GO (recommended primary path).** The PTY+transcript path stays as a degraded fallback / native-TUI-only mode.
 
 ---
 
-## 2. On-disk shape (data-plane join — spaghetti already owns this)
+## 2. On-disk shape (durable native record)
 
 ```
 ~/.codex/sessions/2026/07/13/rollout-2026-07-13T10-06-31-019f5c71-…-fabf6.jsonl
@@ -92,7 +96,7 @@ Spawn `codex` in a PTY; observe semantics via the rollout file (spaghetti reads 
 
 ### Strategy B — app-server structured driver (RECOMMENDED)
 
-Run `codex app-server --listen unix://<sock>` (or the `remote-control` daemon); `initialize` → `ThreadStart` → drive `TurnStart` / observe `ServerNotification` stream / answer approval `ServerRequests`. Optionally attach the **native TUI** to the same daemon via `codex --remote unix://<sock> --remote-auth-token-env`.
+Run one private `codex app-server`; `initialize` → `ThreadStart` → drive `TurnStart` / observe `ServerNotification` stream / answer approval `ServerRequests`. Attach the **native TUI** to the same server with `codex --remote <endpoint>`. The adapter selects `unix://<sock>` on POSIX and an ephemeral `ws://127.0.0.1:<port>` endpoint on Windows.
 
 - **Pro:** authoritative low-latency observation; deterministic structured injection (`clientUserMessageId`); structured approvals with real request-ids; clean session identity; structured resume/fork; **and** the native terminal experience on the same session. Codegen'd typed client from `generate-ts`.
 - **Pro (strategic):** delivers the DESIGN §M6 structured/ACP driver architecture _inside M5_. Gemini/ACP later reuse the `StructuredDriver` seam.
@@ -143,9 +147,11 @@ codex app-server generate-ts --out <dir>            # typed bindings for the cli
 
 ---
 
-## 6. Deferred to a live/interactive probe (C1 spike)
+## 6. Original live-probe questions (historical)
 
-Mirrors Claude Phase 0's interactive census — these need a running Codex, not `--help`:
+These were the questions opened by the initial read-only survey. Sections 7–8
+resolve #1–4; the later hermetic census resolves #6. `notify` remains optional
+because app-server is the authoritative observation path.
 
 1. **Identity join:** confirm `ThreadStartResponse.thread` (or its id) **equals** the rollout `session_meta.session_id` → preserves the spaghetti join contract (puppeteer knows the id ⇒ spaghetti indexes the rollout under it).
 2. **`initialize` handshake:** exact params/capabilities; auth for `remote-control` (`pair` code vs bearer env); whether `unix://` needs a pre-created socket path.
@@ -166,7 +172,7 @@ Drove `codex app-server` (stdio JSON-RPC) end-to-end against live Codex, read-on
 
 | Deferral                                             | Result                                                                                                                                                                                                                                                                                                                                                                                                                    |
 | ---------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| #1 thread id ↔ rollout `session_id` ↔ spaghetti join | **CONFIRMED on disk.** `thread.sessionId` == `thread.id` == rollout `session_meta.session_id` (`019f5d86-…`). `thread/start` also returns `thread.path` = the rollout file path (handed to us, like Claude's `transcript_path` — no construction). **The puppeteer↔spaghetti join is a field on the ThreadStart response.**                                                                                              |
+| #1 thread id ↔ rollout `session_id` ↔ spaghetti join | **CONFIRMED on disk.** `thread.sessionId` == `thread.id` == rollout `session_meta.session_id` (`019f5d86-…`). `thread/start` also returns `thread.path` = the rollout file path (handed to us, like Claude's `transcript_path` — no construction). **The puppeteer↔spaghetti join is a field on the ThreadStart response.**                                                                                               |
 | #2 `initialize` handshake / auth                     | **Partial.** stdio app-server used James's `~/.codex/auth.json` directly — no extra auth. Handshake = `initialize`(requires `clientInfo{name,version}`) → server result carries `{userAgent, codexHome, platformFamily, platformOs}` → client MUST send the `initialized` notification before `thread/*`. `remote-control`/`pair`/bearer path still untested (only needed for the `--remote` TUI attach, C6).             |
 | #4 notification stream fixtures                      | **CAPTURED.** Sequence for one turn: `thread/started` → `turn/started` → `item/started`(userMessage) → `item/completed`(userMessage) → `item/started`(agentMessage) → `item/agentMessage/delta` → `item/completed`(agentMessage) → `thread/tokenUsage/updated` → `turn/completed`. Plus ambient `remoteControl/status/changed`, `mcpServer/startupStatus/updated`, `thread/status/changed`, `account/rateLimits/updated`. |
 
@@ -188,7 +194,7 @@ Drove `codex app-server` (stdio JSON-RPC) end-to-end against live Codex, read-on
 - `ThreadStartParams.approvalPolicy` = `AskForApproval` string (`"never"` \| `"on-request"` \| `"untrusted"` \| `{granular:{…}}`).
 - `TurnStartParams` = `{ threadId, input:[UserInput] }` where `UserInput` = `{type:"text", text}` (or image). Turn identity (`turn.id`) is returned on `turn/started`, distinct from `thread.id`.
 
-**Still deferred (later phases, not blocking):** #3 native-TUI-via-`codex --remote unix://` coexistence with protocol-side `TurnStart` (C6); #5 `notify` payload (superseded by the protocol for observation); #6 write-mode approvals (`workspace-write` + approval `ServerRequest` round-trip — C4).
+**Status at the end of C1:** #3 native-TUI coexistence moved to C6; #5 `notify` was superseded by the protocol for observation; #6 write-mode approvals moved to the later hermetic census. Those are historical handoffs, not current adapter gaps.
 
 **C1 verdict: GO — the structured driver is real, identity-clean, and spaghetti-joinable.** Proceed to C2 (normalizer over these captures).
 
@@ -210,7 +216,13 @@ Resolves §6 deferral #3, live against codex 0.144.2. Versioned method probes ar
 
 **Materialization caveat (found building the observer):** a thread has **no rollout until its first user message** — `thread/resume`/`thread/read` right after `thread/started` error with "no rollout found" / "not materialized yet; includeTurns unavailable before first user message". So the observer **retries `thread/resume`** after `thread/started` until the first turn materializes the thread (a moment later), then observes forward. `thread/started` **does** broadcast to other connections (verified), so discovery is fine; only the resume must wait for materialization.
 
-**C6 verdict: GO.** Model: puppeteer main spawns one `codex app-server --listen unix://<sock>` (UDS preferred over TCP — no port, filesystem-scoped), connects a **WS-over-UDS controller** (observe + inject), and the renderer PTY runs `codex --remote unix://<sock>` for the native display. Needs a **WebSocket-over-UDS `Transport`** for the app-server client — the injected-transport seam (C4) already supports this, so **no driver changes**, just a new transport implementation (`ws` pkg or the ~70-line hand-rolled client from the probe). §6 #3 resolved.
+**C6 verdict: GO, now implemented.** `adapter-codex` owns the private app-server process, endpoint selection, controller connection, real TUI launch, and shutdown ordering. POSIX keeps the filesystem-scoped WS-over-UDS path. Windows uses Codex's supported ephemeral loopback listener (`ws://127.0.0.1:0`), parses the bound address from the startup banner, and routes both controller and TUI through it. The resume-picker observation proxy mirrors either endpoint kind. §6 #3 is resolved without leaking a platform choice to consumers.
+
+The 0.150.0 exact-artifact proof adds two lifecycle details absent from the early
+C6 probe: disposal waits for the private app-server process to exit before a
+same-thread resume, and the hermetic model provider recognizes Codex's optional
+strict-schema thread-title request as auxiliary work rather than a second user
+turn.
 
 ---
 
