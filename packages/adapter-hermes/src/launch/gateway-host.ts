@@ -1,4 +1,5 @@
 import { spawn, type ChildProcess } from 'node:child_process';
+import { existsSync } from 'node:fs';
 import { createInterface } from 'node:readline';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -43,7 +44,9 @@ async function terminateChild(child: ChildProcess, timeoutMs = 2_000): Promise<v
 }
 
 function hostScript(): string {
-  return join(dirname(fileURLToPath(import.meta.url)), '../../scripts/tui-gateway-host.py');
+  const moduleRoot = dirname(fileURLToPath(import.meta.url));
+  const packaged = join(moduleRoot, 'tui-gateway-host.py');
+  return existsSync(packaged) ? packaged : join(moduleRoot, '../../scripts/tui-gateway-host.py');
 }
 
 export function resolveHermesPython(explicit?: string): string {

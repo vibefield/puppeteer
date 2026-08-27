@@ -28,12 +28,11 @@
     }
   },
   "files": [
-    "dist",
-    "scripts/tui-gateway-host.py"
+    "dist"
   ],
   "scripts": {
     "clean": "node -e \"require('node:fs').rmSync('dist',{recursive:true,force:true})\"",
-    "build": "pnpm clean && tsc -p tsconfig.build.json",
+    "build": "pnpm clean && tsc -p tsconfig.build.json && node scripts/copy-assets.mjs",
     "prepack": "pnpm build",
     "typecheck": "tsc -p tsconfig.json --noEmit",
     "test": "vitest run",
