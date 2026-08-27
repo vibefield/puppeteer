@@ -7,9 +7,7 @@ on:
         description: Candidate vendor
         required: true
         type: choice
-        # Grok remains intentionally absent until its ledger blocker has a
-        # real cross-platform adapter-through-TUI lane.
-        options: [claude, codex, hermes, kimi, opencode]
+        options: [claude, codex, grok, hermes, kimi, opencode]
       version:
         description: Exact normalized vendor version
         required: true
@@ -295,6 +293,7 @@ jobs:
       - name: Audit the exact candidate model
         env:
           PUPPETEER_CODEX_BIN: ${{ github.workspace }}/.agent-adaptation/artifacts/${{ matrix.platform }}/${{ steps.policy.outputs.outputName }}
+          PUPPETEER_GROK_BIN: ${{ github.workspace }}/.agent-adaptation/artifacts/${{ matrix.platform }}/${{ steps.policy.outputs.outputName }}
           PUPPETEER_HERMES_BIN: ${{ github.workspace }}/.agent-adaptation/live-work/${{ matrix.platform }}/python-environment/${{ steps.policy.outputs.consolePath }}
           PUPPETEER_KIMI_BIN: ${{ github.workspace }}/.agent-adaptation/artifacts/${{ matrix.platform }}/${{ steps.policy.outputs.outputName }}
           PUPPETEER_OPENCODE_BIN: ${{ github.workspace }}/.agent-adaptation/artifacts/${{ matrix.platform }}/${{ steps.policy.outputs.outputName }}
@@ -313,6 +312,13 @@ jobs:
           PUPPETEER_CODEX_BIN: ${{ github.workspace }}/.agent-adaptation/artifacts/${{ matrix.platform }}/${{ steps.policy.outputs.outputName }}
           PUPPETEER_LIVE_ARTIFACT: ${{ github.workspace }}/.agent-adaptation/artifacts/${{ matrix.platform }}/${{ steps.policy.outputs.outputName }}
         run: pnpm --filter @vibecook/puppeteer-adapter-codex test
+      - name: Grok pinned-real native-TUI lane
+        if: ${{ inputs.vendor == 'grok' }}
+        env:
+          GROK_LIVE: '1'
+          PUPPETEER_GROK_BIN: ${{ github.workspace }}/.agent-adaptation/artifacts/${{ matrix.platform }}/${{ steps.policy.outputs.outputName }}
+          PUPPETEER_LIVE_ARTIFACT: ${{ github.workspace }}/.agent-adaptation/artifacts/${{ matrix.platform }}/${{ steps.policy.outputs.outputName }}
+        run: pnpm --filter @vibecook/puppeteer-adapter-grok test
       - name: Hermes pinned-real native-TUI lane
         if: ${{ inputs.vendor == 'hermes' }}
         env:

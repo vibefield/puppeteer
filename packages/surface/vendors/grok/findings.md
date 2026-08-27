@@ -28,12 +28,21 @@ Those nodes remain `unverified`: the installed artifact was not forced through t
 ## Promotion status
 
 This is an executable baseline candidate, not a promoted support baseline. Its
-ASM/evidence v2 claims, exact darwin-arm64 digest, pre-normalization replay, and
-platform-aware live lane are now machine-checked. The generic adaptation
-workflow can acquire the four reviewed artifact URLs, bind them to this already
-traced candidate, classify drift, and prepare a confined draft PR; the protected
-promotion workflow reacquires the bytes and requires pinned-real reports from
-every platform before it can move the ledger.
+ASM/evidence v2 claims, exact darwin-arm64 digest, and pre-normalization replay
+are machine-checked. The adapter-through-real-native-TUI proof also passes
+locally against the exact darwin-arm64 1.0.0 artifact in an isolated environment:
+one shared leader serves ACP control and the native TUI, normalized events come
+from the durable log, the response appears in the TUI, and resume restores both
+normalized and TUI history. The deterministic loopback provider distinguishes
+the ancillary title and dashboard-summary calls from the one semantic user turn,
+so this proof requires neither credentials nor external model access.
+
+The generic adaptation workflow can acquire the four reviewed artifact URLs,
+bind them to this already traced candidate, classify drift, and prepare a
+confined draft PR. The protected promotion workflow now runs that same
+artifact-bound native-TUI proof on each platform and requires its receipt before
+it can move the ledger. That four-platform lane is implemented but has not yet
+completed successfully on every protected runner.
 
 Promotion is still blocked on darwin-x64, linux-x64, and windows-x64 artifact
 and census coverage, on the unresolved source-to-binary relationship (or an

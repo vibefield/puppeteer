@@ -12,9 +12,9 @@ concurrency:
   group: agent-live-reconciliation
   cancel-in-progress: false
 
-# Live agents need installed, authenticated vendor binaries. Repository
-# variables keep these jobs explicitly disabled until a credential-isolated
-# self-hosted runner with the `puppeteer-agent-live` label is available.
+# Live agents need installed vendor binaries; some lanes also need isolated
+# credentials. Repository variables keep each job explicitly disabled until a
+# suitable self-hosted runner with the `puppeteer-agent-live` label is available.
 jobs:
   claude-surface:
     if: ${{ vars.CLAUDE_LIVE_ENABLED == 'true' }}
@@ -76,11 +76,10 @@ jobs:
           node-version: 22.18.0
           cache: pnpm
       - run: pnpm install --frozen-lockfile --filter './packages/**'
-      - name: Run Grok leader/TUI/ACP/durable-store lane
+      - name: Run Grok native-TUI/leader/ACP/durable-store proof
         env:
           GROK_LIVE: '1'
           PUPPETEER_GROK_BIN: ${{ vars.GROK_BIN }}
-          GROK_LIVE_HOME: ${{ vars.GROK_LIVE_HOME }}
         run: pnpm --filter @vibecook/puppeteer-adapter-grok test
 
   hermes-surface:

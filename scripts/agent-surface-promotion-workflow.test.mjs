@@ -12,6 +12,7 @@ const protectedLiveTests = Object.fromEntries(
   Object.entries({
     claude: 'pinned-real.live.test.ts',
     codex: 'driver.live.test.ts',
+    grok: 'acp.live.test.ts',
     hermes: 'driver.live.test.ts',
     kimi: 'driver.live.test.ts',
     opencode: 'opencode.live.test.ts',
@@ -55,7 +56,7 @@ test('promotion binds one complete acquisition through test, verification, and t
 
 test('opencode is an explicit reviewed workflow choice with isolated real-artifact lanes', () => {
   assert.match(adaptation, /options: \[claude, codex, grok, hermes, kimi, opencode\]/);
-  assert.match(workflow, /options: \[claude, codex, hermes, kimi, opencode\]/);
+  assert.match(workflow, /options: \[claude, codex, grok, hermes, kimi, opencode\]/);
   assert.match(workflow, /if: \$\{\{ inputs\.vendor == 'opencode' \}\}/);
   assert.match(workflow, /OPENCODE_LIVE: '1'/);
   assert.match(workflow, /PUPPETEER_OPENCODE_BIN:/);
@@ -68,7 +69,7 @@ test('opencode is an explicit reviewed workflow choice with isolated real-artifa
 });
 
 test('Kimi uses the same exact artifact for its cross-platform native-TUI adapter lane', () => {
-  assert.match(workflow, /options: \[claude, codex, hermes, kimi, opencode\]/);
+  assert.match(workflow, /options: \[claude, codex, grok, hermes, kimi, opencode\]/);
   assert.match(workflow, /if: \$\{\{ inputs\.vendor == 'kimi' \}\}/);
   assert.match(workflow, /KIMI_LIVE: '1'/);
   assert.match(workflow, /PUPPETEER_KIMI_BIN:/);
@@ -86,12 +87,23 @@ test('every protected provider writes its artifact-bound receipt from an execute
   }
 });
 
-test('Grok adaptation remains available without claiming a skipped cross-platform promotion lane', () => {
+test('Grok uses the exact artifact in a hermetic cross-platform native-TUI adapter lane', () => {
   assert.match(adaptation, /options: \[claude, codex, grok, hermes, kimi, opencode\]/);
-  assert.doesNotMatch(workflow, /options: \[[^\]]*grok/);
-  assert.doesNotMatch(workflow, /Grok pinned-real lane|inputs\.vendor == 'grok'/);
+  assert.match(workflow, /options: \[claude, codex, grok, hermes, kimi, opencode\]/);
+  assert.match(workflow, /if: \$\{\{ inputs\.vendor == 'grok' \}\}/);
+  assert.match(workflow, /GROK_LIVE: '1'/);
+  assert.match(workflow, /PUPPETEER_GROK_BIN:/);
+  assert.match(workflow, /@vibecook\/puppeteer-adapter-grok test/);
   assert.match(live, /grok-live:/);
+  assert.match(live, /if: \$\{\{ vars\.GROK_LIVE_ENABLED == 'true' \}\}/);
   assert.match(live, /GROK_LIVE: '1'/);
+  assert.match(live, /PUPPETEER_GROK_BIN: \$\{\{ vars\.GROK_BIN \}\}/);
+  assert.doesNotMatch(live, /GROK_LIVE_HOME/);
+  assert.match(protectedLiveTests.grok, /testId: 'grok:native-tui-leader'/);
+  assert.match(
+    protectedLiveTests.grok,
+    /host\.output\(session!\.runtimeSessionId\)\.includes\(GROK_LIVE_RESPONSE_MARKER\)/,
+  );
 });
 
 test('source-built Hermes is reconstructed generically before its protected native-TUI lane', () => {
@@ -108,7 +120,7 @@ test('source-built Hermes is reconstructed generically before its protected nati
   assert.match(adaptation, /--node node/);
   assert.match(adaptation, /--npm npm/);
   assert.doesNotMatch(adaptation, /inputs\.vendor == 'hermes'/);
-  assert.match(workflow, /options: \[claude, codex, hermes, kimi, opencode\]/);
+  assert.match(workflow, /options: \[claude, codex, grok, hermes, kimi, opencode\]/);
   assert.match(workflow, /source_reference:/);
   assert.match(acquire, /scripts\/resolve-agent-acquisition\.mjs/);
   assert.match(acquire, /scripts\/materialize-installed-console\.mjs/);
