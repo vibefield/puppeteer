@@ -54,9 +54,9 @@ jobs:
           node-version: 22.18.0
           cache: pnpm
       - run: pnpm install --frozen-lockfile --filter './packages/**'
-      - name: Run Codex real-artifact lanes
+      - name: Run Codex native-TUI/app-server proof
         env:
-          CODEX_LIVE: '1'
+          CODEX_NATIVE_TUI_LIVE: '1'
           PUPPETEER_CODEX_BIN: ${{ vars.CODEX_BIN }}
         run: pnpm --filter @vibecook/puppeteer-adapter-codex test
 

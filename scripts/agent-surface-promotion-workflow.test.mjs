@@ -11,7 +11,7 @@ const live = readFileSync(resolve(root, '.github/workflows/agent-live.yml'), 'ut
 const protectedLiveTests = Object.fromEntries(
   Object.entries({
     claude: 'pinned-real.live.test.ts',
-    codex: 'driver.live.test.ts',
+    codex: 'native-tui.live.test.ts',
     grok: 'acp.live.test.ts',
     hermes: 'driver.live.test.ts',
     kimi: 'driver.live.test.ts',
@@ -77,6 +77,23 @@ test('Kimi uses the same exact artifact for its cross-platform native-TUI adapte
   assert.match(live, /kimi-live:/);
   assert.match(live, /KIMI_LIVE: '1'/);
   assert.match(live, /PUPPETEER_KIMI_BIN: \$\{\{ vars\.KIMI_BIN \}\}/);
+});
+
+test('Codex promotion proves the exact private app-server and native TUI without account credentials', () => {
+  const pinnedReal = job('pinned-real', 'verify');
+  assert.match(pinnedReal, /if: \$\{\{ inputs\.vendor == 'codex' \}\}/);
+  assert.match(pinnedReal, /CODEX_NATIVE_TUI_LIVE: '1'/);
+  assert.doesNotMatch(pinnedReal, /CODEX_LIVE: '1'/);
+  assert.match(pinnedReal, /PUPPETEER_CODEX_BIN:/);
+  assert.match(pinnedReal, /@vibecook\/puppeteer-adapter-codex test/);
+  assert.match(live, /codex-live:/);
+  assert.match(live, /CODEX_NATIVE_TUI_LIVE: '1'/);
+  assert.match(live, /PUPPETEER_CODEX_BIN: \$\{\{ vars\.CODEX_BIN \}\}/);
+  assert.match(protectedLiveTests.codex, /testId: 'codex:native-tui-app-server'/);
+  assert.match(
+    protectedLiveTests.codex,
+    /host\.output\(session!\.runtimeSessionId\)\.includes\(CODEX_LIVE_RESPONSE_MARKER\)/,
+  );
 });
 
 test('every protected provider writes its artifact-bound receipt from an executed live test', () => {
