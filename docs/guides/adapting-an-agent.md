@@ -214,14 +214,22 @@ Validate it with:
 pnpm upstream:check
 ```
 
-For a reviewed artifact, the generic acquisition commands are:
+For a reviewed standalone executable, the generic acquisition commands are:
 
 ```sh
-pnpm surface:download --vendor <vendor> --version <version> --platform <platform> --output <path>
+pnpm surface:download --vendor <vendor> --version <version> --platform <platform> --output <path> --metadata <download.json>
 pnpm surface:acquire --vendor <vendor> --version <version> --artifact <platform>=<path> --version-output <platform>=<text>
 ```
 
 `surface:download` only downloads allowlisted, bounded bytes. Survey harnesses may execute the artifact only in a disposable, isolated environment appropriate for that vendor.
+
+A source-only release is a different artifact kind. Declare `source-revision`, reviewed project-root files, and an `installedConsole` recipe in `upstream.json`, then pass the exact detected tag:
+
+```sh
+pnpm surface:download --vendor <vendor> --version <version> --platform <platform> --tag <release-tag> --output <source-archive> --metadata <download.json>
+```
+
+The downloader retains and identifies those bytes as a source archive. The standalone version probe and executable attestation reject it; a reviewed source-install lane must materialize and attest the declared console before anything executes. Never name a console-script wrapper in `sourceArchive.executableBasenames`: wrapper bytes are not the product identity.
 
 ### 4.2 Build a vendor-owned census harness
 

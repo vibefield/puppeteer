@@ -22,16 +22,20 @@ Hermes is a Python source checkout plus `uv`, not four platform binaries.
 `upstream.json` therefore uses `source-revision`: one GitHub source archive
 URL templated on `${tag}`, with the usual Puppeteer platforms listed as
 **execution environments** for that same archive. Per-platform artifact
-maps are forbidden for this vendor.
+maps are forbidden for this vendor. The archive contract reviews
+`pyproject.toml` and `uv.lock` at one project root, then declares the
+separate `python-uv-lock` installed-console recipe.
 
 `hermes` and `hermes-acp` on PATH are setuptools console scripts (~330
 bytes). Product identity is the pinned commit and lockfile, not those
 wrapper hashes.
 
 Protected promotion still cannot treat this vendor as four reacquired
-binaries. Download/acquire tooling understands the URL template, but the
-pinned-real lane remains blocked until a source-revision execution recipe
-is reviewed.
+binaries. The downloader now requires the exact tag, retains the source
+archive bytes, and labels them `source-archive`; the standalone executable
+probe and attestation reject those bytes. The pinned-real lane remains
+blocked until the declared source-install recipe produces a separately
+attested installed console on every execution platform.
 
 ## Identity probes (`darwin-arm64`)
 

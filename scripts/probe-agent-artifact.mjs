@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 /** Execute only the bounded `--version` probe in an isolated home. */
 import { spawnSync } from 'node:child_process';
-import { chmodSync, mkdirSync, writeFileSync } from 'node:fs';
+import { chmodSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { dirname, resolve, sep } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
@@ -24,7 +24,20 @@ export function validateVersionOutput(output, version) {
   return value;
 }
 
-export function probeAgentArtifact({ artifact, version, output, home, environment = process.env }) {
+export function validateProbeMetadata(metadata, { artifact, version }) {
+  if (!metadata || typeof metadata !== 'object') throw new Error('download metadata is required');
+  if (metadata.artifactKind !== 'standalone-executable') {
+    throw new Error(`cannot execute artifact kind ${metadata.artifactKind ?? 'unknown'}`);
+  }
+  if (metadata.version !== version) throw new Error('download metadata version differs from the probe');
+  if (metadata.output !== artifact) throw new Error('download metadata output differs from the probe artifact');
+  return metadata;
+}
+
+export function probeAgentArtifact({ artifact, artifactKind, version, output, home, environment = process.env }) {
+  if (artifactKind !== 'standalone-executable') {
+    throw new Error(`cannot execute artifact kind ${artifactKind ?? 'unknown'}`);
+  }
   const artifactPath = safePath(artifact);
   const outputPath = safePath(output);
   const homePath = safePath(home);
@@ -60,10 +73,19 @@ function flag(name) {
 
 const invokedDirectly = process.argv[1] && fileURLToPath(import.meta.url) === resolve(process.argv[1]);
 if (invokedDirectly) {
+  const artifact = flag('--artifact');
+  const version = flag('--version');
+  const metadataPath = flag('--metadata');
+  if (!metadataPath) throw new Error('--metadata is required');
+  const metadata = validateProbeMetadata(JSON.parse(readFileSync(safePath(metadataPath), 'utf8')), {
+    artifact,
+    version,
+  });
   console.log(
     probeAgentArtifact({
-      artifact: flag('--artifact'),
-      version: flag('--version'),
+      artifact,
+      artifactKind: metadata.artifactKind,
+      version,
       output: flag('--output'),
       home: flag('--home'),
     }),

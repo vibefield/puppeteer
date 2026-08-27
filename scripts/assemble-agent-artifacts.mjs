@@ -26,6 +26,12 @@ export function acquisitionBundles({ repoRoot = root, vendor, version, directory
     if (metadata.vendor !== vendor || metadata.version !== version || metadata.platform !== platform) {
       throw new Error(`acquisition bundle identity differs for ${platform}`);
     }
+    if (metadata.artifactKind !== 'standalone-executable') {
+      throw new Error(`acquisition bundle for ${platform} is ${metadata.artifactKind ?? 'an unknown artifact kind'}`);
+    }
+    if (resolve(repoRoot, metadata.output) !== resolve(binary)) {
+      throw new Error(`acquisition bundle output differs for ${platform}`);
+    }
     return {
       platform,
       path: binary,

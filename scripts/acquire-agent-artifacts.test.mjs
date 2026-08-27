@@ -62,3 +62,21 @@ test('CLI assignments reject repeated platform keys instead of silently replacin
     /repeats platform darwin-arm64/,
   );
 });
+
+test('executable attestation refuses source-only acquisition policies', () => {
+  const { repoRoot, vendorRoot, first } = fixture();
+  writeFileSync(
+    join(vendorRoot, 'upstream.json'),
+    JSON.stringify({ platforms: ['darwin-arm64'], acquisition: { strategy: 'source-revision' } }),
+  );
+  assert.throws(
+    () =>
+      acquireAgentArtifacts({
+        repoRoot,
+        vendor: 'fake',
+        version: '1.2.3',
+        artifacts: [{ platform: 'darwin-arm64', path: first, versionOutput: 'fake 1.2.3' }],
+      }),
+    /source archives require an installed-console attestation/,
+  );
+});

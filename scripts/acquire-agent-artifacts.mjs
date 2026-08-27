@@ -47,6 +47,9 @@ export function acquireAgentArtifacts({ repoRoot = root, vendor, version, artifa
   const upstreamPath = join(repoRoot, 'packages', 'surface', 'vendors', vendor, 'upstream.json');
   if (!existsSync(upstreamPath)) throw new Error(`no upstream policy for ${vendor}`);
   const upstream = json(upstreamPath);
+  if (upstream.acquisition?.strategy === 'source-revision') {
+    throw new Error('source archives require an installed-console attestation; they are not executable artifacts');
+  }
   const requiredPlatforms = upstream.platforms ?? [];
   const supplied = new Map();
   const issues = [];

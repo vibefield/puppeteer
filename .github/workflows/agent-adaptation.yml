@@ -81,6 +81,7 @@ jobs:
         run: >-
           node scripts/probe-agent-artifact.mjs
           --artifact ".agent-adaptation/artifacts/${{ matrix.platform }}/${{ matrix.executable }}"
+          --metadata ".agent-adaptation/artifacts/${{ matrix.platform }}/download.json"
           --version "${{ inputs.version }}"
           --output ".agent-adaptation/artifacts/${{ matrix.platform }}/version.txt"
           --home ".agent-adaptation/home/${{ matrix.platform }}"
