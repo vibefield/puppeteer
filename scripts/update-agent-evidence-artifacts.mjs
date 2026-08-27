@@ -43,10 +43,12 @@ export function mergeArtifactReport({ evidence, report, requiredPlatforms }) {
       id,
       platform,
       channel: 'stable',
+      ...(artifact.artifactKind ? { artifactKind: artifact.artifactKind } : {}),
       acquiredAt: artifact.acquiredAt,
       versionOutput: artifact.versionOutput,
       ...(artifact.sourceUrl ? { sourceUrl: artifact.sourceUrl } : {}),
       acquisitionKey: artifact.key,
+      ...(artifact.identity ? { identity: artifact.identity } : {}),
       integrity: { status: 'verified', sha256: artifact.sha256 },
     };
   });

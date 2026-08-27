@@ -33,9 +33,14 @@ wrapper hashes.
 Protected promotion still cannot treat this vendor as four reacquired
 binaries. The downloader now requires the exact tag, retains the source
 archive bytes, and labels them `source-archive`; the standalone executable
-probe and attestation reject those bytes. The pinned-real lane remains
-blocked until the declared source-install recipe produces a separately
-attested installed console on every execution platform.
+probe and attestation reject those bytes. The generic adaptation lane can
+now perform Hermes's required editable but source-bound `uv` materialization
+and attest a composite `installed-console.json` identity on every execution
+platform. The source tree must remain byte-for-byte unchanged during install;
+checkout paths in editable pointers are normalized before hashing, while generated
+launcher wrappers are represented by their canonical console-script binding.
+That four-platform lane still needs a successful workflow run, and the
+pinned-real native-TUI lane remains a separate promotion gate.
 
 ## Identity probes (`darwin-arm64`)
 

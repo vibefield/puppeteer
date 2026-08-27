@@ -25,17 +25,26 @@
     "allowedHosts": ["github.com", "codeload.github.com", "objects.githubusercontent.com"],
     "maxBytes": 536870912,
     "sourceArchive": {
-      "urls": ["https://github.com/NousResearch/hermes-agent/archive/refs/tags/${tag}.tar.gz"],
+      "urls": [
+        "https://github.com/NousResearch/hermes-agent/archive/refs/tags/${tag}.tar.gz",
+        "https://codeload.github.com/NousResearch/hermes-agent/tar.gz/refs/tags/${tag}"
+      ],
       "format": "tar.gz",
-      "rootFiles": ["pyproject.toml", "uv.lock"]
+      "rootFiles": ["pyproject.toml", "uv.lock"],
+      "maxExtractedBytes": 1073741824
     },
     "installedConsole": {
       "strategy": "python-uv-lock",
-      "pythonVersion": "3.11",
+      "pythonVersion": "3.11.9",
+      "uvVersion": "0.9.28",
       "projectFile": "pyproject.toml",
       "lockFile": "uv.lock",
       "distribution": "hermes-agent",
-      "consoleScript": "hermes"
+      "consoleScript": "hermes",
+      "installMode": "editable",
+      "generatedSourcePaths": ["hermes_agent.egg-info"],
+      "versionOutput": "first-line",
+      "isolatedHomeEnvironment": ["HERMES_HOME"]
     }
   },
   "analysis": [

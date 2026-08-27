@@ -3,8 +3,85 @@ import { createHash } from 'node:crypto';
 import { validateVersionOutput } from '../probe-agent-artifact.mjs';
 
 const sha256Pattern = /^sha256:[0-9a-f]{64}$/;
+const reservedEnvironment = new Set([
+  'COMSPEC',
+  'HOME',
+  'HTTP_PROXY',
+  'HTTPS_PROXY',
+  'LANG',
+  'LC_ALL',
+  'NO_COLOR',
+  'NO_PROXY',
+  'PATH',
+  'PATHEXT',
+  'PYTHONDONTWRITEBYTECODE',
+  'SSL_CERT_DIR',
+  'SSL_CERT_FILE',
+  'SYSTEMROOT',
+  'SystemRoot',
+  'TEMP',
+  'TMP',
+  'TMPDIR',
+  'USERPROFILE',
+  'UV_NO_ENV_FILE',
+  'UV_NO_PYTHON_DOWNLOADS',
+  'UV_PROJECT_ENVIRONMENT',
+  'WINDIR',
+]);
+
+function safeRelativePath(path) {
+  return (
+    typeof path === 'string' &&
+    /^[A-Za-z0-9._-]+(?:\/[A-Za-z0-9._-]+)*$/.test(path) &&
+    path.split('/').every((part) => part !== '.' && part !== '..')
+  );
+}
+
+function pathsOverlap(left, right) {
+  return left === right || left.startsWith(`${right}/`) || right.startsWith(`${left}/`);
+}
+
+export function validatePythonUvLockPolicy(policy) {
+  if (policy?.strategy !== 'python-uv-lock') throw new Error('unsupported installed-console strategy');
+  if (!/^3\.\d+\.\d+$/.test(policy.pythonVersion ?? '')) throw new Error('exact Python 3 version is required');
+  if (!/^\d+\.\d+\.\d+$/.test(policy.uvVersion ?? '')) throw new Error('exact uv version is required');
+  if (
+    !safeRelativePath(policy.projectFile) ||
+    !safeRelativePath(policy.lockFile) ||
+    policy.projectFile === policy.lockFile
+  ) {
+    throw new Error('distinct safe project and lockfile paths are required');
+  }
+  for (const field of ['distribution', 'consoleScript']) {
+    if (!/^[A-Za-z0-9._-]+$/.test(policy[field] ?? '') || ['.', '..'].includes(policy[field])) {
+      throw new Error(`${field} must be a safe normalized name`);
+    }
+  }
+  if (!['editable', 'non-editable'].includes(policy.installMode)) throw new Error('installMode is invalid');
+  const generated = policy.generatedSourcePaths;
+  if (
+    !Array.isArray(generated) ||
+    new Set(generated).size !== generated.length ||
+    generated.some((path) => !safeRelativePath(path)) ||
+    generated.some((path, index) => generated.slice(index + 1).some((other) => pathsOverlap(path, other))) ||
+    generated.some((path) => [policy.projectFile, policy.lockFile].some((identity) => pathsOverlap(path, identity)))
+  ) {
+    throw new Error('generatedSourcePaths must be unique, disjoint, safe paths');
+  }
+  if (!['single-line', 'first-line'].includes(policy.versionOutput)) throw new Error('versionOutput is invalid');
+  const isolated = policy.isolatedHomeEnvironment;
+  if (
+    !Array.isArray(isolated) ||
+    new Set(isolated).size !== isolated.length ||
+    isolated.some((name) => !/^[A-Z][A-Z0-9_]*$/.test(name) || reservedEnvironment.has(name))
+  ) {
+    throw new Error('isolatedHomeEnvironment contains an unsafe or reserved name');
+  }
+  return policy;
+}
 
 function validateInventory(inventory, policy, version) {
+  validatePythonUvLockPolicy(policy);
   if (inventory?.schemaVersion !== 1) throw new Error('Python inventory has an unsupported schema');
   if (inventory.runtime?.implementation !== 'cpython') throw new Error('installed console must use CPython');
   if (inventory.runtime?.pythonVersion !== policy.pythonVersion) {
@@ -45,7 +122,7 @@ function validateInventory(inventory, policy, version) {
     /[\u0000-\u001f\u007f]/.test(inventory.console.entryPoint) ||
     inventory.console?.bindingDigestAlgorithm !== 'sha256-console-binding-v1' ||
     typeof inventory.console?.launcher !== 'string' ||
-    !/^[A-Za-z0-9._-]+(?:\/[A-Za-z0-9._-]+)*$/.test(inventory.console.launcher)
+    !safeRelativePath(inventory.console.launcher)
   ) {
     throw new Error('installed console has no safe launcher and entry point');
   }
@@ -137,7 +214,7 @@ export function validateInstalledConsoleManifest(
   }
   if (
     !/^[A-Za-z0-9][A-Za-z0-9._-]{0,127}$/.test(manifest.source?.reference ?? '') ||
-    !/^[A-Za-z0-9._-]+(?:\/[A-Za-z0-9._-]+)*$/.test(manifest.source?.archiveRoot ?? '') ||
+    (manifest.source?.archiveRoot !== '.' && !safeRelativePath(manifest.source?.archiveRoot)) ||
     manifest.source?.tree?.digestAlgorithm !== 'sha256-path-content-v1' ||
     manifest.source?.generated?.digestAlgorithm !== 'sha256-generated-source-trees-v1' ||
     !Number.isInteger(manifest.source?.generated?.fileCount) ||
@@ -190,6 +267,7 @@ export function createInstalledConsoleManifest({
   inventory,
   versionOutput,
 }) {
+  validatePythonUvLockPolicy(policy);
   const normalizedVersionOutput = normalizeInstalledVersionOutput(versionOutput, version, policy.versionOutput);
   const manifest = {
     schemaVersion: 1,

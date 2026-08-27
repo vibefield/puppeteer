@@ -63,7 +63,7 @@
       "candidateVersion": "0.20.0",
       "status": "baseline-pending",
       "blockers": [
-        "The source-only Python release needs a reproducible installed-console artifact contract before the generic acquisition and version-probe workflow can consume it.",
+        "The generic four-platform locked installed-console acquisition and attestation lane has not yet produced a complete workflow run.",
         "No four-platform adapter-through-real-native-TUI promotion lane has passed."
       ]
     },

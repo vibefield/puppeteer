@@ -1,7 +1,11 @@
 import assert from 'node:assert/strict';
 import { createHash } from 'node:crypto';
 import test from 'node:test';
-import { createInstalledConsoleManifest, normalizeInstalledVersionOutput } from './lib/installed-console-contract.mjs';
+import {
+  createInstalledConsoleManifest,
+  normalizeInstalledVersionOutput,
+  validatePythonUvLockPolicy,
+} from './lib/installed-console-contract.mjs';
 
 const digest = (character) => `sha256:${character.repeat(64)}`;
 const sha256 = (value) => `sha256:${createHash('sha256').update(value).digest('hex')}`;
@@ -17,6 +21,7 @@ const policy = {
   installMode: 'editable',
   generatedSourcePaths: ['hermes_agent.egg-info'],
   versionOutput: 'first-line',
+  isolatedHomeEnvironment: ['HERMES_HOME'],
 };
 
 const distributions = [{ name: 'hermes-agent', version: '0.20.0', fileCount: 50, filesSha256: digest('4') }];
@@ -175,5 +180,21 @@ test('installed-console manifests reject tampered environment and console-bindin
         inventory: { ...inventory, console: { ...inventory.console, entryPoint: 'other:main' } },
       }),
     /console binding digest does not match/,
+  );
+});
+
+test('installed-console policies reject traversal, overlapping output roots, and environment overrides', () => {
+  assert.throws(() => validatePythonUvLockPolicy({ ...policy, projectFile: '../pyproject.toml' }), /safe project/);
+  assert.throws(
+    () =>
+      validatePythonUvLockPolicy({
+        ...policy,
+        generatedSourcePaths: ['generated', 'generated/nested'],
+      }),
+    /unique, disjoint, safe/,
+  );
+  assert.throws(
+    () => validatePythonUvLockPolicy({ ...policy, isolatedHomeEnvironment: ['HOME'] }),
+    /unsafe or reserved/,
   );
 });

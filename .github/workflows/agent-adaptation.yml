@@ -7,12 +7,15 @@ on:
         description: Candidate vendor
         required: true
         type: choice
-        # Hermes releases are source archives, not standalone executables;
-        # support/agents.json records the missing installed-console acquisition gate.
-        options: [claude, codex, grok, kimi, opencode]
+        options: [claude, codex, grok, hermes, kimi, opencode]
       version:
         description: Exact normalized vendor version
         required: true
+        type: string
+      source_reference:
+        description: Exact release tag/reference; required only by a source-revision policy
+        required: false
+        default: ''
         type: string
       ground_truth:
         description: Stable vendor-root groundtruth.json already prepared on the selected ref
@@ -47,18 +50,14 @@ jobs:
         include:
           - platform: darwin-arm64
             runner: macos-14
-            executable: agent
           - platform: darwin-x64
             runner: macos-15-intel
-            executable: agent
           - platform: linux-x64
             runner: ubuntu-24.04
-            executable: agent
           - platform: windows-x64
             runner: windows-2025
-            executable: agent.exe
     runs-on: ${{ matrix.runner }}
-    timeout-minutes: 15
+    timeout-minutes: 30
     steps:
       - uses: actions/checkout@v6
         with:
@@ -68,23 +67,72 @@ jobs:
         with:
           node-version: 22.18.0
 
-      - name: Download reviewed artifact bytes
+      - name: Resolve declarative acquisition policy
+        id: policy
+        run: >-
+          node scripts/resolve-agent-acquisition.mjs
+          --vendor "${{ inputs.vendor }}"
+          --platform "${{ matrix.platform }}"
+          --source-reference "${{ inputs.source_reference }}"
+          --github-output
+
+      - uses: actions/setup-python@v6
+        if: ${{ steps.policy.outputs.artifactKind == 'installed-console' }}
+        with:
+          python-version: ${{ steps.policy.outputs.pythonVersion }}
+
+      - uses: astral-sh/setup-uv@c771a70e6277c0a99b617c7a806ffedaca235ff9 # v9.0.0
+        if: ${{ steps.policy.outputs.artifactKind == 'installed-console' }}
+        with:
+          version: ${{ steps.policy.outputs.uvVersion }}
+          enable-cache: false
+
+      - name: Download reviewed standalone executable bytes
+        if: ${{ steps.policy.outputs.artifactKind == 'standalone-executable' }}
         run: >-
           node scripts/download-agent-artifact.mjs
           --vendor "${{ inputs.vendor }}"
           --version "${{ inputs.version }}"
           --platform "${{ matrix.platform }}"
-          --output ".agent-adaptation/artifacts/${{ matrix.platform }}/${{ matrix.executable }}"
+          --output ".agent-adaptation/artifacts/${{ matrix.platform }}/${{ steps.policy.outputs.outputName }}"
           --metadata ".agent-adaptation/artifacts/${{ matrix.platform }}/download.json"
 
       - name: Probe exact version in a disposable home
+        if: ${{ steps.policy.outputs.artifactKind == 'standalone-executable' }}
         run: >-
           node scripts/probe-agent-artifact.mjs
-          --artifact ".agent-adaptation/artifacts/${{ matrix.platform }}/${{ matrix.executable }}"
+          --artifact ".agent-adaptation/artifacts/${{ matrix.platform }}/${{ steps.policy.outputs.outputName }}"
           --metadata ".agent-adaptation/artifacts/${{ matrix.platform }}/download.json"
           --version "${{ inputs.version }}"
           --output ".agent-adaptation/artifacts/${{ matrix.platform }}/version.txt"
           --home ".agent-adaptation/home/${{ matrix.platform }}"
+
+      - name: Download reviewed source archive bytes
+        if: ${{ steps.policy.outputs.artifactKind == 'installed-console' }}
+        run: >-
+          node scripts/download-agent-artifact.mjs
+          --vendor "${{ inputs.vendor }}"
+          --version "${{ inputs.version }}"
+          --platform "${{ matrix.platform }}"
+          --tag "${{ inputs.source_reference }}"
+          --output ".agent-adaptation/source/${{ matrix.platform }}/${{ steps.policy.outputs.sourceFile }}"
+          --metadata ".agent-adaptation/source/${{ matrix.platform }}/download.json"
+
+      - name: Materialize and attest locked installed console
+        if: ${{ steps.policy.outputs.artifactKind == 'installed-console' }}
+        run: >-
+          node scripts/materialize-installed-console.mjs
+          --vendor "${{ inputs.vendor }}"
+          --version "${{ inputs.version }}"
+          --platform "${{ matrix.platform }}"
+          --source-archive ".agent-adaptation/source/${{ matrix.platform }}/${{ steps.policy.outputs.sourceFile }}"
+          --source-metadata ".agent-adaptation/source/${{ matrix.platform }}/download.json"
+          --work ".agent-adaptation/work/${{ matrix.platform }}"
+          --output ".agent-adaptation/artifacts/${{ matrix.platform }}/${{ steps.policy.outputs.outputName }}"
+          --metadata ".agent-adaptation/artifacts/${{ matrix.platform }}/download.json"
+          --version-output ".agent-adaptation/artifacts/${{ matrix.platform }}/version.txt"
+          --python python
+          --uv uv
 
       - uses: actions/upload-artifact@v4
         with:

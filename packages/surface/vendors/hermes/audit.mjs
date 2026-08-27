@@ -46,6 +46,28 @@ export function auditHermes() {
   if (upstream.acquisition?.artifacts) {
     problems.push('source-revision policy must not invent per-platform binaries');
   }
+  const sourceArchive = upstream.acquisition?.sourceArchive;
+  const installedConsole = upstream.acquisition?.installedConsole;
+  if (
+    JSON.stringify(sourceArchive?.rootFiles) !== JSON.stringify(['pyproject.toml', 'uv.lock']) ||
+    !Number.isInteger(sourceArchive?.maxExtractedBytes)
+  ) {
+    problems.push('source archive must review the bounded project and lockfile root');
+  }
+  if (
+    installedConsole?.strategy !== 'python-uv-lock' ||
+    installedConsole.projectFile !== 'pyproject.toml' ||
+    installedConsole.lockFile !== 'uv.lock' ||
+    installedConsole.distribution !== 'hermes-agent' ||
+    installedConsole.consoleScript !== 'hermes' ||
+    installedConsole.installMode !== 'editable' ||
+    JSON.stringify(installedConsole.generatedSourcePaths) !== JSON.stringify(['hermes_agent.egg-info']) ||
+    installedConsole.versionOutput !== 'first-line' ||
+    !/^3\.11\.\d+$/.test(installedConsole.pythonVersion ?? '') ||
+    !/^\d+\.\d+\.\d+$/.test(installedConsole.uvVersion ?? '')
+  ) {
+    problems.push('installed-console materialization policy is incomplete');
+  }
 
   const sourcePath = join(probesRoot, 'source.json');
   if (!existsSync(sourcePath)) {

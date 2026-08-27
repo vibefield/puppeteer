@@ -18,7 +18,9 @@ test('complete artifact reports replace legacy identities and preserve claim lin
       {
         key: `fake@2.0.0@linux-x64@sha256:${'a'.repeat(64)}`,
         platform: 'linux-x64',
+        artifactKind: 'installed-console',
         sha256: `sha256:${'a'.repeat(64)}`,
+        identity: { environmentSha256: `sha256:${'b'.repeat(64)}` },
         acquiredAt: '2026-08-09T00:00:00.000Z',
         versionOutput: 'fake 2.0.0',
       },
@@ -26,5 +28,7 @@ test('complete artifact reports replace legacy identities and preserve claim lin
   };
   mergeArtifactReport({ evidence, report, requiredPlatforms: ['linux-x64'] });
   assert.equal(evidence.artifacts[0].integrity.status, 'verified');
+  assert.equal(evidence.artifacts[0].artifactKind, 'installed-console');
+  assert.equal(evidence.artifacts[0].identity.environmentSha256, `sha256:${'b'.repeat(64)}`);
   assert.equal(evidence.claims[0].artifact, 'old');
 });

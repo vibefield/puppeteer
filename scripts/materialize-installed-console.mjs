@@ -16,7 +16,7 @@ import {
 import { dirname, join, relative, resolve, sep } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { digestTree } from '../packages/surface/scripts/check-evidence.mjs';
-import { createInstalledConsoleManifest } from './lib/installed-console-contract.mjs';
+import { createInstalledConsoleManifest, validatePythonUvLockPolicy } from './lib/installed-console-contract.mjs';
 
 const root = dirname(dirname(fileURLToPath(import.meta.url)));
 const pythonTool = resolve(root, 'scripts', 'lib', 'python-console-tool.py');
@@ -199,6 +199,7 @@ export function materializeInstalledConsole({
   if (!(upstream.platforms ?? []).includes(platform)) throw new Error(`unsupported platform ${platform}`);
   const sourcePolicy = upstream.acquisition.sourceArchive;
   const policy = upstream.acquisition.installedConsole;
+  validatePythonUvLockPolicy(policy);
   const archivePath = safePath(repoRoot, sourceArchive);
   const sourceMetadataPath = safePath(repoRoot, sourceMetadata);
   const workRoot = safePath(repoRoot, work);

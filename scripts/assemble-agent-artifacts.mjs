@@ -18,23 +18,31 @@ export function acquisitionBundles({ repoRoot = root, vendor, version, directory
     const bundle = join(directory, platform);
     const metadataPath = join(bundle, 'download.json');
     const versionPath = join(bundle, 'version.txt');
-    const binary = ['agent', 'agent.exe'].map((name) => join(bundle, name)).find(existsSync);
-    if (!binary || !existsSync(metadataPath) || !existsSync(versionPath)) {
+    if (!existsSync(metadataPath) || !existsSync(versionPath)) {
       throw new Error(`incomplete acquisition bundle for ${platform}`);
     }
     const metadata = JSON.parse(readFileSync(metadataPath, 'utf8'));
     if (metadata.vendor !== vendor || metadata.version !== version || metadata.platform !== platform) {
       throw new Error(`acquisition bundle identity differs for ${platform}`);
     }
-    if (metadata.artifactKind !== 'standalone-executable') {
-      throw new Error(`acquisition bundle for ${platform} is ${metadata.artifactKind ?? 'an unknown artifact kind'}`);
+    const artifact =
+      metadata.artifactKind === 'installed-console'
+        ? join(bundle, 'installed-console.json')
+        : ['agent', 'agent.exe'].map((name) => join(bundle, name)).find(existsSync);
+    if (
+      !artifact ||
+      !existsSync(artifact) ||
+      !['standalone-executable', 'installed-console'].includes(metadata.artifactKind)
+    ) {
+      throw new Error(`acquisition bundle for ${platform} has no supported artifact`);
     }
-    if (resolve(repoRoot, metadata.output) !== resolve(binary)) {
+    if (resolve(repoRoot, metadata.output) !== resolve(artifact)) {
       throw new Error(`acquisition bundle output differs for ${platform}`);
     }
     return {
       platform,
-      path: binary,
+      artifactKind: metadata.artifactKind,
+      path: artifact,
       versionOutput: readFileSync(versionPath, 'utf8').trim(),
       sourceUrl: metadata.sourceUrl,
     };

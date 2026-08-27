@@ -4,6 +4,7 @@ import { createHash } from 'node:crypto';
 import { existsSync, readFileSync, readdirSync, statSync, writeFileSync } from 'node:fs';
 import { basename, dirname, join, relative, resolve, sep } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { validateInstalledConsoleManifest } from './lib/installed-console-contract.mjs';
 
 const root = dirname(dirname(fileURLToPath(import.meta.url)));
 
@@ -32,11 +33,33 @@ function knownDigests(repoRoot, vendor, version) {
     for (const artifact of json(evidencePath).artifacts ?? []) {
       const digest = artifact.integrity?.sha256;
       if (artifact.platform && /^sha256:[0-9a-f]{64}$/.test(digest ?? '')) {
-        known.set(artifact.platform, digest);
+        known.set(artifact.platform, {
+          digest,
+          artifactKind:
+            artifact.artifactKind ??
+            (artifact.identity === 'source-revision-and-lockfile' ? 'source-revision' : 'standalone-executable'),
+        });
       }
     }
   }
   return known;
+}
+
+function installedConsoleIdentity(manifest) {
+  return {
+    sourceArchiveSha256: manifest.source.archiveSha256,
+    sourceTreeSha256: manifest.source.tree.sha256,
+    generatedSourceSha256: manifest.source.generated.sha256,
+    sourceReference: manifest.source.reference,
+    projectFileSha256: manifest.source.projectFile.sha256,
+    lockFileSha256: manifest.source.lockFile.sha256,
+    pythonVersion: manifest.runtime.pythonVersion,
+    pythonExecutableSha256: manifest.runtime.executableSha256,
+    pythonStandardLibrarySha256: manifest.runtime.stdlibSha256,
+    environmentSha256: manifest.environment.sha256,
+    consoleEntryPoint: manifest.console.entryPoint,
+    consoleBindingSha256: manifest.console.bindingSha256,
+  };
 }
 
 export function acquireAgentArtifacts({ repoRoot = root, vendor, version, artifacts, now = () => new Date() }) {
@@ -47,9 +70,8 @@ export function acquireAgentArtifacts({ repoRoot = root, vendor, version, artifa
   const upstreamPath = join(repoRoot, 'packages', 'surface', 'vendors', vendor, 'upstream.json');
   if (!existsSync(upstreamPath)) throw new Error(`no upstream policy for ${vendor}`);
   const upstream = json(upstreamPath);
-  if (upstream.acquisition?.strategy === 'source-revision') {
-    throw new Error('source archives require an installed-console attestation; they are not executable artifacts');
-  }
+  const expectedArtifactKind =
+    upstream.acquisition?.strategy === 'source-revision' ? 'installed-console' : 'standalone-executable';
   const requiredPlatforms = upstream.platforms ?? [];
   const supplied = new Map();
   const issues = [];
@@ -82,9 +104,29 @@ export function acquireAgentArtifacts({ repoRoot = root, vendor, version, artifa
     } else if (!versionPattern.test(versionOutput)) {
       issues.push(`${platform} version output does not identify ${version}`);
     }
+    const artifactKind = artifact.artifactKind ?? expectedArtifactKind;
+    if (artifactKind !== expectedArtifactKind) {
+      issues.push(`${platform} is ${artifactKind}, expected ${expectedArtifactKind}`);
+    }
+    let identity;
+    if (artifactKind === 'installed-console') {
+      try {
+        const manifest = json(absolute);
+        validateInstalledConsoleManifest(manifest, {
+          vendor,
+          version,
+          platform,
+          versionOutput,
+          policy: upstream.acquisition.installedConsole,
+        });
+        identity = installedConsoleIdentity(manifest);
+      } catch (error) {
+        issues.push(`${platform} installed-console manifest is invalid: ${error.message}`);
+      }
+    }
     const prior = known.get(platform);
-    if (prior && prior !== sha256) {
-      republished.push({ platform, priorDigest: prior, acquiredDigest: sha256 });
+    if (prior?.artifactKind === artifactKind && prior.digest !== sha256) {
+      republished.push({ platform, priorDigest: prior.digest, acquiredDigest: sha256 });
     }
     let sourceUrl;
     if (artifact.sourceUrl !== undefined) {
@@ -106,11 +148,13 @@ export function acquireAgentArtifacts({ repoRoot = root, vendor, version, artifa
     acquired.push({
       key: `${vendor}@${version}@${platform}@${sha256}`,
       platform,
+      artifactKind,
       file: basename(absolute),
       bytes: statSync(absolute).size,
       sha256,
       versionOutput,
       ...(sourceUrl ? { sourceUrl } : {}),
+      ...(identity ? { identity } : {}),
       acquiredAt: now().toISOString(),
     });
   }

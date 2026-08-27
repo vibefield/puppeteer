@@ -4,6 +4,7 @@ import { createHash } from 'node:crypto';
 import { appendFileSync, existsSync, readFileSync, readdirSync, writeFileSync } from 'node:fs';
 import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { validatePythonUvLockPolicy } from './lib/installed-console-contract.mjs';
 
 const root = dirname(dirname(fileURLToPath(import.meta.url)));
 
@@ -70,7 +71,11 @@ function validateExecutableArchiveSpec(label, archive, hosts, issues, { formats,
 }
 
 function safeRelativePath(path) {
-  return typeof path === 'string' && /^[A-Za-z0-9._-]+(?:\/[A-Za-z0-9._-]+)*$/.test(path);
+  return (
+    typeof path === 'string' &&
+    /^[A-Za-z0-9._-]+(?:\/[A-Za-z0-9._-]+)*$/.test(path) &&
+    path.split('/').every((part) => part !== '.' && part !== '..')
+  );
 }
 
 function validateSourceArchiveSpec(label, archive, hosts, issues) {
@@ -85,27 +90,28 @@ function validateSourceArchiveSpec(label, archive, hosts, issues) {
   ) {
     issues.push(`${label} has unsafe or duplicate project-root files`);
   }
+  if (
+    !Number.isInteger(archive?.maxExtractedBytes) ||
+    archive.maxExtractedBytes < 1 ||
+    archive.maxExtractedBytes > 4_294_967_296
+  ) {
+    issues.push(`${label} maxExtractedBytes must be between 1 and 4294967296`);
+  }
   validateUrlTemplates(label, archive?.urls, hosts, issues, { requireVersion: false });
 }
 
 function validateInstalledConsole(label, installedConsole, sourceArchive, issues) {
-  if (installedConsole?.strategy !== 'python-uv-lock') {
-    issues.push(`${label}: installedConsole must use python-uv-lock`);
-    return;
-  }
-  if (!/^3\.\d+(?:\.\d+)?$/.test(installedConsole.pythonVersion ?? '')) {
-    issues.push(`${label}: installedConsole needs a normalized Python 3 version`);
+  try {
+    validatePythonUvLockPolicy(installedConsole);
+  } catch (error) {
+    issues.push(`${label}: installedConsole ${error.message}`);
   }
   for (const field of ['projectFile', 'lockFile']) {
-    if (!safeRelativePath(installedConsole[field])) {
-      issues.push(`${label}: installedConsole ${field} must be a safe relative path`);
-    } else if (!(sourceArchive?.rootFiles ?? []).includes(installedConsole[field])) {
+    if (
+      safeRelativePath(installedConsole?.[field]) &&
+      !(sourceArchive?.rootFiles ?? []).includes(installedConsole[field])
+    ) {
       issues.push(`${label}: installedConsole ${field} must be a reviewed sourceArchive root file`);
-    }
-  }
-  for (const field of ['distribution', 'consoleScript']) {
-    if (!/^[A-Za-z0-9._-]+$/.test(installedConsole[field] ?? '')) {
-      issues.push(`${label}: installedConsole ${field} must be normalized`);
     }
   }
 }

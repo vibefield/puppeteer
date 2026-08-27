@@ -38,7 +38,7 @@ test('promotion binds one complete acquisition through test, verification, and t
 });
 
 test('opencode is an explicit reviewed workflow choice with isolated real-artifact lanes', () => {
-  assert.match(adaptation, /options: \[claude, codex, grok, kimi, opencode\]/);
+  assert.match(adaptation, /options: \[claude, codex, grok, hermes, kimi, opencode\]/);
   assert.match(workflow, /options: \[claude, codex, grok, opencode\]/);
   assert.match(workflow, /if: \$\{\{ inputs\.vendor == 'opencode' \}\}/);
   assert.match(workflow, /OPENCODE_LIVE: '1'/);
@@ -49,8 +49,14 @@ test('opencode is an explicit reviewed workflow choice with isolated real-artifa
   assert.match(live, /PUPPETEER_OPENCODE_BIN: \$\{\{ vars\.OPENCODE_BIN \}\}/);
 });
 
-test('pending Kimi and Hermes work is surfaced without granting an unearned promotion lane', () => {
-  assert.match(adaptation, /options: \[claude, codex, grok, kimi, opencode\]/);
+test('source-only Hermes has a generic adaptation lane without an unearned promotion lane', () => {
+  assert.match(adaptation, /options: \[claude, codex, grok, hermes, kimi, opencode\]/);
+  assert.match(adaptation, /scripts\/resolve-agent-acquisition\.mjs/);
+  assert.match(adaptation, /scripts\/materialize-installed-console\.mjs/);
+  assert.match(adaptation, /steps\.policy\.outputs\.outputName/);
+  assert.match(adaptation, /steps\.policy\.outputs\.artifactKind == 'installed-console'/);
+  assert.match(adaptation, /astral-sh\/setup-uv@c771a70e6277c0a99b617c7a806ffedaca235ff9/);
+  assert.doesNotMatch(adaptation, /inputs\.vendor == 'hermes'/);
   assert.doesNotMatch(workflow, /options: \[[^\]]*kimi/);
   assert.doesNotMatch(workflow, /options: \[[^\]]*hermes/);
   assert.match(live, /hermes-surface:/);
