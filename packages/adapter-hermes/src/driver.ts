@@ -33,6 +33,7 @@ export interface CreateHermesTuiSessionOptions extends AgentTuiSessionOptions {
   /** Connect to an already running owned gateway. Tests inject this. */
   gatewayUrl?: string;
   transport?: HermesGatewayTransport;
+  gatewayStartupTimeoutMs?: number;
   promptConfirmationTimeoutMs?: number;
 }
 
@@ -74,6 +75,7 @@ export async function prepareHermesTuiSession(
           hermesHome,
           cwd: options.cwd,
           env: options.env,
+          startupTimeoutMs: options.gatewayStartupTimeoutMs,
         });
         gatewayUrl = host.url;
       }

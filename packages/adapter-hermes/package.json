@@ -28,7 +28,8 @@
     }
   },
   "files": [
-    "dist"
+    "dist",
+    "scripts/tui-gateway-host.py"
   ],
   "scripts": {
     "clean": "node -e \"require('node:fs').rmSync('dist',{recursive:true,force:true})\"",
@@ -48,6 +49,7 @@
   "devDependencies": {
     "@vibecook/puppeteer-surface": "workspace:*",
     "@vibecook/puppeteer-testing": "workspace:*",
+    "node-pty": "1.2.0-beta.15",
     "vitest": "^3.0.0"
   }
 }
