@@ -98,29 +98,37 @@ test('Kimi uses the same exact artifact for its cross-platform native-TUI and re
 test('Codex promotion proves the exact private app-server and native TUI without account credentials', () => {
   const pinnedReal = job('pinned-real', 'verify');
   assert.match(pinnedReal, /if: \$\{\{ inputs\.vendor == 'codex' \}\}/);
+  assert.match(pinnedReal, /Codex pinned-real native-TUI\/resume lane/);
   assert.match(pinnedReal, /CODEX_NATIVE_TUI_LIVE: '1'/);
   assert.doesNotMatch(pinnedReal, /CODEX_LIVE: '1'/);
   assert.match(pinnedReal, /PUPPETEER_CODEX_BIN:/);
   assert.match(pinnedReal, /@vibecook\/puppeteer-adapter-codex test/);
   assert.match(live, /codex-live:/);
   assert.match(live, /CODEX_NATIVE_TUI_LIVE: '1'/);
+  assert.match(live, /Run Codex native-TUI\/app-server\/resume proof/);
   assert.match(live, /PUPPETEER_CODEX_BIN: \$\{\{ vars\.CODEX_BIN \}\}/);
   assert.match(protectedLiveTests.codex, /testId: 'codex:native-tui-app-server'/);
   assert.match(
     protectedLiveTests.codex,
     /host\.output\(session!\.runtimeSessionId\)\.includes\(CODEX_LIVE_RESPONSE_MARKER\)/,
   );
+  assert.match(
+    protectedLiveTests.codex,
+    /host\.output\(resumed!\.runtimeSessionId\)\.includes\(CODEX_LIVE_RESPONSE_MARKER\)/,
+  );
 });
 
 test('Claude promotion proves the exact native TUI, hooks, transcript, and resume without account credentials', () => {
   const pinnedReal = job('pinned-real', 'verify');
   assert.match(pinnedReal, /if: \$\{\{ inputs\.vendor == 'claude' \}\}/);
+  assert.match(pinnedReal, /Claude pinned-real native-TUI\/resume lane/);
   assert.match(pinnedReal, /CLAUDE_NATIVE_TUI_LIVE: '1'/);
   assert.doesNotMatch(pinnedReal, /PUPPETEER_REAL_CLAUDE: '1'/);
   assert.match(pinnedReal, /PUPPETEER_CLAUDE_BIN:/);
   assert.match(pinnedReal, /@vibecook\/puppeteer-adapter-claude test/);
   assert.match(live, /claude-live:/);
   assert.match(live, /CLAUDE_NATIVE_TUI_LIVE: '1'/);
+  assert.match(live, /Run Claude native-TUI\/hooks\/transcript\/resume proof/);
   assert.match(live, /PUPPETEER_CLAUDE_BIN: \$\{\{ vars\.CLAUDE_BIN \}\}/);
   assert.match(protectedLiveTests.claude, /testId: 'claude:native-tui-hooks'/);
   assert.match(
@@ -145,18 +153,24 @@ test('Grok uses the exact artifact in a hermetic cross-platform native-TUI adapt
   assert.match(adaptation, /options: \[claude, codex, grok, hermes, kimi, opencode\]/);
   assert.match(workflow, /options: \[claude, codex, grok, hermes, kimi, opencode\]/);
   assert.match(workflow, /if: \$\{\{ inputs\.vendor == 'grok' \}\}/);
+  assert.match(workflow, /Grok pinned-real native-TUI\/resume lane/);
   assert.match(workflow, /GROK_LIVE: '1'/);
   assert.match(workflow, /PUPPETEER_GROK_BIN:/);
   assert.match(workflow, /@vibecook\/puppeteer-adapter-grok test/);
   assert.match(live, /grok-live:/);
   assert.match(live, /if: \$\{\{ vars\.GROK_LIVE_ENABLED == 'true' \}\}/);
   assert.match(live, /GROK_LIVE: '1'/);
+  assert.match(live, /Run Grok native-TUI\/leader\/ACP\/durable-store\/resume proof/);
   assert.match(live, /PUPPETEER_GROK_BIN: \$\{\{ vars\.GROK_BIN \}\}/);
   assert.doesNotMatch(live, /GROK_LIVE_HOME/);
   assert.match(protectedLiveTests.grok, /testId: 'grok:native-tui-leader'/);
   assert.match(
     protectedLiveTests.grok,
     /host\.output\(session!\.runtimeSessionId\)\.includes\(GROK_LIVE_RESPONSE_MARKER\)/,
+  );
+  assert.match(
+    protectedLiveTests.grok,
+    /host\.output\(resumed!\.runtimeSessionId\)\.includes\(GROK_LIVE_RESPONSE_MARKER\)/,
   );
 });
 

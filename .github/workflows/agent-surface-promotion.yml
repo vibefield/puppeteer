@@ -298,21 +298,21 @@ jobs:
           PUPPETEER_KIMI_BIN: ${{ github.workspace }}/.agent-adaptation/artifacts/${{ matrix.platform }}/${{ steps.policy.outputs.outputName }}
           PUPPETEER_OPENCODE_BIN: ${{ github.workspace }}/.agent-adaptation/artifacts/${{ matrix.platform }}/${{ steps.policy.outputs.outputName }}
         run: pnpm --filter @vibecook/puppeteer-surface run "surface:audit:${{ inputs.vendor }}"
-      - name: Claude pinned-real native-TUI lane
+      - name: Claude pinned-real native-TUI/resume lane
         if: ${{ inputs.vendor == 'claude' }}
         env:
           CLAUDE_NATIVE_TUI_LIVE: '1'
           PUPPETEER_CLAUDE_BIN: ${{ github.workspace }}/.agent-adaptation/artifacts/${{ matrix.platform }}/${{ steps.policy.outputs.outputName }}
           PUPPETEER_LIVE_ARTIFACT: ${{ github.workspace }}/.agent-adaptation/artifacts/${{ matrix.platform }}/${{ steps.policy.outputs.outputName }}
         run: pnpm --filter @vibecook/puppeteer-adapter-claude test
-      - name: Codex pinned-real native-TUI lane
+      - name: Codex pinned-real native-TUI/resume lane
         if: ${{ inputs.vendor == 'codex' }}
         env:
           CODEX_NATIVE_TUI_LIVE: '1'
           PUPPETEER_CODEX_BIN: ${{ github.workspace }}/.agent-adaptation/artifacts/${{ matrix.platform }}/${{ steps.policy.outputs.outputName }}
           PUPPETEER_LIVE_ARTIFACT: ${{ github.workspace }}/.agent-adaptation/artifacts/${{ matrix.platform }}/${{ steps.policy.outputs.outputName }}
         run: pnpm --filter @vibecook/puppeteer-adapter-codex test
-      - name: Grok pinned-real native-TUI lane
+      - name: Grok pinned-real native-TUI/resume lane
         if: ${{ inputs.vendor == 'grok' }}
         env:
           GROK_LIVE: '1'

@@ -32,7 +32,7 @@ jobs:
           node-version: 22.18.0
           cache: pnpm
       - run: pnpm install --frozen-lockfile --filter './packages/**'
-      - name: Run Claude native-TUI/hooks/transcript proof
+      - name: Run Claude native-TUI/hooks/transcript/resume proof
         env:
           CLAUDE_NATIVE_TUI_LIVE: '1'
           PUPPETEER_CLAUDE_BIN: ${{ vars.CLAUDE_BIN }}
@@ -54,7 +54,7 @@ jobs:
           node-version: 22.18.0
           cache: pnpm
       - run: pnpm install --frozen-lockfile --filter './packages/**'
-      - name: Run Codex native-TUI/app-server proof
+      - name: Run Codex native-TUI/app-server/resume proof
         env:
           CODEX_NATIVE_TUI_LIVE: '1'
           PUPPETEER_CODEX_BIN: ${{ vars.CODEX_BIN }}
@@ -76,7 +76,7 @@ jobs:
           node-version: 22.18.0
           cache: pnpm
       - run: pnpm install --frozen-lockfile --filter './packages/**'
-      - name: Run Grok native-TUI/leader/ACP/durable-store proof
+      - name: Run Grok native-TUI/leader/ACP/durable-store/resume proof
         env:
           GROK_LIVE: '1'
           PUPPETEER_GROK_BIN: ${{ vars.GROK_BIN }}
