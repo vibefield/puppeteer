@@ -68,7 +68,7 @@ test('opencode is an explicit reviewed workflow choice with isolated real-artifa
   assert.match(protectedLiveTests.opencode, /host\.output\(session!\.runtimeSessionId\)\.includes\(RESPONSE_MARKER\)/);
 });
 
-test('Kimi uses the same exact artifact for its cross-platform native-TUI adapter lane', () => {
+test('Kimi uses the same exact artifact for its cross-platform native-TUI and resume lane', () => {
   assert.match(workflow, /options: \[claude, codex, grok, hermes, kimi, opencode\]/);
   assert.match(workflow, /if: \$\{\{ inputs\.vendor == 'kimi' \}\}/);
   assert.match(workflow, /KIMI_LIVE: '1'/);
@@ -77,6 +77,15 @@ test('Kimi uses the same exact artifact for its cross-platform native-TUI adapte
   assert.match(live, /kimi-live:/);
   assert.match(live, /KIMI_LIVE: '1'/);
   assert.match(live, /PUPPETEER_KIMI_BIN: \$\{\{ vars\.KIMI_BIN \}\}/);
+  assert.match(protectedLiveTests.kimi, /testId: 'kimi:native-tui-wire'/);
+  assert.match(
+    protectedLiveTests.kimi,
+    /host\.output\(session!\.runtimeSessionId\)\.includes\(KIMI_LIVE_RESPONSE_MARKER\)/,
+  );
+  assert.match(
+    protectedLiveTests.kimi,
+    /host\.output\(resumed!\.runtimeSessionId\)\.includes\(KIMI_LIVE_RESPONSE_MARKER\)/,
+  );
 });
 
 test('Codex promotion proves the exact private app-server and native TUI without account credentials', () => {

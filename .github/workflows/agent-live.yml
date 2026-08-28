@@ -146,7 +146,7 @@ jobs:
           --version 0.34.0
           --scenario basic-turn
           --output .agent-live/kimi@0.34.0
-      - name: Run the Kimi adapter through the real native TUI and durable wire
+      - name: Run Kimi native-TUI/durable-wire/resume proof
         env:
           KIMI_LIVE: '1'
           PUPPETEER_KIMI_BIN: ${{ vars.KIMI_BIN }}
