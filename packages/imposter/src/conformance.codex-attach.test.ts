@@ -21,9 +21,10 @@ import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { afterEach, describe, expect, it } from 'vitest';
 import {
+  appServerRemoteAddress,
+  connectAppServerEndpoint,
   createCodexSession,
   spawnAppServer,
-  wsOverUnixTransport,
   type CodexSession,
 } from '@vibecook/puppeteer-adapter-codex';
 import { projectAgentEvents } from '@vibecook/puppeteer-testing';
@@ -32,7 +33,7 @@ const AI = join(dirname(dirname(fileURLToPath(import.meta.url))), 'bin', 'ai.mjs
 
 const temporaries = new Set<string>();
 const children = new Set<ChildProcess>();
-const disposers = new Set<() => void>();
+const disposers = new Set<() => Promise<void>>();
 let session: CodexSession | undefined;
 
 afterEach(async () => {
@@ -40,7 +41,7 @@ afterEach(async () => {
   session = undefined;
   for (const child of children) child.kill('SIGKILL');
   children.clear();
-  for (const dispose of disposers) dispose();
+  for (const dispose of disposers) await dispose();
   disposers.clear();
   for (const path of temporaries) rmSync(path, { recursive: true, force: true, maxRetries: 20, retryDelay: 50 });
   temporaries.clear();
@@ -63,15 +64,16 @@ describe.skipIf(process.platform === 'win32')('a prompt typed in an attached pan
     const server = spawnAppServer({ executable: AI, env: { AI_PERSONA: 'codex' } });
     disposers.add(() => server.dispose());
     await server.ready();
+    const endpoint = server.endpoint();
 
-    session = await createCodexSession({ cwd, transport: wsOverUnixTransport(server.socketPath) });
+    session = await createCodexSession({ cwd, transport: connectAppServerEndpoint(endpoint) });
     const projection = projectAgentEvents(session);
     const events = projection.envelopes;
     const threadId = session.sessionId;
 
     // The pane, launched with the argv `prepareCodexTuiSession` hands back, and
     // the persona in the environment exactly as spawn-through merges it.
-    const pane = spawn(process.execPath, [AI, 'resume', threadId, '--remote', `unix://${server.socketPath}`], {
+    const pane = spawn(process.execPath, [AI, 'resume', threadId, '--remote', appServerRemoteAddress(endpoint)], {
       cwd,
       stdio: ['pipe', 'pipe', 'pipe'],
       env: { ...process.env, AI_PERSONA: 'codex', PUPPETEER_IMPOSTER_TUI: 'off' },

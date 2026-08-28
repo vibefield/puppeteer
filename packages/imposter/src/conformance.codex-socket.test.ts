@@ -10,8 +10,8 @@
  * and that hole is why godview refused to let `ai --codex` into a pane at all.
  *
  * Nothing here is reimplemented. The suite calls the ADAPTER's own
- * `spawnAppServer` and `wsOverUnixTransport`, so what is under test is the pair
- * as the adapter actually uses it, down to the argv and the readiness probe.
+ * `spawnAppServer` and `connectAppServerEndpoint`, so what is under test is the
+ * pair as the adapter actually uses it, down to the argv and readiness probe.
  * Persona selection comes from argv0 through a symlink named `codex`, because
  * `spawnAppServer` passes no environment to the child it spawns — which is the
  * same reason an app has to reach the imposter this way (§11.2).
@@ -23,22 +23,23 @@ import { fileURLToPath } from 'node:url';
 import { afterEach, describe, expect, it } from 'vitest';
 import type { AdapterEventCandidate } from '@vibecook/puppeteer-core';
 import {
+  connectAppServerEndpoint,
   createCodexSession,
   spawnAppServer,
-  wsOverUnixTransport,
+  type AppServerHandle,
   type CodexSession,
 } from '@vibecook/puppeteer-adapter-codex';
 
 const AI = join(dirname(dirname(fileURLToPath(import.meta.url))), 'bin', 'ai.mjs');
 
 const temporaries = new Set<string>();
-const disposers = new Set<() => void>();
+const disposers = new Set<() => Promise<void>>();
 let session: CodexSession | undefined;
 
 afterEach(async () => {
   await session?.dispose().catch(() => undefined);
   session = undefined;
-  for (const dispose of disposers) dispose();
+  for (const dispose of disposers) await dispose();
   disposers.clear();
   for (const path of temporaries) rmSync(path, { recursive: true, force: true, maxRetries: 20, retryDelay: 50 });
   temporaries.clear();
@@ -54,6 +55,12 @@ async function waitFor(predicate: () => boolean, label: string, timeoutMs = 1500
     await new Promise((resolve) => setTimeout(resolve, 20));
   }
   throw new Error(`timed out waiting for ${label}`);
+}
+
+function unixEndpoint(server: AppServerHandle): { readonly kind: 'unix'; readonly path: string } {
+  const endpoint = server.endpoint();
+  if (endpoint.kind !== 'unix') throw new Error(`expected a Unix app-server endpoint, received ${endpoint.kind}`);
+  return endpoint;
 }
 
 /** A `codex`-named symlink to `ai`, which is all an app has to do to reach it. */
@@ -78,10 +85,11 @@ describe.skipIf(process.platform === 'win32')('the codex imposter, served over a
     const server = spawnAppServer({ executable: codexShim() });
     disposers.add(() => server.dispose());
     await server.ready();
-    expect(existsSync(server.socketPath)).toBe(true);
+    const endpoint = unixEndpoint(server);
+    expect(existsSync(endpoint.path)).toBe(true);
 
     const events: AdapterEventCandidate[] = [];
-    session = await createCodexSession({ cwd, transport: wsOverUnixTransport(server.socketPath) });
+    session = await createCodexSession({ cwd, transport: connectAppServerEndpoint(endpoint) });
     session.events.onCandidate((envelope) => events.push(envelope));
 
     // A thread exists, which means the handshake completed, `initialize` was
@@ -106,14 +114,15 @@ describe.skipIf(process.platform === 'win32')('the codex imposter, served over a
     const server = spawnAppServer({ executable: codexShim() });
     disposers.add(() => server.dispose());
     await server.ready();
+    const endpoint = unixEndpoint(server);
 
-    session = await createCodexSession({ cwd, transport: wsOverUnixTransport(server.socketPath) });
+    session = await createCodexSession({ cwd, transport: connectAppServerEndpoint(endpoint) });
     const owned = session.sessionId;
 
     // A second connection to the same server, exactly as `codex resume <id>
     // --remote` makes. It must not disturb the first: a server that could only
     // hold one client would drop the controller the moment the pane attached.
-    const second = wsOverUnixTransport(server.socketPath);
+    const second = connectAppServerEndpoint(endpoint);
     const replies: unknown[] = [];
     second.onMessage((message) => replies.push(message));
     second.send({ id: 1, method: 'initialize', params: {} });
@@ -126,8 +135,8 @@ describe.skipIf(process.platform === 'win32')('the codex imposter, served over a
   it('removes its socket on the way out, so a stale file cannot report ready', async () => {
     const server = spawnAppServer({ executable: codexShim() });
     await server.ready();
-    const path = server.socketPath;
-    server.dispose();
+    const path = unixEndpoint(server).path;
+    await server.dispose();
     // `ready()` is `existsSync(socketPath)` in the adapter, so a file left
     // behind by a dead imposter would pass the probe and then refuse every
     // connection — a hang instead of a failure.
