@@ -10,10 +10,24 @@
   "direction": "agent-to-client",
   "trigger": "Published on the native GET /event stream.",
   "payloadSchema": {
-    "type": "object",
+    "additionalProperties": false,
     "properties": {
       "info": {
-        "type": "object",
+        "$ref": "#/$defs/Session"
+      },
+      "sessionID": {
+        "pattern": "^ses",
+        "type": "string"
+      }
+    },
+    "required": [
+      "sessionID",
+      "info"
+    ],
+    "type": "object",
+    "$defs": {
+      "Session": {
+        "additionalProperties": false,
         "properties": {
           "agent": {
             "type": "string"
@@ -25,13 +39,14 @@
             "type": "string"
           },
           "id": {
+            "pattern": "^ses",
             "type": "string"
           },
           "metadata": {
             "type": "object"
           },
           "model": {
-            "type": "object",
+            "additionalProperties": false,
             "properties": {
               "id": {
                 "type": "string"
@@ -46,49 +61,34 @@
             "required": [
               "id",
               "providerID"
-            ]
+            ],
+            "type": "object"
           },
           "parentID": {
+            "pattern": "^ses",
             "type": "string"
           },
           "path": {
             "type": "string"
           },
           "permission": {
-            "type": "array",
-            "items": {
-              "type": "object",
-              "properties": {
-                "action": {
-                  "type": "string"
-                },
-                "pattern": {
-                  "type": "string"
-                },
-                "permission": {
-                  "type": "string"
-                }
-              },
-              "required": [
-                "action",
-                "pattern",
-                "permission"
-              ]
-            }
+            "$ref": "#/$defs/PermissionRuleset"
           },
           "projectID": {
             "type": "string"
           },
           "revert": {
-            "type": "object",
+            "additionalProperties": false,
             "properties": {
               "diff": {
                 "type": "string"
               },
               "messageID": {
+                "pattern": "^msg",
                 "type": "string"
               },
               "partID": {
+                "pattern": "^prt",
                 "type": "string"
               },
               "snapshot": {
@@ -97,10 +97,11 @@
             },
             "required": [
               "messageID"
-            ]
+            ],
+            "type": "object"
           },
           "share": {
-            "type": "object",
+            "additionalProperties": false,
             "properties": {
               "url": {
                 "type": "string"
@@ -108,13 +109,14 @@
             },
             "required": [
               "url"
-            ]
+            ],
+            "type": "object"
           },
           "slug": {
             "type": "string"
           },
           "summary": {
-            "type": "object",
+            "additionalProperties": false,
             "properties": {
               "additions": {
                 "type": "number"
@@ -123,31 +125,10 @@
                 "type": "number"
               },
               "diffs": {
-                "type": "array",
                 "items": {
-                  "type": "object",
-                  "properties": {
-                    "additions": {
-                      "type": "number"
-                    },
-                    "deletions": {
-                      "type": "number"
-                    },
-                    "file": {
-                      "type": "string"
-                    },
-                    "patch": {
-                      "type": "string"
-                    },
-                    "status": {
-                      "type": "string"
-                    }
-                  },
-                  "required": [
-                    "additions",
-                    "deletions"
-                  ]
-                }
+                  "$ref": "#/$defs/SnapshotFileDiff"
+                },
+                "type": "array"
               },
               "files": {
                 "type": "number"
@@ -157,40 +138,42 @@
               "additions",
               "deletions",
               "files"
-            ]
+            ],
+            "type": "object"
           },
           "time": {
-            "type": "object",
+            "additionalProperties": false,
             "properties": {
               "archived": {
                 "type": "number"
               },
               "compacting": {
-                "type": "integer",
-                "minimum": 0
+                "minimum": 0,
+                "type": "integer"
               },
               "created": {
-                "type": "integer",
-                "minimum": 0
+                "minimum": 0,
+                "type": "integer"
               },
               "updated": {
-                "type": "integer",
-                "minimum": 0
+                "minimum": 0,
+                "type": "integer"
               }
             },
             "required": [
               "created",
               "updated"
-            ]
+            ],
+            "type": "object"
           },
           "title": {
             "type": "string"
           },
           "tokens": {
-            "type": "object",
+            "additionalProperties": false,
             "properties": {
               "cache": {
-                "type": "object",
+                "additionalProperties": false,
                 "properties": {
                   "read": {
                     "type": "number"
@@ -202,7 +185,8 @@
                 "required": [
                   "read",
                   "write"
-                ]
+                ],
+                "type": "object"
               },
               "input": {
                 "type": "number"
@@ -215,303 +199,416 @@
               }
             },
             "required": [
-              "cache",
               "input",
               "output",
-              "reasoning"
-            ]
+              "reasoning",
+              "cache"
+            ],
+            "type": "object"
           },
           "version": {
             "type": "string"
           },
           "workspaceID": {
+            "pattern": "^wrk",
             "type": "string"
           }
         },
         "required": [
-          "directory",
           "id",
-          "projectID",
           "slug",
-          "time",
+          "projectID",
+          "directory",
           "title",
-          "version"
-        ]
+          "version",
+          "time"
+        ],
+        "type": "object"
       },
-      "sessionID": {
+      "PermissionRuleset": {
+        "items": {
+          "$ref": "#/$defs/PermissionRule"
+        },
+        "type": "array"
+      },
+      "SnapshotFileDiff": {
+        "additionalProperties": false,
+        "properties": {
+          "additions": {
+            "type": "number"
+          },
+          "deletions": {
+            "type": "number"
+          },
+          "file": {
+            "type": "string"
+          },
+          "patch": {
+            "type": "string"
+          },
+          "status": {
+            "enum": [
+              "added",
+              "deleted",
+              "modified"
+            ],
+            "type": "string"
+          }
+        },
+        "required": [
+          "additions",
+          "deletions"
+        ],
+        "type": "object"
+      },
+      "PermissionRule": {
+        "additionalProperties": false,
+        "properties": {
+          "action": {
+            "$ref": "#/$defs/PermissionAction"
+          },
+          "pattern": {
+            "type": "string"
+          },
+          "permission": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "permission",
+          "pattern",
+          "action"
+        ],
+        "type": "object"
+      },
+      "PermissionAction": {
+        "enum": [
+          "allow",
+          "deny",
+          "ask"
+        ],
         "type": "string"
       }
-    },
-    "required": [
-      "info",
-      "sessionID"
-    ]
+    }
   },
   "recordSchema": {
-    "type": "object",
+    "additionalProperties": false,
     "properties": {
       "id": {
+        "pattern": "^evt_",
         "type": "string"
       },
       "properties": {
-        "type": "object",
+        "additionalProperties": false,
         "properties": {
           "info": {
-            "type": "object",
-            "properties": {
-              "agent": {
-                "type": "string"
-              },
-              "cost": {
-                "type": "number"
-              },
-              "directory": {
-                "type": "string"
-              },
-              "id": {
-                "type": "string"
-              },
-              "metadata": {
-                "type": "object"
-              },
-              "model": {
-                "type": "object",
-                "properties": {
-                  "id": {
-                    "type": "string"
-                  },
-                  "providerID": {
-                    "type": "string"
-                  },
-                  "variant": {
-                    "type": "string"
-                  }
-                },
-                "required": [
-                  "id",
-                  "providerID"
-                ]
-              },
-              "parentID": {
-                "type": "string"
-              },
-              "path": {
-                "type": "string"
-              },
-              "permission": {
-                "type": "array",
-                "items": {
-                  "type": "object",
-                  "properties": {
-                    "action": {
-                      "type": "string"
-                    },
-                    "pattern": {
-                      "type": "string"
-                    },
-                    "permission": {
-                      "type": "string"
-                    }
-                  },
-                  "required": [
-                    "action",
-                    "pattern",
-                    "permission"
-                  ]
-                }
-              },
-              "projectID": {
-                "type": "string"
-              },
-              "revert": {
-                "type": "object",
-                "properties": {
-                  "diff": {
-                    "type": "string"
-                  },
-                  "messageID": {
-                    "type": "string"
-                  },
-                  "partID": {
-                    "type": "string"
-                  },
-                  "snapshot": {
-                    "type": "string"
-                  }
-                },
-                "required": [
-                  "messageID"
-                ]
-              },
-              "share": {
-                "type": "object",
-                "properties": {
-                  "url": {
-                    "type": "string"
-                  }
-                },
-                "required": [
-                  "url"
-                ]
-              },
-              "slug": {
-                "type": "string"
-              },
-              "summary": {
-                "type": "object",
-                "properties": {
-                  "additions": {
-                    "type": "number"
-                  },
-                  "deletions": {
-                    "type": "number"
-                  },
-                  "diffs": {
-                    "type": "array",
-                    "items": {
-                      "type": "object",
-                      "properties": {
-                        "additions": {
-                          "type": "number"
-                        },
-                        "deletions": {
-                          "type": "number"
-                        },
-                        "file": {
-                          "type": "string"
-                        },
-                        "patch": {
-                          "type": "string"
-                        },
-                        "status": {
-                          "type": "string"
-                        }
-                      },
-                      "required": [
-                        "additions",
-                        "deletions"
-                      ]
-                    }
-                  },
-                  "files": {
-                    "type": "number"
-                  }
-                },
-                "required": [
-                  "additions",
-                  "deletions",
-                  "files"
-                ]
-              },
-              "time": {
-                "type": "object",
-                "properties": {
-                  "archived": {
-                    "type": "number"
-                  },
-                  "compacting": {
-                    "type": "integer",
-                    "minimum": 0
-                  },
-                  "created": {
-                    "type": "integer",
-                    "minimum": 0
-                  },
-                  "updated": {
-                    "type": "integer",
-                    "minimum": 0
-                  }
-                },
-                "required": [
-                  "created",
-                  "updated"
-                ]
-              },
-              "title": {
-                "type": "string"
-              },
-              "tokens": {
-                "type": "object",
-                "properties": {
-                  "cache": {
-                    "type": "object",
-                    "properties": {
-                      "read": {
-                        "type": "number"
-                      },
-                      "write": {
-                        "type": "number"
-                      }
-                    },
-                    "required": [
-                      "read",
-                      "write"
-                    ]
-                  },
-                  "input": {
-                    "type": "number"
-                  },
-                  "output": {
-                    "type": "number"
-                  },
-                  "reasoning": {
-                    "type": "number"
-                  }
-                },
-                "required": [
-                  "cache",
-                  "input",
-                  "output",
-                  "reasoning"
-                ]
-              },
-              "version": {
-                "type": "string"
-              },
-              "workspaceID": {
-                "type": "string"
-              }
-            },
-            "required": [
-              "directory",
-              "id",
-              "projectID",
-              "slug",
-              "time",
-              "title",
-              "version"
-            ]
+            "$ref": "#/$defs/Session"
           },
           "sessionID": {
+            "pattern": "^ses",
             "type": "string"
           }
         },
         "required": [
-          "info",
-          "sessionID"
-        ]
+          "sessionID",
+          "info"
+        ],
+        "type": "object"
       },
       "type": {
-        "type": "string",
         "enum": [
           "session.created"
-        ]
+        ],
+        "type": "string"
       }
     },
     "required": [
       "id",
-      "properties",
-      "type"
-    ]
+      "type",
+      "properties"
+    ],
+    "type": "object",
+    "$defs": {
+      "Session": {
+        "additionalProperties": false,
+        "properties": {
+          "agent": {
+            "type": "string"
+          },
+          "cost": {
+            "type": "number"
+          },
+          "directory": {
+            "type": "string"
+          },
+          "id": {
+            "pattern": "^ses",
+            "type": "string"
+          },
+          "metadata": {
+            "type": "object"
+          },
+          "model": {
+            "additionalProperties": false,
+            "properties": {
+              "id": {
+                "type": "string"
+              },
+              "providerID": {
+                "type": "string"
+              },
+              "variant": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "id",
+              "providerID"
+            ],
+            "type": "object"
+          },
+          "parentID": {
+            "pattern": "^ses",
+            "type": "string"
+          },
+          "path": {
+            "type": "string"
+          },
+          "permission": {
+            "$ref": "#/$defs/PermissionRuleset"
+          },
+          "projectID": {
+            "type": "string"
+          },
+          "revert": {
+            "additionalProperties": false,
+            "properties": {
+              "diff": {
+                "type": "string"
+              },
+              "messageID": {
+                "pattern": "^msg",
+                "type": "string"
+              },
+              "partID": {
+                "pattern": "^prt",
+                "type": "string"
+              },
+              "snapshot": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "messageID"
+            ],
+            "type": "object"
+          },
+          "share": {
+            "additionalProperties": false,
+            "properties": {
+              "url": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "url"
+            ],
+            "type": "object"
+          },
+          "slug": {
+            "type": "string"
+          },
+          "summary": {
+            "additionalProperties": false,
+            "properties": {
+              "additions": {
+                "type": "number"
+              },
+              "deletions": {
+                "type": "number"
+              },
+              "diffs": {
+                "items": {
+                  "$ref": "#/$defs/SnapshotFileDiff"
+                },
+                "type": "array"
+              },
+              "files": {
+                "type": "number"
+              }
+            },
+            "required": [
+              "additions",
+              "deletions",
+              "files"
+            ],
+            "type": "object"
+          },
+          "time": {
+            "additionalProperties": false,
+            "properties": {
+              "archived": {
+                "type": "number"
+              },
+              "compacting": {
+                "minimum": 0,
+                "type": "integer"
+              },
+              "created": {
+                "minimum": 0,
+                "type": "integer"
+              },
+              "updated": {
+                "minimum": 0,
+                "type": "integer"
+              }
+            },
+            "required": [
+              "created",
+              "updated"
+            ],
+            "type": "object"
+          },
+          "title": {
+            "type": "string"
+          },
+          "tokens": {
+            "additionalProperties": false,
+            "properties": {
+              "cache": {
+                "additionalProperties": false,
+                "properties": {
+                  "read": {
+                    "type": "number"
+                  },
+                  "write": {
+                    "type": "number"
+                  }
+                },
+                "required": [
+                  "read",
+                  "write"
+                ],
+                "type": "object"
+              },
+              "input": {
+                "type": "number"
+              },
+              "output": {
+                "type": "number"
+              },
+              "reasoning": {
+                "type": "number"
+              }
+            },
+            "required": [
+              "input",
+              "output",
+              "reasoning",
+              "cache"
+            ],
+            "type": "object"
+          },
+          "version": {
+            "type": "string"
+          },
+          "workspaceID": {
+            "pattern": "^wrk",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "slug",
+          "projectID",
+          "directory",
+          "title",
+          "version",
+          "time"
+        ],
+        "type": "object"
+      },
+      "PermissionRuleset": {
+        "items": {
+          "$ref": "#/$defs/PermissionRule"
+        },
+        "type": "array"
+      },
+      "SnapshotFileDiff": {
+        "additionalProperties": false,
+        "properties": {
+          "additions": {
+            "type": "number"
+          },
+          "deletions": {
+            "type": "number"
+          },
+          "file": {
+            "type": "string"
+          },
+          "patch": {
+            "type": "string"
+          },
+          "status": {
+            "enum": [
+              "added",
+              "deleted",
+              "modified"
+            ],
+            "type": "string"
+          }
+        },
+        "required": [
+          "additions",
+          "deletions"
+        ],
+        "type": "object"
+      },
+      "PermissionRule": {
+        "additionalProperties": false,
+        "properties": {
+          "action": {
+            "$ref": "#/$defs/PermissionAction"
+          },
+          "pattern": {
+            "type": "string"
+          },
+          "permission": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "permission",
+          "pattern",
+          "action"
+        ],
+        "type": "object"
+      },
+      "PermissionAction": {
+        "enum": [
+          "allow",
+          "deny",
+          "ask"
+        ],
+        "type": "string"
+      }
+    }
+  },
+  "schemaFidelity": {
+    "payload": "exact",
+    "carrier": "exact"
   },
   "evidence": {
     "existence": [
+      "opencode-generated-openapi",
       "opencode-runtime-abort-stream"
     ],
     "shape": [
+      "opencode-generated-openapi",
       "opencode-runtime-abort-stream"
     ],
     "carrier": [
+      "opencode-generated-openapi",
       "opencode-runtime-abort-stream"
     ]
   },

@@ -6,7 +6,6 @@
   "transport": "jsonrpc-request",
   "direction": "client-to-agent",
   "payloadSchema": {
-    "type": "object",
     "properties": {
       "_meta": {},
       "arguments": {},
@@ -29,27 +28,77 @@
       "server",
       "subscriptionId",
       "threadId"
-    ]
+    ],
+    "type": "object",
+    "$schema": "http://json-schema.org/draft-07/schema#"
   },
   "recordSchema": {
-    "type": "object",
     "properties": {
+      "id": {
+        "$ref": "#/$defs/RequestId"
+      },
       "method": {
-        "type": "string",
         "enum": [
           "mcpServer/event/stream/start"
-        ]
+        ],
+        "title": "McpServer/event/stream/startRequestMethod",
+        "type": "string"
       },
       "params": {
-        "type": "object"
-      },
-      "id": {}
+        "$ref": "#/$defs/McpServerEventStreamStartParams"
+      }
     },
     "required": [
+      "id",
       "method",
-      "params",
-      "id"
-    ]
+      "params"
+    ],
+    "title": "McpServer/event/stream/startRequest",
+    "type": "object",
+    "$defs": {
+      "RequestId": {
+        "anyOf": [
+          {
+            "type": "string"
+          },
+          {
+            "format": "int64",
+            "type": "integer"
+          }
+        ]
+      },
+      "McpServerEventStreamStartParams": {
+        "properties": {
+          "_meta": {},
+          "arguments": {},
+          "name": {
+            "type": "string"
+          },
+          "server": {
+            "type": "string"
+          },
+          "subscriptionId": {
+            "type": "string"
+          },
+          "threadId": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "arguments",
+          "name",
+          "server",
+          "subscriptionId",
+          "threadId"
+        ],
+        "type": "object"
+      }
+    },
+    "$schema": "http://json-schema.org/draft-07/schema#"
+  },
+  "schemaFidelity": {
+    "payload": "exact",
+    "carrier": "exact"
   },
   "evidence": {
     "existence": [

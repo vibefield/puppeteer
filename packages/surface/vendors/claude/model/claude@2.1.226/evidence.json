@@ -58,7 +58,7 @@
       "kind": "capture-set",
       "path": "packages/surface/vendors/claude/captures/claude@2.1.226",
       "digestAlgorithm": "sha256-path-content-v1",
-      "sha256": "66a4596fe819d221ef875d45d03801fc9ae4b6861d0d1aa31b42a5646aea6d44"
+      "sha256": "9d4b218c866a656bcadfd5aaab9f616d451ec9d1aa34d868acfec89cfb2934d0"
     },
     {
       "id": "binary-probes",
@@ -72,7 +72,7 @@
       "kind": "reference-snapshot",
       "path": "packages/surface/vendors/claude/references/claude@2.1.226",
       "digestAlgorithm": "sha256-path-content-v1",
-      "sha256": "a5c9d37d8eaf9982781c9d8c89457a003ee52c667456b99da4aad53b515a6276"
+      "sha256": "9b105c6cb9a1834b06f0cada4690a0635a6a5155a6a4abf99a89c092c52e8f21"
     },
     {
       "id": "agent-surface-model",
@@ -82,7 +82,7 @@
         "evidence.json"
       ],
       "digestAlgorithm": "sha256-path-content-v1",
-      "sha256": "93c77d7848709243e42c9b62b59f985b2238c2d32d7eb9f60401f9e934e407a7"
+      "sha256": "aaa26645f092e7d6e72e4574c0bb25493cd62beafb91c627feb77acdc0a3db23"
     }
   ],
   "limitations": [

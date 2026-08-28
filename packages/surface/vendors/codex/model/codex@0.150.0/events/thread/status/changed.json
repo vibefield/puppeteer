@@ -6,10 +6,9 @@
   "transport": "jsonrpc-notification",
   "direction": "agent-to-client",
   "payloadSchema": {
-    "type": "object",
     "properties": {
       "status": {
-        "type": "object"
+        "$ref": "#/$defs/ThreadStatus"
       },
       "threadId": {
         "type": "string"
@@ -18,19 +17,105 @@
     "required": [
       "status",
       "threadId"
-    ]
-  },
-  "recordSchema": {
+    ],
     "type": "object",
-    "properties": {
-      "method": {
-        "type": "string",
-        "enum": [
-          "thread/status/changed"
+    "$defs": {
+      "ThreadStatus": {
+        "oneOf": [
+          {
+            "properties": {
+              "type": {
+                "enum": [
+                  "notLoaded"
+                ],
+                "title": "NotLoadedThreadStatusType",
+                "type": "string"
+              }
+            },
+            "required": [
+              "type"
+            ],
+            "title": "NotLoadedThreadStatus",
+            "type": "object"
+          },
+          {
+            "properties": {
+              "type": {
+                "enum": [
+                  "idle"
+                ],
+                "title": "IdleThreadStatusType",
+                "type": "string"
+              }
+            },
+            "required": [
+              "type"
+            ],
+            "title": "IdleThreadStatus",
+            "type": "object"
+          },
+          {
+            "properties": {
+              "type": {
+                "enum": [
+                  "systemError"
+                ],
+                "title": "SystemErrorThreadStatusType",
+                "type": "string"
+              }
+            },
+            "required": [
+              "type"
+            ],
+            "title": "SystemErrorThreadStatus",
+            "type": "object"
+          },
+          {
+            "properties": {
+              "activeFlags": {
+                "items": {
+                  "$ref": "#/$defs/ThreadActiveFlag"
+                },
+                "type": "array"
+              },
+              "type": {
+                "enum": [
+                  "active"
+                ],
+                "title": "ActiveThreadStatusType",
+                "type": "string"
+              }
+            },
+            "required": [
+              "activeFlags",
+              "type"
+            ],
+            "title": "ActiveThreadStatus",
+            "type": "object"
+          }
         ]
       },
+      "ThreadActiveFlag": {
+        "enum": [
+          "waitingOnApproval",
+          "waitingOnUserInput"
+        ],
+        "type": "string"
+      }
+    },
+    "$schema": "http://json-schema.org/draft-07/schema#"
+  },
+  "recordSchema": {
+    "properties": {
+      "method": {
+        "enum": [
+          "thread/status/changed"
+        ],
+        "title": "Thread/status/changedNotificationMethod",
+        "type": "string"
+      },
       "params": {
-        "type": "object"
+        "$ref": "#/$defs/ThreadStatusChangedNotification"
       },
       "emittedAtMs": {
         "type": "number",
@@ -41,16 +126,125 @@
       "method",
       "params",
       "emittedAtMs"
-    ]
+    ],
+    "title": "Thread/status/changedNotification",
+    "type": "object",
+    "$defs": {
+      "ThreadStatusChangedNotification": {
+        "properties": {
+          "status": {
+            "$ref": "#/$defs/ThreadStatus"
+          },
+          "threadId": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "status",
+          "threadId"
+        ],
+        "type": "object"
+      },
+      "ThreadStatus": {
+        "oneOf": [
+          {
+            "properties": {
+              "type": {
+                "enum": [
+                  "notLoaded"
+                ],
+                "title": "NotLoadedThreadStatusType",
+                "type": "string"
+              }
+            },
+            "required": [
+              "type"
+            ],
+            "title": "NotLoadedThreadStatus",
+            "type": "object"
+          },
+          {
+            "properties": {
+              "type": {
+                "enum": [
+                  "idle"
+                ],
+                "title": "IdleThreadStatusType",
+                "type": "string"
+              }
+            },
+            "required": [
+              "type"
+            ],
+            "title": "IdleThreadStatus",
+            "type": "object"
+          },
+          {
+            "properties": {
+              "type": {
+                "enum": [
+                  "systemError"
+                ],
+                "title": "SystemErrorThreadStatusType",
+                "type": "string"
+              }
+            },
+            "required": [
+              "type"
+            ],
+            "title": "SystemErrorThreadStatus",
+            "type": "object"
+          },
+          {
+            "properties": {
+              "activeFlags": {
+                "items": {
+                  "$ref": "#/$defs/ThreadActiveFlag"
+                },
+                "type": "array"
+              },
+              "type": {
+                "enum": [
+                  "active"
+                ],
+                "title": "ActiveThreadStatusType",
+                "type": "string"
+              }
+            },
+            "required": [
+              "activeFlags",
+              "type"
+            ],
+            "title": "ActiveThreadStatus",
+            "type": "object"
+          }
+        ]
+      },
+      "ThreadActiveFlag": {
+        "enum": [
+          "waitingOnApproval",
+          "waitingOnUserInput"
+        ],
+        "type": "string"
+      }
+    },
+    "$schema": "http://json-schema.org/draft-07/schema#"
+  },
+  "schemaFidelity": {
+    "payload": "exact",
+    "carrier": "semantic"
   },
   "evidence": {
     "existence": [
-      "codex-runtime-headless"
+      "codex-runtime-headless",
+      "codex-generated-schema"
     ],
     "shape": [
+      "codex-generated-schema",
       "codex-runtime-headless"
     ],
     "carrier": [
+      "codex-generated-schema",
       "codex-runtime-headless"
     ]
   },

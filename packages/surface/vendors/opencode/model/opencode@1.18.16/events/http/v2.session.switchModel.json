@@ -10,50 +10,36 @@
   "direction": "client-to-agent",
   "trigger": "Switch session model — Switch the model used by subsequent provider turns.",
   "payloadSchema": {
-    "type": "object",
     "properties": {
+      "body": {
+        "additionalProperties": false,
+        "properties": {
+          "model": {
+            "$ref": "#/$defs/ModelRef"
+          }
+        },
+        "required": [
+          "model"
+        ],
+        "type": "object"
+      },
       "method": {
         "type": "string"
       },
-      "route": {
-        "type": "string"
-      },
       "params": {
-        "type": "object",
         "properties": {
           "sessionID": {
+            "pattern": "^ses",
             "type": "string"
           }
         },
         "required": [
           "sessionID"
-        ]
+        ],
+        "type": "object"
       },
-      "body": {
-        "type": "object",
-        "properties": {
-          "model": {
-            "type": "object",
-            "properties": {
-              "id": {
-                "type": "string"
-              },
-              "providerID": {
-                "type": "string"
-              },
-              "variant": {
-                "type": "string"
-              }
-            },
-            "required": [
-              "id",
-              "providerID"
-            ]
-          }
-        },
-        "required": [
-          "model"
-        ]
+      "route": {
+        "type": "string"
       }
     },
     "required": [
@@ -61,38 +47,60 @@
       "route",
       "params",
       "body"
-    ]
+    ],
+    "type": "object",
+    "$defs": {
+      "ModelRef": {
+        "additionalProperties": false,
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "providerID": {
+            "type": "string"
+          },
+          "variant": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "providerID"
+        ],
+        "type": "object"
+      }
+    }
   },
   "resultSchema": {
-    "type": "object",
     "properties": {
       "method": {
-        "type": "string",
         "enum": [
           "POST"
-        ]
-      },
-      "route": {
-        "type": "string",
-        "enum": [
-          "/api/session/:sessionID/model"
-        ]
-      },
-      "status": {
-        "type": "integer",
-        "minimum": 200,
-        "maximum": 299
+        ],
+        "type": "string"
       },
       "params": {
-        "type": "object",
         "properties": {
           "sessionID": {
+            "pattern": "^ses",
             "type": "string"
           }
         },
         "required": [
           "sessionID"
-        ]
+        ],
+        "type": "object"
+      },
+      "route": {
+        "enum": [
+          "/api/session/:sessionID/model"
+        ],
+        "type": "string"
+      },
+      "status": {
+        "maximum": 299,
+        "minimum": 200,
+        "type": "integer"
       }
     },
     "required": [
@@ -100,68 +108,54 @@
       "route",
       "status",
       "params"
-    ]
+    ],
+    "type": "object"
   },
   "recordSchema": {
-    "type": "object",
     "properties": {
       "direction": {
-        "type": "string",
         "enum": [
           "client-to-agent"
-        ]
+        ],
+        "type": "string"
       },
       "request": {
-        "type": "object",
         "properties": {
+          "body": {
+            "additionalProperties": false,
+            "properties": {
+              "model": {
+                "$ref": "#/$defs/ModelRef"
+              }
+            },
+            "required": [
+              "model"
+            ],
+            "type": "object"
+          },
           "method": {
-            "type": "string",
             "enum": [
               "POST"
-            ]
-          },
-          "route": {
-            "type": "string",
-            "enum": [
-              "/api/session/:sessionID/model"
-            ]
+            ],
+            "type": "string"
           },
           "params": {
-            "type": "object",
             "properties": {
               "sessionID": {
+                "pattern": "^ses",
                 "type": "string"
               }
             },
             "required": [
               "sessionID"
-            ]
+            ],
+            "type": "object"
           },
-          "body": {
-            "type": "object",
-            "properties": {
-              "model": {
-                "type": "object",
-                "properties": {
-                  "id": {
-                    "type": "string"
-                  },
-                  "providerID": {
-                    "type": "string"
-                  },
-                  "variant": {
-                    "type": "string"
-                  }
-                },
-                "required": [
-                  "id",
-                  "providerID"
-                ]
-              }
-            },
-            "required": [
-              "model"
-            ]
+          "route": {
+            "enum": [
+              "/api/session/:sessionID/model"
+            ],
+            "type": "string"
           }
         },
         "required": [
@@ -169,13 +163,41 @@
           "route",
           "params",
           "body"
-        ]
+        ],
+        "type": "object"
       }
     },
     "required": [
       "direction",
       "request"
-    ]
+    ],
+    "type": "object",
+    "$defs": {
+      "ModelRef": {
+        "additionalProperties": false,
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "providerID": {
+            "type": "string"
+          },
+          "variant": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "providerID"
+        ],
+        "type": "object"
+      }
+    }
+  },
+  "schemaFidelity": {
+    "payload": "semantic",
+    "result": "semantic",
+    "carrier": "semantic"
   },
   "evidence": {
     "existence": [

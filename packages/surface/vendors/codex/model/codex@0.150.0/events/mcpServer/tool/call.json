@@ -6,7 +6,6 @@
   "transport": "jsonrpc-request",
   "direction": "client-to-agent",
   "payloadSchema": {
-    "type": "object",
     "properties": {
       "_meta": {},
       "arguments": {},
@@ -24,27 +23,72 @@
       "server",
       "threadId",
       "tool"
-    ]
+    ],
+    "type": "object",
+    "$schema": "http://json-schema.org/draft-07/schema#"
   },
   "recordSchema": {
-    "type": "object",
     "properties": {
+      "id": {
+        "$ref": "#/$defs/RequestId"
+      },
       "method": {
-        "type": "string",
         "enum": [
           "mcpServer/tool/call"
-        ]
+        ],
+        "title": "McpServer/tool/callRequestMethod",
+        "type": "string"
       },
       "params": {
-        "type": "object"
-      },
-      "id": {}
+        "$ref": "#/$defs/McpServerToolCallParams"
+      }
     },
     "required": [
+      "id",
       "method",
-      "params",
-      "id"
-    ]
+      "params"
+    ],
+    "title": "McpServer/tool/callRequest",
+    "type": "object",
+    "$defs": {
+      "RequestId": {
+        "anyOf": [
+          {
+            "type": "string"
+          },
+          {
+            "format": "int64",
+            "type": "integer"
+          }
+        ]
+      },
+      "McpServerToolCallParams": {
+        "properties": {
+          "_meta": {},
+          "arguments": {},
+          "server": {
+            "type": "string"
+          },
+          "threadId": {
+            "type": "string"
+          },
+          "tool": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "server",
+          "threadId",
+          "tool"
+        ],
+        "type": "object"
+      }
+    },
+    "$schema": "http://json-schema.org/draft-07/schema#"
+  },
+  "schemaFidelity": {
+    "payload": "exact",
+    "carrier": "exact"
   },
   "evidence": {
     "existence": [

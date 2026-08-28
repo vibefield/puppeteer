@@ -2,6 +2,12 @@
   "surface": "kimi",
   "surfaceVersion": "0.34.0",
   "event": "Notification",
+  "schemaFidelity": {
+    "payload": "structural",
+    "limitations": [
+      "The release source projection preserves recursive declared structure but intentionally leaves custom/unknown values unconstrained; runtime-only file schemas describe captured instances."
+    ]
+  },
   "channel": "hook-command",
   "channels": ["hook-command"],
   "transport": "command-stdin",
@@ -71,16 +77,6 @@
   "variants": [
     {
       "match": {
-        "hook_event_name": "Notification"
-      },
-      "evidence": {
-        "existence": ["kimi-runtime-headless"],
-        "shape": ["kimi-runtime-headless", "kimi-exact-release-source"]
-      },
-      "confidence": "verified-headless"
-    },
-    {
-      "match": {
         "sink": "context"
       },
       "evidence": {
@@ -110,5 +106,6 @@
       "confidence": "unverified"
     }
   ],
+  "variantDiscriminants": ["sink", "severity"],
   "fixture": "captures/kimi@0.34.0/background-task/hooks/Notification.jsonl"
 }

@@ -9,15 +9,7 @@
   "transport": "jsonrpc-notification",
   "direction": "agent-to-client",
   "payloadSchema": {
-    "type": "object",
-    "properties": {
-      "hasText": {
-        "type": "boolean"
-      },
-      "hasContext": {
-        "type": "boolean"
-      }
-    }
+    "type": "object"
   },
   "recordSchema": {
     "type": "object",
@@ -41,18 +33,10 @@
             "type": "string"
           },
           "payload": {
-            "type": "object",
-            "properties": {
-              "hasText": {
-                "type": "boolean"
-              },
-              "hasContext": {
-                "type": "boolean"
-              }
-            }
+            "type": "object"
           }
         },
-        "required": ["type", "payload"]
+        "required": ["type"]
       }
     },
     "required": ["method", "params"]
@@ -60,9 +44,18 @@
   "recordChannel": "tui-gateway",
   "evidence": {
     "existence": ["hermes-runtime-headless"],
-    "shape": ["hermes-runtime-headless"],
-    "carrier": ["hermes-runtime-headless"]
+    "shape": ["hermes-exact-source"],
+    "carrier": ["hermes-exact-source"]
   },
-  "confidence": "verified-headless",
-  "fixture": "captures/hermes@0.20.0/basic-turn/rpc.jsonl"
+  "confidence": "unverified",
+  "fixture": "captures/hermes@0.20.0/basic-turn/rpc.jsonl",
+  "schemaFidelity": {
+    "payload": "structural",
+    "carrier": "structural",
+    "limitations": [
+      "Python is dynamic: helper-produced, conditionally assembled, and forwarded payload/result fields remain unconstrained unless directly recoverable.",
+      "Direct params indexing proves required access; params.get access proves a known field but not optionality.",
+      "Source declarations establish legal/native shape and existence, not runtime reachability."
+    ]
+  }
 }

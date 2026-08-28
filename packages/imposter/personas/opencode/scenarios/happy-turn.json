@@ -1,24 +1,47 @@
 {
   "name": "happy-turn",
   "steps": [
-    { "emit": { "event": "session.status", "with": { "sessionID": "$sessionId", "status": { "type": "busy" } } } },
+    {
+      "emit": {
+        "event": "session.status",
+        "with": {
+          "sessionID": "$sessionId",
+          "status": {
+            "type": "busy"
+          }
+        }
+      }
+    },
     {
       "emit": {
         "event": "message.updated",
         "with": {
           "sessionID": "$sessionId",
           "info": {
-            "id": "$uuid:assistant",
-            "parentID": "$uuid:user",
+            "id": "$nativeId:msg:assistant",
+            "parentID": "$nativeId:msg:user",
             "role": "assistant",
             "mode": "build",
             "agent": "build",
-            "path": { "cwd": "$cwd", "root": "$cwd" },
+            "path": {
+              "cwd": "$cwd",
+              "root": "$cwd"
+            },
             "cost": 0,
-            "tokens": { "input": 0, "output": 0, "reasoning": 0, "cache": { "read": 0, "write": 0 } },
+            "tokens": {
+              "input": 0,
+              "output": 0,
+              "reasoning": 0,
+              "cache": {
+                "read": 0,
+                "write": 0
+              }
+            },
             "modelID": "opencode-imposter",
             "providerID": "imposter",
-            "time": { "created": "$nowMs" },
+            "time": {
+              "created": "$nowMs"
+            },
             "sessionID": "$sessionId"
           }
         }
@@ -30,8 +53,8 @@
         "with": {
           "sessionID": "$sessionId",
           "part": {
-            "id": "$uuid:text",
-            "messageID": "$uuid:assistant",
+            "id": "$nativeId:prt:text",
+            "messageID": "$nativeId:msg:assistant",
             "sessionID": "$sessionId",
             "type": "text",
             "text": "imposter: ok"
@@ -40,7 +63,24 @@
         }
       }
     },
-    { "emit": { "event": "session.status", "with": { "sessionID": "$sessionId", "status": { "type": "idle" } } } },
-    { "emit": { "event": "session.idle", "with": { "sessionID": "$sessionId" } } }
+    {
+      "emit": {
+        "event": "session.status",
+        "with": {
+          "sessionID": "$sessionId",
+          "status": {
+            "type": "idle"
+          }
+        }
+      }
+    },
+    {
+      "emit": {
+        "event": "session.idle",
+        "with": {
+          "sessionID": "$sessionId"
+        }
+      }
+    }
   ]
 }

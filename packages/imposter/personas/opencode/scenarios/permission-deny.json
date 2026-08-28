@@ -6,11 +6,13 @@
         "event": "permission.asked",
         "request": true,
         "with": {
-          "id": "$uuid:permission",
+          "id": "$nativeId:per:permission",
           "sessionID": "$sessionId",
           "permission": "bash",
           "patterns": ["rm unsafe"],
-          "metadata": { "command": "rm unsafe" },
+          "metadata": {
+            "command": "rm unsafe"
+          },
           "always": []
         }
       }
@@ -18,7 +20,11 @@
     {
       "emit": {
         "event": "permission.replied",
-        "with": { "sessionID": "$sessionId", "requestID": "$uuid:permission", "reply": "reject" }
+        "with": {
+          "sessionID": "$sessionId",
+          "requestID": "$nativeId:per:permission",
+          "reply": "reject"
+        }
       }
     }
   ]

@@ -10,54 +10,67 @@
   "direction": "agent-to-client",
   "trigger": "Published on the native GET /event stream.",
   "payloadSchema": {
-    "type": "object",
+    "additionalProperties": false,
     "properties": {
       "sessionID": {
+        "pattern": "^ses",
         "type": "string"
       }
     },
     "required": [
       "sessionID"
-    ]
+    ],
+    "type": "object"
   },
   "recordSchema": {
-    "type": "object",
+    "additionalProperties": false,
     "properties": {
       "id": {
+        "pattern": "^evt_",
         "type": "string"
       },
       "properties": {
-        "type": "object",
+        "additionalProperties": false,
         "properties": {
           "sessionID": {
+            "pattern": "^ses",
             "type": "string"
           }
         },
         "required": [
           "sessionID"
-        ]
+        ],
+        "type": "object"
       },
       "type": {
-        "type": "string",
         "enum": [
           "session.idle"
-        ]
+        ],
+        "type": "string"
       }
     },
     "required": [
       "id",
-      "properties",
-      "type"
-    ]
+      "type",
+      "properties"
+    ],
+    "type": "object"
+  },
+  "schemaFidelity": {
+    "payload": "exact",
+    "carrier": "exact"
   },
   "evidence": {
     "existence": [
+      "opencode-generated-openapi",
       "opencode-runtime-abort-stream"
     ],
     "shape": [
+      "opencode-generated-openapi",
       "opencode-runtime-abort-stream"
     ],
     "carrier": [
+      "opencode-generated-openapi",
       "opencode-runtime-abort-stream"
     ]
   },

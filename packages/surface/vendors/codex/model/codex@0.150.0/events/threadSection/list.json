@@ -6,31 +6,91 @@
   "transport": "jsonrpc-request",
   "direction": "client-to-agent",
   "payloadSchema": {
-    "type": "object",
+    "description": "Parameters for listing independently persisted thread sections.",
     "properties": {
-      "cursor": {},
-      "limit": {}
-    }
-  },
-  "recordSchema": {
-    "type": "object",
-    "properties": {
-      "method": {
-        "type": "string",
-        "enum": [
-          "threadSection/list"
+      "cursor": {
+        "description": "Opaque pagination cursor returned by a previous call.",
+        "type": [
+          "string",
+          "null"
         ]
       },
-      "params": {
-        "type": "object"
+      "limit": {
+        "description": "Maximum number of sections to return.",
+        "format": "uint32",
+        "minimum": 0,
+        "type": [
+          "integer",
+          "null"
+        ]
+      }
+    },
+    "type": "object",
+    "$schema": "http://json-schema.org/draft-07/schema#"
+  },
+  "recordSchema": {
+    "properties": {
+      "id": {
+        "$ref": "#/$defs/RequestId"
       },
-      "id": {}
+      "method": {
+        "enum": [
+          "threadSection/list"
+        ],
+        "title": "ThreadSection/listRequestMethod",
+        "type": "string"
+      },
+      "params": {
+        "$ref": "#/$defs/ThreadSectionListParams"
+      }
     },
     "required": [
+      "id",
       "method",
-      "params",
-      "id"
-    ]
+      "params"
+    ],
+    "title": "ThreadSection/listRequest",
+    "type": "object",
+    "$defs": {
+      "RequestId": {
+        "anyOf": [
+          {
+            "type": "string"
+          },
+          {
+            "format": "int64",
+            "type": "integer"
+          }
+        ]
+      },
+      "ThreadSectionListParams": {
+        "description": "Parameters for listing independently persisted thread sections.",
+        "properties": {
+          "cursor": {
+            "description": "Opaque pagination cursor returned by a previous call.",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "limit": {
+            "description": "Maximum number of sections to return.",
+            "format": "uint32",
+            "minimum": 0,
+            "type": [
+              "integer",
+              "null"
+            ]
+          }
+        },
+        "type": "object"
+      }
+    },
+    "$schema": "http://json-schema.org/draft-07/schema#"
+  },
+  "schemaFidelity": {
+    "payload": "exact",
+    "carrier": "exact"
   },
   "evidence": {
     "existence": [

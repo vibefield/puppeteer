@@ -6,10 +6,17 @@
   "transport": "jsonrpc-notification",
   "direction": "agent-to-client",
   "payloadSchema": {
-    "type": "object",
     "properties": {
-      "explanation": {},
+      "explanation": {
+        "type": [
+          "string",
+          "null"
+        ]
+      },
       "plan": {
+        "items": {
+          "$ref": "#/$defs/TurnPlanStep"
+        },
         "type": "array"
       },
       "threadId": {
@@ -23,30 +30,112 @@
       "plan",
       "threadId",
       "turnId"
-    ]
-  },
-  "recordSchema": {
+    ],
     "type": "object",
-    "properties": {
-      "method": {
-        "type": "string",
-        "enum": [
-          "turn/plan/updated"
-        ]
-      },
-      "params": {
+    "$defs": {
+      "TurnPlanStep": {
+        "properties": {
+          "status": {
+            "$ref": "#/$defs/TurnPlanStepStatus"
+          },
+          "step": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "status",
+          "step"
+        ],
         "type": "object"
       },
-      "emittedAtMs": {
-        "type": "number",
-        "minimum": 1000000000000
+      "TurnPlanStepStatus": {
+        "enum": [
+          "pending",
+          "inProgress",
+          "completed"
+        ],
+        "type": "string"
+      }
+    },
+    "$schema": "http://json-schema.org/draft-07/schema#"
+  },
+  "recordSchema": {
+    "properties": {
+      "method": {
+        "enum": [
+          "turn/plan/updated"
+        ],
+        "title": "Turn/plan/updatedNotificationMethod",
+        "type": "string"
+      },
+      "params": {
+        "$ref": "#/$defs/TurnPlanUpdatedNotification"
       }
     },
     "required": [
       "method",
-      "params",
-      "emittedAtMs"
-    ]
+      "params"
+    ],
+    "title": "Turn/plan/updatedNotification",
+    "type": "object",
+    "$defs": {
+      "TurnPlanUpdatedNotification": {
+        "properties": {
+          "explanation": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "plan": {
+            "items": {
+              "$ref": "#/$defs/TurnPlanStep"
+            },
+            "type": "array"
+          },
+          "threadId": {
+            "type": "string"
+          },
+          "turnId": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "plan",
+          "threadId",
+          "turnId"
+        ],
+        "type": "object"
+      },
+      "TurnPlanStep": {
+        "properties": {
+          "status": {
+            "$ref": "#/$defs/TurnPlanStepStatus"
+          },
+          "step": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "status",
+          "step"
+        ],
+        "type": "object"
+      },
+      "TurnPlanStepStatus": {
+        "enum": [
+          "pending",
+          "inProgress",
+          "completed"
+        ],
+        "type": "string"
+      }
+    },
+    "$schema": "http://json-schema.org/draft-07/schema#"
+  },
+  "schemaFidelity": {
+    "payload": "exact",
+    "carrier": "exact"
   },
   "evidence": {
     "existence": [
@@ -56,7 +145,7 @@
       "codex-generated-schema"
     ],
     "carrier": [
-      "codex-runtime-headless"
+      "codex-generated-schema"
     ]
   },
   "confidence": "unverified"

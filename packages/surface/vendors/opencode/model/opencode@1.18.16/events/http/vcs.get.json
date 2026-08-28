@@ -10,16 +10,11 @@
   "direction": "client-to-agent",
   "trigger": "Get VCS info — Retrieve version control system (VCS) information for the current project, such as git branch.",
   "payloadSchema": {
-    "type": "object",
     "properties": {
       "method": {
         "type": "string"
       },
-      "route": {
-        "type": "string"
-      },
       "query": {
-        "type": "object",
         "properties": {
           "directory": {
             "type": "string"
@@ -27,36 +22,31 @@
           "workspace": {
             "type": "string"
           }
-        }
+        },
+        "type": "object"
+      },
+      "route": {
+        "type": "string"
       }
     },
     "required": [
       "method",
       "route"
-    ]
+    ],
+    "type": "object"
   },
   "resultSchema": {
-    "type": "object",
     "properties": {
+      "body": {
+        "$ref": "#/$defs/VcsInfo"
+      },
       "method": {
-        "type": "string",
         "enum": [
           "GET"
-        ]
-      },
-      "route": {
-        "type": "string",
-        "enum": [
-          "/vcs"
-        ]
-      },
-      "status": {
-        "type": "integer",
-        "minimum": 200,
-        "maximum": 299
+        ],
+        "type": "string"
       },
       "query": {
-        "type": "object",
         "properties": {
           "directory": {
             "type": "string"
@@ -64,18 +54,19 @@
           "workspace": {
             "type": "string"
           }
-        }
+        },
+        "type": "object"
       },
-      "body": {
-        "type": "object",
-        "properties": {
-          "branch": {
-            "type": "string"
-          },
-          "default_branch": {
-            "type": "string"
-          }
-        }
+      "route": {
+        "enum": [
+          "/vcs"
+        ],
+        "type": "string"
+      },
+      "status": {
+        "maximum": 299,
+        "minimum": 200,
+        "type": "integer"
       }
     },
     "required": [
@@ -83,34 +74,40 @@
       "route",
       "status",
       "body"
-    ]
+    ],
+    "type": "object",
+    "$defs": {
+      "VcsInfo": {
+        "additionalProperties": false,
+        "properties": {
+          "branch": {
+            "type": "string"
+          },
+          "default_branch": {
+            "type": "string"
+          }
+        },
+        "type": "object"
+      }
+    }
   },
   "recordSchema": {
-    "type": "object",
     "properties": {
       "direction": {
-        "type": "string",
         "enum": [
           "client-to-agent"
-        ]
+        ],
+        "type": "string"
       },
       "request": {
-        "type": "object",
         "properties": {
           "method": {
-            "type": "string",
             "enum": [
               "GET"
-            ]
-          },
-          "route": {
-            "type": "string",
-            "enum": [
-              "/vcs"
-            ]
+            ],
+            "type": "string"
           },
           "query": {
-            "type": "object",
             "properties": {
               "directory": {
                 "type": "string"
@@ -118,19 +115,33 @@
               "workspace": {
                 "type": "string"
               }
-            }
+            },
+            "type": "object"
+          },
+          "route": {
+            "enum": [
+              "/vcs"
+            ],
+            "type": "string"
           }
         },
         "required": [
           "method",
           "route"
-        ]
+        ],
+        "type": "object"
       }
     },
     "required": [
       "direction",
       "request"
-    ]
+    ],
+    "type": "object"
+  },
+  "schemaFidelity": {
+    "payload": "semantic",
+    "result": "semantic",
+    "carrier": "semantic"
   },
   "evidence": {
     "existence": [

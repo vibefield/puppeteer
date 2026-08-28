@@ -3,33 +3,64 @@
   "surfaceVersion": "1.0.0",
   "event": "_x.ai/mcp/init_progress",
   "channel": "acp",
+  "channels": ["acp"],
   "transport": "jsonrpc-notification",
+  "direction": "agent-to-client",
   "payloadSchema": {
     "type": "object",
     "properties": {
       "completed": {
-        "type": "number"
+        "type": "integer",
+        "minimum": 0
       },
       "total": {
-        "type": "number"
+        "type": "integer",
+        "minimum": 0
       }
     },
-    "required": [
-      "completed",
-      "total"
-    ]
+    "required": ["completed", "total"]
+  },
+  "recordSchema": {
+    "type": "object",
+    "properties": {
+      "jsonrpc": {
+        "type": "string",
+        "enum": ["2.0"]
+      },
+      "method": {
+        "type": "string",
+        "enum": ["_x.ai/mcp/init_progress"]
+      },
+      "params": {
+        "type": "object",
+        "properties": {
+          "completed": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "total": {
+            "type": "integer",
+            "minimum": 0
+          }
+        },
+        "required": ["completed", "total"]
+      }
+    },
+    "required": ["jsonrpc", "method", "params"]
+  },
+  "recordChannel": "acp",
+  "evidence": {
+    "existence": ["grok-runtime-headless"],
+    "shape": ["grok-runtime-headless"],
+    "carrier": ["grok-runtime-headless"]
   },
   "confidence": "verified-headless",
-  "firstSeen": "1.0.0",
-  "lastVerified": "1.0.0",
-  "fixture": "captures/grok@1.0.0/handshake.jsonl",
-  "direction": "agent-to-client",
-  "evidence": {
-    "existence": [
-      "grok-runtime-headless"
-    ],
-    "shape": [
-      "grok-runtime-headless"
+  "schemaFidelity": {
+    "payload": "sampled",
+    "carrier": "sampled",
+    "limitations": [
+      "The retained Grok 1.0.0 runtime fixtures are legacy privacy projections; schemas describe retained native fields and observed types, not a complete legal payload contract."
     ]
-  }
+  },
+  "fixture": "captures/grok@1.0.0/handshake.jsonl"
 }

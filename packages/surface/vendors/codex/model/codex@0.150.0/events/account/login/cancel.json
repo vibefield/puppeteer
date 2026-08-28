@@ -6,7 +6,6 @@
   "transport": "jsonrpc-request",
   "direction": "client-to-agent",
   "payloadSchema": {
-    "type": "object",
     "properties": {
       "loginId": {
         "type": "string"
@@ -14,27 +13,62 @@
     },
     "required": [
       "loginId"
-    ]
+    ],
+    "type": "object",
+    "$schema": "http://json-schema.org/draft-07/schema#"
   },
   "recordSchema": {
-    "type": "object",
     "properties": {
+      "id": {
+        "$ref": "#/$defs/RequestId"
+      },
       "method": {
-        "type": "string",
         "enum": [
           "account/login/cancel"
-        ]
+        ],
+        "title": "Account/login/cancelRequestMethod",
+        "type": "string"
       },
       "params": {
-        "type": "object"
-      },
-      "id": {}
+        "$ref": "#/$defs/CancelLoginAccountParams"
+      }
     },
     "required": [
+      "id",
       "method",
-      "params",
-      "id"
-    ]
+      "params"
+    ],
+    "title": "Account/login/cancelRequest",
+    "type": "object",
+    "$defs": {
+      "RequestId": {
+        "anyOf": [
+          {
+            "type": "string"
+          },
+          {
+            "format": "int64",
+            "type": "integer"
+          }
+        ]
+      },
+      "CancelLoginAccountParams": {
+        "properties": {
+          "loginId": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "loginId"
+        ],
+        "type": "object"
+      }
+    },
+    "$schema": "http://json-schema.org/draft-07/schema#"
+  },
+  "schemaFidelity": {
+    "payload": "exact",
+    "carrier": "exact"
   },
   "evidence": {
     "existence": [

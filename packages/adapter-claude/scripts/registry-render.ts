@@ -27,6 +27,16 @@ function jsStr(value: string): string {
 
 export function renderRegistry(model: SurfaceModel): string {
   const version = model.manifest.vendorVersion;
+  const evidenceClaims = new Map(model.evidenceIndex?.claims.map((claim) => [claim.id, claim]) ?? []);
+  const confidenceRank = { unverified: 0, 'verified-interactive': 1, 'verified-headless': 2 } as const;
+  const occurrenceConfidence = (event: SurfaceModel['events'][number]) => {
+    const claims = (event.evidence?.existence ?? []).map((id) => evidenceClaims.get(id)).filter(Boolean);
+    return claims.reduce(
+      (strongest, claim) =>
+        confidenceRank[claim!.confidence] > confidenceRank[strongest] ? claim!.confidence : strongest,
+      event.evidence?.existence?.length ? ('unverified' as const) : event.confidence,
+    );
+  };
   /** Prettier wraps a property whose line exceeds 120 columns as `key:` + indented value. */
   const prop = (key: string, value: string): string => {
     const inline = `    ${key}: ${value},`;
@@ -34,16 +44,12 @@ export function renderRegistry(model: SurfaceModel): string {
   };
   const entries = model.events
     .map((event) => {
-      const registration = event.resultSchema
-        ? 'response-required'
-        : event.matcherRequired
-          ? 'matcher-required'
-          : 'passive';
+      const registration = event.observationMode ?? 'passive';
       const lines = [
         prop('event', jsStr(event.event)),
         prop('transport', jsStr(event.transport ?? '')),
         prop('registration', jsStr(registration)),
-        prop('confidence', jsStr(event.confidence)),
+        prop('confidence', jsStr(occurrenceConfidence(event))),
         prop('timeoutSec', String(event.timeoutSec)),
       ];
       if (event.notes) lines.push(prop('notes', jsStr(event.notes)));
@@ -62,8 +68,9 @@ export function renderRegistry(model: SurfaceModel): string {
  * don't assume).
  *
  * Ground truth: the claim-addressable Surface candidate for Claude Code
- * ${version}. Runtime-captured and official-document-only events remain
- * visibly distinct through their confidence values.
+ * ${version}. Existence-evidence confidence distinguishes runtime-observed
+ * hooks from official-document-only hooks; aggregate schema confidence remains
+ * in Layer 0 and may be lower when callback shape is documentation-only.
  *
  * Transport preference implements the hybrid bridge (DESIGN §16.4):
  * high-frequency events go over HTTP (no forwarder process per event);

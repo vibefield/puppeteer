@@ -10,34 +10,48 @@
   "direction": "agent-to-client",
   "trigger": "Published on the native GET /event stream.",
   "payloadSchema": {
-    "type": "object",
+    "additionalProperties": false,
     "properties": {
       "action": {
         "type": "string"
       },
       "id": {
+        "pattern": "^per",
         "type": "string"
       },
       "metadata": {
         "type": "object"
       },
       "resources": {
-        "type": "array",
         "items": {
           "type": "string"
-        }
+        },
+        "type": "array"
       },
       "save": {
-        "type": "array",
         "items": {
           "type": "string"
-        }
+        },
+        "type": "array"
       },
       "sessionID": {
+        "pattern": "^ses",
         "type": "string"
       },
       "source": {
-        "type": "object",
+        "$ref": "#/$defs/PermissionV2Source"
+      }
+    },
+    "required": [
+      "id",
+      "sessionID",
+      "action",
+      "resources"
+    ],
+    "type": "object",
+    "$defs": {
+      "PermissionV2Source": {
+        "additionalProperties": false,
         "properties": {
           "callID": {
             "type": "string"
@@ -46,95 +60,111 @@
             "type": "string"
           },
           "type": {
+            "enum": [
+              "tool"
+            ],
             "type": "string"
           }
         },
         "required": [
-          "callID",
+          "type",
           "messageID",
-          "type"
-        ]
+          "callID"
+        ],
+        "type": "object"
       }
-    },
-    "required": [
-      "action",
-      "id",
-      "resources",
-      "sessionID"
-    ]
+    }
   },
   "recordSchema": {
-    "type": "object",
+    "additionalProperties": false,
     "properties": {
       "id": {
+        "pattern": "^evt_",
         "type": "string"
       },
       "properties": {
-        "type": "object",
+        "additionalProperties": false,
         "properties": {
           "action": {
             "type": "string"
           },
           "id": {
+            "pattern": "^per",
             "type": "string"
           },
           "metadata": {
             "type": "object"
           },
           "resources": {
-            "type": "array",
             "items": {
               "type": "string"
-            }
+            },
+            "type": "array"
           },
           "save": {
-            "type": "array",
             "items": {
               "type": "string"
-            }
+            },
+            "type": "array"
           },
           "sessionID": {
+            "pattern": "^ses",
             "type": "string"
           },
           "source": {
-            "type": "object",
-            "properties": {
-              "callID": {
-                "type": "string"
-              },
-              "messageID": {
-                "type": "string"
-              },
-              "type": {
-                "type": "string"
-              }
-            },
-            "required": [
-              "callID",
-              "messageID",
-              "type"
-            ]
+            "$ref": "#/$defs/PermissionV2Source"
           }
         },
         "required": [
-          "action",
           "id",
-          "resources",
-          "sessionID"
-        ]
+          "sessionID",
+          "action",
+          "resources"
+        ],
+        "type": "object"
       },
       "type": {
-        "type": "string",
         "enum": [
           "permission.v2.asked"
-        ]
+        ],
+        "type": "string"
       }
     },
     "required": [
       "id",
-      "properties",
-      "type"
-    ]
+      "type",
+      "properties"
+    ],
+    "type": "object",
+    "$defs": {
+      "PermissionV2Source": {
+        "additionalProperties": false,
+        "properties": {
+          "callID": {
+            "type": "string"
+          },
+          "messageID": {
+            "type": "string"
+          },
+          "type": {
+            "enum": [
+              "tool"
+            ],
+            "type": "string"
+          }
+        },
+        "required": [
+          "type",
+          "messageID",
+          "callID"
+        ],
+        "type": "object"
+      }
+    }
+  },
+  "schemaFidelity": {
+    "payload": "exact",
+    "carrier": "exact"
   },
   "evidence": {
     "existence": [

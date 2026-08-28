@@ -6,10 +6,25 @@
         "event": "session.error",
         "with": {
           "sessionID": "$sessionId",
-          "error": { "name": "UnknownError", "data": { "message": "controlled imposter failure" } }
+          "error": {
+            "name": "UnknownError",
+            "data": {
+              "message": "controlled imposter failure"
+            }
+          }
         }
       }
     },
-    { "emit": { "event": "session.status", "with": { "sessionID": "$sessionId", "status": { "type": "idle" } } } }
+    {
+      "emit": {
+        "event": "session.status",
+        "with": {
+          "sessionID": "$sessionId",
+          "status": {
+            "type": "idle"
+          }
+        }
+      }
+    }
   ]
 }

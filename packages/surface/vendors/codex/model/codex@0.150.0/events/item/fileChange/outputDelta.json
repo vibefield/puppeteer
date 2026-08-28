@@ -7,7 +7,7 @@
   "direction": "agent-to-client",
   "trigger": "Deprecated legacy apply_patch output stream notification.",
   "payloadSchema": {
-    "type": "object",
+    "description": "Deprecated legacy notification for `apply_patch` textual output.\n\nThe server no longer emits this notification.",
     "properties": {
       "delta": {
         "type": "string"
@@ -27,30 +27,61 @@
       "itemId",
       "threadId",
       "turnId"
-    ]
+    ],
+    "type": "object",
+    "$schema": "http://json-schema.org/draft-07/schema#"
   },
   "recordSchema": {
-    "type": "object",
+    "description": "Deprecated legacy apply_patch output stream notification.",
     "properties": {
       "method": {
-        "type": "string",
         "enum": [
           "item/fileChange/outputDelta"
-        ]
+        ],
+        "title": "Item/fileChange/outputDeltaNotificationMethod",
+        "type": "string"
       },
       "params": {
-        "type": "object"
-      },
-      "emittedAtMs": {
-        "type": "number",
-        "minimum": 1000000000000
+        "$ref": "#/$defs/FileChangeOutputDeltaNotification"
       }
     },
     "required": [
       "method",
-      "params",
-      "emittedAtMs"
-    ]
+      "params"
+    ],
+    "title": "Item/fileChange/outputDeltaNotification",
+    "type": "object",
+    "$defs": {
+      "FileChangeOutputDeltaNotification": {
+        "description": "Deprecated legacy notification for `apply_patch` textual output.\n\nThe server no longer emits this notification.",
+        "properties": {
+          "delta": {
+            "type": "string"
+          },
+          "itemId": {
+            "type": "string"
+          },
+          "threadId": {
+            "type": "string"
+          },
+          "turnId": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "delta",
+          "itemId",
+          "threadId",
+          "turnId"
+        ],
+        "type": "object"
+      }
+    },
+    "$schema": "http://json-schema.org/draft-07/schema#"
+  },
+  "schemaFidelity": {
+    "payload": "exact",
+    "carrier": "exact"
   },
   "evidence": {
     "existence": [
@@ -60,7 +91,7 @@
       "codex-generated-schema"
     ],
     "carrier": [
-      "codex-runtime-headless"
+      "codex-generated-schema"
     ]
   },
   "confidence": "unverified"

@@ -6,6 +6,7 @@
   },
   "shimNames": ["opencode"],
   "envelope": {},
+  "sessionIdTemplate": "$nativeId:ses:session",
   "bindings": {
     "$projectId": "imposter-project",
     "$sessionSlug": "$uuid:session-slug",

@@ -10,7 +10,7 @@
   "direction": "agent-to-client",
   "trigger": "Published on the native GET /event stream.",
   "payloadSchema": {
-    "type": "object",
+    "additionalProperties": false,
     "properties": {
       "delta": {
         "type": "string"
@@ -19,31 +19,36 @@
         "type": "string"
       },
       "messageID": {
+        "pattern": "^msg",
         "type": "string"
       },
       "partID": {
+        "pattern": "^prt",
         "type": "string"
       },
       "sessionID": {
+        "pattern": "^ses",
         "type": "string"
       }
     },
     "required": [
-      "delta",
-      "field",
+      "sessionID",
       "messageID",
       "partID",
-      "sessionID"
-    ]
+      "field",
+      "delta"
+    ],
+    "type": "object"
   },
   "recordSchema": {
-    "type": "object",
+    "additionalProperties": false,
     "properties": {
       "id": {
+        "pattern": "^evt_",
         "type": "string"
       },
       "properties": {
-        "type": "object",
+        "additionalProperties": false,
         "properties": {
           "delta": {
             "type": "string"
@@ -52,44 +57,56 @@
             "type": "string"
           },
           "messageID": {
+            "pattern": "^msg",
             "type": "string"
           },
           "partID": {
+            "pattern": "^prt",
             "type": "string"
           },
           "sessionID": {
+            "pattern": "^ses",
             "type": "string"
           }
         },
         "required": [
-          "delta",
-          "field",
+          "sessionID",
           "messageID",
           "partID",
-          "sessionID"
-        ]
+          "field",
+          "delta"
+        ],
+        "type": "object"
       },
       "type": {
-        "type": "string",
         "enum": [
           "message.part.delta"
-        ]
+        ],
+        "type": "string"
       }
     },
     "required": [
       "id",
-      "properties",
-      "type"
-    ]
+      "type",
+      "properties"
+    ],
+    "type": "object"
+  },
+  "schemaFidelity": {
+    "payload": "exact",
+    "carrier": "exact"
   },
   "evidence": {
     "existence": [
+      "opencode-generated-openapi",
       "opencode-runtime-abort-stream"
     ],
     "shape": [
+      "opencode-generated-openapi",
       "opencode-runtime-abort-stream"
     ],
     "carrier": [
+      "opencode-generated-openapi",
       "opencode-runtime-abort-stream"
     ]
   },

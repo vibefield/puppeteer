@@ -10,16 +10,11 @@
   "direction": "client-to-agent",
   "trigger": "List skills — Get a list of all available skills in the OpenCode system.",
   "payloadSchema": {
-    "type": "object",
     "properties": {
       "method": {
         "type": "string"
       },
-      "route": {
-        "type": "string"
-      },
       "query": {
-        "type": "object",
         "properties": {
           "directory": {
             "type": "string"
@@ -27,49 +22,25 @@
           "workspace": {
             "type": "string"
           }
-        }
+        },
+        "type": "object"
+      },
+      "route": {
+        "type": "string"
       }
     },
     "required": [
       "method",
       "route"
-    ]
+    ],
+    "type": "object"
   },
   "resultSchema": {
-    "type": "object",
     "properties": {
-      "method": {
-        "type": "string",
-        "enum": [
-          "GET"
-        ]
-      },
-      "route": {
-        "type": "string",
-        "enum": [
-          "/skill"
-        ]
-      },
-      "status": {
-        "type": "integer",
-        "minimum": 200,
-        "maximum": 299
-      },
-      "query": {
-        "type": "object",
-        "properties": {
-          "directory": {
-            "type": "string"
-          },
-          "workspace": {
-            "type": "string"
-          }
-        }
-      },
       "body": {
-        "type": "array",
+        "description": "List of skills",
         "items": {
-          "type": "object",
+          "additionalProperties": false,
           "properties": {
             "content": {
               "type": "string"
@@ -85,11 +56,41 @@
             }
           },
           "required": [
-            "content",
+            "name",
             "location",
-            "name"
-          ]
-        }
+            "content"
+          ],
+          "type": "object"
+        },
+        "type": "array"
+      },
+      "method": {
+        "enum": [
+          "GET"
+        ],
+        "type": "string"
+      },
+      "query": {
+        "properties": {
+          "directory": {
+            "type": "string"
+          },
+          "workspace": {
+            "type": "string"
+          }
+        },
+        "type": "object"
+      },
+      "route": {
+        "enum": [
+          "/skill"
+        ],
+        "type": "string"
+      },
+      "status": {
+        "maximum": 299,
+        "minimum": 200,
+        "type": "integer"
       }
     },
     "required": [
@@ -97,34 +98,26 @@
       "route",
       "status",
       "body"
-    ]
+    ],
+    "type": "object"
   },
   "recordSchema": {
-    "type": "object",
     "properties": {
       "direction": {
-        "type": "string",
         "enum": [
           "client-to-agent"
-        ]
+        ],
+        "type": "string"
       },
       "request": {
-        "type": "object",
         "properties": {
           "method": {
-            "type": "string",
             "enum": [
               "GET"
-            ]
-          },
-          "route": {
-            "type": "string",
-            "enum": [
-              "/skill"
-            ]
+            ],
+            "type": "string"
           },
           "query": {
-            "type": "object",
             "properties": {
               "directory": {
                 "type": "string"
@@ -132,19 +125,33 @@
               "workspace": {
                 "type": "string"
               }
-            }
+            },
+            "type": "object"
+          },
+          "route": {
+            "enum": [
+              "/skill"
+            ],
+            "type": "string"
           }
         },
         "required": [
           "method",
           "route"
-        ]
+        ],
+        "type": "object"
       }
     },
     "required": [
       "direction",
       "request"
-    ]
+    ],
+    "type": "object"
+  },
+  "schemaFidelity": {
+    "payload": "semantic",
+    "result": "semantic",
+    "carrier": "semantic"
   },
   "evidence": {
     "existence": [

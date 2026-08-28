@@ -6,13 +6,20 @@
   "transport": "jsonrpc-notification",
   "direction": "agent-to-client",
   "payloadSchema": {
-    "type": "object",
     "properties": {
-      "fasterModel": {},
+      "fasterModel": {
+        "type": [
+          "string",
+          "null"
+        ]
+      },
       "model": {
         "type": "string"
       },
       "reasons": {
+        "items": {
+          "type": "string"
+        },
         "type": "array"
       },
       "showBufferingUi": {
@@ -25,6 +32,9 @@
         "type": "string"
       },
       "useCases": {
+        "items": {
+          "type": "string"
+        },
         "type": "array"
       }
     },
@@ -35,30 +45,79 @@
       "threadId",
       "turnId",
       "useCases"
-    ]
+    ],
+    "type": "object",
+    "$schema": "http://json-schema.org/draft-07/schema#"
   },
   "recordSchema": {
-    "type": "object",
     "properties": {
       "method": {
-        "type": "string",
         "enum": [
           "model/safetyBuffering/updated"
-        ]
+        ],
+        "title": "Model/safetyBuffering/updatedNotificationMethod",
+        "type": "string"
       },
       "params": {
-        "type": "object"
-      },
-      "emittedAtMs": {
-        "type": "number",
-        "minimum": 1000000000000
+        "$ref": "#/$defs/ModelSafetyBufferingUpdatedNotification"
       }
     },
     "required": [
       "method",
-      "params",
-      "emittedAtMs"
-    ]
+      "params"
+    ],
+    "title": "Model/safetyBuffering/updatedNotification",
+    "type": "object",
+    "$defs": {
+      "ModelSafetyBufferingUpdatedNotification": {
+        "properties": {
+          "fasterModel": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "model": {
+            "type": "string"
+          },
+          "reasons": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
+          },
+          "showBufferingUi": {
+            "type": "boolean"
+          },
+          "threadId": {
+            "type": "string"
+          },
+          "turnId": {
+            "type": "string"
+          },
+          "useCases": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
+          }
+        },
+        "required": [
+          "model",
+          "reasons",
+          "showBufferingUi",
+          "threadId",
+          "turnId",
+          "useCases"
+        ],
+        "type": "object"
+      }
+    },
+    "$schema": "http://json-schema.org/draft-07/schema#"
+  },
+  "schemaFidelity": {
+    "payload": "exact",
+    "carrier": "exact"
   },
   "evidence": {
     "existence": [
@@ -68,7 +127,7 @@
       "codex-generated-schema"
     ],
     "carrier": [
-      "codex-runtime-headless"
+      "codex-generated-schema"
     ]
   },
   "confidence": "unverified"

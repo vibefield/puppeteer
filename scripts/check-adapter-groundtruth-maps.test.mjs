@@ -11,7 +11,7 @@ test('known semantic inputs are classified from adapter-owned normalization modu
   const cases = [
     ['claude', 'SessionStart'],
     ['codex', 'turn/started'],
-    ['grok', 'signals.json'],
+    ['grok', 'session/update'],
     ['hermes', 'message.delta'],
     ['kimi', 'llm.request'],
     ['opencode', 'session.status'],

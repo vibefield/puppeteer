@@ -1,8 +1,8 @@
 {
-  "asmVersion": 2,
+  "asmVersion": 3,
   "vendor": "hermes",
   "vendorVersion": "0.20.0",
-  "generatedAt": "2026-08-12",
-  "source": "Hermes Agent 0.20.0 isolated-home stdio tui_gateway census plus identity/Gate 0 probes of the exact v2026.8.3 source revision. Unobserved source methods are omitted rather than marked verified.",
+  "generatedAt": "2026-08-27",
+  "source": "Complete @method, gateway-event, and VALID_HOOKS inventory projected from the exact v2026.8.3 source revision, joined to isolated-home stdio tui_gateway runtime occurrence/order evidence.",
   "evidence": "evidence.json"
 }

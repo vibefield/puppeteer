@@ -2,6 +2,13 @@
   "surface": "kimi",
   "surfaceVersion": "0.34.0",
   "event": "context.append_message",
+  "schemaFidelity": {
+    "payload": "structural",
+    "carrier": "structural",
+    "limitations": [
+      "The release source projection preserves recursive declared structure but intentionally leaves custom/unknown values unconstrained; runtime-only file schemas describe captured instances."
+    ]
+  },
   "channel": "wire",
   "channels": ["wire"],
   "transport": "jsonl-record",
@@ -1108,36 +1115,6 @@
     },
     {
       "match": {
-        "message.origin.trigger": "user-slash"
-      },
-      "evidence": {
-        "existence": ["kimi-exact-release-source"],
-        "shape": ["kimi-exact-release-source"]
-      },
-      "confidence": "unverified"
-    },
-    {
-      "match": {
-        "message.origin.trigger": "model-tool"
-      },
-      "evidence": {
-        "existence": ["kimi-exact-release-source"],
-        "shape": ["kimi-exact-release-source"]
-      },
-      "confidence": "unverified"
-    },
-    {
-      "match": {
-        "message.origin.trigger": "nested-skill"
-      },
-      "evidence": {
-        "existence": ["kimi-exact-release-source"],
-        "shape": ["kimi-exact-release-source"]
-      },
-      "confidence": "unverified"
-    },
-    {
-      "match": {
         "message.origin.kind": "plugin_command"
       },
       "evidence": {
@@ -1168,26 +1145,6 @@
     },
     {
       "match": {
-        "message.origin.phase": "input"
-      },
-      "evidence": {
-        "existence": ["kimi-exact-release-source"],
-        "shape": ["kimi-exact-release-source"]
-      },
-      "confidence": "unverified"
-    },
-    {
-      "match": {
-        "message.origin.phase": "output"
-      },
-      "evidence": {
-        "existence": ["kimi-exact-release-source"],
-        "shape": ["kimi-exact-release-source"]
-      },
-      "confidence": "unverified"
-    },
-    {
-      "match": {
         "message.origin.kind": "compaction_summary"
       },
       "evidence": {
@@ -1201,10 +1158,10 @@
         "message.origin.kind": "system_trigger"
       },
       "evidence": {
-        "existence": ["kimi-exact-release-source"],
-        "shape": ["kimi-exact-release-source"]
+        "existence": ["kimi-runtime-headless"],
+        "shape": ["kimi-runtime-headless", "kimi-exact-release-source"]
       },
-      "confidence": "unverified"
+      "confidence": "verified-headless"
     },
     {
       "match": {
@@ -1315,57 +1272,8 @@
         "shape": ["kimi-exact-release-source"]
       },
       "confidence": "unverified"
-    },
-    {
-      "match": {
-        "message.origin.skillSource": "project"
-      },
-      "evidence": {
-        "existence": ["kimi-exact-release-source"],
-        "shape": ["kimi-exact-release-source"]
-      },
-      "confidence": "unverified"
-    },
-    {
-      "match": {
-        "message.origin.skillSource": "user"
-      },
-      "evidence": {
-        "existence": ["kimi-exact-release-source"],
-        "shape": ["kimi-exact-release-source"]
-      },
-      "confidence": "unverified"
-    },
-    {
-      "match": {
-        "message.origin.skillSource": "extra"
-      },
-      "evidence": {
-        "existence": ["kimi-exact-release-source"],
-        "shape": ["kimi-exact-release-source"]
-      },
-      "confidence": "unverified"
-    },
-    {
-      "match": {
-        "message.origin.skillSource": "builtin"
-      },
-      "evidence": {
-        "existence": ["kimi-exact-release-source"],
-        "shape": ["kimi-exact-release-source"]
-      },
-      "confidence": "unverified"
-    },
-    {
-      "match": {
-        "message.origin.disclosure.kind": "date"
-      },
-      "evidence": {
-        "existence": ["kimi-exact-release-source"],
-        "shape": ["kimi-exact-release-source"]
-      },
-      "confidence": "unverified"
     }
   ],
+  "variantDiscriminants": ["message.role", "message.origin.kind", "message.origin.status"],
   "fixture": "captures/kimi@0.34.0/basic-turn/wire.jsonl"
 }

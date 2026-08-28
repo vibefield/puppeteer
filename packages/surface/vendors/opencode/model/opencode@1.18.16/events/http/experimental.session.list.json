@@ -10,16 +10,11 @@
   "direction": "client-to-agent",
   "trigger": "List sessions — Get a list of all OpenCode sessions across projects, sorted by most recently updated. Archived sessions are excluded by default.",
   "payloadSchema": {
-    "type": "object",
     "properties": {
       "method": {
         "type": "string"
       },
-      "route": {
-        "type": "string"
-      },
       "query": {
-        "type": "object",
         "properties": {
           "archived": {
             "anyOf": [
@@ -27,6 +22,10 @@
                 "type": "boolean"
               },
               {
+                "enum": [
+                  "true",
+                  "false"
+                ],
                 "type": "string"
               }
             ]
@@ -46,6 +45,10 @@
                 "type": "boolean"
               },
               {
+                "enum": [
+                  "true",
+                  "false"
+                ],
                 "type": "string"
               }
             ]
@@ -59,36 +62,35 @@
           "workspace": {
             "type": "string"
           }
-        }
+        },
+        "type": "object"
+      },
+      "route": {
+        "type": "string"
       }
     },
     "required": [
       "method",
       "route"
-    ]
+    ],
+    "type": "object"
   },
   "resultSchema": {
-    "type": "object",
     "properties": {
+      "body": {
+        "description": "List of sessions",
+        "items": {
+          "$ref": "#/$defs/GlobalSession"
+        },
+        "type": "array"
+      },
       "method": {
-        "type": "string",
         "enum": [
           "GET"
-        ]
-      },
-      "route": {
-        "type": "string",
-        "enum": [
-          "/experimental/session"
-        ]
-      },
-      "status": {
-        "type": "integer",
-        "minimum": 200,
-        "maximum": 299
+        ],
+        "type": "string"
       },
       "query": {
-        "type": "object",
         "properties": {
           "archived": {
             "anyOf": [
@@ -96,6 +98,10 @@
                 "type": "boolean"
               },
               {
+                "enum": [
+                  "true",
+                  "false"
+                ],
                 "type": "string"
               }
             ]
@@ -115,6 +121,10 @@
                 "type": "boolean"
               },
               {
+                "enum": [
+                  "true",
+                  "false"
+                ],
                 "type": "string"
               }
             ]
@@ -128,259 +138,19 @@
           "workspace": {
             "type": "string"
           }
-        }
+        },
+        "type": "object"
       },
-      "body": {
-        "type": "array",
-        "items": {
-          "type": "object",
-          "properties": {
-            "agent": {
-              "type": "string"
-            },
-            "cost": {
-              "type": "number"
-            },
-            "directory": {
-              "type": "string"
-            },
-            "id": {
-              "type": "string"
-            },
-            "metadata": {
-              "type": "object"
-            },
-            "model": {
-              "type": "object",
-              "properties": {
-                "id": {
-                  "type": "string"
-                },
-                "providerID": {
-                  "type": "string"
-                },
-                "variant": {
-                  "type": "string"
-                }
-              },
-              "required": [
-                "id",
-                "providerID"
-              ]
-            },
-            "parentID": {
-              "type": "string"
-            },
-            "path": {
-              "type": "string"
-            },
-            "permission": {
-              "type": "array",
-              "items": {
-                "type": "object",
-                "properties": {
-                  "action": {
-                    "type": "string"
-                  },
-                  "pattern": {
-                    "type": "string"
-                  },
-                  "permission": {
-                    "type": "string"
-                  }
-                },
-                "required": [
-                  "action",
-                  "pattern",
-                  "permission"
-                ]
-              }
-            },
-            "project": {
-              "anyOf": [
-                {
-                  "type": "object",
-                  "properties": {
-                    "id": {
-                      "type": "string"
-                    },
-                    "name": {
-                      "type": "string"
-                    },
-                    "worktree": {
-                      "type": "string"
-                    }
-                  },
-                  "required": [
-                    "id",
-                    "worktree"
-                  ]
-                }
-              ]
-            },
-            "projectID": {
-              "type": "string"
-            },
-            "revert": {
-              "type": "object",
-              "properties": {
-                "diff": {
-                  "type": "string"
-                },
-                "messageID": {
-                  "type": "string"
-                },
-                "partID": {
-                  "type": "string"
-                },
-                "snapshot": {
-                  "type": "string"
-                }
-              },
-              "required": [
-                "messageID"
-              ]
-            },
-            "share": {
-              "type": "object",
-              "properties": {
-                "url": {
-                  "type": "string"
-                }
-              },
-              "required": [
-                "url"
-              ]
-            },
-            "slug": {
-              "type": "string"
-            },
-            "summary": {
-              "type": "object",
-              "properties": {
-                "additions": {
-                  "type": "number"
-                },
-                "deletions": {
-                  "type": "number"
-                },
-                "diffs": {
-                  "type": "array",
-                  "items": {
-                    "type": "object",
-                    "properties": {
-                      "additions": {
-                        "type": "number"
-                      },
-                      "deletions": {
-                        "type": "number"
-                      },
-                      "file": {
-                        "type": "string"
-                      },
-                      "patch": {
-                        "type": "string"
-                      },
-                      "status": {
-                        "type": "string"
-                      }
-                    },
-                    "required": [
-                      "additions",
-                      "deletions"
-                    ]
-                  }
-                },
-                "files": {
-                  "type": "number"
-                }
-              },
-              "required": [
-                "additions",
-                "deletions",
-                "files"
-              ]
-            },
-            "time": {
-              "type": "object",
-              "properties": {
-                "archived": {
-                  "type": "number"
-                },
-                "compacting": {
-                  "type": "integer",
-                  "minimum": 0
-                },
-                "created": {
-                  "type": "integer",
-                  "minimum": 0
-                },
-                "updated": {
-                  "type": "integer",
-                  "minimum": 0
-                }
-              },
-              "required": [
-                "created",
-                "updated"
-              ]
-            },
-            "title": {
-              "type": "string"
-            },
-            "tokens": {
-              "type": "object",
-              "properties": {
-                "cache": {
-                  "type": "object",
-                  "properties": {
-                    "read": {
-                      "type": "number"
-                    },
-                    "write": {
-                      "type": "number"
-                    }
-                  },
-                  "required": [
-                    "read",
-                    "write"
-                  ]
-                },
-                "input": {
-                  "type": "number"
-                },
-                "output": {
-                  "type": "number"
-                },
-                "reasoning": {
-                  "type": "number"
-                }
-              },
-              "required": [
-                "cache",
-                "input",
-                "output",
-                "reasoning"
-              ]
-            },
-            "version": {
-              "type": "string"
-            },
-            "workspaceID": {
-              "type": "string"
-            }
-          },
-          "required": [
-            "directory",
-            "id",
-            "project",
-            "projectID",
-            "slug",
-            "time",
-            "title",
-            "version"
-          ]
-        }
+      "route": {
+        "enum": [
+          "/experimental/session"
+        ],
+        "type": "string"
+      },
+      "status": {
+        "maximum": 299,
+        "minimum": 200,
+        "type": "integer"
       }
     },
     "required": [
@@ -388,34 +158,321 @@
       "route",
       "status",
       "body"
-    ]
+    ],
+    "type": "object",
+    "$defs": {
+      "GlobalSession": {
+        "additionalProperties": false,
+        "properties": {
+          "agent": {
+            "type": "string"
+          },
+          "cost": {
+            "type": "number"
+          },
+          "directory": {
+            "type": "string"
+          },
+          "id": {
+            "pattern": "^ses",
+            "type": "string"
+          },
+          "metadata": {
+            "type": "object"
+          },
+          "model": {
+            "additionalProperties": false,
+            "properties": {
+              "id": {
+                "type": "string"
+              },
+              "providerID": {
+                "type": "string"
+              },
+              "variant": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "id",
+              "providerID"
+            ],
+            "type": "object"
+          },
+          "parentID": {
+            "pattern": "^ses",
+            "type": "string"
+          },
+          "path": {
+            "type": "string"
+          },
+          "permission": {
+            "$ref": "#/$defs/PermissionRuleset"
+          },
+          "project": {
+            "anyOf": [
+              {
+                "$ref": "#/$defs/ProjectSummary"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "projectID": {
+            "type": "string"
+          },
+          "revert": {
+            "additionalProperties": false,
+            "properties": {
+              "diff": {
+                "type": "string"
+              },
+              "messageID": {
+                "pattern": "^msg",
+                "type": "string"
+              },
+              "partID": {
+                "pattern": "^prt",
+                "type": "string"
+              },
+              "snapshot": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "messageID"
+            ],
+            "type": "object"
+          },
+          "share": {
+            "additionalProperties": false,
+            "properties": {
+              "url": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "url"
+            ],
+            "type": "object"
+          },
+          "slug": {
+            "type": "string"
+          },
+          "summary": {
+            "additionalProperties": false,
+            "properties": {
+              "additions": {
+                "type": "number"
+              },
+              "deletions": {
+                "type": "number"
+              },
+              "diffs": {
+                "items": {
+                  "$ref": "#/$defs/SnapshotFileDiff"
+                },
+                "type": "array"
+              },
+              "files": {
+                "type": "number"
+              }
+            },
+            "required": [
+              "additions",
+              "deletions",
+              "files"
+            ],
+            "type": "object"
+          },
+          "time": {
+            "additionalProperties": false,
+            "properties": {
+              "archived": {
+                "type": "number"
+              },
+              "compacting": {
+                "minimum": 0,
+                "type": "integer"
+              },
+              "created": {
+                "minimum": 0,
+                "type": "integer"
+              },
+              "updated": {
+                "minimum": 0,
+                "type": "integer"
+              }
+            },
+            "required": [
+              "created",
+              "updated"
+            ],
+            "type": "object"
+          },
+          "title": {
+            "type": "string"
+          },
+          "tokens": {
+            "additionalProperties": false,
+            "properties": {
+              "cache": {
+                "additionalProperties": false,
+                "properties": {
+                  "read": {
+                    "type": "number"
+                  },
+                  "write": {
+                    "type": "number"
+                  }
+                },
+                "required": [
+                  "read",
+                  "write"
+                ],
+                "type": "object"
+              },
+              "input": {
+                "type": "number"
+              },
+              "output": {
+                "type": "number"
+              },
+              "reasoning": {
+                "type": "number"
+              }
+            },
+            "required": [
+              "input",
+              "output",
+              "reasoning",
+              "cache"
+            ],
+            "type": "object"
+          },
+          "version": {
+            "type": "string"
+          },
+          "workspaceID": {
+            "pattern": "^wrk",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "slug",
+          "projectID",
+          "directory",
+          "title",
+          "version",
+          "time",
+          "project"
+        ],
+        "type": "object"
+      },
+      "PermissionRuleset": {
+        "items": {
+          "$ref": "#/$defs/PermissionRule"
+        },
+        "type": "array"
+      },
+      "ProjectSummary": {
+        "additionalProperties": false,
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "worktree": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "worktree"
+        ],
+        "type": "object"
+      },
+      "SnapshotFileDiff": {
+        "additionalProperties": false,
+        "properties": {
+          "additions": {
+            "type": "number"
+          },
+          "deletions": {
+            "type": "number"
+          },
+          "file": {
+            "type": "string"
+          },
+          "patch": {
+            "type": "string"
+          },
+          "status": {
+            "enum": [
+              "added",
+              "deleted",
+              "modified"
+            ],
+            "type": "string"
+          }
+        },
+        "required": [
+          "additions",
+          "deletions"
+        ],
+        "type": "object"
+      },
+      "PermissionRule": {
+        "additionalProperties": false,
+        "properties": {
+          "action": {
+            "$ref": "#/$defs/PermissionAction"
+          },
+          "pattern": {
+            "type": "string"
+          },
+          "permission": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "permission",
+          "pattern",
+          "action"
+        ],
+        "type": "object"
+      },
+      "PermissionAction": {
+        "enum": [
+          "allow",
+          "deny",
+          "ask"
+        ],
+        "type": "string"
+      }
+    }
   },
   "recordSchema": {
-    "type": "object",
     "properties": {
       "direction": {
-        "type": "string",
         "enum": [
           "client-to-agent"
-        ]
+        ],
+        "type": "string"
       },
       "request": {
-        "type": "object",
         "properties": {
           "method": {
-            "type": "string",
             "enum": [
               "GET"
-            ]
-          },
-          "route": {
-            "type": "string",
-            "enum": [
-              "/experimental/session"
-            ]
+            ],
+            "type": "string"
           },
           "query": {
-            "type": "object",
             "properties": {
               "archived": {
                 "anyOf": [
@@ -423,6 +480,10 @@
                     "type": "boolean"
                   },
                   {
+                    "enum": [
+                      "true",
+                      "false"
+                    ],
                     "type": "string"
                   }
                 ]
@@ -442,6 +503,10 @@
                     "type": "boolean"
                   },
                   {
+                    "enum": [
+                      "true",
+                      "false"
+                    ],
                     "type": "string"
                   }
                 ]
@@ -455,31 +520,49 @@
               "workspace": {
                 "type": "string"
               }
-            }
+            },
+            "type": "object"
+          },
+          "route": {
+            "enum": [
+              "/experimental/session"
+            ],
+            "type": "string"
           }
         },
         "required": [
           "method",
           "route"
-        ]
+        ],
+        "type": "object"
       }
     },
     "required": [
       "direction",
       "request"
-    ]
+    ],
+    "type": "object"
+  },
+  "schemaFidelity": {
+    "payload": "semantic",
+    "result": "semantic",
+    "carrier": "semantic"
   },
   "evidence": {
     "existence": [
+      "opencode-generated-openapi",
       "opencode-runtime-session-lifecycle"
     ],
     "shape": [
+      "opencode-generated-openapi",
       "opencode-runtime-session-lifecycle"
     ],
     "result": [
+      "opencode-generated-openapi",
       "opencode-runtime-session-lifecycle"
     ],
     "carrier": [
+      "opencode-generated-openapi",
       "opencode-runtime-session-lifecycle"
     ]
   },

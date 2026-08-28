@@ -10,38 +10,9 @@
   "direction": "client-to-agent",
   "trigger": "Summarize session — Generate a concise summary of the session using AI compaction to preserve key information.",
   "payloadSchema": {
-    "type": "object",
     "properties": {
-      "method": {
-        "type": "string"
-      },
-      "route": {
-        "type": "string"
-      },
-      "params": {
-        "type": "object",
-        "properties": {
-          "sessionID": {
-            "type": "string"
-          }
-        },
-        "required": [
-          "sessionID"
-        ]
-      },
-      "query": {
-        "type": "object",
-        "properties": {
-          "directory": {
-            "type": "string"
-          },
-          "workspace": {
-            "type": "string"
-          }
-        }
-      },
       "body": {
-        "type": "object",
+        "additionalProperties": false,
         "properties": {
           "auto": {
             "type": "boolean"
@@ -54,50 +25,27 @@
           }
         },
         "required": [
-          "modelID",
-          "providerID"
-        ]
-      }
-    },
-    "required": [
-      "method",
-      "route",
-      "params"
-    ]
-  },
-  "resultSchema": {
-    "type": "object",
-    "properties": {
+          "providerID",
+          "modelID"
+        ],
+        "type": "object"
+      },
       "method": {
-        "type": "string",
-        "enum": [
-          "POST"
-        ]
-      },
-      "route": {
-        "type": "string",
-        "enum": [
-          "/session/:sessionID/summarize"
-        ]
-      },
-      "status": {
-        "type": "integer",
-        "minimum": 200,
-        "maximum": 299
+        "type": "string"
       },
       "params": {
-        "type": "object",
         "properties": {
           "sessionID": {
+            "pattern": "^ses",
             "type": "string"
           }
         },
         "required": [
           "sessionID"
-        ]
+        ],
+        "type": "object"
       },
       "query": {
-        "type": "object",
         "properties": {
           "directory": {
             "type": "string"
@@ -105,10 +53,65 @@
           "workspace": {
             "type": "string"
           }
-        }
+        },
+        "type": "object"
       },
+      "route": {
+        "type": "string"
+      }
+    },
+    "required": [
+      "method",
+      "route",
+      "params"
+    ],
+    "type": "object"
+  },
+  "resultSchema": {
+    "properties": {
       "body": {
+        "description": "Summarized session",
         "type": "boolean"
+      },
+      "method": {
+        "enum": [
+          "POST"
+        ],
+        "type": "string"
+      },
+      "params": {
+        "properties": {
+          "sessionID": {
+            "pattern": "^ses",
+            "type": "string"
+          }
+        },
+        "required": [
+          "sessionID"
+        ],
+        "type": "object"
+      },
+      "query": {
+        "properties": {
+          "directory": {
+            "type": "string"
+          },
+          "workspace": {
+            "type": "string"
+          }
+        },
+        "type": "object"
+      },
+      "route": {
+        "enum": [
+          "/session/:sessionID/summarize"
+        ],
+        "type": "string"
+      },
+      "status": {
+        "maximum": 299,
+        "minimum": 200,
+        "type": "integer"
       }
     },
     "required": [
@@ -117,56 +120,21 @@
       "status",
       "params",
       "body"
-    ]
+    ],
+    "type": "object"
   },
   "recordSchema": {
-    "type": "object",
     "properties": {
       "direction": {
-        "type": "string",
         "enum": [
           "client-to-agent"
-        ]
+        ],
+        "type": "string"
       },
       "request": {
-        "type": "object",
         "properties": {
-          "method": {
-            "type": "string",
-            "enum": [
-              "POST"
-            ]
-          },
-          "route": {
-            "type": "string",
-            "enum": [
-              "/session/:sessionID/summarize"
-            ]
-          },
-          "params": {
-            "type": "object",
-            "properties": {
-              "sessionID": {
-                "type": "string"
-              }
-            },
-            "required": [
-              "sessionID"
-            ]
-          },
-          "query": {
-            "type": "object",
-            "properties": {
-              "directory": {
-                "type": "string"
-              },
-              "workspace": {
-                "type": "string"
-              }
-            }
-          },
           "body": {
-            "type": "object",
+            "additionalProperties": false,
             "properties": {
               "auto": {
                 "type": "boolean"
@@ -179,34 +147,81 @@
               }
             },
             "required": [
-              "modelID",
-              "providerID"
-            ]
+              "providerID",
+              "modelID"
+            ],
+            "type": "object"
+          },
+          "method": {
+            "enum": [
+              "POST"
+            ],
+            "type": "string"
+          },
+          "params": {
+            "properties": {
+              "sessionID": {
+                "pattern": "^ses",
+                "type": "string"
+              }
+            },
+            "required": [
+              "sessionID"
+            ],
+            "type": "object"
+          },
+          "query": {
+            "properties": {
+              "directory": {
+                "type": "string"
+              },
+              "workspace": {
+                "type": "string"
+              }
+            },
+            "type": "object"
+          },
+          "route": {
+            "enum": [
+              "/session/:sessionID/summarize"
+            ],
+            "type": "string"
           }
         },
         "required": [
           "method",
           "route",
           "params"
-        ]
+        ],
+        "type": "object"
       }
     },
     "required": [
       "direction",
       "request"
-    ]
+    ],
+    "type": "object"
+  },
+  "schemaFidelity": {
+    "payload": "semantic",
+    "result": "semantic",
+    "carrier": "semantic"
   },
   "evidence": {
     "existence": [
+      "opencode-generated-openapi",
       "opencode-runtime-manual-compaction"
     ],
     "shape": [
+      "opencode-generated-openapi",
       "opencode-runtime-manual-compaction"
     ],
     "result": [
+      "opencode-generated-openapi",
       "opencode-runtime-manual-compaction"
     ],
     "carrier": [
+      "opencode-generated-openapi",
       "opencode-runtime-manual-compaction"
     ]
   },

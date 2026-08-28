@@ -6,41 +6,180 @@
   "transport": "jsonrpc-notification",
   "direction": "agent-to-client",
   "payloadSchema": {
-    "type": "object",
     "properties": {
-      "details": {},
-      "path": {},
-      "range": {},
+      "details": {
+        "description": "Optional extra guidance or error details.",
+        "type": [
+          "string",
+          "null"
+        ]
+      },
+      "path": {
+        "description": "Optional path to the config file that triggered the warning.",
+        "type": [
+          "string",
+          "null"
+        ]
+      },
+      "range": {
+        "anyOf": [
+          {
+            "$ref": "#/$defs/TextRange"
+          },
+          {
+            "type": "null"
+          }
+        ],
+        "description": "Optional range for the error location inside the config file."
+      },
       "summary": {
+        "description": "Concise summary of the warning.",
         "type": "string"
       }
     },
     "required": [
       "summary"
-    ]
-  },
-  "recordSchema": {
+    ],
     "type": "object",
-    "properties": {
-      "method": {
-        "type": "string",
-        "enum": [
-          "configWarning"
-        ]
-      },
-      "params": {
+    "$defs": {
+      "TextRange": {
+        "properties": {
+          "end": {
+            "$ref": "#/$defs/TextPosition"
+          },
+          "start": {
+            "$ref": "#/$defs/TextPosition"
+          }
+        },
+        "required": [
+          "end",
+          "start"
+        ],
         "type": "object"
       },
-      "emittedAtMs": {
-        "type": "number",
-        "minimum": 1000000000000
+      "TextPosition": {
+        "properties": {
+          "column": {
+            "description": "1-based column number (in Unicode scalar values).",
+            "format": "uint",
+            "minimum": 0,
+            "type": "integer"
+          },
+          "line": {
+            "description": "1-based line number.",
+            "format": "uint",
+            "minimum": 0,
+            "type": "integer"
+          }
+        },
+        "required": [
+          "column",
+          "line"
+        ],
+        "type": "object"
+      }
+    },
+    "$schema": "http://json-schema.org/draft-07/schema#"
+  },
+  "recordSchema": {
+    "properties": {
+      "method": {
+        "enum": [
+          "configWarning"
+        ],
+        "title": "ConfigWarningNotificationMethod",
+        "type": "string"
+      },
+      "params": {
+        "$ref": "#/$defs/ConfigWarningNotification"
       }
     },
     "required": [
       "method",
-      "params",
-      "emittedAtMs"
-    ]
+      "params"
+    ],
+    "title": "ConfigWarningNotification",
+    "type": "object",
+    "$defs": {
+      "ConfigWarningNotification": {
+        "properties": {
+          "details": {
+            "description": "Optional extra guidance or error details.",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "path": {
+            "description": "Optional path to the config file that triggered the warning.",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "range": {
+            "anyOf": [
+              {
+                "$ref": "#/$defs/TextRange"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Optional range for the error location inside the config file."
+          },
+          "summary": {
+            "description": "Concise summary of the warning.",
+            "type": "string"
+          }
+        },
+        "required": [
+          "summary"
+        ],
+        "type": "object"
+      },
+      "TextRange": {
+        "properties": {
+          "end": {
+            "$ref": "#/$defs/TextPosition"
+          },
+          "start": {
+            "$ref": "#/$defs/TextPosition"
+          }
+        },
+        "required": [
+          "end",
+          "start"
+        ],
+        "type": "object"
+      },
+      "TextPosition": {
+        "properties": {
+          "column": {
+            "description": "1-based column number (in Unicode scalar values).",
+            "format": "uint",
+            "minimum": 0,
+            "type": "integer"
+          },
+          "line": {
+            "description": "1-based line number.",
+            "format": "uint",
+            "minimum": 0,
+            "type": "integer"
+          }
+        },
+        "required": [
+          "column",
+          "line"
+        ],
+        "type": "object"
+      }
+    },
+    "$schema": "http://json-schema.org/draft-07/schema#"
+  },
+  "schemaFidelity": {
+    "payload": "exact",
+    "carrier": "exact"
   },
   "evidence": {
     "existence": [
@@ -50,7 +189,7 @@
       "codex-generated-schema"
     ],
     "carrier": [
-      "codex-runtime-headless"
+      "codex-generated-schema"
     ]
   },
   "confidence": "unverified"

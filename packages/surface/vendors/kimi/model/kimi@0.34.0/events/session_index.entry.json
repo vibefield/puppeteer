@@ -2,6 +2,12 @@
   "surface": "kimi",
   "surfaceVersion": "0.34.0",
   "event": "session_index.entry",
+  "schemaFidelity": {
+    "payload": "structural",
+    "limitations": [
+      "The release source projection preserves recursive declared structure but intentionally leaves custom/unknown values unconstrained; runtime-only file schemas describe captured instances."
+    ]
+  },
   "channel": "session-index",
   "channels": ["session-index"],
   "transport": "jsonl-record",

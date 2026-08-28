@@ -2,6 +2,13 @@
   "surface": "kimi",
   "surfaceVersion": "0.34.0",
   "event": "goal.create",
+  "schemaFidelity": {
+    "payload": "structural",
+    "carrier": "structural",
+    "limitations": [
+      "The release source projection preserves recursive declared structure but intentionally leaves custom/unknown values unconstrained; runtime-only file schemas describe captured instances."
+    ]
+  },
   "channel": "wire",
   "channels": ["wire"],
   "transport": "jsonl-record",
@@ -102,87 +109,5 @@
     "shape": ["kimi-exact-release-source"],
     "carrier": ["kimi-exact-release-source"]
   },
-  "confidence": "unverified",
-  "variants": [
-    {
-      "match": {
-        "status": "active"
-      },
-      "evidence": {
-        "existence": ["kimi-exact-release-source"],
-        "shape": ["kimi-exact-release-source"]
-      },
-      "confidence": "unverified"
-    },
-    {
-      "match": {
-        "status": "paused"
-      },
-      "evidence": {
-        "existence": ["kimi-exact-release-source"],
-        "shape": ["kimi-exact-release-source"]
-      },
-      "confidence": "unverified"
-    },
-    {
-      "match": {
-        "status": "blocked"
-      },
-      "evidence": {
-        "existence": ["kimi-exact-release-source"],
-        "shape": ["kimi-exact-release-source"]
-      },
-      "confidence": "unverified"
-    },
-    {
-      "match": {
-        "status": "complete"
-      },
-      "evidence": {
-        "existence": ["kimi-exact-release-source"],
-        "shape": ["kimi-exact-release-source"]
-      },
-      "confidence": "unverified"
-    },
-    {
-      "match": {
-        "actor": "user"
-      },
-      "evidence": {
-        "existence": ["kimi-exact-release-source"],
-        "shape": ["kimi-exact-release-source"]
-      },
-      "confidence": "unverified"
-    },
-    {
-      "match": {
-        "actor": "model"
-      },
-      "evidence": {
-        "existence": ["kimi-exact-release-source"],
-        "shape": ["kimi-exact-release-source"]
-      },
-      "confidence": "unverified"
-    },
-    {
-      "match": {
-        "actor": "runtime"
-      },
-      "evidence": {
-        "existence": ["kimi-exact-release-source"],
-        "shape": ["kimi-exact-release-source"]
-      },
-      "confidence": "unverified"
-    },
-    {
-      "match": {
-        "actor": "system"
-      },
-      "evidence": {
-        "existence": ["kimi-exact-release-source"],
-        "shape": ["kimi-exact-release-source"]
-      },
-      "confidence": "unverified"
-    }
-  ]
+  "confidence": "unverified"
 }

@@ -6,44 +6,86 @@
   "transport": "jsonrpc-notification",
   "direction": "agent-to-client",
   "payloadSchema": {
-    "type": "object",
     "properties": {
-      "error": {},
+      "error": {
+        "type": [
+          "string",
+          "null"
+        ]
+      },
       "name": {
         "type": "string"
       },
       "success": {
         "type": "boolean"
       },
-      "threadId": {}
+      "threadId": {
+        "type": [
+          "string",
+          "null"
+        ]
+      }
     },
     "required": [
       "name",
       "success"
-    ]
+    ],
+    "type": "object",
+    "$schema": "http://json-schema.org/draft-07/schema#"
   },
   "recordSchema": {
-    "type": "object",
     "properties": {
       "method": {
-        "type": "string",
         "enum": [
           "mcpServer/oauthLogin/completed"
-        ]
+        ],
+        "title": "McpServer/oauthLogin/completedNotificationMethod",
+        "type": "string"
       },
       "params": {
-        "type": "object"
-      },
-      "emittedAtMs": {
-        "type": "number",
-        "minimum": 1000000000000
+        "$ref": "#/$defs/McpServerOauthLoginCompletedNotification"
       }
     },
     "required": [
       "method",
-      "params",
-      "emittedAtMs"
-    ]
+      "params"
+    ],
+    "title": "McpServer/oauthLogin/completedNotification",
+    "type": "object",
+    "$defs": {
+      "McpServerOauthLoginCompletedNotification": {
+        "properties": {
+          "error": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "name": {
+            "type": "string"
+          },
+          "success": {
+            "type": "boolean"
+          },
+          "threadId": {
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        },
+        "required": [
+          "name",
+          "success"
+        ],
+        "type": "object"
+      }
+    },
+    "$schema": "http://json-schema.org/draft-07/schema#"
+  },
+  "schemaFidelity": {
+    "payload": "exact",
+    "carrier": "exact"
   },
   "evidence": {
     "existence": [
@@ -53,7 +95,7 @@
       "codex-generated-schema"
     ],
     "carrier": [
-      "codex-runtime-headless"
+      "codex-generated-schema"
     ]
   },
   "confidence": "unverified"

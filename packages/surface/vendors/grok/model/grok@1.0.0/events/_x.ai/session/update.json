@@ -3,7 +3,9 @@
   "surfaceVersion": "1.0.0",
   "event": "_x.ai/session/update",
   "channel": "session-log",
+  "channels": ["session-log"],
   "transport": "jsonl-record",
+  "direction": "agent-local",
   "payloadSchema": {
     "type": "object",
     "properties": {
@@ -14,183 +16,275 @@
         "type": "object",
         "properties": {
           "sessionUpdate": {
-            "type": "string",
-            "enum": [
-              "hook_execution",
-              "response_completed",
-              "turn_completed",
-              "subagent_spawned",
-              "subagent_finished",
-              "workflow_updated",
-              "goal_updated",
-              "compaction_checkpoint"
-            ]
+            "type": "string"
+          },
+          "event_name": {
+            "type": "string"
+          },
+          "tool_name": {
+            "type": "string"
+          },
+          "prompt_id": {
+            "type": "string"
+          },
+          "runs": {
+            "type": "array",
+            "items": {}
+          },
+          "signature": {
+            "type": "string"
+          },
+          "usage": {
+            "type": "object",
+            "properties": {
+              "inputTokens": {
+                "type": "integer",
+                "minimum": 0
+              },
+              "outputTokens": {
+                "type": "integer",
+                "minimum": 0
+              }
+            },
+            "required": ["inputTokens", "outputTokens"]
+          },
+          "stop_reason": {
+            "type": "string"
           }
         },
-        "required": [
-          "sessionUpdate"
-        ]
+        "required": ["sessionUpdate"]
       },
       "_meta": {
         "type": "object"
       }
     },
-    "required": [
-      "sessionId",
-      "update"
-    ]
-  },
-  "confidence": "verified-headless",
-  "firstSeen": "1.0.0",
-  "lastVerified": "1.0.0",
-  "fixture": "captures/grok@1.0.0/persisted.jsonl",
-  "direction": "agent-local",
-  "evidence": {
-    "existence": [
-      "grok-runtime-headless"
-    ],
-    "shape": [
-      "grok-runtime-headless"
-    ],
-    "carrier": [
-      "grok-runtime-headless"
-    ]
+    "required": ["sessionId", "update"]
   },
   "recordSchema": {
     "type": "object",
     "properties": {
       "timestamp": {
-        "type": "number",
+        "type": "integer",
         "minimum": 1000000000000
       },
       "method": {
         "type": "string",
-        "enum": [
-          "_x.ai/session/update"
-        ]
+        "enum": ["_x.ai/session/update"]
       },
       "params": {
-        "type": "object"
+        "type": "object",
+        "properties": {
+          "sessionId": {
+            "type": "string"
+          },
+          "update": {
+            "type": "object",
+            "properties": {
+              "sessionUpdate": {
+                "type": "string"
+              },
+              "event_name": {
+                "type": "string"
+              },
+              "tool_name": {
+                "type": "string"
+              },
+              "prompt_id": {
+                "type": "string"
+              },
+              "runs": {
+                "type": "array",
+                "items": {}
+              },
+              "signature": {
+                "type": "string"
+              },
+              "usage": {
+                "type": "object",
+                "properties": {
+                  "inputTokens": {
+                    "type": "integer",
+                    "minimum": 0
+                  },
+                  "outputTokens": {
+                    "type": "integer",
+                    "minimum": 0
+                  }
+                },
+                "required": ["inputTokens", "outputTokens"]
+              },
+              "stop_reason": {
+                "type": "string"
+              }
+            },
+            "required": ["sessionUpdate"]
+          },
+          "_meta": {
+            "type": "object"
+          }
+        },
+        "required": ["sessionId", "update"]
       }
     },
-    "required": [
-      "timestamp",
-      "method",
-      "params"
-    ]
+    "required": ["timestamp", "method", "params"]
   },
+  "recordChannel": "session-log",
+  "evidence": {
+    "existence": ["grok-runtime-headless"],
+    "shape": ["grok-runtime-headless"],
+    "carrier": ["grok-runtime-headless"]
+  },
+  "confidence": "verified-headless",
   "variants": [
     {
       "match": {
         "update.sessionUpdate": "hook_execution"
       },
       "evidence": {
-        "existence": [
-          "grok-runtime-headless"
-        ],
-        "shape": [
-          "grok-runtime-headless"
-        ]
+        "existence": ["grok-runtime-headless"],
+        "shape": ["grok-runtime-headless"]
       },
       "confidence": "verified-headless"
-    },
-    {
-      "match": {
-        "update.sessionUpdate": "response_completed"
-      },
-      "evidence": {
-        "existence": [
-          "grok-public-mirror-lead"
-        ],
-        "shape": [
-          "grok-public-mirror-lead"
-        ]
-      },
-      "confidence": "unverified"
     },
     {
       "match": {
         "update.sessionUpdate": "turn_completed"
       },
       "evidence": {
-        "existence": [
-          "grok-runtime-headless"
-        ],
-        "shape": [
-          "grok-runtime-headless"
-        ]
+        "existence": ["grok-runtime-headless"],
+        "shape": ["grok-runtime-headless"]
       },
       "confidence": "verified-headless"
-    },
-    {
-      "match": {
-        "update.sessionUpdate": "subagent_spawned"
-      },
-      "evidence": {
-        "existence": [
-          "grok-public-mirror-lead"
-        ],
-        "shape": [
-          "grok-public-mirror-lead"
-        ]
-      },
-      "confidence": "unverified"
-    },
-    {
-      "match": {
-        "update.sessionUpdate": "subagent_finished"
-      },
-      "evidence": {
-        "existence": [
-          "grok-public-mirror-lead"
-        ],
-        "shape": [
-          "grok-public-mirror-lead"
-        ]
-      },
-      "confidence": "unverified"
-    },
-    {
-      "match": {
-        "update.sessionUpdate": "workflow_updated"
-      },
-      "evidence": {
-        "existence": [
-          "grok-public-mirror-lead"
-        ],
-        "shape": [
-          "grok-public-mirror-lead"
-        ]
-      },
-      "confidence": "unverified"
-    },
-    {
-      "match": {
-        "update.sessionUpdate": "goal_updated"
-      },
-      "evidence": {
-        "existence": [
-          "grok-public-mirror-lead"
-        ],
-        "shape": [
-          "grok-public-mirror-lead"
-        ]
-      },
-      "confidence": "unverified"
     },
     {
       "match": {
         "update.sessionUpdate": "compaction_checkpoint"
       },
       "evidence": {
-        "existence": [
-          "grok-public-mirror-lead"
-        ],
-        "shape": [
-          "grok-public-mirror-lead"
-        ]
+        "existence": ["grok-public-mirror-lead"],
+        "shape": ["grok-public-mirror-lead"]
       },
       "confidence": "unverified"
     }
-  ]
+  ],
+  "payloadRefinements": [
+    {
+      "match": {
+        "update.sessionUpdate": "hook_execution"
+      },
+      "path": "update",
+      "schema": {
+        "type": "object",
+        "properties": {
+          "sessionUpdate": {
+            "type": "string",
+            "enum": ["hook_execution"]
+          },
+          "event_name": {
+            "type": "string"
+          },
+          "tool_name": {
+            "type": "string"
+          },
+          "prompt_id": {
+            "type": "string"
+          },
+          "runs": {
+            "type": "array",
+            "items": {}
+          }
+        },
+        "required": ["sessionUpdate", "event_name", "runs"]
+      },
+      "evidence": {
+        "existence": ["grok-runtime-headless"],
+        "shape": ["grok-runtime-headless"]
+      },
+      "confidence": "verified-headless",
+      "fidelity": "sampled",
+      "limitations": [
+        "Requiredness and optional fields describe retained Grok 1.0.0 samples, not every legal instance."
+      ]
+    },
+    {
+      "match": {
+        "update.sessionUpdate": "turn_completed"
+      },
+      "path": "update",
+      "schema": {
+        "type": "object",
+        "properties": {
+          "sessionUpdate": {
+            "type": "string",
+            "enum": ["turn_completed"]
+          },
+          "prompt_id": {
+            "type": "string"
+          },
+          "stop_reason": {
+            "type": "string"
+          },
+          "usage": {
+            "type": "object",
+            "properties": {
+              "inputTokens": {
+                "type": "integer",
+                "minimum": 0
+              },
+              "outputTokens": {
+                "type": "integer",
+                "minimum": 0
+              }
+            },
+            "required": ["inputTokens", "outputTokens"]
+          }
+        },
+        "required": ["sessionUpdate", "prompt_id", "stop_reason", "usage"]
+      },
+      "evidence": {
+        "existence": ["grok-runtime-headless"],
+        "shape": ["grok-runtime-headless"]
+      },
+      "confidence": "verified-headless",
+      "fidelity": "sampled",
+      "limitations": [
+        "Requiredness and optional fields describe retained Grok 1.0.0 samples, not every legal instance."
+      ]
+    },
+    {
+      "match": {
+        "update.sessionUpdate": "compaction_checkpoint"
+      },
+      "path": "update",
+      "schema": {
+        "type": "object",
+        "properties": {
+          "sessionUpdate": {
+            "type": "string",
+            "enum": ["compaction_checkpoint"]
+          }
+        },
+        "required": ["sessionUpdate"]
+      },
+      "evidence": {
+        "existence": ["grok-public-mirror-lead"],
+        "shape": ["grok-public-mirror-lead"]
+      },
+      "confidence": "unverified",
+      "fidelity": "structural",
+      "limitations": [
+        "Field names and primitive/container types come from the digest-pinned supplemental Rust enum. Custom nested Rust types and serde default/optionality rules remain unconstrained unless separately projected.",
+        "The public enum does not prove this branch exists in the installed binary or whether it is live, durable, or enabled."
+      ]
+    }
+  ],
+  "schemaFidelity": {
+    "payload": "structural",
+    "carrier": "structural",
+    "limitations": [
+      "The base schema preserves the stable envelope and observed fields while leaving variant-specific values open. Exact or supplemental branch schemas are separately evidence-bound as payload refinements.",
+      "Only hook_execution and turn_completed were captured on this durable spelling. compaction_checkpoint is a supplemental source-only persist lead."
+    ]
+  },
+  "fixture": "captures/grok@1.0.0/persisted.jsonl"
 }

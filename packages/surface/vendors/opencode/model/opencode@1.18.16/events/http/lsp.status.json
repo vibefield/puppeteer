@@ -10,16 +10,11 @@
   "direction": "client-to-agent",
   "trigger": "Get LSP status — Get LSP server status",
   "payloadSchema": {
-    "type": "object",
     "properties": {
       "method": {
         "type": "string"
       },
-      "route": {
-        "type": "string"
-      },
       "query": {
-        "type": "object",
         "properties": {
           "directory": {
             "type": "string"
@@ -27,36 +22,35 @@
           "workspace": {
             "type": "string"
           }
-        }
+        },
+        "type": "object"
+      },
+      "route": {
+        "type": "string"
       }
     },
     "required": [
       "method",
       "route"
-    ]
+    ],
+    "type": "object"
   },
   "resultSchema": {
-    "type": "object",
     "properties": {
+      "body": {
+        "description": "LSP server status",
+        "items": {
+          "$ref": "#/$defs/LSPStatus"
+        },
+        "type": "array"
+      },
       "method": {
-        "type": "string",
         "enum": [
           "GET"
-        ]
-      },
-      "route": {
-        "type": "string",
-        "enum": [
-          "/lsp"
-        ]
-      },
-      "status": {
-        "type": "integer",
-        "minimum": 200,
-        "maximum": 299
+        ],
+        "type": "string"
       },
       "query": {
-        "type": "object",
         "properties": {
           "directory": {
             "type": "string"
@@ -64,33 +58,19 @@
           "workspace": {
             "type": "string"
           }
-        }
+        },
+        "type": "object"
       },
-      "body": {
-        "type": "array",
-        "items": {
-          "type": "object",
-          "properties": {
-            "id": {
-              "type": "string"
-            },
-            "name": {
-              "type": "string"
-            },
-            "root": {
-              "type": "string"
-            },
-            "status": {
-              "type": "string"
-            }
-          },
-          "required": [
-            "id",
-            "name",
-            "root",
-            "status"
-          ]
-        }
+      "route": {
+        "enum": [
+          "/lsp"
+        ],
+        "type": "string"
+      },
+      "status": {
+        "maximum": 299,
+        "minimum": 200,
+        "type": "integer"
       }
     },
     "required": [
@@ -98,34 +78,56 @@
       "route",
       "status",
       "body"
-    ]
+    ],
+    "type": "object",
+    "$defs": {
+      "LSPStatus": {
+        "additionalProperties": false,
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "root": {
+            "type": "string"
+          },
+          "status": {
+            "enum": [
+              "connected",
+              "error"
+            ],
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "name",
+          "root",
+          "status"
+        ],
+        "type": "object"
+      }
+    }
   },
   "recordSchema": {
-    "type": "object",
     "properties": {
       "direction": {
-        "type": "string",
         "enum": [
           "client-to-agent"
-        ]
+        ],
+        "type": "string"
       },
       "request": {
-        "type": "object",
         "properties": {
           "method": {
-            "type": "string",
             "enum": [
               "GET"
-            ]
-          },
-          "route": {
-            "type": "string",
-            "enum": [
-              "/lsp"
-            ]
+            ],
+            "type": "string"
           },
           "query": {
-            "type": "object",
             "properties": {
               "directory": {
                 "type": "string"
@@ -133,19 +135,33 @@
               "workspace": {
                 "type": "string"
               }
-            }
+            },
+            "type": "object"
+          },
+          "route": {
+            "enum": [
+              "/lsp"
+            ],
+            "type": "string"
           }
         },
         "required": [
           "method",
           "route"
-        ]
+        ],
+        "type": "object"
       }
     },
     "required": [
       "direction",
       "request"
-    ]
+    ],
+    "type": "object"
+  },
+  "schemaFidelity": {
+    "payload": "semantic",
+    "result": "semantic",
+    "carrier": "semantic"
   },
   "evidence": {
     "existence": [

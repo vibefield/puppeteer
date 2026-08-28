@@ -1,0 +1,64 @@
+{
+  "surface": "antigravity",
+  "surfaceVersion": "1.1.12",
+  "event": "command_result",
+  "schemaFidelity": {
+    "payload": "structural",
+    "carrier": "structural",
+    "limitations": [
+      "The retained 1.1.12 runtime records are legacy privacy projections. Schemas retain only fields whose native names and types survive that transform or are stated by official documentation; additional native fields may exist."
+    ]
+  },
+  "channel": "print-stream",
+  "channels": ["print-stream"],
+  "transport": "jsonl-record",
+  "direction": "agent-to-client",
+  "payloadSchema": {
+    "type": "object",
+    "properties": {
+      "command": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string"
+          },
+          "data": {
+            "type": "object"
+          }
+        },
+        "required": ["name", "data"]
+      }
+    },
+    "required": ["command"]
+  },
+  "recordSchema": {
+    "type": "object",
+    "properties": {
+      "event": {
+        "type": "string",
+        "enum": ["command_result"]
+      },
+      "command": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string"
+          },
+          "data": {
+            "type": "object"
+          }
+        },
+        "required": ["name", "data"]
+      }
+    },
+    "required": ["event", "command"]
+  },
+  "recordChannel": "print-stream",
+  "evidence": {
+    "existence": ["antigravity-runtime-headless"],
+    "shape": ["antigravity-runtime-headless"],
+    "carrier": ["antigravity-runtime-headless"]
+  },
+  "confidence": "verified-headless",
+  "fixture": "captures/antigravity@1.1.12/readonly-print/hooks.stream-json.json"
+}

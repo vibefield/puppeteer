@@ -7,7 +7,7 @@
   "direction": "agent-to-client",
   "trigger": "Deprecated: Use `ContextCompaction` item type instead.",
   "payloadSchema": {
-    "type": "object",
+    "description": "Deprecated: Use `ContextCompaction` item type instead.",
     "properties": {
       "threadId": {
         "type": "string"
@@ -19,30 +19,53 @@
     "required": [
       "threadId",
       "turnId"
-    ]
+    ],
+    "type": "object",
+    "$schema": "http://json-schema.org/draft-07/schema#"
   },
   "recordSchema": {
-    "type": "object",
+    "description": "Deprecated: Use `ContextCompaction` item type instead.",
     "properties": {
       "method": {
-        "type": "string",
         "enum": [
           "thread/compacted"
-        ]
+        ],
+        "title": "Thread/compactedNotificationMethod",
+        "type": "string"
       },
       "params": {
-        "type": "object"
-      },
-      "emittedAtMs": {
-        "type": "number",
-        "minimum": 1000000000000
+        "$ref": "#/$defs/ContextCompactedNotification"
       }
     },
     "required": [
       "method",
-      "params",
-      "emittedAtMs"
-    ]
+      "params"
+    ],
+    "title": "Thread/compactedNotification",
+    "type": "object",
+    "$defs": {
+      "ContextCompactedNotification": {
+        "description": "Deprecated: Use `ContextCompaction` item type instead.",
+        "properties": {
+          "threadId": {
+            "type": "string"
+          },
+          "turnId": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "threadId",
+          "turnId"
+        ],
+        "type": "object"
+      }
+    },
+    "$schema": "http://json-schema.org/draft-07/schema#"
+  },
+  "schemaFidelity": {
+    "payload": "exact",
+    "carrier": "exact"
   },
   "evidence": {
     "existence": [
@@ -52,7 +75,7 @@
       "codex-generated-schema"
     ],
     "carrier": [
-      "codex-runtime-headless"
+      "codex-generated-schema"
     ]
   },
   "confidence": "unverified"

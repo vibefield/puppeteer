@@ -10,27 +10,17 @@
   "direction": "agent-to-client",
   "trigger": "Published on the native GET /event stream.",
   "payloadSchema": {
-    "type": "object",
+    "additionalProperties": false,
     "properties": {
       "assistantMessageID": {
+        "pattern": "^msg_",
         "type": "string"
       },
       "error": {
-        "type": "object",
-        "properties": {
-          "message": {
-            "type": "string"
-          },
-          "type": {
-            "type": "string"
-          }
-        },
-        "required": [
-          "message",
-          "type"
-        ]
+        "$ref": "#/$defs/SessionErrorUnknown"
       },
       "sessionID": {
+        "pattern": "^ses",
         "type": "string"
       },
       "timestamp": {
@@ -38,40 +28,53 @@
       }
     },
     "required": [
-      "assistantMessageID",
-      "error",
+      "timestamp",
       "sessionID",
-      "timestamp"
-    ]
+      "assistantMessageID",
+      "error"
+    ],
+    "type": "object",
+    "$defs": {
+      "SessionErrorUnknown": {
+        "additionalProperties": false,
+        "properties": {
+          "message": {
+            "type": "string"
+          },
+          "type": {
+            "enum": [
+              "unknown"
+            ],
+            "type": "string"
+          }
+        },
+        "required": [
+          "type",
+          "message"
+        ],
+        "type": "object"
+      }
+    }
   },
   "recordSchema": {
-    "type": "object",
+    "additionalProperties": false,
     "properties": {
       "id": {
+        "pattern": "^evt_",
         "type": "string"
       },
       "properties": {
-        "type": "object",
+        "additionalProperties": false,
         "properties": {
           "assistantMessageID": {
+            "pattern": "^msg_",
             "type": "string"
           },
           "error": {
-            "type": "object",
-            "properties": {
-              "message": {
-                "type": "string"
-              },
-              "type": {
-                "type": "string"
-              }
-            },
-            "required": [
-              "message",
-              "type"
-            ]
+            "$ref": "#/$defs/SessionErrorUnknown"
           },
           "sessionID": {
+            "pattern": "^ses",
             "type": "string"
           },
           "timestamp": {
@@ -79,24 +82,51 @@
           }
         },
         "required": [
-          "assistantMessageID",
-          "error",
+          "timestamp",
           "sessionID",
-          "timestamp"
-        ]
+          "assistantMessageID",
+          "error"
+        ],
+        "type": "object"
       },
       "type": {
-        "type": "string",
         "enum": [
           "session.next.step.failed"
-        ]
+        ],
+        "type": "string"
       }
     },
     "required": [
       "id",
-      "properties",
-      "type"
-    ]
+      "type",
+      "properties"
+    ],
+    "type": "object",
+    "$defs": {
+      "SessionErrorUnknown": {
+        "additionalProperties": false,
+        "properties": {
+          "message": {
+            "type": "string"
+          },
+          "type": {
+            "enum": [
+              "unknown"
+            ],
+            "type": "string"
+          }
+        },
+        "required": [
+          "type",
+          "message"
+        ],
+        "type": "object"
+      }
+    }
+  },
+  "schemaFidelity": {
+    "payload": "exact",
+    "carrier": "exact"
   },
   "evidence": {
     "existence": [

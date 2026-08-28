@@ -10,70 +10,73 @@
   "direction": "client-to-agent",
   "trigger": "Reject pending question request — Reject a pending question request owned by a session.",
   "payloadSchema": {
-    "type": "object",
     "properties": {
       "method": {
         "type": "string"
       },
-      "route": {
-        "type": "string"
-      },
       "params": {
-        "type": "object",
         "properties": {
           "requestID": {
+            "pattern": "^que",
             "type": "string"
           },
           "sessionID": {
+            "pattern": "^ses",
             "type": "string"
           }
         },
         "required": [
           "requestID",
           "sessionID"
-        ]
+        ],
+        "type": "object"
+      },
+      "route": {
+        "type": "string"
       }
     },
     "required": [
       "method",
       "route",
       "params"
-    ]
+    ],
+    "type": "object"
   },
   "resultSchema": {
-    "type": "object",
     "properties": {
       "method": {
-        "type": "string",
         "enum": [
           "POST"
-        ]
-      },
-      "route": {
-        "type": "string",
-        "enum": [
-          "/api/session/:sessionID/question/:requestID/reject"
-        ]
-      },
-      "status": {
-        "type": "integer",
-        "minimum": 200,
-        "maximum": 299
+        ],
+        "type": "string"
       },
       "params": {
-        "type": "object",
         "properties": {
           "requestID": {
+            "pattern": "^que",
             "type": "string"
           },
           "sessionID": {
+            "pattern": "^ses",
             "type": "string"
           }
         },
         "required": [
           "requestID",
           "sessionID"
-        ]
+        ],
+        "type": "object"
+      },
+      "route": {
+        "enum": [
+          "/api/session/:sessionID/question/:requestID/reject"
+        ],
+        "type": "string"
+      },
+      "status": {
+        "maximum": 299,
+        "minimum": 200,
+        "type": "integer"
       }
     },
     "required": [
@@ -81,59 +84,67 @@
       "route",
       "status",
       "params"
-    ]
+    ],
+    "type": "object"
   },
   "recordSchema": {
-    "type": "object",
     "properties": {
       "direction": {
-        "type": "string",
         "enum": [
           "client-to-agent"
-        ]
+        ],
+        "type": "string"
       },
       "request": {
-        "type": "object",
         "properties": {
           "method": {
-            "type": "string",
             "enum": [
               "POST"
-            ]
-          },
-          "route": {
-            "type": "string",
-            "enum": [
-              "/api/session/:sessionID/question/:requestID/reject"
-            ]
+            ],
+            "type": "string"
           },
           "params": {
-            "type": "object",
             "properties": {
               "requestID": {
+                "pattern": "^que",
                 "type": "string"
               },
               "sessionID": {
+                "pattern": "^ses",
                 "type": "string"
               }
             },
             "required": [
               "requestID",
               "sessionID"
-            ]
+            ],
+            "type": "object"
+          },
+          "route": {
+            "enum": [
+              "/api/session/:sessionID/question/:requestID/reject"
+            ],
+            "type": "string"
           }
         },
         "required": [
           "method",
           "route",
           "params"
-        ]
+        ],
+        "type": "object"
       }
     },
     "required": [
       "direction",
       "request"
-    ]
+    ],
+    "type": "object"
+  },
+  "schemaFidelity": {
+    "payload": "semantic",
+    "result": "semantic",
+    "carrier": "semantic"
   },
   "evidence": {
     "existence": [

@@ -88,7 +88,7 @@ describe.skipIf(!posix)('emulator native control channel', () => {
       event: 'Notification',
       with: {
         message: 'hello from the control center',
-        notification_type: 'emulator',
+        notification_type: 'permission_prompt',
         prompt_id: crypto.randomUUID(),
       },
     });
@@ -99,7 +99,7 @@ describe.skipIf(!posix)('emulator native control channel', () => {
     );
     expect((await logFor(sessionId)).find((entry) => entry.event === 'Notification')?.payload).toMatchObject({
       message: 'hello from the control center',
-      notification_type: 'emulator',
+      notification_type: 'permission_prompt',
     });
 
     // Unknown names still travel a known hook transport, preserving future
@@ -173,7 +173,7 @@ describe.skipIf(!posix)('emulator native control channel', () => {
               emit: {
                 channel: 'hook',
                 event: 'Notification',
-                with: { message: 'captured from real Claude', notification_type: 'recorded' },
+                with: { message: 'captured from real Claude', notification_type: 'idle_prompt' },
               },
             },
           },
@@ -184,12 +184,12 @@ describe.skipIf(!posix)('emulator native control channel', () => {
 
     expect(response.status).toBe(200);
     const replayed = (await logFor(sessionId)).find(
-      (entry) => entry.event === 'Notification' && entry.payload?.notification_type === 'recorded',
+      (entry) => entry.event === 'Notification' && entry.payload?.notification_type === 'idle_prompt',
     );
     expect(replayed?.payload).toMatchObject({
       session_id: sessionId,
       message: 'captured from real Claude',
-      notification_type: 'recorded',
+      notification_type: 'idle_prompt',
     });
     expect(replayed?.payload?.transcript_path).not.toBe('/private/real.jsonl');
     expect(replayed?.payload?.cwd).not.toBe('/private/real-repo');

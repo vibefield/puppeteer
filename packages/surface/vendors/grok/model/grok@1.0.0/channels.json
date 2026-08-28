@@ -6,11 +6,11 @@
     },
     "acp": {
       "kind": "acp",
-      "notes": "Strict JSON-RPC 2.0 NDJSON over stdio. Standard session/update and xAI extension methods are separate observable rails."
+      "notes": "Strict JSON-RPC 2.0 NDJSON over stdio. Standard session/update and xAI extension methods remain distinct."
     },
     "session-log": {
       "kind": "native-log",
-      "notes": "Append-only GROK_HOME/sessions/<encoded-cwd>/<session-id>/updates.jsonl records with timestamp, method, and params."
+      "notes": "Append-only GROK_HOME session updates.jsonl records with timestamp, method, and params."
     },
     "session-state": {
       "kind": "native-state",
@@ -18,11 +18,11 @@
     },
     "leader": {
       "kind": "unix-socket",
-      "notes": "Coordination socket owned by grok agent leader; it is topology, not a normalized semantic event source."
+      "notes": "Coordination socket owned by grok agent leader; topology, not a semantic event source."
     },
     "terminal": {
       "kind": "terminal",
-      "notes": "Native leader-attached TUI. Semantics are derived from ACP and persisted files, never terminal text."
+      "notes": "Native leader-attached TUI. Semantics come from ACP and persisted state, never terminal text."
     }
   }
 }

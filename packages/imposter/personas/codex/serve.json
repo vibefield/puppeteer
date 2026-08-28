@@ -28,7 +28,21 @@
       "$threadApprovalsReviewer": "$params.approvalsReviewer"
     },
     "result": {
-      "thread": { "id": "$threadId", "sessionId": "$threadId", "cwd": "$threadCwd", "status": { "type": "idle" } },
+      "thread": {
+        "id": "$threadId",
+        "sessionId": "$threadId",
+        "cwd": "$threadCwd",
+        "status": { "type": "idle" },
+        "cliVersion": "$vendorVersion",
+        "createdAt": "$threadCreatedAt",
+        "updatedAt": "$threadUpdatedAt",
+        "ephemeral": false,
+        "modelProvider": "$threadModelProvider",
+        "preview": "",
+        "projectId": null,
+        "source": "appServer",
+        "turns": []
+      },
       "model": "$threadModel",
       "modelProvider": "$threadModelProvider",
       "cwd": "$threadCwd",
@@ -46,7 +60,21 @@
     "bind": { "$threadId": "$params.threadId" },
     "restore": true,
     "result": {
-      "thread": { "id": "$threadId", "sessionId": "$threadId", "cwd": "$threadCwd", "status": { "type": "idle" } },
+      "thread": {
+        "id": "$threadId",
+        "sessionId": "$threadId",
+        "cwd": "$threadCwd",
+        "status": { "type": "idle" },
+        "cliVersion": "$vendorVersion",
+        "createdAt": "$threadCreatedAt",
+        "updatedAt": "$threadUpdatedAt",
+        "ephemeral": false,
+        "modelProvider": "$threadModelProvider",
+        "preview": "",
+        "projectId": null,
+        "source": "appServer",
+        "turns": []
+      },
       "model": "$threadModel",
       "modelProvider": "$threadModelProvider",
       "cwd": "$threadCwd",
@@ -61,7 +89,21 @@
 
   "thread/read": {
     "result": {
-      "thread": { "id": "$threadId", "sessionId": "$threadId", "cwd": "$threadCwd", "status": { "type": "idle" } }
+      "thread": {
+        "id": "$threadId",
+        "sessionId": "$threadId",
+        "cwd": "$threadCwd",
+        "status": { "type": "idle" },
+        "cliVersion": "$vendorVersion",
+        "createdAt": "$threadCreatedAt",
+        "updatedAt": "$threadUpdatedAt",
+        "ephemeral": false,
+        "modelProvider": "$threadModelProvider",
+        "preview": "",
+        "projectId": null,
+        "source": "appServer",
+        "turns": []
+      }
     }
   },
 

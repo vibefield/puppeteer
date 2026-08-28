@@ -10,13 +10,32 @@
   "direction": "agent-to-client",
   "trigger": "Published on the native GET /event stream.",
   "payloadSchema": {
-    "type": "object",
+    "additionalProperties": false,
     "properties": {
       "attempt": {
         "type": "number"
       },
       "error": {
-        "type": "object",
+        "$ref": "#/$defs/SessionNextRetry_error"
+      },
+      "sessionID": {
+        "pattern": "^ses",
+        "type": "string"
+      },
+      "timestamp": {
+        "type": "number"
+      }
+    },
+    "required": [
+      "timestamp",
+      "sessionID",
+      "attempt",
+      "error"
+    ],
+    "type": "object",
+    "$defs": {
+      "SessionNextRetry_error": {
+        "additionalProperties": false,
         "properties": {
           "isRetryable": {
             "type": "boolean"
@@ -25,12 +44,18 @@
             "type": "string"
           },
           "metadata": {
+            "additionalProperties": {
+              "type": "string"
+            },
             "type": "object"
           },
           "responseBody": {
             "type": "string"
           },
           "responseHeaders": {
+            "additionalProperties": {
+              "type": "string"
+            },
             "type": "object"
           },
           "statusCode": {
@@ -38,64 +63,31 @@
           }
         },
         "required": [
-          "isRetryable",
-          "message"
-        ]
-      },
-      "sessionID": {
-        "type": "string"
-      },
-      "timestamp": {
-        "type": "number"
+          "message",
+          "isRetryable"
+        ],
+        "type": "object"
       }
-    },
-    "required": [
-      "attempt",
-      "error",
-      "sessionID",
-      "timestamp"
-    ]
+    }
   },
   "recordSchema": {
-    "type": "object",
+    "additionalProperties": false,
     "properties": {
       "id": {
+        "pattern": "^evt_",
         "type": "string"
       },
       "properties": {
-        "type": "object",
+        "additionalProperties": false,
         "properties": {
           "attempt": {
             "type": "number"
           },
           "error": {
-            "type": "object",
-            "properties": {
-              "isRetryable": {
-                "type": "boolean"
-              },
-              "message": {
-                "type": "string"
-              },
-              "metadata": {
-                "type": "object"
-              },
-              "responseBody": {
-                "type": "string"
-              },
-              "responseHeaders": {
-                "type": "object"
-              },
-              "statusCode": {
-                "type": "number"
-              }
-            },
-            "required": [
-              "isRetryable",
-              "message"
-            ]
+            "$ref": "#/$defs/SessionNextRetry_error"
           },
           "sessionID": {
+            "pattern": "^ses",
             "type": "string"
           },
           "timestamp": {
@@ -103,24 +95,66 @@
           }
         },
         "required": [
-          "attempt",
-          "error",
+          "timestamp",
           "sessionID",
-          "timestamp"
-        ]
+          "attempt",
+          "error"
+        ],
+        "type": "object"
       },
       "type": {
-        "type": "string",
         "enum": [
           "session.next.retried"
-        ]
+        ],
+        "type": "string"
       }
     },
     "required": [
       "id",
-      "properties",
-      "type"
-    ]
+      "type",
+      "properties"
+    ],
+    "type": "object",
+    "$defs": {
+      "SessionNextRetry_error": {
+        "additionalProperties": false,
+        "properties": {
+          "isRetryable": {
+            "type": "boolean"
+          },
+          "message": {
+            "type": "string"
+          },
+          "metadata": {
+            "additionalProperties": {
+              "type": "string"
+            },
+            "type": "object"
+          },
+          "responseBody": {
+            "type": "string"
+          },
+          "responseHeaders": {
+            "additionalProperties": {
+              "type": "string"
+            },
+            "type": "object"
+          },
+          "statusCode": {
+            "type": "number"
+          }
+        },
+        "required": [
+          "message",
+          "isRetryable"
+        ],
+        "type": "object"
+      }
+    }
+  },
+  "schemaFidelity": {
+    "payload": "exact",
+    "carrier": "exact"
   },
   "evidence": {
     "existence": [

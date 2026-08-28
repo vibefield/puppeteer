@@ -10,22 +10,17 @@
   "direction": "client-to-agent",
   "trigger": "Find files — Find recursively ranked filesystem entries relative to the requested location.",
   "payloadSchema": {
-    "type": "object",
     "properties": {
       "method": {
         "type": "string"
       },
-      "route": {
-        "type": "string"
-      },
       "query": {
-        "type": "object",
         "properties": {
           "limit": {
             "type": "string"
           },
           "location": {
-            "type": "object",
+            "additionalProperties": false,
             "properties": {
               "directory": {
                 "type": "string"
@@ -33,54 +28,70 @@
               "workspace": {
                 "type": "string"
               }
-            }
+            },
+            "type": "object"
           },
           "query": {
             "type": "string"
           },
           "type": {
+            "enum": [
+              "file",
+              "directory"
+            ],
             "type": "string"
           }
         },
         "required": [
           "query"
-        ]
+        ],
+        "type": "object"
+      },
+      "route": {
+        "type": "string"
       }
     },
     "required": [
       "method",
       "route",
       "query"
-    ]
+    ],
+    "type": "object"
   },
   "resultSchema": {
-    "type": "object",
     "properties": {
+      "body": {
+        "additionalProperties": false,
+        "properties": {
+          "data": {
+            "items": {
+              "$ref": "#/$defs/FileSystemEntry"
+            },
+            "type": "array"
+          },
+          "location": {
+            "$ref": "#/$defs/LocationInfo"
+          }
+        },
+        "required": [
+          "location",
+          "data"
+        ],
+        "type": "object"
+      },
       "method": {
-        "type": "string",
         "enum": [
           "GET"
-        ]
-      },
-      "route": {
-        "type": "string",
-        "enum": [
-          "/api/fs/find"
-        ]
-      },
-      "status": {
-        "type": "integer",
-        "minimum": 200,
-        "maximum": 299
+        ],
+        "type": "string"
       },
       "query": {
-        "type": "object",
         "properties": {
           "limit": {
             "type": "string"
           },
           "location": {
-            "type": "object",
+            "additionalProperties": false,
             "properties": {
               "directory": {
                 "type": "string"
@@ -88,75 +99,35 @@
               "workspace": {
                 "type": "string"
               }
-            }
+            },
+            "type": "object"
           },
           "query": {
             "type": "string"
           },
           "type": {
+            "enum": [
+              "file",
+              "directory"
+            ],
             "type": "string"
           }
         },
         "required": [
           "query"
-        ]
+        ],
+        "type": "object"
       },
-      "body": {
-        "type": "object",
-        "properties": {
-          "data": {
-            "type": "array",
-            "items": {
-              "type": "object",
-              "properties": {
-                "path": {
-                  "type": "string"
-                },
-                "type": {
-                  "type": "string"
-                }
-              },
-              "required": [
-                "path",
-                "type"
-              ]
-            }
-          },
-          "location": {
-            "type": "object",
-            "properties": {
-              "directory": {
-                "type": "string"
-              },
-              "project": {
-                "type": "object",
-                "properties": {
-                  "directory": {
-                    "type": "string"
-                  },
-                  "id": {
-                    "type": "string"
-                  }
-                },
-                "required": [
-                  "directory",
-                  "id"
-                ]
-              },
-              "workspaceID": {
-                "type": "string"
-              }
-            },
-            "required": [
-              "directory",
-              "project"
-            ]
-          }
-        },
-        "required": [
-          "data",
-          "location"
-        ]
+      "route": {
+        "enum": [
+          "/api/fs/find"
+        ],
+        "type": "string"
+      },
+      "status": {
+        "maximum": 299,
+        "minimum": 200,
+        "type": "integer"
       }
     },
     "required": [
@@ -165,40 +136,87 @@
       "status",
       "query",
       "body"
-    ]
+    ],
+    "type": "object",
+    "$defs": {
+      "FileSystemEntry": {
+        "additionalProperties": false,
+        "properties": {
+          "path": {
+            "type": "string"
+          },
+          "type": {
+            "enum": [
+              "file",
+              "directory"
+            ],
+            "type": "string"
+          }
+        },
+        "required": [
+          "path",
+          "type"
+        ],
+        "type": "object"
+      },
+      "LocationInfo": {
+        "additionalProperties": false,
+        "properties": {
+          "directory": {
+            "type": "string"
+          },
+          "project": {
+            "additionalProperties": false,
+            "properties": {
+              "directory": {
+                "type": "string"
+              },
+              "id": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "id",
+              "directory"
+            ],
+            "type": "object"
+          },
+          "workspaceID": {
+            "pattern": "^wrk",
+            "type": "string"
+          }
+        },
+        "required": [
+          "directory",
+          "project"
+        ],
+        "type": "object"
+      }
+    }
   },
   "recordSchema": {
-    "type": "object",
     "properties": {
       "direction": {
-        "type": "string",
         "enum": [
           "client-to-agent"
-        ]
+        ],
+        "type": "string"
       },
       "request": {
-        "type": "object",
         "properties": {
           "method": {
-            "type": "string",
             "enum": [
               "GET"
-            ]
-          },
-          "route": {
-            "type": "string",
-            "enum": [
-              "/api/fs/find"
-            ]
+            ],
+            "type": "string"
           },
           "query": {
-            "type": "object",
             "properties": {
               "limit": {
                 "type": "string"
               },
               "location": {
-                "type": "object",
+                "additionalProperties": false,
                 "properties": {
                   "directory": {
                     "type": "string"
@@ -206,31 +224,50 @@
                   "workspace": {
                     "type": "string"
                   }
-                }
+                },
+                "type": "object"
               },
               "query": {
                 "type": "string"
               },
               "type": {
+                "enum": [
+                  "file",
+                  "directory"
+                ],
                 "type": "string"
               }
             },
             "required": [
               "query"
-            ]
+            ],
+            "type": "object"
+          },
+          "route": {
+            "enum": [
+              "/api/fs/find"
+            ],
+            "type": "string"
           }
         },
         "required": [
           "method",
           "route",
           "query"
-        ]
+        ],
+        "type": "object"
       }
     },
     "required": [
       "direction",
       "request"
-    ]
+    ],
+    "type": "object"
+  },
+  "schemaFidelity": {
+    "payload": "semantic",
+    "result": "semantic",
+    "carrier": "semantic"
   },
   "evidence": {
     "existence": [

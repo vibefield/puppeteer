@@ -10,16 +10,18 @@
   "direction": "client-to-agent",
   "trigger": "List sync events — List sync events for all aggregates. Keys are aggregate IDs the client already knows about, values are the last known sequence ID. Events with seq > value are returned for those aggregates. Aggregates not listed in the input get their full history.",
   "payloadSchema": {
-    "type": "object",
     "properties": {
+      "body": {
+        "additionalProperties": {
+          "minimum": 0,
+          "type": "integer"
+        },
+        "type": "object"
+      },
       "method": {
         "type": "string"
       },
-      "route": {
-        "type": "string"
-      },
       "query": {
-        "type": "object",
         "properties": {
           "directory": {
             "type": "string"
@@ -27,52 +29,25 @@
           "workspace": {
             "type": "string"
           }
-        }
-      },
-      "body": {
+        },
         "type": "object"
+      },
+      "route": {
+        "type": "string"
       }
     },
     "required": [
       "method",
       "route"
-    ]
+    ],
+    "type": "object"
   },
   "resultSchema": {
-    "type": "object",
     "properties": {
-      "method": {
-        "type": "string",
-        "enum": [
-          "POST"
-        ]
-      },
-      "route": {
-        "type": "string",
-        "enum": [
-          "/sync/history"
-        ]
-      },
-      "status": {
-        "type": "integer",
-        "minimum": 200,
-        "maximum": 299
-      },
-      "query": {
-        "type": "object",
-        "properties": {
-          "directory": {
-            "type": "string"
-          },
-          "workspace": {
-            "type": "string"
-          }
-        }
-      },
       "body": {
-        "type": "array",
+        "description": "Sync events",
         "items": {
-          "type": "object",
+          "additionalProperties": false,
           "properties": {
             "aggregate_id": {
               "type": "string"
@@ -81,24 +56,55 @@
               "type": "object"
             },
             "id": {
+              "pattern": "^evt_",
               "type": "string"
             },
             "seq": {
-              "type": "integer",
-              "minimum": 0
+              "minimum": 0,
+              "type": "integer"
             },
             "type": {
               "type": "string"
             }
           },
           "required": [
-            "aggregate_id",
-            "data",
             "id",
+            "aggregate_id",
             "seq",
-            "type"
-          ]
-        }
+            "type",
+            "data"
+          ],
+          "type": "object"
+        },
+        "type": "array"
+      },
+      "method": {
+        "enum": [
+          "POST"
+        ],
+        "type": "string"
+      },
+      "query": {
+        "properties": {
+          "directory": {
+            "type": "string"
+          },
+          "workspace": {
+            "type": "string"
+          }
+        },
+        "type": "object"
+      },
+      "route": {
+        "enum": [
+          "/sync/history"
+        ],
+        "type": "string"
+      },
+      "status": {
+        "maximum": 299,
+        "minimum": 200,
+        "type": "integer"
       }
     },
     "required": [
@@ -106,34 +112,33 @@
       "route",
       "status",
       "body"
-    ]
+    ],
+    "type": "object"
   },
   "recordSchema": {
-    "type": "object",
     "properties": {
       "direction": {
-        "type": "string",
         "enum": [
           "client-to-agent"
-        ]
+        ],
+        "type": "string"
       },
       "request": {
-        "type": "object",
         "properties": {
+          "body": {
+            "additionalProperties": {
+              "minimum": 0,
+              "type": "integer"
+            },
+            "type": "object"
+          },
           "method": {
-            "type": "string",
             "enum": [
               "POST"
-            ]
-          },
-          "route": {
-            "type": "string",
-            "enum": [
-              "/sync/history"
-            ]
+            ],
+            "type": "string"
           },
           "query": {
-            "type": "object",
             "properties": {
               "directory": {
                 "type": "string"
@@ -141,22 +146,33 @@
               "workspace": {
                 "type": "string"
               }
-            }
-          },
-          "body": {
+            },
             "type": "object"
+          },
+          "route": {
+            "enum": [
+              "/sync/history"
+            ],
+            "type": "string"
           }
         },
         "required": [
           "method",
           "route"
-        ]
+        ],
+        "type": "object"
       }
     },
     "required": [
       "direction",
       "request"
-    ]
+    ],
+    "type": "object"
+  },
+  "schemaFidelity": {
+    "payload": "semantic",
+    "result": "semantic",
+    "carrier": "semantic"
   },
   "evidence": {
     "existence": [

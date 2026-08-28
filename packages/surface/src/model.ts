@@ -28,8 +28,8 @@ import { basename, join, relative } from 'node:path';
 // ---------------------------------------------------------------------------
 
 export interface SurfaceManifest {
-  /** v2 adds directional contracts and claim-addressable evidence; v1 stays readable. */
-  asmVersion: 1 | 2;
+  /** v2 adds claim evidence; v3 makes schema fidelity explicit. Historical versions stay readable. */
+  asmVersion: 1 | 2 | 3;
   vendor: string;
   vendorVersion: string;
   generatedAt: string;
@@ -37,6 +37,13 @@ export interface SurfaceManifest {
   source?: string;
   /** Model-relative machine-readable provenance index. */
   evidence?: string;
+}
+
+/** ASM versions whose native claims must be backed by evidenceVersion 2. */
+export const CLAIM_ADDRESSABLE_ASM_VERSIONS = [2, 3] as const;
+
+export function isClaimAddressableAsmVersion(value: unknown): value is 2 | 3 {
+  return value === 2 || value === 3;
 }
 
 /** Loose carrier — detection data is consumed by adapters, not this module. */
@@ -58,39 +65,233 @@ export interface SurfaceChannels {
 }
 
 /**
- * Deliberately small, recursive JSON-Schema subset (docs/archive/EMULATOR.md §2.2).
+ * Recursive JSON Schema representation used by the ground-truth layer.
  *
  * ACP-style agents put their meaningful discriminants below `params.update`,
  * while hook-style agents mostly use a flat envelope. A top-level-only schema
  * therefore validates one family and merely type-checks the carrier object for
- * the other. Recursion keeps the subset compact while making both families
- * equally useful as drift/conformance gates.
+ * the other. Recursion makes both families equally useful as drift/conformance
+ * gates. Validation-bearing and annotation keywords outside the statically
+ * typed vocabulary are retained through the index signature below so schema
+ * ingestion never becomes a silent lossy projection.
+ */
+export type PayloadSchemaType = 'string' | 'number' | 'integer' | 'boolean' | 'object' | 'array' | 'null';
+
+/**
+ * JSON Schema as retained by Surface.
+ *
+ * Layer 0 is an evidence record, not merely the implementation detail of our
+ * lightweight fixture validator.  Keep the validation-bearing keywords that
+ * upstream generated schemas use, even when validatePayload only needs a
+ * subset for a particular capture.  Unknown annotation/vocabulary keywords
+ * are also retained so a newer vendor schema cannot silently lose truth while
+ * passing through an older Puppeteer release.
  */
 export interface PayloadSchemaNode {
-  type?: 'string' | 'number' | 'integer' | 'boolean' | 'object' | 'array' | 'null';
+  $schema?: string;
+  $id?: string;
+  $ref?: string;
+  $defs?: Record<string, PayloadSchemaNode>;
+  definitions?: Record<string, PayloadSchemaNode>;
+  type?: PayloadSchemaType | readonly PayloadSchemaType[];
+  const?: unknown;
   /** At least one branch must validate. Common constraints on this node still apply. */
   anyOf?: readonly PayloadSchemaNode[];
+  /** Exactly one branch must validate. */
+  oneOf?: readonly PayloadSchemaNode[];
+  /** Every branch must validate. */
+  allOf?: readonly PayloadSchemaNode[];
+  not?: PayloadSchemaNode;
+  if?: PayloadSchemaNode;
+  then?: PayloadSchemaNode;
+  else?: PayloadSchemaNode;
   enum?: readonly unknown[];
   required?: string[];
   properties?: Record<string, PayloadSchemaNode>;
-  items?: PayloadSchemaNode;
+  patternProperties?: Record<string, PayloadSchemaNode>;
+  additionalProperties?: boolean | PayloadSchemaNode;
+  dependentRequired?: Record<string, readonly string[]>;
+  propertyNames?: PayloadSchemaNode;
+  minProperties?: number;
+  maxProperties?: number;
+  items?: PayloadSchemaNode | readonly PayloadSchemaNode[];
+  prefixItems?: readonly PayloadSchemaNode[];
+  contains?: PayloadSchemaNode;
+  minContains?: number;
+  maxContains?: number;
+  minItems?: number;
+  maxItems?: number;
+  uniqueItems?: boolean;
+  minLength?: number;
+  maxLength?: number;
+  pattern?: string;
+  format?: string;
   minimum?: number;
   maximum?: number;
   exclusiveMinimum?: number;
   exclusiveMaximum?: number;
+  multipleOf?: number;
+  title?: string;
+  description?: string;
+  default?: unknown;
+  examples?: readonly unknown[];
+  deprecated?: boolean;
+  readOnly?: boolean;
+  writeOnly?: boolean;
+  /** Preserve newer JSON-Schema vocabulary instead of silently discarding it. */
+  [keyword: string]: unknown;
 }
 
 /** Backward-compatible name used by existing model generators. */
 export interface PayloadSchemaProperty extends PayloadSchemaNode {}
 
-export interface PayloadSchema extends PayloadSchemaNode {
-  type: 'object';
+/** A native event payload can be an object, scalar, array, union, or root reference. */
+export interface PayloadSchema extends PayloadSchemaNode {}
+
+export type SurfaceSchemaFidelity = 'exact' | 'semantic' | 'structural' | 'sampled' | 'unknown';
+
+export interface SurfaceSchemaFidelityRecord {
+  payload?: SurfaceSchemaFidelity;
+  result?: SurfaceSchemaFidelity;
+  carrier?: SurfaceSchemaFidelity;
+  /** Required whenever a declared schema is known to omit native contract detail. */
+  limitations?: readonly string[];
+}
+
+function jsonPointerToken(value: string): string {
+  return value.replaceAll('~', '~0').replaceAll('/', '~1');
+}
+
+function decodeJsonPointerToken(value: string): string {
+  return value.replaceAll('~1', '/').replaceAll('~0', '~');
+}
+
+function resolveLocalSchemaReference(root: unknown, reference: string): unknown {
+  if (reference === '#') return root;
+  if (!reference.startsWith('#/')) return undefined;
+  let current = root;
+  for (const raw of reference.slice(2).split('/')) {
+    const component = decodeJsonPointerToken(raw);
+    if (current === null || typeof current !== 'object' || Array.isArray(current)) return undefined;
+    current = (current as Record<string, unknown>)[component];
+  }
+  return current;
+}
+
+function cloneJsonValue(value: unknown): unknown {
+  if (Array.isArray(value)) return value.map(cloneJsonValue);
+  if (value !== null && typeof value === 'object') {
+    return Object.fromEntries(
+      Object.keys(value as Record<string, unknown>)
+        .sort()
+        .map((key) => [key, cloneJsonValue((value as Record<string, unknown>)[key])]),
+    );
+  }
+  return value;
+}
+
+/**
+ * Retain one vendor JSON-Schema node without copying its entire root bundle.
+ * Reachable local references are closed over into `$defs`; validation-bearing
+ * and annotation keywords are otherwise preserved verbatim. This is the
+ * shared ingestion path for generated vendor contracts and deliberately does
+ * not derive anything from an adapter.
+ */
+export function projectJsonSchema(value: unknown, root: unknown = value): PayloadSchemaNode {
+  if (value === null || typeof value !== 'object' || Array.isArray(value)) return {};
+
+  const referenceNames = new Map<string, string>();
+  const claimedNames = new Set<string>();
+  const pendingReferences: string[] = [];
+  const definitions: Record<string, PayloadSchemaNode> = {};
+
+  const nameForReference = (reference: string): string => {
+    const known = referenceNames.get(reference);
+    if (known) return known;
+    const components = reference.split('/');
+    const rawBase = decodeJsonPointerToken(components.at(-1) || 'schema').replace(/[^A-Za-z0-9_.-]+/g, '_');
+    const base = rawBase || 'schema';
+    let name = base;
+    for (let suffix = 2; claimedNames.has(name); suffix += 1) name = `${base}_${suffix}`;
+    referenceNames.set(reference, name);
+    claimedNames.add(name);
+    pendingReferences.push(reference);
+    return name;
+  };
+
+  const schemaMapKeywords = new Set(['properties', 'patternProperties']);
+  const schemaArrayKeywords = new Set(['anyOf', 'oneOf', 'allOf', 'prefixItems']);
+  const schemaKeywords = new Set(['not', 'if', 'then', 'else', 'additionalProperties', 'propertyNames', 'contains']);
+
+  const visit = (raw: unknown): PayloadSchemaNode => {
+    if (raw === true) return {};
+    if (raw === false) return { not: {} };
+    if (raw === null || typeof raw !== 'object' || Array.isArray(raw)) return {};
+    const source = raw as Record<string, unknown>;
+    const projected: Record<string, unknown> = {};
+    for (const key of Object.keys(source).sort()) {
+      const child = source[key];
+      // Definitions are closed over from actual `$ref` use below. Copying a
+      // vendor's whole protocol bundle into every event both obscures the
+      // contract and multiplies canonical files by hundreds of megabytes.
+      if (key === '$defs' || key === 'definitions') continue;
+      if (key === '$ref' && typeof child === 'string') {
+        if (child.startsWith('#')) {
+          const target = resolveLocalSchemaReference(root, child);
+          if (target !== undefined) {
+            projected.$ref = `#/$defs/${jsonPointerToken(nameForReference(child))}`;
+            continue;
+          }
+        }
+        projected.$ref = child;
+        continue;
+      }
+      if (schemaMapKeywords.has(key) && child !== null && typeof child === 'object' && !Array.isArray(child)) {
+        projected[key] = Object.fromEntries(
+          Object.keys(child as Record<string, unknown>)
+            .sort()
+            .map((name) => [name, visit((child as Record<string, unknown>)[name])]),
+        );
+        continue;
+      }
+      if (schemaArrayKeywords.has(key) && Array.isArray(child)) {
+        projected[key] = child.map(visit);
+        continue;
+      }
+      if (key === 'items') {
+        projected.items = Array.isArray(child) ? child.map(visit) : visit(child);
+        continue;
+      }
+      if (schemaKeywords.has(key) && child !== undefined) {
+        projected[key] = typeof child === 'boolean' ? child : visit(child);
+        continue;
+      }
+      projected[key] = cloneJsonValue(child);
+    }
+    return projected as PayloadSchemaNode;
+  };
+
+  const projected = visit(value);
+  for (let index = 0; index < pendingReferences.length; index += 1) {
+    const reference = pendingReferences[index]!;
+    const target = resolveLocalSchemaReference(root, reference);
+    if (target !== undefined) definitions[referenceNames.get(reference)!] = visit(target);
+  }
+  if (Object.keys(definitions).length > 0) projected.$defs = definitions;
+  if (projected.$schema === undefined) {
+    const dialect = (root as Record<string, unknown> | null)?.$schema;
+    if (typeof dialect === 'string') projected.$schema = dialect;
+  }
+  return projected;
 }
 
 /** The cross-vendor evidence ladder defined by the ASM contract. */
 export type SurfaceConfidence = 'verified-headless' | 'verified-interactive' | 'unverified';
 
 export type SurfaceDirection = 'client-to-agent' | 'agent-to-client' | 'agent-local';
+
+/** Whether installing an observer preserves native behavior and whether it needs a native matcher. */
+export type SurfaceObservationMode = 'passive' | 'matcher-required' | 'response-required';
 
 /** One independently attributable observation/source in an ASM v2 evidence index. */
 export interface SurfaceEvidenceClaimRecord {
@@ -149,9 +350,25 @@ export interface SurfaceEventVariant {
   confidence: SurfaceConfidence;
 }
 
+/** Evidence-bound schema that sharpens one nested payload path, optionally for a discriminated branch. */
+export interface SurfacePayloadRefinement {
+  /** Native dotted payload paths and exact values selecting this refinement. Omit when unconditional. */
+  match?: Record<string, string | number | boolean | null>;
+  /** Native dotted payload path whose value is described by `schema`. */
+  path: string;
+  schema: PayloadSchema;
+  evidence: SurfaceClaimEvidence;
+  /** Computed by the loader from evidence records; declarations must agree. */
+  confidence: SurfaceConfidence;
+  fidelity: SurfaceSchemaFidelity;
+  limitations?: readonly string[];
+}
+
 export interface SurfaceEventFile {
   surface: string;
   surfaceVersion: string;
+  /** Exact vendor wire name when `event` is a collision-safe ASM identity. */
+  nativeName?: string;
   event: string;
   /** Primary/default rail, retained for ASM v1 compatibility. */
   channel: string;
@@ -170,13 +387,23 @@ export interface SurfaceEventFile {
   recordChannel?: string;
   /** Required by ASM v2 and resolved against evidence.json#claims. */
   evidence?: SurfaceClaimEvidence;
-  /** Per-discriminant evidence; required in v2 for every enum value in a schema. */
+  /** Runtime/behavior evidence for explicitly selected native discriminants. */
   variants?: SurfaceEventVariant[];
+  /** Conditional or observed nested schemas that are more precise than the legal base payload schema. */
+  payloadRefinements?: SurfacePayloadRefinement[];
+  /**
+   * Native paths whose complete scalar enum inventory is intentionally treated
+   * as a set of runtime/behavior variants. Enums elsewhere remain schema facts
+   * and do not require one runtime observation per legal value.
+   */
+  variantDiscriminants?: readonly string[];
+  /** How faithfully each retained schema represents its native source. */
+  schemaFidelity?: SurfaceSchemaFidelityRecord;
   confidence: SurfaceConfidence;
   /** Hook timeout written into generated settings (claude registry parity). */
   timeoutSec?: number;
-  /** Hook registration is ineffective unless its matcher declares what to observe. */
-  matcherRequired?: boolean;
+  /** Native registration semantics; callback shape alone does not say whether an empty response is safe. */
+  observationMode?: SurfaceObservationMode;
   firstSeen?: string;
   lastVerified?: string;
   fixture?: string;
@@ -325,25 +552,88 @@ function enumContains(values: readonly unknown[], candidate: unknown): boolean {
   });
 }
 
-function validateSchemaNode(schema: PayloadSchemaNode, value: unknown, path: string, violations: string[]): void {
+function validateSchemaNode(
+  schema: PayloadSchemaNode,
+  value: unknown,
+  path: string,
+  violations: string[],
+  root: PayloadSchemaNode = schema,
+  depth = 0,
+  allowRedactedPlaceholders = false,
+): void {
   const label = path.length === 0 ? 'payload' : `field "${path}"`;
+  if (depth > 128) {
+    violations.push(`${label} exceeds recursive schema validation depth`);
+    return;
+  }
+  if (schema.$ref !== undefined) {
+    const target = resolveLocalSchemaReference(root, schema.$ref);
+    if (target === undefined || target === null || typeof target !== 'object' || Array.isArray(target)) {
+      if (schema.$ref.startsWith('#')) violations.push(`${label} uses unresolved schema reference ${schema.$ref}`);
+    } else {
+      validateSchemaNode(
+        target as PayloadSchemaNode,
+        value,
+        path,
+        violations,
+        root,
+        depth + 1,
+        allowRedactedPlaceholders,
+      );
+    }
+  }
   if (schema.type !== undefined) {
     const actual = typeOf(value);
-    const matches = schema.type === 'integer' ? actual === 'number' && Number.isInteger(value) : actual === schema.type;
+    const expected = Array.isArray(schema.type) ? schema.type : [schema.type];
+    const matches = expected.some((type) =>
+      type === 'integer' ? actual === 'number' && Number.isInteger(value) : actual === type,
+    );
     if (!matches) {
-      violations.push(`${label} is ${actual}, expected ${schema.type}`);
+      violations.push(`${label} is ${actual}, expected ${expected.join('|')}`);
       return;
     }
+  }
+  // Sanitized evidence may intentionally replace a sensitive string while
+  // preserving its JSON type. It cannot prove enum/pattern/length assertions,
+  // but it must not make an otherwise shape-faithful carrier invalid either.
+  const redactedString =
+    allowRedactedPlaceholders && typeof value === 'string' && /^<redacted(?::[^>\r\n]+)?>$/.test(value);
+  if (redactedString) return;
+  if (schema.const !== undefined && !enumContains([schema.const], value)) {
+    violations.push(`${label} does not equal const`);
   }
   if (schema.anyOf !== undefined) {
     const alternatives = schema.anyOf.map((branch) => {
       const branchViolations: string[] = [];
-      validateSchemaNode(branch, value, path, branchViolations);
+      validateSchemaNode(branch, value, path, branchViolations, root, depth + 1, allowRedactedPlaceholders);
       return branchViolations;
     });
     if (alternatives.every((branch) => branch.length > 0)) {
       violations.push(`${label} does not satisfy anyOf`);
     }
+  }
+  if (schema.oneOf !== undefined) {
+    const matches = schema.oneOf.filter((branch) => {
+      const branchViolations: string[] = [];
+      validateSchemaNode(branch, value, path, branchViolations, root, depth + 1, allowRedactedPlaceholders);
+      return branchViolations.length === 0;
+    }).length;
+    if (matches !== 1) violations.push(`${label} satisfies ${matches} oneOf branches, expected exactly one`);
+  }
+  for (const branch of schema.allOf ?? []) {
+    validateSchemaNode(branch, value, path, violations, root, depth + 1, allowRedactedPlaceholders);
+  }
+  if (schema.not !== undefined) {
+    const branchViolations: string[] = [];
+    validateSchemaNode(schema.not, value, path, branchViolations, root, depth + 1, allowRedactedPlaceholders);
+    if (branchViolations.length === 0) violations.push(`${label} satisfies forbidden schema`);
+  }
+  if (schema.if !== undefined) {
+    const conditionViolations: string[] = [];
+    validateSchemaNode(schema.if, value, path, conditionViolations, root, depth + 1, allowRedactedPlaceholders);
+    const branch = conditionViolations.length === 0 ? schema.then : schema.else;
+    if (branch !== undefined)
+      validateSchemaNode(branch, value, path, violations, root, depth + 1, allowRedactedPlaceholders);
   }
   if (schema.enum !== undefined && !enumContains(schema.enum, value)) {
     violations.push(`${label} value not in enum`);
@@ -361,9 +651,33 @@ function validateSchemaNode(schema: PayloadSchemaNode, value: unknown, path: str
     if (schema.exclusiveMaximum !== undefined && value >= schema.exclusiveMaximum) {
       violations.push(`${label} is not below exclusive maximum ${schema.exclusiveMaximum}`);
     }
+    if (schema.multipleOf !== undefined) {
+      const quotient = value / schema.multipleOf;
+      if (Math.abs(quotient - Math.round(quotient)) > Number.EPSILON * Math.max(1, Math.abs(quotient))) {
+        violations.push(`${label} is not a multiple of ${schema.multipleOf}`);
+      }
+    }
+  }
+  if (typeof value === 'string') {
+    if (schema.minLength !== undefined && [...value].length < schema.minLength) {
+      violations.push(`${label} is shorter than minLength ${schema.minLength}`);
+    }
+    if (schema.maxLength !== undefined && [...value].length > schema.maxLength) {
+      violations.push(`${label} is longer than maxLength ${schema.maxLength}`);
+    }
+    if (schema.pattern !== undefined && !new RegExp(schema.pattern, 'u').test(value)) {
+      violations.push(`${label} does not match pattern ${schema.pattern}`);
+    }
   }
   if (value !== null && typeof value === 'object' && !Array.isArray(value)) {
     const record = value as Record<string, unknown>;
+    const names = Object.keys(record);
+    if (schema.minProperties !== undefined && names.length < schema.minProperties) {
+      violations.push(`${label} has fewer than ${schema.minProperties} properties`);
+    }
+    if (schema.maxProperties !== undefined && names.length > schema.maxProperties) {
+      violations.push(`${label} has more than ${schema.maxProperties} properties`);
+    }
     for (const field of schema.required ?? []) {
       if (!Object.hasOwn(record, field)) {
         violations.push(`missing required field "${path.length === 0 ? field : `${path}.${field}`}"`);
@@ -371,11 +685,128 @@ function validateSchemaNode(schema: PayloadSchemaNode, value: unknown, path: str
     }
     for (const [field, property] of Object.entries(schema.properties ?? {})) {
       if (Object.hasOwn(record, field)) {
-        validateSchemaNode(property, record[field], path.length === 0 ? field : `${path}.${field}`, violations);
+        validateSchemaNode(
+          property,
+          record[field],
+          path.length === 0 ? field : `${path}.${field}`,
+          violations,
+          root,
+          depth + 1,
+          allowRedactedPlaceholders,
+        );
       }
     }
-  } else if (Array.isArray(value) && schema.items !== undefined) {
-    value.forEach((entry, index) => validateSchemaNode(schema.items!, entry, `${path}[${index}]`, violations));
+    const patterns = Object.entries(schema.patternProperties ?? {}).map(
+      ([pattern, child]) => [new RegExp(pattern, 'u'), child] as const,
+    );
+    for (const field of names) {
+      const matchingPatterns = patterns.filter(([pattern]) => pattern.test(field));
+      for (const [, child] of matchingPatterns) {
+        validateSchemaNode(
+          child,
+          record[field],
+          path.length === 0 ? field : `${path}.${field}`,
+          violations,
+          root,
+          depth + 1,
+          allowRedactedPlaceholders,
+        );
+      }
+      if (Object.hasOwn(schema.properties ?? {}, field) || matchingPatterns.length > 0) continue;
+      if (schema.additionalProperties === false) {
+        violations.push(`${label} has unsupported property "${field}"`);
+      } else if (schema.additionalProperties && typeof schema.additionalProperties === 'object') {
+        validateSchemaNode(
+          schema.additionalProperties,
+          record[field],
+          path.length === 0 ? field : `${path}.${field}`,
+          violations,
+          root,
+          depth + 1,
+          allowRedactedPlaceholders,
+        );
+      }
+    }
+    for (const [field, dependencies] of Object.entries(schema.dependentRequired ?? {})) {
+      if (!Object.hasOwn(record, field)) continue;
+      for (const dependency of dependencies) {
+        if (!Object.hasOwn(record, dependency)) {
+          violations.push(`field "${path.length === 0 ? field : `${path}.${field}`}" requires "${dependency}"`);
+        }
+      }
+    }
+    if (schema.propertyNames !== undefined) {
+      for (const field of names)
+        validateSchemaNode(
+          schema.propertyNames,
+          field,
+          `${path}{key}`,
+          violations,
+          root,
+          depth + 1,
+          allowRedactedPlaceholders,
+        );
+    }
+  } else if (Array.isArray(value)) {
+    if (schema.minItems !== undefined && value.length < schema.minItems) {
+      violations.push(`${label} has fewer than ${schema.minItems} items`);
+    }
+    if (schema.maxItems !== undefined && value.length > schema.maxItems) {
+      violations.push(`${label} has more than ${schema.maxItems} items`);
+    }
+    if (schema.uniqueItems === true) {
+      const encoded = value.map((entry) => JSON.stringify(entry));
+      if (new Set(encoded).size !== encoded.length) violations.push(`${label} has duplicate items`);
+    }
+    const prefix = schema.prefixItems ?? (Array.isArray(schema.items) ? schema.items : []);
+    prefix.forEach((child, index) => {
+      if (index < value.length)
+        validateSchemaNode(
+          child,
+          value[index],
+          `${path}[${index}]`,
+          violations,
+          root,
+          depth + 1,
+          allowRedactedPlaceholders,
+        );
+    });
+    if (schema.items !== undefined && !Array.isArray(schema.items)) {
+      const start = schema.prefixItems?.length ?? 0;
+      value
+        .slice(start)
+        .forEach((entry, offset) =>
+          validateSchemaNode(
+            schema.items as PayloadSchemaNode,
+            entry,
+            `${path}[${start + offset}]`,
+            violations,
+            root,
+            depth + 1,
+            allowRedactedPlaceholders,
+          ),
+        );
+    }
+    if (schema.contains !== undefined) {
+      const matches = value.filter((entry, index) => {
+        const childViolations: string[] = [];
+        validateSchemaNode(
+          schema.contains!,
+          entry,
+          `${path}[${index}]`,
+          childViolations,
+          root,
+          depth + 1,
+          allowRedactedPlaceholders,
+        );
+        return childViolations.length === 0;
+      }).length;
+      const minimum = schema.minContains ?? 1;
+      if (matches < minimum) violations.push(`${label} has fewer than ${minimum} matching items`);
+      if (schema.maxContains !== undefined && matches > schema.maxContains) {
+        violations.push(`${label} has more than ${schema.maxContains} matching items`);
+      }
+    }
   }
 }
 
@@ -383,6 +814,13 @@ function validateSchemaNode(schema: PayloadSchemaNode, value: unknown, path: str
 export function validatePayload(schema: PayloadSchema, payload: unknown): string[] {
   const violations: string[] = [];
   validateSchemaNode(schema, payload, '', violations);
+  return violations;
+}
+
+/** Validate privacy-sanitized evidence without treating redaction tokens as native enum values. */
+export function validateSanitizedPayload(schema: PayloadSchema, payload: unknown): string[] {
+  const violations: string[] = [];
+  validateSchemaNode(schema, payload, '', violations, schema, 0, true);
   return violations;
 }
 
@@ -432,7 +870,9 @@ function validateStringArray(path: string, value: unknown, field: string): strin
 
 const payloadTypes = new Set(['string', 'number', 'integer', 'boolean', 'object', 'array', 'null']);
 const surfaceConfidences = new Set<SurfaceConfidence>(['verified-headless', 'verified-interactive', 'unverified']);
+const schemaFidelities = new Set<SurfaceSchemaFidelity>(['exact', 'semantic', 'structural', 'sampled', 'unknown']);
 const surfaceDirections = new Set<SurfaceDirection>(['client-to-agent', 'agent-to-client', 'agent-local']);
+const surfaceObservationModes = new Set<SurfaceObservationMode>(['passive', 'matcher-required', 'response-required']);
 const evidenceKinds = new Set<SurfaceEvidenceClaimRecord['kind']>([
   'runtime-capture',
   'binary-probe',
@@ -451,29 +891,45 @@ const behaviorRelationKinds = new Set<SurfaceBehaviorRelationKind>([
 ]);
 
 function validatePayloadSchemaNode(path: string, value: unknown, label: string, depth: number): PayloadSchemaNode {
-  if (depth > 16) throw new Error(`ASM: ${path} ${label} exceeds the maximum nesting depth`);
+  if (depth > 64) throw new Error(`ASM: ${path} ${label} exceeds the maximum nesting depth`);
   const schema = requireObject(path, value, label);
-  if (schema.type !== undefined && (typeof schema.type !== 'string' || !payloadTypes.has(schema.type))) {
-    throw new Error(`ASM: ${path} ${label} has unsupported type`);
+  const declaredTypes = schema.type === undefined ? [] : Array.isArray(schema.type) ? schema.type : [schema.type];
+  if (
+    declaredTypes.some((type) => typeof type !== 'string' || !payloadTypes.has(type)) ||
+    new Set(declaredTypes).size !== declaredTypes.length
+  ) {
+    throw new Error(`ASM: ${path} ${label} has unsupported or duplicate type`);
   }
-  if (schema.anyOf !== undefined) {
-    if (!Array.isArray(schema.anyOf) || schema.anyOf.length === 0 || schema.anyOf.length > 16) {
-      throw new Error(`ASM: ${path} ${label}.anyOf must be an array of 1..16 schemas`);
+  if (schema.$ref !== undefined && (typeof schema.$ref !== 'string' || schema.$ref.length === 0)) {
+    throw new Error(`ASM: ${path} ${label}.$ref must be a non-empty string`);
+  }
+  for (const union of ['anyOf', 'oneOf', 'allOf'] as const) {
+    if (schema[union] !== undefined) {
+      if (!Array.isArray(schema[union]) || schema[union].length === 0 || schema[union].length > 256) {
+        throw new Error(`ASM: ${path} ${label}.${union} must be an array of 1..256 schemas`);
+      }
+      for (const [index, branch] of schema[union].entries()) {
+        validatePayloadSchemaNode(path, branch, `${label}.${union}[${index}]`, depth + 1);
+      }
     }
-    for (const [index, branch] of schema.anyOf.entries()) {
-      validatePayloadSchemaNode(path, branch, `${label}.anyOf[${index}]`, depth + 1);
+  }
+  for (const keyword of ['not', 'if', 'then', 'else', 'propertyNames', 'contains'] as const) {
+    if (schema[keyword] !== undefined) {
+      validatePayloadSchemaNode(path, schema[keyword], `${label}.${keyword}`, depth + 1);
     }
   }
   const required = schema.required === undefined ? [] : validateStringArray(path, schema.required, `${label}.required`);
   if (new Set(required).size !== required.length) {
     throw new Error(`ASM: ${path} ${label}.required contains duplicate fields`);
   }
-  if ((required.length > 0 || schema.properties !== undefined) && schema.type !== 'object') {
-    throw new Error(`ASM: ${path} ${label} with required/properties must have type "object"`);
+  if (required.length > 0 || schema.properties !== undefined) {
+    if (declaredTypes.length > 0 && !declaredTypes.includes('object')) {
+      throw new Error(`ASM: ${path} ${label} with required/properties must allow type "object"`);
+    }
   }
   const properties =
     schema.properties === undefined ? {} : requireObject(path, schema.properties, `${label}.properties`);
-  if (Object.keys(properties).length > 256) throw new Error(`ASM: ${path} ${label} has too many properties`);
+  if (Object.keys(properties).length > 2_048) throw new Error(`ASM: ${path} ${label} has too many properties`);
   for (const [field, rawProperty] of Object.entries(properties)) {
     validatePayloadSchemaNode(path, rawProperty, `${label}.properties[${JSON.stringify(field)}]`, depth + 1);
   }
@@ -483,31 +939,113 @@ function validatePayloadSchemaNode(path: string, value: unknown, label: string, 
       throw new Error(`ASM: ${path} ${requiredLabel} "${field}" is absent from properties`);
     }
   }
+  for (const keyword of ['$defs', 'definitions', 'patternProperties'] as const) {
+    if (schema[keyword] === undefined) continue;
+    const entries = requireObject(path, schema[keyword], `${label}.${keyword}`);
+    for (const [name, child] of Object.entries(entries)) {
+      if (keyword === 'patternProperties') {
+        try {
+          new RegExp(name, 'u');
+        } catch {
+          throw new Error(`ASM: ${path} ${label}.patternProperties has invalid pattern ${JSON.stringify(name)}`);
+        }
+      }
+      validatePayloadSchemaNode(path, child, `${label}.${keyword}[${JSON.stringify(name)}]`, depth + 1);
+    }
+  }
+  if (schema.additionalProperties !== undefined && typeof schema.additionalProperties !== 'boolean') {
+    validatePayloadSchemaNode(path, schema.additionalProperties, `${label}.additionalProperties`, depth + 1);
+  }
   if (schema.items !== undefined) {
-    if (schema.type !== 'array') throw new Error(`ASM: ${path} ${label}.items requires type "array"`);
-    validatePayloadSchemaNode(path, schema.items, `${label}.items`, depth + 1);
+    if (declaredTypes.length > 0 && !declaredTypes.includes('array')) {
+      throw new Error(`ASM: ${path} ${label}.items requires an array-compatible type`);
+    }
+    if (Array.isArray(schema.items)) {
+      for (const [index, child] of schema.items.entries()) {
+        validatePayloadSchemaNode(path, child, `${label}.items[${index}]`, depth + 1);
+      }
+    } else {
+      validatePayloadSchemaNode(path, schema.items, `${label}.items`, depth + 1);
+    }
+  }
+  if (schema.prefixItems !== undefined) {
+    if (!Array.isArray(schema.prefixItems)) throw new Error(`ASM: ${path} ${label}.prefixItems must be an array`);
+    for (const [index, child] of schema.prefixItems.entries()) {
+      validatePayloadSchemaNode(path, child, `${label}.prefixItems[${index}]`, depth + 1);
+    }
   }
   if (schema.enum !== undefined) {
     if (!Array.isArray(schema.enum) || schema.enum.length === 0) {
       throw new Error(`ASM: ${path} ${label}.enum must be a non-empty array`);
     }
     if (
-      schema.type !== undefined &&
-      schema.enum.some((entry) =>
-        schema.type === 'integer'
-          ? typeOf(entry) !== 'number' || !Number.isInteger(entry)
-          : typeOf(entry) !== schema.type,
+      declaredTypes.length > 0 &&
+      schema.enum.some(
+        (entry) =>
+          !declaredTypes.some((type) =>
+            type === 'integer' ? typeOf(entry) === 'number' && Number.isInteger(entry) : typeOf(entry) === type,
+          ),
       )
     ) {
       throw new Error(`ASM: ${path} ${label}.enum value has the wrong type`);
     }
   }
+  if (
+    schema.const !== undefined &&
+    declaredTypes.length > 0 &&
+    !declaredTypes.some((type) =>
+      type === 'integer'
+        ? typeOf(schema.const) === 'number' && Number.isInteger(schema.const)
+        : typeOf(schema.const) === type,
+    )
+  ) {
+    throw new Error(`ASM: ${path} ${label}.const has the wrong type`);
+  }
   for (const bound of ['minimum', 'maximum', 'exclusiveMinimum', 'exclusiveMaximum'] as const) {
     if (
       schema[bound] !== undefined &&
-      (!Number.isFinite(schema[bound]) || (schema.type !== 'number' && schema.type !== 'integer'))
+      (!Number.isFinite(schema[bound]) ||
+        (declaredTypes.length > 0 && !declaredTypes.includes('number') && !declaredTypes.includes('integer')))
     ) {
       throw new Error(`ASM: ${path} ${label}.${bound} requires a numeric type and a finite value`);
+    }
+  }
+  if (
+    schema.multipleOf !== undefined &&
+    (typeof schema.multipleOf !== 'number' || !Number.isFinite(schema.multipleOf) || schema.multipleOf <= 0)
+  ) {
+    throw new Error(`ASM: ${path} ${label}.multipleOf must be a positive finite number`);
+  }
+  for (const bound of [
+    'minLength',
+    'maxLength',
+    'minItems',
+    'maxItems',
+    'minContains',
+    'maxContains',
+    'minProperties',
+    'maxProperties',
+  ] as const) {
+    const value = schema[bound];
+    if (value !== undefined && (typeof value !== 'number' || !Number.isInteger(value) || value < 0)) {
+      throw new Error(`ASM: ${path} ${label}.${bound} must be a non-negative integer`);
+    }
+  }
+  if (schema.pattern !== undefined) {
+    if (typeof schema.pattern !== 'string') throw new Error(`ASM: ${path} ${label}.pattern must be a string`);
+    try {
+      new RegExp(schema.pattern, 'u');
+    } catch {
+      throw new Error(`ASM: ${path} ${label}.pattern must be a valid regular expression`);
+    }
+  }
+  if (schema.uniqueItems !== undefined && typeof schema.uniqueItems !== 'boolean') {
+    throw new Error(`ASM: ${path} ${label}.uniqueItems must be a boolean`);
+  }
+  if (schema.dependentRequired !== undefined) {
+    const dependencies = requireObject(path, schema.dependentRequired, `${label}.dependentRequired`);
+    for (const [field, names] of Object.entries(dependencies)) {
+      validateStringArray(path, names, `${label}.dependentRequired[${JSON.stringify(field)}]`);
     }
   }
   if (typeof schema.minimum === 'number' && typeof schema.maximum === 'number' && schema.minimum > schema.maximum) {
@@ -525,7 +1063,31 @@ function validatePayloadSchemaNode(path: string, value: unknown, label: string, 
 
 function validatePayloadSchema(path: string, value: unknown): PayloadSchema {
   const schema = validatePayloadSchemaNode(path, value, 'payloadSchema', 0);
-  if (schema.type !== 'object') throw new Error(`ASM: ${path} payloadSchema.type must be "object"`);
+  const visited = new Set<PayloadSchemaNode>();
+  const inspectReferences = (node: PayloadSchemaNode): void => {
+    if (visited.has(node)) return;
+    visited.add(node);
+    if (node.$ref?.startsWith('#') && resolveLocalSchemaReference(schema, node.$ref) === undefined) {
+      throw new Error(`ASM: ${path} payloadSchema has unresolved local reference ${node.$ref}`);
+    }
+    for (const child of Object.values(node.properties ?? {})) inspectReferences(child);
+    for (const child of Object.values(node.patternProperties ?? {})) inspectReferences(child);
+    for (const child of Object.values(node.$defs ?? {})) inspectReferences(child);
+    for (const child of Object.values(node.definitions ?? {})) inspectReferences(child);
+    for (const union of [node.anyOf, node.oneOf, node.allOf, node.prefixItems]) {
+      for (const child of union ?? []) inspectReferences(child);
+    }
+    if (Array.isArray(node.items)) {
+      for (const child of node.items) inspectReferences(child);
+    } else if (node.items) inspectReferences(node.items as PayloadSchemaNode);
+    for (const child of [node.not, node.if, node.then, node.else, node.propertyNames, node.contains]) {
+      if (child) inspectReferences(child);
+    }
+    if (node.additionalProperties && typeof node.additionalProperties === 'object') {
+      inspectReferences(node.additionalProperties);
+    }
+  };
+  inspectReferences(schema);
   return schema as PayloadSchema;
 }
 
@@ -533,10 +1095,21 @@ function schemaNodesAtPath(schema: PayloadSchemaNode, dottedPath: string): Paylo
   let current: PayloadSchemaNode[] = [schema];
   for (const component of dottedPath.split('.')) {
     const next: PayloadSchemaNode[] = [];
+    const visited = new Set<PayloadSchemaNode>();
     const visit = (node: PayloadSchemaNode): void => {
+      if (visited.has(node)) return;
+      visited.add(node);
+      if (node.$ref?.startsWith('#')) {
+        const target = resolveLocalSchemaReference(schema, node.$ref);
+        if (target !== null && typeof target === 'object' && !Array.isArray(target)) {
+          visit(target as PayloadSchemaNode);
+        }
+      }
       const property = node.properties?.[component];
       if (property !== undefined) next.push(property);
       for (const branch of node.anyOf ?? []) visit(branch);
+      for (const branch of node.oneOf ?? []) visit(branch);
+      for (const branch of node.allOf ?? []) visit(branch);
     };
     for (const node of current) visit(node);
     current = [...new Set(next)];
@@ -544,14 +1117,26 @@ function schemaNodesAtPath(schema: PayloadSchemaNode, dottedPath: string): Paylo
   return current;
 }
 
-function enumClaims(schema: PayloadSchemaNode, prefix = ''): Array<{ path: string; values: readonly unknown[] }> {
-  const claims: Array<{ path: string; values: readonly unknown[] }> = [];
-  if (schema.enum !== undefined && prefix) claims.push({ path: prefix, values: schema.enum });
-  for (const branch of schema.anyOf ?? []) claims.push(...enumClaims(branch, prefix));
-  for (const [field, child] of Object.entries(schema.properties ?? {})) {
-    claims.push(...enumClaims(child, prefix ? `${prefix}.${field}` : field));
-  }
-  return claims;
+function enumValuesAtPath(schema: PayloadSchemaNode, dottedPath: string): readonly unknown[] {
+  const values: unknown[] = [];
+  const visited = new Set<PayloadSchemaNode>();
+  const visit = (node: PayloadSchemaNode): void => {
+    if (visited.has(node)) return;
+    visited.add(node);
+    if (node.enum !== undefined) values.push(...node.enum);
+    if (node.const !== undefined) values.push(node.const);
+    if (node.$ref?.startsWith('#')) {
+      const target = resolveLocalSchemaReference(schema, node.$ref);
+      if (target !== null && typeof target === 'object' && !Array.isArray(target)) {
+        visit(target as PayloadSchemaNode);
+      }
+    }
+    for (const branch of node.anyOf ?? []) visit(branch);
+    for (const branch of node.oneOf ?? []) visit(branch);
+    for (const branch of node.allOf ?? []) visit(branch);
+  };
+  for (const node of schemaNodesAtPath(schema, dottedPath)) visit(node);
+  return values.filter((value, index) => values.findIndex((candidate) => enumContains([candidate], value)) === index);
 }
 
 function validateEventVariants(
@@ -559,6 +1144,7 @@ function validateEventVariants(
   value: unknown,
   schema: PayloadSchema | undefined,
   claims: ReadonlyMap<string, SurfaceEvidenceClaimRecord>,
+  variantDiscriminants: readonly string[] = [],
 ): SurfaceEventVariant[] {
   if (!Array.isArray(value) || value.length === 0 || value.length > 256) {
     throw new Error(`ASM: ${path} variants must be an array of 1..256 entries`);
@@ -603,18 +1189,26 @@ function validateEventVariants(
       confidence: resolved.confidence,
     });
   }
-  for (const claim of enumClaims(schema ?? { type: 'object' })) {
-    for (const expected of claim.values) {
+  for (const discriminant of variantDiscriminants) {
+    if (!/^[A-Za-z0-9_-]+(?:\.[A-Za-z0-9_-]+)*$/.test(discriminant)) {
+      throw new Error(`ASM: ${path} has invalid variant discriminant "${discriminant}"`);
+    }
+    const values = schema ? enumValuesAtPath(schema, discriminant) : [];
+    if (values.length === 0) {
+      throw new Error(`ASM: ${path} variant discriminant "${discriminant}" has no enum or const schema`);
+    }
+    for (const expected of values) {
       if (expected !== null && !['string', 'number', 'boolean'].includes(typeof expected)) {
-        throw new Error(`ASM: ${path} enum at "${claim.path}" cannot be attributed by a scalar variant`);
+        throw new Error(`ASM: ${path} enum at "${discriminant}" cannot be attributed by a scalar variant`);
       }
       if (
         !variants.some(
-          (variant) => Object.hasOwn(variant.match, claim.path) && enumContains([expected], variant.match[claim.path]),
+          (variant) =>
+            Object.hasOwn(variant.match, discriminant) && enumContains([expected], variant.match[discriminant]),
         )
       ) {
         throw new Error(
-          `ASM: ${path} enum value ${JSON.stringify(expected)} at "${claim.path}" has no evidence variant`,
+          `ASM: ${path} enum value ${JSON.stringify(expected)} at "${discriminant}" has no evidence variant`,
         );
       }
     }
@@ -622,9 +1216,199 @@ function validateEventVariants(
   return variants;
 }
 
+function validatePayloadRefinements(
+  path: string,
+  value: unknown,
+  payloadSchema: PayloadSchema | undefined,
+  claims: ReadonlyMap<string, SurfaceEvidenceClaimRecord>,
+): SurfacePayloadRefinement[] {
+  if (!Array.isArray(value) || value.length === 0 || value.length > 512) {
+    throw new Error(`ASM: ${path} payloadRefinements must be an array of 1..512 entries`);
+  }
+  if (payloadSchema === undefined) {
+    throw new Error(`ASM: ${path} payloadRefinements require payloadSchema`);
+  }
+  return value.map((rawRefinement, index) => {
+    const label = `payloadRefinements[${index}]`;
+    const refinement = requireObject(path, rawRefinement, label);
+    requireFields(path, refinement, ['path', 'schema', 'evidence', 'confidence', 'fidelity']);
+    const targetPath = requireString(path, refinement, 'path');
+    if (!/^[A-Za-z0-9_-]+(?:\.[A-Za-z0-9_-]+)*$/.test(targetPath)) {
+      throw new Error(`ASM: ${path} ${label} has invalid path "${targetPath}"`);
+    }
+    if (schemaNodesAtPath(payloadSchema, targetPath).length === 0) {
+      throw new Error(`ASM: ${path} ${label} path "${targetPath}" is absent from payloadSchema`);
+    }
+    let match: SurfacePayloadRefinement['match'];
+    if (refinement.match !== undefined) {
+      const rawMatch = requireObject(path, refinement.match, `${label}.match`);
+      if (Object.keys(rawMatch).length === 0) {
+        throw new Error(`ASM: ${path} ${label}.match must not be empty`);
+      }
+      for (const [field, expected] of Object.entries(rawMatch)) {
+        if (!/^[A-Za-z0-9_-]+(?:\.[A-Za-z0-9_-]+)*$/.test(field)) {
+          throw new Error(`ASM: ${path} ${label}.match has invalid path "${field}"`);
+        }
+        if (expected !== null && !['string', 'number', 'boolean'].includes(typeof expected)) {
+          throw new Error(`ASM: ${path} ${label}.match "${field}" must be scalar or null`);
+        }
+        const nodes = schemaNodesAtPath(payloadSchema, field);
+        if (nodes.length === 0) {
+          throw new Error(`ASM: ${path} ${label}.match "${field}" is absent from payloadSchema`);
+        }
+        const alternatives = nodes.map((node) => {
+          const violations: string[] = [];
+          validateSchemaNode(node, expected, field, violations);
+          return violations;
+        });
+        if (alternatives.every((violations) => violations.length > 0)) {
+          throw new Error(`ASM: ${path} ${label}.match "${field}" violates payloadSchema: ${alternatives[0]?.[0]}`);
+        }
+      }
+      match = rawMatch as SurfacePayloadRefinement['match'];
+    }
+    const schema = validatePayloadSchema(`${path} ${label}.schema`, refinement.schema);
+    const resolved = validateClaimEvidence(path, refinement.evidence, `${label}.evidence`, claims);
+    const confidence = requireString(path, refinement, 'confidence');
+    if (confidence !== resolved.confidence) {
+      throw new Error(`ASM: ${path} ${label}.confidence must be computed as ${resolved.confidence}, got ${confidence}`);
+    }
+    const fidelity = requireString(path, refinement, 'fidelity');
+    if (!schemaFidelities.has(fidelity as SurfaceSchemaFidelity)) {
+      throw new Error(`ASM: ${path} ${label}.fidelity has unsupported value "${fidelity}"`);
+    }
+    const limitations =
+      refinement.limitations === undefined
+        ? []
+        : validateStringArray(path, refinement.limitations, `${label}.limitations`);
+    if (['structural', 'sampled', 'unknown'].includes(fidelity) && limitations.length === 0) {
+      throw new Error(`ASM: ${path} ${label} lossy fidelity requires explicit limitations`);
+    }
+    return {
+      ...(match === undefined ? {} : { match }),
+      path: targetPath,
+      schema,
+      evidence: resolved.evidence,
+      confidence: resolved.confidence,
+      fidelity: fidelity as SurfaceSchemaFidelity,
+      ...(limitations.length === 0 ? {} : { limitations }),
+    };
+  });
+}
+
 function optionalString(path: string, value: Record<string, unknown>, field: string): string | undefined {
   if (value[field] === undefined) return undefined;
   return requireString(path, value, field);
+}
+
+function validateEventOperationalMetadata(path: string, event: Record<string, unknown>): void {
+  if (event.timeoutSec !== undefined && (typeof event.timeoutSec !== 'number' || event.timeoutSec <= 0)) {
+    throw new Error(`ASM: ${path} timeoutSec must be a positive number`);
+  }
+  if (
+    event.observationMode !== undefined &&
+    (typeof event.observationMode !== 'string' ||
+      !surfaceObservationModes.has(event.observationMode as SurfaceObservationMode))
+  ) {
+    throw new Error(`ASM: ${path} observationMode must be passive|matcher-required|response-required`);
+  }
+}
+
+const eventStringMetadataFields = [
+  'nativeName',
+  'transport',
+  'trigger',
+  'firstSeen',
+  'lastVerified',
+  'fixture',
+  'notes',
+  'recordChannel',
+] as const;
+
+function validateEventStringMetadata(path: string, event: Record<string, unknown>): void {
+  for (const field of eventStringMetadataFields) {
+    if (event[field] !== undefined && (typeof event[field] !== 'string' || event[field].length === 0)) {
+      throw new Error(`ASM: ${path} field "${field}" must be a non-empty string`);
+    }
+  }
+}
+
+function validateEventTransportSchemas(
+  path: string,
+  event: Record<string, unknown>,
+  channels: readonly string[],
+): void {
+  if (
+    event.resultSchema !== undefined &&
+    !['jsonrpc-request', 'http', 'command', 'hook-callback'].includes(String(event.transport))
+  ) {
+    throw new Error(`ASM: ${path} resultSchema is only valid for a request/callback transport`);
+  }
+  if (event.recordChannel !== undefined) {
+    if (event.recordSchema === undefined) throw new Error(`ASM: ${path} recordChannel requires recordSchema`);
+    if (typeof event.recordChannel !== 'string' || !channels.includes(event.recordChannel)) {
+      throw new Error(`ASM: ${path} recordChannel must name one of the event channels`);
+    }
+  } else if (event.recordSchema !== undefined && channels.length > 1) {
+    throw new Error(`ASM: ${path} multi-channel recordSchema requires recordChannel`);
+  }
+}
+
+function claimNativeEventRoutes(
+  path: string,
+  event: Record<string, unknown>,
+  eventName: string,
+  channels: readonly string[],
+  claims: Map<string, string>,
+): void {
+  const nativeName = typeof event.nativeName === 'string' ? event.nativeName : eventName;
+  const transport = typeof event.transport === 'string' ? event.transport : '';
+  const direction = typeof event.direction === 'string' ? event.direction : '';
+  for (const channel of channels) {
+    const key = JSON.stringify([channel, transport, direction, nativeName]);
+    const existing = claims.get(key);
+    if (existing !== undefined) {
+      throw new Error(
+        `ASM: ${path} duplicates native route ${channel}:${transport || '(unspecified)'}:${direction || '(unspecified)'}:${nativeName} already modeled by "${existing}"`,
+      );
+    }
+    claims.set(key, eventName);
+  }
+}
+
+function validateSchemaFidelity(
+  path: string,
+  value: unknown,
+  schemas: { payload: boolean; result: boolean; carrier: boolean },
+): SurfaceSchemaFidelityRecord {
+  const fidelity = requireObject(path, value, 'schemaFidelity');
+  for (const kind of ['payload', 'result', 'carrier'] as const) {
+    const declared = fidelity[kind];
+    if (schemas[kind] && declared === undefined) {
+      throw new Error(`ASM: ${path} schemaFidelity is missing "${kind}"`);
+    }
+    if (!schemas[kind] && declared !== undefined) {
+      throw new Error(`ASM: ${path} schemaFidelity.${kind} has no corresponding schema`);
+    }
+    if (
+      declared !== undefined &&
+      (typeof declared !== 'string' || !schemaFidelities.has(declared as SurfaceSchemaFidelity))
+    ) {
+      throw new Error(`ASM: ${path} schemaFidelity.${kind} has unsupported value ${String(declared)}`);
+    }
+  }
+  const limitations =
+    fidelity.limitations === undefined
+      ? []
+      : validateStringArray(path, fidelity.limitations, 'schemaFidelity.limitations');
+  const lossy = ['payload', 'result', 'carrier'].some((kind) => {
+    const level = fidelity[kind];
+    return level === 'structural' || level === 'sampled' || level === 'unknown';
+  });
+  if (lossy && limitations.length === 0) {
+    throw new Error(`ASM: ${path} lossy schemaFidelity requires explicit limitations`);
+  }
+  return fidelity as unknown as SurfaceSchemaFidelityRecord;
 }
 
 const confidenceRank: Record<SurfaceConfidence, number> = {
@@ -656,7 +1440,7 @@ function validateEvidenceIndex(
     'claims',
   ]);
   if (raw.evidenceVersion !== 2) {
-    throw new Error(`ASM: ${path} must use evidenceVersion 2 for an ASM v2 model`);
+    throw new Error(`ASM: ${path} must use evidenceVersion 2 for an ASM v2+ model`);
   }
   if (raw.vendor !== vendor || raw.vendorVersion !== vendorVersion) {
     throw new Error(`ASM: ${path} evidence identity does not match manifest ${vendor}@${vendorVersion}`);
@@ -780,7 +1564,7 @@ function validateBehavior(
   path: string,
   value: unknown,
   knownEvents: ReadonlySet<string>,
-  asmVersion: 1 | 2,
+  asmVersion: 1 | 2 | 3,
   evidenceClaims: ReadonlyMap<string, SurfaceEvidenceClaimRecord>,
 ): SurfaceBehavior {
   const behavior = requireObject(path, value);
@@ -823,7 +1607,7 @@ function validateBehavior(
     if (!surfaceConfidences.has(confidence as SurfaceConfidence)) {
       throw new Error(`ASM: ${path} behavior node "${id}" has unsupported confidence "${confidence}"`);
     }
-    if (asmVersion === 2) {
+    if (asmVersion >= 2) {
       if (node.evidence === undefined) throw new Error(`ASM: ${path} behavior node "${id}" is missing evidence`);
       const resolved = validateClaimEvidence(path, node.evidence, `behavior node "${id}" evidence`, evidenceClaims);
       if (confidence !== resolved.confidence) {
@@ -873,7 +1657,7 @@ function validateBehavior(
     if (!surfaceConfidences.has(confidence as SurfaceConfidence)) {
       throw new Error(`ASM: ${path} behavior relation ${from} -> ${to} has unsupported confidence "${confidence}"`);
     }
-    if (asmVersion === 2) {
+    if (asmVersion >= 2) {
       if (relation.evidence === undefined) {
         throw new Error(`ASM: ${path} behavior relation ${from} -> ${to} is missing evidence`);
       }
@@ -928,7 +1712,7 @@ export function loadModelSources(dir: string): SurfaceModel {
   const manifestPath = join(dir, 'manifest.json');
   const manifest = requireObject(manifestPath, readJsonFile(manifestPath));
   requireFields(manifestPath, manifest, ['asmVersion', 'vendor', 'vendorVersion', 'generatedAt']);
-  if (manifest.asmVersion !== 1 && manifest.asmVersion !== 2) {
+  if (manifest.asmVersion !== 1 && manifest.asmVersion !== 2 && manifest.asmVersion !== 3) {
     throw new Error(`ASM: ${manifestPath} has unsupported asmVersion ${String(manifest.asmVersion)}`);
   }
   const asmVersion = manifest.asmVersion;
@@ -943,9 +1727,9 @@ export function loadModelSources(dir: string): SurfaceModel {
   }
   let evidenceIndex: SurfaceEvidenceIndex | undefined;
   let evidenceClaims = new Map<string, SurfaceEvidenceClaimRecord>();
-  if (asmVersion === 2) {
+  if (asmVersion >= 2) {
     if (typeof manifest.evidence !== 'string') {
-      throw new Error(`ASM: ${manifestPath} ASM v2 requires an evidence index`);
+      throw new Error(`ASM: ${manifestPath} ASM v2+ requires an evidence index`);
     }
     const loaded = loadEvidenceIndex(join(dir, manifest.evidence), vendor, vendorVersion);
     evidenceIndex = loaded.index;
@@ -990,6 +1774,7 @@ export function loadModelSources(dir: string): SurfaceModel {
   const eventsDir = join(dir, 'events');
   const events: SurfaceEventFile[] = [];
   const eventNames = new Set<string>();
+  const nativeEventRoutes = new Map<string, string>();
   for (const { path, name } of eventDocumentFiles(eventsDir)) {
     const event = requireObject(path, readJsonFile(path));
     requireFields(path, event, ['surface', 'surfaceVersion', 'event', 'channel']);
@@ -1016,7 +1801,7 @@ export function loadModelSources(dir: string): SurfaceModel {
         throw new Error(`ASM: ${path} references unknown channel "${declaredChannel}"`);
       }
     }
-    if (asmVersion === 2) {
+    if (asmVersion >= 2) {
       const direction = requireString(path, event, 'direction');
       if (!surfaceDirections.has(direction as SurfaceDirection)) {
         throw new Error(`ASM: ${path} direction must be client-to-agent|agent-to-client|agent-local`);
@@ -1031,26 +1816,25 @@ export function loadModelSources(dir: string): SurfaceModel {
       }
       confidence = declaredConfidence as SurfaceConfidence;
     }
-    for (const field of ['transport', 'trigger', 'firstSeen', 'lastVerified', 'fixture', 'notes'] as const) {
-      if (event[field] !== undefined && (typeof event[field] !== 'string' || event[field].length === 0)) {
-        throw new Error(`ASM: ${path} field "${field}" must be a non-empty string`);
-      }
-    }
+    validateEventStringMetadata(path, event);
     if (event.payloadSchema !== undefined) event.payloadSchema = validatePayloadSchema(path, event.payloadSchema);
     if (event.resultSchema !== undefined) event.resultSchema = validatePayloadSchema(path, event.resultSchema);
     if (event.recordSchema !== undefined) event.recordSchema = validatePayloadSchema(path, event.recordSchema);
-    if (asmVersion === 2) {
-      if (event.resultSchema !== undefined && !['jsonrpc-request', 'http'].includes(String(event.transport))) {
-        throw new Error(`ASM: ${path} resultSchema is only valid for a request transport`);
-      }
-      if (event.recordChannel !== undefined) {
-        if (event.recordSchema === undefined) throw new Error(`ASM: ${path} recordChannel requires recordSchema`);
-        if (typeof event.recordChannel !== 'string' || !channels.includes(event.recordChannel)) {
-          throw new Error(`ASM: ${path} recordChannel must name one of the event channels`);
+    if (asmVersion >= 2) {
+      const hasSchemas = {
+        payload: event.payloadSchema !== undefined,
+        result: event.resultSchema !== undefined,
+        carrier: event.recordSchema !== undefined,
+      };
+      if (asmVersion >= 3 && Object.values(hasSchemas).some(Boolean)) {
+        if (event.schemaFidelity === undefined) {
+          throw new Error(`ASM: ${path} ASM v3 schemas require schemaFidelity`);
         }
-      } else if (event.recordSchema !== undefined && channels.length > 1) {
-        throw new Error(`ASM: ${path} multi-channel recordSchema requires recordChannel`);
+        event.schemaFidelity = validateSchemaFidelity(path, event.schemaFidelity, hasSchemas);
+      } else if (event.schemaFidelity !== undefined) {
+        event.schemaFidelity = validateSchemaFidelity(path, event.schemaFidelity, hasSchemas);
       }
+      validateEventTransportSchemas(path, event, channels);
       const requiredEvidence: (keyof SurfaceClaimEvidence)[] = ['existence', 'shape'];
       if (event.resultSchema !== undefined) requiredEvidence.push('result');
       if (event.recordSchema !== undefined) requiredEvidence.push('carrier');
@@ -1071,9 +1855,15 @@ export function loadModelSources(dir: string): SurfaceModel {
       event.evidence = resolvedEvidence.evidence;
       event.confidence = resolvedEvidence.confidence;
       confidence = resolvedEvidence.confidence;
-      const enums = enumClaims((event.payloadSchema as PayloadSchema | undefined) ?? { type: 'object' });
-      if (enums.length > 0 && event.variants === undefined) {
-        throw new Error(`ASM: ${path} payload enums require per-variant evidence`);
+      const variantDiscriminants =
+        event.variantDiscriminants === undefined
+          ? []
+          : validateStringArray(path, event.variantDiscriminants, 'variantDiscriminants');
+      if (new Set(variantDiscriminants).size !== variantDiscriminants.length) {
+        throw new Error(`ASM: ${path} variantDiscriminants contains duplicates`);
+      }
+      if (variantDiscriminants.length > 0 && event.variants === undefined) {
+        throw new Error(`ASM: ${path} variantDiscriminants require variants`);
       }
       if (event.variants !== undefined) {
         event.variants = validateEventVariants(
@@ -1081,15 +1871,21 @@ export function loadModelSources(dir: string): SurfaceModel {
           event.variants,
           event.payloadSchema as PayloadSchema | undefined,
           evidenceClaims,
+          variantDiscriminants,
         );
       }
+      if (event.payloadRefinements !== undefined) {
+        event.payloadRefinements = validatePayloadRefinements(
+          path,
+          event.payloadRefinements,
+          event.payloadSchema as PayloadSchema | undefined,
+          evidenceClaims,
+        );
+      }
+      if (variantDiscriminants.length > 0) event.variantDiscriminants = variantDiscriminants;
     }
-    if (event.timeoutSec !== undefined && (typeof event.timeoutSec !== 'number' || event.timeoutSec <= 0)) {
-      throw new Error(`ASM: ${path} timeoutSec must be a positive number`);
-    }
-    if (event.matcherRequired !== undefined && typeof event.matcherRequired !== 'boolean') {
-      throw new Error(`ASM: ${path} matcherRequired must be a boolean`);
-    }
+    validateEventOperationalMetadata(path, event);
+    claimNativeEventRoutes(path, event, eventName, channels, nativeEventRoutes);
     if (
       asmVersion === 1 &&
       confidence !== 'unverified' &&
@@ -1164,7 +1960,7 @@ export function loadGroundTruth(path: string): SurfaceGroundTruth {
 
   const manifest = requireObject(path, document.manifest, 'field "manifest"');
   requireFields(path, manifest, ['asmVersion', 'vendor', 'vendorVersion', 'generatedAt']);
-  if (manifest.asmVersion !== 1 && manifest.asmVersion !== 2) {
+  if (manifest.asmVersion !== 1 && manifest.asmVersion !== 2 && manifest.asmVersion !== 3) {
     throw new Error(`ASM: ${path} has unsupported asmVersion ${String(manifest.asmVersion)}`);
   }
   const asmVersion = manifest.asmVersion;
@@ -1186,8 +1982,8 @@ export function loadGroundTruth(path: string): SurfaceGroundTruth {
   let evidenceIndex: SurfaceEvidenceIndex | undefined;
   let legacyEvidenceIndex: SurfaceLegacyEvidenceIndex | undefined;
   let evidenceClaims = new Map<string, SurfaceEvidenceClaimRecord>();
-  if (asmVersion === 2) {
-    if (document.evidenceIndex === undefined) throw new Error(`ASM: ${path} ASM v2 requires an evidence index`);
+  if (asmVersion >= 2) {
+    if (document.evidenceIndex === undefined) throw new Error(`ASM: ${path} ASM v2+ requires an evidence index`);
     const loaded = validateEvidenceIndex(path, document.evidenceIndex, vendor, vendorVersion);
     evidenceIndex = loaded.index;
     evidenceClaims = loaded.claims;
@@ -1200,6 +1996,7 @@ export function loadGroundTruth(path: string): SurfaceGroundTruth {
   }
   const events: SurfaceEventFile[] = [];
   const eventNames = new Set<string>();
+  const nativeEventRoutes = new Map<string, string>();
   for (const [index, rawEvent] of document.events.entries()) {
     const label = `${path}#events[${index}]`;
     const event = requireObject(label, rawEvent);
@@ -1226,10 +2023,26 @@ export function loadGroundTruth(path: string): SurfaceGroundTruth {
     if (!surfaceConfidences.has(confidence as SurfaceConfidence)) {
       throw new Error(`ASM: ${label} has unsupported confidence "${confidence}"`);
     }
+    validateEventStringMetadata(label, event);
+    validateEventOperationalMetadata(label, event);
     if (event.payloadSchema !== undefined) event.payloadSchema = validatePayloadSchema(label, event.payloadSchema);
     if (event.resultSchema !== undefined) event.resultSchema = validatePayloadSchema(label, event.resultSchema);
     if (event.recordSchema !== undefined) event.recordSchema = validatePayloadSchema(label, event.recordSchema);
-    if (asmVersion === 2) {
+    if (asmVersion >= 2) {
+      const hasSchemas = {
+        payload: event.payloadSchema !== undefined,
+        result: event.resultSchema !== undefined,
+        carrier: event.recordSchema !== undefined,
+      };
+      if (asmVersion >= 3 && Object.values(hasSchemas).some(Boolean)) {
+        if (event.schemaFidelity === undefined) {
+          throw new Error(`ASM: ${label} ASM v3 schemas require schemaFidelity`);
+        }
+        event.schemaFidelity = validateSchemaFidelity(label, event.schemaFidelity, hasSchemas);
+      } else if (event.schemaFidelity !== undefined) {
+        event.schemaFidelity = validateSchemaFidelity(label, event.schemaFidelity, hasSchemas);
+      }
+      validateEventTransportSchemas(label, event, channels);
       const direction = requireString(label, event, 'direction');
       if (!surfaceDirections.has(direction as SurfaceDirection)) {
         throw new Error(`ASM: ${label} direction must be client-to-agent|agent-to-client|agent-local`);
@@ -1242,14 +2055,42 @@ export function loadGroundTruth(path: string): SurfaceGroundTruth {
         throw new Error(`ASM: ${label} confidence must be computed as ${resolved.confidence}, got ${confidence}`);
       }
       event.evidence = resolved.evidence;
+      const variantDiscriminants =
+        event.variantDiscriminants === undefined
+          ? []
+          : validateStringArray(label, event.variantDiscriminants, 'variantDiscriminants');
+      if (new Set(variantDiscriminants).size !== variantDiscriminants.length) {
+        throw new Error(`ASM: ${label} variantDiscriminants contains duplicates`);
+      }
+      if (variantDiscriminants.length > 0 && event.variants === undefined) {
+        throw new Error(`ASM: ${label} variantDiscriminants require variants`);
+      }
       if (event.variants !== undefined) {
         event.variants = validateEventVariants(
           label,
           event.variants,
           event.payloadSchema as PayloadSchema | undefined,
           evidenceClaims,
+          variantDiscriminants,
         );
       }
+      if (event.payloadRefinements !== undefined) {
+        event.payloadRefinements = validatePayloadRefinements(
+          label,
+          event.payloadRefinements,
+          event.payloadSchema as PayloadSchema | undefined,
+          evidenceClaims,
+        );
+      }
+      if (variantDiscriminants.length > 0) event.variantDiscriminants = variantDiscriminants;
+    }
+    claimNativeEventRoutes(label, event, eventName, channels, nativeEventRoutes);
+    if (
+      asmVersion === 1 &&
+      confidence !== 'unverified' &&
+      (!event.fixture || !event.firstSeen || !event.lastVerified)
+    ) {
+      throw new Error(`ASM: ${label} verified event must cite fixture, firstSeen, and lastVerified`);
     }
     event.channels = channels;
     events.push(event as unknown as SurfaceEventFile);
@@ -1300,7 +2141,9 @@ function collectJsonlFiles(dir: string): string[] {
  * subdirectories like headless/ + interactive/ all count). The event name is
  * each line's `hook_event_name`, falling back to the file basename.
  *
- * Pass the model to validate every parsed payload while it is in memory. The
+ * Pass the model to validate every parsed, privacy-sanitized payload while it
+ * is in memory. Redaction tokens retain their JSON type but cannot prove a
+ * sensitive enum/pattern value; all other schema assertions remain active. The
  * resulting report retains only source locations and violation descriptions,
  * never captured values. Audits should always pass the model.
  */
@@ -1371,7 +2214,7 @@ export function buildReport(capturesDir: string, model?: SurfaceModel): SurfaceR
       }
       const schema = modeled.get(name)?.payloadSchema;
       if (schema) {
-        for (const violation of validatePayload(schema, record)) {
+        for (const violation of validateSanitizedPayload(schema, record)) {
           issues.push({
             kind: 'schema-mismatch',
             file: relative(capturesDir, file),

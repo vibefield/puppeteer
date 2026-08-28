@@ -6,30 +6,69 @@
   "transport": "jsonrpc-request",
   "direction": "client-to-agent",
   "payloadSchema": {
-    "type": "object",
     "properties": {
-      "marketplaceName": {}
-    }
+      "marketplaceName": {
+        "type": [
+          "string",
+          "null"
+        ]
+      }
+    },
+    "type": "object",
+    "$schema": "http://json-schema.org/draft-07/schema#"
   },
   "recordSchema": {
-    "type": "object",
     "properties": {
+      "id": {
+        "$ref": "#/$defs/RequestId"
+      },
       "method": {
-        "type": "string",
         "enum": [
           "marketplace/upgrade"
-        ]
+        ],
+        "title": "Marketplace/upgradeRequestMethod",
+        "type": "string"
       },
       "params": {
-        "type": "object"
-      },
-      "id": {}
+        "$ref": "#/$defs/MarketplaceUpgradeParams"
+      }
     },
     "required": [
+      "id",
       "method",
-      "params",
-      "id"
-    ]
+      "params"
+    ],
+    "title": "Marketplace/upgradeRequest",
+    "type": "object",
+    "$defs": {
+      "RequestId": {
+        "anyOf": [
+          {
+            "type": "string"
+          },
+          {
+            "format": "int64",
+            "type": "integer"
+          }
+        ]
+      },
+      "MarketplaceUpgradeParams": {
+        "properties": {
+          "marketplaceName": {
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        },
+        "type": "object"
+      }
+    },
+    "$schema": "http://json-schema.org/draft-07/schema#"
+  },
+  "schemaFidelity": {
+    "payload": "exact",
+    "carrier": "exact"
   },
   "evidence": {
     "existence": [

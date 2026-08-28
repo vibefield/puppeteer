@@ -7,30 +7,72 @@
   "direction": "client-to-agent",
   "trigger": "Test-only method used to validate experimental gating.",
   "payloadSchema": {
-    "type": "object",
     "properties": {
-      "value": {}
-    }
+      "value": {
+        "description": "Test-only payload field.",
+        "type": [
+          "string",
+          "null"
+        ]
+      }
+    },
+    "type": "object",
+    "$schema": "http://json-schema.org/draft-07/schema#"
   },
   "recordSchema": {
-    "type": "object",
+    "description": "Test-only method used to validate experimental gating.",
     "properties": {
+      "id": {
+        "$ref": "#/$defs/RequestId"
+      },
       "method": {
-        "type": "string",
         "enum": [
           "mock/experimentalMethod"
-        ]
+        ],
+        "title": "Mock/experimentalMethodRequestMethod",
+        "type": "string"
       },
       "params": {
-        "type": "object"
-      },
-      "id": {}
+        "$ref": "#/$defs/MockExperimentalMethodParams"
+      }
     },
     "required": [
+      "id",
       "method",
-      "params",
-      "id"
-    ]
+      "params"
+    ],
+    "title": "Mock/experimentalMethodRequest",
+    "type": "object",
+    "$defs": {
+      "RequestId": {
+        "anyOf": [
+          {
+            "type": "string"
+          },
+          {
+            "format": "int64",
+            "type": "integer"
+          }
+        ]
+      },
+      "MockExperimentalMethodParams": {
+        "properties": {
+          "value": {
+            "description": "Test-only payload field.",
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        },
+        "type": "object"
+      }
+    },
+    "$schema": "http://json-schema.org/draft-07/schema#"
+  },
+  "schemaFidelity": {
+    "payload": "exact",
+    "carrier": "exact"
   },
   "evidence": {
     "existence": [

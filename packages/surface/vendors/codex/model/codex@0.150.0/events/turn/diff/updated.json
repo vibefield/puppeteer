@@ -6,7 +6,7 @@
   "transport": "jsonrpc-notification",
   "direction": "agent-to-client",
   "payloadSchema": {
-    "type": "object",
+    "description": "Notification that the turn-level unified diff has changed. Contains the latest aggregated diff across all file changes in the turn.",
     "properties": {
       "diff": {
         "type": "string"
@@ -22,30 +22,56 @@
       "diff",
       "threadId",
       "turnId"
-    ]
+    ],
+    "type": "object",
+    "$schema": "http://json-schema.org/draft-07/schema#"
   },
   "recordSchema": {
-    "type": "object",
     "properties": {
       "method": {
-        "type": "string",
         "enum": [
           "turn/diff/updated"
-        ]
+        ],
+        "title": "Turn/diff/updatedNotificationMethod",
+        "type": "string"
       },
       "params": {
-        "type": "object"
-      },
-      "emittedAtMs": {
-        "type": "number",
-        "minimum": 1000000000000
+        "$ref": "#/$defs/TurnDiffUpdatedNotification"
       }
     },
     "required": [
       "method",
-      "params",
-      "emittedAtMs"
-    ]
+      "params"
+    ],
+    "title": "Turn/diff/updatedNotification",
+    "type": "object",
+    "$defs": {
+      "TurnDiffUpdatedNotification": {
+        "description": "Notification that the turn-level unified diff has changed. Contains the latest aggregated diff across all file changes in the turn.",
+        "properties": {
+          "diff": {
+            "type": "string"
+          },
+          "threadId": {
+            "type": "string"
+          },
+          "turnId": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "diff",
+          "threadId",
+          "turnId"
+        ],
+        "type": "object"
+      }
+    },
+    "$schema": "http://json-schema.org/draft-07/schema#"
+  },
+  "schemaFidelity": {
+    "payload": "exact",
+    "carrier": "exact"
   },
   "evidence": {
     "existence": [
@@ -55,7 +81,7 @@
       "codex-generated-schema"
     ],
     "carrier": [
-      "codex-runtime-headless"
+      "codex-generated-schema"
     ]
   },
   "confidence": "unverified"

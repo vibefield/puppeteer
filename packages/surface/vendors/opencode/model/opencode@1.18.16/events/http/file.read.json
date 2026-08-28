@@ -10,16 +10,11 @@
   "direction": "client-to-agent",
   "trigger": "Read file — Read the content of a specified file.",
   "payloadSchema": {
-    "type": "object",
     "properties": {
       "method": {
         "type": "string"
       },
-      "route": {
-        "type": "string"
-      },
       "query": {
-        "type": "object",
         "properties": {
           "directory": {
             "type": "string"
@@ -33,37 +28,32 @@
         },
         "required": [
           "path"
-        ]
+        ],
+        "type": "object"
+      },
+      "route": {
+        "type": "string"
       }
     },
     "required": [
       "method",
       "route",
       "query"
-    ]
+    ],
+    "type": "object"
   },
   "resultSchema": {
-    "type": "object",
     "properties": {
+      "body": {
+        "$ref": "#/$defs/FileContent"
+      },
       "method": {
-        "type": "string",
         "enum": [
           "GET"
-        ]
-      },
-      "route": {
-        "type": "string",
-        "enum": [
-          "/file/content"
-        ]
-      },
-      "status": {
-        "type": "integer",
-        "minimum": 200,
-        "maximum": 299
+        ],
+        "type": "string"
       },
       "query": {
-        "type": "object",
         "properties": {
           "directory": {
             "type": "string"
@@ -77,10 +67,32 @@
         },
         "required": [
           "path"
-        ]
+        ],
+        "type": "object"
       },
-      "body": {
-        "type": "object",
+      "route": {
+        "enum": [
+          "/file/content"
+        ],
+        "type": "string"
+      },
+      "status": {
+        "maximum": 299,
+        "minimum": 200,
+        "type": "integer"
+      }
+    },
+    "required": [
+      "method",
+      "route",
+      "status",
+      "query",
+      "body"
+    ],
+    "type": "object",
+    "$defs": {
+      "FileContent": {
+        "additionalProperties": false,
         "properties": {
           "content": {
             "type": "string"
@@ -89,50 +101,54 @@
             "type": "string"
           },
           "encoding": {
+            "enum": [
+              "base64"
+            ],
             "type": "string"
           },
           "mimeType": {
             "type": "string"
           },
           "patch": {
-            "type": "object",
+            "additionalProperties": false,
             "properties": {
               "hunks": {
-                "type": "array",
                 "items": {
-                  "type": "object",
+                  "additionalProperties": false,
                   "properties": {
                     "lines": {
-                      "type": "array",
                       "items": {
                         "type": "string"
-                      }
+                      },
+                      "type": "array"
                     },
                     "newLines": {
-                      "type": "integer",
-                      "minimum": 0
+                      "minimum": 0,
+                      "type": "integer"
                     },
                     "newStart": {
-                      "type": "integer",
-                      "minimum": 0
+                      "minimum": 0,
+                      "type": "integer"
                     },
                     "oldLines": {
-                      "type": "integer",
-                      "minimum": 0
+                      "minimum": 0,
+                      "type": "integer"
                     },
                     "oldStart": {
-                      "type": "integer",
-                      "minimum": 0
+                      "minimum": 0,
+                      "type": "integer"
                     }
                   },
                   "required": [
-                    "lines",
-                    "newLines",
-                    "newStart",
+                    "oldStart",
                     "oldLines",
-                    "oldStart"
-                  ]
-                }
+                    "newStart",
+                    "newLines",
+                    "lines"
+                  ],
+                  "type": "object"
+                },
+                "type": "array"
               },
               "index": {
                 "type": "string"
@@ -151,55 +167,45 @@
               }
             },
             "required": [
-              "hunks",
+              "oldFileName",
               "newFileName",
-              "oldFileName"
-            ]
+              "hunks"
+            ],
+            "type": "object"
           },
           "type": {
+            "enum": [
+              "text",
+              "binary"
+            ],
             "type": "string"
           }
         },
         "required": [
-          "content",
-          "type"
-        ]
+          "type",
+          "content"
+        ],
+        "type": "object"
       }
-    },
-    "required": [
-      "method",
-      "route",
-      "status",
-      "query",
-      "body"
-    ]
+    }
   },
   "recordSchema": {
-    "type": "object",
     "properties": {
       "direction": {
-        "type": "string",
         "enum": [
           "client-to-agent"
-        ]
+        ],
+        "type": "string"
       },
       "request": {
-        "type": "object",
         "properties": {
           "method": {
-            "type": "string",
             "enum": [
               "GET"
-            ]
-          },
-          "route": {
-            "type": "string",
-            "enum": [
-              "/file/content"
-            ]
+            ],
+            "type": "string"
           },
           "query": {
-            "type": "object",
             "properties": {
               "directory": {
                 "type": "string"
@@ -213,20 +219,34 @@
             },
             "required": [
               "path"
-            ]
+            ],
+            "type": "object"
+          },
+          "route": {
+            "enum": [
+              "/file/content"
+            ],
+            "type": "string"
           }
         },
         "required": [
           "method",
           "route",
           "query"
-        ]
+        ],
+        "type": "object"
       }
     },
     "required": [
       "direction",
       "request"
-    ]
+    ],
+    "type": "object"
+  },
+  "schemaFidelity": {
+    "payload": "semantic",
+    "result": "semantic",
+    "carrier": "semantic"
   },
   "evidence": {
     "existence": [

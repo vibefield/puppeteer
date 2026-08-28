@@ -5,69 +5,79 @@
   "firstSeen": "0.20.0",
   "lastVerified": "0.20.0",
   "channel": "plugin-hook",
-  "channels": ["plugin-hook", "outbound-webhook"],
+  "channels": ["plugin-hook", "shell-hook", "outbound-webhook"],
   "transport": "hook-callback",
   "direction": "agent-local",
   "payloadSchema": {
     "type": "object",
     "properties": {
-      "hook_event_name": {
+      "api_call_count": {
+        "type": "integer"
+      },
+      "api_mode": {
         "type": "string"
       },
+      "api_request_id": {
+        "type": "string"
+      },
+      "approx_input_tokens": {
+        "type": "integer"
+      },
+      "base_url": {
+        "type": "string"
+      },
+      "conversation_history": {},
+      "max_tokens": {
+        "type": "integer"
+      },
+      "message_count": {
+        "type": "integer"
+      },
+      "middleware_trace": {},
+      "model": {
+        "type": "string"
+      },
+      "platform": {},
+      "provider": {
+        "type": "string"
+      },
+      "request": {},
+      "request_char_count": {
+        "type": "integer"
+      },
+      "request_messages": {},
+      "retry_count": {
+        "type": "integer"
+      },
       "session_id": {
-        "anyOf": [
-          {
-            "type": "string"
-          },
-          {
-            "type": "null"
-          }
-        ]
+        "type": "string"
       },
-      "tool_name": {
-        "anyOf": [
-          {
-            "type": "string"
-          },
-          {
-            "type": "null"
-          }
-        ]
+      "started_at": {},
+      "task_id": {
+        "type": "string"
       },
-      "platform": {
-        "anyOf": [
-          {
-            "type": "string"
-          },
-          {
-            "type": "null"
-          }
-        ]
+      "telemetry_schema_version": {},
+      "tool_count": {
+        "type": "integer"
       },
-      "choice": {
-        "anyOf": [
-          {
-            "type": "string"
-          },
-          {
-            "type": "null"
-          }
-        ]
+      "turn_id": {
+        "type": "string"
       },
-      "keys": {
-        "type": "array",
-        "items": {
-          "type": "string"
-        }
-      }
-    },
-    "required": ["hook_event_name", "keys"]
+      "user_message": {}
+    }
   },
   "evidence": {
     "existence": ["hermes-runtime-headless"],
-    "shape": ["hermes-runtime-headless"]
+    "shape": ["hermes-exact-source"]
   },
-  "confidence": "verified-headless",
+  "confidence": "unverified",
   "fixture": "captures/hermes@0.20.0/basic-turn/plugin-hooks.jsonl",
-  "notes": "Outbound webhook is a notify-only copy of the same hook name."
+  "notes": "Outbound webhook is a notify-only copy of the same hook name.",
+  "schemaFidelity": {
+    "payload": "structural",
+    "limitations": [
+      "The primary payload is the in-process plugin callback kwargs object. Shell-hook and outbound-webhook envelopes are separately retained in the source reference.",
+      "Observed callback key inventories prove encountered top-level fields only; arbitrary plugin return values and event-specific nested values remain unconstrained."
+    ]
+  }
 }

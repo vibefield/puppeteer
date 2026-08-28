@@ -22,6 +22,8 @@ export const opencodeRules = extendRules(
     // unknown strings in these containers as sensitive by default while the
     // shared structural-enum allowlist preserves fields such as type/status.
     sensitiveContainer: /^(?:input|metadata|questions)$/,
+    structuralEnumValue:
+      /^(?:ProviderAuthError|UnknownError|MessageOutputLengthError|MessageAbortedError|StructuredOutputError|ContextOverflowError|ContentFilterError|APIError)$/,
     unsafeTextPatterns: [
       // Relative temp paths can omit the leading slash (session.path).
       /(?:^|["'])private\/var\/folders\/[^s"']+/,

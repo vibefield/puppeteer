@@ -1,6 +1,6 @@
 # OpenCode Surface Findings
 
-> Candidate status: **ASM v2 modeled; adapter/Imposter/runtime candidate
+> Candidate status: **ASM v3 modeled; adapter/Imposter/runtime candidate
 > complete; pinned darwin-arm64 survey complete**, pinned to OpenCode
 > **1.18.16**.
 > These findings are evidence for an adapter candidate; they do not declare
@@ -202,6 +202,26 @@ The edit metadata retained structural `filediff` fields (`file`, `patch`,
 `additions`, `deletions`) while committed fixtures redact the path, patch, tool
 input/output, and file content. The write, edit, and delete scenarios used
 clean, Git-backed temporary workspaces.
+
+Exact-release source inspection closes two semantic gaps that the redacted
+captures and generated OpenAPI cannot answer. First, `edit`, `write`, and
+`apply_patch` build their displayed patches with
+`trimDiff(createTwoFilesPatch(...))`. `trimDiff` removes common indentation
+from hunk content lines. Those strings are therefore complete native
+**presentation previews**, but they are not guaranteed to be directly
+applicable unified diffs or byte-exact reconstructions. An edit also recomputes
+the preview after formatter changes, so completed metadata can legitimately
+differ from the original replacement intent.
+
+Second, the generic tool wrapper adds `metadata.truncated` only after applying
+output truncation to the model-facing `output` string. That boolean does not
+describe `filediff.patch`, `files[].patch`, or `metadata.diff`. Treating it as
+patch completeness silently invents a relationship the native source does not
+contain. The digest-pinned contract in
+`references/opencode@1.18.16/source/workspace-tools.json` now records the exact
+tool inputs, completed metadata fields, preview production, truncation meaning,
+and watcher variants; the runtime file scenarios independently establish that
+those source paths occur in 1.18.16.
 
 Every mutating assistant step carried a pre-mutation snapshot hash on
 `step-start`, a different post-mutation hash on `step-finish`, and a subsequent
@@ -578,7 +598,7 @@ from the next archived-inclusive global list. A fork is therefore a new
 top-level session, while archive is visibility metadata and delete is a
 terminal removal event.
 
-## 14. ASM v2 and mapping implications
+## 14. ASM v3 and mapping implications
 
 The generated ASM at `model/opencode@1.18.16/` contains 278 native documents:
 188 namespaced OpenAPI operations (`http/<operationId>`) and 90 exact SSE event

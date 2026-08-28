@@ -7,9 +7,16 @@
   "direction": "client-to-agent",
   "trigger": "Adds or replaces a remote environment by id for later selection.",
   "payloadSchema": {
-    "type": "object",
     "properties": {
-      "connectTimeoutMs": {},
+      "connectTimeoutMs": {
+        "description": "Optional WebSocket connection timeout. The server default applies when omitted.",
+        "format": "uint64",
+        "minimum": 0,
+        "type": [
+          "integer",
+          "null"
+        ]
+      },
       "environmentId": {
         "type": "string"
       },
@@ -20,27 +27,76 @@
     "required": [
       "environmentId",
       "execServerUrl"
-    ]
+    ],
+    "type": "object",
+    "$schema": "http://json-schema.org/draft-07/schema#"
   },
   "recordSchema": {
-    "type": "object",
+    "description": "Adds or replaces a remote environment by id for later selection.",
     "properties": {
+      "id": {
+        "$ref": "#/$defs/RequestId"
+      },
       "method": {
-        "type": "string",
         "enum": [
           "environment/add"
-        ]
+        ],
+        "title": "Environment/addRequestMethod",
+        "type": "string"
       },
       "params": {
-        "type": "object"
-      },
-      "id": {}
+        "$ref": "#/$defs/EnvironmentAddParams"
+      }
     },
     "required": [
+      "id",
       "method",
-      "params",
-      "id"
-    ]
+      "params"
+    ],
+    "title": "Environment/addRequest",
+    "type": "object",
+    "$defs": {
+      "RequestId": {
+        "anyOf": [
+          {
+            "type": "string"
+          },
+          {
+            "format": "int64",
+            "type": "integer"
+          }
+        ]
+      },
+      "EnvironmentAddParams": {
+        "properties": {
+          "connectTimeoutMs": {
+            "description": "Optional WebSocket connection timeout. The server default applies when omitted.",
+            "format": "uint64",
+            "minimum": 0,
+            "type": [
+              "integer",
+              "null"
+            ]
+          },
+          "environmentId": {
+            "type": "string"
+          },
+          "execServerUrl": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "environmentId",
+          "execServerUrl"
+        ],
+        "type": "object"
+      }
+    },
+    "$schema": "http://json-schema.org/draft-07/schema#"
+  },
+  "schemaFidelity": {
+    "payload": "exact",
+    "carrier": "exact"
   },
   "evidence": {
     "existence": [

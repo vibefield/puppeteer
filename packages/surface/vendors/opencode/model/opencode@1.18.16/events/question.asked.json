@@ -10,180 +10,237 @@
   "direction": "agent-to-client",
   "trigger": "Published on the native GET /event stream.",
   "payloadSchema": {
-    "type": "object",
+    "additionalProperties": false,
     "properties": {
       "id": {
+        "pattern": "^que",
         "type": "string"
       },
       "questions": {
-        "type": "array",
+        "description": "Questions to ask",
         "items": {
-          "type": "object",
-          "properties": {
-            "custom": {
-              "type": "boolean"
-            },
-            "header": {
-              "type": "string"
-            },
-            "multiple": {
-              "type": "boolean"
-            },
-            "options": {
-              "type": "array",
-              "items": {
-                "type": "object",
-                "properties": {
-                  "description": {
-                    "type": "string"
-                  },
-                  "label": {
-                    "type": "string"
-                  }
-                },
-                "required": [
-                  "description",
-                  "label"
-                ]
-              }
-            },
-            "question": {
-              "type": "string"
-            }
-          },
-          "required": [
-            "header",
-            "options",
-            "question"
-          ]
-        }
+          "$ref": "#/$defs/QuestionInfo"
+        },
+        "type": "array"
       },
       "sessionID": {
+        "pattern": "^ses",
         "type": "string"
       },
       "tool": {
-        "type": "object",
+        "$ref": "#/$defs/QuestionTool"
+      }
+    },
+    "required": [
+      "id",
+      "sessionID",
+      "questions"
+    ],
+    "type": "object",
+    "$defs": {
+      "QuestionInfo": {
+        "additionalProperties": false,
+        "properties": {
+          "custom": {
+            "type": "boolean"
+          },
+          "header": {
+            "description": "Very short label (max 30 chars)",
+            "type": "string"
+          },
+          "multiple": {
+            "type": "boolean"
+          },
+          "options": {
+            "description": "Available choices",
+            "items": {
+              "$ref": "#/$defs/QuestionOption"
+            },
+            "type": "array"
+          },
+          "question": {
+            "description": "Complete question",
+            "type": "string"
+          }
+        },
+        "required": [
+          "question",
+          "header",
+          "options"
+        ],
+        "type": "object"
+      },
+      "QuestionTool": {
+        "additionalProperties": false,
         "properties": {
           "callID": {
             "type": "string"
           },
           "messageID": {
+            "pattern": "^msg",
             "type": "string"
           }
         },
         "required": [
-          "callID",
-          "messageID"
-        ]
+          "messageID",
+          "callID"
+        ],
+        "type": "object"
+      },
+      "QuestionOption": {
+        "additionalProperties": false,
+        "properties": {
+          "description": {
+            "description": "Explanation of choice",
+            "type": "string"
+          },
+          "label": {
+            "description": "Display text (1-5 words, concise)",
+            "type": "string"
+          }
+        },
+        "required": [
+          "label",
+          "description"
+        ],
+        "type": "object"
       }
-    },
-    "required": [
-      "id",
-      "questions",
-      "sessionID"
-    ]
+    }
   },
   "recordSchema": {
-    "type": "object",
+    "additionalProperties": false,
     "properties": {
       "id": {
+        "pattern": "^evt_",
         "type": "string"
       },
       "properties": {
-        "type": "object",
+        "additionalProperties": false,
         "properties": {
           "id": {
+            "pattern": "^que",
             "type": "string"
           },
           "questions": {
-            "type": "array",
+            "description": "Questions to ask",
             "items": {
-              "type": "object",
-              "properties": {
-                "custom": {
-                  "type": "boolean"
-                },
-                "header": {
-                  "type": "string"
-                },
-                "multiple": {
-                  "type": "boolean"
-                },
-                "options": {
-                  "type": "array",
-                  "items": {
-                    "type": "object",
-                    "properties": {
-                      "description": {
-                        "type": "string"
-                      },
-                      "label": {
-                        "type": "string"
-                      }
-                    },
-                    "required": [
-                      "description",
-                      "label"
-                    ]
-                  }
-                },
-                "question": {
-                  "type": "string"
-                }
-              },
-              "required": [
-                "header",
-                "options",
-                "question"
-              ]
-            }
+              "$ref": "#/$defs/QuestionInfo"
+            },
+            "type": "array"
           },
           "sessionID": {
+            "pattern": "^ses",
             "type": "string"
           },
           "tool": {
-            "type": "object",
-            "properties": {
-              "callID": {
-                "type": "string"
-              },
-              "messageID": {
-                "type": "string"
-              }
-            },
-            "required": [
-              "callID",
-              "messageID"
-            ]
+            "$ref": "#/$defs/QuestionTool"
           }
         },
         "required": [
           "id",
-          "questions",
-          "sessionID"
-        ]
+          "sessionID",
+          "questions"
+        ],
+        "type": "object"
       },
       "type": {
-        "type": "string",
         "enum": [
           "question.asked"
-        ]
+        ],
+        "type": "string"
       }
     },
     "required": [
       "id",
-      "properties",
-      "type"
-    ]
+      "type",
+      "properties"
+    ],
+    "type": "object",
+    "$defs": {
+      "QuestionInfo": {
+        "additionalProperties": false,
+        "properties": {
+          "custom": {
+            "type": "boolean"
+          },
+          "header": {
+            "description": "Very short label (max 30 chars)",
+            "type": "string"
+          },
+          "multiple": {
+            "type": "boolean"
+          },
+          "options": {
+            "description": "Available choices",
+            "items": {
+              "$ref": "#/$defs/QuestionOption"
+            },
+            "type": "array"
+          },
+          "question": {
+            "description": "Complete question",
+            "type": "string"
+          }
+        },
+        "required": [
+          "question",
+          "header",
+          "options"
+        ],
+        "type": "object"
+      },
+      "QuestionTool": {
+        "additionalProperties": false,
+        "properties": {
+          "callID": {
+            "type": "string"
+          },
+          "messageID": {
+            "pattern": "^msg",
+            "type": "string"
+          }
+        },
+        "required": [
+          "messageID",
+          "callID"
+        ],
+        "type": "object"
+      },
+      "QuestionOption": {
+        "additionalProperties": false,
+        "properties": {
+          "description": {
+            "description": "Explanation of choice",
+            "type": "string"
+          },
+          "label": {
+            "description": "Display text (1-5 words, concise)",
+            "type": "string"
+          }
+        },
+        "required": [
+          "label",
+          "description"
+        ],
+        "type": "object"
+      }
+    }
+  },
+  "schemaFidelity": {
+    "payload": "exact",
+    "carrier": "exact"
   },
   "evidence": {
     "existence": [
+      "opencode-generated-openapi",
       "opencode-runtime-question-reject"
     ],
     "shape": [
+      "opencode-generated-openapi",
       "opencode-runtime-question-reject"
     ],
     "carrier": [
+      "opencode-generated-openapi",
       "opencode-runtime-question-reject"
     ]
   },

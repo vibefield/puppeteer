@@ -10,45 +10,14 @@
   "direction": "client-to-agent",
   "trigger": "Begin OAuth connection — Start an OAuth attempt and return the authorization details.",
   "payloadSchema": {
-    "type": "object",
     "properties": {
-      "method": {
-        "type": "string"
-      },
-      "route": {
-        "type": "string"
-      },
-      "params": {
-        "type": "object",
-        "properties": {
-          "integrationID": {
-            "type": "string"
-          }
-        },
-        "required": [
-          "integrationID"
-        ]
-      },
-      "query": {
-        "type": "object",
-        "properties": {
-          "location": {
-            "type": "object",
-            "properties": {
-              "directory": {
-                "type": "string"
-              },
-              "workspace": {
-                "type": "string"
-              }
-            }
-          }
-        }
-      },
       "body": {
-        "type": "object",
+        "additionalProperties": false,
         "properties": {
           "inputs": {
+            "additionalProperties": {
+              "type": "string"
+            },
             "type": "object"
           },
           "label": {
@@ -59,40 +28,15 @@
           }
         },
         "required": [
-          "inputs",
-          "methodID"
-        ]
-      }
-    },
-    "required": [
-      "method",
-      "route",
-      "params",
-      "body"
-    ]
-  },
-  "resultSchema": {
-    "type": "object",
-    "properties": {
+          "methodID",
+          "inputs"
+        ],
+        "type": "object"
+      },
       "method": {
-        "type": "string",
-        "enum": [
-          "POST"
-        ]
-      },
-      "route": {
-        "type": "string",
-        "enum": [
-          "/api/integration/:integrationID/connect/oauth"
-        ]
-      },
-      "status": {
-        "type": "integer",
-        "minimum": 200,
-        "maximum": 299
+        "type": "string"
       },
       "params": {
-        "type": "object",
         "properties": {
           "integrationID": {
             "type": "string"
@@ -100,13 +44,13 @@
         },
         "required": [
           "integrationID"
-        ]
+        ],
+        "type": "object"
       },
       "query": {
-        "type": "object",
         "properties": {
           "location": {
-            "type": "object",
+            "additionalProperties": false,
             "properties": {
               "directory": {
                 "type": "string"
@@ -114,101 +58,86 @@
               "workspace": {
                 "type": "string"
               }
-            }
+            },
+            "type": "object"
           }
-        }
+        },
+        "type": "object"
       },
+      "route": {
+        "type": "string"
+      }
+    },
+    "required": [
+      "method",
+      "route",
+      "params",
+      "body"
+    ],
+    "type": "object"
+  },
+  "resultSchema": {
+    "properties": {
       "body": {
-        "type": "object",
+        "additionalProperties": false,
         "properties": {
           "data": {
-            "type": "object",
-            "properties": {
-              "attemptID": {
-                "type": "string"
-              },
-              "instructions": {
-                "type": "string"
-              },
-              "mode": {
-                "type": "string"
-              },
-              "time": {
-                "type": "object",
-                "properties": {
-                  "created": {
-                    "anyOf": [
-                      {
-                        "type": "number"
-                      },
-                      {
-                        "type": "string"
-                      }
-                    ]
-                  },
-                  "expires": {
-                    "anyOf": [
-                      {
-                        "type": "number"
-                      },
-                      {
-                        "type": "string"
-                      }
-                    ]
-                  }
-                },
-                "required": [
-                  "created",
-                  "expires"
-                ]
-              },
-              "url": {
-                "type": "string"
-              }
-            },
-            "required": [
-              "attemptID",
-              "instructions",
-              "mode",
-              "time",
-              "url"
-            ]
+            "$ref": "#/$defs/IntegrationAttempt"
           },
           "location": {
-            "type": "object",
+            "$ref": "#/$defs/LocationInfo"
+          }
+        },
+        "required": [
+          "location",
+          "data"
+        ],
+        "type": "object"
+      },
+      "method": {
+        "enum": [
+          "POST"
+        ],
+        "type": "string"
+      },
+      "params": {
+        "properties": {
+          "integrationID": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "integrationID"
+        ],
+        "type": "object"
+      },
+      "query": {
+        "properties": {
+          "location": {
+            "additionalProperties": false,
             "properties": {
               "directory": {
                 "type": "string"
               },
-              "project": {
-                "type": "object",
-                "properties": {
-                  "directory": {
-                    "type": "string"
-                  },
-                  "id": {
-                    "type": "string"
-                  }
-                },
-                "required": [
-                  "directory",
-                  "id"
-                ]
-              },
-              "workspaceID": {
+              "workspace": {
                 "type": "string"
               }
             },
-            "required": [
-              "directory",
-              "project"
-            ]
+            "type": "object"
           }
         },
-        "required": [
-          "data",
-          "location"
-        ]
+        "type": "object"
+      },
+      "route": {
+        "enum": [
+          "/api/integration/:integrationID/connect/oauth"
+        ],
+        "type": "string"
+      },
+      "status": {
+        "maximum": 299,
+        "minimum": 200,
+        "type": "integer"
       }
     },
     "required": [
@@ -217,63 +146,166 @@
       "status",
       "params",
       "body"
-    ]
-  },
-  "recordSchema": {
+    ],
     "type": "object",
-    "properties": {
-      "direction": {
-        "type": "string",
-        "enum": [
-          "client-to-agent"
-        ]
-      },
-      "request": {
-        "type": "object",
+    "$defs": {
+      "IntegrationAttempt": {
+        "additionalProperties": false,
         "properties": {
-          "method": {
-            "type": "string",
-            "enum": [
-              "POST"
-            ]
+          "attemptID": {
+            "type": "string"
           },
-          "route": {
-            "type": "string",
-            "enum": [
-              "/api/integration/:integrationID/connect/oauth"
-            ]
+          "instructions": {
+            "type": "string"
           },
-          "params": {
-            "type": "object",
+          "mode": {
+            "enum": [
+              "auto",
+              "code"
+            ],
+            "type": "string"
+          },
+          "time": {
+            "additionalProperties": false,
             "properties": {
-              "integrationID": {
+              "created": {
+                "anyOf": [
+                  {
+                    "type": "number"
+                  },
+                  {
+                    "enum": [
+                      "NaN"
+                    ],
+                    "type": "string"
+                  },
+                  {
+                    "enum": [
+                      "Infinity"
+                    ],
+                    "type": "string"
+                  },
+                  {
+                    "enum": [
+                      "-Infinity"
+                    ],
+                    "type": "string"
+                  },
+                  {
+                    "enum": [
+                      "Infinity",
+                      "-Infinity",
+                      "NaN"
+                    ],
+                    "type": "string"
+                  }
+                ]
+              },
+              "expires": {
+                "anyOf": [
+                  {
+                    "type": "number"
+                  },
+                  {
+                    "enum": [
+                      "NaN"
+                    ],
+                    "type": "string"
+                  },
+                  {
+                    "enum": [
+                      "Infinity"
+                    ],
+                    "type": "string"
+                  },
+                  {
+                    "enum": [
+                      "-Infinity"
+                    ],
+                    "type": "string"
+                  },
+                  {
+                    "enum": [
+                      "Infinity",
+                      "-Infinity",
+                      "NaN"
+                    ],
+                    "type": "string"
+                  }
+                ]
+              }
+            },
+            "required": [
+              "created",
+              "expires"
+            ],
+            "type": "object"
+          },
+          "url": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "attemptID",
+          "url",
+          "instructions",
+          "mode",
+          "time"
+        ],
+        "type": "object"
+      },
+      "LocationInfo": {
+        "additionalProperties": false,
+        "properties": {
+          "directory": {
+            "type": "string"
+          },
+          "project": {
+            "additionalProperties": false,
+            "properties": {
+              "directory": {
+                "type": "string"
+              },
+              "id": {
                 "type": "string"
               }
             },
             "required": [
-              "integrationID"
-            ]
+              "id",
+              "directory"
+            ],
+            "type": "object"
           },
-          "query": {
-            "type": "object",
-            "properties": {
-              "location": {
-                "type": "object",
-                "properties": {
-                  "directory": {
-                    "type": "string"
-                  },
-                  "workspace": {
-                    "type": "string"
-                  }
-                }
-              }
-            }
-          },
+          "workspaceID": {
+            "pattern": "^wrk",
+            "type": "string"
+          }
+        },
+        "required": [
+          "directory",
+          "project"
+        ],
+        "type": "object"
+      }
+    }
+  },
+  "recordSchema": {
+    "properties": {
+      "direction": {
+        "enum": [
+          "client-to-agent"
+        ],
+        "type": "string"
+      },
+      "request": {
+        "properties": {
           "body": {
-            "type": "object",
+            "additionalProperties": false,
             "properties": {
               "inputs": {
+                "additionalProperties": {
+                  "type": "string"
+                },
                 "type": "object"
               },
               "label": {
@@ -284,9 +316,50 @@
               }
             },
             "required": [
-              "inputs",
-              "methodID"
-            ]
+              "methodID",
+              "inputs"
+            ],
+            "type": "object"
+          },
+          "method": {
+            "enum": [
+              "POST"
+            ],
+            "type": "string"
+          },
+          "params": {
+            "properties": {
+              "integrationID": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "integrationID"
+            ],
+            "type": "object"
+          },
+          "query": {
+            "properties": {
+              "location": {
+                "additionalProperties": false,
+                "properties": {
+                  "directory": {
+                    "type": "string"
+                  },
+                  "workspace": {
+                    "type": "string"
+                  }
+                },
+                "type": "object"
+              }
+            },
+            "type": "object"
+          },
+          "route": {
+            "enum": [
+              "/api/integration/:integrationID/connect/oauth"
+            ],
+            "type": "string"
           }
         },
         "required": [
@@ -294,13 +367,20 @@
           "route",
           "params",
           "body"
-        ]
+        ],
+        "type": "object"
       }
     },
     "required": [
       "direction",
       "request"
-    ]
+    ],
+    "type": "object"
+  },
+  "schemaFidelity": {
+    "payload": "semantic",
+    "result": "semantic",
+    "carrier": "semantic"
   },
   "evidence": {
     "existence": [

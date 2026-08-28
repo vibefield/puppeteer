@@ -11,41 +11,39 @@
   "payloadSchema": {
     "type": "object",
     "properties": {
+      "tool_id": {
+        "type": "string"
+      },
       "name": {
         "type": "string"
       },
-      "tool_id": {
-        "type": "string"
+      "args": {
+        "type": "object"
       },
       "duration_s": {
         "type": "number",
         "minimum": 0
       },
-      "result": {
-        "type": "object",
-        "properties": {
-          "exit_code": {
-            "type": "number"
-          },
-          "status": {
-            "type": "string"
-          },
-          "hasOutput": {
-            "type": "boolean"
-          },
-          "hasError": {
-            "type": "boolean"
-          }
-        }
+      "result": {},
+      "summary": {
+        "type": "string"
       },
-      "hasText": {
-        "type": "boolean"
+      "result_text": {
+        "type": "string"
       },
-      "hasContext": {
-        "type": "boolean"
+      "todos": {
+        "type": "array",
+        "items": {}
+      },
+      "preview": {
+        "type": "string"
+      },
+      "inline_diff": {
+        "type": "string",
+        "description": "ANSI-rendered, bounded inline diff preview. This is presentation text and may omit files or lines; it is not a raw unified patch."
       }
     },
-    "required": ["name", "tool_id"]
+    "required": ["tool_id", "name", "args"]
   },
   "recordSchema": {
     "type": "object",
@@ -71,44 +69,42 @@
           "payload": {
             "type": "object",
             "properties": {
+              "tool_id": {
+                "type": "string"
+              },
               "name": {
                 "type": "string"
               },
-              "tool_id": {
-                "type": "string"
+              "args": {
+                "type": "object"
               },
               "duration_s": {
                 "type": "number",
                 "minimum": 0
               },
-              "result": {
-                "type": "object",
-                "properties": {
-                  "exit_code": {
-                    "type": "number"
-                  },
-                  "status": {
-                    "type": "string"
-                  },
-                  "hasOutput": {
-                    "type": "boolean"
-                  },
-                  "hasError": {
-                    "type": "boolean"
-                  }
-                }
+              "result": {},
+              "summary": {
+                "type": "string"
               },
-              "hasText": {
-                "type": "boolean"
+              "result_text": {
+                "type": "string"
               },
-              "hasContext": {
-                "type": "boolean"
+              "todos": {
+                "type": "array",
+                "items": {}
+              },
+              "preview": {
+                "type": "string"
+              },
+              "inline_diff": {
+                "type": "string",
+                "description": "ANSI-rendered, bounded inline diff preview. This is presentation text and may omit files or lines; it is not a raw unified patch."
               }
             },
-            "required": ["name", "tool_id"]
+            "required": ["tool_id", "name", "args"]
           }
         },
-        "required": ["type", "payload"]
+        "required": ["type"]
       }
     },
     "required": ["method", "params"]
@@ -116,9 +112,68 @@
   "recordChannel": "tui-gateway",
   "evidence": {
     "existence": ["hermes-runtime-headless"],
-    "shape": ["hermes-runtime-headless"],
-    "carrier": ["hermes-runtime-headless"]
+    "shape": ["hermes-exact-source"],
+    "carrier": ["hermes-exact-source"]
   },
-  "confidence": "verified-headless",
-  "fixture": "captures/hermes@0.20.0/tool-success/rpc.jsonl"
+  "confidence": "unverified",
+  "fixture": "captures/hermes@0.20.0/tool-success/rpc.jsonl",
+  "schemaFidelity": {
+    "payload": "structural",
+    "carrier": "structural",
+    "limitations": [
+      "Python is dynamic: helper-produced, conditionally assembled, and forwarded payload/result fields remain unconstrained unless directly recoverable.",
+      "Direct params indexing proves required access; params.get access proves a known field but not optionality.",
+      "Source declarations establish legal/native shape and existence, not runtime reachability."
+    ]
+  },
+  "payloadRefinements": [
+    {
+      "match": {
+        "name": "patch"
+      },
+      "path": "args",
+      "schema": {
+        "type": "object",
+        "properties": {
+          "path": {
+            "type": "string"
+          }
+        },
+        "required": ["path"]
+      },
+      "evidence": {
+        "existence": ["hermes-exact-source"],
+        "shape": ["hermes-exact-source"]
+      },
+      "confidence": "unverified",
+      "fidelity": "structural",
+      "limitations": [
+        "Pinned source proves patch.path is the single local path used to build the diff preview, but does not establish the complete legal tool argument schema."
+      ]
+    },
+    {
+      "match": {
+        "name": "write_file"
+      },
+      "path": "args",
+      "schema": {
+        "type": "object",
+        "properties": {
+          "path": {
+            "type": "string"
+          }
+        },
+        "required": ["path"]
+      },
+      "evidence": {
+        "existence": ["hermes-exact-source"],
+        "shape": ["hermes-exact-source"]
+      },
+      "confidence": "unverified",
+      "fidelity": "structural",
+      "limitations": [
+        "Pinned source proves write_file.path is the single local path used to build the diff preview, but does not establish the complete legal tool argument schema."
+      ]
+    }
+  ]
 }

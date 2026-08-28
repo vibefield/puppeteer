@@ -10,27 +10,23 @@
   "direction": "client-to-agent",
   "trigger": "Get session history — Read one finite page of public durable Session events after an exclusive aggregate sequence. Newly committed events may appear on later pages.",
   "payloadSchema": {
-    "type": "object",
     "properties": {
       "method": {
         "type": "string"
       },
-      "route": {
-        "type": "string"
-      },
       "params": {
-        "type": "object",
         "properties": {
           "sessionID": {
+            "pattern": "^ses",
             "type": "string"
           }
         },
         "required": [
           "sessionID"
-        ]
+        ],
+        "type": "object"
       },
       "query": {
-        "type": "object",
         "properties": {
           "after": {
             "type": "string"
@@ -38,48 +34,44 @@
           "limit": {
             "type": "string"
           }
-        }
+        },
+        "type": "object"
+      },
+      "route": {
+        "type": "string"
       }
     },
     "required": [
       "method",
       "route",
       "params"
-    ]
+    ],
+    "type": "object"
   },
   "resultSchema": {
-    "type": "object",
     "properties": {
+      "body": {
+        "$ref": "#/$defs/SessionHistory"
+      },
       "method": {
-        "type": "string",
         "enum": [
           "GET"
-        ]
-      },
-      "route": {
-        "type": "string",
-        "enum": [
-          "/api/session/:sessionID/history"
-        ]
-      },
-      "status": {
-        "type": "integer",
-        "minimum": 200,
-        "maximum": 299
+        ],
+        "type": "string"
       },
       "params": {
-        "type": "object",
         "properties": {
           "sessionID": {
+            "pattern": "^ses",
             "type": "string"
           }
         },
         "required": [
           "sessionID"
-        ]
+        ],
+        "type": "object"
       },
       "query": {
-        "type": "object",
         "properties": {
           "after": {
             "type": "string"
@@ -87,23 +79,19 @@
           "limit": {
             "type": "string"
           }
-        }
-      },
-      "body": {
-        "type": "object",
-        "properties": {
-          "data": {
-            "type": "array",
-            "items": {}
-          },
-          "hasMore": {
-            "type": "boolean"
-          }
         },
-        "required": [
-          "data",
-          "hasMore"
-        ]
+        "type": "object"
+      },
+      "route": {
+        "enum": [
+          "/api/session/:sessionID/history"
+        ],
+        "type": "string"
+      },
+      "status": {
+        "maximum": 299,
+        "minimum": 200,
+        "type": "integer"
       }
     },
     "required": [
@@ -112,45 +100,2671 @@
       "status",
       "params",
       "body"
-    ]
-  },
-  "recordSchema": {
+    ],
     "type": "object",
-    "properties": {
-      "direction": {
-        "type": "string",
-        "enum": [
-          "client-to-agent"
+    "$defs": {
+      "SessionHistory": {
+        "additionalProperties": false,
+        "properties": {
+          "data": {
+            "items": {
+              "$ref": "#/$defs/SessionDurableEvent"
+            },
+            "type": "array"
+          },
+          "hasMore": {
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "data",
+          "hasMore"
+        ],
+        "type": "object"
+      },
+      "SessionDurableEvent": {
+        "oneOf": [
+          {
+            "$ref": "#/$defs/SessionNextAgentSwitched"
+          },
+          {
+            "$ref": "#/$defs/SessionNextModelSwitched"
+          },
+          {
+            "$ref": "#/$defs/SessionNextMoved"
+          },
+          {
+            "$ref": "#/$defs/SessionNextPrompted"
+          },
+          {
+            "$ref": "#/$defs/SessionNextPromptAdmitted"
+          },
+          {
+            "$ref": "#/$defs/SessionNextContextUpdated"
+          },
+          {
+            "$ref": "#/$defs/SessionNextSynthetic"
+          },
+          {
+            "$ref": "#/$defs/SessionNextShellStarted"
+          },
+          {
+            "$ref": "#/$defs/SessionNextShellEnded"
+          },
+          {
+            "$ref": "#/$defs/SessionNextStepStarted"
+          },
+          {
+            "$ref": "#/$defs/SessionNextStepEnded"
+          },
+          {
+            "$ref": "#/$defs/SessionNextStepFailed"
+          },
+          {
+            "$ref": "#/$defs/SessionNextTextStarted"
+          },
+          {
+            "$ref": "#/$defs/SessionNextTextEnded"
+          },
+          {
+            "$ref": "#/$defs/SessionNextToolInputStarted"
+          },
+          {
+            "$ref": "#/$defs/SessionNextToolInputEnded"
+          },
+          {
+            "$ref": "#/$defs/SessionNextToolCalled"
+          },
+          {
+            "$ref": "#/$defs/SessionNextToolProgress"
+          },
+          {
+            "$ref": "#/$defs/SessionNextToolSuccess"
+          },
+          {
+            "$ref": "#/$defs/SessionNextToolFailed"
+          },
+          {
+            "$ref": "#/$defs/SessionNextReasoningStarted"
+          },
+          {
+            "$ref": "#/$defs/SessionNextReasoningEnded"
+          },
+          {
+            "$ref": "#/$defs/SessionNextRetried"
+          },
+          {
+            "$ref": "#/$defs/SessionNextCompactionStarted"
+          },
+          {
+            "$ref": "#/$defs/SessionNextCompactionEnded"
+          },
+          {
+            "$ref": "#/$defs/SessionNextRevertStaged"
+          },
+          {
+            "$ref": "#/$defs/SessionNextRevertCleared"
+          },
+          {
+            "$ref": "#/$defs/SessionNextRevertCommitted"
+          }
         ]
       },
-      "request": {
-        "type": "object",
+      "SessionNextAgentSwitched": {
+        "additionalProperties": false,
         "properties": {
-          "method": {
-            "type": "string",
-            "enum": [
-              "GET"
-            ]
+          "data": {
+            "additionalProperties": false,
+            "properties": {
+              "agent": {
+                "type": "string"
+              },
+              "messageID": {
+                "pattern": "^msg_",
+                "type": "string"
+              },
+              "sessionID": {
+                "pattern": "^ses",
+                "type": "string"
+              },
+              "timestamp": {
+                "type": "number"
+              }
+            },
+            "required": [
+              "timestamp",
+              "sessionID",
+              "messageID",
+              "agent"
+            ],
+            "type": "object"
           },
-          "route": {
-            "type": "string",
-            "enum": [
-              "/api/session/:sessionID/history"
-            ]
+          "durable": {
+            "additionalProperties": false,
+            "properties": {
+              "aggregateID": {
+                "type": "string"
+              },
+              "seq": {
+                "type": "integer"
+              },
+              "version": {
+                "type": "integer"
+              }
+            },
+            "required": [
+              "aggregateID",
+              "seq",
+              "version"
+            ],
+            "type": "object"
           },
-          "params": {
-            "type": "object",
+          "id": {
+            "pattern": "^evt_",
+            "type": "string"
+          },
+          "location": {
+            "$ref": "#/$defs/LocationRef"
+          },
+          "metadata": {
+            "type": "object"
+          },
+          "type": {
+            "enum": [
+              "session.next.agent.switched"
+            ],
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "type",
+          "data"
+        ],
+        "type": "object"
+      },
+      "SessionNextModelSwitched": {
+        "additionalProperties": false,
+        "properties": {
+          "data": {
+            "additionalProperties": false,
+            "properties": {
+              "messageID": {
+                "pattern": "^msg_",
+                "type": "string"
+              },
+              "model": {
+                "$ref": "#/$defs/ModelRef"
+              },
+              "sessionID": {
+                "pattern": "^ses",
+                "type": "string"
+              },
+              "timestamp": {
+                "type": "number"
+              }
+            },
+            "required": [
+              "timestamp",
+              "sessionID",
+              "messageID",
+              "model"
+            ],
+            "type": "object"
+          },
+          "durable": {
+            "additionalProperties": false,
+            "properties": {
+              "aggregateID": {
+                "type": "string"
+              },
+              "seq": {
+                "type": "integer"
+              },
+              "version": {
+                "type": "integer"
+              }
+            },
+            "required": [
+              "aggregateID",
+              "seq",
+              "version"
+            ],
+            "type": "object"
+          },
+          "id": {
+            "pattern": "^evt_",
+            "type": "string"
+          },
+          "location": {
+            "$ref": "#/$defs/LocationRef"
+          },
+          "metadata": {
+            "type": "object"
+          },
+          "type": {
+            "enum": [
+              "session.next.model.switched"
+            ],
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "type",
+          "data"
+        ],
+        "type": "object"
+      },
+      "SessionNextMoved": {
+        "additionalProperties": false,
+        "properties": {
+          "data": {
+            "additionalProperties": false,
+            "properties": {
+              "location": {
+                "$ref": "#/$defs/LocationRef"
+              },
+              "sessionID": {
+                "pattern": "^ses",
+                "type": "string"
+              },
+              "subdirectory": {
+                "type": "string"
+              },
+              "timestamp": {
+                "type": "number"
+              }
+            },
+            "required": [
+              "timestamp",
+              "sessionID",
+              "location"
+            ],
+            "type": "object"
+          },
+          "durable": {
+            "additionalProperties": false,
+            "properties": {
+              "aggregateID": {
+                "type": "string"
+              },
+              "seq": {
+                "type": "integer"
+              },
+              "version": {
+                "type": "integer"
+              }
+            },
+            "required": [
+              "aggregateID",
+              "seq",
+              "version"
+            ],
+            "type": "object"
+          },
+          "id": {
+            "pattern": "^evt_",
+            "type": "string"
+          },
+          "location": {
+            "$ref": "#/$defs/LocationRef"
+          },
+          "metadata": {
+            "type": "object"
+          },
+          "type": {
+            "enum": [
+              "session.next.moved"
+            ],
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "type",
+          "data"
+        ],
+        "type": "object"
+      },
+      "SessionNextPrompted": {
+        "additionalProperties": false,
+        "properties": {
+          "data": {
+            "additionalProperties": false,
+            "properties": {
+              "delivery": {
+                "enum": [
+                  "steer",
+                  "queue"
+                ],
+                "type": "string"
+              },
+              "messageID": {
+                "pattern": "^msg_",
+                "type": "string"
+              },
+              "prompt": {
+                "$ref": "#/$defs/Prompt"
+              },
+              "sessionID": {
+                "pattern": "^ses",
+                "type": "string"
+              },
+              "timestamp": {
+                "type": "number"
+              }
+            },
+            "required": [
+              "timestamp",
+              "sessionID",
+              "messageID",
+              "prompt",
+              "delivery"
+            ],
+            "type": "object"
+          },
+          "durable": {
+            "additionalProperties": false,
+            "properties": {
+              "aggregateID": {
+                "type": "string"
+              },
+              "seq": {
+                "type": "integer"
+              },
+              "version": {
+                "type": "integer"
+              }
+            },
+            "required": [
+              "aggregateID",
+              "seq",
+              "version"
+            ],
+            "type": "object"
+          },
+          "id": {
+            "pattern": "^evt_",
+            "type": "string"
+          },
+          "location": {
+            "$ref": "#/$defs/LocationRef"
+          },
+          "metadata": {
+            "type": "object"
+          },
+          "type": {
+            "enum": [
+              "session.next.prompted"
+            ],
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "type",
+          "data"
+        ],
+        "type": "object"
+      },
+      "SessionNextPromptAdmitted": {
+        "additionalProperties": false,
+        "properties": {
+          "data": {
+            "additionalProperties": false,
+            "properties": {
+              "delivery": {
+                "enum": [
+                  "steer",
+                  "queue"
+                ],
+                "type": "string"
+              },
+              "messageID": {
+                "pattern": "^msg_",
+                "type": "string"
+              },
+              "prompt": {
+                "$ref": "#/$defs/Prompt"
+              },
+              "sessionID": {
+                "pattern": "^ses",
+                "type": "string"
+              },
+              "timestamp": {
+                "type": "number"
+              }
+            },
+            "required": [
+              "timestamp",
+              "sessionID",
+              "messageID",
+              "prompt",
+              "delivery"
+            ],
+            "type": "object"
+          },
+          "durable": {
+            "additionalProperties": false,
+            "properties": {
+              "aggregateID": {
+                "type": "string"
+              },
+              "seq": {
+                "type": "integer"
+              },
+              "version": {
+                "type": "integer"
+              }
+            },
+            "required": [
+              "aggregateID",
+              "seq",
+              "version"
+            ],
+            "type": "object"
+          },
+          "id": {
+            "pattern": "^evt_",
+            "type": "string"
+          },
+          "location": {
+            "$ref": "#/$defs/LocationRef"
+          },
+          "metadata": {
+            "type": "object"
+          },
+          "type": {
+            "enum": [
+              "session.next.prompt.admitted"
+            ],
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "type",
+          "data"
+        ],
+        "type": "object"
+      },
+      "SessionNextContextUpdated": {
+        "additionalProperties": false,
+        "properties": {
+          "data": {
+            "additionalProperties": false,
+            "properties": {
+              "messageID": {
+                "pattern": "^msg_",
+                "type": "string"
+              },
+              "sessionID": {
+                "pattern": "^ses",
+                "type": "string"
+              },
+              "text": {
+                "type": "string"
+              },
+              "timestamp": {
+                "type": "number"
+              }
+            },
+            "required": [
+              "timestamp",
+              "sessionID",
+              "messageID",
+              "text"
+            ],
+            "type": "object"
+          },
+          "durable": {
+            "additionalProperties": false,
+            "properties": {
+              "aggregateID": {
+                "type": "string"
+              },
+              "seq": {
+                "type": "integer"
+              },
+              "version": {
+                "type": "integer"
+              }
+            },
+            "required": [
+              "aggregateID",
+              "seq",
+              "version"
+            ],
+            "type": "object"
+          },
+          "id": {
+            "pattern": "^evt_",
+            "type": "string"
+          },
+          "location": {
+            "$ref": "#/$defs/LocationRef"
+          },
+          "metadata": {
+            "type": "object"
+          },
+          "type": {
+            "enum": [
+              "session.next.context.updated"
+            ],
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "type",
+          "data"
+        ],
+        "type": "object"
+      },
+      "SessionNextSynthetic": {
+        "additionalProperties": false,
+        "properties": {
+          "data": {
+            "additionalProperties": false,
+            "properties": {
+              "messageID": {
+                "pattern": "^msg_",
+                "type": "string"
+              },
+              "sessionID": {
+                "pattern": "^ses",
+                "type": "string"
+              },
+              "text": {
+                "type": "string"
+              },
+              "timestamp": {
+                "type": "number"
+              }
+            },
+            "required": [
+              "timestamp",
+              "sessionID",
+              "messageID",
+              "text"
+            ],
+            "type": "object"
+          },
+          "durable": {
+            "additionalProperties": false,
+            "properties": {
+              "aggregateID": {
+                "type": "string"
+              },
+              "seq": {
+                "type": "integer"
+              },
+              "version": {
+                "type": "integer"
+              }
+            },
+            "required": [
+              "aggregateID",
+              "seq",
+              "version"
+            ],
+            "type": "object"
+          },
+          "id": {
+            "pattern": "^evt_",
+            "type": "string"
+          },
+          "location": {
+            "$ref": "#/$defs/LocationRef"
+          },
+          "metadata": {
+            "type": "object"
+          },
+          "type": {
+            "enum": [
+              "session.next.synthetic"
+            ],
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "type",
+          "data"
+        ],
+        "type": "object"
+      },
+      "SessionNextShellStarted": {
+        "additionalProperties": false,
+        "properties": {
+          "data": {
+            "additionalProperties": false,
+            "properties": {
+              "callID": {
+                "type": "string"
+              },
+              "command": {
+                "type": "string"
+              },
+              "messageID": {
+                "pattern": "^msg_",
+                "type": "string"
+              },
+              "sessionID": {
+                "pattern": "^ses",
+                "type": "string"
+              },
+              "timestamp": {
+                "type": "number"
+              }
+            },
+            "required": [
+              "timestamp",
+              "sessionID",
+              "messageID",
+              "callID",
+              "command"
+            ],
+            "type": "object"
+          },
+          "durable": {
+            "additionalProperties": false,
+            "properties": {
+              "aggregateID": {
+                "type": "string"
+              },
+              "seq": {
+                "type": "integer"
+              },
+              "version": {
+                "type": "integer"
+              }
+            },
+            "required": [
+              "aggregateID",
+              "seq",
+              "version"
+            ],
+            "type": "object"
+          },
+          "id": {
+            "pattern": "^evt_",
+            "type": "string"
+          },
+          "location": {
+            "$ref": "#/$defs/LocationRef"
+          },
+          "metadata": {
+            "type": "object"
+          },
+          "type": {
+            "enum": [
+              "session.next.shell.started"
+            ],
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "type",
+          "data"
+        ],
+        "type": "object"
+      },
+      "SessionNextShellEnded": {
+        "additionalProperties": false,
+        "properties": {
+          "data": {
+            "additionalProperties": false,
+            "properties": {
+              "callID": {
+                "type": "string"
+              },
+              "output": {
+                "type": "string"
+              },
+              "sessionID": {
+                "pattern": "^ses",
+                "type": "string"
+              },
+              "timestamp": {
+                "type": "number"
+              }
+            },
+            "required": [
+              "timestamp",
+              "sessionID",
+              "callID",
+              "output"
+            ],
+            "type": "object"
+          },
+          "durable": {
+            "additionalProperties": false,
+            "properties": {
+              "aggregateID": {
+                "type": "string"
+              },
+              "seq": {
+                "type": "integer"
+              },
+              "version": {
+                "type": "integer"
+              }
+            },
+            "required": [
+              "aggregateID",
+              "seq",
+              "version"
+            ],
+            "type": "object"
+          },
+          "id": {
+            "pattern": "^evt_",
+            "type": "string"
+          },
+          "location": {
+            "$ref": "#/$defs/LocationRef"
+          },
+          "metadata": {
+            "type": "object"
+          },
+          "type": {
+            "enum": [
+              "session.next.shell.ended"
+            ],
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "type",
+          "data"
+        ],
+        "type": "object"
+      },
+      "SessionNextStepStarted": {
+        "additionalProperties": false,
+        "properties": {
+          "data": {
+            "additionalProperties": false,
+            "properties": {
+              "agent": {
+                "type": "string"
+              },
+              "assistantMessageID": {
+                "pattern": "^msg_",
+                "type": "string"
+              },
+              "model": {
+                "$ref": "#/$defs/ModelRef"
+              },
+              "sessionID": {
+                "pattern": "^ses",
+                "type": "string"
+              },
+              "snapshot": {
+                "type": "string"
+              },
+              "timestamp": {
+                "type": "number"
+              }
+            },
+            "required": [
+              "timestamp",
+              "sessionID",
+              "assistantMessageID",
+              "agent",
+              "model"
+            ],
+            "type": "object"
+          },
+          "durable": {
+            "additionalProperties": false,
+            "properties": {
+              "aggregateID": {
+                "type": "string"
+              },
+              "seq": {
+                "type": "integer"
+              },
+              "version": {
+                "type": "integer"
+              }
+            },
+            "required": [
+              "aggregateID",
+              "seq",
+              "version"
+            ],
+            "type": "object"
+          },
+          "id": {
+            "pattern": "^evt_",
+            "type": "string"
+          },
+          "location": {
+            "$ref": "#/$defs/LocationRef"
+          },
+          "metadata": {
+            "type": "object"
+          },
+          "type": {
+            "enum": [
+              "session.next.step.started"
+            ],
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "type",
+          "data"
+        ],
+        "type": "object"
+      },
+      "SessionNextStepEnded": {
+        "additionalProperties": false,
+        "properties": {
+          "data": {
+            "additionalProperties": false,
+            "properties": {
+              "assistantMessageID": {
+                "pattern": "^msg_",
+                "type": "string"
+              },
+              "cost": {
+                "type": "number"
+              },
+              "files": {
+                "items": {
+                  "type": "string"
+                },
+                "type": "array"
+              },
+              "finish": {
+                "type": "string"
+              },
+              "sessionID": {
+                "pattern": "^ses",
+                "type": "string"
+              },
+              "snapshot": {
+                "type": "string"
+              },
+              "timestamp": {
+                "type": "number"
+              },
+              "tokens": {
+                "additionalProperties": false,
+                "properties": {
+                  "cache": {
+                    "additionalProperties": false,
+                    "properties": {
+                      "read": {
+                        "type": "number"
+                      },
+                      "write": {
+                        "type": "number"
+                      }
+                    },
+                    "required": [
+                      "read",
+                      "write"
+                    ],
+                    "type": "object"
+                  },
+                  "input": {
+                    "type": "number"
+                  },
+                  "output": {
+                    "type": "number"
+                  },
+                  "reasoning": {
+                    "type": "number"
+                  }
+                },
+                "required": [
+                  "input",
+                  "output",
+                  "reasoning",
+                  "cache"
+                ],
+                "type": "object"
+              }
+            },
+            "required": [
+              "timestamp",
+              "sessionID",
+              "assistantMessageID",
+              "finish",
+              "cost",
+              "tokens"
+            ],
+            "type": "object"
+          },
+          "durable": {
+            "additionalProperties": false,
+            "properties": {
+              "aggregateID": {
+                "type": "string"
+              },
+              "seq": {
+                "type": "integer"
+              },
+              "version": {
+                "type": "integer"
+              }
+            },
+            "required": [
+              "aggregateID",
+              "seq",
+              "version"
+            ],
+            "type": "object"
+          },
+          "id": {
+            "pattern": "^evt_",
+            "type": "string"
+          },
+          "location": {
+            "$ref": "#/$defs/LocationRef"
+          },
+          "metadata": {
+            "type": "object"
+          },
+          "type": {
+            "enum": [
+              "session.next.step.ended"
+            ],
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "type",
+          "data"
+        ],
+        "type": "object"
+      },
+      "SessionNextStepFailed": {
+        "additionalProperties": false,
+        "properties": {
+          "data": {
+            "additionalProperties": false,
+            "properties": {
+              "assistantMessageID": {
+                "pattern": "^msg_",
+                "type": "string"
+              },
+              "error": {
+                "$ref": "#/$defs/SessionErrorUnknown"
+              },
+              "sessionID": {
+                "pattern": "^ses",
+                "type": "string"
+              },
+              "timestamp": {
+                "type": "number"
+              }
+            },
+            "required": [
+              "timestamp",
+              "sessionID",
+              "assistantMessageID",
+              "error"
+            ],
+            "type": "object"
+          },
+          "durable": {
+            "additionalProperties": false,
+            "properties": {
+              "aggregateID": {
+                "type": "string"
+              },
+              "seq": {
+                "type": "integer"
+              },
+              "version": {
+                "type": "integer"
+              }
+            },
+            "required": [
+              "aggregateID",
+              "seq",
+              "version"
+            ],
+            "type": "object"
+          },
+          "id": {
+            "pattern": "^evt_",
+            "type": "string"
+          },
+          "location": {
+            "$ref": "#/$defs/LocationRef"
+          },
+          "metadata": {
+            "type": "object"
+          },
+          "type": {
+            "enum": [
+              "session.next.step.failed"
+            ],
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "type",
+          "data"
+        ],
+        "type": "object"
+      },
+      "SessionNextTextStarted": {
+        "additionalProperties": false,
+        "properties": {
+          "data": {
+            "additionalProperties": false,
+            "properties": {
+              "assistantMessageID": {
+                "pattern": "^msg_",
+                "type": "string"
+              },
+              "sessionID": {
+                "pattern": "^ses",
+                "type": "string"
+              },
+              "textID": {
+                "type": "string"
+              },
+              "timestamp": {
+                "type": "number"
+              }
+            },
+            "required": [
+              "timestamp",
+              "sessionID",
+              "assistantMessageID",
+              "textID"
+            ],
+            "type": "object"
+          },
+          "durable": {
+            "additionalProperties": false,
+            "properties": {
+              "aggregateID": {
+                "type": "string"
+              },
+              "seq": {
+                "type": "integer"
+              },
+              "version": {
+                "type": "integer"
+              }
+            },
+            "required": [
+              "aggregateID",
+              "seq",
+              "version"
+            ],
+            "type": "object"
+          },
+          "id": {
+            "pattern": "^evt_",
+            "type": "string"
+          },
+          "location": {
+            "$ref": "#/$defs/LocationRef"
+          },
+          "metadata": {
+            "type": "object"
+          },
+          "type": {
+            "enum": [
+              "session.next.text.started"
+            ],
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "type",
+          "data"
+        ],
+        "type": "object"
+      },
+      "SessionNextTextEnded": {
+        "additionalProperties": false,
+        "properties": {
+          "data": {
+            "additionalProperties": false,
+            "properties": {
+              "assistantMessageID": {
+                "pattern": "^msg_",
+                "type": "string"
+              },
+              "sessionID": {
+                "pattern": "^ses",
+                "type": "string"
+              },
+              "text": {
+                "type": "string"
+              },
+              "textID": {
+                "type": "string"
+              },
+              "timestamp": {
+                "type": "number"
+              }
+            },
+            "required": [
+              "timestamp",
+              "sessionID",
+              "assistantMessageID",
+              "textID",
+              "text"
+            ],
+            "type": "object"
+          },
+          "durable": {
+            "additionalProperties": false,
+            "properties": {
+              "aggregateID": {
+                "type": "string"
+              },
+              "seq": {
+                "type": "integer"
+              },
+              "version": {
+                "type": "integer"
+              }
+            },
+            "required": [
+              "aggregateID",
+              "seq",
+              "version"
+            ],
+            "type": "object"
+          },
+          "id": {
+            "pattern": "^evt_",
+            "type": "string"
+          },
+          "location": {
+            "$ref": "#/$defs/LocationRef"
+          },
+          "metadata": {
+            "type": "object"
+          },
+          "type": {
+            "enum": [
+              "session.next.text.ended"
+            ],
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "type",
+          "data"
+        ],
+        "type": "object"
+      },
+      "SessionNextToolInputStarted": {
+        "additionalProperties": false,
+        "properties": {
+          "data": {
+            "additionalProperties": false,
+            "properties": {
+              "assistantMessageID": {
+                "pattern": "^msg_",
+                "type": "string"
+              },
+              "callID": {
+                "type": "string"
+              },
+              "name": {
+                "type": "string"
+              },
+              "sessionID": {
+                "pattern": "^ses",
+                "type": "string"
+              },
+              "timestamp": {
+                "type": "number"
+              }
+            },
+            "required": [
+              "timestamp",
+              "sessionID",
+              "assistantMessageID",
+              "callID",
+              "name"
+            ],
+            "type": "object"
+          },
+          "durable": {
+            "additionalProperties": false,
+            "properties": {
+              "aggregateID": {
+                "type": "string"
+              },
+              "seq": {
+                "type": "integer"
+              },
+              "version": {
+                "type": "integer"
+              }
+            },
+            "required": [
+              "aggregateID",
+              "seq",
+              "version"
+            ],
+            "type": "object"
+          },
+          "id": {
+            "pattern": "^evt_",
+            "type": "string"
+          },
+          "location": {
+            "$ref": "#/$defs/LocationRef"
+          },
+          "metadata": {
+            "type": "object"
+          },
+          "type": {
+            "enum": [
+              "session.next.tool.input.started"
+            ],
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "type",
+          "data"
+        ],
+        "type": "object"
+      },
+      "SessionNextToolInputEnded": {
+        "additionalProperties": false,
+        "properties": {
+          "data": {
+            "additionalProperties": false,
+            "properties": {
+              "assistantMessageID": {
+                "pattern": "^msg_",
+                "type": "string"
+              },
+              "callID": {
+                "type": "string"
+              },
+              "sessionID": {
+                "pattern": "^ses",
+                "type": "string"
+              },
+              "text": {
+                "type": "string"
+              },
+              "timestamp": {
+                "type": "number"
+              }
+            },
+            "required": [
+              "timestamp",
+              "sessionID",
+              "assistantMessageID",
+              "callID",
+              "text"
+            ],
+            "type": "object"
+          },
+          "durable": {
+            "additionalProperties": false,
+            "properties": {
+              "aggregateID": {
+                "type": "string"
+              },
+              "seq": {
+                "type": "integer"
+              },
+              "version": {
+                "type": "integer"
+              }
+            },
+            "required": [
+              "aggregateID",
+              "seq",
+              "version"
+            ],
+            "type": "object"
+          },
+          "id": {
+            "pattern": "^evt_",
+            "type": "string"
+          },
+          "location": {
+            "$ref": "#/$defs/LocationRef"
+          },
+          "metadata": {
+            "type": "object"
+          },
+          "type": {
+            "enum": [
+              "session.next.tool.input.ended"
+            ],
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "type",
+          "data"
+        ],
+        "type": "object"
+      },
+      "SessionNextToolCalled": {
+        "additionalProperties": false,
+        "properties": {
+          "data": {
+            "additionalProperties": false,
+            "properties": {
+              "assistantMessageID": {
+                "pattern": "^msg_",
+                "type": "string"
+              },
+              "callID": {
+                "type": "string"
+              },
+              "input": {
+                "type": "object"
+              },
+              "provider": {
+                "additionalProperties": false,
+                "properties": {
+                  "executed": {
+                    "type": "boolean"
+                  },
+                  "metadata": {
+                    "$ref": "#/$defs/LLMProviderMetadata"
+                  }
+                },
+                "required": [
+                  "executed"
+                ],
+                "type": "object"
+              },
+              "sessionID": {
+                "pattern": "^ses",
+                "type": "string"
+              },
+              "timestamp": {
+                "type": "number"
+              },
+              "tool": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "timestamp",
+              "sessionID",
+              "assistantMessageID",
+              "callID",
+              "tool",
+              "input",
+              "provider"
+            ],
+            "type": "object"
+          },
+          "durable": {
+            "additionalProperties": false,
+            "properties": {
+              "aggregateID": {
+                "type": "string"
+              },
+              "seq": {
+                "type": "integer"
+              },
+              "version": {
+                "type": "integer"
+              }
+            },
+            "required": [
+              "aggregateID",
+              "seq",
+              "version"
+            ],
+            "type": "object"
+          },
+          "id": {
+            "pattern": "^evt_",
+            "type": "string"
+          },
+          "location": {
+            "$ref": "#/$defs/LocationRef"
+          },
+          "metadata": {
+            "type": "object"
+          },
+          "type": {
+            "enum": [
+              "session.next.tool.called"
+            ],
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "type",
+          "data"
+        ],
+        "type": "object"
+      },
+      "SessionNextToolProgress": {
+        "additionalProperties": false,
+        "properties": {
+          "data": {
+            "additionalProperties": false,
+            "properties": {
+              "assistantMessageID": {
+                "pattern": "^msg_",
+                "type": "string"
+              },
+              "callID": {
+                "type": "string"
+              },
+              "content": {
+                "items": {
+                  "$ref": "#/$defs/LLMToolContent"
+                },
+                "type": "array"
+              },
+              "sessionID": {
+                "pattern": "^ses",
+                "type": "string"
+              },
+              "structured": {
+                "type": "object"
+              },
+              "timestamp": {
+                "type": "number"
+              }
+            },
+            "required": [
+              "timestamp",
+              "sessionID",
+              "assistantMessageID",
+              "callID",
+              "structured",
+              "content"
+            ],
+            "type": "object"
+          },
+          "durable": {
+            "additionalProperties": false,
+            "properties": {
+              "aggregateID": {
+                "type": "string"
+              },
+              "seq": {
+                "type": "integer"
+              },
+              "version": {
+                "type": "integer"
+              }
+            },
+            "required": [
+              "aggregateID",
+              "seq",
+              "version"
+            ],
+            "type": "object"
+          },
+          "id": {
+            "pattern": "^evt_",
+            "type": "string"
+          },
+          "location": {
+            "$ref": "#/$defs/LocationRef"
+          },
+          "metadata": {
+            "type": "object"
+          },
+          "type": {
+            "enum": [
+              "session.next.tool.progress"
+            ],
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "type",
+          "data"
+        ],
+        "type": "object"
+      },
+      "SessionNextToolSuccess": {
+        "additionalProperties": false,
+        "properties": {
+          "data": {
+            "additionalProperties": false,
+            "properties": {
+              "assistantMessageID": {
+                "pattern": "^msg_",
+                "type": "string"
+              },
+              "callID": {
+                "type": "string"
+              },
+              "content": {
+                "items": {
+                  "$ref": "#/$defs/LLMToolContent"
+                },
+                "type": "array"
+              },
+              "outputPaths": {
+                "items": {
+                  "type": "string"
+                },
+                "type": "array"
+              },
+              "provider": {
+                "additionalProperties": false,
+                "properties": {
+                  "executed": {
+                    "type": "boolean"
+                  },
+                  "metadata": {
+                    "$ref": "#/$defs/LLMProviderMetadata"
+                  }
+                },
+                "required": [
+                  "executed"
+                ],
+                "type": "object"
+              },
+              "result": {},
+              "sessionID": {
+                "pattern": "^ses",
+                "type": "string"
+              },
+              "structured": {
+                "type": "object"
+              },
+              "timestamp": {
+                "type": "number"
+              }
+            },
+            "required": [
+              "timestamp",
+              "sessionID",
+              "assistantMessageID",
+              "callID",
+              "structured",
+              "content",
+              "provider"
+            ],
+            "type": "object"
+          },
+          "durable": {
+            "additionalProperties": false,
+            "properties": {
+              "aggregateID": {
+                "type": "string"
+              },
+              "seq": {
+                "type": "integer"
+              },
+              "version": {
+                "type": "integer"
+              }
+            },
+            "required": [
+              "aggregateID",
+              "seq",
+              "version"
+            ],
+            "type": "object"
+          },
+          "id": {
+            "pattern": "^evt_",
+            "type": "string"
+          },
+          "location": {
+            "$ref": "#/$defs/LocationRef"
+          },
+          "metadata": {
+            "type": "object"
+          },
+          "type": {
+            "enum": [
+              "session.next.tool.success"
+            ],
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "type",
+          "data"
+        ],
+        "type": "object"
+      },
+      "SessionNextToolFailed": {
+        "additionalProperties": false,
+        "properties": {
+          "data": {
+            "additionalProperties": false,
+            "properties": {
+              "assistantMessageID": {
+                "pattern": "^msg_",
+                "type": "string"
+              },
+              "callID": {
+                "type": "string"
+              },
+              "error": {
+                "$ref": "#/$defs/SessionErrorUnknown"
+              },
+              "provider": {
+                "additionalProperties": false,
+                "properties": {
+                  "executed": {
+                    "type": "boolean"
+                  },
+                  "metadata": {
+                    "$ref": "#/$defs/LLMProviderMetadata"
+                  }
+                },
+                "required": [
+                  "executed"
+                ],
+                "type": "object"
+              },
+              "result": {},
+              "sessionID": {
+                "pattern": "^ses",
+                "type": "string"
+              },
+              "timestamp": {
+                "type": "number"
+              }
+            },
+            "required": [
+              "timestamp",
+              "sessionID",
+              "assistantMessageID",
+              "callID",
+              "error",
+              "provider"
+            ],
+            "type": "object"
+          },
+          "durable": {
+            "additionalProperties": false,
+            "properties": {
+              "aggregateID": {
+                "type": "string"
+              },
+              "seq": {
+                "type": "integer"
+              },
+              "version": {
+                "type": "integer"
+              }
+            },
+            "required": [
+              "aggregateID",
+              "seq",
+              "version"
+            ],
+            "type": "object"
+          },
+          "id": {
+            "pattern": "^evt_",
+            "type": "string"
+          },
+          "location": {
+            "$ref": "#/$defs/LocationRef"
+          },
+          "metadata": {
+            "type": "object"
+          },
+          "type": {
+            "enum": [
+              "session.next.tool.failed"
+            ],
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "type",
+          "data"
+        ],
+        "type": "object"
+      },
+      "SessionNextReasoningStarted": {
+        "additionalProperties": false,
+        "properties": {
+          "data": {
+            "additionalProperties": false,
+            "properties": {
+              "assistantMessageID": {
+                "pattern": "^msg_",
+                "type": "string"
+              },
+              "providerMetadata": {
+                "$ref": "#/$defs/LLMProviderMetadata"
+              },
+              "reasoningID": {
+                "type": "string"
+              },
+              "sessionID": {
+                "pattern": "^ses",
+                "type": "string"
+              },
+              "timestamp": {
+                "type": "number"
+              }
+            },
+            "required": [
+              "timestamp",
+              "sessionID",
+              "assistantMessageID",
+              "reasoningID"
+            ],
+            "type": "object"
+          },
+          "durable": {
+            "additionalProperties": false,
+            "properties": {
+              "aggregateID": {
+                "type": "string"
+              },
+              "seq": {
+                "type": "integer"
+              },
+              "version": {
+                "type": "integer"
+              }
+            },
+            "required": [
+              "aggregateID",
+              "seq",
+              "version"
+            ],
+            "type": "object"
+          },
+          "id": {
+            "pattern": "^evt_",
+            "type": "string"
+          },
+          "location": {
+            "$ref": "#/$defs/LocationRef"
+          },
+          "metadata": {
+            "type": "object"
+          },
+          "type": {
+            "enum": [
+              "session.next.reasoning.started"
+            ],
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "type",
+          "data"
+        ],
+        "type": "object"
+      },
+      "SessionNextReasoningEnded": {
+        "additionalProperties": false,
+        "properties": {
+          "data": {
+            "additionalProperties": false,
+            "properties": {
+              "assistantMessageID": {
+                "pattern": "^msg_",
+                "type": "string"
+              },
+              "providerMetadata": {
+                "$ref": "#/$defs/LLMProviderMetadata"
+              },
+              "reasoningID": {
+                "type": "string"
+              },
+              "sessionID": {
+                "pattern": "^ses",
+                "type": "string"
+              },
+              "text": {
+                "type": "string"
+              },
+              "timestamp": {
+                "type": "number"
+              }
+            },
+            "required": [
+              "timestamp",
+              "sessionID",
+              "assistantMessageID",
+              "reasoningID",
+              "text"
+            ],
+            "type": "object"
+          },
+          "durable": {
+            "additionalProperties": false,
+            "properties": {
+              "aggregateID": {
+                "type": "string"
+              },
+              "seq": {
+                "type": "integer"
+              },
+              "version": {
+                "type": "integer"
+              }
+            },
+            "required": [
+              "aggregateID",
+              "seq",
+              "version"
+            ],
+            "type": "object"
+          },
+          "id": {
+            "pattern": "^evt_",
+            "type": "string"
+          },
+          "location": {
+            "$ref": "#/$defs/LocationRef"
+          },
+          "metadata": {
+            "type": "object"
+          },
+          "type": {
+            "enum": [
+              "session.next.reasoning.ended"
+            ],
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "type",
+          "data"
+        ],
+        "type": "object"
+      },
+      "SessionNextRetried": {
+        "additionalProperties": false,
+        "properties": {
+          "data": {
+            "additionalProperties": false,
+            "properties": {
+              "attempt": {
+                "type": "number"
+              },
+              "error": {
+                "$ref": "#/$defs/SessionNextRetry_error"
+              },
+              "sessionID": {
+                "pattern": "^ses",
+                "type": "string"
+              },
+              "timestamp": {
+                "type": "number"
+              }
+            },
+            "required": [
+              "timestamp",
+              "sessionID",
+              "attempt",
+              "error"
+            ],
+            "type": "object"
+          },
+          "durable": {
+            "additionalProperties": false,
+            "properties": {
+              "aggregateID": {
+                "type": "string"
+              },
+              "seq": {
+                "type": "integer"
+              },
+              "version": {
+                "type": "integer"
+              }
+            },
+            "required": [
+              "aggregateID",
+              "seq",
+              "version"
+            ],
+            "type": "object"
+          },
+          "id": {
+            "pattern": "^evt_",
+            "type": "string"
+          },
+          "location": {
+            "$ref": "#/$defs/LocationRef"
+          },
+          "metadata": {
+            "type": "object"
+          },
+          "type": {
+            "enum": [
+              "session.next.retried"
+            ],
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "type",
+          "data"
+        ],
+        "type": "object"
+      },
+      "SessionNextCompactionStarted": {
+        "additionalProperties": false,
+        "properties": {
+          "data": {
+            "additionalProperties": false,
+            "properties": {
+              "messageID": {
+                "pattern": "^msg_",
+                "type": "string"
+              },
+              "reason": {
+                "enum": [
+                  "auto",
+                  "manual"
+                ],
+                "type": "string"
+              },
+              "sessionID": {
+                "pattern": "^ses",
+                "type": "string"
+              },
+              "timestamp": {
+                "type": "number"
+              }
+            },
+            "required": [
+              "timestamp",
+              "sessionID",
+              "messageID",
+              "reason"
+            ],
+            "type": "object"
+          },
+          "durable": {
+            "additionalProperties": false,
+            "properties": {
+              "aggregateID": {
+                "type": "string"
+              },
+              "seq": {
+                "type": "integer"
+              },
+              "version": {
+                "type": "integer"
+              }
+            },
+            "required": [
+              "aggregateID",
+              "seq",
+              "version"
+            ],
+            "type": "object"
+          },
+          "id": {
+            "pattern": "^evt_",
+            "type": "string"
+          },
+          "location": {
+            "$ref": "#/$defs/LocationRef"
+          },
+          "metadata": {
+            "type": "object"
+          },
+          "type": {
+            "enum": [
+              "session.next.compaction.started"
+            ],
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "type",
+          "data"
+        ],
+        "type": "object"
+      },
+      "SessionNextCompactionEnded": {
+        "additionalProperties": false,
+        "properties": {
+          "data": {
+            "additionalProperties": false,
+            "properties": {
+              "messageID": {
+                "pattern": "^msg_",
+                "type": "string"
+              },
+              "reason": {
+                "enum": [
+                  "auto",
+                  "manual"
+                ],
+                "type": "string"
+              },
+              "recent": {
+                "type": "string"
+              },
+              "sessionID": {
+                "pattern": "^ses",
+                "type": "string"
+              },
+              "text": {
+                "type": "string"
+              },
+              "timestamp": {
+                "type": "number"
+              }
+            },
+            "required": [
+              "timestamp",
+              "sessionID",
+              "messageID",
+              "reason",
+              "text",
+              "recent"
+            ],
+            "type": "object"
+          },
+          "durable": {
+            "additionalProperties": false,
+            "properties": {
+              "aggregateID": {
+                "type": "string"
+              },
+              "seq": {
+                "type": "integer"
+              },
+              "version": {
+                "type": "integer"
+              }
+            },
+            "required": [
+              "aggregateID",
+              "seq",
+              "version"
+            ],
+            "type": "object"
+          },
+          "id": {
+            "pattern": "^evt_",
+            "type": "string"
+          },
+          "location": {
+            "$ref": "#/$defs/LocationRef"
+          },
+          "metadata": {
+            "type": "object"
+          },
+          "type": {
+            "enum": [
+              "session.next.compaction.ended"
+            ],
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "type",
+          "data"
+        ],
+        "type": "object"
+      },
+      "SessionNextRevertStaged": {
+        "additionalProperties": false,
+        "properties": {
+          "data": {
+            "additionalProperties": false,
+            "properties": {
+              "revert": {
+                "$ref": "#/$defs/RevertState"
+              },
+              "sessionID": {
+                "pattern": "^ses",
+                "type": "string"
+              },
+              "timestamp": {
+                "type": "number"
+              }
+            },
+            "required": [
+              "timestamp",
+              "sessionID",
+              "revert"
+            ],
+            "type": "object"
+          },
+          "durable": {
+            "additionalProperties": false,
+            "properties": {
+              "aggregateID": {
+                "type": "string"
+              },
+              "seq": {
+                "type": "integer"
+              },
+              "version": {
+                "type": "integer"
+              }
+            },
+            "required": [
+              "aggregateID",
+              "seq",
+              "version"
+            ],
+            "type": "object"
+          },
+          "id": {
+            "pattern": "^evt_",
+            "type": "string"
+          },
+          "location": {
+            "$ref": "#/$defs/LocationRef"
+          },
+          "metadata": {
+            "type": "object"
+          },
+          "type": {
+            "enum": [
+              "session.next.revert.staged"
+            ],
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "type",
+          "data"
+        ],
+        "type": "object"
+      },
+      "SessionNextRevertCleared": {
+        "additionalProperties": false,
+        "properties": {
+          "data": {
+            "additionalProperties": false,
             "properties": {
               "sessionID": {
+                "pattern": "^ses",
+                "type": "string"
+              },
+              "timestamp": {
+                "type": "number"
+              }
+            },
+            "required": [
+              "timestamp",
+              "sessionID"
+            ],
+            "type": "object"
+          },
+          "durable": {
+            "additionalProperties": false,
+            "properties": {
+              "aggregateID": {
+                "type": "string"
+              },
+              "seq": {
+                "type": "integer"
+              },
+              "version": {
+                "type": "integer"
+              }
+            },
+            "required": [
+              "aggregateID",
+              "seq",
+              "version"
+            ],
+            "type": "object"
+          },
+          "id": {
+            "pattern": "^evt_",
+            "type": "string"
+          },
+          "location": {
+            "$ref": "#/$defs/LocationRef"
+          },
+          "metadata": {
+            "type": "object"
+          },
+          "type": {
+            "enum": [
+              "session.next.revert.cleared"
+            ],
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "type",
+          "data"
+        ],
+        "type": "object"
+      },
+      "SessionNextRevertCommitted": {
+        "additionalProperties": false,
+        "properties": {
+          "data": {
+            "additionalProperties": false,
+            "properties": {
+              "messageID": {
+                "pattern": "^msg_",
+                "type": "string"
+              },
+              "sessionID": {
+                "pattern": "^ses",
+                "type": "string"
+              },
+              "timestamp": {
+                "type": "number"
+              }
+            },
+            "required": [
+              "timestamp",
+              "sessionID",
+              "messageID"
+            ],
+            "type": "object"
+          },
+          "durable": {
+            "additionalProperties": false,
+            "properties": {
+              "aggregateID": {
+                "type": "string"
+              },
+              "seq": {
+                "type": "integer"
+              },
+              "version": {
+                "type": "integer"
+              }
+            },
+            "required": [
+              "aggregateID",
+              "seq",
+              "version"
+            ],
+            "type": "object"
+          },
+          "id": {
+            "pattern": "^evt_",
+            "type": "string"
+          },
+          "location": {
+            "$ref": "#/$defs/LocationRef"
+          },
+          "metadata": {
+            "type": "object"
+          },
+          "type": {
+            "enum": [
+              "session.next.revert.committed"
+            ],
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "type",
+          "data"
+        ],
+        "type": "object"
+      },
+      "LocationRef": {
+        "additionalProperties": false,
+        "properties": {
+          "directory": {
+            "type": "string"
+          },
+          "workspaceID": {
+            "pattern": "^wrk",
+            "type": "string"
+          }
+        },
+        "required": [
+          "directory"
+        ],
+        "type": "object"
+      },
+      "ModelRef": {
+        "additionalProperties": false,
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "providerID": {
+            "type": "string"
+          },
+          "variant": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "providerID"
+        ],
+        "type": "object"
+      },
+      "Prompt": {
+        "additionalProperties": false,
+        "properties": {
+          "agents": {
+            "items": {
+              "$ref": "#/$defs/PromptAgentAttachment"
+            },
+            "type": "array"
+          },
+          "files": {
+            "items": {
+              "$ref": "#/$defs/PromptFileAttachment"
+            },
+            "type": "array"
+          },
+          "text": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "text"
+        ],
+        "type": "object"
+      },
+      "SessionErrorUnknown": {
+        "additionalProperties": false,
+        "properties": {
+          "message": {
+            "type": "string"
+          },
+          "type": {
+            "enum": [
+              "unknown"
+            ],
+            "type": "string"
+          }
+        },
+        "required": [
+          "type",
+          "message"
+        ],
+        "type": "object"
+      },
+      "LLMProviderMetadata": {
+        "additionalProperties": {
+          "type": "object"
+        },
+        "type": "object"
+      },
+      "LLMToolContent": {
+        "anyOf": [
+          {
+            "$ref": "#/$defs/ToolTextContent"
+          },
+          {
+            "$ref": "#/$defs/ToolFileContent"
+          }
+        ]
+      },
+      "SessionNextRetry_error": {
+        "additionalProperties": false,
+        "properties": {
+          "isRetryable": {
+            "type": "boolean"
+          },
+          "message": {
+            "type": "string"
+          },
+          "metadata": {
+            "additionalProperties": {
+              "type": "string"
+            },
+            "type": "object"
+          },
+          "responseBody": {
+            "type": "string"
+          },
+          "responseHeaders": {
+            "additionalProperties": {
+              "type": "string"
+            },
+            "type": "object"
+          },
+          "statusCode": {
+            "type": "number"
+          }
+        },
+        "required": [
+          "message",
+          "isRetryable"
+        ],
+        "type": "object"
+      },
+      "RevertState": {
+        "additionalProperties": false,
+        "properties": {
+          "diff": {
+            "type": "string"
+          },
+          "files": {
+            "items": {
+              "$ref": "#/$defs/FileDiff"
+            },
+            "type": "array"
+          },
+          "messageID": {
+            "pattern": "^msg_",
+            "type": "string"
+          },
+          "partID": {
+            "type": "string"
+          },
+          "snapshot": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "messageID"
+        ],
+        "type": "object"
+      },
+      "PromptAgentAttachment": {
+        "additionalProperties": false,
+        "properties": {
+          "name": {
+            "type": "string"
+          },
+          "source": {
+            "$ref": "#/$defs/PromptSource"
+          }
+        },
+        "required": [
+          "name"
+        ],
+        "type": "object"
+      },
+      "PromptFileAttachment": {
+        "additionalProperties": false,
+        "properties": {
+          "description": {
+            "type": "string"
+          },
+          "mime": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "source": {
+            "$ref": "#/$defs/PromptSource"
+          },
+          "uri": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "uri",
+          "mime"
+        ],
+        "type": "object"
+      },
+      "ToolTextContent": {
+        "additionalProperties": false,
+        "properties": {
+          "text": {
+            "type": "string"
+          },
+          "type": {
+            "enum": [
+              "text"
+            ],
+            "type": "string"
+          }
+        },
+        "required": [
+          "type",
+          "text"
+        ],
+        "type": "object"
+      },
+      "ToolFileContent": {
+        "additionalProperties": false,
+        "properties": {
+          "mime": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "type": {
+            "enum": [
+              "file"
+            ],
+            "type": "string"
+          },
+          "uri": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "type",
+          "uri",
+          "mime"
+        ],
+        "type": "object"
+      },
+      "FileDiff": {
+        "additionalProperties": false,
+        "properties": {
+          "additions": {
+            "minimum": 0,
+            "type": "integer"
+          },
+          "deletions": {
+            "minimum": 0,
+            "type": "integer"
+          },
+          "patch": {
+            "type": "string"
+          },
+          "path": {
+            "type": "string"
+          },
+          "status": {
+            "enum": [
+              "added",
+              "modified",
+              "deleted"
+            ],
+            "type": "string"
+          }
+        },
+        "required": [
+          "path",
+          "status",
+          "additions",
+          "deletions",
+          "patch"
+        ],
+        "type": "object"
+      },
+      "PromptSource": {
+        "additionalProperties": false,
+        "properties": {
+          "end": {
+            "type": "number"
+          },
+          "start": {
+            "type": "number"
+          },
+          "text": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "start",
+          "end",
+          "text"
+        ],
+        "type": "object"
+      }
+    }
+  },
+  "recordSchema": {
+    "properties": {
+      "direction": {
+        "enum": [
+          "client-to-agent"
+        ],
+        "type": "string"
+      },
+      "request": {
+        "properties": {
+          "method": {
+            "enum": [
+              "GET"
+            ],
+            "type": "string"
+          },
+          "params": {
+            "properties": {
+              "sessionID": {
+                "pattern": "^ses",
                 "type": "string"
               }
             },
             "required": [
               "sessionID"
-            ]
+            ],
+            "type": "object"
           },
           "query": {
-            "type": "object",
             "properties": {
               "after": {
                 "type": "string"
@@ -158,20 +2772,34 @@
               "limit": {
                 "type": "string"
               }
-            }
+            },
+            "type": "object"
+          },
+          "route": {
+            "enum": [
+              "/api/session/:sessionID/history"
+            ],
+            "type": "string"
           }
         },
         "required": [
           "method",
           "route",
           "params"
-        ]
+        ],
+        "type": "object"
       }
     },
     "required": [
       "direction",
       "request"
-    ]
+    ],
+    "type": "object"
+  },
+  "schemaFidelity": {
+    "payload": "semantic",
+    "result": "semantic",
+    "carrier": "semantic"
   },
   "evidence": {
     "existence": [

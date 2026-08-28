@@ -10,18 +10,24 @@
   "direction": "agent-to-client",
   "trigger": "Published on the native GET /event stream.",
   "payloadSchema": {
-    "type": "object",
+    "additionalProperties": false,
     "properties": {
       "messageID": {
+        "pattern": "^msg_",
         "type": "string"
       },
       "reason": {
+        "enum": [
+          "auto",
+          "manual"
+        ],
         "type": "string"
       },
       "recent": {
         "type": "string"
       },
       "sessionID": {
+        "pattern": "^ses",
         "type": "string"
       },
       "text": {
@@ -32,33 +38,41 @@
       }
     },
     "required": [
+      "timestamp",
+      "sessionID",
       "messageID",
       "reason",
-      "recent",
-      "sessionID",
       "text",
-      "timestamp"
-    ]
+      "recent"
+    ],
+    "type": "object"
   },
   "recordSchema": {
-    "type": "object",
+    "additionalProperties": false,
     "properties": {
       "id": {
+        "pattern": "^evt_",
         "type": "string"
       },
       "properties": {
-        "type": "object",
+        "additionalProperties": false,
         "properties": {
           "messageID": {
+            "pattern": "^msg_",
             "type": "string"
           },
           "reason": {
+            "enum": [
+              "auto",
+              "manual"
+            ],
             "type": "string"
           },
           "recent": {
             "type": "string"
           },
           "sessionID": {
+            "pattern": "^ses",
             "type": "string"
           },
           "text": {
@@ -69,26 +83,32 @@
           }
         },
         "required": [
+          "timestamp",
+          "sessionID",
           "messageID",
           "reason",
-          "recent",
-          "sessionID",
           "text",
-          "timestamp"
-        ]
+          "recent"
+        ],
+        "type": "object"
       },
       "type": {
-        "type": "string",
         "enum": [
           "session.next.compaction.ended"
-        ]
+        ],
+        "type": "string"
       }
     },
     "required": [
       "id",
-      "properties",
-      "type"
-    ]
+      "type",
+      "properties"
+    ],
+    "type": "object"
+  },
+  "schemaFidelity": {
+    "payload": "exact",
+    "carrier": "exact"
   },
   "evidence": {
     "existence": [

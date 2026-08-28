@@ -2,7 +2,7 @@ import assert from 'node:assert/strict';
 import test from 'node:test';
 import { replayAgentSurface } from './replay-agent-surface.mjs';
 
-test('every committed native capture replays exactly through its Imposter persona contract', () => {
+test('every committed native capture replays through its declared fidelity and Imposter event inventory', () => {
   for (const vendor of ['claude', 'codex', 'grok', 'kimi', 'opencode']) {
     const report = replayAgentSurface({
       vendor,
@@ -14,13 +14,16 @@ test('every committed native capture replays exactly through its Imposter person
   }
 });
 
-test('hermes replay covers exact tui_gateway and plugin-hook carriers', () => {
+test('hermes replay covers projected tui_gateway and plugin-hook occurrence without claiming native shape', () => {
   const report = replayAgentSurface({
     vendor: 'hermes',
     groundTruthPath: 'packages/surface/vendors/hermes/groundtruth.json',
   });
   assert.equal(report.status, 'passed', JSON.stringify(report.issues, null, 2));
   assert.ok(report.frames > 0);
+  assert.equal(report.captureFidelity.defaultRepresentation, 'legacy-privacy-projection');
+  assert.equal(report.shapeValidatedRecords, 0);
+  assert.ok(report.projectionOnlyRecords > 0);
   assert.match(report.replayDigest, /^[0-9a-f]{64}$/);
 });
 
@@ -32,6 +35,9 @@ test('opencode replay covers exact SSE carriers and correlated HTTP results', ()
   assert.equal(report.status, 'passed', JSON.stringify(report.issues, null, 2));
   assert.ok(report.frames > 3_000);
   assert.ok(report.results > 100);
+  assert.equal(report.captureFidelity.defaultRepresentation, 'type-preserving-redaction');
+  assert.ok(report.shapeValidatedRecords > 3_000);
+  assert.equal(report.projectionOnlyRecords, 0);
   assert.equal(report.unattributedResults, 0);
 });
 

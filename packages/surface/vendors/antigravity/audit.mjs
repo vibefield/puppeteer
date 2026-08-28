@@ -11,6 +11,7 @@ import {
   VERSION,
   validateReleaseContract,
 } from './census/harness.mjs';
+import { loadModel, validateSanitizedPayload } from '@vibecook/puppeteer-surface';
 import { checkCaptureDirectory } from '@vibecook/puppeteer-surface/sanitize';
 import { AUTHORIZED_SCENARIOS } from './census/authorized-census.mjs';
 import {
@@ -233,11 +234,72 @@ export function auditAntigravity() {
   notes.push('documentation leads: official CLI docs + 1.1.12 changelog, not runtime evidence');
   const capturesRoot = join(vendorRoot, 'captures', `antigravity@${VERSION}`);
   const requiredScenarios = ['readonly-print', 'hook-discovery', 'add-dir-turn', 'resume-turn', 'tool-success'];
+  const modelPath = join(vendorRoot, 'groundtruth.json');
+  let model;
+  try {
+    model = loadModel(modelPath);
+  } catch (error) {
+    problems.push(`canonical model is missing or invalid: ${error instanceof Error ? error.message : String(error)}`);
+  }
+  const modelEvents = new Map(
+    (model?.events ?? []).map((event) => [`${event.nativeName ?? event.event}\0${event.channel}`, event]),
+  );
+  let legacyScenarios = 0;
+  let nativeScenarios = 0;
   for (const scenario of requiredScenarios) {
     if (!AUTHORIZED_SCENARIOS.includes(scenario))
       problems.push(`required scenario ${scenario} is not in the authorized set`);
     if (!existsSync(join(capturesRoot, scenario, 'capture.json'))) {
       problems.push(`missing sanitized capture: captures/antigravity@${VERSION}/${scenario}`);
+      continue;
+    }
+    const scenarioRoot = join(capturesRoot, scenario);
+    const metadata = JSON.parse(readFileSync(join(scenarioRoot, 'capture.json'), 'utf8'));
+    const typePreserving = metadata.schemaVersion >= 2 && metadata.representation === 'type-preserving-redaction';
+    const legacy = metadata.schemaVersion === 1 && metadata.representation === 'legacy-privacy-projection';
+    if (!typePreserving && !legacy) {
+      problems.push(`${scenario}: capture representation is ambiguous or unsupported`);
+      continue;
+    }
+    if (legacy) legacyScenarios += 1;
+    else nativeScenarios += 1;
+
+    for (const name of readdirSync(scenarioRoot).filter(
+      (entry) => entry.endsWith('.json') && entry !== 'capture.json',
+    )) {
+      const carrier = JSON.parse(readFileSync(join(scenarioRoot, name), 'utf8'));
+      for (const record of carrier.events ?? []) {
+        if (typeof record.event !== 'string') continue;
+        const event = modelEvents.get(`${record.event}\0print-stream`);
+        if (!event) {
+          problems.push(`${scenario}/${name}: native event ${record.event} has no model document`);
+          continue;
+        }
+        if (typePreserving && event.payloadSchema) {
+          const { event: _event, ...payload } = record;
+          const violations = validateSanitizedPayload(event.payloadSchema, payload);
+          if (violations.length > 0) {
+            problems.push(`${scenario}/${name}: ${record.event}: ${violations.join('; ')}`);
+          }
+        }
+      }
+    }
+    const hooksPath = join(scenarioRoot, 'hooks.jsonl');
+    if (existsSync(hooksPath)) {
+      for (const [index, line] of readFileSync(hooksPath, 'utf8').split('\n').filter(Boolean).entries()) {
+        const record = JSON.parse(line);
+        const event = modelEvents.get(`${record.event}\0hook-command`);
+        if (!event) {
+          problems.push(`${scenario}/hooks.jsonl:${index + 1}: hook ${String(record.event)} has no model document`);
+          continue;
+        }
+        if (typePreserving && event.payloadSchema) {
+          const violations = validateSanitizedPayload(event.payloadSchema, record.stdin);
+          if (violations.length > 0) {
+            problems.push(`${scenario}/hooks.jsonl:${index + 1}: ${record.event}: ${violations.join('; ')}`);
+          }
+        }
+      }
     }
   }
   if (existsSync(join(capturesRoot, 'add-dir-turn', 'hooks.jsonl'))) {
@@ -248,6 +310,9 @@ export function auditAntigravity() {
       problems.push(`sanitized capture leak: ${leak}`);
     }
   }
+  notes.push(
+    `capture representations: ${nativeScenarios} type-preserving, ${legacyScenarios} legacy projections (shape validation disabled for legacy records)`,
+  );
   notes.push('native-TUI PTY census is still outstanding; print-mode is a survey oracle only');
   return { problems: problems.sort(), notes };
 }

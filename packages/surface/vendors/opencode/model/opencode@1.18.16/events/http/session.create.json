@@ -10,27 +10,9 @@
   "direction": "client-to-agent",
   "trigger": "Create session — Create a new OpenCode session for interacting with AI assistants and managing conversations.",
   "payloadSchema": {
-    "type": "object",
     "properties": {
-      "method": {
-        "type": "string"
-      },
-      "route": {
-        "type": "string"
-      },
-      "query": {
-        "type": "object",
-        "properties": {
-          "directory": {
-            "type": "string"
-          },
-          "workspace": {
-            "type": "string"
-          }
-        }
-      },
       "body": {
-        "type": "object",
+        "additionalProperties": false,
         "properties": {
           "agent": {
             "type": "string"
@@ -39,7 +21,7 @@
             "type": "object"
           },
           "model": {
-            "type": "object",
+            "additionalProperties": false,
             "properties": {
               "id": {
                 "type": "string"
@@ -54,69 +36,30 @@
             "required": [
               "id",
               "providerID"
-            ]
+            ],
+            "type": "object"
           },
           "parentID": {
+            "pattern": "^ses",
             "type": "string"
           },
           "permission": {
-            "type": "array",
-            "items": {
-              "type": "object",
-              "properties": {
-                "action": {
-                  "type": "string"
-                },
-                "pattern": {
-                  "type": "string"
-                },
-                "permission": {
-                  "type": "string"
-                }
-              },
-              "required": [
-                "action",
-                "pattern",
-                "permission"
-              ]
-            }
+            "$ref": "#/$defs/PermissionRuleset"
           },
           "title": {
             "type": "string"
           },
           "workspaceID": {
+            "pattern": "^wrk",
             "type": "string"
           }
-        }
-      }
-    },
-    "required": [
-      "method",
-      "route"
-    ]
-  },
-  "resultSchema": {
-    "type": "object",
-    "properties": {
+        },
+        "type": "object"
+      },
       "method": {
-        "type": "string",
-        "enum": [
-          "POST"
-        ]
-      },
-      "route": {
-        "type": "string",
-        "enum": [
-          "/session"
-        ]
-      },
-      "status": {
-        "type": "integer",
-        "minimum": 200,
-        "maximum": 299
+        "type": "string"
       },
       "query": {
-        "type": "object",
         "properties": {
           "directory": {
             "type": "string"
@@ -124,10 +67,99 @@
           "workspace": {
             "type": "string"
           }
-        }
+        },
+        "type": "object"
       },
+      "route": {
+        "type": "string"
+      }
+    },
+    "required": [
+      "method",
+      "route"
+    ],
+    "type": "object",
+    "$defs": {
+      "PermissionRuleset": {
+        "items": {
+          "$ref": "#/$defs/PermissionRule"
+        },
+        "type": "array"
+      },
+      "PermissionRule": {
+        "additionalProperties": false,
+        "properties": {
+          "action": {
+            "$ref": "#/$defs/PermissionAction"
+          },
+          "pattern": {
+            "type": "string"
+          },
+          "permission": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "permission",
+          "pattern",
+          "action"
+        ],
+        "type": "object"
+      },
+      "PermissionAction": {
+        "enum": [
+          "allow",
+          "deny",
+          "ask"
+        ],
+        "type": "string"
+      }
+    }
+  },
+  "resultSchema": {
+    "properties": {
       "body": {
-        "type": "object",
+        "$ref": "#/$defs/Session"
+      },
+      "method": {
+        "enum": [
+          "POST"
+        ],
+        "type": "string"
+      },
+      "query": {
+        "properties": {
+          "directory": {
+            "type": "string"
+          },
+          "workspace": {
+            "type": "string"
+          }
+        },
+        "type": "object"
+      },
+      "route": {
+        "enum": [
+          "/session"
+        ],
+        "type": "string"
+      },
+      "status": {
+        "maximum": 299,
+        "minimum": 200,
+        "type": "integer"
+      }
+    },
+    "required": [
+      "method",
+      "route",
+      "status",
+      "body"
+    ],
+    "type": "object",
+    "$defs": {
+      "Session": {
+        "additionalProperties": false,
         "properties": {
           "agent": {
             "type": "string"
@@ -139,13 +171,14 @@
             "type": "string"
           },
           "id": {
+            "pattern": "^ses",
             "type": "string"
           },
           "metadata": {
             "type": "object"
           },
           "model": {
-            "type": "object",
+            "additionalProperties": false,
             "properties": {
               "id": {
                 "type": "string"
@@ -160,49 +193,34 @@
             "required": [
               "id",
               "providerID"
-            ]
+            ],
+            "type": "object"
           },
           "parentID": {
+            "pattern": "^ses",
             "type": "string"
           },
           "path": {
             "type": "string"
           },
           "permission": {
-            "type": "array",
-            "items": {
-              "type": "object",
-              "properties": {
-                "action": {
-                  "type": "string"
-                },
-                "pattern": {
-                  "type": "string"
-                },
-                "permission": {
-                  "type": "string"
-                }
-              },
-              "required": [
-                "action",
-                "pattern",
-                "permission"
-              ]
-            }
+            "$ref": "#/$defs/PermissionRuleset"
           },
           "projectID": {
             "type": "string"
           },
           "revert": {
-            "type": "object",
+            "additionalProperties": false,
             "properties": {
               "diff": {
                 "type": "string"
               },
               "messageID": {
+                "pattern": "^msg",
                 "type": "string"
               },
               "partID": {
+                "pattern": "^prt",
                 "type": "string"
               },
               "snapshot": {
@@ -211,10 +229,11 @@
             },
             "required": [
               "messageID"
-            ]
+            ],
+            "type": "object"
           },
           "share": {
-            "type": "object",
+            "additionalProperties": false,
             "properties": {
               "url": {
                 "type": "string"
@@ -222,13 +241,14 @@
             },
             "required": [
               "url"
-            ]
+            ],
+            "type": "object"
           },
           "slug": {
             "type": "string"
           },
           "summary": {
-            "type": "object",
+            "additionalProperties": false,
             "properties": {
               "additions": {
                 "type": "number"
@@ -237,31 +257,10 @@
                 "type": "number"
               },
               "diffs": {
-                "type": "array",
                 "items": {
-                  "type": "object",
-                  "properties": {
-                    "additions": {
-                      "type": "number"
-                    },
-                    "deletions": {
-                      "type": "number"
-                    },
-                    "file": {
-                      "type": "string"
-                    },
-                    "patch": {
-                      "type": "string"
-                    },
-                    "status": {
-                      "type": "string"
-                    }
-                  },
-                  "required": [
-                    "additions",
-                    "deletions"
-                  ]
-                }
+                  "$ref": "#/$defs/SnapshotFileDiff"
+                },
+                "type": "array"
               },
               "files": {
                 "type": "number"
@@ -271,40 +270,42 @@
               "additions",
               "deletions",
               "files"
-            ]
+            ],
+            "type": "object"
           },
           "time": {
-            "type": "object",
+            "additionalProperties": false,
             "properties": {
               "archived": {
                 "type": "number"
               },
               "compacting": {
-                "type": "integer",
-                "minimum": 0
+                "minimum": 0,
+                "type": "integer"
               },
               "created": {
-                "type": "integer",
-                "minimum": 0
+                "minimum": 0,
+                "type": "integer"
               },
               "updated": {
-                "type": "integer",
-                "minimum": 0
+                "minimum": 0,
+                "type": "integer"
               }
             },
             "required": [
               "created",
               "updated"
-            ]
+            ],
+            "type": "object"
           },
           "title": {
             "type": "string"
           },
           "tokens": {
-            "type": "object",
+            "additionalProperties": false,
             "properties": {
               "cache": {
-                "type": "object",
+                "additionalProperties": false,
                 "properties": {
                   "read": {
                     "type": "number"
@@ -316,7 +317,8 @@
                 "required": [
                   "read",
                   "write"
-                ]
+                ],
+                "type": "object"
               },
               "input": {
                 "type": "number"
@@ -329,74 +331,110 @@
               }
             },
             "required": [
-              "cache",
               "input",
               "output",
-              "reasoning"
-            ]
+              "reasoning",
+              "cache"
+            ],
+            "type": "object"
           },
           "version": {
             "type": "string"
           },
           "workspaceID": {
+            "pattern": "^wrk",
             "type": "string"
           }
         },
         "required": [
-          "directory",
           "id",
-          "projectID",
           "slug",
-          "time",
+          "projectID",
+          "directory",
           "title",
-          "version"
-        ]
+          "version",
+          "time"
+        ],
+        "type": "object"
+      },
+      "PermissionRuleset": {
+        "items": {
+          "$ref": "#/$defs/PermissionRule"
+        },
+        "type": "array"
+      },
+      "SnapshotFileDiff": {
+        "additionalProperties": false,
+        "properties": {
+          "additions": {
+            "type": "number"
+          },
+          "deletions": {
+            "type": "number"
+          },
+          "file": {
+            "type": "string"
+          },
+          "patch": {
+            "type": "string"
+          },
+          "status": {
+            "enum": [
+              "added",
+              "deleted",
+              "modified"
+            ],
+            "type": "string"
+          }
+        },
+        "required": [
+          "additions",
+          "deletions"
+        ],
+        "type": "object"
+      },
+      "PermissionRule": {
+        "additionalProperties": false,
+        "properties": {
+          "action": {
+            "$ref": "#/$defs/PermissionAction"
+          },
+          "pattern": {
+            "type": "string"
+          },
+          "permission": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "permission",
+          "pattern",
+          "action"
+        ],
+        "type": "object"
+      },
+      "PermissionAction": {
+        "enum": [
+          "allow",
+          "deny",
+          "ask"
+        ],
+        "type": "string"
       }
-    },
-    "required": [
-      "method",
-      "route",
-      "status",
-      "body"
-    ]
+    }
   },
   "recordSchema": {
-    "type": "object",
     "properties": {
       "direction": {
-        "type": "string",
         "enum": [
           "client-to-agent"
-        ]
+        ],
+        "type": "string"
       },
       "request": {
-        "type": "object",
         "properties": {
-          "method": {
-            "type": "string",
-            "enum": [
-              "POST"
-            ]
-          },
-          "route": {
-            "type": "string",
-            "enum": [
-              "/session"
-            ]
-          },
-          "query": {
-            "type": "object",
-            "properties": {
-              "directory": {
-                "type": "string"
-              },
-              "workspace": {
-                "type": "string"
-              }
-            }
-          },
           "body": {
-            "type": "object",
+            "additionalProperties": false,
             "properties": {
               "agent": {
                 "type": "string"
@@ -405,7 +443,7 @@
                 "type": "object"
               },
               "model": {
-                "type": "object",
+                "additionalProperties": false,
                 "properties": {
                   "id": {
                     "type": "string"
@@ -420,64 +458,119 @@
                 "required": [
                   "id",
                   "providerID"
-                ]
+                ],
+                "type": "object"
               },
               "parentID": {
+                "pattern": "^ses",
                 "type": "string"
               },
               "permission": {
-                "type": "array",
-                "items": {
-                  "type": "object",
-                  "properties": {
-                    "action": {
-                      "type": "string"
-                    },
-                    "pattern": {
-                      "type": "string"
-                    },
-                    "permission": {
-                      "type": "string"
-                    }
-                  },
-                  "required": [
-                    "action",
-                    "pattern",
-                    "permission"
-                  ]
-                }
+                "$ref": "#/$defs/PermissionRuleset"
               },
               "title": {
                 "type": "string"
               },
               "workspaceID": {
+                "pattern": "^wrk",
                 "type": "string"
               }
-            }
+            },
+            "type": "object"
+          },
+          "method": {
+            "enum": [
+              "POST"
+            ],
+            "type": "string"
+          },
+          "query": {
+            "properties": {
+              "directory": {
+                "type": "string"
+              },
+              "workspace": {
+                "type": "string"
+              }
+            },
+            "type": "object"
+          },
+          "route": {
+            "enum": [
+              "/session"
+            ],
+            "type": "string"
           }
         },
         "required": [
           "method",
           "route"
-        ]
+        ],
+        "type": "object"
       }
     },
     "required": [
       "direction",
       "request"
-    ]
+    ],
+    "type": "object",
+    "$defs": {
+      "PermissionRuleset": {
+        "items": {
+          "$ref": "#/$defs/PermissionRule"
+        },
+        "type": "array"
+      },
+      "PermissionRule": {
+        "additionalProperties": false,
+        "properties": {
+          "action": {
+            "$ref": "#/$defs/PermissionAction"
+          },
+          "pattern": {
+            "type": "string"
+          },
+          "permission": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "permission",
+          "pattern",
+          "action"
+        ],
+        "type": "object"
+      },
+      "PermissionAction": {
+        "enum": [
+          "allow",
+          "deny",
+          "ask"
+        ],
+        "type": "string"
+      }
+    }
+  },
+  "schemaFidelity": {
+    "payload": "semantic",
+    "result": "semantic",
+    "carrier": "semantic"
   },
   "evidence": {
     "existence": [
+      "opencode-generated-openapi",
       "opencode-runtime-abort-stream"
     ],
     "shape": [
+      "opencode-generated-openapi",
       "opencode-runtime-abort-stream"
     ],
     "result": [
+      "opencode-generated-openapi",
       "opencode-runtime-abort-stream"
     ],
     "carrier": [
+      "opencode-generated-openapi",
       "opencode-runtime-abort-stream"
     ]
   },

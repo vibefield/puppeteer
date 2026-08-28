@@ -10,16 +10,20 @@
   "direction": "client-to-agent",
   "trigger": "Complete OAuth connection — Complete a code-based OAuth attempt and store the resulting credential.",
   "payloadSchema": {
-    "type": "object",
     "properties": {
+      "body": {
+        "additionalProperties": false,
+        "properties": {
+          "code": {
+            "type": "string"
+          }
+        },
+        "type": "object"
+      },
       "method": {
         "type": "string"
       },
-      "route": {
-        "type": "string"
-      },
       "params": {
-        "type": "object",
         "properties": {
           "attemptID": {
             "type": "string"
@@ -27,13 +31,13 @@
         },
         "required": [
           "attemptID"
-        ]
+        ],
+        "type": "object"
       },
       "query": {
-        "type": "object",
         "properties": {
           "location": {
-            "type": "object",
+            "additionalProperties": false,
             "properties": {
               "directory": {
                 "type": "string"
@@ -41,17 +45,14 @@
               "workspace": {
                 "type": "string"
               }
-            }
+            },
+            "type": "object"
           }
-        }
+        },
+        "type": "object"
       },
-      "body": {
-        "type": "object",
-        "properties": {
-          "code": {
-            "type": "string"
-          }
-        }
+      "route": {
+        "type": "string"
       }
     },
     "required": [
@@ -59,30 +60,18 @@
       "route",
       "params",
       "body"
-    ]
+    ],
+    "type": "object"
   },
   "resultSchema": {
-    "type": "object",
     "properties": {
       "method": {
-        "type": "string",
         "enum": [
           "POST"
-        ]
-      },
-      "route": {
-        "type": "string",
-        "enum": [
-          "/api/integration/attempt/:attemptID/complete"
-        ]
-      },
-      "status": {
-        "type": "integer",
-        "minimum": 200,
-        "maximum": 299
+        ],
+        "type": "string"
       },
       "params": {
-        "type": "object",
         "properties": {
           "attemptID": {
             "type": "string"
@@ -90,13 +79,13 @@
         },
         "required": [
           "attemptID"
-        ]
+        ],
+        "type": "object"
       },
       "query": {
-        "type": "object",
         "properties": {
           "location": {
-            "type": "object",
+            "additionalProperties": false,
             "properties": {
               "directory": {
                 "type": "string"
@@ -104,9 +93,22 @@
               "workspace": {
                 "type": "string"
               }
-            }
+            },
+            "type": "object"
           }
-        }
+        },
+        "type": "object"
+      },
+      "route": {
+        "enum": [
+          "/api/integration/attempt/:attemptID/complete"
+        ],
+        "type": "string"
+      },
+      "status": {
+        "maximum": 299,
+        "minimum": 200,
+        "type": "integer"
       }
     },
     "required": [
@@ -114,34 +116,35 @@
       "route",
       "status",
       "params"
-    ]
+    ],
+    "type": "object"
   },
   "recordSchema": {
-    "type": "object",
     "properties": {
       "direction": {
-        "type": "string",
         "enum": [
           "client-to-agent"
-        ]
+        ],
+        "type": "string"
       },
       "request": {
-        "type": "object",
         "properties": {
+          "body": {
+            "additionalProperties": false,
+            "properties": {
+              "code": {
+                "type": "string"
+              }
+            },
+            "type": "object"
+          },
           "method": {
-            "type": "string",
             "enum": [
               "POST"
-            ]
-          },
-          "route": {
-            "type": "string",
-            "enum": [
-              "/api/integration/attempt/:attemptID/complete"
-            ]
+            ],
+            "type": "string"
           },
           "params": {
-            "type": "object",
             "properties": {
               "attemptID": {
                 "type": "string"
@@ -149,13 +152,13 @@
             },
             "required": [
               "attemptID"
-            ]
+            ],
+            "type": "object"
           },
           "query": {
-            "type": "object",
             "properties": {
               "location": {
-                "type": "object",
+                "additionalProperties": false,
                 "properties": {
                   "directory": {
                     "type": "string"
@@ -163,17 +166,17 @@
                   "workspace": {
                     "type": "string"
                   }
-                }
+                },
+                "type": "object"
               }
-            }
+            },
+            "type": "object"
           },
-          "body": {
-            "type": "object",
-            "properties": {
-              "code": {
-                "type": "string"
-              }
-            }
+          "route": {
+            "enum": [
+              "/api/integration/attempt/:attemptID/complete"
+            ],
+            "type": "string"
           }
         },
         "required": [
@@ -181,13 +184,20 @@
           "route",
           "params",
           "body"
-        ]
+        ],
+        "type": "object"
       }
     },
     "required": [
       "direction",
       "request"
-    ]
+    ],
+    "type": "object"
+  },
+  "schemaFidelity": {
+    "payload": "semantic",
+    "result": "semantic",
+    "carrier": "semantic"
   },
   "evidence": {
     "existence": [

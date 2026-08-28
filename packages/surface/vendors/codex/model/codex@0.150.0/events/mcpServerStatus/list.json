@@ -6,33 +6,139 @@
   "transport": "jsonrpc-request",
   "direction": "client-to-agent",
   "payloadSchema": {
-    "type": "object",
     "properties": {
-      "cursor": {},
-      "detail": {},
-      "limit": {},
-      "threadId": {}
-    }
-  },
-  "recordSchema": {
-    "type": "object",
-    "properties": {
-      "method": {
-        "type": "string",
-        "enum": [
-          "mcpServerStatus/list"
+      "cursor": {
+        "description": "Opaque pagination cursor returned by a previous call.",
+        "type": [
+          "string",
+          "null"
         ]
       },
-      "params": {
-        "type": "object"
+      "detail": {
+        "anyOf": [
+          {
+            "$ref": "#/$defs/McpServerStatusDetail"
+          },
+          {
+            "type": "null"
+          }
+        ],
+        "description": "Controls how much MCP inventory data to fetch for each server. Defaults to `Full` when omitted."
       },
-      "id": {}
+      "limit": {
+        "description": "Optional page size; defaults to a server-defined value.",
+        "format": "uint32",
+        "minimum": 0,
+        "type": [
+          "integer",
+          "null"
+        ]
+      },
+      "threadId": {
+        "type": [
+          "string",
+          "null"
+        ]
+      }
+    },
+    "type": "object",
+    "$defs": {
+      "McpServerStatusDetail": {
+        "enum": [
+          "full",
+          "toolsAndAuthOnly"
+        ],
+        "type": "string"
+      }
+    },
+    "$schema": "http://json-schema.org/draft-07/schema#"
+  },
+  "recordSchema": {
+    "properties": {
+      "id": {
+        "$ref": "#/$defs/RequestId"
+      },
+      "method": {
+        "enum": [
+          "mcpServerStatus/list"
+        ],
+        "title": "McpServerStatus/listRequestMethod",
+        "type": "string"
+      },
+      "params": {
+        "$ref": "#/$defs/ListMcpServerStatusParams"
+      }
     },
     "required": [
+      "id",
       "method",
-      "params",
-      "id"
-    ]
+      "params"
+    ],
+    "title": "McpServerStatus/listRequest",
+    "type": "object",
+    "$defs": {
+      "RequestId": {
+        "anyOf": [
+          {
+            "type": "string"
+          },
+          {
+            "format": "int64",
+            "type": "integer"
+          }
+        ]
+      },
+      "ListMcpServerStatusParams": {
+        "properties": {
+          "cursor": {
+            "description": "Opaque pagination cursor returned by a previous call.",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "detail": {
+            "anyOf": [
+              {
+                "$ref": "#/$defs/McpServerStatusDetail"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Controls how much MCP inventory data to fetch for each server. Defaults to `Full` when omitted."
+          },
+          "limit": {
+            "description": "Optional page size; defaults to a server-defined value.",
+            "format": "uint32",
+            "minimum": 0,
+            "type": [
+              "integer",
+              "null"
+            ]
+          },
+          "threadId": {
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        },
+        "type": "object"
+      },
+      "McpServerStatusDetail": {
+        "enum": [
+          "full",
+          "toolsAndAuthOnly"
+        ],
+        "type": "string"
+      }
+    },
+    "$schema": "http://json-schema.org/draft-07/schema#"
+  },
+  "schemaFidelity": {
+    "payload": "exact",
+    "carrier": "exact"
   },
   "evidence": {
     "existence": [

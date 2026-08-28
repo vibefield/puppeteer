@@ -27,7 +27,7 @@
       "kind": "capture-set",
       "path": "packages/surface/vendors/claude/captures/claude@2.1.207",
       "digestAlgorithm": "sha256-path-content-v1",
-      "sha256": "0f6b9a7d9ad2b2a204eb00c84dc21357ad4e1959d7f40bb0dcbd11c27de1d9e8"
+      "sha256": "3079a27e294bc1743d42dc46657f4452a3b0b839ce1a24cb61d03b6e00f595f3"
     },
     {
       "id": "agent-surface-model",

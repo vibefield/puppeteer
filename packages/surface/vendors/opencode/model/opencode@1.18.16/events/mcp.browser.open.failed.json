@@ -10,7 +10,7 @@
   "direction": "agent-to-client",
   "trigger": "Published on the native GET /event stream.",
   "payloadSchema": {
-    "type": "object",
+    "additionalProperties": false,
     "properties": {
       "mcpName": {
         "type": "string"
@@ -22,16 +22,18 @@
     "required": [
       "mcpName",
       "url"
-    ]
+    ],
+    "type": "object"
   },
   "recordSchema": {
-    "type": "object",
+    "additionalProperties": false,
     "properties": {
       "id": {
+        "pattern": "^evt_",
         "type": "string"
       },
       "properties": {
-        "type": "object",
+        "additionalProperties": false,
         "properties": {
           "mcpName": {
             "type": "string"
@@ -43,20 +45,26 @@
         "required": [
           "mcpName",
           "url"
-        ]
+        ],
+        "type": "object"
       },
       "type": {
-        "type": "string",
         "enum": [
           "mcp.browser.open.failed"
-        ]
+        ],
+        "type": "string"
       }
     },
     "required": [
       "id",
-      "properties",
-      "type"
-    ]
+      "type",
+      "properties"
+    ],
+    "type": "object"
+  },
+  "schemaFidelity": {
+    "payload": "exact",
+    "carrier": "exact"
   },
   "evidence": {
     "existence": [

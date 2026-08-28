@@ -6,13 +6,13 @@
   "transport": "jsonrpc-notification",
   "direction": "agent-to-client",
   "payloadSchema": {
-    "type": "object",
     "properties": {
       "itemId": {
         "type": "string"
       },
       "summaryIndex": {
-        "type": "number"
+        "format": "int64",
+        "type": "integer"
       },
       "threadId": {
         "type": "string"
@@ -26,30 +26,60 @@
       "summaryIndex",
       "threadId",
       "turnId"
-    ]
+    ],
+    "type": "object",
+    "$schema": "http://json-schema.org/draft-07/schema#"
   },
   "recordSchema": {
-    "type": "object",
     "properties": {
       "method": {
-        "type": "string",
         "enum": [
           "item/reasoning/summaryPartAdded"
-        ]
+        ],
+        "title": "Item/reasoning/summaryPartAddedNotificationMethod",
+        "type": "string"
       },
       "params": {
-        "type": "object"
-      },
-      "emittedAtMs": {
-        "type": "number",
-        "minimum": 1000000000000
+        "$ref": "#/$defs/ReasoningSummaryPartAddedNotification"
       }
     },
     "required": [
       "method",
-      "params",
-      "emittedAtMs"
-    ]
+      "params"
+    ],
+    "title": "Item/reasoning/summaryPartAddedNotification",
+    "type": "object",
+    "$defs": {
+      "ReasoningSummaryPartAddedNotification": {
+        "properties": {
+          "itemId": {
+            "type": "string"
+          },
+          "summaryIndex": {
+            "format": "int64",
+            "type": "integer"
+          },
+          "threadId": {
+            "type": "string"
+          },
+          "turnId": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "itemId",
+          "summaryIndex",
+          "threadId",
+          "turnId"
+        ],
+        "type": "object"
+      }
+    },
+    "$schema": "http://json-schema.org/draft-07/schema#"
+  },
+  "schemaFidelity": {
+    "payload": "exact",
+    "carrier": "exact"
   },
   "evidence": {
     "existence": [
@@ -59,7 +89,7 @@
       "codex-generated-schema"
     ],
     "carrier": [
-      "codex-runtime-headless"
+      "codex-generated-schema"
     ]
   },
   "confidence": "unverified"

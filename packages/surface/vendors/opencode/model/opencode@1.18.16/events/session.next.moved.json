@@ -10,23 +10,13 @@
   "direction": "agent-to-client",
   "trigger": "Published on the native GET /event stream.",
   "payloadSchema": {
-    "type": "object",
+    "additionalProperties": false,
     "properties": {
       "location": {
-        "type": "object",
-        "properties": {
-          "directory": {
-            "type": "string"
-          },
-          "workspaceID": {
-            "type": "string"
-          }
-        },
-        "required": [
-          "directory"
-        ]
+        "$ref": "#/$defs/LocationRef"
       },
       "sessionID": {
+        "pattern": "^ses",
         "type": "string"
       },
       "subdirectory": {
@@ -37,35 +27,45 @@
       }
     },
     "required": [
-      "location",
+      "timestamp",
       "sessionID",
-      "timestamp"
-    ]
+      "location"
+    ],
+    "type": "object",
+    "$defs": {
+      "LocationRef": {
+        "additionalProperties": false,
+        "properties": {
+          "directory": {
+            "type": "string"
+          },
+          "workspaceID": {
+            "pattern": "^wrk",
+            "type": "string"
+          }
+        },
+        "required": [
+          "directory"
+        ],
+        "type": "object"
+      }
+    }
   },
   "recordSchema": {
-    "type": "object",
+    "additionalProperties": false,
     "properties": {
       "id": {
+        "pattern": "^evt_",
         "type": "string"
       },
       "properties": {
-        "type": "object",
+        "additionalProperties": false,
         "properties": {
           "location": {
-            "type": "object",
-            "properties": {
-              "directory": {
-                "type": "string"
-              },
-              "workspaceID": {
-                "type": "string"
-              }
-            },
-            "required": [
-              "directory"
-            ]
+            "$ref": "#/$defs/LocationRef"
           },
           "sessionID": {
+            "pattern": "^ses",
             "type": "string"
           },
           "subdirectory": {
@@ -76,23 +76,47 @@
           }
         },
         "required": [
-          "location",
+          "timestamp",
           "sessionID",
-          "timestamp"
-        ]
+          "location"
+        ],
+        "type": "object"
       },
       "type": {
-        "type": "string",
         "enum": [
           "session.next.moved"
-        ]
+        ],
+        "type": "string"
       }
     },
     "required": [
       "id",
-      "properties",
-      "type"
-    ]
+      "type",
+      "properties"
+    ],
+    "type": "object",
+    "$defs": {
+      "LocationRef": {
+        "additionalProperties": false,
+        "properties": {
+          "directory": {
+            "type": "string"
+          },
+          "workspaceID": {
+            "pattern": "^wrk",
+            "type": "string"
+          }
+        },
+        "required": [
+          "directory"
+        ],
+        "type": "object"
+      }
+    }
+  },
+  "schemaFidelity": {
+    "payload": "exact",
+    "carrier": "exact"
   },
   "evidence": {
     "existence": [

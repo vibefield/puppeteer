@@ -2,6 +2,13 @@
   "surface": "kimi",
   "surfaceVersion": "0.34.0",
   "event": "llm.request",
+  "schemaFidelity": {
+    "payload": "structural",
+    "carrier": "structural",
+    "limitations": [
+      "The release source projection preserves recursive declared structure but intentionally leaves custom/unknown values unconstrained; runtime-only file schemas describe captured instances."
+    ]
+  },
   "channel": "wire",
   "channels": ["wire"],
   "transport": "jsonl-record",
@@ -163,57 +170,5 @@
     "carrier": ["kimi-runtime-headless", "kimi-exact-release-source"]
   },
   "confidence": "verified-headless",
-  "variants": [
-    {
-      "match": {
-        "kind": "loop"
-      },
-      "evidence": {
-        "existence": ["kimi-runtime-headless"],
-        "shape": ["kimi-runtime-headless", "kimi-exact-release-source"]
-      },
-      "confidence": "verified-headless"
-    },
-    {
-      "match": {
-        "kind": "compaction"
-      },
-      "evidence": {
-        "existence": ["kimi-exact-release-source"],
-        "shape": ["kimi-exact-release-source"]
-      },
-      "confidence": "unverified"
-    },
-    {
-      "match": {
-        "projection": "strict"
-      },
-      "evidence": {
-        "existence": ["kimi-exact-release-source"],
-        "shape": ["kimi-exact-release-source"]
-      },
-      "confidence": "unverified"
-    },
-    {
-      "match": {
-        "projection": "media-degraded"
-      },
-      "evidence": {
-        "existence": ["kimi-exact-release-source"],
-        "shape": ["kimi-exact-release-source"]
-      },
-      "confidence": "unverified"
-    },
-    {
-      "match": {
-        "projection": "media-stripped"
-      },
-      "evidence": {
-        "existence": ["kimi-exact-release-source"],
-        "shape": ["kimi-exact-release-source"]
-      },
-      "confidence": "unverified"
-    }
-  ],
   "fixture": "captures/kimi@0.34.0/basic-turn/wire.jsonl"
 }

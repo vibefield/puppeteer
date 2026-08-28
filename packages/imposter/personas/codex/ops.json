@@ -4,7 +4,21 @@
       "channel": "jsonrpc",
       "event": "thread/started",
       "with": {
-        "thread": { "id": "$threadId", "sessionId": "$threadId", "cwd": "$threadCwd", "status": { "type": "idle" } }
+        "thread": {
+          "id": "$threadId",
+          "sessionId": "$threadId",
+          "cwd": "$threadCwd",
+          "status": { "type": "idle" },
+          "cliVersion": "$vendorVersion",
+          "createdAt": "$threadCreatedAt",
+          "updatedAt": "$threadUpdatedAt",
+          "ephemeral": false,
+          "modelProvider": "$threadModelProvider",
+          "preview": "",
+          "projectId": null,
+          "source": "cli",
+          "turns": []
+        }
       }
     }
   ],
@@ -13,7 +27,7 @@
     {
       "channel": "jsonrpc",
       "event": "turn/started",
-      "with": { "threadId": "$threadId", "turn": { "id": "$turnId", "status": "inProgress" } }
+      "with": { "threadId": "$threadId", "turn": { "id": "$turnId", "items": [], "status": "inProgress" } }
     },
     {
       "channel": "jsonrpc",
@@ -57,6 +71,7 @@
           "type": "commandExecution",
           "id": "$op.toolId",
           "command": "$op.command",
+          "commandActions": [],
           "cwd": "$cwd",
           "status": "inProgress"
         }
@@ -76,6 +91,7 @@
           "type": "commandExecution",
           "id": "$op.toolId",
           "command": "$op.command",
+          "commandActions": [],
           "cwd": "$cwd",
           "status": "completed",
           "exitCode": 0,
@@ -106,7 +122,10 @@
     {
       "channel": "jsonrpc",
       "event": "turn/completed",
-      "with": { "threadId": "$threadId", "turn": { "id": "$turnId", "status": "completed", "error": null } }
+      "with": {
+        "threadId": "$threadId",
+        "turn": { "id": "$turnId", "items": [], "status": "completed", "error": null }
+      }
     }
   ],
 
@@ -117,7 +136,23 @@
       "with": {
         "threadId": "$threadId",
         "turnId": "$turnId",
-        "tokenUsage": { "total": { "totalTokens": 19, "inputTokens": 12, "outputTokens": 7 } }
+        "tokenUsage": {
+          "last": {
+            "totalTokens": 19,
+            "inputTokens": 12,
+            "outputTokens": 7,
+            "cachedInputTokens": 0,
+            "reasoningOutputTokens": 0
+          },
+          "total": {
+            "totalTokens": 19,
+            "inputTokens": 12,
+            "outputTokens": 7,
+            "cachedInputTokens": 0,
+            "reasoningOutputTokens": 0
+          },
+          "modelContextWindow": "$capacityTokens"
+        }
       }
     }
   ]

@@ -1,0 +1,70 @@
+{
+  "surface": "hermes",
+  "surfaceVersion": "0.20.0",
+  "event": "pet.select",
+  "firstSeen": "0.20.0",
+  "channel": "tui-gateway",
+  "channels": ["tui-gateway"],
+  "transport": "jsonrpc-request",
+  "direction": "client-to-agent",
+  "confidence": "unverified",
+  "notes": "Registered by tui_gateway/methods_session.py:1489; runtime reachability was not captured.",
+  "payloadSchema": {
+    "type": "object",
+    "properties": {
+      "slug": {}
+    }
+  },
+  "resultSchema": {
+    "type": "object",
+    "properties": {
+      "displayName": {},
+      "ok": {},
+      "slug": {}
+    }
+  },
+  "recordSchema": {
+    "type": "object",
+    "properties": {
+      "direction": {
+        "type": "string",
+        "enum": ["client"]
+      },
+      "jsonrpc": {
+        "type": "string",
+        "enum": ["2.0"]
+      },
+      "id": {
+        "type": "string"
+      },
+      "method": {
+        "type": "string",
+        "enum": ["pet.select"]
+      },
+      "params": {
+        "type": "object",
+        "properties": {
+          "slug": {}
+        }
+      }
+    },
+    "required": ["direction", "jsonrpc", "id", "method", "params"]
+  },
+  "recordChannel": "tui-gateway",
+  "evidence": {
+    "existence": ["hermes-exact-source"],
+    "shape": ["hermes-exact-source"],
+    "result": ["hermes-exact-source"],
+    "carrier": ["hermes-exact-source"]
+  },
+  "schemaFidelity": {
+    "payload": "structural",
+    "result": "structural",
+    "carrier": "structural",
+    "limitations": [
+      "Python is dynamic: helper-produced, conditionally assembled, and forwarded payload/result fields remain unconstrained unless directly recoverable.",
+      "Direct params indexing proves required access; params.get access proves a known field but not optionality.",
+      "Source declarations establish legal/native shape and existence, not runtime reachability."
+    ]
+  }
+}

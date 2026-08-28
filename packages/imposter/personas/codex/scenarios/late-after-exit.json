@@ -6,7 +6,9 @@
       "do": {
         "emit": {
           "event": "thread/closed",
-          "with": { "threadId": "$threadId" }
+          "with": {
+            "threadId": "$threadId"
+          }
         }
       }
     },
@@ -24,7 +26,13 @@
               "id": "$uuid:item",
               "command": "echo late",
               "cwd": "$threadCwd",
-              "status": "inProgress"
+              "status": "inProgress",
+              "commandActions": [
+                {
+                  "type": "unknown",
+                  "command": "echo late"
+                }
+              ]
             }
           }
         }
@@ -37,7 +45,12 @@
           "event": "turn/completed",
           "with": {
             "threadId": "$threadId",
-            "turn": { "id": "$uuid:turn", "status": "completed", "error": null }
+            "turn": {
+              "id": "$uuid:turn",
+              "status": "completed",
+              "error": null,
+              "items": []
+            }
           }
         }
       }

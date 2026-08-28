@@ -17,7 +17,7 @@
           "event": "Notification",
           "with": {
             "message": "late notification after SessionEnd",
-            "notification_type": "late-event",
+            "notification_type": "idle_prompt",
             "prompt_id": "$uuid:prompt"
           }
         }

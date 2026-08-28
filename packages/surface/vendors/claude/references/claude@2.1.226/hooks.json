@@ -24,6 +24,39 @@
         "agent_type",
         "session_title"
       ],
+      "observationMode": "passive",
+      "resultSchema": {
+        "type": "object",
+        "properties": {
+          "continue": {
+            "type": "boolean"
+          },
+          "stopReason": {
+            "type": "string"
+          },
+          "suppressOutput": {
+            "type": "boolean"
+          },
+          "systemMessage": {
+            "type": "string"
+          },
+          "terminalSequence": {
+            "type": "string"
+          },
+          "decision": {
+            "type": "string",
+            "enum": [
+              "block"
+            ]
+          },
+          "reason": {
+            "type": "string"
+          },
+          "hookSpecificOutput": {
+            "type": "object"
+          }
+        }
+      },
       "notes": "Starts or resumes a session; source may be startup, resume, clear, compact, or fork."
     },
     {
@@ -35,6 +68,39 @@
       "fields": [
         "trigger"
       ],
+      "observationMode": "passive",
+      "resultSchema": {
+        "type": "object",
+        "properties": {
+          "continue": {
+            "type": "boolean"
+          },
+          "stopReason": {
+            "type": "string"
+          },
+          "suppressOutput": {
+            "type": "boolean"
+          },
+          "systemMessage": {
+            "type": "string"
+          },
+          "terminalSequence": {
+            "type": "string"
+          },
+          "decision": {
+            "type": "string",
+            "enum": [
+              "block"
+            ]
+          },
+          "reason": {
+            "type": "string"
+          },
+          "hookSpecificOutput": {
+            "type": "object"
+          }
+        }
+      },
       "notes": "One-time initialization hook for --init-only, -p --init, and maintenance mode."
     },
     {
@@ -50,6 +116,39 @@
         "memory_type",
         "load_reason"
       ],
+      "observationMode": "passive",
+      "resultSchema": {
+        "type": "object",
+        "properties": {
+          "continue": {
+            "type": "boolean"
+          },
+          "stopReason": {
+            "type": "string"
+          },
+          "suppressOutput": {
+            "type": "boolean"
+          },
+          "systemMessage": {
+            "type": "string"
+          },
+          "terminalSequence": {
+            "type": "string"
+          },
+          "decision": {
+            "type": "string",
+            "enum": [
+              "block"
+            ]
+          },
+          "reason": {
+            "type": "string"
+          },
+          "hookSpecificOutput": {
+            "type": "object"
+          }
+        }
+      },
       "notes": "A CLAUDE.md or .claude/rules file entered context."
     },
     {
@@ -62,6 +161,39 @@
         "prompt",
         "session_title"
       ],
+      "observationMode": "passive",
+      "resultSchema": {
+        "type": "object",
+        "properties": {
+          "continue": {
+            "type": "boolean"
+          },
+          "stopReason": {
+            "type": "string"
+          },
+          "suppressOutput": {
+            "type": "boolean"
+          },
+          "systemMessage": {
+            "type": "string"
+          },
+          "terminalSequence": {
+            "type": "string"
+          },
+          "decision": {
+            "type": "string",
+            "enum": [
+              "block"
+            ]
+          },
+          "reason": {
+            "type": "string"
+          },
+          "hookSpecificOutput": {
+            "type": "object"
+          }
+        }
+      },
       "notes": "The verbatim submitted prompt; prompt_id is the native user-turn correlation when present."
     },
     {
@@ -81,6 +213,39 @@
         "command_source",
         "prompt"
       ],
+      "observationMode": "passive",
+      "resultSchema": {
+        "type": "object",
+        "properties": {
+          "continue": {
+            "type": "boolean"
+          },
+          "stopReason": {
+            "type": "string"
+          },
+          "suppressOutput": {
+            "type": "boolean"
+          },
+          "systemMessage": {
+            "type": "string"
+          },
+          "terminalSequence": {
+            "type": "string"
+          },
+          "decision": {
+            "type": "string",
+            "enum": [
+              "block"
+            ]
+          },
+          "reason": {
+            "type": "string"
+          },
+          "hookSpecificOutput": {
+            "type": "object"
+          }
+        }
+      },
       "notes": "A user-typed command expanded into its prompt before model processing."
     },
     {
@@ -100,6 +265,50 @@
         "final",
         "delta"
       ],
+      "observationMode": "passive",
+      "resultSchema": {
+        "type": "object",
+        "properties": {
+          "continue": {
+            "type": "boolean"
+          },
+          "stopReason": {
+            "type": "string"
+          },
+          "suppressOutput": {
+            "type": "boolean"
+          },
+          "systemMessage": {
+            "type": "string"
+          },
+          "terminalSequence": {
+            "type": "string"
+          },
+          "decision": {
+            "type": "string",
+            "enum": [
+              "block"
+            ]
+          },
+          "reason": {
+            "type": "string"
+          },
+          "hookSpecificOutput": {
+            "type": "object",
+            "properties": {
+              "hookEventName": {
+                "type": "string",
+                "enum": [
+                  "MessageDisplay"
+                ]
+              },
+              "displayContent": {
+                "type": "string"
+              }
+            }
+          }
+        }
+      },
       "notes": "Streaming display delta; display-only and distinct from durable transcript content."
     },
     {
@@ -115,6 +324,65 @@
         "tool_input",
         "tool_use_id"
       ],
+      "observationMode": "passive",
+      "resultSchema": {
+        "type": "object",
+        "properties": {
+          "continue": {
+            "type": "boolean"
+          },
+          "stopReason": {
+            "type": "string"
+          },
+          "suppressOutput": {
+            "type": "boolean"
+          },
+          "systemMessage": {
+            "type": "string"
+          },
+          "terminalSequence": {
+            "type": "string"
+          },
+          "decision": {
+            "type": "string",
+            "enum": [
+              "block"
+            ]
+          },
+          "reason": {
+            "type": "string"
+          },
+          "hookSpecificOutput": {
+            "type": "object",
+            "properties": {
+              "hookEventName": {
+                "type": "string",
+                "enum": [
+                  "PreToolUse"
+                ]
+              },
+              "permissionDecision": {
+                "type": "string",
+                "enum": [
+                  "allow",
+                  "deny",
+                  "ask",
+                  "defer"
+                ]
+              },
+              "permissionDecisionReason": {
+                "type": "string"
+              },
+              "updatedInput": {
+                "type": "object"
+              },
+              "additionalContext": {
+                "type": "string"
+              }
+            }
+          }
+        }
+      },
       "notes": "Runs before every tool call, before PermissionRequest when a decision is needed."
     },
     {
@@ -129,6 +397,50 @@
         "tool_input",
         "permission_suggestions"
       ],
+      "observationMode": "passive",
+      "resultSchema": {
+        "type": "object",
+        "properties": {
+          "continue": {
+            "type": "boolean"
+          },
+          "stopReason": {
+            "type": "string"
+          },
+          "suppressOutput": {
+            "type": "boolean"
+          },
+          "systemMessage": {
+            "type": "string"
+          },
+          "terminalSequence": {
+            "type": "string"
+          },
+          "decision": {
+            "type": "string",
+            "enum": [
+              "block"
+            ]
+          },
+          "reason": {
+            "type": "string"
+          },
+          "hookSpecificOutput": {
+            "type": "object",
+            "properties": {
+              "hookEventName": {
+                "type": "string",
+                "enum": [
+                  "PermissionRequest"
+                ]
+              },
+              "decision": {
+                "type": "object"
+              }
+            }
+          }
+        }
+      },
       "notes": "Carries no tool_use_id; correlate to the preceding PreToolUse by prompt, tool name, and input."
     },
     {
@@ -147,6 +459,51 @@
         "tool_use_id",
         "duration_ms"
       ],
+      "observationMode": "passive",
+      "resultSchema": {
+        "type": "object",
+        "properties": {
+          "continue": {
+            "type": "boolean"
+          },
+          "stopReason": {
+            "type": "string"
+          },
+          "suppressOutput": {
+            "type": "boolean"
+          },
+          "systemMessage": {
+            "type": "string"
+          },
+          "terminalSequence": {
+            "type": "string"
+          },
+          "decision": {
+            "type": "string",
+            "enum": [
+              "block"
+            ]
+          },
+          "reason": {
+            "type": "string"
+          },
+          "hookSpecificOutput": {
+            "type": "object",
+            "properties": {
+              "hookEventName": {
+                "type": "string",
+                "enum": [
+                  "PostToolUse"
+                ]
+              },
+              "additionalContext": {
+                "type": "string"
+              },
+              "updatedToolOutput": {}
+            }
+          }
+        }
+      },
       "notes": "One completion event per successful tool call."
     },
     {
@@ -166,6 +523,50 @@
         "is_interrupt",
         "duration_ms"
       ],
+      "observationMode": "passive",
+      "resultSchema": {
+        "type": "object",
+        "properties": {
+          "continue": {
+            "type": "boolean"
+          },
+          "stopReason": {
+            "type": "string"
+          },
+          "suppressOutput": {
+            "type": "boolean"
+          },
+          "systemMessage": {
+            "type": "string"
+          },
+          "terminalSequence": {
+            "type": "string"
+          },
+          "decision": {
+            "type": "string",
+            "enum": [
+              "block"
+            ]
+          },
+          "reason": {
+            "type": "string"
+          },
+          "hookSpecificOutput": {
+            "type": "object",
+            "properties": {
+              "hookEventName": {
+                "type": "string",
+                "enum": [
+                  "PostToolUseFailure"
+                ]
+              },
+              "additionalContext": {
+                "type": "string"
+              }
+            }
+          }
+        }
+      },
       "notes": "One failure event per approved tool call that fails."
     },
     {
@@ -177,6 +578,50 @@
       "fields": [
         "tool_calls"
       ],
+      "observationMode": "passive",
+      "resultSchema": {
+        "type": "object",
+        "properties": {
+          "continue": {
+            "type": "boolean"
+          },
+          "stopReason": {
+            "type": "string"
+          },
+          "suppressOutput": {
+            "type": "boolean"
+          },
+          "systemMessage": {
+            "type": "string"
+          },
+          "terminalSequence": {
+            "type": "string"
+          },
+          "decision": {
+            "type": "string",
+            "enum": [
+              "block"
+            ]
+          },
+          "reason": {
+            "type": "string"
+          },
+          "hookSpecificOutput": {
+            "type": "object",
+            "properties": {
+              "hookEventName": {
+                "type": "string",
+                "enum": [
+                  "PostToolBatch"
+                ]
+              },
+              "additionalContext": {
+                "type": "string"
+              }
+            }
+          }
+        }
+      },
       "notes": "Runs once after every call in a parallel tool batch resolves."
     },
     {
@@ -194,6 +639,50 @@
         "tool_use_id",
         "reason"
       ],
+      "observationMode": "passive",
+      "resultSchema": {
+        "type": "object",
+        "properties": {
+          "continue": {
+            "type": "boolean"
+          },
+          "stopReason": {
+            "type": "string"
+          },
+          "suppressOutput": {
+            "type": "boolean"
+          },
+          "systemMessage": {
+            "type": "string"
+          },
+          "terminalSequence": {
+            "type": "string"
+          },
+          "decision": {
+            "type": "string",
+            "enum": [
+              "block"
+            ]
+          },
+          "reason": {
+            "type": "string"
+          },
+          "hookSpecificOutput": {
+            "type": "object",
+            "properties": {
+              "hookEventName": {
+                "type": "string",
+                "enum": [
+                  "PermissionDenied"
+                ]
+              },
+              "retry": {
+                "type": "boolean"
+              }
+            }
+          }
+        }
+      },
       "notes": "Auto-mode classifier denial; manual dialog denials do not emit this hook."
     },
     {
@@ -208,6 +697,39 @@
         "title",
         "notification_type"
       ],
+      "observationMode": "passive",
+      "resultSchema": {
+        "type": "object",
+        "properties": {
+          "continue": {
+            "type": "boolean"
+          },
+          "stopReason": {
+            "type": "string"
+          },
+          "suppressOutput": {
+            "type": "boolean"
+          },
+          "systemMessage": {
+            "type": "string"
+          },
+          "terminalSequence": {
+            "type": "string"
+          },
+          "decision": {
+            "type": "string",
+            "enum": [
+              "block"
+            ]
+          },
+          "reason": {
+            "type": "string"
+          },
+          "hookSpecificOutput": {
+            "type": "object"
+          }
+        }
+      },
       "notes": "Native Claude Code notification."
     },
     {
@@ -221,6 +743,39 @@
         "agent_id",
         "agent_type"
       ],
+      "observationMode": "passive",
+      "resultSchema": {
+        "type": "object",
+        "properties": {
+          "continue": {
+            "type": "boolean"
+          },
+          "stopReason": {
+            "type": "string"
+          },
+          "suppressOutput": {
+            "type": "boolean"
+          },
+          "systemMessage": {
+            "type": "string"
+          },
+          "terminalSequence": {
+            "type": "string"
+          },
+          "decision": {
+            "type": "string",
+            "enum": [
+              "block"
+            ]
+          },
+          "reason": {
+            "type": "string"
+          },
+          "hookSpecificOutput": {
+            "type": "object"
+          }
+        }
+      },
       "notes": "A subagent was spawned."
     },
     {
@@ -242,6 +797,39 @@
         "background_tasks",
         "session_crons"
       ],
+      "observationMode": "passive",
+      "resultSchema": {
+        "type": "object",
+        "properties": {
+          "continue": {
+            "type": "boolean"
+          },
+          "stopReason": {
+            "type": "string"
+          },
+          "suppressOutput": {
+            "type": "boolean"
+          },
+          "systemMessage": {
+            "type": "string"
+          },
+          "terminalSequence": {
+            "type": "string"
+          },
+          "decision": {
+            "type": "string",
+            "enum": [
+              "block"
+            ]
+          },
+          "reason": {
+            "type": "string"
+          },
+          "hookSpecificOutput": {
+            "type": "object"
+          }
+        }
+      },
       "notes": "A subagent finished; stop-hook re-entry must be deduplicated by agent_id."
     },
     {
@@ -258,6 +846,39 @@
         "teammate_name",
         "team_name"
       ],
+      "observationMode": "passive",
+      "resultSchema": {
+        "type": "object",
+        "properties": {
+          "continue": {
+            "type": "boolean"
+          },
+          "stopReason": {
+            "type": "string"
+          },
+          "suppressOutput": {
+            "type": "boolean"
+          },
+          "systemMessage": {
+            "type": "string"
+          },
+          "terminalSequence": {
+            "type": "string"
+          },
+          "decision": {
+            "type": "string",
+            "enum": [
+              "block"
+            ]
+          },
+          "reason": {
+            "type": "string"
+          },
+          "hookSpecificOutput": {
+            "type": "object"
+          }
+        }
+      },
       "notes": "TaskCreate is about to create a task."
     },
     {
@@ -274,6 +895,39 @@
         "teammate_name",
         "team_name"
       ],
+      "observationMode": "passive",
+      "resultSchema": {
+        "type": "object",
+        "properties": {
+          "continue": {
+            "type": "boolean"
+          },
+          "stopReason": {
+            "type": "string"
+          },
+          "suppressOutput": {
+            "type": "boolean"
+          },
+          "systemMessage": {
+            "type": "string"
+          },
+          "terminalSequence": {
+            "type": "string"
+          },
+          "decision": {
+            "type": "string",
+            "enum": [
+              "block"
+            ]
+          },
+          "reason": {
+            "type": "string"
+          },
+          "hookSpecificOutput": {
+            "type": "object"
+          }
+        }
+      },
       "notes": "A task is about to be marked complete."
     },
     {
@@ -291,6 +945,39 @@
         "background_tasks",
         "session_crons"
       ],
+      "observationMode": "passive",
+      "resultSchema": {
+        "type": "object",
+        "properties": {
+          "continue": {
+            "type": "boolean"
+          },
+          "stopReason": {
+            "type": "string"
+          },
+          "suppressOutput": {
+            "type": "boolean"
+          },
+          "systemMessage": {
+            "type": "string"
+          },
+          "terminalSequence": {
+            "type": "string"
+          },
+          "decision": {
+            "type": "string",
+            "enum": [
+              "block"
+            ]
+          },
+          "reason": {
+            "type": "string"
+          },
+          "hookSpecificOutput": {
+            "type": "object"
+          }
+        }
+      },
       "notes": "The assistant finished its turn."
     },
     {
@@ -304,6 +991,39 @@
         "error_details",
         "last_assistant_message"
       ],
+      "observationMode": "passive",
+      "resultSchema": {
+        "type": "object",
+        "properties": {
+          "continue": {
+            "type": "boolean"
+          },
+          "stopReason": {
+            "type": "string"
+          },
+          "suppressOutput": {
+            "type": "boolean"
+          },
+          "systemMessage": {
+            "type": "string"
+          },
+          "terminalSequence": {
+            "type": "string"
+          },
+          "decision": {
+            "type": "string",
+            "enum": [
+              "block"
+            ]
+          },
+          "reason": {
+            "type": "string"
+          },
+          "hookSpecificOutput": {
+            "type": "object"
+          }
+        }
+      },
       "notes": "The turn ended because of an API error; hook output is observational only."
     },
     {
@@ -317,6 +1037,39 @@
         "teammate_name",
         "team_name"
       ],
+      "observationMode": "passive",
+      "resultSchema": {
+        "type": "object",
+        "properties": {
+          "continue": {
+            "type": "boolean"
+          },
+          "stopReason": {
+            "type": "string"
+          },
+          "suppressOutput": {
+            "type": "boolean"
+          },
+          "systemMessage": {
+            "type": "string"
+          },
+          "terminalSequence": {
+            "type": "string"
+          },
+          "decision": {
+            "type": "string",
+            "enum": [
+              "block"
+            ]
+          },
+          "reason": {
+            "type": "string"
+          },
+          "hookSpecificOutput": {
+            "type": "object"
+          }
+        }
+      },
       "notes": "An agent-team teammate is about to become idle."
     },
     {
@@ -329,6 +1082,39 @@
         "source",
         "file_path"
       ],
+      "observationMode": "passive",
+      "resultSchema": {
+        "type": "object",
+        "properties": {
+          "continue": {
+            "type": "boolean"
+          },
+          "stopReason": {
+            "type": "string"
+          },
+          "suppressOutput": {
+            "type": "boolean"
+          },
+          "systemMessage": {
+            "type": "string"
+          },
+          "terminalSequence": {
+            "type": "string"
+          },
+          "decision": {
+            "type": "string",
+            "enum": [
+              "block"
+            ]
+          },
+          "reason": {
+            "type": "string"
+          },
+          "hookSpecificOutput": {
+            "type": "object"
+          }
+        }
+      },
       "notes": "A settings, policy, or skill configuration source changed."
     },
     {
@@ -342,6 +1128,39 @@
         "old_cwd",
         "new_cwd"
       ],
+      "observationMode": "passive",
+      "resultSchema": {
+        "type": "object",
+        "properties": {
+          "continue": {
+            "type": "boolean"
+          },
+          "stopReason": {
+            "type": "string"
+          },
+          "suppressOutput": {
+            "type": "boolean"
+          },
+          "systemMessage": {
+            "type": "string"
+          },
+          "terminalSequence": {
+            "type": "string"
+          },
+          "decision": {
+            "type": "string",
+            "enum": [
+              "block"
+            ]
+          },
+          "reason": {
+            "type": "string"
+          },
+          "hookSpecificOutput": {
+            "type": "object"
+          }
+        }
+      },
       "notes": "The active working directory changed."
     },
     {
@@ -355,6 +1174,39 @@
         "directory",
         "source"
       ],
+      "observationMode": "passive",
+      "resultSchema": {
+        "type": "object",
+        "properties": {
+          "continue": {
+            "type": "boolean"
+          },
+          "stopReason": {
+            "type": "string"
+          },
+          "suppressOutput": {
+            "type": "boolean"
+          },
+          "systemMessage": {
+            "type": "string"
+          },
+          "terminalSequence": {
+            "type": "string"
+          },
+          "decision": {
+            "type": "string",
+            "enum": [
+              "block"
+            ]
+          },
+          "reason": {
+            "type": "string"
+          },
+          "hookSpecificOutput": {
+            "type": "object"
+          }
+        }
+      },
       "notes": "An additional working directory was registered; the hook runs asynchronously."
     },
     {
@@ -368,7 +1220,39 @@
         "file_path",
         "event"
       ],
-      "matcherRequired": true,
+      "observationMode": "matcher-required",
+      "resultSchema": {
+        "type": "object",
+        "properties": {
+          "continue": {
+            "type": "boolean"
+          },
+          "stopReason": {
+            "type": "string"
+          },
+          "suppressOutput": {
+            "type": "boolean"
+          },
+          "systemMessage": {
+            "type": "string"
+          },
+          "terminalSequence": {
+            "type": "string"
+          },
+          "decision": {
+            "type": "string",
+            "enum": [
+              "block"
+            ]
+          },
+          "reason": {
+            "type": "string"
+          },
+          "hookSpecificOutput": {
+            "type": "object"
+          }
+        }
+      },
       "notes": "A configured matcher watch filename changed on disk; registration without a matcher observes nothing."
     },
     {
@@ -380,6 +1264,7 @@
       "fields": [
         "name"
       ],
+      "observationMode": "response-required",
       "resultSchema": {
         "type": "object",
         "required": [
@@ -417,6 +1302,39 @@
       "fields": [
         "worktree_path"
       ],
+      "observationMode": "passive",
+      "resultSchema": {
+        "type": "object",
+        "properties": {
+          "continue": {
+            "type": "boolean"
+          },
+          "stopReason": {
+            "type": "string"
+          },
+          "suppressOutput": {
+            "type": "boolean"
+          },
+          "systemMessage": {
+            "type": "string"
+          },
+          "terminalSequence": {
+            "type": "string"
+          },
+          "decision": {
+            "type": "string",
+            "enum": [
+              "block"
+            ]
+          },
+          "reason": {
+            "type": "string"
+          },
+          "hookSpecificOutput": {
+            "type": "object"
+          }
+        }
+      },
       "notes": "Claude Code is removing a worktree."
     },
     {
@@ -430,6 +1348,39 @@
         "trigger",
         "custom_instructions"
       ],
+      "observationMode": "passive",
+      "resultSchema": {
+        "type": "object",
+        "properties": {
+          "continue": {
+            "type": "boolean"
+          },
+          "stopReason": {
+            "type": "string"
+          },
+          "suppressOutput": {
+            "type": "boolean"
+          },
+          "systemMessage": {
+            "type": "string"
+          },
+          "terminalSequence": {
+            "type": "string"
+          },
+          "decision": {
+            "type": "string",
+            "enum": [
+              "block"
+            ]
+          },
+          "reason": {
+            "type": "string"
+          },
+          "hookSpecificOutput": {
+            "type": "object"
+          }
+        }
+      },
       "notes": "Context compaction is about to run and can still be blocked."
     },
     {
@@ -443,6 +1394,39 @@
         "trigger",
         "compact_summary"
       ],
+      "observationMode": "passive",
+      "resultSchema": {
+        "type": "object",
+        "properties": {
+          "continue": {
+            "type": "boolean"
+          },
+          "stopReason": {
+            "type": "string"
+          },
+          "suppressOutput": {
+            "type": "boolean"
+          },
+          "systemMessage": {
+            "type": "string"
+          },
+          "terminalSequence": {
+            "type": "string"
+          },
+          "decision": {
+            "type": "string",
+            "enum": [
+              "block"
+            ]
+          },
+          "reason": {
+            "type": "string"
+          },
+          "hookSpecificOutput": {
+            "type": "object"
+          }
+        }
+      },
       "notes": "Context compaction completed."
     },
     {
@@ -454,6 +1438,39 @@
       "fields": [
         "reason"
       ],
+      "observationMode": "passive",
+      "resultSchema": {
+        "type": "object",
+        "properties": {
+          "continue": {
+            "type": "boolean"
+          },
+          "stopReason": {
+            "type": "string"
+          },
+          "suppressOutput": {
+            "type": "boolean"
+          },
+          "systemMessage": {
+            "type": "string"
+          },
+          "terminalSequence": {
+            "type": "string"
+          },
+          "decision": {
+            "type": "string",
+            "enum": [
+              "block"
+            ]
+          },
+          "reason": {
+            "type": "string"
+          },
+          "hookSpecificOutput": {
+            "type": "object"
+          }
+        }
+      },
       "notes": "The native session terminated; prompt_id is absent before the first prompt."
     },
     {
@@ -471,6 +1488,58 @@
         "url",
         "elicitation_id"
       ],
+      "observationMode": "passive",
+      "resultSchema": {
+        "type": "object",
+        "properties": {
+          "continue": {
+            "type": "boolean"
+          },
+          "stopReason": {
+            "type": "string"
+          },
+          "suppressOutput": {
+            "type": "boolean"
+          },
+          "systemMessage": {
+            "type": "string"
+          },
+          "terminalSequence": {
+            "type": "string"
+          },
+          "decision": {
+            "type": "string",
+            "enum": [
+              "block"
+            ]
+          },
+          "reason": {
+            "type": "string"
+          },
+          "hookSpecificOutput": {
+            "type": "object",
+            "properties": {
+              "hookEventName": {
+                "type": "string",
+                "enum": [
+                  "Elicitation"
+                ]
+              },
+              "action": {
+                "type": "string",
+                "enum": [
+                  "accept",
+                  "decline",
+                  "cancel"
+                ]
+              },
+              "content": {
+                "type": "object"
+              }
+            }
+          }
+        }
+      },
       "notes": "An MCP server requested structured user input."
     },
     {
@@ -487,6 +1556,58 @@
         "elicitation_id",
         "content"
       ],
+      "observationMode": "passive",
+      "resultSchema": {
+        "type": "object",
+        "properties": {
+          "continue": {
+            "type": "boolean"
+          },
+          "stopReason": {
+            "type": "string"
+          },
+          "suppressOutput": {
+            "type": "boolean"
+          },
+          "systemMessage": {
+            "type": "string"
+          },
+          "terminalSequence": {
+            "type": "string"
+          },
+          "decision": {
+            "type": "string",
+            "enum": [
+              "block"
+            ]
+          },
+          "reason": {
+            "type": "string"
+          },
+          "hookSpecificOutput": {
+            "type": "object",
+            "properties": {
+              "hookEventName": {
+                "type": "string",
+                "enum": [
+                  "ElicitationResult"
+                ]
+              },
+              "action": {
+                "type": "string",
+                "enum": [
+                  "accept",
+                  "decline",
+                  "cancel"
+                ]
+              },
+              "content": {
+                "type": "object"
+              }
+            }
+          }
+        }
+      },
       "notes": "The user response to an MCP elicitation before it is returned to the server."
     }
   ],

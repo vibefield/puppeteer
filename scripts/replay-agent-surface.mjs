@@ -1,11 +1,16 @@
 #!/usr/bin/env node
-/** Exact, pre-normalization replay of sanitized native captures through an Imposter persona contract. */
+/** Fidelity-aware, pre-normalization replay of sanitized native captures through an Imposter event inventory. */
 import { createHash } from 'node:crypto';
 import { existsSync, readFileSync, readdirSync, statSync, writeFileSync } from 'node:fs';
 import { basename, dirname, join, relative, resolve, sep } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { loadModel, validatePayload } from '@vibecook/puppeteer-surface';
+import { loadModel, validateSanitizedPayload } from '@vibecook/puppeteer-surface';
 import { loadPersona } from '../packages/imposter/src/persona/load.ts';
+import {
+  captureRepresentationForPath,
+  isNativeCaptureArtifact,
+  loadCaptureFidelity,
+} from '../packages/surface/scripts/capture-fidelity.mjs';
 import { resolveCanonicalGroundTruth } from './agent-model-selection.mjs';
 
 const root = dirname(dirname(fileURLToPath(import.meta.url)));
@@ -36,7 +41,9 @@ function kimiReplayFiles(captureDirectory) {
       if (entry.name === 'wire.jsonl') files.set(path, new Set());
       else if (entry.name === 'session-index.jsonl') files.set(path, new Set(['session_index.entry']));
       else if (entry.name === 'state.json') files.set(path, new Set(['state.json']));
-      else if (basename(directory) === 'hooks' && entry.name.endsWith('.jsonl')) files.set(path, new Set());
+      else if (['agents', 'hooks'].includes(basename(directory)) && entry.name.endsWith('.jsonl')) {
+        files.set(path, new Set());
+      }
     }
   };
   visit(captureDirectory);
@@ -141,9 +148,10 @@ function normalizePath(repoRoot, path) {
 }
 
 /**
- * Replays fixture bytes without translating them to AgentEvent. The model and
- * the actual Imposter persona validate the payload, result, and complete
- * carrier independently; the raw JSON line is then emitted byte-for-byte.
+ * Replays fixture bytes without translating them to AgentEvent. Type-preserving
+ * captures validate payload, result, and carrier shape with redaction-aware
+ * schema checks. Projected legacy captures prove only modeled occurrence,
+ * ordering, and joins. In both cases the raw JSON line is digested byte-for-byte.
  */
 export function replayAgentSurface({
   repoRoot = root,
@@ -160,6 +168,10 @@ export function replayAgentSurface({
   if (!existsSync(captureAbsolute) || !statSync(captureAbsolute).isDirectory()) {
     throw new Error(`capture directory does not exist: ${relative(repoRoot, captureAbsolute)}`);
   }
+  const fidelity = loadCaptureFidelity(captureAbsolute, {
+    vendor,
+    vendorVersion: model.manifest.vendorVersion,
+  });
 
   const persona = loadPersona(vendor);
   if (
@@ -179,12 +191,39 @@ export function replayAgentSurface({
         ? hermesReplayFiles(captureAbsolute)
         : filesUnder(captureAbsolute);
   const issues = [];
+  const representations = new Map();
+  for (const file of captureFiles) {
+    const artifact = relative(captureAbsolute, file).split(sep).join('/');
+    if (!isNativeCaptureArtifact(fidelity, artifact)) {
+      issues.push({
+        kind: 'undeclared-capture-artifact',
+        location: artifact,
+        message: 'replay selected a file that is absent from capture-fidelity.json nativeArtifacts',
+      });
+    }
+    try {
+      representations.set(file, captureRepresentationForPath(fidelity, artifact));
+    } catch (error) {
+      issues.push({ kind: 'invalid-capture-fidelity', location: artifact, message: error.message });
+      representations.set(file, fidelity.defaultRepresentation);
+    }
+  }
   const digest = createHash('sha256');
   let frames = 0;
   let results = 0;
   let unattributedResults = 0;
+  let shapeValidatedRecords = 0;
+  let projectionOnlyRecords = 0;
+
+  const validateCaptured = (schema, value, representation) =>
+    representation === 'type-preserving-redaction' && schema ? validateSanitizedPayload(schema, value) : [];
+  const accountFidelity = (representation) => {
+    if (representation === 'type-preserving-redaction') shapeValidatedRecords += 1;
+    else projectionOnlyRecords += 1;
+  };
 
   for (const file of captureFiles) {
+    const representation = representations.get(file);
     const pending = new Map();
     const pendingHttp = new Map();
     const document = file.endsWith('.jsonl') ? undefined : readFileSync(file, 'utf8').trim();
@@ -223,14 +262,15 @@ export function replayAgentSurface({
               message: `captured ${String(outer.direction)}, model declares ${String(event.direction)}`,
             });
           }
-          for (const message of persona.validate(event.event, outer.request)) {
+          for (const message of validateCaptured(event.payloadSchema, outer.request, representation)) {
             issues.push({ kind: 'payload-mismatch', location, event: event.event, message });
           }
-          for (const message of persona.validateRecord(event.event, outer, event.channel)) {
+          for (const message of validateCaptured(event.recordSchema, outer, representation)) {
             issues.push({ kind: 'carrier-mismatch', location, event: event.event, message });
           }
-          for (const variant of event.variants ?? []) {
-            if (matchesVariant(outer.request, variant) && variant.confidence === 'unverified') {
+          if (representation === 'type-preserving-redaction') {
+            for (const variant of event.variants ?? []) {
+              if (!matchesVariant(outer.request, variant) || variant.confidence !== 'unverified') continue;
               issues.push({
                 kind: 'observed-unverified-variant',
                 location,
@@ -244,6 +284,7 @@ export function replayAgentSurface({
           queued.push(event.event);
           pendingHttp.set(correlation, queued);
           frames += 1;
+          accountFidelity(representation);
           digest.update(`${location}\0${source.trim()}\0`);
           continue;
         }
@@ -285,10 +326,11 @@ export function replayAgentSurface({
             message: `HTTP result is correlated to ${requestEvent}`,
           });
         }
-        for (const message of persona.validateResult(event.event, outer.response)) {
+        for (const message of validateCaptured(event.resultSchema, outer.response, representation)) {
           issues.push({ kind: 'result-mismatch', location, event: event.event, message });
         }
         results += 1;
+        accountFidelity(representation);
         digest.update(`${location}\0${source.trim()}\0`);
         continue;
       }
@@ -330,11 +372,12 @@ export function replayAgentSurface({
             continue;
           }
           if (carrier.result !== undefined) {
-            const violations = persona.validateResult(method, carrier.result);
+            const violations = validateCaptured(events.get(method)?.resultSchema, carrier.result, representation);
             for (const message of violations)
               issues.push({ kind: 'result-mismatch', location, event: method, message });
           }
           results += 1;
+          accountFidelity(representation);
           digest.update(`${location}\0${source.trim()}\0`);
           continue;
         }
@@ -367,15 +410,18 @@ export function replayAgentSurface({
               ? carrier.properties
               : Object.fromEntries(Object.entries(carrier).filter(([field]) => field !== 'type' && field !== 'time'))
             : carrier;
-        for (const message of persona.validate(eventName, payload)) {
+        for (const message of validateCaptured(event.payloadSchema, payload, representation)) {
           issues.push({ kind: 'payload-mismatch', location, event: eventName, message });
         }
         const channel = inferredChannel(event, carrier);
-        for (const message of persona.validateRecord(eventName, carrier, channel)) {
+        for (const message of channel === event.recordChannel || event.recordChannel === undefined
+          ? validateCaptured(event.recordSchema, carrier, representation)
+          : []) {
           issues.push({ kind: 'carrier-mismatch', location, event: eventName, message });
         }
-        for (const variant of event.variants ?? []) {
-          if (matchesVariant(payload, variant) && variant.confidence === 'unverified') {
+        if (representation === 'type-preserving-redaction') {
+          for (const variant of event.variants ?? []) {
+            if (!matchesVariant(payload, variant) || variant.confidence !== 'unverified') continue;
             issues.push({
               kind: 'observed-unverified-variant',
               location,
@@ -385,6 +431,7 @@ export function replayAgentSurface({
           }
         }
         frames += 1;
+        accountFidelity(representation);
         digest.update(`${location}\0${source.trim()}\0`);
         continue;
       }
@@ -427,15 +474,18 @@ export function replayAgentSurface({
         : carrier.params !== null && typeof carrier.params === 'object' && !Array.isArray(carrier.params)
           ? carrier.params
           : {};
-      for (const message of persona.validate(eventName, params)) {
+      for (const message of validateCaptured(event.payloadSchema, params, representation)) {
         issues.push({ kind: 'payload-mismatch', location, event: eventName, message });
       }
       const channel = inferredChannel(event, carrier);
-      for (const message of persona.validateRecord(eventName, carrier, channel)) {
+      for (const message of channel === event.recordChannel || event.recordChannel === undefined
+        ? validateCaptured(event.recordSchema, carrier, representation)
+        : []) {
         issues.push({ kind: 'carrier-mismatch', location, event: eventName, message });
       }
-      for (const variant of event.variants ?? []) {
-        if (matchesVariant(params, variant) && variant.confidence === 'unverified') {
+      if (representation === 'type-preserving-redaction') {
+        for (const variant of event.variants ?? []) {
+          if (!matchesVariant(params, variant) || variant.confidence !== 'unverified') continue;
           issues.push({
             kind: 'observed-unverified-variant',
             location,
@@ -449,6 +499,7 @@ export function replayAgentSurface({
         pending.set(`${requestDirection}:${String(carrier.id)}`, eventName);
       }
       frames += 1;
+      accountFidelity(representation);
       digest.update(`${location}\0${source.trim()}\0`);
     }
     for (const [correlation, queued] of pendingHttp) {
@@ -469,9 +520,16 @@ export function replayAgentSurface({
     asmVersion: model.manifest.asmVersion,
     groundTruth: canonical.groundTruthRelative,
     captures: relative(repoRoot, captureAbsolute).split(sep).join('/'),
+    captureFidelity: {
+      format: fidelity.format,
+      defaultRepresentation: fidelity.defaultRepresentation,
+      representations: [...new Set(representations.values())].sort(),
+    },
     status: issues.length === 0 ? 'passed' : 'failed',
     frames,
     results,
+    shapeValidatedRecords,
+    projectionOnlyRecords,
     unattributedResults,
     replayDigest: digest.digest('hex'),
     issues,

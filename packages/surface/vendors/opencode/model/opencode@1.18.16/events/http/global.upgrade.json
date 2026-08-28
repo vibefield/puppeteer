@@ -10,54 +10,40 @@
   "direction": "client-to-agent",
   "trigger": "Upgrade opencode — Upgrade opencode to the specified version or latest if not specified.",
   "payloadSchema": {
-    "type": "object",
     "properties": {
+      "body": {
+        "additionalProperties": false,
+        "properties": {
+          "target": {
+            "type": "string"
+          }
+        },
+        "type": "object"
+      },
       "method": {
         "type": "string"
       },
       "route": {
         "type": "string"
-      },
-      "body": {
-        "type": "object",
-        "properties": {
-          "target": {
-            "type": "string"
-          }
-        }
       }
     },
     "required": [
       "method",
       "route"
-    ]
+    ],
+    "type": "object"
   },
   "resultSchema": {
-    "type": "object",
     "properties": {
-      "method": {
-        "type": "string",
-        "enum": [
-          "POST"
-        ]
-      },
-      "route": {
-        "type": "string",
-        "enum": [
-          "/global/upgrade"
-        ]
-      },
-      "status": {
-        "type": "integer",
-        "minimum": 200,
-        "maximum": 299
-      },
       "body": {
         "anyOf": [
           {
-            "type": "object",
+            "additionalProperties": false,
             "properties": {
               "success": {
+                "enum": [
+                  true
+                ],
                 "type": "boolean"
               },
               "version": {
@@ -67,24 +53,47 @@
             "required": [
               "success",
               "version"
-            ]
+            ],
+            "type": "object"
           },
           {
-            "type": "object",
+            "additionalProperties": false,
             "properties": {
               "error": {
                 "type": "string"
               },
               "success": {
+                "enum": [
+                  false
+                ],
                 "type": "boolean"
               }
             },
             "required": [
-              "error",
-              "success"
-            ]
+              "success",
+              "error"
+            ],
+            "type": "object"
           }
-        ]
+        ],
+        "description": "Upgrade result"
+      },
+      "method": {
+        "enum": [
+          "POST"
+        ],
+        "type": "string"
+      },
+      "route": {
+        "enum": [
+          "/global/upgrade"
+        ],
+        "type": "string"
+      },
+      "status": {
+        "maximum": 299,
+        "minimum": 200,
+        "type": "integer"
       }
     },
     "required": [
@@ -92,51 +101,58 @@
       "route",
       "status",
       "body"
-    ]
+    ],
+    "type": "object"
   },
   "recordSchema": {
-    "type": "object",
     "properties": {
       "direction": {
-        "type": "string",
         "enum": [
           "client-to-agent"
-        ]
+        ],
+        "type": "string"
       },
       "request": {
-        "type": "object",
         "properties": {
-          "method": {
-            "type": "string",
-            "enum": [
-              "POST"
-            ]
-          },
-          "route": {
-            "type": "string",
-            "enum": [
-              "/global/upgrade"
-            ]
-          },
           "body": {
-            "type": "object",
+            "additionalProperties": false,
             "properties": {
               "target": {
                 "type": "string"
               }
-            }
+            },
+            "type": "object"
+          },
+          "method": {
+            "enum": [
+              "POST"
+            ],
+            "type": "string"
+          },
+          "route": {
+            "enum": [
+              "/global/upgrade"
+            ],
+            "type": "string"
           }
         },
         "required": [
           "method",
           "route"
-        ]
+        ],
+        "type": "object"
       }
     },
     "required": [
       "direction",
       "request"
-    ]
+    ],
+    "type": "object"
+  },
+  "schemaFidelity": {
+    "payload": "semantic",
+    "result": "semantic",
+    "carrier": "semantic"
   },
   "evidence": {
     "existence": [

@@ -1,0 +1,12 @@
+{
+  "schemaVersion": 1,
+  "representation": "legacy-privacy-projection",
+  "vendor": "grok",
+  "vendorVersion": "1.0.0",
+  "mode": "controlled-acp-state-census",
+  "artifactSha256": "13c7f4f0b9abb00bf38216302ea4bab31f03e13555e3576620eca1de572a8d21",
+  "limitations": [
+    "The raw inputs are unavailable, so this retained capture cannot be upgraded to a complete native-shape record.",
+    "These JSONL files prove captured occurrence, ordering, joins, and retained fields only."
+  ]
+}

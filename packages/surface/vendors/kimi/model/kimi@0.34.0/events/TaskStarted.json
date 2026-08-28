@@ -2,6 +2,12 @@
   "surface": "kimi",
   "surfaceVersion": "0.34.0",
   "event": "TaskStarted",
+  "schemaFidelity": {
+    "payload": "structural",
+    "limitations": [
+      "The release source projection preserves recursive declared structure but intentionally leaves custom/unknown values unconstrained; runtime-only file schemas describe captured instances."
+    ]
+  },
   "channel": "hook-command",
   "channels": ["hook-command"],
   "transport": "command-stdin",
@@ -64,16 +70,6 @@
   },
   "confidence": "verified-headless",
   "variants": [
-    {
-      "match": {
-        "hook_event_name": "TaskStarted"
-      },
-      "evidence": {
-        "existence": ["kimi-runtime-headless"],
-        "shape": ["kimi-runtime-headless", "kimi-exact-release-source"]
-      },
-      "confidence": "verified-headless"
-    },
     {
       "match": {
         "kind": "process"
@@ -165,5 +161,6 @@
       "confidence": "unverified"
     }
   ],
+  "variantDiscriminants": ["kind", "status"],
   "fixture": "captures/kimi@0.34.0/background-task/hooks/TaskStarted.jsonl"
 }

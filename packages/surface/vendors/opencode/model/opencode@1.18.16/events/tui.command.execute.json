@@ -10,10 +10,31 @@
   "direction": "agent-to-client",
   "trigger": "Published on the native GET /event stream.",
   "payloadSchema": {
-    "type": "object",
+    "additionalProperties": false,
     "properties": {
       "command": {
         "anyOf": [
+          {
+            "enum": [
+              "session.list",
+              "session.new",
+              "session.share",
+              "session.interrupt",
+              "session.compact",
+              "session.page.up",
+              "session.page.down",
+              "session.line.up",
+              "session.line.down",
+              "session.half.page.up",
+              "session.half.page.down",
+              "session.first",
+              "session.last",
+              "prompt.clear",
+              "prompt.submit",
+              "agent.cycle"
+            ],
+            "type": "string"
+          },
           {
             "type": "string"
           }
@@ -22,19 +43,42 @@
     },
     "required": [
       "command"
-    ]
+    ],
+    "type": "object"
   },
   "recordSchema": {
-    "type": "object",
+    "additionalProperties": false,
     "properties": {
       "id": {
+        "pattern": "^evt_",
         "type": "string"
       },
       "properties": {
-        "type": "object",
+        "additionalProperties": false,
         "properties": {
           "command": {
             "anyOf": [
+              {
+                "enum": [
+                  "session.list",
+                  "session.new",
+                  "session.share",
+                  "session.interrupt",
+                  "session.compact",
+                  "session.page.up",
+                  "session.page.down",
+                  "session.line.up",
+                  "session.line.down",
+                  "session.half.page.up",
+                  "session.half.page.down",
+                  "session.first",
+                  "session.last",
+                  "prompt.clear",
+                  "prompt.submit",
+                  "agent.cycle"
+                ],
+                "type": "string"
+              },
               {
                 "type": "string"
               }
@@ -43,20 +87,26 @@
         },
         "required": [
           "command"
-        ]
+        ],
+        "type": "object"
       },
       "type": {
-        "type": "string",
         "enum": [
           "tui.command.execute"
-        ]
+        ],
+        "type": "string"
       }
     },
     "required": [
       "id",
-      "properties",
-      "type"
-    ]
+      "type",
+      "properties"
+    ],
+    "type": "object"
+  },
+  "schemaFidelity": {
+    "payload": "exact",
+    "carrier": "exact"
   },
   "evidence": {
     "existence": [

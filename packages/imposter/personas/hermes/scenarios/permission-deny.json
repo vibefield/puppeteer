@@ -3,7 +3,13 @@
   "steps": [
     {
       "at": 0,
-      "do": { "emit": { "channel": "tui-gateway", "event": "tool.start", "with": { "name": "terminal", "tool_id": "call_imposter" } } }
+      "do": {
+        "emit": {
+          "channel": "tui-gateway",
+          "event": "tool.start",
+          "with": { "name": "terminal", "tool_id": "call_imposter", "context": "agent" }
+        }
+      }
     },
     {
       "at": 20,
@@ -21,13 +27,28 @@
         "emit": {
           "channel": "tui-gateway",
           "event": "tool.complete",
-          "with": { "name": "terminal", "tool_id": "call_imposter", "result": { "exit_code": -1, "status": "blocked", "hasOutput": false, "hasError": true } }
+          "with": {
+            "name": "terminal",
+            "tool_id": "call_imposter",
+            "args": {},
+            "result": {
+              "exit_code": -1,
+              "status": "blocked",
+              "error": "Command blocked by user; do not retry."
+            }
+          }
         }
       }
     },
     {
       "at": 60,
-      "do": { "emit": { "channel": "tui-gateway", "event": "message.complete", "with": { "status": "complete", "hasText": true } } }
+      "do": {
+        "emit": {
+          "channel": "tui-gateway",
+          "event": "message.complete",
+          "with": { "text": "permission denied", "status": "complete" }
+        }
+      }
     }
   ]
 }

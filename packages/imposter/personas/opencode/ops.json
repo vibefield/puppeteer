@@ -16,8 +16,19 @@
           "model": "$sessionModel",
           "permission": "$sessionPermission",
           "cost": 0,
-          "tokens": { "input": 0, "output": 0, "reasoning": 0, "cache": { "read": 0, "write": 0 } },
-          "time": { "created": "$sessionCreatedAt", "updated": "$sessionUpdatedAt" }
+          "tokens": {
+            "input": 0,
+            "output": 0,
+            "reasoning": 0,
+            "cache": {
+              "read": 0,
+              "write": 0
+            }
+          },
+          "time": {
+            "created": "$sessionCreatedAt",
+            "updated": "$sessionUpdatedAt"
+          }
         }
       }
     }
@@ -32,7 +43,9 @@
           "id": "$userMessageId",
           "role": "user",
           "sessionID": "$sessionId",
-          "time": { "created": "$promptCreatedAt" },
+          "time": {
+            "created": "$promptCreatedAt"
+          },
           "agent": "$promptAgent",
           "model": "$promptModel"
         }
@@ -44,7 +57,7 @@
       "with": {
         "sessionID": "$sessionId",
         "part": {
-          "id": "$uuid:user-part",
+          "id": "$nativeId:prt:user-part",
           "messageID": "$userMessageId",
           "sessionID": "$sessionId",
           "type": "text",
@@ -56,7 +69,12 @@
     {
       "channel": "sse",
       "event": "session.status",
-      "with": { "sessionID": "$sessionId", "status": { "type": "busy" } }
+      "with": {
+        "sessionID": "$sessionId",
+        "status": {
+          "type": "busy"
+        }
+      }
     },
     {
       "channel": "sse",
@@ -64,17 +82,30 @@
       "with": {
         "sessionID": "$sessionId",
         "info": {
-          "id": "$uuid:assistant-message",
+          "id": "$nativeId:msg:assistant-message",
           "parentID": "$userMessageId",
           "role": "assistant",
           "mode": "build",
           "agent": "$promptAgent",
-          "path": { "cwd": "$cwd", "root": "$cwd" },
+          "path": {
+            "cwd": "$cwd",
+            "root": "$cwd"
+          },
           "cost": 0,
-          "tokens": { "input": 0, "output": 0, "reasoning": 0, "cache": { "read": 0, "write": 0 } },
+          "tokens": {
+            "input": 0,
+            "output": 0,
+            "reasoning": 0,
+            "cache": {
+              "read": 0,
+              "write": 0
+            }
+          },
           "modelID": "$modelId",
           "providerID": "imposter",
-          "time": { "created": "$promptCreatedAt" },
+          "time": {
+            "created": "$promptCreatedAt"
+          },
           "sessionID": "$sessionId"
         }
       }
@@ -85,8 +116,8 @@
       "with": {
         "sessionID": "$sessionId",
         "part": {
-          "id": "$uuid:step-start",
-          "messageID": "$uuid:assistant-message",
+          "id": "$nativeId:prt:step-start",
+          "messageID": "$nativeId:msg:assistant-message",
           "sessionID": "$sessionId",
           "type": "step-start"
         },
@@ -101,12 +132,15 @@
       "with": {
         "sessionID": "$sessionId",
         "part": {
-          "id": "$uuid:assistant-part",
-          "messageID": "$uuid:assistant-message",
+          "id": "$nativeId:prt:assistant-part",
+          "messageID": "$nativeId:msg:assistant-message",
           "sessionID": "$sessionId",
           "type": "text",
           "text": "$op.text",
-          "time": { "start": "$promptCreatedAt", "end": "$nowMs" }
+          "time": {
+            "start": "$promptCreatedAt",
+            "end": "$nowMs"
+          }
         },
         "time": "$nowMs"
       }
@@ -118,13 +152,16 @@
       "event": "permission.asked",
       "await": true,
       "with": {
-        "id": "$uuid:permission",
+        "id": "$nativeId:per:permission",
         "sessionID": "$sessionId",
         "permission": "$op.permission",
         "patterns": "$op.patterns",
         "metadata": "$op.metadata",
         "always": "$op.always",
-        "tool": { "messageID": "$uuid:assistant-message", "callID": "$uuid:tool-call" }
+        "tool": {
+          "messageID": "$nativeId:msg:assistant-message",
+          "callID": "$uuid:tool-call"
+        }
       }
     }
   ],
@@ -135,13 +172,22 @@
       "with": {
         "sessionID": "$sessionId",
         "part": {
-          "id": "$uuid:step-finish",
-          "messageID": "$uuid:assistant-message",
+          "id": "$nativeId:prt:step-finish",
+          "messageID": "$nativeId:msg:assistant-message",
           "sessionID": "$sessionId",
           "type": "step-finish",
           "reason": "stop",
           "cost": 0,
-          "tokens": { "total": 18, "input": 11, "output": 7, "reasoning": 0, "cache": { "read": 0, "write": 0 } }
+          "tokens": {
+            "total": 18,
+            "input": 11,
+            "output": 7,
+            "reasoning": 0,
+            "cache": {
+              "read": 0,
+              "write": 0
+            }
+          }
         },
         "time": "$nowMs"
       }
@@ -152,17 +198,32 @@
       "with": {
         "sessionID": "$sessionId",
         "info": {
-          "id": "$uuid:assistant-message",
+          "id": "$nativeId:msg:assistant-message",
           "parentID": "$userMessageId",
           "role": "assistant",
           "mode": "build",
           "agent": "$promptAgent",
-          "path": { "cwd": "$cwd", "root": "$cwd" },
+          "path": {
+            "cwd": "$cwd",
+            "root": "$cwd"
+          },
           "cost": 0,
-          "tokens": { "total": 18, "input": 11, "output": 7, "reasoning": 0, "cache": { "read": 0, "write": 0 } },
+          "tokens": {
+            "total": 18,
+            "input": 11,
+            "output": 7,
+            "reasoning": 0,
+            "cache": {
+              "read": 0,
+              "write": 0
+            }
+          },
           "modelID": "$modelId",
           "providerID": "imposter",
-          "time": { "created": "$promptCreatedAt", "completed": "$nowMs" },
+          "time": {
+            "created": "$promptCreatedAt",
+            "completed": "$nowMs"
+          },
           "sessionID": "$sessionId",
           "finish": "stop"
         }
@@ -171,12 +232,19 @@
     {
       "channel": "sse",
       "event": "session.status",
-      "with": { "sessionID": "$sessionId", "status": { "type": "idle" } }
+      "with": {
+        "sessionID": "$sessionId",
+        "status": {
+          "type": "idle"
+        }
+      }
     },
     {
       "channel": "sse",
       "event": "session.idle",
-      "with": { "sessionID": "$sessionId" }
+      "with": {
+        "sessionID": "$sessionId"
+      }
     }
   ]
 }

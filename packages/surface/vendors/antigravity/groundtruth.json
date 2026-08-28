@@ -1,0 +1,2017 @@
+{
+  "format": "puppeteer-groundtruth/1",
+  "manifest": {
+    "asmVersion": 3,
+    "vendor": "antigravity",
+    "vendorVersion": "1.1.12",
+    "generatedAt": "2026-08-28",
+    "source": "Exact Antigravity CLI 1.1.12 release and executable identities, authorized print-mode/hook captures, and official documentation. Existing captures are legacy projections; their shape limitations are explicit.",
+    "evidence": "evidence.json"
+  },
+  "detection": {
+    "executables": [
+      "agy",
+      "antigravity"
+    ],
+    "envVar": "PUPPETEER_ANTIGRAVITY_BIN",
+    "versionFlag": "--version",
+    "versionOutput": "1.1.12",
+    "versionPattern": "^(\\d+\\.\\d+\\.\\d+)$",
+    "helpFlag": "--help",
+    "launchFlags": {
+      "print": "--print, -p",
+      "outputFormat": "--output-format",
+      "session": "--conversation",
+      "resume": "--continue, -c",
+      "addDirectory": "--add-dir",
+      "model": "--model",
+      "mode": "--mode",
+      "agent": "--agent",
+      "sandbox": "--sandbox"
+    }
+  },
+  "channels": {
+    "channels": {
+      "argv": {
+        "kind": "argv-env",
+        "notes": "Native process launch and session/resume selection."
+      },
+      "print-stream": {
+        "kind": "stdout-jsonl",
+        "notes": "Native --print --output-format stream-json records; a survey oracle, not the native TUI rail."
+      },
+      "print-json": {
+        "kind": "stdout-json",
+        "notes": "Native --print --output-format json terminal result or local slash-command response."
+      },
+      "hook-command": {
+        "kind": "hook-command",
+        "notes": "Configured command hook receives one JSON document on stdin and returns one JSON document on stdout."
+      },
+      "transcript-jsonl": {
+        "kind": "native-state",
+        "notes": "Observed transcript.jsonl durable record rail; SQLite and transcript_full remain distinct unmodelled candidates."
+      }
+    }
+  },
+  "evidenceIndex": {
+    "evidenceVersion": 2,
+    "vendor": "antigravity",
+    "vendorVersion": "1.1.12",
+    "artifacts": [
+      {
+        "id": "release-archive-1.1.12-darwin-arm64",
+        "platform": "darwin-arm64",
+        "channel": "stable",
+        "acquiredAt": "2026-08-11T05:42:04Z",
+        "versionOutput": "1.1.12",
+        "bytes": 48689274,
+        "integrity": {
+          "status": "verified",
+          "sha256": "sha256:7b70bdf27727a68d58c1bebfd3fd2e87d1172dc32eab9827d52fd62ad64f286b"
+        },
+        "sourceUrl": "https://github.com/google-antigravity/antigravity-cli/releases/download/1.1.12/agy_cli_mac_arm64.tar.gz"
+      },
+      {
+        "id": "release-archive-1.1.12-darwin-x64",
+        "platform": "darwin-x64",
+        "channel": "stable",
+        "acquiredAt": "2026-08-11T05:42:04Z",
+        "versionOutput": "1.1.12",
+        "bytes": 53329096,
+        "integrity": {
+          "status": "verified",
+          "sha256": "sha256:82f5ccc62ae77e202c33cd0347b564ffe645b7cdb2a35c45bb6eb34d516e8832"
+        },
+        "sourceUrl": "https://github.com/google-antigravity/antigravity-cli/releases/download/1.1.12/agy_cli_mac_x64.tar.gz"
+      },
+      {
+        "id": "release-archive-1.1.12-linux-x64",
+        "platform": "linux-x64",
+        "channel": "stable",
+        "acquiredAt": "2026-08-11T05:42:04Z",
+        "versionOutput": "1.1.12",
+        "bytes": 55332777,
+        "integrity": {
+          "status": "verified",
+          "sha256": "sha256:c778ae4fd11e5dc2dbddfd7108ee1974ae60fd531afb246be41c6e4bb49c81ca"
+        },
+        "sourceUrl": "https://github.com/google-antigravity/antigravity-cli/releases/download/1.1.12/agy_cli_linux_x64.tar.gz"
+      },
+      {
+        "id": "release-archive-1.1.12-windows-x64",
+        "platform": "windows-x64",
+        "channel": "stable",
+        "acquiredAt": "2026-08-11T05:42:04Z",
+        "versionOutput": "1.1.12",
+        "bytes": 50794876,
+        "integrity": {
+          "status": "verified",
+          "sha256": "sha256:270d71910675d614499a0f7f165f275aff0a03c00b0f92cc9ed09f352c58de85"
+        },
+        "sourceUrl": "https://github.com/google-antigravity/antigravity-cli/releases/download/1.1.12/agy_cli_windows_x64.zip"
+      },
+      {
+        "id": "installed-antigravity-1.1.12-darwin-arm64",
+        "platform": "darwin-arm64",
+        "channel": "stable",
+        "acquiredAt": "2026-08-11T05:58:24.459Z",
+        "versionOutput": "1.1.12",
+        "fileDescription": "Mach-O 64-bit executable arm64",
+        "bytes": 172267536,
+        "integrity": {
+          "status": "verified",
+          "sha256": "sha256:c8fd3c0016e101689f923f82da1c068b0e6dce3abcb0089e282742693ad4d344"
+        },
+        "signature": {
+          "verified": false,
+          "verificationResult": "invalid-signature",
+          "verificationExitCode": 1,
+          "identifier": "cli",
+          "teamIdentifier": "EQHXZ8M8AV",
+          "authorities": [
+            "(unavailable)"
+          ]
+        }
+      }
+    ],
+    "sourceReferences": [
+      {
+        "repository": "https://github.com/google-antigravity/antigravity-cli",
+        "revision": "f7519c9084190ed421e89dd81c63970b5177c9ef",
+        "relation": "release-tag",
+        "sourceEquivalence": "unverified",
+        "tag": "1.1.12",
+        "contract": "packages/surface/vendors/antigravity/references/antigravity@1.1.12/release.json"
+      },
+      {
+        "repository": "https://github.com/google-antigravity/antigravity-cli",
+        "revision": "f7519c9084190ed421e89dd81c63970b5177c9ef",
+        "relation": "release-tag",
+        "referenceKind": "official-documentation-bundle",
+        "contract": "packages/surface/vendors/antigravity/references/antigravity@1.1.12/docs.json"
+      }
+    ],
+    "records": [
+      {
+        "id": "sanitized-captures",
+        "kind": "capture-set",
+        "path": "packages/surface/vendors/antigravity/captures/antigravity@1.1.12",
+        "digestAlgorithm": "sha256-path-content-v1",
+        "sha256": "e34a9fd92a230bbcf25387a5d9c7cc0bac33f1b82955544016644540d233e2d4"
+      },
+      {
+        "id": "binary-probes",
+        "kind": "probe-set",
+        "path": "packages/surface/vendors/antigravity/probes/antigravity@1.1.12",
+        "digestAlgorithm": "sha256-path-content-v1",
+        "sha256": "fd06a9097500464542bc8d1306e4f6761d76cb60dca5c8c76b3b61cb36e5da67"
+      },
+      {
+        "id": "official-references",
+        "kind": "reference-snapshot",
+        "path": "packages/surface/vendors/antigravity/references/antigravity@1.1.12",
+        "digestAlgorithm": "sha256-path-content-v1",
+        "sha256": "f1d1a001ed6e3c9ec84cd514954fdcf0c1e837d63a1155969f143a7c81fa3a0e"
+      },
+      {
+        "id": "agent-surface-model",
+        "kind": "model-tree",
+        "path": "packages/surface/vendors/antigravity/model/antigravity@1.1.12",
+        "exclude": [
+          "evidence.json"
+        ],
+        "digestAlgorithm": "sha256-path-content-v1",
+        "sha256": "366719a1002bdc2d4289d9d1295ff37a77e90571017006dbf4c93530181005a7"
+      }
+    ],
+    "claims": [
+      {
+        "id": "antigravity-runtime-headless",
+        "kind": "runtime-capture",
+        "confidence": "verified-headless",
+        "record": "sanitized-captures",
+        "artifact": "installed-antigravity-1.1.12-darwin-arm64",
+        "platform": "darwin-arm64",
+        "harness": "authorized --print json/stream-json survey with launch-scoped workspace command hooks, add-dir discovery, same-conversation resume, read-only slash commands, and successful read tools",
+        "capturedAt": "2026-08-12T21:44:01.000Z",
+        "notes": "The retained fixtures are legacy privacy projections. This claim proves occurrence, ordering, joins, and explicitly retained scalar/type observations, not complete native payload shape."
+      },
+      {
+        "id": "antigravity-binary-probe",
+        "kind": "binary-probe",
+        "confidence": "verified-headless",
+        "record": "binary-probes",
+        "artifact": "installed-antigravity-1.1.12-darwin-arm64",
+        "platform": "darwin-arm64",
+        "harness": "release archive identity, executable SHA-256, --version, --help, rejected-option, and static-string probes",
+        "capturedAt": "2026-08-11T05:58:24.459Z"
+      },
+      {
+        "id": "antigravity-official-docs",
+        "kind": "official-doc",
+        "confidence": "unverified",
+        "record": "official-references",
+        "sourceReference": 1,
+        "notes": "Official documentation and changelog projection establish declared hook fields, callbacks, flags, and durable-path leads but are not exact source or runtime evidence."
+      }
+    ],
+    "limitations": [
+      "All retained runtime fixtures are schemaVersion 1 legacy privacy projections. Their raw inputs are unavailable; future schemaVersion 2 captures preserve native JSON keys, containers, and types.",
+      "The census covers print mode and command hooks, not the native interactive TUI transport.",
+      "No file-mutating tool was forced. The tool catalog proves edit-capable tool names exist, but file paths, before/after content, and diffs are not currently observable with verified Antigravity evidence.",
+      "Transcript JSONL, transcript_full JSONL, and SQLite were observed as distinct durable candidates; only selected transcript.jsonl fields are modelled.",
+      "The public release repository does not expose binary-equivalent implementation source. The release tag is provenance only.",
+      "Only the darwin-arm64 executable has runtime evidence. Other platform records identify official archives, not executed behavior."
+    ]
+  },
+  "events": [
+    {
+      "surface": "antigravity",
+      "surfaceVersion": "1.1.12",
+      "event": "command_result",
+      "schemaFidelity": {
+        "payload": "structural",
+        "carrier": "structural",
+        "limitations": [
+          "The retained 1.1.12 runtime records are legacy privacy projections. Schemas retain only fields whose native names and types survive that transform or are stated by official documentation; additional native fields may exist."
+        ]
+      },
+      "channel": "print-stream",
+      "channels": [
+        "print-stream"
+      ],
+      "transport": "jsonl-record",
+      "direction": "agent-to-client",
+      "payloadSchema": {
+        "type": "object",
+        "properties": {
+          "command": {
+            "type": "object",
+            "properties": {
+              "name": {
+                "type": "string"
+              },
+              "data": {
+                "type": "object"
+              }
+            },
+            "required": [
+              "name",
+              "data"
+            ]
+          }
+        },
+        "required": [
+          "command"
+        ]
+      },
+      "recordSchema": {
+        "type": "object",
+        "properties": {
+          "event": {
+            "type": "string",
+            "enum": [
+              "command_result"
+            ]
+          },
+          "command": {
+            "type": "object",
+            "properties": {
+              "name": {
+                "type": "string"
+              },
+              "data": {
+                "type": "object"
+              }
+            },
+            "required": [
+              "name",
+              "data"
+            ]
+          }
+        },
+        "required": [
+          "event",
+          "command"
+        ]
+      },
+      "recordChannel": "print-stream",
+      "evidence": {
+        "existence": [
+          "antigravity-runtime-headless"
+        ],
+        "shape": [
+          "antigravity-runtime-headless"
+        ],
+        "carrier": [
+          "antigravity-runtime-headless"
+        ]
+      },
+      "confidence": "verified-headless",
+      "fixture": "captures/antigravity@1.1.12/readonly-print/hooks.stream-json.json"
+    },
+    {
+      "surface": "antigravity",
+      "surfaceVersion": "1.1.12",
+      "event": "init",
+      "schemaFidelity": {
+        "payload": "structural",
+        "carrier": "structural",
+        "limitations": [
+          "The retained 1.1.12 runtime records are legacy privacy projections. Schemas retain only fields whose native names and types survive that transform or are stated by official documentation; additional native fields may exist."
+        ]
+      },
+      "channel": "print-stream",
+      "channels": [
+        "print-stream"
+      ],
+      "transport": "jsonl-record",
+      "direction": "agent-to-client",
+      "payloadSchema": {
+        "type": "object",
+        "properties": {
+          "conversation_id": {
+            "type": "string"
+          },
+          "init": {
+            "type": "object",
+            "properties": {
+              "permission_mode": {
+                "type": "string"
+              },
+              "tools": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                }
+              }
+            },
+            "required": [
+              "permission_mode",
+              "tools"
+            ]
+          }
+        },
+        "required": [
+          "conversation_id",
+          "init"
+        ]
+      },
+      "recordSchema": {
+        "type": "object",
+        "properties": {
+          "event": {
+            "type": "string",
+            "enum": [
+              "init"
+            ]
+          },
+          "conversation_id": {
+            "type": "string"
+          },
+          "init": {
+            "type": "object",
+            "properties": {
+              "permission_mode": {
+                "type": "string"
+              },
+              "tools": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                }
+              }
+            },
+            "required": [
+              "permission_mode",
+              "tools"
+            ]
+          }
+        },
+        "required": [
+          "event",
+          "conversation_id",
+          "init"
+        ]
+      },
+      "recordChannel": "print-stream",
+      "evidence": {
+        "existence": [
+          "antigravity-runtime-headless"
+        ],
+        "shape": [
+          "antigravity-runtime-headless"
+        ],
+        "carrier": [
+          "antigravity-runtime-headless"
+        ]
+      },
+      "confidence": "verified-headless",
+      "fixture": "captures/antigravity@1.1.12/add-dir-turn/print.stream-json.json",
+      "notes": "The runtime projection retained the exact 56-entry tool-name catalog but replaced cwd with a synthetic cwdRedacted flag; cwd is therefore not required by this schema."
+    },
+    {
+      "surface": "antigravity",
+      "surfaceVersion": "1.1.12",
+      "event": "PostInvocation",
+      "schemaFidelity": {
+        "payload": "structural",
+        "result": "structural",
+        "limitations": [
+          "The retained 1.1.12 runtime records are legacy privacy projections. Schemas retain only fields whose native names and types survive that transform or are stated by official documentation; additional native fields may exist."
+        ]
+      },
+      "channel": "hook-command",
+      "channels": [
+        "hook-command"
+      ],
+      "transport": "hook-callback",
+      "direction": "agent-local",
+      "payloadSchema": {
+        "type": "object",
+        "properties": {
+          "conversationId": {
+            "type": "string"
+          },
+          "workspacePaths": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "transcriptPath": {
+            "type": "string"
+          },
+          "artifactDirectoryPath": {
+            "type": "string"
+          },
+          "modelName": {
+            "type": "string"
+          },
+          "invocationNum": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "initialNumSteps": {
+            "type": "integer",
+            "minimum": 0
+          }
+        },
+        "required": [
+          "conversationId",
+          "workspacePaths",
+          "modelName",
+          "invocationNum",
+          "initialNumSteps"
+        ]
+      },
+      "resultSchema": {
+        "type": "object",
+        "properties": {
+          "injectSteps": {
+            "type": "array",
+            "items": {
+              "type": "object"
+            }
+          },
+          "terminationBehavior": {
+            "type": "string",
+            "enum": [
+              "force_continue",
+              "terminate",
+              ""
+            ]
+          }
+        }
+      },
+      "evidence": {
+        "existence": [
+          "antigravity-runtime-headless"
+        ],
+        "shape": [
+          "antigravity-official-docs"
+        ],
+        "result": [
+          "antigravity-official-docs"
+        ],
+        "carrier": [
+          "antigravity-official-docs"
+        ]
+      },
+      "confidence": "unverified",
+      "fixture": "captures/antigravity@1.1.12/add-dir-turn/hooks.jsonl",
+      "observationMode": "passive",
+      "notes": "Runtime evidence verifies this hook family and its ordering. Complete stdin/stdout shape is documentation-backed because the retained runtime fixture is a legacy projection."
+    },
+    {
+      "surface": "antigravity",
+      "surfaceVersion": "1.1.12",
+      "event": "PostToolUse",
+      "schemaFidelity": {
+        "payload": "structural",
+        "result": "structural",
+        "limitations": [
+          "The retained 1.1.12 runtime records are legacy privacy projections. Schemas retain only fields whose native names and types survive that transform or are stated by official documentation; additional native fields may exist."
+        ]
+      },
+      "channel": "hook-command",
+      "channels": [
+        "hook-command"
+      ],
+      "transport": "hook-callback",
+      "direction": "agent-local",
+      "payloadSchema": {
+        "type": "object",
+        "properties": {
+          "conversationId": {
+            "type": "string"
+          },
+          "workspacePaths": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "transcriptPath": {
+            "type": "string"
+          },
+          "artifactDirectoryPath": {
+            "type": "string"
+          },
+          "modelName": {
+            "type": "string"
+          },
+          "toolCall": {
+            "type": "object",
+            "properties": {
+              "name": {
+                "type": "string"
+              },
+              "args": {
+                "type": "object"
+              }
+            },
+            "required": [
+              "name",
+              "args"
+            ]
+          },
+          "stepIdx": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "error": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "conversationId",
+          "workspacePaths",
+          "modelName",
+          "toolCall",
+          "stepIdx"
+        ]
+      },
+      "resultSchema": {
+        "type": "object"
+      },
+      "evidence": {
+        "existence": [
+          "antigravity-runtime-headless"
+        ],
+        "shape": [
+          "antigravity-official-docs"
+        ],
+        "result": [
+          "antigravity-official-docs"
+        ],
+        "carrier": [
+          "antigravity-official-docs"
+        ]
+      },
+      "confidence": "unverified",
+      "fixture": "captures/antigravity@1.1.12/tool-success/hooks.jsonl",
+      "observationMode": "matcher-required",
+      "notes": "Runtime evidence verifies this hook family and its ordering. Complete stdin/stdout shape is documentation-backed because the retained runtime fixture is a legacy projection."
+    },
+    {
+      "surface": "antigravity",
+      "surfaceVersion": "1.1.12",
+      "event": "PreInvocation",
+      "schemaFidelity": {
+        "payload": "structural",
+        "result": "structural",
+        "limitations": [
+          "The retained 1.1.12 runtime records are legacy privacy projections. Schemas retain only fields whose native names and types survive that transform or are stated by official documentation; additional native fields may exist."
+        ]
+      },
+      "channel": "hook-command",
+      "channels": [
+        "hook-command"
+      ],
+      "transport": "hook-callback",
+      "direction": "agent-local",
+      "payloadSchema": {
+        "type": "object",
+        "properties": {
+          "conversationId": {
+            "type": "string"
+          },
+          "workspacePaths": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "transcriptPath": {
+            "type": "string"
+          },
+          "artifactDirectoryPath": {
+            "type": "string"
+          },
+          "modelName": {
+            "type": "string"
+          },
+          "invocationNum": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "initialNumSteps": {
+            "type": "integer",
+            "minimum": 0
+          }
+        },
+        "required": [
+          "conversationId",
+          "workspacePaths",
+          "modelName",
+          "invocationNum",
+          "initialNumSteps"
+        ]
+      },
+      "resultSchema": {
+        "type": "object",
+        "properties": {
+          "injectSteps": {
+            "type": "array",
+            "items": {
+              "type": "object"
+            }
+          },
+          "terminationBehavior": {
+            "type": "string",
+            "enum": [
+              "force_continue",
+              "terminate",
+              ""
+            ]
+          }
+        }
+      },
+      "evidence": {
+        "existence": [
+          "antigravity-runtime-headless"
+        ],
+        "shape": [
+          "antigravity-official-docs"
+        ],
+        "result": [
+          "antigravity-official-docs"
+        ],
+        "carrier": [
+          "antigravity-official-docs"
+        ]
+      },
+      "confidence": "unverified",
+      "fixture": "captures/antigravity@1.1.12/add-dir-turn/hooks.jsonl",
+      "observationMode": "passive",
+      "notes": "Runtime evidence verifies this hook family and its ordering. Complete stdin/stdout shape is documentation-backed because the retained runtime fixture is a legacy projection."
+    },
+    {
+      "surface": "antigravity",
+      "surfaceVersion": "1.1.12",
+      "event": "PreToolUse",
+      "schemaFidelity": {
+        "payload": "structural",
+        "result": "structural",
+        "limitations": [
+          "The retained 1.1.12 runtime records are legacy privacy projections. Schemas retain only fields whose native names and types survive that transform or are stated by official documentation; additional native fields may exist."
+        ]
+      },
+      "channel": "hook-command",
+      "channels": [
+        "hook-command"
+      ],
+      "transport": "hook-callback",
+      "direction": "agent-local",
+      "payloadSchema": {
+        "type": "object",
+        "properties": {
+          "conversationId": {
+            "type": "string"
+          },
+          "workspacePaths": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "transcriptPath": {
+            "type": "string"
+          },
+          "artifactDirectoryPath": {
+            "type": "string"
+          },
+          "modelName": {
+            "type": "string"
+          },
+          "toolCall": {
+            "type": "object",
+            "properties": {
+              "name": {
+                "type": "string"
+              },
+              "args": {
+                "type": "object"
+              }
+            },
+            "required": [
+              "name",
+              "args"
+            ]
+          },
+          "stepIdx": {
+            "type": "integer",
+            "minimum": 0
+          }
+        },
+        "required": [
+          "conversationId",
+          "workspacePaths",
+          "modelName",
+          "toolCall",
+          "stepIdx"
+        ]
+      },
+      "resultSchema": {
+        "type": "object",
+        "properties": {
+          "decision": {
+            "type": "string",
+            "enum": [
+              "allow",
+              "deny",
+              "ask",
+              "force_ask",
+              "deny_unless_prior_grant"
+            ]
+          },
+          "reason": {
+            "type": "string"
+          }
+        }
+      },
+      "evidence": {
+        "existence": [
+          "antigravity-runtime-headless"
+        ],
+        "shape": [
+          "antigravity-official-docs"
+        ],
+        "result": [
+          "antigravity-official-docs"
+        ],
+        "carrier": [
+          "antigravity-official-docs"
+        ]
+      },
+      "confidence": "unverified",
+      "fixture": "captures/antigravity@1.1.12/tool-success/hooks.jsonl",
+      "observationMode": "matcher-required",
+      "notes": "Runtime evidence verifies this hook family and its ordering. Complete stdin/stdout shape is documentation-backed because the retained runtime fixture is a legacy projection."
+    },
+    {
+      "surface": "antigravity",
+      "surfaceVersion": "1.1.12",
+      "event": "result",
+      "schemaFidelity": {
+        "payload": "structural",
+        "carrier": "structural",
+        "limitations": [
+          "The retained 1.1.12 runtime records are legacy privacy projections. Schemas retain only fields whose native names and types survive that transform or are stated by official documentation; additional native fields may exist."
+        ]
+      },
+      "channel": "print-stream",
+      "channels": [
+        "print-stream",
+        "print-json"
+      ],
+      "transport": "jsonl-record",
+      "direction": "agent-to-client",
+      "payloadSchema": {
+        "type": "object",
+        "properties": {
+          "result": {
+            "type": "object",
+            "properties": {
+              "conversation_id": {
+                "type": "string"
+              },
+              "status": {
+                "type": "string"
+              },
+              "num_turns": {
+                "type": "integer",
+                "minimum": 0
+              },
+              "duration_seconds": {
+                "type": "number",
+                "minimum": 0
+              },
+              "usage": {
+                "type": "object",
+                "properties": {
+                  "input_tokens": {
+                    "type": "integer",
+                    "minimum": 0
+                  },
+                  "output_tokens": {
+                    "type": "integer",
+                    "minimum": 0
+                  },
+                  "thinking_tokens": {
+                    "type": "integer",
+                    "minimum": 0
+                  },
+                  "cache_read_tokens": {
+                    "type": "integer",
+                    "minimum": 0
+                  },
+                  "total_tokens": {
+                    "type": "integer",
+                    "minimum": 0
+                  }
+                },
+                "required": [
+                  "input_tokens",
+                  "output_tokens",
+                  "thinking_tokens",
+                  "cache_read_tokens",
+                  "total_tokens"
+                ]
+              },
+              "response": {
+                "type": "string"
+              },
+              "command": {
+                "type": "object",
+                "properties": {
+                  "name": {
+                    "type": "string"
+                  },
+                  "data": {
+                    "type": "object"
+                  }
+                },
+                "required": [
+                  "name",
+                  "data"
+                ]
+              }
+            },
+            "required": [
+              "conversation_id",
+              "status",
+              "num_turns",
+              "duration_seconds",
+              "usage"
+            ]
+          }
+        },
+        "required": [
+          "result"
+        ]
+      },
+      "recordSchema": {
+        "type": "object",
+        "properties": {
+          "event": {
+            "type": "string",
+            "enum": [
+              "result"
+            ]
+          },
+          "result": {
+            "type": "object",
+            "properties": {
+              "conversation_id": {
+                "type": "string"
+              },
+              "status": {
+                "type": "string"
+              },
+              "num_turns": {
+                "type": "integer",
+                "minimum": 0
+              },
+              "duration_seconds": {
+                "type": "number",
+                "minimum": 0
+              },
+              "usage": {
+                "type": "object",
+                "properties": {
+                  "input_tokens": {
+                    "type": "integer",
+                    "minimum": 0
+                  },
+                  "output_tokens": {
+                    "type": "integer",
+                    "minimum": 0
+                  },
+                  "thinking_tokens": {
+                    "type": "integer",
+                    "minimum": 0
+                  },
+                  "cache_read_tokens": {
+                    "type": "integer",
+                    "minimum": 0
+                  },
+                  "total_tokens": {
+                    "type": "integer",
+                    "minimum": 0
+                  }
+                },
+                "required": [
+                  "input_tokens",
+                  "output_tokens",
+                  "thinking_tokens",
+                  "cache_read_tokens",
+                  "total_tokens"
+                ]
+              },
+              "response": {
+                "type": "string"
+              },
+              "command": {
+                "type": "object",
+                "properties": {
+                  "name": {
+                    "type": "string"
+                  },
+                  "data": {
+                    "type": "object"
+                  }
+                },
+                "required": [
+                  "name",
+                  "data"
+                ]
+              }
+            },
+            "required": [
+              "conversation_id",
+              "status",
+              "num_turns",
+              "duration_seconds",
+              "usage"
+            ]
+          }
+        },
+        "required": [
+          "event",
+          "result"
+        ]
+      },
+      "recordChannel": "print-stream",
+      "evidence": {
+        "existence": [
+          "antigravity-runtime-headless"
+        ],
+        "shape": [
+          "antigravity-runtime-headless"
+        ],
+        "carrier": [
+          "antigravity-runtime-headless"
+        ]
+      },
+      "confidence": "verified-headless",
+      "variants": [
+        {
+          "match": {
+            "result.status": "SUCCESS"
+          },
+          "evidence": {
+            "existence": [
+              "antigravity-runtime-headless"
+            ],
+            "shape": [
+              "antigravity-runtime-headless"
+            ]
+          },
+          "confidence": "verified-headless"
+        }
+      ],
+      "fixture": "captures/antigravity@1.1.12/add-dir-turn/print.stream-json.json",
+      "notes": "Plain JSON mode emits the result body without the stream wrapper. The legacy sanitizer replaced response with hasResponse; hasResponse is intentionally absent from the native schema."
+    },
+    {
+      "surface": "antigravity",
+      "surfaceVersion": "1.1.12",
+      "event": "step_update",
+      "schemaFidelity": {
+        "payload": "structural",
+        "carrier": "structural",
+        "limitations": [
+          "The retained 1.1.12 runtime records are legacy privacy projections. Schemas retain only fields whose native names and types survive that transform or are stated by official documentation; additional native fields may exist."
+        ]
+      },
+      "channel": "print-stream",
+      "channels": [
+        "print-stream"
+      ],
+      "transport": "jsonl-record",
+      "direction": "agent-to-client",
+      "payloadSchema": {
+        "type": "object",
+        "properties": {
+          "step_update": {
+            "type": "object",
+            "properties": {
+              "conversation_id": {
+                "type": "string"
+              },
+              "step_index": {
+                "type": "integer",
+                "minimum": 0
+              },
+              "state": {
+                "type": "string"
+              },
+              "step_type": {
+                "type": "string"
+              },
+              "duration_seconds": {
+                "type": "number",
+                "minimum": 0
+              },
+              "usage": {
+                "type": "object",
+                "properties": {
+                  "input_tokens": {
+                    "type": "integer",
+                    "minimum": 0
+                  },
+                  "output_tokens": {
+                    "type": "integer",
+                    "minimum": 0
+                  },
+                  "thinking_tokens": {
+                    "type": "integer",
+                    "minimum": 0
+                  },
+                  "cache_read_tokens": {
+                    "type": "integer",
+                    "minimum": 0
+                  },
+                  "total_tokens": {
+                    "type": "integer",
+                    "minimum": 0
+                  }
+                },
+                "required": [
+                  "input_tokens",
+                  "output_tokens",
+                  "thinking_tokens",
+                  "cache_read_tokens",
+                  "total_tokens"
+                ]
+              },
+              "tool_name": {
+                "type": "string"
+              },
+              "text_delta": {
+                "type": "string"
+              },
+              "tool_info": {
+                "type": "object",
+                "properties": {
+                  "name": {
+                    "type": "string"
+                  },
+                  "parameters": {
+                    "type": "object"
+                  },
+                  "output": {
+                    "type": "string"
+                  }
+                }
+              }
+            },
+            "required": [
+              "conversation_id",
+              "step_index",
+              "state",
+              "step_type"
+            ]
+          }
+        },
+        "required": [
+          "step_update"
+        ]
+      },
+      "recordSchema": {
+        "type": "object",
+        "properties": {
+          "event": {
+            "type": "string",
+            "enum": [
+              "step_update"
+            ]
+          },
+          "step_update": {
+            "type": "object",
+            "properties": {
+              "conversation_id": {
+                "type": "string"
+              },
+              "step_index": {
+                "type": "integer",
+                "minimum": 0
+              },
+              "state": {
+                "type": "string"
+              },
+              "step_type": {
+                "type": "string"
+              },
+              "duration_seconds": {
+                "type": "number",
+                "minimum": 0
+              },
+              "usage": {
+                "type": "object",
+                "properties": {
+                  "input_tokens": {
+                    "type": "integer",
+                    "minimum": 0
+                  },
+                  "output_tokens": {
+                    "type": "integer",
+                    "minimum": 0
+                  },
+                  "thinking_tokens": {
+                    "type": "integer",
+                    "minimum": 0
+                  },
+                  "cache_read_tokens": {
+                    "type": "integer",
+                    "minimum": 0
+                  },
+                  "total_tokens": {
+                    "type": "integer",
+                    "minimum": 0
+                  }
+                },
+                "required": [
+                  "input_tokens",
+                  "output_tokens",
+                  "thinking_tokens",
+                  "cache_read_tokens",
+                  "total_tokens"
+                ]
+              },
+              "tool_name": {
+                "type": "string"
+              },
+              "text_delta": {
+                "type": "string"
+              },
+              "tool_info": {
+                "type": "object",
+                "properties": {
+                  "name": {
+                    "type": "string"
+                  },
+                  "parameters": {
+                    "type": "object"
+                  },
+                  "output": {
+                    "type": "string"
+                  }
+                }
+              }
+            },
+            "required": [
+              "conversation_id",
+              "step_index",
+              "state",
+              "step_type"
+            ]
+          }
+        },
+        "required": [
+          "event",
+          "step_update"
+        ]
+      },
+      "recordChannel": "print-stream",
+      "evidence": {
+        "existence": [
+          "antigravity-runtime-headless"
+        ],
+        "shape": [
+          "antigravity-runtime-headless"
+        ],
+        "carrier": [
+          "antigravity-runtime-headless"
+        ]
+      },
+      "confidence": "verified-headless",
+      "variants": [
+        {
+          "match": {
+            "step_update.step_type": "agent_response"
+          },
+          "evidence": {
+            "existence": [
+              "antigravity-runtime-headless"
+            ],
+            "shape": [
+              "antigravity-runtime-headless"
+            ]
+          },
+          "confidence": "verified-headless"
+        },
+        {
+          "match": {
+            "step_update.step_type": "checkpoint"
+          },
+          "evidence": {
+            "existence": [
+              "antigravity-runtime-headless"
+            ],
+            "shape": [
+              "antigravity-runtime-headless"
+            ]
+          },
+          "confidence": "verified-headless"
+        },
+        {
+          "match": {
+            "step_update.step_type": "error_message"
+          },
+          "evidence": {
+            "existence": [
+              "antigravity-runtime-headless"
+            ],
+            "shape": [
+              "antigravity-runtime-headless"
+            ]
+          },
+          "confidence": "verified-headless"
+        },
+        {
+          "match": {
+            "step_update.step_type": "system_message"
+          },
+          "evidence": {
+            "existence": [
+              "antigravity-runtime-headless"
+            ],
+            "shape": [
+              "antigravity-runtime-headless"
+            ]
+          },
+          "confidence": "verified-headless"
+        },
+        {
+          "match": {
+            "step_update.step_type": "tool"
+          },
+          "evidence": {
+            "existence": [
+              "antigravity-runtime-headless"
+            ],
+            "shape": [
+              "antigravity-runtime-headless"
+            ]
+          },
+          "confidence": "verified-headless"
+        },
+        {
+          "match": {
+            "step_update.step_type": "unknown"
+          },
+          "evidence": {
+            "existence": [
+              "antigravity-runtime-headless"
+            ],
+            "shape": [
+              "antigravity-runtime-headless"
+            ]
+          },
+          "confidence": "verified-headless"
+        },
+        {
+          "match": {
+            "step_update.step_type": "user_input"
+          },
+          "evidence": {
+            "existence": [
+              "antigravity-runtime-headless"
+            ],
+            "shape": [
+              "antigravity-runtime-headless"
+            ]
+          },
+          "confidence": "verified-headless"
+        },
+        {
+          "match": {
+            "step_update.state": "ACTIVE"
+          },
+          "evidence": {
+            "existence": [
+              "antigravity-runtime-headless"
+            ],
+            "shape": [
+              "antigravity-runtime-headless"
+            ]
+          },
+          "confidence": "verified-headless"
+        },
+        {
+          "match": {
+            "step_update.state": "DONE"
+          },
+          "evidence": {
+            "existence": [
+              "antigravity-runtime-headless"
+            ],
+            "shape": [
+              "antigravity-runtime-headless"
+            ]
+          },
+          "confidence": "verified-headless"
+        }
+      ],
+      "fixture": "captures/antigravity@1.1.12/tool-success/print.stream-json.json",
+      "notes": "The legacy projection synthesized hasTextDelta, parameterKeys, and hasOutput. The model restores only the corresponding native field names/types proven by that transform; it does not treat the synthetic fields as vendor payload."
+    },
+    {
+      "surface": "antigravity",
+      "surfaceVersion": "1.1.12",
+      "event": "Stop",
+      "schemaFidelity": {
+        "payload": "structural",
+        "result": "structural",
+        "limitations": [
+          "The retained 1.1.12 runtime records are legacy privacy projections. Schemas retain only fields whose native names and types survive that transform or are stated by official documentation; additional native fields may exist."
+        ]
+      },
+      "channel": "hook-command",
+      "channels": [
+        "hook-command"
+      ],
+      "transport": "hook-callback",
+      "direction": "agent-local",
+      "payloadSchema": {
+        "type": "object",
+        "properties": {
+          "conversationId": {
+            "type": "string"
+          },
+          "workspacePaths": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "transcriptPath": {
+            "type": "string"
+          },
+          "artifactDirectoryPath": {
+            "type": "string"
+          },
+          "modelName": {
+            "type": "string"
+          },
+          "executionNum": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "terminationReason": {
+            "type": "string"
+          },
+          "error": {
+            "type": "string"
+          },
+          "fullyIdle": {
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "conversationId",
+          "workspacePaths",
+          "modelName",
+          "terminationReason",
+          "fullyIdle"
+        ]
+      },
+      "resultSchema": {
+        "type": "object",
+        "properties": {
+          "decision": {
+            "type": "string",
+            "enum": [
+              "continue"
+            ]
+          }
+        }
+      },
+      "evidence": {
+        "existence": [
+          "antigravity-runtime-headless"
+        ],
+        "shape": [
+          "antigravity-official-docs"
+        ],
+        "result": [
+          "antigravity-official-docs"
+        ],
+        "carrier": [
+          "antigravity-official-docs"
+        ]
+      },
+      "confidence": "unverified",
+      "fixture": "captures/antigravity@1.1.12/add-dir-turn/hooks.jsonl",
+      "observationMode": "passive",
+      "notes": "Runtime evidence verifies this hook family and its ordering. Complete stdin/stdout shape is documentation-backed because the retained runtime fixture is a legacy projection."
+    },
+    {
+      "surface": "antigravity",
+      "surfaceVersion": "1.1.12",
+      "event": "transcript.jsonl",
+      "schemaFidelity": {
+        "payload": "sampled",
+        "limitations": [
+          "The legacy projection copied type/source/status/step_index/created_at but replaced content with hasContent/contentChars. Content is retained only as an unconstrained optional native field.",
+          "Only transcript.jsonl was sampled; transcript_full.jsonl and the SQLite store are separate unresolved durable rails."
+        ]
+      },
+      "channel": "transcript-jsonl",
+      "channels": [
+        "transcript-jsonl"
+      ],
+      "transport": "jsonl-record",
+      "direction": "agent-local",
+      "payloadSchema": {
+        "type": "object",
+        "properties": {
+          "type": {
+            "type": "string"
+          },
+          "source": {
+            "type": "string"
+          },
+          "status": {
+            "type": "string"
+          },
+          "step_index": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "created_at": {
+            "type": "string"
+          },
+          "content": {}
+        },
+        "required": [
+          "type",
+          "source",
+          "status",
+          "step_index",
+          "created_at"
+        ]
+      },
+      "evidence": {
+        "existence": [
+          "antigravity-runtime-headless"
+        ],
+        "shape": [
+          "antigravity-runtime-headless"
+        ]
+      },
+      "confidence": "verified-headless",
+      "variants": [
+        {
+          "match": {
+            "type": "CHECKPOINT"
+          },
+          "evidence": {
+            "existence": [
+              "antigravity-runtime-headless"
+            ],
+            "shape": [
+              "antigravity-runtime-headless"
+            ]
+          },
+          "confidence": "verified-headless"
+        },
+        {
+          "match": {
+            "type": "CONVERSATION_HISTORY"
+          },
+          "evidence": {
+            "existence": [
+              "antigravity-runtime-headless"
+            ],
+            "shape": [
+              "antigravity-runtime-headless"
+            ]
+          },
+          "confidence": "verified-headless"
+        },
+        {
+          "match": {
+            "type": "ERROR_MESSAGE"
+          },
+          "evidence": {
+            "existence": [
+              "antigravity-runtime-headless"
+            ],
+            "shape": [
+              "antigravity-runtime-headless"
+            ]
+          },
+          "confidence": "verified-headless"
+        },
+        {
+          "match": {
+            "type": "LIST_DIRECTORY"
+          },
+          "evidence": {
+            "existence": [
+              "antigravity-runtime-headless"
+            ],
+            "shape": [
+              "antigravity-runtime-headless"
+            ]
+          },
+          "confidence": "verified-headless"
+        },
+        {
+          "match": {
+            "type": "PLANNER_RESPONSE"
+          },
+          "evidence": {
+            "existence": [
+              "antigravity-runtime-headless"
+            ],
+            "shape": [
+              "antigravity-runtime-headless"
+            ]
+          },
+          "confidence": "verified-headless"
+        },
+        {
+          "match": {
+            "type": "SYSTEM_MESSAGE"
+          },
+          "evidence": {
+            "existence": [
+              "antigravity-runtime-headless"
+            ],
+            "shape": [
+              "antigravity-runtime-headless"
+            ]
+          },
+          "confidence": "verified-headless"
+        },
+        {
+          "match": {
+            "type": "USER_INPUT"
+          },
+          "evidence": {
+            "existence": [
+              "antigravity-runtime-headless"
+            ],
+            "shape": [
+              "antigravity-runtime-headless"
+            ]
+          },
+          "confidence": "verified-headless"
+        },
+        {
+          "match": {
+            "type": "VIEW_FILE"
+          },
+          "evidence": {
+            "existence": [
+              "antigravity-runtime-headless"
+            ],
+            "shape": [
+              "antigravity-runtime-headless"
+            ]
+          },
+          "confidence": "verified-headless"
+        }
+      ],
+      "fixture": "captures/antigravity@1.1.12/tool-success/transcript.jsonl"
+    }
+  ],
+  "behavior": {
+    "behaviorVersion": 1,
+    "title": "Antigravity CLI 1.1.12 print, hook, and durable lifecycle",
+    "description": "Partial order observed in authorized print-mode turns. Hook invocations and transcript records are concurrent observation rails; this is not a claim about native TUI rendering.",
+    "source": "Exact 1.1.12 artifact captures; legacy projection limits shape, not observed order or joins.",
+    "lanes": [
+      {
+        "id": "print",
+        "label": "Print stream"
+      },
+      {
+        "id": "hook",
+        "label": "Command hooks"
+      },
+      {
+        "id": "durable",
+        "label": "Durable transcript"
+      }
+    ],
+    "nodes": [
+      {
+        "id": "init",
+        "event": "init",
+        "lane": "print",
+        "order": 0,
+        "confidence": "verified-headless",
+        "evidence": {
+          "existence": [
+            "antigravity-runtime-headless"
+          ],
+          "shape": [
+            "antigravity-runtime-headless"
+          ]
+        }
+      },
+      {
+        "id": "step-user",
+        "event": "step_update",
+        "lane": "print",
+        "order": 1,
+        "confidence": "verified-headless",
+        "evidence": {
+          "existence": [
+            "antigravity-runtime-headless"
+          ],
+          "shape": [
+            "antigravity-runtime-headless"
+          ]
+        },
+        "match": {
+          "step_update.step_type": "user_input"
+        }
+      },
+      {
+        "id": "step-agent",
+        "event": "step_update",
+        "lane": "print",
+        "order": 2,
+        "confidence": "verified-headless",
+        "evidence": {
+          "existence": [
+            "antigravity-runtime-headless"
+          ],
+          "shape": [
+            "antigravity-runtime-headless"
+          ]
+        },
+        "match": {
+          "step_update.step_type": "agent_response"
+        }
+      },
+      {
+        "id": "step-tool",
+        "event": "step_update",
+        "lane": "print",
+        "order": 3,
+        "confidence": "verified-headless",
+        "evidence": {
+          "existence": [
+            "antigravity-runtime-headless"
+          ],
+          "shape": [
+            "antigravity-runtime-headless"
+          ]
+        },
+        "match": {
+          "step_update.step_type": "tool"
+        }
+      },
+      {
+        "id": "result",
+        "event": "result",
+        "lane": "print",
+        "order": 4,
+        "confidence": "verified-headless",
+        "evidence": {
+          "existence": [
+            "antigravity-runtime-headless"
+          ],
+          "shape": [
+            "antigravity-runtime-headless"
+          ]
+        }
+      },
+      {
+        "id": "pre-invocation",
+        "event": "PreInvocation",
+        "lane": "hook",
+        "order": 1,
+        "confidence": "verified-headless",
+        "evidence": {
+          "existence": [
+            "antigravity-runtime-headless"
+          ],
+          "shape": [
+            "antigravity-runtime-headless"
+          ]
+        }
+      },
+      {
+        "id": "pre-tool",
+        "event": "PreToolUse",
+        "lane": "hook",
+        "order": 2,
+        "confidence": "verified-headless",
+        "evidence": {
+          "existence": [
+            "antigravity-runtime-headless"
+          ],
+          "shape": [
+            "antigravity-runtime-headless"
+          ]
+        }
+      },
+      {
+        "id": "post-tool",
+        "event": "PostToolUse",
+        "lane": "hook",
+        "order": 3,
+        "confidence": "verified-headless",
+        "evidence": {
+          "existence": [
+            "antigravity-runtime-headless"
+          ],
+          "shape": [
+            "antigravity-runtime-headless"
+          ]
+        }
+      },
+      {
+        "id": "post-invocation",
+        "event": "PostInvocation",
+        "lane": "hook",
+        "order": 4,
+        "confidence": "verified-headless",
+        "evidence": {
+          "existence": [
+            "antigravity-runtime-headless"
+          ],
+          "shape": [
+            "antigravity-runtime-headless"
+          ]
+        }
+      },
+      {
+        "id": "stop",
+        "event": "Stop",
+        "lane": "hook",
+        "order": 5,
+        "confidence": "verified-headless",
+        "evidence": {
+          "existence": [
+            "antigravity-runtime-headless"
+          ],
+          "shape": [
+            "antigravity-runtime-headless"
+          ]
+        }
+      },
+      {
+        "id": "transcript",
+        "event": "transcript.jsonl",
+        "lane": "durable",
+        "order": 2,
+        "confidence": "verified-headless",
+        "evidence": {
+          "existence": [
+            "antigravity-runtime-headless"
+          ],
+          "shape": [
+            "antigravity-runtime-headless"
+          ]
+        }
+      }
+    ],
+    "relations": [
+      {
+        "from": "init",
+        "to": "step-user",
+        "kind": "sequence",
+        "confidence": "verified-headless",
+        "evidence": {
+          "existence": [
+            "antigravity-runtime-headless"
+          ],
+          "shape": [
+            "antigravity-runtime-headless"
+          ],
+          "ordering": [
+            "antigravity-runtime-headless"
+          ]
+        }
+      },
+      {
+        "from": "step-user",
+        "to": "step-agent",
+        "kind": "sequence",
+        "confidence": "verified-headless",
+        "evidence": {
+          "existence": [
+            "antigravity-runtime-headless"
+          ],
+          "shape": [
+            "antigravity-runtime-headless"
+          ],
+          "ordering": [
+            "antigravity-runtime-headless"
+          ]
+        }
+      },
+      {
+        "from": "step-agent",
+        "to": "step-tool",
+        "kind": "conditional",
+        "label": "model requests a tool",
+        "confidence": "verified-headless",
+        "evidence": {
+          "existence": [
+            "antigravity-runtime-headless"
+          ],
+          "shape": [
+            "antigravity-runtime-headless"
+          ],
+          "ordering": [
+            "antigravity-runtime-headless"
+          ]
+        }
+      },
+      {
+        "from": "step-tool",
+        "to": "step-agent",
+        "kind": "loop",
+        "label": "tool result returns to model",
+        "confidence": "verified-headless",
+        "evidence": {
+          "existence": [
+            "antigravity-runtime-headless"
+          ],
+          "shape": [
+            "antigravity-runtime-headless"
+          ],
+          "ordering": [
+            "antigravity-runtime-headless"
+          ]
+        }
+      },
+      {
+        "from": "step-agent",
+        "to": "result",
+        "kind": "conditional",
+        "label": "turn completes without another tool",
+        "confidence": "verified-headless",
+        "evidence": {
+          "existence": [
+            "antigravity-runtime-headless"
+          ],
+          "shape": [
+            "antigravity-runtime-headless"
+          ],
+          "ordering": [
+            "antigravity-runtime-headless"
+          ]
+        }
+      },
+      {
+        "from": "pre-invocation",
+        "to": "pre-tool",
+        "kind": "conditional",
+        "label": "invocation requests a tool",
+        "confidence": "verified-headless",
+        "evidence": {
+          "existence": [
+            "antigravity-runtime-headless"
+          ],
+          "shape": [
+            "antigravity-runtime-headless"
+          ],
+          "ordering": [
+            "antigravity-runtime-headless"
+          ]
+        }
+      },
+      {
+        "from": "pre-tool",
+        "to": "post-tool",
+        "kind": "sequence",
+        "confidence": "verified-headless",
+        "evidence": {
+          "existence": [
+            "antigravity-runtime-headless"
+          ],
+          "shape": [
+            "antigravity-runtime-headless"
+          ],
+          "ordering": [
+            "antigravity-runtime-headless"
+          ]
+        }
+      },
+      {
+        "from": "post-tool",
+        "to": "post-invocation",
+        "kind": "sequence",
+        "confidence": "verified-headless",
+        "evidence": {
+          "existence": [
+            "antigravity-runtime-headless"
+          ],
+          "shape": [
+            "antigravity-runtime-headless"
+          ],
+          "ordering": [
+            "antigravity-runtime-headless"
+          ]
+        }
+      },
+      {
+        "from": "pre-invocation",
+        "to": "post-invocation",
+        "kind": "conditional",
+        "label": "invocation has no tool",
+        "confidence": "verified-headless",
+        "evidence": {
+          "existence": [
+            "antigravity-runtime-headless"
+          ],
+          "shape": [
+            "antigravity-runtime-headless"
+          ],
+          "ordering": [
+            "antigravity-runtime-headless"
+          ]
+        }
+      },
+      {
+        "from": "post-invocation",
+        "to": "stop",
+        "kind": "conditional",
+        "label": "agent becomes fully idle",
+        "confidence": "verified-headless",
+        "evidence": {
+          "existence": [
+            "antigravity-runtime-headless"
+          ],
+          "shape": [
+            "antigravity-runtime-headless"
+          ],
+          "ordering": [
+            "antigravity-runtime-headless"
+          ]
+        }
+      },
+      {
+        "from": "step-user",
+        "to": "transcript",
+        "kind": "async",
+        "label": "durable records share conversation and step identities",
+        "confidence": "verified-headless",
+        "evidence": {
+          "existence": [
+            "antigravity-runtime-headless"
+          ],
+          "shape": [
+            "antigravity-runtime-headless"
+          ],
+          "ordering": [
+            "antigravity-runtime-headless"
+          ]
+        }
+      }
+    ]
+  }
+}

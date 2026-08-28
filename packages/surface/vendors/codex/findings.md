@@ -1,7 +1,7 @@
 # C0 — Codex Surface Findings
 
 > **Current projection (2026-08-27):** the candidate model is Codex CLI
-> **0.150.0**, ASM/evidence v2, while promoted support remains the grandfathered
+> **0.150.0**, ASM v3/evidence v2, while promoted support remains the grandfathered
 > 0.147.0 baseline. The generated model includes request parameters, responses,
 > server-request results, and durable record carriers; fresh hermetic captures
 > replay exactly. The exact local 0.150.0 binary now also passes the complete
@@ -480,6 +480,27 @@ The census is now **fully hermetic**: turn, token usage, rate limits, tool
 execution, and both approval outcomes, with no account and no tokens spent. The
 credentialed bootstrap turn recommended at the end of C1c is **no longer
 needed**.
+
+### File-change field semantics require source evidence
+
+The generated protocol schema proves that `FileUpdateChange` always contains
+`path`, `kind`, and a string named `diff`; it cannot prove what that string
+means for each discriminated kind. Exact `rust-v0.150.0` source does:
+
+- `add`: `diff` is the complete new-file content;
+- `delete`: `diff` is the complete deleted-file content;
+- `update`: `diff` is a unified diff;
+- `update` with `move_path`: the app-server appends
+  `\n\nMoved to: <move_path>` after the unified diff;
+- the emitted change array is sorted lexicographically by path.
+
+Calling all four values a unified diff was an adapter error made possible by a
+Layer 0 workflow that retained structural schema but not field semantics. The
+generator now requires the digest-pinned exact-source contract at
+`references/codex@0.150.0/source/file-changes.json` and projects its
+kind-dependent schemas into `item/started`, `item/completed`, and
+`item/fileChange/patchUpdated`. Source proves encoding, not runtime occurrence,
+independent disk application, or changes made out of band by shell commands.
 
 ### A leak the automated check could not see
 

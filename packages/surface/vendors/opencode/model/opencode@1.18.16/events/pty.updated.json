@@ -10,16 +10,25 @@
   "direction": "agent-to-client",
   "trigger": "Published on the native GET /event stream.",
   "payloadSchema": {
-    "type": "object",
+    "additionalProperties": false,
     "properties": {
       "info": {
-        "type": "object",
+        "$ref": "#/$defs/Pty"
+      }
+    },
+    "required": [
+      "info"
+    ],
+    "type": "object",
+    "$defs": {
+      "Pty": {
+        "additionalProperties": false,
         "properties": {
           "args": {
-            "type": "array",
             "items": {
               "type": "string"
-            }
+            },
+            "type": "array"
           },
           "command": {
             "type": "string"
@@ -28,17 +37,22 @@
             "type": "string"
           },
           "exitCode": {
-            "type": "integer",
-            "minimum": 0
+            "minimum": 0,
+            "type": "integer"
           },
           "id": {
+            "pattern": "^pty",
             "type": "string"
           },
           "pid": {
-            "type": "integer",
-            "minimum": 0
+            "minimum": 0,
+            "type": "integer"
           },
           "status": {
+            "enum": [
+              "running",
+              "exited"
+            ],
             "type": "string"
           },
           "title": {
@@ -46,89 +60,105 @@
           }
         },
         "required": [
-          "args",
-          "command",
-          "cwd",
           "id",
-          "pid",
+          "title",
+          "command",
+          "args",
+          "cwd",
           "status",
-          "title"
-        ]
+          "pid"
+        ],
+        "type": "object"
       }
-    },
-    "required": [
-      "info"
-    ]
+    }
   },
   "recordSchema": {
-    "type": "object",
+    "additionalProperties": false,
     "properties": {
       "id": {
+        "pattern": "^evt_",
         "type": "string"
       },
       "properties": {
-        "type": "object",
+        "additionalProperties": false,
         "properties": {
           "info": {
-            "type": "object",
-            "properties": {
-              "args": {
-                "type": "array",
-                "items": {
-                  "type": "string"
-                }
-              },
-              "command": {
-                "type": "string"
-              },
-              "cwd": {
-                "type": "string"
-              },
-              "exitCode": {
-                "type": "integer",
-                "minimum": 0
-              },
-              "id": {
-                "type": "string"
-              },
-              "pid": {
-                "type": "integer",
-                "minimum": 0
-              },
-              "status": {
-                "type": "string"
-              },
-              "title": {
-                "type": "string"
-              }
-            },
-            "required": [
-              "args",
-              "command",
-              "cwd",
-              "id",
-              "pid",
-              "status",
-              "title"
-            ]
+            "$ref": "#/$defs/Pty"
           }
         },
         "required": [
           "info"
-        ]
+        ],
+        "type": "object"
       },
       "type": {
-        "type": "string",
         "enum": [
           "pty.updated"
-        ]
+        ],
+        "type": "string"
       }
     },
     "required": [
       "id",
-      "properties",
-      "type"
-    ]
+      "type",
+      "properties"
+    ],
+    "type": "object",
+    "$defs": {
+      "Pty": {
+        "additionalProperties": false,
+        "properties": {
+          "args": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
+          },
+          "command": {
+            "type": "string"
+          },
+          "cwd": {
+            "type": "string"
+          },
+          "exitCode": {
+            "minimum": 0,
+            "type": "integer"
+          },
+          "id": {
+            "pattern": "^pty",
+            "type": "string"
+          },
+          "pid": {
+            "minimum": 0,
+            "type": "integer"
+          },
+          "status": {
+            "enum": [
+              "running",
+              "exited"
+            ],
+            "type": "string"
+          },
+          "title": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "title",
+          "command",
+          "args",
+          "cwd",
+          "status",
+          "pid"
+        ],
+        "type": "object"
+      }
+    }
+  },
+  "schemaFidelity": {
+    "payload": "exact",
+    "carrier": "exact"
   },
   "evidence": {
     "existence": [

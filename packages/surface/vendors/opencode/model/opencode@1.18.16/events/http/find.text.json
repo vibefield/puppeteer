@@ -10,16 +10,11 @@
   "direction": "client-to-agent",
   "trigger": "Find text — Search for text patterns across files in the project using ripgrep.",
   "payloadSchema": {
-    "type": "object",
     "properties": {
       "method": {
         "type": "string"
       },
-      "route": {
-        "type": "string"
-      },
       "query": {
-        "type": "object",
         "properties": {
           "directory": {
             "type": "string"
@@ -33,67 +28,37 @@
         },
         "required": [
           "pattern"
-        ]
+        ],
+        "type": "object"
+      },
+      "route": {
+        "type": "string"
       }
     },
     "required": [
       "method",
       "route",
       "query"
-    ]
+    ],
+    "type": "object"
   },
   "resultSchema": {
-    "type": "object",
     "properties": {
-      "method": {
-        "type": "string",
-        "enum": [
-          "GET"
-        ]
-      },
-      "route": {
-        "type": "string",
-        "enum": [
-          "/find"
-        ]
-      },
-      "status": {
-        "type": "integer",
-        "minimum": 200,
-        "maximum": 299
-      },
-      "query": {
-        "type": "object",
-        "properties": {
-          "directory": {
-            "type": "string"
-          },
-          "pattern": {
-            "type": "string"
-          },
-          "workspace": {
-            "type": "string"
-          }
-        },
-        "required": [
-          "pattern"
-        ]
-      },
       "body": {
-        "type": "array",
+        "description": "Matches",
         "items": {
-          "type": "object",
+          "additionalProperties": false,
           "properties": {
             "absolute_offset": {
-              "type": "integer",
-              "minimum": 0
+              "minimum": 0,
+              "type": "integer"
             },
             "line_number": {
-              "type": "integer",
-              "minimum": 0
+              "minimum": 0,
+              "type": "integer"
             },
             "lines": {
-              "type": "object",
+              "additionalProperties": false,
               "properties": {
                 "text": {
                   "type": "string"
@@ -101,10 +66,11 @@
               },
               "required": [
                 "text"
-              ]
+              ],
+              "type": "object"
             },
             "path": {
-              "type": "object",
+              "additionalProperties": false,
               "properties": {
                 "text": {
                   "type": "string"
@@ -112,19 +78,19 @@
               },
               "required": [
                 "text"
-              ]
+              ],
+              "type": "object"
             },
             "submatches": {
-              "type": "array",
               "items": {
-                "type": "object",
+                "additionalProperties": false,
                 "properties": {
                   "end": {
-                    "type": "integer",
-                    "minimum": 0
+                    "minimum": 0,
+                    "type": "integer"
                   },
                   "match": {
-                    "type": "object",
+                    "additionalProperties": false,
                     "properties": {
                       "text": {
                         "type": "string"
@@ -132,29 +98,68 @@
                     },
                     "required": [
                       "text"
-                    ]
+                    ],
+                    "type": "object"
                   },
                   "start": {
-                    "type": "integer",
-                    "minimum": 0
+                    "minimum": 0,
+                    "type": "integer"
                   }
                 },
                 "required": [
-                  "end",
                   "match",
-                  "start"
-                ]
-              }
+                  "start",
+                  "end"
+                ],
+                "type": "object"
+              },
+              "type": "array"
             }
           },
           "required": [
-            "absolute_offset",
-            "line_number",
-            "lines",
             "path",
+            "lines",
+            "line_number",
+            "absolute_offset",
             "submatches"
-          ]
-        }
+          ],
+          "type": "object"
+        },
+        "type": "array"
+      },
+      "method": {
+        "enum": [
+          "GET"
+        ],
+        "type": "string"
+      },
+      "query": {
+        "properties": {
+          "directory": {
+            "type": "string"
+          },
+          "pattern": {
+            "type": "string"
+          },
+          "workspace": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "pattern"
+        ],
+        "type": "object"
+      },
+      "route": {
+        "enum": [
+          "/find"
+        ],
+        "type": "string"
+      },
+      "status": {
+        "maximum": 299,
+        "minimum": 200,
+        "type": "integer"
       }
     },
     "required": [
@@ -163,34 +168,26 @@
       "status",
       "query",
       "body"
-    ]
+    ],
+    "type": "object"
   },
   "recordSchema": {
-    "type": "object",
     "properties": {
       "direction": {
-        "type": "string",
         "enum": [
           "client-to-agent"
-        ]
+        ],
+        "type": "string"
       },
       "request": {
-        "type": "object",
         "properties": {
           "method": {
-            "type": "string",
             "enum": [
               "GET"
-            ]
-          },
-          "route": {
-            "type": "string",
-            "enum": [
-              "/find"
-            ]
+            ],
+            "type": "string"
           },
           "query": {
-            "type": "object",
             "properties": {
               "directory": {
                 "type": "string"
@@ -204,20 +201,34 @@
             },
             "required": [
               "pattern"
-            ]
+            ],
+            "type": "object"
+          },
+          "route": {
+            "enum": [
+              "/find"
+            ],
+            "type": "string"
           }
         },
         "required": [
           "method",
           "route",
           "query"
-        ]
+        ],
+        "type": "object"
       }
     },
     "required": [
       "direction",
       "request"
-    ]
+    ],
+    "type": "object"
+  },
+  "schemaFidelity": {
+    "payload": "semantic",
+    "result": "semantic",
+    "carrier": "semantic"
   },
   "evidence": {
     "existence": [

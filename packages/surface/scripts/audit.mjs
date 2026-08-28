@@ -1,18 +1,22 @@
 #!/usr/bin/env node
 /** Run every vendor-owned Surface audit from one stable package entrypoint. */
-import { existsSync, readdirSync } from 'node:fs';
 import { spawnSync } from 'node:child_process';
-import { dirname, join } from 'node:path';
+import { basename, dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { auditEvidence } from './check-evidence.mjs';
 import { checkGroundTruth, discoverGroundTruthRoots } from './groundtruth.mjs';
+import { auditSurfaceWorkflow, discoverVendorRoots } from './workflow.mjs';
 
 const packageRoot = dirname(dirname(fileURLToPath(import.meta.url)));
 const vendorsRoot = join(packageRoot, 'vendors');
-const vendors = readdirSync(vendorsRoot, { withFileTypes: true })
-  .filter((entry) => entry.isDirectory() && existsSync(join(vendorsRoot, entry.name, 'audit.mjs')))
-  .map((entry) => entry.name)
-  .sort();
+const vendors = discoverVendorRoots(packageRoot).map((root) => basename(root));
+
+const workflowIssues = auditSurfaceWorkflow(packageRoot);
+if (workflowIssues.length > 0) {
+  console.error('surface workflow is incomplete or ambiguous:');
+  for (const issue of workflowIssues) console.error(`  - ${issue}`);
+  process.exit(1);
+}
 
 const evidenceIssues = auditEvidence();
 if (evidenceIssues.length > 0) {

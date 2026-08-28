@@ -10,30 +10,26 @@
   "direction": "client-to-agent",
   "trigger": "Remove PTY session — Terminate and remove one PTY session.",
   "payloadSchema": {
-    "type": "object",
     "properties": {
       "method": {
         "type": "string"
       },
-      "route": {
-        "type": "string"
-      },
       "params": {
-        "type": "object",
         "properties": {
           "ptyID": {
+            "pattern": "^pty",
             "type": "string"
           }
         },
         "required": [
           "ptyID"
-        ]
+        ],
+        "type": "object"
       },
       "query": {
-        "type": "object",
         "properties": {
           "location": {
-            "type": "object",
+            "additionalProperties": false,
             "properties": {
               "directory": {
                 "type": "string"
@@ -41,53 +37,47 @@
               "workspace": {
                 "type": "string"
               }
-            }
+            },
+            "type": "object"
           }
-        }
+        },
+        "type": "object"
+      },
+      "route": {
+        "type": "string"
       }
     },
     "required": [
       "method",
       "route",
       "params"
-    ]
+    ],
+    "type": "object"
   },
   "resultSchema": {
-    "type": "object",
     "properties": {
       "method": {
-        "type": "string",
         "enum": [
           "DELETE"
-        ]
-      },
-      "route": {
-        "type": "string",
-        "enum": [
-          "/api/pty/:ptyID"
-        ]
-      },
-      "status": {
-        "type": "integer",
-        "minimum": 200,
-        "maximum": 299
+        ],
+        "type": "string"
       },
       "params": {
-        "type": "object",
         "properties": {
           "ptyID": {
+            "pattern": "^pty",
             "type": "string"
           }
         },
         "required": [
           "ptyID"
-        ]
+        ],
+        "type": "object"
       },
       "query": {
-        "type": "object",
         "properties": {
           "location": {
-            "type": "object",
+            "additionalProperties": false,
             "properties": {
               "directory": {
                 "type": "string"
@@ -95,9 +85,22 @@
               "workspace": {
                 "type": "string"
               }
-            }
+            },
+            "type": "object"
           }
-        }
+        },
+        "type": "object"
+      },
+      "route": {
+        "enum": [
+          "/api/pty/:ptyID"
+        ],
+        "type": "string"
+      },
+      "status": {
+        "maximum": 299,
+        "minimum": 200,
+        "type": "integer"
       }
     },
     "required": [
@@ -105,48 +108,41 @@
       "route",
       "status",
       "params"
-    ]
+    ],
+    "type": "object"
   },
   "recordSchema": {
-    "type": "object",
     "properties": {
       "direction": {
-        "type": "string",
         "enum": [
           "client-to-agent"
-        ]
+        ],
+        "type": "string"
       },
       "request": {
-        "type": "object",
         "properties": {
           "method": {
-            "type": "string",
             "enum": [
               "DELETE"
-            ]
-          },
-          "route": {
-            "type": "string",
-            "enum": [
-              "/api/pty/:ptyID"
-            ]
+            ],
+            "type": "string"
           },
           "params": {
-            "type": "object",
             "properties": {
               "ptyID": {
+                "pattern": "^pty",
                 "type": "string"
               }
             },
             "required": [
               "ptyID"
-            ]
+            ],
+            "type": "object"
           },
           "query": {
-            "type": "object",
             "properties": {
               "location": {
-                "type": "object",
+                "additionalProperties": false,
                 "properties": {
                   "directory": {
                     "type": "string"
@@ -154,22 +150,37 @@
                   "workspace": {
                     "type": "string"
                   }
-                }
+                },
+                "type": "object"
               }
-            }
+            },
+            "type": "object"
+          },
+          "route": {
+            "enum": [
+              "/api/pty/:ptyID"
+            ],
+            "type": "string"
           }
         },
         "required": [
           "method",
           "route",
           "params"
-        ]
+        ],
+        "type": "object"
       }
     },
     "required": [
       "direction",
       "request"
-    ]
+    ],
+    "type": "object"
+  },
+  "schemaFidelity": {
+    "payload": "semantic",
+    "result": "semantic",
+    "carrier": "semantic"
   },
   "evidence": {
     "existence": [

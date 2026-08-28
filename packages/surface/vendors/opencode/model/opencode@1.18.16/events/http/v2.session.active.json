@@ -10,7 +10,6 @@
   "direction": "client-to-agent",
   "trigger": "List active sessions — Retrieve foreground Session drains currently owned by this OpenCode process. Sessions absent from the result are inactive.",
   "payloadSchema": {
-    "type": "object",
     "properties": {
       "method": {
         "type": "string"
@@ -22,38 +21,44 @@
     "required": [
       "method",
       "route"
-    ]
+    ],
+    "type": "object"
   },
   "resultSchema": {
-    "type": "object",
     "properties": {
-      "method": {
-        "type": "string",
-        "enum": [
-          "GET"
-        ]
-      },
-      "route": {
-        "type": "string",
-        "enum": [
-          "/api/session/active"
-        ]
-      },
-      "status": {
-        "type": "integer",
-        "minimum": 200,
-        "maximum": 299
-      },
       "body": {
-        "type": "object",
+        "additionalProperties": false,
         "properties": {
           "data": {
+            "patternProperties": {
+              "^ses": {
+                "$ref": "#/$defs/SessionActive"
+              }
+            },
             "type": "object"
           }
         },
         "required": [
           "data"
-        ]
+        ],
+        "type": "object"
+      },
+      "method": {
+        "enum": [
+          "GET"
+        ],
+        "type": "string"
+      },
+      "route": {
+        "enum": [
+          "/api/session/active"
+        ],
+        "type": "string"
+      },
+      "status": {
+        "maximum": 299,
+        "minimum": 200,
+        "type": "integer"
       }
     },
     "required": [
@@ -61,43 +66,66 @@
       "route",
       "status",
       "body"
-    ]
+    ],
+    "type": "object",
+    "$defs": {
+      "SessionActive": {
+        "additionalProperties": false,
+        "properties": {
+          "type": {
+            "enum": [
+              "running"
+            ],
+            "type": "string"
+          }
+        },
+        "required": [
+          "type"
+        ],
+        "type": "object"
+      }
+    }
   },
   "recordSchema": {
-    "type": "object",
     "properties": {
       "direction": {
-        "type": "string",
         "enum": [
           "client-to-agent"
-        ]
+        ],
+        "type": "string"
       },
       "request": {
-        "type": "object",
         "properties": {
           "method": {
-            "type": "string",
             "enum": [
               "GET"
-            ]
+            ],
+            "type": "string"
           },
           "route": {
-            "type": "string",
             "enum": [
               "/api/session/active"
-            ]
+            ],
+            "type": "string"
           }
         },
         "required": [
           "method",
           "route"
-        ]
+        ],
+        "type": "object"
       }
     },
     "required": [
       "direction",
       "request"
-    ]
+    ],
+    "type": "object"
+  },
+  "schemaFidelity": {
+    "payload": "semantic",
+    "result": "semantic",
+    "carrier": "semantic"
   },
   "evidence": {
     "existence": [

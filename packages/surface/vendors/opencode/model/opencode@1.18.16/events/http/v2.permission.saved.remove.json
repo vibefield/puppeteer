@@ -10,16 +10,11 @@
   "direction": "client-to-agent",
   "trigger": "Remove saved permission — Remove a saved permission by ID.",
   "payloadSchema": {
-    "type": "object",
     "properties": {
       "method": {
         "type": "string"
       },
-      "route": {
-        "type": "string"
-      },
       "params": {
-        "type": "object",
         "properties": {
           "id": {
             "type": "string"
@@ -27,37 +22,29 @@
         },
         "required": [
           "id"
-        ]
+        ],
+        "type": "object"
+      },
+      "route": {
+        "type": "string"
       }
     },
     "required": [
       "method",
       "route",
       "params"
-    ]
+    ],
+    "type": "object"
   },
   "resultSchema": {
-    "type": "object",
     "properties": {
       "method": {
-        "type": "string",
         "enum": [
           "DELETE"
-        ]
-      },
-      "route": {
-        "type": "string",
-        "enum": [
-          "/api/permission/saved/:id"
-        ]
-      },
-      "status": {
-        "type": "integer",
-        "minimum": 200,
-        "maximum": 299
+        ],
+        "type": "string"
       },
       "params": {
-        "type": "object",
         "properties": {
           "id": {
             "type": "string"
@@ -65,7 +52,19 @@
         },
         "required": [
           "id"
-        ]
+        ],
+        "type": "object"
+      },
+      "route": {
+        "enum": [
+          "/api/permission/saved/:id"
+        ],
+        "type": "string"
+      },
+      "status": {
+        "maximum": 299,
+        "minimum": 200,
+        "type": "integer"
       }
     },
     "required": [
@@ -73,34 +72,26 @@
       "route",
       "status",
       "params"
-    ]
+    ],
+    "type": "object"
   },
   "recordSchema": {
-    "type": "object",
     "properties": {
       "direction": {
-        "type": "string",
         "enum": [
           "client-to-agent"
-        ]
+        ],
+        "type": "string"
       },
       "request": {
-        "type": "object",
         "properties": {
           "method": {
-            "type": "string",
             "enum": [
               "DELETE"
-            ]
-          },
-          "route": {
-            "type": "string",
-            "enum": [
-              "/api/permission/saved/:id"
-            ]
+            ],
+            "type": "string"
           },
           "params": {
-            "type": "object",
             "properties": {
               "id": {
                 "type": "string"
@@ -108,20 +99,34 @@
             },
             "required": [
               "id"
-            ]
+            ],
+            "type": "object"
+          },
+          "route": {
+            "enum": [
+              "/api/permission/saved/:id"
+            ],
+            "type": "string"
           }
         },
         "required": [
           "method",
           "route",
           "params"
-        ]
+        ],
+        "type": "object"
       }
     },
     "required": [
       "direction",
       "request"
-    ]
+    ],
+    "type": "object"
+  },
+  "schemaFidelity": {
+    "payload": "semantic",
+    "result": "semantic",
+    "carrier": "semantic"
   },
   "evidence": {
     "existence": [

@@ -1,6 +1,6 @@
 # Hermes Agent 0.20.0 Surface findings
 
-Status: candidate adaptation through Gate 0, hermetic turn census, ASM v2,
+Status: candidate adaptation through Gate 0, hermetic turn census, ASM v3,
 adapter conformance, and Imposter conformance. The support ledger entry remains
 `baseline-pending`; none of this is a promotion claim.
 
@@ -217,6 +217,15 @@ reasoning. `reasoning.available` echoed the assistant text in these runs.
 `name`. `tool.complete.result` for a successful terminal call has `output`,
 `exit_code: 0`. A denied call has `exit_code: -1`, `status: "blocked"`, and
 an error telling the model not to retry.
+
+The pinned source also defines an optional `tool.complete.inline_diff` branch for
+`write_file`, `patch`, and `skill_manage`. It is ANSI-rendered presentation text,
+bounded to six files and 80 rendered lines, and can contain an omission summary;
+it is not a raw unified patch. Source proves `args.path` as the single local target
+for `write_file` and `patch`. `skill_manage` resolves one or many paths dynamically,
+so its file identity cannot be normalized from this gateway payload alone. No
+runtime capture in this census exercised the `inline_diff` branch; it remains
+source-defined and runtime-unverified.
 
 `approval.request` choices were `once | session | always | deny`.
 `approval.respond` with `choice: "deny"` returned `{ resolved: 1 }`. The

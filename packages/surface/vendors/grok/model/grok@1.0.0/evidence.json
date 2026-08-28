@@ -25,7 +25,43 @@
       "repository": "https://github.com/xai-org/grok-build",
       "revision": "8a14c91d88875a831a38b3a066b1683116bcb31c",
       "relation": "public-mirror-commit",
-      "sourceRevision": "27b3c66635e2c0bf213429a36ab916f25d59df20"
+      "sourceRevision": "27b3c66635e2c0bf213429a36ab916f25d59df20",
+      "contract": "packages/surface/vendors/grok/references/grok@1.0.0/public-source-surface.json"
+    },
+    {
+      "repository": "https://github.com/agentclientprotocol/agent-client-protocol",
+      "revision": "e931357254ff44573294d5cee214a269e0cd6c54",
+      "relation": "exact-release",
+      "scope": "dependency-of-supplemental-public-mirror-only",
+      "tag": "v0.11.4",
+      "schemaVersion": "0.11.4",
+      "contract": "packages/surface/vendors/grok/references/grok@1.0.0/public-source-surface.json"
+    }
+  ],
+  "records": [
+    {
+      "id": "sanitized-captures",
+      "kind": "capture-set",
+      "path": "packages/surface/vendors/grok/captures/grok@1.0.0",
+      "digestAlgorithm": "sha256-path-content-v1",
+      "sha256": "05b5b65add11c34176753dea7341d84e79a12ba62e64535b13c55de85b1cdda2"
+    },
+    {
+      "id": "supplemental-public-reference",
+      "kind": "reference-snapshot",
+      "path": "packages/surface/vendors/grok/references/grok@1.0.0",
+      "digestAlgorithm": "sha256-path-content-v1",
+      "sha256": "4ae6fd459eee3a059fa1f171aafeb5551526d59d8f6fa27b35ca545016ddb46a"
+    },
+    {
+      "id": "agent-surface-model",
+      "kind": "model-tree",
+      "path": "packages/surface/vendors/grok/model/grok@1.0.0",
+      "exclude": [
+        "evidence.json"
+      ],
+      "digestAlgorithm": "sha256-path-content-v1",
+      "sha256": "91d24c39c2965f3c69012702bd8307270d17127cba0e0471d8a1d1cbc25ea824"
     }
   ],
   "claims": [
@@ -36,39 +72,33 @@
       "record": "sanitized-captures",
       "artifact": "installed-grok-1.0.0-darwin-arm64",
       "platform": "darwin-arm64",
-      "harness": "controlled ACP, PTY, leader, and native-store census documented in packages/surface/vendors/grok/findings.md",
-      "capturedAt": "2026-08-08T00:00:00.000Z"
+      "harness": "controlled ACP, PTY, leader, and native-store census documented in findings.md",
+      "capturedAt": "2026-08-08T00:00:00.000Z",
+      "notes": "The retained fixtures are legacy privacy projections. This claim proves occurrence, ordering, joins, and explicitly retained fields, not complete native payload shape."
     },
     {
       "id": "grok-public-mirror-lead",
-      "kind": "inference",
+      "kind": "exact-source",
       "confidence": "unverified",
+      "record": "supplemental-public-reference",
       "sourceReference": 1,
-      "notes": "Source-only lead from a public mirror whose revision is not the installed artifact's binary-reported revision. It cannot promote an artifact claim."
-    }
-  ],
-  "records": [
-    {
-      "id": "sanitized-captures",
-      "kind": "capture-set",
-      "path": "packages/surface/vendors/grok/captures/grok@1.0.0",
-      "digestAlgorithm": "sha256-path-content-v1",
-      "sha256": "0e1a0286ba6d10b7bf9cf68624ad0ecbe9df45186273f9dc946f7d0bf7161434"
+      "notes": "Digest-pinned public Grok source inventory. Its revision is not the installed artifact binary-reported revision and cannot promote binary claims."
     },
     {
-      "id": "agent-surface-model",
-      "kind": "model-tree",
-      "path": "packages/surface/vendors/grok/model/grok@1.0.0",
-      "exclude": [
-        "evidence.json"
-      ],
-      "digestAlgorithm": "sha256-path-content-v1",
-      "sha256": "42e41093dc48ce8941670dc29756ffb44c01cb406e09f0c9ea13e1bbb95c32c1"
+      "id": "grok-public-acp-lead",
+      "kind": "generated-schema",
+      "confidence": "unverified",
+      "record": "supplemental-public-reference",
+      "sourceReference": 2,
+      "notes": "Exact generated ACP schema 0.11.4, dependency of the pinned supplemental public Grok commit only."
     }
   ],
   "limitations": [
-    "The exact binary-reported source revision is absent from the public source mirror, so source-to-artifact equivalence is unverified and this candidate is not promoted in support/agents.json.",
-    "Compaction, subagent, workflow, and goal lifecycle names are source-backed but were not forced in the installed-artifact census; their behavior nodes remain unverified.",
+    "The exact binary-reported source revision is absent from the public source mirror, so source-to-artifact equivalence is unverified.",
+    "The retained runtime capture is a schemaVersion 1 legacy projection. Future schemaVersion 2 sanitization preserves every native JSON key, container, and type.",
+    "The supplemental public xAI enum has 50 branches and ACP has 11; only captured branches are verified for the installed artifact.",
+    "No installed-artifact tool call was captured. ACP exposes path/oldText/newText diffs, but Grok file-edit observability remains an unverified source lead for this version.",
+    "Compaction, subagent, workflow, and goal branches were not forced in the installed-artifact census.",
     "Only darwin-arm64 has artifact integrity and controlled-census evidence for this candidate."
   ]
 }

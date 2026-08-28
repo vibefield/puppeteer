@@ -10,89 +10,69 @@
   "direction": "client-to-agent",
   "trigger": "List saved permissions — Retrieve saved permissions, optionally filtered by project.",
   "payloadSchema": {
-    "type": "object",
     "properties": {
       "method": {
         "type": "string"
       },
-      "route": {
-        "type": "string"
-      },
       "query": {
-        "type": "object",
         "properties": {
           "projectID": {
             "type": "string"
           }
-        }
+        },
+        "type": "object"
+      },
+      "route": {
+        "type": "string"
       }
     },
     "required": [
       "method",
       "route"
-    ]
+    ],
+    "type": "object"
   },
   "resultSchema": {
-    "type": "object",
     "properties": {
-      "method": {
-        "type": "string",
-        "enum": [
-          "GET"
-        ]
-      },
-      "route": {
-        "type": "string",
-        "enum": [
-          "/api/permission/saved"
-        ]
-      },
-      "status": {
-        "type": "integer",
-        "minimum": 200,
-        "maximum": 299
-      },
-      "query": {
-        "type": "object",
-        "properties": {
-          "projectID": {
-            "type": "string"
-          }
-        }
-      },
       "body": {
-        "type": "object",
+        "additionalProperties": false,
         "properties": {
           "data": {
-            "type": "array",
             "items": {
-              "type": "object",
-              "properties": {
-                "action": {
-                  "type": "string"
-                },
-                "id": {
-                  "type": "string"
-                },
-                "projectID": {
-                  "type": "string"
-                },
-                "resource": {
-                  "type": "string"
-                }
-              },
-              "required": [
-                "action",
-                "id",
-                "projectID",
-                "resource"
-              ]
-            }
+              "$ref": "#/$defs/PermissionSavedInfo"
+            },
+            "type": "array"
           }
         },
         "required": [
           "data"
-        ]
+        ],
+        "type": "object"
+      },
+      "method": {
+        "enum": [
+          "GET"
+        ],
+        "type": "string"
+      },
+      "query": {
+        "properties": {
+          "projectID": {
+            "type": "string"
+          }
+        },
+        "type": "object"
+      },
+      "route": {
+        "enum": [
+          "/api/permission/saved"
+        ],
+        "type": "string"
+      },
+      "status": {
+        "maximum": 299,
+        "minimum": 200,
+        "type": "integer"
       }
     },
     "required": [
@@ -100,51 +80,83 @@
       "route",
       "status",
       "body"
-    ]
+    ],
+    "type": "object",
+    "$defs": {
+      "PermissionSavedInfo": {
+        "additionalProperties": false,
+        "properties": {
+          "action": {
+            "type": "string"
+          },
+          "id": {
+            "type": "string"
+          },
+          "projectID": {
+            "type": "string"
+          },
+          "resource": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "projectID",
+          "action",
+          "resource"
+        ],
+        "type": "object"
+      }
+    }
   },
   "recordSchema": {
-    "type": "object",
     "properties": {
       "direction": {
-        "type": "string",
         "enum": [
           "client-to-agent"
-        ]
+        ],
+        "type": "string"
       },
       "request": {
-        "type": "object",
         "properties": {
           "method": {
-            "type": "string",
             "enum": [
               "GET"
-            ]
-          },
-          "route": {
-            "type": "string",
-            "enum": [
-              "/api/permission/saved"
-            ]
+            ],
+            "type": "string"
           },
           "query": {
-            "type": "object",
             "properties": {
               "projectID": {
                 "type": "string"
               }
-            }
+            },
+            "type": "object"
+          },
+          "route": {
+            "enum": [
+              "/api/permission/saved"
+            ],
+            "type": "string"
           }
         },
         "required": [
           "method",
           "route"
-        ]
+        ],
+        "type": "object"
       }
     },
     "required": [
       "direction",
       "request"
-    ]
+    ],
+    "type": "object"
+  },
+  "schemaFidelity": {
+    "payload": "semantic",
+    "result": "semantic",
+    "carrier": "semantic"
   },
   "evidence": {
     "existence": [

@@ -57,3 +57,4 @@ export {
   type ScenarioStep,
   type ScenarioTimelineStep,
 } from './session/scenario.ts';
+export { createPersonaSessionId } from './persona/load.ts';

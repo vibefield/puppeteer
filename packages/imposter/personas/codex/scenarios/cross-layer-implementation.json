@@ -7,7 +7,14 @@
       "do": {
         "emit": {
           "event": "turn/started",
-          "with": { "threadId": "$threadId", "turn": { "id": "$uuid:turn", "status": "inProgress" } }
+          "with": {
+            "threadId": "$threadId",
+            "turn": {
+              "id": "$uuid:turn",
+              "status": "inProgress",
+              "items": []
+            }
+          }
         }
       }
     },
@@ -24,7 +31,12 @@
               "type": "userMessage",
               "id": "$uuid:user-item",
               "clientId": null,
-              "content": [{ "type": "text", "text": "$stimulus.text" }]
+              "content": [
+                {
+                  "type": "text",
+                  "text": "$stimulus.text"
+                }
+              ]
             }
           }
         }
@@ -43,7 +55,12 @@
               "type": "userMessage",
               "id": "$uuid:user-item",
               "clientId": null,
-              "content": [{ "type": "text", "text": "$stimulus.text" }]
+              "content": [
+                {
+                  "type": "text",
+                  "text": "$stimulus.text"
+                }
+              ]
             }
           }
         }
@@ -59,12 +76,14 @@
             "turnId": "$uuid:turn",
             "startedAtMs": "$nowMs",
             "item": {
-              "type": "collabToolCall",
+              "type": "collabAgentToolCall",
               "id": "$uuid:spawn-implementer",
-              "tool": "spawn_agent",
+              "tool": "spawnAgent",
               "status": "inProgress",
               "senderThreadId": "$threadId",
-              "prompt": "Trace the implementation seam and propose the smallest safe change."
+              "prompt": "Trace the implementation seam and propose the smallest safe change.",
+              "receiverThreadIds": [],
+              "agentsStates": {}
             }
           }
         }
@@ -80,14 +99,14 @@
             "turnId": "$uuid:turn",
             "completedAtMs": "$nowMs",
             "item": {
-              "type": "collabToolCall",
+              "type": "collabAgentToolCall",
               "id": "$uuid:spawn-implementer",
-              "tool": "spawn_agent",
+              "tool": "spawnAgent",
               "status": "completed",
               "senderThreadId": "$threadId",
-              "newThreadId": "$uuid:implementer-thread",
               "prompt": "Trace the implementation seam and propose the smallest safe change.",
-              "agentStatus": "running"
+              "receiverThreadIds": ["$uuid:implementer-thread"],
+              "agentsStates": {}
             }
           }
         }
@@ -103,12 +122,14 @@
             "turnId": "$uuid:turn",
             "startedAtMs": "$nowMs",
             "item": {
-              "type": "collabToolCall",
+              "type": "collabAgentToolCall",
               "id": "$uuid:spawn-tests",
-              "tool": "spawn_agent",
+              "tool": "spawnAgent",
               "status": "inProgress",
               "senderThreadId": "$threadId",
-              "prompt": "Find the regression boundary and design high-signal tests."
+              "prompt": "Find the regression boundary and design high-signal tests.",
+              "receiverThreadIds": [],
+              "agentsStates": {}
             }
           }
         }
@@ -124,14 +145,14 @@
             "turnId": "$uuid:turn",
             "completedAtMs": "$nowMs",
             "item": {
-              "type": "collabToolCall",
+              "type": "collabAgentToolCall",
               "id": "$uuid:spawn-tests",
-              "tool": "spawn_agent",
+              "tool": "spawnAgent",
               "status": "completed",
               "senderThreadId": "$threadId",
-              "newThreadId": "$uuid:tests-thread",
               "prompt": "Find the regression boundary and design high-signal tests.",
-              "agentStatus": "running"
+              "receiverThreadIds": ["$uuid:tests-thread"],
+              "agentsStates": {}
             }
           }
         }
@@ -152,7 +173,13 @@
               "command": "rg -n 'createScenarioRunner|scenarioSteps|runflows' packages/imposter",
               "cwd": "$threadCwd",
               "status": "inProgress",
-              "commandActions": [{ "type": "search", "query": "createScenarioRunner|scenarioSteps|runflows" }]
+              "commandActions": [
+                {
+                  "type": "search",
+                  "query": "createScenarioRunner|scenarioSteps|runflows",
+                  "command": "rg -n 'createScenarioRunner|scenarioSteps|runflows' packages/imposter"
+                }
+              ]
             }
           }
         }
@@ -173,7 +200,13 @@
               "command": "rg -n 'createScenarioRunner|scenarioSteps|runflows' packages/imposter",
               "cwd": "$threadCwd",
               "status": "completed",
-              "commandActions": [{ "type": "search", "query": "createScenarioRunner|scenarioSteps|runflows" }],
+              "commandActions": [
+                {
+                  "type": "search",
+                  "query": "createScenarioRunner|scenarioSteps|runflows",
+                  "command": "rg -n 'createScenarioRunner|scenarioSteps|runflows' packages/imposter"
+                }
+              ],
               "aggregatedOutput": "Scenario data belongs to personas; runtime validation belongs to the scenario runner and persona tests.",
               "exitCode": 0,
               "durationMs": 175
@@ -198,7 +231,9 @@
               "changes": [
                 {
                   "path": "packages/imposter/personas/codex/runflows.json",
-                  "kind": "update",
+                  "kind": {
+                    "type": "update"
+                  },
                   "diff": "+ realistic runflow catalog"
                 }
               ]
@@ -223,7 +258,9 @@
               "changes": [
                 {
                   "path": "packages/imposter/personas/codex/runflows.json",
-                  "kind": "update",
+                  "kind": {
+                    "type": "update"
+                  },
                   "diff": "+ realistic runflow catalog"
                 }
               ]
@@ -248,7 +285,10 @@
               "cwd": "$threadCwd",
               "status": "inProgress",
               "commandActions": [
-                { "type": "run", "command": "pnpm --filter @vibecook/puppeteer-imposter test -- scenarios.codex" }
+                {
+                  "type": "unknown",
+                  "command": "pnpm --filter @vibecook/puppeteer-imposter test -- scenarios.codex"
+                }
               ]
             }
           }
@@ -271,7 +311,10 @@
               "cwd": "$threadCwd",
               "status": "failed",
               "commandActions": [
-                { "type": "run", "command": "pnpm --filter @vibecook/puppeteer-imposter test -- scenarios.codex" }
+                {
+                  "type": "unknown",
+                  "command": "pnpm --filter @vibecook/puppeteer-imposter test -- scenarios.codex"
+                }
               ],
               "aggregatedOutput": "Expected long-form runflow contract is not implemented yet.",
               "exitCode": 1,
@@ -296,7 +339,9 @@
               "server": "github",
               "tool": "get_issue",
               "status": "inProgress",
-              "arguments": { "number": 42 }
+              "arguments": {
+                "number": 42
+              }
             }
           }
         }
@@ -317,10 +362,20 @@
               "server": "github",
               "tool": "get_issue",
               "status": "completed",
-              "arguments": { "number": 42 },
+              "arguments": {
+                "number": 42
+              },
               "result": {
-                "title": "Replace toy scenarios with realistic agent workflows",
-                "acceptance": "20-30 steps, tool diversity, delegation, compaction"
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "{\"title\":\"Replace toy scenarios with realistic agent workflows\",\"acceptance\":\"20-30 steps, tool diversity, delegation, compaction\"}"
+                  }
+                ],
+                "structuredContent": {
+                  "title": "Replace toy scenarios with realistic agent workflows",
+                  "acceptance": "20-30 steps, tool diversity, delegation, compaction"
+                }
               }
             }
           }
@@ -342,7 +397,12 @@
               "command": "pnpm --filter @vibecook/puppeteer-imposter test",
               "cwd": "$threadCwd",
               "status": "inProgress",
-              "commandActions": [{ "type": "run", "command": "pnpm --filter @vibecook/puppeteer-imposter test" }]
+              "commandActions": [
+                {
+                  "type": "unknown",
+                  "command": "pnpm --filter @vibecook/puppeteer-imposter test"
+                }
+              ]
             }
           }
         }
@@ -361,7 +421,12 @@
             "startedAtMs": "$nowMs",
             "command": "pnpm --filter @vibecook/puppeteer-imposter test",
             "cwd": "$threadCwd",
-            "commandActions": [{ "type": "run", "command": "pnpm --filter @vibecook/puppeteer-imposter test" }],
+            "commandActions": [
+              {
+                "type": "unknown",
+                "command": "pnpm --filter @vibecook/puppeteer-imposter test"
+              }
+            ],
             "availableDecisions": ["accept", "cancel"]
           }
         }
@@ -382,7 +447,12 @@
               "command": "pnpm --filter @vibecook/puppeteer-imposter test",
               "cwd": "$threadCwd",
               "status": "completed",
-              "commandActions": [{ "type": "run", "command": "pnpm --filter @vibecook/puppeteer-imposter test" }],
+              "commandActions": [
+                {
+                  "type": "unknown",
+                  "command": "pnpm --filter @vibecook/puppeteer-imposter test"
+                }
+              ],
               "aggregatedOutput": "Scenario, normalizer, and control-plane tests passed.",
               "exitCode": 0,
               "durationMs": 265
@@ -401,12 +471,13 @@
             "turnId": "$uuid:turn",
             "startedAtMs": "$nowMs",
             "item": {
-              "type": "collabToolCall",
+              "type": "collabAgentToolCall",
               "id": "$uuid:wait-workers",
-              "tool": "wait_agent",
+              "tool": "wait",
               "status": "inProgress",
               "senderThreadId": "$threadId",
-              "receiverThreadId": "$uuid:tests-thread"
+              "receiverThreadIds": ["$uuid:tests-thread"],
+              "agentsStates": {}
             }
           }
         }
@@ -422,13 +493,13 @@
             "turnId": "$uuid:turn",
             "completedAtMs": "$nowMs",
             "item": {
-              "type": "collabToolCall",
+              "type": "collabAgentToolCall",
               "id": "$uuid:wait-workers",
-              "tool": "wait_agent",
+              "tool": "wait",
               "status": "completed",
               "senderThreadId": "$threadId",
-              "receiverThreadId": "$uuid:tests-thread",
-              "agentStatus": "completed"
+              "receiverThreadIds": ["$uuid:tests-thread"],
+              "agentsStates": {}
             }
           }
         }
@@ -472,7 +543,10 @@
             "threadId": "$threadId",
             "turnId": "$uuid:turn",
             "startedAtMs": "$nowMs",
-            "item": { "type": "contextCompaction", "id": "$uuid:compaction" }
+            "item": {
+              "type": "contextCompaction",
+              "id": "$uuid:compaction"
+            }
           }
         }
       }
@@ -486,7 +560,10 @@
             "threadId": "$threadId",
             "turnId": "$uuid:turn",
             "completedAtMs": "$nowMs",
-            "item": { "type": "contextCompaction", "id": "$uuid:compaction" }
+            "item": {
+              "type": "contextCompaction",
+              "id": "$uuid:compaction"
+            }
           }
         }
       }
@@ -535,7 +612,12 @@
               "command": "git diff --check && git diff --stat",
               "cwd": "$threadCwd",
               "status": "inProgress",
-              "commandActions": [{ "type": "run", "command": "git diff --check && git diff --stat" }]
+              "commandActions": [
+                {
+                  "type": "unknown",
+                  "command": "git diff --check && git diff --stat"
+                }
+              ]
             }
           }
         }
@@ -556,7 +638,12 @@
               "command": "git diff --check && git diff --stat",
               "cwd": "$threadCwd",
               "status": "completed",
-              "commandActions": [{ "type": "run", "command": "git diff --check && git diff --stat" }],
+              "commandActions": [
+                {
+                  "type": "unknown",
+                  "command": "git diff --check && git diff --stat"
+                }
+              ],
               "aggregatedOutput": "No whitespace errors; intended files only.",
               "exitCode": 0,
               "durationMs": 170
@@ -574,7 +661,12 @@
             "threadId": "$threadId",
             "turnId": "$uuid:turn",
             "startedAtMs": "$nowMs",
-            "item": { "type": "agentMessage", "id": "$uuid:agent-message", "text": "", "phase": "final_answer" }
+            "item": {
+              "type": "agentMessage",
+              "id": "$uuid:agent-message",
+              "text": "",
+              "phase": "final_answer"
+            }
           }
         }
       }
@@ -617,7 +709,15 @@
       "do": {
         "emit": {
           "event": "turn/completed",
-          "with": { "threadId": "$threadId", "turn": { "id": "$uuid:turn", "status": "completed", "error": null } }
+          "with": {
+            "threadId": "$threadId",
+            "turn": {
+              "id": "$uuid:turn",
+              "status": "completed",
+              "error": null,
+              "items": []
+            }
+          }
         }
       }
     }

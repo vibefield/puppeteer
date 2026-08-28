@@ -12,6 +12,10 @@ import {
   type GrokUpdateRecord,
 } from './types.js';
 
+/** Native durable carriers this normalizer actually consumes. */
+export const GROK_NORMALIZED_UPDATE_METHODS = ['session/update', '_x.ai/session/update'] as const;
+const GROK_NORMALIZED_UPDATE_METHOD_SET = new Set<string>(GROK_NORMALIZED_UPDATE_METHODS);
+
 /** Session-scoped composition of category-focused Grok log normalizers. */
 export class GrokUpdateNormalizer {
   private readonly acp = new AcpNotificationNormalizer();
@@ -23,7 +27,15 @@ export class GrokUpdateNormalizer {
     const record = input as GrokUpdateRecord;
     const params = record?.params;
     const update = params?.update;
-    if (!params || !update || typeof update.sessionUpdate !== 'string') return [];
+    if (
+      !params ||
+      !update ||
+      typeof update.sessionUpdate !== 'string' ||
+      typeof record.method !== 'string' ||
+      !GROK_NORMALIZED_UPDATE_METHOD_SET.has(record.method)
+    ) {
+      return [];
+    }
 
     const timestamp = grokRecordTimestamp(record);
     const observed: GrokObservedFactory = (

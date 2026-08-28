@@ -10,61 +10,75 @@
   "direction": "agent-to-client",
   "trigger": "Published on the native GET /event stream.",
   "payloadSchema": {
-    "type": "object",
+    "additionalProperties": false,
     "properties": {
       "messageID": {
+        "pattern": "^msg",
         "type": "string"
       },
       "partID": {
+        "pattern": "^prt",
         "type": "string"
       },
       "sessionID": {
+        "pattern": "^ses",
         "type": "string"
       }
     },
     "required": [
+      "sessionID",
       "messageID",
-      "partID",
-      "sessionID"
-    ]
+      "partID"
+    ],
+    "type": "object"
   },
   "recordSchema": {
-    "type": "object",
+    "additionalProperties": false,
     "properties": {
       "id": {
+        "pattern": "^evt_",
         "type": "string"
       },
       "properties": {
-        "type": "object",
+        "additionalProperties": false,
         "properties": {
           "messageID": {
+            "pattern": "^msg",
             "type": "string"
           },
           "partID": {
+            "pattern": "^prt",
             "type": "string"
           },
           "sessionID": {
+            "pattern": "^ses",
             "type": "string"
           }
         },
         "required": [
+          "sessionID",
           "messageID",
-          "partID",
-          "sessionID"
-        ]
+          "partID"
+        ],
+        "type": "object"
       },
       "type": {
-        "type": "string",
         "enum": [
           "message.part.removed"
-        ]
+        ],
+        "type": "string"
       }
     },
     "required": [
       "id",
-      "properties",
-      "type"
-    ]
+      "type",
+      "properties"
+    ],
+    "type": "object"
+  },
+  "schemaFidelity": {
+    "payload": "exact",
+    "carrier": "exact"
   },
   "evidence": {
     "existence": [

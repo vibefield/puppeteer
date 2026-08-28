@@ -10,25 +10,24 @@
   "direction": "client-to-agent",
   "trigger": "Get VCS diff — Retrieve the current git diff for the working tree or against the default branch.",
   "payloadSchema": {
-    "type": "object",
     "properties": {
       "method": {
         "type": "string"
       },
-      "route": {
-        "type": "string"
-      },
       "query": {
-        "type": "object",
         "properties": {
           "context": {
-            "type": "integer",
-            "minimum": 0
+            "minimum": 0,
+            "type": "integer"
           },
           "directory": {
             "type": "string"
           },
           "mode": {
+            "enum": [
+              "git",
+              "branch"
+            ],
             "type": "string"
           },
           "workspace": {
@@ -37,46 +36,49 @@
         },
         "required": [
           "mode"
-        ]
+        ],
+        "type": "object"
+      },
+      "route": {
+        "type": "string"
       }
     },
     "required": [
       "method",
       "route",
       "query"
-    ]
+    ],
+    "type": "object"
   },
   "resultSchema": {
-    "type": "object",
     "properties": {
+      "body": {
+        "description": "VCS diff",
+        "items": {
+          "$ref": "#/$defs/VcsFileDiff"
+        },
+        "type": "array"
+      },
       "method": {
-        "type": "string",
         "enum": [
           "GET"
-        ]
-      },
-      "route": {
-        "type": "string",
-        "enum": [
-          "/vcs/diff"
-        ]
-      },
-      "status": {
-        "type": "integer",
-        "minimum": 200,
-        "maximum": 299
+        ],
+        "type": "string"
       },
       "query": {
-        "type": "object",
         "properties": {
           "context": {
-            "type": "integer",
-            "minimum": 0
+            "minimum": 0,
+            "type": "integer"
           },
           "directory": {
             "type": "string"
           },
           "mode": {
+            "enum": [
+              "git",
+              "branch"
+            ],
             "type": "string"
           },
           "workspace": {
@@ -85,35 +87,19 @@
         },
         "required": [
           "mode"
-        ]
+        ],
+        "type": "object"
       },
-      "body": {
-        "type": "array",
-        "items": {
-          "type": "object",
-          "properties": {
-            "additions": {
-              "type": "number"
-            },
-            "deletions": {
-              "type": "number"
-            },
-            "file": {
-              "type": "string"
-            },
-            "patch": {
-              "type": "string"
-            },
-            "status": {
-              "type": "string"
-            }
-          },
-          "required": [
-            "additions",
-            "deletions",
-            "file"
-          ]
-        }
+      "route": {
+        "enum": [
+          "/vcs/diff"
+        ],
+        "type": "string"
+      },
+      "status": {
+        "maximum": 299,
+        "minimum": 200,
+        "type": "integer"
       }
     },
     "required": [
@@ -122,43 +108,72 @@
       "status",
       "query",
       "body"
-    ]
+    ],
+    "type": "object",
+    "$defs": {
+      "VcsFileDiff": {
+        "additionalProperties": false,
+        "properties": {
+          "additions": {
+            "type": "number"
+          },
+          "deletions": {
+            "type": "number"
+          },
+          "file": {
+            "type": "string"
+          },
+          "patch": {
+            "type": "string"
+          },
+          "status": {
+            "enum": [
+              "added",
+              "deleted",
+              "modified"
+            ],
+            "type": "string"
+          }
+        },
+        "required": [
+          "file",
+          "additions",
+          "deletions"
+        ],
+        "type": "object"
+      }
+    }
   },
   "recordSchema": {
-    "type": "object",
     "properties": {
       "direction": {
-        "type": "string",
         "enum": [
           "client-to-agent"
-        ]
+        ],
+        "type": "string"
       },
       "request": {
-        "type": "object",
         "properties": {
           "method": {
-            "type": "string",
             "enum": [
               "GET"
-            ]
-          },
-          "route": {
-            "type": "string",
-            "enum": [
-              "/vcs/diff"
-            ]
+            ],
+            "type": "string"
           },
           "query": {
-            "type": "object",
             "properties": {
               "context": {
-                "type": "integer",
-                "minimum": 0
+                "minimum": 0,
+                "type": "integer"
               },
               "directory": {
                 "type": "string"
               },
               "mode": {
+                "enum": [
+                  "git",
+                  "branch"
+                ],
                 "type": "string"
               },
               "workspace": {
@@ -167,32 +182,50 @@
             },
             "required": [
               "mode"
-            ]
+            ],
+            "type": "object"
+          },
+          "route": {
+            "enum": [
+              "/vcs/diff"
+            ],
+            "type": "string"
           }
         },
         "required": [
           "method",
           "route",
           "query"
-        ]
+        ],
+        "type": "object"
       }
     },
     "required": [
       "direction",
       "request"
-    ]
+    ],
+    "type": "object"
+  },
+  "schemaFidelity": {
+    "payload": "semantic",
+    "result": "semantic",
+    "carrier": "semantic"
   },
   "evidence": {
     "existence": [
+      "opencode-generated-openapi",
       "opencode-runtime-file-delete"
     ],
     "shape": [
+      "opencode-generated-openapi",
       "opencode-runtime-file-delete"
     ],
     "result": [
+      "opencode-generated-openapi",
       "opencode-runtime-file-delete"
     ],
     "carrier": [
+      "opencode-generated-openapi",
       "opencode-runtime-file-delete"
     ]
   },

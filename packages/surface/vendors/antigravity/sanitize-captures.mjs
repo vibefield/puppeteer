@@ -2,8 +2,11 @@
 /**
  * Antigravity capture privacy gate: captures-raw -> committed captures.
  *
- * Keeps native event names, hook families, step types, ids-as-aliases, and
- * usage counters. Drops prompts, model text, tool output, sqlite, and paths.
+ * SchemaVersion 2 preserves every native JSON key, container, and value type.
+ * Sensitive values are redacted in place; they are never replaced with shape
+ * summaries such as `hasOutput`, `parameterKeys`, or `workspacePathCount`.
+ * The retained 1.1.12 schemaVersion 1 fixtures predate this rule and are
+ * explicitly marked as legacy projections by their capture metadata.
  */
 import { existsSync, mkdirSync, readFileSync, readdirSync, renameSync, rmSync, writeFileSync } from 'node:fs';
 import { dirname, join, resolve } from 'node:path';
@@ -12,6 +15,7 @@ import { checkCaptureDirectory, sanitizeRecord } from '@vibecook/puppeteer-surfa
 import { AUTHORIZED_SCENARIOS } from './census/authorized-census.mjs';
 import { VERSION } from './census/harness.mjs';
 import { antigravityRules } from './privacy.mjs';
+import { writeCaptureFidelity } from '../../scripts/capture-fidelity.mjs';
 
 const vendorRoot = dirname(fileURLToPath(import.meta.url));
 
@@ -51,156 +55,36 @@ function writeJsonLines(path, records) {
   );
 }
 
-function projectCommandPayload(data) {
-  if (!data || typeof data !== 'object') return data;
-  if (Array.isArray(data.commands)) {
-    return { commands: data.commands.map((command) => ({ name: command.name, aliases: command.aliases ?? [] })) };
-  }
-  if (Array.isArray(data.hooks)) {
-    return {
-      hooks: data.hooks.map((hook) => ({
-        name: hook.name,
-        enabled: hook.enabled,
-        actionEvents: (hook.actions ?? []).map((action) => action.event),
-        matchers: (hook.actions ?? []).map((action) => action.matcher ?? null),
-      })),
-    };
-  }
-  if (data.config && typeof data.config === 'object') {
-    const config = data.config;
-    return {
-      config: {
-        keys: Object.keys(config).sort(),
-        toolPermission: config.toolPermission,
-        artifactReviewPolicy: config.artifactReviewPolicy,
-        enableTerminalSandbox: config.enableTerminalSandbox,
-        statusLine: config.statusLine,
-        trustedWorkspaceCount: Array.isArray(config.trustedWorkspaces) ? config.trustedWorkspaces.length : 0,
-      },
-    };
-  }
-  if (Array.isArray(data.permissions)) {
-    return { permissions: data.permissions.map((entry) => ({ scope: entry.scope })) };
-  }
-  return { keys: Object.keys(data).sort() };
-}
-
-function projectPrintRecord(record) {
-  const stdout = record.stdout ?? '';
-  const firstLine = stdout.trim().split('\n')[0];
-  const first = parseMaybeJson(firstLine);
-  if (first && typeof first === 'object' && first.event) {
-    return {
-      status: record.status,
-      events: parseJsonLines(stdout).map(projectStreamEvent),
-    };
+/**
+ * Keep process metadata separate from the native stdout document. Stream JSON
+ * is retained as an array of otherwise unchanged records; ordinary JSON mode
+ * is retained as `body`. This changes framing only, and records that fact in
+ * capture.json, while preserving the complete native JSON shape.
+ */
+function preservePrintRecord(record) {
+  const stdout = String(record.stdout ?? '');
+  const trimmed = stdout.trim();
+  let native;
+  if (trimmed) {
+    try {
+      native = { body: JSON.parse(trimmed) };
+    } catch {
+      const lines = parseJsonLines(stdout);
+      native =
+        lines.length > 0 && lines.every((entry) => entry && typeof entry === 'object' && entry.event)
+          ? { events: lines }
+          : { body: parseMaybeJson(stdout) };
+    }
+  } else {
+    native = { body: null };
   }
   return {
     status: record.status,
-    signal: record.signal,
-    stdoutBytes: record.stdoutBytes,
-    stderrBytes: record.stderrBytes,
-    body: projectResultBody(parseMaybeJson(stdout)),
-  };
-}
-
-function projectResultBody(body) {
-  if (!body || typeof body !== 'object') return body;
-  return {
-    conversation_id: body.conversation_id,
-    status: body.status,
-    num_turns: body.num_turns,
-    duration_seconds: body.duration_seconds,
-    usage: body.usage,
-    command: body.command ? { name: body.command.name, data: projectCommandPayload(body.command.data) } : undefined,
-    hasResponse: typeof body.response === 'string' && body.response.length > 0,
-  };
-}
-
-function projectStreamEvent(record) {
-  if (record.event === 'init') {
-    return {
-      event: 'init',
-      conversation_id: record.conversation_id,
-      init: {
-        permission_mode: record.init?.permission_mode,
-        toolCount: Array.isArray(record.init?.tools) ? record.init.tools.length : 0,
-        tools: record.init?.tools ?? [],
-        cwdRedacted: true,
-      },
-    };
-  }
-  if (record.event === 'command_result') {
-    return {
-      event: 'command_result',
-      command: record.command
-        ? { name: record.command.name, data: projectCommandPayload(record.command.data) }
-        : undefined,
-    };
-  }
-  if (record.event === 'step_update') {
-    const step = record.step_update ?? {};
-    const info = step.tool_info && typeof step.tool_info === 'object' ? step.tool_info : null;
-    return {
-      event: 'step_update',
-      step_update: {
-        conversation_id: step.conversation_id,
-        step_index: step.step_index,
-        state: step.state,
-        step_type: step.step_type,
-        duration_seconds: step.duration_seconds,
-        usage: step.usage,
-        tool_name: step.tool_name,
-        hasTextDelta: typeof step.text_delta === 'string',
-        tool_info: info
-          ? {
-              name: info.name,
-              parameterKeys:
-                info.parameters && typeof info.parameters === 'object' ? Object.keys(info.parameters).sort() : [],
-              hasOutput: typeof info.output === 'string',
-            }
-          : undefined,
-      },
-    };
-  }
-  if (record.event === 'result') {
-    return { event: 'result', result: projectResultBody(record.result) };
-  }
-  return { event: record.event ?? 'unknown', keys: Object.keys(record).sort() };
-}
-
-function projectHook(record) {
-  const stdin = record.stdin && typeof record.stdin === 'object' ? record.stdin : {};
-  const toolCall = stdin.toolCall && typeof stdin.toolCall === 'object' ? stdin.toolCall : null;
-  return {
-    event: record.event,
-    conversationId: stdin.conversationId,
-    modelName: stdin.modelName,
-    invocationNum: stdin.invocationNum,
-    initialNumSteps: stdin.initialNumSteps,
-    stepIdx: stdin.stepIdx,
-    fullyIdle: stdin.fullyIdle,
-    terminationReason: stdin.terminationReason,
-    errorPresent: typeof stdin.error === 'string' ? stdin.error.length > 0 : undefined,
-    workspacePathCount: Array.isArray(stdin.workspacePaths) ? stdin.workspacePaths.length : 0,
-    toolCall: toolCall
-      ? {
-          name: toolCall.name,
-          argKeys: toolCall.args && typeof toolCall.args === 'object' ? Object.keys(toolCall.args).sort() : [],
-        }
-      : undefined,
-  };
-}
-
-function projectTranscript(record) {
-  return {
-    type: record.type,
-    source: record.source,
-    status: record.status,
-    step_index: record.step_index,
-    created_at: record.created_at,
-    hasContent: record.content != null,
-    contentChars: typeof record.content === 'string' ? record.content.length : undefined,
+    signal: record.signal ?? null,
+    error: record.error ?? null,
+    stdoutBytes: record.stdoutBytes ?? Buffer.byteLength(stdout),
+    stderrBytes: record.stderrBytes ?? Buffer.byteLength(String(record.stderr ?? '')),
+    ...native,
   };
 }
 
@@ -241,7 +125,9 @@ export function sanitizeAntigravityCaptureSet(
       ? JSON.parse(readFileSync(join(source, 'capture.json'), 'utf8'))
       : { scenario: scenario.name };
     writeJson(join(destination, 'capture.json'), {
-      schemaVersion: 1,
+      schemaVersion: 2,
+      representation: 'type-preserving-redaction',
+      framing: 'process stdout JSON/JSONL parsed into body/events; native JSON records otherwise unchanged',
       vendor: 'antigravity',
       vendorVersion: VERSION,
       scenario: scenario.name,
@@ -262,24 +148,29 @@ export function sanitizeAntigravityCaptureSet(
     for (const name of readdirSync(source)) {
       if (!name.endsWith('.json') || name === 'capture.json') continue;
       const record = JSON.parse(readFileSync(join(source, name), 'utf8'));
-      writeJson(join(destination, name), projectPrintRecord(record));
+      writeJson(join(destination, name), preservePrintRecord(record));
     }
 
     const hooksPath = join(source, 'hooks', 'hooks.jsonl');
     if (existsSync(hooksPath)) {
-      writeJsonLines(
-        join(destination, 'hooks.jsonl'),
-        parseJsonLines(readFileSync(hooksPath, 'utf8')).map(projectHook),
-      );
+      writeJsonLines(join(destination, 'hooks.jsonl'), parseJsonLines(readFileSync(hooksPath, 'utf8')));
     }
     const transcript = firstTranscript(source);
     if (transcript) {
-      writeJsonLines(
-        join(destination, 'transcript.jsonl'),
-        parseJsonLines(readFileSync(transcript, 'utf8')).map(projectTranscript),
-      );
+      writeJsonLines(join(destination, 'transcript.jsonl'), parseJsonLines(readFileSync(transcript, 'utf8')));
     }
   }
+
+  writeCaptureFidelity(staging, {
+    vendor: 'antigravity',
+    vendorVersion: VERSION,
+    defaultRepresentation: 'type-preserving-redaction',
+    nativeArtifacts: ['*/capture.json', '*/hooks.jsonl', '*/transcript.jsonl', '*/print.*.json'],
+    limitations: [
+      'Process stdout JSON or JSONL framing is made explicit, but every parsed native JSON record otherwise retains all keys, containers, and primitive types.',
+      'Non-JSON durable files and databases remain outside the committed capture set.',
+    ],
+  });
 
   const leaks = checkCaptureDirectory(staging, antigravityRules);
   if (leaks.length > 0) {
@@ -296,10 +187,11 @@ These fixtures were captured from the exact Antigravity CLI 1.1.12
 darwin-arm64 executable through authorized print-mode survey oracles and
 launch-scoped \`.agents/hooks.json\` observers.
 
-Prompts, model text, tool output, account fields, sqlite databases, and
-absolute paths stay in gitignored \`captures-raw/\`. Native event names,
-hook families, step types, usage counters, and aliased conversation ids
-are preserved.
+SQLite databases and non-JSON durable files stay in gitignored
+\`captures-raw/\`. Every native JSON key, container, and JSON value type is
+preserved; prompts, model text, tool output, account fields, and paths are
+redacted in place. Process stdout framing is represented explicitly by
+\`capture.json#framing\`.
 `,
   );
   return output;

@@ -1,0 +1,11 @@
+{
+  "format": "puppeteer-capture-fidelity/1",
+  "vendor": "antigravity",
+  "vendorVersion": "1.1.12",
+  "defaultRepresentation": "legacy-privacy-projection",
+  "nativeArtifacts": ["*/capture.json", "*/hooks.jsonl", "*/transcript.jsonl", "*/print.*.json"],
+  "limitations": [
+    "The retained sanitizer synthesized presence flags, counts, and key inventories and discarded native fields; its raw inputs are unavailable.",
+    "These records prove occurrence, ordering, joins, and explicitly retained values only."
+  ]
+}

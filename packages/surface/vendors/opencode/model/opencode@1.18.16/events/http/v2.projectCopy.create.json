@@ -9,43 +9,9 @@
   "transport": "http",
   "direction": "client-to-agent",
   "payloadSchema": {
-    "type": "object",
     "properties": {
-      "method": {
-        "type": "string"
-      },
-      "route": {
-        "type": "string"
-      },
-      "params": {
-        "type": "object",
-        "properties": {
-          "projectID": {
-            "type": "string"
-          }
-        },
-        "required": [
-          "projectID"
-        ]
-      },
-      "query": {
-        "type": "object",
-        "properties": {
-          "location": {
-            "type": "object",
-            "properties": {
-              "directory": {
-                "type": "string"
-              },
-              "workspace": {
-                "type": "string"
-              }
-            }
-          }
-        }
-      },
       "body": {
-        "type": "object",
+        "additionalProperties": false,
         "properties": {
           "directory": {
             "type": "string"
@@ -58,39 +24,15 @@
           }
         },
         "required": [
-          "directory",
-          "strategy"
-        ]
-      }
-    },
-    "required": [
-      "method",
-      "route",
-      "params"
-    ]
-  },
-  "resultSchema": {
-    "type": "object",
-    "properties": {
+          "strategy",
+          "directory"
+        ],
+        "type": "object"
+      },
       "method": {
-        "type": "string",
-        "enum": [
-          "POST"
-        ]
-      },
-      "route": {
-        "type": "string",
-        "enum": [
-          "/experimental/project/:projectID/copy"
-        ]
-      },
-      "status": {
-        "type": "integer",
-        "minimum": 200,
-        "maximum": 299
+        "type": "string"
       },
       "params": {
-        "type": "object",
         "properties": {
           "projectID": {
             "type": "string"
@@ -98,13 +40,13 @@
         },
         "required": [
           "projectID"
-        ]
+        ],
+        "type": "object"
       },
       "query": {
-        "type": "object",
         "properties": {
           "location": {
-            "type": "object",
+            "additionalProperties": false,
             "properties": {
               "directory": {
                 "type": "string"
@@ -112,20 +54,72 @@
               "workspace": {
                 "type": "string"
               }
-            }
+            },
+            "type": "object"
           }
-        }
+        },
+        "type": "object"
       },
+      "route": {
+        "type": "string"
+      }
+    },
+    "required": [
+      "method",
+      "route",
+      "params"
+    ],
+    "type": "object"
+  },
+  "resultSchema": {
+    "properties": {
       "body": {
-        "type": "object",
+        "$ref": "#/$defs/ProjectCopyCopy"
+      },
+      "method": {
+        "enum": [
+          "POST"
+        ],
+        "type": "string"
+      },
+      "params": {
         "properties": {
-          "directory": {
+          "projectID": {
             "type": "string"
           }
         },
         "required": [
-          "directory"
-        ]
+          "projectID"
+        ],
+        "type": "object"
+      },
+      "query": {
+        "properties": {
+          "location": {
+            "additionalProperties": false,
+            "properties": {
+              "directory": {
+                "type": "string"
+              },
+              "workspace": {
+                "type": "string"
+              }
+            },
+            "type": "object"
+          }
+        },
+        "type": "object"
+      },
+      "route": {
+        "enum": [
+          "/experimental/project/:projectID/copy"
+        ],
+        "type": "string"
+      },
+      "status": {
+        "maximum": 299,
+        "minimum": 200,
+        "type": "integer"
       }
     },
     "required": [
@@ -134,61 +128,35 @@
       "status",
       "params",
       "body"
-    ]
+    ],
+    "type": "object",
+    "$defs": {
+      "ProjectCopyCopy": {
+        "additionalProperties": false,
+        "properties": {
+          "directory": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "directory"
+        ],
+        "type": "object"
+      }
+    }
   },
   "recordSchema": {
-    "type": "object",
     "properties": {
       "direction": {
-        "type": "string",
         "enum": [
           "client-to-agent"
-        ]
+        ],
+        "type": "string"
       },
       "request": {
-        "type": "object",
         "properties": {
-          "method": {
-            "type": "string",
-            "enum": [
-              "POST"
-            ]
-          },
-          "route": {
-            "type": "string",
-            "enum": [
-              "/experimental/project/:projectID/copy"
-            ]
-          },
-          "params": {
-            "type": "object",
-            "properties": {
-              "projectID": {
-                "type": "string"
-              }
-            },
-            "required": [
-              "projectID"
-            ]
-          },
-          "query": {
-            "type": "object",
-            "properties": {
-              "location": {
-                "type": "object",
-                "properties": {
-                  "directory": {
-                    "type": "string"
-                  },
-                  "workspace": {
-                    "type": "string"
-                  }
-                }
-              }
-            }
-          },
           "body": {
-            "type": "object",
+            "additionalProperties": false,
             "properties": {
               "directory": {
                 "type": "string"
@@ -201,22 +169,70 @@
               }
             },
             "required": [
-              "directory",
-              "strategy"
-            ]
+              "strategy",
+              "directory"
+            ],
+            "type": "object"
+          },
+          "method": {
+            "enum": [
+              "POST"
+            ],
+            "type": "string"
+          },
+          "params": {
+            "properties": {
+              "projectID": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "projectID"
+            ],
+            "type": "object"
+          },
+          "query": {
+            "properties": {
+              "location": {
+                "additionalProperties": false,
+                "properties": {
+                  "directory": {
+                    "type": "string"
+                  },
+                  "workspace": {
+                    "type": "string"
+                  }
+                },
+                "type": "object"
+              }
+            },
+            "type": "object"
+          },
+          "route": {
+            "enum": [
+              "/experimental/project/:projectID/copy"
+            ],
+            "type": "string"
           }
         },
         "required": [
           "method",
           "route",
           "params"
-        ]
+        ],
+        "type": "object"
       }
     },
     "required": [
       "direction",
       "request"
-    ]
+    ],
+    "type": "object"
+  },
+  "schemaFidelity": {
+    "payload": "semantic",
+    "result": "semantic",
+    "carrier": "semantic"
   },
   "evidence": {
     "existence": [

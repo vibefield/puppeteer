@@ -10,31 +10,28 @@
   "direction": "client-to-agent",
   "trigger": "Delete message — Permanently delete a specific message and all of its parts from a session without reverting file changes.",
   "payloadSchema": {
-    "type": "object",
     "properties": {
       "method": {
         "type": "string"
       },
-      "route": {
-        "type": "string"
-      },
       "params": {
-        "type": "object",
         "properties": {
           "messageID": {
+            "pattern": "^msg",
             "type": "string"
           },
           "sessionID": {
+            "pattern": "^ses",
             "type": "string"
           }
         },
         "required": [
           "messageID",
           "sessionID"
-        ]
+        ],
+        "type": "object"
       },
       "query": {
-        "type": "object",
         "properties": {
           "directory": {
             "type": "string"
@@ -42,52 +39,50 @@
           "workspace": {
             "type": "string"
           }
-        }
+        },
+        "type": "object"
+      },
+      "route": {
+        "type": "string"
       }
     },
     "required": [
       "method",
       "route",
       "params"
-    ]
+    ],
+    "type": "object"
   },
   "resultSchema": {
-    "type": "object",
     "properties": {
+      "body": {
+        "description": "Successfully deleted message",
+        "type": "boolean"
+      },
       "method": {
-        "type": "string",
         "enum": [
           "DELETE"
-        ]
-      },
-      "route": {
-        "type": "string",
-        "enum": [
-          "/session/:sessionID/message/:messageID"
-        ]
-      },
-      "status": {
-        "type": "integer",
-        "minimum": 200,
-        "maximum": 299
+        ],
+        "type": "string"
       },
       "params": {
-        "type": "object",
         "properties": {
           "messageID": {
+            "pattern": "^msg",
             "type": "string"
           },
           "sessionID": {
+            "pattern": "^ses",
             "type": "string"
           }
         },
         "required": [
           "messageID",
           "sessionID"
-        ]
+        ],
+        "type": "object"
       },
       "query": {
-        "type": "object",
         "properties": {
           "directory": {
             "type": "string"
@@ -95,10 +90,19 @@
           "workspace": {
             "type": "string"
           }
-        }
+        },
+        "type": "object"
       },
-      "body": {
-        "type": "boolean"
+      "route": {
+        "enum": [
+          "/session/:sessionID/message/:messageID"
+        ],
+        "type": "string"
+      },
+      "status": {
+        "maximum": 299,
+        "minimum": 200,
+        "type": "integer"
       }
     },
     "required": [
@@ -107,49 +111,43 @@
       "status",
       "params",
       "body"
-    ]
+    ],
+    "type": "object"
   },
   "recordSchema": {
-    "type": "object",
     "properties": {
       "direction": {
-        "type": "string",
         "enum": [
           "client-to-agent"
-        ]
+        ],
+        "type": "string"
       },
       "request": {
-        "type": "object",
         "properties": {
           "method": {
-            "type": "string",
             "enum": [
               "DELETE"
-            ]
-          },
-          "route": {
-            "type": "string",
-            "enum": [
-              "/session/:sessionID/message/:messageID"
-            ]
+            ],
+            "type": "string"
           },
           "params": {
-            "type": "object",
             "properties": {
               "messageID": {
+                "pattern": "^msg",
                 "type": "string"
               },
               "sessionID": {
+                "pattern": "^ses",
                 "type": "string"
               }
             },
             "required": [
               "messageID",
               "sessionID"
-            ]
+            ],
+            "type": "object"
           },
           "query": {
-            "type": "object",
             "properties": {
               "directory": {
                 "type": "string"
@@ -157,20 +155,34 @@
               "workspace": {
                 "type": "string"
               }
-            }
+            },
+            "type": "object"
+          },
+          "route": {
+            "enum": [
+              "/session/:sessionID/message/:messageID"
+            ],
+            "type": "string"
           }
         },
         "required": [
           "method",
           "route",
           "params"
-        ]
+        ],
+        "type": "object"
       }
     },
     "required": [
       "direction",
       "request"
-    ]
+    ],
+    "type": "object"
+  },
+  "schemaFidelity": {
+    "payload": "semantic",
+    "result": "semantic",
+    "carrier": "semantic"
   },
   "evidence": {
     "existence": [

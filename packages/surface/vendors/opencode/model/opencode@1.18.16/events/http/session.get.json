@@ -10,27 +10,23 @@
   "direction": "client-to-agent",
   "trigger": "Get session — Retrieve detailed information about a specific OpenCode session.",
   "payloadSchema": {
-    "type": "object",
     "properties": {
       "method": {
         "type": "string"
       },
-      "route": {
-        "type": "string"
-      },
       "params": {
-        "type": "object",
         "properties": {
           "sessionID": {
+            "pattern": "^ses",
             "type": "string"
           }
         },
         "required": [
           "sessionID"
-        ]
+        ],
+        "type": "object"
       },
       "query": {
-        "type": "object",
         "properties": {
           "directory": {
             "type": "string"
@@ -38,48 +34,44 @@
           "workspace": {
             "type": "string"
           }
-        }
+        },
+        "type": "object"
+      },
+      "route": {
+        "type": "string"
       }
     },
     "required": [
       "method",
       "route",
       "params"
-    ]
+    ],
+    "type": "object"
   },
   "resultSchema": {
-    "type": "object",
     "properties": {
+      "body": {
+        "$ref": "#/$defs/Session"
+      },
       "method": {
-        "type": "string",
         "enum": [
           "GET"
-        ]
-      },
-      "route": {
-        "type": "string",
-        "enum": [
-          "/session/:sessionID"
-        ]
-      },
-      "status": {
-        "type": "integer",
-        "minimum": 200,
-        "maximum": 299
+        ],
+        "type": "string"
       },
       "params": {
-        "type": "object",
         "properties": {
           "sessionID": {
+            "pattern": "^ses",
             "type": "string"
           }
         },
         "required": [
           "sessionID"
-        ]
+        ],
+        "type": "object"
       },
       "query": {
-        "type": "object",
         "properties": {
           "directory": {
             "type": "string"
@@ -87,10 +79,32 @@
           "workspace": {
             "type": "string"
           }
-        }
+        },
+        "type": "object"
       },
-      "body": {
-        "type": "object",
+      "route": {
+        "enum": [
+          "/session/:sessionID"
+        ],
+        "type": "string"
+      },
+      "status": {
+        "maximum": 299,
+        "minimum": 200,
+        "type": "integer"
+      }
+    },
+    "required": [
+      "method",
+      "route",
+      "status",
+      "params",
+      "body"
+    ],
+    "type": "object",
+    "$defs": {
+      "Session": {
+        "additionalProperties": false,
         "properties": {
           "agent": {
             "type": "string"
@@ -102,13 +116,14 @@
             "type": "string"
           },
           "id": {
+            "pattern": "^ses",
             "type": "string"
           },
           "metadata": {
             "type": "object"
           },
           "model": {
-            "type": "object",
+            "additionalProperties": false,
             "properties": {
               "id": {
                 "type": "string"
@@ -123,49 +138,34 @@
             "required": [
               "id",
               "providerID"
-            ]
+            ],
+            "type": "object"
           },
           "parentID": {
+            "pattern": "^ses",
             "type": "string"
           },
           "path": {
             "type": "string"
           },
           "permission": {
-            "type": "array",
-            "items": {
-              "type": "object",
-              "properties": {
-                "action": {
-                  "type": "string"
-                },
-                "pattern": {
-                  "type": "string"
-                },
-                "permission": {
-                  "type": "string"
-                }
-              },
-              "required": [
-                "action",
-                "pattern",
-                "permission"
-              ]
-            }
+            "$ref": "#/$defs/PermissionRuleset"
           },
           "projectID": {
             "type": "string"
           },
           "revert": {
-            "type": "object",
+            "additionalProperties": false,
             "properties": {
               "diff": {
                 "type": "string"
               },
               "messageID": {
+                "pattern": "^msg",
                 "type": "string"
               },
               "partID": {
+                "pattern": "^prt",
                 "type": "string"
               },
               "snapshot": {
@@ -174,10 +174,11 @@
             },
             "required": [
               "messageID"
-            ]
+            ],
+            "type": "object"
           },
           "share": {
-            "type": "object",
+            "additionalProperties": false,
             "properties": {
               "url": {
                 "type": "string"
@@ -185,13 +186,14 @@
             },
             "required": [
               "url"
-            ]
+            ],
+            "type": "object"
           },
           "slug": {
             "type": "string"
           },
           "summary": {
-            "type": "object",
+            "additionalProperties": false,
             "properties": {
               "additions": {
                 "type": "number"
@@ -200,31 +202,10 @@
                 "type": "number"
               },
               "diffs": {
-                "type": "array",
                 "items": {
-                  "type": "object",
-                  "properties": {
-                    "additions": {
-                      "type": "number"
-                    },
-                    "deletions": {
-                      "type": "number"
-                    },
-                    "file": {
-                      "type": "string"
-                    },
-                    "patch": {
-                      "type": "string"
-                    },
-                    "status": {
-                      "type": "string"
-                    }
-                  },
-                  "required": [
-                    "additions",
-                    "deletions"
-                  ]
-                }
+                  "$ref": "#/$defs/SnapshotFileDiff"
+                },
+                "type": "array"
               },
               "files": {
                 "type": "number"
@@ -234,40 +215,42 @@
               "additions",
               "deletions",
               "files"
-            ]
+            ],
+            "type": "object"
           },
           "time": {
-            "type": "object",
+            "additionalProperties": false,
             "properties": {
               "archived": {
                 "type": "number"
               },
               "compacting": {
-                "type": "integer",
-                "minimum": 0
+                "minimum": 0,
+                "type": "integer"
               },
               "created": {
-                "type": "integer",
-                "minimum": 0
+                "minimum": 0,
+                "type": "integer"
               },
               "updated": {
-                "type": "integer",
-                "minimum": 0
+                "minimum": 0,
+                "type": "integer"
               }
             },
             "required": [
               "created",
               "updated"
-            ]
+            ],
+            "type": "object"
           },
           "title": {
             "type": "string"
           },
           "tokens": {
-            "type": "object",
+            "additionalProperties": false,
             "properties": {
               "cache": {
-                "type": "object",
+                "additionalProperties": false,
                 "properties": {
                   "read": {
                     "type": "number"
@@ -279,7 +262,8 @@
                 "required": [
                   "read",
                   "write"
-                ]
+                ],
+                "type": "object"
               },
               "input": {
                 "type": "number"
@@ -292,75 +276,127 @@
               }
             },
             "required": [
-              "cache",
               "input",
               "output",
-              "reasoning"
-            ]
+              "reasoning",
+              "cache"
+            ],
+            "type": "object"
           },
           "version": {
             "type": "string"
           },
           "workspaceID": {
+            "pattern": "^wrk",
             "type": "string"
           }
         },
         "required": [
-          "directory",
           "id",
-          "projectID",
           "slug",
-          "time",
+          "projectID",
+          "directory",
           "title",
-          "version"
-        ]
+          "version",
+          "time"
+        ],
+        "type": "object"
+      },
+      "PermissionRuleset": {
+        "items": {
+          "$ref": "#/$defs/PermissionRule"
+        },
+        "type": "array"
+      },
+      "SnapshotFileDiff": {
+        "additionalProperties": false,
+        "properties": {
+          "additions": {
+            "type": "number"
+          },
+          "deletions": {
+            "type": "number"
+          },
+          "file": {
+            "type": "string"
+          },
+          "patch": {
+            "type": "string"
+          },
+          "status": {
+            "enum": [
+              "added",
+              "deleted",
+              "modified"
+            ],
+            "type": "string"
+          }
+        },
+        "required": [
+          "additions",
+          "deletions"
+        ],
+        "type": "object"
+      },
+      "PermissionRule": {
+        "additionalProperties": false,
+        "properties": {
+          "action": {
+            "$ref": "#/$defs/PermissionAction"
+          },
+          "pattern": {
+            "type": "string"
+          },
+          "permission": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "permission",
+          "pattern",
+          "action"
+        ],
+        "type": "object"
+      },
+      "PermissionAction": {
+        "enum": [
+          "allow",
+          "deny",
+          "ask"
+        ],
+        "type": "string"
       }
-    },
-    "required": [
-      "method",
-      "route",
-      "status",
-      "params",
-      "body"
-    ]
+    }
   },
   "recordSchema": {
-    "type": "object",
     "properties": {
       "direction": {
-        "type": "string",
         "enum": [
           "client-to-agent"
-        ]
+        ],
+        "type": "string"
       },
       "request": {
-        "type": "object",
         "properties": {
           "method": {
-            "type": "string",
             "enum": [
               "GET"
-            ]
-          },
-          "route": {
-            "type": "string",
-            "enum": [
-              "/session/:sessionID"
-            ]
+            ],
+            "type": "string"
           },
           "params": {
-            "type": "object",
             "properties": {
               "sessionID": {
+                "pattern": "^ses",
                 "type": "string"
               }
             },
             "required": [
               "sessionID"
-            ]
+            ],
+            "type": "object"
           },
           "query": {
-            "type": "object",
             "properties": {
               "directory": {
                 "type": "string"
@@ -368,32 +404,50 @@
               "workspace": {
                 "type": "string"
               }
-            }
+            },
+            "type": "object"
+          },
+          "route": {
+            "enum": [
+              "/session/:sessionID"
+            ],
+            "type": "string"
           }
         },
         "required": [
           "method",
           "route",
           "params"
-        ]
+        ],
+        "type": "object"
       }
     },
     "required": [
       "direction",
       "request"
-    ]
+    ],
+    "type": "object"
+  },
+  "schemaFidelity": {
+    "payload": "semantic",
+    "result": "semantic",
+    "carrier": "semantic"
   },
   "evidence": {
     "existence": [
+      "opencode-generated-openapi",
       "opencode-runtime-exact-resume"
     ],
     "shape": [
+      "opencode-generated-openapi",
       "opencode-runtime-exact-resume"
     ],
     "result": [
+      "opencode-generated-openapi",
       "opencode-runtime-exact-resume"
     ],
     "carrier": [
+      "opencode-generated-openapi",
       "opencode-runtime-exact-resume"
     ]
   },

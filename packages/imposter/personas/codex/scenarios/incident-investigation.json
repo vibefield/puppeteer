@@ -7,7 +7,14 @@
       "do": {
         "emit": {
           "event": "turn/started",
-          "with": { "threadId": "$threadId", "turn": { "id": "$uuid:turn", "status": "inProgress" } }
+          "with": {
+            "threadId": "$threadId",
+            "turn": {
+              "id": "$uuid:turn",
+              "status": "inProgress",
+              "items": []
+            }
+          }
         }
       }
     },
@@ -24,7 +31,12 @@
               "type": "userMessage",
               "id": "$uuid:user-item",
               "clientId": null,
-              "content": [{ "type": "text", "text": "$stimulus.text" }]
+              "content": [
+                {
+                  "type": "text",
+                  "text": "$stimulus.text"
+                }
+              ]
             }
           }
         }
@@ -43,7 +55,12 @@
               "type": "userMessage",
               "id": "$uuid:user-item",
               "clientId": null,
-              "content": [{ "type": "text", "text": "$stimulus.text" }]
+              "content": [
+                {
+                  "type": "text",
+                  "text": "$stimulus.text"
+                }
+              ]
             }
           }
         }
@@ -58,7 +75,12 @@
             "threadId": "$threadId",
             "turnId": "$uuid:turn",
             "startedAtMs": "$nowMs",
-            "item": { "type": "reasoning", "id": "$uuid:reasoning", "summary": [], "content": [] }
+            "item": {
+              "type": "reasoning",
+              "id": "$uuid:reasoning",
+              "summary": [],
+              "content": []
+            }
           }
         }
       }
@@ -109,12 +131,14 @@
             "turnId": "$uuid:turn",
             "startedAtMs": "$nowMs",
             "item": {
-              "type": "collabToolCall",
+              "type": "collabAgentToolCall",
               "id": "$uuid:spawn-deploy",
-              "tool": "spawn_agent",
+              "tool": "spawnAgent",
               "status": "inProgress",
               "senderThreadId": "$threadId",
-              "prompt": "Test whether the latest deploy caused the incident."
+              "prompt": "Test whether the latest deploy caused the incident.",
+              "receiverThreadIds": [],
+              "agentsStates": {}
             }
           }
         }
@@ -130,14 +154,14 @@
             "turnId": "$uuid:turn",
             "completedAtMs": "$nowMs",
             "item": {
-              "type": "collabToolCall",
+              "type": "collabAgentToolCall",
               "id": "$uuid:spawn-deploy",
-              "tool": "spawn_agent",
+              "tool": "spawnAgent",
               "status": "completed",
               "senderThreadId": "$threadId",
-              "newThreadId": "$uuid:deploy-thread",
               "prompt": "Test whether the latest deploy caused the incident.",
-              "agentStatus": "running"
+              "receiverThreadIds": ["$uuid:deploy-thread"],
+              "agentsStates": {}
             }
           }
         }
@@ -153,12 +177,14 @@
             "turnId": "$uuid:turn",
             "startedAtMs": "$nowMs",
             "item": {
-              "type": "collabToolCall",
+              "type": "collabAgentToolCall",
               "id": "$uuid:spawn-dependency",
-              "tool": "spawn_agent",
+              "tool": "spawnAgent",
               "status": "inProgress",
               "senderThreadId": "$threadId",
-              "prompt": "Test whether an upstream dependency or quota caused the incident."
+              "prompt": "Test whether an upstream dependency or quota caused the incident.",
+              "receiverThreadIds": [],
+              "agentsStates": {}
             }
           }
         }
@@ -174,14 +200,14 @@
             "turnId": "$uuid:turn",
             "completedAtMs": "$nowMs",
             "item": {
-              "type": "collabToolCall",
+              "type": "collabAgentToolCall",
               "id": "$uuid:spawn-dependency",
-              "tool": "spawn_agent",
+              "tool": "spawnAgent",
               "status": "completed",
               "senderThreadId": "$threadId",
-              "newThreadId": "$uuid:dependency-thread",
               "prompt": "Test whether an upstream dependency or quota caused the incident.",
-              "agentStatus": "running"
+              "receiverThreadIds": ["$uuid:dependency-thread"],
+              "agentsStates": {}
             }
           }
         }
@@ -202,7 +228,11 @@
               "server": "observability",
               "tool": "query_logs",
               "status": "inProgress",
-              "arguments": { "service": "api", "since": "30m", "query": "status>=500" }
+              "arguments": {
+                "service": "api",
+                "since": "30m",
+                "query": "status>=500"
+              }
             }
           }
         }
@@ -223,8 +253,23 @@
               "server": "observability",
               "tool": "query_logs",
               "status": "completed",
-              "arguments": { "service": "api", "since": "30m", "query": "status>=500" },
-              "result": { "matches": 184, "pattern": "timeouts begin two minutes before deploy completion" }
+              "arguments": {
+                "service": "api",
+                "since": "30m",
+                "query": "status>=500"
+              },
+              "result": {
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "{\"matches\":184,\"pattern\":\"timeouts begin two minutes before deploy completion\"}"
+                  }
+                ],
+                "structuredContent": {
+                  "matches": 184,
+                  "pattern": "timeouts begin two minutes before deploy completion"
+                }
+              }
             }
           }
         }
@@ -245,7 +290,12 @@
               "command": "./scripts/reproduce-timeout.sh",
               "cwd": "$threadCwd",
               "status": "inProgress",
-              "commandActions": [{ "type": "run", "command": "./scripts/reproduce-timeout.sh" }]
+              "commandActions": [
+                {
+                  "type": "unknown",
+                  "command": "./scripts/reproduce-timeout.sh"
+                }
+              ]
             }
           }
         }
@@ -266,7 +316,12 @@
               "command": "./scripts/reproduce-timeout.sh",
               "cwd": "$threadCwd",
               "status": "failed",
-              "commandActions": [{ "type": "run", "command": "./scripts/reproduce-timeout.sh" }],
+              "commandActions": [
+                {
+                  "type": "unknown",
+                  "command": "./scripts/reproduce-timeout.sh"
+                }
+              ],
               "aggregatedOutput": "Fixture lacks the production timeout header; reproduction inconclusive.",
               "exitCode": 1,
               "durationMs": 185
@@ -288,7 +343,10 @@
               "type": "webSearch",
               "id": "$uuid:status-search",
               "query": "upstream provider status timeout incident",
-              "action": "search"
+              "action": {
+                "type": "search",
+                "query": "upstream provider status timeout incident"
+              }
             }
           }
         }
@@ -307,7 +365,10 @@
               "type": "webSearch",
               "id": "$uuid:status-search",
               "query": "upstream provider status timeout incident",
-              "action": "search",
+              "action": {
+                "type": "search",
+                "query": "upstream provider status timeout incident"
+              },
               "results": ["No matching provider incident in the relevant window."]
             }
           }
@@ -329,7 +390,11 @@
               "server": "observability",
               "tool": "query_metrics",
               "status": "inProgress",
-              "arguments": { "metric": "api.request.duration", "group_by": "release", "since": "2h" }
+              "arguments": {
+                "metric": "api.request.duration",
+                "group_by": "release",
+                "since": "2h"
+              }
             }
           }
         }
@@ -350,12 +415,30 @@
               "server": "observability",
               "tool": "query_metrics",
               "status": "completed",
-              "arguments": { "metric": "api.request.duration", "group_by": "release", "since": "2h" },
+              "arguments": {
+                "metric": "api.request.duration",
+                "group_by": "release",
+                "since": "2h"
+              },
               "result": {
-                "series": [
-                  { "release": "previous", "p99_ms": 480 },
-                  { "release": "current", "p99_ms": 5100 }
-                ]
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "{\"series\":[{\"release\":\"previous\",\"p99_ms\":480},{\"release\":\"current\",\"p99_ms\":5100}]}"
+                  }
+                ],
+                "structuredContent": {
+                  "series": [
+                    {
+                      "release": "previous",
+                      "p99_ms": 480
+                    },
+                    {
+                      "release": "current",
+                      "p99_ms": 5100
+                    }
+                  ]
+                }
               }
             }
           }
@@ -372,12 +455,13 @@
             "turnId": "$uuid:turn",
             "startedAtMs": "$nowMs",
             "item": {
-              "type": "collabToolCall",
+              "type": "collabAgentToolCall",
               "id": "$uuid:wait-hypotheses",
-              "tool": "wait_agent",
+              "tool": "wait",
               "status": "inProgress",
               "senderThreadId": "$threadId",
-              "receiverThreadId": "$uuid:deploy-thread"
+              "receiverThreadIds": ["$uuid:deploy-thread"],
+              "agentsStates": {}
             }
           }
         }
@@ -393,13 +477,13 @@
             "turnId": "$uuid:turn",
             "completedAtMs": "$nowMs",
             "item": {
-              "type": "collabToolCall",
+              "type": "collabAgentToolCall",
               "id": "$uuid:wait-hypotheses",
-              "tool": "wait_agent",
+              "tool": "wait",
               "status": "completed",
               "senderThreadId": "$threadId",
-              "receiverThreadId": "$uuid:deploy-thread",
-              "agentStatus": "completed"
+              "receiverThreadIds": ["$uuid:deploy-thread"],
+              "agentsStates": {}
             }
           }
         }
@@ -443,7 +527,10 @@
             "threadId": "$threadId",
             "turnId": "$uuid:turn",
             "startedAtMs": "$nowMs",
-            "item": { "type": "contextCompaction", "id": "$uuid:compaction" }
+            "item": {
+              "type": "contextCompaction",
+              "id": "$uuid:compaction"
+            }
           }
         }
       }
@@ -457,7 +544,10 @@
             "threadId": "$threadId",
             "turnId": "$uuid:turn",
             "completedAtMs": "$nowMs",
-            "item": { "type": "contextCompaction", "id": "$uuid:compaction" }
+            "item": {
+              "type": "contextCompaction",
+              "id": "$uuid:compaction"
+            }
           }
         }
       }
@@ -506,7 +596,12 @@
               "command": "./scripts/compare-release-config.sh previous current",
               "cwd": "$threadCwd",
               "status": "inProgress",
-              "commandActions": [{ "type": "run", "command": "./scripts/compare-release-config.sh previous current" }]
+              "commandActions": [
+                {
+                  "type": "unknown",
+                  "command": "./scripts/compare-release-config.sh previous current"
+                }
+              ]
             }
           }
         }
@@ -527,7 +622,12 @@
               "command": "./scripts/compare-release-config.sh previous current",
               "cwd": "$threadCwd",
               "status": "completed",
-              "commandActions": [{ "type": "run", "command": "./scripts/compare-release-config.sh previous current" }],
+              "commandActions": [
+                {
+                  "type": "unknown",
+                  "command": "./scripts/compare-release-config.sh previous current"
+                }
+              ],
               "aggregatedOutput": "Current release lowered the upstream timeout from 10s to 1s.",
               "exitCode": 0,
               "durationMs": 175
@@ -545,7 +645,12 @@
             "threadId": "$threadId",
             "turnId": "$uuid:turn",
             "startedAtMs": "$nowMs",
-            "item": { "type": "agentMessage", "id": "$uuid:agent-message", "text": "", "phase": "final_answer" }
+            "item": {
+              "type": "agentMessage",
+              "id": "$uuid:agent-message",
+              "text": "",
+              "phase": "final_answer"
+            }
           }
         }
       }
@@ -574,7 +679,15 @@
       "do": {
         "emit": {
           "event": "turn/completed",
-          "with": { "threadId": "$threadId", "turn": { "id": "$uuid:turn", "status": "completed", "error": null } }
+          "with": {
+            "threadId": "$threadId",
+            "turn": {
+              "id": "$uuid:turn",
+              "status": "completed",
+              "error": null,
+              "items": []
+            }
+          }
         }
       }
     }

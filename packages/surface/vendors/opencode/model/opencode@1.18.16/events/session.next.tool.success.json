@@ -10,80 +10,45 @@
   "direction": "agent-to-client",
   "trigger": "Published on the native GET /event stream.",
   "payloadSchema": {
-    "type": "object",
+    "additionalProperties": false,
     "properties": {
       "assistantMessageID": {
+        "pattern": "^msg_",
         "type": "string"
       },
       "callID": {
         "type": "string"
       },
       "content": {
-        "type": "array",
         "items": {
-          "anyOf": [
-            {
-              "type": "object",
-              "properties": {
-                "text": {
-                  "type": "string"
-                },
-                "type": {
-                  "type": "string"
-                }
-              },
-              "required": [
-                "text",
-                "type"
-              ]
-            },
-            {
-              "type": "object",
-              "properties": {
-                "mime": {
-                  "type": "string"
-                },
-                "name": {
-                  "type": "string"
-                },
-                "type": {
-                  "type": "string"
-                },
-                "uri": {
-                  "type": "string"
-                }
-              },
-              "required": [
-                "mime",
-                "type",
-                "uri"
-              ]
-            }
-          ]
-        }
+          "$ref": "#/$defs/LLMToolContent"
+        },
+        "type": "array"
       },
       "outputPaths": {
-        "type": "array",
         "items": {
           "type": "string"
-        }
+        },
+        "type": "array"
       },
       "provider": {
-        "type": "object",
+        "additionalProperties": false,
         "properties": {
           "executed": {
             "type": "boolean"
           },
           "metadata": {
-            "type": "object"
+            "$ref": "#/$defs/LLMProviderMetadata"
           }
         },
         "required": [
           "executed"
-        ]
+        ],
+        "type": "object"
       },
       "result": {},
       "sessionID": {
+        "pattern": "^ses",
         "type": "string"
       },
       "structured": {
@@ -94,96 +59,126 @@
       }
     },
     "required": [
+      "timestamp",
+      "sessionID",
       "assistantMessageID",
       "callID",
-      "content",
-      "provider",
-      "sessionID",
       "structured",
-      "timestamp"
-    ]
+      "content",
+      "provider"
+    ],
+    "type": "object",
+    "$defs": {
+      "LLMToolContent": {
+        "anyOf": [
+          {
+            "$ref": "#/$defs/ToolTextContent"
+          },
+          {
+            "$ref": "#/$defs/ToolFileContent"
+          }
+        ]
+      },
+      "LLMProviderMetadata": {
+        "additionalProperties": {
+          "type": "object"
+        },
+        "type": "object"
+      },
+      "ToolTextContent": {
+        "additionalProperties": false,
+        "properties": {
+          "text": {
+            "type": "string"
+          },
+          "type": {
+            "enum": [
+              "text"
+            ],
+            "type": "string"
+          }
+        },
+        "required": [
+          "type",
+          "text"
+        ],
+        "type": "object"
+      },
+      "ToolFileContent": {
+        "additionalProperties": false,
+        "properties": {
+          "mime": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "type": {
+            "enum": [
+              "file"
+            ],
+            "type": "string"
+          },
+          "uri": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "type",
+          "uri",
+          "mime"
+        ],
+        "type": "object"
+      }
+    }
   },
   "recordSchema": {
-    "type": "object",
+    "additionalProperties": false,
     "properties": {
       "id": {
+        "pattern": "^evt_",
         "type": "string"
       },
       "properties": {
-        "type": "object",
+        "additionalProperties": false,
         "properties": {
           "assistantMessageID": {
+            "pattern": "^msg_",
             "type": "string"
           },
           "callID": {
             "type": "string"
           },
           "content": {
-            "type": "array",
             "items": {
-              "anyOf": [
-                {
-                  "type": "object",
-                  "properties": {
-                    "text": {
-                      "type": "string"
-                    },
-                    "type": {
-                      "type": "string"
-                    }
-                  },
-                  "required": [
-                    "text",
-                    "type"
-                  ]
-                },
-                {
-                  "type": "object",
-                  "properties": {
-                    "mime": {
-                      "type": "string"
-                    },
-                    "name": {
-                      "type": "string"
-                    },
-                    "type": {
-                      "type": "string"
-                    },
-                    "uri": {
-                      "type": "string"
-                    }
-                  },
-                  "required": [
-                    "mime",
-                    "type",
-                    "uri"
-                  ]
-                }
-              ]
-            }
+              "$ref": "#/$defs/LLMToolContent"
+            },
+            "type": "array"
           },
           "outputPaths": {
-            "type": "array",
             "items": {
               "type": "string"
-            }
+            },
+            "type": "array"
           },
           "provider": {
-            "type": "object",
+            "additionalProperties": false,
             "properties": {
               "executed": {
                 "type": "boolean"
               },
               "metadata": {
-                "type": "object"
+                "$ref": "#/$defs/LLMProviderMetadata"
               }
             },
             "required": [
               "executed"
-            ]
+            ],
+            "type": "object"
           },
           "result": {},
           "sessionID": {
+            "pattern": "^ses",
             "type": "string"
           },
           "structured": {
@@ -194,27 +189,96 @@
           }
         },
         "required": [
+          "timestamp",
+          "sessionID",
           "assistantMessageID",
           "callID",
-          "content",
-          "provider",
-          "sessionID",
           "structured",
-          "timestamp"
-        ]
+          "content",
+          "provider"
+        ],
+        "type": "object"
       },
       "type": {
-        "type": "string",
         "enum": [
           "session.next.tool.success"
-        ]
+        ],
+        "type": "string"
       }
     },
     "required": [
       "id",
-      "properties",
-      "type"
-    ]
+      "type",
+      "properties"
+    ],
+    "type": "object",
+    "$defs": {
+      "LLMToolContent": {
+        "anyOf": [
+          {
+            "$ref": "#/$defs/ToolTextContent"
+          },
+          {
+            "$ref": "#/$defs/ToolFileContent"
+          }
+        ]
+      },
+      "LLMProviderMetadata": {
+        "additionalProperties": {
+          "type": "object"
+        },
+        "type": "object"
+      },
+      "ToolTextContent": {
+        "additionalProperties": false,
+        "properties": {
+          "text": {
+            "type": "string"
+          },
+          "type": {
+            "enum": [
+              "text"
+            ],
+            "type": "string"
+          }
+        },
+        "required": [
+          "type",
+          "text"
+        ],
+        "type": "object"
+      },
+      "ToolFileContent": {
+        "additionalProperties": false,
+        "properties": {
+          "mime": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "type": {
+            "enum": [
+              "file"
+            ],
+            "type": "string"
+          },
+          "uri": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "type",
+          "uri",
+          "mime"
+        ],
+        "type": "object"
+      }
+    }
+  },
+  "schemaFidelity": {
+    "payload": "exact",
+    "carrier": "exact"
   },
   "evidence": {
     "existence": [

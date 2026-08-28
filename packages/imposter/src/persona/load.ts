@@ -11,7 +11,12 @@ import { existsSync, readdirSync, readFileSync } from 'node:fs';
 import { createRequire } from 'node:module';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { loadModel, validatePayload, type PayloadSchema } from '@vibecook/puppeteer-surface';
+import {
+  isClaimAddressableAsmVersion,
+  loadModel,
+  validatePayload,
+  type PayloadSchema,
+} from '@vibecook/puppeteer-surface';
 import {
   OP_NAMES,
   RUNFLOW_DANGERS,
@@ -27,6 +32,7 @@ import {
 } from './types.ts';
 import type { ServeDocument } from '../session/serve.ts';
 import { scenarioSteps, type ScenarioAction, type ScenarioStep } from '../session/scenario.ts';
+import { mintPersonaSessionId } from './session-id.ts';
 
 const PERSONA_NAME = /^[a-z][a-z0-9-]{0,63}$/;
 
@@ -291,6 +297,7 @@ function parsePersonaDocument(path: string, value: unknown): PersonaDocument {
   const envelope = requireRecord(path, record.envelope, 'field "envelope"');
   if (record.eventNameField !== undefined) requireString(path, record, 'eventNameField');
   if (record.jsonrpcEventMethod !== undefined) requireString(path, record, 'jsonrpcEventMethod');
+  if (record.sessionIdTemplate !== undefined) requireString(path, record, 'sessionIdTemplate');
   // Every field is copied out by name rather than spread, so a persona cannot
   // smuggle in a key this loader has never validated. The cost is that adding
   // one to the type is not enough — `bindings` was silently dropped until it
@@ -378,6 +385,7 @@ function parsePersonaDocument(path: string, value: unknown): PersonaDocument {
     envelope,
     ...(record.eventNameField === undefined ? {} : { eventNameField: record.eventNameField as string }),
     ...(record.jsonrpcEventMethod === undefined ? {} : { jsonrpcEventMethod: record.jsonrpcEventMethod as string }),
+    ...(record.sessionIdTemplate === undefined ? {} : { sessionIdTemplate: record.sessionIdTemplate as string }),
     ...(personaBindings === undefined ? {} : { bindings: personaBindings }),
     ...(nativeStore === undefined ? {} : { nativeStore }),
     boot: boot as PersonaDocument['boot'],
@@ -602,7 +610,7 @@ export function loadPersona(vendor: string, options: LoadPersonaOptions = {}): P
   if (serve && httpServe) {
     throw new Error(`imposter: ${directory} cannot declare both serve.json and http-serve.json`);
   }
-  if (serve && model.manifest.asmVersion === 2) {
+  if (serve && isClaimAddressableAsmVersion(model.manifest.asmVersion)) {
     for (const [method, rawEntry] of Object.entries(serve)) {
       if (method === '$server') continue;
       requireRecord(servePath, rawEntry, `method "${method}"`);
@@ -618,7 +626,7 @@ export function loadPersona(vendor: string, options: LoadPersonaOptions = {}): P
       }
     }
   }
-  if (httpServe && model.manifest.asmVersion === 2) {
+  if (httpServe && isClaimAddressableAsmVersion(model.manifest.asmVersion)) {
     for (const route of httpServe.routes) {
       const event = events.get(route.event);
       if (!event) throw new Error(`imposter: ${httpServePath} serves ${route.event}, but it is not in the ASM`);
@@ -694,4 +702,9 @@ export function loadPersona(vendor: string, options: LoadPersonaOptions = {}): P
         .filter(Boolean);
     },
   };
+}
+
+/** Resolve and apply the persona-owned native session identity convention. */
+export function createPersonaSessionId(vendor: string, options: LoadPersonaOptions = {}): string {
+  return mintPersonaSessionId(loadPersona(vendor, options));
 }

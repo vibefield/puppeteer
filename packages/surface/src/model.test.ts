@@ -5,7 +5,9 @@ import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import {
   buildReport,
   buildGroundTruth,
+  CLAIM_ADDRESSABLE_ASM_VERSIONS,
   diffModelVsReport,
+  isClaimAddressableAsmVersion,
   loadGroundTruth,
   loadModel as loadCanonicalModel,
   loadModelSources as loadModel,
@@ -13,6 +15,13 @@ import {
   type PayloadSchema,
   type SurfaceModel,
 } from './model.js';
+
+describe('claim-addressable ASM versions', () => {
+  it('accepts every evidence-v2 ASM generation and rejects legacy or unknown formats', () => {
+    expect(CLAIM_ADDRESSABLE_ASM_VERSIONS).toEqual([2, 3]);
+    expect([1, 2, 3, 4].filter(isClaimAddressableAsmVersion)).toEqual([2, 3]);
+  });
+});
 
 let dir: string;
 
@@ -360,7 +369,7 @@ describe('loadModel', () => {
     ]);
   });
 
-  it('rejects v2 enum branches with no attributable evidence and unknown evidence references', () => {
+  it('treats schema enums as legal values and requires evidence only for declared behavior variants', () => {
     writeModel(dir, [
       eventFile({
         event: 'Stop',
@@ -368,10 +377,14 @@ describe('loadModel', () => {
       }),
     ]);
     upgradeFixtureToV2(dir);
-    expect(() => loadModel(dir)).toThrow(/payload enums require per-variant evidence/);
+    expect(loadModel(dir).events[0]?.payloadSchema?.properties?.reason?.enum).toEqual(['done']);
 
     const eventPath = join(dir, 'events', 'Stop.json');
     const event = JSON.parse(readFileSync(eventPath, 'utf8')) as Record<string, unknown>;
+    event.variantDiscriminants = ['reason'];
+    writeFileSync(eventPath, JSON.stringify(event));
+    expect(() => loadModel(dir)).toThrow(/variantDiscriminants require variants/);
+
     event.variants = [{ match: { reason: 'done' }, evidence: { existence: ['missing'], shape: ['captured'] } }];
     writeFileSync(eventPath, JSON.stringify(event));
     expect(() => loadModel(dir)).toThrow(/references unknown evidence "missing"/);
@@ -385,6 +398,40 @@ describe('loadModel', () => {
     expect(() => loadModel(dir)).toThrow(/unknown channel/);
   });
 
+  it('rejects duplicate native routes even when collision-safe ASM names differ', () => {
+    writeModel(dir, [
+      eventFile({ event: 'event-a', nativeName: 'native.event', transport: 'hook-callback' }),
+      eventFile({ event: 'event-b', nativeName: 'native.event', transport: 'hook-callback' }),
+    ]);
+    expect(() => loadModel(dir)).toThrow(/duplicates native route .*native\.event.*event-a/);
+
+    writeModel(dir, [
+      eventFile({ event: 'event-a', nativeName: 'native.a', transport: 'hook-callback' }),
+      eventFile({ event: 'event-b', nativeName: 'native.b', transport: 'hook-callback' }),
+    ]);
+    const canonical = buildGroundTruth(dir);
+    canonical.events[1]!.nativeName = 'native.a';
+    const canonicalPath = join(dir, 'groundtruth.json');
+    writeFileSync(canonicalPath, JSON.stringify(canonical));
+    expect(() => loadGroundTruth(canonicalPath)).toThrow(/duplicates native route .*native\.a.*event-a/);
+  });
+
+  it('applies transport and metadata validation to canonical ground truth', () => {
+    writeModel(dir, [eventFile({ event: 'callback', transport: 'hook-callback' })]);
+    upgradeFixtureToV2(dir);
+    const canonical = buildGroundTruth(dir);
+    canonical.events[0]!.resultSchema = { type: 'object' };
+    canonical.events[0]!.transport = 'jsonrpc-notification';
+    canonical.events[0]!.notes = '';
+    const canonicalPath = join(dir, 'groundtruth.json');
+    writeFileSync(canonicalPath, JSON.stringify(canonical));
+    expect(() => loadGroundTruth(canonicalPath)).toThrow(/field "notes" must be a non-empty string/);
+
+    canonical.events[0]!.notes = 'valid';
+    writeFileSync(canonicalPath, JSON.stringify(canonical));
+    expect(() => loadGroundTruth(canonicalPath)).toThrow(/resultSchema is only valid for a request\/callback/);
+  });
+
   it('loads all declared event rails and rejects inconsistent rail declarations', () => {
     writeModel(dir, [eventFile({ event: 'Stop', channels: ['hook'] })]);
     expect(loadModel(dir).events[0]?.channels).toEqual(['hook']);
@@ -396,7 +443,7 @@ describe('loadModel', () => {
     expect(() => loadModel(dir)).toThrow(/unknown channel "missing"/);
   });
 
-  it('models HTTP hook results and matcher-gated observation without treating notifications as requests', () => {
+  it('models callback results separately from native observation mode', () => {
     writeModel(dir, [eventFile({ event: 'WorktreeCreate', transport: 'http' })]);
     upgradeFixtureToV2(dir);
     const eventPath = join(dir, 'events', 'WorktreeCreate.json');
@@ -406,22 +453,22 @@ describe('loadModel', () => {
       required: ['worktreePath'],
       properties: { worktreePath: { type: 'string' } },
     };
-    event.matcherRequired = true;
+    event.observationMode = 'response-required';
     (event.evidence as Record<string, unknown>).result = ['captured'];
     writeFileSync(eventPath, JSON.stringify(event));
 
     const loaded = loadModel(dir).events[0]!;
     expect(loaded.resultSchema?.required).toEqual(['worktreePath']);
-    expect(loaded.matcherRequired).toBe(true);
+    expect(loaded.observationMode).toBe('response-required');
 
     event.transport = 'jsonrpc-notification';
     writeFileSync(eventPath, JSON.stringify(event));
-    expect(() => loadModel(dir)).toThrow(/resultSchema is only valid for a request transport/);
+    expect(() => loadModel(dir)).toThrow(/resultSchema is only valid for a request\/callback transport/);
 
     event.transport = 'http';
-    event.matcherRequired = 'yes';
+    event.observationMode = 'sometimes';
     writeFileSync(eventPath, JSON.stringify(event));
-    expect(() => loadModel(dir)).toThrow(/matcherRequired must be a boolean/);
+    expect(() => loadModel(dir)).toThrow(/observationMode must be passive\|matcher-required\|response-required/);
   });
 
   it('rejects malformed payload schemas before they reach an audit', () => {

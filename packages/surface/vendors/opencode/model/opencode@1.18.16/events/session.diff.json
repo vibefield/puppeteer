@@ -10,110 +10,145 @@
   "direction": "agent-to-client",
   "trigger": "Published on the native GET /event stream.",
   "payloadSchema": {
-    "type": "object",
+    "additionalProperties": false,
     "properties": {
       "diff": {
-        "type": "array",
         "items": {
-          "type": "object",
-          "properties": {
-            "additions": {
-              "type": "number"
-            },
-            "deletions": {
-              "type": "number"
-            },
-            "file": {
-              "type": "string"
-            },
-            "patch": {
-              "type": "string"
-            },
-            "status": {
-              "type": "string"
-            }
-          },
-          "required": [
-            "additions",
-            "deletions"
-          ]
-        }
+          "$ref": "#/$defs/SnapshotFileDiff"
+        },
+        "type": "array"
       },
       "sessionID": {
+        "pattern": "^ses",
         "type": "string"
       }
     },
     "required": [
-      "diff",
-      "sessionID"
-    ]
-  },
-  "recordSchema": {
+      "sessionID",
+      "diff"
+    ],
     "type": "object",
-    "properties": {
-      "id": {
-        "type": "string"
-      },
-      "properties": {
-        "type": "object",
+    "$defs": {
+      "SnapshotFileDiff": {
+        "additionalProperties": false,
         "properties": {
-          "diff": {
-            "type": "array",
-            "items": {
-              "type": "object",
-              "properties": {
-                "additions": {
-                  "type": "number"
-                },
-                "deletions": {
-                  "type": "number"
-                },
-                "file": {
-                  "type": "string"
-                },
-                "patch": {
-                  "type": "string"
-                },
-                "status": {
-                  "type": "string"
-                }
-              },
-              "required": [
-                "additions",
-                "deletions"
-              ]
-            }
+          "additions": {
+            "type": "number"
           },
-          "sessionID": {
+          "deletions": {
+            "type": "number"
+          },
+          "file": {
+            "type": "string"
+          },
+          "patch": {
+            "type": "string"
+          },
+          "status": {
+            "enum": [
+              "added",
+              "deleted",
+              "modified"
+            ],
             "type": "string"
           }
         },
         "required": [
-          "diff",
-          "sessionID"
-        ]
+          "additions",
+          "deletions"
+        ],
+        "type": "object"
+      }
+    }
+  },
+  "recordSchema": {
+    "additionalProperties": false,
+    "properties": {
+      "id": {
+        "pattern": "^evt_",
+        "type": "string"
+      },
+      "properties": {
+        "additionalProperties": false,
+        "properties": {
+          "diff": {
+            "items": {
+              "$ref": "#/$defs/SnapshotFileDiff"
+            },
+            "type": "array"
+          },
+          "sessionID": {
+            "pattern": "^ses",
+            "type": "string"
+          }
+        },
+        "required": [
+          "sessionID",
+          "diff"
+        ],
+        "type": "object"
       },
       "type": {
-        "type": "string",
         "enum": [
           "session.diff"
-        ]
+        ],
+        "type": "string"
       }
     },
     "required": [
       "id",
-      "properties",
-      "type"
-    ]
+      "type",
+      "properties"
+    ],
+    "type": "object",
+    "$defs": {
+      "SnapshotFileDiff": {
+        "additionalProperties": false,
+        "properties": {
+          "additions": {
+            "type": "number"
+          },
+          "deletions": {
+            "type": "number"
+          },
+          "file": {
+            "type": "string"
+          },
+          "patch": {
+            "type": "string"
+          },
+          "status": {
+            "enum": [
+              "added",
+              "deleted",
+              "modified"
+            ],
+            "type": "string"
+          }
+        },
+        "required": [
+          "additions",
+          "deletions"
+        ],
+        "type": "object"
+      }
+    }
+  },
+  "schemaFidelity": {
+    "payload": "exact",
+    "carrier": "exact"
   },
   "evidence": {
     "existence": [
+      "opencode-generated-openapi",
       "opencode-runtime-abort-stream"
     ],
     "shape": [
+      "opencode-generated-openapi",
       "opencode-runtime-abort-stream"
     ],
     "carrier": [
+      "opencode-generated-openapi",
       "opencode-runtime-abort-stream"
     ]
   },

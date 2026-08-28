@@ -10,35 +10,42 @@
   "direction": "agent-to-client",
   "trigger": "Published on the native GET /event stream.",
   "payloadSchema": {
-    "type": "object",
+    "additionalProperties": false,
     "properties": {
       "event": {
-        "type": "string",
         "enum": [
           "add",
           "change",
           "unlink"
-        ]
+        ],
+        "type": "string"
       },
       "file": {
         "type": "string"
       }
     },
     "required": [
-      "event",
-      "file"
-    ]
+      "file",
+      "event"
+    ],
+    "type": "object"
   },
   "recordSchema": {
-    "type": "object",
+    "additionalProperties": false,
     "properties": {
       "id": {
+        "pattern": "^evt_",
         "type": "string"
       },
       "properties": {
-        "type": "object",
+        "additionalProperties": false,
         "properties": {
           "event": {
+            "enum": [
+              "add",
+              "change",
+              "unlink"
+            ],
             "type": "string"
           },
           "file": {
@@ -46,34 +53,46 @@
           }
         },
         "required": [
-          "event",
-          "file"
-        ]
+          "file",
+          "event"
+        ],
+        "type": "object"
       },
       "type": {
-        "type": "string",
         "enum": [
           "file.watcher.updated"
-        ]
+        ],
+        "type": "string"
       }
     },
     "required": [
       "id",
-      "properties",
-      "type"
-    ]
+      "type",
+      "properties"
+    ],
+    "type": "object"
+  },
+  "schemaFidelity": {
+    "payload": "exact",
+    "carrier": "exact"
   },
   "evidence": {
     "existence": [
+      "opencode-generated-openapi",
       "opencode-runtime-file-delete"
     ],
     "shape": [
+      "opencode-generated-openapi",
       "opencode-runtime-file-delete"
     ],
     "carrier": [
+      "opencode-generated-openapi",
       "opencode-runtime-file-delete"
     ]
   },
+  "variantDiscriminants": [
+    "event"
+  ],
   "variants": [
     {
       "match": {

@@ -7,35 +7,64 @@
   "direction": "agent-to-client",
   "trigger": "Generate a fresh upstream attestation result on demand.",
   "resultSchema": {
-    "type": "object",
+    "$schema": "http://json-schema.org/draft-07/schema#",
     "properties": {
       "token": {
+        "description": "Opaque client attestation token.",
         "type": "string"
       }
     },
     "required": [
       "token"
-    ]
+    ],
+    "title": "AttestationGenerateResponse",
+    "type": "object"
   },
   "recordSchema": {
-    "type": "object",
+    "description": "Generate a fresh upstream attestation result on demand.",
     "properties": {
+      "id": {
+        "$ref": "#/$defs/RequestId"
+      },
       "method": {
-        "type": "string",
         "enum": [
           "attestation/generate"
-        ]
+        ],
+        "title": "Attestation/generateRequestMethod",
+        "type": "string"
       },
       "params": {
-        "type": "object"
-      },
-      "id": {}
+        "$ref": "#/$defs/AttestationGenerateParams"
+      }
     },
     "required": [
+      "id",
       "method",
-      "params",
-      "id"
-    ]
+      "params"
+    ],
+    "title": "Attestation/generateRequest",
+    "type": "object",
+    "$defs": {
+      "RequestId": {
+        "anyOf": [
+          {
+            "type": "string"
+          },
+          {
+            "format": "int64",
+            "type": "integer"
+          }
+        ]
+      },
+      "AttestationGenerateParams": {
+        "type": "object"
+      }
+    },
+    "$schema": "http://json-schema.org/draft-07/schema#"
+  },
+  "schemaFidelity": {
+    "result": "exact",
+    "carrier": "exact"
   },
   "evidence": {
     "existence": [

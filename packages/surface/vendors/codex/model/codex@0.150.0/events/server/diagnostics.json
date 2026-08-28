@@ -7,24 +7,49 @@
   "direction": "client-to-agent",
   "trigger": "Read content-free, process-local diagnostics.",
   "recordSchema": {
-    "type": "object",
+    "description": "Read content-free, process-local diagnostics.",
     "properties": {
+      "id": {
+        "$ref": "#/$defs/RequestId"
+      },
       "method": {
-        "type": "string",
         "enum": [
           "server/diagnostics"
-        ]
+        ],
+        "title": "Server/diagnosticsRequestMethod",
+        "type": "string"
       },
       "params": {
-        "type": "object"
-      },
-      "id": {}
+        "$ref": "#/$defs/ServerDiagnosticsParams"
+      }
     },
     "required": [
+      "id",
       "method",
-      "params",
-      "id"
-    ]
+      "params"
+    ],
+    "title": "Server/diagnosticsRequest",
+    "type": "object",
+    "$defs": {
+      "RequestId": {
+        "anyOf": [
+          {
+            "type": "string"
+          },
+          {
+            "format": "int64",
+            "type": "integer"
+          }
+        ]
+      },
+      "ServerDiagnosticsParams": {
+        "type": "object"
+      }
+    },
+    "$schema": "http://json-schema.org/draft-07/schema#"
+  },
+  "schemaFidelity": {
+    "carrier": "exact"
   },
   "evidence": {
     "existence": [

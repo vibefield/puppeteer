@@ -7,15 +7,19 @@
   "direction": "agent-to-client",
   "trigger": "Notifies the user of world-writable directories on Windows, which cannot be protected by the sandbox.",
   "payloadSchema": {
-    "type": "object",
     "properties": {
       "extraCount": {
-        "type": "number"
+        "format": "uint",
+        "minimum": 0,
+        "type": "integer"
       },
       "failedScan": {
         "type": "boolean"
       },
       "samplePaths": {
+        "items": {
+          "type": "string"
+        },
         "type": "array"
       }
     },
@@ -23,30 +27,61 @@
       "extraCount",
       "failedScan",
       "samplePaths"
-    ]
+    ],
+    "type": "object",
+    "$schema": "http://json-schema.org/draft-07/schema#"
   },
   "recordSchema": {
-    "type": "object",
+    "description": "Notifies the user of world-writable directories on Windows, which cannot be protected by the sandbox.",
     "properties": {
       "method": {
-        "type": "string",
         "enum": [
           "windows/worldWritableWarning"
-        ]
+        ],
+        "title": "Windows/worldWritableWarningNotificationMethod",
+        "type": "string"
       },
       "params": {
-        "type": "object"
-      },
-      "emittedAtMs": {
-        "type": "number",
-        "minimum": 1000000000000
+        "$ref": "#/$defs/WindowsWorldWritableWarningNotification"
       }
     },
     "required": [
       "method",
-      "params",
-      "emittedAtMs"
-    ]
+      "params"
+    ],
+    "title": "Windows/worldWritableWarningNotification",
+    "type": "object",
+    "$defs": {
+      "WindowsWorldWritableWarningNotification": {
+        "properties": {
+          "extraCount": {
+            "format": "uint",
+            "minimum": 0,
+            "type": "integer"
+          },
+          "failedScan": {
+            "type": "boolean"
+          },
+          "samplePaths": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
+          }
+        },
+        "required": [
+          "extraCount",
+          "failedScan",
+          "samplePaths"
+        ],
+        "type": "object"
+      }
+    },
+    "$schema": "http://json-schema.org/draft-07/schema#"
+  },
+  "schemaFidelity": {
+    "payload": "exact",
+    "carrier": "exact"
   },
   "evidence": {
     "existence": [
@@ -56,7 +91,7 @@
       "codex-generated-schema"
     ],
     "carrier": [
-      "codex-runtime-headless"
+      "codex-generated-schema"
     ]
   },
   "confidence": "unverified"

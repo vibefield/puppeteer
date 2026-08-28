@@ -1,7 +1,7 @@
 import { readFileSync, readdirSync } from 'node:fs';
 import { join } from 'node:path';
 import { describe, expect, it } from 'vitest';
-import { loadModel, validatePayload } from '@vibecook/puppeteer-surface';
+import { loadModel, validatePayload, validateSanitizedPayload } from '@vibecook/puppeteer-surface';
 import { checkCaptureDirectory } from '@vibecook/puppeteer-surface/sanitize';
 import { resolveAgentModel } from '../../../../scripts/agent-model-selection.mjs';
 import { grokRules } from './privacy.mjs';
@@ -39,7 +39,9 @@ describe(`the Grok ${selected.version} candidate ASM`, () => {
       const schema = schemas.get(message.method);
       if (!schemas.has(message.method)) failures.push(`unmodelled ${message.method}`);
       else if (schema && message.params !== undefined) {
-        failures.push(...validatePayload(schema, message.params).map((failure) => `${message.method}: ${failure}`));
+        failures.push(
+          ...validateSanitizedPayload(schema, message.params).map((failure) => `${message.method}: ${failure}`),
+        );
       }
     }
     expect(failures).toEqual([]);
@@ -66,20 +68,68 @@ describe(`the Grok ${selected.version} candidate ASM`, () => {
     }
   });
 
+  it('retains the complete supplemental ACP and xAI inventories without promoting them', () => {
+    const standard = model.events.find((event) => event.event === 'session/update')!;
+    const extension = model.events.find((event) => event.event === '_x.ai/session_notification')!;
+    expect(standard.variants).toHaveLength(11);
+    expect(extension.variants).toHaveLength(50);
+    expect(standard.payloadRefinements).toHaveLength(2);
+    expect(extension.payloadRefinements).toHaveLength(50);
+    for (const value of [
+      'plan',
+      'current_mode_update',
+      'config_option_update',
+      'session_info_update',
+      'usage_update',
+    ]) {
+      expect(standard.variants?.find((entry) => entry.match['update.sessionUpdate'] === value)?.confidence).toBe(
+        'unverified',
+      );
+    }
+    expect(extension.variants?.find((entry) => entry.match['update.sessionUpdate'] === 'diff_review')?.confidence).toBe(
+      'unverified',
+    );
+  });
+
+  it('retains the ACP file-diff contract as an explicitly unverified Grok lead', () => {
+    const standard = model.events.find((event) => event.event === 'session/update')!;
+    const tool = standard.payloadRefinements?.find(
+      (entry) => entry.match?.['update.sessionUpdate'] === 'tool_call_update',
+    );
+    expect(tool?.confidence).toBe('unverified');
+    expect(tool?.fidelity).toBe('exact');
+    const serialized = JSON.stringify(tool?.schema);
+    expect(serialized).toContain('"path"');
+    expect(serialized).toContain('"oldText"');
+    expect(serialized).toContain('"newText"');
+    expect(model.evidenceIndex?.limitations).toContain(
+      'No installed-artifact tool call was captured. ACP exposes path/oldText/newText diffs, but Grok file-edit observability remains an unverified source lead for this version.',
+    );
+  });
+
   it('models the durable JSONL carrier, including millisecond timestamps', () => {
     for (const eventName of ['session/update', '_x.ai/session/update']) {
       const event = model.events.find((candidate) => candidate.event === eventName)!;
       expect(event.recordSchema).toBeDefined();
-      expect(validatePayload(event.recordSchema!, { timestamp: 1_767_225_600_000, method: eventName, params: {} })).toEqual(
+      const params = {
+        sessionId: 'session-1',
+        update: {
+          sessionUpdate: eventName === 'session/update' ? 'agent_message_chunk' : 'hook_execution',
+        },
+      };
+      expect(validatePayload(event.recordSchema!, { timestamp: 1_767_225_600_000, method: eventName, params })).toEqual(
         [],
       );
-      expect(validatePayload(event.recordSchema!, { timestamp: 1_767_225_600, method: eventName, params: {} })).toEqual([
+      expect(validatePayload(event.recordSchema!, { timestamp: 1_767_225_600, method: eventName, params })).toContain(
         'field "timestamp" is below minimum 1000000000000',
-      ]);
+      );
     }
   });
 
   it('contains no detectable private capture material', () => {
     expect(checkCaptureDirectory(capturesDir, grokRules)).toEqual([]);
+    expect(JSON.parse(readFileSync(join(capturesDir, 'capture.json'), 'utf8')).representation).toBe(
+      'legacy-privacy-projection',
+    );
   });
 });

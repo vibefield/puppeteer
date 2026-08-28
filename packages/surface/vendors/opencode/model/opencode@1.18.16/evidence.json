@@ -224,6 +224,23 @@
       "sha256": "41f1e1d4214af39168ca46f8bdb42a6dc664b997cde4e793abfa80be62c49ec4"
     },
     {
+      "id": "generated-openapi",
+      "kind": "generated-schema",
+      "path": "packages/surface/vendors/opencode/references/opencode@1.18.16",
+      "exclude": [
+        "source/workspace-tools.json"
+      ],
+      "digestAlgorithm": "sha256-path-content-v1",
+      "sha256": "146ba425a865cbb1b8357fb67285137494bbf3461c55bf6d713d54bba2425b6c"
+    },
+    {
+      "id": "source-workspace-tools",
+      "kind": "source-contract",
+      "path": "packages/surface/vendors/opencode/references/opencode@1.18.16/source",
+      "digestAlgorithm": "sha256-path-content-v1",
+      "sha256": "def5d7f87b6c73a6dd3e6d2b36ff273372a34a8d9de98eb3e04c27d1ad664127"
+    },
+    {
       "id": "agent-surface-model",
       "kind": "model-tree",
       "path": "packages/surface/vendors/opencode/model/opencode@1.18.16",
@@ -231,7 +248,7 @@
         "evidence.json"
       ],
       "digestAlgorithm": "sha256-path-content-v1",
-      "sha256": "7e8af1f26163ddc19f76059df56e98568a618f5bfc773145962e336e7cd284bb"
+      "sha256": "244e4080beee536c9f8345edeaef675ef75339c1e0e39e8b05ca656ed52dc81c"
     }
   ],
   "claims": [
@@ -250,10 +267,19 @@
       "id": "opencode-generated-openapi",
       "kind": "generated-schema",
       "confidence": "unverified",
+      "record": "generated-openapi",
       "artifact": "opencode-1.18.16-darwin-arm64",
       "sourceReference": 0,
       "harness": "GET /doc from the pinned private opencode serve backend",
       "notes": "The generated schema proves possible names and shapes, not runtime occurrence or ordering."
+    },
+    {
+      "id": "opencode-exact-release-source",
+      "kind": "exact-source",
+      "confidence": "unverified",
+      "record": "source-workspace-tools",
+      "sourceReference": 0,
+      "notes": "Digest-pinned exact-release source establishes workspace tool arguments, result metadata, diff-preview production, generic output truncation semantics, and watcher variants; source alone does not prove runtime occurrence."
     },
     {
       "id": "opencode-runtime-abort-stream",
@@ -562,6 +588,8 @@
   "limitations": [
     "Artifact integrity and runtime probes are pinned only for darwin-arm64.",
     "OpenAPI/source-only branches remain unverified until a controlled runtime capture exercises them.",
+    "Workspace patch strings are indentation-normalized presentation previews and are not guaranteed to be directly applicable unified diffs.",
+    "Tool metadata `truncated` describes model-facing output truncation, not patch completeness.",
     "The SSE carrier exposes no observed replay cursor; durable REST rehydration is required after a gap.",
     "Native attach was captured on an exact fresh session, but not yet combined with a backend-restart resume."
   ]

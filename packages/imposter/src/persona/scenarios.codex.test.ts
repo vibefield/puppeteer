@@ -176,7 +176,7 @@ describe('codex persona scenarios', () => {
 
   it('keeps every curated runflow at realistic agent-workflow depth', () => {
     const toolItemTypes = new Set([
-      'collabToolCall',
+      'collabAgentToolCall',
       'commandExecution',
       'dynamicToolCall',
       'fileChange',
@@ -205,14 +205,14 @@ describe('codex persona scenarios', () => {
       expect(
         emitted.some((emit) => {
           const item = emit.with?.item as Record<string, unknown> | undefined;
-          return item?.type === 'collabToolCall' && item.tool === 'spawn_agent';
+          return item?.type === 'collabAgentToolCall' && item.tool === 'spawnAgent';
         }),
         `${flow.id} delegates work`,
       ).toBe(true);
       expect(
         emitted.some((emit) => {
           const item = emit.with?.item as Record<string, unknown> | undefined;
-          return item?.type === 'collabToolCall' && item.tool === 'wait_agent' && item.status === 'completed';
+          return item?.type === 'collabAgentToolCall' && item.tool === 'wait' && item.status === 'completed';
         }),
         `${flow.id} joins delegated work`,
       ).toBe(true);

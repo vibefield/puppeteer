@@ -6,11 +6,26 @@
   "transport": "jsonrpc-request",
   "direction": "client-to-agent",
   "payloadSchema": {
-    "type": "object",
+    "description": "Parameters for searching visible message occurrences within one paginated thread.",
     "properties": {
-      "cursor": {},
-      "limit": {},
+      "cursor": {
+        "description": "Opaque cursor returned by a previous call for the same thread and search term.",
+        "type": [
+          "string",
+          "null"
+        ]
+      },
+      "limit": {
+        "description": "Optional occurrence page size.",
+        "format": "uint32",
+        "minimum": 0,
+        "type": [
+          "integer",
+          "null"
+        ]
+      },
       "searchTerm": {
+        "description": "Case-insensitive literal substring to find in visible user messages and final assistant messages.",
         "type": "string"
       },
       "threadId": {
@@ -20,27 +35,84 @@
     "required": [
       "searchTerm",
       "threadId"
-    ]
+    ],
+    "type": "object",
+    "$schema": "http://json-schema.org/draft-07/schema#"
   },
   "recordSchema": {
-    "type": "object",
     "properties": {
+      "id": {
+        "$ref": "#/$defs/RequestId"
+      },
       "method": {
-        "type": "string",
         "enum": [
           "thread/searchOccurrences"
-        ]
+        ],
+        "title": "Thread/searchOccurrencesRequestMethod",
+        "type": "string"
       },
       "params": {
-        "type": "object"
-      },
-      "id": {}
+        "$ref": "#/$defs/ThreadSearchOccurrencesParams"
+      }
     },
     "required": [
+      "id",
       "method",
-      "params",
-      "id"
-    ]
+      "params"
+    ],
+    "title": "Thread/searchOccurrencesRequest",
+    "type": "object",
+    "$defs": {
+      "RequestId": {
+        "anyOf": [
+          {
+            "type": "string"
+          },
+          {
+            "format": "int64",
+            "type": "integer"
+          }
+        ]
+      },
+      "ThreadSearchOccurrencesParams": {
+        "description": "Parameters for searching visible message occurrences within one paginated thread.",
+        "properties": {
+          "cursor": {
+            "description": "Opaque cursor returned by a previous call for the same thread and search term.",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "limit": {
+            "description": "Optional occurrence page size.",
+            "format": "uint32",
+            "minimum": 0,
+            "type": [
+              "integer",
+              "null"
+            ]
+          },
+          "searchTerm": {
+            "description": "Case-insensitive literal substring to find in visible user messages and final assistant messages.",
+            "type": "string"
+          },
+          "threadId": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "searchTerm",
+          "threadId"
+        ],
+        "type": "object"
+      }
+    },
+    "$schema": "http://json-schema.org/draft-07/schema#"
+  },
+  "schemaFidelity": {
+    "payload": "exact",
+    "carrier": "exact"
   },
   "evidence": {
     "existence": [

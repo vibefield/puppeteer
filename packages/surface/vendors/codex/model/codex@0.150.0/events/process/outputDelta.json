@@ -7,48 +7,137 @@
   "direction": "agent-to-client",
   "trigger": "Stream base64-encoded stdout/stderr chunks for a running `process/spawn` session.",
   "payloadSchema": {
-    "type": "object",
+    "description": "Base64-encoded output chunk emitted for a streaming `process/spawn` request.",
     "properties": {
       "capReached": {
+        "description": "True on the final streamed chunk for this stream when output was truncated by `outputBytesCap`.",
         "type": "boolean"
       },
       "deltaBase64": {
+        "description": "Base64-encoded output bytes.",
         "type": "string"
       },
       "processHandle": {
+        "description": "Client-supplied, connection-scoped `processHandle` from `process/spawn`.",
         "type": "string"
       },
-      "stream": {}
+      "stream": {
+        "allOf": [
+          {
+            "$ref": "#/$defs/ProcessOutputStream"
+          }
+        ],
+        "description": "Output stream this chunk belongs to."
+      }
     },
     "required": [
       "capReached",
       "deltaBase64",
       "processHandle",
       "stream"
-    ]
+    ],
+    "type": "object",
+    "$defs": {
+      "ProcessOutputStream": {
+        "description": "Stream label for `process/outputDelta` notifications.",
+        "oneOf": [
+          {
+            "description": "stdout stream. PTY mode multiplexes terminal output here.",
+            "enum": [
+              "stdout"
+            ],
+            "type": "string"
+          },
+          {
+            "description": "stderr stream.",
+            "enum": [
+              "stderr"
+            ],
+            "type": "string"
+          }
+        ]
+      }
+    },
+    "$schema": "http://json-schema.org/draft-07/schema#"
   },
   "recordSchema": {
-    "type": "object",
+    "description": "Stream base64-encoded stdout/stderr chunks for a running `process/spawn` session.",
     "properties": {
       "method": {
-        "type": "string",
         "enum": [
           "process/outputDelta"
-        ]
+        ],
+        "title": "Process/outputDeltaNotificationMethod",
+        "type": "string"
       },
       "params": {
-        "type": "object"
-      },
-      "emittedAtMs": {
-        "type": "number",
-        "minimum": 1000000000000
+        "$ref": "#/$defs/ProcessOutputDeltaNotification"
       }
     },
     "required": [
       "method",
-      "params",
-      "emittedAtMs"
-    ]
+      "params"
+    ],
+    "title": "Process/outputDeltaNotification",
+    "type": "object",
+    "$defs": {
+      "ProcessOutputDeltaNotification": {
+        "description": "Base64-encoded output chunk emitted for a streaming `process/spawn` request.",
+        "properties": {
+          "capReached": {
+            "description": "True on the final streamed chunk for this stream when output was truncated by `outputBytesCap`.",
+            "type": "boolean"
+          },
+          "deltaBase64": {
+            "description": "Base64-encoded output bytes.",
+            "type": "string"
+          },
+          "processHandle": {
+            "description": "Client-supplied, connection-scoped `processHandle` from `process/spawn`.",
+            "type": "string"
+          },
+          "stream": {
+            "allOf": [
+              {
+                "$ref": "#/$defs/ProcessOutputStream"
+              }
+            ],
+            "description": "Output stream this chunk belongs to."
+          }
+        },
+        "required": [
+          "capReached",
+          "deltaBase64",
+          "processHandle",
+          "stream"
+        ],
+        "type": "object"
+      },
+      "ProcessOutputStream": {
+        "description": "Stream label for `process/outputDelta` notifications.",
+        "oneOf": [
+          {
+            "description": "stdout stream. PTY mode multiplexes terminal output here.",
+            "enum": [
+              "stdout"
+            ],
+            "type": "string"
+          },
+          {
+            "description": "stderr stream.",
+            "enum": [
+              "stderr"
+            ],
+            "type": "string"
+          }
+        ]
+      }
+    },
+    "$schema": "http://json-schema.org/draft-07/schema#"
+  },
+  "schemaFidelity": {
+    "payload": "exact",
+    "carrier": "exact"
   },
   "evidence": {
     "existence": [
@@ -58,7 +147,7 @@
       "codex-generated-schema"
     ],
     "carrier": [
-      "codex-runtime-headless"
+      "codex-generated-schema"
     ]
   },
   "confidence": "unverified"

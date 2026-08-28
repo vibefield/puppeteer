@@ -1,6 +1,17 @@
 {
   "name": "unknown-event",
   "then": [
-    { "at": 0, "do": { "emit": { "event": "thread/somethingTheModelHasNeverSeen", "with": { "threadId": "$threadId", "futureField": "preserve me" } } } }
+    {
+      "at": 0,
+      "do": {
+        "emit": {
+          "event": "thread/somethingTheModelHasNeverSeen",
+          "with": {
+            "threadId": "$threadId",
+            "futureField": "preserve me"
+          }
+        }
+      }
+    }
   ]
 }

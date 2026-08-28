@@ -3,27 +3,68 @@
   "surfaceVersion": "1.0.0",
   "event": "session/cancel",
   "channel": "acp",
+  "channels": ["acp"],
   "transport": "jsonrpc-notification",
+  "direction": "client-to-agent",
   "payloadSchema": {
-    "type": "object",
+    "description": "Notification to cancel ongoing operations for a session.\n\nSee protocol docs: [Cancellation](https://agentclientprotocol.com/protocol/prompt-turn#cancellation)",
     "properties": {
+      "_meta": {
+        "additionalProperties": true,
+        "description": "The _meta property is reserved by ACP to allow clients and agents to attach additional\nmetadata to their interactions. Implementations MUST NOT make assumptions about values at\nthese keys.\n\nSee protocol docs: [Extensibility](https://agentclientprotocol.com/protocol/extensibility)",
+        "type": ["object", "null"]
+      },
       "sessionId": {
+        "allOf": [
+          {
+            "$ref": "#/$defs/SessionId"
+          }
+        ],
+        "description": "The ID of the session to cancel operations for."
+      }
+    },
+    "required": ["sessionId"],
+    "type": "object",
+    "x-method": "session/cancel",
+    "x-side": "agent",
+    "$defs": {
+      "SessionId": {
+        "description": "A unique identifier for a conversation session between a client and agent.\n\nSessions maintain their own context, conversation history, and state,\nallowing multiple independent interactions with the same agent.\n\nSee protocol docs: [Session ID](https://agentclientprotocol.com/protocol/session-setup#session-id)",
         "type": "string"
       }
     },
-    "required": [
-      "sessionId"
-    ]
+    "$schema": "https://json-schema.org/draft/2020-12/schema"
+  },
+  "recordSchema": {
+    "type": "object",
+    "properties": {
+      "jsonrpc": {
+        "type": "string",
+        "enum": ["2.0"]
+      },
+      "method": {
+        "type": "string",
+        "enum": ["session/cancel"]
+      },
+      "params": {
+        "type": "object"
+      }
+    },
+    "required": ["jsonrpc", "method", "params"]
+  },
+  "recordChannel": "acp",
+  "evidence": {
+    "existence": ["grok-public-acp-lead"],
+    "shape": ["grok-public-acp-lead"],
+    "carrier": ["grok-public-acp-lead"]
   },
   "confidence": "unverified",
-  "notes": "ACP-standard cancellation implemented by the adapter path but not exercised in the installed-artifact census.",
-  "direction": "client-to-agent",
-  "evidence": {
-    "existence": [
-      "grok-public-mirror-lead"
-    ],
-    "shape": [
-      "grok-public-mirror-lead"
+  "schemaFidelity": {
+    "payload": "exact",
+    "carrier": "structural",
+    "limitations": [
+      "The retained schema is exact for ACP schema 0.11.4 at e931357254ff44573294d5cee214a269e0cd6c54, the dependency of a supplemental public Grok source commit. The installed binary's reported revision is absent from that mirror, so binary equivalence is unverified."
     ]
-  }
+  },
+  "notes": "Supplemental ACP dependency surface; not exercised against the installed artifact."
 }

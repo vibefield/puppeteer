@@ -10,62 +10,77 @@
   "direction": "agent-to-client",
   "trigger": "Published on the native GET /event stream.",
   "payloadSchema": {
-    "type": "object",
+    "additionalProperties": false,
     "properties": {
       "requestID": {
+        "pattern": "^que",
         "type": "string"
       },
       "sessionID": {
+        "pattern": "^ses",
         "type": "string"
       }
     },
     "required": [
-      "requestID",
-      "sessionID"
-    ]
+      "sessionID",
+      "requestID"
+    ],
+    "type": "object"
   },
   "recordSchema": {
-    "type": "object",
+    "additionalProperties": false,
     "properties": {
       "id": {
+        "pattern": "^evt_",
         "type": "string"
       },
       "properties": {
-        "type": "object",
+        "additionalProperties": false,
         "properties": {
           "requestID": {
+            "pattern": "^que",
             "type": "string"
           },
           "sessionID": {
+            "pattern": "^ses",
             "type": "string"
           }
         },
         "required": [
-          "requestID",
-          "sessionID"
-        ]
+          "sessionID",
+          "requestID"
+        ],
+        "type": "object"
       },
       "type": {
-        "type": "string",
         "enum": [
           "question.rejected"
-        ]
+        ],
+        "type": "string"
       }
     },
     "required": [
       "id",
-      "properties",
-      "type"
-    ]
+      "type",
+      "properties"
+    ],
+    "type": "object"
+  },
+  "schemaFidelity": {
+    "payload": "exact",
+    "carrier": "exact"
   },
   "evidence": {
     "existence": [
+      "opencode-generated-openapi",
       "opencode-runtime-question-reject"
     ],
     "shape": [
+      "opencode-generated-openapi",
       "opencode-runtime-question-reject"
     ],
     "carrier": [
+      "opencode-generated-openapi",
       "opencode-runtime-question-reject"
     ]
   },

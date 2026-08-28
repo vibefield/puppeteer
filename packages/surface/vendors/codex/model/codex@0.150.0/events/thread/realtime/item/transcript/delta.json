@@ -6,7 +6,7 @@
   "transport": "jsonrpc-notification",
   "direction": "agent-to-client",
   "payloadSchema": {
-    "type": "object",
+    "description": "EXPERIMENTAL - text appended to an active realtime transcript item.",
     "properties": {
       "delta": {
         "type": "string"
@@ -22,30 +22,56 @@
       "delta",
       "itemId",
       "threadId"
-    ]
+    ],
+    "type": "object",
+    "$schema": "http://json-schema.org/draft-07/schema#"
   },
   "recordSchema": {
-    "type": "object",
     "properties": {
       "method": {
-        "type": "string",
         "enum": [
           "thread/realtime/item/transcript/delta"
-        ]
+        ],
+        "title": "Thread/realtime/item/transcript/deltaNotificationMethod",
+        "type": "string"
       },
       "params": {
-        "type": "object"
-      },
-      "emittedAtMs": {
-        "type": "number",
-        "minimum": 1000000000000
+        "$ref": "#/$defs/ThreadRealtimeItemTranscriptDeltaNotification"
       }
     },
     "required": [
       "method",
-      "params",
-      "emittedAtMs"
-    ]
+      "params"
+    ],
+    "title": "Thread/realtime/item/transcript/deltaNotification",
+    "type": "object",
+    "$defs": {
+      "ThreadRealtimeItemTranscriptDeltaNotification": {
+        "description": "EXPERIMENTAL - text appended to an active realtime transcript item.",
+        "properties": {
+          "delta": {
+            "type": "string"
+          },
+          "itemId": {
+            "type": "string"
+          },
+          "threadId": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "delta",
+          "itemId",
+          "threadId"
+        ],
+        "type": "object"
+      }
+    },
+    "$schema": "http://json-schema.org/draft-07/schema#"
+  },
+  "schemaFidelity": {
+    "payload": "exact",
+    "carrier": "exact"
   },
   "evidence": {
     "existence": [
@@ -55,7 +81,7 @@
       "codex-generated-schema"
     ],
     "carrier": [
-      "codex-runtime-headless"
+      "codex-generated-schema"
     ]
   },
   "confidence": "unverified"

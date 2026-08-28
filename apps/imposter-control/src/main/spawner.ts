@@ -7,12 +7,12 @@
  * projection, but an adapter never participates in spawning or native control.
  */
 import { spawn, type ChildProcess } from 'node:child_process';
-import { randomUUID } from 'node:crypto';
 import { mkdtempSync, rmSync } from 'node:fs';
 import { createRequire } from 'node:module';
 import { tmpdir } from 'node:os';
 import { dirname, join } from 'node:path';
 import type { EmulatorSpawner } from './plane.js';
+import { createPersonaSessionId } from '@vibecook/puppeteer-imposter';
 
 export interface PersonaSpawnerOptions {
   /** Test overrides for the control channel the imposter dials. */
@@ -50,7 +50,7 @@ export function createPersonaSpawner(
     label,
     async spawn() {
       const cwd = mkdtempSync(join(tmpdir(), 'puppeteer-emulator-spawn-'));
-      const sessionId = randomUUID();
+      const sessionId = createPersonaSessionId(vendor);
       let child: ChildProcess | undefined;
       try {
         const sessionArguments = vendor === 'kimi' ? ['--session', sessionId] : ['--session-id', sessionId];

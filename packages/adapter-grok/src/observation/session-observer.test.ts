@@ -46,6 +46,21 @@ function twoTurnRecords(): unknown[] {
 }
 
 describe('GrokUpdateNormalizer', () => {
+  it('accepts only the two ground-truth durable update carriers', () => {
+    const normalizer = new GrokUpdateNormalizer();
+    const update = {
+      sessionUpdate: 'agent_message_chunk',
+      content: { type: 'text', text: 'must not be consumed' },
+    };
+
+    expect(
+      normalizer.normalize({
+        ...(record(update, 'prompt-1') as Record<string, unknown>),
+        method: '_x.ai/session_notification',
+      }),
+    ).toEqual([]);
+  });
+
   it('preserves the nested identity of live xAI extension notifications', () => {
     expect(
       grokExtensionEvents('_x.ai/session_notification', {

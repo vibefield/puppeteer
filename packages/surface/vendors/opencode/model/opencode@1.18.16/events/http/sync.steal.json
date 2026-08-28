@@ -10,16 +10,24 @@
   "direction": "client-to-agent",
   "trigger": "Steal session into workspace — Update a session to belong to the current workspace through the sync event system.",
   "payloadSchema": {
-    "type": "object",
     "properties": {
+      "body": {
+        "additionalProperties": false,
+        "properties": {
+          "sessionID": {
+            "pattern": "^ses",
+            "type": "string"
+          }
+        },
+        "required": [
+          "sessionID"
+        ],
+        "type": "object"
+      },
       "method": {
         "type": "string"
       },
-      "route": {
-        "type": "string"
-      },
       "query": {
-        "type": "object",
         "properties": {
           "directory": {
             "type": "string"
@@ -27,47 +35,42 @@
           "workspace": {
             "type": "string"
           }
-        }
-      },
-      "body": {
-        "type": "object",
-        "properties": {
-          "sessionID": {
-            "type": "string"
-          }
         },
-        "required": [
-          "sessionID"
-        ]
+        "type": "object"
+      },
+      "route": {
+        "type": "string"
       }
     },
     "required": [
       "method",
       "route"
-    ]
+    ],
+    "type": "object"
   },
   "resultSchema": {
-    "type": "object",
     "properties": {
+      "body": {
+        "additionalProperties": false,
+        "description": "Session stolen into workspace",
+        "properties": {
+          "sessionID": {
+            "pattern": "^ses",
+            "type": "string"
+          }
+        },
+        "required": [
+          "sessionID"
+        ],
+        "type": "object"
+      },
       "method": {
-        "type": "string",
         "enum": [
           "POST"
-        ]
-      },
-      "route": {
-        "type": "string",
-        "enum": [
-          "/sync/steal"
-        ]
-      },
-      "status": {
-        "type": "integer",
-        "minimum": 200,
-        "maximum": 299
+        ],
+        "type": "string"
       },
       "query": {
-        "type": "object",
         "properties": {
           "directory": {
             "type": "string"
@@ -75,18 +78,19 @@
           "workspace": {
             "type": "string"
           }
-        }
-      },
-      "body": {
-        "type": "object",
-        "properties": {
-          "sessionID": {
-            "type": "string"
-          }
         },
-        "required": [
-          "sessionID"
-        ]
+        "type": "object"
+      },
+      "route": {
+        "enum": [
+          "/sync/steal"
+        ],
+        "type": "string"
+      },
+      "status": {
+        "maximum": 299,
+        "minimum": 200,
+        "type": "integer"
       }
     },
     "required": [
@@ -94,34 +98,39 @@
       "route",
       "status",
       "body"
-    ]
+    ],
+    "type": "object"
   },
   "recordSchema": {
-    "type": "object",
     "properties": {
       "direction": {
-        "type": "string",
         "enum": [
           "client-to-agent"
-        ]
+        ],
+        "type": "string"
       },
       "request": {
-        "type": "object",
         "properties": {
+          "body": {
+            "additionalProperties": false,
+            "properties": {
+              "sessionID": {
+                "pattern": "^ses",
+                "type": "string"
+              }
+            },
+            "required": [
+              "sessionID"
+            ],
+            "type": "object"
+          },
           "method": {
-            "type": "string",
             "enum": [
               "POST"
-            ]
-          },
-          "route": {
-            "type": "string",
-            "enum": [
-              "/sync/steal"
-            ]
+            ],
+            "type": "string"
           },
           "query": {
-            "type": "object",
             "properties": {
               "directory": {
                 "type": "string"
@@ -129,30 +138,33 @@
               "workspace": {
                 "type": "string"
               }
-            }
-          },
-          "body": {
-            "type": "object",
-            "properties": {
-              "sessionID": {
-                "type": "string"
-              }
             },
-            "required": [
-              "sessionID"
-            ]
+            "type": "object"
+          },
+          "route": {
+            "enum": [
+              "/sync/steal"
+            ],
+            "type": "string"
           }
         },
         "required": [
           "method",
           "route"
-        ]
+        ],
+        "type": "object"
       }
     },
     "required": [
       "direction",
       "request"
-    ]
+    ],
+    "type": "object"
+  },
+  "schemaFidelity": {
+    "payload": "semantic",
+    "result": "semantic",
+    "carrier": "semantic"
   },
   "evidence": {
     "existence": [

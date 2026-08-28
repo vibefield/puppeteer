@@ -10,30 +10,53 @@
   "direction": "client-to-agent",
   "trigger": "Update PTY session — Update the title or viewport size of one PTY session.",
   "payloadSchema": {
-    "type": "object",
     "properties": {
+      "body": {
+        "additionalProperties": false,
+        "properties": {
+          "size": {
+            "additionalProperties": false,
+            "properties": {
+              "cols": {
+                "exclusiveMinimum": 0,
+                "type": "integer"
+              },
+              "rows": {
+                "exclusiveMinimum": 0,
+                "type": "integer"
+              }
+            },
+            "required": [
+              "rows",
+              "cols"
+            ],
+            "type": "object"
+          },
+          "title": {
+            "type": "string"
+          }
+        },
+        "type": "object"
+      },
       "method": {
         "type": "string"
       },
-      "route": {
-        "type": "string"
-      },
       "params": {
-        "type": "object",
         "properties": {
           "ptyID": {
+            "pattern": "^pty",
             "type": "string"
           }
         },
         "required": [
           "ptyID"
-        ]
+        ],
+        "type": "object"
       },
       "query": {
-        "type": "object",
         "properties": {
           "location": {
-            "type": "object",
+            "additionalProperties": false,
             "properties": {
               "directory": {
                 "type": "string"
@@ -41,34 +64,14 @@
               "workspace": {
                 "type": "string"
               }
-            }
-          }
-        }
-      },
-      "body": {
-        "type": "object",
-        "properties": {
-          "size": {
-            "type": "object",
-            "properties": {
-              "cols": {
-                "type": "integer",
-                "exclusiveMinimum": 0
-              },
-              "rows": {
-                "type": "integer",
-                "exclusiveMinimum": 0
-              }
             },
-            "required": [
-              "cols",
-              "rows"
-            ]
-          },
-          "title": {
-            "type": "string"
+            "type": "object"
           }
-        }
+        },
+        "type": "object"
+      },
+      "route": {
+        "type": "string"
       }
     },
     "required": [
@@ -76,44 +79,49 @@
       "route",
       "params",
       "body"
-    ]
+    ],
+    "type": "object"
   },
   "resultSchema": {
-    "type": "object",
     "properties": {
+      "body": {
+        "additionalProperties": false,
+        "properties": {
+          "data": {
+            "$ref": "#/$defs/Pty"
+          },
+          "location": {
+            "$ref": "#/$defs/LocationInfo"
+          }
+        },
+        "required": [
+          "location",
+          "data"
+        ],
+        "type": "object"
+      },
       "method": {
-        "type": "string",
         "enum": [
           "PUT"
-        ]
-      },
-      "route": {
-        "type": "string",
-        "enum": [
-          "/api/pty/:ptyID"
-        ]
-      },
-      "status": {
-        "type": "integer",
-        "minimum": 200,
-        "maximum": 299
+        ],
+        "type": "string"
       },
       "params": {
-        "type": "object",
         "properties": {
           "ptyID": {
+            "pattern": "^pty",
             "type": "string"
           }
         },
         "required": [
           "ptyID"
-        ]
+        ],
+        "type": "object"
       },
       "query": {
-        "type": "object",
         "properties": {
           "location": {
-            "type": "object",
+            "additionalProperties": false,
             "properties": {
               "directory": {
                 "type": "string"
@@ -121,91 +129,22 @@
               "workspace": {
                 "type": "string"
               }
-            }
-          }
-        }
-      },
-      "body": {
-        "type": "object",
-        "properties": {
-          "data": {
-            "type": "object",
-            "properties": {
-              "args": {
-                "type": "array",
-                "items": {
-                  "type": "string"
-                }
-              },
-              "command": {
-                "type": "string"
-              },
-              "cwd": {
-                "type": "string"
-              },
-              "exitCode": {
-                "type": "integer",
-                "minimum": 0
-              },
-              "id": {
-                "type": "string"
-              },
-              "pid": {
-                "type": "integer",
-                "minimum": 0
-              },
-              "status": {
-                "type": "string"
-              },
-              "title": {
-                "type": "string"
-              }
             },
-            "required": [
-              "args",
-              "command",
-              "cwd",
-              "id",
-              "pid",
-              "status",
-              "title"
-            ]
-          },
-          "location": {
-            "type": "object",
-            "properties": {
-              "directory": {
-                "type": "string"
-              },
-              "project": {
-                "type": "object",
-                "properties": {
-                  "directory": {
-                    "type": "string"
-                  },
-                  "id": {
-                    "type": "string"
-                  }
-                },
-                "required": [
-                  "directory",
-                  "id"
-                ]
-              },
-              "workspaceID": {
-                "type": "string"
-              }
-            },
-            "required": [
-              "directory",
-              "project"
-            ]
+            "type": "object"
           }
         },
-        "required": [
-          "data",
-          "location"
-        ]
+        "type": "object"
+      },
+      "route": {
+        "enum": [
+          "/api/pty/:ptyID"
+        ],
+        "type": "string"
+      },
+      "status": {
+        "maximum": 299,
+        "minimum": 200,
+        "type": "integer"
       }
     },
     "required": [
@@ -214,48 +153,152 @@
       "status",
       "params",
       "body"
-    ]
+    ],
+    "type": "object",
+    "$defs": {
+      "Pty": {
+        "additionalProperties": false,
+        "properties": {
+          "args": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
+          },
+          "command": {
+            "type": "string"
+          },
+          "cwd": {
+            "type": "string"
+          },
+          "exitCode": {
+            "minimum": 0,
+            "type": "integer"
+          },
+          "id": {
+            "pattern": "^pty",
+            "type": "string"
+          },
+          "pid": {
+            "minimum": 0,
+            "type": "integer"
+          },
+          "status": {
+            "enum": [
+              "running",
+              "exited"
+            ],
+            "type": "string"
+          },
+          "title": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "title",
+          "command",
+          "args",
+          "cwd",
+          "status",
+          "pid"
+        ],
+        "type": "object"
+      },
+      "LocationInfo": {
+        "additionalProperties": false,
+        "properties": {
+          "directory": {
+            "type": "string"
+          },
+          "project": {
+            "additionalProperties": false,
+            "properties": {
+              "directory": {
+                "type": "string"
+              },
+              "id": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "id",
+              "directory"
+            ],
+            "type": "object"
+          },
+          "workspaceID": {
+            "pattern": "^wrk",
+            "type": "string"
+          }
+        },
+        "required": [
+          "directory",
+          "project"
+        ],
+        "type": "object"
+      }
+    }
   },
   "recordSchema": {
-    "type": "object",
     "properties": {
       "direction": {
-        "type": "string",
         "enum": [
           "client-to-agent"
-        ]
+        ],
+        "type": "string"
       },
       "request": {
-        "type": "object",
         "properties": {
+          "body": {
+            "additionalProperties": false,
+            "properties": {
+              "size": {
+                "additionalProperties": false,
+                "properties": {
+                  "cols": {
+                    "exclusiveMinimum": 0,
+                    "type": "integer"
+                  },
+                  "rows": {
+                    "exclusiveMinimum": 0,
+                    "type": "integer"
+                  }
+                },
+                "required": [
+                  "rows",
+                  "cols"
+                ],
+                "type": "object"
+              },
+              "title": {
+                "type": "string"
+              }
+            },
+            "type": "object"
+          },
           "method": {
-            "type": "string",
             "enum": [
               "PUT"
-            ]
-          },
-          "route": {
-            "type": "string",
-            "enum": [
-              "/api/pty/:ptyID"
-            ]
+            ],
+            "type": "string"
           },
           "params": {
-            "type": "object",
             "properties": {
               "ptyID": {
+                "pattern": "^pty",
                 "type": "string"
               }
             },
             "required": [
               "ptyID"
-            ]
+            ],
+            "type": "object"
           },
           "query": {
-            "type": "object",
             "properties": {
               "location": {
-                "type": "object",
+                "additionalProperties": false,
                 "properties": {
                   "directory": {
                     "type": "string"
@@ -263,34 +306,17 @@
                   "workspace": {
                     "type": "string"
                   }
-                }
-              }
-            }
-          },
-          "body": {
-            "type": "object",
-            "properties": {
-              "size": {
-                "type": "object",
-                "properties": {
-                  "cols": {
-                    "type": "integer",
-                    "exclusiveMinimum": 0
-                  },
-                  "rows": {
-                    "type": "integer",
-                    "exclusiveMinimum": 0
-                  }
                 },
-                "required": [
-                  "cols",
-                  "rows"
-                ]
-              },
-              "title": {
-                "type": "string"
+                "type": "object"
               }
-            }
+            },
+            "type": "object"
+          },
+          "route": {
+            "enum": [
+              "/api/pty/:ptyID"
+            ],
+            "type": "string"
           }
         },
         "required": [
@@ -298,13 +324,20 @@
           "route",
           "params",
           "body"
-        ]
+        ],
+        "type": "object"
       }
     },
     "required": [
       "direction",
       "request"
-    ]
+    ],
+    "type": "object"
+  },
+  "schemaFidelity": {
+    "payload": "semantic",
+    "result": "semantic",
+    "carrier": "semantic"
   },
   "evidence": {
     "existence": [

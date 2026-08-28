@@ -17,6 +17,7 @@ import { mkdirSync, renameSync, rmSync, writeFileSync } from 'node:fs';
 import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { checkCaptureDirectory, sanitizeCaptureDirectory } from '@vibecook/puppeteer-surface/sanitize';
+import { writeCaptureFidelity } from '../../../scripts/capture-fidelity.mjs';
 import { opencodeRules } from '../privacy.mjs';
 
 const surfaceRoot = join(dirname(fileURLToPath(import.meta.url)), '..');
@@ -46,6 +47,16 @@ if (invokedDirectly) {
   rmSync(staging, { recursive: true, force: true });
   mkdirSync(staging, { recursive: true, mode: 0o700 });
   const result = sanitizeCaptureDirectory(input, staging, opencodeRules);
+  writeCaptureFidelity(staging, {
+    vendor: 'opencode',
+    vendorVersion: version,
+    defaultRepresentation: 'type-preserving-redaction',
+    nativeArtifacts: ['*/*.jsonl'],
+    limitations: [
+      'Only JSONL protocol carriers are promoted; raw process logs and the generated OpenAPI document remain separate evidence.',
+      'Sensitive scalar values are replaced in place while native keys, containers, primitive types, record order, and stable joins are retained.',
+    ],
+  });
   const issues = checkCaptureDirectory(staging, opencodeRules);
   if (issues.length > 0) {
     for (const issue of issues.slice(0, 20)) console.error(issue);

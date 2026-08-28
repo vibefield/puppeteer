@@ -10,7 +10,6 @@
   "direction": "client-to-agent",
   "trigger": "Dispose instance — Clean up and dispose all OpenCode instances, releasing all resources.",
   "payloadSchema": {
-    "type": "object",
     "properties": {
       "method": {
         "type": "string"
@@ -22,30 +21,31 @@
     "required": [
       "method",
       "route"
-    ]
+    ],
+    "type": "object"
   },
   "resultSchema": {
-    "type": "object",
     "properties": {
+      "body": {
+        "description": "Global disposed",
+        "type": "boolean"
+      },
       "method": {
-        "type": "string",
         "enum": [
           "POST"
-        ]
+        ],
+        "type": "string"
       },
       "route": {
-        "type": "string",
         "enum": [
           "/global/dispose"
-        ]
+        ],
+        "type": "string"
       },
       "status": {
-        "type": "integer",
+        "maximum": 299,
         "minimum": 200,
-        "maximum": 299
-      },
-      "body": {
-        "type": "boolean"
+        "type": "integer"
       }
     },
     "required": [
@@ -53,43 +53,49 @@
       "route",
       "status",
       "body"
-    ]
+    ],
+    "type": "object"
   },
   "recordSchema": {
-    "type": "object",
     "properties": {
       "direction": {
-        "type": "string",
         "enum": [
           "client-to-agent"
-        ]
+        ],
+        "type": "string"
       },
       "request": {
-        "type": "object",
         "properties": {
           "method": {
-            "type": "string",
             "enum": [
               "POST"
-            ]
+            ],
+            "type": "string"
           },
           "route": {
-            "type": "string",
             "enum": [
               "/global/dispose"
-            ]
+            ],
+            "type": "string"
           }
         },
         "required": [
           "method",
           "route"
-        ]
+        ],
+        "type": "object"
       }
     },
     "required": [
       "direction",
       "request"
-    ]
+    ],
+    "type": "object"
+  },
+  "schemaFidelity": {
+    "payload": "semantic",
+    "result": "semantic",
+    "carrier": "semantic"
   },
   "evidence": {
     "existence": [

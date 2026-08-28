@@ -10,16 +10,30 @@
   "direction": "client-to-agent",
   "trigger": "Start OAuth authorization — Start the OAuth authorization flow for a provider.",
   "payloadSchema": {
-    "type": "object",
     "properties": {
+      "body": {
+        "additionalProperties": false,
+        "properties": {
+          "inputs": {
+            "additionalProperties": {
+              "type": "string"
+            },
+            "type": "object"
+          },
+          "method": {
+            "description": "Auth method index",
+            "type": "number"
+          }
+        },
+        "required": [
+          "method"
+        ],
+        "type": "object"
+      },
       "method": {
         "type": "string"
       },
-      "route": {
-        "type": "string"
-      },
       "params": {
-        "type": "object",
         "properties": {
           "providerID": {
             "type": "string"
@@ -27,10 +41,10 @@
         },
         "required": [
           "providerID"
-        ]
+        ],
+        "type": "object"
       },
       "query": {
-        "type": "object",
         "properties": {
           "directory": {
             "type": "string"
@@ -38,51 +52,32 @@
           "workspace": {
             "type": "string"
           }
-        }
-      },
-      "body": {
-        "type": "object",
-        "properties": {
-          "inputs": {
-            "type": "object"
-          },
-          "method": {
-            "type": "number"
-          }
         },
-        "required": [
-          "method"
-        ]
+        "type": "object"
+      },
+      "route": {
+        "type": "string"
       }
     },
     "required": [
       "method",
       "route",
       "params"
-    ]
+    ],
+    "type": "object"
   },
   "resultSchema": {
-    "type": "object",
     "properties": {
+      "body": {
+        "$ref": "#/$defs/ProviderAuthAuthorization"
+      },
       "method": {
-        "type": "string",
         "enum": [
           "POST"
-        ]
-      },
-      "route": {
-        "type": "string",
-        "enum": [
-          "/provider/:providerID/oauth/authorize"
-        ]
-      },
-      "status": {
-        "type": "integer",
-        "minimum": 200,
-        "maximum": 299
+        ],
+        "type": "string"
       },
       "params": {
-        "type": "object",
         "properties": {
           "providerID": {
             "type": "string"
@@ -90,10 +85,10 @@
         },
         "required": [
           "providerID"
-        ]
+        ],
+        "type": "object"
       },
       "query": {
-        "type": "object",
         "properties": {
           "directory": {
             "type": "string"
@@ -101,26 +96,19 @@
           "workspace": {
             "type": "string"
           }
-        }
-      },
-      "body": {
-        "type": "object",
-        "properties": {
-          "instructions": {
-            "type": "string"
-          },
-          "method": {
-            "type": "string"
-          },
-          "url": {
-            "type": "string"
-          }
         },
-        "required": [
-          "instructions",
-          "method",
-          "url"
-        ]
+        "type": "object"
+      },
+      "route": {
+        "enum": [
+          "/provider/:providerID/oauth/authorize"
+        ],
+        "type": "string"
+      },
+      "status": {
+        "maximum": 299,
+        "minimum": 200,
+        "type": "integer"
       }
     },
     "required": [
@@ -129,34 +117,71 @@
       "status",
       "params",
       "body"
-    ]
+    ],
+    "type": "object",
+    "$defs": {
+      "ProviderAuthAuthorization": {
+        "additionalProperties": false,
+        "properties": {
+          "instructions": {
+            "type": "string"
+          },
+          "method": {
+            "enum": [
+              "auto",
+              "code"
+            ],
+            "type": "string"
+          },
+          "url": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "url",
+          "method",
+          "instructions"
+        ],
+        "type": "object"
+      }
+    }
   },
   "recordSchema": {
-    "type": "object",
     "properties": {
       "direction": {
-        "type": "string",
         "enum": [
           "client-to-agent"
-        ]
+        ],
+        "type": "string"
       },
       "request": {
-        "type": "object",
         "properties": {
+          "body": {
+            "additionalProperties": false,
+            "properties": {
+              "inputs": {
+                "additionalProperties": {
+                  "type": "string"
+                },
+                "type": "object"
+              },
+              "method": {
+                "description": "Auth method index",
+                "type": "number"
+              }
+            },
+            "required": [
+              "method"
+            ],
+            "type": "object"
+          },
           "method": {
-            "type": "string",
             "enum": [
               "POST"
-            ]
-          },
-          "route": {
-            "type": "string",
-            "enum": [
-              "/provider/:providerID/oauth/authorize"
-            ]
+            ],
+            "type": "string"
           },
           "params": {
-            "type": "object",
             "properties": {
               "providerID": {
                 "type": "string"
@@ -164,10 +189,10 @@
             },
             "required": [
               "providerID"
-            ]
+            ],
+            "type": "object"
           },
           "query": {
-            "type": "object",
             "properties": {
               "directory": {
                 "type": "string"
@@ -175,34 +200,34 @@
               "workspace": {
                 "type": "string"
               }
-            }
-          },
-          "body": {
-            "type": "object",
-            "properties": {
-              "inputs": {
-                "type": "object"
-              },
-              "method": {
-                "type": "number"
-              }
             },
-            "required": [
-              "method"
-            ]
+            "type": "object"
+          },
+          "route": {
+            "enum": [
+              "/provider/:providerID/oauth/authorize"
+            ],
+            "type": "string"
           }
         },
         "required": [
           "method",
           "route",
           "params"
-        ]
+        ],
+        "type": "object"
       }
     },
     "required": [
       "direction",
       "request"
-    ]
+    ],
+    "type": "object"
+  },
+  "schemaFidelity": {
+    "payload": "semantic",
+    "result": "semantic",
+    "carrier": "semantic"
   },
   "evidence": {
     "existence": [

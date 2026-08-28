@@ -1,5 +1,6 @@
 {
   "schemaVersion": 1,
+  "representation": "semantic-projection",
   "vendor": "kimi",
   "version": "0.34.0",
   "scenario": "tool-success",

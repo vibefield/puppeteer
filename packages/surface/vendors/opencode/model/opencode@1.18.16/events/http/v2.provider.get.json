@@ -10,16 +10,11 @@
   "direction": "client-to-agent",
   "trigger": "Get provider — Retrieve a single AI provider so clients can inspect its availability and endpoint settings.",
   "payloadSchema": {
-    "type": "object",
     "properties": {
       "method": {
         "type": "string"
       },
-      "route": {
-        "type": "string"
-      },
       "params": {
-        "type": "object",
         "properties": {
           "providerID": {
             "type": "string"
@@ -27,13 +22,13 @@
         },
         "required": [
           "providerID"
-        ]
+        ],
+        "type": "object"
       },
       "query": {
-        "type": "object",
         "properties": {
           "location": {
-            "type": "object",
+            "additionalProperties": false,
             "properties": {
               "directory": {
                 "type": "string"
@@ -41,39 +36,48 @@
               "workspace": {
                 "type": "string"
               }
-            }
+            },
+            "type": "object"
           }
-        }
+        },
+        "type": "object"
+      },
+      "route": {
+        "type": "string"
       }
     },
     "required": [
       "method",
       "route",
       "params"
-    ]
+    ],
+    "type": "object"
   },
   "resultSchema": {
-    "type": "object",
     "properties": {
+      "body": {
+        "additionalProperties": false,
+        "properties": {
+          "data": {
+            "$ref": "#/$defs/ProviderV2Info"
+          },
+          "location": {
+            "$ref": "#/$defs/LocationInfo"
+          }
+        },
+        "required": [
+          "location",
+          "data"
+        ],
+        "type": "object"
+      },
       "method": {
-        "type": "string",
         "enum": [
           "GET"
-        ]
-      },
-      "route": {
-        "type": "string",
-        "enum": [
-          "/api/provider/:providerID"
-        ]
-      },
-      "status": {
-        "type": "integer",
-        "minimum": 200,
-        "maximum": 299
+        ],
+        "type": "string"
       },
       "params": {
-        "type": "object",
         "properties": {
           "providerID": {
             "type": "string"
@@ -81,13 +85,13 @@
         },
         "required": [
           "providerID"
-        ]
+        ],
+        "type": "object"
       },
       "query": {
-        "type": "object",
         "properties": {
           "location": {
-            "type": "object",
+            "additionalProperties": false,
             "properties": {
               "directory": {
                 "type": "string"
@@ -95,129 +99,22 @@
               "workspace": {
                 "type": "string"
               }
-            }
-          }
-        }
-      },
-      "body": {
-        "type": "object",
-        "properties": {
-          "data": {
-            "type": "object",
-            "properties": {
-              "api": {
-                "anyOf": [
-                  {
-                    "type": "object",
-                    "properties": {
-                      "package": {
-                        "type": "string"
-                      },
-                      "settings": {
-                        "type": "object"
-                      },
-                      "type": {
-                        "type": "string"
-                      },
-                      "url": {
-                        "type": "string"
-                      }
-                    },
-                    "required": [
-                      "package",
-                      "type"
-                    ]
-                  },
-                  {
-                    "type": "object",
-                    "properties": {
-                      "settings": {
-                        "type": "object"
-                      },
-                      "type": {
-                        "type": "string"
-                      },
-                      "url": {
-                        "type": "string"
-                      }
-                    },
-                    "required": [
-                      "settings",
-                      "type"
-                    ]
-                  }
-                ]
-              },
-              "disabled": {
-                "type": "boolean"
-              },
-              "id": {
-                "type": "string"
-              },
-              "integrationID": {
-                "type": "string"
-              },
-              "name": {
-                "type": "string"
-              },
-              "request": {
-                "type": "object",
-                "properties": {
-                  "body": {
-                    "type": "object"
-                  },
-                  "headers": {
-                    "type": "object"
-                  }
-                },
-                "required": [
-                  "body",
-                  "headers"
-                ]
-              }
             },
-            "required": [
-              "api",
-              "id",
-              "name",
-              "request"
-            ]
-          },
-          "location": {
-            "type": "object",
-            "properties": {
-              "directory": {
-                "type": "string"
-              },
-              "project": {
-                "type": "object",
-                "properties": {
-                  "directory": {
-                    "type": "string"
-                  },
-                  "id": {
-                    "type": "string"
-                  }
-                },
-                "required": [
-                  "directory",
-                  "id"
-                ]
-              },
-              "workspaceID": {
-                "type": "string"
-              }
-            },
-            "required": [
-              "directory",
-              "project"
-            ]
+            "type": "object"
           }
         },
-        "required": [
-          "data",
-          "location"
-        ]
+        "type": "object"
+      },
+      "route": {
+        "enum": [
+          "/api/provider/:providerID"
+        ],
+        "type": "string"
+      },
+      "status": {
+        "maximum": 299,
+        "minimum": 200,
+        "type": "integer"
       }
     },
     "required": [
@@ -226,34 +123,167 @@
       "status",
       "params",
       "body"
-    ]
-  },
-  "recordSchema": {
+    ],
     "type": "object",
-    "properties": {
-      "direction": {
-        "type": "string",
-        "enum": [
-          "client-to-agent"
+    "$defs": {
+      "ProviderV2Info": {
+        "additionalProperties": false,
+        "properties": {
+          "api": {
+            "$ref": "#/$defs/ProviderApi"
+          },
+          "disabled": {
+            "type": "boolean"
+          },
+          "id": {
+            "type": "string"
+          },
+          "integrationID": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "request": {
+            "$ref": "#/$defs/ProviderRequest"
+          }
+        },
+        "required": [
+          "id",
+          "name",
+          "api",
+          "request"
+        ],
+        "type": "object"
+      },
+      "LocationInfo": {
+        "additionalProperties": false,
+        "properties": {
+          "directory": {
+            "type": "string"
+          },
+          "project": {
+            "additionalProperties": false,
+            "properties": {
+              "directory": {
+                "type": "string"
+              },
+              "id": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "id",
+              "directory"
+            ],
+            "type": "object"
+          },
+          "workspaceID": {
+            "pattern": "^wrk",
+            "type": "string"
+          }
+        },
+        "required": [
+          "directory",
+          "project"
+        ],
+        "type": "object"
+      },
+      "ProviderApi": {
+        "anyOf": [
+          {
+            "$ref": "#/$defs/ProviderAISDK"
+          },
+          {
+            "$ref": "#/$defs/ProviderNative"
+          }
         ]
       },
+      "ProviderRequest": {
+        "additionalProperties": false,
+        "properties": {
+          "body": {
+            "type": "object"
+          },
+          "headers": {
+            "additionalProperties": {
+              "type": "string"
+            },
+            "type": "object"
+          }
+        },
+        "required": [
+          "headers",
+          "body"
+        ],
+        "type": "object"
+      },
+      "ProviderAISDK": {
+        "additionalProperties": false,
+        "properties": {
+          "package": {
+            "type": "string"
+          },
+          "settings": {
+            "type": "object"
+          },
+          "type": {
+            "enum": [
+              "aisdk"
+            ],
+            "type": "string"
+          },
+          "url": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "type",
+          "package"
+        ],
+        "type": "object"
+      },
+      "ProviderNative": {
+        "additionalProperties": false,
+        "properties": {
+          "settings": {
+            "type": "object"
+          },
+          "type": {
+            "enum": [
+              "native"
+            ],
+            "type": "string"
+          },
+          "url": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "type",
+          "settings"
+        ],
+        "type": "object"
+      }
+    }
+  },
+  "recordSchema": {
+    "properties": {
+      "direction": {
+        "enum": [
+          "client-to-agent"
+        ],
+        "type": "string"
+      },
       "request": {
-        "type": "object",
         "properties": {
           "method": {
-            "type": "string",
             "enum": [
               "GET"
-            ]
-          },
-          "route": {
-            "type": "string",
-            "enum": [
-              "/api/provider/:providerID"
-            ]
+            ],
+            "type": "string"
           },
           "params": {
-            "type": "object",
             "properties": {
               "providerID": {
                 "type": "string"
@@ -261,13 +291,13 @@
             },
             "required": [
               "providerID"
-            ]
+            ],
+            "type": "object"
           },
           "query": {
-            "type": "object",
             "properties": {
               "location": {
-                "type": "object",
+                "additionalProperties": false,
                 "properties": {
                   "directory": {
                     "type": "string"
@@ -275,22 +305,37 @@
                   "workspace": {
                     "type": "string"
                   }
-                }
+                },
+                "type": "object"
               }
-            }
+            },
+            "type": "object"
+          },
+          "route": {
+            "enum": [
+              "/api/provider/:providerID"
+            ],
+            "type": "string"
           }
         },
         "required": [
           "method",
           "route",
           "params"
-        ]
+        ],
+        "type": "object"
       }
     },
     "required": [
       "direction",
       "request"
-    ]
+    ],
+    "type": "object"
+  },
+  "schemaFidelity": {
+    "payload": "semantic",
+    "result": "semantic",
+    "carrier": "semantic"
   },
   "evidence": {
     "existence": [

@@ -10,19 +10,14 @@
   "direction": "client-to-agent",
   "trigger": "List pending question requests — Retrieve pending question requests for a location.",
   "payloadSchema": {
-    "type": "object",
     "properties": {
       "method": {
         "type": "string"
       },
-      "route": {
-        "type": "string"
-      },
       "query": {
-        "type": "object",
         "properties": {
           "location": {
-            "type": "object",
+            "additionalProperties": false,
             "properties": {
               "directory": {
                 "type": "string"
@@ -30,41 +25,53 @@
               "workspace": {
                 "type": "string"
               }
-            }
+            },
+            "type": "object"
           }
-        }
+        },
+        "type": "object"
+      },
+      "route": {
+        "type": "string"
       }
     },
     "required": [
       "method",
       "route"
-    ]
+    ],
+    "type": "object"
   },
   "resultSchema": {
-    "type": "object",
     "properties": {
+      "body": {
+        "additionalProperties": false,
+        "properties": {
+          "data": {
+            "items": {
+              "$ref": "#/$defs/QuestionV2Request"
+            },
+            "type": "array"
+          },
+          "location": {
+            "$ref": "#/$defs/LocationInfo"
+          }
+        },
+        "required": [
+          "location",
+          "data"
+        ],
+        "type": "object"
+      },
       "method": {
-        "type": "string",
         "enum": [
           "GET"
-        ]
-      },
-      "route": {
-        "type": "string",
-        "enum": [
-          "/api/question/request"
-        ]
-      },
-      "status": {
-        "type": "integer",
-        "minimum": 200,
-        "maximum": 299
+        ],
+        "type": "string"
       },
       "query": {
-        "type": "object",
         "properties": {
           "location": {
-            "type": "object",
+            "additionalProperties": false,
             "properties": {
               "directory": {
                 "type": "string"
@@ -72,125 +79,22 @@
               "workspace": {
                 "type": "string"
               }
-            }
-          }
-        }
-      },
-      "body": {
-        "type": "object",
-        "properties": {
-          "data": {
-            "type": "array",
-            "items": {
-              "type": "object",
-              "properties": {
-                "id": {
-                  "type": "string"
-                },
-                "questions": {
-                  "type": "array",
-                  "items": {
-                    "type": "object",
-                    "properties": {
-                      "custom": {
-                        "type": "boolean"
-                      },
-                      "header": {
-                        "type": "string"
-                      },
-                      "multiple": {
-                        "type": "boolean"
-                      },
-                      "options": {
-                        "type": "array",
-                        "items": {
-                          "type": "object",
-                          "properties": {
-                            "description": {
-                              "type": "string"
-                            },
-                            "label": {
-                              "type": "string"
-                            }
-                          },
-                          "required": [
-                            "description",
-                            "label"
-                          ]
-                        }
-                      },
-                      "question": {
-                        "type": "string"
-                      }
-                    },
-                    "required": [
-                      "header",
-                      "options",
-                      "question"
-                    ]
-                  }
-                },
-                "sessionID": {
-                  "type": "string"
-                },
-                "tool": {
-                  "type": "object",
-                  "properties": {
-                    "callID": {
-                      "type": "string"
-                    },
-                    "messageID": {
-                      "type": "string"
-                    }
-                  },
-                  "required": [
-                    "callID",
-                    "messageID"
-                  ]
-                }
-              },
-              "required": [
-                "id",
-                "questions",
-                "sessionID"
-              ]
-            }
-          },
-          "location": {
-            "type": "object",
-            "properties": {
-              "directory": {
-                "type": "string"
-              },
-              "project": {
-                "type": "object",
-                "properties": {
-                  "directory": {
-                    "type": "string"
-                  },
-                  "id": {
-                    "type": "string"
-                  }
-                },
-                "required": [
-                  "directory",
-                  "id"
-                ]
-              },
-              "workspaceID": {
-                "type": "string"
-              }
             },
-            "required": [
-              "directory",
-              "project"
-            ]
+            "type": "object"
           }
         },
-        "required": [
-          "data",
-          "location"
-        ]
+        "type": "object"
+      },
+      "route": {
+        "enum": [
+          "/api/question/request"
+        ],
+        "type": "string"
+      },
+      "status": {
+        "maximum": 299,
+        "minimum": 200,
+        "type": "integer"
       }
     },
     "required": [
@@ -198,37 +102,159 @@
       "route",
       "status",
       "body"
-    ]
+    ],
+    "type": "object",
+    "$defs": {
+      "QuestionV2Request": {
+        "additionalProperties": false,
+        "properties": {
+          "id": {
+            "pattern": "^que",
+            "type": "string"
+          },
+          "questions": {
+            "description": "Questions to ask",
+            "items": {
+              "$ref": "#/$defs/QuestionV2Info"
+            },
+            "type": "array"
+          },
+          "sessionID": {
+            "pattern": "^ses",
+            "type": "string"
+          },
+          "tool": {
+            "$ref": "#/$defs/QuestionV2Tool"
+          }
+        },
+        "required": [
+          "id",
+          "sessionID",
+          "questions"
+        ],
+        "type": "object"
+      },
+      "LocationInfo": {
+        "additionalProperties": false,
+        "properties": {
+          "directory": {
+            "type": "string"
+          },
+          "project": {
+            "additionalProperties": false,
+            "properties": {
+              "directory": {
+                "type": "string"
+              },
+              "id": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "id",
+              "directory"
+            ],
+            "type": "object"
+          },
+          "workspaceID": {
+            "pattern": "^wrk",
+            "type": "string"
+          }
+        },
+        "required": [
+          "directory",
+          "project"
+        ],
+        "type": "object"
+      },
+      "QuestionV2Info": {
+        "additionalProperties": false,
+        "properties": {
+          "custom": {
+            "type": "boolean"
+          },
+          "header": {
+            "description": "Very short label (max 30 chars)",
+            "type": "string"
+          },
+          "multiple": {
+            "type": "boolean"
+          },
+          "options": {
+            "description": "Available choices",
+            "items": {
+              "$ref": "#/$defs/QuestionV2Option"
+            },
+            "type": "array"
+          },
+          "question": {
+            "description": "Complete question",
+            "type": "string"
+          }
+        },
+        "required": [
+          "question",
+          "header",
+          "options"
+        ],
+        "type": "object"
+      },
+      "QuestionV2Tool": {
+        "additionalProperties": false,
+        "properties": {
+          "callID": {
+            "type": "string"
+          },
+          "messageID": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "messageID",
+          "callID"
+        ],
+        "type": "object"
+      },
+      "QuestionV2Option": {
+        "additionalProperties": false,
+        "properties": {
+          "description": {
+            "description": "Explanation of choice",
+            "type": "string"
+          },
+          "label": {
+            "description": "Display text (1-5 words, concise)",
+            "type": "string"
+          }
+        },
+        "required": [
+          "label",
+          "description"
+        ],
+        "type": "object"
+      }
+    }
   },
   "recordSchema": {
-    "type": "object",
     "properties": {
       "direction": {
-        "type": "string",
         "enum": [
           "client-to-agent"
-        ]
+        ],
+        "type": "string"
       },
       "request": {
-        "type": "object",
         "properties": {
           "method": {
-            "type": "string",
             "enum": [
               "GET"
-            ]
-          },
-          "route": {
-            "type": "string",
-            "enum": [
-              "/api/question/request"
-            ]
+            ],
+            "type": "string"
           },
           "query": {
-            "type": "object",
             "properties": {
               "location": {
-                "type": "object",
+                "additionalProperties": false,
                 "properties": {
                   "directory": {
                     "type": "string"
@@ -236,21 +262,36 @@
                   "workspace": {
                     "type": "string"
                   }
-                }
+                },
+                "type": "object"
               }
-            }
+            },
+            "type": "object"
+          },
+          "route": {
+            "enum": [
+              "/api/question/request"
+            ],
+            "type": "string"
           }
         },
         "required": [
           "method",
           "route"
-        ]
+        ],
+        "type": "object"
       }
     },
     "required": [
       "direction",
       "request"
-    ]
+    ],
+    "type": "object"
+  },
+  "schemaFidelity": {
+    "payload": "semantic",
+    "result": "semantic",
+    "carrier": "semantic"
   },
   "evidence": {
     "existence": [

@@ -23,7 +23,7 @@ specifications versus historical material.
 [![OpenCode: baseline pending 1.18.16](https://img.shields.io/badge/OpenCode-baseline_pending_1.18.16-lightgrey)](packages/surface/vendors/opencode/groundtruth.json)
 <!-- agent-support:end -->
 
-`verified` means the claim-addressable ASM v2 model and exact artifacts passed the
+`verified` means the claim-addressable ASM v2+ model and exact artifacts passed the
 full platform matrix, with the workflow/commit/model/replay/platform attestation
 retained in the ledger. `legacy verified` preserves a previously supported baseline
 that predates those gates; its versioned authoring model and digest are frozen, and it cannot
@@ -45,8 +45,9 @@ and a self-contained `groundtruth.html` explorer beside it.
 
 Release detection is read-only. The adaptation workflow follows only allowlisted
 redirects, bounds artifact streams before buffering, hashes the bytes, attaches
-them to an already traced ASM v2 candidate, runs
-exact replay and drift classification, and may open a confined draft PR. A
+them to an already traced ASM v2+ candidate, runs fidelity-aware native replay
+(byte-exact digesting, with schema validation only for type-preserving captures)
+and drift classification, and may open a confined draft PR. A
 separate protected workflow reacquires the bytes, runs credential-isolated
 pinned-real tests on every required platform, and is the only path allowed to
 update the support ledger and these badges.

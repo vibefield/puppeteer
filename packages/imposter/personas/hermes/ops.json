@@ -3,7 +3,7 @@
     {
       "channel": "jsonrpc",
       "event": "gateway.ready",
-      "with": {}
+      "with": { "skin": {}, "change_events": true }
     },
     {
       "channel": "hook",
@@ -82,12 +82,12 @@
     {
       "channel": "jsonrpc",
       "event": "thinking.delta",
-      "with": { "hasText": true }
+      "with": { "text": "(⊙_⊙) pondering..." }
     },
     {
       "channel": "jsonrpc",
       "event": "message.delta",
-      "with": { "hasText": true, "text": "$op.text" }
+      "with": { "text": "$op.text" }
     }
   ],
   "tool.start": [
@@ -99,7 +99,7 @@
     {
       "channel": "jsonrpc",
       "event": "tool.start",
-      "with": { "name": "$op.tool", "tool_id": "$op.toolId" }
+      "with": { "name": "$op.tool", "tool_id": "$op.toolId", "context": "agent" }
     },
     {
       "channel": "hook",
@@ -121,7 +121,8 @@
       "with": {
         "name": "$op.tool",
         "tool_id": "$op.toolId",
-        "result": { "exit_code": 0, "hasOutput": true, "hasError": false }
+        "args": {},
+        "result": { "output": "", "exit_code": 0 }
       }
     },
     {
@@ -165,12 +166,25 @@
     {
       "channel": "jsonrpc",
       "event": "reasoning.available",
-      "with": { "hasText": true }
+      "with": { "text": "$reply" }
     },
     {
       "channel": "jsonrpc",
       "event": "message.complete",
-      "with": { "status": "complete", "hasText": true }
+      "with": {
+        "text": "$reply",
+        "status": "complete",
+        "usage": {
+          "model": "puppeteer-hermes-census",
+          "input": 24,
+          "output": 6,
+          "reasoning": 0,
+          "prompt": 24,
+          "completion": 6,
+          "total": 30,
+          "calls": 1
+        }
+      }
     },
     {
       "channel": "hook",
@@ -197,7 +211,16 @@
         "cwd": "$cwd",
         "stored_session_id": "$storedSessionId",
         "running": false,
-        "usage": { "model": "puppeteer-hermes-census", "calls": 1, "hasTotals": true }
+        "usage": {
+          "model": "puppeteer-hermes-census",
+          "input": 24,
+          "output": 6,
+          "reasoning": 0,
+          "prompt": 24,
+          "completion": 6,
+          "total": 30,
+          "calls": 1
+        }
       }
     }
   ]

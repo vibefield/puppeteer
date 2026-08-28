@@ -43,7 +43,11 @@ Detection is read-only. Candidate analysis may prepare a reviewable change, but 
 ## Evidence rules
 
 - Capture exact provider versions and platform artifacts; do not generalize across unobserved versions.
-- Commit sanitized, shape-faithful evidence only. Raw captures stay in ignored `captures-raw/` paths.
+- Commit sanitized evidence only. Raw captures stay in ignored `captures-raw/` paths.
+- Every capture-version root carries `capture-fidelity.json`. It states whether native artifacts use type-preserving redaction, a semantic projection, or an unrecoverable legacy privacy projection, plus per-artifact overrides and limitations.
+- Never derive a native schema from a projection. Legacy captures may prove occurrence, ordering, joins, and retained values; exact generated schemas or pinned source must supply any shape the projection discarded.
+- Treat shape and meaning as separate claims. A generated schema can prove that a field is a string while still saying nothing about whether that string is full content, an applicable diff, a rendered preview, or truncated output. For every field consumed semantically by an adapter, trace the producer or capture discriminated examples and retain that contract in Layer 0.
+- Make semantic source contracts generator inputs, not review-only notes. The generator must reject a missing or release-mismatched contract, project its refinements into the canonical ASM, and bind them to an `exact-source` evidence claim. Runtime captures remain the separate proof that the branch actually occurs.
 - Preserve provenance from each modeled claim to its evidence and artifact identity.
 - Keep unknown native records when they may be semantically meaningful.
 - Never infer portable semantics from terminal text.
@@ -55,15 +59,17 @@ Run the narrow checks while iterating, then the repository gate:
 
 ```sh
 pnpm surface:audit
+pnpm --filter @vibecook/puppeteer-surface surface:workflow:check
 pnpm surface:groundtruth:check
 pnpm groundtruth:mapping:check
 pnpm support:check
 pnpm test
 ```
 
-When authoring inputs intentionally change, regenerate with:
+Generate the vendor ASM first, then rebuild/check the canonical artifacts:
 
 ```sh
+pnpm --filter @vibecook/puppeteer-surface run surface:model:<vendor>
 pnpm surface:groundtruth:write -- packages/surface/vendors/<vendor>/model/<vendor>@<version>
 pnpm groundtruth:mapping:write
 pnpm support:write
@@ -71,7 +77,9 @@ pnpm support:write
 
 Passing the versioned authoring directory explicitly selects the revision to fold into the stable root. Running the command without a path only rebuilds each agent's already-selected canonical revision.
 
-Review generated diffs. Generation proves determinism, not that a native claim is correct.
+Review generated diffs. Generation proves determinism, not that a native claim is correct. In particular, review ambiguous field names and generic flags against their producer; names such as `diff`, `patch`, `status`, and `truncated` are not semantic evidence by themselves.
+
+`upstream.json` is the declared vendor inventory. Global ground-truth and audit discovery starts there, so a vendor with missing model, audit, generator, sanitizer, privacy gate, or canonical output fails instead of disappearing from the check. `packages/surface/package.json` must expose `surface:model:<vendor>`, `surface:audit:<vendor>`, `surface:sanitize:<vendor>`, and `surface:privacy:<vendor>`.
 
 ## Repository hygiene
 

@@ -7,8 +7,8 @@
         "with": {
           "sessionID": "$sessionId",
           "part": {
-            "id": "$uuid:part",
-            "messageID": "$uuid:user",
+            "id": "$nativeId:prt:part",
+            "messageID": "$nativeId:msg:user",
             "sessionID": "$sessionId",
             "type": "text",
             "text": "part before owner"
@@ -23,12 +23,17 @@
         "with": {
           "sessionID": "$sessionId",
           "info": {
-            "id": "$uuid:user",
+            "id": "$nativeId:msg:user",
             "role": "user",
             "sessionID": "$sessionId",
-            "time": { "created": "$nowMs" },
+            "time": {
+              "created": "$nowMs"
+            },
             "agent": "build",
-            "model": { "providerID": "imposter", "modelID": "opencode-imposter" }
+            "model": {
+              "providerID": "imposter",
+              "modelID": "opencode-imposter"
+            }
           }
         }
       }

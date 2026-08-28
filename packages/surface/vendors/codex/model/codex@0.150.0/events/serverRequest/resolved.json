@@ -6,9 +6,10 @@
   "transport": "jsonrpc-notification",
   "direction": "agent-to-client",
   "payloadSchema": {
-    "type": "object",
     "properties": {
-      "requestId": {},
+      "requestId": {
+        "$ref": "#/$defs/RequestId"
+      },
       "threadId": {
         "type": "string"
       }
@@ -16,19 +17,34 @@
     "required": [
       "requestId",
       "threadId"
-    ]
+    ],
+    "type": "object",
+    "$defs": {
+      "RequestId": {
+        "anyOf": [
+          {
+            "type": "string"
+          },
+          {
+            "format": "int64",
+            "type": "integer"
+          }
+        ]
+      }
+    },
+    "$schema": "http://json-schema.org/draft-07/schema#"
   },
   "recordSchema": {
-    "type": "object",
     "properties": {
       "method": {
-        "type": "string",
         "enum": [
           "serverRequest/resolved"
-        ]
+        ],
+        "title": "ServerRequest/resolvedNotificationMethod",
+        "type": "string"
       },
       "params": {
-        "type": "object"
+        "$ref": "#/$defs/ServerRequestResolvedNotification"
       },
       "emittedAtMs": {
         "type": "number",
@@ -39,16 +55,54 @@
       "method",
       "params",
       "emittedAtMs"
-    ]
+    ],
+    "title": "ServerRequest/resolvedNotification",
+    "type": "object",
+    "$defs": {
+      "ServerRequestResolvedNotification": {
+        "properties": {
+          "requestId": {
+            "$ref": "#/$defs/RequestId"
+          },
+          "threadId": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "requestId",
+          "threadId"
+        ],
+        "type": "object"
+      },
+      "RequestId": {
+        "anyOf": [
+          {
+            "type": "string"
+          },
+          {
+            "format": "int64",
+            "type": "integer"
+          }
+        ]
+      }
+    },
+    "$schema": "http://json-schema.org/draft-07/schema#"
+  },
+  "schemaFidelity": {
+    "payload": "exact",
+    "carrier": "semantic"
   },
   "evidence": {
     "existence": [
-      "codex-runtime-headless"
+      "codex-runtime-headless",
+      "codex-generated-schema"
     ],
     "shape": [
+      "codex-generated-schema",
       "codex-runtime-headless"
     ],
     "carrier": [
+      "codex-generated-schema",
       "codex-runtime-headless"
     ]
   },

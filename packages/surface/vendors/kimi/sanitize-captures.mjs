@@ -2,22 +2,18 @@
 /**
  * Kimi capture privacy gate: verbatim captures-raw -> committed captures.
  *
- * The committed projection keeps native JSON shapes and ordering while
- * dropping HTTP headers and redacting prompts, model output, system prompts,
- * ids, clocks, paths, hashes, and tool descriptions. It writes to staging and
- * runs the inverse detector before replacing the destination.
+ * Native wire, hook, state, and index records keep their JSON shapes and
+ * ordering while sensitive values are redacted in place. Harness process,
+ * provider, stderr, and capture metadata are explicit semantic projections.
+ * The workflow records those per-artifact distinctions in capture-fidelity.json.
  */
 
 import { existsSync, mkdirSync, readFileSync, readdirSync, renameSync, rmSync, statSync, writeFileSync } from 'node:fs';
 import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import {
-  checkCaptureDirectory,
-  defaultRules,
-  extendRules,
-  sanitizeRecord,
-} from '@vibecook/puppeteer-surface/sanitize';
+import { checkCaptureDirectory, defaultRules, extendRules, sanitizeRecord } from '@vibecook/puppeteer-surface/sanitize';
 import { KIMI_CANDIDATE_VERSION } from './census/harness.mjs';
+import { writeCaptureFidelity } from '../../scripts/capture-fidelity.mjs';
 
 const vendorRoot = dirname(fileURLToPath(import.meta.url));
 
@@ -132,6 +128,7 @@ export function sanitizeKimiCaptureSet(input, output, version = KIMI_CANDIDATE_V
 
     writeJson(join(destination, 'capture.json'), {
       schemaVersion: 1,
+      representation: 'semantic-projection',
       vendor: 'kimi',
       version,
       scenario: scenario.name,
@@ -140,6 +137,24 @@ export function sanitizeKimiCaptureSet(input, output, version = KIMI_CANDIDATE_V
       ...(agentIds.length > 0 ? { agentJournals: agentIds.sort() } : {}),
     });
   }
+  writeCaptureFidelity(output, {
+    vendor: 'kimi',
+    vendorVersion: version,
+    defaultRepresentation: 'type-preserving-redaction',
+    nativeArtifacts: ['*/wire.jsonl', '*/agents/*.jsonl', '*/hooks/*.jsonl', '*/state.json', '*/session-index.jsonl'],
+    limitations: [
+      'The native wire, hook, state, and index carriers retain every key, container, primitive type, and record order while redacting sensitive scalar values.',
+    ],
+    overrides: [
+      {
+        paths: ['*/process.json', '*/provider-requests.jsonl', '*/stderr.json', '*/capture.json'],
+        representation: 'semantic-projection',
+        limitations: [
+          'Process arguments, HTTP headers, raw stderr, and harness metadata are deliberately summarized; they are occurrence and control evidence, not native payload schemas.',
+        ],
+      },
+    ],
+  });
   return { scenarios: scenarios.length };
 }
 

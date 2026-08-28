@@ -1,0 +1,73 @@
+{
+  "surface": "antigravity",
+  "surfaceVersion": "1.1.12",
+  "event": "PostInvocation",
+  "schemaFidelity": {
+    "payload": "structural",
+    "result": "structural",
+    "limitations": [
+      "The retained 1.1.12 runtime records are legacy privacy projections. Schemas retain only fields whose native names and types survive that transform or are stated by official documentation; additional native fields may exist."
+    ]
+  },
+  "channel": "hook-command",
+  "channels": ["hook-command"],
+  "transport": "hook-callback",
+  "direction": "agent-local",
+  "payloadSchema": {
+    "type": "object",
+    "properties": {
+      "conversationId": {
+        "type": "string"
+      },
+      "workspacePaths": {
+        "type": "array",
+        "items": {
+          "type": "string"
+        }
+      },
+      "transcriptPath": {
+        "type": "string"
+      },
+      "artifactDirectoryPath": {
+        "type": "string"
+      },
+      "modelName": {
+        "type": "string"
+      },
+      "invocationNum": {
+        "type": "integer",
+        "minimum": 0
+      },
+      "initialNumSteps": {
+        "type": "integer",
+        "minimum": 0
+      }
+    },
+    "required": ["conversationId", "workspacePaths", "modelName", "invocationNum", "initialNumSteps"]
+  },
+  "resultSchema": {
+    "type": "object",
+    "properties": {
+      "injectSteps": {
+        "type": "array",
+        "items": {
+          "type": "object"
+        }
+      },
+      "terminationBehavior": {
+        "type": "string",
+        "enum": ["force_continue", "terminate", ""]
+      }
+    }
+  },
+  "evidence": {
+    "existence": ["antigravity-runtime-headless"],
+    "shape": ["antigravity-official-docs"],
+    "result": ["antigravity-official-docs"],
+    "carrier": ["antigravity-official-docs"]
+  },
+  "confidence": "unverified",
+  "fixture": "captures/antigravity@1.1.12/add-dir-turn/hooks.jsonl",
+  "observationMode": "passive",
+  "notes": "Runtime evidence verifies this hook family and its ordering. Complete stdin/stdout shape is documentation-backed because the retained runtime fixture is a legacy projection."
+}

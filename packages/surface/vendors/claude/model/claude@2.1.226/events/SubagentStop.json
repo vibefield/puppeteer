@@ -25,13 +25,39 @@
         "type": "string"
       },
       "permission_mode": {
-        "type": "string"
+        "type": "string",
+        "enum": [
+          "default",
+          "plan",
+          "acceptEdits",
+          "auto",
+          "dontAsk",
+          "bypassPermissions"
+        ]
       },
       "effort": {
-        "type": "object"
+        "type": "object",
+        "properties": {
+          "level": {
+            "type": "string",
+            "enum": [
+              "low",
+              "medium",
+              "high",
+              "xhigh",
+              "max"
+            ]
+          }
+        },
+        "required": [
+          "level"
+        ]
       },
       "hook_event_name": {
-        "type": "string"
+        "type": "string",
+        "enum": [
+          "SubagentStop"
+        ]
       },
       "agent_id": {
         "type": "string"
@@ -67,11 +93,144 @@
       "transcript_path"
     ]
   },
+  "resultSchema": {
+    "type": "object",
+    "properties": {
+      "continue": {
+        "type": "boolean"
+      },
+      "stopReason": {
+        "type": "string"
+      },
+      "suppressOutput": {
+        "type": "boolean"
+      },
+      "systemMessage": {
+        "type": "string"
+      },
+      "terminalSequence": {
+        "type": "string"
+      },
+      "decision": {
+        "type": "string",
+        "enum": [
+          "block"
+        ]
+      },
+      "reason": {
+        "type": "string"
+      },
+      "hookSpecificOutput": {
+        "type": "object"
+      }
+    }
+  },
+  "recordSchema": {
+    "type": "object",
+    "properties": {
+      "session_id": {
+        "type": "string"
+      },
+      "transcript_path": {
+        "type": "string"
+      },
+      "cwd": {
+        "type": "string"
+      },
+      "prompt_id": {
+        "type": "string"
+      },
+      "permission_mode": {
+        "type": "string",
+        "enum": [
+          "default",
+          "plan",
+          "acceptEdits",
+          "auto",
+          "dontAsk",
+          "bypassPermissions"
+        ]
+      },
+      "effort": {
+        "type": "object",
+        "properties": {
+          "level": {
+            "type": "string",
+            "enum": [
+              "low",
+              "medium",
+              "high",
+              "xhigh",
+              "max"
+            ]
+          }
+        },
+        "required": [
+          "level"
+        ]
+      },
+      "hook_event_name": {
+        "type": "string",
+        "enum": [
+          "SubagentStop"
+        ]
+      },
+      "agent_id": {
+        "type": "string"
+      },
+      "agent_type": {
+        "type": "string"
+      },
+      "agent_transcript_path": {
+        "type": "string"
+      },
+      "last_assistant_message": {
+        "type": "string"
+      },
+      "stop_hook_active": {
+        "type": "boolean"
+      },
+      "background_tasks": {
+        "type": "array"
+      },
+      "session_crons": {
+        "type": "array"
+      }
+    },
+    "required": [
+      "agent_id",
+      "agent_transcript_path",
+      "agent_type",
+      "cwd",
+      "hook_event_name",
+      "last_assistant_message",
+      "session_id",
+      "stop_hook_active",
+      "transcript_path"
+    ]
+  },
+  "schemaFidelity": {
+    "payload": "structural",
+    "result": "structural",
+    "carrier": "structural",
+    "limitations": [
+      "Claude publishes prose and examples rather than a generated JSON Schema; undocumented optional fields may exist.",
+      "Tool-specific input constraints cover Bash, PowerShell, Write, Edit, and Read; other built-in and MCP tool inputs remain open objects.",
+      "Callback schemas retain documented control fields but do not claim every event-specific invalid-field interaction."
+    ]
+  },
+  "observationMode": "passive",
   "evidence": {
     "existence": [
       "claude-official-hooks"
     ],
     "shape": [
+      "claude-official-hooks"
+    ],
+    "result": [
+      "claude-official-hooks"
+    ],
+    "carrier": [
       "claude-official-hooks"
     ]
   },

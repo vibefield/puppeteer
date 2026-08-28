@@ -10,18 +10,56 @@
   "direction": "agent-to-client",
   "trigger": "Published on the native GET /event stream.",
   "payloadSchema": {
-    "type": "object",
+    "additionalProperties": false,
     "properties": {
       "commands": {
-        "type": "object",
-        "properties": {
-          "start": {
-            "type": "string"
-          }
-        }
+        "$ref": "#/$defs/ProjectCommands"
       },
       "icon": {
-        "type": "object",
+        "$ref": "#/$defs/ProjectIcon"
+      },
+      "id": {
+        "type": "string"
+      },
+      "name": {
+        "type": "string"
+      },
+      "sandboxes": {
+        "items": {
+          "type": "string"
+        },
+        "type": "array"
+      },
+      "time": {
+        "$ref": "#/$defs/ProjectTime"
+      },
+      "vcs": {
+        "$ref": "#/$defs/ProjectVcs"
+      },
+      "worktree": {
+        "type": "string"
+      }
+    },
+    "required": [
+      "id",
+      "worktree",
+      "time",
+      "sandboxes"
+    ],
+    "type": "object",
+    "$defs": {
+      "ProjectCommands": {
+        "additionalProperties": false,
+        "properties": {
+          "start": {
+            "description": "Startup script to run when creating a new workspace (worktree)",
+            "type": "string"
+          }
+        },
+        "type": "object"
+      },
+      "ProjectIcon": {
+        "additionalProperties": false,
         "properties": {
           "color": {
             "type": "string"
@@ -32,85 +70,54 @@
           "url": {
             "type": "string"
           }
-        }
+        },
+        "type": "object"
       },
-      "id": {
-        "type": "string"
-      },
-      "name": {
-        "type": "string"
-      },
-      "sandboxes": {
-        "type": "array",
-        "items": {
-          "type": "string"
-        }
-      },
-      "time": {
-        "type": "object",
+      "ProjectTime": {
+        "additionalProperties": false,
         "properties": {
           "created": {
-            "type": "integer",
-            "minimum": 0
+            "minimum": 0,
+            "type": "integer"
           },
           "initialized": {
-            "type": "integer",
-            "minimum": 0
+            "minimum": 0,
+            "type": "integer"
           },
           "updated": {
-            "type": "integer",
-            "minimum": 0
+            "minimum": 0,
+            "type": "integer"
           }
         },
         "required": [
           "created",
           "updated"
-        ]
+        ],
+        "type": "object"
       },
-      "vcs": {
-        "type": "string"
-      },
-      "worktree": {
+      "ProjectVcs": {
+        "enum": [
+          "git"
+        ],
         "type": "string"
       }
-    },
-    "required": [
-      "id",
-      "sandboxes",
-      "time",
-      "worktree"
-    ]
+    }
   },
   "recordSchema": {
-    "type": "object",
+    "additionalProperties": false,
     "properties": {
       "id": {
+        "pattern": "^evt_",
         "type": "string"
       },
       "properties": {
-        "type": "object",
+        "additionalProperties": false,
         "properties": {
           "commands": {
-            "type": "object",
-            "properties": {
-              "start": {
-                "type": "string"
-              }
-            }
+            "$ref": "#/$defs/ProjectCommands"
           },
           "icon": {
-            "type": "object",
-            "properties": {
-              "color": {
-                "type": "string"
-              },
-              "override": {
-                "type": "string"
-              },
-              "url": {
-                "type": "string"
-              }
-            }
+            "$ref": "#/$defs/ProjectIcon"
           },
           "id": {
             "type": "string"
@@ -119,34 +126,16 @@
             "type": "string"
           },
           "sandboxes": {
-            "type": "array",
             "items": {
               "type": "string"
-            }
+            },
+            "type": "array"
           },
           "time": {
-            "type": "object",
-            "properties": {
-              "created": {
-                "type": "integer",
-                "minimum": 0
-              },
-              "initialized": {
-                "type": "integer",
-                "minimum": 0
-              },
-              "updated": {
-                "type": "integer",
-                "minimum": 0
-              }
-            },
-            "required": [
-              "created",
-              "updated"
-            ]
+            "$ref": "#/$defs/ProjectTime"
           },
           "vcs": {
-            "type": "string"
+            "$ref": "#/$defs/ProjectVcs"
           },
           "worktree": {
             "type": "string"
@@ -154,23 +143,84 @@
         },
         "required": [
           "id",
-          "sandboxes",
+          "worktree",
           "time",
-          "worktree"
-        ]
+          "sandboxes"
+        ],
+        "type": "object"
       },
       "type": {
-        "type": "string",
         "enum": [
           "project.updated"
-        ]
+        ],
+        "type": "string"
       }
     },
     "required": [
       "id",
-      "properties",
-      "type"
-    ]
+      "type",
+      "properties"
+    ],
+    "type": "object",
+    "$defs": {
+      "ProjectCommands": {
+        "additionalProperties": false,
+        "properties": {
+          "start": {
+            "description": "Startup script to run when creating a new workspace (worktree)",
+            "type": "string"
+          }
+        },
+        "type": "object"
+      },
+      "ProjectIcon": {
+        "additionalProperties": false,
+        "properties": {
+          "color": {
+            "type": "string"
+          },
+          "override": {
+            "type": "string"
+          },
+          "url": {
+            "type": "string"
+          }
+        },
+        "type": "object"
+      },
+      "ProjectTime": {
+        "additionalProperties": false,
+        "properties": {
+          "created": {
+            "minimum": 0,
+            "type": "integer"
+          },
+          "initialized": {
+            "minimum": 0,
+            "type": "integer"
+          },
+          "updated": {
+            "minimum": 0,
+            "type": "integer"
+          }
+        },
+        "required": [
+          "created",
+          "updated"
+        ],
+        "type": "object"
+      },
+      "ProjectVcs": {
+        "enum": [
+          "git"
+        ],
+        "type": "string"
+      }
+    }
+  },
+  "schemaFidelity": {
+    "payload": "exact",
+    "carrier": "exact"
   },
   "evidence": {
     "existence": [

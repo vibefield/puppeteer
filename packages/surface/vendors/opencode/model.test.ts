@@ -2,7 +2,7 @@ import { readFileSync, readdirSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { describe, expect, it } from 'vitest';
-import { loadModel, validatePayload } from '@vibecook/puppeteer-surface';
+import { loadModel, validateSanitizedPayload } from '@vibecook/puppeteer-surface';
 import { checkCaptureDirectory, defaultRules } from '@vibecook/puppeteer-surface/sanitize';
 import { opencodeRules } from './privacy.mjs';
 
@@ -39,9 +39,20 @@ function variantConfidence(event: string, path: string, value: unknown): string 
     ?.confidence;
 }
 
+function valueAt(value: unknown, dottedPath: string): unknown {
+  return dottedPath.split('.').reduce<unknown>((current, component) => {
+    if (!current || typeof current !== 'object' || Array.isArray(current)) return undefined;
+    return (current as Record<string, unknown>)[component];
+  }, value);
+}
+
+function matches(value: unknown, expected: Readonly<Record<string, unknown>> | undefined): boolean {
+  return Object.entries(expected ?? {}).every(([path, candidate]) => Object.is(valueAt(value, path), candidate));
+}
+
 describe('the OpenCode 1.18.16 ASM', () => {
   it('loads the complete generated HTTP/SSE surface with distinct native rails', () => {
-    expect(model.manifest).toMatchObject({ asmVersion: 2, vendor: 'opencode', vendorVersion: VERSION });
+    expect(model.manifest).toMatchObject({ asmVersion: 3, vendor: 'opencode', vendorVersion: VERSION });
     expect(Object.keys(model.channels.channels).sort()).toEqual(['argv', 'http', 'sse', 'terminal']);
     expect(model.events).toHaveLength(278);
     expect(model.events.filter((event) => event.channel === 'http')).toHaveLength(188);
@@ -68,26 +79,18 @@ describe('the OpenCode 1.18.16 ASM', () => {
     expect(model.events.find((event) => event.event === 'http/session.summarize')?.confidence).toBe(
       'verified-headless',
     );
-    expect(model.events.find((event) => event.event === 'http/session.children')?.confidence).toBe(
-      'verified-headless',
-    );
+    expect(model.events.find((event) => event.event === 'http/session.children')?.confidence).toBe('verified-headless');
     expect(model.events.find((event) => event.event === 'http/experimental.session.background')?.confidence).toBe(
       'verified-headless',
     );
     expect(model.events.find((event) => event.event === 'http/session.fork')?.confidence).toBe('verified-headless');
-    expect(model.events.find((event) => event.event === 'http/session.update')?.confidence).toBe(
-      'verified-headless',
-    );
-    expect(model.events.find((event) => event.event === 'http/session.delete')?.confidence).toBe(
-      'verified-headless',
-    );
+    expect(model.events.find((event) => event.event === 'http/session.update')?.confidence).toBe('verified-headless');
+    expect(model.events.find((event) => event.event === 'http/session.delete')?.confidence).toBe('verified-headless');
     expect(model.events.find((event) => event.event === 'http/experimental.session.list')?.confidence).toBe(
       'verified-headless',
     );
     expect(model.events.find((event) => event.event === 'session.deleted')?.confidence).toBe('verified-headless');
-    expect(model.events.find((event) => event.event === 'session.compacted')?.confidence).toBe(
-      'verified-headless',
-    );
+    expect(model.events.find((event) => event.event === 'session.compacted')?.confidence).toBe('verified-headless');
 
     const vcsDiff = model.events.find((event) => event.event === 'http/vcs.diff');
     expect(vcsDiff?.payloadSchema?.properties?.query).toMatchObject({
@@ -128,6 +131,82 @@ describe('the OpenCode 1.18.16 ASM', () => {
     expect(variantConfidence('file.watcher.updated', 'event', 'unlink')).toBe('verified-headless');
   });
 
+  it('joins exact workspace-tool source contracts to their runtime occurrences', () => {
+    const event = model.events.find((entry) => entry.event === 'message.part.updated');
+    const refinements = event?.payloadRefinements ?? [];
+    expect(refinements).toHaveLength(9);
+    expect(
+      refinements.find(
+        (refinement) =>
+          refinement.match?.['part.tool'] === 'edit' &&
+          refinement.match?.['part.state.status'] === 'running' &&
+          refinement.path === 'part.state.input',
+      ),
+    ).toMatchObject({
+      confidence: 'verified-headless',
+      fidelity: 'exact',
+      schema: {
+        type: 'object',
+        required: ['filePath', 'oldString', 'newString'],
+        properties: {
+          filePath: { type: 'string' },
+          oldString: { type: 'string' },
+          newString: { type: 'string' },
+          replaceAll: { type: 'boolean' },
+        },
+      },
+    });
+    expect(
+      refinements.find(
+        (refinement) => refinement.match?.['part.tool'] === 'apply_patch' && refinement.path === 'part.state.metadata',
+      ),
+    ).toMatchObject({
+      fidelity: 'semantic',
+      limitations: expect.arrayContaining([
+        '`truncated` describes model-facing output truncation; it does not describe diff or patch completeness.',
+      ]),
+      schema: {
+        type: 'object',
+        properties: {
+          truncated: { type: 'boolean' },
+          files: {
+            type: 'array',
+            items: {
+              type: 'object',
+              properties: {
+                filePath: { type: 'string' },
+                type: { type: 'string', enum: ['add', 'update', 'delete', 'move'] },
+                patch: { type: 'string' },
+                additions: { type: 'integer', minimum: 0 },
+                deletions: { type: 'integer', minimum: 0 },
+                movePath: { type: 'string' },
+              },
+            },
+          },
+        },
+      },
+    });
+    expect(model.evidenceIndex?.records.some((record) => record.id === 'source-workspace-tools')).toBe(true);
+    expect(model.evidenceIndex?.claims.some((claim) => claim.id === 'opencode-exact-release-source')).toBe(true);
+
+    const failures: string[] = [];
+    for (const scenario of ['file-write', 'file-edit', 'file-delete']) {
+      for (const [index, record] of records(scenario, 'events.jsonl').entries()) {
+        if (record.type !== 'message.part.updated') continue;
+        for (const refinement of refinements.filter((candidate) => matches(record.properties, candidate.match))) {
+          const value = valueAt(record.properties, refinement.path);
+          if (value === undefined) continue;
+          failures.push(
+            ...validateSanitizedPayload(refinement.schema, value).map(
+              (violation) => `${scenario}:${index + 1} ${refinement.path}: ${violation}`,
+            ),
+          );
+        }
+      }
+    }
+    expect(failures).toEqual([]);
+  });
+
   it('accepts every captured SSE payload and whole carrier', () => {
     const failures: string[] = [];
     let checked = 0;
@@ -138,10 +217,10 @@ describe('the OpenCode 1.18.16 ASM', () => {
           failures.push(`${scenario}:${index + 1} unknown ${String(record.type)}`);
           continue;
         }
-        for (const violation of validatePayload(event.payloadSchema!, record.properties)) {
+        for (const violation of validateSanitizedPayload(event.payloadSchema!, record.properties)) {
           failures.push(`${scenario}:${index + 1} ${record.type} payload: ${violation}`);
         }
-        for (const violation of validatePayload(event.recordSchema!, record)) {
+        for (const violation of validateSanitizedPayload(event.recordSchema!, record)) {
           failures.push(`${scenario}:${index + 1} ${record.type} carrier: ${violation}`);
         }
         checked += 1;
@@ -166,10 +245,10 @@ describe('the OpenCode 1.18.16 ASM', () => {
             continue;
           }
           failures.push(
-            ...validatePayload(event.payloadSchema!, record.request).map(
+            ...validateSanitizedPayload(event.payloadSchema!, record.request).map(
               (violation) => `${scenario}:${index + 1} ${event.event} payload: ${violation}`,
             ),
-            ...validatePayload(event.recordSchema!, record).map(
+            ...validateSanitizedPayload(event.recordSchema!, record).map(
               (violation) => `${scenario}:${index + 1} ${event.event} carrier: ${violation}`,
             ),
           );
@@ -185,7 +264,7 @@ describe('the OpenCode 1.18.16 ASM', () => {
           if ((pending.get(key) ?? 0) < 1) failures.push(`${scenario}:${index + 1} orphan result ${key}`);
           else pending.set(key, (pending.get(key) ?? 0) - 1);
           failures.push(
-            ...validatePayload(event.resultSchema!, record.response).map(
+            ...validateSanitizedPayload(event.resultSchema!, record.response).map(
               (violation) => `${scenario}:${index + 1} ${event.event} result: ${violation}`,
             ),
           );
@@ -289,8 +368,7 @@ describe('the OpenCode 1.18.16 ASM', () => {
     ).toMatchObject({ kind: 'sequence', confidence: 'verified-headless' });
     expect(
       model.behavior.relations.find(
-        (relation) =>
-          relation.from === 'server-connected' && relation.to === 'post-restart-native-attach-permission',
+        (relation) => relation.from === 'server-connected' && relation.to === 'post-restart-native-attach-permission',
       ),
     ).toMatchObject({ kind: 'resume', confidence: 'verified-interactive' });
     expect(
@@ -403,7 +481,7 @@ describe('the OpenCode 1.18.16 ASM', () => {
       capturedAt: '2026-08-11T06:55:14.225Z',
     });
     expect(claims.get('opencode-generated-openapi')?.confidence).toBe('unverified');
-    expect(model.evidenceIndex?.records).toHaveLength(29);
+    expect(model.evidenceIndex?.records).toHaveLength(31);
   });
 
   it('keeps every committed carrier clean under vendor and shared privacy rules', () => {

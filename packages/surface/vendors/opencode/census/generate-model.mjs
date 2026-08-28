@@ -15,6 +15,7 @@
 import { existsSync, mkdirSync, readFileSync, readdirSync, rmSync, writeFileSync } from 'node:fs';
 import { dirname, join, relative, resolve, sep } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { projectJsonSchema } from '@vibecook/puppeteer-surface';
 import { digestTree } from '../../../scripts/check-evidence.mjs';
 import { writeGroundTruthArtifacts } from '../../../scripts/groundtruth.mjs';
 
@@ -88,103 +89,24 @@ function dereference(node, root) {
   return refTarget(node.$ref, root) ?? {};
 }
 
-function mergeObjectSchemas(schemas) {
-  const objects = schemas.filter((schema) => schema?.type === 'object');
-  if (objects.length === 0) return {};
-  const properties = Object.assign({}, ...objects.map((schema) => schema.properties ?? {}));
-  const required = [...new Set(objects.flatMap((schema) => schema.required ?? []))].filter((name) =>
-    Object.hasOwn(properties, name),
-  );
-  return {
-    type: 'object',
-    ...(Object.keys(properties).length > 0 ? { properties } : {}),
-    ...(required.length > 0 ? { required: required.sort() } : {}),
-  };
-}
-
-/** Collapse OpenAPI into the recursive subset enforced by Surface. */
-function schemaNode(node, root, options = {}) {
-  const { path = '', enumPaths = new Set(), stack = new Set(), depth = 0 } = options;
-  if (!node || typeof node !== 'object' || depth > 24) return {};
-  if (typeof node.$ref === 'string') {
-    if (stack.has(node.$ref)) return {};
-    const target = refTarget(node.$ref, root);
-    if (!target) return {};
-    return schemaNode(target, root, {
-      path,
-      enumPaths,
-      stack: new Set([...stack, node.$ref]),
-      depth: depth + 1,
-    });
-  }
-
-  const branchNodes = [...(node.anyOf ?? []), ...(node.oneOf ?? [])]
-    .map((branch) => schemaNode(branch, root, { path, enumPaths, stack, depth: depth + 1 }))
-    .filter((branch) => Object.keys(branch).length > 0);
-  const uniqueBranches = [...new Map(branchNodes.map((branch) => [JSON.stringify(branch), branch])).values()];
-  const allOf = (node.allOf ?? []).map((branch) =>
-    schemaNode(branch, root, { path, enumPaths, stack, depth: depth + 1 }),
-  );
-  const allOfObject = mergeObjectSchemas(allOf);
-
-  const declaredTypes = Array.isArray(node.type) ? node.type : node.type ? [node.type] : [];
-  const nonNullTypes = [...new Set(declaredTypes.filter((type) => type !== 'null'))];
-  let type = nonNullTypes.length === 1 ? nonNullTypes[0] : undefined;
-  if (!type && (node.properties || allOfObject.type === 'object')) type = 'object';
-  if (!type && node.items) type = 'array';
-
-  const result = {};
-  if (type && ['string', 'number', 'integer', 'boolean', 'object', 'array', 'null'].includes(type)) {
-    result.type = type;
-  }
-  // Surface deliberately bounds unions. A wider vendor union is left
-  // unconstrained at that node instead of being truncated into a false claim.
-  if (uniqueBranches.length > 0 && uniqueBranches.length <= 16) result.anyOf = uniqueBranches;
-  if (declaredTypes.includes('null') && nonNullTypes.length === 1) {
-    result.anyOf = [...(result.anyOf ?? []), { type: nonNullTypes[0] }, { type: 'null' }];
-    delete result.type;
-  }
-
-  if (type === 'object') {
-    const rawProperties = { ...(allOfObject.properties ?? {}), ...(node.properties ?? {}) };
-    const properties = {};
-    for (const name of Object.keys(rawProperties).sort()) {
-      properties[name] = schemaNode(rawProperties[name], root, {
-        path: path ? `${path}.${name}` : name,
-        enumPaths,
-        stack,
-        depth: depth + 1,
-      });
-    }
-    if (Object.keys(properties).length > 0) result.properties = properties;
-    const required = [...new Set([...(allOfObject.required ?? []), ...(node.required ?? [])])]
-      .filter((name) => Object.hasOwn(properties, name))
-      .sort();
-    if (required.length > 0) result.required = required;
-  }
-  if (type === 'array' && node.items) {
-    result.items = schemaNode(node.items, root, { path, enumPaths, stack, depth: depth + 1 });
-  }
-  if (enumPaths.has(path) && Array.isArray(node.enum) && node.enum.length > 0) result.enum = node.enum;
-  if (enumPaths.has(path) && Object.hasOwn(node, 'const')) result.enum = [node.const];
-  for (const key of ['minimum', 'maximum', 'exclusiveMinimum', 'exclusiveMaximum']) {
-    if (typeof node[key] === 'number') result[key] = node[key];
-  }
-  return result;
+/** Retain the complete OpenAPI schema vocabulary and close over local refs. */
+function schemaNode(node, root) {
+  return projectJsonSchema(node, root);
 }
 
 function requestBodySchema(operation, root) {
   const requestBody = dereference(operation.requestBody, root);
   const content = requestBody?.content ?? {};
   const media = content['application/json'] ?? content['application/*+json'];
-  return media?.schema ? schemaNode(media.schema, root) : undefined;
+  return media?.schema;
 }
 
 function operationRequestSchema(pathItem, operation, root, method, route) {
   const properties = { method: { type: 'string' }, route: { type: 'string' } };
   const required = ['method', 'route'];
-  const parameters = [...(pathItem.parameters ?? []), ...(operation.parameters ?? [])]
-    .map((parameter) => dereference(parameter, root));
+  const parameters = [...(pathItem.parameters ?? []), ...(operation.parameters ?? [])].map((parameter) =>
+    dereference(parameter, root),
+  );
   for (const [location, property] of [
     ['path', 'params'],
     ['query', 'query'],
@@ -194,7 +116,7 @@ function operationRequestSchema(pathItem, operation, root, method, route) {
     const parameterProperties = {};
     const parameterRequired = [];
     for (const parameter of selected.sort((left, right) => left.name.localeCompare(right.name))) {
-      parameterProperties[parameter.name] = schemaNode(parameter.schema, root);
+      parameterProperties[parameter.name] = parameter.schema ?? {};
       if (parameter.required) parameterRequired.push(parameter.name);
     }
     properties[property] = {
@@ -210,7 +132,7 @@ function operationRequestSchema(pathItem, operation, root, method, route) {
     const requestBody = dereference(operation.requestBody, root);
     if (requestBody?.required) required.push('body');
   }
-  return { type: 'object', properties, required, _method: method, _route: route };
+  return { type: 'object', properties, required };
 }
 
 function successfulResponse(operation, root) {
@@ -222,7 +144,7 @@ function successfulResponse(operation, root) {
   const response = dereference(raw, root);
   const content = response?.content ?? {};
   const media = content['application/json'] ?? content['application/*+json'];
-  return { status: Number(status), body: media?.schema ? schemaNode(media.schema, root) : undefined };
+  return { status: Number(status), body: media?.schema };
 }
 
 function operationResultSchema(operation, root, requestSchema, method, route) {
@@ -242,27 +164,28 @@ function operationResultSchema(operation, root, requestSchema, method, route) {
     properties.body = success.body;
     required.push('body');
   }
-  return { type: 'object', properties, required };
+  return projectJsonSchema({ type: 'object', properties, required }, root);
 }
 
 function exactRequestSchema(schema, method, route) {
   const exact = structuredClone(schema);
-  delete exact._method;
-  delete exact._route;
   exact.properties.method.enum = [method];
   exact.properties.route.enum = [route];
   return exact;
 }
 
-function requestRecordSchema(requestSchema, method, route) {
-  return {
-    type: 'object',
-    properties: {
-      direction: { type: 'string', enum: ['client-to-agent'] },
-      request: exactRequestSchema(requestSchema, method, route),
+function requestRecordSchema(requestSchema, method, route, root) {
+  return projectJsonSchema(
+    {
+      type: 'object',
+      properties: {
+        direction: { type: 'string', enum: ['client-to-agent'] },
+        request: exactRequestSchema(requestSchema, method, route),
+      },
+      required: ['direction', 'request'],
     },
-    required: ['direction', 'request'],
-  };
+    root,
+  );
 }
 
 function traceRoute(path) {
@@ -341,12 +264,25 @@ function valueAt(value, dottedPath) {
   return dottedPath.split('.').reduce((current, component) => current?.[component], value);
 }
 
-function enumClaims(schema, prefix = '') {
+function enumClaims(schema, prefix = '', root = schema, visited = new Set()) {
+  if (!schema || typeof schema !== 'object' || visited.has(schema)) return [];
+  visited.add(schema);
   const found = [];
   if (Array.isArray(schema?.enum) && prefix) found.push({ path: prefix, values: schema.enum });
-  for (const branch of schema?.anyOf ?? []) found.push(...enumClaims(branch, prefix));
+  if (Object.hasOwn(schema, 'const') && prefix) found.push({ path: prefix, values: [schema.const] });
+  if (typeof schema.$ref === 'string' && schema.$ref.startsWith('#/')) {
+    const target = schema.$ref
+      .slice(2)
+      .split('/')
+      .map((part) => part.replaceAll('~1', '/').replaceAll('~0', '~'))
+      .reduce((current, part) => current?.[part], root);
+    found.push(...enumClaims(target, prefix, root, visited));
+  }
+  for (const branch of [...(schema?.anyOf ?? []), ...(schema?.oneOf ?? []), ...(schema?.allOf ?? [])]) {
+    found.push(...enumClaims(branch, prefix, root, visited));
+  }
   for (const [name, child] of Object.entries(schema?.properties ?? {})) {
-    found.push(...enumClaims(child, prefix ? `${prefix}.${name}` : name));
+    found.push(...enumClaims(child, prefix ? `${prefix}.${name}` : name, root, visited));
   }
   return found;
 }
@@ -357,9 +293,9 @@ function evidenceFor(observation, fallback = 'opencode-generated-openapi') {
   return { id, scenario, confidence: scenario ? scenarioConfidence(scenario) : 'unverified' };
 }
 
-function variantsFor(schema, observation) {
+function variantsFor(schema, observation, discriminants) {
   const variants = [];
-  for (const claim of enumClaims(schema)) {
+  for (const claim of enumClaims(schema).filter((entry) => discriminants.includes(entry.path))) {
     for (const expected of claim.values) {
       const matching =
         observation?.samples.filter((sample) => Object.is(valueAt(sample.payload, claim.path), expected)) ?? [];
@@ -416,6 +352,62 @@ function inferredSchema(values) {
   return ['string', 'number', 'integer', 'boolean', 'null'].includes(type) ? { type } : {};
 }
 
+const WORKSPACE_TOOL_CAPTURE_SCENARIOS = [
+  { tool: 'apply_patch', scenario: 'file-delete' },
+  { tool: 'edit', scenario: 'file-edit' },
+  { tool: 'write', scenario: 'file-write' },
+];
+
+/**
+ * The generated OpenAPI contract deliberately leaves ToolState input and
+ * metadata open. The exact-release tool definitions close that schema gap,
+ * while the matching censuses independently prove runtime occurrence. Match
+ * running/completed states explicitly because a pending tool part may still
+ * carry the parser's intentionally partial `{}` input.
+ */
+function workspaceToolRefinements(observation, sourceContract) {
+  const refinements = [];
+  for (const { tool, scenario } of WORKSPACE_TOOL_CAPTURE_SCENARIOS) {
+    const sourceTool = sourceContract.tools?.[tool];
+    if (!sourceTool?.inputSchema || !sourceTool?.completedMetadataSchema) {
+      throw new Error(`exact source contract is missing the ${tool} workspace tool schemas`);
+    }
+    const samples = (observation?.samples ?? []).filter(
+      (sample) =>
+        sample.scenario === scenario && sample.payload?.part?.type === 'tool' && sample.payload?.part?.tool === tool,
+    );
+    const runtimeObserved = samples.length > 0;
+    const evidence = {
+      existence: ['opencode-exact-release-source', ...(runtimeObserved ? [claimID(scenario)] : [])],
+      shape: ['opencode-exact-release-source', ...(runtimeObserved ? [claimID(scenario)] : [])],
+    };
+    const confidence = runtimeObserved ? scenarioConfidence(scenario) : 'unverified';
+    for (const status of ['running', 'completed']) {
+      refinements.push({
+        match: { 'part.type': 'tool', 'part.tool': tool, 'part.state.status': status },
+        path: 'part.state.input',
+        schema: structuredClone(sourceTool.inputSchema),
+        evidence,
+        confidence,
+        fidelity: 'exact',
+      });
+    }
+    refinements.push({
+      match: { 'part.type': 'tool', 'part.tool': tool, 'part.state.status': 'completed' },
+      path: 'part.state.metadata',
+      schema: structuredClone(sourceTool.completedMetadataSchema),
+      evidence,
+      confidence,
+      fidelity: 'semantic',
+      limitations: [
+        'The tool and generic wrapper define these completed metadata fields, while nested diagnostics remain an open native object.',
+        '`truncated` describes model-facing output truncation; it does not describe diff or patch completeness.',
+      ],
+    });
+  }
+  return refinements;
+}
+
 function description(operation) {
   return [operation.summary, operation.description]
     .filter((value, index, values) => typeof value === 'string' && value.length > 0 && values.indexOf(value) === index)
@@ -426,32 +418,42 @@ const expectedVersion = flag('--version') ?? VERSION;
 if (expectedVersion !== VERSION) throw new Error(`generator is pinned to OpenCode ${VERSION}, got ${expectedVersion}`);
 const capturesDir = resolve(flag('--captures') ?? join(vendorRoot, 'captures', `opencode@${VERSION}`));
 const probesDir = resolve(flag('--probes') ?? join(vendorRoot, 'probes', `opencode@${VERSION}`));
-const schemaPath = resolve(
-  flag('--schema') ?? join(vendorRoot, 'captures-raw', `opencode@${VERSION}`, 'turn', 'openapi.json'),
+const schemaPath = resolve(flag('--schema') ?? join(vendorRoot, 'references', `opencode@${VERSION}`, 'openapi.json'));
+const sourceContractPath = resolve(
+  flag('--source-contract') ?? join(vendorRoot, 'references', `opencode@${VERSION}`, 'source', 'workspace-tools.json'),
 );
 const out = resolve(flag('--out') ?? join(vendorRoot, 'model', `opencode@${VERSION}`));
 const behaviorPath = resolve(flag('--behavior') ?? join(vendorRoot, 'census', 'behavior.seed.json'));
 const includeEvidence = !argv.includes('--no-evidence');
 if (!existsSync(schemaPath)) throw new Error(`OpenCode OpenAPI document not found: ${schemaPath}`);
+if (!existsSync(sourceContractPath)) throw new Error(`OpenCode exact source contract not found: ${sourceContractPath}`);
 if (!existsSync(behaviorPath)) throw new Error(`reviewed behavior seed not found: ${behaviorPath}`);
 
 const openapi = readJson(schemaPath);
+const sourceContract = readJson(sourceContractPath);
 if (openapi.openapi !== '3.1.0') throw new Error(`expected OpenAPI 3.1.0, got ${String(openapi.openapi)}`);
 const artifact = readJson(join(probesDir, 'artifact.json'));
 if (artifact.version !== VERSION || artifact.platform !== PLATFORM)
   throw new Error('artifact probe does not match generator pin');
+if (
+  sourceContract.vendorVersion !== VERSION ||
+  sourceContract.sourceRevision !== artifact.sourceRevision ||
+  sourceContract.sourceTag !== artifact.sourceTag
+) {
+  throw new Error('exact source contract does not match the pinned OpenCode release');
+}
 const observed = census(capturesDir);
 
 rmSync(out, { recursive: true, force: true });
 mkdirSync(join(out, 'events'), { recursive: true });
 
 writeJson(join(out, 'manifest.json'), {
-  asmVersion: 2,
+  asmVersion: 3,
   vendor: 'opencode',
   vendorVersion: VERSION,
   generatedAt: artifact.capturedAt.slice(0, 10),
   source:
-    'Generated by packages/surface/vendors/opencode/census/generate-model.mjs from the pinned OpenCode /doc OpenAPI document and sanitized hermetic HTTP/SSE captures. Schema-only branches remain unverified.',
+    'Generated by packages/surface/vendors/opencode/census/generate-model.mjs from the pinned OpenCode /doc OpenAPI document, exact-release workspace-tool source contract, and sanitized hermetic HTTP/SSE captures. Schema/source-only branches remain unverified.',
   ...(includeEvidence ? { evidence: 'evidence.json' } : {}),
 });
 
@@ -513,15 +515,14 @@ for (const path of Object.keys(openapi.paths ?? {}).sort()) {
     const responseObservation = observed.responses.get(key);
     const requestEvidence = evidenceFor(requestObservation);
     const resultEvidence = evidenceFor(responseObservation);
-    const requestSchema = operationRequestSchema(pathItem, operation, openapi, method.toUpperCase(), route);
-    delete requestSchema._method;
-    delete requestSchema._route;
+    const requestContract = operationRequestSchema(pathItem, operation, openapi, method.toUpperCase(), route);
+    const requestSchema = projectJsonSchema(requestContract, openapi);
     const event = `http/${operation.operationId}`;
     const evidence = {
-      existence: [requestEvidence.id],
-      shape: [requestEvidence.id],
-      result: [resultEvidence.id],
-      carrier: [requestEvidence.id],
+      existence: [...new Set(['opencode-generated-openapi', requestEvidence.id])],
+      shape: [...new Set(['opencode-generated-openapi', requestEvidence.id])],
+      result: [...new Set(['opencode-generated-openapi', resultEvidence.id])],
+      carrier: [...new Set(['opencode-generated-openapi', requestEvidence.id])],
     };
     const confidence =
       requestEvidence.confidence === 'verified-headless' && resultEvidence.confidence === 'verified-headless'
@@ -539,8 +540,9 @@ for (const path of Object.keys(openapi.paths ?? {}).sort()) {
       direction: 'client-to-agent',
       ...(description(operation) ? { trigger: description(operation) } : {}),
       payloadSchema: requestSchema,
-      resultSchema: operationResultSchema(operation, openapi, requestSchema, method.toUpperCase(), route),
-      recordSchema: requestRecordSchema(requestSchema, method.toUpperCase(), route),
+      resultSchema: operationResultSchema(operation, openapi, requestContract, method.toUpperCase(), route),
+      recordSchema: requestRecordSchema(requestContract, method.toUpperCase(), route, openapi),
+      schemaFidelity: { payload: 'semantic', result: 'semantic', carrier: 'semantic' },
       evidence,
       confidence,
       ...(requestEvidence.scenario
@@ -565,11 +567,13 @@ for (const branch of eventUnion?.anyOf ?? []) {
   if (typeof event !== 'string') continue;
   const observation = observed.events.get(event);
   const runtime = evidenceFor(observation);
-  const enumPaths = new Set(VARIANT_PATHS.get(event) ?? []);
-  const payloadSchema = schemaNode(schema.properties?.properties, openapi, { enumPaths });
+  const discriminants = VARIANT_PATHS.get(event) ?? [];
+  const payloadSchema = schemaNode(schema.properties?.properties, openapi);
   const recordSchema = schemaNode(schema, openapi);
   recordSchema.properties.type.enum = [event];
-  const variants = variantsFor(payloadSchema, observation);
+  const variants = variantsFor(payloadSchema, observation, discriminants);
+  const payloadRefinements =
+    event === 'message.part.updated' ? workspaceToolRefinements(observation, sourceContract) : [];
   writeJson(eventPath(out, event), {
     surface: 'opencode',
     surfaceVersion: VERSION,
@@ -581,12 +585,14 @@ for (const branch of eventUnion?.anyOf ?? []) {
     trigger: 'Published on the native GET /event stream.',
     payloadSchema,
     recordSchema,
+    schemaFidelity: { payload: 'exact', carrier: 'exact' },
     evidence: {
-      existence: [runtime.id],
-      shape: [runtime.id],
-      carrier: [runtime.id],
+      existence: [...new Set(['opencode-generated-openapi', runtime.id])],
+      shape: [...new Set(['opencode-generated-openapi', runtime.id])],
+      carrier: [...new Set(['opencode-generated-openapi', runtime.id])],
     },
-    ...(variants.length > 0 ? { variants } : {}),
+    ...(variants.length > 0 ? { variantDiscriminants: discriminants, variants } : {}),
+    ...(payloadRefinements.length > 0 ? { payloadRefinements } : {}),
     confidence: runtime.confidence,
     ...(runtime.scenario
       ? {
@@ -617,6 +623,11 @@ for (const [event, observation] of [...observed.events].sort(([left], [right]) =
     trigger: 'Observed on the native GET /event stream.',
     payloadSchema,
     recordSchema,
+    schemaFidelity: {
+      payload: 'sampled',
+      carrier: 'sampled',
+      limitations: ['Schema includes only shapes present in the sanitized runtime samples.'],
+    },
     evidence: {
       existence: [runtime.id],
       shape: [runtime.id],
@@ -696,6 +707,21 @@ if (includeEvidence) {
         digestAlgorithm: 'sha256-path-content-v1',
         sha256: digestTree(probesDir),
       },
+      {
+        id: 'generated-openapi',
+        kind: 'generated-schema',
+        path: posixRelative(dirname(schemaPath)),
+        exclude: ['source/workspace-tools.json'],
+        digestAlgorithm: 'sha256-path-content-v1',
+        sha256: digestTree(dirname(schemaPath), ['source/workspace-tools.json']),
+      },
+      {
+        id: 'source-workspace-tools',
+        kind: 'source-contract',
+        path: posixRelative(dirname(sourceContractPath)),
+        digestAlgorithm: 'sha256-path-content-v1',
+        sha256: digestTree(dirname(sourceContractPath)),
+      },
       modelRecord,
     ],
     claims: [
@@ -714,10 +740,20 @@ if (includeEvidence) {
         id: 'opencode-generated-openapi',
         kind: 'generated-schema',
         confidence: 'unverified',
+        record: 'generated-openapi',
         artifact: ARTIFACT_ID,
         sourceReference: 0,
         harness: 'GET /doc from the pinned private opencode serve backend',
         notes: 'The generated schema proves possible names and shapes, not runtime occurrence or ordering.',
+      },
+      {
+        id: 'opencode-exact-release-source',
+        kind: 'exact-source',
+        confidence: 'unverified',
+        record: 'source-workspace-tools',
+        sourceReference: 0,
+        notes:
+          'Digest-pinned exact-release source establishes workspace tool arguments, result metadata, diff-preview production, generic output truncation semantics, and watcher variants; source alone does not prove runtime occurrence.',
       },
       ...scenarioClaims,
       {
@@ -730,6 +766,8 @@ if (includeEvidence) {
     limitations: [
       'Artifact integrity and runtime probes are pinned only for darwin-arm64.',
       'OpenAPI/source-only branches remain unverified until a controlled runtime capture exercises them.',
+      'Workspace patch strings are indentation-normalized presentation previews and are not guaranteed to be directly applicable unified diffs.',
+      'Tool metadata `truncated` describes model-facing output truncation, not patch completeness.',
       'The SSE carrier exposes no observed replay cursor; durable REST rehydration is required after a gap.',
       'Native attach was captured on an exact fresh session, but not yet combined with a backend-restart resume.',
     ],
@@ -739,4 +777,4 @@ if (includeEvidence) {
 console.log(`opencode@${VERSION}: ${httpCount} HTTP operation(s), ${sseCount} SSE event type(s)`);
 console.log(`  observed: ${observed.requests.size} HTTP request route(s), ${observed.events.size} SSE event type(s)`);
 console.log(`  -> ${out}`);
-writeGroundTruthArtifacts(out);
+if (includeEvidence) writeGroundTruthArtifacts(out);

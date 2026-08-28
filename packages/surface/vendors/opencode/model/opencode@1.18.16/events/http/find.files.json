@@ -10,32 +10,35 @@
   "direction": "client-to-agent",
   "trigger": "Find files — Search for files or directories by name or pattern in the project directory.",
   "payloadSchema": {
-    "type": "object",
     "properties": {
       "method": {
         "type": "string"
       },
-      "route": {
-        "type": "string"
-      },
       "query": {
-        "type": "object",
         "properties": {
           "directory": {
             "type": "string"
           },
           "dirs": {
+            "enum": [
+              "true",
+              "false"
+            ],
             "type": "string"
           },
           "limit": {
-            "type": "integer",
+            "maximum": 200,
             "minimum": 1,
-            "maximum": 200
+            "type": "integer"
           },
           "query": {
             "type": "string"
           },
           "type": {
+            "enum": [
+              "file",
+              "directory"
+            ],
             "type": "string"
           },
           "workspace": {
@@ -44,53 +47,60 @@
         },
         "required": [
           "query"
-        ]
+        ],
+        "type": "object"
+      },
+      "route": {
+        "type": "string"
       }
     },
     "required": [
       "method",
       "route",
       "query"
-    ]
+    ],
+    "type": "object"
   },
   "resultSchema": {
-    "type": "object",
     "properties": {
+      "body": {
+        "description": "File paths",
+        "items": {
+          "type": "string"
+        },
+        "type": "array"
+      },
       "method": {
-        "type": "string",
         "enum": [
           "GET"
-        ]
-      },
-      "route": {
-        "type": "string",
-        "enum": [
-          "/find/file"
-        ]
-      },
-      "status": {
-        "type": "integer",
-        "minimum": 200,
-        "maximum": 299
+        ],
+        "type": "string"
       },
       "query": {
-        "type": "object",
         "properties": {
           "directory": {
             "type": "string"
           },
           "dirs": {
+            "enum": [
+              "true",
+              "false"
+            ],
             "type": "string"
           },
           "limit": {
-            "type": "integer",
+            "maximum": 200,
             "minimum": 1,
-            "maximum": 200
+            "type": "integer"
           },
           "query": {
             "type": "string"
           },
           "type": {
+            "enum": [
+              "file",
+              "directory"
+            ],
             "type": "string"
           },
           "workspace": {
@@ -99,13 +109,19 @@
         },
         "required": [
           "query"
-        ]
+        ],
+        "type": "object"
       },
-      "body": {
-        "type": "array",
-        "items": {
-          "type": "string"
-        }
+      "route": {
+        "enum": [
+          "/find/file"
+        ],
+        "type": "string"
+      },
+      "status": {
+        "maximum": 299,
+        "minimum": 200,
+        "type": "integer"
       }
     },
     "required": [
@@ -114,50 +130,50 @@
       "status",
       "query",
       "body"
-    ]
+    ],
+    "type": "object"
   },
   "recordSchema": {
-    "type": "object",
     "properties": {
       "direction": {
-        "type": "string",
         "enum": [
           "client-to-agent"
-        ]
+        ],
+        "type": "string"
       },
       "request": {
-        "type": "object",
         "properties": {
           "method": {
-            "type": "string",
             "enum": [
               "GET"
-            ]
-          },
-          "route": {
-            "type": "string",
-            "enum": [
-              "/find/file"
-            ]
+            ],
+            "type": "string"
           },
           "query": {
-            "type": "object",
             "properties": {
               "directory": {
                 "type": "string"
               },
               "dirs": {
+                "enum": [
+                  "true",
+                  "false"
+                ],
                 "type": "string"
               },
               "limit": {
-                "type": "integer",
+                "maximum": 200,
                 "minimum": 1,
-                "maximum": 200
+                "type": "integer"
               },
               "query": {
                 "type": "string"
               },
               "type": {
+                "enum": [
+                  "file",
+                  "directory"
+                ],
                 "type": "string"
               },
               "workspace": {
@@ -166,20 +182,34 @@
             },
             "required": [
               "query"
-            ]
+            ],
+            "type": "object"
+          },
+          "route": {
+            "enum": [
+              "/find/file"
+            ],
+            "type": "string"
           }
         },
         "required": [
           "method",
           "route",
           "query"
-        ]
+        ],
+        "type": "object"
       }
     },
     "required": [
       "direction",
       "request"
-    ]
+    ],
+    "type": "object"
+  },
+  "schemaFidelity": {
+    "payload": "semantic",
+    "result": "semantic",
+    "carrier": "semantic"
   },
   "evidence": {
     "existence": [

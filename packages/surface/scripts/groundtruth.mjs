@@ -47,6 +47,28 @@ function schemaSection(label, schema) {
   return `<details class="schema"><summary>${escapeHtml(label)}</summary><pre>${pretty(schema)}</pre></details>`;
 }
 
+function renderPayloadRefinements(refinements = []) {
+  if (refinements.length === 0) return '';
+  return `<details class="refinements"><summary>${refinements.length} evidence-bound payload refinements</summary>${refinements
+    .map(
+      (refinement) =>
+        `<article class="refinement"><header><code>${escapeHtml(refinement.path)}</code><span>${escapeHtml(
+          refinement.fidelity,
+        )}</span><span class="confidence ${slug(refinement.confidence)}">${escapeHtml(
+          refinement.confidence,
+        )}</span></header>${
+          refinement.match
+            ? `<p><strong>When</strong> <code>${escapeHtml(JSON.stringify(refinement.match))}</code></p>`
+            : ''
+        }${evidenceBadges(refinement.evidence)}${
+          refinement.limitations?.length
+            ? `<ul>${refinement.limitations.map((limitation) => `<li>${escapeHtml(limitation)}</li>`).join('')}</ul>`
+            : ''
+        }${schemaSection('Refined schema', refinement.schema)}</article>`,
+    )
+    .join('')}</details>`;
+}
+
 function renderBehavior(model) {
   const behavior = model.behavior;
   const nodesByLane = new Map(behavior.lanes.map((lane) => [lane.id, []]));
@@ -106,7 +128,15 @@ function renderChannels(model) {
 function renderEvents(model) {
   const cards = model.events
     .map((event) => {
-      const search = [event.event, event.direction, event.transport, event.confidence, ...(event.channels ?? [])]
+      const search = [
+        event.event,
+        event.nativeName,
+        event.direction,
+        event.transport,
+        event.confidence,
+        ...(event.channels ?? []),
+        ...(event.payloadRefinements ?? []).map((refinement) => refinement.path),
+      ]
         .filter(Boolean)
         .join(' ')
         .toLowerCase();
@@ -126,15 +156,34 @@ function renderEvents(model) {
         event.confidence,
       )}"><details><summary><span class="event-name">${escapeHtml(event.event)}</span><span class="event-meta"><span class="direction">${escapeHtml(
         event.direction ?? 'legacy',
-      )}</span><span class="confidence ${slug(event.confidence)}">${escapeHtml(event.confidence)}</span></span></summary><div class="event-body"><dl><div><dt>Channel</dt><dd>${event.channels
+      )}</span><span class="confidence ${slug(event.confidence)}">${escapeHtml(event.confidence)}</span></span></summary><div class="event-body"><dl>${
+        event.nativeName ? `<div><dt>Native name</dt><dd><code>${escapeHtml(event.nativeName)}</code></dd></div>` : ''
+      }<div><dt>Channel</dt><dd>${event.channels
         .map((channel) => `<a href="#channels"><code>${escapeHtml(channel)}</code></a>`)
         .join(
           ' ',
         )}</dd></div><div><dt>Transport</dt><dd>${escapeHtml(event.transport ?? '—')}</dd></div><div><dt>Trigger</dt><dd>${escapeHtml(
         event.trigger ?? '—',
-      )}</dd></div></dl>${event.notes ? `<p>${escapeHtml(event.notes)}</p>` : ''}${evidenceBadges(
+      )}</dd></div>${
+        event.observationMode
+          ? `<div><dt>Observation</dt><dd><code>${escapeHtml(event.observationMode)}</code></dd></div>`
+          : ''
+      }${
+        event.variantDiscriminants?.length
+          ? `<div><dt>Variant paths</dt><dd>${event.variantDiscriminants
+              .map((path) => `<code>${escapeHtml(path)}</code>`)
+              .join(' ')}</dd></div>`
+          : ''
+      }${
+        event.schemaFidelity
+          ? `<div><dt>Schema fidelity</dt><dd><code>${escapeHtml(JSON.stringify(event.schemaFidelity))}</code></dd></div>`
+          : ''
+      }</dl>${event.notes ? `<p>${escapeHtml(event.notes)}</p>` : ''}${evidenceBadges(
         event.evidence,
-      )}${variants}${schemaSection('Payload schema', event.payloadSchema)}${schemaSection(
+      )}${variants}${renderPayloadRefinements(event.payloadRefinements)}${schemaSection(
+        'Payload schema',
+        event.payloadSchema,
+      )}${schemaSection(
         'Result schema',
         event.resultSchema,
       )}${schemaSection('Carrier schema', event.recordSchema)}</div></details></article>`;
@@ -152,12 +201,24 @@ function renderEvidence(model) {
   const evidence = model.evidenceIndex ?? model.legacyEvidenceIndex;
   if (!evidence) return '';
   const claims = evidence.claims ?? [];
+  const sources = (evidence.sourceReferences ?? [])
+    .map(
+      (source, index) =>
+        `<tr><td>${index}</td><td>${escapeHtml(source.relation ?? '')}</td><td>${escapeHtml(
+          source.repository ?? '—',
+        )}</td><td><code>${escapeHtml(source.revision ?? source.tag ?? '—')}</code></td><td><pre>${pretty(
+          Object.fromEntries(
+            Object.entries(source).filter(([key]) => !['relation', 'repository', 'revision', 'tag'].includes(key)),
+          ),
+        )}</pre></td></tr>`,
+    )
+    .join('');
   const records = (evidence.records ?? [])
     .map(
       (record) =>
         `<tr><td><code>${escapeHtml(record.id)}</code></td><td>${escapeHtml(record.kind ?? '')}</td><td><code>${escapeHtml(
-          record.sha256 ? `sha256:${record.sha256}` : (record.path ?? ''),
-        )}</code></td></tr>`,
+          record.path ?? '',
+        )}</code></td><td><code>${escapeHtml(record.sha256 ? `sha256:${record.sha256}` : '—')}</code></td></tr>`,
     )
     .join('');
   const claimCards = claims
@@ -174,7 +235,11 @@ function renderEvidence(model) {
         }</article>`,
     )
     .join('');
-  return `<section id="evidence" class="panel"><div class="section-heading"><div><span class="eyebrow">Provenance</span><h2>Evidence</h2></div><span class="count">v${evidence.evidenceVersion} · ${claims.length} claims</span></div><details open><summary>Digest-pinned records</summary><div class="table-wrap"><table><thead><tr><th>ID</th><th>Kind</th><th>Path / digest</th></tr></thead><tbody>${records}</tbody></table></div></details>${
+  return `<section id="evidence" class="panel"><div class="section-heading"><div><span class="eyebrow">Provenance</span><h2>Evidence</h2></div><span class="count">v${evidence.evidenceVersion} · ${claims.length} claims</span></div>${
+    sources
+      ? `<details open><summary>Immutable source references</summary><div class="table-wrap"><table><thead><tr><th>#</th><th>Relation</th><th>Repository</th><th>Revision</th><th>Details</th></tr></thead><tbody>${sources}</tbody></table></div></details>`
+      : ''
+  }<details open><summary>Digest-pinned records</summary><div class="table-wrap"><table><thead><tr><th>ID</th><th>Kind</th><th>Path</th><th>Digest</th></tr></thead><tbody>${records}</tbody></table></div></details>${
     claims.length ? `<details><summary>Claim index</summary><div class="claim-list">${claimCards}</div></details>` : ''
   }</section>`;
 }
@@ -183,7 +248,7 @@ const CSS = `
 :root{color-scheme:light;--bg:#f4f2ec;--paper:#fff;--paper2:#f7f6f2;--ink:#25272b;--muted:#6c7077;--line:#ddd9cf;--accent:#9f4c28;--teal:#176b61;--blue:#355b8c;--amber:#8a6418;--red:#a13f45;--shadow:0 12px 36px rgba(30,32,36,.07)}
 :root[data-theme=dark]{color-scheme:dark;--bg:#141619;--paper:#1d2024;--paper2:#25292e;--ink:#e8e6e0;--muted:#a1a6ad;--line:#383c42;--accent:#da815a;--teal:#63b7a9;--blue:#83a8da;--amber:#d2ad58;--red:#df858a;--shadow:0 14px 40px rgba(0,0,0,.25)}
 @media(prefers-color-scheme:dark){:root:not([data-theme=light]){color-scheme:dark;--bg:#141619;--paper:#1d2024;--paper2:#25292e;--ink:#e8e6e0;--muted:#a1a6ad;--line:#383c42;--accent:#da815a;--teal:#63b7a9;--blue:#83a8da;--amber:#d2ad58;--red:#df858a;--shadow:0 14px 40px rgba(0,0,0,.25)}}
-*{box-sizing:border-box}html{scroll-behavior:smooth;scroll-padding-top:1rem}body{margin:0;background:var(--bg);color:var(--ink);font:15px/1.55 Inter,ui-sans-serif,system-ui,-apple-system,sans-serif}code,pre,input,select{font-family:"SFMono-Regular",Consolas,monospace}a{color:var(--teal);text-decoration:none}a:hover{text-decoration:underline}.shell{width:min(1420px,100%);margin:auto;padding:2.5rem 1.5rem 6rem}.hero,.panel{background:var(--paper);border:1px solid var(--line);border-radius:14px;box-shadow:var(--shadow)}.hero{padding:2rem;margin-bottom:1.25rem}.hero-row,.section-heading{display:flex;justify-content:space-between;align-items:flex-start;gap:1rem}.eyebrow{text-transform:uppercase;letter-spacing:.14em;font:700 11px/1.3 "SFMono-Regular",monospace;color:var(--accent)}h1,h2{margin:.28rem 0 0;line-height:1.12}h1{font-size:clamp(2rem,5vw,4.2rem);letter-spacing:-.04em}h2{font-size:1.45rem}.version{color:var(--muted);font-weight:450}.theme{border:1px solid var(--line);background:var(--paper2);color:var(--ink);border-radius:999px;padding:.45rem .75rem;cursor:pointer}.lede{max-width:75ch;color:var(--muted)}.stats{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:.7rem;margin-top:1.5rem}.stat{padding:.85rem;background:var(--paper2);border:1px solid var(--line);border-radius:9px}.stat strong{display:block;font-size:1.35rem}.stat span,.count{color:var(--muted);font-size:.82rem}.nav{display:flex;gap:.5rem;flex-wrap:wrap;margin-top:1.2rem}.nav a{border:1px solid var(--line);border-radius:999px;padding:.35rem .7rem;background:var(--paper2)}.panel{padding:1.5rem;margin:1.25rem 0}.table-wrap{overflow:auto}table{width:100%;border-collapse:collapse}th,td{text-align:left;padding:.6rem .7rem;border-bottom:1px solid var(--line);vertical-align:top}th{color:var(--muted);font-size:.72rem;text-transform:uppercase;letter-spacing:.08em}td pre{margin:0;white-space:pre-wrap;font-size:.76rem}.channel-kind,.relation-kind,.direction,.confidence{display:inline-flex;padding:.12rem .42rem;border-radius:5px;background:var(--paper2);border:1px solid var(--line);font-size:.75rem}.verified-headless{color:var(--teal)}.verified-interactive{color:var(--blue)}.unverified{color:var(--amber)}.lanes{display:grid;gap:.7rem;margin-top:1rem}.lane{display:grid;grid-template-columns:180px 1fr;border:1px solid var(--line);border-radius:9px;overflow:hidden}.lane>header{padding:.7rem;background:var(--paper2);display:flex;flex-direction:column}.lane>header span{color:var(--muted);font-size:.78rem}.lane-track{display:flex;align-items:center;gap:.4rem;padding:.7rem;overflow:auto}.behavior-node{display:flex;flex-direction:column;min-width:145px;padding:.55rem .65rem;border:1px solid var(--line);border-left:3px solid currentColor;border-radius:7px;background:var(--paper)}.behavior-node small{color:var(--muted)}.behavior-node code{font-size:.66rem}.flow-arrow{color:var(--muted)}details>summary{cursor:pointer}.relation-table{margin-top:1rem}.toolbar{display:flex;align-items:end;gap:.65rem;flex-wrap:wrap;margin:1rem 0}.toolbar label{display:flex;flex-direction:column;gap:.2rem}.toolbar label span{color:var(--muted);font-size:.75rem}.toolbar input,.toolbar select,.toolbar button{min-height:38px;border:1px solid var(--line);border-radius:7px;background:var(--paper2);color:var(--ink);padding:.4rem .6rem}.toolbar input{width:min(330px,70vw)}.toolbar button{cursor:pointer}.event-list{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:.6rem}.event-card{border:1px solid var(--line);border-radius:9px;background:var(--paper2);scroll-margin-top:1rem}.event-card[hidden]{display:none}.event-card>details>summary{display:flex;justify-content:space-between;align-items:center;gap:.7rem;padding:.75rem}.event-name{font:600 .86rem "SFMono-Regular",monospace;overflow-wrap:anywhere}.event-meta{display:flex;gap:.35rem}.event-body{padding:.1rem .8rem .8rem;border-top:1px solid var(--line)}dl{margin:.7rem 0}dl>div{display:grid;grid-template-columns:90px 1fr;gap:.5rem}dt{color:var(--muted)}dd{margin:0}.evidence-refs{display:flex;gap:.3rem;flex-wrap:wrap;margin:.65rem 0}.evidence-ref{font:500 .7rem "SFMono-Regular",monospace;border:1px solid var(--line);border-radius:999px;padding:.15rem .4rem}.schema,.variants{margin:.55rem 0}.schema pre{max-height:520px;overflow:auto;padding:.75rem;border:1px solid var(--line);border-radius:7px;background:var(--paper);font-size:.73rem}.variant{padding:.45rem 0;border-bottom:1px solid var(--line)}.claim-list{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:.6rem;margin-top:.7rem}.claim-card{border:1px solid var(--line);border-radius:8px;padding:.7rem;scroll-margin-top:1rem}.claim-card header{display:flex;gap:.5rem;align-items:center;flex-wrap:wrap}.claim-card header>span:nth-child(2){color:var(--muted)}.claim-card p{color:var(--muted)}.empty{text-align:center;color:var(--muted);padding:2rem}.source{margin-top:1rem;color:var(--muted);font-size:.82rem;overflow-wrap:anywhere}
+*{box-sizing:border-box}html{scroll-behavior:smooth;scroll-padding-top:1rem}body{margin:0;background:var(--bg);color:var(--ink);font:15px/1.55 Inter,ui-sans-serif,system-ui,-apple-system,sans-serif}code,pre,input,select{font-family:"SFMono-Regular",Consolas,monospace}a{color:var(--teal);text-decoration:none}a:hover{text-decoration:underline}.shell{width:min(1420px,100%);margin:auto;padding:2.5rem 1.5rem 6rem}.hero,.panel{background:var(--paper);border:1px solid var(--line);border-radius:14px;box-shadow:var(--shadow)}.hero{padding:2rem;margin-bottom:1.25rem}.hero-row,.section-heading{display:flex;justify-content:space-between;align-items:flex-start;gap:1rem}.eyebrow{text-transform:uppercase;letter-spacing:.14em;font:700 11px/1.3 "SFMono-Regular",monospace;color:var(--accent)}h1,h2{margin:.28rem 0 0;line-height:1.12}h1{font-size:clamp(2rem,5vw,4.2rem);letter-spacing:-.04em}h2{font-size:1.45rem}.version{color:var(--muted);font-weight:450}.theme{border:1px solid var(--line);background:var(--paper2);color:var(--ink);border-radius:999px;padding:.45rem .75rem;cursor:pointer}.lede{max-width:75ch;color:var(--muted)}.stats{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:.7rem;margin-top:1.5rem}.stat{padding:.85rem;background:var(--paper2);border:1px solid var(--line);border-radius:9px}.stat strong{display:block;font-size:1.35rem}.stat span,.count{color:var(--muted);font-size:.82rem}.nav{display:flex;gap:.5rem;flex-wrap:wrap;margin-top:1.2rem}.nav a{border:1px solid var(--line);border-radius:999px;padding:.35rem .7rem;background:var(--paper2)}.panel{padding:1.5rem;margin:1.25rem 0}.table-wrap{overflow:auto}table{width:100%;border-collapse:collapse}th,td{text-align:left;padding:.6rem .7rem;border-bottom:1px solid var(--line);vertical-align:top}th{color:var(--muted);font-size:.72rem;text-transform:uppercase;letter-spacing:.08em}td pre{margin:0;white-space:pre-wrap;font-size:.76rem}.channel-kind,.relation-kind,.direction,.confidence{display:inline-flex;padding:.12rem .42rem;border-radius:5px;background:var(--paper2);border:1px solid var(--line);font-size:.75rem}.verified-headless{color:var(--teal)}.verified-interactive{color:var(--blue)}.unverified{color:var(--amber)}.lanes{display:grid;gap:.7rem;margin-top:1rem}.lane{display:grid;grid-template-columns:180px 1fr;border:1px solid var(--line);border-radius:9px;overflow:hidden}.lane>header{padding:.7rem;background:var(--paper2);display:flex;flex-direction:column}.lane>header span{color:var(--muted);font-size:.78rem}.lane-track{display:flex;align-items:center;gap:.4rem;padding:.7rem;overflow:auto}.behavior-node{display:flex;flex-direction:column;min-width:145px;padding:.55rem .65rem;border:1px solid var(--line);border-left:3px solid currentColor;border-radius:7px;background:var(--paper)}.behavior-node small{color:var(--muted)}.behavior-node code{font-size:.66rem}.flow-arrow{color:var(--muted)}details>summary{cursor:pointer}.relation-table{margin-top:1rem}.toolbar{display:flex;align-items:end;gap:.65rem;flex-wrap:wrap;margin:1rem 0}.toolbar label{display:flex;flex-direction:column;gap:.2rem}.toolbar label span{color:var(--muted);font-size:.75rem}.toolbar input,.toolbar select,.toolbar button{min-height:38px;border:1px solid var(--line);border-radius:7px;background:var(--paper2);color:var(--ink);padding:.4rem .6rem}.toolbar input{width:min(330px,70vw)}.toolbar button{cursor:pointer}.event-list{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:.6rem}.event-card{border:1px solid var(--line);border-radius:9px;background:var(--paper2);scroll-margin-top:1rem}.event-card[hidden]{display:none}.event-card>details>summary{display:flex;justify-content:space-between;align-items:center;gap:.7rem;padding:.75rem}.event-name{font:600 .86rem "SFMono-Regular",monospace;overflow-wrap:anywhere}.event-meta{display:flex;gap:.35rem}.event-body{padding:.1rem .8rem .8rem;border-top:1px solid var(--line)}dl{margin:.7rem 0}dl>div{display:grid;grid-template-columns:90px 1fr;gap:.5rem}dt{color:var(--muted)}dd{margin:0}.evidence-refs{display:flex;gap:.3rem;flex-wrap:wrap;margin:.65rem 0}.evidence-ref{font:500 .7rem "SFMono-Regular",monospace;border:1px solid var(--line);border-radius:999px;padding:.15rem .4rem}.schema,.variants,.refinements{margin:.55rem 0}.schema pre{max-height:520px;overflow:auto;padding:.75rem;border:1px solid var(--line);border-radius:7px;background:var(--paper);font-size:.73rem}.variant{padding:.45rem 0;border-bottom:1px solid var(--line)}.refinement{margin:.6rem 0;padding:.65rem;border:1px solid var(--line);border-radius:7px;background:var(--paper)}.refinement header{display:flex;gap:.45rem;align-items:center;flex-wrap:wrap}.refinement header>span:not(.confidence){color:var(--muted)}.refinement p,.refinement ul{font-size:.82rem}.claim-list{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:.6rem;margin-top:.7rem}.claim-card{border:1px solid var(--line);border-radius:8px;padding:.7rem;scroll-margin-top:1rem}.claim-card header{display:flex;gap:.5rem;align-items:center;flex-wrap:wrap}.claim-card header>span:nth-child(2){color:var(--muted)}.claim-card p{color:var(--muted)}.empty{text-align:center;color:var(--muted);padding:2rem}.source{margin-top:1rem;color:var(--muted);font-size:.82rem;overflow-wrap:anywhere}
 @media(max-width:800px){.stats{grid-template-columns:repeat(2,1fr)}.event-list,.claim-list{grid-template-columns:1fr}.lane{grid-template-columns:1fr}.hero-row,.section-heading{align-items:stretch}.event-card>details>summary{align-items:flex-start;flex-direction:column}.event-meta{flex-wrap:wrap}}
 `;
 
@@ -270,7 +335,11 @@ export function discoverGroundTruthRoots() {
   const roots = [];
   for (const vendor of readdirSync(vendorsRoot, { withFileTypes: true })) {
     const root = join(vendorsRoot, vendor.name);
-    if (vendor.isDirectory() && modelRoots(root).length > 0) roots.push(root);
+    // upstream.json, not model/, defines the required vendor inventory. Using
+    // model existence here used to make an incomplete adaptation disappear
+    // from every global check (Antigravity had evidence but no model and was
+    // silently omitted). Discovery must expose missing Layer 0 work as failure.
+    if (vendor.isDirectory() && existsSync(join(root, 'upstream.json'))) roots.push(root);
   }
   if (existsSync(personasRoot)) {
     for (const persona of readdirSync(personasRoot, { withFileTypes: true })) {

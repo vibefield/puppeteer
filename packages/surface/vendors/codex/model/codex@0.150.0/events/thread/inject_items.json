@@ -7,9 +7,10 @@
   "direction": "client-to-agent",
   "trigger": "Append raw Responses API items to the thread history without starting a user turn.",
   "payloadSchema": {
-    "type": "object",
     "properties": {
       "items": {
+        "description": "Raw Responses API items to append to the thread's model-visible history.",
+        "items": {},
         "type": "array"
       },
       "threadId": {
@@ -19,30 +20,75 @@
     "required": [
       "items",
       "threadId"
-    ]
+    ],
+    "type": "object",
+    "$schema": "http://json-schema.org/draft-07/schema#"
   },
   "resultSchema": {
+    "$schema": "http://json-schema.org/draft-07/schema#",
+    "title": "ThreadInjectItemsResponse",
     "type": "object"
   },
   "recordSchema": {
-    "type": "object",
+    "description": "Append raw Responses API items to the thread history without starting a user turn.",
     "properties": {
+      "id": {
+        "$ref": "#/$defs/RequestId"
+      },
       "method": {
-        "type": "string",
         "enum": [
           "thread/inject_items"
-        ]
+        ],
+        "title": "Thread/injectItemsRequestMethod",
+        "type": "string"
       },
       "params": {
-        "type": "object"
-      },
-      "id": {}
+        "$ref": "#/$defs/ThreadInjectItemsParams"
+      }
     },
     "required": [
+      "id",
       "method",
-      "params",
-      "id"
-    ]
+      "params"
+    ],
+    "title": "Thread/injectItemsRequest",
+    "type": "object",
+    "$defs": {
+      "RequestId": {
+        "anyOf": [
+          {
+            "type": "string"
+          },
+          {
+            "format": "int64",
+            "type": "integer"
+          }
+        ]
+      },
+      "ThreadInjectItemsParams": {
+        "properties": {
+          "items": {
+            "description": "Raw Responses API items to append to the thread's model-visible history.",
+            "items": {},
+            "type": "array"
+          },
+          "threadId": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "items",
+          "threadId"
+        ],
+        "type": "object"
+      }
+    },
+    "$schema": "http://json-schema.org/draft-07/schema#"
+  },
+  "schemaFidelity": {
+    "payload": "exact",
+    "result": "exact",
+    "carrier": "exact"
   },
   "evidence": {
     "existence": [

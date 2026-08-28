@@ -228,10 +228,30 @@
           "with": {
             "prompt_id": "$uuid:prompt",
             "tool_calls": [
-              { "tool_name": "mcp__observability__query_logs", "tool_use_id": "$uuid:logs" },
-              { "tool_name": "Bash", "tool_use_id": "$uuid:reproduce" },
-              { "tool_name": "WebSearch", "tool_use_id": "$uuid:status-search" },
-              { "tool_name": "mcp__observability__query_metrics", "tool_use_id": "$uuid:metrics" }
+              {
+                "tool_name": "mcp__observability__query_logs",
+                "tool_use_id": "$uuid:logs",
+                "tool_input": {},
+                "tool_response": "log query completed"
+              },
+              {
+                "tool_name": "Bash",
+                "tool_use_id": "$uuid:reproduce",
+                "tool_input": {},
+                "tool_response": "reproduction completed"
+              },
+              {
+                "tool_name": "WebSearch",
+                "tool_use_id": "$uuid:status-search",
+                "tool_input": {},
+                "tool_response": "search completed"
+              },
+              {
+                "tool_name": "mcp__observability__query_metrics",
+                "tool_use_id": "$uuid:metrics",
+                "tool_input": {},
+                "tool_response": "metric query completed"
+              }
             ]
           }
         }

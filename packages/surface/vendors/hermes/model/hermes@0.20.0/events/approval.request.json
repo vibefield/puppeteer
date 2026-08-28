@@ -11,6 +11,15 @@
   "payloadSchema": {
     "type": "object",
     "properties": {
+      "request_id": {
+        "type": "string"
+      },
+      "command": {
+        "type": "string"
+      },
+      "description": {
+        "type": "string"
+      },
       "choices": {
         "type": "array",
         "items": {
@@ -20,20 +29,22 @@
       "pattern_key": {
         "type": "string"
       },
+      "pattern_keys": {
+        "type": "array",
+        "items": {
+          "type": "string"
+        }
+      },
       "allow_permanent": {
         "type": "boolean"
       },
       "allow_session": {
         "type": "boolean"
       },
-      "hasText": {
-        "type": "boolean"
-      },
-      "hasContext": {
+      "smart_denied": {
         "type": "boolean"
       }
-    },
-    "required": ["choices"]
+    }
   },
   "recordSchema": {
     "type": "object",
@@ -59,6 +70,15 @@
           "payload": {
             "type": "object",
             "properties": {
+              "request_id": {
+                "type": "string"
+              },
+              "command": {
+                "type": "string"
+              },
+              "description": {
+                "type": "string"
+              },
               "choices": {
                 "type": "array",
                 "items": {
@@ -68,23 +88,25 @@
               "pattern_key": {
                 "type": "string"
               },
+              "pattern_keys": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                }
+              },
               "allow_permanent": {
                 "type": "boolean"
               },
               "allow_session": {
                 "type": "boolean"
               },
-              "hasText": {
-                "type": "boolean"
-              },
-              "hasContext": {
+              "smart_denied": {
                 "type": "boolean"
               }
-            },
-            "required": ["choices"]
+            }
           }
         },
-        "required": ["type", "payload"]
+        "required": ["type"]
       }
     },
     "required": ["method", "params"]
@@ -92,9 +114,18 @@
   "recordChannel": "tui-gateway",
   "evidence": {
     "existence": ["hermes-runtime-headless"],
-    "shape": ["hermes-runtime-headless"],
-    "carrier": ["hermes-runtime-headless"]
+    "shape": ["hermes-exact-source"],
+    "carrier": ["hermes-exact-source"]
   },
-  "confidence": "verified-headless",
-  "fixture": "captures/hermes@0.20.0/permission-deny/rpc.jsonl"
+  "confidence": "unverified",
+  "fixture": "captures/hermes@0.20.0/permission-deny/rpc.jsonl",
+  "schemaFidelity": {
+    "payload": "structural",
+    "carrier": "structural",
+    "limitations": [
+      "Python is dynamic: helper-produced, conditionally assembled, and forwarded payload/result fields remain unconstrained unless directly recoverable.",
+      "Direct params indexing proves required access; params.get access proves a known field but not optionality.",
+      "Source declarations establish legal/native shape and existence, not runtime reachability."
+    ]
+  }
 }

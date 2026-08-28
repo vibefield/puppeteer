@@ -6,7 +6,7 @@ import { existsSync, mkdtempSync, readFileSync, readdirSync, rmSync } from 'node
 import { tmpdir } from 'node:os';
 import { dirname, join, relative, resolve, sep } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { loadModel, validatePayload } from '@vibecook/puppeteer-surface';
+import { loadModel, validateSanitizedPayload } from '@vibecook/puppeteer-surface';
 import { checkCaptureDirectory, defaultRules } from '@vibecook/puppeteer-surface/sanitize';
 import { digestTree } from '../../scripts/check-evidence.mjs';
 import { opencodeRules } from './privacy.mjs';
@@ -19,10 +19,10 @@ const capturesDir = join(vendorRoot, 'captures', `opencode@${VERSION}`);
 const probesDir = join(vendorRoot, 'probes', `opencode@${VERSION}`);
 const generator = join(vendorRoot, 'census', 'generate-model.mjs');
 const behavior = join(vendorRoot, 'census', 'behavior.seed.json');
-const rawSchema = join(vendorRoot, 'captures-raw', `opencode@${VERSION}`, 'turn', 'openapi.json');
+const retainedSchema = join(vendorRoot, 'references', `opencode@${VERSION}`, 'openapi.json');
 const argv = process.argv.slice(2);
 const schemaIndex = argv.indexOf('--schema');
-const schemaPath = schemaIndex >= 0 ? resolve(argv[schemaIndex + 1]) : existsSync(rawSchema) ? rawSchema : undefined;
+const schemaPath = schemaIndex >= 0 ? resolve(argv[schemaIndex + 1]) : retainedSchema;
 const problems = [];
 const notes = [];
 
@@ -38,7 +38,7 @@ function validate(label, schema, payload) {
     problems.push(`${label}: model has no schema`);
     return;
   }
-  for (const violation of validatePayload(schema, payload)) problems.push(`${label}: ${violation}`);
+  for (const violation of validateSanitizedPayload(schema, payload)) problems.push(`${label}: ${violation}`);
 }
 
 function routeKey(value) {
@@ -172,8 +172,8 @@ if (evidenceArtifact?.sourceRevision !== artifact.sourceRevision) {
 }
 notes.push(`evidence: ${evidence.records?.length ?? 0} digest-pinned record(s)`);
 
-if (!schemaPath) {
-  notes.push('model vs /doc: SKIPPED (pass --schema or retain a raw pinned census OpenAPI document)');
+if (!existsSync(schemaPath)) {
+  problems.push(`model vs /doc: retained OpenAPI artifact is missing: ${schemaPath}`);
 } else {
   const temporary = mkdtempSync(join(tmpdir(), 'opencode-model-audit-'));
   const regenerated = join(temporary, `opencode@${VERSION}`);

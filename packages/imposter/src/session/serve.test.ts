@@ -11,7 +11,7 @@ import { PassThrough } from 'node:stream';
 import { describe, expect, it } from 'vitest';
 import type { OpInvocation, Persona } from '../persona/types.ts';
 import { loadPersona } from '../persona/load.ts';
-import { createAppServerChannel, RpcError } from './channels/jsonrpc.ts';
+import { createAppServerChannel, RpcError, type AppServerChannelOptions } from './channels/jsonrpc.ts';
 import { createServeDispatcher, type ServeDocument, type ServeRequestContext } from './serve.ts';
 
 const settle = (): Promise<void> => new Promise((resolve) => setTimeout(resolve, 10));
@@ -20,6 +20,8 @@ function wire(
   document: ServeDocument,
   overrides: Partial<Parameters<typeof createServeDispatcher>[0]> = {},
   requestContext: ServeRequestContext = {},
+  initialBindings: Record<string, unknown> = {},
+  channelOverrides: Pick<AppServerChannelOptions, 'validateOutbound'> = {},
 ) {
   const input = new PassThrough();
   const output = new PassThrough();
@@ -43,7 +45,7 @@ function wire(
   });
 
   const ran: OpInvocation[] = [];
-  const bindings: Record<string, unknown> = {};
+  const bindings: Record<string, unknown> = { ...initialBindings };
   const dispatcher = createServeDispatcher({
     persona: { vendor: 'codex' } as Persona,
     document,
@@ -65,6 +67,7 @@ function wire(
     notified: dispatcher.notified,
     jsonrpc: document.$server?.jsonrpc,
     notificationFields: () => document.$server?.notification ?? {},
+    validateOutbound: channelOverrides.validateOutbound,
     validateResult: overrides.validateResult,
   });
   const send = (message: Record<string, unknown>) => input.write(`${JSON.stringify(message)}\n`);
@@ -103,6 +106,38 @@ describe('the app-server channel', () => {
     send({ jsonrpc: '2.0', id: 1, method: 'initialize', params: {} });
     await settle();
     expect(written[0]).toEqual({ jsonrpc: '2.0', id: 1, result: { userAgent: '$vendorVersion' } });
+  });
+
+  it('validates the complete strict carrier after adding the JSON-RPC version', async () => {
+    const strict: ServeDocument = {
+      ...CODEX_LIKE,
+      $server: { ...CODEX_LIKE.$server, jsonrpc: '2.0' },
+    };
+    const validated: Array<Record<string, unknown>> = [];
+    const { channel, written } = wire(
+      strict,
+      {},
+      {},
+      {},
+      {
+        validateOutbound: (_method, record) => {
+          validated.push(record);
+          return record.jsonrpc === '2.0' ? [] : ['missing required field "jsonrpc"'];
+        },
+      },
+    );
+
+    channel.notify('session/update', { sessionId: 'one' });
+    await settle();
+
+    expect(validated).toEqual([
+      {
+        jsonrpc: '2.0',
+        method: 'session/update',
+        params: { sessionId: 'one' },
+      },
+    ]);
+    expect(written).toEqual(validated);
   });
 
   it('rejects inbound messages that omit the vendor-declared JSON-RPC version', async () => {
@@ -316,11 +351,31 @@ describe('the shipped codex serve table', () => {
       expect(persona.model.events.find((event) => event.event === method)?.direction, method).toBe('client-to-agent');
       expect(persona.resultSchemaFor(method), `${method} result schema`).toBeDefined();
     }
-    const { send, written } = wire(persona.serve!, {
-      persona,
-      validateParams: (method, params) => persona.validate(method, params),
-      validateResult: (method, result) => persona.validateResult(method, result),
-    });
+    const { send, written } = wire(
+      persona.serve!,
+      {
+        persona,
+        validateParams: (method, params) => persona.validate(method, params),
+        validateResult: (method, result) => persona.validateResult(method, result),
+      },
+      {},
+      {
+        $vendorVersion: persona.version,
+        $threadModel: 'codex-imposter',
+        $threadModelProvider: 'imposter',
+        $threadApprovalPolicy: 'on-request',
+        $threadApprovalsReviewer: 'user',
+        $threadSandbox: {
+          type: 'workspaceWrite',
+          writableRoots: [],
+          networkAccess: false,
+          excludeTmpdirEnvVar: false,
+          excludeSlashTmp: false,
+        },
+        $threadCreatedAt: Math.floor(Date.now() / 1_000),
+        $threadUpdatedAt: Math.floor(Date.now() / 1_000),
+      },
+    );
     send({ id: 1, method: 'initialize', params: { clientInfo: { name: 'test', version: '0.0.0' } } });
     send({ id: 2, method: 'thread/start', params: { cwd: '/workspace' } });
     send({

@@ -7,12 +7,18 @@
     },
     {
       "at": 20,
-      "do": { "emit": { "channel": "tui-gateway", "event": "message.delta", "with": { "hasText": true } } }
+      "do": {
+        "emit": { "channel": "tui-gateway", "event": "message.delta", "with": { "text": "imposter: ok" } }
+      }
     },
     {
       "at": 40,
       "do": {
-        "emit": { "channel": "tui-gateway", "event": "message.complete", "with": { "status": "complete", "hasText": true } }
+        "emit": {
+          "channel": "tui-gateway",
+          "event": "message.complete",
+          "with": { "text": "imposter: ok", "status": "complete" }
+        }
       }
     }
   ]

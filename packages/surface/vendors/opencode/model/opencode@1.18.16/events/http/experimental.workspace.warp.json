@@ -10,27 +10,9 @@
   "direction": "client-to-agent",
   "trigger": "Warp session into workspace — Move a session's sync history into the target workspace, or detach it to the local project.",
   "payloadSchema": {
-    "type": "object",
     "properties": {
-      "method": {
-        "type": "string"
-      },
-      "route": {
-        "type": "string"
-      },
-      "query": {
-        "type": "object",
-        "properties": {
-          "directory": {
-            "type": "string"
-          },
-          "workspace": {
-            "type": "string"
-          }
-        }
-      },
       "body": {
-        "type": "object",
+        "additionalProperties": false,
         "properties": {
           "copyChanges": {
             "type": "boolean"
@@ -38,47 +20,29 @@
           "id": {
             "anyOf": [
               {
+                "pattern": "^wrk",
                 "type": "string"
+              },
+              {
+                "type": "null"
               }
             ]
           },
           "sessionID": {
+            "pattern": "^ses",
             "type": "string"
           }
         },
         "required": [
           "id",
           "sessionID"
-        ]
-      }
-    },
-    "required": [
-      "method",
-      "route"
-    ]
-  },
-  "resultSchema": {
-    "type": "object",
-    "properties": {
+        ],
+        "type": "object"
+      },
       "method": {
-        "type": "string",
-        "enum": [
-          "POST"
-        ]
-      },
-      "route": {
-        "type": "string",
-        "enum": [
-          "/experimental/workspace/warp"
-        ]
-      },
-      "status": {
-        "type": "integer",
-        "minimum": 200,
-        "maximum": 299
+        "type": "string"
       },
       "query": {
-        "type": "object",
         "properties": {
           "directory": {
             "type": "string"
@@ -86,52 +50,69 @@
           "workspace": {
             "type": "string"
           }
-        }
+        },
+        "type": "object"
+      },
+      "route": {
+        "type": "string"
+      }
+    },
+    "required": [
+      "method",
+      "route"
+    ],
+    "type": "object"
+  },
+  "resultSchema": {
+    "properties": {
+      "method": {
+        "enum": [
+          "POST"
+        ],
+        "type": "string"
+      },
+      "query": {
+        "properties": {
+          "directory": {
+            "type": "string"
+          },
+          "workspace": {
+            "type": "string"
+          }
+        },
+        "type": "object"
+      },
+      "route": {
+        "enum": [
+          "/experimental/workspace/warp"
+        ],
+        "type": "string"
+      },
+      "status": {
+        "maximum": 299,
+        "minimum": 200,
+        "type": "integer"
       }
     },
     "required": [
       "method",
       "route",
       "status"
-    ]
+    ],
+    "type": "object"
   },
   "recordSchema": {
-    "type": "object",
     "properties": {
       "direction": {
-        "type": "string",
         "enum": [
           "client-to-agent"
-        ]
+        ],
+        "type": "string"
       },
       "request": {
-        "type": "object",
         "properties": {
-          "method": {
-            "type": "string",
-            "enum": [
-              "POST"
-            ]
-          },
-          "route": {
-            "type": "string",
-            "enum": [
-              "/experimental/workspace/warp"
-            ]
-          },
-          "query": {
-            "type": "object",
-            "properties": {
-              "directory": {
-                "type": "string"
-              },
-              "workspace": {
-                "type": "string"
-              }
-            }
-          },
           "body": {
-            "type": "object",
+            "additionalProperties": false,
             "properties": {
               "copyChanges": {
                 "type": "boolean"
@@ -139,30 +120,66 @@
               "id": {
                 "anyOf": [
                   {
+                    "pattern": "^wrk",
                     "type": "string"
+                  },
+                  {
+                    "type": "null"
                   }
                 ]
               },
               "sessionID": {
+                "pattern": "^ses",
                 "type": "string"
               }
             },
             "required": [
               "id",
               "sessionID"
-            ]
+            ],
+            "type": "object"
+          },
+          "method": {
+            "enum": [
+              "POST"
+            ],
+            "type": "string"
+          },
+          "query": {
+            "properties": {
+              "directory": {
+                "type": "string"
+              },
+              "workspace": {
+                "type": "string"
+              }
+            },
+            "type": "object"
+          },
+          "route": {
+            "enum": [
+              "/experimental/workspace/warp"
+            ],
+            "type": "string"
           }
         },
         "required": [
           "method",
           "route"
-        ]
+        ],
+        "type": "object"
       }
     },
     "required": [
       "direction",
       "request"
-    ]
+    ],
+    "type": "object"
+  },
+  "schemaFidelity": {
+    "payload": "semantic",
+    "result": "semantic",
+    "carrier": "semantic"
   },
   "evidence": {
     "existence": [

@@ -10,47 +10,40 @@
   "direction": "agent-to-client",
   "trigger": "Published on the native GET /event stream.",
   "payloadSchema": {
-    "type": "object",
+    "additionalProperties": false,
     "properties": {
       "revert": {
-        "type": "object",
+        "$ref": "#/$defs/RevertState"
+      },
+      "sessionID": {
+        "pattern": "^ses",
+        "type": "string"
+      },
+      "timestamp": {
+        "type": "number"
+      }
+    },
+    "required": [
+      "timestamp",
+      "sessionID",
+      "revert"
+    ],
+    "type": "object",
+    "$defs": {
+      "RevertState": {
+        "additionalProperties": false,
         "properties": {
           "diff": {
             "type": "string"
           },
           "files": {
-            "type": "array",
             "items": {
-              "type": "object",
-              "properties": {
-                "additions": {
-                  "type": "integer",
-                  "minimum": 0
-                },
-                "deletions": {
-                  "type": "integer",
-                  "minimum": 0
-                },
-                "patch": {
-                  "type": "string"
-                },
-                "path": {
-                  "type": "string"
-                },
-                "status": {
-                  "type": "string"
-                }
-              },
-              "required": [
-                "additions",
-                "deletions",
-                "patch",
-                "path",
-                "status"
-              ]
-            }
+              "$ref": "#/$defs/FileDiff"
+            },
+            "type": "array"
           },
           "messageID": {
+            "pattern": "^msg_",
             "type": "string"
           },
           "partID": {
@@ -62,83 +55,61 @@
         },
         "required": [
           "messageID"
-        ]
+        ],
+        "type": "object"
       },
-      "sessionID": {
-        "type": "string"
-      },
-      "timestamp": {
-        "type": "number"
+      "FileDiff": {
+        "additionalProperties": false,
+        "properties": {
+          "additions": {
+            "minimum": 0,
+            "type": "integer"
+          },
+          "deletions": {
+            "minimum": 0,
+            "type": "integer"
+          },
+          "patch": {
+            "type": "string"
+          },
+          "path": {
+            "type": "string"
+          },
+          "status": {
+            "enum": [
+              "added",
+              "modified",
+              "deleted"
+            ],
+            "type": "string"
+          }
+        },
+        "required": [
+          "path",
+          "status",
+          "additions",
+          "deletions",
+          "patch"
+        ],
+        "type": "object"
       }
-    },
-    "required": [
-      "revert",
-      "sessionID",
-      "timestamp"
-    ]
+    }
   },
   "recordSchema": {
-    "type": "object",
+    "additionalProperties": false,
     "properties": {
       "id": {
+        "pattern": "^evt_",
         "type": "string"
       },
       "properties": {
-        "type": "object",
+        "additionalProperties": false,
         "properties": {
           "revert": {
-            "type": "object",
-            "properties": {
-              "diff": {
-                "type": "string"
-              },
-              "files": {
-                "type": "array",
-                "items": {
-                  "type": "object",
-                  "properties": {
-                    "additions": {
-                      "type": "integer",
-                      "minimum": 0
-                    },
-                    "deletions": {
-                      "type": "integer",
-                      "minimum": 0
-                    },
-                    "patch": {
-                      "type": "string"
-                    },
-                    "path": {
-                      "type": "string"
-                    },
-                    "status": {
-                      "type": "string"
-                    }
-                  },
-                  "required": [
-                    "additions",
-                    "deletions",
-                    "patch",
-                    "path",
-                    "status"
-                  ]
-                }
-              },
-              "messageID": {
-                "type": "string"
-              },
-              "partID": {
-                "type": "string"
-              },
-              "snapshot": {
-                "type": "string"
-              }
-            },
-            "required": [
-              "messageID"
-            ]
+            "$ref": "#/$defs/RevertState"
           },
           "sessionID": {
+            "pattern": "^ses",
             "type": "string"
           },
           "timestamp": {
@@ -146,23 +117,94 @@
           }
         },
         "required": [
-          "revert",
+          "timestamp",
           "sessionID",
-          "timestamp"
-        ]
+          "revert"
+        ],
+        "type": "object"
       },
       "type": {
-        "type": "string",
         "enum": [
           "session.next.revert.staged"
-        ]
+        ],
+        "type": "string"
       }
     },
     "required": [
       "id",
-      "properties",
-      "type"
-    ]
+      "type",
+      "properties"
+    ],
+    "type": "object",
+    "$defs": {
+      "RevertState": {
+        "additionalProperties": false,
+        "properties": {
+          "diff": {
+            "type": "string"
+          },
+          "files": {
+            "items": {
+              "$ref": "#/$defs/FileDiff"
+            },
+            "type": "array"
+          },
+          "messageID": {
+            "pattern": "^msg_",
+            "type": "string"
+          },
+          "partID": {
+            "type": "string"
+          },
+          "snapshot": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "messageID"
+        ],
+        "type": "object"
+      },
+      "FileDiff": {
+        "additionalProperties": false,
+        "properties": {
+          "additions": {
+            "minimum": 0,
+            "type": "integer"
+          },
+          "deletions": {
+            "minimum": 0,
+            "type": "integer"
+          },
+          "patch": {
+            "type": "string"
+          },
+          "path": {
+            "type": "string"
+          },
+          "status": {
+            "enum": [
+              "added",
+              "modified",
+              "deleted"
+            ],
+            "type": "string"
+          }
+        },
+        "required": [
+          "path",
+          "status",
+          "additions",
+          "deletions",
+          "patch"
+        ],
+        "type": "object"
+      }
+    }
+  },
+  "schemaFidelity": {
+    "payload": "exact",
+    "carrier": "exact"
   },
   "evidence": {
     "existence": [

@@ -6,9 +6,11 @@
   "transport": "jsonrpc-notification",
   "direction": "agent-to-client",
   "payloadSchema": {
-    "type": "object",
     "properties": {
       "changes": {
+        "items": {
+          "$ref": "#/$defs/FileUpdateChange"
+        },
         "type": "array"
       },
       "itemId": {
@@ -26,30 +28,218 @@
       "itemId",
       "threadId",
       "turnId"
-    ]
-  },
-  "recordSchema": {
+    ],
     "type": "object",
-    "properties": {
-      "method": {
-        "type": "string",
-        "enum": [
-          "item/fileChange/patchUpdated"
-        ]
-      },
-      "params": {
+    "$defs": {
+      "FileUpdateChange": {
+        "properties": {
+          "diff": {
+            "type": "string"
+          },
+          "kind": {
+            "$ref": "#/$defs/PatchChangeKind"
+          },
+          "path": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "diff",
+          "kind",
+          "path"
+        ],
         "type": "object"
       },
-      "emittedAtMs": {
-        "type": "number",
-        "minimum": 1000000000000
+      "PatchChangeKind": {
+        "oneOf": [
+          {
+            "properties": {
+              "type": {
+                "enum": [
+                  "add"
+                ],
+                "title": "AddPatchChangeKindType",
+                "type": "string"
+              }
+            },
+            "required": [
+              "type"
+            ],
+            "title": "AddPatchChangeKind",
+            "type": "object"
+          },
+          {
+            "properties": {
+              "type": {
+                "enum": [
+                  "delete"
+                ],
+                "title": "DeletePatchChangeKindType",
+                "type": "string"
+              }
+            },
+            "required": [
+              "type"
+            ],
+            "title": "DeletePatchChangeKind",
+            "type": "object"
+          },
+          {
+            "properties": {
+              "move_path": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
+              "type": {
+                "enum": [
+                  "update"
+                ],
+                "title": "UpdatePatchChangeKindType",
+                "type": "string"
+              }
+            },
+            "required": [
+              "type"
+            ],
+            "title": "UpdatePatchChangeKind",
+            "type": "object"
+          }
+        ]
+      }
+    },
+    "$schema": "http://json-schema.org/draft-07/schema#"
+  },
+  "recordSchema": {
+    "properties": {
+      "method": {
+        "enum": [
+          "item/fileChange/patchUpdated"
+        ],
+        "title": "Item/fileChange/patchUpdatedNotificationMethod",
+        "type": "string"
+      },
+      "params": {
+        "$ref": "#/$defs/FileChangePatchUpdatedNotification"
       }
     },
     "required": [
       "method",
-      "params",
-      "emittedAtMs"
-    ]
+      "params"
+    ],
+    "title": "Item/fileChange/patchUpdatedNotification",
+    "type": "object",
+    "$defs": {
+      "FileChangePatchUpdatedNotification": {
+        "properties": {
+          "changes": {
+            "items": {
+              "$ref": "#/$defs/FileUpdateChange"
+            },
+            "type": "array"
+          },
+          "itemId": {
+            "type": "string"
+          },
+          "threadId": {
+            "type": "string"
+          },
+          "turnId": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "changes",
+          "itemId",
+          "threadId",
+          "turnId"
+        ],
+        "type": "object"
+      },
+      "FileUpdateChange": {
+        "properties": {
+          "diff": {
+            "type": "string"
+          },
+          "kind": {
+            "$ref": "#/$defs/PatchChangeKind"
+          },
+          "path": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "diff",
+          "kind",
+          "path"
+        ],
+        "type": "object"
+      },
+      "PatchChangeKind": {
+        "oneOf": [
+          {
+            "properties": {
+              "type": {
+                "enum": [
+                  "add"
+                ],
+                "title": "AddPatchChangeKindType",
+                "type": "string"
+              }
+            },
+            "required": [
+              "type"
+            ],
+            "title": "AddPatchChangeKind",
+            "type": "object"
+          },
+          {
+            "properties": {
+              "type": {
+                "enum": [
+                  "delete"
+                ],
+                "title": "DeletePatchChangeKindType",
+                "type": "string"
+              }
+            },
+            "required": [
+              "type"
+            ],
+            "title": "DeletePatchChangeKind",
+            "type": "object"
+          },
+          {
+            "properties": {
+              "move_path": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
+              "type": {
+                "enum": [
+                  "update"
+                ],
+                "title": "UpdatePatchChangeKindType",
+                "type": "string"
+              }
+            },
+            "required": [
+              "type"
+            ],
+            "title": "UpdatePatchChangeKind",
+            "type": "object"
+          }
+        ]
+      }
+    },
+    "$schema": "http://json-schema.org/draft-07/schema#"
+  },
+  "schemaFidelity": {
+    "payload": "exact",
+    "carrier": "exact"
   },
   "evidence": {
     "existence": [
@@ -59,8 +249,130 @@
       "codex-generated-schema"
     ],
     "carrier": [
-      "codex-runtime-headless"
+      "codex-generated-schema"
     ]
   },
-  "confidence": "unverified"
+  "payloadRefinements": [
+    {
+      "path": "changes",
+      "schema": {
+        "type": "array",
+        "items": {
+          "oneOf": [
+            {
+              "type": "object",
+              "properties": {
+                "path": {
+                  "type": "string"
+                },
+                "kind": {
+                  "type": "object",
+                  "properties": {
+                    "type": {
+                      "type": "string",
+                      "enum": [
+                        "add"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "type"
+                  ]
+                },
+                "diff": {
+                  "type": "string",
+                  "description": "Despite the field name, this is the complete new-file content for an add change."
+                }
+              },
+              "required": [
+                "path",
+                "kind",
+                "diff"
+              ]
+            },
+            {
+              "type": "object",
+              "properties": {
+                "path": {
+                  "type": "string"
+                },
+                "kind": {
+                  "type": "object",
+                  "properties": {
+                    "type": {
+                      "type": "string",
+                      "enum": [
+                        "delete"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "type"
+                  ]
+                },
+                "diff": {
+                  "type": "string",
+                  "description": "Despite the field name, this is the complete deleted-file content for a delete change."
+                }
+              },
+              "required": [
+                "path",
+                "kind",
+                "diff"
+              ]
+            },
+            {
+              "type": "object",
+              "properties": {
+                "path": {
+                  "type": "string"
+                },
+                "kind": {
+                  "type": "object",
+                  "properties": {
+                    "type": {
+                      "type": "string",
+                      "enum": [
+                        "update"
+                      ]
+                    },
+                    "move_path": {
+                      "type": [
+                        "string",
+                        "null"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "type"
+                  ]
+                },
+                "diff": {
+                  "type": "string",
+                  "description": "A unified diff. When move_path is non-null, the app-server appends two newlines plus `Moved to: <move_path>` after the unified diff."
+                }
+              },
+              "required": [
+                "path",
+                "kind",
+                "diff"
+              ]
+            }
+          ]
+        }
+      },
+      "evidence": {
+        "existence": [
+          "codex-file-change-source"
+        ],
+        "shape": [
+          "codex-file-change-source"
+        ]
+      },
+      "confidence": "unverified",
+      "fidelity": "exact"
+    }
+  ],
+  "confidence": "unverified",
+  "notes": "Exact-release source: add/delete `diff` values are complete file content; update is a unified diff; a move appends `\\n\\nMoved to: <move_path>`."
 }

@@ -6,15 +6,17 @@
   "transport": "jsonrpc-request",
   "direction": "client-to-agent",
   "payloadSchema": {
-    "type": "object",
     "properties": {
       "discoverability": {
-        "type": "string"
+        "$ref": "#/$defs/PluginShareUpdateDiscoverability"
       },
       "remotePluginId": {
         "type": "string"
       },
       "shareTargets": {
+        "items": {
+          "$ref": "#/$defs/PluginShareTarget"
+        },
         "type": "array"
       }
     },
@@ -22,27 +24,159 @@
       "discoverability",
       "remotePluginId",
       "shareTargets"
-    ]
-  },
-  "recordSchema": {
+    ],
     "type": "object",
-    "properties": {
-      "method": {
-        "type": "string",
+    "$defs": {
+      "PluginShareUpdateDiscoverability": {
         "enum": [
-          "plugin/share/updateTargets"
-        ]
+          "UNLISTED",
+          "PRIVATE",
+          "LISTED"
+        ],
+        "type": "string"
       },
-      "params": {
+      "PluginShareTarget": {
+        "properties": {
+          "principalId": {
+            "type": "string"
+          },
+          "principalType": {
+            "$ref": "#/$defs/PluginSharePrincipalType"
+          },
+          "role": {
+            "$ref": "#/$defs/PluginShareTargetRole"
+          }
+        },
+        "required": [
+          "principalId",
+          "principalType",
+          "role"
+        ],
         "type": "object"
       },
-      "id": {}
+      "PluginSharePrincipalType": {
+        "enum": [
+          "user",
+          "group",
+          "workspace"
+        ],
+        "type": "string"
+      },
+      "PluginShareTargetRole": {
+        "enum": [
+          "reader",
+          "editor"
+        ],
+        "type": "string"
+      }
+    },
+    "$schema": "http://json-schema.org/draft-07/schema#"
+  },
+  "recordSchema": {
+    "properties": {
+      "id": {
+        "$ref": "#/$defs/RequestId"
+      },
+      "method": {
+        "enum": [
+          "plugin/share/updateTargets"
+        ],
+        "title": "Plugin/share/updateTargetsRequestMethod",
+        "type": "string"
+      },
+      "params": {
+        "$ref": "#/$defs/PluginShareUpdateTargetsParams"
+      }
     },
     "required": [
+      "id",
       "method",
-      "params",
-      "id"
-    ]
+      "params"
+    ],
+    "title": "Plugin/share/updateTargetsRequest",
+    "type": "object",
+    "$defs": {
+      "RequestId": {
+        "anyOf": [
+          {
+            "type": "string"
+          },
+          {
+            "format": "int64",
+            "type": "integer"
+          }
+        ]
+      },
+      "PluginShareUpdateTargetsParams": {
+        "properties": {
+          "discoverability": {
+            "$ref": "#/$defs/PluginShareUpdateDiscoverability"
+          },
+          "remotePluginId": {
+            "type": "string"
+          },
+          "shareTargets": {
+            "items": {
+              "$ref": "#/$defs/PluginShareTarget"
+            },
+            "type": "array"
+          }
+        },
+        "required": [
+          "discoverability",
+          "remotePluginId",
+          "shareTargets"
+        ],
+        "type": "object"
+      },
+      "PluginShareUpdateDiscoverability": {
+        "enum": [
+          "UNLISTED",
+          "PRIVATE",
+          "LISTED"
+        ],
+        "type": "string"
+      },
+      "PluginShareTarget": {
+        "properties": {
+          "principalId": {
+            "type": "string"
+          },
+          "principalType": {
+            "$ref": "#/$defs/PluginSharePrincipalType"
+          },
+          "role": {
+            "$ref": "#/$defs/PluginShareTargetRole"
+          }
+        },
+        "required": [
+          "principalId",
+          "principalType",
+          "role"
+        ],
+        "type": "object"
+      },
+      "PluginSharePrincipalType": {
+        "enum": [
+          "user",
+          "group",
+          "workspace"
+        ],
+        "type": "string"
+      },
+      "PluginShareTargetRole": {
+        "enum": [
+          "reader",
+          "editor"
+        ],
+        "type": "string"
+      }
+    },
+    "$schema": "http://json-schema.org/draft-07/schema#"
+  },
+  "schemaFidelity": {
+    "payload": "exact",
+    "carrier": "exact"
   },
   "evidence": {
     "existence": [

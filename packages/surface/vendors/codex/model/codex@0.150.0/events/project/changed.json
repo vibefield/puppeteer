@@ -6,10 +6,9 @@
   "transport": "jsonrpc-notification",
   "direction": "agent-to-client",
   "payloadSchema": {
-    "type": "object",
     "properties": {
       "changeType": {
-        "type": "string"
+        "$ref": "#/$defs/ProjectChangeType"
       },
       "projectId": {
         "type": "string"
@@ -18,30 +17,69 @@
     "required": [
       "changeType",
       "projectId"
-    ]
+    ],
+    "type": "object",
+    "$defs": {
+      "ProjectChangeType": {
+        "enum": [
+          "created",
+          "updated",
+          "deleted"
+        ],
+        "type": "string"
+      }
+    },
+    "$schema": "http://json-schema.org/draft-07/schema#"
   },
   "recordSchema": {
-    "type": "object",
     "properties": {
       "method": {
-        "type": "string",
         "enum": [
           "project/changed"
-        ]
+        ],
+        "title": "Project/changedNotificationMethod",
+        "type": "string"
       },
       "params": {
-        "type": "object"
-      },
-      "emittedAtMs": {
-        "type": "number",
-        "minimum": 1000000000000
+        "$ref": "#/$defs/ProjectChangedNotification"
       }
     },
     "required": [
       "method",
-      "params",
-      "emittedAtMs"
-    ]
+      "params"
+    ],
+    "title": "Project/changedNotification",
+    "type": "object",
+    "$defs": {
+      "ProjectChangedNotification": {
+        "properties": {
+          "changeType": {
+            "$ref": "#/$defs/ProjectChangeType"
+          },
+          "projectId": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "changeType",
+          "projectId"
+        ],
+        "type": "object"
+      },
+      "ProjectChangeType": {
+        "enum": [
+          "created",
+          "updated",
+          "deleted"
+        ],
+        "type": "string"
+      }
+    },
+    "$schema": "http://json-schema.org/draft-07/schema#"
+  },
+  "schemaFidelity": {
+    "payload": "exact",
+    "carrier": "exact"
   },
   "evidence": {
     "existence": [
@@ -51,7 +89,7 @@
       "codex-generated-schema"
     ],
     "carrier": [
-      "codex-runtime-headless"
+      "codex-generated-schema"
     ]
   },
   "confidence": "unverified"

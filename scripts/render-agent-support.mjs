@@ -3,7 +3,7 @@
 import { existsSync, readFileSync, readdirSync, writeFileSync } from 'node:fs';
 import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { buildGroundTruth } from '@vibecook/puppeteer-surface';
+import { buildGroundTruth, isClaimAddressableAsmVersion } from '@vibecook/puppeteer-surface';
 
 const root = dirname(dirname(fileURLToPath(import.meta.url)));
 const START = '<!-- agent-support:start -->';
@@ -136,11 +136,11 @@ export function validateSupportLedger(repoRoot = root) {
 
     if (agent.candidateVersion) {
       if (
-        active.manifest.asmVersion !== 2 ||
+        !isClaimAddressableAsmVersion(active.manifest.asmVersion) ||
         active.evidence?.evidenceVersion !== 2 ||
         !active.evidence?.claims?.length
       ) {
-        issues.push(`${agent.id}: candidate ground truth requires claim-addressable ASM/evidence v2`);
+        issues.push(`${agent.id}: candidate ground truth requires a claim-addressable ASM with evidence v2`);
       }
     }
 
@@ -167,11 +167,11 @@ export function validateSupportLedger(repoRoot = root) {
 
     if (agent.status === 'verified') {
       if (
-        promoted.manifest.asmVersion !== 2 ||
+        !isClaimAddressableAsmVersion(promoted.manifest.asmVersion) ||
         promoted.evidence.evidenceVersion !== 2 ||
         !promoted.evidence.claims?.length
       ) {
-        issues.push(`${agent.id}: verified support requires claim-addressable ASM/evidence v2`);
+        issues.push(`${agent.id}: verified support requires a claim-addressable ASM with evidence v2`);
       }
       const upstreamPath = join(repoRoot, 'packages', 'surface', 'vendors', agent.id, 'upstream.json');
       const requiredPlatforms = existsSync(upstreamPath) ? (json(upstreamPath).platforms ?? []) : [];

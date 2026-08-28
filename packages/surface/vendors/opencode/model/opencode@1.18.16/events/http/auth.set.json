@@ -10,16 +10,14 @@
   "direction": "client-to-agent",
   "trigger": "Set auth credentials — Set authentication credentials",
   "payloadSchema": {
-    "type": "object",
     "properties": {
+      "body": {
+        "$ref": "#/$defs/Auth"
+      },
       "method": {
         "type": "string"
       },
-      "route": {
-        "type": "string"
-      },
       "params": {
-        "type": "object",
         "properties": {
           "providerID": {
             "type": "string"
@@ -27,108 +25,130 @@
         },
         "required": [
           "providerID"
-        ]
+        ],
+        "type": "object"
       },
-      "body": {
-        "anyOf": [
-          {
-            "type": "object",
-            "properties": {
-              "access": {
-                "type": "string"
-              },
-              "accountId": {
-                "type": "string"
-              },
-              "enterpriseUrl": {
-                "type": "string"
-              },
-              "expires": {
-                "type": "integer",
-                "minimum": 0
-              },
-              "refresh": {
-                "type": "string"
-              },
-              "type": {
-                "type": "string"
-              }
-            },
-            "required": [
-              "access",
-              "expires",
-              "refresh",
-              "type"
-            ]
-          },
-          {
-            "type": "object",
-            "properties": {
-              "key": {
-                "type": "string"
-              },
-              "metadata": {
-                "type": "object"
-              },
-              "type": {
-                "type": "string"
-              }
-            },
-            "required": [
-              "key",
-              "type"
-            ]
-          },
-          {
-            "type": "object",
-            "properties": {
-              "key": {
-                "type": "string"
-              },
-              "token": {
-                "type": "string"
-              },
-              "type": {
-                "type": "string"
-              }
-            },
-            "required": [
-              "key",
-              "token",
-              "type"
-            ]
-          }
-        ]
+      "route": {
+        "type": "string"
       }
     },
     "required": [
       "method",
       "route",
       "params"
-    ]
+    ],
+    "type": "object",
+    "$defs": {
+      "Auth": {
+        "anyOf": [
+          {
+            "$ref": "#/$defs/OAuth"
+          },
+          {
+            "$ref": "#/$defs/ApiAuth"
+          },
+          {
+            "$ref": "#/$defs/WellKnownAuth"
+          }
+        ]
+      },
+      "OAuth": {
+        "additionalProperties": false,
+        "properties": {
+          "access": {
+            "type": "string"
+          },
+          "accountId": {
+            "type": "string"
+          },
+          "enterpriseUrl": {
+            "type": "string"
+          },
+          "expires": {
+            "minimum": 0,
+            "type": "integer"
+          },
+          "refresh": {
+            "type": "string"
+          },
+          "type": {
+            "enum": [
+              "oauth"
+            ],
+            "type": "string"
+          }
+        },
+        "required": [
+          "type",
+          "refresh",
+          "access",
+          "expires"
+        ],
+        "type": "object"
+      },
+      "ApiAuth": {
+        "additionalProperties": false,
+        "properties": {
+          "key": {
+            "type": "string"
+          },
+          "metadata": {
+            "additionalProperties": {
+              "type": "string"
+            },
+            "type": "object"
+          },
+          "type": {
+            "enum": [
+              "api"
+            ],
+            "type": "string"
+          }
+        },
+        "required": [
+          "type",
+          "key"
+        ],
+        "type": "object"
+      },
+      "WellKnownAuth": {
+        "additionalProperties": false,
+        "properties": {
+          "key": {
+            "type": "string"
+          },
+          "token": {
+            "type": "string"
+          },
+          "type": {
+            "enum": [
+              "wellknown"
+            ],
+            "type": "string"
+          }
+        },
+        "required": [
+          "type",
+          "key",
+          "token"
+        ],
+        "type": "object"
+      }
+    }
   },
   "resultSchema": {
-    "type": "object",
     "properties": {
+      "body": {
+        "description": "Successfully set authentication credentials",
+        "type": "boolean"
+      },
       "method": {
-        "type": "string",
         "enum": [
           "PUT"
-        ]
-      },
-      "route": {
-        "type": "string",
-        "enum": [
-          "/auth/:providerID"
-        ]
-      },
-      "status": {
-        "type": "integer",
-        "minimum": 200,
-        "maximum": 299
+        ],
+        "type": "string"
       },
       "params": {
-        "type": "object",
         "properties": {
           "providerID": {
             "type": "string"
@@ -136,10 +156,19 @@
         },
         "required": [
           "providerID"
-        ]
+        ],
+        "type": "object"
       },
-      "body": {
-        "type": "boolean"
+      "route": {
+        "enum": [
+          "/auth/:providerID"
+        ],
+        "type": "string"
+      },
+      "status": {
+        "maximum": 299,
+        "minimum": 200,
+        "type": "integer"
       }
     },
     "required": [
@@ -148,34 +177,29 @@
       "status",
       "params",
       "body"
-    ]
+    ],
+    "type": "object"
   },
   "recordSchema": {
-    "type": "object",
     "properties": {
       "direction": {
-        "type": "string",
         "enum": [
           "client-to-agent"
-        ]
+        ],
+        "type": "string"
       },
       "request": {
-        "type": "object",
         "properties": {
+          "body": {
+            "$ref": "#/$defs/Auth"
+          },
           "method": {
-            "type": "string",
             "enum": [
               "PUT"
-            ]
-          },
-          "route": {
-            "type": "string",
-            "enum": [
-              "/auth/:providerID"
-            ]
+            ],
+            "type": "string"
           },
           "params": {
-            "type": "object",
             "properties": {
               "providerID": {
                 "type": "string"
@@ -183,91 +207,131 @@
             },
             "required": [
               "providerID"
-            ]
+            ],
+            "type": "object"
           },
-          "body": {
-            "anyOf": [
-              {
-                "type": "object",
-                "properties": {
-                  "access": {
-                    "type": "string"
-                  },
-                  "accountId": {
-                    "type": "string"
-                  },
-                  "enterpriseUrl": {
-                    "type": "string"
-                  },
-                  "expires": {
-                    "type": "integer",
-                    "minimum": 0
-                  },
-                  "refresh": {
-                    "type": "string"
-                  },
-                  "type": {
-                    "type": "string"
-                  }
-                },
-                "required": [
-                  "access",
-                  "expires",
-                  "refresh",
-                  "type"
-                ]
-              },
-              {
-                "type": "object",
-                "properties": {
-                  "key": {
-                    "type": "string"
-                  },
-                  "metadata": {
-                    "type": "object"
-                  },
-                  "type": {
-                    "type": "string"
-                  }
-                },
-                "required": [
-                  "key",
-                  "type"
-                ]
-              },
-              {
-                "type": "object",
-                "properties": {
-                  "key": {
-                    "type": "string"
-                  },
-                  "token": {
-                    "type": "string"
-                  },
-                  "type": {
-                    "type": "string"
-                  }
-                },
-                "required": [
-                  "key",
-                  "token",
-                  "type"
-                ]
-              }
-            ]
+          "route": {
+            "enum": [
+              "/auth/:providerID"
+            ],
+            "type": "string"
           }
         },
         "required": [
           "method",
           "route",
           "params"
-        ]
+        ],
+        "type": "object"
       }
     },
     "required": [
       "direction",
       "request"
-    ]
+    ],
+    "type": "object",
+    "$defs": {
+      "Auth": {
+        "anyOf": [
+          {
+            "$ref": "#/$defs/OAuth"
+          },
+          {
+            "$ref": "#/$defs/ApiAuth"
+          },
+          {
+            "$ref": "#/$defs/WellKnownAuth"
+          }
+        ]
+      },
+      "OAuth": {
+        "additionalProperties": false,
+        "properties": {
+          "access": {
+            "type": "string"
+          },
+          "accountId": {
+            "type": "string"
+          },
+          "enterpriseUrl": {
+            "type": "string"
+          },
+          "expires": {
+            "minimum": 0,
+            "type": "integer"
+          },
+          "refresh": {
+            "type": "string"
+          },
+          "type": {
+            "enum": [
+              "oauth"
+            ],
+            "type": "string"
+          }
+        },
+        "required": [
+          "type",
+          "refresh",
+          "access",
+          "expires"
+        ],
+        "type": "object"
+      },
+      "ApiAuth": {
+        "additionalProperties": false,
+        "properties": {
+          "key": {
+            "type": "string"
+          },
+          "metadata": {
+            "additionalProperties": {
+              "type": "string"
+            },
+            "type": "object"
+          },
+          "type": {
+            "enum": [
+              "api"
+            ],
+            "type": "string"
+          }
+        },
+        "required": [
+          "type",
+          "key"
+        ],
+        "type": "object"
+      },
+      "WellKnownAuth": {
+        "additionalProperties": false,
+        "properties": {
+          "key": {
+            "type": "string"
+          },
+          "token": {
+            "type": "string"
+          },
+          "type": {
+            "enum": [
+              "wellknown"
+            ],
+            "type": "string"
+          }
+        },
+        "required": [
+          "type",
+          "key",
+          "token"
+        ],
+        "type": "object"
+      }
+    }
+  },
+  "schemaFidelity": {
+    "payload": "semantic",
+    "result": "semantic",
+    "carrier": "semantic"
   },
   "evidence": {
     "existence": [

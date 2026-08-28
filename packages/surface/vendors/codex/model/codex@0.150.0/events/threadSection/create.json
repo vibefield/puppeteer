@@ -6,36 +6,133 @@
   "transport": "jsonrpc-request",
   "direction": "client-to-agent",
   "payloadSchema": {
-    "type": "object",
+    "description": "Parameters for creating an independently persisted thread section.",
     "properties": {
-      "appearance": {},
+      "appearance": {
+        "anyOf": [
+          {
+            "$ref": "#/$defs/ThreadSectionAppearance"
+          },
+          {
+            "type": "null"
+          }
+        ],
+        "default": null
+      },
       "name": {
+        "description": "The user-visible name of the section.",
         "type": "string"
       }
     },
     "required": [
       "name"
-    ]
+    ],
+    "type": "object",
+    "$defs": {
+      "ThreadSectionAppearance": {
+        "description": "Extensible visual presentation for a custom thread section.",
+        "properties": {
+          "color": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "icon": {
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        },
+        "type": "object"
+      }
+    },
+    "$schema": "http://json-schema.org/draft-07/schema#"
   },
   "recordSchema": {
-    "type": "object",
     "properties": {
+      "id": {
+        "$ref": "#/$defs/RequestId"
+      },
       "method": {
-        "type": "string",
         "enum": [
           "threadSection/create"
-        ]
+        ],
+        "title": "ThreadSection/createRequestMethod",
+        "type": "string"
       },
       "params": {
-        "type": "object"
-      },
-      "id": {}
+        "$ref": "#/$defs/ThreadSectionCreateParams"
+      }
     },
     "required": [
+      "id",
       "method",
-      "params",
-      "id"
-    ]
+      "params"
+    ],
+    "title": "ThreadSection/createRequest",
+    "type": "object",
+    "$defs": {
+      "RequestId": {
+        "anyOf": [
+          {
+            "type": "string"
+          },
+          {
+            "format": "int64",
+            "type": "integer"
+          }
+        ]
+      },
+      "ThreadSectionCreateParams": {
+        "description": "Parameters for creating an independently persisted thread section.",
+        "properties": {
+          "appearance": {
+            "anyOf": [
+              {
+                "$ref": "#/$defs/ThreadSectionAppearance"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null
+          },
+          "name": {
+            "description": "The user-visible name of the section.",
+            "type": "string"
+          }
+        },
+        "required": [
+          "name"
+        ],
+        "type": "object"
+      },
+      "ThreadSectionAppearance": {
+        "description": "Extensible visual presentation for a custom thread section.",
+        "properties": {
+          "color": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "icon": {
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        },
+        "type": "object"
+      }
+    },
+    "$schema": "http://json-schema.org/draft-07/schema#"
+  },
+  "schemaFidelity": {
+    "payload": "exact",
+    "carrier": "exact"
   },
   "evidence": {
     "existence": [

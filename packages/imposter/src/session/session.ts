@@ -32,6 +32,7 @@ import {
   type ScenarioRunner,
 } from './scenario.ts';
 import { substitute } from './template.ts';
+import { mintPersonaSessionId } from '../persona/session-id.ts';
 import { createOpTimeline, type OpTimeline, type PresentationFrame } from './timeline.ts';
 
 export interface BehaviorDocument {
@@ -146,10 +147,11 @@ export function createImposterSession(options: ImposterSessionOptions): Imposter
   const { persona, argv, env, cwd, behavior } = options;
   const log = options.log ?? (() => {});
 
-  const sessionId =
+  const explicitSessionId =
     flagValue(argv, persona.flagsFor('sessionId', '--session-id')) ??
-    flagValue(argv, persona.flagsFor('resume', '--resume')) ??
-    crypto.randomUUID();
+    flagValue(argv, persona.flagsFor('resume', '--resume'));
+  const generatedSessionId = mintPersonaSessionId(persona);
+  const sessionId = explicitSessionId ?? generatedSessionId;
   const settingsPath = flagValue(argv, persona.flagsFor('settings', '--settings'));
   const sessionTitle = flagValue(argv, persona.flagsFor('name', '--name')) ?? 'imposter-session';
   const permissionMode = flagValue(argv, persona.flagsFor('permissionMode', '--permission-mode')) ?? 'default';

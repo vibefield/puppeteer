@@ -223,6 +223,8 @@ export interface PersonaDocument {
    * tui_gateway rather than using the event name as the RPC method.
    */
   jsonrpcEventMethod?: string;
+  /** Template used only when argv does not provide a native session id. */
+  sessionIdTemplate?: string;
   /**
    * Session-scoped vocabulary this vendor mints at start, as templates resolved
    * once against the base bindings (`$uuid:thread`, `$cwd`, …).

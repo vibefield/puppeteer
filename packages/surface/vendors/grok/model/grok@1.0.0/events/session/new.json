@@ -3,32 +3,657 @@
   "surfaceVersion": "1.0.0",
   "event": "session/new",
   "channel": "acp",
+  "channels": ["acp"],
   "transport": "jsonrpc-request",
+  "direction": "client-to-agent",
   "payloadSchema": {
-    "type": "object",
+    "description": "Request parameters for creating a new session.\n\nSee protocol docs: [Creating a Session](https://agentclientprotocol.com/protocol/session-setup#creating-a-session)",
     "properties": {
+      "_meta": {
+        "additionalProperties": true,
+        "description": "The _meta property is reserved by ACP to allow clients and agents to attach additional\nmetadata to their interactions. Implementations MUST NOT make assumptions about values at\nthese keys.\n\nSee protocol docs: [Extensibility](https://agentclientprotocol.com/protocol/extensibility)",
+        "type": ["object", "null"]
+      },
+      "additionalDirectories": {
+        "description": "**UNSTABLE**\n\nThis capability is not part of the spec yet, and may be removed or changed at any point.\n\nAdditional workspace roots for this session. Each path must be absolute.\n\nThese expand the session's filesystem scope without changing `cwd`, which\nremains the base for relative paths. When omitted or empty, no\nadditional roots are activated for the new session.",
+        "items": {
+          "type": "string"
+        },
+        "type": "array"
+      },
       "cwd": {
+        "description": "The working directory for this session. Must be an absolute path.",
         "type": "string"
       },
       "mcpServers": {
+        "description": "List of MCP (Model Context Protocol) servers the agent should connect to.",
+        "items": {
+          "$ref": "#/$defs/McpServer"
+        },
         "type": "array"
       }
     },
-    "required": ["cwd", "mcpServers"]
+    "required": ["cwd", "mcpServers"],
+    "type": "object",
+    "x-method": "session/new",
+    "x-side": "agent",
+    "$defs": {
+      "McpServer": {
+        "anyOf": [
+          {
+            "allOf": [
+              {
+                "$ref": "#/$defs/McpServerHttp"
+              }
+            ],
+            "description": "HTTP transport configuration\n\nOnly available when the Agent capabilities indicate `mcp_capabilities.http` is `true`.",
+            "properties": {
+              "type": {
+                "const": "http",
+                "type": "string"
+              }
+            },
+            "required": ["type"],
+            "type": "object"
+          },
+          {
+            "allOf": [
+              {
+                "$ref": "#/$defs/McpServerSse"
+              }
+            ],
+            "description": "SSE transport configuration\n\nOnly available when the Agent capabilities indicate `mcp_capabilities.sse` is `true`.",
+            "properties": {
+              "type": {
+                "const": "sse",
+                "type": "string"
+              }
+            },
+            "required": ["type"],
+            "type": "object"
+          },
+          {
+            "allOf": [
+              {
+                "$ref": "#/$defs/McpServerStdio"
+              }
+            ],
+            "description": "Stdio transport configuration\n\nAll Agents MUST support this transport.",
+            "title": "stdio"
+          }
+        ],
+        "description": "Configuration for connecting to an MCP (Model Context Protocol) server.\n\nMCP servers provide tools and context that the agent can use when\nprocessing prompts.\n\nSee protocol docs: [MCP Servers](https://agentclientprotocol.com/protocol/session-setup#mcp-servers)"
+      },
+      "McpServerHttp": {
+        "description": "HTTP transport configuration for MCP.",
+        "properties": {
+          "_meta": {
+            "additionalProperties": true,
+            "description": "The _meta property is reserved by ACP to allow clients and agents to attach additional\nmetadata to their interactions. Implementations MUST NOT make assumptions about values at\nthese keys.\n\nSee protocol docs: [Extensibility](https://agentclientprotocol.com/protocol/extensibility)",
+            "type": ["object", "null"]
+          },
+          "headers": {
+            "description": "HTTP headers to set when making requests to the MCP server.",
+            "items": {
+              "$ref": "#/$defs/HttpHeader"
+            },
+            "type": "array"
+          },
+          "name": {
+            "description": "Human-readable name identifying this MCP server.",
+            "type": "string"
+          },
+          "url": {
+            "description": "URL to the MCP server.",
+            "type": "string"
+          }
+        },
+        "required": ["name", "url", "headers"],
+        "type": "object"
+      },
+      "McpServerSse": {
+        "description": "SSE transport configuration for MCP.",
+        "properties": {
+          "_meta": {
+            "additionalProperties": true,
+            "description": "The _meta property is reserved by ACP to allow clients and agents to attach additional\nmetadata to their interactions. Implementations MUST NOT make assumptions about values at\nthese keys.\n\nSee protocol docs: [Extensibility](https://agentclientprotocol.com/protocol/extensibility)",
+            "type": ["object", "null"]
+          },
+          "headers": {
+            "description": "HTTP headers to set when making requests to the MCP server.",
+            "items": {
+              "$ref": "#/$defs/HttpHeader"
+            },
+            "type": "array"
+          },
+          "name": {
+            "description": "Human-readable name identifying this MCP server.",
+            "type": "string"
+          },
+          "url": {
+            "description": "URL to the MCP server.",
+            "type": "string"
+          }
+        },
+        "required": ["name", "url", "headers"],
+        "type": "object"
+      },
+      "McpServerStdio": {
+        "description": "Stdio transport configuration for MCP.",
+        "properties": {
+          "_meta": {
+            "additionalProperties": true,
+            "description": "The _meta property is reserved by ACP to allow clients and agents to attach additional\nmetadata to their interactions. Implementations MUST NOT make assumptions about values at\nthese keys.\n\nSee protocol docs: [Extensibility](https://agentclientprotocol.com/protocol/extensibility)",
+            "type": ["object", "null"]
+          },
+          "args": {
+            "description": "Command-line arguments to pass to the MCP server.",
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
+          },
+          "command": {
+            "description": "Path to the MCP server executable.",
+            "type": "string"
+          },
+          "env": {
+            "description": "Environment variables to set when launching the MCP server.",
+            "items": {
+              "$ref": "#/$defs/EnvVariable"
+            },
+            "type": "array"
+          },
+          "name": {
+            "description": "Human-readable name identifying this MCP server.",
+            "type": "string"
+          }
+        },
+        "required": ["name", "command", "args", "env"],
+        "type": "object"
+      },
+      "HttpHeader": {
+        "description": "An HTTP header to set when making requests to the MCP server.",
+        "properties": {
+          "_meta": {
+            "additionalProperties": true,
+            "description": "The _meta property is reserved by ACP to allow clients and agents to attach additional\nmetadata to their interactions. Implementations MUST NOT make assumptions about values at\nthese keys.\n\nSee protocol docs: [Extensibility](https://agentclientprotocol.com/protocol/extensibility)",
+            "type": ["object", "null"]
+          },
+          "name": {
+            "description": "The name of the HTTP header.",
+            "type": "string"
+          },
+          "value": {
+            "description": "The value to set for the HTTP header.",
+            "type": "string"
+          }
+        },
+        "required": ["name", "value"],
+        "type": "object"
+      },
+      "EnvVariable": {
+        "description": "An environment variable to set when launching an MCP server.",
+        "properties": {
+          "_meta": {
+            "additionalProperties": true,
+            "description": "The _meta property is reserved by ACP to allow clients and agents to attach additional\nmetadata to their interactions. Implementations MUST NOT make assumptions about values at\nthese keys.\n\nSee protocol docs: [Extensibility](https://agentclientprotocol.com/protocol/extensibility)",
+            "type": ["object", "null"]
+          },
+          "name": {
+            "description": "The name of the environment variable.",
+            "type": "string"
+          },
+          "value": {
+            "description": "The value to set for the environment variable.",
+            "type": "string"
+          }
+        },
+        "required": ["name", "value"],
+        "type": "object"
+      }
+    },
+    "$schema": "https://json-schema.org/draft/2020-12/schema"
   },
   "resultSchema": {
+    "description": "Response from creating a new session.\n\nSee protocol docs: [Creating a Session](https://agentclientprotocol.com/protocol/session-setup#creating-a-session)",
+    "properties": {
+      "_meta": {
+        "additionalProperties": true,
+        "description": "The _meta property is reserved by ACP to allow clients and agents to attach additional\nmetadata to their interactions. Implementations MUST NOT make assumptions about values at\nthese keys.\n\nSee protocol docs: [Extensibility](https://agentclientprotocol.com/protocol/extensibility)",
+        "type": ["object", "null"]
+      },
+      "configOptions": {
+        "description": "Initial session configuration options if supported by the Agent.",
+        "items": {
+          "$ref": "#/$defs/SessionConfigOption"
+        },
+        "type": ["array", "null"]
+      },
+      "models": {
+        "anyOf": [
+          {
+            "$ref": "#/$defs/SessionModelState"
+          },
+          {
+            "type": "null"
+          }
+        ],
+        "description": "**UNSTABLE**\n\nThis capability is not part of the spec yet, and may be removed or changed at any point.\n\nInitial model state if supported by the Agent"
+      },
+      "modes": {
+        "anyOf": [
+          {
+            "$ref": "#/$defs/SessionModeState"
+          },
+          {
+            "type": "null"
+          }
+        ],
+        "description": "Initial mode state if supported by the Agent\n\nSee protocol docs: [Session Modes](https://agentclientprotocol.com/protocol/session-modes)"
+      },
+      "sessionId": {
+        "allOf": [
+          {
+            "$ref": "#/$defs/SessionId"
+          }
+        ],
+        "description": "Unique identifier for the created session.\n\nUsed in all subsequent requests for this conversation."
+      }
+    },
+    "required": ["sessionId"],
     "type": "object",
-    "properties": { "sessionId": { "type": "string" } },
-    "required": ["sessionId"]
+    "x-method": "session/new",
+    "x-side": "agent",
+    "$defs": {
+      "SessionConfigOption": {
+        "description": "A session configuration option selector and its current state.",
+        "discriminator": {
+          "propertyName": "type"
+        },
+        "oneOf": [
+          {
+            "allOf": [
+              {
+                "$ref": "#/$defs/SessionConfigSelect"
+              }
+            ],
+            "description": "Single-value selector (dropdown).",
+            "properties": {
+              "type": {
+                "const": "select",
+                "type": "string"
+              }
+            },
+            "required": ["type"],
+            "type": "object"
+          },
+          {
+            "allOf": [
+              {
+                "$ref": "#/$defs/SessionConfigBoolean"
+              }
+            ],
+            "description": "**UNSTABLE**\n\nThis capability is not part of the spec yet, and may be removed or changed at any point.\n\nBoolean on/off toggle.",
+            "properties": {
+              "type": {
+                "const": "boolean",
+                "type": "string"
+              }
+            },
+            "required": ["type"],
+            "type": "object"
+          }
+        ],
+        "properties": {
+          "_meta": {
+            "additionalProperties": true,
+            "description": "The _meta property is reserved by ACP to allow clients and agents to attach additional\nmetadata to their interactions. Implementations MUST NOT make assumptions about values at\nthese keys.\n\nSee protocol docs: [Extensibility](https://agentclientprotocol.com/protocol/extensibility)",
+            "type": ["object", "null"]
+          },
+          "category": {
+            "anyOf": [
+              {
+                "$ref": "#/$defs/SessionConfigOptionCategory"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Optional semantic category for this option (UX only)."
+          },
+          "description": {
+            "description": "Optional description for the Client to display to the user.",
+            "type": ["string", "null"]
+          },
+          "id": {
+            "allOf": [
+              {
+                "$ref": "#/$defs/SessionConfigId"
+              }
+            ],
+            "description": "Unique identifier for the configuration option."
+          },
+          "name": {
+            "description": "Human-readable label for the option.",
+            "type": "string"
+          }
+        },
+        "required": ["id", "name"],
+        "type": "object"
+      },
+      "SessionModelState": {
+        "description": "**UNSTABLE**\n\nThis capability is not part of the spec yet, and may be removed or changed at any point.\n\nThe set of models and the one currently active.",
+        "properties": {
+          "_meta": {
+            "additionalProperties": true,
+            "description": "The _meta property is reserved by ACP to allow clients and agents to attach additional\nmetadata to their interactions. Implementations MUST NOT make assumptions about values at\nthese keys.\n\nSee protocol docs: [Extensibility](https://agentclientprotocol.com/protocol/extensibility)",
+            "type": ["object", "null"]
+          },
+          "availableModels": {
+            "description": "The set of models that the Agent can use",
+            "items": {
+              "$ref": "#/$defs/ModelInfo"
+            },
+            "type": "array"
+          },
+          "currentModelId": {
+            "allOf": [
+              {
+                "$ref": "#/$defs/ModelId"
+              }
+            ],
+            "description": "The current model the Agent is in."
+          }
+        },
+        "required": ["currentModelId", "availableModels"],
+        "type": "object"
+      },
+      "SessionModeState": {
+        "description": "The set of modes and the one currently active.",
+        "properties": {
+          "_meta": {
+            "additionalProperties": true,
+            "description": "The _meta property is reserved by ACP to allow clients and agents to attach additional\nmetadata to their interactions. Implementations MUST NOT make assumptions about values at\nthese keys.\n\nSee protocol docs: [Extensibility](https://agentclientprotocol.com/protocol/extensibility)",
+            "type": ["object", "null"]
+          },
+          "availableModes": {
+            "description": "The set of modes that the Agent can operate in",
+            "items": {
+              "$ref": "#/$defs/SessionMode"
+            },
+            "type": "array"
+          },
+          "currentModeId": {
+            "allOf": [
+              {
+                "$ref": "#/$defs/SessionModeId"
+              }
+            ],
+            "description": "The current mode the Agent is in."
+          }
+        },
+        "required": ["currentModeId", "availableModes"],
+        "type": "object"
+      },
+      "SessionId": {
+        "description": "A unique identifier for a conversation session between a client and agent.\n\nSessions maintain their own context, conversation history, and state,\nallowing multiple independent interactions with the same agent.\n\nSee protocol docs: [Session ID](https://agentclientprotocol.com/protocol/session-setup#session-id)",
+        "type": "string"
+      },
+      "SessionConfigSelect": {
+        "description": "A single-value selector (dropdown) session configuration option payload.",
+        "properties": {
+          "currentValue": {
+            "allOf": [
+              {
+                "$ref": "#/$defs/SessionConfigValueId"
+              }
+            ],
+            "description": "The currently selected value."
+          },
+          "options": {
+            "allOf": [
+              {
+                "$ref": "#/$defs/SessionConfigSelectOptions"
+              }
+            ],
+            "description": "The set of selectable options."
+          }
+        },
+        "required": ["currentValue", "options"],
+        "type": "object"
+      },
+      "SessionConfigBoolean": {
+        "description": "**UNSTABLE**\n\nThis capability is not part of the spec yet, and may be removed or changed at any point.\n\nA boolean on/off toggle session configuration option payload.",
+        "properties": {
+          "currentValue": {
+            "description": "The current value of the boolean option.",
+            "type": "boolean"
+          }
+        },
+        "required": ["currentValue"],
+        "type": "object"
+      },
+      "SessionConfigOptionCategory": {
+        "anyOf": [
+          {
+            "const": "mode",
+            "description": "Session mode selector.",
+            "type": "string"
+          },
+          {
+            "const": "model",
+            "description": "Model selector.",
+            "type": "string"
+          },
+          {
+            "const": "thought_level",
+            "description": "Thought/reasoning level selector.",
+            "type": "string"
+          },
+          {
+            "description": "Unknown / uncategorized selector.",
+            "title": "other",
+            "type": "string"
+          }
+        ],
+        "description": "Semantic category for a session configuration option.\n\nThis is intended to help Clients distinguish broadly common selectors (e.g. model selector vs\nsession mode selector vs thought/reasoning level) for UX purposes (keyboard shortcuts, icons,\nplacement). It MUST NOT be required for correctness. Clients MUST handle missing or unknown\ncategories gracefully.\n\nCategory names beginning with `_` are free for custom use, like other ACP extension methods.\nCategory names that do not begin with `_` are reserved for the ACP spec."
+      },
+      "SessionConfigId": {
+        "description": "Unique identifier for a session configuration option.",
+        "type": "string"
+      },
+      "ModelInfo": {
+        "description": "**UNSTABLE**\n\nThis capability is not part of the spec yet, and may be removed or changed at any point.\n\nInformation about a selectable model.",
+        "properties": {
+          "_meta": {
+            "additionalProperties": true,
+            "description": "The _meta property is reserved by ACP to allow clients and agents to attach additional\nmetadata to their interactions. Implementations MUST NOT make assumptions about values at\nthese keys.\n\nSee protocol docs: [Extensibility](https://agentclientprotocol.com/protocol/extensibility)",
+            "type": ["object", "null"]
+          },
+          "description": {
+            "description": "Optional description of the model.",
+            "type": ["string", "null"]
+          },
+          "modelId": {
+            "allOf": [
+              {
+                "$ref": "#/$defs/ModelId"
+              }
+            ],
+            "description": "Unique identifier for the model."
+          },
+          "name": {
+            "description": "Human-readable name of the model.",
+            "type": "string"
+          }
+        },
+        "required": ["modelId", "name"],
+        "type": "object"
+      },
+      "ModelId": {
+        "description": "**UNSTABLE**\n\nThis capability is not part of the spec yet, and may be removed or changed at any point.\n\nA unique identifier for a model.",
+        "type": "string"
+      },
+      "SessionMode": {
+        "description": "A mode the agent can operate in.\n\nSee protocol docs: [Session Modes](https://agentclientprotocol.com/protocol/session-modes)",
+        "properties": {
+          "_meta": {
+            "additionalProperties": true,
+            "description": "The _meta property is reserved by ACP to allow clients and agents to attach additional\nmetadata to their interactions. Implementations MUST NOT make assumptions about values at\nthese keys.\n\nSee protocol docs: [Extensibility](https://agentclientprotocol.com/protocol/extensibility)",
+            "type": ["object", "null"]
+          },
+          "description": {
+            "type": ["string", "null"]
+          },
+          "id": {
+            "$ref": "#/$defs/SessionModeId"
+          },
+          "name": {
+            "type": "string"
+          }
+        },
+        "required": ["id", "name"],
+        "type": "object"
+      },
+      "SessionModeId": {
+        "description": "Unique identifier for a Session Mode.",
+        "type": "string"
+      },
+      "SessionConfigValueId": {
+        "description": "Unique identifier for a session configuration option value.",
+        "type": "string"
+      },
+      "SessionConfigSelectOptions": {
+        "anyOf": [
+          {
+            "description": "A flat list of options with no grouping.",
+            "items": {
+              "$ref": "#/$defs/SessionConfigSelectOption"
+            },
+            "title": "Ungrouped",
+            "type": "array"
+          },
+          {
+            "description": "A list of options grouped under headers.",
+            "items": {
+              "$ref": "#/$defs/SessionConfigSelectGroup"
+            },
+            "title": "Grouped",
+            "type": "array"
+          }
+        ],
+        "description": "Possible values for a session configuration option."
+      },
+      "SessionConfigSelectOption": {
+        "description": "A possible value for a session configuration option.",
+        "properties": {
+          "_meta": {
+            "additionalProperties": true,
+            "description": "The _meta property is reserved by ACP to allow clients and agents to attach additional\nmetadata to their interactions. Implementations MUST NOT make assumptions about values at\nthese keys.\n\nSee protocol docs: [Extensibility](https://agentclientprotocol.com/protocol/extensibility)",
+            "type": ["object", "null"]
+          },
+          "description": {
+            "description": "Optional description for this option value.",
+            "type": ["string", "null"]
+          },
+          "name": {
+            "description": "Human-readable label for this option value.",
+            "type": "string"
+          },
+          "value": {
+            "allOf": [
+              {
+                "$ref": "#/$defs/SessionConfigValueId"
+              }
+            ],
+            "description": "Unique identifier for this option value."
+          }
+        },
+        "required": ["value", "name"],
+        "type": "object"
+      },
+      "SessionConfigSelectGroup": {
+        "description": "A group of possible values for a session configuration option.",
+        "properties": {
+          "_meta": {
+            "additionalProperties": true,
+            "description": "The _meta property is reserved by ACP to allow clients and agents to attach additional\nmetadata to their interactions. Implementations MUST NOT make assumptions about values at\nthese keys.\n\nSee protocol docs: [Extensibility](https://agentclientprotocol.com/protocol/extensibility)",
+            "type": ["object", "null"]
+          },
+          "group": {
+            "allOf": [
+              {
+                "$ref": "#/$defs/SessionConfigGroupId"
+              }
+            ],
+            "description": "Unique identifier for this group."
+          },
+          "name": {
+            "description": "Human-readable label for this group.",
+            "type": "string"
+          },
+          "options": {
+            "description": "The set of option values in this group.",
+            "items": {
+              "$ref": "#/$defs/SessionConfigSelectOption"
+            },
+            "type": "array"
+          }
+        },
+        "required": ["group", "name", "options"],
+        "type": "object"
+      },
+      "SessionConfigGroupId": {
+        "description": "Unique identifier for a session configuration option value group.",
+        "type": "string"
+      }
+    },
+    "$schema": "https://json-schema.org/draft/2020-12/schema"
   },
-  "confidence": "unverified",
-  "firstSeen": "1.0.0",
-  "lastVerified": "1.0.0",
-  "fixture": "captures/grok@1.0.0/handshake.jsonl",
-  "direction": "client-to-agent",
+  "recordSchema": {
+    "type": "object",
+    "properties": {
+      "jsonrpc": {
+        "type": "string",
+        "enum": ["2.0"]
+      },
+      "id": {
+        "anyOf": [
+          {
+            "type": "integer"
+          },
+          {
+            "type": "string"
+          }
+        ]
+      },
+      "method": {
+        "type": "string",
+        "enum": ["session/new"]
+      },
+      "params": {
+        "type": "object"
+      }
+    },
+    "required": ["jsonrpc", "id", "method", "params"]
+  },
+  "recordChannel": "acp",
   "evidence": {
     "existence": ["grok-runtime-headless"],
-    "shape": ["grok-runtime-headless"],
-    "result": ["grok-public-mirror-lead"]
-  }
+    "shape": ["grok-public-acp-lead"],
+    "carrier": ["grok-runtime-headless"],
+    "result": ["grok-public-acp-lead"]
+  },
+  "confidence": "unverified",
+  "schemaFidelity": {
+    "payload": "exact",
+    "result": "exact",
+    "carrier": "structural",
+    "limitations": [
+      "The retained schema is exact for ACP schema 0.11.4 at e931357254ff44573294d5cee214a269e0cd6c54, the dependency of a supplemental public Grok source commit. The installed binary's reported revision is absent from that mirror, so binary equivalence is unverified."
+    ]
+  },
+  "fixture": "captures/grok@1.0.0/handshake.jsonl",
+  "notes": "The installed artifact accepted/emitted this request payload, but matching result carriers were not retained. Exact optional fields and result shape remain supplemental ACP-source evidence."
 }

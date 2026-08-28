@@ -10,16 +10,11 @@
   "direction": "client-to-agent",
   "trigger": "Get MCP status — Get the status of all Model Context Protocol (MCP) servers.",
   "payloadSchema": {
-    "type": "object",
     "properties": {
       "method": {
         "type": "string"
       },
-      "route": {
-        "type": "string"
-      },
       "query": {
-        "type": "object",
         "properties": {
           "directory": {
             "type": "string"
@@ -27,36 +22,35 @@
           "workspace": {
             "type": "string"
           }
-        }
+        },
+        "type": "object"
+      },
+      "route": {
+        "type": "string"
       }
     },
     "required": [
       "method",
       "route"
-    ]
+    ],
+    "type": "object"
   },
   "resultSchema": {
-    "type": "object",
     "properties": {
+      "body": {
+        "additionalProperties": {
+          "$ref": "#/$defs/MCPStatus"
+        },
+        "description": "MCP server status",
+        "type": "object"
+      },
       "method": {
-        "type": "string",
         "enum": [
           "GET"
-        ]
-      },
-      "route": {
-        "type": "string",
-        "enum": [
-          "/mcp"
-        ]
-      },
-      "status": {
-        "type": "integer",
-        "minimum": 200,
-        "maximum": 299
+        ],
+        "type": "string"
       },
       "query": {
-        "type": "object",
         "properties": {
           "directory": {
             "type": "string"
@@ -64,10 +58,19 @@
           "workspace": {
             "type": "string"
           }
-        }
-      },
-      "body": {
+        },
         "type": "object"
+      },
+      "route": {
+        "enum": [
+          "/mcp"
+        ],
+        "type": "string"
+      },
+      "status": {
+        "maximum": 299,
+        "minimum": 200,
+        "type": "integer"
       }
     },
     "required": [
@@ -75,34 +78,130 @@
       "route",
       "status",
       "body"
-    ]
-  },
-  "recordSchema": {
+    ],
     "type": "object",
-    "properties": {
-      "direction": {
-        "type": "string",
-        "enum": [
-          "client-to-agent"
+    "$defs": {
+      "MCPStatus": {
+        "anyOf": [
+          {
+            "$ref": "#/$defs/MCPStatusConnected"
+          },
+          {
+            "$ref": "#/$defs/MCPStatusDisabled"
+          },
+          {
+            "$ref": "#/$defs/MCPStatusFailed"
+          },
+          {
+            "$ref": "#/$defs/MCPStatusNeedsAuth"
+          },
+          {
+            "$ref": "#/$defs/MCPStatusNeedsClientRegistration"
+          }
         ]
       },
+      "MCPStatusConnected": {
+        "additionalProperties": false,
+        "properties": {
+          "status": {
+            "enum": [
+              "connected"
+            ],
+            "type": "string"
+          }
+        },
+        "required": [
+          "status"
+        ],
+        "type": "object"
+      },
+      "MCPStatusDisabled": {
+        "additionalProperties": false,
+        "properties": {
+          "status": {
+            "enum": [
+              "disabled"
+            ],
+            "type": "string"
+          }
+        },
+        "required": [
+          "status"
+        ],
+        "type": "object"
+      },
+      "MCPStatusFailed": {
+        "additionalProperties": false,
+        "properties": {
+          "error": {
+            "type": "string"
+          },
+          "status": {
+            "enum": [
+              "failed"
+            ],
+            "type": "string"
+          }
+        },
+        "required": [
+          "status",
+          "error"
+        ],
+        "type": "object"
+      },
+      "MCPStatusNeedsAuth": {
+        "additionalProperties": false,
+        "properties": {
+          "status": {
+            "enum": [
+              "needs_auth"
+            ],
+            "type": "string"
+          }
+        },
+        "required": [
+          "status"
+        ],
+        "type": "object"
+      },
+      "MCPStatusNeedsClientRegistration": {
+        "additionalProperties": false,
+        "properties": {
+          "error": {
+            "type": "string"
+          },
+          "status": {
+            "enum": [
+              "needs_client_registration"
+            ],
+            "type": "string"
+          }
+        },
+        "required": [
+          "status",
+          "error"
+        ],
+        "type": "object"
+      }
+    }
+  },
+  "recordSchema": {
+    "properties": {
+      "direction": {
+        "enum": [
+          "client-to-agent"
+        ],
+        "type": "string"
+      },
       "request": {
-        "type": "object",
         "properties": {
           "method": {
-            "type": "string",
             "enum": [
               "GET"
-            ]
-          },
-          "route": {
-            "type": "string",
-            "enum": [
-              "/mcp"
-            ]
+            ],
+            "type": "string"
           },
           "query": {
-            "type": "object",
             "properties": {
               "directory": {
                 "type": "string"
@@ -110,19 +209,33 @@
               "workspace": {
                 "type": "string"
               }
-            }
+            },
+            "type": "object"
+          },
+          "route": {
+            "enum": [
+              "/mcp"
+            ],
+            "type": "string"
           }
         },
         "required": [
           "method",
           "route"
-        ]
+        ],
+        "type": "object"
       }
     },
     "required": [
       "direction",
       "request"
-    ]
+    ],
+    "type": "object"
+  },
+  "schemaFidelity": {
+    "payload": "semantic",
+    "result": "semantic",
+    "carrier": "semantic"
   },
   "evidence": {
     "existence": [

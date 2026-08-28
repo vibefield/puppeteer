@@ -1,0 +1,72 @@
+{
+  "surface": "antigravity",
+  "surfaceVersion": "1.1.12",
+  "event": "Stop",
+  "schemaFidelity": {
+    "payload": "structural",
+    "result": "structural",
+    "limitations": [
+      "The retained 1.1.12 runtime records are legacy privacy projections. Schemas retain only fields whose native names and types survive that transform or are stated by official documentation; additional native fields may exist."
+    ]
+  },
+  "channel": "hook-command",
+  "channels": ["hook-command"],
+  "transport": "hook-callback",
+  "direction": "agent-local",
+  "payloadSchema": {
+    "type": "object",
+    "properties": {
+      "conversationId": {
+        "type": "string"
+      },
+      "workspacePaths": {
+        "type": "array",
+        "items": {
+          "type": "string"
+        }
+      },
+      "transcriptPath": {
+        "type": "string"
+      },
+      "artifactDirectoryPath": {
+        "type": "string"
+      },
+      "modelName": {
+        "type": "string"
+      },
+      "executionNum": {
+        "type": "integer",
+        "minimum": 0
+      },
+      "terminationReason": {
+        "type": "string"
+      },
+      "error": {
+        "type": "string"
+      },
+      "fullyIdle": {
+        "type": "boolean"
+      }
+    },
+    "required": ["conversationId", "workspacePaths", "modelName", "terminationReason", "fullyIdle"]
+  },
+  "resultSchema": {
+    "type": "object",
+    "properties": {
+      "decision": {
+        "type": "string",
+        "enum": ["continue"]
+      }
+    }
+  },
+  "evidence": {
+    "existence": ["antigravity-runtime-headless"],
+    "shape": ["antigravity-official-docs"],
+    "result": ["antigravity-official-docs"],
+    "carrier": ["antigravity-official-docs"]
+  },
+  "confidence": "unverified",
+  "fixture": "captures/antigravity@1.1.12/add-dir-turn/hooks.jsonl",
+  "observationMode": "passive",
+  "notes": "Runtime evidence verifies this hook family and its ordering. Complete stdin/stdout shape is documentation-backed because the retained runtime fixture is a legacy projection."
+}

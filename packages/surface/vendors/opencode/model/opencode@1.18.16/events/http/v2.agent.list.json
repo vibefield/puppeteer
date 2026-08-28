@@ -10,19 +10,14 @@
   "direction": "client-to-agent",
   "trigger": "List agents — Retrieve currently registered agents.",
   "payloadSchema": {
-    "type": "object",
     "properties": {
       "method": {
         "type": "string"
       },
-      "route": {
-        "type": "string"
-      },
       "query": {
-        "type": "object",
         "properties": {
           "location": {
-            "type": "object",
+            "additionalProperties": false,
             "properties": {
               "directory": {
                 "type": "string"
@@ -30,41 +25,53 @@
               "workspace": {
                 "type": "string"
               }
-            }
+            },
+            "type": "object"
           }
-        }
+        },
+        "type": "object"
+      },
+      "route": {
+        "type": "string"
       }
     },
     "required": [
       "method",
       "route"
-    ]
+    ],
+    "type": "object"
   },
   "resultSchema": {
-    "type": "object",
     "properties": {
+      "body": {
+        "additionalProperties": false,
+        "properties": {
+          "data": {
+            "items": {
+              "$ref": "#/$defs/AgentV2Info"
+            },
+            "type": "array"
+          },
+          "location": {
+            "$ref": "#/$defs/LocationInfo"
+          }
+        },
+        "required": [
+          "location",
+          "data"
+        ],
+        "type": "object"
+      },
       "method": {
-        "type": "string",
         "enum": [
           "GET"
-        ]
-      },
-      "route": {
-        "type": "string",
-        "enum": [
-          "/api/agent"
-        ]
-      },
-      "status": {
-        "type": "integer",
-        "minimum": 200,
-        "maximum": 299
+        ],
+        "type": "string"
       },
       "query": {
-        "type": "object",
         "properties": {
           "location": {
-            "type": "object",
+            "additionalProperties": false,
             "properties": {
               "directory": {
                 "type": "string"
@@ -72,144 +79,22 @@
               "workspace": {
                 "type": "string"
               }
-            }
-          }
-        }
-      },
-      "body": {
-        "type": "object",
-        "properties": {
-          "data": {
-            "type": "array",
-            "items": {
-              "type": "object",
-              "properties": {
-                "color": {
-                  "anyOf": [
-                    {
-                      "type": "string"
-                    }
-                  ]
-                },
-                "description": {
-                  "type": "string"
-                },
-                "hidden": {
-                  "type": "boolean"
-                },
-                "id": {
-                  "type": "string"
-                },
-                "mode": {
-                  "type": "string"
-                },
-                "model": {
-                  "type": "object",
-                  "properties": {
-                    "id": {
-                      "type": "string"
-                    },
-                    "providerID": {
-                      "type": "string"
-                    },
-                    "variant": {
-                      "type": "string"
-                    }
-                  },
-                  "required": [
-                    "id",
-                    "providerID"
-                  ]
-                },
-                "permissions": {
-                  "type": "array",
-                  "items": {
-                    "type": "object",
-                    "properties": {
-                      "action": {
-                        "type": "string"
-                      },
-                      "effect": {
-                        "type": "string"
-                      },
-                      "resource": {
-                        "type": "string"
-                      }
-                    },
-                    "required": [
-                      "action",
-                      "effect",
-                      "resource"
-                    ]
-                  }
-                },
-                "request": {
-                  "type": "object",
-                  "properties": {
-                    "body": {
-                      "type": "object"
-                    },
-                    "headers": {
-                      "type": "object"
-                    }
-                  },
-                  "required": [
-                    "body",
-                    "headers"
-                  ]
-                },
-                "steps": {
-                  "type": "integer",
-                  "exclusiveMinimum": 0
-                },
-                "system": {
-                  "type": "string"
-                }
-              },
-              "required": [
-                "hidden",
-                "id",
-                "mode",
-                "permissions",
-                "request"
-              ]
-            }
-          },
-          "location": {
-            "type": "object",
-            "properties": {
-              "directory": {
-                "type": "string"
-              },
-              "project": {
-                "type": "object",
-                "properties": {
-                  "directory": {
-                    "type": "string"
-                  },
-                  "id": {
-                    "type": "string"
-                  }
-                },
-                "required": [
-                  "directory",
-                  "id"
-                ]
-              },
-              "workspaceID": {
-                "type": "string"
-              }
             },
-            "required": [
-              "directory",
-              "project"
-            ]
+            "type": "object"
           }
         },
-        "required": [
-          "data",
-          "location"
-        ]
+        "type": "object"
+      },
+      "route": {
+        "enum": [
+          "/api/agent"
+        ],
+        "type": "string"
+      },
+      "status": {
+        "maximum": 299,
+        "minimum": 200,
+        "type": "integer"
       }
     },
     "required": [
@@ -217,37 +102,205 @@
       "route",
       "status",
       "body"
-    ]
-  },
-  "recordSchema": {
+    ],
     "type": "object",
-    "properties": {
-      "direction": {
-        "type": "string",
-        "enum": [
-          "client-to-agent"
+    "$defs": {
+      "AgentV2Info": {
+        "additionalProperties": false,
+        "properties": {
+          "color": {
+            "$ref": "#/$defs/AgentColor"
+          },
+          "description": {
+            "type": "string"
+          },
+          "hidden": {
+            "type": "boolean"
+          },
+          "id": {
+            "type": "string"
+          },
+          "mode": {
+            "enum": [
+              "subagent",
+              "primary",
+              "all"
+            ],
+            "type": "string"
+          },
+          "model": {
+            "$ref": "#/$defs/ModelRef"
+          },
+          "permissions": {
+            "$ref": "#/$defs/PermissionV2Ruleset"
+          },
+          "request": {
+            "$ref": "#/$defs/ProviderRequest"
+          },
+          "steps": {
+            "exclusiveMinimum": 0,
+            "type": "integer"
+          },
+          "system": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "request",
+          "mode",
+          "hidden",
+          "permissions"
+        ],
+        "type": "object"
+      },
+      "LocationInfo": {
+        "additionalProperties": false,
+        "properties": {
+          "directory": {
+            "type": "string"
+          },
+          "project": {
+            "additionalProperties": false,
+            "properties": {
+              "directory": {
+                "type": "string"
+              },
+              "id": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "id",
+              "directory"
+            ],
+            "type": "object"
+          },
+          "workspaceID": {
+            "pattern": "^wrk",
+            "type": "string"
+          }
+        },
+        "required": [
+          "directory",
+          "project"
+        ],
+        "type": "object"
+      },
+      "AgentColor": {
+        "anyOf": [
+          {
+            "pattern": "^#[0-9a-fA-F]{6}$",
+            "type": "string"
+          },
+          {
+            "enum": [
+              "primary",
+              "secondary",
+              "accent",
+              "success",
+              "warning",
+              "error",
+              "info"
+            ],
+            "type": "string"
+          }
         ]
       },
+      "ModelRef": {
+        "additionalProperties": false,
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "providerID": {
+            "type": "string"
+          },
+          "variant": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "providerID"
+        ],
+        "type": "object"
+      },
+      "PermissionV2Ruleset": {
+        "items": {
+          "$ref": "#/$defs/PermissionV2Rule"
+        },
+        "type": "array"
+      },
+      "ProviderRequest": {
+        "additionalProperties": false,
+        "properties": {
+          "body": {
+            "type": "object"
+          },
+          "headers": {
+            "additionalProperties": {
+              "type": "string"
+            },
+            "type": "object"
+          }
+        },
+        "required": [
+          "headers",
+          "body"
+        ],
+        "type": "object"
+      },
+      "PermissionV2Rule": {
+        "additionalProperties": false,
+        "properties": {
+          "action": {
+            "type": "string"
+          },
+          "effect": {
+            "$ref": "#/$defs/PermissionV2Effect"
+          },
+          "resource": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "action",
+          "resource",
+          "effect"
+        ],
+        "type": "object"
+      },
+      "PermissionV2Effect": {
+        "enum": [
+          "allow",
+          "deny",
+          "ask"
+        ],
+        "type": "string"
+      }
+    }
+  },
+  "recordSchema": {
+    "properties": {
+      "direction": {
+        "enum": [
+          "client-to-agent"
+        ],
+        "type": "string"
+      },
       "request": {
-        "type": "object",
         "properties": {
           "method": {
-            "type": "string",
             "enum": [
               "GET"
-            ]
-          },
-          "route": {
-            "type": "string",
-            "enum": [
-              "/api/agent"
-            ]
+            ],
+            "type": "string"
           },
           "query": {
-            "type": "object",
             "properties": {
               "location": {
-                "type": "object",
+                "additionalProperties": false,
                 "properties": {
                   "directory": {
                     "type": "string"
@@ -255,21 +308,36 @@
                   "workspace": {
                     "type": "string"
                   }
-                }
+                },
+                "type": "object"
               }
-            }
+            },
+            "type": "object"
+          },
+          "route": {
+            "enum": [
+              "/api/agent"
+            ],
+            "type": "string"
           }
         },
         "required": [
           "method",
           "route"
-        ]
+        ],
+        "type": "object"
       }
     },
     "required": [
       "direction",
       "request"
-    ]
+    ],
+    "type": "object"
+  },
+  "schemaFidelity": {
+    "payload": "semantic",
+    "result": "semantic",
+    "carrier": "semantic"
   },
   "evidence": {
     "existence": [

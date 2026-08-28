@@ -2,6 +2,13 @@
   "surface": "kimi",
   "surfaceVersion": "0.34.0",
   "event": "context.append_loop_event",
+  "schemaFidelity": {
+    "payload": "structural",
+    "carrier": "structural",
+    "limitations": [
+      "The release source projection preserves recursive declared structure but intentionally leaves custom/unknown values unconstrained; runtime-only file schemas describe captured instances."
+    ]
+  },
   "channel": "wire",
   "channels": ["wire"],
   "transport": "jsonl-record",
@@ -1387,6 +1394,835 @@
         "shape": ["kimi-exact-release-source"]
       },
       "confidence": "unverified"
+    }
+  ],
+  "variantDiscriminants": ["event.type", "event.part.type", "event.providerFinishReason"],
+  "payloadRefinements": [
+    {
+      "match": {
+        "event.type": "tool.call",
+        "event.name": "Agent"
+      },
+      "path": "event.args",
+      "schema": {
+        "$schema": "http://json-schema.org/draft-07/schema#",
+        "additionalProperties": false,
+        "properties": {
+          "description": {
+            "type": "string"
+          },
+          "prompt": {
+            "type": "string"
+          },
+          "resume": {
+            "type": "string"
+          },
+          "run_in_background": {
+            "type": "boolean"
+          },
+          "subagent_type": {
+            "type": "string"
+          }
+        },
+        "required": ["prompt", "description"],
+        "type": "object"
+      },
+      "evidence": {
+        "existence": ["kimi-runtime-headless"],
+        "shape": ["kimi-runtime-headless"]
+      },
+      "confidence": "verified-headless",
+      "fidelity": "exact"
+    },
+    {
+      "match": {
+        "event.type": "tool.call",
+        "event.name": "AgentSwarm"
+      },
+      "path": "event.args",
+      "schema": {
+        "$schema": "http://json-schema.org/draft-07/schema#",
+        "additionalProperties": false,
+        "properties": {
+          "description": {
+            "minLength": 1,
+            "type": "string"
+          },
+          "items": {
+            "items": {
+              "minLength": 1,
+              "type": "string"
+            },
+            "maxItems": 128,
+            "type": "array"
+          },
+          "prompt_template": {
+            "minLength": 1,
+            "type": "string"
+          },
+          "resume_agent_ids": {
+            "additionalProperties": {
+              "minLength": 1,
+              "type": "string"
+            },
+            "propertyNames": {
+              "minLength": 1,
+              "type": "string"
+            },
+            "type": "object"
+          },
+          "subagent_type": {
+            "minLength": 1,
+            "type": "string"
+          }
+        },
+        "required": ["description"],
+        "type": "object"
+      },
+      "evidence": {
+        "existence": ["kimi-runtime-headless"],
+        "shape": ["kimi-runtime-headless"]
+      },
+      "confidence": "verified-headless",
+      "fidelity": "exact"
+    },
+    {
+      "match": {
+        "event.type": "tool.call",
+        "event.name": "AskUserQuestion"
+      },
+      "path": "event.args",
+      "schema": {
+        "$schema": "http://json-schema.org/draft-07/schema#",
+        "additionalProperties": false,
+        "properties": {
+          "background": {
+            "default": false,
+            "type": "boolean"
+          },
+          "questions": {
+            "items": {
+              "additionalProperties": false,
+              "properties": {
+                "header": {
+                  "default": "",
+                  "type": "string"
+                },
+                "multi_select": {
+                  "default": false,
+                  "type": "boolean"
+                },
+                "options": {
+                  "items": {
+                    "additionalProperties": false,
+                    "properties": {
+                      "description": {
+                        "default": "",
+                        "type": "string"
+                      },
+                      "label": {
+                        "minLength": 1,
+                        "type": "string"
+                      }
+                    },
+                    "required": ["label"],
+                    "type": "object"
+                  },
+                  "maxItems": 4,
+                  "minItems": 2,
+                  "type": "array"
+                },
+                "question": {
+                  "minLength": 1,
+                  "type": "string"
+                }
+              },
+              "required": ["question", "options"],
+              "type": "object"
+            },
+            "maxItems": 4,
+            "minItems": 1,
+            "type": "array"
+          }
+        },
+        "required": ["questions"],
+        "type": "object"
+      },
+      "evidence": {
+        "existence": ["kimi-runtime-headless"],
+        "shape": ["kimi-runtime-headless"]
+      },
+      "confidence": "verified-headless",
+      "fidelity": "exact"
+    },
+    {
+      "match": {
+        "event.type": "tool.call",
+        "event.name": "Bash"
+      },
+      "path": "event.args",
+      "schema": {
+        "$schema": "http://json-schema.org/draft-07/schema#",
+        "additionalProperties": false,
+        "properties": {
+          "command": {
+            "minLength": 1,
+            "type": "string"
+          },
+          "cwd": {
+            "type": "string"
+          },
+          "description": {
+            "type": "string"
+          },
+          "disable_timeout": {
+            "type": "boolean"
+          },
+          "run_in_background": {
+            "type": "boolean"
+          },
+          "timeout": {
+            "default": 60,
+            "exclusiveMinimum": 0,
+            "maximum": 9007199254740991,
+            "type": "integer"
+          }
+        },
+        "required": ["command"],
+        "type": "object"
+      },
+      "evidence": {
+        "existence": ["kimi-runtime-headless"],
+        "shape": ["kimi-runtime-headless"]
+      },
+      "confidence": "verified-headless",
+      "fidelity": "exact"
+    },
+    {
+      "match": {
+        "event.type": "tool.call",
+        "event.name": "CreateGoal"
+      },
+      "path": "event.args",
+      "schema": {
+        "$schema": "http://json-schema.org/draft-07/schema#",
+        "additionalProperties": false,
+        "properties": {
+          "completionCriterion": {
+            "type": "string"
+          },
+          "objective": {
+            "minLength": 1,
+            "type": "string"
+          },
+          "replace": {
+            "type": "boolean"
+          }
+        },
+        "required": ["objective"],
+        "type": "object"
+      },
+      "evidence": {
+        "existence": ["kimi-runtime-headless"],
+        "shape": ["kimi-runtime-headless"]
+      },
+      "confidence": "verified-headless",
+      "fidelity": "exact"
+    },
+    {
+      "match": {
+        "event.type": "tool.call",
+        "event.name": "CronCreate"
+      },
+      "path": "event.args",
+      "schema": {
+        "$schema": "http://json-schema.org/draft-07/schema#",
+        "additionalProperties": false,
+        "properties": {
+          "cron": {
+            "type": "string"
+          },
+          "prompt": {
+            "maxLength": 8192,
+            "minLength": 1,
+            "type": "string"
+          },
+          "recurring": {
+            "default": true,
+            "type": "boolean"
+          }
+        },
+        "required": ["cron", "prompt"],
+        "type": "object"
+      },
+      "evidence": {
+        "existence": ["kimi-runtime-headless"],
+        "shape": ["kimi-runtime-headless"]
+      },
+      "confidence": "verified-headless",
+      "fidelity": "exact"
+    },
+    {
+      "match": {
+        "event.type": "tool.call",
+        "event.name": "CronDelete"
+      },
+      "path": "event.args",
+      "schema": {
+        "$schema": "http://json-schema.org/draft-07/schema#",
+        "additionalProperties": false,
+        "properties": {
+          "id": {
+            "type": "string"
+          }
+        },
+        "required": ["id"],
+        "type": "object"
+      },
+      "evidence": {
+        "existence": ["kimi-runtime-headless"],
+        "shape": ["kimi-runtime-headless"]
+      },
+      "confidence": "verified-headless",
+      "fidelity": "exact"
+    },
+    {
+      "match": {
+        "event.type": "tool.call",
+        "event.name": "CronList"
+      },
+      "path": "event.args",
+      "schema": {
+        "$schema": "http://json-schema.org/draft-07/schema#",
+        "additionalProperties": false,
+        "properties": {},
+        "type": "object"
+      },
+      "evidence": {
+        "existence": ["kimi-runtime-headless"],
+        "shape": ["kimi-runtime-headless"]
+      },
+      "confidence": "verified-headless",
+      "fidelity": "exact"
+    },
+    {
+      "match": {
+        "event.type": "tool.call",
+        "event.name": "Edit"
+      },
+      "path": "event.args",
+      "schema": {
+        "$schema": "http://json-schema.org/draft-07/schema#",
+        "additionalProperties": false,
+        "properties": {
+          "new_string": {
+            "type": "string"
+          },
+          "old_string": {
+            "minLength": 1,
+            "type": "string"
+          },
+          "path": {
+            "type": "string"
+          },
+          "replace_all": {
+            "type": "boolean"
+          }
+        },
+        "required": ["path", "old_string", "new_string"],
+        "type": "object"
+      },
+      "evidence": {
+        "existence": ["kimi-runtime-headless"],
+        "shape": ["kimi-runtime-headless"]
+      },
+      "confidence": "verified-headless",
+      "fidelity": "exact"
+    },
+    {
+      "match": {
+        "event.type": "tool.call",
+        "event.name": "EnterPlanMode"
+      },
+      "path": "event.args",
+      "schema": {
+        "$schema": "http://json-schema.org/draft-07/schema#",
+        "additionalProperties": false,
+        "properties": {},
+        "type": "object"
+      },
+      "evidence": {
+        "existence": ["kimi-runtime-headless"],
+        "shape": ["kimi-runtime-headless"]
+      },
+      "confidence": "verified-headless",
+      "fidelity": "exact"
+    },
+    {
+      "match": {
+        "event.type": "tool.call",
+        "event.name": "ExitPlanMode"
+      },
+      "path": "event.args",
+      "schema": {
+        "$schema": "http://json-schema.org/draft-07/schema#",
+        "additionalProperties": false,
+        "properties": {
+          "options": {
+            "items": {
+              "additionalProperties": false,
+              "properties": {
+                "description": {
+                  "default": "",
+                  "type": "string"
+                },
+                "label": {
+                  "maxLength": 80,
+                  "minLength": 1,
+                  "type": "string"
+                }
+              },
+              "required": ["label"],
+              "type": "object"
+            },
+            "maxItems": 3,
+            "minItems": 1,
+            "type": "array"
+          }
+        },
+        "type": "object"
+      },
+      "evidence": {
+        "existence": ["kimi-runtime-headless"],
+        "shape": ["kimi-runtime-headless"]
+      },
+      "confidence": "verified-headless",
+      "fidelity": "exact"
+    },
+    {
+      "match": {
+        "event.type": "tool.call",
+        "event.name": "FetchURL"
+      },
+      "path": "event.args",
+      "schema": {
+        "$schema": "http://json-schema.org/draft-07/schema#",
+        "additionalProperties": false,
+        "properties": {
+          "url": {
+            "type": "string"
+          }
+        },
+        "required": ["url"],
+        "type": "object"
+      },
+      "evidence": {
+        "existence": ["kimi-runtime-headless"],
+        "shape": ["kimi-runtime-headless"]
+      },
+      "confidence": "verified-headless",
+      "fidelity": "exact"
+    },
+    {
+      "match": {
+        "event.type": "tool.call",
+        "event.name": "GetGoal"
+      },
+      "path": "event.args",
+      "schema": {
+        "$schema": "http://json-schema.org/draft-07/schema#",
+        "additionalProperties": false,
+        "properties": {},
+        "type": "object"
+      },
+      "evidence": {
+        "existence": ["kimi-runtime-headless"],
+        "shape": ["kimi-runtime-headless"]
+      },
+      "confidence": "verified-headless",
+      "fidelity": "exact"
+    },
+    {
+      "match": {
+        "event.type": "tool.call",
+        "event.name": "Glob"
+      },
+      "path": "event.args",
+      "schema": {
+        "$schema": "http://json-schema.org/draft-07/schema#",
+        "additionalProperties": false,
+        "properties": {
+          "include_dirs": {
+            "type": "boolean"
+          },
+          "include_ignored": {
+            "type": "boolean"
+          },
+          "path": {
+            "type": "string"
+          },
+          "pattern": {
+            "type": "string"
+          }
+        },
+        "required": ["pattern"],
+        "type": "object"
+      },
+      "evidence": {
+        "existence": ["kimi-runtime-headless"],
+        "shape": ["kimi-runtime-headless"]
+      },
+      "confidence": "verified-headless",
+      "fidelity": "exact"
+    },
+    {
+      "match": {
+        "event.type": "tool.call",
+        "event.name": "Grep"
+      },
+      "path": "event.args",
+      "schema": {
+        "$schema": "http://json-schema.org/draft-07/schema#",
+        "additionalProperties": false,
+        "properties": {
+          "-A": {
+            "maximum": 9007199254740991,
+            "minimum": 0,
+            "type": "integer"
+          },
+          "-B": {
+            "maximum": 9007199254740991,
+            "minimum": 0,
+            "type": "integer"
+          },
+          "-C": {
+            "maximum": 9007199254740991,
+            "minimum": 0,
+            "type": "integer"
+          },
+          "-i": {
+            "type": "boolean"
+          },
+          "-n": {
+            "type": "boolean"
+          },
+          "glob": {
+            "type": "string"
+          },
+          "head_limit": {
+            "maximum": 9007199254740991,
+            "minimum": 0,
+            "type": "integer"
+          },
+          "include_ignored": {
+            "type": "boolean"
+          },
+          "multiline": {
+            "type": "boolean"
+          },
+          "offset": {
+            "maximum": 9007199254740991,
+            "minimum": 0,
+            "type": "integer"
+          },
+          "output_mode": {
+            "enum": ["content", "files_with_matches", "count_matches"],
+            "type": "string"
+          },
+          "path": {
+            "type": "string"
+          },
+          "pattern": {
+            "type": "string"
+          },
+          "type": {
+            "type": "string"
+          }
+        },
+        "required": ["pattern"],
+        "type": "object"
+      },
+      "evidence": {
+        "existence": ["kimi-runtime-headless"],
+        "shape": ["kimi-runtime-headless"]
+      },
+      "confidence": "verified-headless",
+      "fidelity": "exact"
+    },
+    {
+      "match": {
+        "event.type": "tool.call",
+        "event.name": "Read"
+      },
+      "path": "event.args",
+      "schema": {
+        "$schema": "http://json-schema.org/draft-07/schema#",
+        "additionalProperties": false,
+        "properties": {
+          "line_offset": {
+            "anyOf": [
+              {
+                "maximum": 9007199254740991,
+                "minimum": 1,
+                "type": "integer"
+              },
+              {
+                "maximum": -1,
+                "minimum": -1000,
+                "type": "integer"
+              }
+            ]
+          },
+          "n_lines": {
+            "exclusiveMinimum": 0,
+            "maximum": 9007199254740991,
+            "type": "integer"
+          },
+          "path": {
+            "type": "string"
+          }
+        },
+        "required": ["path"],
+        "type": "object"
+      },
+      "evidence": {
+        "existence": ["kimi-runtime-headless"],
+        "shape": ["kimi-runtime-headless"]
+      },
+      "confidence": "verified-headless",
+      "fidelity": "exact"
+    },
+    {
+      "match": {
+        "event.type": "tool.call",
+        "event.name": "SetGoalBudget"
+      },
+      "path": "event.args",
+      "schema": {
+        "$schema": "http://json-schema.org/draft-07/schema#",
+        "additionalProperties": false,
+        "properties": {
+          "unit": {
+            "enum": ["turns", "tokens", "milliseconds", "seconds", "minutes", "hours"],
+            "type": "string"
+          },
+          "value": {
+            "exclusiveMinimum": 0,
+            "type": "number"
+          }
+        },
+        "required": ["value", "unit"],
+        "type": "object"
+      },
+      "evidence": {
+        "existence": ["kimi-runtime-headless"],
+        "shape": ["kimi-runtime-headless"]
+      },
+      "confidence": "verified-headless",
+      "fidelity": "exact"
+    },
+    {
+      "match": {
+        "event.type": "tool.call",
+        "event.name": "Skill"
+      },
+      "path": "event.args",
+      "schema": {
+        "$schema": "http://json-schema.org/draft-07/schema#",
+        "additionalProperties": false,
+        "properties": {
+          "args": {
+            "type": "string"
+          },
+          "skill": {
+            "type": "string"
+          }
+        },
+        "required": ["skill"],
+        "type": "object"
+      },
+      "evidence": {
+        "existence": ["kimi-runtime-headless"],
+        "shape": ["kimi-runtime-headless"]
+      },
+      "confidence": "verified-headless",
+      "fidelity": "exact"
+    },
+    {
+      "match": {
+        "event.type": "tool.call",
+        "event.name": "TaskList"
+      },
+      "path": "event.args",
+      "schema": {
+        "$schema": "http://json-schema.org/draft-07/schema#",
+        "additionalProperties": false,
+        "properties": {
+          "active_only": {
+            "default": true,
+            "type": "boolean"
+          },
+          "limit": {
+            "default": 20,
+            "maximum": 100,
+            "minimum": 1,
+            "type": "integer"
+          }
+        },
+        "type": "object"
+      },
+      "evidence": {
+        "existence": ["kimi-runtime-headless"],
+        "shape": ["kimi-runtime-headless"]
+      },
+      "confidence": "verified-headless",
+      "fidelity": "exact"
+    },
+    {
+      "match": {
+        "event.type": "tool.call",
+        "event.name": "TaskOutput"
+      },
+      "path": "event.args",
+      "schema": {
+        "$schema": "http://json-schema.org/draft-07/schema#",
+        "additionalProperties": false,
+        "properties": {
+          "task_id": {
+            "type": "string"
+          }
+        },
+        "required": ["task_id"],
+        "type": "object"
+      },
+      "evidence": {
+        "existence": ["kimi-runtime-headless"],
+        "shape": ["kimi-runtime-headless"]
+      },
+      "confidence": "verified-headless",
+      "fidelity": "exact"
+    },
+    {
+      "match": {
+        "event.type": "tool.call",
+        "event.name": "TaskStop"
+      },
+      "path": "event.args",
+      "schema": {
+        "$schema": "http://json-schema.org/draft-07/schema#",
+        "additionalProperties": false,
+        "properties": {
+          "reason": {
+            "default": "Stopped by TaskStop",
+            "type": "string"
+          },
+          "task_id": {
+            "type": "string"
+          }
+        },
+        "required": ["task_id"],
+        "type": "object"
+      },
+      "evidence": {
+        "existence": ["kimi-runtime-headless"],
+        "shape": ["kimi-runtime-headless"]
+      },
+      "confidence": "verified-headless",
+      "fidelity": "exact"
+    },
+    {
+      "match": {
+        "event.type": "tool.call",
+        "event.name": "TodoList"
+      },
+      "path": "event.args",
+      "schema": {
+        "$schema": "http://json-schema.org/draft-07/schema#",
+        "additionalProperties": false,
+        "properties": {
+          "todos": {
+            "items": {
+              "additionalProperties": false,
+              "properties": {
+                "status": {
+                  "enum": ["pending", "in_progress", "done"],
+                  "type": "string"
+                },
+                "title": {
+                  "minLength": 1,
+                  "type": "string"
+                }
+              },
+              "required": ["title", "status"],
+              "type": "object"
+            },
+            "type": "array"
+          }
+        },
+        "type": "object"
+      },
+      "evidence": {
+        "existence": ["kimi-runtime-headless"],
+        "shape": ["kimi-runtime-headless"]
+      },
+      "confidence": "verified-headless",
+      "fidelity": "exact"
+    },
+    {
+      "match": {
+        "event.type": "tool.call",
+        "event.name": "UpdateGoal"
+      },
+      "path": "event.args",
+      "schema": {
+        "$schema": "http://json-schema.org/draft-07/schema#",
+        "additionalProperties": false,
+        "properties": {
+          "status": {
+            "enum": ["active", "complete", "blocked"],
+            "type": "string"
+          }
+        },
+        "required": ["status"],
+        "type": "object"
+      },
+      "evidence": {
+        "existence": ["kimi-runtime-headless"],
+        "shape": ["kimi-runtime-headless"]
+      },
+      "confidence": "verified-headless",
+      "fidelity": "exact"
+    },
+    {
+      "match": {
+        "event.type": "tool.call",
+        "event.name": "Write"
+      },
+      "path": "event.args",
+      "schema": {
+        "$schema": "http://json-schema.org/draft-07/schema#",
+        "additionalProperties": false,
+        "properties": {
+          "content": {
+            "type": "string"
+          },
+          "mode": {
+            "enum": ["overwrite", "append"],
+            "type": "string"
+          },
+          "path": {
+            "type": "string"
+          }
+        },
+        "required": ["path", "content"],
+        "type": "object"
+      },
+      "evidence": {
+        "existence": ["kimi-runtime-headless"],
+        "shape": ["kimi-runtime-headless"]
+      },
+      "confidence": "verified-headless",
+      "fidelity": "exact"
     }
   ],
   "fixture": "captures/kimi@0.34.0/tool-success/wire.jsonl"

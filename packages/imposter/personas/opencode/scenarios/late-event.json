@@ -1,15 +1,22 @@
 {
   "name": "late-event",
   "steps": [
-    { "emit": { "event": "session.idle", "with": { "sessionID": "$sessionId" } } },
+    {
+      "emit": {
+        "event": "session.idle",
+        "with": {
+          "sessionID": "$sessionId"
+        }
+      }
+    },
     {
       "emit": {
         "event": "message.part.updated",
         "with": {
           "sessionID": "$sessionId",
           "part": {
-            "id": "$uuid:late-part",
-            "messageID": "$uuid:late-message",
+            "id": "$nativeId:prt:late-part",
+            "messageID": "$nativeId:msg:late-message",
             "sessionID": "$sessionId",
             "type": "text",
             "text": "late text"

@@ -17,7 +17,13 @@
               "cwd": "$threadCwd",
               "status": "completed",
               "exitCode": 0,
-              "aggregatedOutput": "reordered"
+              "aggregatedOutput": "reordered",
+              "commandActions": [
+                {
+                  "type": "unknown",
+                  "command": "echo reordered"
+                }
+              ]
             }
           }
         }
@@ -37,7 +43,13 @@
               "id": "$uuid:item",
               "command": "echo reordered",
               "cwd": "$threadCwd",
-              "status": "inProgress"
+              "status": "inProgress",
+              "commandActions": [
+                {
+                  "type": "unknown",
+                  "command": "echo reordered"
+                }
+              ]
             }
           }
         }
@@ -59,7 +71,13 @@
               "cwd": "$threadCwd",
               "status": "completed",
               "exitCode": 0,
-              "aggregatedOutput": "reordered"
+              "aggregatedOutput": "reordered",
+              "commandActions": [
+                {
+                  "type": "unknown",
+                  "command": "echo reordered"
+                }
+              ]
             }
           }
         }

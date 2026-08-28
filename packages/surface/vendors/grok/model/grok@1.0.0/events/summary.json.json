@@ -3,12 +3,23 @@
   "surfaceVersion": "1.0.0",
   "event": "summary.json",
   "channel": "session-state",
+  "channels": ["session-state"],
   "transport": "json-file-replace",
+  "direction": "agent-local",
   "payloadSchema": {
     "type": "object",
     "properties": {
       "info": {
-        "type": "object"
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "cwd": {
+            "type": "string"
+          }
+        },
+        "required": ["id", "cwd"]
       },
       "current_model_id": {
         "type": "string"
@@ -20,10 +31,12 @@
         "type": "string"
       },
       "num_messages": {
-        "type": "number"
+        "type": "integer",
+        "minimum": 0
       },
       "num_chat_messages": {
-        "type": "number"
+        "type": "integer",
+        "minimum": 0
       },
       "agent_name": {
         "type": "string"
@@ -39,17 +52,16 @@
       "agent_name"
     ]
   },
-  "confidence": "verified-headless",
-  "firstSeen": "1.0.0",
-  "lastVerified": "1.0.0",
-  "fixture": "captures/grok@1.0.0/state.jsonl",
-  "direction": "agent-local",
   "evidence": {
-    "existence": [
-      "grok-runtime-headless"
-    ],
-    "shape": [
-      "grok-runtime-headless"
+    "existence": ["grok-runtime-headless"],
+    "shape": ["grok-runtime-headless"]
+  },
+  "confidence": "verified-headless",
+  "schemaFidelity": {
+    "payload": "sampled",
+    "limitations": [
+      "The retained Grok 1.0.0 runtime fixtures are legacy privacy projections; schemas describe retained native fields and observed types, not a complete legal payload contract."
     ]
-  }
+  },
+  "fixture": "captures/grok@1.0.0/state.jsonl"
 }

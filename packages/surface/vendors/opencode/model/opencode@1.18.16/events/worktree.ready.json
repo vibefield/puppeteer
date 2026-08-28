@@ -10,7 +10,7 @@
   "direction": "agent-to-client",
   "trigger": "Published on the native GET /event stream.",
   "payloadSchema": {
-    "type": "object",
+    "additionalProperties": false,
     "properties": {
       "branch": {
         "type": "string"
@@ -21,16 +21,18 @@
     },
     "required": [
       "name"
-    ]
+    ],
+    "type": "object"
   },
   "recordSchema": {
-    "type": "object",
+    "additionalProperties": false,
     "properties": {
       "id": {
+        "pattern": "^evt_",
         "type": "string"
       },
       "properties": {
-        "type": "object",
+        "additionalProperties": false,
         "properties": {
           "branch": {
             "type": "string"
@@ -41,20 +43,26 @@
         },
         "required": [
           "name"
-        ]
+        ],
+        "type": "object"
       },
       "type": {
-        "type": "string",
         "enum": [
           "worktree.ready"
-        ]
+        ],
+        "type": "string"
       }
     },
     "required": [
       "id",
-      "properties",
-      "type"
-    ]
+      "type",
+      "properties"
+    ],
+    "type": "object"
+  },
+  "schemaFidelity": {
+    "payload": "exact",
+    "carrier": "exact"
   },
   "evidence": {
     "existence": [

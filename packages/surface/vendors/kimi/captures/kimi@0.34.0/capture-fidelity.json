@@ -1,0 +1,19 @@
+{
+  "format": "puppeteer-capture-fidelity/1",
+  "vendor": "kimi",
+  "vendorVersion": "0.34.0",
+  "defaultRepresentation": "type-preserving-redaction",
+  "nativeArtifacts": ["*/wire.jsonl", "*/agents/*.jsonl", "*/hooks/*.jsonl", "*/state.json", "*/session-index.jsonl"],
+  "limitations": [
+    "The native wire, hook, state, and index carriers retain every key, container, primitive type, and record order while redacting sensitive scalar values."
+  ],
+  "overrides": [
+    {
+      "paths": ["*/process.json", "*/provider-requests.jsonl", "*/stderr.json", "*/capture.json"],
+      "representation": "semantic-projection",
+      "limitations": [
+        "Process arguments, HTTP headers, raw stderr, and harness metadata are deliberately summarized; they are occurrence and control evidence, not native payload schemas."
+      ]
+    }
+  ]
+}

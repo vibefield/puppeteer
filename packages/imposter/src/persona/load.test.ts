@@ -2,7 +2,7 @@ import { mkdtempSync, rmSync, writeFileSync, mkdirSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
-import { loadPersona, personaDirectory } from './load.ts';
+import { createPersonaSessionId, loadPersona, personaDirectory } from './load.ts';
 import { OP_NAMES } from './types.ts';
 
 describe('loadPersona', () => {
@@ -27,7 +27,12 @@ describe('loadPersona', () => {
       hook_event_name: 'Notification',
     };
     expect(
-      persona.validate('Notification', { ...envelope, message: 'fine', notification_type: 'x', prompt_id: 'p' }),
+      persona.validate('Notification', {
+        ...envelope,
+        message: 'fine',
+        notification_type: 'idle_prompt',
+        prompt_id: 'p',
+      }),
     ).toEqual([]);
     expect(persona.validate('Notification', { ...envelope, message: 42 })).toContain(
       'field "message" is number, expected string',
@@ -43,6 +48,11 @@ describe('loadPersona', () => {
     // Unknown keys fall back rather than throwing: a persona may reference a
     // flag a given vendor version does not advertise.
     expect(persona.flagsFor('nonesuch', '--fallback')).toEqual(['--fallback']);
+  });
+
+  it('mints session identities from each persona instead of leaking vendor conventions to callers', () => {
+    expect(createPersonaSessionId('opencode')).toMatch(/^ses_[0-9a-f]{32}$/);
+    expect(createPersonaSessionId('claude')).toMatch(/^[0-9a-f]{8}-[0-9a-f-]{27}$/);
   });
 
   it('binds every op it declares to a channel the ASM knows', () => {

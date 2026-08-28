@@ -10,7 +10,6 @@
   "direction": "client-to-agent",
   "trigger": "Subscribe to events — Subscribe to native event payloads for the server.",
   "payloadSchema": {
-    "type": "object",
     "properties": {
       "method": {
         "type": "string"
@@ -22,70 +21,76 @@
     "required": [
       "method",
       "route"
-    ]
+    ],
+    "type": "object"
   },
   "resultSchema": {
-    "type": "object",
     "properties": {
       "method": {
-        "type": "string",
         "enum": [
           "GET"
-        ]
+        ],
+        "type": "string"
       },
       "route": {
-        "type": "string",
         "enum": [
           "/api/event"
-        ]
+        ],
+        "type": "string"
       },
       "status": {
-        "type": "integer",
+        "maximum": 299,
         "minimum": 200,
-        "maximum": 299
+        "type": "integer"
       }
     },
     "required": [
       "method",
       "route",
       "status"
-    ]
+    ],
+    "type": "object"
   },
   "recordSchema": {
-    "type": "object",
     "properties": {
       "direction": {
-        "type": "string",
         "enum": [
           "client-to-agent"
-        ]
+        ],
+        "type": "string"
       },
       "request": {
-        "type": "object",
         "properties": {
           "method": {
-            "type": "string",
             "enum": [
               "GET"
-            ]
+            ],
+            "type": "string"
           },
           "route": {
-            "type": "string",
             "enum": [
               "/api/event"
-            ]
+            ],
+            "type": "string"
           }
         },
         "required": [
           "method",
           "route"
-        ]
+        ],
+        "type": "object"
       }
     },
     "required": [
       "direction",
       "request"
-    ]
+    ],
+    "type": "object"
+  },
+  "schemaFidelity": {
+    "payload": "semantic",
+    "result": "semantic",
+    "carrier": "semantic"
   },
   "evidence": {
     "existence": [

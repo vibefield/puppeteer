@@ -57,7 +57,7 @@ async function createImposterHarness(location?: HermesImposterLocation, resume?:
         const stderr = (fixture.transport as HermesStdioClient).stderr.join('');
         throw new Error(`expected confirmed, got ${JSON.stringify(receipt)}; stderr=${stderr}`);
       }
-      const deadline = Date.now() + 5_000;
+      const deadline = Date.now() + 4_000;
       while (
         Date.now() < deadline &&
         (projection.envelopes.filter(({ event }) => event.type === 'turn:completed').length <= completedBefore ||
@@ -65,7 +65,12 @@ async function createImposterHarness(location?: HermesImposterLocation, resume?:
       ) {
         await new Promise((resolve) => setTimeout(resolve, 20));
       }
-      expect(projection.state.lastAssistantMessage).toBe(REPLY);
+      if (projection.state.lastAssistantMessage !== REPLY) {
+        const stderr = (fixture.transport as HermesStdioClient).stderr.join('');
+        throw new Error(
+          `expected Hermes reply ${JSON.stringify(REPLY)}, got ${JSON.stringify(projection.state.lastAssistantMessage)}; stderr=${stderr}`,
+        );
+      }
     },
     async resume() {
       return createImposterHarness(persistentLocation, storedSessionId);
@@ -109,7 +114,12 @@ describe('Hermes adapter against Imposter', () => {
     }
     off();
 
-    expect(projection.state.lastAssistantMessage).toBe('SURFACE_HERMES_OK');
+    if (projection.state.lastAssistantMessage !== 'SURFACE_HERMES_OK') {
+      const stderr = (fixture.transport as HermesStdioClient).stderr.join('');
+      throw new Error(
+        `expected Hermes reply ${JSON.stringify('SURFACE_HERMES_OK')}, got ${JSON.stringify(projection.state.lastAssistantMessage)}; stderr=${stderr}`,
+      );
+    }
     expect(observed.some((event) => event.event.type === 'turn:started')).toBe(true);
     expect(observed.some((event) => event.event.type === 'turn:completed')).toBe(true);
     expect(projection.state.lifecycle).toBe('ready');

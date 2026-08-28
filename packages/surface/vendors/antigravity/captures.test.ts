@@ -1,10 +1,12 @@
-import { readFileSync } from 'node:fs';
+import { mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
+import { tmpdir } from 'node:os';
 import { fileURLToPath } from 'node:url';
 import { describe, expect, it } from 'vitest';
 import { checkCaptureDirectory } from '@vibecook/puppeteer-surface/sanitize';
 import { VERSION } from './census/harness.mjs';
 import { antigravityRules } from './privacy.mjs';
+import { sanitizeAntigravityCaptureSet } from './sanitize-captures.mjs';
 
 const vendorRoot = dirname(fileURLToPath(import.meta.url));
 const capturesRoot = join(vendorRoot, 'captures', `antigravity@${VERSION}`);
@@ -23,6 +25,90 @@ function jsonl(path: string) {
 describe('Antigravity authorized captures', () => {
   it('keeps sanitized fixtures free of account, path, and prompt material', () => {
     expect(checkCaptureDirectory(capturesRoot, antigravityRules)).toEqual([]);
+    for (const scenario of ['readonly-print', 'hook-discovery', 'add-dir-turn', 'resume-turn', 'tool-success']) {
+      expect(json(join(capturesRoot, scenario, 'capture.json')).representation).toBe('legacy-privacy-projection');
+    }
+  });
+
+  it('preserves native JSON structure in the repaired schemaVersion 2 workflow', () => {
+    const temporary = mkdtempSync(join(tmpdir(), 'antigravity-sanitize-'));
+    const raw = join(temporary, 'raw');
+    const output = join(temporary, 'sanitized');
+    const scenario = join(raw, 'tool-success');
+    mkdirSync(join(scenario, 'hooks'), { recursive: true });
+    mkdirSync(join(scenario, 'durable', 'brain', 'session', '.system_generated', 'logs'), { recursive: true });
+    writeFileSync(
+      join(scenario, 'capture.json'),
+      `${JSON.stringify({
+        artifactSha256: 'a'.repeat(64),
+        settingsMutated: false,
+        hookFiles: ['PreToolUse.20260828.stdin.json'],
+        copiedDurable: ['brain/session/.system_generated/logs/transcript.jsonl'],
+      })}\n`,
+    );
+    const stream = [
+      {
+        event: 'step_update',
+        step_update: {
+          conversation_id: '123e4567-e89b-42d3-a456-426614174000',
+          step_index: 3,
+          state: 'ACTIVE',
+          step_type: 'tool',
+          text_delta: 'private model text',
+          tool_info: {
+            name: 'replace_file_content',
+            parameters: { AbsolutePath: '/Users/alice/project/a.ts', TargetContent: 'secret' },
+            output: 'private output',
+          },
+        },
+      },
+      { event: 'result', result: { status: 'SUCCESS', nested: { retained: true } } },
+    ];
+    writeFileSync(
+      join(scenario, 'print.stream-json.json'),
+      `${JSON.stringify({
+        status: 0,
+        signal: null,
+        stdout: `${stream.map((entry) => JSON.stringify(entry)).join('\n')}\n`,
+        stderr: '',
+      })}\n`,
+    );
+    writeFileSync(
+      join(scenario, 'hooks', 'hooks.jsonl'),
+      `${JSON.stringify({
+        event: 'PreToolUse',
+        receivedAt: '2026-08-28T00:00:00Z',
+        stdin: {
+          conversationId: '123e4567-e89b-42d3-a456-426614174000',
+          workspacePaths: ['/Users/alice/project'],
+          toolCall: { name: 'replace_file_content', args: { AbsolutePath: '/Users/alice/project/a.ts' } },
+        },
+      })}\n`,
+    );
+    writeFileSync(
+      join(scenario, 'durable', 'brain', 'session', '.system_generated', 'logs', 'transcript.jsonl'),
+      `${JSON.stringify({ type: 'TOOL', content: { path: '/Users/alice/project/a.ts', ok: true } })}\n`,
+    );
+
+    try {
+      sanitizeAntigravityCaptureSet(raw, output);
+      const metadata = json(join(output, 'tool-success', 'capture.json'));
+      const sanitized = json(join(output, 'tool-success', 'print.stream-json.json'));
+      const hook = jsonl(join(output, 'tool-success', 'hooks.jsonl'))[0];
+      const transcript = jsonl(join(output, 'tool-success', 'transcript.jsonl'))[0];
+      expect(metadata).toMatchObject({ schemaVersion: 2, representation: 'type-preserving-redaction' });
+      expect(sanitized.events[0].step_update.tool_info).toHaveProperty('parameters');
+      expect(sanitized.events[0].step_update.tool_info.parameters).toHaveProperty('AbsolutePath');
+      expect(sanitized.events[0].step_update).toHaveProperty('text_delta');
+      expect(sanitized.events[0].step_update).not.toHaveProperty('hasTextDelta');
+      expect(sanitized.events[1].result.nested.retained).toBe(true);
+      expect(hook.stdin.workspacePaths).toBeInstanceOf(Array);
+      expect(hook.stdin.toolCall.args).toHaveProperty('AbsolutePath');
+      expect(transcript.content).toHaveProperty('path');
+      expect(checkCaptureDirectory(output, antigravityRules)).toEqual([]);
+    } finally {
+      rmSync(temporary, { recursive: true, force: true });
+    }
   });
 
   it('records that --add-dir loads command hooks while an untrusted cwd does not', () => {

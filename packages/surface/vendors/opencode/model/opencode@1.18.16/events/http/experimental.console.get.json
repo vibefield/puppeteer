@@ -10,16 +10,11 @@
   "direction": "client-to-agent",
   "trigger": "Get active Console provider metadata — Get the active Console org name and the set of provider IDs managed by that Console org.",
   "payloadSchema": {
-    "type": "object",
     "properties": {
       "method": {
         "type": "string"
       },
-      "route": {
-        "type": "string"
-      },
       "query": {
-        "type": "object",
         "properties": {
           "directory": {
             "type": "string"
@@ -27,36 +22,31 @@
           "workspace": {
             "type": "string"
           }
-        }
+        },
+        "type": "object"
+      },
+      "route": {
+        "type": "string"
       }
     },
     "required": [
       "method",
       "route"
-    ]
+    ],
+    "type": "object"
   },
   "resultSchema": {
-    "type": "object",
     "properties": {
+      "body": {
+        "$ref": "#/$defs/ConsoleState"
+      },
       "method": {
-        "type": "string",
         "enum": [
           "GET"
-        ]
-      },
-      "route": {
-        "type": "string",
-        "enum": [
-          "/experimental/console"
-        ]
-      },
-      "status": {
-        "type": "integer",
-        "minimum": 200,
-        "maximum": 299
+        ],
+        "type": "string"
       },
       "query": {
-        "type": "object",
         "properties": {
           "directory": {
             "type": "string"
@@ -64,29 +54,19 @@
           "workspace": {
             "type": "string"
           }
-        }
-      },
-      "body": {
-        "type": "object",
-        "properties": {
-          "activeOrgName": {
-            "type": "string"
-          },
-          "consoleManagedProviders": {
-            "type": "array",
-            "items": {
-              "type": "string"
-            }
-          },
-          "switchableOrgCount": {
-            "type": "integer",
-            "minimum": 0
-          }
         },
-        "required": [
-          "consoleManagedProviders",
-          "switchableOrgCount"
-        ]
+        "type": "object"
+      },
+      "route": {
+        "enum": [
+          "/experimental/console"
+        ],
+        "type": "string"
+      },
+      "status": {
+        "maximum": 299,
+        "minimum": 200,
+        "type": "integer"
       }
     },
     "required": [
@@ -94,34 +74,51 @@
       "route",
       "status",
       "body"
-    ]
+    ],
+    "type": "object",
+    "$defs": {
+      "ConsoleState": {
+        "additionalProperties": false,
+        "properties": {
+          "activeOrgName": {
+            "type": "string"
+          },
+          "consoleManagedProviders": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
+          },
+          "switchableOrgCount": {
+            "minimum": 0,
+            "type": "integer"
+          }
+        },
+        "required": [
+          "consoleManagedProviders",
+          "switchableOrgCount"
+        ],
+        "type": "object"
+      }
+    }
   },
   "recordSchema": {
-    "type": "object",
     "properties": {
       "direction": {
-        "type": "string",
         "enum": [
           "client-to-agent"
-        ]
+        ],
+        "type": "string"
       },
       "request": {
-        "type": "object",
         "properties": {
           "method": {
-            "type": "string",
             "enum": [
               "GET"
-            ]
-          },
-          "route": {
-            "type": "string",
-            "enum": [
-              "/experimental/console"
-            ]
+            ],
+            "type": "string"
           },
           "query": {
-            "type": "object",
             "properties": {
               "directory": {
                 "type": "string"
@@ -129,19 +126,33 @@
               "workspace": {
                 "type": "string"
               }
-            }
+            },
+            "type": "object"
+          },
+          "route": {
+            "enum": [
+              "/experimental/console"
+            ],
+            "type": "string"
           }
         },
         "required": [
           "method",
           "route"
-        ]
+        ],
+        "type": "object"
       }
     },
     "required": [
       "direction",
       "request"
-    ]
+    ],
+    "type": "object"
+  },
+  "schemaFidelity": {
+    "payload": "semantic",
+    "result": "semantic",
+    "carrier": "semantic"
   },
   "evidence": {
     "existence": [

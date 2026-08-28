@@ -3,7 +3,7 @@
 import { existsSync, readFileSync, writeFileSync } from 'node:fs';
 import { dirname, relative, resolve, sep } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { loadModel } from '@vibecook/puppeteer-surface';
+import { isClaimAddressableAsmVersion, loadModel } from '@vibecook/puppeteer-surface';
 import { resolveCanonicalGroundTruth } from './agent-model-selection.mjs';
 
 const root = dirname(dirname(fileURLToPath(import.meta.url)));
@@ -29,7 +29,9 @@ export function stageCandidateDocuments({ ledger, persona, vendor, groundTruthRe
 export function stageAgentCandidate({ vendor, groundTruthPath }) {
   const canonical = resolveCanonicalGroundTruth({ repoRoot: root, vendor, groundTruthPath });
   const model = loadModel(canonical.groundTruthPath);
-  if (model.manifest.asmVersion !== 2) throw new Error('only a fully traced ASM v2 model may be staged');
+  if (!isClaimAddressableAsmVersion(model.manifest.asmVersion)) {
+    throw new Error('only a fully traced, claim-addressable ASM model may be staged');
+  }
   const { groundTruthRelative } = canonical;
   const ledgerPath = resolve(root, 'support', 'agents.json');
   const ledgerText = readFileSync(ledgerPath, 'utf8');

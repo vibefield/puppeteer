@@ -10,114 +10,17 @@
   "direction": "client-to-agent",
   "trigger": "Add MCP server — Dynamically add a new Model Context Protocol (MCP) server to the system.",
   "payloadSchema": {
-    "type": "object",
     "properties": {
-      "method": {
-        "type": "string"
-      },
-      "route": {
-        "type": "string"
-      },
-      "query": {
-        "type": "object",
-        "properties": {
-          "directory": {
-            "type": "string"
-          },
-          "workspace": {
-            "type": "string"
-          }
-        }
-      },
       "body": {
-        "type": "object",
+        "additionalProperties": false,
         "properties": {
           "config": {
             "anyOf": [
               {
-                "type": "object",
-                "properties": {
-                  "command": {
-                    "type": "array",
-                    "items": {
-                      "type": "string"
-                    }
-                  },
-                  "cwd": {
-                    "type": "string"
-                  },
-                  "enabled": {
-                    "type": "boolean"
-                  },
-                  "environment": {
-                    "type": "object"
-                  },
-                  "timeout": {
-                    "type": "integer",
-                    "exclusiveMinimum": 0
-                  },
-                  "type": {
-                    "type": "string"
-                  }
-                },
-                "required": [
-                  "command",
-                  "type"
-                ]
+                "$ref": "#/$defs/McpLocalConfig"
               },
               {
-                "type": "object",
-                "properties": {
-                  "enabled": {
-                    "type": "boolean"
-                  },
-                  "headers": {
-                    "type": "object"
-                  },
-                  "oauth": {
-                    "anyOf": [
-                      {
-                        "type": "object",
-                        "properties": {
-                          "callbackPort": {
-                            "type": "integer",
-                            "minimum": 1,
-                            "maximum": 65535
-                          },
-                          "clientId": {
-                            "type": "string"
-                          },
-                          "clientSecret": {
-                            "type": "string"
-                          },
-                          "redirectUri": {
-                            "type": "string"
-                          },
-                          "scope": {
-                            "type": "string"
-                          }
-                        }
-                      },
-                      {
-                        "type": "boolean"
-                      }
-                    ]
-                  },
-                  "timeout": {
-                    "type": "integer",
-                    "exclusiveMinimum": 0
-                  },
-                  "type": {
-                    "type": "string"
-                  },
-                  "url": {
-                    "type": "string"
-                  }
-                },
-                "required": [
-                  "type",
-                  "url"
-                ]
+                "$ref": "#/$defs/McpRemoteConfig"
               }
             ]
           },
@@ -126,38 +29,15 @@
           }
         },
         "required": [
-          "config",
-          "name"
-        ]
-      }
-    },
-    "required": [
-      "method",
-      "route"
-    ]
-  },
-  "resultSchema": {
-    "type": "object",
-    "properties": {
+          "name",
+          "config"
+        ],
+        "type": "object"
+      },
       "method": {
-        "type": "string",
-        "enum": [
-          "POST"
-        ]
-      },
-      "route": {
-        "type": "string",
-        "enum": [
-          "/mcp"
-        ]
-      },
-      "status": {
-        "type": "integer",
-        "minimum": 200,
-        "maximum": 299
+        "type": "string"
       },
       "query": {
-        "type": "object",
         "properties": {
           "directory": {
             "type": "string"
@@ -165,10 +45,168 @@
           "workspace": {
             "type": "string"
           }
-        }
-      },
-      "body": {
+        },
         "type": "object"
+      },
+      "route": {
+        "type": "string"
+      }
+    },
+    "required": [
+      "method",
+      "route"
+    ],
+    "type": "object",
+    "$defs": {
+      "McpLocalConfig": {
+        "additionalProperties": false,
+        "properties": {
+          "command": {
+            "description": "Command and arguments to run the MCP server",
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
+          },
+          "cwd": {
+            "type": "string"
+          },
+          "enabled": {
+            "type": "boolean"
+          },
+          "environment": {
+            "additionalProperties": {
+              "type": "string"
+            },
+            "type": "object"
+          },
+          "timeout": {
+            "exclusiveMinimum": 0,
+            "type": "integer"
+          },
+          "type": {
+            "description": "Type of MCP server connection",
+            "enum": [
+              "local"
+            ],
+            "type": "string"
+          }
+        },
+        "required": [
+          "type",
+          "command"
+        ],
+        "type": "object"
+      },
+      "McpRemoteConfig": {
+        "additionalProperties": false,
+        "properties": {
+          "enabled": {
+            "type": "boolean"
+          },
+          "headers": {
+            "additionalProperties": {
+              "type": "string"
+            },
+            "type": "object"
+          },
+          "oauth": {
+            "anyOf": [
+              {
+                "$ref": "#/$defs/McpOAuthConfig"
+              },
+              {
+                "enum": [
+                  false
+                ],
+                "type": "boolean"
+              }
+            ],
+            "description": "OAuth authentication configuration for the MCP server. Set to false to disable OAuth auto-detection."
+          },
+          "timeout": {
+            "exclusiveMinimum": 0,
+            "type": "integer"
+          },
+          "type": {
+            "description": "Type of MCP server connection",
+            "enum": [
+              "remote"
+            ],
+            "type": "string"
+          },
+          "url": {
+            "description": "URL of the remote MCP server",
+            "type": "string"
+          }
+        },
+        "required": [
+          "type",
+          "url"
+        ],
+        "type": "object"
+      },
+      "McpOAuthConfig": {
+        "additionalProperties": false,
+        "properties": {
+          "callbackPort": {
+            "maximum": 65535,
+            "minimum": 1,
+            "type": "integer"
+          },
+          "clientId": {
+            "type": "string"
+          },
+          "clientSecret": {
+            "type": "string"
+          },
+          "redirectUri": {
+            "type": "string"
+          },
+          "scope": {
+            "type": "string"
+          }
+        },
+        "type": "object"
+      }
+    }
+  },
+  "resultSchema": {
+    "properties": {
+      "body": {
+        "additionalProperties": {
+          "$ref": "#/$defs/MCPStatus"
+        },
+        "description": "MCP server added successfully",
+        "type": "object"
+      },
+      "method": {
+        "enum": [
+          "POST"
+        ],
+        "type": "string"
+      },
+      "query": {
+        "properties": {
+          "directory": {
+            "type": "string"
+          },
+          "workspace": {
+            "type": "string"
+          }
+        },
+        "type": "object"
+      },
+      "route": {
+        "enum": [
+          "/mcp"
+        ],
+        "type": "string"
+      },
+      "status": {
+        "maximum": 299,
+        "minimum": 200,
+        "type": "integer"
       }
     },
     "required": [
@@ -176,132 +214,133 @@
       "route",
       "status",
       "body"
-    ]
-  },
-  "recordSchema": {
+    ],
     "type": "object",
-    "properties": {
-      "direction": {
-        "type": "string",
-        "enum": [
-          "client-to-agent"
+    "$defs": {
+      "MCPStatus": {
+        "anyOf": [
+          {
+            "$ref": "#/$defs/MCPStatusConnected"
+          },
+          {
+            "$ref": "#/$defs/MCPStatusDisabled"
+          },
+          {
+            "$ref": "#/$defs/MCPStatusFailed"
+          },
+          {
+            "$ref": "#/$defs/MCPStatusNeedsAuth"
+          },
+          {
+            "$ref": "#/$defs/MCPStatusNeedsClientRegistration"
+          }
         ]
       },
-      "request": {
-        "type": "object",
+      "MCPStatusConnected": {
+        "additionalProperties": false,
         "properties": {
-          "method": {
-            "type": "string",
+          "status": {
             "enum": [
-              "POST"
-            ]
-          },
-          "route": {
-            "type": "string",
+              "connected"
+            ],
+            "type": "string"
+          }
+        },
+        "required": [
+          "status"
+        ],
+        "type": "object"
+      },
+      "MCPStatusDisabled": {
+        "additionalProperties": false,
+        "properties": {
+          "status": {
             "enum": [
-              "/mcp"
-            ]
+              "disabled"
+            ],
+            "type": "string"
+          }
+        },
+        "required": [
+          "status"
+        ],
+        "type": "object"
+      },
+      "MCPStatusFailed": {
+        "additionalProperties": false,
+        "properties": {
+          "error": {
+            "type": "string"
           },
-          "query": {
-            "type": "object",
-            "properties": {
-              "directory": {
-                "type": "string"
-              },
-              "workspace": {
-                "type": "string"
-              }
-            }
+          "status": {
+            "enum": [
+              "failed"
+            ],
+            "type": "string"
+          }
+        },
+        "required": [
+          "status",
+          "error"
+        ],
+        "type": "object"
+      },
+      "MCPStatusNeedsAuth": {
+        "additionalProperties": false,
+        "properties": {
+          "status": {
+            "enum": [
+              "needs_auth"
+            ],
+            "type": "string"
+          }
+        },
+        "required": [
+          "status"
+        ],
+        "type": "object"
+      },
+      "MCPStatusNeedsClientRegistration": {
+        "additionalProperties": false,
+        "properties": {
+          "error": {
+            "type": "string"
           },
+          "status": {
+            "enum": [
+              "needs_client_registration"
+            ],
+            "type": "string"
+          }
+        },
+        "required": [
+          "status",
+          "error"
+        ],
+        "type": "object"
+      }
+    }
+  },
+  "recordSchema": {
+    "properties": {
+      "direction": {
+        "enum": [
+          "client-to-agent"
+        ],
+        "type": "string"
+      },
+      "request": {
+        "properties": {
           "body": {
-            "type": "object",
+            "additionalProperties": false,
             "properties": {
               "config": {
                 "anyOf": [
                   {
-                    "type": "object",
-                    "properties": {
-                      "command": {
-                        "type": "array",
-                        "items": {
-                          "type": "string"
-                        }
-                      },
-                      "cwd": {
-                        "type": "string"
-                      },
-                      "enabled": {
-                        "type": "boolean"
-                      },
-                      "environment": {
-                        "type": "object"
-                      },
-                      "timeout": {
-                        "type": "integer",
-                        "exclusiveMinimum": 0
-                      },
-                      "type": {
-                        "type": "string"
-                      }
-                    },
-                    "required": [
-                      "command",
-                      "type"
-                    ]
+                    "$ref": "#/$defs/McpLocalConfig"
                   },
                   {
-                    "type": "object",
-                    "properties": {
-                      "enabled": {
-                        "type": "boolean"
-                      },
-                      "headers": {
-                        "type": "object"
-                      },
-                      "oauth": {
-                        "anyOf": [
-                          {
-                            "type": "object",
-                            "properties": {
-                              "callbackPort": {
-                                "type": "integer",
-                                "minimum": 1,
-                                "maximum": 65535
-                              },
-                              "clientId": {
-                                "type": "string"
-                              },
-                              "clientSecret": {
-                                "type": "string"
-                              },
-                              "redirectUri": {
-                                "type": "string"
-                              },
-                              "scope": {
-                                "type": "string"
-                              }
-                            }
-                          },
-                          {
-                            "type": "boolean"
-                          }
-                        ]
-                      },
-                      "timeout": {
-                        "type": "integer",
-                        "exclusiveMinimum": 0
-                      },
-                      "type": {
-                        "type": "string"
-                      },
-                      "url": {
-                        "type": "string"
-                      }
-                    },
-                    "required": [
-                      "type",
-                      "url"
-                    ]
+                    "$ref": "#/$defs/McpRemoteConfig"
                   }
                 ]
               },
@@ -310,21 +349,165 @@
               }
             },
             "required": [
-              "config",
-              "name"
-            ]
+              "name",
+              "config"
+            ],
+            "type": "object"
+          },
+          "method": {
+            "enum": [
+              "POST"
+            ],
+            "type": "string"
+          },
+          "query": {
+            "properties": {
+              "directory": {
+                "type": "string"
+              },
+              "workspace": {
+                "type": "string"
+              }
+            },
+            "type": "object"
+          },
+          "route": {
+            "enum": [
+              "/mcp"
+            ],
+            "type": "string"
           }
         },
         "required": [
           "method",
           "route"
-        ]
+        ],
+        "type": "object"
       }
     },
     "required": [
       "direction",
       "request"
-    ]
+    ],
+    "type": "object",
+    "$defs": {
+      "McpLocalConfig": {
+        "additionalProperties": false,
+        "properties": {
+          "command": {
+            "description": "Command and arguments to run the MCP server",
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
+          },
+          "cwd": {
+            "type": "string"
+          },
+          "enabled": {
+            "type": "boolean"
+          },
+          "environment": {
+            "additionalProperties": {
+              "type": "string"
+            },
+            "type": "object"
+          },
+          "timeout": {
+            "exclusiveMinimum": 0,
+            "type": "integer"
+          },
+          "type": {
+            "description": "Type of MCP server connection",
+            "enum": [
+              "local"
+            ],
+            "type": "string"
+          }
+        },
+        "required": [
+          "type",
+          "command"
+        ],
+        "type": "object"
+      },
+      "McpRemoteConfig": {
+        "additionalProperties": false,
+        "properties": {
+          "enabled": {
+            "type": "boolean"
+          },
+          "headers": {
+            "additionalProperties": {
+              "type": "string"
+            },
+            "type": "object"
+          },
+          "oauth": {
+            "anyOf": [
+              {
+                "$ref": "#/$defs/McpOAuthConfig"
+              },
+              {
+                "enum": [
+                  false
+                ],
+                "type": "boolean"
+              }
+            ],
+            "description": "OAuth authentication configuration for the MCP server. Set to false to disable OAuth auto-detection."
+          },
+          "timeout": {
+            "exclusiveMinimum": 0,
+            "type": "integer"
+          },
+          "type": {
+            "description": "Type of MCP server connection",
+            "enum": [
+              "remote"
+            ],
+            "type": "string"
+          },
+          "url": {
+            "description": "URL of the remote MCP server",
+            "type": "string"
+          }
+        },
+        "required": [
+          "type",
+          "url"
+        ],
+        "type": "object"
+      },
+      "McpOAuthConfig": {
+        "additionalProperties": false,
+        "properties": {
+          "callbackPort": {
+            "maximum": 65535,
+            "minimum": 1,
+            "type": "integer"
+          },
+          "clientId": {
+            "type": "string"
+          },
+          "clientSecret": {
+            "type": "string"
+          },
+          "redirectUri": {
+            "type": "string"
+          },
+          "scope": {
+            "type": "string"
+          }
+        },
+        "type": "object"
+      }
+    }
+  },
+  "schemaFidelity": {
+    "payload": "semantic",
+    "result": "semantic",
+    "carrier": "semantic"
   },
   "evidence": {
     "existence": [

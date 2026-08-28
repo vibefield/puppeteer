@@ -10,7 +10,6 @@
   "direction": "client-to-agent",
   "trigger": "Get health — Get health information about the OpenCode server.",
   "payloadSchema": {
-    "type": "object",
     "properties": {
       "method": {
         "type": "string"
@@ -22,32 +21,19 @@
     "required": [
       "method",
       "route"
-    ]
+    ],
+    "type": "object"
   },
   "resultSchema": {
-    "type": "object",
     "properties": {
-      "method": {
-        "type": "string",
-        "enum": [
-          "GET"
-        ]
-      },
-      "route": {
-        "type": "string",
-        "enum": [
-          "/global/health"
-        ]
-      },
-      "status": {
-        "type": "integer",
-        "minimum": 200,
-        "maximum": 299
-      },
       "body": {
-        "type": "object",
+        "additionalProperties": false,
+        "description": "Health information",
         "properties": {
           "healthy": {
+            "enum": [
+              true
+            ],
             "type": "boolean"
           },
           "version": {
@@ -57,7 +43,25 @@
         "required": [
           "healthy",
           "version"
-        ]
+        ],
+        "type": "object"
+      },
+      "method": {
+        "enum": [
+          "GET"
+        ],
+        "type": "string"
+      },
+      "route": {
+        "enum": [
+          "/global/health"
+        ],
+        "type": "string"
+      },
+      "status": {
+        "maximum": 299,
+        "minimum": 200,
+        "type": "integer"
       }
     },
     "required": [
@@ -65,43 +69,49 @@
       "route",
       "status",
       "body"
-    ]
+    ],
+    "type": "object"
   },
   "recordSchema": {
-    "type": "object",
     "properties": {
       "direction": {
-        "type": "string",
         "enum": [
           "client-to-agent"
-        ]
+        ],
+        "type": "string"
       },
       "request": {
-        "type": "object",
         "properties": {
           "method": {
-            "type": "string",
             "enum": [
               "GET"
-            ]
+            ],
+            "type": "string"
           },
           "route": {
-            "type": "string",
             "enum": [
               "/global/health"
-            ]
+            ],
+            "type": "string"
           }
         },
         "required": [
           "method",
           "route"
-        ]
+        ],
+        "type": "object"
       }
     },
     "required": [
       "direction",
       "request"
-    ]
+    ],
+    "type": "object"
+  },
+  "schemaFidelity": {
+    "payload": "semantic",
+    "result": "semantic",
+    "carrier": "semantic"
   },
   "evidence": {
     "existence": [

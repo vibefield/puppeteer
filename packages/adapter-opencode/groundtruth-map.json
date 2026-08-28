@@ -3,7 +3,7 @@
   "provider": "opencode",
   "adapterPackage": "@vibecook/puppeteer-adapter-opencode",
   "groundTruth": "packages/surface/vendors/opencode/groundtruth.json",
-  "groundTruthSha256": "da9c04ce1e9b98ac57d23741e822502e7879cdb358b465ea127b2caec5f25041",
+  "groundTruthSha256": "8c29dd8f09c2f9e7e860ffffb4a3639ba227e5a041045fc6b6d83e7322ed9250",
   "semanticEvents": [
     "catalog.updated",
     "file.edited",

@@ -10,73 +10,95 @@
   "direction": "agent-to-client",
   "trigger": "Published on the native GET /event stream.",
   "payloadSchema": {
-    "type": "object",
+    "additionalProperties": false,
     "properties": {
       "answers": {
-        "type": "array",
         "items": {
-          "type": "array",
-          "items": {
-            "type": "string"
-          }
-        }
+          "$ref": "#/$defs/QuestionV2Answer"
+        },
+        "type": "array"
       },
       "requestID": {
+        "pattern": "^que",
         "type": "string"
       },
       "sessionID": {
+        "pattern": "^ses",
         "type": "string"
       }
     },
     "required": [
-      "answers",
+      "sessionID",
       "requestID",
-      "sessionID"
-    ]
+      "answers"
+    ],
+    "type": "object",
+    "$defs": {
+      "QuestionV2Answer": {
+        "items": {
+          "type": "string"
+        },
+        "type": "array"
+      }
+    }
   },
   "recordSchema": {
-    "type": "object",
+    "additionalProperties": false,
     "properties": {
       "id": {
+        "pattern": "^evt_",
         "type": "string"
       },
       "properties": {
-        "type": "object",
+        "additionalProperties": false,
         "properties": {
           "answers": {
-            "type": "array",
             "items": {
-              "type": "array",
-              "items": {
-                "type": "string"
-              }
-            }
+              "$ref": "#/$defs/QuestionV2Answer"
+            },
+            "type": "array"
           },
           "requestID": {
+            "pattern": "^que",
             "type": "string"
           },
           "sessionID": {
+            "pattern": "^ses",
             "type": "string"
           }
         },
         "required": [
-          "answers",
+          "sessionID",
           "requestID",
-          "sessionID"
-        ]
+          "answers"
+        ],
+        "type": "object"
       },
       "type": {
-        "type": "string",
         "enum": [
           "question.v2.replied"
-        ]
+        ],
+        "type": "string"
       }
     },
     "required": [
       "id",
-      "properties",
-      "type"
-    ]
+      "type",
+      "properties"
+    ],
+    "type": "object",
+    "$defs": {
+      "QuestionV2Answer": {
+        "items": {
+          "type": "string"
+        },
+        "type": "array"
+      }
+    }
+  },
+  "schemaFidelity": {
+    "payload": "exact",
+    "carrier": "exact"
   },
   "evidence": {
     "existence": [

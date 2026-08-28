@@ -10,957 +10,78 @@
   "direction": "client-to-agent",
   "trigger": "Get session context — Retrieve the active context messages for a session (all messages after the last compaction).",
   "payloadSchema": {
-    "type": "object",
     "properties": {
       "method": {
         "type": "string"
       },
-      "route": {
-        "type": "string"
-      },
       "params": {
-        "type": "object",
         "properties": {
           "sessionID": {
+            "pattern": "^ses",
             "type": "string"
           }
         },
         "required": [
           "sessionID"
-        ]
+        ],
+        "type": "object"
+      },
+      "route": {
+        "type": "string"
       }
     },
     "required": [
       "method",
       "route",
       "params"
-    ]
+    ],
+    "type": "object"
   },
   "resultSchema": {
-    "type": "object",
     "properties": {
+      "body": {
+        "additionalProperties": false,
+        "properties": {
+          "data": {
+            "items": {
+              "$ref": "#/$defs/SessionMessage"
+            },
+            "type": "array"
+          }
+        },
+        "required": [
+          "data"
+        ],
+        "type": "object"
+      },
       "method": {
-        "type": "string",
         "enum": [
           "GET"
-        ]
-      },
-      "route": {
-        "type": "string",
-        "enum": [
-          "/api/session/:sessionID/context"
-        ]
-      },
-      "status": {
-        "type": "integer",
-        "minimum": 200,
-        "maximum": 299
+        ],
+        "type": "string"
       },
       "params": {
-        "type": "object",
         "properties": {
           "sessionID": {
+            "pattern": "^ses",
             "type": "string"
           }
         },
         "required": [
           "sessionID"
-        ]
+        ],
+        "type": "object"
       },
-      "body": {
-        "type": "object",
-        "properties": {
-          "data": {
-            "type": "array",
-            "items": {
-              "anyOf": [
-                {
-                  "type": "object",
-                  "properties": {
-                    "agent": {
-                      "type": "string"
-                    },
-                    "id": {
-                      "type": "string"
-                    },
-                    "metadata": {
-                      "type": "object"
-                    },
-                    "time": {
-                      "type": "object",
-                      "properties": {
-                        "created": {
-                          "type": "number"
-                        }
-                      },
-                      "required": [
-                        "created"
-                      ]
-                    },
-                    "type": {
-                      "type": "string"
-                    }
-                  },
-                  "required": [
-                    "agent",
-                    "id",
-                    "time",
-                    "type"
-                  ]
-                },
-                {
-                  "type": "object",
-                  "properties": {
-                    "id": {
-                      "type": "string"
-                    },
-                    "metadata": {
-                      "type": "object"
-                    },
-                    "model": {
-                      "type": "object",
-                      "properties": {
-                        "id": {
-                          "type": "string"
-                        },
-                        "providerID": {
-                          "type": "string"
-                        },
-                        "variant": {
-                          "type": "string"
-                        }
-                      },
-                      "required": [
-                        "id",
-                        "providerID"
-                      ]
-                    },
-                    "time": {
-                      "type": "object",
-                      "properties": {
-                        "created": {
-                          "type": "number"
-                        }
-                      },
-                      "required": [
-                        "created"
-                      ]
-                    },
-                    "type": {
-                      "type": "string"
-                    }
-                  },
-                  "required": [
-                    "id",
-                    "model",
-                    "time",
-                    "type"
-                  ]
-                },
-                {
-                  "type": "object",
-                  "properties": {
-                    "agents": {
-                      "type": "array",
-                      "items": {
-                        "type": "object",
-                        "properties": {
-                          "name": {
-                            "type": "string"
-                          },
-                          "source": {
-                            "type": "object",
-                            "properties": {
-                              "end": {
-                                "type": "number"
-                              },
-                              "start": {
-                                "type": "number"
-                              },
-                              "text": {
-                                "type": "string"
-                              }
-                            },
-                            "required": [
-                              "end",
-                              "start",
-                              "text"
-                            ]
-                          }
-                        },
-                        "required": [
-                          "name"
-                        ]
-                      }
-                    },
-                    "files": {
-                      "type": "array",
-                      "items": {
-                        "type": "object",
-                        "properties": {
-                          "description": {
-                            "type": "string"
-                          },
-                          "mime": {
-                            "type": "string"
-                          },
-                          "name": {
-                            "type": "string"
-                          },
-                          "source": {
-                            "type": "object",
-                            "properties": {
-                              "end": {
-                                "type": "number"
-                              },
-                              "start": {
-                                "type": "number"
-                              },
-                              "text": {
-                                "type": "string"
-                              }
-                            },
-                            "required": [
-                              "end",
-                              "start",
-                              "text"
-                            ]
-                          },
-                          "uri": {
-                            "type": "string"
-                          }
-                        },
-                        "required": [
-                          "mime",
-                          "uri"
-                        ]
-                      }
-                    },
-                    "id": {
-                      "type": "string"
-                    },
-                    "metadata": {
-                      "type": "object"
-                    },
-                    "text": {
-                      "type": "string"
-                    },
-                    "time": {
-                      "type": "object",
-                      "properties": {
-                        "created": {
-                          "type": "number"
-                        }
-                      },
-                      "required": [
-                        "created"
-                      ]
-                    },
-                    "type": {
-                      "type": "string"
-                    }
-                  },
-                  "required": [
-                    "id",
-                    "text",
-                    "time",
-                    "type"
-                  ]
-                },
-                {
-                  "type": "object",
-                  "properties": {
-                    "id": {
-                      "type": "string"
-                    },
-                    "metadata": {
-                      "type": "object"
-                    },
-                    "sessionID": {
-                      "type": "string"
-                    },
-                    "text": {
-                      "type": "string"
-                    },
-                    "time": {
-                      "type": "object",
-                      "properties": {
-                        "created": {
-                          "type": "number"
-                        }
-                      },
-                      "required": [
-                        "created"
-                      ]
-                    },
-                    "type": {
-                      "type": "string"
-                    }
-                  },
-                  "required": [
-                    "id",
-                    "sessionID",
-                    "text",
-                    "time",
-                    "type"
-                  ]
-                },
-                {
-                  "type": "object",
-                  "properties": {
-                    "id": {
-                      "type": "string"
-                    },
-                    "metadata": {
-                      "type": "object"
-                    },
-                    "text": {
-                      "type": "string"
-                    },
-                    "time": {
-                      "type": "object",
-                      "properties": {
-                        "created": {
-                          "type": "number"
-                        }
-                      },
-                      "required": [
-                        "created"
-                      ]
-                    },
-                    "type": {
-                      "type": "string"
-                    }
-                  },
-                  "required": [
-                    "id",
-                    "text",
-                    "time",
-                    "type"
-                  ]
-                },
-                {
-                  "type": "object",
-                  "properties": {
-                    "callID": {
-                      "type": "string"
-                    },
-                    "command": {
-                      "type": "string"
-                    },
-                    "id": {
-                      "type": "string"
-                    },
-                    "metadata": {
-                      "type": "object"
-                    },
-                    "output": {
-                      "type": "string"
-                    },
-                    "time": {
-                      "type": "object",
-                      "properties": {
-                        "completed": {
-                          "type": "number"
-                        },
-                        "created": {
-                          "type": "number"
-                        }
-                      },
-                      "required": [
-                        "created"
-                      ]
-                    },
-                    "type": {
-                      "type": "string"
-                    }
-                  },
-                  "required": [
-                    "callID",
-                    "command",
-                    "id",
-                    "output",
-                    "time",
-                    "type"
-                  ]
-                },
-                {
-                  "type": "object",
-                  "properties": {
-                    "agent": {
-                      "type": "string"
-                    },
-                    "content": {
-                      "type": "array",
-                      "items": {
-                        "anyOf": [
-                          {
-                            "type": "object",
-                            "properties": {
-                              "id": {
-                                "type": "string"
-                              },
-                              "text": {
-                                "type": "string"
-                              },
-                              "type": {
-                                "type": "string"
-                              }
-                            },
-                            "required": [
-                              "id",
-                              "text",
-                              "type"
-                            ]
-                          },
-                          {
-                            "type": "object",
-                            "properties": {
-                              "id": {
-                                "type": "string"
-                              },
-                              "providerMetadata": {
-                                "type": "object"
-                              },
-                              "text": {
-                                "type": "string"
-                              },
-                              "time": {
-                                "type": "object",
-                                "properties": {
-                                  "completed": {
-                                    "type": "number"
-                                  },
-                                  "created": {
-                                    "type": "number"
-                                  }
-                                },
-                                "required": [
-                                  "created"
-                                ]
-                              },
-                              "type": {
-                                "type": "string"
-                              }
-                            },
-                            "required": [
-                              "id",
-                              "text",
-                              "type"
-                            ]
-                          },
-                          {
-                            "type": "object",
-                            "properties": {
-                              "id": {
-                                "type": "string"
-                              },
-                              "name": {
-                                "type": "string"
-                              },
-                              "provider": {
-                                "type": "object",
-                                "properties": {
-                                  "executed": {
-                                    "type": "boolean"
-                                  },
-                                  "metadata": {
-                                    "type": "object"
-                                  },
-                                  "resultMetadata": {
-                                    "type": "object"
-                                  }
-                                },
-                                "required": [
-                                  "executed"
-                                ]
-                              },
-                              "state": {
-                                "anyOf": [
-                                  {
-                                    "type": "object",
-                                    "properties": {
-                                      "input": {
-                                        "type": "string"
-                                      },
-                                      "status": {
-                                        "type": "string"
-                                      }
-                                    },
-                                    "required": [
-                                      "input",
-                                      "status"
-                                    ]
-                                  },
-                                  {
-                                    "type": "object",
-                                    "properties": {
-                                      "content": {
-                                        "type": "array",
-                                        "items": {
-                                          "anyOf": [
-                                            {
-                                              "type": "object",
-                                              "properties": {
-                                                "text": {
-                                                  "type": "string"
-                                                },
-                                                "type": {
-                                                  "type": "string"
-                                                }
-                                              },
-                                              "required": [
-                                                "text",
-                                                "type"
-                                              ]
-                                            },
-                                            {
-                                              "type": "object",
-                                              "properties": {
-                                                "mime": {
-                                                  "type": "string"
-                                                },
-                                                "name": {
-                                                  "type": "string"
-                                                },
-                                                "type": {
-                                                  "type": "string"
-                                                },
-                                                "uri": {
-                                                  "type": "string"
-                                                }
-                                              },
-                                              "required": [
-                                                "mime",
-                                                "type",
-                                                "uri"
-                                              ]
-                                            }
-                                          ]
-                                        }
-                                      },
-                                      "input": {
-                                        "type": "object"
-                                      },
-                                      "status": {
-                                        "type": "string"
-                                      },
-                                      "structured": {
-                                        "type": "object"
-                                      }
-                                    },
-                                    "required": [
-                                      "content",
-                                      "input",
-                                      "status",
-                                      "structured"
-                                    ]
-                                  },
-                                  {
-                                    "type": "object",
-                                    "properties": {
-                                      "attachments": {
-                                        "type": "array",
-                                        "items": {
-                                          "type": "object",
-                                          "properties": {
-                                            "description": {
-                                              "type": "string"
-                                            },
-                                            "mime": {
-                                              "type": "string"
-                                            },
-                                            "name": {
-                                              "type": "string"
-                                            },
-                                            "source": {
-                                              "type": "object",
-                                              "properties": {
-                                                "end": {
-                                                  "type": "number"
-                                                },
-                                                "start": {
-                                                  "type": "number"
-                                                },
-                                                "text": {
-                                                  "type": "string"
-                                                }
-                                              },
-                                              "required": [
-                                                "end",
-                                                "start",
-                                                "text"
-                                              ]
-                                            },
-                                            "uri": {
-                                              "type": "string"
-                                            }
-                                          },
-                                          "required": [
-                                            "mime",
-                                            "uri"
-                                          ]
-                                        }
-                                      },
-                                      "content": {
-                                        "type": "array",
-                                        "items": {
-                                          "anyOf": [
-                                            {
-                                              "type": "object",
-                                              "properties": {
-                                                "text": {
-                                                  "type": "string"
-                                                },
-                                                "type": {
-                                                  "type": "string"
-                                                }
-                                              },
-                                              "required": [
-                                                "text",
-                                                "type"
-                                              ]
-                                            },
-                                            {
-                                              "type": "object",
-                                              "properties": {
-                                                "mime": {
-                                                  "type": "string"
-                                                },
-                                                "name": {
-                                                  "type": "string"
-                                                },
-                                                "type": {
-                                                  "type": "string"
-                                                },
-                                                "uri": {
-                                                  "type": "string"
-                                                }
-                                              },
-                                              "required": [
-                                                "mime",
-                                                "type",
-                                                "uri"
-                                              ]
-                                            }
-                                          ]
-                                        }
-                                      },
-                                      "input": {
-                                        "type": "object"
-                                      },
-                                      "outputPaths": {
-                                        "type": "array",
-                                        "items": {
-                                          "type": "string"
-                                        }
-                                      },
-                                      "result": {},
-                                      "status": {
-                                        "type": "string"
-                                      },
-                                      "structured": {
-                                        "type": "object"
-                                      }
-                                    },
-                                    "required": [
-                                      "content",
-                                      "input",
-                                      "status",
-                                      "structured"
-                                    ]
-                                  },
-                                  {
-                                    "type": "object",
-                                    "properties": {
-                                      "content": {
-                                        "type": "array",
-                                        "items": {
-                                          "anyOf": [
-                                            {
-                                              "type": "object",
-                                              "properties": {
-                                                "text": {
-                                                  "type": "string"
-                                                },
-                                                "type": {
-                                                  "type": "string"
-                                                }
-                                              },
-                                              "required": [
-                                                "text",
-                                                "type"
-                                              ]
-                                            },
-                                            {
-                                              "type": "object",
-                                              "properties": {
-                                                "mime": {
-                                                  "type": "string"
-                                                },
-                                                "name": {
-                                                  "type": "string"
-                                                },
-                                                "type": {
-                                                  "type": "string"
-                                                },
-                                                "uri": {
-                                                  "type": "string"
-                                                }
-                                              },
-                                              "required": [
-                                                "mime",
-                                                "type",
-                                                "uri"
-                                              ]
-                                            }
-                                          ]
-                                        }
-                                      },
-                                      "error": {
-                                        "type": "object",
-                                        "properties": {
-                                          "message": {
-                                            "type": "string"
-                                          },
-                                          "type": {
-                                            "type": "string"
-                                          }
-                                        },
-                                        "required": [
-                                          "message",
-                                          "type"
-                                        ]
-                                      },
-                                      "input": {
-                                        "type": "object"
-                                      },
-                                      "result": {},
-                                      "status": {
-                                        "type": "string"
-                                      },
-                                      "structured": {
-                                        "type": "object"
-                                      }
-                                    },
-                                    "required": [
-                                      "content",
-                                      "error",
-                                      "input",
-                                      "status",
-                                      "structured"
-                                    ]
-                                  }
-                                ]
-                              },
-                              "time": {
-                                "type": "object",
-                                "properties": {
-                                  "completed": {
-                                    "type": "number"
-                                  },
-                                  "created": {
-                                    "type": "number"
-                                  },
-                                  "pruned": {
-                                    "type": "number"
-                                  },
-                                  "ran": {
-                                    "type": "number"
-                                  }
-                                },
-                                "required": [
-                                  "created"
-                                ]
-                              },
-                              "type": {
-                                "type": "string"
-                              }
-                            },
-                            "required": [
-                              "id",
-                              "name",
-                              "state",
-                              "time",
-                              "type"
-                            ]
-                          }
-                        ]
-                      }
-                    },
-                    "cost": {
-                      "type": "number"
-                    },
-                    "error": {
-                      "type": "object",
-                      "properties": {
-                        "message": {
-                          "type": "string"
-                        },
-                        "type": {
-                          "type": "string"
-                        }
-                      },
-                      "required": [
-                        "message",
-                        "type"
-                      ]
-                    },
-                    "finish": {
-                      "type": "string"
-                    },
-                    "id": {
-                      "type": "string"
-                    },
-                    "metadata": {
-                      "type": "object"
-                    },
-                    "model": {
-                      "type": "object",
-                      "properties": {
-                        "id": {
-                          "type": "string"
-                        },
-                        "providerID": {
-                          "type": "string"
-                        },
-                        "variant": {
-                          "type": "string"
-                        }
-                      },
-                      "required": [
-                        "id",
-                        "providerID"
-                      ]
-                    },
-                    "snapshot": {
-                      "type": "object",
-                      "properties": {
-                        "end": {
-                          "type": "string"
-                        },
-                        "files": {
-                          "type": "array",
-                          "items": {
-                            "type": "string"
-                          }
-                        },
-                        "start": {
-                          "type": "string"
-                        }
-                      }
-                    },
-                    "time": {
-                      "type": "object",
-                      "properties": {
-                        "completed": {
-                          "type": "number"
-                        },
-                        "created": {
-                          "type": "number"
-                        }
-                      },
-                      "required": [
-                        "created"
-                      ]
-                    },
-                    "tokens": {
-                      "type": "object",
-                      "properties": {
-                        "cache": {
-                          "type": "object",
-                          "properties": {
-                            "read": {
-                              "type": "number"
-                            },
-                            "write": {
-                              "type": "number"
-                            }
-                          },
-                          "required": [
-                            "read",
-                            "write"
-                          ]
-                        },
-                        "input": {
-                          "type": "number"
-                        },
-                        "output": {
-                          "type": "number"
-                        },
-                        "reasoning": {
-                          "type": "number"
-                        }
-                      },
-                      "required": [
-                        "cache",
-                        "input",
-                        "output",
-                        "reasoning"
-                      ]
-                    },
-                    "type": {
-                      "type": "string"
-                    }
-                  },
-                  "required": [
-                    "agent",
-                    "content",
-                    "id",
-                    "model",
-                    "time",
-                    "type"
-                  ]
-                },
-                {
-                  "type": "object",
-                  "properties": {
-                    "id": {
-                      "type": "string"
-                    },
-                    "metadata": {
-                      "type": "object"
-                    },
-                    "reason": {
-                      "type": "string"
-                    },
-                    "recent": {
-                      "type": "string"
-                    },
-                    "summary": {
-                      "type": "string"
-                    },
-                    "time": {
-                      "type": "object",
-                      "properties": {
-                        "created": {
-                          "type": "number"
-                        }
-                      },
-                      "required": [
-                        "created"
-                      ]
-                    },
-                    "type": {
-                      "type": "string"
-                    }
-                  },
-                  "required": [
-                    "id",
-                    "reason",
-                    "recent",
-                    "summary",
-                    "time",
-                    "type"
-                  ]
-                }
-              ]
-            }
-          }
-        },
-        "required": [
-          "data"
-        ]
+      "route": {
+        "enum": [
+          "/api/session/:sessionID/context"
+        ],
+        "type": "string"
+      },
+      "status": {
+        "maximum": 299,
+        "minimum": 200,
+        "type": "integer"
       }
     },
     "required": [
@@ -969,55 +90,970 @@
       "status",
       "params",
       "body"
-    ]
-  },
-  "recordSchema": {
+    ],
     "type": "object",
-    "properties": {
-      "direction": {
-        "type": "string",
-        "enum": [
-          "client-to-agent"
+    "$defs": {
+      "SessionMessage": {
+        "anyOf": [
+          {
+            "$ref": "#/$defs/SessionMessageAgentSwitched"
+          },
+          {
+            "$ref": "#/$defs/SessionMessageModelSwitched"
+          },
+          {
+            "$ref": "#/$defs/SessionMessageUser"
+          },
+          {
+            "$ref": "#/$defs/SessionMessageSynthetic"
+          },
+          {
+            "$ref": "#/$defs/SessionMessageSystem"
+          },
+          {
+            "$ref": "#/$defs/SessionMessageShell"
+          },
+          {
+            "$ref": "#/$defs/SessionMessageAssistant"
+          },
+          {
+            "$ref": "#/$defs/SessionMessageCompaction"
+          }
         ]
       },
+      "SessionMessageAgentSwitched": {
+        "additionalProperties": false,
+        "properties": {
+          "agent": {
+            "type": "string"
+          },
+          "id": {
+            "pattern": "^msg_",
+            "type": "string"
+          },
+          "metadata": {
+            "type": "object"
+          },
+          "time": {
+            "additionalProperties": false,
+            "properties": {
+              "created": {
+                "type": "number"
+              }
+            },
+            "required": [
+              "created"
+            ],
+            "type": "object"
+          },
+          "type": {
+            "enum": [
+              "agent-switched"
+            ],
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "time",
+          "type",
+          "agent"
+        ],
+        "type": "object"
+      },
+      "SessionMessageModelSwitched": {
+        "additionalProperties": false,
+        "properties": {
+          "id": {
+            "pattern": "^msg_",
+            "type": "string"
+          },
+          "metadata": {
+            "type": "object"
+          },
+          "model": {
+            "$ref": "#/$defs/ModelRef"
+          },
+          "time": {
+            "additionalProperties": false,
+            "properties": {
+              "created": {
+                "type": "number"
+              }
+            },
+            "required": [
+              "created"
+            ],
+            "type": "object"
+          },
+          "type": {
+            "enum": [
+              "model-switched"
+            ],
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "time",
+          "type",
+          "model"
+        ],
+        "type": "object"
+      },
+      "SessionMessageUser": {
+        "additionalProperties": false,
+        "properties": {
+          "agents": {
+            "items": {
+              "$ref": "#/$defs/PromptAgentAttachment"
+            },
+            "type": "array"
+          },
+          "files": {
+            "items": {
+              "$ref": "#/$defs/PromptFileAttachment"
+            },
+            "type": "array"
+          },
+          "id": {
+            "pattern": "^msg_",
+            "type": "string"
+          },
+          "metadata": {
+            "type": "object"
+          },
+          "text": {
+            "type": "string"
+          },
+          "time": {
+            "additionalProperties": false,
+            "properties": {
+              "created": {
+                "type": "number"
+              }
+            },
+            "required": [
+              "created"
+            ],
+            "type": "object"
+          },
+          "type": {
+            "enum": [
+              "user"
+            ],
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "time",
+          "text",
+          "type"
+        ],
+        "type": "object"
+      },
+      "SessionMessageSynthetic": {
+        "additionalProperties": false,
+        "properties": {
+          "id": {
+            "pattern": "^msg_",
+            "type": "string"
+          },
+          "metadata": {
+            "type": "object"
+          },
+          "sessionID": {
+            "pattern": "^ses",
+            "type": "string"
+          },
+          "text": {
+            "type": "string"
+          },
+          "time": {
+            "additionalProperties": false,
+            "properties": {
+              "created": {
+                "type": "number"
+              }
+            },
+            "required": [
+              "created"
+            ],
+            "type": "object"
+          },
+          "type": {
+            "enum": [
+              "synthetic"
+            ],
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "time",
+          "sessionID",
+          "text",
+          "type"
+        ],
+        "type": "object"
+      },
+      "SessionMessageSystem": {
+        "additionalProperties": false,
+        "properties": {
+          "id": {
+            "pattern": "^msg_",
+            "type": "string"
+          },
+          "metadata": {
+            "type": "object"
+          },
+          "text": {
+            "type": "string"
+          },
+          "time": {
+            "additionalProperties": false,
+            "properties": {
+              "created": {
+                "type": "number"
+              }
+            },
+            "required": [
+              "created"
+            ],
+            "type": "object"
+          },
+          "type": {
+            "enum": [
+              "system"
+            ],
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "time",
+          "type",
+          "text"
+        ],
+        "type": "object"
+      },
+      "SessionMessageShell": {
+        "additionalProperties": false,
+        "properties": {
+          "callID": {
+            "type": "string"
+          },
+          "command": {
+            "type": "string"
+          },
+          "id": {
+            "pattern": "^msg_",
+            "type": "string"
+          },
+          "metadata": {
+            "type": "object"
+          },
+          "output": {
+            "type": "string"
+          },
+          "time": {
+            "additionalProperties": false,
+            "properties": {
+              "completed": {
+                "type": "number"
+              },
+              "created": {
+                "type": "number"
+              }
+            },
+            "required": [
+              "created"
+            ],
+            "type": "object"
+          },
+          "type": {
+            "enum": [
+              "shell"
+            ],
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "time",
+          "type",
+          "callID",
+          "command",
+          "output"
+        ],
+        "type": "object"
+      },
+      "SessionMessageAssistant": {
+        "additionalProperties": false,
+        "properties": {
+          "agent": {
+            "type": "string"
+          },
+          "content": {
+            "items": {
+              "anyOf": [
+                {
+                  "$ref": "#/$defs/SessionMessageAssistantText"
+                },
+                {
+                  "$ref": "#/$defs/SessionMessageAssistantReasoning"
+                },
+                {
+                  "$ref": "#/$defs/SessionMessageAssistantTool"
+                }
+              ]
+            },
+            "type": "array"
+          },
+          "cost": {
+            "type": "number"
+          },
+          "error": {
+            "$ref": "#/$defs/SessionErrorUnknown"
+          },
+          "finish": {
+            "type": "string"
+          },
+          "id": {
+            "pattern": "^msg_",
+            "type": "string"
+          },
+          "metadata": {
+            "type": "object"
+          },
+          "model": {
+            "$ref": "#/$defs/ModelRef"
+          },
+          "snapshot": {
+            "additionalProperties": false,
+            "properties": {
+              "end": {
+                "type": "string"
+              },
+              "files": {
+                "items": {
+                  "type": "string"
+                },
+                "type": "array"
+              },
+              "start": {
+                "type": "string"
+              }
+            },
+            "type": "object"
+          },
+          "time": {
+            "additionalProperties": false,
+            "properties": {
+              "completed": {
+                "type": "number"
+              },
+              "created": {
+                "type": "number"
+              }
+            },
+            "required": [
+              "created"
+            ],
+            "type": "object"
+          },
+          "tokens": {
+            "additionalProperties": false,
+            "properties": {
+              "cache": {
+                "additionalProperties": false,
+                "properties": {
+                  "read": {
+                    "type": "number"
+                  },
+                  "write": {
+                    "type": "number"
+                  }
+                },
+                "required": [
+                  "read",
+                  "write"
+                ],
+                "type": "object"
+              },
+              "input": {
+                "type": "number"
+              },
+              "output": {
+                "type": "number"
+              },
+              "reasoning": {
+                "type": "number"
+              }
+            },
+            "required": [
+              "input",
+              "output",
+              "reasoning",
+              "cache"
+            ],
+            "type": "object"
+          },
+          "type": {
+            "enum": [
+              "assistant"
+            ],
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "time",
+          "type",
+          "agent",
+          "model",
+          "content"
+        ],
+        "type": "object"
+      },
+      "SessionMessageCompaction": {
+        "additionalProperties": false,
+        "properties": {
+          "id": {
+            "pattern": "^msg_",
+            "type": "string"
+          },
+          "metadata": {
+            "type": "object"
+          },
+          "reason": {
+            "enum": [
+              "auto",
+              "manual"
+            ],
+            "type": "string"
+          },
+          "recent": {
+            "type": "string"
+          },
+          "summary": {
+            "type": "string"
+          },
+          "time": {
+            "additionalProperties": false,
+            "properties": {
+              "created": {
+                "type": "number"
+              }
+            },
+            "required": [
+              "created"
+            ],
+            "type": "object"
+          },
+          "type": {
+            "enum": [
+              "compaction"
+            ],
+            "type": "string"
+          }
+        },
+        "required": [
+          "type",
+          "reason",
+          "summary",
+          "recent",
+          "id",
+          "time"
+        ],
+        "type": "object"
+      },
+      "ModelRef": {
+        "additionalProperties": false,
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "providerID": {
+            "type": "string"
+          },
+          "variant": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "providerID"
+        ],
+        "type": "object"
+      },
+      "PromptAgentAttachment": {
+        "additionalProperties": false,
+        "properties": {
+          "name": {
+            "type": "string"
+          },
+          "source": {
+            "$ref": "#/$defs/PromptSource"
+          }
+        },
+        "required": [
+          "name"
+        ],
+        "type": "object"
+      },
+      "PromptFileAttachment": {
+        "additionalProperties": false,
+        "properties": {
+          "description": {
+            "type": "string"
+          },
+          "mime": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "source": {
+            "$ref": "#/$defs/PromptSource"
+          },
+          "uri": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "uri",
+          "mime"
+        ],
+        "type": "object"
+      },
+      "SessionMessageAssistantText": {
+        "additionalProperties": false,
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "text": {
+            "type": "string"
+          },
+          "type": {
+            "enum": [
+              "text"
+            ],
+            "type": "string"
+          }
+        },
+        "required": [
+          "type",
+          "id",
+          "text"
+        ],
+        "type": "object"
+      },
+      "SessionMessageAssistantReasoning": {
+        "additionalProperties": false,
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "providerMetadata": {
+            "$ref": "#/$defs/LLMProviderMetadata"
+          },
+          "text": {
+            "type": "string"
+          },
+          "time": {
+            "additionalProperties": false,
+            "properties": {
+              "completed": {
+                "type": "number"
+              },
+              "created": {
+                "type": "number"
+              }
+            },
+            "required": [
+              "created"
+            ],
+            "type": "object"
+          },
+          "type": {
+            "enum": [
+              "reasoning"
+            ],
+            "type": "string"
+          }
+        },
+        "required": [
+          "type",
+          "id",
+          "text"
+        ],
+        "type": "object"
+      },
+      "SessionMessageAssistantTool": {
+        "additionalProperties": false,
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "provider": {
+            "additionalProperties": false,
+            "properties": {
+              "executed": {
+                "type": "boolean"
+              },
+              "metadata": {
+                "$ref": "#/$defs/LLMProviderMetadata"
+              },
+              "resultMetadata": {
+                "$ref": "#/$defs/LLMProviderMetadata"
+              }
+            },
+            "required": [
+              "executed"
+            ],
+            "type": "object"
+          },
+          "state": {
+            "anyOf": [
+              {
+                "$ref": "#/$defs/SessionMessageToolStatePending"
+              },
+              {
+                "$ref": "#/$defs/SessionMessageToolStateRunning"
+              },
+              {
+                "$ref": "#/$defs/SessionMessageToolStateCompleted"
+              },
+              {
+                "$ref": "#/$defs/SessionMessageToolStateError"
+              }
+            ]
+          },
+          "time": {
+            "additionalProperties": false,
+            "properties": {
+              "completed": {
+                "type": "number"
+              },
+              "created": {
+                "type": "number"
+              },
+              "pruned": {
+                "type": "number"
+              },
+              "ran": {
+                "type": "number"
+              }
+            },
+            "required": [
+              "created"
+            ],
+            "type": "object"
+          },
+          "type": {
+            "enum": [
+              "tool"
+            ],
+            "type": "string"
+          }
+        },
+        "required": [
+          "type",
+          "id",
+          "name",
+          "state",
+          "time"
+        ],
+        "type": "object"
+      },
+      "SessionErrorUnknown": {
+        "additionalProperties": false,
+        "properties": {
+          "message": {
+            "type": "string"
+          },
+          "type": {
+            "enum": [
+              "unknown"
+            ],
+            "type": "string"
+          }
+        },
+        "required": [
+          "type",
+          "message"
+        ],
+        "type": "object"
+      },
+      "PromptSource": {
+        "additionalProperties": false,
+        "properties": {
+          "end": {
+            "type": "number"
+          },
+          "start": {
+            "type": "number"
+          },
+          "text": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "start",
+          "end",
+          "text"
+        ],
+        "type": "object"
+      },
+      "LLMProviderMetadata": {
+        "additionalProperties": {
+          "type": "object"
+        },
+        "type": "object"
+      },
+      "SessionMessageToolStatePending": {
+        "additionalProperties": false,
+        "properties": {
+          "input": {
+            "type": "string"
+          },
+          "status": {
+            "enum": [
+              "pending"
+            ],
+            "type": "string"
+          }
+        },
+        "required": [
+          "status",
+          "input"
+        ],
+        "type": "object"
+      },
+      "SessionMessageToolStateRunning": {
+        "additionalProperties": false,
+        "properties": {
+          "content": {
+            "items": {
+              "$ref": "#/$defs/LLMToolContent"
+            },
+            "type": "array"
+          },
+          "input": {
+            "type": "object"
+          },
+          "status": {
+            "enum": [
+              "running"
+            ],
+            "type": "string"
+          },
+          "structured": {
+            "type": "object"
+          }
+        },
+        "required": [
+          "status",
+          "input",
+          "structured",
+          "content"
+        ],
+        "type": "object"
+      },
+      "SessionMessageToolStateCompleted": {
+        "additionalProperties": false,
+        "properties": {
+          "attachments": {
+            "items": {
+              "$ref": "#/$defs/PromptFileAttachment"
+            },
+            "type": "array"
+          },
+          "content": {
+            "items": {
+              "$ref": "#/$defs/LLMToolContent"
+            },
+            "type": "array"
+          },
+          "input": {
+            "type": "object"
+          },
+          "outputPaths": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
+          },
+          "result": {},
+          "status": {
+            "enum": [
+              "completed"
+            ],
+            "type": "string"
+          },
+          "structured": {
+            "type": "object"
+          }
+        },
+        "required": [
+          "status",
+          "input",
+          "content",
+          "structured"
+        ],
+        "type": "object"
+      },
+      "SessionMessageToolStateError": {
+        "additionalProperties": false,
+        "properties": {
+          "content": {
+            "items": {
+              "$ref": "#/$defs/LLMToolContent"
+            },
+            "type": "array"
+          },
+          "error": {
+            "$ref": "#/$defs/SessionErrorUnknown"
+          },
+          "input": {
+            "type": "object"
+          },
+          "result": {},
+          "status": {
+            "enum": [
+              "error"
+            ],
+            "type": "string"
+          },
+          "structured": {
+            "type": "object"
+          }
+        },
+        "required": [
+          "status",
+          "input",
+          "content",
+          "structured",
+          "error"
+        ],
+        "type": "object"
+      },
+      "LLMToolContent": {
+        "anyOf": [
+          {
+            "$ref": "#/$defs/ToolTextContent"
+          },
+          {
+            "$ref": "#/$defs/ToolFileContent"
+          }
+        ]
+      },
+      "ToolTextContent": {
+        "additionalProperties": false,
+        "properties": {
+          "text": {
+            "type": "string"
+          },
+          "type": {
+            "enum": [
+              "text"
+            ],
+            "type": "string"
+          }
+        },
+        "required": [
+          "type",
+          "text"
+        ],
+        "type": "object"
+      },
+      "ToolFileContent": {
+        "additionalProperties": false,
+        "properties": {
+          "mime": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "type": {
+            "enum": [
+              "file"
+            ],
+            "type": "string"
+          },
+          "uri": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "type",
+          "uri",
+          "mime"
+        ],
+        "type": "object"
+      }
+    }
+  },
+  "recordSchema": {
+    "properties": {
+      "direction": {
+        "enum": [
+          "client-to-agent"
+        ],
+        "type": "string"
+      },
       "request": {
-        "type": "object",
         "properties": {
           "method": {
-            "type": "string",
             "enum": [
               "GET"
-            ]
-          },
-          "route": {
-            "type": "string",
-            "enum": [
-              "/api/session/:sessionID/context"
-            ]
+            ],
+            "type": "string"
           },
           "params": {
-            "type": "object",
             "properties": {
               "sessionID": {
+                "pattern": "^ses",
                 "type": "string"
               }
             },
             "required": [
               "sessionID"
-            ]
+            ],
+            "type": "object"
+          },
+          "route": {
+            "enum": [
+              "/api/session/:sessionID/context"
+            ],
+            "type": "string"
           }
         },
         "required": [
           "method",
           "route",
           "params"
-        ]
+        ],
+        "type": "object"
       }
     },
     "required": [
       "direction",
       "request"
-    ]
+    ],
+    "type": "object"
+  },
+  "schemaFidelity": {
+    "payload": "semantic",
+    "result": "semantic",
+    "carrier": "semantic"
   },
   "evidence": {
     "existence": [

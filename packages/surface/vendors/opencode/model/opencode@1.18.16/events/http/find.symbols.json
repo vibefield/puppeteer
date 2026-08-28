@@ -10,16 +10,11 @@
   "direction": "client-to-agent",
   "trigger": "Find symbols — Search for workspace symbols like functions, classes, and variables using LSP.",
   "payloadSchema": {
-    "type": "object",
     "properties": {
       "method": {
         "type": "string"
       },
-      "route": {
-        "type": "string"
-      },
       "query": {
-        "type": "object",
         "properties": {
           "directory": {
             "type": "string"
@@ -33,37 +28,36 @@
         },
         "required": [
           "query"
-        ]
+        ],
+        "type": "object"
+      },
+      "route": {
+        "type": "string"
       }
     },
     "required": [
       "method",
       "route",
       "query"
-    ]
+    ],
+    "type": "object"
   },
   "resultSchema": {
-    "type": "object",
     "properties": {
+      "body": {
+        "description": "Symbols",
+        "items": {
+          "$ref": "#/$defs/Symbol"
+        },
+        "type": "array"
+      },
       "method": {
-        "type": "string",
         "enum": [
           "GET"
-        ]
-      },
-      "route": {
-        "type": "string",
-        "enum": [
-          "/find/symbol"
-        ]
-      },
-      "status": {
-        "type": "integer",
-        "minimum": 200,
-        "maximum": 299
+        ],
+        "type": "string"
       },
       "query": {
-        "type": "object",
         "properties": {
           "directory": {
             "type": "string"
@@ -77,82 +71,19 @@
         },
         "required": [
           "query"
-        ]
+        ],
+        "type": "object"
       },
-      "body": {
-        "type": "array",
-        "items": {
-          "type": "object",
-          "properties": {
-            "kind": {
-              "type": "integer",
-              "minimum": 0
-            },
-            "location": {
-              "type": "object",
-              "properties": {
-                "range": {
-                  "type": "object",
-                  "properties": {
-                    "end": {
-                      "type": "object",
-                      "properties": {
-                        "character": {
-                          "type": "integer",
-                          "minimum": 0
-                        },
-                        "line": {
-                          "type": "integer",
-                          "minimum": 0
-                        }
-                      },
-                      "required": [
-                        "character",
-                        "line"
-                      ]
-                    },
-                    "start": {
-                      "type": "object",
-                      "properties": {
-                        "character": {
-                          "type": "integer",
-                          "minimum": 0
-                        },
-                        "line": {
-                          "type": "integer",
-                          "minimum": 0
-                        }
-                      },
-                      "required": [
-                        "character",
-                        "line"
-                      ]
-                    }
-                  },
-                  "required": [
-                    "end",
-                    "start"
-                  ]
-                },
-                "uri": {
-                  "type": "string"
-                }
-              },
-              "required": [
-                "range",
-                "uri"
-              ]
-            },
-            "name": {
-              "type": "string"
-            }
-          },
-          "required": [
-            "kind",
-            "location",
-            "name"
-          ]
-        }
+      "route": {
+        "enum": [
+          "/find/symbol"
+        ],
+        "type": "string"
+      },
+      "status": {
+        "maximum": 299,
+        "minimum": 200,
+        "type": "integer"
       }
     },
     "required": [
@@ -161,34 +92,108 @@
       "status",
       "query",
       "body"
-    ]
+    ],
+    "type": "object",
+    "$defs": {
+      "Symbol": {
+        "additionalProperties": false,
+        "properties": {
+          "kind": {
+            "minimum": 0,
+            "type": "integer"
+          },
+          "location": {
+            "additionalProperties": false,
+            "properties": {
+              "range": {
+                "$ref": "#/$defs/Range"
+              },
+              "uri": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "uri",
+              "range"
+            ],
+            "type": "object"
+          },
+          "name": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "name",
+          "kind",
+          "location"
+        ],
+        "type": "object"
+      },
+      "Range": {
+        "additionalProperties": false,
+        "properties": {
+          "end": {
+            "additionalProperties": false,
+            "properties": {
+              "character": {
+                "minimum": 0,
+                "type": "integer"
+              },
+              "line": {
+                "minimum": 0,
+                "type": "integer"
+              }
+            },
+            "required": [
+              "line",
+              "character"
+            ],
+            "type": "object"
+          },
+          "start": {
+            "additionalProperties": false,
+            "properties": {
+              "character": {
+                "minimum": 0,
+                "type": "integer"
+              },
+              "line": {
+                "minimum": 0,
+                "type": "integer"
+              }
+            },
+            "required": [
+              "line",
+              "character"
+            ],
+            "type": "object"
+          }
+        },
+        "required": [
+          "start",
+          "end"
+        ],
+        "type": "object"
+      }
+    }
   },
   "recordSchema": {
-    "type": "object",
     "properties": {
       "direction": {
-        "type": "string",
         "enum": [
           "client-to-agent"
-        ]
+        ],
+        "type": "string"
       },
       "request": {
-        "type": "object",
         "properties": {
           "method": {
-            "type": "string",
             "enum": [
               "GET"
-            ]
-          },
-          "route": {
-            "type": "string",
-            "enum": [
-              "/find/symbol"
-            ]
+            ],
+            "type": "string"
           },
           "query": {
-            "type": "object",
             "properties": {
               "directory": {
                 "type": "string"
@@ -202,20 +207,34 @@
             },
             "required": [
               "query"
-            ]
+            ],
+            "type": "object"
+          },
+          "route": {
+            "enum": [
+              "/find/symbol"
+            ],
+            "type": "string"
           }
         },
         "required": [
           "method",
           "route",
           "query"
-        ]
+        ],
+        "type": "object"
       }
     },
     "required": [
       "direction",
       "request"
-    ]
+    ],
+    "type": "object"
+  },
+  "schemaFidelity": {
+    "payload": "semantic",
+    "result": "semantic",
+    "carrier": "semantic"
   },
   "evidence": {
     "existence": [

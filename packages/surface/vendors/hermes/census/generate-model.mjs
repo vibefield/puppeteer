@@ -1,12 +1,12 @@
 #!/usr/bin/env node
 /**
  * Generate the evidence-bound Hermes 0.20.0 Agent Surface Model from the
- * sanitized tui_gateway census. Only observed methods and hook names are
- * verified. Unobserved source branches stay out of events/ rather than
- * pretending they were captured.
+ * complete pinned-source inventory plus the sanitized tui_gateway census.
+ * Runtime evidence proves occurrence/order; source evidence defines native
+ * (possibly conservative) schemas. Privacy projections are never schemas.
  */
 import { execFileSync } from 'node:child_process';
-import { mkdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
+import { mkdirSync, readFileSync, readdirSync, rmSync, writeFileSync } from 'node:fs';
 import { createRequire } from 'node:module';
 import { dirname, join, relative, sep } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -19,6 +19,8 @@ const packageRoot = dirname(dirname(vendorRoot));
 const repoRoot = dirname(dirname(packageRoot));
 const capturesRoot = join(vendorRoot, 'captures', `hermes@${VERSION}`);
 const probesRoot = join(vendorRoot, 'probes', `hermes@${VERSION}`);
+const referenceRoot = join(vendorRoot, 'references', `hermes@${VERSION}`);
+const sourceReferencePath = join(referenceRoot, 'gateway-surface.json');
 const modelRoot = join(vendorRoot, 'model', `hermes@${VERSION}`);
 const eventsRoot = join(modelRoot, 'events');
 const require = createRequire(import.meta.url);
@@ -27,10 +29,21 @@ const prettierBin = require.resolve('prettier/bin/prettier.cjs');
 const source = JSON.parse(readFileSync(join(probesRoot, 'source.json'), 'utf8'));
 const artifactProbe = JSON.parse(readFileSync(join(probesRoot, 'darwin-arm64', 'artifact.json'), 'utf8'));
 const flagProbe = JSON.parse(readFileSync(join(probesRoot, 'darwin-arm64', 'flags.json'), 'utf8'));
-const versionOutput = readFileSync(join(probesRoot, 'darwin-arm64', 'version.txt'), 'utf8').trim().split('\n')[0];
+const versionOutput = readFileSync(join(probesRoot, 'darwin-arm64', 'version.txt'), 'utf8')
+  .trim()
+  .split('\n')[0];
+const sourceReference = JSON.parse(readFileSync(sourceReferencePath, 'utf8'));
 
 if (source.sourceRevision !== SOURCE_REVISION || source.releaseTag !== RELEASE_TAG) {
   throw new Error('source.json drifted from the census pin');
+}
+if (
+  sourceReference.referenceVersion !== 2 ||
+  sourceReference.revision !== SOURCE_REVISION ||
+  sourceReference.tag !== RELEASE_TAG ||
+  sourceReference.vendorVersion !== VERSION
+) {
+  throw new Error('retained Hermes source reference drifted from the census pin');
 }
 
 const RUNTIME = 'hermes-runtime-headless';
@@ -42,6 +55,7 @@ const CAPTURED_AT = '2026-08-12T13:29:19.000Z';
 const string = (values) => ({ type: 'string', ...(values ? { enum: values } : {}) });
 const number = (bounds = {}) => ({ type: 'number', ...bounds });
 const boolean = { type: 'boolean' };
+const integer = (bounds = {}) => ({ type: 'integer', ...bounds });
 const object = (properties = {}, required = []) => ({
   type: 'object',
   ...(Object.keys(properties).length ? { properties } : {}),
@@ -63,15 +77,38 @@ function writeJson(path, value) {
   writeFileSync(path, `${JSON.stringify(value, null, 2)}\n`);
 }
 
+const writtenEvents = new Set();
+const writtenRoutes = [];
+
 function writeEvent(name, document) {
+  if (writtenEvents.has(name)) throw new Error(`duplicate Hermes ASM identity ${name}`);
+  writtenEvents.add(name);
+  const normalized = normalizeNativeEvent(name, document);
+  writtenRoutes.push({
+    identity: name,
+    nativeName: normalized.nativeName ?? name,
+    channel: normalized.channel,
+    transport: normalized.transport,
+    direction: normalized.direction,
+  });
   writeJson(join(eventsRoot, `${name}.json`), {
     surface: 'hermes',
     surfaceVersion: VERSION,
     event: name,
     firstSeen: VERSION,
-    lastVerified: VERSION,
-    ...document,
+    ...(normalized.fixture ? { lastVerified: VERSION } : {}),
+    ...normalized,
   });
+}
+
+function hasWrittenRoute(nativeName, channel, transport, direction) {
+  return writtenRoutes.some(
+    (route) =>
+      route.nativeName === nativeName &&
+      route.channel === channel &&
+      route.transport === transport &&
+      route.direction === direction,
+  );
 }
 
 function formatGenerated(path) {
@@ -101,35 +138,315 @@ const eventRecord = (type, payloadSchema) =>
           session_id: string(),
           payload: payloadSchema,
         },
-        ['type', 'payload'],
+        ['type'],
       ),
     },
     ['method', 'params'],
   );
 
 const nullableString = { anyOf: [{ type: 'string' }, { type: 'null' }] };
-const hookPayload = object(
-  {
-    hook_event_name: string(),
-    session_id: nullableString,
-    tool_name: nullableString,
-    platform: nullableString,
-    choice: nullableString,
-    keys: { type: 'array', items: string() },
-  },
-  ['hook_event_name', 'keys'],
-);
+const gatewayMethods = new Map(sourceReference.gateway.methods.map((method) => [method.name, method]));
+const gatewayEvents = new Map(sourceReference.gateway.events.map((event) => [event.name, event]));
+const hookNames = new Set(sourceReference.hooks.events);
+const workspaceMutation = sourceReference.workspaceMutation;
+if (
+  workspaceMutation?.event !== 'tool.complete' ||
+  workspaceMutation?.detailField !== 'inline_diff' ||
+  workspaceMutation?.representation !== 'ansi-rendered-diff-preview'
+) {
+  throw new Error('retained Hermes workspace mutation projection is missing or malformed');
+}
+
+function schemaForField(name) {
+  if (/^(?:has_|is_|can_|allow_|running|fast|yolo|interrupted|completed|failed|recoverable|partial)/.test(name)) {
+    return boolean;
+  }
+  if (/(?:_count|_index|_tokens|_ordinal|_ms|_bytes|^cols$|^depth$|^calls$)/.test(name)) {
+    return integer();
+  }
+  if (/^(?:messages|choices|tools|skills|toolsets|findings|todos|files_|output_tail)/.test(name)) {
+    return { type: 'array', items: {} };
+  }
+  if (
+    /(?:_id|_key|_name|_path|_url|_command|_reason|_status|_text|_model|_provider|_source|_mode|_tier|_topic|^cwd$|^text$|^name$|^status$|^source$|^choice$|^model$|^provider$|^profile$|^title$|^version$)/.test(
+      name,
+    )
+  ) {
+    return string();
+  }
+  return {};
+}
+
+function schemaFromKeys(keys, required = []) {
+  return object(Object.fromEntries(keys.map((key) => [key, schemaForField(key)])), required);
+}
+
+function collectObservedHookKeys() {
+  const byHook = new Map();
+  for (const scenario of readdirSync(capturesRoot, { withFileTypes: true }).filter((entry) => entry.isDirectory())) {
+    const path = join(capturesRoot, scenario.name, 'plugin-hooks.jsonl');
+    let lines;
+    try {
+      lines = readFileSync(path, 'utf8').split('\n').filter(Boolean);
+    } catch {
+      continue;
+    }
+    for (const line of lines) {
+      const record = JSON.parse(line);
+      if (typeof record.hook_event_name !== 'string' || !Array.isArray(record.keys)) continue;
+      const fields = byHook.get(record.hook_event_name) ?? new Set();
+      for (const key of record.keys) if (typeof key === 'string') fields.add(key);
+      byHook.set(record.hook_event_name, fields);
+    }
+  }
+  return new Map([...byHook].map(([name, fields]) => [name, [...fields].sort((a, b) => a.localeCompare(b))]));
+}
+
+const observedHookKeys = collectObservedHookKeys();
+const usageSchema = object({
+  model: string(),
+  input: integer({ minimum: 0 }),
+  output: integer({ minimum: 0 }),
+  reasoning: integer({ minimum: 0 }),
+  prompt: integer({ minimum: 0 }),
+  completion: integer({ minimum: 0 }),
+  total: integer({ minimum: 0 }),
+  calls: integer({ minimum: 0 }),
+  context_used: integer({ minimum: 0 }),
+  context_max: integer({ minimum: 0 }),
+  context_percent: integer({ minimum: 0, maximum: 100 }),
+  compressions: integer({ minimum: 0 }),
+  active_subagents: integer({ minimum: 0 }),
+  dev_credits_spent_micros: integer({ minimum: 0 }),
+});
+const nativeGatewayPayloads = new Map([
+  ['gateway.ready', object({ skin: object(), change_events: boolean }, ['skin', 'change_events'])],
+  [
+    'session.info',
+    object({
+      model: string(),
+      provider: string(),
+      reasoning_effort: string(),
+      service_tier: string(),
+      fast: boolean,
+      yolo: boolean,
+      approval_mode: string(),
+      tools: object(),
+      skills: object(),
+      cwd: string(),
+      branch: string(),
+      project: {},
+      personality: string(),
+      running: boolean,
+      title: string(),
+      stored_session_id: string(),
+      desktop_contract: {},
+      version: string(),
+      release_date: string(),
+      update_behind: {},
+      update_command: string(),
+      usage: usageSchema,
+      profile_name: string(),
+      mcp_servers: { type: 'array', items: {} },
+      system_prompt: string(),
+      credential_warning: {},
+    }),
+  ],
+  ['sessions.changed', object()],
+  ['message.start', object()],
+  ['thinking.delta', object({ text: string() }, ['text'])],
+  ['message.delta', object({ text: string() }, ['text'])],
+  ['reasoning.available', object({ text: string(), verbose: boolean }, ['text'])],
+  [
+    'message.complete',
+    object(
+      {
+        text: string(),
+        usage: usageSchema,
+        status: string(['complete', 'interrupted', 'error']),
+        reasoning: string(),
+        warning: string(),
+        response_previewed: boolean,
+        billing: object(),
+        failure_reason: string(),
+        rendered: string(),
+        error: string(),
+        recoverable: boolean,
+        partial: boolean,
+      },
+      ['text'],
+    ),
+  ],
+  ['tool.generating', object({ name: string() }, ['name'])],
+  [
+    'tool.start',
+    object(
+      {
+        tool_id: string(),
+        name: string(),
+        context: string(),
+        args_text: string(),
+        args: object(),
+        preview: string(),
+      },
+      ['tool_id', 'name'],
+    ),
+  ],
+  [
+    'tool.complete',
+    object(
+      {
+        tool_id: string(),
+        name: string(),
+        args: object(),
+        duration_s: number({ minimum: 0 }),
+        result: {},
+        summary: string(),
+        result_text: string(),
+        todos: { type: 'array', items: {} },
+        preview: string(),
+        inline_diff: {
+          type: 'string',
+          description:
+            'ANSI-rendered, bounded inline diff preview. This is presentation text and may omit files or lines; it is not a raw unified patch.',
+        },
+      },
+      ['tool_id', 'name', 'args'],
+    ),
+  ],
+  [
+    'approval.request',
+    object({
+      request_id: string(),
+      command: string(),
+      description: string(),
+      choices: { type: 'array', items: string() },
+      pattern_key: string(),
+      pattern_keys: { type: 'array', items: string() },
+      allow_permanent: boolean,
+      allow_session: boolean,
+      smart_denied: boolean,
+    }),
+  ],
+]);
+
+function hookResultSchema(name) {
+  if (name === 'pre_tool_call') {
+    return object({ action: string(['block']), message: string() }, ['action', 'message']);
+  }
+  if (name === 'pre_verify') {
+    return object({ action: string(['continue']), message: string() }, ['action', 'message']);
+  }
+  if (name === 'pre_llm_call') return object({ context: string() }, ['context']);
+  if (name.startsWith('transform_')) return string();
+  return undefined;
+}
+
+const sourceLimitations = sourceReference.projection.limitations;
+
+const toolCompleteRefinements = workspaceMutation.singlePathTools.map(({ name, pathField }) => ({
+  match: { name },
+  path: 'args',
+  schema: object({ [pathField]: string() }, [pathField]),
+  evidence: evidence(SOURCE),
+  confidence: 'unverified',
+  fidelity: 'structural',
+  limitations: [
+    `Pinned source proves ${name}.${pathField} is the single local path used to build the diff preview, but does not establish the complete legal tool argument schema.`,
+  ],
+}));
+
+function normalizeNativeEvent(identity, document) {
+  const nativeName = document.nativeName ?? identity;
+  const observed = Boolean(document.fixture);
+  if (document.channel === 'tui-gateway' && document.transport === 'jsonrpc-request') {
+    const method = gatewayMethods.get(nativeName);
+    if (!method) throw new Error(`Hermes source reference is missing method ${nativeName}`);
+    const payloadSchema = schemaFromKeys(method.params.accessedKeys, method.params.requiredByDirectIndexing);
+    const resultSchema = method.result.hasLiteralSuccessObject ? schemaFromKeys(method.result.literalTopLevelKeys) : {};
+    return {
+      ...document,
+      ...(nativeName === identity ? {} : { nativeName }),
+      payloadSchema,
+      resultSchema,
+      recordSchema: clientRecord(nativeName, payloadSchema),
+      recordChannel: 'tui-gateway',
+      evidence: {
+        existence: [observed ? RUNTIME : SOURCE],
+        shape: [SOURCE],
+        result: [SOURCE],
+        carrier: [SOURCE],
+      },
+      schemaFidelity: {
+        payload: 'structural',
+        result: 'structural',
+        carrier: 'structural',
+        limitations: sourceLimitations,
+      },
+      confidence: 'unverified',
+    };
+  }
+  if (document.channel === 'tui-gateway' && document.transport === 'jsonrpc-notification') {
+    const event = gatewayEvents.get(nativeName);
+    if (!event) throw new Error(`Hermes source reference is missing gateway event ${nativeName}`);
+    const payloadSchema = nativeGatewayPayloads.get(nativeName) ?? schemaFromKeys(event.payloadKeys);
+    return {
+      ...document,
+      ...(nativeName === identity ? {} : { nativeName }),
+      payloadSchema,
+      recordSchema: eventRecord(nativeName, payloadSchema),
+      recordChannel: 'tui-gateway',
+      evidence: {
+        existence: [observed ? RUNTIME : SOURCE],
+        shape: [SOURCE],
+        carrier: [SOURCE],
+      },
+      schemaFidelity: {
+        payload: 'structural',
+        carrier: 'structural',
+        limitations: sourceLimitations,
+      },
+      ...(nativeName === workspaceMutation.event ? { payloadRefinements: toolCompleteRefinements } : {}),
+      confidence: 'unverified',
+    };
+  }
+  if (document.channel === 'plugin-hook') {
+    if (!hookNames.has(nativeName)) throw new Error(`Hermes source reference is missing plugin hook ${nativeName}`);
+    const resultSchema = hookResultSchema(nativeName);
+    return {
+      ...document,
+      channels: ['plugin-hook', 'shell-hook', 'outbound-webhook'],
+      payloadSchema: schemaFromKeys(observedHookKeys.get(nativeName) ?? []),
+      ...(resultSchema ? { resultSchema } : {}),
+      evidence: {
+        existence: [observed ? RUNTIME : SOURCE],
+        shape: [SOURCE],
+        ...(resultSchema ? { result: [SOURCE] } : {}),
+      },
+      schemaFidelity: {
+        payload: 'structural',
+        ...(resultSchema ? { result: 'structural' } : {}),
+        limitations: [
+          'The primary payload is the in-process plugin callback kwargs object. Shell-hook and outbound-webhook envelopes are separately retained in the source reference.',
+          'Observed callback key inventories prove encountered top-level fields only; arbitrary plugin return values and event-specific nested values remain unconstrained.',
+        ],
+      },
+      confidence: 'unverified',
+    };
+  }
+  return document;
+}
 
 rmSync(modelRoot, { recursive: true, force: true });
 mkdirSync(eventsRoot, { recursive: true });
 
 writeJson(join(modelRoot, 'manifest.json'), {
-  asmVersion: 2,
+  asmVersion: 3,
   vendor: 'hermes',
   vendorVersion: VERSION,
-  generatedAt: '2026-08-12',
+  generatedAt: '2026-08-27',
   source:
-    'Hermes Agent 0.20.0 isolated-home stdio tui_gateway census plus identity/Gate 0 probes of the exact v2026.8.3 source revision. Unobserved source methods are omitted rather than marked verified.',
+    'Complete @method, gateway-event, and VALID_HOOKS inventory projected from the exact v2026.8.3 source revision, joined to isolated-home stdio tui_gateway runtime occurrence/order evidence.',
   evidence: 'evidence.json',
 });
 
@@ -171,7 +488,12 @@ writeJson(join(modelRoot, 'channels.json'), {
     },
     'plugin-hook': {
       kind: 'hook-callback',
-      notes: 'In-process plugin hooks. Default tui_gateway.entry does not load user plugins until discover_plugins runs.',
+      notes:
+        'In-process plugin hooks. Default tui_gateway.entry does not load user plugins until discover_plugins runs.',
+    },
+    'shell-hook': {
+      kind: 'json-stdio-callback',
+      notes: 'Configured shell scripts receive a serialized projection of plugin-hook kwargs and may return JSON.',
     },
     'outbound-webhook': {
       kind: 'webhook-http',
@@ -416,7 +738,8 @@ writeEvent('message.complete', {
   recordChannel: 'tui-gateway',
   evidence: eventEvidence,
   confidence: 'verified-headless',
-  variants: [variant({ status: 'complete' }), variant({ status: 'interrupted' })],
+  variants: [variant({ status: 'complete' }), variant({ status: 'interrupted' }), variant({ status: 'error' }, SOURCE)],
+  variantDiscriminants: ['status'],
   fixture: `captures/hermes@${VERSION}/interrupt/rpc.jsonl`,
 });
 
@@ -521,11 +844,51 @@ for (const [name, fixture] of Object.entries(hookFixtures)) {
     channels: ['plugin-hook', 'outbound-webhook'],
     transport: 'hook-callback',
     direction: 'agent-local',
-    payloadSchema: hookPayload,
+    payloadSchema: object(),
     evidence: hookEvidence,
     confidence: 'verified-headless',
     fixture: `captures/hermes@${VERSION}/${fixture}/plugin-hooks.jsonl`,
     notes: 'Outbound webhook is a notify-only copy of the same hook name.',
+  });
+}
+
+for (const method of sourceReference.gateway.methods) {
+  if (hasWrittenRoute(method.name, 'tui-gateway', 'jsonrpc-request', 'client-to-agent')) continue;
+  const identity = writtenEvents.has(method.name) ? `gateway-method:${method.name}` : method.name;
+  writeEvent(identity, {
+    ...(identity === method.name ? {} : { nativeName: method.name }),
+    channel: 'tui-gateway',
+    channels: ['tui-gateway'],
+    transport: 'jsonrpc-request',
+    direction: 'client-to-agent',
+    confidence: 'unverified',
+    notes: `Registered by ${method.source.path}:${method.source.line}; runtime reachability was not captured.`,
+  });
+}
+
+for (const event of sourceReference.gateway.events) {
+  if (hasWrittenRoute(event.name, 'tui-gateway', 'jsonrpc-notification', 'agent-to-client')) continue;
+  const identity = writtenEvents.has(event.name) ? `gateway-event:${event.name}` : event.name;
+  writeEvent(identity, {
+    ...(identity === event.name ? {} : { nativeName: event.name }),
+    channel: 'tui-gateway',
+    channels: ['tui-gateway'],
+    transport: 'jsonrpc-notification',
+    direction: 'agent-to-client',
+    confidence: 'unverified',
+    notes: `Retained from the exact source inventory (${event.projections.join(', ')}); runtime reachability was not captured.`,
+  });
+}
+
+for (const name of sourceReference.hooks.events) {
+  if (writtenEvents.has(name)) continue;
+  writeEvent(name, {
+    channel: 'plugin-hook',
+    channels: ['plugin-hook', 'shell-hook', 'outbound-webhook'],
+    transport: 'hook-callback',
+    direction: 'agent-local',
+    confidence: 'unverified',
+    notes: 'Declared in VALID_HOOKS at the pinned revision; this hook was not encountered by the turn census.',
   });
 }
 
@@ -552,7 +915,8 @@ writeJson(join(modelRoot, 'behavior.json'), {
   title: 'Hermes Agent 0.20.0 native TUI-gateway lifecycle',
   description:
     'Partial order over stdio tui_gateway JSON-RPC and isolated-home hooks. Live Node TUI attach is the same dispatcher but is not itself a capture in this model.',
-  source: 'Hermetic Hermes 0.20.0 turn census. Unobserved source methods are omitted.',
+  source:
+    'Hermetic Hermes 0.20.0 turn census for the observed partial order; the full source-only inventory remains outside this behavior graph.',
   lanes: [
     { id: 'session', label: 'Session' },
     { id: 'turn', label: 'Turn stream' },
@@ -671,6 +1035,13 @@ writeJson(join(modelRoot, 'evidence.json'), {
       sha256: digestTree(probesRoot),
     },
     {
+      id: 'exact-source-surface',
+      kind: 'source-projection',
+      path: posix(referenceRoot),
+      digestAlgorithm: 'sha256-path-content-v1',
+      sha256: digestTree(referenceRoot),
+    },
+    {
       id: 'agent-surface-model',
       kind: 'model-tree',
       path: posix(modelRoot),
@@ -705,15 +1076,18 @@ writeJson(join(modelRoot, 'evidence.json'), {
       id: SOURCE,
       kind: 'exact-source',
       confidence: 'unverified',
+      record: 'exact-source-surface',
       sourceReference: 0,
-      notes: 'Pinned checkout lead for unobserved methods. It cannot promote a runtime claim.',
+      notes:
+        'Digest-pinned complete method/event/hook inventory and conservative native-schema projection. Source alone does not establish runtime reachability.',
     },
   ],
   limitations: [
     'Only darwin-arm64 executed the source-revision checkout. Other platforms are declared execution environments, not separately captured binaries.',
     'Turn captures are stdio tui_gateway, not a live hermes --tui PTY with a Node viewer attached.',
     'Plugin hooks and outbound webhooks required the census sidecar. Default tui_gateway.entry does not register them.',
-    'Unobserved source methods (session.compress, prompt.background, clarify.respond, subagent.*, allow-once/always) are omitted from events/.',
+    'Committed 0.20.0 turn fixtures are legacy privacy projections. They prove event occurrence, variants, and ordering, but are not native payload or carrier schemas.',
+    'Dynamic Python helpers prevent exact schemas for every method result and gateway event; such schemas are explicitly structural or unconstrained and retain source locations/hashes.',
     'state.db was used for resume identity but was not snapshotted as a live event carrier.',
   ],
 });

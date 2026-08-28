@@ -7,35 +7,74 @@
   "direction": "client-to-agent",
   "trigger": "Decrement the thread-local out-of-band elicitation counter.\n\nWhen the count reaches zero, timeout accounting resumes for the thread.",
   "payloadSchema": {
-    "type": "object",
+    "description": "Parameters for `thread/decrement_elicitation`.",
     "properties": {
       "threadId": {
+        "description": "Thread whose out-of-band elicitation counter should be decremented.",
         "type": "string"
       }
     },
     "required": [
       "threadId"
-    ]
+    ],
+    "type": "object",
+    "$schema": "http://json-schema.org/draft-07/schema#"
   },
   "recordSchema": {
-    "type": "object",
+    "description": "Decrement the thread-local out-of-band elicitation counter.\n\nWhen the count reaches zero, timeout accounting resumes for the thread.",
     "properties": {
+      "id": {
+        "$ref": "#/$defs/RequestId"
+      },
       "method": {
-        "type": "string",
         "enum": [
           "thread/decrement_elicitation"
-        ]
+        ],
+        "title": "Thread/decrementElicitationRequestMethod",
+        "type": "string"
       },
       "params": {
-        "type": "object"
-      },
-      "id": {}
+        "$ref": "#/$defs/ThreadDecrementElicitationParams"
+      }
     },
     "required": [
+      "id",
       "method",
-      "params",
-      "id"
-    ]
+      "params"
+    ],
+    "title": "Thread/decrementElicitationRequest",
+    "type": "object",
+    "$defs": {
+      "RequestId": {
+        "anyOf": [
+          {
+            "type": "string"
+          },
+          {
+            "format": "int64",
+            "type": "integer"
+          }
+        ]
+      },
+      "ThreadDecrementElicitationParams": {
+        "description": "Parameters for `thread/decrement_elicitation`.",
+        "properties": {
+          "threadId": {
+            "description": "Thread whose out-of-band elicitation counter should be decremented.",
+            "type": "string"
+          }
+        },
+        "required": [
+          "threadId"
+        ],
+        "type": "object"
+      }
+    },
+    "$schema": "http://json-schema.org/draft-07/schema#"
+  },
+  "schemaFidelity": {
+    "payload": "exact",
+    "carrier": "exact"
   },
   "evidence": {
     "existence": [

@@ -6,14 +6,29 @@
   "transport": "jsonrpc-request",
   "direction": "client-to-agent",
   "payloadSchema": {
-    "type": "object",
     "properties": {
-      "connectorId": {},
-      "originCallId": {},
+      "connectorId": {
+        "type": [
+          "string",
+          "null"
+        ]
+      },
+      "originCallId": {
+        "description": "Originating MCP tool call used to select the resource's app.",
+        "type": [
+          "string",
+          "null"
+        ]
+      },
       "server": {
         "type": "string"
       },
-      "threadId": {},
+      "threadId": {
+        "type": [
+          "string",
+          "null"
+        ]
+      },
       "uri": {
         "type": "string"
       }
@@ -21,27 +36,85 @@
     "required": [
       "server",
       "uri"
-    ]
+    ],
+    "type": "object",
+    "$schema": "http://json-schema.org/draft-07/schema#"
   },
   "recordSchema": {
-    "type": "object",
     "properties": {
+      "id": {
+        "$ref": "#/$defs/RequestId"
+      },
       "method": {
-        "type": "string",
         "enum": [
           "mcpServer/resource/read"
-        ]
+        ],
+        "title": "McpServer/resource/readRequestMethod",
+        "type": "string"
       },
       "params": {
-        "type": "object"
-      },
-      "id": {}
+        "$ref": "#/$defs/McpResourceReadParams"
+      }
     },
     "required": [
+      "id",
       "method",
-      "params",
-      "id"
-    ]
+      "params"
+    ],
+    "title": "McpServer/resource/readRequest",
+    "type": "object",
+    "$defs": {
+      "RequestId": {
+        "anyOf": [
+          {
+            "type": "string"
+          },
+          {
+            "format": "int64",
+            "type": "integer"
+          }
+        ]
+      },
+      "McpResourceReadParams": {
+        "properties": {
+          "connectorId": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "originCallId": {
+            "description": "Originating MCP tool call used to select the resource's app.",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "server": {
+            "type": "string"
+          },
+          "threadId": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "uri": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "server",
+          "uri"
+        ],
+        "type": "object"
+      }
+    },
+    "$schema": "http://json-schema.org/draft-07/schema#"
+  },
+  "schemaFidelity": {
+    "payload": "exact",
+    "carrier": "exact"
   },
   "evidence": {
     "existence": [

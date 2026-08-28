@@ -6,10 +6,10 @@
   "transport": "jsonrpc-notification",
   "direction": "agent-to-client",
   "payloadSchema": {
-    "type": "object",
+    "description": "EXPERIMENTAL - a realtime timeline item started before its content streams.",
     "properties": {
       "item": {
-        "type": "object"
+        "$ref": "#/$defs/ThreadRealtimeItem"
       },
       "threadId": {
         "type": "string"
@@ -18,30 +18,412 @@
     "required": [
       "item",
       "threadId"
-    ]
-  },
-  "recordSchema": {
+    ],
     "type": "object",
-    "properties": {
-      "method": {
-        "type": "string",
-        "enum": [
-          "thread/realtime/item/started"
-        ]
-      },
-      "params": {
+    "$defs": {
+      "ThreadRealtimeItem": {
+        "description": "EXPERIMENTAL - a thread-scoped realtime item in the canonical timeline.",
+        "oneOf": [
+          {
+            "properties": {
+              "type": {
+                "enum": [
+                  "realtimeSessionStarted"
+                ],
+                "title": "RealtimeSessionStartedThreadRealtimeItemType",
+                "type": "string"
+              }
+            },
+            "required": [
+              "type"
+            ],
+            "title": "RealtimeSessionStartedThreadRealtimeItem",
+            "type": "object"
+          },
+          {
+            "properties": {
+              "role": {
+                "$ref": "#/$defs/ThreadRealtimeTranscriptRole"
+              },
+              "text": {
+                "type": "string"
+              },
+              "type": {
+                "enum": [
+                  "transcriptSegment"
+                ],
+                "title": "TranscriptSegmentThreadRealtimeItemType",
+                "type": "string"
+              }
+            },
+            "required": [
+              "role",
+              "text",
+              "type"
+            ],
+            "title": "TranscriptSegmentThreadRealtimeItem",
+            "type": "object"
+          },
+          {
+            "properties": {
+              "item_id": {
+                "type": "string"
+              },
+              "presentation": {
+                "$ref": "#/$defs/ThreadRealtimeBemItemPresentation"
+              },
+              "turn_id": {
+                "type": "string"
+              },
+              "type": {
+                "enum": [
+                  "bemItemPromoted"
+                ],
+                "title": "BemItemPromotedThreadRealtimeItemType",
+                "type": "string"
+              }
+            },
+            "required": [
+              "item_id",
+              "presentation",
+              "turn_id",
+              "type"
+            ],
+            "title": "BemItemPromotedThreadRealtimeItem",
+            "type": "object"
+          },
+          {
+            "properties": {
+              "outcome": {
+                "$ref": "#/$defs/ThreadRealtimeSessionOutcome"
+              },
+              "type": {
+                "enum": [
+                  "realtimeSessionClosed"
+                ],
+                "title": "RealtimeSessionClosedThreadRealtimeItemType",
+                "type": "string"
+              }
+            },
+            "required": [
+              "outcome",
+              "type"
+            ],
+            "title": "RealtimeSessionClosedThreadRealtimeItem",
+            "type": "object"
+          }
+        ],
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "realtimeSessionId": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "realtimeSessionId"
+        ],
         "type": "object"
       },
-      "emittedAtMs": {
-        "type": "number",
-        "minimum": 1000000000000
+      "ThreadRealtimeTranscriptRole": {
+        "enum": [
+          "user",
+          "assistant"
+        ],
+        "type": "string"
+      },
+      "ThreadRealtimeBemItemPresentation": {
+        "description": "EXPERIMENTAL - how an existing agent item appears in a realtime conversation.",
+        "oneOf": [
+          {
+            "properties": {
+              "type": {
+                "enum": [
+                  "wholeItem"
+                ],
+                "title": "WholeItemThreadRealtimeBemItemPresentationType",
+                "type": "string"
+              }
+            },
+            "required": [
+              "type"
+            ],
+            "title": "WholeItemThreadRealtimeBemItemPresentation",
+            "type": "object"
+          },
+          {
+            "properties": {
+              "type": {
+                "enum": [
+                  "inlineMarkdown"
+                ],
+                "title": "InlineMarkdownThreadRealtimeBemItemPresentationType",
+                "type": "string"
+              }
+            },
+            "required": [
+              "type"
+            ],
+            "title": "InlineMarkdownThreadRealtimeBemItemPresentation",
+            "type": "object"
+          },
+          {
+            "properties": {
+              "index": {
+                "format": "uint32",
+                "minimum": 0,
+                "type": "integer"
+              },
+              "type": {
+                "enum": [
+                  "inlineVisualization"
+                ],
+                "title": "InlineVisualizationThreadRealtimeBemItemPresentationType",
+                "type": "string"
+              }
+            },
+            "required": [
+              "index",
+              "type"
+            ],
+            "title": "InlineVisualizationThreadRealtimeBemItemPresentation",
+            "type": "object"
+          }
+        ]
+      },
+      "ThreadRealtimeSessionOutcome": {
+        "enum": [
+          "ended",
+          "failed"
+        ],
+        "type": "string"
+      }
+    },
+    "$schema": "http://json-schema.org/draft-07/schema#"
+  },
+  "recordSchema": {
+    "properties": {
+      "method": {
+        "enum": [
+          "thread/realtime/item/started"
+        ],
+        "title": "Thread/realtime/item/startedNotificationMethod",
+        "type": "string"
+      },
+      "params": {
+        "$ref": "#/$defs/ThreadRealtimeItemStartedNotification"
       }
     },
     "required": [
       "method",
-      "params",
-      "emittedAtMs"
-    ]
+      "params"
+    ],
+    "title": "Thread/realtime/item/startedNotification",
+    "type": "object",
+    "$defs": {
+      "ThreadRealtimeItemStartedNotification": {
+        "description": "EXPERIMENTAL - a realtime timeline item started before its content streams.",
+        "properties": {
+          "item": {
+            "$ref": "#/$defs/ThreadRealtimeItem"
+          },
+          "threadId": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "item",
+          "threadId"
+        ],
+        "type": "object"
+      },
+      "ThreadRealtimeItem": {
+        "description": "EXPERIMENTAL - a thread-scoped realtime item in the canonical timeline.",
+        "oneOf": [
+          {
+            "properties": {
+              "type": {
+                "enum": [
+                  "realtimeSessionStarted"
+                ],
+                "title": "RealtimeSessionStartedThreadRealtimeItemType",
+                "type": "string"
+              }
+            },
+            "required": [
+              "type"
+            ],
+            "title": "RealtimeSessionStartedThreadRealtimeItem",
+            "type": "object"
+          },
+          {
+            "properties": {
+              "role": {
+                "$ref": "#/$defs/ThreadRealtimeTranscriptRole"
+              },
+              "text": {
+                "type": "string"
+              },
+              "type": {
+                "enum": [
+                  "transcriptSegment"
+                ],
+                "title": "TranscriptSegmentThreadRealtimeItemType",
+                "type": "string"
+              }
+            },
+            "required": [
+              "role",
+              "text",
+              "type"
+            ],
+            "title": "TranscriptSegmentThreadRealtimeItem",
+            "type": "object"
+          },
+          {
+            "properties": {
+              "item_id": {
+                "type": "string"
+              },
+              "presentation": {
+                "$ref": "#/$defs/ThreadRealtimeBemItemPresentation"
+              },
+              "turn_id": {
+                "type": "string"
+              },
+              "type": {
+                "enum": [
+                  "bemItemPromoted"
+                ],
+                "title": "BemItemPromotedThreadRealtimeItemType",
+                "type": "string"
+              }
+            },
+            "required": [
+              "item_id",
+              "presentation",
+              "turn_id",
+              "type"
+            ],
+            "title": "BemItemPromotedThreadRealtimeItem",
+            "type": "object"
+          },
+          {
+            "properties": {
+              "outcome": {
+                "$ref": "#/$defs/ThreadRealtimeSessionOutcome"
+              },
+              "type": {
+                "enum": [
+                  "realtimeSessionClosed"
+                ],
+                "title": "RealtimeSessionClosedThreadRealtimeItemType",
+                "type": "string"
+              }
+            },
+            "required": [
+              "outcome",
+              "type"
+            ],
+            "title": "RealtimeSessionClosedThreadRealtimeItem",
+            "type": "object"
+          }
+        ],
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "realtimeSessionId": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "realtimeSessionId"
+        ],
+        "type": "object"
+      },
+      "ThreadRealtimeTranscriptRole": {
+        "enum": [
+          "user",
+          "assistant"
+        ],
+        "type": "string"
+      },
+      "ThreadRealtimeBemItemPresentation": {
+        "description": "EXPERIMENTAL - how an existing agent item appears in a realtime conversation.",
+        "oneOf": [
+          {
+            "properties": {
+              "type": {
+                "enum": [
+                  "wholeItem"
+                ],
+                "title": "WholeItemThreadRealtimeBemItemPresentationType",
+                "type": "string"
+              }
+            },
+            "required": [
+              "type"
+            ],
+            "title": "WholeItemThreadRealtimeBemItemPresentation",
+            "type": "object"
+          },
+          {
+            "properties": {
+              "type": {
+                "enum": [
+                  "inlineMarkdown"
+                ],
+                "title": "InlineMarkdownThreadRealtimeBemItemPresentationType",
+                "type": "string"
+              }
+            },
+            "required": [
+              "type"
+            ],
+            "title": "InlineMarkdownThreadRealtimeBemItemPresentation",
+            "type": "object"
+          },
+          {
+            "properties": {
+              "index": {
+                "format": "uint32",
+                "minimum": 0,
+                "type": "integer"
+              },
+              "type": {
+                "enum": [
+                  "inlineVisualization"
+                ],
+                "title": "InlineVisualizationThreadRealtimeBemItemPresentationType",
+                "type": "string"
+              }
+            },
+            "required": [
+              "index",
+              "type"
+            ],
+            "title": "InlineVisualizationThreadRealtimeBemItemPresentation",
+            "type": "object"
+          }
+        ]
+      },
+      "ThreadRealtimeSessionOutcome": {
+        "enum": [
+          "ended",
+          "failed"
+        ],
+        "type": "string"
+      }
+    },
+    "$schema": "http://json-schema.org/draft-07/schema#"
+  },
+  "schemaFidelity": {
+    "payload": "exact",
+    "carrier": "exact"
   },
   "evidence": {
     "existence": [
@@ -51,7 +433,7 @@
       "codex-generated-schema"
     ],
     "carrier": [
-      "codex-runtime-headless"
+      "codex-generated-schema"
     ]
   },
   "confidence": "unverified"

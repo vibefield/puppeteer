@@ -9,8 +9,9 @@
  * don't assume).
  *
  * Ground truth: the claim-addressable Surface candidate for Claude Code
- * 2.1.226. Runtime-captured and official-document-only events remain
- * visibly distinct through their confidence values.
+ * 2.1.226. Existence-evidence confidence distinguishes runtime-observed
+ * hooks from official-document-only hooks; aggregate schema confidence remains
+ * in Layer 0 and may be lower when callback shape is documentation-only.
  *
  * Transport preference implements the hybrid bridge (DESIGN §16.4):
  * high-frequency events go over HTTP (no forwarder process per event);

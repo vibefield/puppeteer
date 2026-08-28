@@ -6,9 +6,14 @@
   "transport": "jsonrpc-notification",
   "direction": "agent-to-client",
   "payloadSchema": {
-    "type": "object",
+    "description": "Current remote-control connection status and remote identity exposed to clients.",
     "properties": {
-      "environmentId": {},
+      "environmentId": {
+        "type": [
+          "string",
+          "null"
+        ]
+      },
       "installationId": {
         "type": "string"
       },
@@ -16,26 +21,39 @@
         "type": "string"
       },
       "status": {
-        "type": "string"
+        "$ref": "#/$defs/RemoteControlConnectionStatus"
       }
     },
     "required": [
       "installationId",
       "serverName",
       "status"
-    ]
+    ],
+    "type": "object",
+    "$defs": {
+      "RemoteControlConnectionStatus": {
+        "enum": [
+          "disabled",
+          "connecting",
+          "connected",
+          "errored"
+        ],
+        "type": "string"
+      }
+    },
+    "$schema": "http://json-schema.org/draft-07/schema#"
   },
   "recordSchema": {
-    "type": "object",
     "properties": {
       "method": {
-        "type": "string",
         "enum": [
           "remoteControl/status/changed"
-        ]
+        ],
+        "title": "RemoteControl/status/changedNotificationMethod",
+        "type": "string"
       },
       "params": {
-        "type": "object"
+        "$ref": "#/$defs/RemoteControlStatusChangedNotification"
       },
       "emittedAtMs": {
         "type": "number",
@@ -46,16 +64,63 @@
       "method",
       "params",
       "emittedAtMs"
-    ]
+    ],
+    "title": "RemoteControl/status/changedNotification",
+    "type": "object",
+    "$defs": {
+      "RemoteControlStatusChangedNotification": {
+        "description": "Current remote-control connection status and remote identity exposed to clients.",
+        "properties": {
+          "environmentId": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "installationId": {
+            "type": "string"
+          },
+          "serverName": {
+            "type": "string"
+          },
+          "status": {
+            "$ref": "#/$defs/RemoteControlConnectionStatus"
+          }
+        },
+        "required": [
+          "installationId",
+          "serverName",
+          "status"
+        ],
+        "type": "object"
+      },
+      "RemoteControlConnectionStatus": {
+        "enum": [
+          "disabled",
+          "connecting",
+          "connected",
+          "errored"
+        ],
+        "type": "string"
+      }
+    },
+    "$schema": "http://json-schema.org/draft-07/schema#"
+  },
+  "schemaFidelity": {
+    "payload": "exact",
+    "carrier": "semantic"
   },
   "evidence": {
     "existence": [
-      "codex-runtime-headless"
+      "codex-runtime-headless",
+      "codex-generated-schema"
     ],
     "shape": [
+      "codex-generated-schema",
       "codex-runtime-headless"
     ],
     "carrier": [
+      "codex-generated-schema",
       "codex-runtime-headless"
     ]
   },

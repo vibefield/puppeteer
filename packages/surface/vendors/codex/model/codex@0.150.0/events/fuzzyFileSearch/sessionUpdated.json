@@ -6,9 +6,11 @@
   "transport": "jsonrpc-notification",
   "direction": "agent-to-client",
   "payloadSchema": {
-    "type": "object",
     "properties": {
       "files": {
+        "items": {
+          "$ref": "#/$defs/FuzzyFileSearchResult"
+        },
         "type": "array"
       },
       "query": {
@@ -22,30 +24,156 @@
       "files",
       "query",
       "sessionId"
-    ]
-  },
-  "recordSchema": {
+    ],
     "type": "object",
-    "properties": {
-      "method": {
-        "type": "string",
-        "enum": [
-          "fuzzyFileSearch/sessionUpdated"
-        ]
-      },
-      "params": {
+    "$defs": {
+      "FuzzyFileSearchResult": {
+        "description": "Superset of [`codex_file_search::FileMatch`]",
+        "properties": {
+          "file_name": {
+            "type": "string"
+          },
+          "indices": {
+            "items": {
+              "format": "uint32",
+              "minimum": 0,
+              "type": "integer"
+            },
+            "type": [
+              "array",
+              "null"
+            ]
+          },
+          "match_type": {
+            "$ref": "#/$defs/FuzzyFileSearchMatchType"
+          },
+          "path": {
+            "type": "string"
+          },
+          "root": {
+            "type": "string"
+          },
+          "score": {
+            "format": "uint32",
+            "minimum": 0,
+            "type": "integer"
+          }
+        },
+        "required": [
+          "file_name",
+          "match_type",
+          "path",
+          "root",
+          "score"
+        ],
         "type": "object"
       },
-      "emittedAtMs": {
-        "type": "number",
-        "minimum": 1000000000000
+      "FuzzyFileSearchMatchType": {
+        "enum": [
+          "file",
+          "directory"
+        ],
+        "type": "string"
+      }
+    },
+    "$schema": "http://json-schema.org/draft-07/schema#"
+  },
+  "recordSchema": {
+    "properties": {
+      "method": {
+        "enum": [
+          "fuzzyFileSearch/sessionUpdated"
+        ],
+        "title": "FuzzyFileSearch/sessionUpdatedNotificationMethod",
+        "type": "string"
+      },
+      "params": {
+        "$ref": "#/$defs/FuzzyFileSearchSessionUpdatedNotification"
       }
     },
     "required": [
       "method",
-      "params",
-      "emittedAtMs"
-    ]
+      "params"
+    ],
+    "title": "FuzzyFileSearch/sessionUpdatedNotification",
+    "type": "object",
+    "$defs": {
+      "FuzzyFileSearchSessionUpdatedNotification": {
+        "properties": {
+          "files": {
+            "items": {
+              "$ref": "#/$defs/FuzzyFileSearchResult"
+            },
+            "type": "array"
+          },
+          "query": {
+            "type": "string"
+          },
+          "sessionId": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "files",
+          "query",
+          "sessionId"
+        ],
+        "type": "object"
+      },
+      "FuzzyFileSearchResult": {
+        "description": "Superset of [`codex_file_search::FileMatch`]",
+        "properties": {
+          "file_name": {
+            "type": "string"
+          },
+          "indices": {
+            "items": {
+              "format": "uint32",
+              "minimum": 0,
+              "type": "integer"
+            },
+            "type": [
+              "array",
+              "null"
+            ]
+          },
+          "match_type": {
+            "$ref": "#/$defs/FuzzyFileSearchMatchType"
+          },
+          "path": {
+            "type": "string"
+          },
+          "root": {
+            "type": "string"
+          },
+          "score": {
+            "format": "uint32",
+            "minimum": 0,
+            "type": "integer"
+          }
+        },
+        "required": [
+          "file_name",
+          "match_type",
+          "path",
+          "root",
+          "score"
+        ],
+        "type": "object"
+      },
+      "FuzzyFileSearchMatchType": {
+        "enum": [
+          "file",
+          "directory"
+        ],
+        "type": "string"
+      }
+    },
+    "$schema": "http://json-schema.org/draft-07/schema#"
+  },
+  "schemaFidelity": {
+    "payload": "exact",
+    "carrier": "exact"
   },
   "evidence": {
     "existence": [
@@ -55,7 +183,7 @@
       "codex-generated-schema"
     ],
     "carrier": [
-      "codex-runtime-headless"
+      "codex-generated-schema"
     ]
   },
   "confidence": "unverified"

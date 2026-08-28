@@ -6,12 +6,13 @@
   "transport": "jsonrpc-notification",
   "direction": "agent-to-client",
   "payloadSchema": {
-    "type": "object",
+    "description": "EXPERIMENTAL - final transcript text emitted when realtime completes a transcript part.",
     "properties": {
       "role": {
         "type": "string"
       },
       "text": {
+        "description": "Final complete text for the transcript part.",
         "type": "string"
       },
       "threadId": {
@@ -22,30 +23,57 @@
       "role",
       "text",
       "threadId"
-    ]
+    ],
+    "type": "object",
+    "$schema": "http://json-schema.org/draft-07/schema#"
   },
   "recordSchema": {
-    "type": "object",
     "properties": {
       "method": {
-        "type": "string",
         "enum": [
           "thread/realtime/transcript/done"
-        ]
+        ],
+        "title": "Thread/realtime/transcript/doneNotificationMethod",
+        "type": "string"
       },
       "params": {
-        "type": "object"
-      },
-      "emittedAtMs": {
-        "type": "number",
-        "minimum": 1000000000000
+        "$ref": "#/$defs/ThreadRealtimeTranscriptDoneNotification"
       }
     },
     "required": [
       "method",
-      "params",
-      "emittedAtMs"
-    ]
+      "params"
+    ],
+    "title": "Thread/realtime/transcript/doneNotification",
+    "type": "object",
+    "$defs": {
+      "ThreadRealtimeTranscriptDoneNotification": {
+        "description": "EXPERIMENTAL - final transcript text emitted when realtime completes a transcript part.",
+        "properties": {
+          "role": {
+            "type": "string"
+          },
+          "text": {
+            "description": "Final complete text for the transcript part.",
+            "type": "string"
+          },
+          "threadId": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "role",
+          "text",
+          "threadId"
+        ],
+        "type": "object"
+      }
+    },
+    "$schema": "http://json-schema.org/draft-07/schema#"
+  },
+  "schemaFidelity": {
+    "payload": "exact",
+    "carrier": "exact"
   },
   "evidence": {
     "existence": [
@@ -55,7 +83,7 @@
       "codex-generated-schema"
     ],
     "carrier": [
-      "codex-runtime-headless"
+      "codex-generated-schema"
     ]
   },
   "confidence": "unverified"

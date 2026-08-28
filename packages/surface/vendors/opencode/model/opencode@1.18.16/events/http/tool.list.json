@@ -10,16 +10,11 @@
   "direction": "client-to-agent",
   "trigger": "List tools — Get a list of available tools with their JSON schema parameters for a specific provider and model combination.",
   "payloadSchema": {
-    "type": "object",
     "properties": {
       "method": {
         "type": "string"
       },
-      "route": {
-        "type": "string"
-      },
       "query": {
-        "type": "object",
         "properties": {
           "directory": {
             "type": "string"
@@ -37,37 +32,32 @@
         "required": [
           "model",
           "provider"
-        ]
+        ],
+        "type": "object"
+      },
+      "route": {
+        "type": "string"
       }
     },
     "required": [
       "method",
       "route",
       "query"
-    ]
+    ],
+    "type": "object"
   },
   "resultSchema": {
-    "type": "object",
     "properties": {
+      "body": {
+        "$ref": "#/$defs/ToolList"
+      },
       "method": {
-        "type": "string",
         "enum": [
           "GET"
-        ]
-      },
-      "route": {
-        "type": "string",
-        "enum": [
-          "/experimental/tool"
-        ]
-      },
-      "status": {
-        "type": "integer",
-        "minimum": 200,
-        "maximum": 299
+        ],
+        "type": "string"
       },
       "query": {
-        "type": "object",
         "properties": {
           "directory": {
             "type": "string"
@@ -85,27 +75,19 @@
         "required": [
           "model",
           "provider"
-        ]
+        ],
+        "type": "object"
       },
-      "body": {
-        "type": "array",
-        "items": {
-          "type": "object",
-          "properties": {
-            "description": {
-              "type": "string"
-            },
-            "id": {
-              "type": "string"
-            },
-            "parameters": {}
-          },
-          "required": [
-            "description",
-            "id",
-            "parameters"
-          ]
-        }
+      "route": {
+        "enum": [
+          "/experimental/tool"
+        ],
+        "type": "string"
+      },
+      "status": {
+        "maximum": 299,
+        "minimum": 200,
+        "type": "integer"
       }
     },
     "required": [
@@ -114,34 +96,52 @@
       "status",
       "query",
       "body"
-    ]
+    ],
+    "type": "object",
+    "$defs": {
+      "ToolList": {
+        "items": {
+          "$ref": "#/$defs/ToolListItem"
+        },
+        "type": "array"
+      },
+      "ToolListItem": {
+        "additionalProperties": false,
+        "properties": {
+          "description": {
+            "type": "string"
+          },
+          "id": {
+            "type": "string"
+          },
+          "parameters": {}
+        },
+        "required": [
+          "id",
+          "description",
+          "parameters"
+        ],
+        "type": "object"
+      }
+    }
   },
   "recordSchema": {
-    "type": "object",
     "properties": {
       "direction": {
-        "type": "string",
         "enum": [
           "client-to-agent"
-        ]
+        ],
+        "type": "string"
       },
       "request": {
-        "type": "object",
         "properties": {
           "method": {
-            "type": "string",
             "enum": [
               "GET"
-            ]
-          },
-          "route": {
-            "type": "string",
-            "enum": [
-              "/experimental/tool"
-            ]
+            ],
+            "type": "string"
           },
           "query": {
-            "type": "object",
             "properties": {
               "directory": {
                 "type": "string"
@@ -159,20 +159,34 @@
             "required": [
               "model",
               "provider"
-            ]
+            ],
+            "type": "object"
+          },
+          "route": {
+            "enum": [
+              "/experimental/tool"
+            ],
+            "type": "string"
           }
         },
         "required": [
           "method",
           "route",
           "query"
-        ]
+        ],
+        "type": "object"
       }
     },
     "required": [
       "direction",
       "request"
-    ]
+    ],
+    "type": "object"
+  },
+  "schemaFidelity": {
+    "payload": "semantic",
+    "result": "semantic",
+    "carrier": "semantic"
   },
   "evidence": {
     "existence": [

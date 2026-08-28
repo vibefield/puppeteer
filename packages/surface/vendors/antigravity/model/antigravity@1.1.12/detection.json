@@ -1,0 +1,19 @@
+{
+  "executables": ["agy", "antigravity"],
+  "envVar": "PUPPETEER_ANTIGRAVITY_BIN",
+  "versionFlag": "--version",
+  "versionOutput": "1.1.12",
+  "versionPattern": "^(\\d+\\.\\d+\\.\\d+)$",
+  "helpFlag": "--help",
+  "launchFlags": {
+    "print": "--print, -p",
+    "outputFormat": "--output-format",
+    "session": "--conversation",
+    "resume": "--continue, -c",
+    "addDirectory": "--add-dir",
+    "model": "--model",
+    "mode": "--mode",
+    "agent": "--agent",
+    "sandbox": "--sandbox"
+  }
+}

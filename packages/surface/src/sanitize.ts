@@ -37,6 +37,8 @@ export interface SanitizerRules {
   /** Once inside, EVERYTHING is redacted unless it is a structural enum. */
   sensitiveContainer: RegExp;
   structuralEnumKey: RegExp;
+  /** Known non-sensitive protocol values whose key is otherwise free-form (for example error.name). */
+  structuralEnumValue: RegExp;
   /** Values already in redacted form; passed through so sanitising is idempotent. */
   alreadyRedacted: RegExp;
   /** Value-level patterns redacted (and detected) regardless of key. */
@@ -93,6 +95,7 @@ export const defaultRules: SanitizerRules = {
   ),
   sensitiveContainer: /^(?:tool_input|tool_response)$/i,
   structuralEnumKey: /^(?:type|kind|role|status|mode|behavior|destination)$/i,
+  structuralEnumValue: /$a/,
   alreadyRedacted:
     /^(?:<redacted(?::[^>\r\n]+)?>|anon-[a-f0-9]{16}|a11a5ed0[0-9a-f-]*|[a-z]+_a11a5ed0[0-9a-f]*|\/workspace|\/workspace\/(?:CLAUDE\.md|redacted-(?:file|path)|transcripts\/[A-Za-z0-9_-]+\.jsonl)|https:\/\/example\.invalid\/(?:redacted)?)$/,
   unsafeTextPatterns: [
@@ -116,7 +119,12 @@ export const defaultRules: SanitizerRules = {
 
 /** Extend the defaults with additional vendor-specific keys or value patterns. */
 export function extendRules(
-  extra: Partial<Record<'idKey' | 'timestampKey' | 'pathKey' | 'sensitiveTextKey' | 'sensitiveContainer', RegExp>> & {
+  extra: Partial<
+    Record<
+      'idKey' | 'timestampKey' | 'pathKey' | 'sensitiveTextKey' | 'sensitiveContainer' | 'structuralEnumValue',
+      RegExp
+    >
+  > & {
     unsafeTextPatterns?: RegExp[];
   },
   base: SanitizerRules = defaultRules,
@@ -130,6 +138,7 @@ export function extendRules(
     pathKey: merge(base.pathKey, extra.pathKey),
     sensitiveTextKey: merge(base.sensitiveTextKey, extra.sensitiveTextKey),
     sensitiveContainer: merge(base.sensitiveContainer, extra.sensitiveContainer),
+    structuralEnumValue: merge(base.structuralEnumValue, extra.structuralEnumValue),
     unsafeTextPatterns: [...base.unsafeTextPatterns, ...(extra.unsafeTextPatterns ?? [])],
   };
 }
@@ -208,7 +217,10 @@ export function alias(value: string): string {
 }
 
 function safeStructuralEnum(value: string, key: string, rules: SanitizerRules): boolean {
-  return rules.structuralEnumKey.test(key) && /^[A-Za-z][A-Za-z0-9_.:-]{0,127}$/.test(value);
+  return (
+    (rules.structuralEnumKey.test(key) || rules.structuralEnumValue.test(value)) &&
+    /^[A-Za-z][A-Za-z0-9_.:-]{0,127}$/.test(value)
+  );
 }
 
 /**
@@ -226,6 +238,7 @@ function safeOrdinalId(value: string, key: string): boolean {
 function sanitizeString(value: string, key: string, inContainer: boolean, rules: SanitizerRules): string {
   if (rules.alreadyRedacted.test(value)) return value;
   if (safeOrdinalId(value, key)) return value;
+  if (safeStructuralEnum(value, key, rules)) return value;
   if (rules.idKey.test(key) || BARE_UUID.test(value)) return alias(value);
   if (rules.pathKey.test(key)) {
     if (/transcript/i.test(key)) {
@@ -366,7 +379,7 @@ function inspect(
       ((rules.idKey.test(key) && !safeOrdinalId(value, key)) ||
         rules.pathKey.test(key) ||
         rules.urlKey.test(key) ||
-        rules.sensitiveTextKey.test(key) ||
+        (rules.sensitiveTextKey.test(key) && !safeStructuralEnum(value, key, rules)) ||
         (inContainer && !safeStructuralEnum(value, key, rules))) &&
       !rules.alreadyRedacted.test(value)
     ) {

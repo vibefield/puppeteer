@@ -7,35 +7,74 @@
   "direction": "client-to-agent",
   "trigger": "Terminate a running `process/spawn` session by client-supplied `processHandle`.",
   "payloadSchema": {
-    "type": "object",
+    "description": "Terminate a running `process/spawn` session.",
     "properties": {
       "processHandle": {
+        "description": "Client-supplied, connection-scoped `processHandle` from `process/spawn`.",
         "type": "string"
       }
     },
     "required": [
       "processHandle"
-    ]
+    ],
+    "type": "object",
+    "$schema": "http://json-schema.org/draft-07/schema#"
   },
   "recordSchema": {
-    "type": "object",
+    "description": "Terminate a running `process/spawn` session by client-supplied `processHandle`.",
     "properties": {
+      "id": {
+        "$ref": "#/$defs/RequestId"
+      },
       "method": {
-        "type": "string",
         "enum": [
           "process/kill"
-        ]
+        ],
+        "title": "Process/killRequestMethod",
+        "type": "string"
       },
       "params": {
-        "type": "object"
-      },
-      "id": {}
+        "$ref": "#/$defs/ProcessKillParams"
+      }
     },
     "required": [
+      "id",
       "method",
-      "params",
-      "id"
-    ]
+      "params"
+    ],
+    "title": "Process/killRequest",
+    "type": "object",
+    "$defs": {
+      "RequestId": {
+        "anyOf": [
+          {
+            "type": "string"
+          },
+          {
+            "format": "int64",
+            "type": "integer"
+          }
+        ]
+      },
+      "ProcessKillParams": {
+        "description": "Terminate a running `process/spawn` session.",
+        "properties": {
+          "processHandle": {
+            "description": "Client-supplied, connection-scoped `processHandle` from `process/spawn`.",
+            "type": "string"
+          }
+        },
+        "required": [
+          "processHandle"
+        ],
+        "type": "object"
+      }
+    },
+    "$schema": "http://json-schema.org/draft-07/schema#"
+  },
+  "schemaFidelity": {
+    "payload": "exact",
+    "carrier": "exact"
   },
   "evidence": {
     "existence": [

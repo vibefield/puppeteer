@@ -74,6 +74,60 @@ describe('the codex ASM', () => {
     expect(Object.keys(approval?.payloadSchema?.properties ?? {})).toContain('availableDecisions');
   });
 
+  it('combines the generated file-change shape with exact kind-dependent source semantics', () => {
+    const patch = model.events.find((event) => event.event === 'item/fileChange/patchUpdated')!;
+    expect(patch).toMatchObject({
+      confidence: 'unverified',
+      schemaFidelity: { payload: 'exact', carrier: 'exact' },
+    });
+    expect(patch.payloadSchema?.$defs?.FileUpdateChange).toMatchObject({
+      type: 'object',
+      required: ['diff', 'kind', 'path'],
+      properties: {
+        path: { type: 'string' },
+        diff: { type: 'string' },
+        kind: { $ref: '#/$defs/PatchChangeKind' },
+      },
+    });
+    expect(patch.payloadSchema?.$defs?.PatchChangeKind?.oneOf).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ properties: { type: expect.objectContaining({ enum: ['add'] }) } }),
+        expect.objectContaining({ properties: { type: expect.objectContaining({ enum: ['delete'] }) } }),
+        expect.objectContaining({
+          properties: {
+            type: expect.objectContaining({ enum: ['update'] }),
+            move_path: { type: ['string', 'null'] },
+          },
+        }),
+      ]),
+    );
+    expect(patch.payloadRefinements).toHaveLength(1);
+    expect(patch.payloadRefinements?.[0]).toMatchObject({
+      path: 'changes',
+      confidence: 'unverified',
+      fidelity: 'exact',
+      evidence: {
+        existence: ['codex-file-change-source'],
+        shape: ['codex-file-change-source'],
+      },
+    });
+    const sourceBranches = patch.payloadRefinements?.[0]?.schema.items?.oneOf ?? [];
+    expect(sourceBranches.map((branch) => branch.properties?.diff?.description)).toEqual([
+      'Despite the field name, this is the complete new-file content for an add change.',
+      'Despite the field name, this is the complete deleted-file content for a delete change.',
+      'A unified diff. When move_path is non-null, the app-server appends two newlines plus `Moved to: <move_path>` after the unified diff.',
+    ]);
+    for (const method of ['item/started', 'item/completed']) {
+      expect(model.events.find((event) => event.event === method)?.payloadRefinements?.[0]).toMatchObject({
+        match: { 'item.type': 'fileChange' },
+        path: 'item',
+        fidelity: 'exact',
+      });
+    }
+    expect(model.evidenceIndex?.records.some((record) => record.id === 'source-file-changes')).toBe(true);
+    expect(model.evidenceIndex?.claims.some((claim) => claim.id === 'codex-file-change-source')).toBe(true);
+  });
+
   it('accepts every captured payload — the model describes the wire, not the adapter', () => {
     const failures: string[] = [];
     for (const { file, line, message } of captureLines) {

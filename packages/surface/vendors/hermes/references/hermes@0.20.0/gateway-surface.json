@@ -1,0 +1,4139 @@
+{
+  "referenceVersion": 2,
+  "vendor": "hermes",
+  "vendorVersion": "0.20.0",
+  "repository": "https://github.com/NousResearch/hermes-agent",
+  "revision": "3c27eb6234bf91b8ceee9e9071591b31e9b148cb",
+  "tag": "v2026.8.3",
+  "retrievedAt": "2026-08-27T12:00:00.000Z",
+  "projection": {
+    "method": "All @method registrations and statically/derivably named gateway events are inventoried. Parameter access, literal success-result keys, and literal event-payload keys are conservative source projections.",
+    "limitations": [
+      "Python is dynamic: helper-produced, conditionally assembled, and forwarded payload/result fields remain unconstrained unless directly recoverable.",
+      "Direct params indexing proves required access; params.get access proves a known field but not optionality.",
+      "Source declarations establish legal/native shape and existence, not runtime reachability."
+    ]
+  },
+  "sourceFiles": [
+    {
+      "path": "agent/display.py",
+      "bytes": 57942,
+      "sha256": "e9ebb7318c892cdb0df8b06ca4bd75e5e9609efadd3fd3788f3b9ffb238bdde8"
+    },
+    {
+      "path": "agent/outbound_webhooks.py",
+      "bytes": 20126,
+      "sha256": "c4e62b873b3413d9f3ca4d71ed95a650c443d66c86786d2cabb9029e1a5caf56"
+    },
+    {
+      "path": "agent/shell_hooks.py",
+      "bytes": 33916,
+      "sha256": "0e6dccc869cf6105d43c61f872f952d696c112d5f98909ea35592ee45479cb48"
+    },
+    {
+      "path": "hermes_cli/hooks.py",
+      "bytes": 15743,
+      "sha256": "c70ae506e4742fbe77c7c0b92a3a40f72ce0c45554ed972febdc57377d4339a9"
+    },
+    {
+      "path": "hermes_cli/plugins.py",
+      "bytes": 103313,
+      "sha256": "2cb8c309ce7747331669f22060a7e357e9c7a865f07cc779f30f17f8ce90daf5"
+    },
+    {
+      "path": "tools/delegate_tool.py",
+      "bytes": 171530,
+      "sha256": "c8b028d4199064ceb3d5aeead076afd81006d1cf3faa88e8395ba539073929d4"
+    },
+    {
+      "path": "tui_gateway/__init__.py",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "tui_gateway/_stdin_recovery.py",
+      "bytes": 5988,
+      "sha256": "da9f53dced966e585d88a3fd7fe4fcbf62f87b13b64ae4ca4905399cbfe4f539"
+    },
+    {
+      "path": "tui_gateway/compute_host.py",
+      "bytes": 37196,
+      "sha256": "2a28ca1990a5bfc411a4cd75a3963e2497a067bb80f42972eb0c4a59cb559bd4"
+    },
+    {
+      "path": "tui_gateway/entry.py",
+      "bytes": 20801,
+      "sha256": "326345ab6dcb579aca4c9dd3948a3c5eefa5d0d5dff9747dc82dbad17a7632d0"
+    },
+    {
+      "path": "tui_gateway/event_publisher.py",
+      "bytes": 3967,
+      "sha256": "e79ea875f168e1cdb70e2d174875c3c6789f93ddca06350bd90b42c33f6b06d0"
+    },
+    {
+      "path": "tui_gateway/git_probe.py",
+      "bytes": 7257,
+      "sha256": "a14d487c3ef4aa3ef09a2a39ed601d68ad891f461e6ee21c3bc2b700c0b6e26d"
+    },
+    {
+      "path": "tui_gateway/host_supervisor.py",
+      "bytes": 20629,
+      "sha256": "a2b1a45cea41080bf3c8c3ad48880815d4e1637c9c16d1d1c364011cb8142690"
+    },
+    {
+      "path": "tui_gateway/loop_noise.py",
+      "bytes": 3322,
+      "sha256": "501f6b1dd8602cf663eaa302478bea1646f2dacddea94b6dfd3dd43518128529"
+    },
+    {
+      "path": "tui_gateway/method_ctx.py",
+      "bytes": 2099,
+      "sha256": "0c1742502dbfab759efa6ccdb4456f5442f06b1701d56ef7037041ba783e99a7"
+    },
+    {
+      "path": "tui_gateway/methods_complete.py",
+      "bytes": 19316,
+      "sha256": "87ef05379c694cf7b6995095eb7acd5a4111eb275eb4c77b6e040da41033a8cf"
+    },
+    {
+      "path": "tui_gateway/methods_config.py",
+      "bytes": 16565,
+      "sha256": "9c7bc60aaa59809659ae7a2d46f8cae93b1648bdf2c11aba6d8f15732ff75dd3"
+    },
+    {
+      "path": "tui_gateway/methods_prompt.py",
+      "bytes": 39587,
+      "sha256": "96363dbf53a484f6445750c99a40e0624a9e43966be8fb29d8e47883a3ec5f51"
+    },
+    {
+      "path": "tui_gateway/methods_session.py",
+      "bytes": 127165,
+      "sha256": "1e70561f7c5ca08556e26216f9f6a553bbf25e4c8de3368ac9cb9634e57ea34e"
+    },
+    {
+      "path": "tui_gateway/methods_tools.py",
+      "bytes": 73176,
+      "sha256": "ccb02ddbacc87a3ed37c113bbfa99da09e011460df7ab18fa2d2a8765278ede7"
+    },
+    {
+      "path": "tui_gateway/project_tree.py",
+      "bytes": 30472,
+      "sha256": "c375a0411f6875d68aa77e3e5c915663e36404ac0f458c72a1a931e159545ff7"
+    },
+    {
+      "path": "tui_gateway/render.py",
+      "bytes": 1199,
+      "sha256": "98debf41704110249127095105993e8fd5b1fc1647f83d9c18202cd99d70148d"
+    },
+    {
+      "path": "tui_gateway/server.py",
+      "bytes": 570614,
+      "sha256": "e4bd9009827ffd224cc85c8b17ad7baba0f560d643d688e265be5a06fe8ba29c"
+    },
+    {
+      "path": "tui_gateway/slash_worker.py",
+      "bytes": 7098,
+      "sha256": "d44b371b77106bd29c9d93e1e83218d950961f27108c377f686bd93bdf640d4a"
+    },
+    {
+      "path": "tui_gateway/synthetic_turn.py",
+      "bytes": 10051,
+      "sha256": "39c809d9956293ac9eef1cc30fa7de8b36cdc046d4407e6aacd368b93fddf8e9"
+    },
+    {
+      "path": "tui_gateway/transport.py",
+      "bytes": 8614,
+      "sha256": "75be87f545aeaffce9c2c72854fecc74e564de00df2c1cfb739ac4befaf30c8d"
+    },
+    {
+      "path": "tui_gateway/turn_marker.py",
+      "bytes": 5251,
+      "sha256": "25061212a2212af876a0db476cfe9d45369d92303f905c67dc0af3f6545b992c"
+    },
+    {
+      "path": "tui_gateway/ws.py",
+      "bytes": 20061,
+      "sha256": "2b1c772cb37c77a756325e4c298f6a5ee8947d6566cd7638f06f7a0421b8b5fd"
+    }
+  ],
+  "gateway": {
+    "methods": [
+      {
+        "name": "agents.list",
+        "source": {
+          "path": "tui_gateway/methods_tools.py",
+          "line": 1596
+        },
+        "params": {
+          "accessedKeys": [],
+          "requiredByDirectIndexing": []
+        },
+        "result": {
+          "literalTopLevelKeys": [
+            "processes"
+          ],
+          "hasLiteralSuccessObject": true
+        }
+      },
+      {
+        "name": "approval.respond",
+        "source": {
+          "path": "tui_gateway/methods_prompt.py",
+          "line": 907
+        },
+        "params": {
+          "accessedKeys": [
+            "all",
+            "choice"
+          ],
+          "requiredByDirectIndexing": []
+        },
+        "result": {
+          "literalTopLevelKeys": [
+            "resolved"
+          ],
+          "hasLiteralSuccessObject": true
+        }
+      },
+      {
+        "name": "billing.auto_reload",
+        "source": {
+          "path": "tui_gateway/methods_session.py",
+          "line": 2144
+        },
+        "params": {
+          "accessedKeys": [
+            "enabled",
+            "threshold",
+            "top_up_amount"
+          ],
+          "requiredByDirectIndexing": []
+        },
+        "result": {
+          "literalTopLevelKeys": [
+            "error",
+            "message",
+            "ok"
+          ],
+          "hasLiteralSuccessObject": true
+        }
+      },
+      {
+        "name": "billing.charge",
+        "source": {
+          "path": "tui_gateway/methods_session.py",
+          "line": 2089
+        },
+        "params": {
+          "accessedKeys": [
+            "amount_usd",
+            "idempotency_key"
+          ],
+          "requiredByDirectIndexing": []
+        },
+        "result": {
+          "literalTopLevelKeys": [
+            "charge_id",
+            "error",
+            "idempotency_key",
+            "message",
+            "ok"
+          ],
+          "hasLiteralSuccessObject": true
+        }
+      },
+      {
+        "name": "billing.charge_status",
+        "source": {
+          "path": "tui_gateway/methods_session.py",
+          "line": 2115
+        },
+        "params": {
+          "accessedKeys": [
+            "charge_id"
+          ],
+          "requiredByDirectIndexing": []
+        },
+        "result": {
+          "literalTopLevelKeys": [
+            "amount_usd",
+            "error",
+            "message",
+            "ok",
+            "reason",
+            "settled_at",
+            "status"
+          ],
+          "hasLiteralSuccessObject": true
+        }
+      },
+      {
+        "name": "billing.state",
+        "source": {
+          "path": "tui_gateway/methods_session.py",
+          "line": 1938
+        },
+        "params": {
+          "accessedKeys": [],
+          "requiredByDirectIndexing": []
+        },
+        "result": {
+          "literalTopLevelKeys": [
+            "error",
+            "logged_in",
+            "ok"
+          ],
+          "hasLiteralSuccessObject": true
+        }
+      },
+      {
+        "name": "billing.step_up",
+        "source": {
+          "path": "tui_gateway/methods_session.py",
+          "line": 2166
+        },
+        "params": {
+          "accessedKeys": [
+            "session_id"
+          ],
+          "requiredByDirectIndexing": []
+        },
+        "result": {
+          "literalTopLevelKeys": [
+            "error",
+            "granted",
+            "message",
+            "ok"
+          ],
+          "hasLiteralSuccessObject": true
+        }
+      },
+      {
+        "name": "browser.manage",
+        "source": {
+          "path": "tui_gateway/methods_tools.py",
+          "line": 1343
+        },
+        "params": {
+          "accessedKeys": [
+            "action"
+          ],
+          "requiredByDirectIndexing": []
+        },
+        "result": {
+          "literalTopLevelKeys": [
+            "connected",
+            "url"
+          ],
+          "hasLiteralSuccessObject": true
+        }
+      },
+      {
+        "name": "clarify.respond",
+        "source": {
+          "path": "tui_gateway/methods_prompt.py",
+          "line": 879
+        },
+        "params": {
+          "accessedKeys": [],
+          "requiredByDirectIndexing": []
+        },
+        "result": {
+          "literalTopLevelKeys": [],
+          "hasLiteralSuccessObject": false
+        }
+      },
+      {
+        "name": "cli.exec",
+        "source": {
+          "path": "tui_gateway/methods_tools.py",
+          "line": 371
+        },
+        "params": {
+          "accessedKeys": [
+            "argv",
+            "timeout"
+          ],
+          "requiredByDirectIndexing": []
+        },
+        "result": {
+          "literalTopLevelKeys": [
+            "blocked",
+            "code",
+            "hint",
+            "output"
+          ],
+          "hasLiteralSuccessObject": true
+        }
+      },
+      {
+        "name": "clipboard.paste",
+        "source": {
+          "path": "tui_gateway/methods_prompt.py",
+          "line": 336
+        },
+        "params": {
+          "accessedKeys": [],
+          "requiredByDirectIndexing": []
+        },
+        "result": {
+          "literalTopLevelKeys": [
+            "attached",
+            "count",
+            "message",
+            "path"
+          ],
+          "hasLiteralSuccessObject": true
+        }
+      },
+      {
+        "name": "command.dispatch",
+        "source": {
+          "path": "tui_gateway/methods_tools.py",
+          "line": 432
+        },
+        "params": {
+          "accessedKeys": [
+            "arg",
+            "name",
+            "session_id"
+          ],
+          "requiredByDirectIndexing": []
+        },
+        "result": {
+          "literalTopLevelKeys": [
+            "display",
+            "message",
+            "name",
+            "notice",
+            "output",
+            "target",
+            "type"
+          ],
+          "hasLiteralSuccessObject": true
+        }
+      },
+      {
+        "name": "command.resolve",
+        "source": {
+          "path": "tui_gateway/methods_tools.py",
+          "line": 412
+        },
+        "params": {
+          "accessedKeys": [
+            "name"
+          ],
+          "requiredByDirectIndexing": []
+        },
+        "result": {
+          "literalTopLevelKeys": [
+            "canonical",
+            "category",
+            "description"
+          ],
+          "hasLiteralSuccessObject": true
+        }
+      },
+      {
+        "name": "commands.catalog",
+        "source": {
+          "path": "tui_gateway/methods_tools.py",
+          "line": 255
+        },
+        "params": {
+          "accessedKeys": [],
+          "requiredByDirectIndexing": []
+        },
+        "result": {
+          "literalTopLevelKeys": [
+            "canon",
+            "categories",
+            "pairs",
+            "skill_count",
+            "skills",
+            "sub",
+            "warning"
+          ],
+          "hasLiteralSuccessObject": true
+        }
+      },
+      {
+        "name": "complete.path",
+        "source": {
+          "path": "tui_gateway/methods_complete.py",
+          "line": 41
+        },
+        "params": {
+          "accessedKeys": [
+            "word"
+          ],
+          "requiredByDirectIndexing": []
+        },
+        "result": {
+          "literalTopLevelKeys": [
+            "items"
+          ],
+          "hasLiteralSuccessObject": true
+        }
+      },
+      {
+        "name": "complete.slash",
+        "source": {
+          "path": "tui_gateway/methods_complete.py",
+          "line": 218
+        },
+        "params": {
+          "accessedKeys": [
+            "text"
+          ],
+          "requiredByDirectIndexing": []
+        },
+        "result": {
+          "literalTopLevelKeys": [
+            "items",
+            "replace_from"
+          ],
+          "hasLiteralSuccessObject": true
+        }
+      },
+      {
+        "name": "config.get",
+        "source": {
+          "path": "tui_gateway/methods_config.py",
+          "line": 161
+        },
+        "params": {
+          "accessedKeys": [
+            "cwd",
+            "key",
+            "session_id"
+          ],
+          "requiredByDirectIndexing": []
+        },
+        "result": {
+          "literalTopLevelKeys": [
+            "branch",
+            "config",
+            "cwd",
+            "display",
+            "home",
+            "mcp_rev",
+            "model",
+            "mtime",
+            "prompt",
+            "provider",
+            "providers",
+            "tool_progress",
+            "value"
+          ],
+          "hasLiteralSuccessObject": true
+        }
+      },
+      {
+        "name": "config.set",
+        "source": {
+          "path": "tui_gateway/server.py",
+          "line": 10468
+        },
+        "params": {
+          "accessedKeys": [
+            "always",
+            "board_slug",
+            "color",
+            "confirm_expensive_model",
+            "cwd",
+            "description",
+            "folders",
+            "icon",
+            "id",
+            "is_primary",
+            "key",
+            "label",
+            "name",
+            "path",
+            "primary_path",
+            "restore",
+            "scope",
+            "session_id",
+            "slug",
+            "use",
+            "value"
+          ],
+          "requiredByDirectIndexing": [
+            "id"
+          ]
+        },
+        "result": {
+          "literalTopLevelKeys": [
+            "active_id",
+            "branch",
+            "confirm_message",
+            "confirm_required",
+            "cwd",
+            "deferred",
+            "key",
+            "project",
+            "scope",
+            "tool_progress",
+            "value",
+            "warning"
+          ],
+          "hasLiteralSuccessObject": true
+        }
+      },
+      {
+        "name": "config.show",
+        "source": {
+          "path": "tui_gateway/methods_tools.py",
+          "line": 1382
+        },
+        "params": {
+          "accessedKeys": [],
+          "requiredByDirectIndexing": []
+        },
+        "result": {
+          "literalTopLevelKeys": [
+            "sections"
+          ],
+          "hasLiteralSuccessObject": true
+        }
+      },
+      {
+        "name": "cron.manage",
+        "source": {
+          "path": "tui_gateway/methods_tools.py",
+          "line": 1620
+        },
+        "params": {
+          "accessedKeys": [
+            "action",
+            "name",
+            "prompt",
+            "schedule"
+          ],
+          "requiredByDirectIndexing": []
+        },
+        "result": {
+          "literalTopLevelKeys": [],
+          "hasLiteralSuccessObject": false
+        }
+      },
+      {
+        "name": "delegation.pause",
+        "source": {
+          "path": "tui_gateway/methods_session.py",
+          "line": 2844
+        },
+        "params": {
+          "accessedKeys": [
+            "paused"
+          ],
+          "requiredByDirectIndexing": []
+        },
+        "result": {
+          "literalTopLevelKeys": [
+            "paused"
+          ],
+          "hasLiteralSuccessObject": true
+        }
+      },
+      {
+        "name": "delegation.status",
+        "source": {
+          "path": "tui_gateway/methods_session.py",
+          "line": 2824
+        },
+        "params": {
+          "accessedKeys": [],
+          "requiredByDirectIndexing": []
+        },
+        "result": {
+          "literalTopLevelKeys": [
+            "active",
+            "max_concurrent_children",
+            "max_spawn_depth",
+            "paused"
+          ],
+          "hasLiteralSuccessObject": true
+        }
+      },
+      {
+        "name": "file.attach",
+        "source": {
+          "path": "tui_gateway/methods_prompt.py",
+          "line": 606
+        },
+        "params": {
+          "accessedKeys": [
+            "data_url",
+            "name",
+            "path"
+          ],
+          "requiredByDirectIndexing": []
+        },
+        "result": {
+          "literalTopLevelKeys": [
+            "attached",
+            "name",
+            "path",
+            "ref_path",
+            "ref_text",
+            "uploaded"
+          ],
+          "hasLiteralSuccessObject": true
+        }
+      },
+      {
+        "name": "handoff.fail",
+        "source": {
+          "path": "tui_gateway/methods_session.py",
+          "line": 1174
+        },
+        "params": {
+          "accessedKeys": [
+            "error"
+          ],
+          "requiredByDirectIndexing": []
+        },
+        "result": {
+          "literalTopLevelKeys": [
+            "failed",
+            "state"
+          ],
+          "hasLiteralSuccessObject": true
+        }
+      },
+      {
+        "name": "handoff.request",
+        "source": {
+          "path": "tui_gateway/methods_session.py",
+          "line": 1059
+        },
+        "params": {
+          "accessedKeys": [
+            "platform"
+          ],
+          "requiredByDirectIndexing": []
+        },
+        "result": {
+          "literalTopLevelKeys": [
+            "home_name",
+            "platform",
+            "queued",
+            "session_key"
+          ],
+          "hasLiteralSuccessObject": true
+        }
+      },
+      {
+        "name": "handoff.state",
+        "source": {
+          "path": "tui_gateway/methods_session.py",
+          "line": 1147
+        },
+        "params": {
+          "accessedKeys": [],
+          "requiredByDirectIndexing": []
+        },
+        "result": {
+          "literalTopLevelKeys": [
+            "error",
+            "platform",
+            "state"
+          ],
+          "hasLiteralSuccessObject": true
+        }
+      },
+      {
+        "name": "image.attach",
+        "source": {
+          "path": "tui_gateway/methods_prompt.py",
+          "line": 376
+        },
+        "params": {
+          "accessedKeys": [
+            "path"
+          ],
+          "requiredByDirectIndexing": []
+        },
+        "result": {
+          "literalTopLevelKeys": [
+            "attached",
+            "count",
+            "path",
+            "remainder",
+            "text"
+          ],
+          "hasLiteralSuccessObject": true
+        }
+      },
+      {
+        "name": "image.attach_bytes",
+        "source": {
+          "path": "tui_gateway/methods_prompt.py",
+          "line": 419
+        },
+        "params": {
+          "accessedKeys": [
+            "content_base64",
+            "data",
+            "ext",
+            "filename"
+          ],
+          "requiredByDirectIndexing": []
+        },
+        "result": {
+          "literalTopLevelKeys": [
+            "attached",
+            "bytes",
+            "count",
+            "path",
+            "remainder",
+            "text"
+          ],
+          "hasLiteralSuccessObject": true
+        }
+      },
+      {
+        "name": "image.detach",
+        "source": {
+          "path": "tui_gateway/methods_prompt.py",
+          "line": 653
+        },
+        "params": {
+          "accessedKeys": [
+            "path"
+          ],
+          "requiredByDirectIndexing": []
+        },
+        "result": {
+          "literalTopLevelKeys": [
+            "count",
+            "detached"
+          ],
+          "hasLiteralSuccessObject": true
+        }
+      },
+      {
+        "name": "input.detect_drop",
+        "source": {
+          "path": "tui_gateway/methods_prompt.py",
+          "line": 673
+        },
+        "params": {
+          "accessedKeys": [
+            "text"
+          ],
+          "requiredByDirectIndexing": []
+        },
+        "result": {
+          "literalTopLevelKeys": [
+            "count",
+            "is_image",
+            "matched",
+            "name",
+            "path",
+            "text"
+          ],
+          "hasLiteralSuccessObject": true
+        }
+      },
+      {
+        "name": "insights.get",
+        "source": {
+          "path": "tui_gateway/methods_tools.py",
+          "line": 1213
+        },
+        "params": {
+          "accessedKeys": [
+            "days"
+          ],
+          "requiredByDirectIndexing": []
+        },
+        "result": {
+          "literalTopLevelKeys": [
+            "days",
+            "messages",
+            "sessions"
+          ],
+          "hasLiteralSuccessObject": true
+        }
+      },
+      {
+        "name": "learning.delete",
+        "source": {
+          "path": "tui_gateway/methods_tools.py",
+          "line": 1682
+        },
+        "params": {
+          "accessedKeys": [
+            "id"
+          ],
+          "requiredByDirectIndexing": []
+        },
+        "result": {
+          "literalTopLevelKeys": [],
+          "hasLiteralSuccessObject": false
+        }
+      },
+      {
+        "name": "learning.detail",
+        "source": {
+          "path": "tui_gateway/methods_tools.py",
+          "line": 1671
+        },
+        "params": {
+          "accessedKeys": [
+            "id"
+          ],
+          "requiredByDirectIndexing": []
+        },
+        "result": {
+          "literalTopLevelKeys": [],
+          "hasLiteralSuccessObject": false
+        }
+      },
+      {
+        "name": "learning.edit",
+        "source": {
+          "path": "tui_gateway/methods_tools.py",
+          "line": 1693
+        },
+        "params": {
+          "accessedKeys": [
+            "content",
+            "id"
+          ],
+          "requiredByDirectIndexing": []
+        },
+        "result": {
+          "literalTopLevelKeys": [],
+          "hasLiteralSuccessObject": false
+        }
+      },
+      {
+        "name": "learning.frames",
+        "source": {
+          "path": "tui_gateway/methods_tools.py",
+          "line": 1647
+        },
+        "params": {
+          "accessedKeys": [
+            "cols",
+            "frames",
+            "rows"
+          ],
+          "requiredByDirectIndexing": []
+        },
+        "result": {
+          "literalTopLevelKeys": [],
+          "hasLiteralSuccessObject": false
+        }
+      },
+      {
+        "name": "llm.oneshot",
+        "source": {
+          "path": "tui_gateway/methods_session.py",
+          "line": 1000
+        },
+        "params": {
+          "accessedKeys": [
+            "input",
+            "instructions",
+            "max_tokens",
+            "session_id",
+            "task",
+            "temperature",
+            "template",
+            "variables"
+          ],
+          "requiredByDirectIndexing": []
+        },
+        "result": {
+          "literalTopLevelKeys": [
+            "text"
+          ],
+          "hasLiteralSuccessObject": true
+        }
+      },
+      {
+        "name": "message.react",
+        "source": {
+          "path": "tui_gateway/methods_session.py",
+          "line": 947
+        },
+        "params": {
+          "accessedKeys": [
+            "author",
+            "emoji",
+            "newest_role",
+            "row_id"
+          ],
+          "requiredByDirectIndexing": []
+        },
+        "result": {
+          "literalTopLevelKeys": [
+            "reactions",
+            "row_id"
+          ],
+          "hasLiteralSuccessObject": true
+        }
+      },
+      {
+        "name": "model.disconnect",
+        "source": {
+          "path": "tui_gateway/methods_complete.py",
+          "line": 430
+        },
+        "params": {
+          "accessedKeys": [
+            "slug"
+          ],
+          "requiredByDirectIndexing": []
+        },
+        "result": {
+          "literalTopLevelKeys": [
+            "disconnected",
+            "name",
+            "slug"
+          ],
+          "hasLiteralSuccessObject": true
+        }
+      },
+      {
+        "name": "model.options",
+        "source": {
+          "path": "tui_gateway/methods_complete.py",
+          "line": 327
+        },
+        "params": {
+          "accessedKeys": [
+            "explicit_only",
+            "include_unconfigured",
+            "refresh",
+            "session_id"
+          ],
+          "requiredByDirectIndexing": []
+        },
+        "result": {
+          "literalTopLevelKeys": [],
+          "hasLiteralSuccessObject": false
+        }
+      },
+      {
+        "name": "model.save_key",
+        "source": {
+          "path": "tui_gateway/methods_complete.py",
+          "line": 350
+        },
+        "params": {
+          "accessedKeys": [
+            "api_key",
+            "session_id",
+            "slug"
+          ],
+          "requiredByDirectIndexing": []
+        },
+        "result": {
+          "literalTopLevelKeys": [
+            "provider"
+          ],
+          "hasLiteralSuccessObject": true
+        }
+      },
+      {
+        "name": "paste.collapse",
+        "source": {
+          "path": "tui_gateway/methods_complete.py",
+          "line": 14
+        },
+        "params": {
+          "accessedKeys": [
+            "text"
+          ],
+          "requiredByDirectIndexing": []
+        },
+        "result": {
+          "literalTopLevelKeys": [
+            "lines",
+            "path",
+            "placeholder"
+          ],
+          "hasLiteralSuccessObject": true
+        }
+      },
+      {
+        "name": "pdf.attach",
+        "source": {
+          "path": "tui_gateway/methods_prompt.py",
+          "line": 480
+        },
+        "params": {
+          "accessedKeys": [
+            "content_base64",
+            "data",
+            "filename",
+            "first_page",
+            "last_page",
+            "path"
+          ],
+          "requiredByDirectIndexing": []
+        },
+        "result": {
+          "literalTopLevelKeys": [
+            "attached",
+            "count",
+            "filename",
+            "pages",
+            "pages_attached",
+            "text"
+          ],
+          "hasLiteralSuccessObject": true
+        }
+      },
+      {
+        "name": "pet.cancel",
+        "source": {
+          "path": "tui_gateway/methods_session.py",
+          "line": 1681
+        },
+        "params": {
+          "accessedKeys": [
+            "token"
+          ],
+          "requiredByDirectIndexing": []
+        },
+        "result": {
+          "literalTopLevelKeys": [
+            "ok"
+          ],
+          "hasLiteralSuccessObject": true
+        }
+      },
+      {
+        "name": "pet.cells",
+        "source": {
+          "path": "tui_gateway/methods_session.py",
+          "line": 1301
+        },
+        "params": {
+          "accessedKeys": [
+            "cols",
+            "graphics",
+            "state"
+          ],
+          "requiredByDirectIndexing": []
+        },
+        "result": {
+          "literalTopLevelKeys": [
+            "color",
+            "cols",
+            "displayName",
+            "enabled",
+            "frameMs",
+            "frames",
+            "graphics",
+            "imageId",
+            "placeholder",
+            "rows",
+            "scale",
+            "slug",
+            "state"
+          ],
+          "hasLiteralSuccessObject": true
+        }
+      },
+      {
+        "name": "pet.disable",
+        "source": {
+          "path": "tui_gateway/methods_session.py",
+          "line": 1646
+        },
+        "params": {
+          "accessedKeys": [],
+          "requiredByDirectIndexing": []
+        },
+        "result": {
+          "literalTopLevelKeys": [
+            "ok"
+          ],
+          "hasLiteralSuccessObject": true
+        }
+      },
+      {
+        "name": "pet.export",
+        "source": {
+          "path": "tui_gateway/methods_session.py",
+          "line": 1546
+        },
+        "params": {
+          "accessedKeys": [
+            "slug"
+          ],
+          "requiredByDirectIndexing": []
+        },
+        "result": {
+          "literalTopLevelKeys": [
+            "filename",
+            "ok",
+            "zipBase64"
+          ],
+          "hasLiteralSuccessObject": true
+        }
+      },
+      {
+        "name": "pet.gallery",
+        "source": {
+          "path": "tui_gateway/methods_session.py",
+          "line": 1406
+        },
+        "params": {
+          "accessedKeys": [
+            "localOnly"
+          ],
+          "requiredByDirectIndexing": []
+        },
+        "result": {
+          "literalTopLevelKeys": [
+            "active",
+            "enabled",
+            "pets"
+          ],
+          "hasLiteralSuccessObject": true
+        }
+      },
+      {
+        "name": "pet.generate",
+        "source": {
+          "path": "tui_gateway/methods_session.py",
+          "line": 1726
+        },
+        "params": {
+          "accessedKeys": [
+            "count",
+            "prompt",
+            "provider",
+            "referenceImage",
+            "style"
+          ],
+          "requiredByDirectIndexing": []
+        },
+        "result": {
+          "literalTopLevelKeys": [
+            "drafts",
+            "ok",
+            "token"
+          ],
+          "hasLiteralSuccessObject": true
+        }
+      },
+      {
+        "name": "pet.generate.status",
+        "source": {
+          "path": "tui_gateway/methods_session.py",
+          "line": 1695
+        },
+        "params": {
+          "accessedKeys": [],
+          "requiredByDirectIndexing": []
+        },
+        "result": {
+          "literalTopLevelKeys": [
+            "available",
+            "providers"
+          ],
+          "hasLiteralSuccessObject": true
+        }
+      },
+      {
+        "name": "pet.hatch",
+        "source": {
+          "path": "tui_gateway/methods_session.py",
+          "line": 1839
+        },
+        "params": {
+          "accessedKeys": [
+            "cancelToken",
+            "description",
+            "index",
+            "name",
+            "prompt",
+            "provider",
+            "style",
+            "token"
+          ],
+          "requiredByDirectIndexing": []
+        },
+        "result": {
+          "literalTopLevelKeys": [
+            "displayName",
+            "ok",
+            "pet",
+            "slug",
+            "warnings"
+          ],
+          "hasLiteralSuccessObject": true
+        }
+      },
+      {
+        "name": "pet.info",
+        "source": {
+          "path": "tui_gateway/methods_session.py",
+          "line": 1252
+        },
+        "params": {
+          "accessedKeys": [],
+          "requiredByDirectIndexing": []
+        },
+        "result": {
+          "literalTopLevelKeys": [
+            "enabled"
+          ],
+          "hasLiteralSuccessObject": true
+        }
+      },
+      {
+        "name": "pet.info.meta",
+        "source": {
+          "path": "tui_gateway/methods_session.py",
+          "line": 1278
+        },
+        "params": {
+          "accessedKeys": [],
+          "requiredByDirectIndexing": []
+        },
+        "result": {
+          "literalTopLevelKeys": [
+            "displayName",
+            "enabled",
+            "scale",
+            "slug",
+            "spritesheetRevision"
+          ],
+          "hasLiteralSuccessObject": true
+        }
+      },
+      {
+        "name": "pet.remove",
+        "source": {
+          "path": "tui_gateway/methods_session.py",
+          "line": 1516
+        },
+        "params": {
+          "accessedKeys": [
+            "slug"
+          ],
+          "requiredByDirectIndexing": []
+        },
+        "result": {
+          "literalTopLevelKeys": [
+            "ok",
+            "slug"
+          ],
+          "hasLiteralSuccessObject": true
+        }
+      },
+      {
+        "name": "pet.rename",
+        "source": {
+          "path": "tui_gateway/methods_session.py",
+          "line": 1573
+        },
+        "params": {
+          "accessedKeys": [
+            "name",
+            "slug"
+          ],
+          "requiredByDirectIndexing": []
+        },
+        "result": {
+          "literalTopLevelKeys": [
+            "displayName",
+            "ok",
+            "slug"
+          ],
+          "hasLiteralSuccessObject": true
+        }
+      },
+      {
+        "name": "pet.scale",
+        "source": {
+          "path": "tui_gateway/methods_session.py",
+          "line": 1660
+        },
+        "params": {
+          "accessedKeys": [
+            "scale"
+          ],
+          "requiredByDirectIndexing": []
+        },
+        "result": {
+          "literalTopLevelKeys": [
+            "ok",
+            "scale"
+          ],
+          "hasLiteralSuccessObject": true
+        }
+      },
+      {
+        "name": "pet.select",
+        "source": {
+          "path": "tui_gateway/methods_session.py",
+          "line": 1489
+        },
+        "params": {
+          "accessedKeys": [
+            "slug"
+          ],
+          "requiredByDirectIndexing": []
+        },
+        "result": {
+          "literalTopLevelKeys": [
+            "displayName",
+            "ok",
+            "slug"
+          ],
+          "hasLiteralSuccessObject": true
+        }
+      },
+      {
+        "name": "pet.thumb",
+        "source": {
+          "path": "tui_gateway/methods_session.py",
+          "line": 1611
+        },
+        "params": {
+          "accessedKeys": [
+            "slug",
+            "url"
+          ],
+          "requiredByDirectIndexing": []
+        },
+        "result": {
+          "literalTopLevelKeys": [
+            "dataUri",
+            "ok",
+            "slug"
+          ],
+          "hasLiteralSuccessObject": true
+        }
+      },
+      {
+        "name": "plugins.list",
+        "source": {
+          "path": "tui_gateway/methods_tools.py",
+          "line": 1360
+        },
+        "params": {
+          "accessedKeys": [],
+          "requiredByDirectIndexing": []
+        },
+        "result": {
+          "literalTopLevelKeys": [
+            "plugins"
+          ],
+          "hasLiteralSuccessObject": true
+        }
+      },
+      {
+        "name": "plugins.manage",
+        "source": {
+          "path": "tui_gateway/methods_tools.py",
+          "line": 1788
+        },
+        "params": {
+          "accessedKeys": [
+            "action",
+            "enable",
+            "name"
+          ],
+          "requiredByDirectIndexing": []
+        },
+        "result": {
+          "literalTopLevelKeys": [
+            "bundled_count",
+            "name",
+            "ok",
+            "plugin",
+            "plugins",
+            "unchanged",
+            "user_count"
+          ],
+          "hasLiteralSuccessObject": true
+        }
+      },
+      {
+        "name": "preview.restart",
+        "source": {
+          "path": "tui_gateway/methods_prompt.py",
+          "line": 766
+        },
+        "params": {
+          "accessedKeys": [
+            "context",
+            "cwd",
+            "session_id",
+            "url"
+          ],
+          "requiredByDirectIndexing": []
+        },
+        "result": {
+          "literalTopLevelKeys": [
+            "task_id"
+          ],
+          "hasLiteralSuccessObject": true
+        }
+      },
+      {
+        "name": "process.kill",
+        "source": {
+          "path": "tui_gateway/methods_tools.py",
+          "line": 61
+        },
+        "params": {
+          "accessedKeys": [
+            "process_id"
+          ],
+          "requiredByDirectIndexing": []
+        },
+        "result": {
+          "literalTopLevelKeys": [],
+          "hasLiteralSuccessObject": false
+        }
+      },
+      {
+        "name": "process.list",
+        "source": {
+          "path": "tui_gateway/methods_tools.py",
+          "line": 49
+        },
+        "params": {
+          "accessedKeys": [],
+          "requiredByDirectIndexing": []
+        },
+        "result": {
+          "literalTopLevelKeys": [
+            "processes"
+          ],
+          "hasLiteralSuccessObject": true
+        }
+      },
+      {
+        "name": "process.stop",
+        "source": {
+          "path": "tui_gateway/methods_tools.py",
+          "line": 39
+        },
+        "params": {
+          "accessedKeys": [],
+          "requiredByDirectIndexing": []
+        },
+        "result": {
+          "literalTopLevelKeys": [
+            "killed"
+          ],
+          "hasLiteralSuccessObject": true
+        }
+      },
+      {
+        "name": "project.facts",
+        "source": {
+          "path": "tui_gateway/methods_session.py",
+          "line": 263
+        },
+        "params": {
+          "accessedKeys": [
+            "cwd"
+          ],
+          "requiredByDirectIndexing": []
+        },
+        "result": {
+          "literalTopLevelKeys": [
+            "facts"
+          ],
+          "hasLiteralSuccessObject": true
+        }
+      },
+      {
+        "name": "projects.discover_repos",
+        "source": {
+          "path": "tui_gateway/methods_config.py",
+          "line": 19
+        },
+        "params": {
+          "accessedKeys": [],
+          "requiredByDirectIndexing": []
+        },
+        "result": {
+          "literalTopLevelKeys": [
+            "discovery_policy",
+            "repos"
+          ],
+          "hasLiteralSuccessObject": true
+        }
+      },
+      {
+        "name": "projects.project_sessions",
+        "source": {
+          "path": "tui_gateway/methods_config.py",
+          "line": 135
+        },
+        "params": {
+          "accessedKeys": [
+            "project_id",
+            "session_limit"
+          ],
+          "requiredByDirectIndexing": []
+        },
+        "result": {
+          "literalTopLevelKeys": [
+            "project"
+          ],
+          "hasLiteralSuccessObject": true
+        }
+      },
+      {
+        "name": "projects.record_repos",
+        "source": {
+          "path": "tui_gateway/methods_config.py",
+          "line": 44
+        },
+        "params": {
+          "accessedKeys": [
+            "discovery_policy",
+            "repos"
+          ],
+          "requiredByDirectIndexing": []
+        },
+        "result": {
+          "literalTopLevelKeys": [
+            "accepted",
+            "discovery_policy",
+            "repos"
+          ],
+          "hasLiteralSuccessObject": true
+        }
+      },
+      {
+        "name": "projects.tree",
+        "source": {
+          "path": "tui_gateway/methods_config.py",
+          "line": 108
+        },
+        "params": {
+          "accessedKeys": [
+            "preview_limit",
+            "session_limit"
+          ],
+          "requiredByDirectIndexing": []
+        },
+        "result": {
+          "literalTopLevelKeys": [
+            "active_id",
+            "projects",
+            "scoped_session_ids"
+          ],
+          "hasLiteralSuccessObject": true
+        }
+      },
+      {
+        "name": "prompt.background",
+        "source": {
+          "path": "tui_gateway/methods_prompt.py",
+          "line": 720
+        },
+        "params": {
+          "accessedKeys": [
+            "session_id",
+            "text"
+          ],
+          "requiredByDirectIndexing": []
+        },
+        "result": {
+          "literalTopLevelKeys": [
+            "task_id"
+          ],
+          "hasLiteralSuccessObject": true
+        }
+      },
+      {
+        "name": "prompt.submit",
+        "source": {
+          "path": "tui_gateway/methods_prompt.py",
+          "line": 67
+        },
+        "params": {
+          "accessedKeys": [
+            "confirm_empty_truncate",
+            "interrupted",
+            "queued",
+            "session_id",
+            "text",
+            "truncate_before_user_ordinal"
+          ],
+          "requiredByDirectIndexing": []
+        },
+        "result": {
+          "literalTopLevelKeys": [
+            "status",
+            "voice_stopped"
+          ],
+          "hasLiteralSuccessObject": true
+        }
+      },
+      {
+        "name": "reload.env",
+        "source": {
+          "path": "tui_gateway/methods_tools.py",
+          "line": 234
+        },
+        "params": {
+          "accessedKeys": [],
+          "requiredByDirectIndexing": []
+        },
+        "result": {
+          "literalTopLevelKeys": [
+            "updated"
+          ],
+          "hasLiteralSuccessObject": true
+        }
+      },
+      {
+        "name": "reload.mcp",
+        "source": {
+          "path": "tui_gateway/methods_tools.py",
+          "line": 84
+        },
+        "params": {
+          "accessedKeys": [
+            "confirm",
+            "rev",
+            "session_id"
+          ],
+          "requiredByDirectIndexing": []
+        },
+        "result": {
+          "literalTopLevelKeys": [
+            "host_ack",
+            "message",
+            "status",
+            "turn_isolation"
+          ],
+          "hasLiteralSuccessObject": true
+        }
+      },
+      {
+        "name": "rollback.diff",
+        "source": {
+          "path": "tui_gateway/methods_tools.py",
+          "line": 1320
+        },
+        "params": {
+          "accessedKeys": [
+            "hash"
+          ],
+          "requiredByDirectIndexing": []
+        },
+        "result": {
+          "literalTopLevelKeys": [],
+          "hasLiteralSuccessObject": false
+        }
+      },
+      {
+        "name": "rollback.list",
+        "source": {
+          "path": "tui_gateway/methods_tools.py",
+          "line": 1238
+        },
+        "params": {
+          "accessedKeys": [],
+          "requiredByDirectIndexing": []
+        },
+        "result": {
+          "literalTopLevelKeys": [
+            "checkpoints",
+            "enabled"
+          ],
+          "hasLiteralSuccessObject": true
+        }
+      },
+      {
+        "name": "rollback.restore",
+        "source": {
+          "path": "tui_gateway/methods_tools.py",
+          "line": 1268
+        },
+        "params": {
+          "accessedKeys": [
+            "file_path",
+            "hash"
+          ],
+          "requiredByDirectIndexing": []
+        },
+        "result": {
+          "literalTopLevelKeys": [],
+          "hasLiteralSuccessObject": false
+        }
+      },
+      {
+        "name": "secret.respond",
+        "source": {
+          "path": "tui_gateway/methods_prompt.py",
+          "line": 902
+        },
+        "params": {
+          "accessedKeys": [],
+          "requiredByDirectIndexing": []
+        },
+        "result": {
+          "literalTopLevelKeys": [],
+          "hasLiteralSuccessObject": false
+        }
+      },
+      {
+        "name": "session.activate",
+        "source": {
+          "path": "tui_gateway/methods_session.py",
+          "line": 788
+        },
+        "params": {
+          "accessedKeys": [
+            "omit_messages",
+            "session_id"
+          ],
+          "requiredByDirectIndexing": []
+        },
+        "result": {
+          "literalTopLevelKeys": [],
+          "hasLiteralSuccessObject": false
+        }
+      },
+      {
+        "name": "session.active_list",
+        "source": {
+          "path": "tui_gateway/methods_session.py",
+          "line": 750
+        },
+        "params": {
+          "accessedKeys": [
+            "current_session_id"
+          ],
+          "requiredByDirectIndexing": []
+        },
+        "result": {
+          "literalTopLevelKeys": [
+            "sessions"
+          ],
+          "hasLiteralSuccessObject": true
+        }
+      },
+      {
+        "name": "session.branch",
+        "source": {
+          "path": "tui_gateway/methods_session.py",
+          "line": 2598
+        },
+        "params": {
+          "accessedKeys": [
+            "count",
+            "name"
+          ],
+          "requiredByDirectIndexing": []
+        },
+        "result": {
+          "literalTopLevelKeys": [
+            "info",
+            "message_count",
+            "messages",
+            "parent",
+            "session_id",
+            "stored_session_id",
+            "title"
+          ],
+          "hasLiteralSuccessObject": true
+        }
+      },
+      {
+        "name": "session.close",
+        "source": {
+          "path": "tui_gateway/methods_session.py",
+          "line": 2586
+        },
+        "params": {
+          "accessedKeys": [
+            "session_id"
+          ],
+          "requiredByDirectIndexing": []
+        },
+        "result": {
+          "literalTopLevelKeys": [
+            "closed"
+          ],
+          "hasLiteralSuccessObject": true
+        }
+      },
+      {
+        "name": "session.compress",
+        "source": {
+          "path": "tui_gateway/methods_session.py",
+          "line": 2342
+        },
+        "params": {
+          "accessedKeys": [
+            "focus_topic",
+            "session_id"
+          ],
+          "requiredByDirectIndexing": []
+        },
+        "result": {
+          "literalTopLevelKeys": [
+            "after_messages",
+            "after_tokens",
+            "before_messages",
+            "before_tokens",
+            "compressed",
+            "host_ack",
+            "info",
+            "lock_held",
+            "message",
+            "messages",
+            "removed",
+            "status",
+            "summary",
+            "turn_isolation",
+            "usage"
+          ],
+          "hasLiteralSuccessObject": true
+        }
+      },
+      {
+        "name": "session.context_breakdown",
+        "source": {
+          "path": "tui_gateway/methods_session.py",
+          "line": 1222
+        },
+        "params": {
+          "accessedKeys": [],
+          "requiredByDirectIndexing": []
+        },
+        "result": {
+          "literalTopLevelKeys": [
+            "categories",
+            "context_max",
+            "context_percent",
+            "context_used",
+            "estimated_total",
+            "model"
+          ],
+          "hasLiteralSuccessObject": true
+        }
+      },
+      {
+        "name": "session.create",
+        "source": {
+          "path": "tui_gateway/methods_session.py",
+          "line": 14
+        },
+        "params": {
+          "accessedKeys": [
+            "close_on_disconnect",
+            "cols",
+            "cwd",
+            "fast",
+            "messages",
+            "model",
+            "parent_session_id",
+            "profile",
+            "provider",
+            "reasoning_effort",
+            "source",
+            "title"
+          ],
+          "requiredByDirectIndexing": []
+        },
+        "result": {
+          "literalTopLevelKeys": [
+            "info",
+            "message_count",
+            "messages",
+            "session_id",
+            "stored_session_id"
+          ],
+          "hasLiteralSuccessObject": true
+        }
+      },
+      {
+        "name": "session.cwd.set",
+        "source": {
+          "path": "tui_gateway/methods_session.py",
+          "line": 725
+        },
+        "params": {
+          "accessedKeys": [
+            "cwd",
+            "session_id"
+          ],
+          "requiredByDirectIndexing": []
+        },
+        "result": {
+          "literalTopLevelKeys": [],
+          "hasLiteralSuccessObject": false
+        }
+      },
+      {
+        "name": "session.delete",
+        "source": {
+          "path": "tui_gateway/methods_session.py",
+          "line": 813
+        },
+        "params": {
+          "accessedKeys": [
+            "profile",
+            "session_id"
+          ],
+          "requiredByDirectIndexing": []
+        },
+        "result": {
+          "literalTopLevelKeys": [
+            "deleted"
+          ],
+          "hasLiteralSuccessObject": true
+        }
+      },
+      {
+        "name": "session.history",
+        "source": {
+          "path": "tui_gateway/methods_session.py",
+          "line": 2283
+        },
+        "params": {
+          "accessedKeys": [],
+          "requiredByDirectIndexing": []
+        },
+        "result": {
+          "literalTopLevelKeys": [
+            "count",
+            "messages"
+          ],
+          "hasLiteralSuccessObject": true
+        }
+      },
+      {
+        "name": "session.interrupt",
+        "source": {
+          "path": "tui_gateway/methods_session.py",
+          "line": 2750
+        },
+        "params": {
+          "accessedKeys": [
+            "session_id"
+          ],
+          "requiredByDirectIndexing": []
+        },
+        "result": {
+          "literalTopLevelKeys": [
+            "status",
+            "turn_isolation"
+          ],
+          "hasLiteralSuccessObject": true
+        }
+      },
+      {
+        "name": "session.list",
+        "source": {
+          "path": "tui_gateway/methods_session.py",
+          "line": 162
+        },
+        "params": {
+          "accessedKeys": [
+            "limit"
+          ],
+          "requiredByDirectIndexing": []
+        },
+        "result": {
+          "literalTopLevelKeys": [
+            "sessions"
+          ],
+          "hasLiteralSuccessObject": true
+        }
+      },
+      {
+        "name": "session.most_recent",
+        "source": {
+          "path": "tui_gateway/methods_session.py",
+          "line": 214
+        },
+        "params": {
+          "accessedKeys": [],
+          "requiredByDirectIndexing": []
+        },
+        "result": {
+          "literalTopLevelKeys": [
+            "session_id",
+            "source",
+            "started_at",
+            "title"
+          ],
+          "hasLiteralSuccessObject": true
+        }
+      },
+      {
+        "name": "session.redirect",
+        "source": {
+          "path": "tui_gateway/methods_session.py",
+          "line": 3014
+        },
+        "params": {
+          "accessedKeys": [
+            "text"
+          ],
+          "requiredByDirectIndexing": []
+        },
+        "result": {
+          "literalTopLevelKeys": [
+            "status",
+            "text"
+          ],
+          "hasLiteralSuccessObject": true
+        }
+      },
+      {
+        "name": "session.resume",
+        "source": {
+          "path": "tui_gateway/methods_session.py",
+          "line": 306
+        },
+        "params": {
+          "accessedKeys": [
+            "close_on_disconnect",
+            "cols",
+            "eager_build",
+            "lazy",
+            "omit_messages",
+            "profile",
+            "session_id",
+            "source"
+          ],
+          "requiredByDirectIndexing": []
+        },
+        "result": {
+          "literalTopLevelKeys": [
+            "inflight",
+            "info",
+            "message_count",
+            "messages",
+            "messages_omitted",
+            "resumed",
+            "running",
+            "session_id",
+            "session_key",
+            "started_at",
+            "status"
+          ],
+          "hasLiteralSuccessObject": true
+        }
+      },
+      {
+        "name": "session.save",
+        "source": {
+          "path": "tui_gateway/methods_session.py",
+          "line": 2514
+        },
+        "params": {
+          "accessedKeys": [
+            "session_id"
+          ],
+          "requiredByDirectIndexing": []
+        },
+        "result": {
+          "literalTopLevelKeys": [
+            "file"
+          ],
+          "hasLiteralSuccessObject": true
+        }
+      },
+      {
+        "name": "session.status",
+        "source": {
+          "path": "tui_gateway/methods_session.py",
+          "line": 2207
+        },
+        "params": {
+          "accessedKeys": [
+            "session_id"
+          ],
+          "requiredByDirectIndexing": []
+        },
+        "result": {
+          "literalTopLevelKeys": [
+            "output"
+          ],
+          "hasLiteralSuccessObject": true
+        }
+      },
+      {
+        "name": "session.steer",
+        "source": {
+          "path": "tui_gateway/methods_session.py",
+          "line": 2981
+        },
+        "params": {
+          "accessedKeys": [
+            "text"
+          ],
+          "requiredByDirectIndexing": []
+        },
+        "result": {
+          "literalTopLevelKeys": [
+            "status",
+            "text"
+          ],
+          "hasLiteralSuccessObject": true
+        }
+      },
+      {
+        "name": "session.title",
+        "source": {
+          "path": "tui_gateway/methods_session.py",
+          "line": 863
+        },
+        "params": {
+          "accessedKeys": [
+            "session_id",
+            "title"
+          ],
+          "requiredByDirectIndexing": []
+        },
+        "result": {
+          "literalTopLevelKeys": [
+            "pending",
+            "session_key",
+            "title"
+          ],
+          "hasLiteralSuccessObject": true
+        }
+      },
+      {
+        "name": "session.undo",
+        "source": {
+          "path": "tui_gateway/methods_session.py",
+          "line": 2307
+        },
+        "params": {
+          "accessedKeys": [],
+          "requiredByDirectIndexing": []
+        },
+        "result": {
+          "literalTopLevelKeys": [
+            "removed"
+          ],
+          "hasLiteralSuccessObject": true
+        }
+      },
+      {
+        "name": "session.usage",
+        "source": {
+          "path": "tui_gateway/methods_session.py",
+          "line": 1198
+        },
+        "params": {
+          "accessedKeys": [],
+          "requiredByDirectIndexing": []
+        },
+        "result": {
+          "literalTopLevelKeys": [],
+          "hasLiteralSuccessObject": false
+        }
+      },
+      {
+        "name": "setup.runtime_check",
+        "source": {
+          "path": "tui_gateway/methods_config.py",
+          "line": 350
+        },
+        "params": {
+          "accessedKeys": [
+            "provider"
+          ],
+          "requiredByDirectIndexing": []
+        },
+        "result": {
+          "literalTopLevelKeys": [
+            "error",
+            "model",
+            "ok",
+            "provider",
+            "source"
+          ],
+          "hasLiteralSuccessObject": true
+        }
+      },
+      {
+        "name": "setup.status",
+        "source": {
+          "path": "tui_gateway/methods_config.py",
+          "line": 340
+        },
+        "params": {
+          "accessedKeys": [],
+          "requiredByDirectIndexing": []
+        },
+        "result": {
+          "literalTopLevelKeys": [
+            "provider_configured"
+          ],
+          "hasLiteralSuccessObject": true
+        }
+      },
+      {
+        "name": "shell.exec",
+        "source": {
+          "path": "tui_gateway/methods_tools.py",
+          "line": 1867
+        },
+        "params": {
+          "accessedKeys": [
+            "command"
+          ],
+          "requiredByDirectIndexing": []
+        },
+        "result": {
+          "literalTopLevelKeys": [
+            "code",
+            "stderr",
+            "stdout"
+          ],
+          "hasLiteralSuccessObject": true
+        }
+      },
+      {
+        "name": "skills.manage",
+        "source": {
+          "path": "tui_gateway/methods_tools.py",
+          "line": 1704
+        },
+        "params": {
+          "accessedKeys": [
+            "action",
+            "page",
+            "page_size",
+            "query"
+          ],
+          "requiredByDirectIndexing": []
+        },
+        "result": {
+          "literalTopLevelKeys": [
+            "info",
+            "installed",
+            "name",
+            "results",
+            "skills"
+          ],
+          "hasLiteralSuccessObject": true
+        }
+      },
+      {
+        "name": "skills.reload",
+        "source": {
+          "path": "tui_gateway/methods_tools.py",
+          "line": 1763
+        },
+        "params": {
+          "accessedKeys": [],
+          "requiredByDirectIndexing": []
+        },
+        "result": {
+          "literalTopLevelKeys": [
+            "output",
+            "result"
+          ],
+          "hasLiteralSuccessObject": true
+        }
+      },
+      {
+        "name": "slash.exec",
+        "source": {
+          "path": "tui_gateway/methods_tools.py",
+          "line": 1073
+        },
+        "params": {
+          "accessedKeys": [
+            "command",
+            "session_id"
+          ],
+          "requiredByDirectIndexing": []
+        },
+        "result": {
+          "literalTopLevelKeys": [
+            "output"
+          ],
+          "hasLiteralSuccessObject": true
+        }
+      },
+      {
+        "name": "spawn_tree.list",
+        "source": {
+          "path": "tui_gateway/methods_session.py",
+          "line": 2906
+        },
+        "params": {
+          "accessedKeys": [
+            "cross_session",
+            "limit",
+            "session_id"
+          ],
+          "requiredByDirectIndexing": []
+        },
+        "result": {
+          "literalTopLevelKeys": [
+            "entries"
+          ],
+          "hasLiteralSuccessObject": true
+        }
+      },
+      {
+        "name": "spawn_tree.load",
+        "source": {
+          "path": "tui_gateway/methods_session.py",
+          "line": 2957
+        },
+        "params": {
+          "accessedKeys": [
+            "path"
+          ],
+          "requiredByDirectIndexing": []
+        },
+        "result": {
+          "literalTopLevelKeys": [],
+          "hasLiteralSuccessObject": false
+        }
+      },
+      {
+        "name": "spawn_tree.save",
+        "source": {
+          "path": "tui_gateway/methods_session.py",
+          "line": 2863
+        },
+        "params": {
+          "accessedKeys": [
+            "finished_at",
+            "label",
+            "session_id",
+            "started_at",
+            "subagents"
+          ],
+          "requiredByDirectIndexing": []
+        },
+        "result": {
+          "literalTopLevelKeys": [
+            "path",
+            "session_id"
+          ],
+          "hasLiteralSuccessObject": true
+        }
+      },
+      {
+        "name": "subagent.interrupt",
+        "source": {
+          "path": "tui_gateway/methods_session.py",
+          "line": 2852
+        },
+        "params": {
+          "accessedKeys": [
+            "subagent_id"
+          ],
+          "requiredByDirectIndexing": []
+        },
+        "result": {
+          "literalTopLevelKeys": [
+            "found",
+            "subagent_id"
+          ],
+          "hasLiteralSuccessObject": true
+        }
+      },
+      {
+        "name": "subscription.change",
+        "source": {
+          "path": "tui_gateway/methods_session.py",
+          "line": 2010
+        },
+        "params": {
+          "accessedKeys": [
+            "cancel",
+            "subscription_type_id"
+          ],
+          "requiredByDirectIndexing": []
+        },
+        "result": {
+          "literalTopLevelKeys": [
+            "error",
+            "message",
+            "ok",
+            "payload"
+          ],
+          "hasLiteralSuccessObject": true
+        }
+      },
+      {
+        "name": "subscription.preview",
+        "source": {
+          "path": "tui_gateway/methods_session.py",
+          "line": 1985
+        },
+        "params": {
+          "accessedKeys": [
+            "subscription_type_id"
+          ],
+          "requiredByDirectIndexing": []
+        },
+        "result": {
+          "literalTopLevelKeys": [
+            "error",
+            "message",
+            "ok"
+          ],
+          "hasLiteralSuccessObject": true
+        }
+      },
+      {
+        "name": "subscription.resume",
+        "source": {
+          "path": "tui_gateway/methods_session.py",
+          "line": 2033
+        },
+        "params": {
+          "accessedKeys": [],
+          "requiredByDirectIndexing": []
+        },
+        "result": {
+          "literalTopLevelKeys": [
+            "error",
+            "message",
+            "ok",
+            "payload"
+          ],
+          "hasLiteralSuccessObject": true
+        }
+      },
+      {
+        "name": "subscription.state",
+        "source": {
+          "path": "tui_gateway/methods_session.py",
+          "line": 1969
+        },
+        "params": {
+          "accessedKeys": [],
+          "requiredByDirectIndexing": []
+        },
+        "result": {
+          "literalTopLevelKeys": [
+            "error",
+            "logged_in",
+            "ok"
+          ],
+          "hasLiteralSuccessObject": true
+        }
+      },
+      {
+        "name": "subscription.upgrade",
+        "source": {
+          "path": "tui_gateway/methods_session.py",
+          "line": 2051
+        },
+        "params": {
+          "accessedKeys": [
+            "idempotency_key",
+            "subscription_type_id"
+          ],
+          "requiredByDirectIndexing": []
+        },
+        "result": {
+          "literalTopLevelKeys": [
+            "error",
+            "idempotency_key",
+            "message",
+            "ok",
+            "reason",
+            "recovery_url",
+            "status",
+            "target_tier_name"
+          ],
+          "hasLiteralSuccessObject": true
+        }
+      },
+      {
+        "name": "sudo.respond",
+        "source": {
+          "path": "tui_gateway/methods_prompt.py",
+          "line": 897
+        },
+        "params": {
+          "accessedKeys": [],
+          "requiredByDirectIndexing": []
+        },
+        "result": {
+          "literalTopLevelKeys": [],
+          "hasLiteralSuccessObject": false
+        }
+      },
+      {
+        "name": "system.battery",
+        "source": {
+          "path": "tui_gateway/methods_tools.py",
+          "line": 14
+        },
+        "params": {
+          "accessedKeys": [],
+          "requiredByDirectIndexing": []
+        },
+        "result": {
+          "literalTopLevelKeys": [
+            "available",
+            "category",
+            "percent",
+            "plugged"
+          ],
+          "hasLiteralSuccessObject": true
+        }
+      },
+      {
+        "name": "terminal.read.respond",
+        "source": {
+          "path": "tui_gateway/methods_prompt.py",
+          "line": 888
+        },
+        "params": {
+          "accessedKeys": [],
+          "requiredByDirectIndexing": []
+        },
+        "result": {
+          "literalTopLevelKeys": [],
+          "hasLiteralSuccessObject": false
+        }
+      },
+      {
+        "name": "terminal.resize",
+        "source": {
+          "path": "tui_gateway/methods_session.py",
+          "line": 3053
+        },
+        "params": {
+          "accessedKeys": [
+            "cols"
+          ],
+          "requiredByDirectIndexing": []
+        },
+        "result": {
+          "literalTopLevelKeys": [
+            "cols"
+          ],
+          "hasLiteralSuccessObject": true
+        }
+      },
+      {
+        "name": "tools.configure",
+        "source": {
+          "path": "tui_gateway/methods_tools.py",
+          "line": 1497
+        },
+        "params": {
+          "accessedKeys": [
+            "action",
+            "names",
+            "session_id"
+          ],
+          "requiredByDirectIndexing": []
+        },
+        "result": {
+          "literalTopLevelKeys": [
+            "changed",
+            "enabled_toolsets",
+            "info",
+            "missing_servers",
+            "reset",
+            "unknown"
+          ],
+          "hasLiteralSuccessObject": true
+        }
+      },
+      {
+        "name": "tools.list",
+        "source": {
+          "path": "tui_gateway/methods_tools.py",
+          "line": 1423
+        },
+        "params": {
+          "accessedKeys": [
+            "session_id"
+          ],
+          "requiredByDirectIndexing": []
+        },
+        "result": {
+          "literalTopLevelKeys": [
+            "toolsets"
+          ],
+          "hasLiteralSuccessObject": true
+        }
+      },
+      {
+        "name": "tools.show",
+        "source": {
+          "path": "tui_gateway/methods_tools.py",
+          "line": 1454
+        },
+        "params": {
+          "accessedKeys": [
+            "session_id"
+          ],
+          "requiredByDirectIndexing": []
+        },
+        "result": {
+          "literalTopLevelKeys": [
+            "sections",
+            "total"
+          ],
+          "hasLiteralSuccessObject": true
+        }
+      },
+      {
+        "name": "toolsets.list",
+        "source": {
+          "path": "tui_gateway/methods_tools.py",
+          "line": 1566
+        },
+        "params": {
+          "accessedKeys": [
+            "session_id"
+          ],
+          "requiredByDirectIndexing": []
+        },
+        "result": {
+          "literalTopLevelKeys": [
+            "toolsets"
+          ],
+          "hasLiteralSuccessObject": true
+        }
+      },
+      {
+        "name": "usage.bars",
+        "source": {
+          "path": "tui_gateway/methods_session.py",
+          "line": 1954
+        },
+        "params": {
+          "accessedKeys": [],
+          "requiredByDirectIndexing": []
+        },
+        "result": {
+          "literalTopLevelKeys": [
+            "available",
+            "ok"
+          ],
+          "hasLiteralSuccessObject": true
+        }
+      },
+      {
+        "name": "verification.status",
+        "source": {
+          "path": "tui_gateway/methods_session.py",
+          "line": 281
+        },
+        "params": {
+          "accessedKeys": [
+            "cwd",
+            "session_id",
+            "session_key"
+          ],
+          "requiredByDirectIndexing": []
+        },
+        "result": {
+          "literalTopLevelKeys": [
+            "verification"
+          ],
+          "hasLiteralSuccessObject": true
+        }
+      },
+      {
+        "name": "voice.record",
+        "source": {
+          "path": "tui_gateway/server.py",
+          "line": 13442
+        },
+        "params": {
+          "accessedKeys": [
+            "action",
+            "session_id"
+          ],
+          "requiredByDirectIndexing": []
+        },
+        "result": {
+          "literalTopLevelKeys": [
+            "reason",
+            "status"
+          ],
+          "hasLiteralSuccessObject": true
+        }
+      },
+      {
+        "name": "voice.toggle",
+        "source": {
+          "path": "tui_gateway/server.py",
+          "line": 13328
+        },
+        "params": {
+          "accessedKeys": [
+            "action"
+          ],
+          "requiredByDirectIndexing": []
+        },
+        "result": {
+          "literalTopLevelKeys": [
+            "enabled",
+            "record_key",
+            "stop_hint",
+            "tts"
+          ],
+          "hasLiteralSuccessObject": true
+        }
+      },
+      {
+        "name": "voice.tts",
+        "source": {
+          "path": "tui_gateway/server.py",
+          "line": 13596
+        },
+        "params": {
+          "accessedKeys": [
+            "session_id",
+            "text",
+            "url"
+          ],
+          "requiredByDirectIndexing": []
+        },
+        "result": {
+          "literalTopLevelKeys": [
+            "connected",
+            "messages",
+            "status",
+            "url"
+          ],
+          "hasLiteralSuccessObject": true
+        }
+      },
+      {
+        "name": "wake.pause",
+        "source": {
+          "path": "tui_gateway/server.py",
+          "line": 13253
+        },
+        "params": {
+          "accessedKeys": [],
+          "requiredByDirectIndexing": []
+        },
+        "result": {
+          "literalTopLevelKeys": [
+            "paused",
+            "reason"
+          ],
+          "hasLiteralSuccessObject": true
+        }
+      },
+      {
+        "name": "wake.resume",
+        "source": {
+          "path": "tui_gateway/server.py",
+          "line": 13271
+        },
+        "params": {
+          "accessedKeys": [],
+          "requiredByDirectIndexing": []
+        },
+        "result": {
+          "literalTopLevelKeys": [
+            "reason",
+            "resumed"
+          ],
+          "hasLiteralSuccessObject": true
+        }
+      },
+      {
+        "name": "wake.start",
+        "source": {
+          "path": "tui_gateway/server.py",
+          "line": 13100
+        },
+        "params": {
+          "accessedKeys": [
+            "persist",
+            "session_id",
+            "surface"
+          ],
+          "requiredByDirectIndexing": []
+        },
+        "result": {
+          "literalTopLevelKeys": [
+            "enabled_persisted",
+            "hint",
+            "owner_surface",
+            "phrase",
+            "provider",
+            "reason",
+            "started"
+          ],
+          "hasLiteralSuccessObject": true
+        }
+      },
+      {
+        "name": "wake.status",
+        "source": {
+          "path": "tui_gateway/server.py",
+          "line": 13283
+        },
+        "params": {
+          "accessedKeys": [],
+          "requiredByDirectIndexing": []
+        },
+        "result": {
+          "literalTopLevelKeys": [
+            "audio_silent",
+            "available",
+            "configured_surface",
+            "enabled",
+            "hint",
+            "input_device",
+            "listening",
+            "owned_by_caller",
+            "owner_surface",
+            "phrase",
+            "provider"
+          ],
+          "hasLiteralSuccessObject": true
+        }
+      },
+      {
+        "name": "wake.stop",
+        "source": {
+          "path": "tui_gateway/server.py",
+          "line": 13226
+        },
+        "params": {
+          "accessedKeys": [
+            "persist"
+          ],
+          "requiredByDirectIndexing": []
+        },
+        "result": {
+          "literalTopLevelKeys": [
+            "disabled_persisted",
+            "reason",
+            "stopped"
+          ],
+          "hasLiteralSuccessObject": true
+        }
+      }
+    ],
+    "events": [
+      {
+        "name": "agent.terminal.output",
+        "payloadKeys": [
+          "chunk",
+          "process_id"
+        ],
+        "sources": [
+          {
+            "path": "tui_gateway/server.py",
+            "line": 9284
+          }
+        ],
+        "projections": [
+          "literal-top-level-keys"
+        ]
+      },
+      {
+        "name": "approval.request",
+        "payloadKeys": [],
+        "sources": [
+          {
+            "path": "tui_gateway/server.py",
+            "line": 1808
+          }
+        ],
+        "projections": [
+          "dynamic-payload"
+        ]
+      },
+      {
+        "name": "background.complete",
+        "payloadKeys": [
+          "task_id",
+          "text"
+        ],
+        "sources": [
+          {
+            "path": "tui_gateway/methods_prompt.py",
+            "line": 741
+          },
+          {
+            "path": "tui_gateway/methods_prompt.py",
+            "line": 754
+          }
+        ],
+        "projections": [
+          "literal-top-level-keys"
+        ]
+      },
+      {
+        "name": "billing.step_up.verification",
+        "payloadKeys": [
+          "user_code",
+          "verification_url"
+        ],
+        "sources": [
+          {
+            "path": "tui_gateway/methods_session.py",
+            "line": 2186
+          }
+        ],
+        "projections": [
+          "literal-top-level-keys"
+        ]
+      },
+      {
+        "name": "browser.progress",
+        "payloadKeys": [
+          "level",
+          "message"
+        ],
+        "sources": [
+          {
+            "path": "tui_gateway/server.py",
+            "line": 13748
+          }
+        ],
+        "projections": [
+          "literal-top-level-keys"
+        ]
+      },
+      {
+        "name": "clarify.expire",
+        "payloadKeys": [],
+        "sources": [
+          {
+            "path": "tui_gateway/server.py",
+            "line": 0
+          }
+        ],
+        "projections": [
+          "derived-dynamic-event"
+        ]
+      },
+      {
+        "name": "clarify.request",
+        "payloadKeys": [],
+        "sources": [
+          {
+            "path": "tui_gateway/server.py",
+            "line": 5651
+          }
+        ],
+        "projections": [
+          "dynamic-payload"
+        ]
+      },
+      {
+        "name": "cron.changed",
+        "payloadKeys": [],
+        "sources": [
+          {
+            "path": "tui_gateway/server.py",
+            "line": 0
+          }
+        ],
+        "projections": [
+          "watch-registry"
+        ]
+      },
+      {
+        "name": "error",
+        "payloadKeys": [
+          "message"
+        ],
+        "sources": [
+          {
+            "path": "tui_gateway/methods_prompt.py",
+            "line": 316
+          },
+          {
+            "path": "tui_gateway/server.py",
+            "line": 2239
+          },
+          {
+            "path": "tui_gateway/server.py",
+            "line": 4565
+          },
+          {
+            "path": "tui_gateway/server.py",
+            "line": 4597
+          },
+          {
+            "path": "tui_gateway/server.py",
+            "line": 4603
+          },
+          {
+            "path": "tui_gateway/server.py",
+            "line": 7510
+          },
+          {
+            "path": "tui_gateway/server.py",
+            "line": 9466
+          },
+          {
+            "path": "tui_gateway/server.py",
+            "line": 10030
+          }
+        ],
+        "projections": [
+          "literal-top-level-keys"
+        ]
+      },
+      {
+        "name": "gateway.ready",
+        "payloadKeys": [
+          "change_events",
+          "skin"
+        ],
+        "sources": [
+          {
+            "path": "tui_gateway/entry.py",
+            "line": 447
+          },
+          {
+            "path": "tui_gateway/ws.py",
+            "line": 319
+          }
+        ],
+        "projections": [
+          "literal-top-level-keys"
+        ]
+      },
+      {
+        "name": "message.complete",
+        "payloadKeys": [
+          "status",
+          "text"
+        ],
+        "sources": [
+          {
+            "path": "tui_gateway/server.py",
+            "line": 1719
+          },
+          {
+            "path": "tui_gateway/server.py",
+            "line": 5604
+          },
+          {
+            "path": "tui_gateway/server.py",
+            "line": 7612
+          },
+          {
+            "path": "tui_gateway/server.py",
+            "line": 9856
+          }
+        ],
+        "projections": [
+          "dynamic-payload",
+          "literal-top-level-keys"
+        ]
+      },
+      {
+        "name": "message.delta",
+        "payloadKeys": [
+          "text"
+        ],
+        "sources": [
+          {
+            "path": "tui_gateway/server.py",
+            "line": 5581
+          },
+          {
+            "path": "tui_gateway/server.py",
+            "line": 5586
+          },
+          {
+            "path": "tui_gateway/server.py",
+            "line": 9608
+          }
+        ],
+        "projections": [
+          "dynamic-payload",
+          "literal-top-level-keys"
+        ]
+      },
+      {
+        "name": "message.interim",
+        "payloadKeys": [
+          "already_streamed",
+          "text"
+        ],
+        "sources": [
+          {
+            "path": "tui_gateway/server.py",
+            "line": 5683
+          },
+          {
+            "path": "tui_gateway/server.py",
+            "line": 9617
+          }
+        ],
+        "projections": [
+          "literal-top-level-keys"
+        ]
+      },
+      {
+        "name": "message.start",
+        "payloadKeys": [],
+        "sources": [
+          {
+            "path": "tui_gateway/server.py",
+            "line": 5572
+          },
+          {
+            "path": "tui_gateway/server.py",
+            "line": 7288
+          },
+          {
+            "path": "tui_gateway/server.py",
+            "line": 9038
+          },
+          {
+            "path": "tui_gateway/server.py",
+            "line": 9124
+          },
+          {
+            "path": "tui_gateway/server.py",
+            "line": 9202
+          },
+          {
+            "path": "tui_gateway/server.py",
+            "line": 9372
+          },
+          {
+            "path": "tui_gateway/server.py",
+            "line": 10122
+          },
+          {
+            "path": "tui_gateway/server.py",
+            "line": 10168
+          }
+        ],
+        "projections": [
+          "dynamic-payload"
+        ]
+      },
+      {
+        "name": "moa.aggregating",
+        "payloadKeys": [
+          "aggregator"
+        ],
+        "sources": [
+          {
+            "path": "tui_gateway/server.py",
+            "line": 5416
+          }
+        ],
+        "projections": [
+          "literal-top-level-keys"
+        ]
+      },
+      {
+        "name": "moa.phase",
+        "payloadKeys": [],
+        "sources": [
+          {
+            "path": "tui_gateway/server.py",
+            "line": 5453
+          }
+        ],
+        "projections": [
+          "dynamic-payload"
+        ]
+      },
+      {
+        "name": "moa.progress",
+        "payloadKeys": [
+          "label",
+          "refs_done",
+          "refs_total"
+        ],
+        "sources": [
+          {
+            "path": "tui_gateway/server.py",
+            "line": 5426
+          }
+        ],
+        "projections": [
+          "literal-top-level-keys"
+        ]
+      },
+      {
+        "name": "moa.reference",
+        "payloadKeys": [],
+        "sources": [
+          {
+            "path": "tui_gateway/server.py",
+            "line": 5413
+          }
+        ],
+        "projections": [
+          "dynamic-payload"
+        ]
+      },
+      {
+        "name": "notification.clear",
+        "payloadKeys": [
+          "key"
+        ],
+        "sources": [
+          {
+            "path": "tui_gateway/server.py",
+            "line": 2062
+          },
+          {
+            "path": "tui_gateway/server.py",
+            "line": 5648
+          }
+        ],
+        "projections": [
+          "literal-top-level-keys"
+        ]
+      },
+      {
+        "name": "notification.show",
+        "payloadKeys": [
+          "id",
+          "key",
+          "kind",
+          "level",
+          "text",
+          "ttl_ms"
+        ],
+        "sources": [
+          {
+            "path": "tui_gateway/server.py",
+            "line": 2045
+          },
+          {
+            "path": "tui_gateway/server.py",
+            "line": 5636
+          }
+        ],
+        "projections": [
+          "literal-top-level-keys"
+        ]
+      },
+      {
+        "name": "pairing.changed",
+        "payloadKeys": [],
+        "sources": [
+          {
+            "path": "tui_gateway/server.py",
+            "line": 0
+          }
+        ],
+        "projections": [
+          "watch-registry"
+        ]
+      },
+      {
+        "name": "pet.changed",
+        "payloadKeys": [],
+        "sources": [
+          {
+            "path": "tui_gateway/server.py",
+            "line": 0
+          }
+        ],
+        "projections": [
+          "watch-registry"
+        ]
+      },
+      {
+        "name": "pet.generate.progress",
+        "payloadKeys": [
+          "count",
+          "dataUri",
+          "index",
+          "token"
+        ],
+        "sources": [
+          {
+            "path": "tui_gateway/methods_session.py",
+            "line": 1788
+          },
+          {
+            "path": "tui_gateway/methods_session.py",
+            "line": 1804
+          }
+        ],
+        "projections": [
+          "literal-top-level-keys"
+        ]
+      },
+      {
+        "name": "pet.hatch.progress",
+        "payloadKeys": [],
+        "sources": [
+          {
+            "path": "tui_gateway/methods_session.py",
+            "line": 1900
+          }
+        ],
+        "projections": [
+          "dynamic-payload"
+        ]
+      },
+      {
+        "name": "platforms.changed",
+        "payloadKeys": [],
+        "sources": [
+          {
+            "path": "tui_gateway/server.py",
+            "line": 0
+          }
+        ],
+        "projections": [
+          "watch-registry"
+        ]
+      },
+      {
+        "name": "preview.restart.complete",
+        "payloadKeys": [
+          "task_id",
+          "text"
+        ],
+        "sources": [
+          {
+            "path": "tui_gateway/methods_prompt.py",
+            "line": 859
+          },
+          {
+            "path": "tui_gateway/methods_prompt.py",
+            "line": 861
+          }
+        ],
+        "projections": [
+          "literal-top-level-keys"
+        ]
+      },
+      {
+        "name": "preview.restart.progress",
+        "payloadKeys": [
+          "level",
+          "task_id",
+          "text"
+        ],
+        "sources": [
+          {
+            "path": "tui_gateway/methods_prompt.py",
+            "line": 841
+          },
+          {
+            "path": "tui_gateway/server.py",
+            "line": 6072
+          }
+        ],
+        "projections": [
+          "literal-top-level-keys"
+        ]
+      },
+      {
+        "name": "reaction",
+        "payloadKeys": [
+          "kind"
+        ],
+        "sources": [
+          {
+            "path": "tui_gateway/server.py",
+            "line": 5624
+          }
+        ],
+        "projections": [
+          "literal-top-level-keys"
+        ]
+      },
+      {
+        "name": "reasoning.available",
+        "payloadKeys": [],
+        "sources": [
+          {
+            "path": "tui_gateway/server.py",
+            "line": 5398
+          }
+        ],
+        "projections": [
+          "dynamic-payload"
+        ]
+      },
+      {
+        "name": "reasoning.delta",
+        "payloadKeys": [
+          "text"
+        ],
+        "sources": [
+          {
+            "path": "tui_gateway/server.py",
+            "line": 5575
+          },
+          {
+            "path": "tui_gateway/server.py",
+            "line": 5625
+          }
+        ],
+        "projections": [
+          "literal-top-level-keys"
+        ]
+      },
+      {
+        "name": "review.summary",
+        "payloadKeys": [
+          "text"
+        ],
+        "sources": [
+          {
+            "path": "tui_gateway/server.py",
+            "line": 2206
+          },
+          {
+            "path": "tui_gateway/server.py",
+            "line": 6566
+          }
+        ],
+        "projections": [
+          "literal-top-level-keys"
+        ]
+      },
+      {
+        "name": "secret.expire",
+        "payloadKeys": [],
+        "sources": [
+          {
+            "path": "tui_gateway/server.py",
+            "line": 0
+          }
+        ],
+        "projections": [
+          "derived-dynamic-event"
+        ]
+      },
+      {
+        "name": "secret.request",
+        "payloadKeys": [],
+        "sources": [
+          {
+            "path": "tui_gateway/server.py",
+            "line": 5766
+          }
+        ],
+        "projections": [
+          "dynamic-payload"
+        ]
+      },
+      {
+        "name": "session.info",
+        "payloadKeys": [],
+        "sources": [
+          {
+            "path": "tui_gateway/methods_prompt.py",
+            "line": 304
+          },
+          {
+            "path": "tui_gateway/methods_session.py",
+            "line": 746
+          },
+          {
+            "path": "tui_gateway/methods_session.py",
+            "line": 2467
+          },
+          {
+            "path": "tui_gateway/methods_tools.py",
+            "line": 163
+          },
+          {
+            "path": "tui_gateway/methods_tools.py",
+            "line": 1036
+          },
+          {
+            "path": "tui_gateway/server.py",
+            "line": 1726
+          },
+          {
+            "path": "tui_gateway/server.py",
+            "line": 2231
+          },
+          {
+            "path": "tui_gateway/server.py",
+            "line": 2574
+          },
+          {
+            "path": "tui_gateway/server.py",
+            "line": 4488
+          },
+          {
+            "path": "tui_gateway/server.py",
+            "line": 5164
+          },
+          {
+            "path": "tui_gateway/server.py",
+            "line": 5749
+          },
+          {
+            "path": "tui_gateway/server.py",
+            "line": 5884
+          },
+          {
+            "path": "tui_gateway/server.py",
+            "line": 6138
+          },
+          {
+            "path": "tui_gateway/server.py",
+            "line": 6209
+          },
+          {
+            "path": "tui_gateway/server.py",
+            "line": 6582
+          },
+          {
+            "path": "tui_gateway/server.py",
+            "line": 10645
+          },
+          {
+            "path": "tui_gateway/server.py",
+            "line": 10763
+          },
+          {
+            "path": "tui_gateway/server.py",
+            "line": 10811
+          },
+          {
+            "path": "tui_gateway/server.py",
+            "line": 10825
+          },
+          {
+            "path": "tui_gateway/server.py",
+            "line": 10943
+          },
+          {
+            "path": "tui_gateway/server.py",
+            "line": 12576
+          },
+          {
+            "path": "tui_gateway/server.py",
+            "line": 12598
+          }
+        ],
+        "projections": [
+          "dynamic-payload"
+        ]
+      },
+      {
+        "name": "session.reclaimed",
+        "payloadKeys": [
+          "reason",
+          "session_id",
+          "stored_session_id"
+        ],
+        "sources": [
+          {
+            "path": "tui_gateway/server.py",
+            "line": 819
+          }
+        ],
+        "projections": [
+          "literal-top-level-keys"
+        ]
+      },
+      {
+        "name": "session.title",
+        "payloadKeys": [
+          "session_id",
+          "title"
+        ],
+        "sources": [
+          {
+            "path": "tui_gateway/server.py",
+            "line": 9971
+          }
+        ],
+        "projections": [
+          "literal-top-level-keys"
+        ]
+      },
+      {
+        "name": "sessions.changed",
+        "payloadKeys": [],
+        "sources": [
+          {
+            "path": "tui_gateway/server.py",
+            "line": 0
+          }
+        ],
+        "projections": [
+          "watch-registry"
+        ]
+      },
+      {
+        "name": "skin.changed",
+        "payloadKeys": [],
+        "sources": [
+          {
+            "path": "tui_gateway/server.py",
+            "line": 3249
+          },
+          {
+            "path": "tui_gateway/server.py",
+            "line": 11148
+          }
+        ],
+        "projections": [
+          "dynamic-payload"
+        ]
+      },
+      {
+        "name": "status.update",
+        "payloadKeys": [
+          "kind",
+          "text"
+        ],
+        "sources": [
+          {
+            "path": "tui_gateway/server.py",
+            "line": 1824
+          },
+          {
+            "path": "tui_gateway/server.py",
+            "line": 7283
+          },
+          {
+            "path": "tui_gateway/server.py",
+            "line": 9023
+          },
+          {
+            "path": "tui_gateway/server.py",
+            "line": 9099
+          },
+          {
+            "path": "tui_gateway/server.py",
+            "line": 9185
+          },
+          {
+            "path": "tui_gateway/server.py",
+            "line": 9894
+          }
+        ],
+        "projections": [
+          "literal-top-level-keys"
+        ]
+      },
+      {
+        "name": "subagent.complete",
+        "payloadKeys": [],
+        "sources": [
+          {
+            "path": "tui_gateway/server.py",
+            "line": 0
+          }
+        ],
+        "projections": [
+          "derived-dynamic-event"
+        ]
+      },
+      {
+        "name": "subagent.progress",
+        "payloadKeys": [],
+        "sources": [
+          {
+            "path": "tui_gateway/server.py",
+            "line": 0
+          }
+        ],
+        "projections": [
+          "derived-dynamic-event"
+        ]
+      },
+      {
+        "name": "subagent.spawn_requested",
+        "payloadKeys": [],
+        "sources": [
+          {
+            "path": "tui_gateway/server.py",
+            "line": 0
+          }
+        ],
+        "projections": [
+          "derived-dynamic-event"
+        ]
+      },
+      {
+        "name": "subagent.start",
+        "payloadKeys": [],
+        "sources": [
+          {
+            "path": "tui_gateway/server.py",
+            "line": 0
+          }
+        ],
+        "projections": [
+          "derived-dynamic-event"
+        ]
+      },
+      {
+        "name": "subagent.text",
+        "payloadKeys": [],
+        "sources": [
+          {
+            "path": "tui_gateway/server.py",
+            "line": 0
+          }
+        ],
+        "projections": [
+          "derived-dynamic-event"
+        ]
+      },
+      {
+        "name": "subagent.thinking",
+        "payloadKeys": [],
+        "sources": [
+          {
+            "path": "tui_gateway/server.py",
+            "line": 0
+          }
+        ],
+        "projections": [
+          "derived-dynamic-event"
+        ]
+      },
+      {
+        "name": "subagent.tool",
+        "payloadKeys": [],
+        "sources": [
+          {
+            "path": "tui_gateway/server.py",
+            "line": 0
+          }
+        ],
+        "projections": [
+          "derived-dynamic-event"
+        ]
+      },
+      {
+        "name": "sudo.expire",
+        "payloadKeys": [],
+        "sources": [
+          {
+            "path": "tui_gateway/server.py",
+            "line": 0
+          }
+        ],
+        "projections": [
+          "derived-dynamic-event"
+        ]
+      },
+      {
+        "name": "sudo.request",
+        "payloadKeys": [],
+        "sources": [
+          {
+            "path": "tui_gateway/server.py",
+            "line": 5759
+          }
+        ],
+        "projections": [
+          "literal-top-level-keys"
+        ]
+      },
+      {
+        "name": "terminal.close",
+        "payloadKeys": [
+          "process_id"
+        ],
+        "sources": [
+          {
+            "path": "tui_gateway/server.py",
+            "line": 9294
+          }
+        ],
+        "projections": [
+          "literal-top-level-keys"
+        ]
+      },
+      {
+        "name": "terminal.read.expire",
+        "payloadKeys": [],
+        "sources": [
+          {
+            "path": "tui_gateway/server.py",
+            "line": 0
+          }
+        ],
+        "projections": [
+          "derived-dynamic-event"
+        ]
+      },
+      {
+        "name": "terminal.read.request",
+        "payloadKeys": [],
+        "sources": [
+          {
+            "path": "tui_gateway/server.py",
+            "line": 5668
+          }
+        ],
+        "projections": [
+          "literal-top-level-keys"
+        ]
+      },
+      {
+        "name": "thinking.delta",
+        "payloadKeys": [
+          "text"
+        ],
+        "sources": [
+          {
+            "path": "tui_gateway/server.py",
+            "line": 5621
+          }
+        ],
+        "projections": [
+          "literal-top-level-keys"
+        ]
+      },
+      {
+        "name": "tool.complete",
+        "payloadKeys": [],
+        "sources": [
+          {
+            "path": "tui_gateway/server.py",
+            "line": 5363
+          },
+          {
+            "path": "tui_gateway/server.py",
+            "line": 5589
+          },
+          {
+            "path": "tui_gateway/server.py",
+            "line": 5602
+          }
+        ],
+        "projections": [
+          "dynamic-payload"
+        ]
+      },
+      {
+        "name": "tool.generating",
+        "payloadKeys": [
+          "name"
+        ],
+        "sources": [
+          {
+            "path": "tui_gateway/server.py",
+            "line": 5620
+          }
+        ],
+        "projections": [
+          "literal-top-level-keys"
+        ]
+      },
+      {
+        "name": "tool.output_risk",
+        "payloadKeys": [],
+        "sources": [
+          {
+            "path": "tui_gateway/server.py",
+            "line": 5392
+          }
+        ],
+        "projections": [
+          "dynamic-payload"
+        ]
+      },
+      {
+        "name": "tool.start",
+        "payloadKeys": [],
+        "sources": [
+          {
+            "path": "tui_gateway/server.py",
+            "line": 5316
+          },
+          {
+            "path": "tui_gateway/server.py",
+            "line": 5599
+          }
+        ],
+        "projections": [
+          "dynamic-payload"
+        ]
+      },
+      {
+        "name": "voice.interrupted",
+        "payloadKeys": [],
+        "sources": [
+          {
+            "path": "tui_gateway/server.py",
+            "line": 12881
+          }
+        ],
+        "projections": [
+          "dynamic-payload"
+        ]
+      },
+      {
+        "name": "voice.status",
+        "payloadKeys": [
+          "state"
+        ],
+        "sources": [
+          {
+            "path": "tui_gateway/server.py",
+            "line": 13546
+          }
+        ],
+        "projections": [
+          "literal-top-level-keys"
+        ]
+      },
+      {
+        "name": "voice.transcript",
+        "payloadKeys": [
+          "no_speech_limit",
+          "stop_phrase",
+          "text",
+          "typed"
+        ],
+        "sources": [
+          {
+            "path": "tui_gateway/methods_prompt.py",
+            "line": 101
+          },
+          {
+            "path": "tui_gateway/server.py",
+            "line": 12917
+          },
+          {
+            "path": "tui_gateway/server.py",
+            "line": 12919
+          },
+          {
+            "path": "tui_gateway/server.py",
+            "line": 13521
+          },
+          {
+            "path": "tui_gateway/server.py",
+            "line": 13525
+          },
+          {
+            "path": "tui_gateway/server.py",
+            "line": 13542
+          }
+        ],
+        "projections": [
+          "literal-top-level-keys"
+        ]
+      },
+      {
+        "name": "wake.detected",
+        "payloadKeys": [
+          "phrase",
+          "profile",
+          "start_new_session"
+        ],
+        "sources": [
+          {
+            "path": "tui_gateway/server.py",
+            "line": 13193
+          }
+        ],
+        "projections": [
+          "literal-top-level-keys"
+        ]
+      }
+    ]
+  },
+  "workspaceMutation": {
+    "event": "tool.complete",
+    "detailField": "inline_diff",
+    "representation": "ansi-rendered-diff-preview",
+    "maximumFiles": 6,
+    "maximumRenderedLines": 80,
+    "mayBeTruncated": true,
+    "singlePathTools": [
+      {
+        "name": "patch",
+        "pathField": "path"
+      },
+      {
+        "name": "write_file",
+        "pathField": "path"
+      }
+    ],
+    "dynamicPathTools": [
+      "skill_manage"
+    ],
+    "sources": [
+      "tui_gateway/server.py:_on_tool_complete",
+      "agent/display.py:_resolve_local_edit_paths",
+      "agent/display.py:render_edit_diff_with_delta"
+    ]
+  },
+  "hooks": {
+    "events": [
+      "api_request_error",
+      "kanban_task_blocked",
+      "kanban_task_claimed",
+      "kanban_task_completed",
+      "on_session_end",
+      "on_session_finalize",
+      "on_session_reset",
+      "on_session_start",
+      "post_api_request",
+      "post_approval_response",
+      "post_llm_call",
+      "post_tool_call",
+      "pre_api_request",
+      "pre_approval_request",
+      "pre_gateway_dispatch",
+      "pre_llm_call",
+      "pre_tool_call",
+      "pre_verify",
+      "subagent_start",
+      "subagent_stop",
+      "transform_llm_output",
+      "transform_terminal_output",
+      "transform_tool_result"
+    ],
+    "shellEnvelope": {
+      "fields": [
+        "hook_event_name",
+        "tool_name",
+        "tool_input",
+        "session_id",
+        "cwd",
+        "extra"
+      ],
+      "source": "agent/shell_hooks.py:_serialize_payload"
+    },
+    "outboundEnvelope": {
+      "fields": [
+        "hook_event_name",
+        "tool_name",
+        "tool_input",
+        "session_id",
+        "cwd",
+        "extra",
+        "delivery_id",
+        "timestamp"
+      ],
+      "source": "agent/outbound_webhooks.py:_serialize_payload"
+    }
+  }
+}

@@ -10,15 +10,21 @@
   "direction": "agent-to-client",
   "trigger": "Published on the native GET /event stream.",
   "payloadSchema": {
-    "type": "object",
+    "additionalProperties": false,
     "properties": {
       "messageID": {
+        "pattern": "^msg_",
         "type": "string"
       },
       "reason": {
+        "enum": [
+          "auto",
+          "manual"
+        ],
         "type": "string"
       },
       "sessionID": {
+        "pattern": "^ses",
         "type": "string"
       },
       "timestamp": {
@@ -26,28 +32,36 @@
       }
     },
     "required": [
-      "messageID",
-      "reason",
+      "timestamp",
       "sessionID",
-      "timestamp"
-    ]
+      "messageID",
+      "reason"
+    ],
+    "type": "object"
   },
   "recordSchema": {
-    "type": "object",
+    "additionalProperties": false,
     "properties": {
       "id": {
+        "pattern": "^evt_",
         "type": "string"
       },
       "properties": {
-        "type": "object",
+        "additionalProperties": false,
         "properties": {
           "messageID": {
+            "pattern": "^msg_",
             "type": "string"
           },
           "reason": {
+            "enum": [
+              "auto",
+              "manual"
+            ],
             "type": "string"
           },
           "sessionID": {
+            "pattern": "^ses",
             "type": "string"
           },
           "timestamp": {
@@ -55,24 +69,30 @@
           }
         },
         "required": [
-          "messageID",
-          "reason",
+          "timestamp",
           "sessionID",
-          "timestamp"
-        ]
+          "messageID",
+          "reason"
+        ],
+        "type": "object"
       },
       "type": {
-        "type": "string",
         "enum": [
           "session.next.compaction.started"
-        ]
+        ],
+        "type": "string"
       }
     },
     "required": [
       "id",
-      "properties",
-      "type"
-    ]
+      "type",
+      "properties"
+    ],
+    "type": "object"
+  },
+  "schemaFidelity": {
+    "payload": "exact",
+    "carrier": "exact"
   },
   "evidence": {
     "existence": [

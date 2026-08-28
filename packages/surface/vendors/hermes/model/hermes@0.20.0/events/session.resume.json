@@ -11,51 +11,55 @@
   "payloadSchema": {
     "type": "object",
     "properties": {
-      "session_id": {
+      "close_on_disconnect": {},
+      "cols": {
+        "type": "integer"
+      },
+      "eager_build": {},
+      "lazy": {},
+      "omit_messages": {},
+      "profile": {
         "type": "string"
       },
-      "cwd": {
+      "session_id": {
         "type": "string"
       },
       "source": {
         "type": "string"
-      },
-      "text": {
-        "type": "string"
-      },
-      "hasText": {
-        "type": "boolean"
       }
-    },
-    "required": ["session_id", "cwd"]
+    }
   },
   "resultSchema": {
     "type": "object",
     "properties": {
-      "session_id": {
-        "type": "string"
+      "inflight": {},
+      "info": {},
+      "message_count": {
+        "type": "integer"
       },
-      "stored_session_id": {
+      "messages": {
+        "type": "array",
+        "items": {}
+      },
+      "messages_omitted": {
+        "type": "array",
+        "items": {}
+      },
+      "resumed": {},
+      "running": {
+        "type": "boolean"
+      },
+      "session_id": {
         "type": "string"
       },
       "session_key": {
         "type": "string"
       },
-      "resumed": {
-        "type": "string"
-      },
+      "started_at": {},
       "status": {
         "type": "string"
-      },
-      "message_count": {
-        "type": "number",
-        "minimum": 0
-      },
-      "running": {
-        "type": "boolean"
       }
-    },
-    "required": ["session_id", "status"]
+    }
   },
   "recordSchema": {
     "type": "object",
@@ -78,20 +82,23 @@
       "params": {
         "type": "object",
         "properties": {
-          "session_id": {
+          "close_on_disconnect": {},
+          "cols": {
+            "type": "integer"
+          },
+          "eager_build": {},
+          "lazy": {},
+          "omit_messages": {},
+          "profile": {
             "type": "string"
           },
-          "cwd": {
+          "session_id": {
             "type": "string"
           },
           "source": {
             "type": "string"
-          },
-          "hasText": {
-            "type": "boolean"
           }
-        },
-        "required": ["session_id", "cwd"]
+        }
       }
     },
     "required": ["direction", "jsonrpc", "id", "method", "params"]
@@ -99,10 +106,20 @@
   "recordChannel": "tui-gateway",
   "evidence": {
     "existence": ["hermes-runtime-headless"],
-    "shape": ["hermes-runtime-headless"],
-    "result": ["hermes-runtime-headless"],
-    "carrier": ["hermes-runtime-headless"]
+    "shape": ["hermes-exact-source"],
+    "result": ["hermes-exact-source"],
+    "carrier": ["hermes-exact-source"]
   },
-  "confidence": "verified-headless",
-  "fixture": "captures/hermes@0.20.0/resume-turn/rpc.jsonl"
+  "confidence": "unverified",
+  "fixture": "captures/hermes@0.20.0/resume-turn/rpc.jsonl",
+  "schemaFidelity": {
+    "payload": "structural",
+    "result": "structural",
+    "carrier": "structural",
+    "limitations": [
+      "Python is dynamic: helper-produced, conditionally assembled, and forwarded payload/result fields remain unconstrained unless directly recoverable.",
+      "Direct params indexing proves required access; params.get access proves a known field but not optionality.",
+      "Source declarations establish legal/native shape and existence, not runtime reachability."
+    ]
+  }
 }

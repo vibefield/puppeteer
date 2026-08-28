@@ -130,7 +130,9 @@ for (const descriptor of model.events) {
   }
 }
 
-for (const scenario of readdirSync(capturesRoot)) {
+for (const scenario of readdirSync(capturesRoot, { withFileTypes: true })
+  .filter((entry) => entry.isDirectory())
+  .map((entry) => entry.name)) {
   const root = join(capturesRoot, scenario);
   for (const record of lines(join(root, 'wire.jsonl'))) {
     const { type, time: _time, ...payload } = record;
@@ -157,9 +159,11 @@ for (const descriptor of model.events) {
     problems.push(`${descriptor.event}: captured event is still marked ${descriptor.confidence}`);
   }
   for (const variant of descriptor.variants ?? []) {
-    if (!variant.confidence.startsWith('verified')) continue;
-    if (!(capturedPayloads.get(descriptor.event) ?? []).some((payload) => matches(payload, variant.match))) {
+    const observed = (capturedPayloads.get(descriptor.event) ?? []).some((payload) => matches(payload, variant.match));
+    if (variant.confidence.startsWith('verified') && !observed) {
       problems.push(`${descriptor.event}: verified variant has no matching capture: ${JSON.stringify(variant.match)}`);
+    } else if (!variant.confidence.startsWith('verified') && observed) {
+      problems.push(`${descriptor.event}: captured variant remains ${variant.confidence}: ${JSON.stringify(variant.match)}`);
     }
   }
 }

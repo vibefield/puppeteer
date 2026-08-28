@@ -3,7 +3,9 @@
   "surfaceVersion": "1.0.0",
   "event": "_x.ai/settings/update",
   "channel": "acp",
+  "channels": ["acp"],
   "transport": "jsonrpc-notification",
+  "direction": "agent-to-client",
   "payloadSchema": {
     "type": "object",
     "properties": {
@@ -11,21 +13,44 @@
         "type": "object"
       }
     },
-    "required": [
-      "settings"
-    ]
+    "required": ["settings"]
+  },
+  "recordSchema": {
+    "type": "object",
+    "properties": {
+      "jsonrpc": {
+        "type": "string",
+        "enum": ["2.0"]
+      },
+      "method": {
+        "type": "string",
+        "enum": ["_x.ai/settings/update"]
+      },
+      "params": {
+        "type": "object",
+        "properties": {
+          "settings": {
+            "type": "object"
+          }
+        },
+        "required": ["settings"]
+      }
+    },
+    "required": ["jsonrpc", "method", "params"]
+  },
+  "recordChannel": "acp",
+  "evidence": {
+    "existence": ["grok-runtime-headless"],
+    "shape": ["grok-runtime-headless"],
+    "carrier": ["grok-runtime-headless"]
   },
   "confidence": "verified-headless",
-  "firstSeen": "1.0.0",
-  "lastVerified": "1.0.0",
-  "fixture": "captures/grok@1.0.0/handshake.jsonl",
-  "direction": "agent-to-client",
-  "evidence": {
-    "existence": [
-      "grok-runtime-headless"
-    ],
-    "shape": [
-      "grok-runtime-headless"
+  "schemaFidelity": {
+    "payload": "sampled",
+    "carrier": "sampled",
+    "limitations": [
+      "The retained Grok 1.0.0 runtime fixtures are legacy privacy projections; schemas describe retained native fields and observed types, not a complete legal payload contract."
     ]
-  }
+  },
+  "fixture": "captures/grok@1.0.0/handshake.jsonl"
 }

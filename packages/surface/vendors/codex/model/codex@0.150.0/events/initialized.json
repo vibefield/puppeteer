@@ -6,27 +6,36 @@
   "transport": "jsonrpc-notification",
   "direction": "client-to-agent",
   "recordSchema": {
-    "type": "object",
     "properties": {
       "method": {
-        "type": "string",
         "enum": [
           "initialized"
-        ]
+        ],
+        "title": "InitializedNotificationMethod",
+        "type": "string"
       }
     },
     "required": [
       "method"
-    ]
+    ],
+    "title": "InitializedNotification",
+    "type": "object",
+    "$schema": "http://json-schema.org/draft-07/schema#"
+  },
+  "schemaFidelity": {
+    "carrier": "exact"
   },
   "evidence": {
     "existence": [
-      "codex-runtime-headless"
+      "codex-runtime-headless",
+      "codex-generated-schema"
     ],
     "shape": [
+      "codex-generated-schema",
       "codex-runtime-headless"
     ],
     "carrier": [
+      "codex-generated-schema",
       "codex-runtime-headless"
     ]
   },

@@ -10,973 +10,1295 @@
   "direction": "agent-to-client",
   "trigger": "Published on the native GET /event stream.",
   "payloadSchema": {
-    "type": "object",
+    "additionalProperties": false,
     "properties": {
       "info": {
+        "$ref": "#/$defs/Message"
+      },
+      "sessionID": {
+        "pattern": "^ses",
+        "type": "string"
+      }
+    },
+    "required": [
+      "sessionID",
+      "info"
+    ],
+    "type": "object",
+    "$defs": {
+      "Message": {
         "anyOf": [
           {
-            "type": "object",
-            "properties": {
-              "agent": {
-                "type": "string"
-              },
-              "format": {
-                "anyOf": [
-                  {
-                    "type": "object",
-                    "properties": {
-                      "type": {
-                        "type": "string"
-                      }
-                    },
-                    "required": [
-                      "type"
-                    ]
-                  },
-                  {
-                    "type": "object",
-                    "properties": {
-                      "retryCount": {
-                        "type": "integer",
-                        "minimum": 0
-                      },
-                      "schema": {
-                        "type": "object"
-                      },
-                      "type": {
-                        "type": "string"
-                      }
-                    },
-                    "required": [
-                      "schema",
-                      "type"
-                    ]
-                  }
-                ]
-              },
-              "id": {
-                "type": "string"
-              },
-              "model": {
-                "type": "object",
-                "properties": {
-                  "modelID": {
-                    "type": "string"
-                  },
-                  "providerID": {
-                    "type": "string"
-                  },
-                  "variant": {
-                    "type": "string"
-                  }
-                },
-                "required": [
-                  "modelID",
-                  "providerID"
-                ]
-              },
-              "role": {
-                "type": "string",
-                "enum": [
-                  "user"
-                ]
-              },
-              "sessionID": {
-                "type": "string"
-              },
-              "summary": {
-                "type": "object",
-                "properties": {
-                  "body": {
-                    "type": "string"
-                  },
-                  "diffs": {
-                    "type": "array",
-                    "items": {
-                      "type": "object",
-                      "properties": {
-                        "additions": {
-                          "type": "number"
-                        },
-                        "deletions": {
-                          "type": "number"
-                        },
-                        "file": {
-                          "type": "string"
-                        },
-                        "patch": {
-                          "type": "string"
-                        },
-                        "status": {
-                          "type": "string"
-                        }
-                      },
-                      "required": [
-                        "additions",
-                        "deletions"
-                      ]
-                    }
-                  },
-                  "title": {
-                    "type": "string"
-                  }
-                },
-                "required": [
-                  "diffs"
-                ]
-              },
-              "system": {
-                "type": "string"
-              },
-              "time": {
-                "type": "object",
-                "properties": {
-                  "created": {
-                    "type": "number",
-                    "minimum": 0
-                  }
-                },
-                "required": [
-                  "created"
-                ]
-              },
-              "tools": {
-                "type": "object"
-              }
-            },
-            "required": [
-              "agent",
-              "id",
-              "model",
-              "role",
-              "sessionID",
-              "time"
-            ]
+            "$ref": "#/$defs/UserMessage"
           },
           {
-            "type": "object",
+            "$ref": "#/$defs/AssistantMessage"
+          }
+        ]
+      },
+      "UserMessage": {
+        "additionalProperties": false,
+        "properties": {
+          "agent": {
+            "type": "string"
+          },
+          "format": {
+            "$ref": "#/$defs/OutputFormat"
+          },
+          "id": {
+            "pattern": "^msg",
+            "type": "string"
+          },
+          "model": {
+            "additionalProperties": false,
             "properties": {
-              "agent": {
-                "type": "string"
-              },
-              "cost": {
-                "type": "number"
-              },
-              "error": {
-                "anyOf": [
-                  {
-                    "type": "object",
-                    "properties": {
-                      "data": {
-                        "type": "object",
-                        "properties": {
-                          "message": {
-                            "type": "string"
-                          },
-                          "providerID": {
-                            "type": "string"
-                          }
-                        },
-                        "required": [
-                          "message",
-                          "providerID"
-                        ]
-                      },
-                      "name": {
-                        "type": "string"
-                      }
-                    },
-                    "required": [
-                      "data",
-                      "name"
-                    ]
-                  },
-                  {
-                    "type": "object",
-                    "properties": {
-                      "data": {
-                        "type": "object",
-                        "properties": {
-                          "message": {
-                            "type": "string"
-                          },
-                          "ref": {
-                            "type": "string"
-                          }
-                        },
-                        "required": [
-                          "message"
-                        ]
-                      },
-                      "name": {
-                        "type": "string"
-                      }
-                    },
-                    "required": [
-                      "data",
-                      "name"
-                    ]
-                  },
-                  {
-                    "type": "object",
-                    "properties": {
-                      "data": {
-                        "type": "object"
-                      },
-                      "name": {
-                        "type": "string"
-                      }
-                    },
-                    "required": [
-                      "data",
-                      "name"
-                    ]
-                  },
-                  {
-                    "type": "object",
-                    "properties": {
-                      "data": {
-                        "type": "object",
-                        "properties": {
-                          "message": {
-                            "type": "string"
-                          }
-                        },
-                        "required": [
-                          "message"
-                        ]
-                      },
-                      "name": {
-                        "type": "string"
-                      }
-                    },
-                    "required": [
-                      "data",
-                      "name"
-                    ]
-                  },
-                  {
-                    "type": "object",
-                    "properties": {
-                      "data": {
-                        "type": "object",
-                        "properties": {
-                          "message": {
-                            "type": "string"
-                          },
-                          "retries": {
-                            "type": "integer",
-                            "minimum": 0
-                          }
-                        },
-                        "required": [
-                          "message",
-                          "retries"
-                        ]
-                      },
-                      "name": {
-                        "type": "string"
-                      }
-                    },
-                    "required": [
-                      "data",
-                      "name"
-                    ]
-                  },
-                  {
-                    "type": "object",
-                    "properties": {
-                      "data": {
-                        "type": "object",
-                        "properties": {
-                          "message": {
-                            "type": "string"
-                          },
-                          "responseBody": {
-                            "type": "string"
-                          }
-                        },
-                        "required": [
-                          "message"
-                        ]
-                      },
-                      "name": {
-                        "type": "string"
-                      }
-                    },
-                    "required": [
-                      "data",
-                      "name"
-                    ]
-                  },
-                  {
-                    "type": "object",
-                    "properties": {
-                      "data": {
-                        "type": "object",
-                        "properties": {
-                          "isRetryable": {
-                            "type": "boolean"
-                          },
-                          "message": {
-                            "type": "string"
-                          },
-                          "metadata": {
-                            "type": "object"
-                          },
-                          "responseBody": {
-                            "type": "string"
-                          },
-                          "responseHeaders": {
-                            "type": "object"
-                          },
-                          "statusCode": {
-                            "type": "integer",
-                            "minimum": 0
-                          }
-                        },
-                        "required": [
-                          "isRetryable",
-                          "message"
-                        ]
-                      },
-                      "name": {
-                        "type": "string"
-                      }
-                    },
-                    "required": [
-                      "data",
-                      "name"
-                    ]
-                  }
-                ]
-              },
-              "finish": {
-                "type": "string"
-              },
-              "id": {
-                "type": "string"
-              },
-              "mode": {
-                "type": "string"
-              },
               "modelID": {
                 "type": "string"
               },
-              "parentID": {
-                "type": "string"
-              },
-              "path": {
-                "type": "object",
-                "properties": {
-                  "cwd": {
-                    "type": "string"
-                  },
-                  "root": {
-                    "type": "string"
-                  }
-                },
-                "required": [
-                  "cwd",
-                  "root"
-                ]
-              },
               "providerID": {
                 "type": "string"
-              },
-              "role": {
-                "type": "string",
-                "enum": [
-                  "assistant"
-                ]
-              },
-              "sessionID": {
-                "type": "string"
-              },
-              "structured": {},
-              "summary": {
-                "type": "boolean"
-              },
-              "time": {
-                "type": "object",
-                "properties": {
-                  "completed": {
-                    "type": "integer",
-                    "minimum": 0
-                  },
-                  "created": {
-                    "type": "integer",
-                    "minimum": 0
-                  }
-                },
-                "required": [
-                  "created"
-                ]
-              },
-              "tokens": {
-                "type": "object",
-                "properties": {
-                  "cache": {
-                    "type": "object",
-                    "properties": {
-                      "read": {
-                        "type": "number"
-                      },
-                      "write": {
-                        "type": "number"
-                      }
-                    },
-                    "required": [
-                      "read",
-                      "write"
-                    ]
-                  },
-                  "input": {
-                    "type": "number"
-                  },
-                  "output": {
-                    "type": "number"
-                  },
-                  "reasoning": {
-                    "type": "number"
-                  },
-                  "total": {
-                    "type": "number"
-                  }
-                },
-                "required": [
-                  "cache",
-                  "input",
-                  "output",
-                  "reasoning"
-                ]
               },
               "variant": {
                 "type": "string"
               }
             },
             "required": [
-              "agent",
-              "cost",
-              "id",
-              "mode",
-              "modelID",
-              "parentID",
-              "path",
               "providerID",
-              "role",
-              "sessionID",
-              "time",
-              "tokens"
-            ]
+              "modelID"
+            ],
+            "type": "object"
+          },
+          "role": {
+            "enum": [
+              "user"
+            ],
+            "type": "string"
+          },
+          "sessionID": {
+            "pattern": "^ses",
+            "type": "string"
+          },
+          "summary": {
+            "additionalProperties": false,
+            "properties": {
+              "body": {
+                "type": "string"
+              },
+              "diffs": {
+                "items": {
+                  "$ref": "#/$defs/SnapshotFileDiff"
+                },
+                "type": "array"
+              },
+              "title": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "diffs"
+            ],
+            "type": "object"
+          },
+          "system": {
+            "type": "string"
+          },
+          "time": {
+            "additionalProperties": false,
+            "properties": {
+              "created": {
+                "minimum": 0,
+                "type": "number"
+              }
+            },
+            "required": [
+              "created"
+            ],
+            "type": "object"
+          },
+          "tools": {
+            "additionalProperties": {
+              "type": "boolean"
+            },
+            "type": "object"
           }
-        ]
+        },
+        "required": [
+          "id",
+          "sessionID",
+          "role",
+          "time",
+          "agent",
+          "model"
+        ],
+        "type": "object"
       },
-      "sessionID": {
-        "type": "string"
-      }
-    },
-    "required": [
-      "info",
-      "sessionID"
-    ]
-  },
-  "recordSchema": {
-    "type": "object",
-    "properties": {
-      "id": {
-        "type": "string"
-      },
-      "properties": {
-        "type": "object",
+      "AssistantMessage": {
+        "additionalProperties": false,
         "properties": {
-          "info": {
+          "agent": {
+            "type": "string"
+          },
+          "cost": {
+            "type": "number"
+          },
+          "error": {
             "anyOf": [
               {
-                "type": "object",
-                "properties": {
-                  "agent": {
-                    "type": "string"
-                  },
-                  "format": {
-                    "anyOf": [
-                      {
-                        "type": "object",
-                        "properties": {
-                          "type": {
-                            "type": "string"
-                          }
-                        },
-                        "required": [
-                          "type"
-                        ]
-                      },
-                      {
-                        "type": "object",
-                        "properties": {
-                          "retryCount": {
-                            "type": "integer",
-                            "minimum": 0
-                          },
-                          "schema": {
-                            "type": "object"
-                          },
-                          "type": {
-                            "type": "string"
-                          }
-                        },
-                        "required": [
-                          "schema",
-                          "type"
-                        ]
-                      }
-                    ]
-                  },
-                  "id": {
-                    "type": "string"
-                  },
-                  "model": {
-                    "type": "object",
-                    "properties": {
-                      "modelID": {
-                        "type": "string"
-                      },
-                      "providerID": {
-                        "type": "string"
-                      },
-                      "variant": {
-                        "type": "string"
-                      }
-                    },
-                    "required": [
-                      "modelID",
-                      "providerID"
-                    ]
-                  },
-                  "role": {
-                    "type": "string"
-                  },
-                  "sessionID": {
-                    "type": "string"
-                  },
-                  "summary": {
-                    "type": "object",
-                    "properties": {
-                      "body": {
-                        "type": "string"
-                      },
-                      "diffs": {
-                        "type": "array",
-                        "items": {
-                          "type": "object",
-                          "properties": {
-                            "additions": {
-                              "type": "number"
-                            },
-                            "deletions": {
-                              "type": "number"
-                            },
-                            "file": {
-                              "type": "string"
-                            },
-                            "patch": {
-                              "type": "string"
-                            },
-                            "status": {
-                              "type": "string"
-                            }
-                          },
-                          "required": [
-                            "additions",
-                            "deletions"
-                          ]
-                        }
-                      },
-                      "title": {
-                        "type": "string"
-                      }
-                    },
-                    "required": [
-                      "diffs"
-                    ]
-                  },
-                  "system": {
-                    "type": "string"
-                  },
-                  "time": {
-                    "type": "object",
-                    "properties": {
-                      "created": {
-                        "type": "number",
-                        "minimum": 0
-                      }
-                    },
-                    "required": [
-                      "created"
-                    ]
-                  },
-                  "tools": {
-                    "type": "object"
-                  }
-                },
-                "required": [
-                  "agent",
-                  "id",
-                  "model",
-                  "role",
-                  "sessionID",
-                  "time"
-                ]
+                "$ref": "#/$defs/ProviderAuthError"
               },
               {
-                "type": "object",
-                "properties": {
-                  "agent": {
-                    "type": "string"
-                  },
-                  "cost": {
-                    "type": "number"
-                  },
-                  "error": {
-                    "anyOf": [
-                      {
-                        "type": "object",
-                        "properties": {
-                          "data": {
-                            "type": "object",
-                            "properties": {
-                              "message": {
-                                "type": "string"
-                              },
-                              "providerID": {
-                                "type": "string"
-                              }
-                            },
-                            "required": [
-                              "message",
-                              "providerID"
-                            ]
-                          },
-                          "name": {
-                            "type": "string"
-                          }
-                        },
-                        "required": [
-                          "data",
-                          "name"
-                        ]
-                      },
-                      {
-                        "type": "object",
-                        "properties": {
-                          "data": {
-                            "type": "object",
-                            "properties": {
-                              "message": {
-                                "type": "string"
-                              },
-                              "ref": {
-                                "type": "string"
-                              }
-                            },
-                            "required": [
-                              "message"
-                            ]
-                          },
-                          "name": {
-                            "type": "string"
-                          }
-                        },
-                        "required": [
-                          "data",
-                          "name"
-                        ]
-                      },
-                      {
-                        "type": "object",
-                        "properties": {
-                          "data": {
-                            "type": "object"
-                          },
-                          "name": {
-                            "type": "string"
-                          }
-                        },
-                        "required": [
-                          "data",
-                          "name"
-                        ]
-                      },
-                      {
-                        "type": "object",
-                        "properties": {
-                          "data": {
-                            "type": "object",
-                            "properties": {
-                              "message": {
-                                "type": "string"
-                              }
-                            },
-                            "required": [
-                              "message"
-                            ]
-                          },
-                          "name": {
-                            "type": "string"
-                          }
-                        },
-                        "required": [
-                          "data",
-                          "name"
-                        ]
-                      },
-                      {
-                        "type": "object",
-                        "properties": {
-                          "data": {
-                            "type": "object",
-                            "properties": {
-                              "message": {
-                                "type": "string"
-                              },
-                              "retries": {
-                                "type": "integer",
-                                "minimum": 0
-                              }
-                            },
-                            "required": [
-                              "message",
-                              "retries"
-                            ]
-                          },
-                          "name": {
-                            "type": "string"
-                          }
-                        },
-                        "required": [
-                          "data",
-                          "name"
-                        ]
-                      },
-                      {
-                        "type": "object",
-                        "properties": {
-                          "data": {
-                            "type": "object",
-                            "properties": {
-                              "message": {
-                                "type": "string"
-                              },
-                              "responseBody": {
-                                "type": "string"
-                              }
-                            },
-                            "required": [
-                              "message"
-                            ]
-                          },
-                          "name": {
-                            "type": "string"
-                          }
-                        },
-                        "required": [
-                          "data",
-                          "name"
-                        ]
-                      },
-                      {
-                        "type": "object",
-                        "properties": {
-                          "data": {
-                            "type": "object",
-                            "properties": {
-                              "isRetryable": {
-                                "type": "boolean"
-                              },
-                              "message": {
-                                "type": "string"
-                              },
-                              "metadata": {
-                                "type": "object"
-                              },
-                              "responseBody": {
-                                "type": "string"
-                              },
-                              "responseHeaders": {
-                                "type": "object"
-                              },
-                              "statusCode": {
-                                "type": "integer",
-                                "minimum": 0
-                              }
-                            },
-                            "required": [
-                              "isRetryable",
-                              "message"
-                            ]
-                          },
-                          "name": {
-                            "type": "string"
-                          }
-                        },
-                        "required": [
-                          "data",
-                          "name"
-                        ]
-                      }
-                    ]
-                  },
-                  "finish": {
-                    "type": "string"
-                  },
-                  "id": {
-                    "type": "string"
-                  },
-                  "mode": {
-                    "type": "string"
-                  },
-                  "modelID": {
-                    "type": "string"
-                  },
-                  "parentID": {
-                    "type": "string"
-                  },
-                  "path": {
-                    "type": "object",
-                    "properties": {
-                      "cwd": {
-                        "type": "string"
-                      },
-                      "root": {
-                        "type": "string"
-                      }
-                    },
-                    "required": [
-                      "cwd",
-                      "root"
-                    ]
-                  },
-                  "providerID": {
-                    "type": "string"
-                  },
-                  "role": {
-                    "type": "string"
-                  },
-                  "sessionID": {
-                    "type": "string"
-                  },
-                  "structured": {},
-                  "summary": {
-                    "type": "boolean"
-                  },
-                  "time": {
-                    "type": "object",
-                    "properties": {
-                      "completed": {
-                        "type": "integer",
-                        "minimum": 0
-                      },
-                      "created": {
-                        "type": "integer",
-                        "minimum": 0
-                      }
-                    },
-                    "required": [
-                      "created"
-                    ]
-                  },
-                  "tokens": {
-                    "type": "object",
-                    "properties": {
-                      "cache": {
-                        "type": "object",
-                        "properties": {
-                          "read": {
-                            "type": "number"
-                          },
-                          "write": {
-                            "type": "number"
-                          }
-                        },
-                        "required": [
-                          "read",
-                          "write"
-                        ]
-                      },
-                      "input": {
-                        "type": "number"
-                      },
-                      "output": {
-                        "type": "number"
-                      },
-                      "reasoning": {
-                        "type": "number"
-                      },
-                      "total": {
-                        "type": "number"
-                      }
-                    },
-                    "required": [
-                      "cache",
-                      "input",
-                      "output",
-                      "reasoning"
-                    ]
-                  },
-                  "variant": {
-                    "type": "string"
-                  }
-                },
-                "required": [
-                  "agent",
-                  "cost",
-                  "id",
-                  "mode",
-                  "modelID",
-                  "parentID",
-                  "path",
-                  "providerID",
-                  "role",
-                  "sessionID",
-                  "time",
-                  "tokens"
-                ]
+                "$ref": "#/$defs/UnknownError"
+              },
+              {
+                "$ref": "#/$defs/MessageOutputLengthError"
+              },
+              {
+                "$ref": "#/$defs/MessageAbortedError"
+              },
+              {
+                "$ref": "#/$defs/StructuredOutputError"
+              },
+              {
+                "$ref": "#/$defs/ContextOverflowError"
+              },
+              {
+                "$ref": "#/$defs/ContentFilterError"
+              },
+              {
+                "$ref": "#/$defs/APIError"
               }
             ]
           },
+          "finish": {
+            "type": "string"
+          },
+          "id": {
+            "pattern": "^msg",
+            "type": "string"
+          },
+          "mode": {
+            "type": "string"
+          },
+          "modelID": {
+            "type": "string"
+          },
+          "parentID": {
+            "pattern": "^msg",
+            "type": "string"
+          },
+          "path": {
+            "additionalProperties": false,
+            "properties": {
+              "cwd": {
+                "type": "string"
+              },
+              "root": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "cwd",
+              "root"
+            ],
+            "type": "object"
+          },
+          "providerID": {
+            "type": "string"
+          },
+          "role": {
+            "enum": [
+              "assistant"
+            ],
+            "type": "string"
+          },
           "sessionID": {
+            "pattern": "^ses",
+            "type": "string"
+          },
+          "structured": {},
+          "summary": {
+            "type": "boolean"
+          },
+          "time": {
+            "additionalProperties": false,
+            "properties": {
+              "completed": {
+                "minimum": 0,
+                "type": "integer"
+              },
+              "created": {
+                "minimum": 0,
+                "type": "integer"
+              }
+            },
+            "required": [
+              "created"
+            ],
+            "type": "object"
+          },
+          "tokens": {
+            "additionalProperties": false,
+            "properties": {
+              "cache": {
+                "additionalProperties": false,
+                "properties": {
+                  "read": {
+                    "type": "number"
+                  },
+                  "write": {
+                    "type": "number"
+                  }
+                },
+                "required": [
+                  "read",
+                  "write"
+                ],
+                "type": "object"
+              },
+              "input": {
+                "type": "number"
+              },
+              "output": {
+                "type": "number"
+              },
+              "reasoning": {
+                "type": "number"
+              },
+              "total": {
+                "type": "number"
+              }
+            },
+            "required": [
+              "input",
+              "output",
+              "reasoning",
+              "cache"
+            ],
+            "type": "object"
+          },
+          "variant": {
             "type": "string"
           }
         },
         "required": [
-          "info",
-          "sessionID"
+          "id",
+          "sessionID",
+          "role",
+          "time",
+          "parentID",
+          "modelID",
+          "providerID",
+          "mode",
+          "agent",
+          "path",
+          "cost",
+          "tokens"
+        ],
+        "type": "object"
+      },
+      "OutputFormat": {
+        "anyOf": [
+          {
+            "$ref": "#/$defs/OutputFormatText"
+          },
+          {
+            "$ref": "#/$defs/OutputFormatJsonSchema"
+          }
         ]
       },
+      "SnapshotFileDiff": {
+        "additionalProperties": false,
+        "properties": {
+          "additions": {
+            "type": "number"
+          },
+          "deletions": {
+            "type": "number"
+          },
+          "file": {
+            "type": "string"
+          },
+          "patch": {
+            "type": "string"
+          },
+          "status": {
+            "enum": [
+              "added",
+              "deleted",
+              "modified"
+            ],
+            "type": "string"
+          }
+        },
+        "required": [
+          "additions",
+          "deletions"
+        ],
+        "type": "object"
+      },
+      "ProviderAuthError": {
+        "additionalProperties": false,
+        "properties": {
+          "data": {
+            "additionalProperties": false,
+            "properties": {
+              "message": {
+                "type": "string"
+              },
+              "providerID": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "providerID",
+              "message"
+            ],
+            "type": "object"
+          },
+          "name": {
+            "enum": [
+              "ProviderAuthError"
+            ],
+            "type": "string"
+          }
+        },
+        "required": [
+          "name",
+          "data"
+        ],
+        "type": "object"
+      },
+      "UnknownError": {
+        "additionalProperties": false,
+        "properties": {
+          "data": {
+            "additionalProperties": false,
+            "properties": {
+              "message": {
+                "type": "string"
+              },
+              "ref": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "message"
+            ],
+            "type": "object"
+          },
+          "name": {
+            "enum": [
+              "UnknownError"
+            ],
+            "type": "string"
+          }
+        },
+        "required": [
+          "name",
+          "data"
+        ],
+        "type": "object"
+      },
+      "MessageOutputLengthError": {
+        "additionalProperties": false,
+        "properties": {
+          "data": {
+            "properties": {},
+            "type": "object"
+          },
+          "name": {
+            "enum": [
+              "MessageOutputLengthError"
+            ],
+            "type": "string"
+          }
+        },
+        "required": [
+          "name",
+          "data"
+        ],
+        "type": "object"
+      },
+      "MessageAbortedError": {
+        "additionalProperties": false,
+        "properties": {
+          "data": {
+            "additionalProperties": false,
+            "properties": {
+              "message": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "message"
+            ],
+            "type": "object"
+          },
+          "name": {
+            "enum": [
+              "MessageAbortedError"
+            ],
+            "type": "string"
+          }
+        },
+        "required": [
+          "name",
+          "data"
+        ],
+        "type": "object"
+      },
+      "StructuredOutputError": {
+        "additionalProperties": false,
+        "properties": {
+          "data": {
+            "additionalProperties": false,
+            "properties": {
+              "message": {
+                "type": "string"
+              },
+              "retries": {
+                "minimum": 0,
+                "type": "integer"
+              }
+            },
+            "required": [
+              "message",
+              "retries"
+            ],
+            "type": "object"
+          },
+          "name": {
+            "enum": [
+              "StructuredOutputError"
+            ],
+            "type": "string"
+          }
+        },
+        "required": [
+          "name",
+          "data"
+        ],
+        "type": "object"
+      },
+      "ContextOverflowError": {
+        "additionalProperties": false,
+        "properties": {
+          "data": {
+            "additionalProperties": false,
+            "properties": {
+              "message": {
+                "type": "string"
+              },
+              "responseBody": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "message"
+            ],
+            "type": "object"
+          },
+          "name": {
+            "enum": [
+              "ContextOverflowError"
+            ],
+            "type": "string"
+          }
+        },
+        "required": [
+          "name",
+          "data"
+        ],
+        "type": "object"
+      },
+      "ContentFilterError": {
+        "additionalProperties": false,
+        "properties": {
+          "data": {
+            "additionalProperties": false,
+            "properties": {
+              "message": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "message"
+            ],
+            "type": "object"
+          },
+          "name": {
+            "enum": [
+              "ContentFilterError"
+            ],
+            "type": "string"
+          }
+        },
+        "required": [
+          "name",
+          "data"
+        ],
+        "type": "object"
+      },
+      "APIError": {
+        "additionalProperties": false,
+        "properties": {
+          "data": {
+            "additionalProperties": false,
+            "properties": {
+              "isRetryable": {
+                "type": "boolean"
+              },
+              "message": {
+                "type": "string"
+              },
+              "metadata": {
+                "additionalProperties": {
+                  "type": "string"
+                },
+                "type": "object"
+              },
+              "responseBody": {
+                "type": "string"
+              },
+              "responseHeaders": {
+                "additionalProperties": {
+                  "type": "string"
+                },
+                "type": "object"
+              },
+              "statusCode": {
+                "minimum": 0,
+                "type": "integer"
+              }
+            },
+            "required": [
+              "message",
+              "isRetryable"
+            ],
+            "type": "object"
+          },
+          "name": {
+            "enum": [
+              "APIError"
+            ],
+            "type": "string"
+          }
+        },
+        "required": [
+          "name",
+          "data"
+        ],
+        "type": "object"
+      },
+      "OutputFormatText": {
+        "additionalProperties": false,
+        "properties": {
+          "type": {
+            "enum": [
+              "text"
+            ],
+            "type": "string"
+          }
+        },
+        "required": [
+          "type"
+        ],
+        "type": "object"
+      },
+      "OutputFormatJsonSchema": {
+        "additionalProperties": false,
+        "properties": {
+          "retryCount": {
+            "minimum": 0,
+            "type": "integer"
+          },
+          "schema": {
+            "$ref": "#/$defs/JSONSchema"
+          },
+          "type": {
+            "enum": [
+              "json_schema"
+            ],
+            "type": "string"
+          }
+        },
+        "required": [
+          "type",
+          "schema"
+        ],
+        "type": "object"
+      },
+      "JSONSchema": {
+        "type": "object"
+      }
+    }
+  },
+  "recordSchema": {
+    "additionalProperties": false,
+    "properties": {
+      "id": {
+        "pattern": "^evt_",
+        "type": "string"
+      },
+      "properties": {
+        "additionalProperties": false,
+        "properties": {
+          "info": {
+            "$ref": "#/$defs/Message"
+          },
+          "sessionID": {
+            "pattern": "^ses",
+            "type": "string"
+          }
+        },
+        "required": [
+          "sessionID",
+          "info"
+        ],
+        "type": "object"
+      },
       "type": {
-        "type": "string",
         "enum": [
           "message.updated"
-        ]
+        ],
+        "type": "string"
       }
     },
     "required": [
       "id",
-      "properties",
-      "type"
-    ]
+      "type",
+      "properties"
+    ],
+    "type": "object",
+    "$defs": {
+      "Message": {
+        "anyOf": [
+          {
+            "$ref": "#/$defs/UserMessage"
+          },
+          {
+            "$ref": "#/$defs/AssistantMessage"
+          }
+        ]
+      },
+      "UserMessage": {
+        "additionalProperties": false,
+        "properties": {
+          "agent": {
+            "type": "string"
+          },
+          "format": {
+            "$ref": "#/$defs/OutputFormat"
+          },
+          "id": {
+            "pattern": "^msg",
+            "type": "string"
+          },
+          "model": {
+            "additionalProperties": false,
+            "properties": {
+              "modelID": {
+                "type": "string"
+              },
+              "providerID": {
+                "type": "string"
+              },
+              "variant": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "providerID",
+              "modelID"
+            ],
+            "type": "object"
+          },
+          "role": {
+            "enum": [
+              "user"
+            ],
+            "type": "string"
+          },
+          "sessionID": {
+            "pattern": "^ses",
+            "type": "string"
+          },
+          "summary": {
+            "additionalProperties": false,
+            "properties": {
+              "body": {
+                "type": "string"
+              },
+              "diffs": {
+                "items": {
+                  "$ref": "#/$defs/SnapshotFileDiff"
+                },
+                "type": "array"
+              },
+              "title": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "diffs"
+            ],
+            "type": "object"
+          },
+          "system": {
+            "type": "string"
+          },
+          "time": {
+            "additionalProperties": false,
+            "properties": {
+              "created": {
+                "minimum": 0,
+                "type": "number"
+              }
+            },
+            "required": [
+              "created"
+            ],
+            "type": "object"
+          },
+          "tools": {
+            "additionalProperties": {
+              "type": "boolean"
+            },
+            "type": "object"
+          }
+        },
+        "required": [
+          "id",
+          "sessionID",
+          "role",
+          "time",
+          "agent",
+          "model"
+        ],
+        "type": "object"
+      },
+      "AssistantMessage": {
+        "additionalProperties": false,
+        "properties": {
+          "agent": {
+            "type": "string"
+          },
+          "cost": {
+            "type": "number"
+          },
+          "error": {
+            "anyOf": [
+              {
+                "$ref": "#/$defs/ProviderAuthError"
+              },
+              {
+                "$ref": "#/$defs/UnknownError"
+              },
+              {
+                "$ref": "#/$defs/MessageOutputLengthError"
+              },
+              {
+                "$ref": "#/$defs/MessageAbortedError"
+              },
+              {
+                "$ref": "#/$defs/StructuredOutputError"
+              },
+              {
+                "$ref": "#/$defs/ContextOverflowError"
+              },
+              {
+                "$ref": "#/$defs/ContentFilterError"
+              },
+              {
+                "$ref": "#/$defs/APIError"
+              }
+            ]
+          },
+          "finish": {
+            "type": "string"
+          },
+          "id": {
+            "pattern": "^msg",
+            "type": "string"
+          },
+          "mode": {
+            "type": "string"
+          },
+          "modelID": {
+            "type": "string"
+          },
+          "parentID": {
+            "pattern": "^msg",
+            "type": "string"
+          },
+          "path": {
+            "additionalProperties": false,
+            "properties": {
+              "cwd": {
+                "type": "string"
+              },
+              "root": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "cwd",
+              "root"
+            ],
+            "type": "object"
+          },
+          "providerID": {
+            "type": "string"
+          },
+          "role": {
+            "enum": [
+              "assistant"
+            ],
+            "type": "string"
+          },
+          "sessionID": {
+            "pattern": "^ses",
+            "type": "string"
+          },
+          "structured": {},
+          "summary": {
+            "type": "boolean"
+          },
+          "time": {
+            "additionalProperties": false,
+            "properties": {
+              "completed": {
+                "minimum": 0,
+                "type": "integer"
+              },
+              "created": {
+                "minimum": 0,
+                "type": "integer"
+              }
+            },
+            "required": [
+              "created"
+            ],
+            "type": "object"
+          },
+          "tokens": {
+            "additionalProperties": false,
+            "properties": {
+              "cache": {
+                "additionalProperties": false,
+                "properties": {
+                  "read": {
+                    "type": "number"
+                  },
+                  "write": {
+                    "type": "number"
+                  }
+                },
+                "required": [
+                  "read",
+                  "write"
+                ],
+                "type": "object"
+              },
+              "input": {
+                "type": "number"
+              },
+              "output": {
+                "type": "number"
+              },
+              "reasoning": {
+                "type": "number"
+              },
+              "total": {
+                "type": "number"
+              }
+            },
+            "required": [
+              "input",
+              "output",
+              "reasoning",
+              "cache"
+            ],
+            "type": "object"
+          },
+          "variant": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "sessionID",
+          "role",
+          "time",
+          "parentID",
+          "modelID",
+          "providerID",
+          "mode",
+          "agent",
+          "path",
+          "cost",
+          "tokens"
+        ],
+        "type": "object"
+      },
+      "OutputFormat": {
+        "anyOf": [
+          {
+            "$ref": "#/$defs/OutputFormatText"
+          },
+          {
+            "$ref": "#/$defs/OutputFormatJsonSchema"
+          }
+        ]
+      },
+      "SnapshotFileDiff": {
+        "additionalProperties": false,
+        "properties": {
+          "additions": {
+            "type": "number"
+          },
+          "deletions": {
+            "type": "number"
+          },
+          "file": {
+            "type": "string"
+          },
+          "patch": {
+            "type": "string"
+          },
+          "status": {
+            "enum": [
+              "added",
+              "deleted",
+              "modified"
+            ],
+            "type": "string"
+          }
+        },
+        "required": [
+          "additions",
+          "deletions"
+        ],
+        "type": "object"
+      },
+      "ProviderAuthError": {
+        "additionalProperties": false,
+        "properties": {
+          "data": {
+            "additionalProperties": false,
+            "properties": {
+              "message": {
+                "type": "string"
+              },
+              "providerID": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "providerID",
+              "message"
+            ],
+            "type": "object"
+          },
+          "name": {
+            "enum": [
+              "ProviderAuthError"
+            ],
+            "type": "string"
+          }
+        },
+        "required": [
+          "name",
+          "data"
+        ],
+        "type": "object"
+      },
+      "UnknownError": {
+        "additionalProperties": false,
+        "properties": {
+          "data": {
+            "additionalProperties": false,
+            "properties": {
+              "message": {
+                "type": "string"
+              },
+              "ref": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "message"
+            ],
+            "type": "object"
+          },
+          "name": {
+            "enum": [
+              "UnknownError"
+            ],
+            "type": "string"
+          }
+        },
+        "required": [
+          "name",
+          "data"
+        ],
+        "type": "object"
+      },
+      "MessageOutputLengthError": {
+        "additionalProperties": false,
+        "properties": {
+          "data": {
+            "properties": {},
+            "type": "object"
+          },
+          "name": {
+            "enum": [
+              "MessageOutputLengthError"
+            ],
+            "type": "string"
+          }
+        },
+        "required": [
+          "name",
+          "data"
+        ],
+        "type": "object"
+      },
+      "MessageAbortedError": {
+        "additionalProperties": false,
+        "properties": {
+          "data": {
+            "additionalProperties": false,
+            "properties": {
+              "message": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "message"
+            ],
+            "type": "object"
+          },
+          "name": {
+            "enum": [
+              "MessageAbortedError"
+            ],
+            "type": "string"
+          }
+        },
+        "required": [
+          "name",
+          "data"
+        ],
+        "type": "object"
+      },
+      "StructuredOutputError": {
+        "additionalProperties": false,
+        "properties": {
+          "data": {
+            "additionalProperties": false,
+            "properties": {
+              "message": {
+                "type": "string"
+              },
+              "retries": {
+                "minimum": 0,
+                "type": "integer"
+              }
+            },
+            "required": [
+              "message",
+              "retries"
+            ],
+            "type": "object"
+          },
+          "name": {
+            "enum": [
+              "StructuredOutputError"
+            ],
+            "type": "string"
+          }
+        },
+        "required": [
+          "name",
+          "data"
+        ],
+        "type": "object"
+      },
+      "ContextOverflowError": {
+        "additionalProperties": false,
+        "properties": {
+          "data": {
+            "additionalProperties": false,
+            "properties": {
+              "message": {
+                "type": "string"
+              },
+              "responseBody": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "message"
+            ],
+            "type": "object"
+          },
+          "name": {
+            "enum": [
+              "ContextOverflowError"
+            ],
+            "type": "string"
+          }
+        },
+        "required": [
+          "name",
+          "data"
+        ],
+        "type": "object"
+      },
+      "ContentFilterError": {
+        "additionalProperties": false,
+        "properties": {
+          "data": {
+            "additionalProperties": false,
+            "properties": {
+              "message": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "message"
+            ],
+            "type": "object"
+          },
+          "name": {
+            "enum": [
+              "ContentFilterError"
+            ],
+            "type": "string"
+          }
+        },
+        "required": [
+          "name",
+          "data"
+        ],
+        "type": "object"
+      },
+      "APIError": {
+        "additionalProperties": false,
+        "properties": {
+          "data": {
+            "additionalProperties": false,
+            "properties": {
+              "isRetryable": {
+                "type": "boolean"
+              },
+              "message": {
+                "type": "string"
+              },
+              "metadata": {
+                "additionalProperties": {
+                  "type": "string"
+                },
+                "type": "object"
+              },
+              "responseBody": {
+                "type": "string"
+              },
+              "responseHeaders": {
+                "additionalProperties": {
+                  "type": "string"
+                },
+                "type": "object"
+              },
+              "statusCode": {
+                "minimum": 0,
+                "type": "integer"
+              }
+            },
+            "required": [
+              "message",
+              "isRetryable"
+            ],
+            "type": "object"
+          },
+          "name": {
+            "enum": [
+              "APIError"
+            ],
+            "type": "string"
+          }
+        },
+        "required": [
+          "name",
+          "data"
+        ],
+        "type": "object"
+      },
+      "OutputFormatText": {
+        "additionalProperties": false,
+        "properties": {
+          "type": {
+            "enum": [
+              "text"
+            ],
+            "type": "string"
+          }
+        },
+        "required": [
+          "type"
+        ],
+        "type": "object"
+      },
+      "OutputFormatJsonSchema": {
+        "additionalProperties": false,
+        "properties": {
+          "retryCount": {
+            "minimum": 0,
+            "type": "integer"
+          },
+          "schema": {
+            "$ref": "#/$defs/JSONSchema"
+          },
+          "type": {
+            "enum": [
+              "json_schema"
+            ],
+            "type": "string"
+          }
+        },
+        "required": [
+          "type",
+          "schema"
+        ],
+        "type": "object"
+      },
+      "JSONSchema": {
+        "type": "object"
+      }
+    }
+  },
+  "schemaFidelity": {
+    "payload": "exact",
+    "carrier": "exact"
   },
   "evidence": {
     "existence": [
+      "opencode-generated-openapi",
       "opencode-runtime-abort-stream"
     ],
     "shape": [
+      "opencode-generated-openapi",
       "opencode-runtime-abort-stream"
     ],
     "carrier": [
+      "opencode-generated-openapi",
       "opencode-runtime-abort-stream"
     ]
   },
+  "variantDiscriminants": [
+    "info.role"
+  ],
   "variants": [
     {
       "match": {

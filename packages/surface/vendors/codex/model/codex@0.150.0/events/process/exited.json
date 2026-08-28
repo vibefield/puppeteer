@@ -7,24 +7,31 @@
   "direction": "agent-to-client",
   "trigger": "Final exit notification for a `process/spawn` session.",
   "payloadSchema": {
-    "type": "object",
+    "description": "Final process exit notification for `process/spawn`.",
     "properties": {
       "exitCode": {
-        "type": "number"
+        "description": "Process exit code.",
+        "format": "int32",
+        "type": "integer"
       },
       "processHandle": {
+        "description": "Client-supplied, connection-scoped `processHandle` from `process/spawn`.",
         "type": "string"
       },
       "stderr": {
+        "description": "Buffered stderr capture.\n\nEmpty when stderr was streamed via `process/outputDelta`.",
         "type": "string"
       },
       "stderrCapReached": {
+        "description": "Whether stderr reached `outputBytesCap`.\n\nIn streaming mode, stderr is empty and cap state is also reported on the final stderr `process/outputDelta` notification.",
         "type": "boolean"
       },
       "stdout": {
+        "description": "Buffered stdout capture.\n\nEmpty when stdout was streamed via `process/outputDelta`.",
         "type": "string"
       },
       "stdoutCapReached": {
+        "description": "Whether stdout reached `outputBytesCap`.\n\nIn streaming mode, stdout is empty and cap state is also reported on the final stdout `process/outputDelta` notification.",
         "type": "boolean"
       }
     },
@@ -35,30 +42,76 @@
       "stderrCapReached",
       "stdout",
       "stdoutCapReached"
-    ]
+    ],
+    "type": "object",
+    "$schema": "http://json-schema.org/draft-07/schema#"
   },
   "recordSchema": {
-    "type": "object",
+    "description": "Final exit notification for a `process/spawn` session.",
     "properties": {
       "method": {
-        "type": "string",
         "enum": [
           "process/exited"
-        ]
+        ],
+        "title": "Process/exitedNotificationMethod",
+        "type": "string"
       },
       "params": {
-        "type": "object"
-      },
-      "emittedAtMs": {
-        "type": "number",
-        "minimum": 1000000000000
+        "$ref": "#/$defs/ProcessExitedNotification"
       }
     },
     "required": [
       "method",
-      "params",
-      "emittedAtMs"
-    ]
+      "params"
+    ],
+    "title": "Process/exitedNotification",
+    "type": "object",
+    "$defs": {
+      "ProcessExitedNotification": {
+        "description": "Final process exit notification for `process/spawn`.",
+        "properties": {
+          "exitCode": {
+            "description": "Process exit code.",
+            "format": "int32",
+            "type": "integer"
+          },
+          "processHandle": {
+            "description": "Client-supplied, connection-scoped `processHandle` from `process/spawn`.",
+            "type": "string"
+          },
+          "stderr": {
+            "description": "Buffered stderr capture.\n\nEmpty when stderr was streamed via `process/outputDelta`.",
+            "type": "string"
+          },
+          "stderrCapReached": {
+            "description": "Whether stderr reached `outputBytesCap`.\n\nIn streaming mode, stderr is empty and cap state is also reported on the final stderr `process/outputDelta` notification.",
+            "type": "boolean"
+          },
+          "stdout": {
+            "description": "Buffered stdout capture.\n\nEmpty when stdout was streamed via `process/outputDelta`.",
+            "type": "string"
+          },
+          "stdoutCapReached": {
+            "description": "Whether stdout reached `outputBytesCap`.\n\nIn streaming mode, stdout is empty and cap state is also reported on the final stdout `process/outputDelta` notification.",
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "exitCode",
+          "processHandle",
+          "stderr",
+          "stderrCapReached",
+          "stdout",
+          "stdoutCapReached"
+        ],
+        "type": "object"
+      }
+    },
+    "$schema": "http://json-schema.org/draft-07/schema#"
+  },
+  "schemaFidelity": {
+    "payload": "exact",
+    "carrier": "exact"
   },
   "evidence": {
     "existence": [
@@ -68,7 +121,7 @@
       "codex-generated-schema"
     ],
     "carrier": [
-      "codex-runtime-headless"
+      "codex-generated-schema"
     ]
   },
   "confidence": "unverified"

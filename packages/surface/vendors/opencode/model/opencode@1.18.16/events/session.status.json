@@ -10,32 +10,44 @@
   "direction": "agent-to-client",
   "trigger": "Published on the native GET /event stream.",
   "payloadSchema": {
-    "type": "object",
+    "additionalProperties": false,
     "properties": {
       "sessionID": {
+        "pattern": "^ses",
         "type": "string"
       },
       "status": {
+        "$ref": "#/$defs/SessionStatus"
+      }
+    },
+    "required": [
+      "sessionID",
+      "status"
+    ],
+    "type": "object",
+    "$defs": {
+      "SessionStatus": {
         "anyOf": [
           {
-            "type": "object",
+            "additionalProperties": false,
             "properties": {
               "type": {
-                "type": "string",
                 "enum": [
                   "idle"
-                ]
+                ],
+                "type": "string"
               }
             },
             "required": [
               "type"
-            ]
+            ],
+            "type": "object"
           },
           {
-            "type": "object",
+            "additionalProperties": false,
             "properties": {
               "action": {
-                "type": "object",
+                "additionalProperties": false,
                 "properties": {
                   "label": {
                     "type": "string"
@@ -57,172 +69,214 @@
                   }
                 },
                 "required": [
-                  "label",
-                  "message",
-                  "provider",
                   "reason",
-                  "title"
-                ]
+                  "provider",
+                  "title",
+                  "message",
+                  "label"
+                ],
+                "type": "object"
               },
               "attempt": {
-                "type": "integer",
-                "minimum": 0
+                "minimum": 0,
+                "type": "integer"
               },
               "message": {
                 "type": "string"
               },
               "next": {
-                "type": "integer",
-                "minimum": 0
+                "minimum": 0,
+                "type": "integer"
               },
               "type": {
-                "type": "string",
                 "enum": [
                   "retry"
-                ]
+                ],
+                "type": "string"
               }
             },
             "required": [
+              "type",
               "attempt",
               "message",
-              "next",
-              "type"
-            ]
+              "next"
+            ],
+            "type": "object"
           },
           {
-            "type": "object",
+            "additionalProperties": false,
             "properties": {
               "type": {
-                "type": "string",
                 "enum": [
                   "busy"
-                ]
+                ],
+                "type": "string"
               }
             },
             "required": [
               "type"
-            ]
+            ],
+            "type": "object"
           }
         ]
       }
-    },
-    "required": [
-      "sessionID",
-      "status"
-    ]
+    }
   },
   "recordSchema": {
-    "type": "object",
+    "additionalProperties": false,
     "properties": {
       "id": {
+        "pattern": "^evt_",
         "type": "string"
       },
       "properties": {
-        "type": "object",
+        "additionalProperties": false,
         "properties": {
           "sessionID": {
+            "pattern": "^ses",
             "type": "string"
           },
           "status": {
-            "anyOf": [
-              {
-                "type": "object",
-                "properties": {
-                  "type": {
-                    "type": "string"
-                  }
-                },
-                "required": [
-                  "type"
-                ]
-              },
-              {
-                "type": "object",
-                "properties": {
-                  "action": {
-                    "type": "object",
-                    "properties": {
-                      "label": {
-                        "type": "string"
-                      },
-                      "link": {
-                        "type": "string"
-                      },
-                      "message": {
-                        "type": "string"
-                      },
-                      "provider": {
-                        "type": "string"
-                      },
-                      "reason": {
-                        "type": "string"
-                      },
-                      "title": {
-                        "type": "string"
-                      }
-                    },
-                    "required": [
-                      "label",
-                      "message",
-                      "provider",
-                      "reason",
-                      "title"
-                    ]
-                  },
-                  "attempt": {
-                    "type": "integer",
-                    "minimum": 0
-                  },
-                  "message": {
-                    "type": "string"
-                  },
-                  "next": {
-                    "type": "integer",
-                    "minimum": 0
-                  },
-                  "type": {
-                    "type": "string"
-                  }
-                },
-                "required": [
-                  "attempt",
-                  "message",
-                  "next",
-                  "type"
-                ]
-              }
-            ]
+            "$ref": "#/$defs/SessionStatus"
           }
         },
         "required": [
           "sessionID",
           "status"
-        ]
+        ],
+        "type": "object"
       },
       "type": {
-        "type": "string",
         "enum": [
           "session.status"
-        ]
+        ],
+        "type": "string"
       }
     },
     "required": [
       "id",
-      "properties",
-      "type"
-    ]
+      "type",
+      "properties"
+    ],
+    "type": "object",
+    "$defs": {
+      "SessionStatus": {
+        "anyOf": [
+          {
+            "additionalProperties": false,
+            "properties": {
+              "type": {
+                "enum": [
+                  "idle"
+                ],
+                "type": "string"
+              }
+            },
+            "required": [
+              "type"
+            ],
+            "type": "object"
+          },
+          {
+            "additionalProperties": false,
+            "properties": {
+              "action": {
+                "additionalProperties": false,
+                "properties": {
+                  "label": {
+                    "type": "string"
+                  },
+                  "link": {
+                    "type": "string"
+                  },
+                  "message": {
+                    "type": "string"
+                  },
+                  "provider": {
+                    "type": "string"
+                  },
+                  "reason": {
+                    "type": "string"
+                  },
+                  "title": {
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "reason",
+                  "provider",
+                  "title",
+                  "message",
+                  "label"
+                ],
+                "type": "object"
+              },
+              "attempt": {
+                "minimum": 0,
+                "type": "integer"
+              },
+              "message": {
+                "type": "string"
+              },
+              "next": {
+                "minimum": 0,
+                "type": "integer"
+              },
+              "type": {
+                "enum": [
+                  "retry"
+                ],
+                "type": "string"
+              }
+            },
+            "required": [
+              "type",
+              "attempt",
+              "message",
+              "next"
+            ],
+            "type": "object"
+          },
+          {
+            "additionalProperties": false,
+            "properties": {
+              "type": {
+                "enum": [
+                  "busy"
+                ],
+                "type": "string"
+              }
+            },
+            "required": [
+              "type"
+            ],
+            "type": "object"
+          }
+        ]
+      }
+    }
+  },
+  "schemaFidelity": {
+    "payload": "exact",
+    "carrier": "exact"
   },
   "evidence": {
     "existence": [
+      "opencode-generated-openapi",
       "opencode-runtime-abort-stream"
     ],
     "shape": [
+      "opencode-generated-openapi",
       "opencode-runtime-abort-stream"
     ],
     "carrier": [
+      "opencode-generated-openapi",
       "opencode-runtime-abort-stream"
     ]
   },
+  "variantDiscriminants": [
+    "status.type"
+  ],
   "variants": [
     {
       "match": {

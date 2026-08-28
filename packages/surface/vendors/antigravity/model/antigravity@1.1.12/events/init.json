@@ -1,0 +1,77 @@
+{
+  "surface": "antigravity",
+  "surfaceVersion": "1.1.12",
+  "event": "init",
+  "schemaFidelity": {
+    "payload": "structural",
+    "carrier": "structural",
+    "limitations": [
+      "The retained 1.1.12 runtime records are legacy privacy projections. Schemas retain only fields whose native names and types survive that transform or are stated by official documentation; additional native fields may exist."
+    ]
+  },
+  "channel": "print-stream",
+  "channels": ["print-stream"],
+  "transport": "jsonl-record",
+  "direction": "agent-to-client",
+  "payloadSchema": {
+    "type": "object",
+    "properties": {
+      "conversation_id": {
+        "type": "string"
+      },
+      "init": {
+        "type": "object",
+        "properties": {
+          "permission_mode": {
+            "type": "string"
+          },
+          "tools": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        },
+        "required": ["permission_mode", "tools"]
+      }
+    },
+    "required": ["conversation_id", "init"]
+  },
+  "recordSchema": {
+    "type": "object",
+    "properties": {
+      "event": {
+        "type": "string",
+        "enum": ["init"]
+      },
+      "conversation_id": {
+        "type": "string"
+      },
+      "init": {
+        "type": "object",
+        "properties": {
+          "permission_mode": {
+            "type": "string"
+          },
+          "tools": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        },
+        "required": ["permission_mode", "tools"]
+      }
+    },
+    "required": ["event", "conversation_id", "init"]
+  },
+  "recordChannel": "print-stream",
+  "evidence": {
+    "existence": ["antigravity-runtime-headless"],
+    "shape": ["antigravity-runtime-headless"],
+    "carrier": ["antigravity-runtime-headless"]
+  },
+  "confidence": "verified-headless",
+  "fixture": "captures/antigravity@1.1.12/add-dir-turn/print.stream-json.json",
+  "notes": "The runtime projection retained the exact 56-entry tool-name catalog but replaced cwd with a synthetic cwdRedacted flag; cwd is therefore not required by this schema."
+}

@@ -1,0 +1,11 @@
+{
+  "format": "puppeteer-capture-fidelity/1",
+  "vendor": "hermes",
+  "vendorVersion": "0.20.0",
+  "defaultRepresentation": "legacy-privacy-projection",
+  "nativeArtifacts": ["*/*.jsonl", "*/session.json", "*/capture.json"],
+  "limitations": [
+    "The retained sanitizer removed or renamed native fields and synthesized presence flags; its raw inputs are unavailable.",
+    "Exact native method, event, hook, and envelope shape must come from the pinned source reference, not these runtime projections."
+  ]
+}

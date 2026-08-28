@@ -1,0 +1,147 @@
+{
+  "vendor": "opencode",
+  "vendorVersion": "1.18.16",
+  "kind": "exact-source-contract",
+  "sourceRepository": "https://github.com/anomalyco/opencode",
+  "sourceRevision": "a3647eb025c7615159d417dcc49fc39fdaeba65b",
+  "sourceTag": "v1.18.16",
+  "sourceFiles": [
+    {
+      "path": "packages/opencode/src/tool/tool.ts",
+      "sha256": "fed2bc482a40aff4fe21a7939c753bc0f36110e5ec0e8dbba1410509d4deaf88",
+      "bytes": 6130,
+      "symbols": ["define"]
+    },
+    {
+      "path": "packages/opencode/src/tool/edit.ts",
+      "sha256": "f84d9d242137e1f18ce912188efb7a97b71bf4f255e0a69f16a1fe9d1ff236d4",
+      "bytes": 24530,
+      "symbols": ["Parameters", "EditTool", "trimDiff"]
+    },
+    {
+      "path": "packages/opencode/src/tool/write.ts",
+      "sha256": "861de91cc67849e138c32a697c8eb1abab8e4912bfd97811ea1866b8e9af4096",
+      "bytes": 3957,
+      "symbols": ["Parameters", "WriteTool"]
+    },
+    {
+      "path": "packages/opencode/src/tool/apply_patch.ts",
+      "sha256": "fd10da9be5e3f44b1114504020a6630d213089e417e165e36df76f09adce1504",
+      "bytes": 11019,
+      "symbols": ["Parameters", "ApplyPatchTool"]
+    }
+  ],
+  "tools": {
+    "edit": {
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "filePath": { "type": "string" },
+          "oldString": { "type": "string" },
+          "newString": { "type": "string" },
+          "replaceAll": { "type": "boolean" }
+        },
+        "required": ["filePath", "oldString", "newString"]
+      },
+      "completedMetadataSchema": {
+        "type": "object",
+        "properties": {
+          "diagnostics": { "type": "object" },
+          "diff": { "type": "string" },
+          "filediff": {
+            "type": "object",
+            "properties": {
+              "file": { "type": "string" },
+              "patch": { "type": "string" },
+              "additions": { "type": "integer", "minimum": 0 },
+              "deletions": { "type": "integer", "minimum": 0 }
+            },
+            "required": ["file", "patch", "additions", "deletions"]
+          },
+          "truncated": { "type": "boolean" },
+          "outputPath": { "type": "string" }
+        },
+        "required": ["diagnostics", "diff", "filediff", "truncated"]
+      }
+    },
+    "write": {
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "content": { "type": "string" },
+          "filePath": { "type": "string" }
+        },
+        "required": ["content", "filePath"]
+      },
+      "completedMetadataSchema": {
+        "type": "object",
+        "properties": {
+          "diagnostics": { "type": "object" },
+          "filepath": { "type": "string" },
+          "exists": { "type": "boolean" },
+          "truncated": { "type": "boolean" },
+          "outputPath": { "type": "string" }
+        },
+        "required": ["diagnostics", "filepath", "exists", "truncated"]
+      }
+    },
+    "apply_patch": {
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "patchText": { "type": "string", "minLength": 1 }
+        },
+        "required": ["patchText"]
+      },
+      "completedMetadataSchema": {
+        "type": "object",
+        "properties": {
+          "diagnostics": { "type": "object" },
+          "diff": { "type": "string" },
+          "files": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "filePath": { "type": "string" },
+                "relativePath": { "type": "string" },
+                "type": { "type": "string", "enum": ["add", "update", "delete", "move"] },
+                "patch": { "type": "string" },
+                "additions": { "type": "integer", "minimum": 0 },
+                "deletions": { "type": "integer", "minimum": 0 },
+                "movePath": { "type": "string" }
+              },
+              "required": ["filePath", "relativePath", "type", "patch", "additions", "deletions"]
+            }
+          },
+          "truncated": { "type": "boolean" },
+          "outputPath": { "type": "string" }
+        },
+        "required": ["diagnostics", "diff", "files", "truncated"]
+      }
+    }
+  },
+  "diffSemantics": {
+    "producer": "trimDiff(createTwoFilesPatch(...))",
+    "representation": "presentation-preview",
+    "completeAtProduction": true,
+    "applicableAsRawUnifiedDiff": false,
+    "reason": "trimDiff removes common indentation from hunk content lines, so the displayed patch may not reproduce the actual file bytes.",
+    "editAfterFormatting": "edit recomputes the preview after formatter changes, so completed metadata reflects the final tool result rather than only the requested replacement."
+  },
+  "genericResultMetadata": {
+    "truncated": "Whether the generic tool wrapper truncated the model-facing output string.",
+    "outputPath": "Path to the saved full model-facing output when output truncation occurred.",
+    "doesNotDescribe": ["filediff.patch", "files[].patch", "metadata.diff"]
+  },
+  "watcher": {
+    "event": "file.watcher.updated",
+    "variants": ["add", "change", "unlink"],
+    "causality": "The watcher reports a filesystem observation and does not identify the tool call that caused it."
+  },
+  "limitations": [
+    "Exact source establishes legal tool fields and producer semantics; the controlled captures establish runtime occurrence.",
+    "Tool completion reports that the native tool returned successfully, not an independent post-operation filesystem verification.",
+    "The watcher can observe changes without proving which tool or process caused them."
+  ]
+}

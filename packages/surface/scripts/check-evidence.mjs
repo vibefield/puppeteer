@@ -172,8 +172,8 @@ export function auditEvidence({ write = false, root = repoRoot } = {}) {
     ) {
       issues.push(`${label}: identity does not match its manifest`);
     }
-    if (manifest.asmVersion === 2 && index.evidenceVersion !== 2) {
-      issues.push(`${label}: ASM v2 requires evidenceVersion 2`);
+    if (manifest.asmVersion >= 2 && index.evidenceVersion !== 2) {
+      issues.push(`${label}: ASM v2+ requires evidenceVersion 2`);
     }
     if (write) writeFileSync(path, `${JSON.stringify(index, null, 2)}\n`);
   }

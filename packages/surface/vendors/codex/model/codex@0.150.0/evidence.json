@@ -42,6 +42,14 @@
       "artifact": "installed-codex-0.150.0-darwin-arm64",
       "sourceReference": 0,
       "harness": "codex app-server generate-json-schema --experimental"
+    },
+    {
+      "id": "codex-file-change-source",
+      "kind": "exact-source",
+      "confidence": "unverified",
+      "record": "source-file-changes",
+      "sourceReference": 0,
+      "notes": "Digest-pinned exact-release source establishes the kind-dependent meaning of FileUpdateChange.diff, move suffix encoding, and deterministic path ordering; source alone does not prove runtime occurrence."
     }
   ],
   "records": [
@@ -50,7 +58,7 @@
       "kind": "capture-set",
       "path": "packages/surface/vendors/codex/captures/codex@0.150.0",
       "digestAlgorithm": "sha256-path-content-v1",
-      "sha256": "76b34a5298f6e4f706c1579c218aecdc8f5ba3e5e5f2e24d1980e954bd6cc7ca"
+      "sha256": "be4ac77a7359f6aa6523edddb31434838333ea93bdd730ff9f7c3da9de884fb2"
     },
     {
       "id": "agent-surface-model",
@@ -60,7 +68,14 @@
         "evidence.json"
       ],
       "digestAlgorithm": "sha256-path-content-v1",
-      "sha256": "04bf086629d3837eeca05f713137301c9e624259e1bde4094ff31cba6b22487f"
+      "sha256": "d916c947e76646be3cc35a7cdf2b09405db9f7c2a51d7e0ef8dfd94fb72fdc3f"
+    },
+    {
+      "id": "source-file-changes",
+      "kind": "source-contract",
+      "path": "packages/surface/vendors/codex/references/codex@0.150.0/source",
+      "digestAlgorithm": "sha256-path-content-v1",
+      "sha256": "877c777f58a022e6f3d64d3d346df58251a2cba1a2b48452ce0a600fce3feabf"
     }
   ],
   "limitations": [

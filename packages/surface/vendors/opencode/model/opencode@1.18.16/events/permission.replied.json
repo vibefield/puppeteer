@@ -10,78 +10,101 @@
   "direction": "agent-to-client",
   "trigger": "Published on the native GET /event stream.",
   "payloadSchema": {
-    "type": "object",
+    "additionalProperties": false,
     "properties": {
       "reply": {
-        "type": "string",
         "enum": [
           "once",
           "always",
           "reject"
-        ]
+        ],
+        "type": "string"
       },
       "requestID": {
+        "pattern": "^per",
         "type": "string"
       },
       "sessionID": {
+        "pattern": "^ses",
         "type": "string"
       }
     },
     "required": [
-      "reply",
+      "sessionID",
       "requestID",
-      "sessionID"
-    ]
+      "reply"
+    ],
+    "type": "object"
   },
   "recordSchema": {
-    "type": "object",
+    "additionalProperties": false,
     "properties": {
       "id": {
+        "pattern": "^evt_",
         "type": "string"
       },
       "properties": {
-        "type": "object",
+        "additionalProperties": false,
         "properties": {
           "reply": {
+            "enum": [
+              "once",
+              "always",
+              "reject"
+            ],
             "type": "string"
           },
           "requestID": {
+            "pattern": "^per",
             "type": "string"
           },
           "sessionID": {
+            "pattern": "^ses",
             "type": "string"
           }
         },
         "required": [
-          "reply",
+          "sessionID",
           "requestID",
-          "sessionID"
-        ]
+          "reply"
+        ],
+        "type": "object"
       },
       "type": {
-        "type": "string",
         "enum": [
           "permission.replied"
-        ]
+        ],
+        "type": "string"
       }
     },
     "required": [
       "id",
-      "properties",
-      "type"
-    ]
+      "type",
+      "properties"
+    ],
+    "type": "object"
+  },
+  "schemaFidelity": {
+    "payload": "exact",
+    "carrier": "exact"
   },
   "evidence": {
     "existence": [
+      "opencode-generated-openapi",
       "opencode-runtime-permission-accept"
     ],
     "shape": [
+      "opencode-generated-openapi",
       "opencode-runtime-permission-accept"
     ],
     "carrier": [
+      "opencode-generated-openapi",
       "opencode-runtime-permission-accept"
     ]
   },
+  "variantDiscriminants": [
+    "reply"
+  ],
   "variants": [
     {
       "match": {

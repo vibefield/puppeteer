@@ -1,7 +1,7 @@
 {
   "format": "puppeteer-groundtruth/1",
   "manifest": {
-    "asmVersion": 2,
+    "asmVersion": 3,
     "vendor": "kimi",
     "vendorVersion": "0.34.0",
     "generatedAt": "2026-08-13",
@@ -110,7 +110,7 @@
         "kind": "capture-set",
         "path": "packages/surface/vendors/kimi/captures/kimi@0.34.0",
         "digestAlgorithm": "sha256-path-content-v1",
-        "sha256": "3ca0b1eda24d198e454ef95c7c07c21e4dcd0c712c02c9a42f5e702489f0347a"
+        "sha256": "591fd32fedcfb9524698e6249529164e1482e0a8cd55619c1187c5d0585864ce"
       },
       {
         "id": "binary-probes",
@@ -134,7 +134,7 @@
           "evidence.json"
         ],
         "digestAlgorithm": "sha256-path-content-v1",
-        "sha256": "b85515cb0eb29b6e47f2d23684ab52bf6fa8400461f674c9b48b7afef5f9652f"
+        "sha256": "f2e828b161103962701e4cbf9a6be495be56bbf4be0e978df89fc647f902d69f"
       }
     ],
     "claims": [
@@ -179,6 +179,13 @@
       "surface": "kimi",
       "surfaceVersion": "0.34.0",
       "event": "config.update",
+      "schemaFidelity": {
+        "payload": "structural",
+        "carrier": "structural",
+        "limitations": [
+          "The release source projection preserves recursive declared structure but intentionally leaves custom/unknown values unconstrained; runtime-only file schemas describe captured instances."
+        ]
+      },
       "channel": "wire",
       "channels": [
         "wire"
@@ -293,6 +300,13 @@
       "surface": "kimi",
       "surfaceVersion": "0.34.0",
       "event": "context.append_loop_event",
+      "schemaFidelity": {
+        "payload": "structural",
+        "carrier": "structural",
+        "limitations": [
+          "The release source projection preserves recursive declared structure but intentionally leaves custom/unknown values unconstrained; runtime-only file schemas describe captured instances."
+        ]
+      },
       "channel": "wire",
       "channels": [
         "wire"
@@ -2125,12 +2139,1022 @@
           "confidence": "unverified"
         }
       ],
+      "variantDiscriminants": [
+        "event.type",
+        "event.part.type",
+        "event.providerFinishReason"
+      ],
+      "payloadRefinements": [
+        {
+          "match": {
+            "event.type": "tool.call",
+            "event.name": "Agent"
+          },
+          "path": "event.args",
+          "schema": {
+            "$schema": "http://json-schema.org/draft-07/schema#",
+            "additionalProperties": false,
+            "properties": {
+              "description": {
+                "type": "string"
+              },
+              "prompt": {
+                "type": "string"
+              },
+              "resume": {
+                "type": "string"
+              },
+              "run_in_background": {
+                "type": "boolean"
+              },
+              "subagent_type": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "prompt",
+              "description"
+            ],
+            "type": "object"
+          },
+          "evidence": {
+            "existence": [
+              "kimi-runtime-headless"
+            ],
+            "shape": [
+              "kimi-runtime-headless"
+            ]
+          },
+          "confidence": "verified-headless",
+          "fidelity": "exact"
+        },
+        {
+          "match": {
+            "event.type": "tool.call",
+            "event.name": "AgentSwarm"
+          },
+          "path": "event.args",
+          "schema": {
+            "$schema": "http://json-schema.org/draft-07/schema#",
+            "additionalProperties": false,
+            "properties": {
+              "description": {
+                "minLength": 1,
+                "type": "string"
+              },
+              "items": {
+                "items": {
+                  "minLength": 1,
+                  "type": "string"
+                },
+                "maxItems": 128,
+                "type": "array"
+              },
+              "prompt_template": {
+                "minLength": 1,
+                "type": "string"
+              },
+              "resume_agent_ids": {
+                "additionalProperties": {
+                  "minLength": 1,
+                  "type": "string"
+                },
+                "propertyNames": {
+                  "minLength": 1,
+                  "type": "string"
+                },
+                "type": "object"
+              },
+              "subagent_type": {
+                "minLength": 1,
+                "type": "string"
+              }
+            },
+            "required": [
+              "description"
+            ],
+            "type": "object"
+          },
+          "evidence": {
+            "existence": [
+              "kimi-runtime-headless"
+            ],
+            "shape": [
+              "kimi-runtime-headless"
+            ]
+          },
+          "confidence": "verified-headless",
+          "fidelity": "exact"
+        },
+        {
+          "match": {
+            "event.type": "tool.call",
+            "event.name": "AskUserQuestion"
+          },
+          "path": "event.args",
+          "schema": {
+            "$schema": "http://json-schema.org/draft-07/schema#",
+            "additionalProperties": false,
+            "properties": {
+              "background": {
+                "default": false,
+                "type": "boolean"
+              },
+              "questions": {
+                "items": {
+                  "additionalProperties": false,
+                  "properties": {
+                    "header": {
+                      "default": "",
+                      "type": "string"
+                    },
+                    "multi_select": {
+                      "default": false,
+                      "type": "boolean"
+                    },
+                    "options": {
+                      "items": {
+                        "additionalProperties": false,
+                        "properties": {
+                          "description": {
+                            "default": "",
+                            "type": "string"
+                          },
+                          "label": {
+                            "minLength": 1,
+                            "type": "string"
+                          }
+                        },
+                        "required": [
+                          "label"
+                        ],
+                        "type": "object"
+                      },
+                      "maxItems": 4,
+                      "minItems": 2,
+                      "type": "array"
+                    },
+                    "question": {
+                      "minLength": 1,
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "question",
+                    "options"
+                  ],
+                  "type": "object"
+                },
+                "maxItems": 4,
+                "minItems": 1,
+                "type": "array"
+              }
+            },
+            "required": [
+              "questions"
+            ],
+            "type": "object"
+          },
+          "evidence": {
+            "existence": [
+              "kimi-runtime-headless"
+            ],
+            "shape": [
+              "kimi-runtime-headless"
+            ]
+          },
+          "confidence": "verified-headless",
+          "fidelity": "exact"
+        },
+        {
+          "match": {
+            "event.type": "tool.call",
+            "event.name": "Bash"
+          },
+          "path": "event.args",
+          "schema": {
+            "$schema": "http://json-schema.org/draft-07/schema#",
+            "additionalProperties": false,
+            "properties": {
+              "command": {
+                "minLength": 1,
+                "type": "string"
+              },
+              "cwd": {
+                "type": "string"
+              },
+              "description": {
+                "type": "string"
+              },
+              "disable_timeout": {
+                "type": "boolean"
+              },
+              "run_in_background": {
+                "type": "boolean"
+              },
+              "timeout": {
+                "default": 60,
+                "exclusiveMinimum": 0,
+                "maximum": 9007199254740991,
+                "type": "integer"
+              }
+            },
+            "required": [
+              "command"
+            ],
+            "type": "object"
+          },
+          "evidence": {
+            "existence": [
+              "kimi-runtime-headless"
+            ],
+            "shape": [
+              "kimi-runtime-headless"
+            ]
+          },
+          "confidence": "verified-headless",
+          "fidelity": "exact"
+        },
+        {
+          "match": {
+            "event.type": "tool.call",
+            "event.name": "CreateGoal"
+          },
+          "path": "event.args",
+          "schema": {
+            "$schema": "http://json-schema.org/draft-07/schema#",
+            "additionalProperties": false,
+            "properties": {
+              "completionCriterion": {
+                "type": "string"
+              },
+              "objective": {
+                "minLength": 1,
+                "type": "string"
+              },
+              "replace": {
+                "type": "boolean"
+              }
+            },
+            "required": [
+              "objective"
+            ],
+            "type": "object"
+          },
+          "evidence": {
+            "existence": [
+              "kimi-runtime-headless"
+            ],
+            "shape": [
+              "kimi-runtime-headless"
+            ]
+          },
+          "confidence": "verified-headless",
+          "fidelity": "exact"
+        },
+        {
+          "match": {
+            "event.type": "tool.call",
+            "event.name": "CronCreate"
+          },
+          "path": "event.args",
+          "schema": {
+            "$schema": "http://json-schema.org/draft-07/schema#",
+            "additionalProperties": false,
+            "properties": {
+              "cron": {
+                "type": "string"
+              },
+              "prompt": {
+                "maxLength": 8192,
+                "minLength": 1,
+                "type": "string"
+              },
+              "recurring": {
+                "default": true,
+                "type": "boolean"
+              }
+            },
+            "required": [
+              "cron",
+              "prompt"
+            ],
+            "type": "object"
+          },
+          "evidence": {
+            "existence": [
+              "kimi-runtime-headless"
+            ],
+            "shape": [
+              "kimi-runtime-headless"
+            ]
+          },
+          "confidence": "verified-headless",
+          "fidelity": "exact"
+        },
+        {
+          "match": {
+            "event.type": "tool.call",
+            "event.name": "CronDelete"
+          },
+          "path": "event.args",
+          "schema": {
+            "$schema": "http://json-schema.org/draft-07/schema#",
+            "additionalProperties": false,
+            "properties": {
+              "id": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "id"
+            ],
+            "type": "object"
+          },
+          "evidence": {
+            "existence": [
+              "kimi-runtime-headless"
+            ],
+            "shape": [
+              "kimi-runtime-headless"
+            ]
+          },
+          "confidence": "verified-headless",
+          "fidelity": "exact"
+        },
+        {
+          "match": {
+            "event.type": "tool.call",
+            "event.name": "CronList"
+          },
+          "path": "event.args",
+          "schema": {
+            "$schema": "http://json-schema.org/draft-07/schema#",
+            "additionalProperties": false,
+            "properties": {},
+            "type": "object"
+          },
+          "evidence": {
+            "existence": [
+              "kimi-runtime-headless"
+            ],
+            "shape": [
+              "kimi-runtime-headless"
+            ]
+          },
+          "confidence": "verified-headless",
+          "fidelity": "exact"
+        },
+        {
+          "match": {
+            "event.type": "tool.call",
+            "event.name": "Edit"
+          },
+          "path": "event.args",
+          "schema": {
+            "$schema": "http://json-schema.org/draft-07/schema#",
+            "additionalProperties": false,
+            "properties": {
+              "new_string": {
+                "type": "string"
+              },
+              "old_string": {
+                "minLength": 1,
+                "type": "string"
+              },
+              "path": {
+                "type": "string"
+              },
+              "replace_all": {
+                "type": "boolean"
+              }
+            },
+            "required": [
+              "path",
+              "old_string",
+              "new_string"
+            ],
+            "type": "object"
+          },
+          "evidence": {
+            "existence": [
+              "kimi-runtime-headless"
+            ],
+            "shape": [
+              "kimi-runtime-headless"
+            ]
+          },
+          "confidence": "verified-headless",
+          "fidelity": "exact"
+        },
+        {
+          "match": {
+            "event.type": "tool.call",
+            "event.name": "EnterPlanMode"
+          },
+          "path": "event.args",
+          "schema": {
+            "$schema": "http://json-schema.org/draft-07/schema#",
+            "additionalProperties": false,
+            "properties": {},
+            "type": "object"
+          },
+          "evidence": {
+            "existence": [
+              "kimi-runtime-headless"
+            ],
+            "shape": [
+              "kimi-runtime-headless"
+            ]
+          },
+          "confidence": "verified-headless",
+          "fidelity": "exact"
+        },
+        {
+          "match": {
+            "event.type": "tool.call",
+            "event.name": "ExitPlanMode"
+          },
+          "path": "event.args",
+          "schema": {
+            "$schema": "http://json-schema.org/draft-07/schema#",
+            "additionalProperties": false,
+            "properties": {
+              "options": {
+                "items": {
+                  "additionalProperties": false,
+                  "properties": {
+                    "description": {
+                      "default": "",
+                      "type": "string"
+                    },
+                    "label": {
+                      "maxLength": 80,
+                      "minLength": 1,
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "label"
+                  ],
+                  "type": "object"
+                },
+                "maxItems": 3,
+                "minItems": 1,
+                "type": "array"
+              }
+            },
+            "type": "object"
+          },
+          "evidence": {
+            "existence": [
+              "kimi-runtime-headless"
+            ],
+            "shape": [
+              "kimi-runtime-headless"
+            ]
+          },
+          "confidence": "verified-headless",
+          "fidelity": "exact"
+        },
+        {
+          "match": {
+            "event.type": "tool.call",
+            "event.name": "FetchURL"
+          },
+          "path": "event.args",
+          "schema": {
+            "$schema": "http://json-schema.org/draft-07/schema#",
+            "additionalProperties": false,
+            "properties": {
+              "url": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "url"
+            ],
+            "type": "object"
+          },
+          "evidence": {
+            "existence": [
+              "kimi-runtime-headless"
+            ],
+            "shape": [
+              "kimi-runtime-headless"
+            ]
+          },
+          "confidence": "verified-headless",
+          "fidelity": "exact"
+        },
+        {
+          "match": {
+            "event.type": "tool.call",
+            "event.name": "GetGoal"
+          },
+          "path": "event.args",
+          "schema": {
+            "$schema": "http://json-schema.org/draft-07/schema#",
+            "additionalProperties": false,
+            "properties": {},
+            "type": "object"
+          },
+          "evidence": {
+            "existence": [
+              "kimi-runtime-headless"
+            ],
+            "shape": [
+              "kimi-runtime-headless"
+            ]
+          },
+          "confidence": "verified-headless",
+          "fidelity": "exact"
+        },
+        {
+          "match": {
+            "event.type": "tool.call",
+            "event.name": "Glob"
+          },
+          "path": "event.args",
+          "schema": {
+            "$schema": "http://json-schema.org/draft-07/schema#",
+            "additionalProperties": false,
+            "properties": {
+              "include_dirs": {
+                "type": "boolean"
+              },
+              "include_ignored": {
+                "type": "boolean"
+              },
+              "path": {
+                "type": "string"
+              },
+              "pattern": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "pattern"
+            ],
+            "type": "object"
+          },
+          "evidence": {
+            "existence": [
+              "kimi-runtime-headless"
+            ],
+            "shape": [
+              "kimi-runtime-headless"
+            ]
+          },
+          "confidence": "verified-headless",
+          "fidelity": "exact"
+        },
+        {
+          "match": {
+            "event.type": "tool.call",
+            "event.name": "Grep"
+          },
+          "path": "event.args",
+          "schema": {
+            "$schema": "http://json-schema.org/draft-07/schema#",
+            "additionalProperties": false,
+            "properties": {
+              "-A": {
+                "maximum": 9007199254740991,
+                "minimum": 0,
+                "type": "integer"
+              },
+              "-B": {
+                "maximum": 9007199254740991,
+                "minimum": 0,
+                "type": "integer"
+              },
+              "-C": {
+                "maximum": 9007199254740991,
+                "minimum": 0,
+                "type": "integer"
+              },
+              "-i": {
+                "type": "boolean"
+              },
+              "-n": {
+                "type": "boolean"
+              },
+              "glob": {
+                "type": "string"
+              },
+              "head_limit": {
+                "maximum": 9007199254740991,
+                "minimum": 0,
+                "type": "integer"
+              },
+              "include_ignored": {
+                "type": "boolean"
+              },
+              "multiline": {
+                "type": "boolean"
+              },
+              "offset": {
+                "maximum": 9007199254740991,
+                "minimum": 0,
+                "type": "integer"
+              },
+              "output_mode": {
+                "enum": [
+                  "content",
+                  "files_with_matches",
+                  "count_matches"
+                ],
+                "type": "string"
+              },
+              "path": {
+                "type": "string"
+              },
+              "pattern": {
+                "type": "string"
+              },
+              "type": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "pattern"
+            ],
+            "type": "object"
+          },
+          "evidence": {
+            "existence": [
+              "kimi-runtime-headless"
+            ],
+            "shape": [
+              "kimi-runtime-headless"
+            ]
+          },
+          "confidence": "verified-headless",
+          "fidelity": "exact"
+        },
+        {
+          "match": {
+            "event.type": "tool.call",
+            "event.name": "Read"
+          },
+          "path": "event.args",
+          "schema": {
+            "$schema": "http://json-schema.org/draft-07/schema#",
+            "additionalProperties": false,
+            "properties": {
+              "line_offset": {
+                "anyOf": [
+                  {
+                    "maximum": 9007199254740991,
+                    "minimum": 1,
+                    "type": "integer"
+                  },
+                  {
+                    "maximum": -1,
+                    "minimum": -1000,
+                    "type": "integer"
+                  }
+                ]
+              },
+              "n_lines": {
+                "exclusiveMinimum": 0,
+                "maximum": 9007199254740991,
+                "type": "integer"
+              },
+              "path": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "path"
+            ],
+            "type": "object"
+          },
+          "evidence": {
+            "existence": [
+              "kimi-runtime-headless"
+            ],
+            "shape": [
+              "kimi-runtime-headless"
+            ]
+          },
+          "confidence": "verified-headless",
+          "fidelity": "exact"
+        },
+        {
+          "match": {
+            "event.type": "tool.call",
+            "event.name": "SetGoalBudget"
+          },
+          "path": "event.args",
+          "schema": {
+            "$schema": "http://json-schema.org/draft-07/schema#",
+            "additionalProperties": false,
+            "properties": {
+              "unit": {
+                "enum": [
+                  "turns",
+                  "tokens",
+                  "milliseconds",
+                  "seconds",
+                  "minutes",
+                  "hours"
+                ],
+                "type": "string"
+              },
+              "value": {
+                "exclusiveMinimum": 0,
+                "type": "number"
+              }
+            },
+            "required": [
+              "value",
+              "unit"
+            ],
+            "type": "object"
+          },
+          "evidence": {
+            "existence": [
+              "kimi-runtime-headless"
+            ],
+            "shape": [
+              "kimi-runtime-headless"
+            ]
+          },
+          "confidence": "verified-headless",
+          "fidelity": "exact"
+        },
+        {
+          "match": {
+            "event.type": "tool.call",
+            "event.name": "Skill"
+          },
+          "path": "event.args",
+          "schema": {
+            "$schema": "http://json-schema.org/draft-07/schema#",
+            "additionalProperties": false,
+            "properties": {
+              "args": {
+                "type": "string"
+              },
+              "skill": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "skill"
+            ],
+            "type": "object"
+          },
+          "evidence": {
+            "existence": [
+              "kimi-runtime-headless"
+            ],
+            "shape": [
+              "kimi-runtime-headless"
+            ]
+          },
+          "confidence": "verified-headless",
+          "fidelity": "exact"
+        },
+        {
+          "match": {
+            "event.type": "tool.call",
+            "event.name": "TaskList"
+          },
+          "path": "event.args",
+          "schema": {
+            "$schema": "http://json-schema.org/draft-07/schema#",
+            "additionalProperties": false,
+            "properties": {
+              "active_only": {
+                "default": true,
+                "type": "boolean"
+              },
+              "limit": {
+                "default": 20,
+                "maximum": 100,
+                "minimum": 1,
+                "type": "integer"
+              }
+            },
+            "type": "object"
+          },
+          "evidence": {
+            "existence": [
+              "kimi-runtime-headless"
+            ],
+            "shape": [
+              "kimi-runtime-headless"
+            ]
+          },
+          "confidence": "verified-headless",
+          "fidelity": "exact"
+        },
+        {
+          "match": {
+            "event.type": "tool.call",
+            "event.name": "TaskOutput"
+          },
+          "path": "event.args",
+          "schema": {
+            "$schema": "http://json-schema.org/draft-07/schema#",
+            "additionalProperties": false,
+            "properties": {
+              "task_id": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "task_id"
+            ],
+            "type": "object"
+          },
+          "evidence": {
+            "existence": [
+              "kimi-runtime-headless"
+            ],
+            "shape": [
+              "kimi-runtime-headless"
+            ]
+          },
+          "confidence": "verified-headless",
+          "fidelity": "exact"
+        },
+        {
+          "match": {
+            "event.type": "tool.call",
+            "event.name": "TaskStop"
+          },
+          "path": "event.args",
+          "schema": {
+            "$schema": "http://json-schema.org/draft-07/schema#",
+            "additionalProperties": false,
+            "properties": {
+              "reason": {
+                "default": "Stopped by TaskStop",
+                "type": "string"
+              },
+              "task_id": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "task_id"
+            ],
+            "type": "object"
+          },
+          "evidence": {
+            "existence": [
+              "kimi-runtime-headless"
+            ],
+            "shape": [
+              "kimi-runtime-headless"
+            ]
+          },
+          "confidence": "verified-headless",
+          "fidelity": "exact"
+        },
+        {
+          "match": {
+            "event.type": "tool.call",
+            "event.name": "TodoList"
+          },
+          "path": "event.args",
+          "schema": {
+            "$schema": "http://json-schema.org/draft-07/schema#",
+            "additionalProperties": false,
+            "properties": {
+              "todos": {
+                "items": {
+                  "additionalProperties": false,
+                  "properties": {
+                    "status": {
+                      "enum": [
+                        "pending",
+                        "in_progress",
+                        "done"
+                      ],
+                      "type": "string"
+                    },
+                    "title": {
+                      "minLength": 1,
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "title",
+                    "status"
+                  ],
+                  "type": "object"
+                },
+                "type": "array"
+              }
+            },
+            "type": "object"
+          },
+          "evidence": {
+            "existence": [
+              "kimi-runtime-headless"
+            ],
+            "shape": [
+              "kimi-runtime-headless"
+            ]
+          },
+          "confidence": "verified-headless",
+          "fidelity": "exact"
+        },
+        {
+          "match": {
+            "event.type": "tool.call",
+            "event.name": "UpdateGoal"
+          },
+          "path": "event.args",
+          "schema": {
+            "$schema": "http://json-schema.org/draft-07/schema#",
+            "additionalProperties": false,
+            "properties": {
+              "status": {
+                "enum": [
+                  "active",
+                  "complete",
+                  "blocked"
+                ],
+                "type": "string"
+              }
+            },
+            "required": [
+              "status"
+            ],
+            "type": "object"
+          },
+          "evidence": {
+            "existence": [
+              "kimi-runtime-headless"
+            ],
+            "shape": [
+              "kimi-runtime-headless"
+            ]
+          },
+          "confidence": "verified-headless",
+          "fidelity": "exact"
+        },
+        {
+          "match": {
+            "event.type": "tool.call",
+            "event.name": "Write"
+          },
+          "path": "event.args",
+          "schema": {
+            "$schema": "http://json-schema.org/draft-07/schema#",
+            "additionalProperties": false,
+            "properties": {
+              "content": {
+                "type": "string"
+              },
+              "mode": {
+                "enum": [
+                  "overwrite",
+                  "append"
+                ],
+                "type": "string"
+              },
+              "path": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "path",
+              "content"
+            ],
+            "type": "object"
+          },
+          "evidence": {
+            "existence": [
+              "kimi-runtime-headless"
+            ],
+            "shape": [
+              "kimi-runtime-headless"
+            ]
+          },
+          "confidence": "verified-headless",
+          "fidelity": "exact"
+        }
+      ],
       "fixture": "captures/kimi@0.34.0/tool-success/wire.jsonl"
     },
     {
       "surface": "kimi",
       "surfaceVersion": "0.34.0",
       "event": "context.append_message",
+      "schemaFidelity": {
+        "payload": "structural",
+        "carrier": "structural",
+        "limitations": [
+          "The release source projection preserves recursive declared structure but intentionally leaves custom/unknown values unconstrained; runtime-only file schemas describe captured instances."
+        ]
+      },
       "channel": "wire",
       "channels": [
         "wire"
@@ -3608,48 +4632,6 @@
         },
         {
           "match": {
-            "message.origin.trigger": "user-slash"
-          },
-          "evidence": {
-            "existence": [
-              "kimi-exact-release-source"
-            ],
-            "shape": [
-              "kimi-exact-release-source"
-            ]
-          },
-          "confidence": "unverified"
-        },
-        {
-          "match": {
-            "message.origin.trigger": "model-tool"
-          },
-          "evidence": {
-            "existence": [
-              "kimi-exact-release-source"
-            ],
-            "shape": [
-              "kimi-exact-release-source"
-            ]
-          },
-          "confidence": "unverified"
-        },
-        {
-          "match": {
-            "message.origin.trigger": "nested-skill"
-          },
-          "evidence": {
-            "existence": [
-              "kimi-exact-release-source"
-            ],
-            "shape": [
-              "kimi-exact-release-source"
-            ]
-          },
-          "confidence": "unverified"
-        },
-        {
-          "match": {
             "message.origin.kind": "plugin_command"
           },
           "evidence": {
@@ -3693,34 +4675,6 @@
         },
         {
           "match": {
-            "message.origin.phase": "input"
-          },
-          "evidence": {
-            "existence": [
-              "kimi-exact-release-source"
-            ],
-            "shape": [
-              "kimi-exact-release-source"
-            ]
-          },
-          "confidence": "unverified"
-        },
-        {
-          "match": {
-            "message.origin.phase": "output"
-          },
-          "evidence": {
-            "existence": [
-              "kimi-exact-release-source"
-            ],
-            "shape": [
-              "kimi-exact-release-source"
-            ]
-          },
-          "confidence": "unverified"
-        },
-        {
-          "match": {
             "message.origin.kind": "compaction_summary"
           },
           "evidence": {
@@ -3739,13 +4693,14 @@
           },
           "evidence": {
             "existence": [
-              "kimi-exact-release-source"
+              "kimi-runtime-headless"
             ],
             "shape": [
+              "kimi-runtime-headless",
               "kimi-exact-release-source"
             ]
           },
-          "confidence": "unverified"
+          "confidence": "verified-headless"
         },
         {
           "match": {
@@ -3903,77 +4858,12 @@
             ]
           },
           "confidence": "unverified"
-        },
-        {
-          "match": {
-            "message.origin.skillSource": "project"
-          },
-          "evidence": {
-            "existence": [
-              "kimi-exact-release-source"
-            ],
-            "shape": [
-              "kimi-exact-release-source"
-            ]
-          },
-          "confidence": "unverified"
-        },
-        {
-          "match": {
-            "message.origin.skillSource": "user"
-          },
-          "evidence": {
-            "existence": [
-              "kimi-exact-release-source"
-            ],
-            "shape": [
-              "kimi-exact-release-source"
-            ]
-          },
-          "confidence": "unverified"
-        },
-        {
-          "match": {
-            "message.origin.skillSource": "extra"
-          },
-          "evidence": {
-            "existence": [
-              "kimi-exact-release-source"
-            ],
-            "shape": [
-              "kimi-exact-release-source"
-            ]
-          },
-          "confidence": "unverified"
-        },
-        {
-          "match": {
-            "message.origin.skillSource": "builtin"
-          },
-          "evidence": {
-            "existence": [
-              "kimi-exact-release-source"
-            ],
-            "shape": [
-              "kimi-exact-release-source"
-            ]
-          },
-          "confidence": "unverified"
-        },
-        {
-          "match": {
-            "message.origin.disclosure.kind": "date"
-          },
-          "evidence": {
-            "existence": [
-              "kimi-exact-release-source"
-            ],
-            "shape": [
-              "kimi-exact-release-source"
-            ]
-          },
-          "confidence": "unverified"
         }
+      ],
+      "variantDiscriminants": [
+        "message.role",
+        "message.origin.kind",
+        "message.origin.status"
       ],
       "fixture": "captures/kimi@0.34.0/basic-turn/wire.jsonl"
     },
@@ -3981,6 +4871,13 @@
       "surface": "kimi",
       "surfaceVersion": "0.34.0",
       "event": "context.apply_compaction",
+      "schemaFidelity": {
+        "payload": "structural",
+        "carrier": "structural",
+        "limitations": [
+          "The release source projection preserves recursive declared structure but intentionally leaves custom/unknown values unconstrained; runtime-only file schemas describe captured instances."
+        ]
+      },
       "channel": "wire",
       "channels": [
         "wire"
@@ -6861,462 +7758,19 @@
           "kimi-exact-release-source"
         ]
       },
-      "confidence": "unverified",
-      "variants": [
-        {
-          "match": {
-            "summary.role": "system"
-          },
-          "evidence": {
-            "existence": [
-              "kimi-exact-release-source"
-            ],
-            "shape": [
-              "kimi-exact-release-source"
-            ]
-          },
-          "confidence": "unverified"
-        },
-        {
-          "match": {
-            "summary.role": "user"
-          },
-          "evidence": {
-            "existence": [
-              "kimi-exact-release-source"
-            ],
-            "shape": [
-              "kimi-exact-release-source"
-            ]
-          },
-          "confidence": "unverified"
-        },
-        {
-          "match": {
-            "summary.role": "assistant"
-          },
-          "evidence": {
-            "existence": [
-              "kimi-exact-release-source"
-            ],
-            "shape": [
-              "kimi-exact-release-source"
-            ]
-          },
-          "confidence": "unverified"
-        },
-        {
-          "match": {
-            "summary.role": "tool"
-          },
-          "evidence": {
-            "existence": [
-              "kimi-exact-release-source"
-            ],
-            "shape": [
-              "kimi-exact-release-source"
-            ]
-          },
-          "confidence": "unverified"
-        },
-        {
-          "match": {
-            "summary.origin.kind": "user"
-          },
-          "evidence": {
-            "existence": [
-              "kimi-exact-release-source"
-            ],
-            "shape": [
-              "kimi-exact-release-source"
-            ]
-          },
-          "confidence": "unverified"
-        },
-        {
-          "match": {
-            "summary.origin.kind": "skill_activation"
-          },
-          "evidence": {
-            "existence": [
-              "kimi-exact-release-source"
-            ],
-            "shape": [
-              "kimi-exact-release-source"
-            ]
-          },
-          "confidence": "unverified"
-        },
-        {
-          "match": {
-            "summary.origin.trigger": "user-slash"
-          },
-          "evidence": {
-            "existence": [
-              "kimi-exact-release-source"
-            ],
-            "shape": [
-              "kimi-exact-release-source"
-            ]
-          },
-          "confidence": "unverified"
-        },
-        {
-          "match": {
-            "summary.origin.trigger": "model-tool"
-          },
-          "evidence": {
-            "existence": [
-              "kimi-exact-release-source"
-            ],
-            "shape": [
-              "kimi-exact-release-source"
-            ]
-          },
-          "confidence": "unverified"
-        },
-        {
-          "match": {
-            "summary.origin.trigger": "nested-skill"
-          },
-          "evidence": {
-            "existence": [
-              "kimi-exact-release-source"
-            ],
-            "shape": [
-              "kimi-exact-release-source"
-            ]
-          },
-          "confidence": "unverified"
-        },
-        {
-          "match": {
-            "summary.origin.kind": "plugin_command"
-          },
-          "evidence": {
-            "existence": [
-              "kimi-exact-release-source"
-            ],
-            "shape": [
-              "kimi-exact-release-source"
-            ]
-          },
-          "confidence": "unverified"
-        },
-        {
-          "match": {
-            "summary.origin.kind": "injection"
-          },
-          "evidence": {
-            "existence": [
-              "kimi-exact-release-source"
-            ],
-            "shape": [
-              "kimi-exact-release-source"
-            ]
-          },
-          "confidence": "unverified"
-        },
-        {
-          "match": {
-            "summary.origin.kind": "shell_command"
-          },
-          "evidence": {
-            "existence": [
-              "kimi-exact-release-source"
-            ],
-            "shape": [
-              "kimi-exact-release-source"
-            ]
-          },
-          "confidence": "unverified"
-        },
-        {
-          "match": {
-            "summary.origin.phase": "input"
-          },
-          "evidence": {
-            "existence": [
-              "kimi-exact-release-source"
-            ],
-            "shape": [
-              "kimi-exact-release-source"
-            ]
-          },
-          "confidence": "unverified"
-        },
-        {
-          "match": {
-            "summary.origin.phase": "output"
-          },
-          "evidence": {
-            "existence": [
-              "kimi-exact-release-source"
-            ],
-            "shape": [
-              "kimi-exact-release-source"
-            ]
-          },
-          "confidence": "unverified"
-        },
-        {
-          "match": {
-            "summary.origin.kind": "compaction_summary"
-          },
-          "evidence": {
-            "existence": [
-              "kimi-exact-release-source"
-            ],
-            "shape": [
-              "kimi-exact-release-source"
-            ]
-          },
-          "confidence": "unverified"
-        },
-        {
-          "match": {
-            "summary.origin.kind": "system_trigger"
-          },
-          "evidence": {
-            "existence": [
-              "kimi-exact-release-source"
-            ],
-            "shape": [
-              "kimi-exact-release-source"
-            ]
-          },
-          "confidence": "unverified"
-        },
-        {
-          "match": {
-            "summary.origin.kind": "task"
-          },
-          "evidence": {
-            "existence": [
-              "kimi-exact-release-source"
-            ],
-            "shape": [
-              "kimi-exact-release-source"
-            ]
-          },
-          "confidence": "unverified"
-        },
-        {
-          "match": {
-            "summary.origin.status": "running"
-          },
-          "evidence": {
-            "existence": [
-              "kimi-exact-release-source"
-            ],
-            "shape": [
-              "kimi-exact-release-source"
-            ]
-          },
-          "confidence": "unverified"
-        },
-        {
-          "match": {
-            "summary.origin.status": "completed"
-          },
-          "evidence": {
-            "existence": [
-              "kimi-exact-release-source"
-            ],
-            "shape": [
-              "kimi-exact-release-source"
-            ]
-          },
-          "confidence": "unverified"
-        },
-        {
-          "match": {
-            "summary.origin.status": "failed"
-          },
-          "evidence": {
-            "existence": [
-              "kimi-exact-release-source"
-            ],
-            "shape": [
-              "kimi-exact-release-source"
-            ]
-          },
-          "confidence": "unverified"
-        },
-        {
-          "match": {
-            "summary.origin.status": "timed_out"
-          },
-          "evidence": {
-            "existence": [
-              "kimi-exact-release-source"
-            ],
-            "shape": [
-              "kimi-exact-release-source"
-            ]
-          },
-          "confidence": "unverified"
-        },
-        {
-          "match": {
-            "summary.origin.status": "killed"
-          },
-          "evidence": {
-            "existence": [
-              "kimi-exact-release-source"
-            ],
-            "shape": [
-              "kimi-exact-release-source"
-            ]
-          },
-          "confidence": "unverified"
-        },
-        {
-          "match": {
-            "summary.origin.status": "lost"
-          },
-          "evidence": {
-            "existence": [
-              "kimi-exact-release-source"
-            ],
-            "shape": [
-              "kimi-exact-release-source"
-            ]
-          },
-          "confidence": "unverified"
-        },
-        {
-          "match": {
-            "summary.origin.kind": "cron_job"
-          },
-          "evidence": {
-            "existence": [
-              "kimi-exact-release-source"
-            ],
-            "shape": [
-              "kimi-exact-release-source"
-            ]
-          },
-          "confidence": "unverified"
-        },
-        {
-          "match": {
-            "summary.origin.kind": "cron_missed"
-          },
-          "evidence": {
-            "existence": [
-              "kimi-exact-release-source"
-            ],
-            "shape": [
-              "kimi-exact-release-source"
-            ]
-          },
-          "confidence": "unverified"
-        },
-        {
-          "match": {
-            "summary.origin.kind": "hook_result"
-          },
-          "evidence": {
-            "existence": [
-              "kimi-exact-release-source"
-            ],
-            "shape": [
-              "kimi-exact-release-source"
-            ]
-          },
-          "confidence": "unverified"
-        },
-        {
-          "match": {
-            "summary.origin.kind": "retry"
-          },
-          "evidence": {
-            "existence": [
-              "kimi-exact-release-source"
-            ],
-            "shape": [
-              "kimi-exact-release-source"
-            ]
-          },
-          "confidence": "unverified"
-        },
-        {
-          "match": {
-            "summary.origin.skillSource": "project"
-          },
-          "evidence": {
-            "existence": [
-              "kimi-exact-release-source"
-            ],
-            "shape": [
-              "kimi-exact-release-source"
-            ]
-          },
-          "confidence": "unverified"
-        },
-        {
-          "match": {
-            "summary.origin.skillSource": "user"
-          },
-          "evidence": {
-            "existence": [
-              "kimi-exact-release-source"
-            ],
-            "shape": [
-              "kimi-exact-release-source"
-            ]
-          },
-          "confidence": "unverified"
-        },
-        {
-          "match": {
-            "summary.origin.skillSource": "extra"
-          },
-          "evidence": {
-            "existence": [
-              "kimi-exact-release-source"
-            ],
-            "shape": [
-              "kimi-exact-release-source"
-            ]
-          },
-          "confidence": "unverified"
-        },
-        {
-          "match": {
-            "summary.origin.skillSource": "builtin"
-          },
-          "evidence": {
-            "existence": [
-              "kimi-exact-release-source"
-            ],
-            "shape": [
-              "kimi-exact-release-source"
-            ]
-          },
-          "confidence": "unverified"
-        },
-        {
-          "match": {
-            "summary.origin.disclosure.kind": "date"
-          },
-          "evidence": {
-            "existence": [
-              "kimi-exact-release-source"
-            ],
-            "shape": [
-              "kimi-exact-release-source"
-            ]
-          },
-          "confidence": "unverified"
-        }
-      ]
+      "confidence": "unverified"
     },
     {
       "surface": "kimi",
       "surfaceVersion": "0.34.0",
       "event": "context.clear",
+      "schemaFidelity": {
+        "payload": "structural",
+        "carrier": "structural",
+        "limitations": [
+          "The release source projection preserves recursive declared structure but intentionally leaves custom/unknown values unconstrained; runtime-only file schemas describe captured instances."
+        ]
+      },
       "channel": "wire",
       "channels": [
         "wire"
@@ -7363,6 +7817,13 @@
       "surface": "kimi",
       "surfaceVersion": "0.34.0",
       "event": "context.undo",
+      "schemaFidelity": {
+        "payload": "structural",
+        "carrier": "structural",
+        "limitations": [
+          "The release source projection preserves recursive declared structure but intentionally leaves custom/unknown values unconstrained; runtime-only file schemas describe captured instances."
+        ]
+      },
       "channel": "wire",
       "channels": [
         "wire"
@@ -7425,6 +7886,13 @@
       "surface": "kimi",
       "surfaceVersion": "0.34.0",
       "event": "forked",
+      "schemaFidelity": {
+        "payload": "structural",
+        "carrier": "structural",
+        "limitations": [
+          "The release source projection preserves recursive declared structure but intentionally leaves custom/unknown values unconstrained; runtime-only file schemas describe captured instances."
+        ]
+      },
       "channel": "wire",
       "channels": [
         "wire"
@@ -7471,6 +7939,13 @@
       "surface": "kimi",
       "surfaceVersion": "0.34.0",
       "event": "full_compaction.begin",
+      "schemaFidelity": {
+        "payload": "structural",
+        "carrier": "structural",
+        "limitations": [
+          "The release source projection preserves recursive declared structure but intentionally leaves custom/unknown values unconstrained; runtime-only file schemas describe captured instances."
+        ]
+      },
       "channel": "wire",
       "channels": [
         "wire"
@@ -7537,42 +8012,19 @@
           "kimi-exact-release-source"
         ]
       },
-      "confidence": "unverified",
-      "variants": [
-        {
-          "match": {
-            "source": "manual"
-          },
-          "evidence": {
-            "existence": [
-              "kimi-exact-release-source"
-            ],
-            "shape": [
-              "kimi-exact-release-source"
-            ]
-          },
-          "confidence": "unverified"
-        },
-        {
-          "match": {
-            "source": "auto"
-          },
-          "evidence": {
-            "existence": [
-              "kimi-exact-release-source"
-            ],
-            "shape": [
-              "kimi-exact-release-source"
-            ]
-          },
-          "confidence": "unverified"
-        }
-      ]
+      "confidence": "unverified"
     },
     {
       "surface": "kimi",
       "surfaceVersion": "0.34.0",
       "event": "full_compaction.cancel",
+      "schemaFidelity": {
+        "payload": "structural",
+        "carrier": "structural",
+        "limitations": [
+          "The release source projection preserves recursive declared structure but intentionally leaves custom/unknown values unconstrained; runtime-only file schemas describe captured instances."
+        ]
+      },
       "channel": "wire",
       "channels": [
         "wire"
@@ -7619,6 +8071,13 @@
       "surface": "kimi",
       "surfaceVersion": "0.34.0",
       "event": "full_compaction.complete",
+      "schemaFidelity": {
+        "payload": "structural",
+        "carrier": "structural",
+        "limitations": [
+          "The release source projection preserves recursive declared structure but intentionally leaves custom/unknown values unconstrained; runtime-only file schemas describe captured instances."
+        ]
+      },
       "channel": "wire",
       "channels": [
         "wire"
@@ -7665,6 +8124,13 @@
       "surface": "kimi",
       "surfaceVersion": "0.34.0",
       "event": "goal.clear",
+      "schemaFidelity": {
+        "payload": "structural",
+        "carrier": "structural",
+        "limitations": [
+          "The release source projection preserves recursive declared structure but intentionally leaves custom/unknown values unconstrained; runtime-only file schemas describe captured instances."
+        ]
+      },
       "channel": "wire",
       "channels": [
         "wire"
@@ -7711,6 +8177,13 @@
       "surface": "kimi",
       "surfaceVersion": "0.34.0",
       "event": "goal.create",
+      "schemaFidelity": {
+        "payload": "structural",
+        "carrier": "structural",
+        "limitations": [
+          "The release source projection preserves recursive declared structure but intentionally leaves custom/unknown values unconstrained; runtime-only file schemas describe captured instances."
+        ]
+      },
       "channel": "wire",
       "channels": [
         "wire"
@@ -7849,126 +8322,19 @@
           "kimi-exact-release-source"
         ]
       },
-      "confidence": "unverified",
-      "variants": [
-        {
-          "match": {
-            "status": "active"
-          },
-          "evidence": {
-            "existence": [
-              "kimi-exact-release-source"
-            ],
-            "shape": [
-              "kimi-exact-release-source"
-            ]
-          },
-          "confidence": "unverified"
-        },
-        {
-          "match": {
-            "status": "paused"
-          },
-          "evidence": {
-            "existence": [
-              "kimi-exact-release-source"
-            ],
-            "shape": [
-              "kimi-exact-release-source"
-            ]
-          },
-          "confidence": "unverified"
-        },
-        {
-          "match": {
-            "status": "blocked"
-          },
-          "evidence": {
-            "existence": [
-              "kimi-exact-release-source"
-            ],
-            "shape": [
-              "kimi-exact-release-source"
-            ]
-          },
-          "confidence": "unverified"
-        },
-        {
-          "match": {
-            "status": "complete"
-          },
-          "evidence": {
-            "existence": [
-              "kimi-exact-release-source"
-            ],
-            "shape": [
-              "kimi-exact-release-source"
-            ]
-          },
-          "confidence": "unverified"
-        },
-        {
-          "match": {
-            "actor": "user"
-          },
-          "evidence": {
-            "existence": [
-              "kimi-exact-release-source"
-            ],
-            "shape": [
-              "kimi-exact-release-source"
-            ]
-          },
-          "confidence": "unverified"
-        },
-        {
-          "match": {
-            "actor": "model"
-          },
-          "evidence": {
-            "existence": [
-              "kimi-exact-release-source"
-            ],
-            "shape": [
-              "kimi-exact-release-source"
-            ]
-          },
-          "confidence": "unverified"
-        },
-        {
-          "match": {
-            "actor": "runtime"
-          },
-          "evidence": {
-            "existence": [
-              "kimi-exact-release-source"
-            ],
-            "shape": [
-              "kimi-exact-release-source"
-            ]
-          },
-          "confidence": "unverified"
-        },
-        {
-          "match": {
-            "actor": "system"
-          },
-          "evidence": {
-            "existence": [
-              "kimi-exact-release-source"
-            ],
-            "shape": [
-              "kimi-exact-release-source"
-            ]
-          },
-          "confidence": "unverified"
-        }
-      ]
+      "confidence": "unverified"
     },
     {
       "surface": "kimi",
       "surfaceVersion": "0.34.0",
       "event": "goal.update",
+      "schemaFidelity": {
+        "payload": "structural",
+        "carrier": "structural",
+        "limitations": [
+          "The release source projection preserves recursive declared structure but intentionally leaves custom/unknown values unconstrained; runtime-only file schemas describe captured instances."
+        ]
+      },
       "channel": "wire",
       "channels": [
         "wire"
@@ -8113,126 +8479,19 @@
           "kimi-exact-release-source"
         ]
       },
-      "confidence": "unverified",
-      "variants": [
-        {
-          "match": {
-            "status": "active"
-          },
-          "evidence": {
-            "existence": [
-              "kimi-exact-release-source"
-            ],
-            "shape": [
-              "kimi-exact-release-source"
-            ]
-          },
-          "confidence": "unverified"
-        },
-        {
-          "match": {
-            "status": "paused"
-          },
-          "evidence": {
-            "existence": [
-              "kimi-exact-release-source"
-            ],
-            "shape": [
-              "kimi-exact-release-source"
-            ]
-          },
-          "confidence": "unverified"
-        },
-        {
-          "match": {
-            "status": "blocked"
-          },
-          "evidence": {
-            "existence": [
-              "kimi-exact-release-source"
-            ],
-            "shape": [
-              "kimi-exact-release-source"
-            ]
-          },
-          "confidence": "unverified"
-        },
-        {
-          "match": {
-            "status": "complete"
-          },
-          "evidence": {
-            "existence": [
-              "kimi-exact-release-source"
-            ],
-            "shape": [
-              "kimi-exact-release-source"
-            ]
-          },
-          "confidence": "unverified"
-        },
-        {
-          "match": {
-            "actor": "user"
-          },
-          "evidence": {
-            "existence": [
-              "kimi-exact-release-source"
-            ],
-            "shape": [
-              "kimi-exact-release-source"
-            ]
-          },
-          "confidence": "unverified"
-        },
-        {
-          "match": {
-            "actor": "model"
-          },
-          "evidence": {
-            "existence": [
-              "kimi-exact-release-source"
-            ],
-            "shape": [
-              "kimi-exact-release-source"
-            ]
-          },
-          "confidence": "unverified"
-        },
-        {
-          "match": {
-            "actor": "runtime"
-          },
-          "evidence": {
-            "existence": [
-              "kimi-exact-release-source"
-            ],
-            "shape": [
-              "kimi-exact-release-source"
-            ]
-          },
-          "confidence": "unverified"
-        },
-        {
-          "match": {
-            "actor": "system"
-          },
-          "evidence": {
-            "existence": [
-              "kimi-exact-release-source"
-            ],
-            "shape": [
-              "kimi-exact-release-source"
-            ]
-          },
-          "confidence": "unverified"
-        }
-      ]
+      "confidence": "unverified"
     },
     {
       "surface": "kimi",
       "surfaceVersion": "0.34.0",
       "event": "interaction.request",
+      "schemaFidelity": {
+        "payload": "structural",
+        "carrier": "structural",
+        "limitations": [
+          "The release source projection preserves recursive declared structure but intentionally leaves custom/unknown values unconstrained; runtime-only file schemas describe captured instances."
+        ]
+      },
       "channel": "wire",
       "channels": [
         "wire"
@@ -8319,56 +8578,19 @@
           "kimi-exact-release-source"
         ]
       },
-      "confidence": "unverified",
-      "variants": [
-        {
-          "match": {
-            "kind": "approval"
-          },
-          "evidence": {
-            "existence": [
-              "kimi-exact-release-source"
-            ],
-            "shape": [
-              "kimi-exact-release-source"
-            ]
-          },
-          "confidence": "unverified"
-        },
-        {
-          "match": {
-            "kind": "question"
-          },
-          "evidence": {
-            "existence": [
-              "kimi-exact-release-source"
-            ],
-            "shape": [
-              "kimi-exact-release-source"
-            ]
-          },
-          "confidence": "unverified"
-        },
-        {
-          "match": {
-            "kind": "user_tool"
-          },
-          "evidence": {
-            "existence": [
-              "kimi-exact-release-source"
-            ],
-            "shape": [
-              "kimi-exact-release-source"
-            ]
-          },
-          "confidence": "unverified"
-        }
-      ]
+      "confidence": "unverified"
     },
     {
       "surface": "kimi",
       "surfaceVersion": "0.34.0",
       "event": "interaction.resolved",
+      "schemaFidelity": {
+        "payload": "structural",
+        "carrier": "structural",
+        "limitations": [
+          "The release source projection preserves recursive declared structure but intentionally leaves custom/unknown values unconstrained; runtime-only file schemas describe captured instances."
+        ]
+      },
       "channel": "wire",
       "channels": [
         "wire"
@@ -8431,6 +8653,12 @@
       "surface": "kimi",
       "surfaceVersion": "0.34.0",
       "event": "Interrupt",
+      "schemaFidelity": {
+        "payload": "structural",
+        "limitations": [
+          "The release source projection preserves recursive declared structure but intentionally leaves custom/unknown values unconstrained; runtime-only file schemas describe captured instances."
+        ]
+      },
       "channel": "hook-command",
       "channels": [
         "hook-command"
@@ -8485,42 +8713,19 @@
           "kimi-exact-release-source"
         ]
       },
-      "confidence": "unverified",
-      "variants": [
-        {
-          "match": {
-            "hook_event_name": "Interrupt"
-          },
-          "evidence": {
-            "existence": [
-              "kimi-exact-release-source"
-            ],
-            "shape": [
-              "kimi-exact-release-source"
-            ]
-          },
-          "confidence": "unverified"
-        },
-        {
-          "match": {
-            "reason": "cancelled"
-          },
-          "evidence": {
-            "existence": [
-              "kimi-exact-release-source"
-            ],
-            "shape": [
-              "kimi-exact-release-source"
-            ]
-          },
-          "confidence": "unverified"
-        }
-      ]
+      "confidence": "unverified"
     },
     {
       "surface": "kimi",
       "surfaceVersion": "0.34.0",
       "event": "interruptionReminder.recorded",
+      "schemaFidelity": {
+        "payload": "structural",
+        "carrier": "structural",
+        "limitations": [
+          "The release source projection preserves recursive declared structure but intentionally leaves custom/unknown values unconstrained; runtime-only file schemas describe captured instances."
+        ]
+      },
       "channel": "wire",
       "channels": [
         "wire"
@@ -8581,6 +8786,13 @@
       "surface": "kimi",
       "surfaceVersion": "0.34.0",
       "event": "llm.request",
+      "schemaFidelity": {
+        "payload": "structural",
+        "carrier": "structural",
+        "limitations": [
+          "The release source projection preserves recursive declared structure but intentionally leaves custom/unknown values unconstrained; runtime-only file schemas describe captured instances."
+        ]
+      },
       "channel": "wire",
       "channels": [
         "wire"
@@ -8776,85 +8988,19 @@
         ]
       },
       "confidence": "verified-headless",
-      "variants": [
-        {
-          "match": {
-            "kind": "loop"
-          },
-          "evidence": {
-            "existence": [
-              "kimi-runtime-headless"
-            ],
-            "shape": [
-              "kimi-runtime-headless",
-              "kimi-exact-release-source"
-            ]
-          },
-          "confidence": "verified-headless"
-        },
-        {
-          "match": {
-            "kind": "compaction"
-          },
-          "evidence": {
-            "existence": [
-              "kimi-exact-release-source"
-            ],
-            "shape": [
-              "kimi-exact-release-source"
-            ]
-          },
-          "confidence": "unverified"
-        },
-        {
-          "match": {
-            "projection": "strict"
-          },
-          "evidence": {
-            "existence": [
-              "kimi-exact-release-source"
-            ],
-            "shape": [
-              "kimi-exact-release-source"
-            ]
-          },
-          "confidence": "unverified"
-        },
-        {
-          "match": {
-            "projection": "media-degraded"
-          },
-          "evidence": {
-            "existence": [
-              "kimi-exact-release-source"
-            ],
-            "shape": [
-              "kimi-exact-release-source"
-            ]
-          },
-          "confidence": "unverified"
-        },
-        {
-          "match": {
-            "projection": "media-stripped"
-          },
-          "evidence": {
-            "existence": [
-              "kimi-exact-release-source"
-            ],
-            "shape": [
-              "kimi-exact-release-source"
-            ]
-          },
-          "confidence": "unverified"
-        }
-      ],
       "fixture": "captures/kimi@0.34.0/basic-turn/wire.jsonl"
     },
     {
       "surface": "kimi",
       "surfaceVersion": "0.34.0",
       "event": "llm.tools_snapshot",
+      "schemaFidelity": {
+        "payload": "structural",
+        "carrier": "structural",
+        "limitations": [
+          "The release source projection preserves recursive declared structure but intentionally leaves custom/unknown values unconstrained; runtime-only file schemas describe captured instances."
+        ]
+      },
       "channel": "wire",
       "channels": [
         "wire"
@@ -8962,6 +9108,13 @@
       "surface": "kimi",
       "surfaceVersion": "0.34.0",
       "event": "mcp.tools_discovered",
+      "schemaFidelity": {
+        "payload": "structural",
+        "carrier": "structural",
+        "limitations": [
+          "The release source projection preserves recursive declared structure but intentionally leaves custom/unknown values unconstrained; runtime-only file schemas describe captured instances."
+        ]
+      },
       "channel": "wire",
       "channels": [
         "wire"
@@ -9094,6 +9247,13 @@
       "surface": "kimi",
       "surfaceVersion": "0.34.0",
       "event": "metadata",
+      "schemaFidelity": {
+        "payload": "structural",
+        "carrier": "structural",
+        "limitations": [
+          "The release source projection preserves recursive declared structure but intentionally leaves custom/unknown values unconstrained; runtime-only file schemas describe captured instances."
+        ]
+      },
       "channel": "wire",
       "channels": [
         "wire"
@@ -9160,29 +9320,18 @@
         ]
       },
       "confidence": "verified-headless",
-      "variants": [
-        {
-          "match": {
-            "protocol_version": "1.5"
-          },
-          "evidence": {
-            "existence": [
-              "kimi-runtime-headless"
-            ],
-            "shape": [
-              "kimi-runtime-headless",
-              "kimi-exact-release-source"
-            ]
-          },
-          "confidence": "verified-headless"
-        }
-      ],
       "fixture": "captures/kimi@0.34.0/basic-turn/wire.jsonl"
     },
     {
       "surface": "kimi",
       "surfaceVersion": "0.34.0",
       "event": "Notification",
+      "schemaFidelity": {
+        "payload": "structural",
+        "limitations": [
+          "The release source projection preserves recursive declared structure but intentionally leaves custom/unknown values unconstrained; runtime-only file schemas describe captured instances."
+        ]
+      },
       "channel": "hook-command",
       "channels": [
         "hook-command"
@@ -9266,21 +9415,6 @@
       "variants": [
         {
           "match": {
-            "hook_event_name": "Notification"
-          },
-          "evidence": {
-            "existence": [
-              "kimi-runtime-headless"
-            ],
-            "shape": [
-              "kimi-runtime-headless",
-              "kimi-exact-release-source"
-            ]
-          },
-          "confidence": "verified-headless"
-        },
-        {
-          "match": {
             "sink": "context"
           },
           "evidence": {
@@ -9324,12 +9458,23 @@
           "confidence": "unverified"
         }
       ],
+      "variantDiscriminants": [
+        "sink",
+        "severity"
+      ],
       "fixture": "captures/kimi@0.34.0/background-task/hooks/Notification.jsonl"
     },
     {
       "surface": "kimi",
       "surfaceVersion": "0.34.0",
       "event": "permission.record_approval_result",
+      "schemaFidelity": {
+        "payload": "structural",
+        "carrier": "structural",
+        "limitations": [
+          "The release source projection preserves recursive declared structure but intentionally leaves custom/unknown values unconstrained; runtime-only file schemas describe captured instances."
+        ]
+      },
       "channel": "wire",
       "channels": [
         "wire"
@@ -9470,70 +9615,19 @@
           "kimi-exact-release-source"
         ]
       },
-      "confidence": "unverified",
-      "variants": [
-        {
-          "match": {
-            "result.decision": "approved"
-          },
-          "evidence": {
-            "existence": [
-              "kimi-exact-release-source"
-            ],
-            "shape": [
-              "kimi-exact-release-source"
-            ]
-          },
-          "confidence": "unverified"
-        },
-        {
-          "match": {
-            "result.decision": "rejected"
-          },
-          "evidence": {
-            "existence": [
-              "kimi-exact-release-source"
-            ],
-            "shape": [
-              "kimi-exact-release-source"
-            ]
-          },
-          "confidence": "unverified"
-        },
-        {
-          "match": {
-            "result.decision": "cancelled"
-          },
-          "evidence": {
-            "existence": [
-              "kimi-exact-release-source"
-            ],
-            "shape": [
-              "kimi-exact-release-source"
-            ]
-          },
-          "confidence": "unverified"
-        },
-        {
-          "match": {
-            "result.scope": "session"
-          },
-          "evidence": {
-            "existence": [
-              "kimi-exact-release-source"
-            ],
-            "shape": [
-              "kimi-exact-release-source"
-            ]
-          },
-          "confidence": "unverified"
-        }
-      ]
+      "confidence": "unverified"
     },
     {
       "surface": "kimi",
       "surfaceVersion": "0.34.0",
       "event": "permission.set_mode",
+      "schemaFidelity": {
+        "payload": "structural",
+        "carrier": "structural",
+        "limitations": [
+          "The release source projection preserves recursive declared structure but intentionally leaves custom/unknown values unconstrained; runtime-only file schemas describe captured instances."
+        ]
+      },
       "channel": "wire",
       "channels": [
         "wire"
@@ -9599,57 +9693,18 @@
         ]
       },
       "confidence": "verified-headless",
-      "variants": [
-        {
-          "match": {
-            "mode": "manual"
-          },
-          "evidence": {
-            "existence": [
-              "kimi-exact-release-source"
-            ],
-            "shape": [
-              "kimi-exact-release-source"
-            ]
-          },
-          "confidence": "unverified"
-        },
-        {
-          "match": {
-            "mode": "yolo"
-          },
-          "evidence": {
-            "existence": [
-              "kimi-exact-release-source"
-            ],
-            "shape": [
-              "kimi-exact-release-source"
-            ]
-          },
-          "confidence": "unverified"
-        },
-        {
-          "match": {
-            "mode": "auto"
-          },
-          "evidence": {
-            "existence": [
-              "kimi-runtime-headless"
-            ],
-            "shape": [
-              "kimi-runtime-headless",
-              "kimi-exact-release-source"
-            ]
-          },
-          "confidence": "verified-headless"
-        }
-      ],
       "fixture": "captures/kimi@0.34.0/basic-turn/wire.jsonl"
     },
     {
       "surface": "kimi",
       "surfaceVersion": "0.34.0",
       "event": "PermissionRequest",
+      "schemaFidelity": {
+        "payload": "structural",
+        "limitations": [
+          "The release source projection preserves recursive declared structure but intentionally leaves custom/unknown values unconstrained; runtime-only file schemas describe captured instances."
+        ]
+      },
       "channel": "hook-command",
       "channels": [
         "hook-command"
@@ -9718,28 +9773,18 @@
           "kimi-exact-release-source"
         ]
       },
-      "confidence": "unverified",
-      "variants": [
-        {
-          "match": {
-            "hook_event_name": "PermissionRequest"
-          },
-          "evidence": {
-            "existence": [
-              "kimi-exact-release-source"
-            ],
-            "shape": [
-              "kimi-exact-release-source"
-            ]
-          },
-          "confidence": "unverified"
-        }
-      ]
+      "confidence": "unverified"
     },
     {
       "surface": "kimi",
       "surfaceVersion": "0.34.0",
       "event": "PermissionResult",
+      "schemaFidelity": {
+        "payload": "structural",
+        "limitations": [
+          "The release source projection preserves recursive declared structure but intentionally leaves custom/unknown values unconstrained; runtime-only file schemas describe captured instances."
+        ]
+      },
       "channel": "hook-command",
       "channels": [
         "hook-command"
@@ -9833,98 +9878,19 @@
           "kimi-exact-release-source"
         ]
       },
-      "confidence": "unverified",
-      "variants": [
-        {
-          "match": {
-            "hook_event_name": "PermissionResult"
-          },
-          "evidence": {
-            "existence": [
-              "kimi-exact-release-source"
-            ],
-            "shape": [
-              "kimi-exact-release-source"
-            ]
-          },
-          "confidence": "unverified"
-        },
-        {
-          "match": {
-            "decision": "approved"
-          },
-          "evidence": {
-            "existence": [
-              "kimi-exact-release-source"
-            ],
-            "shape": [
-              "kimi-exact-release-source"
-            ]
-          },
-          "confidence": "unverified"
-        },
-        {
-          "match": {
-            "decision": "rejected"
-          },
-          "evidence": {
-            "existence": [
-              "kimi-exact-release-source"
-            ],
-            "shape": [
-              "kimi-exact-release-source"
-            ]
-          },
-          "confidence": "unverified"
-        },
-        {
-          "match": {
-            "decision": "cancelled"
-          },
-          "evidence": {
-            "existence": [
-              "kimi-exact-release-source"
-            ],
-            "shape": [
-              "kimi-exact-release-source"
-            ]
-          },
-          "confidence": "unverified"
-        },
-        {
-          "match": {
-            "decision": "error"
-          },
-          "evidence": {
-            "existence": [
-              "kimi-exact-release-source"
-            ],
-            "shape": [
-              "kimi-exact-release-source"
-            ]
-          },
-          "confidence": "unverified"
-        },
-        {
-          "match": {
-            "scope": "session"
-          },
-          "evidence": {
-            "existence": [
-              "kimi-exact-release-source"
-            ],
-            "shape": [
-              "kimi-exact-release-source"
-            ]
-          },
-          "confidence": "unverified"
-        }
-      ]
+      "confidence": "unverified"
     },
     {
       "surface": "kimi",
       "surfaceVersion": "0.34.0",
       "event": "plan_mode.cancel",
+      "schemaFidelity": {
+        "payload": "structural",
+        "carrier": "structural",
+        "limitations": [
+          "The release source projection preserves recursive declared structure but intentionally leaves custom/unknown values unconstrained; runtime-only file schemas describe captured instances."
+        ]
+      },
       "channel": "wire",
       "channels": [
         "wire"
@@ -9979,6 +9945,13 @@
       "surface": "kimi",
       "surfaceVersion": "0.34.0",
       "event": "plan_mode.enter",
+      "schemaFidelity": {
+        "payload": "structural",
+        "carrier": "structural",
+        "limitations": [
+          "The release source projection preserves recursive declared structure but intentionally leaves custom/unknown values unconstrained; runtime-only file schemas describe captured instances."
+        ]
+      },
       "channel": "wire",
       "channels": [
         "wire"
@@ -10037,6 +10010,13 @@
       "surface": "kimi",
       "surfaceVersion": "0.34.0",
       "event": "plan_mode.exit",
+      "schemaFidelity": {
+        "payload": "structural",
+        "carrier": "structural",
+        "limitations": [
+          "The release source projection preserves recursive declared structure but intentionally leaves custom/unknown values unconstrained; runtime-only file schemas describe captured instances."
+        ]
+      },
       "channel": "wire",
       "channels": [
         "wire"
@@ -10091,6 +10071,13 @@
       "surface": "kimi",
       "surfaceVersion": "0.34.0",
       "event": "plan.revision",
+      "schemaFidelity": {
+        "payload": "structural",
+        "carrier": "structural",
+        "limitations": [
+          "The release source projection preserves recursive declared structure but intentionally leaves custom/unknown values unconstrained; runtime-only file schemas describe captured instances."
+        ]
+      },
       "channel": "wire",
       "channels": [
         "wire"
@@ -10181,6 +10168,12 @@
       "surface": "kimi",
       "surfaceVersion": "0.34.0",
       "event": "PostCompact",
+      "schemaFidelity": {
+        "payload": "structural",
+        "limitations": [
+          "The release source projection preserves recursive declared structure but intentionally leaves custom/unknown values unconstrained; runtime-only file schemas describe captured instances."
+        ]
+      },
       "channel": "hook-command",
       "channels": [
         "hook-command"
@@ -10236,56 +10229,18 @@
           "kimi-exact-release-source"
         ]
       },
-      "confidence": "unverified",
-      "variants": [
-        {
-          "match": {
-            "hook_event_name": "PostCompact"
-          },
-          "evidence": {
-            "existence": [
-              "kimi-exact-release-source"
-            ],
-            "shape": [
-              "kimi-exact-release-source"
-            ]
-          },
-          "confidence": "unverified"
-        },
-        {
-          "match": {
-            "trigger": "manual"
-          },
-          "evidence": {
-            "existence": [
-              "kimi-exact-release-source"
-            ],
-            "shape": [
-              "kimi-exact-release-source"
-            ]
-          },
-          "confidence": "unverified"
-        },
-        {
-          "match": {
-            "trigger": "auto"
-          },
-          "evidence": {
-            "existence": [
-              "kimi-exact-release-source"
-            ],
-            "shape": [
-              "kimi-exact-release-source"
-            ]
-          },
-          "confidence": "unverified"
-        }
-      ]
+      "confidence": "unverified"
     },
     {
       "surface": "kimi",
       "surfaceVersion": "0.34.0",
       "event": "PostToolUse",
+      "schemaFidelity": {
+        "payload": "structural",
+        "limitations": [
+          "The release source projection preserves recursive declared structure but intentionally leaves custom/unknown values unconstrained; runtime-only file schemas describe captured instances."
+        ]
+      },
       "channel": "hook-command",
       "channels": [
         "hook-command"
@@ -10347,29 +10302,18 @@
         ]
       },
       "confidence": "verified-headless",
-      "variants": [
-        {
-          "match": {
-            "hook_event_name": "PostToolUse"
-          },
-          "evidence": {
-            "existence": [
-              "kimi-runtime-headless"
-            ],
-            "shape": [
-              "kimi-runtime-headless",
-              "kimi-exact-release-source"
-            ]
-          },
-          "confidence": "verified-headless"
-        }
-      ],
       "fixture": "captures/kimi@0.34.0/tool-success/hooks/PostToolUse.jsonl"
     },
     {
       "surface": "kimi",
       "surfaceVersion": "0.34.0",
       "event": "PostToolUseFailure",
+      "schemaFidelity": {
+        "payload": "structural",
+        "limitations": [
+          "The release source projection preserves recursive declared structure but intentionally leaves custom/unknown values unconstrained; runtime-only file schemas describe captured instances."
+        ]
+      },
       "channel": "hook-command",
       "channels": [
         "hook-command"
@@ -10456,29 +10400,18 @@
         ]
       },
       "confidence": "verified-headless",
-      "variants": [
-        {
-          "match": {
-            "hook_event_name": "PostToolUseFailure"
-          },
-          "evidence": {
-            "existence": [
-              "kimi-runtime-headless"
-            ],
-            "shape": [
-              "kimi-runtime-headless",
-              "kimi-exact-release-source"
-            ]
-          },
-          "confidence": "verified-headless"
-        }
-      ],
       "fixture": "captures/kimi@0.34.0/tool-nonzero/hooks/PostToolUseFailure.jsonl"
     },
     {
       "surface": "kimi",
       "surfaceVersion": "0.34.0",
       "event": "PreCompact",
+      "schemaFidelity": {
+        "payload": "structural",
+        "limitations": [
+          "The release source projection preserves recursive declared structure but intentionally leaves custom/unknown values unconstrained; runtime-only file schemas describe captured instances."
+        ]
+      },
       "channel": "hook-command",
       "channels": [
         "hook-command"
@@ -10534,56 +10467,18 @@
           "kimi-exact-release-source"
         ]
       },
-      "confidence": "unverified",
-      "variants": [
-        {
-          "match": {
-            "hook_event_name": "PreCompact"
-          },
-          "evidence": {
-            "existence": [
-              "kimi-exact-release-source"
-            ],
-            "shape": [
-              "kimi-exact-release-source"
-            ]
-          },
-          "confidence": "unverified"
-        },
-        {
-          "match": {
-            "trigger": "manual"
-          },
-          "evidence": {
-            "existence": [
-              "kimi-exact-release-source"
-            ],
-            "shape": [
-              "kimi-exact-release-source"
-            ]
-          },
-          "confidence": "unverified"
-        },
-        {
-          "match": {
-            "trigger": "auto"
-          },
-          "evidence": {
-            "existence": [
-              "kimi-exact-release-source"
-            ],
-            "shape": [
-              "kimi-exact-release-source"
-            ]
-          },
-          "confidence": "unverified"
-        }
-      ]
+      "confidence": "unverified"
     },
     {
       "surface": "kimi",
       "surfaceVersion": "0.34.0",
       "event": "PreToolUse",
+      "schemaFidelity": {
+        "payload": "structural",
+        "limitations": [
+          "The release source projection preserves recursive declared structure but intentionally leaves custom/unknown values unconstrained; runtime-only file schemas describe captured instances."
+        ]
+      },
       "channel": "hook-command",
       "channels": [
         "hook-command"
@@ -10641,29 +10536,19 @@
         ]
       },
       "confidence": "verified-headless",
-      "variants": [
-        {
-          "match": {
-            "hook_event_name": "PreToolUse"
-          },
-          "evidence": {
-            "existence": [
-              "kimi-runtime-headless"
-            ],
-            "shape": [
-              "kimi-runtime-headless",
-              "kimi-exact-release-source"
-            ]
-          },
-          "confidence": "verified-headless"
-        }
-      ],
       "fixture": "captures/kimi@0.34.0/tool-success/hooks/PreToolUse.jsonl"
     },
     {
       "surface": "kimi",
       "surfaceVersion": "0.34.0",
       "event": "profile.bind",
+      "schemaFidelity": {
+        "payload": "structural",
+        "carrier": "structural",
+        "limitations": [
+          "The release source projection preserves recursive declared structure but intentionally leaves custom/unknown values unconstrained; runtime-only file schemas describe captured instances."
+        ]
+      },
       "channel": "wire",
       "channels": [
         "wire"
@@ -10807,6 +10692,12 @@
       "surface": "kimi",
       "surfaceVersion": "0.34.0",
       "event": "session_index.entry",
+      "schemaFidelity": {
+        "payload": "structural",
+        "limitations": [
+          "The release source projection preserves recursive declared structure but intentionally leaves custom/unknown values unconstrained; runtime-only file schemas describe captured instances."
+        ]
+      },
       "channel": "session-index",
       "channels": [
         "session-index"
@@ -10847,6 +10738,12 @@
       "surface": "kimi",
       "surfaceVersion": "0.34.0",
       "event": "SessionEnd",
+      "schemaFidelity": {
+        "payload": "structural",
+        "limitations": [
+          "The release source projection preserves recursive declared structure but intentionally leaves custom/unknown values unconstrained; runtime-only file schemas describe captured instances."
+        ]
+      },
       "channel": "hook-command",
       "channels": [
         "hook-command"
@@ -10898,56 +10795,18 @@
           "kimi-exact-release-source"
         ]
       },
-      "confidence": "unverified",
-      "variants": [
-        {
-          "match": {
-            "hook_event_name": "SessionEnd"
-          },
-          "evidence": {
-            "existence": [
-              "kimi-exact-release-source"
-            ],
-            "shape": [
-              "kimi-exact-release-source"
-            ]
-          },
-          "confidence": "unverified"
-        },
-        {
-          "match": {
-            "reason": "exit"
-          },
-          "evidence": {
-            "existence": [
-              "kimi-exact-release-source"
-            ],
-            "shape": [
-              "kimi-exact-release-source"
-            ]
-          },
-          "confidence": "unverified"
-        },
-        {
-          "match": {
-            "reason": "archive"
-          },
-          "evidence": {
-            "existence": [
-              "kimi-exact-release-source"
-            ],
-            "shape": [
-              "kimi-exact-release-source"
-            ]
-          },
-          "confidence": "unverified"
-        }
-      ]
+      "confidence": "unverified"
     },
     {
       "surface": "kimi",
       "surfaceVersion": "0.34.0",
       "event": "SessionHeartbeat",
+      "schemaFidelity": {
+        "payload": "structural",
+        "limitations": [
+          "The release source projection preserves recursive declared structure but intentionally leaves custom/unknown values unconstrained; runtime-only file schemas describe captured instances."
+        ]
+      },
       "channel": "hook-command",
       "channels": [
         "hook-command"
@@ -10996,28 +10855,18 @@
           "kimi-exact-release-source"
         ]
       },
-      "confidence": "unverified",
-      "variants": [
-        {
-          "match": {
-            "hook_event_name": "SessionHeartbeat"
-          },
-          "evidence": {
-            "existence": [
-              "kimi-exact-release-source"
-            ],
-            "shape": [
-              "kimi-exact-release-source"
-            ]
-          },
-          "confidence": "unverified"
-        }
-      ]
+      "confidence": "unverified"
     },
     {
       "surface": "kimi",
       "surfaceVersion": "0.34.0",
       "event": "SessionStart",
+      "schemaFidelity": {
+        "payload": "structural",
+        "limitations": [
+          "The release source projection preserves recursive declared structure but intentionally leaves custom/unknown values unconstrained; runtime-only file schemas describe captured instances."
+        ]
+      },
       "channel": "hook-command",
       "channels": [
         "hook-command"
@@ -11081,21 +10930,6 @@
       "variants": [
         {
           "match": {
-            "hook_event_name": "SessionStart"
-          },
-          "evidence": {
-            "existence": [
-              "kimi-runtime-headless"
-            ],
-            "shape": [
-              "kimi-runtime-headless",
-              "kimi-exact-release-source"
-            ]
-          },
-          "confidence": "verified-headless"
-        },
-        {
-          "match": {
             "source": "startup"
           },
           "evidence": {
@@ -11125,12 +10959,21 @@
           "confidence": "verified-headless"
         }
       ],
+      "variantDiscriminants": [
+        "source"
+      ],
       "fixture": "captures/kimi@0.34.0/basic-turn/hooks/SessionStart.jsonl"
     },
     {
       "surface": "kimi",
       "surfaceVersion": "0.34.0",
       "event": "state.json",
+      "schemaFidelity": {
+        "payload": "structural",
+        "limitations": [
+          "The release source projection preserves recursive declared structure but intentionally leaves custom/unknown values unconstrained; runtime-only file schemas describe captured instances."
+        ]
+      },
       "channel": "session-state",
       "channels": [
         "session-state"
@@ -11201,6 +11044,12 @@
       "surface": "kimi",
       "surfaceVersion": "0.34.0",
       "event": "Stop",
+      "schemaFidelity": {
+        "payload": "structural",
+        "limitations": [
+          "The release source projection preserves recursive declared structure but intentionally leaves custom/unknown values unconstrained; runtime-only file schemas describe captured instances."
+        ]
+      },
       "channel": "hook-command",
       "channels": [
         "hook-command"
@@ -11250,29 +11099,18 @@
         ]
       },
       "confidence": "verified-headless",
-      "variants": [
-        {
-          "match": {
-            "hook_event_name": "Stop"
-          },
-          "evidence": {
-            "existence": [
-              "kimi-runtime-headless"
-            ],
-            "shape": [
-              "kimi-runtime-headless",
-              "kimi-exact-release-source"
-            ]
-          },
-          "confidence": "verified-headless"
-        }
-      ],
       "fixture": "captures/kimi@0.34.0/basic-turn/hooks/Stop.jsonl"
     },
     {
       "surface": "kimi",
       "surfaceVersion": "0.34.0",
       "event": "StopFailure",
+      "schemaFidelity": {
+        "payload": "structural",
+        "limitations": [
+          "The release source projection preserves recursive declared structure but intentionally leaves custom/unknown values unconstrained; runtime-only file schemas describe captured instances."
+        ]
+      },
       "channel": "hook-command",
       "channels": [
         "hook-command"
@@ -11325,29 +11163,18 @@
         ]
       },
       "confidence": "verified-headless",
-      "variants": [
-        {
-          "match": {
-            "hook_event_name": "StopFailure"
-          },
-          "evidence": {
-            "existence": [
-              "kimi-runtime-headless"
-            ],
-            "shape": [
-              "kimi-runtime-headless",
-              "kimi-exact-release-source"
-            ]
-          },
-          "confidence": "verified-headless"
-        }
-      ],
       "fixture": "captures/kimi@0.34.0/provider-error/hooks/StopFailure.jsonl"
     },
     {
       "surface": "kimi",
       "surfaceVersion": "0.34.0",
       "event": "SubagentStart",
+      "schemaFidelity": {
+        "payload": "structural",
+        "limitations": [
+          "The release source projection preserves recursive declared structure but intentionally leaves custom/unknown values unconstrained; runtime-only file schemas describe captured instances."
+        ]
+      },
       "channel": "hook-command",
       "channels": [
         "hook-command"
@@ -11401,29 +11228,18 @@
         ]
       },
       "confidence": "verified-headless",
-      "variants": [
-        {
-          "match": {
-            "hook_event_name": "SubagentStart"
-          },
-          "evidence": {
-            "existence": [
-              "kimi-runtime-headless"
-            ],
-            "shape": [
-              "kimi-runtime-headless",
-              "kimi-exact-release-source"
-            ]
-          },
-          "confidence": "verified-headless"
-        }
-      ],
       "fixture": "captures/kimi@0.34.0/subagent-turn/hooks/SubagentStart.jsonl"
     },
     {
       "surface": "kimi",
       "surfaceVersion": "0.34.0",
       "event": "SubagentStop",
+      "schemaFidelity": {
+        "payload": "structural",
+        "limitations": [
+          "The release source projection preserves recursive declared structure but intentionally leaves custom/unknown values unconstrained; runtime-only file schemas describe captured instances."
+        ]
+      },
       "channel": "hook-command",
       "channels": [
         "hook-command"
@@ -11477,29 +11293,19 @@
         ]
       },
       "confidence": "verified-headless",
-      "variants": [
-        {
-          "match": {
-            "hook_event_name": "SubagentStop"
-          },
-          "evidence": {
-            "existence": [
-              "kimi-runtime-headless"
-            ],
-            "shape": [
-              "kimi-runtime-headless",
-              "kimi-exact-release-source"
-            ]
-          },
-          "confidence": "verified-headless"
-        }
-      ],
       "fixture": "captures/kimi@0.34.0/subagent-turn/hooks/SubagentStop.jsonl"
     },
     {
       "surface": "kimi",
       "surfaceVersion": "0.34.0",
       "event": "swarm_mode.enter",
+      "schemaFidelity": {
+        "payload": "structural",
+        "carrier": "structural",
+        "limitations": [
+          "The release source projection preserves recursive declared structure but intentionally leaves custom/unknown values unconstrained; runtime-only file schemas describe captured instances."
+        ]
+      },
       "channel": "wire",
       "channels": [
         "wire"
@@ -11562,56 +11368,19 @@
           "kimi-exact-release-source"
         ]
       },
-      "confidence": "unverified",
-      "variants": [
-        {
-          "match": {
-            "trigger": "manual"
-          },
-          "evidence": {
-            "existence": [
-              "kimi-exact-release-source"
-            ],
-            "shape": [
-              "kimi-exact-release-source"
-            ]
-          },
-          "confidence": "unverified"
-        },
-        {
-          "match": {
-            "trigger": "task"
-          },
-          "evidence": {
-            "existence": [
-              "kimi-exact-release-source"
-            ],
-            "shape": [
-              "kimi-exact-release-source"
-            ]
-          },
-          "confidence": "unverified"
-        },
-        {
-          "match": {
-            "trigger": "tool"
-          },
-          "evidence": {
-            "existence": [
-              "kimi-exact-release-source"
-            ],
-            "shape": [
-              "kimi-exact-release-source"
-            ]
-          },
-          "confidence": "unverified"
-        }
-      ]
+      "confidence": "unverified"
     },
     {
       "surface": "kimi",
       "surfaceVersion": "0.34.0",
       "event": "swarm_mode.exit",
+      "schemaFidelity": {
+        "payload": "structural",
+        "carrier": "structural",
+        "limitations": [
+          "The release source projection preserves recursive declared structure but intentionally leaves custom/unknown values unconstrained; runtime-only file schemas describe captured instances."
+        ]
+      },
       "channel": "wire",
       "channels": [
         "wire"
@@ -11658,6 +11427,13 @@
       "surface": "kimi",
       "surfaceVersion": "0.34.0",
       "event": "task.started",
+      "schemaFidelity": {
+        "payload": "structural",
+        "carrier": "structural",
+        "limitations": [
+          "The release source projection preserves recursive declared structure but intentionally leaves custom/unknown values unconstrained; runtime-only file schemas describe captured instances."
+        ]
+      },
       "channel": "wire",
       "channels": [
         "wire"
@@ -12031,12 +11807,23 @@
           "confidence": "unverified"
         }
       ],
+      "variantDiscriminants": [
+        "info.kind",
+        "info.status"
+      ],
       "fixture": "captures/kimi@0.34.0/background-task/wire.jsonl"
     },
     {
       "surface": "kimi",
       "surfaceVersion": "0.34.0",
       "event": "task.terminated",
+      "schemaFidelity": {
+        "payload": "structural",
+        "carrier": "structural",
+        "limitations": [
+          "The release source projection preserves recursive declared structure but intentionally leaves custom/unknown values unconstrained; runtime-only file schemas describe captured instances."
+        ]
+      },
       "channel": "wire",
       "channels": [
         "wire"
@@ -12416,12 +12203,22 @@
           "confidence": "unverified"
         }
       ],
+      "variantDiscriminants": [
+        "info.kind",
+        "info.status"
+      ],
       "fixture": "captures/kimi@0.34.0/background-task/wire.jsonl"
     },
     {
       "surface": "kimi",
       "surfaceVersion": "0.34.0",
       "event": "TaskStarted",
+      "schemaFidelity": {
+        "payload": "structural",
+        "limitations": [
+          "The release source projection preserves recursive declared structure but intentionally leaves custom/unknown values unconstrained; runtime-only file schemas describe captured instances."
+        ]
+      },
       "channel": "hook-command",
       "channels": [
         "hook-command"
@@ -12504,21 +12301,6 @@
       },
       "confidence": "verified-headless",
       "variants": [
-        {
-          "match": {
-            "hook_event_name": "TaskStarted"
-          },
-          "evidence": {
-            "existence": [
-              "kimi-runtime-headless"
-            ],
-            "shape": [
-              "kimi-runtime-headless",
-              "kimi-exact-release-source"
-            ]
-          },
-          "confidence": "verified-headless"
-        },
         {
           "match": {
             "kind": "process"
@@ -12648,12 +12430,23 @@
           "confidence": "unverified"
         }
       ],
+      "variantDiscriminants": [
+        "kind",
+        "status"
+      ],
       "fixture": "captures/kimi@0.34.0/background-task/hooks/TaskStarted.jsonl"
     },
     {
       "surface": "kimi",
       "surfaceVersion": "0.34.0",
       "event": "tools.register_user_tool",
+      "schemaFidelity": {
+        "payload": "structural",
+        "carrier": "structural",
+        "limitations": [
+          "The release source projection preserves recursive declared structure but intentionally leaves custom/unknown values unconstrained; runtime-only file schemas describe captured instances."
+        ]
+      },
       "channel": "wire",
       "channels": [
         "wire"
@@ -12736,42 +12529,19 @@
           "kimi-exact-release-source"
         ]
       },
-      "confidence": "unverified",
-      "variants": [
-        {
-          "match": {
-            "disclosure": "inline"
-          },
-          "evidence": {
-            "existence": [
-              "kimi-exact-release-source"
-            ],
-            "shape": [
-              "kimi-exact-release-source"
-            ]
-          },
-          "confidence": "unverified"
-        },
-        {
-          "match": {
-            "disclosure": "deferred"
-          },
-          "evidence": {
-            "existence": [
-              "kimi-exact-release-source"
-            ],
-            "shape": [
-              "kimi-exact-release-source"
-            ]
-          },
-          "confidence": "unverified"
-        }
-      ]
+      "confidence": "unverified"
     },
     {
       "surface": "kimi",
       "surfaceVersion": "0.34.0",
       "event": "tools.reset_active_tools",
+      "schemaFidelity": {
+        "payload": "structural",
+        "carrier": "structural",
+        "limitations": [
+          "The release source projection preserves recursive declared structure but intentionally leaves custom/unknown values unconstrained; runtime-only file schemas describe captured instances."
+        ]
+      },
       "channel": "wire",
       "channels": [
         "wire"
@@ -12818,6 +12588,13 @@
       "surface": "kimi",
       "surfaceVersion": "0.34.0",
       "event": "tools.set_active_tools",
+      "schemaFidelity": {
+        "payload": "structural",
+        "carrier": "structural",
+        "limitations": [
+          "The release source projection preserves recursive declared structure but intentionally leaves custom/unknown values unconstrained; runtime-only file schemas describe captured instances."
+        ]
+      },
       "channel": "wire",
       "channels": [
         "wire"
@@ -12882,6 +12659,13 @@
       "surface": "kimi",
       "surfaceVersion": "0.34.0",
       "event": "tools.unregister_user_tool",
+      "schemaFidelity": {
+        "payload": "structural",
+        "carrier": "structural",
+        "limitations": [
+          "The release source projection preserves recursive declared structure but intentionally leaves custom/unknown values unconstrained; runtime-only file schemas describe captured instances."
+        ]
+      },
       "channel": "wire",
       "channels": [
         "wire"
@@ -12940,6 +12724,13 @@
       "surface": "kimi",
       "surfaceVersion": "0.34.0",
       "event": "tools.update_store",
+      "schemaFidelity": {
+        "payload": "structural",
+        "carrier": "structural",
+        "limitations": [
+          "The release source projection preserves recursive declared structure but intentionally leaves custom/unknown values unconstrained; runtime-only file schemas describe captured instances."
+        ]
+      },
       "channel": "wire",
       "channels": [
         "wire"
@@ -13002,6 +12793,13 @@
       "surface": "kimi",
       "surfaceVersion": "0.34.0",
       "event": "turn.cancel",
+      "schemaFidelity": {
+        "payload": "structural",
+        "carrier": "structural",
+        "limitations": [
+          "The release source projection preserves recursive declared structure but intentionally leaves custom/unknown values unconstrained; runtime-only file schemas describe captured instances."
+        ]
+      },
       "channel": "wire",
       "channels": [
         "wire"
@@ -13078,70 +12876,19 @@
           "kimi-exact-release-source"
         ]
       },
-      "confidence": "unverified",
-      "variants": [
-        {
-          "match": {
-            "target": "active"
-          },
-          "evidence": {
-            "existence": [
-              "kimi-exact-release-source"
-            ],
-            "shape": [
-              "kimi-exact-release-source"
-            ]
-          },
-          "confidence": "unverified"
-        },
-        {
-          "match": {
-            "target": "queued"
-          },
-          "evidence": {
-            "existence": [
-              "kimi-exact-release-source"
-            ],
-            "shape": [
-              "kimi-exact-release-source"
-            ]
-          },
-          "confidence": "unverified"
-        },
-        {
-          "match": {
-            "reason": "user_cancelled"
-          },
-          "evidence": {
-            "existence": [
-              "kimi-exact-release-source"
-            ],
-            "shape": [
-              "kimi-exact-release-source"
-            ]
-          },
-          "confidence": "unverified"
-        },
-        {
-          "match": {
-            "reason": "aborted"
-          },
-          "evidence": {
-            "existence": [
-              "kimi-exact-release-source"
-            ],
-            "shape": [
-              "kimi-exact-release-source"
-            ]
-          },
-          "confidence": "unverified"
-        }
-      ]
+      "confidence": "unverified"
     },
     {
       "surface": "kimi",
       "surfaceVersion": "0.34.0",
       "event": "turn.ended",
+      "schemaFidelity": {
+        "payload": "structural",
+        "carrier": "structural",
+        "limitations": [
+          "The release source projection preserves recursive declared structure but intentionally leaves custom/unknown values unconstrained; runtime-only file schemas describe captured instances."
+        ]
+      },
       "channel": "wire",
       "channels": [
         "wire"
@@ -13339,12 +13086,22 @@
           "confidence": "unverified"
         }
       ],
+      "variantDiscriminants": [
+        "reason"
+      ],
       "fixture": "captures/kimi@0.34.0/basic-turn/wire.jsonl"
     },
     {
       "surface": "kimi",
       "surfaceVersion": "0.34.0",
       "event": "turn.prompt",
+      "schemaFidelity": {
+        "payload": "structural",
+        "carrier": "structural",
+        "limitations": [
+          "The release source projection preserves recursive declared structure but intentionally leaves custom/unknown values unconstrained; runtime-only file schemas describe captured instances."
+        ]
+      },
       "channel": "wire",
       "channels": [
         "wire"
@@ -14506,407 +14263,19 @@
         ]
       },
       "confidence": "verified-headless",
-      "variants": [
-        {
-          "match": {
-            "origin.kind": "user"
-          },
-          "evidence": {
-            "existence": [
-              "kimi-runtime-headless"
-            ],
-            "shape": [
-              "kimi-runtime-headless",
-              "kimi-exact-release-source"
-            ]
-          },
-          "confidence": "verified-headless"
-        },
-        {
-          "match": {
-            "origin.kind": "skill_activation"
-          },
-          "evidence": {
-            "existence": [
-              "kimi-exact-release-source"
-            ],
-            "shape": [
-              "kimi-exact-release-source"
-            ]
-          },
-          "confidence": "unverified"
-        },
-        {
-          "match": {
-            "origin.trigger": "user-slash"
-          },
-          "evidence": {
-            "existence": [
-              "kimi-exact-release-source"
-            ],
-            "shape": [
-              "kimi-exact-release-source"
-            ]
-          },
-          "confidence": "unverified"
-        },
-        {
-          "match": {
-            "origin.trigger": "model-tool"
-          },
-          "evidence": {
-            "existence": [
-              "kimi-exact-release-source"
-            ],
-            "shape": [
-              "kimi-exact-release-source"
-            ]
-          },
-          "confidence": "unverified"
-        },
-        {
-          "match": {
-            "origin.trigger": "nested-skill"
-          },
-          "evidence": {
-            "existence": [
-              "kimi-exact-release-source"
-            ],
-            "shape": [
-              "kimi-exact-release-source"
-            ]
-          },
-          "confidence": "unverified"
-        },
-        {
-          "match": {
-            "origin.kind": "plugin_command"
-          },
-          "evidence": {
-            "existence": [
-              "kimi-exact-release-source"
-            ],
-            "shape": [
-              "kimi-exact-release-source"
-            ]
-          },
-          "confidence": "unverified"
-        },
-        {
-          "match": {
-            "origin.kind": "injection"
-          },
-          "evidence": {
-            "existence": [
-              "kimi-exact-release-source"
-            ],
-            "shape": [
-              "kimi-exact-release-source"
-            ]
-          },
-          "confidence": "unverified"
-        },
-        {
-          "match": {
-            "origin.kind": "shell_command"
-          },
-          "evidence": {
-            "existence": [
-              "kimi-exact-release-source"
-            ],
-            "shape": [
-              "kimi-exact-release-source"
-            ]
-          },
-          "confidence": "unverified"
-        },
-        {
-          "match": {
-            "origin.phase": "input"
-          },
-          "evidence": {
-            "existence": [
-              "kimi-exact-release-source"
-            ],
-            "shape": [
-              "kimi-exact-release-source"
-            ]
-          },
-          "confidence": "unverified"
-        },
-        {
-          "match": {
-            "origin.phase": "output"
-          },
-          "evidence": {
-            "existence": [
-              "kimi-exact-release-source"
-            ],
-            "shape": [
-              "kimi-exact-release-source"
-            ]
-          },
-          "confidence": "unverified"
-        },
-        {
-          "match": {
-            "origin.kind": "compaction_summary"
-          },
-          "evidence": {
-            "existence": [
-              "kimi-exact-release-source"
-            ],
-            "shape": [
-              "kimi-exact-release-source"
-            ]
-          },
-          "confidence": "unverified"
-        },
-        {
-          "match": {
-            "origin.kind": "system_trigger"
-          },
-          "evidence": {
-            "existence": [
-              "kimi-exact-release-source"
-            ],
-            "shape": [
-              "kimi-exact-release-source"
-            ]
-          },
-          "confidence": "unverified"
-        },
-        {
-          "match": {
-            "origin.kind": "task"
-          },
-          "evidence": {
-            "existence": [
-              "kimi-exact-release-source"
-            ],
-            "shape": [
-              "kimi-exact-release-source"
-            ]
-          },
-          "confidence": "unverified"
-        },
-        {
-          "match": {
-            "origin.status": "running"
-          },
-          "evidence": {
-            "existence": [
-              "kimi-exact-release-source"
-            ],
-            "shape": [
-              "kimi-exact-release-source"
-            ]
-          },
-          "confidence": "unverified"
-        },
-        {
-          "match": {
-            "origin.status": "completed"
-          },
-          "evidence": {
-            "existence": [
-              "kimi-exact-release-source"
-            ],
-            "shape": [
-              "kimi-exact-release-source"
-            ]
-          },
-          "confidence": "unverified"
-        },
-        {
-          "match": {
-            "origin.status": "failed"
-          },
-          "evidence": {
-            "existence": [
-              "kimi-exact-release-source"
-            ],
-            "shape": [
-              "kimi-exact-release-source"
-            ]
-          },
-          "confidence": "unverified"
-        },
-        {
-          "match": {
-            "origin.status": "timed_out"
-          },
-          "evidence": {
-            "existence": [
-              "kimi-exact-release-source"
-            ],
-            "shape": [
-              "kimi-exact-release-source"
-            ]
-          },
-          "confidence": "unverified"
-        },
-        {
-          "match": {
-            "origin.status": "killed"
-          },
-          "evidence": {
-            "existence": [
-              "kimi-exact-release-source"
-            ],
-            "shape": [
-              "kimi-exact-release-source"
-            ]
-          },
-          "confidence": "unverified"
-        },
-        {
-          "match": {
-            "origin.status": "lost"
-          },
-          "evidence": {
-            "existence": [
-              "kimi-exact-release-source"
-            ],
-            "shape": [
-              "kimi-exact-release-source"
-            ]
-          },
-          "confidence": "unverified"
-        },
-        {
-          "match": {
-            "origin.kind": "cron_job"
-          },
-          "evidence": {
-            "existence": [
-              "kimi-exact-release-source"
-            ],
-            "shape": [
-              "kimi-exact-release-source"
-            ]
-          },
-          "confidence": "unverified"
-        },
-        {
-          "match": {
-            "origin.kind": "cron_missed"
-          },
-          "evidence": {
-            "existence": [
-              "kimi-exact-release-source"
-            ],
-            "shape": [
-              "kimi-exact-release-source"
-            ]
-          },
-          "confidence": "unverified"
-        },
-        {
-          "match": {
-            "origin.kind": "hook_result"
-          },
-          "evidence": {
-            "existence": [
-              "kimi-exact-release-source"
-            ],
-            "shape": [
-              "kimi-exact-release-source"
-            ]
-          },
-          "confidence": "unverified"
-        },
-        {
-          "match": {
-            "origin.kind": "retry"
-          },
-          "evidence": {
-            "existence": [
-              "kimi-exact-release-source"
-            ],
-            "shape": [
-              "kimi-exact-release-source"
-            ]
-          },
-          "confidence": "unverified"
-        },
-        {
-          "match": {
-            "origin.skillSource": "project"
-          },
-          "evidence": {
-            "existence": [
-              "kimi-exact-release-source"
-            ],
-            "shape": [
-              "kimi-exact-release-source"
-            ]
-          },
-          "confidence": "unverified"
-        },
-        {
-          "match": {
-            "origin.skillSource": "user"
-          },
-          "evidence": {
-            "existence": [
-              "kimi-exact-release-source"
-            ],
-            "shape": [
-              "kimi-exact-release-source"
-            ]
-          },
-          "confidence": "unverified"
-        },
-        {
-          "match": {
-            "origin.skillSource": "extra"
-          },
-          "evidence": {
-            "existence": [
-              "kimi-exact-release-source"
-            ],
-            "shape": [
-              "kimi-exact-release-source"
-            ]
-          },
-          "confidence": "unverified"
-        },
-        {
-          "match": {
-            "origin.skillSource": "builtin"
-          },
-          "evidence": {
-            "existence": [
-              "kimi-exact-release-source"
-            ],
-            "shape": [
-              "kimi-exact-release-source"
-            ]
-          },
-          "confidence": "unverified"
-        },
-        {
-          "match": {
-            "origin.disclosure.kind": "date"
-          },
-          "evidence": {
-            "existence": [
-              "kimi-exact-release-source"
-            ],
-            "shape": [
-              "kimi-exact-release-source"
-            ]
-          },
-          "confidence": "unverified"
-        }
-      ],
       "fixture": "captures/kimi@0.34.0/basic-turn/wire.jsonl"
     },
     {
       "surface": "kimi",
       "surfaceVersion": "0.34.0",
       "event": "turn.steer",
+      "schemaFidelity": {
+        "payload": "structural",
+        "carrier": "structural",
+        "limitations": [
+          "The release source projection preserves recursive declared structure but intentionally leaves custom/unknown values unconstrained; runtime-only file schemas describe captured instances."
+        ]
+      },
       "channel": "wire",
       "channels": [
         "wire"
@@ -16065,406 +15434,18 @@
           "kimi-exact-release-source"
         ]
       },
-      "confidence": "unverified",
-      "variants": [
-        {
-          "match": {
-            "origin.kind": "user"
-          },
-          "evidence": {
-            "existence": [
-              "kimi-exact-release-source"
-            ],
-            "shape": [
-              "kimi-exact-release-source"
-            ]
-          },
-          "confidence": "unverified"
-        },
-        {
-          "match": {
-            "origin.kind": "skill_activation"
-          },
-          "evidence": {
-            "existence": [
-              "kimi-exact-release-source"
-            ],
-            "shape": [
-              "kimi-exact-release-source"
-            ]
-          },
-          "confidence": "unverified"
-        },
-        {
-          "match": {
-            "origin.trigger": "user-slash"
-          },
-          "evidence": {
-            "existence": [
-              "kimi-exact-release-source"
-            ],
-            "shape": [
-              "kimi-exact-release-source"
-            ]
-          },
-          "confidence": "unverified"
-        },
-        {
-          "match": {
-            "origin.trigger": "model-tool"
-          },
-          "evidence": {
-            "existence": [
-              "kimi-exact-release-source"
-            ],
-            "shape": [
-              "kimi-exact-release-source"
-            ]
-          },
-          "confidence": "unverified"
-        },
-        {
-          "match": {
-            "origin.trigger": "nested-skill"
-          },
-          "evidence": {
-            "existence": [
-              "kimi-exact-release-source"
-            ],
-            "shape": [
-              "kimi-exact-release-source"
-            ]
-          },
-          "confidence": "unverified"
-        },
-        {
-          "match": {
-            "origin.kind": "plugin_command"
-          },
-          "evidence": {
-            "existence": [
-              "kimi-exact-release-source"
-            ],
-            "shape": [
-              "kimi-exact-release-source"
-            ]
-          },
-          "confidence": "unverified"
-        },
-        {
-          "match": {
-            "origin.kind": "injection"
-          },
-          "evidence": {
-            "existence": [
-              "kimi-exact-release-source"
-            ],
-            "shape": [
-              "kimi-exact-release-source"
-            ]
-          },
-          "confidence": "unverified"
-        },
-        {
-          "match": {
-            "origin.kind": "shell_command"
-          },
-          "evidence": {
-            "existence": [
-              "kimi-exact-release-source"
-            ],
-            "shape": [
-              "kimi-exact-release-source"
-            ]
-          },
-          "confidence": "unverified"
-        },
-        {
-          "match": {
-            "origin.phase": "input"
-          },
-          "evidence": {
-            "existence": [
-              "kimi-exact-release-source"
-            ],
-            "shape": [
-              "kimi-exact-release-source"
-            ]
-          },
-          "confidence": "unverified"
-        },
-        {
-          "match": {
-            "origin.phase": "output"
-          },
-          "evidence": {
-            "existence": [
-              "kimi-exact-release-source"
-            ],
-            "shape": [
-              "kimi-exact-release-source"
-            ]
-          },
-          "confidence": "unverified"
-        },
-        {
-          "match": {
-            "origin.kind": "compaction_summary"
-          },
-          "evidence": {
-            "existence": [
-              "kimi-exact-release-source"
-            ],
-            "shape": [
-              "kimi-exact-release-source"
-            ]
-          },
-          "confidence": "unverified"
-        },
-        {
-          "match": {
-            "origin.kind": "system_trigger"
-          },
-          "evidence": {
-            "existence": [
-              "kimi-exact-release-source"
-            ],
-            "shape": [
-              "kimi-exact-release-source"
-            ]
-          },
-          "confidence": "unverified"
-        },
-        {
-          "match": {
-            "origin.kind": "task"
-          },
-          "evidence": {
-            "existence": [
-              "kimi-exact-release-source"
-            ],
-            "shape": [
-              "kimi-exact-release-source"
-            ]
-          },
-          "confidence": "unverified"
-        },
-        {
-          "match": {
-            "origin.status": "running"
-          },
-          "evidence": {
-            "existence": [
-              "kimi-exact-release-source"
-            ],
-            "shape": [
-              "kimi-exact-release-source"
-            ]
-          },
-          "confidence": "unverified"
-        },
-        {
-          "match": {
-            "origin.status": "completed"
-          },
-          "evidence": {
-            "existence": [
-              "kimi-exact-release-source"
-            ],
-            "shape": [
-              "kimi-exact-release-source"
-            ]
-          },
-          "confidence": "unverified"
-        },
-        {
-          "match": {
-            "origin.status": "failed"
-          },
-          "evidence": {
-            "existence": [
-              "kimi-exact-release-source"
-            ],
-            "shape": [
-              "kimi-exact-release-source"
-            ]
-          },
-          "confidence": "unverified"
-        },
-        {
-          "match": {
-            "origin.status": "timed_out"
-          },
-          "evidence": {
-            "existence": [
-              "kimi-exact-release-source"
-            ],
-            "shape": [
-              "kimi-exact-release-source"
-            ]
-          },
-          "confidence": "unverified"
-        },
-        {
-          "match": {
-            "origin.status": "killed"
-          },
-          "evidence": {
-            "existence": [
-              "kimi-exact-release-source"
-            ],
-            "shape": [
-              "kimi-exact-release-source"
-            ]
-          },
-          "confidence": "unverified"
-        },
-        {
-          "match": {
-            "origin.status": "lost"
-          },
-          "evidence": {
-            "existence": [
-              "kimi-exact-release-source"
-            ],
-            "shape": [
-              "kimi-exact-release-source"
-            ]
-          },
-          "confidence": "unverified"
-        },
-        {
-          "match": {
-            "origin.kind": "cron_job"
-          },
-          "evidence": {
-            "existence": [
-              "kimi-exact-release-source"
-            ],
-            "shape": [
-              "kimi-exact-release-source"
-            ]
-          },
-          "confidence": "unverified"
-        },
-        {
-          "match": {
-            "origin.kind": "cron_missed"
-          },
-          "evidence": {
-            "existence": [
-              "kimi-exact-release-source"
-            ],
-            "shape": [
-              "kimi-exact-release-source"
-            ]
-          },
-          "confidence": "unverified"
-        },
-        {
-          "match": {
-            "origin.kind": "hook_result"
-          },
-          "evidence": {
-            "existence": [
-              "kimi-exact-release-source"
-            ],
-            "shape": [
-              "kimi-exact-release-source"
-            ]
-          },
-          "confidence": "unverified"
-        },
-        {
-          "match": {
-            "origin.kind": "retry"
-          },
-          "evidence": {
-            "existence": [
-              "kimi-exact-release-source"
-            ],
-            "shape": [
-              "kimi-exact-release-source"
-            ]
-          },
-          "confidence": "unverified"
-        },
-        {
-          "match": {
-            "origin.skillSource": "project"
-          },
-          "evidence": {
-            "existence": [
-              "kimi-exact-release-source"
-            ],
-            "shape": [
-              "kimi-exact-release-source"
-            ]
-          },
-          "confidence": "unverified"
-        },
-        {
-          "match": {
-            "origin.skillSource": "user"
-          },
-          "evidence": {
-            "existence": [
-              "kimi-exact-release-source"
-            ],
-            "shape": [
-              "kimi-exact-release-source"
-            ]
-          },
-          "confidence": "unverified"
-        },
-        {
-          "match": {
-            "origin.skillSource": "extra"
-          },
-          "evidence": {
-            "existence": [
-              "kimi-exact-release-source"
-            ],
-            "shape": [
-              "kimi-exact-release-source"
-            ]
-          },
-          "confidence": "unverified"
-        },
-        {
-          "match": {
-            "origin.skillSource": "builtin"
-          },
-          "evidence": {
-            "existence": [
-              "kimi-exact-release-source"
-            ],
-            "shape": [
-              "kimi-exact-release-source"
-            ]
-          },
-          "confidence": "unverified"
-        },
-        {
-          "match": {
-            "origin.disclosure.kind": "date"
-          },
-          "evidence": {
-            "existence": [
-              "kimi-exact-release-source"
-            ],
-            "shape": [
-              "kimi-exact-release-source"
-            ]
-          },
-          "confidence": "unverified"
-        }
-      ]
+      "confidence": "unverified"
     },
     {
       "surface": "kimi",
       "surfaceVersion": "0.34.0",
       "event": "TurnStarted",
+      "schemaFidelity": {
+        "payload": "structural",
+        "limitations": [
+          "The release source projection preserves recursive declared structure but intentionally leaves custom/unknown values unconstrained; runtime-only file schemas describe captured instances."
+        ]
+      },
       "channel": "hook-command",
       "channels": [
         "hook-command"
@@ -16539,21 +15520,6 @@
       },
       "confidence": "verified-headless",
       "variants": [
-        {
-          "match": {
-            "hook_event_name": "TurnStarted"
-          },
-          "evidence": {
-            "existence": [
-              "kimi-runtime-headless"
-            ],
-            "shape": [
-              "kimi-runtime-headless",
-              "kimi-exact-release-source"
-            ]
-          },
-          "confidence": "verified-headless"
-        },
         {
           "match": {
             "origin_kind": "user"
@@ -16725,12 +15691,22 @@
           "confidence": "unverified"
         }
       ],
+      "variantDiscriminants": [
+        "origin_kind"
+      ],
       "fixture": "captures/kimi@0.34.0/basic-turn/hooks/TurnStarted.jsonl"
     },
     {
       "surface": "kimi",
       "surfaceVersion": "0.34.0",
       "event": "usage.record",
+      "schemaFidelity": {
+        "payload": "structural",
+        "carrier": "structural",
+        "limitations": [
+          "The release source projection preserves recursive declared structure but intentionally leaves custom/unknown values unconstrained; runtime-only file schemas describe captured instances."
+        ]
+      },
       "channel": "wire",
       "channels": [
         "wire"
@@ -16848,43 +15824,18 @@
         ]
       },
       "confidence": "verified-headless",
-      "variants": [
-        {
-          "match": {
-            "usageScope": "session"
-          },
-          "evidence": {
-            "existence": [
-              "kimi-exact-release-source"
-            ],
-            "shape": [
-              "kimi-exact-release-source"
-            ]
-          },
-          "confidence": "unverified"
-        },
-        {
-          "match": {
-            "usageScope": "turn"
-          },
-          "evidence": {
-            "existence": [
-              "kimi-runtime-headless"
-            ],
-            "shape": [
-              "kimi-runtime-headless",
-              "kimi-exact-release-source"
-            ]
-          },
-          "confidence": "verified-headless"
-        }
-      ],
       "fixture": "captures/kimi@0.34.0/basic-turn/wire.jsonl"
     },
     {
       "surface": "kimi",
       "surfaceVersion": "0.34.0",
       "event": "UserPromptQueued",
+      "schemaFidelity": {
+        "payload": "structural",
+        "limitations": [
+          "The release source projection preserves recursive declared structure but intentionally leaves custom/unknown values unconstrained; runtime-only file schemas describe captured instances."
+        ]
+      },
       "channel": "hook-command",
       "channels": [
         "hook-command"
@@ -17070,28 +16021,18 @@
           "kimi-exact-release-source"
         ]
       },
-      "confidence": "unverified",
-      "variants": [
-        {
-          "match": {
-            "hook_event_name": "UserPromptQueued"
-          },
-          "evidence": {
-            "existence": [
-              "kimi-exact-release-source"
-            ],
-            "shape": [
-              "kimi-exact-release-source"
-            ]
-          },
-          "confidence": "unverified"
-        }
-      ]
+      "confidence": "unverified"
     },
     {
       "surface": "kimi",
       "surfaceVersion": "0.34.0",
       "event": "UserPromptSubmit",
+      "schemaFidelity": {
+        "payload": "structural",
+        "limitations": [
+          "The release source projection preserves recursive declared structure but intentionally leaves custom/unknown values unconstrained; runtime-only file schemas describe captured instances."
+        ]
+      },
       "channel": "hook-command",
       "channels": [
         "hook-command"
@@ -17275,23 +16216,6 @@
         ]
       },
       "confidence": "verified-headless",
-      "variants": [
-        {
-          "match": {
-            "hook_event_name": "UserPromptSubmit"
-          },
-          "evidence": {
-            "existence": [
-              "kimi-runtime-headless"
-            ],
-            "shape": [
-              "kimi-runtime-headless",
-              "kimi-exact-release-source"
-            ]
-          },
-          "confidence": "verified-headless"
-        }
-      ],
       "fixture": "captures/kimi@0.34.0/basic-turn/hooks/UserPromptSubmit.jsonl"
     }
   ],

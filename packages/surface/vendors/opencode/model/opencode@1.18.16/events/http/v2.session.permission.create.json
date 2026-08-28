@@ -10,27 +10,9 @@
   "direction": "client-to-agent",
   "trigger": "Create permission request — Evaluate and, when approval is required, create a permission request for a session.",
   "payloadSchema": {
-    "type": "object",
     "properties": {
-      "method": {
-        "type": "string"
-      },
-      "route": {
-        "type": "string"
-      },
-      "params": {
-        "type": "object",
-        "properties": {
-          "sessionID": {
-            "type": "string"
-          }
-        },
-        "required": [
-          "sessionID"
-        ]
-      },
       "body": {
-        "type": "object",
+        "additionalProperties": false,
         "properties": {
           "action": {
             "type": "string"
@@ -39,47 +21,51 @@
             "type": "string"
           },
           "id": {
+            "pattern": "^per",
             "type": "string"
           },
           "metadata": {
             "type": "object"
           },
           "resources": {
-            "type": "array",
             "items": {
               "type": "string"
-            }
+            },
+            "type": "array"
           },
           "save": {
-            "type": "array",
             "items": {
               "type": "string"
-            }
+            },
+            "type": "array"
           },
           "source": {
-            "type": "object",
-            "properties": {
-              "callID": {
-                "type": "string"
-              },
-              "messageID": {
-                "type": "string"
-              },
-              "type": {
-                "type": "string"
-              }
-            },
-            "required": [
-              "callID",
-              "messageID",
-              "type"
-            ]
+            "$ref": "#/$defs/PermissionV2Source"
           }
         },
         "required": [
           "action",
           "resources"
-        ]
+        ],
+        "type": "object"
+      },
+      "method": {
+        "type": "string"
+      },
+      "params": {
+        "properties": {
+          "sessionID": {
+            "pattern": "^ses",
+            "type": "string"
+          }
+        },
+        "required": [
+          "sessionID"
+        ],
+        "type": "object"
+      },
+      "route": {
+        "type": "string"
       }
     },
     "required": [
@@ -87,61 +73,90 @@
       "route",
       "params",
       "body"
-    ]
+    ],
+    "type": "object",
+    "$defs": {
+      "PermissionV2Source": {
+        "additionalProperties": false,
+        "properties": {
+          "callID": {
+            "type": "string"
+          },
+          "messageID": {
+            "type": "string"
+          },
+          "type": {
+            "enum": [
+              "tool"
+            ],
+            "type": "string"
+          }
+        },
+        "required": [
+          "type",
+          "messageID",
+          "callID"
+        ],
+        "type": "object"
+      }
+    }
   },
   "resultSchema": {
-    "type": "object",
     "properties": {
+      "body": {
+        "additionalProperties": false,
+        "properties": {
+          "data": {
+            "additionalProperties": false,
+            "properties": {
+              "effect": {
+                "$ref": "#/$defs/PermissionV2Effect"
+              },
+              "id": {
+                "pattern": "^per",
+                "type": "string"
+              }
+            },
+            "required": [
+              "id",
+              "effect"
+            ],
+            "type": "object"
+          }
+        },
+        "required": [
+          "data"
+        ],
+        "type": "object"
+      },
       "method": {
-        "type": "string",
         "enum": [
           "POST"
-        ]
-      },
-      "route": {
-        "type": "string",
-        "enum": [
-          "/api/session/:sessionID/permission"
-        ]
-      },
-      "status": {
-        "type": "integer",
-        "minimum": 200,
-        "maximum": 299
+        ],
+        "type": "string"
       },
       "params": {
-        "type": "object",
         "properties": {
           "sessionID": {
+            "pattern": "^ses",
             "type": "string"
           }
         },
         "required": [
           "sessionID"
-        ]
+        ],
+        "type": "object"
       },
-      "body": {
-        "type": "object",
-        "properties": {
-          "data": {
-            "type": "object",
-            "properties": {
-              "effect": {
-                "type": "string"
-              },
-              "id": {
-                "type": "string"
-              }
-            },
-            "required": [
-              "effect",
-              "id"
-            ]
-          }
-        },
-        "required": [
-          "data"
-        ]
+      "route": {
+        "enum": [
+          "/api/session/:sessionID/permission"
+        ],
+        "type": "string"
+      },
+      "status": {
+        "maximum": 299,
+        "minimum": 200,
+        "type": "integer"
       }
     },
     "required": [
@@ -150,45 +165,31 @@
       "status",
       "params",
       "body"
-    ]
+    ],
+    "type": "object",
+    "$defs": {
+      "PermissionV2Effect": {
+        "enum": [
+          "allow",
+          "deny",
+          "ask"
+        ],
+        "type": "string"
+      }
+    }
   },
   "recordSchema": {
-    "type": "object",
     "properties": {
       "direction": {
-        "type": "string",
         "enum": [
           "client-to-agent"
-        ]
+        ],
+        "type": "string"
       },
       "request": {
-        "type": "object",
         "properties": {
-          "method": {
-            "type": "string",
-            "enum": [
-              "POST"
-            ]
-          },
-          "route": {
-            "type": "string",
-            "enum": [
-              "/api/session/:sessionID/permission"
-            ]
-          },
-          "params": {
-            "type": "object",
-            "properties": {
-              "sessionID": {
-                "type": "string"
-              }
-            },
-            "required": [
-              "sessionID"
-            ]
-          },
           "body": {
-            "type": "object",
+            "additionalProperties": false,
             "properties": {
               "action": {
                 "type": "string"
@@ -197,47 +198,57 @@
                 "type": "string"
               },
               "id": {
+                "pattern": "^per",
                 "type": "string"
               },
               "metadata": {
                 "type": "object"
               },
               "resources": {
-                "type": "array",
                 "items": {
                   "type": "string"
-                }
+                },
+                "type": "array"
               },
               "save": {
-                "type": "array",
                 "items": {
                   "type": "string"
-                }
+                },
+                "type": "array"
               },
               "source": {
-                "type": "object",
-                "properties": {
-                  "callID": {
-                    "type": "string"
-                  },
-                  "messageID": {
-                    "type": "string"
-                  },
-                  "type": {
-                    "type": "string"
-                  }
-                },
-                "required": [
-                  "callID",
-                  "messageID",
-                  "type"
-                ]
+                "$ref": "#/$defs/PermissionV2Source"
               }
             },
             "required": [
               "action",
               "resources"
-            ]
+            ],
+            "type": "object"
+          },
+          "method": {
+            "enum": [
+              "POST"
+            ],
+            "type": "string"
+          },
+          "params": {
+            "properties": {
+              "sessionID": {
+                "pattern": "^ses",
+                "type": "string"
+              }
+            },
+            "required": [
+              "sessionID"
+            ],
+            "type": "object"
+          },
+          "route": {
+            "enum": [
+              "/api/session/:sessionID/permission"
+            ],
+            "type": "string"
           }
         },
         "required": [
@@ -245,13 +256,45 @@
           "route",
           "params",
           "body"
-        ]
+        ],
+        "type": "object"
       }
     },
     "required": [
       "direction",
       "request"
-    ]
+    ],
+    "type": "object",
+    "$defs": {
+      "PermissionV2Source": {
+        "additionalProperties": false,
+        "properties": {
+          "callID": {
+            "type": "string"
+          },
+          "messageID": {
+            "type": "string"
+          },
+          "type": {
+            "enum": [
+              "tool"
+            ],
+            "type": "string"
+          }
+        },
+        "required": [
+          "type",
+          "messageID",
+          "callID"
+        ],
+        "type": "object"
+      }
+    }
+  },
+  "schemaFidelity": {
+    "payload": "semantic",
+    "result": "semantic",
+    "carrier": "semantic"
   },
   "evidence": {
     "existence": [

@@ -1,0 +1,31 @@
+{
+  "surface": "hermes",
+  "surfaceVersion": "0.20.0",
+  "event": "transform_llm_output",
+  "firstSeen": "0.20.0",
+  "channel": "plugin-hook",
+  "channels": ["plugin-hook", "shell-hook", "outbound-webhook"],
+  "transport": "hook-callback",
+  "direction": "agent-local",
+  "confidence": "unverified",
+  "notes": "Declared in VALID_HOOKS at the pinned revision; this hook was not encountered by the turn census.",
+  "payloadSchema": {
+    "type": "object"
+  },
+  "resultSchema": {
+    "type": "string"
+  },
+  "evidence": {
+    "existence": ["hermes-exact-source"],
+    "shape": ["hermes-exact-source"],
+    "result": ["hermes-exact-source"]
+  },
+  "schemaFidelity": {
+    "payload": "structural",
+    "result": "structural",
+    "limitations": [
+      "The primary payload is the in-process plugin callback kwargs object. Shell-hook and outbound-webhook envelopes are separately retained in the source reference.",
+      "Observed callback key inventories prove encountered top-level fields only; arbitrary plugin return values and event-specific nested values remain unconstrained."
+    ]
+  }
+}

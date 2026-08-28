@@ -10,24 +10,26 @@
   "direction": "agent-to-client",
   "trigger": "Published on the native GET /event stream.",
   "payloadSchema": {
-    "type": "object",
+    "additionalProperties": false,
     "properties": {
       "assistantMessageID": {
+        "pattern": "^msg_",
         "type": "string"
       },
       "cost": {
         "type": "number"
       },
       "files": {
-        "type": "array",
         "items": {
           "type": "string"
-        }
+        },
+        "type": "array"
       },
       "finish": {
         "type": "string"
       },
       "sessionID": {
+        "pattern": "^ses",
         "type": "string"
       },
       "snapshot": {
@@ -37,10 +39,10 @@
         "type": "number"
       },
       "tokens": {
-        "type": "object",
+        "additionalProperties": false,
         "properties": {
           "cache": {
-            "type": "object",
+            "additionalProperties": false,
             "properties": {
               "read": {
                 "type": "number"
@@ -52,7 +54,8 @@
             "required": [
               "read",
               "write"
-            ]
+            ],
+            "type": "object"
           },
           "input": {
             "type": "number"
@@ -65,47 +68,52 @@
           }
         },
         "required": [
-          "cache",
           "input",
           "output",
-          "reasoning"
-        ]
+          "reasoning",
+          "cache"
+        ],
+        "type": "object"
       }
     },
     "required": [
-      "assistantMessageID",
-      "cost",
-      "finish",
-      "sessionID",
       "timestamp",
+      "sessionID",
+      "assistantMessageID",
+      "finish",
+      "cost",
       "tokens"
-    ]
+    ],
+    "type": "object"
   },
   "recordSchema": {
-    "type": "object",
+    "additionalProperties": false,
     "properties": {
       "id": {
+        "pattern": "^evt_",
         "type": "string"
       },
       "properties": {
-        "type": "object",
+        "additionalProperties": false,
         "properties": {
           "assistantMessageID": {
+            "pattern": "^msg_",
             "type": "string"
           },
           "cost": {
             "type": "number"
           },
           "files": {
-            "type": "array",
             "items": {
               "type": "string"
-            }
+            },
+            "type": "array"
           },
           "finish": {
             "type": "string"
           },
           "sessionID": {
+            "pattern": "^ses",
             "type": "string"
           },
           "snapshot": {
@@ -115,10 +123,10 @@
             "type": "number"
           },
           "tokens": {
-            "type": "object",
+            "additionalProperties": false,
             "properties": {
               "cache": {
-                "type": "object",
+                "additionalProperties": false,
                 "properties": {
                   "read": {
                     "type": "number"
@@ -130,7 +138,8 @@
                 "required": [
                   "read",
                   "write"
-                ]
+                ],
+                "type": "object"
               },
               "input": {
                 "type": "number"
@@ -143,34 +152,41 @@
               }
             },
             "required": [
-              "cache",
               "input",
               "output",
-              "reasoning"
-            ]
+              "reasoning",
+              "cache"
+            ],
+            "type": "object"
           }
         },
         "required": [
-          "assistantMessageID",
-          "cost",
-          "finish",
-          "sessionID",
           "timestamp",
+          "sessionID",
+          "assistantMessageID",
+          "finish",
+          "cost",
           "tokens"
-        ]
+        ],
+        "type": "object"
       },
       "type": {
-        "type": "string",
         "enum": [
           "session.next.step.ended"
-        ]
+        ],
+        "type": "string"
       }
     },
     "required": [
       "id",
-      "properties",
-      "type"
-    ]
+      "type",
+      "properties"
+    ],
+    "type": "object"
+  },
+  "schemaFidelity": {
+    "payload": "exact",
+    "carrier": "exact"
   },
   "evidence": {
     "existence": [

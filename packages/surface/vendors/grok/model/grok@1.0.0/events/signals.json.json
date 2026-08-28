@@ -3,30 +3,38 @@
   "surfaceVersion": "1.0.0",
   "event": "signals.json",
   "channel": "session-state",
+  "channels": ["session-state"],
   "transport": "json-file-replace",
+  "direction": "agent-local",
   "payloadSchema": {
     "type": "object",
     "properties": {
       "contextTokensUsed": {
-        "type": "number"
+        "type": "integer",
+        "minimum": 0
       },
       "contextWindowTokens": {
-        "type": "number"
+        "type": "integer",
+        "minimum": 0
       },
       "contextWindowUsage": {
-        "type": "number"
+        "type": "number",
+        "minimum": 0
       },
       "primaryModelId": {
         "type": "string"
       },
       "compactionCount": {
-        "type": "number"
+        "type": "integer",
+        "minimum": 0
       },
       "turnCount": {
-        "type": "number"
+        "type": "integer",
+        "minimum": 0
       },
       "toolCallCount": {
-        "type": "number"
+        "type": "integer",
+        "minimum": 0
       }
     },
     "required": [
@@ -39,17 +47,16 @@
       "toolCallCount"
     ]
   },
-  "confidence": "verified-headless",
-  "firstSeen": "1.0.0",
-  "lastVerified": "1.0.0",
-  "fixture": "captures/grok@1.0.0/state.jsonl",
-  "direction": "agent-local",
   "evidence": {
-    "existence": [
-      "grok-runtime-headless"
-    ],
-    "shape": [
-      "grok-runtime-headless"
+    "existence": ["grok-runtime-headless"],
+    "shape": ["grok-runtime-headless"]
+  },
+  "confidence": "verified-headless",
+  "schemaFidelity": {
+    "payload": "sampled",
+    "limitations": [
+      "The retained Grok 1.0.0 runtime fixtures are legacy privacy projections; schemas describe retained native fields and observed types, not a complete legal payload contract."
     ]
-  }
+  },
+  "fixture": "captures/grok@1.0.0/state.jsonl"
 }

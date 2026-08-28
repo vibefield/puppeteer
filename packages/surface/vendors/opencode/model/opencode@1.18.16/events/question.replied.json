@@ -10,82 +10,107 @@
   "direction": "agent-to-client",
   "trigger": "Published on the native GET /event stream.",
   "payloadSchema": {
-    "type": "object",
+    "additionalProperties": false,
     "properties": {
       "answers": {
-        "type": "array",
         "items": {
-          "type": "array",
-          "items": {
-            "type": "string"
-          }
-        }
+          "$ref": "#/$defs/QuestionAnswer"
+        },
+        "type": "array"
       },
       "requestID": {
+        "pattern": "^que",
         "type": "string"
       },
       "sessionID": {
+        "pattern": "^ses",
         "type": "string"
       }
     },
     "required": [
-      "answers",
+      "sessionID",
       "requestID",
-      "sessionID"
-    ]
+      "answers"
+    ],
+    "type": "object",
+    "$defs": {
+      "QuestionAnswer": {
+        "items": {
+          "type": "string"
+        },
+        "type": "array"
+      }
+    }
   },
   "recordSchema": {
-    "type": "object",
+    "additionalProperties": false,
     "properties": {
       "id": {
+        "pattern": "^evt_",
         "type": "string"
       },
       "properties": {
-        "type": "object",
+        "additionalProperties": false,
         "properties": {
           "answers": {
-            "type": "array",
             "items": {
-              "type": "array",
-              "items": {
-                "type": "string"
-              }
-            }
+              "$ref": "#/$defs/QuestionAnswer"
+            },
+            "type": "array"
           },
           "requestID": {
+            "pattern": "^que",
             "type": "string"
           },
           "sessionID": {
+            "pattern": "^ses",
             "type": "string"
           }
         },
         "required": [
-          "answers",
+          "sessionID",
           "requestID",
-          "sessionID"
-        ]
+          "answers"
+        ],
+        "type": "object"
       },
       "type": {
-        "type": "string",
         "enum": [
           "question.replied"
-        ]
+        ],
+        "type": "string"
       }
     },
     "required": [
       "id",
-      "properties",
-      "type"
-    ]
+      "type",
+      "properties"
+    ],
+    "type": "object",
+    "$defs": {
+      "QuestionAnswer": {
+        "items": {
+          "type": "string"
+        },
+        "type": "array"
+      }
+    }
+  },
+  "schemaFidelity": {
+    "payload": "exact",
+    "carrier": "exact"
   },
   "evidence": {
     "existence": [
+      "opencode-generated-openapi",
       "opencode-runtime-question-reply"
     ],
     "shape": [
+      "opencode-generated-openapi",
       "opencode-runtime-question-reply"
     ],
     "carrier": [
+      "opencode-generated-openapi",
       "opencode-runtime-question-reply"
     ]
   },

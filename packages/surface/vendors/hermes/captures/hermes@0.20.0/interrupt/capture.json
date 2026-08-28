@@ -1,5 +1,6 @@
 {
   "schemaVersion": 1,
+  "representation": "legacy-privacy-projection",
   "vendor": "hermes",
   "version": "0.20.0",
   "scenario": "interrupt",

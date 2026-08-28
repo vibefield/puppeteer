@@ -10,7 +10,6 @@
   "direction": "client-to-agent",
   "trigger": "Check server health — Check whether the API server is ready to accept requests.",
   "payloadSchema": {
-    "type": "object",
     "properties": {
       "method": {
         "type": "string"
@@ -22,38 +21,42 @@
     "required": [
       "method",
       "route"
-    ]
+    ],
+    "type": "object"
   },
   "resultSchema": {
-    "type": "object",
     "properties": {
-      "method": {
-        "type": "string",
-        "enum": [
-          "GET"
-        ]
-      },
-      "route": {
-        "type": "string",
-        "enum": [
-          "/api/health"
-        ]
-      },
-      "status": {
-        "type": "integer",
-        "minimum": 200,
-        "maximum": 299
-      },
       "body": {
-        "type": "object",
+        "additionalProperties": false,
         "properties": {
           "healthy": {
+            "enum": [
+              true
+            ],
             "type": "boolean"
           }
         },
         "required": [
           "healthy"
-        ]
+        ],
+        "type": "object"
+      },
+      "method": {
+        "enum": [
+          "GET"
+        ],
+        "type": "string"
+      },
+      "route": {
+        "enum": [
+          "/api/health"
+        ],
+        "type": "string"
+      },
+      "status": {
+        "maximum": 299,
+        "minimum": 200,
+        "type": "integer"
       }
     },
     "required": [
@@ -61,43 +64,49 @@
       "route",
       "status",
       "body"
-    ]
+    ],
+    "type": "object"
   },
   "recordSchema": {
-    "type": "object",
     "properties": {
       "direction": {
-        "type": "string",
         "enum": [
           "client-to-agent"
-        ]
+        ],
+        "type": "string"
       },
       "request": {
-        "type": "object",
         "properties": {
           "method": {
-            "type": "string",
             "enum": [
               "GET"
-            ]
+            ],
+            "type": "string"
           },
           "route": {
-            "type": "string",
             "enum": [
               "/api/health"
-            ]
+            ],
+            "type": "string"
           }
         },
         "required": [
           "method",
           "route"
-        ]
+        ],
+        "type": "object"
       }
     },
     "required": [
       "direction",
       "request"
-    ]
+    ],
+    "type": "object"
+  },
+  "schemaFidelity": {
+    "payload": "semantic",
+    "result": "semantic",
+    "carrier": "semantic"
   },
   "evidence": {
     "existence": [

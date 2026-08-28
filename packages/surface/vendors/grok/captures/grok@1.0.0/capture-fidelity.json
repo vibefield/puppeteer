@@ -1,0 +1,11 @@
+{
+  "format": "puppeteer-capture-fidelity/1",
+  "vendor": "grok",
+  "vendorVersion": "1.0.0",
+  "defaultRepresentation": "legacy-privacy-projection",
+  "nativeArtifacts": ["*.jsonl", "capture.json"],
+  "limitations": [
+    "The retained sanitizer selected and synthesized fields rather than retaining complete ACP and xAI notification carriers; its raw inputs are unavailable.",
+    "These records prove occurrence, ordering, joins, and explicitly retained values only."
+  ]
+}

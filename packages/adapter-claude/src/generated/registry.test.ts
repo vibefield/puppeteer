@@ -10,7 +10,7 @@ import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { describe, expect, it } from 'vitest';
 import { loadModel } from '@vibecook/puppeteer-surface';
-import { CLAUDE_SURFACE_VERSION } from './registry.js';
+import { CLAUDE_SURFACE_VERSION, verifiedHookEvents } from './registry.js';
 import { renderDetectionSurface, renderRegistry } from '../../scripts/registry-render.js';
 
 const here = fileURLToPath(new URL('.', import.meta.url));
@@ -36,7 +36,10 @@ describe('generated registry', () => {
     const model = loadModel(vendorRoot);
     expect(CLAUDE_SURFACE_VERSION).toBe(model.manifest.vendorVersion);
     expect(model.events).toHaveLength(31);
-    expect(model.events.filter((event) => event.confidence !== 'unverified')).toHaveLength(7);
+    expect(model.events.filter((event) => event.evidence?.existence.includes('claude-runtime-headless'))).toHaveLength(
+      7,
+    );
+    expect(verifiedHookEvents()).toHaveLength(7);
   });
 
   it('keeps the runtime detection projection in sync with Surface', () => {

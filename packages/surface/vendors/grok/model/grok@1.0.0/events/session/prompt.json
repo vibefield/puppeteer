@@ -3,32 +3,535 @@
   "surfaceVersion": "1.0.0",
   "event": "session/prompt",
   "channel": "acp",
+  "channels": ["acp"],
   "transport": "jsonrpc-request",
+  "direction": "client-to-agent",
   "payloadSchema": {
-    "type": "object",
+    "description": "Request parameters for sending a user prompt to the agent.\n\nContains the user's message and any additional context.\n\nSee protocol docs: [User Message](https://agentclientprotocol.com/protocol/prompt-turn#1-user-message)",
     "properties": {
-      "sessionId": {
-        "type": "string"
+      "_meta": {
+        "additionalProperties": true,
+        "description": "The _meta property is reserved by ACP to allow clients and agents to attach additional\nmetadata to their interactions. Implementations MUST NOT make assumptions about values at\nthese keys.\n\nSee protocol docs: [Extensibility](https://agentclientprotocol.com/protocol/extensibility)",
+        "type": ["object", "null"]
+      },
+      "messageId": {
+        "description": "**UNSTABLE**\n\nThis capability is not part of the spec yet, and may be removed or changed at any point.\n\nA client-generated unique identifier for this user message.\n\nIf provided, the Agent SHOULD echo this value as `userMessageId` in the\n[`PromptResponse`] to confirm it was recorded.\nBoth clients and agents MUST use UUID format for message IDs.",
+        "type": ["string", "null"]
       },
       "prompt": {
+        "description": "The blocks of content that compose the user's message.\n\nAs a baseline, the Agent MUST support [`ContentBlock::Text`] and [`ContentBlock::ResourceLink`],\nwhile other variants are optionally enabled via [`PromptCapabilities`].\n\nThe Client MUST adapt its interface according to [`PromptCapabilities`].\n\nThe client MAY include referenced pieces of context as either\n[`ContentBlock::Resource`] or [`ContentBlock::ResourceLink`].\n\nWhen available, [`ContentBlock::Resource`] is preferred\nas it avoids extra round-trips and allows the message to include\npieces of context from sources the agent may not have access to.",
+        "items": {
+          "$ref": "#/$defs/ContentBlock"
+        },
         "type": "array"
+      },
+      "sessionId": {
+        "allOf": [
+          {
+            "$ref": "#/$defs/SessionId"
+          }
+        ],
+        "description": "The ID of the session to send this user message to"
       }
     },
-    "required": ["sessionId", "prompt"]
+    "required": ["sessionId", "prompt"],
+    "type": "object",
+    "x-method": "session/prompt",
+    "x-side": "agent",
+    "$defs": {
+      "ContentBlock": {
+        "description": "Content blocks represent displayable information in the Agent Client Protocol.\n\nThey provide a structured way to handle various types of user-facing content—whether\nit's text from language models, images for analysis, or embedded resources for context.\n\nContent blocks appear in:\n- User prompts sent via `session/prompt`\n- Language model output streamed through `session/update` notifications\n- Progress updates and results from tool calls\n\nThis structure is compatible with the Model Context Protocol (MCP), enabling\nagents to seamlessly forward content from MCP tool outputs without transformation.\n\nSee protocol docs: [Content](https://agentclientprotocol.com/protocol/content)",
+        "discriminator": {
+          "propertyName": "type"
+        },
+        "oneOf": [
+          {
+            "allOf": [
+              {
+                "$ref": "#/$defs/TextContent"
+              }
+            ],
+            "description": "Text content. May be plain text or formatted with Markdown.\n\nAll agents MUST support text content blocks in prompts.\nClients SHOULD render this text as Markdown.",
+            "properties": {
+              "type": {
+                "const": "text",
+                "type": "string"
+              }
+            },
+            "required": ["type"],
+            "type": "object"
+          },
+          {
+            "allOf": [
+              {
+                "$ref": "#/$defs/ImageContent"
+              }
+            ],
+            "description": "Images for visual context or analysis.\n\nRequires the `image` prompt capability when included in prompts.",
+            "properties": {
+              "type": {
+                "const": "image",
+                "type": "string"
+              }
+            },
+            "required": ["type"],
+            "type": "object"
+          },
+          {
+            "allOf": [
+              {
+                "$ref": "#/$defs/AudioContent"
+              }
+            ],
+            "description": "Audio data for transcription or analysis.\n\nRequires the `audio` prompt capability when included in prompts.",
+            "properties": {
+              "type": {
+                "const": "audio",
+                "type": "string"
+              }
+            },
+            "required": ["type"],
+            "type": "object"
+          },
+          {
+            "allOf": [
+              {
+                "$ref": "#/$defs/ResourceLink"
+              }
+            ],
+            "description": "References to resources that the agent can access.\n\nAll agents MUST support resource links in prompts.",
+            "properties": {
+              "type": {
+                "const": "resource_link",
+                "type": "string"
+              }
+            },
+            "required": ["type"],
+            "type": "object"
+          },
+          {
+            "allOf": [
+              {
+                "$ref": "#/$defs/EmbeddedResource"
+              }
+            ],
+            "description": "Complete resource contents embedded directly in the message.\n\nPreferred for including context as it avoids extra round-trips.\n\nRequires the `embeddedContext` prompt capability when included in prompts.",
+            "properties": {
+              "type": {
+                "const": "resource",
+                "type": "string"
+              }
+            },
+            "required": ["type"],
+            "type": "object"
+          }
+        ]
+      },
+      "SessionId": {
+        "description": "A unique identifier for a conversation session between a client and agent.\n\nSessions maintain their own context, conversation history, and state,\nallowing multiple independent interactions with the same agent.\n\nSee protocol docs: [Session ID](https://agentclientprotocol.com/protocol/session-setup#session-id)",
+        "type": "string"
+      },
+      "TextContent": {
+        "description": "Text provided to or from an LLM.",
+        "properties": {
+          "_meta": {
+            "additionalProperties": true,
+            "description": "The _meta property is reserved by ACP to allow clients and agents to attach additional\nmetadata to their interactions. Implementations MUST NOT make assumptions about values at\nthese keys.\n\nSee protocol docs: [Extensibility](https://agentclientprotocol.com/protocol/extensibility)",
+            "type": ["object", "null"]
+          },
+          "annotations": {
+            "anyOf": [
+              {
+                "$ref": "#/$defs/Annotations"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "text": {
+            "type": "string"
+          }
+        },
+        "required": ["text"],
+        "type": "object"
+      },
+      "ImageContent": {
+        "description": "An image provided to or from an LLM.",
+        "properties": {
+          "_meta": {
+            "additionalProperties": true,
+            "description": "The _meta property is reserved by ACP to allow clients and agents to attach additional\nmetadata to their interactions. Implementations MUST NOT make assumptions about values at\nthese keys.\n\nSee protocol docs: [Extensibility](https://agentclientprotocol.com/protocol/extensibility)",
+            "type": ["object", "null"]
+          },
+          "annotations": {
+            "anyOf": [
+              {
+                "$ref": "#/$defs/Annotations"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "data": {
+            "type": "string"
+          },
+          "mimeType": {
+            "type": "string"
+          },
+          "uri": {
+            "type": ["string", "null"]
+          }
+        },
+        "required": ["data", "mimeType"],
+        "type": "object"
+      },
+      "AudioContent": {
+        "description": "Audio provided to or from an LLM.",
+        "properties": {
+          "_meta": {
+            "additionalProperties": true,
+            "description": "The _meta property is reserved by ACP to allow clients and agents to attach additional\nmetadata to their interactions. Implementations MUST NOT make assumptions about values at\nthese keys.\n\nSee protocol docs: [Extensibility](https://agentclientprotocol.com/protocol/extensibility)",
+            "type": ["object", "null"]
+          },
+          "annotations": {
+            "anyOf": [
+              {
+                "$ref": "#/$defs/Annotations"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "data": {
+            "type": "string"
+          },
+          "mimeType": {
+            "type": "string"
+          }
+        },
+        "required": ["data", "mimeType"],
+        "type": "object"
+      },
+      "ResourceLink": {
+        "description": "A resource that the server is capable of reading, included in a prompt or tool call result.",
+        "properties": {
+          "_meta": {
+            "additionalProperties": true,
+            "description": "The _meta property is reserved by ACP to allow clients and agents to attach additional\nmetadata to their interactions. Implementations MUST NOT make assumptions about values at\nthese keys.\n\nSee protocol docs: [Extensibility](https://agentclientprotocol.com/protocol/extensibility)",
+            "type": ["object", "null"]
+          },
+          "annotations": {
+            "anyOf": [
+              {
+                "$ref": "#/$defs/Annotations"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "description": {
+            "type": ["string", "null"]
+          },
+          "mimeType": {
+            "type": ["string", "null"]
+          },
+          "name": {
+            "type": "string"
+          },
+          "size": {
+            "format": "int64",
+            "type": ["integer", "null"]
+          },
+          "title": {
+            "type": ["string", "null"]
+          },
+          "uri": {
+            "type": "string"
+          }
+        },
+        "required": ["name", "uri"],
+        "type": "object"
+      },
+      "EmbeddedResource": {
+        "description": "The contents of a resource, embedded into a prompt or tool call result.",
+        "properties": {
+          "_meta": {
+            "additionalProperties": true,
+            "description": "The _meta property is reserved by ACP to allow clients and agents to attach additional\nmetadata to their interactions. Implementations MUST NOT make assumptions about values at\nthese keys.\n\nSee protocol docs: [Extensibility](https://agentclientprotocol.com/protocol/extensibility)",
+            "type": ["object", "null"]
+          },
+          "annotations": {
+            "anyOf": [
+              {
+                "$ref": "#/$defs/Annotations"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "resource": {
+            "$ref": "#/$defs/EmbeddedResourceResource"
+          }
+        },
+        "required": ["resource"],
+        "type": "object"
+      },
+      "Annotations": {
+        "description": "Optional annotations for the client. The client can use annotations to inform how objects are used or displayed",
+        "properties": {
+          "_meta": {
+            "additionalProperties": true,
+            "description": "The _meta property is reserved by ACP to allow clients and agents to attach additional\nmetadata to their interactions. Implementations MUST NOT make assumptions about values at\nthese keys.\n\nSee protocol docs: [Extensibility](https://agentclientprotocol.com/protocol/extensibility)",
+            "type": ["object", "null"]
+          },
+          "audience": {
+            "items": {
+              "$ref": "#/$defs/Role"
+            },
+            "type": ["array", "null"]
+          },
+          "lastModified": {
+            "type": ["string", "null"]
+          },
+          "priority": {
+            "format": "double",
+            "type": ["number", "null"]
+          }
+        },
+        "type": "object"
+      },
+      "EmbeddedResourceResource": {
+        "anyOf": [
+          {
+            "allOf": [
+              {
+                "$ref": "#/$defs/TextResourceContents"
+              }
+            ],
+            "title": "TextResourceContents"
+          },
+          {
+            "allOf": [
+              {
+                "$ref": "#/$defs/BlobResourceContents"
+              }
+            ],
+            "title": "BlobResourceContents"
+          }
+        ],
+        "description": "Resource content that can be embedded in a message."
+      },
+      "Role": {
+        "description": "The sender or recipient of messages and data in a conversation.",
+        "enum": ["assistant", "user"],
+        "type": "string"
+      },
+      "TextResourceContents": {
+        "description": "Text-based resource contents.",
+        "properties": {
+          "_meta": {
+            "additionalProperties": true,
+            "description": "The _meta property is reserved by ACP to allow clients and agents to attach additional\nmetadata to their interactions. Implementations MUST NOT make assumptions about values at\nthese keys.\n\nSee protocol docs: [Extensibility](https://agentclientprotocol.com/protocol/extensibility)",
+            "type": ["object", "null"]
+          },
+          "mimeType": {
+            "type": ["string", "null"]
+          },
+          "text": {
+            "type": "string"
+          },
+          "uri": {
+            "type": "string"
+          }
+        },
+        "required": ["text", "uri"],
+        "type": "object"
+      },
+      "BlobResourceContents": {
+        "description": "Binary resource contents.",
+        "properties": {
+          "_meta": {
+            "additionalProperties": true,
+            "description": "The _meta property is reserved by ACP to allow clients and agents to attach additional\nmetadata to their interactions. Implementations MUST NOT make assumptions about values at\nthese keys.\n\nSee protocol docs: [Extensibility](https://agentclientprotocol.com/protocol/extensibility)",
+            "type": ["object", "null"]
+          },
+          "blob": {
+            "type": "string"
+          },
+          "mimeType": {
+            "type": ["string", "null"]
+          },
+          "uri": {
+            "type": "string"
+          }
+        },
+        "required": ["blob", "uri"],
+        "type": "object"
+      }
+    },
+    "$schema": "https://json-schema.org/draft/2020-12/schema"
   },
   "resultSchema": {
+    "description": "Response from processing a user prompt.\n\nSee protocol docs: [Check for Completion](https://agentclientprotocol.com/protocol/prompt-turn#4-check-for-completion)",
+    "properties": {
+      "_meta": {
+        "additionalProperties": true,
+        "description": "The _meta property is reserved by ACP to allow clients and agents to attach additional\nmetadata to their interactions. Implementations MUST NOT make assumptions about values at\nthese keys.\n\nSee protocol docs: [Extensibility](https://agentclientprotocol.com/protocol/extensibility)",
+        "type": ["object", "null"]
+      },
+      "stopReason": {
+        "allOf": [
+          {
+            "$ref": "#/$defs/StopReason"
+          }
+        ],
+        "description": "Indicates why the agent stopped processing the turn."
+      },
+      "usage": {
+        "anyOf": [
+          {
+            "$ref": "#/$defs/Usage"
+          },
+          {
+            "type": "null"
+          }
+        ],
+        "description": "**UNSTABLE**\n\nThis capability is not part of the spec yet, and may be removed or changed at any point.\n\nToken usage for this turn (optional)."
+      },
+      "userMessageId": {
+        "description": "**UNSTABLE**\n\nThis capability is not part of the spec yet, and may be removed or changed at any point.\n\nThe acknowledged user message ID.\n\nIf the client provided a `messageId` in the [`PromptRequest`], the agent echoes it here\nto confirm it was recorded. If the client did not provide one, the agent MAY assign one\nand return it here. Absence of this field indicates the agent did not record a message ID.",
+        "type": ["string", "null"]
+      }
+    },
+    "required": ["stopReason"],
     "type": "object",
-    "properties": { "stopReason": { "type": "string" } },
-    "required": ["stopReason"]
+    "x-method": "session/prompt",
+    "x-side": "agent",
+    "$defs": {
+      "StopReason": {
+        "description": "Reasons why an agent stops processing a prompt turn.\n\nSee protocol docs: [Stop Reasons](https://agentclientprotocol.com/protocol/prompt-turn#stop-reasons)",
+        "oneOf": [
+          {
+            "const": "end_turn",
+            "description": "The turn ended successfully.",
+            "type": "string"
+          },
+          {
+            "const": "max_tokens",
+            "description": "The turn ended because the agent reached the maximum number of tokens.",
+            "type": "string"
+          },
+          {
+            "const": "max_turn_requests",
+            "description": "The turn ended because the agent reached the maximum number of allowed\nagent requests between user turns.",
+            "type": "string"
+          },
+          {
+            "const": "refusal",
+            "description": "The turn ended because the agent refused to continue. The user prompt\nand everything that comes after it won't be included in the next\nprompt, so this should be reflected in the UI.",
+            "type": "string"
+          },
+          {
+            "const": "cancelled",
+            "description": "The turn was cancelled by the client via `session/cancel`.\n\nThis stop reason MUST be returned when the client sends a `session/cancel`\nnotification, even if the cancellation causes exceptions in underlying operations.\nAgents should catch these exceptions and return this semantically meaningful\nresponse to confirm successful cancellation.",
+            "type": "string"
+          }
+        ]
+      },
+      "Usage": {
+        "description": "**UNSTABLE**\n\nThis capability is not part of the spec yet, and may be removed or changed at any point.\n\nToken usage information for a prompt turn.",
+        "properties": {
+          "cachedReadTokens": {
+            "description": "Total cache read tokens.",
+            "format": "uint64",
+            "minimum": 0,
+            "type": ["integer", "null"]
+          },
+          "cachedWriteTokens": {
+            "description": "Total cache write tokens.",
+            "format": "uint64",
+            "minimum": 0,
+            "type": ["integer", "null"]
+          },
+          "inputTokens": {
+            "description": "Total input tokens across all turns.",
+            "format": "uint64",
+            "minimum": 0,
+            "type": "integer"
+          },
+          "outputTokens": {
+            "description": "Total output tokens across all turns.",
+            "format": "uint64",
+            "minimum": 0,
+            "type": "integer"
+          },
+          "thoughtTokens": {
+            "description": "Total thought/reasoning tokens",
+            "format": "uint64",
+            "minimum": 0,
+            "type": ["integer", "null"]
+          },
+          "totalTokens": {
+            "description": "Sum of all token types across session.",
+            "format": "uint64",
+            "minimum": 0,
+            "type": "integer"
+          }
+        },
+        "required": ["totalTokens", "inputTokens", "outputTokens"],
+        "type": "object"
+      }
+    },
+    "$schema": "https://json-schema.org/draft/2020-12/schema"
   },
-  "confidence": "unverified",
-  "firstSeen": "1.0.0",
-  "lastVerified": "1.0.0",
-  "fixture": "captures/grok@1.0.0/turn.jsonl",
-  "direction": "client-to-agent",
+  "recordSchema": {
+    "type": "object",
+    "properties": {
+      "jsonrpc": {
+        "type": "string",
+        "enum": ["2.0"]
+      },
+      "id": {
+        "anyOf": [
+          {
+            "type": "integer"
+          },
+          {
+            "type": "string"
+          }
+        ]
+      },
+      "method": {
+        "type": "string",
+        "enum": ["session/prompt"]
+      },
+      "params": {
+        "type": "object"
+      }
+    },
+    "required": ["jsonrpc", "id", "method", "params"]
+  },
+  "recordChannel": "acp",
   "evidence": {
     "existence": ["grok-runtime-headless"],
-    "shape": ["grok-runtime-headless"],
-    "result": ["grok-public-mirror-lead"]
-  }
+    "shape": ["grok-public-acp-lead"],
+    "carrier": ["grok-runtime-headless"],
+    "result": ["grok-public-acp-lead"]
+  },
+  "confidence": "unverified",
+  "schemaFidelity": {
+    "payload": "exact",
+    "result": "exact",
+    "carrier": "structural",
+    "limitations": [
+      "The retained schema is exact for ACP schema 0.11.4 at e931357254ff44573294d5cee214a269e0cd6c54, the dependency of a supplemental public Grok source commit. The installed binary's reported revision is absent from that mirror, so binary equivalence is unverified."
+    ]
+  },
+  "fixture": "captures/grok@1.0.0/turn.jsonl",
+  "notes": "The installed artifact accepted/emitted this request payload, but matching result carriers were not retained. Exact optional fields and result shape remain supplemental ACP-source evidence."
 }

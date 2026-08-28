@@ -22,6 +22,13 @@ function jsonLines(path: string): Record<string, unknown>[] {
     .map((line) => JSON.parse(line) as Record<string, unknown>);
 }
 
+function scenarioNames(): string[] {
+  return readdirSync(capturesRoot, { withFileTypes: true })
+    .filter((entry) => entry.isDirectory())
+    .map((entry) => entry.name)
+    .sort();
+}
+
 describe(`the Kimi ${version} candidate ASM`, () => {
   it('keeps terminal, wire, state, index, and hook rails distinct', () => {
     expect(Object.keys(model.channels.channels).sort()).toEqual([
@@ -36,7 +43,7 @@ describe(`the Kimi ${version} candidate ASM`, () => {
 
   it('models every captured wire record and accepts both its payload and carrier', () => {
     const failures: string[] = [];
-    for (const scenario of readdirSync(capturesRoot)) {
+    for (const scenario of scenarioNames()) {
       const journals = [join(capturesRoot, scenario, 'wire.jsonl')];
       const agentsDir = join(capturesRoot, scenario, 'agents');
       if (existsSync(agentsDir)) {
@@ -73,7 +80,7 @@ describe(`the Kimi ${version} candidate ASM`, () => {
 
   it('models every captured hook, session state, and session-index entry', () => {
     const failures: string[] = [];
-    for (const scenario of readdirSync(capturesRoot)) {
+    for (const scenario of scenarioNames()) {
       const scenarioRoot = join(capturesRoot, scenario);
       for (const hook of readdirSync(join(scenarioRoot, 'hooks'))) {
         for (const payload of jsonLines(join(scenarioRoot, 'hooks', hook))) {
@@ -161,6 +168,37 @@ describe(`the Kimi ${version} candidate ASM`, () => {
         'droppedCount',
       ]),
     );
+  });
+
+  it('retains exact runtime input contracts for every discovered tool, including Edit and Write', () => {
+    const refinements = events.get('context.append_loop_event')!.payloadRefinements!;
+    expect(refinements).toHaveLength(24);
+    const edit = refinements.find((entry) => entry.match?.['event.name'] === 'Edit')!;
+    const write = refinements.find((entry) => entry.match?.['event.name'] === 'Write')!;
+
+    expect(edit).toMatchObject({ path: 'event.args', fidelity: 'exact', confidence: 'verified-headless' });
+    expect(edit.schema).toMatchObject({
+      additionalProperties: false,
+      required: ['path', 'old_string', 'new_string'],
+      properties: {
+        path: { type: 'string' },
+        old_string: { type: 'string', minLength: 1 },
+        new_string: { type: 'string' },
+        replace_all: { type: 'boolean' },
+      },
+    });
+    expect(write).toMatchObject({ path: 'event.args', fidelity: 'exact', confidence: 'verified-headless' });
+    expect(write.schema).toMatchObject({
+      additionalProperties: false,
+      required: ['path', 'content'],
+      properties: {
+        path: { type: 'string' },
+        content: { type: 'string' },
+        mode: { type: 'string', enum: ['overwrite', 'append'] },
+      },
+    });
+    expect(validatePayload(edit.schema, { path: 'a.ts', old_string: '', new_string: 'next' })).not.toEqual([]);
+    expect(validatePayload(write.schema, { path: 'a.ts', content: 'next', unexpected: true })).not.toEqual([]);
   });
 
   it('constrains hook names, requires event-specific fields, and points verified hooks at matching fixtures', () => {

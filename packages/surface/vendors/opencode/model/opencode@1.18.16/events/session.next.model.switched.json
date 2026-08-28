@@ -10,13 +10,33 @@
   "direction": "agent-to-client",
   "trigger": "Published on the native GET /event stream.",
   "payloadSchema": {
-    "type": "object",
+    "additionalProperties": false,
     "properties": {
       "messageID": {
+        "pattern": "^msg_",
         "type": "string"
       },
       "model": {
-        "type": "object",
+        "$ref": "#/$defs/ModelRef"
+      },
+      "sessionID": {
+        "pattern": "^ses",
+        "type": "string"
+      },
+      "timestamp": {
+        "type": "number"
+      }
+    },
+    "required": [
+      "timestamp",
+      "sessionID",
+      "messageID",
+      "model"
+    ],
+    "type": "object",
+    "$defs": {
+      "ModelRef": {
+        "additionalProperties": false,
         "properties": {
           "id": {
             "type": "string"
@@ -31,53 +51,30 @@
         "required": [
           "id",
           "providerID"
-        ]
-      },
-      "sessionID": {
-        "type": "string"
-      },
-      "timestamp": {
-        "type": "number"
+        ],
+        "type": "object"
       }
-    },
-    "required": [
-      "messageID",
-      "model",
-      "sessionID",
-      "timestamp"
-    ]
+    }
   },
   "recordSchema": {
-    "type": "object",
+    "additionalProperties": false,
     "properties": {
       "id": {
+        "pattern": "^evt_",
         "type": "string"
       },
       "properties": {
-        "type": "object",
+        "additionalProperties": false,
         "properties": {
           "messageID": {
+            "pattern": "^msg_",
             "type": "string"
           },
           "model": {
-            "type": "object",
-            "properties": {
-              "id": {
-                "type": "string"
-              },
-              "providerID": {
-                "type": "string"
-              },
-              "variant": {
-                "type": "string"
-              }
-            },
-            "required": [
-              "id",
-              "providerID"
-            ]
+            "$ref": "#/$defs/ModelRef"
           },
           "sessionID": {
+            "pattern": "^ses",
             "type": "string"
           },
           "timestamp": {
@@ -85,24 +82,51 @@
           }
         },
         "required": [
-          "messageID",
-          "model",
+          "timestamp",
           "sessionID",
-          "timestamp"
-        ]
+          "messageID",
+          "model"
+        ],
+        "type": "object"
       },
       "type": {
-        "type": "string",
         "enum": [
           "session.next.model.switched"
-        ]
+        ],
+        "type": "string"
       }
     },
     "required": [
       "id",
-      "properties",
-      "type"
-    ]
+      "type",
+      "properties"
+    ],
+    "type": "object",
+    "$defs": {
+      "ModelRef": {
+        "additionalProperties": false,
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "providerID": {
+            "type": "string"
+          },
+          "variant": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "providerID"
+        ],
+        "type": "object"
+      }
+    }
+  },
+  "schemaFidelity": {
+    "payload": "exact",
+    "carrier": "exact"
   },
   "evidence": {
     "existence": [

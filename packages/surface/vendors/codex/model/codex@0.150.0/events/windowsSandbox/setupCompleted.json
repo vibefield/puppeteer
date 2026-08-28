@@ -6,11 +6,15 @@
   "transport": "jsonrpc-notification",
   "direction": "agent-to-client",
   "payloadSchema": {
-    "type": "object",
     "properties": {
-      "error": {},
+      "error": {
+        "type": [
+          "string",
+          "null"
+        ]
+      },
       "mode": {
-        "type": "string"
+        "$ref": "#/$defs/WindowsSandboxSetupMode"
       },
       "success": {
         "type": "boolean"
@@ -19,30 +23,73 @@
     "required": [
       "mode",
       "success"
-    ]
+    ],
+    "type": "object",
+    "$defs": {
+      "WindowsSandboxSetupMode": {
+        "enum": [
+          "elevated",
+          "unelevated"
+        ],
+        "type": "string"
+      }
+    },
+    "$schema": "http://json-schema.org/draft-07/schema#"
   },
   "recordSchema": {
-    "type": "object",
     "properties": {
       "method": {
-        "type": "string",
         "enum": [
           "windowsSandbox/setupCompleted"
-        ]
+        ],
+        "title": "WindowsSandbox/setupCompletedNotificationMethod",
+        "type": "string"
       },
       "params": {
-        "type": "object"
-      },
-      "emittedAtMs": {
-        "type": "number",
-        "minimum": 1000000000000
+        "$ref": "#/$defs/WindowsSandboxSetupCompletedNotification"
       }
     },
     "required": [
       "method",
-      "params",
-      "emittedAtMs"
-    ]
+      "params"
+    ],
+    "title": "WindowsSandbox/setupCompletedNotification",
+    "type": "object",
+    "$defs": {
+      "WindowsSandboxSetupCompletedNotification": {
+        "properties": {
+          "error": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "mode": {
+            "$ref": "#/$defs/WindowsSandboxSetupMode"
+          },
+          "success": {
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "mode",
+          "success"
+        ],
+        "type": "object"
+      },
+      "WindowsSandboxSetupMode": {
+        "enum": [
+          "elevated",
+          "unelevated"
+        ],
+        "type": "string"
+      }
+    },
+    "$schema": "http://json-schema.org/draft-07/schema#"
+  },
+  "schemaFidelity": {
+    "payload": "exact",
+    "carrier": "exact"
   },
   "evidence": {
     "existence": [
@@ -52,7 +99,7 @@
       "codex-generated-schema"
     ],
     "carrier": [
-      "codex-runtime-headless"
+      "codex-generated-schema"
     ]
   },
   "confidence": "unverified"

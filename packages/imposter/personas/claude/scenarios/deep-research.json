@@ -227,10 +227,30 @@
           "with": {
             "prompt_id": "$uuid:prompt",
             "tool_calls": [
-              { "tool_name": "WebSearch", "tool_use_id": "$uuid:web-search" },
-              { "tool_name": "WebFetch", "tool_use_id": "$uuid:web-fetch" },
-              { "tool_name": "Read", "tool_use_id": "$uuid:read" },
-              { "tool_name": "Bash", "tool_use_id": "$uuid:inventory" }
+              {
+                "tool_name": "WebSearch",
+                "tool_use_id": "$uuid:web-search",
+                "tool_input": {},
+                "tool_response": "search completed"
+              },
+              {
+                "tool_name": "WebFetch",
+                "tool_use_id": "$uuid:web-fetch",
+                "tool_input": {},
+                "tool_response": "fetch completed"
+              },
+              {
+                "tool_name": "Read",
+                "tool_use_id": "$uuid:read",
+                "tool_input": {},
+                "tool_response": "read completed"
+              },
+              {
+                "tool_name": "Bash",
+                "tool_use_id": "$uuid:inventory",
+                "tool_input": {},
+                "tool_response": "command completed"
+              }
             ]
           }
         }

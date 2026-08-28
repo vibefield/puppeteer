@@ -11,9 +11,8 @@
   "payloadSchema": {
     "type": "object",
     "properties": {
-      "status": {
-        "type": "string",
-        "enum": ["complete", "interrupted"]
+      "text": {
+        "type": "string"
       },
       "usage": {
         "type": "object",
@@ -21,23 +20,94 @@
           "model": {
             "type": "string"
           },
-          "calls": {
-            "type": "number",
+          "input": {
+            "type": "integer",
             "minimum": 0
           },
-          "hasTotals": {
-            "type": "boolean"
+          "output": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "reasoning": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "prompt": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "completion": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "total": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "calls": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "context_used": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "context_max": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "context_percent": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 100
+          },
+          "compressions": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "active_subagents": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "dev_credits_spent_micros": {
+            "type": "integer",
+            "minimum": 0
           }
         }
       },
-      "hasText": {
+      "status": {
+        "type": "string",
+        "enum": ["complete", "interrupted", "error"]
+      },
+      "reasoning": {
+        "type": "string"
+      },
+      "warning": {
+        "type": "string"
+      },
+      "response_previewed": {
         "type": "boolean"
       },
-      "hasContext": {
+      "billing": {
+        "type": "object"
+      },
+      "failure_reason": {
+        "type": "string"
+      },
+      "rendered": {
+        "type": "string"
+      },
+      "error": {
+        "type": "string"
+      },
+      "recoverable": {
+        "type": "boolean"
+      },
+      "partial": {
         "type": "boolean"
       }
     },
-    "required": ["status"]
+    "required": ["text"]
   },
   "recordSchema": {
     "type": "object",
@@ -63,9 +133,8 @@
           "payload": {
             "type": "object",
             "properties": {
-              "status": {
-                "type": "string",
-                "enum": ["complete", "interrupted"]
+              "text": {
+                "type": "string"
               },
               "usage": {
                 "type": "object",
@@ -73,26 +142,97 @@
                   "model": {
                     "type": "string"
                   },
-                  "calls": {
-                    "type": "number",
+                  "input": {
+                    "type": "integer",
                     "minimum": 0
                   },
-                  "hasTotals": {
-                    "type": "boolean"
+                  "output": {
+                    "type": "integer",
+                    "minimum": 0
+                  },
+                  "reasoning": {
+                    "type": "integer",
+                    "minimum": 0
+                  },
+                  "prompt": {
+                    "type": "integer",
+                    "minimum": 0
+                  },
+                  "completion": {
+                    "type": "integer",
+                    "minimum": 0
+                  },
+                  "total": {
+                    "type": "integer",
+                    "minimum": 0
+                  },
+                  "calls": {
+                    "type": "integer",
+                    "minimum": 0
+                  },
+                  "context_used": {
+                    "type": "integer",
+                    "minimum": 0
+                  },
+                  "context_max": {
+                    "type": "integer",
+                    "minimum": 0
+                  },
+                  "context_percent": {
+                    "type": "integer",
+                    "minimum": 0,
+                    "maximum": 100
+                  },
+                  "compressions": {
+                    "type": "integer",
+                    "minimum": 0
+                  },
+                  "active_subagents": {
+                    "type": "integer",
+                    "minimum": 0
+                  },
+                  "dev_credits_spent_micros": {
+                    "type": "integer",
+                    "minimum": 0
                   }
                 }
               },
-              "hasText": {
+              "status": {
+                "type": "string",
+                "enum": ["complete", "interrupted", "error"]
+              },
+              "reasoning": {
+                "type": "string"
+              },
+              "warning": {
+                "type": "string"
+              },
+              "response_previewed": {
                 "type": "boolean"
               },
-              "hasContext": {
+              "billing": {
+                "type": "object"
+              },
+              "failure_reason": {
+                "type": "string"
+              },
+              "rendered": {
+                "type": "string"
+              },
+              "error": {
+                "type": "string"
+              },
+              "recoverable": {
+                "type": "boolean"
+              },
+              "partial": {
                 "type": "boolean"
               }
             },
-            "required": ["status"]
+            "required": ["text"]
           }
         },
-        "required": ["type", "payload"]
+        "required": ["type"]
       }
     },
     "required": ["method", "params"]
@@ -100,10 +240,10 @@
   "recordChannel": "tui-gateway",
   "evidence": {
     "existence": ["hermes-runtime-headless"],
-    "shape": ["hermes-runtime-headless"],
-    "carrier": ["hermes-runtime-headless"]
+    "shape": ["hermes-exact-source"],
+    "carrier": ["hermes-exact-source"]
   },
-  "confidence": "verified-headless",
+  "confidence": "unverified",
   "variants": [
     {
       "match": {
@@ -124,7 +264,27 @@
         "shape": ["hermes-runtime-headless"]
       },
       "confidence": "verified-headless"
+    },
+    {
+      "match": {
+        "status": "error"
+      },
+      "evidence": {
+        "existence": ["hermes-exact-source"],
+        "shape": ["hermes-exact-source"]
+      },
+      "confidence": "unverified"
     }
   ],
-  "fixture": "captures/hermes@0.20.0/interrupt/rpc.jsonl"
+  "variantDiscriminants": ["status"],
+  "fixture": "captures/hermes@0.20.0/interrupt/rpc.jsonl",
+  "schemaFidelity": {
+    "payload": "structural",
+    "carrier": "structural",
+    "limitations": [
+      "Python is dynamic: helper-produced, conditionally assembled, and forwarded payload/result fields remain unconstrained unless directly recoverable.",
+      "Direct params indexing proves required access; params.get access proves a known field but not optionality.",
+      "Source declarations establish legal/native shape and existence, not runtime reachability."
+    ]
+  }
 }

@@ -9,7 +9,7 @@
           "event": "Notification",
           "with": {
             "message": "this event is logged but not delivered",
-            "notification_type": "channel-disconnect",
+            "notification_type": "idle_prompt",
             "prompt_id": "$uuid:prompt"
           }
         }

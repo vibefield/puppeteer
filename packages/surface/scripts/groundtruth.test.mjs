@@ -7,7 +7,16 @@ import { canonicalJson, checkGroundTruth, discoverGroundTruthRoots, renderGround
 describe('canonical Surface ground truth', () => {
   it('keeps exactly one canonical result at each agent root', () => {
     const roots = discoverGroundTruthRoots();
-    expect(roots).toHaveLength(7);
+    expect(roots.map((root) => root.split('/').at(-1))).toEqual([
+      'synthetic',
+      'antigravity',
+      'claude',
+      'codex',
+      'grok',
+      'hermes',
+      'kimi',
+      'opencode',
+    ]);
     expect(checkGroundTruth(roots)).toEqual([]);
     for (const root of roots) {
       expect(readFileSync(join(root, 'groundtruth.json'), 'utf8')).toBe(canonicalJson(root));
@@ -22,5 +31,13 @@ describe('canonical Surface ground truth', () => {
     expect(html).toContain('id="event-search"');
     expect(html).toContain('id="behavior"');
     expect(html).not.toMatch(/<link|https?:\/\//);
+  });
+
+  it('renders ASM v3 fidelity, refinements, and immutable source provenance', () => {
+    const root = discoverGroundTruthRoots().find((candidate) => candidate.endsWith('/kimi'));
+    const html = renderGroundTruth(loadGroundTruth(join(root, 'groundtruth.json')));
+    expect(html).toContain('Schema fidelity');
+    expect(html).toContain('evidence-bound payload refinements');
+    expect(html).toContain('Immutable source references');
   });
 });

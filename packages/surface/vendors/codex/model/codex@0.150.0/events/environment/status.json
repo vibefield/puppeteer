@@ -7,35 +7,74 @@
   "direction": "client-to-agent",
   "trigger": "Reads the current status of a configured execution environment.",
   "payloadSchema": {
-    "type": "object",
+    "description": "Parameters for reading the current status of one configured environment.",
     "properties": {
       "environmentId": {
+        "description": "Environment id to inspect.",
         "type": "string"
       }
     },
     "required": [
       "environmentId"
-    ]
+    ],
+    "type": "object",
+    "$schema": "http://json-schema.org/draft-07/schema#"
   },
   "recordSchema": {
-    "type": "object",
+    "description": "Reads the current status of a configured execution environment.",
     "properties": {
+      "id": {
+        "$ref": "#/$defs/RequestId"
+      },
       "method": {
-        "type": "string",
         "enum": [
           "environment/status"
-        ]
+        ],
+        "title": "Environment/statusRequestMethod",
+        "type": "string"
       },
       "params": {
-        "type": "object"
-      },
-      "id": {}
+        "$ref": "#/$defs/EnvironmentStatusParams"
+      }
     },
     "required": [
+      "id",
       "method",
-      "params",
-      "id"
-    ]
+      "params"
+    ],
+    "title": "Environment/statusRequest",
+    "type": "object",
+    "$defs": {
+      "RequestId": {
+        "anyOf": [
+          {
+            "type": "string"
+          },
+          {
+            "format": "int64",
+            "type": "integer"
+          }
+        ]
+      },
+      "EnvironmentStatusParams": {
+        "description": "Parameters for reading the current status of one configured environment.",
+        "properties": {
+          "environmentId": {
+            "description": "Environment id to inspect.",
+            "type": "string"
+          }
+        },
+        "required": [
+          "environmentId"
+        ],
+        "type": "object"
+      }
+    },
+    "$schema": "http://json-schema.org/draft-07/schema#"
+  },
+  "schemaFidelity": {
+    "payload": "exact",
+    "carrier": "exact"
   },
   "evidence": {
     "existence": [

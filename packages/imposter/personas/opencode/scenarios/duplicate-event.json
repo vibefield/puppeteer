@@ -1,7 +1,27 @@
 {
   "name": "duplicate-event",
   "steps": [
-    { "emit": { "event": "session.status", "with": { "sessionID": "$sessionId", "status": { "type": "busy" } } } },
-    { "emit": { "event": "session.status", "with": { "sessionID": "$sessionId", "status": { "type": "busy" } } } }
+    {
+      "emit": {
+        "event": "session.status",
+        "with": {
+          "sessionID": "$sessionId",
+          "status": {
+            "type": "busy"
+          }
+        }
+      }
+    },
+    {
+      "emit": {
+        "event": "session.status",
+        "with": {
+          "sessionID": "$sessionId",
+          "status": {
+            "type": "busy"
+          }
+        }
+      }
+    }
   ]
 }

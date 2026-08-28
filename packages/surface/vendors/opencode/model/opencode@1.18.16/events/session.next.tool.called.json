@@ -10,9 +10,10 @@
   "direction": "agent-to-client",
   "trigger": "Published on the native GET /event stream.",
   "payloadSchema": {
-    "type": "object",
+    "additionalProperties": false,
     "properties": {
       "assistantMessageID": {
+        "pattern": "^msg_",
         "type": "string"
       },
       "callID": {
@@ -22,20 +23,22 @@
         "type": "object"
       },
       "provider": {
-        "type": "object",
+        "additionalProperties": false,
         "properties": {
           "executed": {
             "type": "boolean"
           },
           "metadata": {
-            "type": "object"
+            "$ref": "#/$defs/LLMProviderMetadata"
           }
         },
         "required": [
           "executed"
-        ]
+        ],
+        "type": "object"
       },
       "sessionID": {
+        "pattern": "^ses",
         "type": "string"
       },
       "timestamp": {
@@ -46,25 +49,36 @@
       }
     },
     "required": [
+      "timestamp",
+      "sessionID",
       "assistantMessageID",
       "callID",
+      "tool",
       "input",
-      "provider",
-      "sessionID",
-      "timestamp",
-      "tool"
-    ]
+      "provider"
+    ],
+    "type": "object",
+    "$defs": {
+      "LLMProviderMetadata": {
+        "additionalProperties": {
+          "type": "object"
+        },
+        "type": "object"
+      }
+    }
   },
   "recordSchema": {
-    "type": "object",
+    "additionalProperties": false,
     "properties": {
       "id": {
+        "pattern": "^evt_",
         "type": "string"
       },
       "properties": {
-        "type": "object",
+        "additionalProperties": false,
         "properties": {
           "assistantMessageID": {
+            "pattern": "^msg_",
             "type": "string"
           },
           "callID": {
@@ -74,20 +88,22 @@
             "type": "object"
           },
           "provider": {
-            "type": "object",
+            "additionalProperties": false,
             "properties": {
               "executed": {
                 "type": "boolean"
               },
               "metadata": {
-                "type": "object"
+                "$ref": "#/$defs/LLMProviderMetadata"
               }
             },
             "required": [
               "executed"
-            ]
+            ],
+            "type": "object"
           },
           "sessionID": {
+            "pattern": "^ses",
             "type": "string"
           },
           "timestamp": {
@@ -98,27 +114,41 @@
           }
         },
         "required": [
+          "timestamp",
+          "sessionID",
           "assistantMessageID",
           "callID",
+          "tool",
           "input",
-          "provider",
-          "sessionID",
-          "timestamp",
-          "tool"
-        ]
+          "provider"
+        ],
+        "type": "object"
       },
       "type": {
-        "type": "string",
         "enum": [
           "session.next.tool.called"
-        ]
+        ],
+        "type": "string"
       }
     },
     "required": [
       "id",
-      "properties",
-      "type"
-    ]
+      "type",
+      "properties"
+    ],
+    "type": "object",
+    "$defs": {
+      "LLMProviderMetadata": {
+        "additionalProperties": {
+          "type": "object"
+        },
+        "type": "object"
+      }
+    }
+  },
+  "schemaFidelity": {
+    "payload": "exact",
+    "carrier": "exact"
   },
   "evidence": {
     "existence": [

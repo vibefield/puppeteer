@@ -20,7 +20,13 @@
 import { mkdirSync, rmSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { checkCaptureDirectory, defaultRules, extendRules, sanitizeCaptureDirectory } from '@vibecook/puppeteer-surface/sanitize';
+import {
+  checkCaptureDirectory,
+  defaultRules,
+  extendRules,
+  sanitizeCaptureDirectory,
+} from '@vibecook/puppeteer-surface/sanitize';
+import { writeCaptureFidelity } from '../../../scripts/capture-fidelity.mjs';
 import { CODEX_VERSION } from './harness.mjs';
 
 const surfaceRoot = join(dirname(fileURLToPath(import.meta.url)), '..');
@@ -73,6 +79,16 @@ if (import.meta.url === `file://${process.argv[1]}`) {
   mkdirSync(staging, { recursive: true });
 
   const result = sanitizeCaptureDirectory(input, staging, codexRules);
+  writeCaptureFidelity(staging, {
+    vendor: 'codex',
+    vendorVersion: CODEX_VERSION,
+    defaultRepresentation: 'type-preserving-redaction',
+    nativeArtifacts: ['*.jsonl'],
+    limitations: [
+      'Only app-server JSON records are promoted; process diagnostics and fake-provider internals remain outside the committed capture set.',
+      'Sensitive scalar values are replaced in place while native keys, containers, primitive types, and record order are retained.',
+    ],
+  });
   const issues = checkCaptureDirectory(staging, codexRules);
   if (issues.length > 0) {
     for (const issue of issues.slice(0, 20)) console.error(issue);
@@ -87,5 +103,4 @@ if (import.meta.url === `file://${process.argv[1]}`) {
   renameSync(staging, output);
   console.log(`sanitized ${result.files} file(s), ${result.lines} line(s) -> ${output}`);
   console.log('privacy check: clean');
-
 }

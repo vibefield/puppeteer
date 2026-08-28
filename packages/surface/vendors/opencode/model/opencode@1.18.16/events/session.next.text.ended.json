@@ -10,12 +10,14 @@
   "direction": "agent-to-client",
   "trigger": "Published on the native GET /event stream.",
   "payloadSchema": {
-    "type": "object",
+    "additionalProperties": false,
     "properties": {
       "assistantMessageID": {
+        "pattern": "^msg_",
         "type": "string"
       },
       "sessionID": {
+        "pattern": "^ses",
         "type": "string"
       },
       "text": {
@@ -29,26 +31,30 @@
       }
     },
     "required": [
-      "assistantMessageID",
+      "timestamp",
       "sessionID",
-      "text",
+      "assistantMessageID",
       "textID",
-      "timestamp"
-    ]
+      "text"
+    ],
+    "type": "object"
   },
   "recordSchema": {
-    "type": "object",
+    "additionalProperties": false,
     "properties": {
       "id": {
+        "pattern": "^evt_",
         "type": "string"
       },
       "properties": {
-        "type": "object",
+        "additionalProperties": false,
         "properties": {
           "assistantMessageID": {
+            "pattern": "^msg_",
             "type": "string"
           },
           "sessionID": {
+            "pattern": "^ses",
             "type": "string"
           },
           "text": {
@@ -62,25 +68,31 @@
           }
         },
         "required": [
-          "assistantMessageID",
+          "timestamp",
           "sessionID",
-          "text",
+          "assistantMessageID",
           "textID",
-          "timestamp"
-        ]
+          "text"
+        ],
+        "type": "object"
       },
       "type": {
-        "type": "string",
         "enum": [
           "session.next.text.ended"
-        ]
+        ],
+        "type": "string"
       }
     },
     "required": [
       "id",
-      "properties",
-      "type"
-    ]
+      "type",
+      "properties"
+    ],
+    "type": "object"
+  },
+  "schemaFidelity": {
+    "payload": "exact",
+    "carrier": "exact"
   },
   "evidence": {
     "existence": [

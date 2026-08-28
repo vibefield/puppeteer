@@ -10,75 +10,43 @@
   "direction": "client-to-agent",
   "trigger": "Write log — Write a log entry to the server logs with specified level and metadata.",
   "payloadSchema": {
-    "type": "object",
     "properties": {
-      "method": {
-        "type": "string"
-      },
-      "route": {
-        "type": "string"
-      },
-      "query": {
-        "type": "object",
-        "properties": {
-          "directory": {
-            "type": "string"
-          },
-          "workspace": {
-            "type": "string"
-          }
-        }
-      },
       "body": {
-        "type": "object",
+        "additionalProperties": false,
         "properties": {
           "extra": {
             "type": "object"
           },
           "level": {
+            "description": "Log level",
+            "enum": [
+              "debug",
+              "info",
+              "error",
+              "warn"
+            ],
             "type": "string"
           },
           "message": {
+            "description": "Log message",
             "type": "string"
           },
           "service": {
+            "description": "Service name for the log entry",
             "type": "string"
           }
         },
         "required": [
+          "service",
           "level",
-          "message",
-          "service"
-        ]
-      }
-    },
-    "required": [
-      "method",
-      "route"
-    ]
-  },
-  "resultSchema": {
-    "type": "object",
-    "properties": {
+          "message"
+        ],
+        "type": "object"
+      },
       "method": {
-        "type": "string",
-        "enum": [
-          "POST"
-        ]
-      },
-      "route": {
-        "type": "string",
-        "enum": [
-          "/log"
-        ]
-      },
-      "status": {
-        "type": "integer",
-        "minimum": 200,
-        "maximum": 299
+        "type": "string"
       },
       "query": {
-        "type": "object",
         "properties": {
           "directory": {
             "type": "string"
@@ -86,10 +54,52 @@
           "workspace": {
             "type": "string"
           }
-        }
+        },
+        "type": "object"
       },
+      "route": {
+        "type": "string"
+      }
+    },
+    "required": [
+      "method",
+      "route"
+    ],
+    "type": "object"
+  },
+  "resultSchema": {
+    "properties": {
       "body": {
+        "description": "Log entry written successfully",
         "type": "boolean"
+      },
+      "method": {
+        "enum": [
+          "POST"
+        ],
+        "type": "string"
+      },
+      "query": {
+        "properties": {
+          "directory": {
+            "type": "string"
+          },
+          "workspace": {
+            "type": "string"
+          }
+        },
+        "type": "object"
+      },
+      "route": {
+        "enum": [
+          "/log"
+        ],
+        "type": "string"
+      },
+      "status": {
+        "maximum": 299,
+        "minimum": 200,
+        "type": "integer"
       }
     },
     "required": [
@@ -97,34 +107,58 @@
       "route",
       "status",
       "body"
-    ]
+    ],
+    "type": "object"
   },
   "recordSchema": {
-    "type": "object",
     "properties": {
       "direction": {
-        "type": "string",
         "enum": [
           "client-to-agent"
-        ]
+        ],
+        "type": "string"
       },
       "request": {
-        "type": "object",
         "properties": {
+          "body": {
+            "additionalProperties": false,
+            "properties": {
+              "extra": {
+                "type": "object"
+              },
+              "level": {
+                "description": "Log level",
+                "enum": [
+                  "debug",
+                  "info",
+                  "error",
+                  "warn"
+                ],
+                "type": "string"
+              },
+              "message": {
+                "description": "Log message",
+                "type": "string"
+              },
+              "service": {
+                "description": "Service name for the log entry",
+                "type": "string"
+              }
+            },
+            "required": [
+              "service",
+              "level",
+              "message"
+            ],
+            "type": "object"
+          },
           "method": {
-            "type": "string",
             "enum": [
               "POST"
-            ]
-          },
-          "route": {
-            "type": "string",
-            "enum": [
-              "/log"
-            ]
+            ],
+            "type": "string"
           },
           "query": {
-            "type": "object",
             "properties": {
               "directory": {
                 "type": "string"
@@ -132,41 +166,33 @@
               "workspace": {
                 "type": "string"
               }
-            }
-          },
-          "body": {
-            "type": "object",
-            "properties": {
-              "extra": {
-                "type": "object"
-              },
-              "level": {
-                "type": "string"
-              },
-              "message": {
-                "type": "string"
-              },
-              "service": {
-                "type": "string"
-              }
             },
-            "required": [
-              "level",
-              "message",
-              "service"
-            ]
+            "type": "object"
+          },
+          "route": {
+            "enum": [
+              "/log"
+            ],
+            "type": "string"
           }
         },
         "required": [
           "method",
           "route"
-        ]
+        ],
+        "type": "object"
       }
     },
     "required": [
       "direction",
       "request"
-    ]
+    ],
+    "type": "object"
+  },
+  "schemaFidelity": {
+    "payload": "semantic",
+    "result": "semantic",
+    "carrier": "semantic"
   },
   "evidence": {
     "existence": [

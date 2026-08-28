@@ -2,6 +2,13 @@
   "surface": "kimi",
   "surfaceVersion": "0.34.0",
   "event": "swarm_mode.exit",
+  "schemaFidelity": {
+    "payload": "structural",
+    "carrier": "structural",
+    "limitations": [
+      "The release source projection preserves recursive declared structure but intentionally leaves custom/unknown values unconstrained; runtime-only file schemas describe captured instances."
+    ]
+  },
   "channel": "wire",
   "channels": ["wire"],
   "transport": "jsonl-record",

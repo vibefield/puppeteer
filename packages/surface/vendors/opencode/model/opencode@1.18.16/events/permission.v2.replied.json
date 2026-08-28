@@ -10,61 +10,93 @@
   "direction": "agent-to-client",
   "trigger": "Published on the native GET /event stream.",
   "payloadSchema": {
-    "type": "object",
+    "additionalProperties": false,
     "properties": {
       "reply": {
-        "type": "string"
+        "$ref": "#/$defs/PermissionV2Reply"
       },
       "requestID": {
+        "pattern": "^per",
         "type": "string"
       },
       "sessionID": {
+        "pattern": "^ses",
         "type": "string"
       }
     },
     "required": [
-      "reply",
+      "sessionID",
       "requestID",
-      "sessionID"
-    ]
+      "reply"
+    ],
+    "type": "object",
+    "$defs": {
+      "PermissionV2Reply": {
+        "enum": [
+          "once",
+          "always",
+          "reject"
+        ],
+        "type": "string"
+      }
+    }
   },
   "recordSchema": {
-    "type": "object",
+    "additionalProperties": false,
     "properties": {
       "id": {
+        "pattern": "^evt_",
         "type": "string"
       },
       "properties": {
-        "type": "object",
+        "additionalProperties": false,
         "properties": {
           "reply": {
-            "type": "string"
+            "$ref": "#/$defs/PermissionV2Reply"
           },
           "requestID": {
+            "pattern": "^per",
             "type": "string"
           },
           "sessionID": {
+            "pattern": "^ses",
             "type": "string"
           }
         },
         "required": [
-          "reply",
+          "sessionID",
           "requestID",
-          "sessionID"
-        ]
+          "reply"
+        ],
+        "type": "object"
       },
       "type": {
-        "type": "string",
         "enum": [
           "permission.v2.replied"
-        ]
+        ],
+        "type": "string"
       }
     },
     "required": [
       "id",
-      "properties",
-      "type"
-    ]
+      "type",
+      "properties"
+    ],
+    "type": "object",
+    "$defs": {
+      "PermissionV2Reply": {
+        "enum": [
+          "once",
+          "always",
+          "reject"
+        ],
+        "type": "string"
+      }
+    }
+  },
+  "schemaFidelity": {
+    "payload": "exact",
+    "carrier": "exact"
   },
   "evidence": {
     "existence": [

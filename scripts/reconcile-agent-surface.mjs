@@ -3,7 +3,7 @@
 import { readFileSync, writeFileSync } from 'node:fs';
 import { dirname, join, resolve, sep } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { buildGroundTruth, loadModel } from '@vibecook/puppeteer-surface';
+import { buildGroundTruth, isClaimAddressableAsmVersion, loadModel } from '@vibecook/puppeteer-surface';
 import { resolveCanonicalGroundTruth } from './agent-model-selection.mjs';
 import { replayAgentSurface } from './replay-agent-surface.mjs';
 
@@ -156,7 +156,9 @@ export function reconcileAgentSurface({
   if (!candidatePath) throw new Error(`${vendor} has no canonical ground truth`);
   const canonical = resolveCanonicalGroundTruth({ repoRoot, vendor, groundTruthPath: candidatePath });
   const candidate = loadModel(canonical.groundTruthPath);
-  if (candidate.manifest.asmVersion !== 2) throw new Error('reconciliation candidates must use fully traced ASM v2');
+  if (!isClaimAddressableAsmVersion(candidate.manifest.asmVersion)) {
+    throw new Error('reconciliation candidates must use a fully traced, claim-addressable ASM');
+  }
   const current =
     agent.currentVersion && agent.currentVersion !== candidate.manifest.vendorVersion
       ? buildGroundTruth(

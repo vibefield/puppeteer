@@ -7,24 +7,50 @@
   "direction": "client-to-agent",
   "trigger": "Lists collaboration mode presets.",
   "recordSchema": {
-    "type": "object",
+    "description": "Lists collaboration mode presets.",
     "properties": {
+      "id": {
+        "$ref": "#/$defs/RequestId"
+      },
       "method": {
-        "type": "string",
         "enum": [
           "collaborationMode/list"
-        ]
+        ],
+        "title": "CollaborationMode/listRequestMethod",
+        "type": "string"
       },
       "params": {
-        "type": "object"
-      },
-      "id": {}
+        "$ref": "#/$defs/CollaborationModeListParams"
+      }
     },
     "required": [
+      "id",
       "method",
-      "params",
-      "id"
-    ]
+      "params"
+    ],
+    "title": "CollaborationMode/listRequest",
+    "type": "object",
+    "$defs": {
+      "RequestId": {
+        "anyOf": [
+          {
+            "type": "string"
+          },
+          {
+            "format": "int64",
+            "type": "integer"
+          }
+        ]
+      },
+      "CollaborationModeListParams": {
+        "description": "EXPERIMENTAL - list collaboration mode presets.",
+        "type": "object"
+      }
+    },
+    "$schema": "http://json-schema.org/draft-07/schema#"
+  },
+  "schemaFidelity": {
+    "carrier": "exact"
   },
   "evidence": {
     "existence": [

@@ -6,45 +6,138 @@
   "transport": "jsonrpc-notification",
   "direction": "agent-to-client",
   "payloadSchema": {
-    "type": "object",
     "properties": {
-      "error": {},
-      "failureReason": {},
+      "error": {
+        "type": [
+          "string",
+          "null"
+        ]
+      },
+      "failureReason": {
+        "anyOf": [
+          {
+            "$ref": "#/$defs/McpServerStartupFailureReason"
+          },
+          {
+            "type": "null"
+          }
+        ]
+      },
       "name": {
         "type": "string"
       },
       "status": {
-        "type": "string"
+        "$ref": "#/$defs/McpServerStartupState"
       },
-      "threadId": {}
+      "threadId": {
+        "type": [
+          "string",
+          "null"
+        ]
+      }
     },
     "required": [
       "name",
       "status"
-    ]
+    ],
+    "type": "object",
+    "$defs": {
+      "McpServerStartupFailureReason": {
+        "enum": [
+          "reauthenticationRequired"
+        ],
+        "type": "string"
+      },
+      "McpServerStartupState": {
+        "enum": [
+          "starting",
+          "ready",
+          "failed",
+          "cancelled"
+        ],
+        "type": "string"
+      }
+    },
+    "$schema": "http://json-schema.org/draft-07/schema#"
   },
   "recordSchema": {
-    "type": "object",
     "properties": {
       "method": {
-        "type": "string",
         "enum": [
           "mcpServer/startupStatus/updated"
-        ]
+        ],
+        "title": "McpServer/startupStatus/updatedNotificationMethod",
+        "type": "string"
       },
       "params": {
-        "type": "object"
-      },
-      "emittedAtMs": {
-        "type": "number",
-        "minimum": 1000000000000
+        "$ref": "#/$defs/McpServerStatusUpdatedNotification"
       }
     },
     "required": [
       "method",
-      "params",
-      "emittedAtMs"
-    ]
+      "params"
+    ],
+    "title": "McpServer/startupStatus/updatedNotification",
+    "type": "object",
+    "$defs": {
+      "McpServerStatusUpdatedNotification": {
+        "properties": {
+          "error": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "failureReason": {
+            "anyOf": [
+              {
+                "$ref": "#/$defs/McpServerStartupFailureReason"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "name": {
+            "type": "string"
+          },
+          "status": {
+            "$ref": "#/$defs/McpServerStartupState"
+          },
+          "threadId": {
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        },
+        "required": [
+          "name",
+          "status"
+        ],
+        "type": "object"
+      },
+      "McpServerStartupFailureReason": {
+        "enum": [
+          "reauthenticationRequired"
+        ],
+        "type": "string"
+      },
+      "McpServerStartupState": {
+        "enum": [
+          "starting",
+          "ready",
+          "failed",
+          "cancelled"
+        ],
+        "type": "string"
+      }
+    },
+    "$schema": "http://json-schema.org/draft-07/schema#"
+  },
+  "schemaFidelity": {
+    "payload": "exact",
+    "carrier": "exact"
   },
   "evidence": {
     "existence": [
@@ -54,7 +147,7 @@
       "codex-generated-schema"
     ],
     "carrier": [
-      "codex-runtime-headless"
+      "codex-generated-schema"
     ]
   },
   "confidence": "unverified"

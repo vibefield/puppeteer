@@ -10,7 +10,9 @@
  *   "$<scope>.<field>"  scoped lookup — `$op.tool`, `$stimulus.text`
  *   "$uuid" | "$uuid:name"  stable per run; the same name yields the same uuid,
  *                           which is what correlates a prompt_id across events
+ *   "$nativeId:<prefix>:<name>"  stable prefixed id such as `msg_<hex>`
  *   "$now"              ISO timestamp at substitution time
+ *   "$nowSeconds"       Unix epoch seconds
  *   "$<binding>"        whole-string binding — `$sessionId`, `$cwd`
  *   "$string:<template>" coerce one resolved primitive binding to a string
  *   "$encodeURIComponent:<template>" URI-encode one resolved string binding
@@ -76,6 +78,21 @@ export function substitute(value: unknown, context: TemplateContext): unknown {
       if (typeof resolved !== 'string') throw new Error(`${workdirPrefix} requires a string template`);
       return workdirKey(resolved);
     }
+    const nativeIdPrefix = '$nativeId:';
+    if (value.startsWith(nativeIdPrefix)) {
+      const [prefix, ...nameParts] = value.slice(nativeIdPrefix.length).split(':');
+      const name = nameParts.join(':');
+      if (!prefix || !/^[A-Za-z][A-Za-z0-9_-]{0,31}$/.test(prefix) || !name) {
+        throw new Error(`${nativeIdPrefix} requires a safe prefix and a stable name`);
+      }
+      const memoKey = `native:${prefix}:${name}`;
+      let uuid = context.uuids?.get(memoKey);
+      if (!uuid) {
+        uuid = crypto.randomUUID();
+        context.uuids?.set(memoKey, uuid);
+      }
+      return `${prefix}_${uuid.replaceAll('-', '')}`;
+    }
     if (value.startsWith('$uuid')) {
       const name = value.includes(':') ? value.slice(value.indexOf(':') + 1) : value;
       let uuid = context.uuids?.get(name);
@@ -86,6 +103,7 @@ export function substitute(value: unknown, context: TemplateContext): unknown {
       return uuid;
     }
     if (value === '$now') return new Date().toISOString();
+    if (value === '$nowSeconds') return Math.floor(Date.now() / 1_000);
     // Epoch milliseconds, because several codex params are typed as numbers
     // (`startedAtMs`, `completedAtMs`) and an ISO string is off-model there.
     if (value === '$nowMs') return Date.now();

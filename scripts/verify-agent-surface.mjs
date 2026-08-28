@@ -4,7 +4,7 @@ import { spawnSync, execFileSync } from 'node:child_process';
 import { readFileSync, writeFileSync } from 'node:fs';
 import { dirname, join, resolve, sep } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { loadModel } from '@vibecook/puppeteer-surface';
+import { isClaimAddressableAsmVersion, loadModel } from '@vibecook/puppeteer-surface';
 import { auditEvidence } from '../packages/surface/scripts/check-evidence.mjs';
 import { resolveCanonicalGroundTruth } from './agent-model-selection.mjs';
 import { replayAgentSurface } from './replay-agent-surface.mjs';
@@ -145,7 +145,9 @@ export function verifyAgentSurface({
   const passed = (entry) => entry?.status === 'passed';
   const gates = {
     identity:
-      model.manifest.asmVersion === 2 && evidence.evidenceVersion === 2 && evidenceIssues.length === 0
+      isClaimAddressableAsmVersion(model.manifest.asmVersion) &&
+      evidence.evidenceVersion === 2 &&
+      evidenceIssues.length === 0
         ? 'passed'
         : 'failed',
     privacy: !runCommands || passed(commandGates.surface) ? 'passed' : 'failed',

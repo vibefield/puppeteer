@@ -10,34 +10,36 @@
   "direction": "agent-to-client",
   "trigger": "Published on the native GET /event stream.",
   "payloadSchema": {
-    "type": "object",
+    "additionalProperties": false,
     "properties": {
       "always": {
-        "type": "array",
         "items": {
           "type": "string"
-        }
+        },
+        "type": "array"
       },
       "id": {
+        "pattern": "^per",
         "type": "string"
       },
       "metadata": {
         "type": "object"
       },
       "patterns": {
-        "type": "array",
         "items": {
           "type": "string"
-        }
+        },
+        "type": "array"
       },
       "permission": {
         "type": "string"
       },
       "sessionID": {
+        "pattern": "^ses",
         "type": "string"
       },
       "tool": {
-        "type": "object",
+        "additionalProperties": false,
         "properties": {
           "callID": {
             "type": "string"
@@ -47,55 +49,60 @@
           }
         },
         "required": [
-          "callID",
-          "messageID"
-        ]
+          "messageID",
+          "callID"
+        ],
+        "type": "object"
       }
     },
     "required": [
-      "always",
       "id",
-      "metadata",
-      "patterns",
+      "sessionID",
       "permission",
-      "sessionID"
-    ]
+      "patterns",
+      "metadata",
+      "always"
+    ],
+    "type": "object"
   },
   "recordSchema": {
-    "type": "object",
+    "additionalProperties": false,
     "properties": {
       "id": {
+        "pattern": "^evt_",
         "type": "string"
       },
       "properties": {
-        "type": "object",
+        "additionalProperties": false,
         "properties": {
           "always": {
-            "type": "array",
             "items": {
               "type": "string"
-            }
+            },
+            "type": "array"
           },
           "id": {
+            "pattern": "^per",
             "type": "string"
           },
           "metadata": {
             "type": "object"
           },
           "patterns": {
-            "type": "array",
             "items": {
               "type": "string"
-            }
+            },
+            "type": "array"
           },
           "permission": {
             "type": "string"
           },
           "sessionID": {
+            "pattern": "^ses",
             "type": "string"
           },
           "tool": {
-            "type": "object",
+            "additionalProperties": false,
             "properties": {
               "callID": {
                 "type": "string"
@@ -105,41 +112,51 @@
               }
             },
             "required": [
-              "callID",
-              "messageID"
-            ]
+              "messageID",
+              "callID"
+            ],
+            "type": "object"
           }
         },
         "required": [
-          "always",
           "id",
-          "metadata",
-          "patterns",
+          "sessionID",
           "permission",
-          "sessionID"
-        ]
+          "patterns",
+          "metadata",
+          "always"
+        ],
+        "type": "object"
       },
       "type": {
-        "type": "string",
         "enum": [
           "permission.asked"
-        ]
+        ],
+        "type": "string"
       }
     },
     "required": [
       "id",
-      "properties",
-      "type"
-    ]
+      "type",
+      "properties"
+    ],
+    "type": "object"
+  },
+  "schemaFidelity": {
+    "payload": "exact",
+    "carrier": "exact"
   },
   "evidence": {
     "existence": [
+      "opencode-generated-openapi",
       "opencode-runtime-permission-accept"
     ],
     "shape": [
+      "opencode-generated-openapi",
       "opencode-runtime-permission-accept"
     ],
     "carrier": [
+      "opencode-generated-openapi",
       "opencode-runtime-permission-accept"
     ]
   },

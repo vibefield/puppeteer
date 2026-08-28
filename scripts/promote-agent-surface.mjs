@@ -4,7 +4,7 @@ import { existsSync, readFileSync, writeFileSync } from 'node:fs';
 import { execFileSync } from 'node:child_process';
 import { dirname, relative, resolve, sep } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { loadModel } from '@vibecook/puppeteer-surface';
+import { isClaimAddressableAsmVersion, loadModel } from '@vibecook/puppeteer-surface';
 import { auditEvidence } from '../packages/surface/scripts/check-evidence.mjs';
 import { renderSupportBlock, updateReadme, validateSupportLedger } from './render-agent-support.mjs';
 
@@ -146,8 +146,8 @@ export function validatePromotion({
   } catch (error) {
     issues.push(error.message);
   }
-  if (model && model.manifest.asmVersion !== 2) {
-    issues.push('promotion requires a fully traced ASM v2 candidate');
+  if (model && !isClaimAddressableAsmVersion(model.manifest.asmVersion)) {
+    issues.push('promotion requires a fully traced, claim-addressable ASM candidate');
   }
   let evidence = groundTruth.evidenceIndex;
   let requiredPlatforms = [];

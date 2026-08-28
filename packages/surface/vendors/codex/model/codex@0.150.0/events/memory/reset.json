@@ -6,24 +6,44 @@
   "transport": "jsonrpc-request",
   "direction": "client-to-agent",
   "recordSchema": {
-    "type": "object",
     "properties": {
+      "id": {
+        "$ref": "#/$defs/RequestId"
+      },
       "method": {
-        "type": "string",
         "enum": [
           "memory/reset"
-        ]
+        ],
+        "title": "Memory/resetRequestMethod",
+        "type": "string"
       },
       "params": {
-        "type": "object"
-      },
-      "id": {}
+        "type": "null"
+      }
     },
     "required": [
-      "method",
-      "params",
-      "id"
-    ]
+      "id",
+      "method"
+    ],
+    "title": "Memory/resetRequest",
+    "type": "object",
+    "$defs": {
+      "RequestId": {
+        "anyOf": [
+          {
+            "type": "string"
+          },
+          {
+            "format": "int64",
+            "type": "integer"
+          }
+        ]
+      }
+    },
+    "$schema": "http://json-schema.org/draft-07/schema#"
+  },
+  "schemaFidelity": {
+    "carrier": "exact"
   },
   "evidence": {
     "existence": [

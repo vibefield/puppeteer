@@ -6,40 +6,159 @@
   "transport": "jsonrpc-request",
   "direction": "client-to-agent",
   "payloadSchema": {
-    "type": "object",
     "properties": {
       "edits": {
+        "items": {
+          "$ref": "#/$defs/ConfigEdit"
+        },
         "type": "array"
       },
-      "expectedVersion": {},
-      "filePath": {},
+      "expectedVersion": {
+        "type": [
+          "string",
+          "null"
+        ]
+      },
+      "filePath": {
+        "description": "Path to the config file to write; defaults to the user's `config.toml` when omitted.",
+        "type": [
+          "string",
+          "null"
+        ]
+      },
       "reloadUserConfig": {
+        "description": "When true, hot-reload updated runtime settings into loaded threads after writing. Session-static model, reasoning-effort, Plan-mode reasoning-effort, service-tier, and personality defaults are not reloaded.",
         "type": "boolean"
       }
     },
     "required": [
       "edits"
-    ]
-  },
-  "recordSchema": {
+    ],
     "type": "object",
-    "properties": {
-      "method": {
-        "type": "string",
-        "enum": [
-          "config/batchWrite"
-        ]
-      },
-      "params": {
+    "$defs": {
+      "ConfigEdit": {
+        "properties": {
+          "keyPath": {
+            "type": "string"
+          },
+          "mergeStrategy": {
+            "$ref": "#/$defs/MergeStrategy"
+          },
+          "value": {}
+        },
+        "required": [
+          "keyPath",
+          "mergeStrategy",
+          "value"
+        ],
         "type": "object"
       },
-      "id": {}
+      "MergeStrategy": {
+        "enum": [
+          "replace",
+          "upsert"
+        ],
+        "type": "string"
+      }
+    },
+    "$schema": "http://json-schema.org/draft-07/schema#"
+  },
+  "recordSchema": {
+    "properties": {
+      "id": {
+        "$ref": "#/$defs/RequestId"
+      },
+      "method": {
+        "enum": [
+          "config/batchWrite"
+        ],
+        "title": "Config/batchWriteRequestMethod",
+        "type": "string"
+      },
+      "params": {
+        "$ref": "#/$defs/ConfigBatchWriteParams"
+      }
     },
     "required": [
+      "id",
       "method",
-      "params",
-      "id"
-    ]
+      "params"
+    ],
+    "title": "Config/batchWriteRequest",
+    "type": "object",
+    "$defs": {
+      "RequestId": {
+        "anyOf": [
+          {
+            "type": "string"
+          },
+          {
+            "format": "int64",
+            "type": "integer"
+          }
+        ]
+      },
+      "ConfigBatchWriteParams": {
+        "properties": {
+          "edits": {
+            "items": {
+              "$ref": "#/$defs/ConfigEdit"
+            },
+            "type": "array"
+          },
+          "expectedVersion": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "filePath": {
+            "description": "Path to the config file to write; defaults to the user's `config.toml` when omitted.",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "reloadUserConfig": {
+            "description": "When true, hot-reload updated runtime settings into loaded threads after writing. Session-static model, reasoning-effort, Plan-mode reasoning-effort, service-tier, and personality defaults are not reloaded.",
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "edits"
+        ],
+        "type": "object"
+      },
+      "ConfigEdit": {
+        "properties": {
+          "keyPath": {
+            "type": "string"
+          },
+          "mergeStrategy": {
+            "$ref": "#/$defs/MergeStrategy"
+          },
+          "value": {}
+        },
+        "required": [
+          "keyPath",
+          "mergeStrategy",
+          "value"
+        ],
+        "type": "object"
+      },
+      "MergeStrategy": {
+        "enum": [
+          "replace",
+          "upsert"
+        ],
+        "type": "string"
+      }
+    },
+    "$schema": "http://json-schema.org/draft-07/schema#"
+  },
+  "schemaFidelity": {
+    "payload": "exact",
+    "carrier": "exact"
   },
   "evidence": {
     "existence": [

@@ -10,18 +10,20 @@
   "direction": "agent-to-client",
   "trigger": "Published on the native GET /event stream.",
   "payloadSchema": {
-    "type": "object",
+    "additionalProperties": false,
     "properties": {
       "assistantMessageID": {
+        "pattern": "^msg_",
         "type": "string"
       },
       "providerMetadata": {
-        "type": "object"
+        "$ref": "#/$defs/LLMProviderMetadata"
       },
       "reasoningID": {
         "type": "string"
       },
       "sessionID": {
+        "pattern": "^ses",
         "type": "string"
       },
       "text": {
@@ -32,32 +34,44 @@
       }
     },
     "required": [
+      "timestamp",
+      "sessionID",
       "assistantMessageID",
       "reasoningID",
-      "sessionID",
-      "text",
-      "timestamp"
-    ]
+      "text"
+    ],
+    "type": "object",
+    "$defs": {
+      "LLMProviderMetadata": {
+        "additionalProperties": {
+          "type": "object"
+        },
+        "type": "object"
+      }
+    }
   },
   "recordSchema": {
-    "type": "object",
+    "additionalProperties": false,
     "properties": {
       "id": {
+        "pattern": "^evt_",
         "type": "string"
       },
       "properties": {
-        "type": "object",
+        "additionalProperties": false,
         "properties": {
           "assistantMessageID": {
+            "pattern": "^msg_",
             "type": "string"
           },
           "providerMetadata": {
-            "type": "object"
+            "$ref": "#/$defs/LLMProviderMetadata"
           },
           "reasoningID": {
             "type": "string"
           },
           "sessionID": {
+            "pattern": "^ses",
             "type": "string"
           },
           "text": {
@@ -68,25 +82,39 @@
           }
         },
         "required": [
+          "timestamp",
+          "sessionID",
           "assistantMessageID",
           "reasoningID",
-          "sessionID",
-          "text",
-          "timestamp"
-        ]
+          "text"
+        ],
+        "type": "object"
       },
       "type": {
-        "type": "string",
         "enum": [
           "session.next.reasoning.ended"
-        ]
+        ],
+        "type": "string"
       }
     },
     "required": [
       "id",
-      "properties",
-      "type"
-    ]
+      "type",
+      "properties"
+    ],
+    "type": "object",
+    "$defs": {
+      "LLMProviderMetadata": {
+        "additionalProperties": {
+          "type": "object"
+        },
+        "type": "object"
+      }
+    }
+  },
+  "schemaFidelity": {
+    "payload": "exact",
+    "carrier": "exact"
   },
   "evidence": {
     "existence": [

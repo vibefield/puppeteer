@@ -11,41 +11,26 @@
   "payloadSchema": {
     "type": "object",
     "properties": {
-      "name": {
-        "type": "string"
-      },
       "tool_id": {
         "type": "string"
       },
-      "duration_s": {
-        "type": "number",
-        "minimum": 0
+      "name": {
+        "type": "string"
       },
-      "result": {
-        "type": "object",
-        "properties": {
-          "exit_code": {
-            "type": "number"
-          },
-          "status": {
-            "type": "string"
-          },
-          "hasOutput": {
-            "type": "boolean"
-          },
-          "hasError": {
-            "type": "boolean"
-          }
-        }
+      "context": {
+        "type": "string"
       },
-      "hasText": {
-        "type": "boolean"
+      "args_text": {
+        "type": "string"
       },
-      "hasContext": {
-        "type": "boolean"
+      "args": {
+        "type": "object"
+      },
+      "preview": {
+        "type": "string"
       }
     },
-    "required": ["name", "tool_id"]
+    "required": ["tool_id", "name"]
   },
   "recordSchema": {
     "type": "object",
@@ -71,44 +56,29 @@
           "payload": {
             "type": "object",
             "properties": {
-              "name": {
-                "type": "string"
-              },
               "tool_id": {
                 "type": "string"
               },
-              "duration_s": {
-                "type": "number",
-                "minimum": 0
+              "name": {
+                "type": "string"
               },
-              "result": {
-                "type": "object",
-                "properties": {
-                  "exit_code": {
-                    "type": "number"
-                  },
-                  "status": {
-                    "type": "string"
-                  },
-                  "hasOutput": {
-                    "type": "boolean"
-                  },
-                  "hasError": {
-                    "type": "boolean"
-                  }
-                }
+              "context": {
+                "type": "string"
               },
-              "hasText": {
-                "type": "boolean"
+              "args_text": {
+                "type": "string"
               },
-              "hasContext": {
-                "type": "boolean"
+              "args": {
+                "type": "object"
+              },
+              "preview": {
+                "type": "string"
               }
             },
-            "required": ["name", "tool_id"]
+            "required": ["tool_id", "name"]
           }
         },
-        "required": ["type", "payload"]
+        "required": ["type"]
       }
     },
     "required": ["method", "params"]
@@ -116,9 +86,18 @@
   "recordChannel": "tui-gateway",
   "evidence": {
     "existence": ["hermes-runtime-headless"],
-    "shape": ["hermes-runtime-headless"],
-    "carrier": ["hermes-runtime-headless"]
+    "shape": ["hermes-exact-source"],
+    "carrier": ["hermes-exact-source"]
   },
-  "confidence": "verified-headless",
-  "fixture": "captures/hermes@0.20.0/tool-success/rpc.jsonl"
+  "confidence": "unverified",
+  "fixture": "captures/hermes@0.20.0/tool-success/rpc.jsonl",
+  "schemaFidelity": {
+    "payload": "structural",
+    "carrier": "structural",
+    "limitations": [
+      "Python is dynamic: helper-produced, conditionally assembled, and forwarded payload/result fields remain unconstrained unless directly recoverable.",
+      "Direct params indexing proves required access; params.get access proves a known field but not optionality.",
+      "Source declarations establish legal/native shape and existence, not runtime reachability."
+    ]
+  }
 }

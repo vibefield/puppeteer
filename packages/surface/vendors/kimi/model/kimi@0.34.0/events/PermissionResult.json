@@ -2,6 +2,12 @@
   "surface": "kimi",
   "surfaceVersion": "0.34.0",
   "event": "PermissionResult",
+  "schemaFidelity": {
+    "payload": "structural",
+    "limitations": [
+      "The release source projection preserves recursive declared structure but intentionally leaves custom/unknown values unconstrained; runtime-only file schemas describe captured instances."
+    ]
+  },
   "channel": "hook-command",
   "channels": ["hook-command"],
   "transport": "command-stdin",
@@ -80,67 +86,5 @@
     "existence": ["kimi-exact-release-source"],
     "shape": ["kimi-exact-release-source"]
   },
-  "confidence": "unverified",
-  "variants": [
-    {
-      "match": {
-        "hook_event_name": "PermissionResult"
-      },
-      "evidence": {
-        "existence": ["kimi-exact-release-source"],
-        "shape": ["kimi-exact-release-source"]
-      },
-      "confidence": "unverified"
-    },
-    {
-      "match": {
-        "decision": "approved"
-      },
-      "evidence": {
-        "existence": ["kimi-exact-release-source"],
-        "shape": ["kimi-exact-release-source"]
-      },
-      "confidence": "unverified"
-    },
-    {
-      "match": {
-        "decision": "rejected"
-      },
-      "evidence": {
-        "existence": ["kimi-exact-release-source"],
-        "shape": ["kimi-exact-release-source"]
-      },
-      "confidence": "unverified"
-    },
-    {
-      "match": {
-        "decision": "cancelled"
-      },
-      "evidence": {
-        "existence": ["kimi-exact-release-source"],
-        "shape": ["kimi-exact-release-source"]
-      },
-      "confidence": "unverified"
-    },
-    {
-      "match": {
-        "decision": "error"
-      },
-      "evidence": {
-        "existence": ["kimi-exact-release-source"],
-        "shape": ["kimi-exact-release-source"]
-      },
-      "confidence": "unverified"
-    },
-    {
-      "match": {
-        "scope": "session"
-      },
-      "evidence": {
-        "existence": ["kimi-exact-release-source"],
-        "shape": ["kimi-exact-release-source"]
-      },
-      "confidence": "unverified"
-    }
-  ]
+  "confidence": "unverified"
 }

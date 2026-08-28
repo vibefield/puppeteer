@@ -2,7 +2,7 @@
   "behaviorVersion": 1,
   "title": "Hermes Agent 0.20.0 native TUI-gateway lifecycle",
   "description": "Partial order over stdio tui_gateway JSON-RPC and isolated-home hooks. Live Node TUI attach is the same dispatcher but is not itself a capture in this model.",
-  "source": "Hermetic Hermes 0.20.0 turn census. Unobserved source methods are omitted.",
+  "source": "Hermetic Hermes 0.20.0 turn census for the observed partial order; the full source-only inventory remains outside this behavior graph.",
   "lanes": [
     {
       "id": "session",

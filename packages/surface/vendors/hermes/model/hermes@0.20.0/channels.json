@@ -16,6 +16,10 @@
       "kind": "hook-callback",
       "notes": "In-process plugin hooks. Default tui_gateway.entry does not load user plugins until discover_plugins runs."
     },
+    "shell-hook": {
+      "kind": "json-stdio-callback",
+      "notes": "Configured shell scripts receive a serialized projection of plugin-hook kwargs and may return JSON."
+    },
     "outbound-webhook": {
       "kind": "webhook-http",
       "notes": "Notify-only hooks.outbound POSTs. Default tui_gateway.entry does not register them."

@@ -1,0 +1,127 @@
+{
+  "surface": "antigravity",
+  "surfaceVersion": "1.1.12",
+  "event": "transcript.jsonl",
+  "schemaFidelity": {
+    "payload": "sampled",
+    "limitations": [
+      "The legacy projection copied type/source/status/step_index/created_at but replaced content with hasContent/contentChars. Content is retained only as an unconstrained optional native field.",
+      "Only transcript.jsonl was sampled; transcript_full.jsonl and the SQLite store are separate unresolved durable rails."
+    ]
+  },
+  "channel": "transcript-jsonl",
+  "channels": ["transcript-jsonl"],
+  "transport": "jsonl-record",
+  "direction": "agent-local",
+  "payloadSchema": {
+    "type": "object",
+    "properties": {
+      "type": {
+        "type": "string"
+      },
+      "source": {
+        "type": "string"
+      },
+      "status": {
+        "type": "string"
+      },
+      "step_index": {
+        "type": "integer",
+        "minimum": 0
+      },
+      "created_at": {
+        "type": "string"
+      },
+      "content": {}
+    },
+    "required": ["type", "source", "status", "step_index", "created_at"]
+  },
+  "evidence": {
+    "existence": ["antigravity-runtime-headless"],
+    "shape": ["antigravity-runtime-headless"]
+  },
+  "confidence": "verified-headless",
+  "variants": [
+    {
+      "match": {
+        "type": "CHECKPOINT"
+      },
+      "evidence": {
+        "existence": ["antigravity-runtime-headless"],
+        "shape": ["antigravity-runtime-headless"]
+      },
+      "confidence": "verified-headless"
+    },
+    {
+      "match": {
+        "type": "CONVERSATION_HISTORY"
+      },
+      "evidence": {
+        "existence": ["antigravity-runtime-headless"],
+        "shape": ["antigravity-runtime-headless"]
+      },
+      "confidence": "verified-headless"
+    },
+    {
+      "match": {
+        "type": "ERROR_MESSAGE"
+      },
+      "evidence": {
+        "existence": ["antigravity-runtime-headless"],
+        "shape": ["antigravity-runtime-headless"]
+      },
+      "confidence": "verified-headless"
+    },
+    {
+      "match": {
+        "type": "LIST_DIRECTORY"
+      },
+      "evidence": {
+        "existence": ["antigravity-runtime-headless"],
+        "shape": ["antigravity-runtime-headless"]
+      },
+      "confidence": "verified-headless"
+    },
+    {
+      "match": {
+        "type": "PLANNER_RESPONSE"
+      },
+      "evidence": {
+        "existence": ["antigravity-runtime-headless"],
+        "shape": ["antigravity-runtime-headless"]
+      },
+      "confidence": "verified-headless"
+    },
+    {
+      "match": {
+        "type": "SYSTEM_MESSAGE"
+      },
+      "evidence": {
+        "existence": ["antigravity-runtime-headless"],
+        "shape": ["antigravity-runtime-headless"]
+      },
+      "confidence": "verified-headless"
+    },
+    {
+      "match": {
+        "type": "USER_INPUT"
+      },
+      "evidence": {
+        "existence": ["antigravity-runtime-headless"],
+        "shape": ["antigravity-runtime-headless"]
+      },
+      "confidence": "verified-headless"
+    },
+    {
+      "match": {
+        "type": "VIEW_FILE"
+      },
+      "evidence": {
+        "existence": ["antigravity-runtime-headless"],
+        "shape": ["antigravity-runtime-headless"]
+      },
+      "confidence": "verified-headless"
+    }
+  ],
+  "fixture": "captures/antigravity@1.1.12/tool-success/transcript.jsonl"
+}

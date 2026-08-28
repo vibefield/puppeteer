@@ -21,6 +21,7 @@ import { join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { checkCaptureDirectory, sanitizeCaptureDirectory } from '@vibecook/puppeteer-surface/sanitize';
 import { resolveAgentModel } from '../../../../scripts/agent-model-selection.mjs';
+import { writeCaptureFidelity } from '../../scripts/capture-fidelity.mjs';
 
 export { checkCaptureDirectory, sanitizeCaptureDirectory };
 
@@ -48,6 +49,19 @@ if (invokedDirectly) {
     console.log('capture privacy check clean');
   } else {
     const result = sanitizeCaptureDirectory(directories[0], directories[1]);
+    const output = directories[1] ?? directories[0];
+    const version = /claude@(.+)$/.exec(output)?.[1];
+    if (!version) throw new Error(`cannot infer Claude version from capture path: ${output}`);
+    writeCaptureFidelity(output, {
+      vendor: 'claude',
+      vendorVersion: version,
+      defaultRepresentation: 'type-preserving-redaction',
+      nativeArtifacts: ['*/*.jsonl'],
+      limitations: [
+        'Only hook stdin JSON carriers are promoted; transcripts and process diagnostics are outside this capture set.',
+        'Sensitive scalar values are replaced in place while JSON keys, containers, primitive types, and record ordering are retained.',
+      ],
+    });
     console.log(`sanitized ${result.lines} capture lines in ${result.files} files`);
   }
 }

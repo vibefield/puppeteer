@@ -1,0 +1,78 @@
+{
+  "surface": "antigravity",
+  "surfaceVersion": "1.1.12",
+  "event": "PreToolUse",
+  "schemaFidelity": {
+    "payload": "structural",
+    "result": "structural",
+    "limitations": [
+      "The retained 1.1.12 runtime records are legacy privacy projections. Schemas retain only fields whose native names and types survive that transform or are stated by official documentation; additional native fields may exist."
+    ]
+  },
+  "channel": "hook-command",
+  "channels": ["hook-command"],
+  "transport": "hook-callback",
+  "direction": "agent-local",
+  "payloadSchema": {
+    "type": "object",
+    "properties": {
+      "conversationId": {
+        "type": "string"
+      },
+      "workspacePaths": {
+        "type": "array",
+        "items": {
+          "type": "string"
+        }
+      },
+      "transcriptPath": {
+        "type": "string"
+      },
+      "artifactDirectoryPath": {
+        "type": "string"
+      },
+      "modelName": {
+        "type": "string"
+      },
+      "toolCall": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string"
+          },
+          "args": {
+            "type": "object"
+          }
+        },
+        "required": ["name", "args"]
+      },
+      "stepIdx": {
+        "type": "integer",
+        "minimum": 0
+      }
+    },
+    "required": ["conversationId", "workspacePaths", "modelName", "toolCall", "stepIdx"]
+  },
+  "resultSchema": {
+    "type": "object",
+    "properties": {
+      "decision": {
+        "type": "string",
+        "enum": ["allow", "deny", "ask", "force_ask", "deny_unless_prior_grant"]
+      },
+      "reason": {
+        "type": "string"
+      }
+    }
+  },
+  "evidence": {
+    "existence": ["antigravity-runtime-headless"],
+    "shape": ["antigravity-official-docs"],
+    "result": ["antigravity-official-docs"],
+    "carrier": ["antigravity-official-docs"]
+  },
+  "confidence": "unverified",
+  "fixture": "captures/antigravity@1.1.12/tool-success/hooks.jsonl",
+  "observationMode": "matcher-required",
+  "notes": "Runtime evidence verifies this hook family and its ordering. Complete stdin/stdout shape is documentation-backed because the retained runtime fixture is a legacy projection."
+}

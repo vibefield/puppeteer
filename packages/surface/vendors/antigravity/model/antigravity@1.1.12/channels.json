@@ -1,0 +1,24 @@
+{
+  "channels": {
+    "argv": {
+      "kind": "argv-env",
+      "notes": "Native process launch and session/resume selection."
+    },
+    "print-stream": {
+      "kind": "stdout-jsonl",
+      "notes": "Native --print --output-format stream-json records; a survey oracle, not the native TUI rail."
+    },
+    "print-json": {
+      "kind": "stdout-json",
+      "notes": "Native --print --output-format json terminal result or local slash-command response."
+    },
+    "hook-command": {
+      "kind": "hook-command",
+      "notes": "Configured command hook receives one JSON document on stdin and returns one JSON document on stdout."
+    },
+    "transcript-jsonl": {
+      "kind": "native-state",
+      "notes": "Observed transcript.jsonl durable record rail; SQLite and transcript_full remain distinct unmodelled candidates."
+    }
+  }
+}

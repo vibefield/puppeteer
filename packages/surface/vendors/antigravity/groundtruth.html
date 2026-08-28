@@ -1,0 +1,809 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8" /><meta name="viewport" content="width=device-width,initial-scale=1" /><meta name="generator" content="@vibecook/puppeteer-surface groundtruth" /><title>antigravity@1.1.12 ground truth</title><style>
+:root{color-scheme:light;--bg:#f4f2ec;--paper:#fff;--paper2:#f7f6f2;--ink:#25272b;--muted:#6c7077;--line:#ddd9cf;--accent:#9f4c28;--teal:#176b61;--blue:#355b8c;--amber:#8a6418;--red:#a13f45;--shadow:0 12px 36px rgba(30,32,36,.07)}
+:root[data-theme=dark]{color-scheme:dark;--bg:#141619;--paper:#1d2024;--paper2:#25292e;--ink:#e8e6e0;--muted:#a1a6ad;--line:#383c42;--accent:#da815a;--teal:#63b7a9;--blue:#83a8da;--amber:#d2ad58;--red:#df858a;--shadow:0 14px 40px rgba(0,0,0,.25)}
+@media(prefers-color-scheme:dark){:root:not([data-theme=light]){color-scheme:dark;--bg:#141619;--paper:#1d2024;--paper2:#25292e;--ink:#e8e6e0;--muted:#a1a6ad;--line:#383c42;--accent:#da815a;--teal:#63b7a9;--blue:#83a8da;--amber:#d2ad58;--red:#df858a;--shadow:0 14px 40px rgba(0,0,0,.25)}}
+*{box-sizing:border-box}html{scroll-behavior:smooth;scroll-padding-top:1rem}body{margin:0;background:var(--bg);color:var(--ink);font:15px/1.55 Inter,ui-sans-serif,system-ui,-apple-system,sans-serif}code,pre,input,select{font-family:"SFMono-Regular",Consolas,monospace}a{color:var(--teal);text-decoration:none}a:hover{text-decoration:underline}.shell{width:min(1420px,100%);margin:auto;padding:2.5rem 1.5rem 6rem}.hero,.panel{background:var(--paper);border:1px solid var(--line);border-radius:14px;box-shadow:var(--shadow)}.hero{padding:2rem;margin-bottom:1.25rem}.hero-row,.section-heading{display:flex;justify-content:space-between;align-items:flex-start;gap:1rem}.eyebrow{text-transform:uppercase;letter-spacing:.14em;font:700 11px/1.3 "SFMono-Regular",monospace;color:var(--accent)}h1,h2{margin:.28rem 0 0;line-height:1.12}h1{font-size:clamp(2rem,5vw,4.2rem);letter-spacing:-.04em}h2{font-size:1.45rem}.version{color:var(--muted);font-weight:450}.theme{border:1px solid var(--line);background:var(--paper2);color:var(--ink);border-radius:999px;padding:.45rem .75rem;cursor:pointer}.lede{max-width:75ch;color:var(--muted)}.stats{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:.7rem;margin-top:1.5rem}.stat{padding:.85rem;background:var(--paper2);border:1px solid var(--line);border-radius:9px}.stat strong{display:block;font-size:1.35rem}.stat span,.count{color:var(--muted);font-size:.82rem}.nav{display:flex;gap:.5rem;flex-wrap:wrap;margin-top:1.2rem}.nav a{border:1px solid var(--line);border-radius:999px;padding:.35rem .7rem;background:var(--paper2)}.panel{padding:1.5rem;margin:1.25rem 0}.table-wrap{overflow:auto}table{width:100%;border-collapse:collapse}th,td{text-align:left;padding:.6rem .7rem;border-bottom:1px solid var(--line);vertical-align:top}th{color:var(--muted);font-size:.72rem;text-transform:uppercase;letter-spacing:.08em}td pre{margin:0;white-space:pre-wrap;font-size:.76rem}.channel-kind,.relation-kind,.direction,.confidence{display:inline-flex;padding:.12rem .42rem;border-radius:5px;background:var(--paper2);border:1px solid var(--line);font-size:.75rem}.verified-headless{color:var(--teal)}.verified-interactive{color:var(--blue)}.unverified{color:var(--amber)}.lanes{display:grid;gap:.7rem;margin-top:1rem}.lane{display:grid;grid-template-columns:180px 1fr;border:1px solid var(--line);border-radius:9px;overflow:hidden}.lane>header{padding:.7rem;background:var(--paper2);display:flex;flex-direction:column}.lane>header span{color:var(--muted);font-size:.78rem}.lane-track{display:flex;align-items:center;gap:.4rem;padding:.7rem;overflow:auto}.behavior-node{display:flex;flex-direction:column;min-width:145px;padding:.55rem .65rem;border:1px solid var(--line);border-left:3px solid currentColor;border-radius:7px;background:var(--paper)}.behavior-node small{color:var(--muted)}.behavior-node code{font-size:.66rem}.flow-arrow{color:var(--muted)}details>summary{cursor:pointer}.relation-table{margin-top:1rem}.toolbar{display:flex;align-items:end;gap:.65rem;flex-wrap:wrap;margin:1rem 0}.toolbar label{display:flex;flex-direction:column;gap:.2rem}.toolbar label span{color:var(--muted);font-size:.75rem}.toolbar input,.toolbar select,.toolbar button{min-height:38px;border:1px solid var(--line);border-radius:7px;background:var(--paper2);color:var(--ink);padding:.4rem .6rem}.toolbar input{width:min(330px,70vw)}.toolbar button{cursor:pointer}.event-list{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:.6rem}.event-card{border:1px solid var(--line);border-radius:9px;background:var(--paper2);scroll-margin-top:1rem}.event-card[hidden]{display:none}.event-card>details>summary{display:flex;justify-content:space-between;align-items:center;gap:.7rem;padding:.75rem}.event-name{font:600 .86rem "SFMono-Regular",monospace;overflow-wrap:anywhere}.event-meta{display:flex;gap:.35rem}.event-body{padding:.1rem .8rem .8rem;border-top:1px solid var(--line)}dl{margin:.7rem 0}dl>div{display:grid;grid-template-columns:90px 1fr;gap:.5rem}dt{color:var(--muted)}dd{margin:0}.evidence-refs{display:flex;gap:.3rem;flex-wrap:wrap;margin:.65rem 0}.evidence-ref{font:500 .7rem "SFMono-Regular",monospace;border:1px solid var(--line);border-radius:999px;padding:.15rem .4rem}.schema,.variants,.refinements{margin:.55rem 0}.schema pre{max-height:520px;overflow:auto;padding:.75rem;border:1px solid var(--line);border-radius:7px;background:var(--paper);font-size:.73rem}.variant{padding:.45rem 0;border-bottom:1px solid var(--line)}.refinement{margin:.6rem 0;padding:.65rem;border:1px solid var(--line);border-radius:7px;background:var(--paper)}.refinement header{display:flex;gap:.45rem;align-items:center;flex-wrap:wrap}.refinement header>span:not(.confidence){color:var(--muted)}.refinement p,.refinement ul{font-size:.82rem}.claim-list{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:.6rem;margin-top:.7rem}.claim-card{border:1px solid var(--line);border-radius:8px;padding:.7rem;scroll-margin-top:1rem}.claim-card header{display:flex;gap:.5rem;align-items:center;flex-wrap:wrap}.claim-card header>span:nth-child(2){color:var(--muted)}.claim-card p{color:var(--muted)}.empty{text-align:center;color:var(--muted);padding:2rem}.source{margin-top:1rem;color:var(--muted);font-size:.82rem;overflow-wrap:anywhere}
+@media(max-width:800px){.stats{grid-template-columns:repeat(2,1fr)}.event-list,.claim-list{grid-template-columns:1fr}.lane{grid-template-columns:1fr}.hero-row,.section-heading{align-items:stretch}.event-card>details>summary{align-items:flex-start;flex-direction:column}.event-meta{flex-wrap:wrap}}
+</style></head><body><main class="shell"><header class="hero"><div class="hero-row"><div><span class="eyebrow">Agent surface ground truth</span><h1>antigravity <span class="version">1.1.12</span></h1><p class="lede">One canonical, evidence-backed description of the agent's native transports, events, payload contracts, and behavior topology.</p></div><button class="theme" type="button">Toggle theme</button></div><div class="stats"><div class="stat"><strong>10</strong><span>events</span></div><div class="stat"><strong>5</strong><span>channels</span></div><div class="stat"><strong>11</strong><span>behavior nodes</span></div><div class="stat"><strong>11</strong><span>relations</span></div><div class="stat"><strong>3</strong><span>evidence claims</span></div></div><nav class="nav"><a href="#channels">Channels</a><a href="#behavior">Behavior</a><a href="#events">Events</a><a href="#evidence">Evidence</a></nav><p class="source"><code>puppeteer-groundtruth/1</code> · ASM v3 · generated 2026-08-28 · Exact Antigravity CLI 1.1.12 release and executable identities, authorized print-mode/hook captures, and official documentation. Existing captures are legacy projections; their shape limitations are explicit.</p></header><section id="channels" class="panel"><div class="section-heading"><div><span class="eyebrow">Transport map</span><h2>Channels</h2></div><span class="count">5</span></div><div class="table-wrap"><table><thead><tr><th>Name</th><th>Kind</th><th>Contract</th></tr></thead><tbody><tr><td><code>argv</code></td><td><span class="channel-kind">argv-env</span></td><td><pre>{
+  &quot;notes&quot;: &quot;Native process launch and session/resume selection.&quot;
+}</pre></td></tr><tr><td><code>print-stream</code></td><td><span class="channel-kind">stdout-jsonl</span></td><td><pre>{
+  &quot;notes&quot;: &quot;Native --print --output-format stream-json records; a survey oracle, not the native TUI rail.&quot;
+}</pre></td></tr><tr><td><code>print-json</code></td><td><span class="channel-kind">stdout-json</span></td><td><pre>{
+  &quot;notes&quot;: &quot;Native --print --output-format json terminal result or local slash-command response.&quot;
+}</pre></td></tr><tr><td><code>hook-command</code></td><td><span class="channel-kind">hook-command</span></td><td><pre>{
+  &quot;notes&quot;: &quot;Configured command hook receives one JSON document on stdin and returns one JSON document on stdout.&quot;
+}</pre></td></tr><tr><td><code>transcript-jsonl</code></td><td><span class="channel-kind">native-state</span></td><td><pre>{
+  &quot;notes&quot;: &quot;Observed transcript.jsonl durable record rail; SQLite and transcript_full remain distinct unmodelled candidates.&quot;
+}</pre></td></tr></tbody></table></div></section><section id="behavior" class="panel"><div class="section-heading"><div><span class="eyebrow">Native topology</span><h2>Antigravity CLI 1.1.12 print, hook, and durable lifecycle</h2></div><span class="count">11 nodes · 11 relations</span></div><p class="lede">Partial order observed in authorized print-mode turns. Hook invocations and transcript records are concurrent observation rails; this is not a claim about native TUI rendering.</p><div class="lanes"><section class="lane"><header><strong>Print stream</strong><code>print</code></header><div class="lane-track"><a class="behavior-node confidence-verified-headless" href="#event-init" title="init"><span>init</span><small>init</small></a><span class="flow-arrow">→</span><a class="behavior-node confidence-verified-headless" href="#event-step_update" title="step_update"><span>step_update</span><small>step_update</small><code>{&quot;step_update.step_type&quot;:&quot;user_input&quot;}</code></a><span class="flow-arrow">→</span><a class="behavior-node confidence-verified-headless" href="#event-step_update" title="step_update"><span>step_update</span><small>step_update</small><code>{&quot;step_update.step_type&quot;:&quot;agent_response&quot;}</code></a><span class="flow-arrow">→</span><a class="behavior-node confidence-verified-headless" href="#event-step_update" title="step_update"><span>step_update</span><small>step_update</small><code>{&quot;step_update.step_type&quot;:&quot;tool&quot;}</code></a><span class="flow-arrow">→</span><a class="behavior-node confidence-verified-headless" href="#event-result" title="result"><span>result</span><small>result</small></a></div></section><section class="lane"><header><strong>Command hooks</strong><code>hook</code></header><div class="lane-track"><a class="behavior-node confidence-verified-headless" href="#event-PreInvocation" title="PreInvocation"><span>PreInvocation</span><small>PreInvocation</small></a><span class="flow-arrow">→</span><a class="behavior-node confidence-verified-headless" href="#event-PreToolUse" title="PreToolUse"><span>PreToolUse</span><small>PreToolUse</small></a><span class="flow-arrow">→</span><a class="behavior-node confidence-verified-headless" href="#event-PostToolUse" title="PostToolUse"><span>PostToolUse</span><small>PostToolUse</small></a><span class="flow-arrow">→</span><a class="behavior-node confidence-verified-headless" href="#event-PostInvocation" title="PostInvocation"><span>PostInvocation</span><small>PostInvocation</small></a><span class="flow-arrow">→</span><a class="behavior-node confidence-verified-headless" href="#event-Stop" title="Stop"><span>Stop</span><small>Stop</small></a></div></section><section class="lane"><header><strong>Durable transcript</strong><code>durable</code></header><div class="lane-track"><a class="behavior-node confidence-verified-headless" href="#event-transcript-jsonl" title="transcript.jsonl"><span>transcript.jsonl</span><small>transcript.jsonl</small></a></div></section></div><details class="relation-table"><summary>Relation ledger</summary><div class="table-wrap"><table><thead><tr><th>From</th><th>Kind</th><th>To</th><th>Label</th><th>Confidence</th></tr></thead><tbody><tr><td><code>init</code></td><td><span class="relation-kind">sequence</span></td><td><code>step-user</code></td><td></td><td><span class="confidence verified-headless">verified-headless</span></td></tr><tr><td><code>step-user</code></td><td><span class="relation-kind">sequence</span></td><td><code>step-agent</code></td><td></td><td><span class="confidence verified-headless">verified-headless</span></td></tr><tr><td><code>step-agent</code></td><td><span class="relation-kind">conditional</span></td><td><code>step-tool</code></td><td>model requests a tool</td><td><span class="confidence verified-headless">verified-headless</span></td></tr><tr><td><code>step-tool</code></td><td><span class="relation-kind">loop</span></td><td><code>step-agent</code></td><td>tool result returns to model</td><td><span class="confidence verified-headless">verified-headless</span></td></tr><tr><td><code>step-agent</code></td><td><span class="relation-kind">conditional</span></td><td><code>result</code></td><td>turn completes without another tool</td><td><span class="confidence verified-headless">verified-headless</span></td></tr><tr><td><code>pre-invocation</code></td><td><span class="relation-kind">conditional</span></td><td><code>pre-tool</code></td><td>invocation requests a tool</td><td><span class="confidence verified-headless">verified-headless</span></td></tr><tr><td><code>pre-tool</code></td><td><span class="relation-kind">sequence</span></td><td><code>post-tool</code></td><td></td><td><span class="confidence verified-headless">verified-headless</span></td></tr><tr><td><code>post-tool</code></td><td><span class="relation-kind">sequence</span></td><td><code>post-invocation</code></td><td></td><td><span class="confidence verified-headless">verified-headless</span></td></tr><tr><td><code>pre-invocation</code></td><td><span class="relation-kind">conditional</span></td><td><code>post-invocation</code></td><td>invocation has no tool</td><td><span class="confidence verified-headless">verified-headless</span></td></tr><tr><td><code>post-invocation</code></td><td><span class="relation-kind">conditional</span></td><td><code>stop</code></td><td>agent becomes fully idle</td><td><span class="confidence verified-headless">verified-headless</span></td></tr><tr><td><code>step-user</code></td><td><span class="relation-kind">async</span></td><td><code>transcript</code></td><td>durable records share conversation and step identities</td><td><span class="confidence verified-headless">verified-headless</span></td></tr></tbody></table></div></details></section><section id="events" class="panel"><div class="section-heading"><div><span class="eyebrow">Wire catalog</span><h2>Events</h2></div><span id="event-count" class="count">10</span></div><div class="toolbar"><label><span>Search</span><input id="event-search" type="search" placeholder="event, channel, transport…" /></label><label><span>Direction</span><select id="direction-filter"><option value="">all</option><option value="agent-local">agent-local</option><option value="agent-to-client">agent-to-client</option></select></label><label><span>Confidence</span><select id="confidence-filter"><option value="">all</option><option>verified-headless</option><option>verified-interactive</option><option>unverified</option></select></label><button id="expand-visible" type="button">Expand visible</button><button id="collapse-events" type="button">Collapse</button></div><div id="event-list" class="event-list"><article id="event-command_result" class="event-card" data-search="command_result agent-to-client jsonl-record verified-headless print-stream" data-direction="agent-to-client" data-confidence="verified-headless"><details><summary><span class="event-name">command_result</span><span class="event-meta"><span class="direction">agent-to-client</span><span class="confidence verified-headless">verified-headless</span></span></summary><div class="event-body"><dl><div><dt>Channel</dt><dd><a href="#channels"><code>print-stream</code></a></dd></div><div><dt>Transport</dt><dd>jsonl-record</dd></div><div><dt>Trigger</dt><dd>—</dd></div><div><dt>Schema fidelity</dt><dd><code>{&quot;payload&quot;:&quot;structural&quot;,&quot;carrier&quot;:&quot;structural&quot;,&quot;limitations&quot;:[&quot;The retained 1.1.12 runtime records are legacy privacy projections. Schemas retain only fields whose native names and types survive that transform or are stated by official documentation; additional native fields may exist.&quot;]}</code></dd></div></dl><div class="evidence-refs"><a class="evidence-ref" href="#claim-antigravity-runtime-headless">antigravity-runtime-headless</a></div><details class="schema"><summary>Payload schema</summary><pre>{
+  &quot;type&quot;: &quot;object&quot;,
+  &quot;properties&quot;: {
+    &quot;command&quot;: {
+      &quot;type&quot;: &quot;object&quot;,
+      &quot;properties&quot;: {
+        &quot;name&quot;: {
+          &quot;type&quot;: &quot;string&quot;
+        },
+        &quot;data&quot;: {
+          &quot;type&quot;: &quot;object&quot;
+        }
+      },
+      &quot;required&quot;: [
+        &quot;name&quot;,
+        &quot;data&quot;
+      ]
+    }
+  },
+  &quot;required&quot;: [
+    &quot;command&quot;
+  ]
+}</pre></details><details class="schema"><summary>Carrier schema</summary><pre>{
+  &quot;type&quot;: &quot;object&quot;,
+  &quot;properties&quot;: {
+    &quot;event&quot;: {
+      &quot;type&quot;: &quot;string&quot;,
+      &quot;enum&quot;: [
+        &quot;command_result&quot;
+      ]
+    },
+    &quot;command&quot;: {
+      &quot;type&quot;: &quot;object&quot;,
+      &quot;properties&quot;: {
+        &quot;name&quot;: {
+          &quot;type&quot;: &quot;string&quot;
+        },
+        &quot;data&quot;: {
+          &quot;type&quot;: &quot;object&quot;
+        }
+      },
+      &quot;required&quot;: [
+        &quot;name&quot;,
+        &quot;data&quot;
+      ]
+    }
+  },
+  &quot;required&quot;: [
+    &quot;event&quot;,
+    &quot;command&quot;
+  ]
+}</pre></details></div></details></article><article id="event-init" class="event-card" data-search="init agent-to-client jsonl-record verified-headless print-stream" data-direction="agent-to-client" data-confidence="verified-headless"><details><summary><span class="event-name">init</span><span class="event-meta"><span class="direction">agent-to-client</span><span class="confidence verified-headless">verified-headless</span></span></summary><div class="event-body"><dl><div><dt>Channel</dt><dd><a href="#channels"><code>print-stream</code></a></dd></div><div><dt>Transport</dt><dd>jsonl-record</dd></div><div><dt>Trigger</dt><dd>—</dd></div><div><dt>Schema fidelity</dt><dd><code>{&quot;payload&quot;:&quot;structural&quot;,&quot;carrier&quot;:&quot;structural&quot;,&quot;limitations&quot;:[&quot;The retained 1.1.12 runtime records are legacy privacy projections. Schemas retain only fields whose native names and types survive that transform or are stated by official documentation; additional native fields may exist.&quot;]}</code></dd></div></dl><p>The runtime projection retained the exact 56-entry tool-name catalog but replaced cwd with a synthetic cwdRedacted flag; cwd is therefore not required by this schema.</p><div class="evidence-refs"><a class="evidence-ref" href="#claim-antigravity-runtime-headless">antigravity-runtime-headless</a></div><details class="schema"><summary>Payload schema</summary><pre>{
+  &quot;type&quot;: &quot;object&quot;,
+  &quot;properties&quot;: {
+    &quot;conversation_id&quot;: {
+      &quot;type&quot;: &quot;string&quot;
+    },
+    &quot;init&quot;: {
+      &quot;type&quot;: &quot;object&quot;,
+      &quot;properties&quot;: {
+        &quot;permission_mode&quot;: {
+          &quot;type&quot;: &quot;string&quot;
+        },
+        &quot;tools&quot;: {
+          &quot;type&quot;: &quot;array&quot;,
+          &quot;items&quot;: {
+            &quot;type&quot;: &quot;string&quot;
+          }
+        }
+      },
+      &quot;required&quot;: [
+        &quot;permission_mode&quot;,
+        &quot;tools&quot;
+      ]
+    }
+  },
+  &quot;required&quot;: [
+    &quot;conversation_id&quot;,
+    &quot;init&quot;
+  ]
+}</pre></details><details class="schema"><summary>Carrier schema</summary><pre>{
+  &quot;type&quot;: &quot;object&quot;,
+  &quot;properties&quot;: {
+    &quot;event&quot;: {
+      &quot;type&quot;: &quot;string&quot;,
+      &quot;enum&quot;: [
+        &quot;init&quot;
+      ]
+    },
+    &quot;conversation_id&quot;: {
+      &quot;type&quot;: &quot;string&quot;
+    },
+    &quot;init&quot;: {
+      &quot;type&quot;: &quot;object&quot;,
+      &quot;properties&quot;: {
+        &quot;permission_mode&quot;: {
+          &quot;type&quot;: &quot;string&quot;
+        },
+        &quot;tools&quot;: {
+          &quot;type&quot;: &quot;array&quot;,
+          &quot;items&quot;: {
+            &quot;type&quot;: &quot;string&quot;
+          }
+        }
+      },
+      &quot;required&quot;: [
+        &quot;permission_mode&quot;,
+        &quot;tools&quot;
+      ]
+    }
+  },
+  &quot;required&quot;: [
+    &quot;event&quot;,
+    &quot;conversation_id&quot;,
+    &quot;init&quot;
+  ]
+}</pre></details></div></details></article><article id="event-PostInvocation" class="event-card" data-search="postinvocation agent-local hook-callback unverified hook-command" data-direction="agent-local" data-confidence="unverified"><details><summary><span class="event-name">PostInvocation</span><span class="event-meta"><span class="direction">agent-local</span><span class="confidence unverified">unverified</span></span></summary><div class="event-body"><dl><div><dt>Channel</dt><dd><a href="#channels"><code>hook-command</code></a></dd></div><div><dt>Transport</dt><dd>hook-callback</dd></div><div><dt>Trigger</dt><dd>—</dd></div><div><dt>Observation</dt><dd><code>passive</code></dd></div><div><dt>Schema fidelity</dt><dd><code>{&quot;payload&quot;:&quot;structural&quot;,&quot;result&quot;:&quot;structural&quot;,&quot;limitations&quot;:[&quot;The retained 1.1.12 runtime records are legacy privacy projections. Schemas retain only fields whose native names and types survive that transform or are stated by official documentation; additional native fields may exist.&quot;]}</code></dd></div></dl><p>Runtime evidence verifies this hook family and its ordering. Complete stdin/stdout shape is documentation-backed because the retained runtime fixture is a legacy projection.</p><div class="evidence-refs"><a class="evidence-ref" href="#claim-antigravity-runtime-headless">antigravity-runtime-headless</a><a class="evidence-ref" href="#claim-antigravity-official-docs">antigravity-official-docs</a></div><details class="schema"><summary>Payload schema</summary><pre>{
+  &quot;type&quot;: &quot;object&quot;,
+  &quot;properties&quot;: {
+    &quot;conversationId&quot;: {
+      &quot;type&quot;: &quot;string&quot;
+    },
+    &quot;workspacePaths&quot;: {
+      &quot;type&quot;: &quot;array&quot;,
+      &quot;items&quot;: {
+        &quot;type&quot;: &quot;string&quot;
+      }
+    },
+    &quot;transcriptPath&quot;: {
+      &quot;type&quot;: &quot;string&quot;
+    },
+    &quot;artifactDirectoryPath&quot;: {
+      &quot;type&quot;: &quot;string&quot;
+    },
+    &quot;modelName&quot;: {
+      &quot;type&quot;: &quot;string&quot;
+    },
+    &quot;invocationNum&quot;: {
+      &quot;type&quot;: &quot;integer&quot;,
+      &quot;minimum&quot;: 0
+    },
+    &quot;initialNumSteps&quot;: {
+      &quot;type&quot;: &quot;integer&quot;,
+      &quot;minimum&quot;: 0
+    }
+  },
+  &quot;required&quot;: [
+    &quot;conversationId&quot;,
+    &quot;workspacePaths&quot;,
+    &quot;modelName&quot;,
+    &quot;invocationNum&quot;,
+    &quot;initialNumSteps&quot;
+  ]
+}</pre></details><details class="schema"><summary>Result schema</summary><pre>{
+  &quot;type&quot;: &quot;object&quot;,
+  &quot;properties&quot;: {
+    &quot;injectSteps&quot;: {
+      &quot;type&quot;: &quot;array&quot;,
+      &quot;items&quot;: {
+        &quot;type&quot;: &quot;object&quot;
+      }
+    },
+    &quot;terminationBehavior&quot;: {
+      &quot;type&quot;: &quot;string&quot;,
+      &quot;enum&quot;: [
+        &quot;force_continue&quot;,
+        &quot;terminate&quot;,
+        &quot;&quot;
+      ]
+    }
+  }
+}</pre></details></div></details></article><article id="event-PostToolUse" class="event-card" data-search="posttooluse agent-local hook-callback unverified hook-command" data-direction="agent-local" data-confidence="unverified"><details><summary><span class="event-name">PostToolUse</span><span class="event-meta"><span class="direction">agent-local</span><span class="confidence unverified">unverified</span></span></summary><div class="event-body"><dl><div><dt>Channel</dt><dd><a href="#channels"><code>hook-command</code></a></dd></div><div><dt>Transport</dt><dd>hook-callback</dd></div><div><dt>Trigger</dt><dd>—</dd></div><div><dt>Observation</dt><dd><code>matcher-required</code></dd></div><div><dt>Schema fidelity</dt><dd><code>{&quot;payload&quot;:&quot;structural&quot;,&quot;result&quot;:&quot;structural&quot;,&quot;limitations&quot;:[&quot;The retained 1.1.12 runtime records are legacy privacy projections. Schemas retain only fields whose native names and types survive that transform or are stated by official documentation; additional native fields may exist.&quot;]}</code></dd></div></dl><p>Runtime evidence verifies this hook family and its ordering. Complete stdin/stdout shape is documentation-backed because the retained runtime fixture is a legacy projection.</p><div class="evidence-refs"><a class="evidence-ref" href="#claim-antigravity-runtime-headless">antigravity-runtime-headless</a><a class="evidence-ref" href="#claim-antigravity-official-docs">antigravity-official-docs</a></div><details class="schema"><summary>Payload schema</summary><pre>{
+  &quot;type&quot;: &quot;object&quot;,
+  &quot;properties&quot;: {
+    &quot;conversationId&quot;: {
+      &quot;type&quot;: &quot;string&quot;
+    },
+    &quot;workspacePaths&quot;: {
+      &quot;type&quot;: &quot;array&quot;,
+      &quot;items&quot;: {
+        &quot;type&quot;: &quot;string&quot;
+      }
+    },
+    &quot;transcriptPath&quot;: {
+      &quot;type&quot;: &quot;string&quot;
+    },
+    &quot;artifactDirectoryPath&quot;: {
+      &quot;type&quot;: &quot;string&quot;
+    },
+    &quot;modelName&quot;: {
+      &quot;type&quot;: &quot;string&quot;
+    },
+    &quot;toolCall&quot;: {
+      &quot;type&quot;: &quot;object&quot;,
+      &quot;properties&quot;: {
+        &quot;name&quot;: {
+          &quot;type&quot;: &quot;string&quot;
+        },
+        &quot;args&quot;: {
+          &quot;type&quot;: &quot;object&quot;
+        }
+      },
+      &quot;required&quot;: [
+        &quot;name&quot;,
+        &quot;args&quot;
+      ]
+    },
+    &quot;stepIdx&quot;: {
+      &quot;type&quot;: &quot;integer&quot;,
+      &quot;minimum&quot;: 0
+    },
+    &quot;error&quot;: {
+      &quot;type&quot;: &quot;string&quot;
+    }
+  },
+  &quot;required&quot;: [
+    &quot;conversationId&quot;,
+    &quot;workspacePaths&quot;,
+    &quot;modelName&quot;,
+    &quot;toolCall&quot;,
+    &quot;stepIdx&quot;
+  ]
+}</pre></details><details class="schema"><summary>Result schema</summary><pre>{
+  &quot;type&quot;: &quot;object&quot;
+}</pre></details></div></details></article><article id="event-PreInvocation" class="event-card" data-search="preinvocation agent-local hook-callback unverified hook-command" data-direction="agent-local" data-confidence="unverified"><details><summary><span class="event-name">PreInvocation</span><span class="event-meta"><span class="direction">agent-local</span><span class="confidence unverified">unverified</span></span></summary><div class="event-body"><dl><div><dt>Channel</dt><dd><a href="#channels"><code>hook-command</code></a></dd></div><div><dt>Transport</dt><dd>hook-callback</dd></div><div><dt>Trigger</dt><dd>—</dd></div><div><dt>Observation</dt><dd><code>passive</code></dd></div><div><dt>Schema fidelity</dt><dd><code>{&quot;payload&quot;:&quot;structural&quot;,&quot;result&quot;:&quot;structural&quot;,&quot;limitations&quot;:[&quot;The retained 1.1.12 runtime records are legacy privacy projections. Schemas retain only fields whose native names and types survive that transform or are stated by official documentation; additional native fields may exist.&quot;]}</code></dd></div></dl><p>Runtime evidence verifies this hook family and its ordering. Complete stdin/stdout shape is documentation-backed because the retained runtime fixture is a legacy projection.</p><div class="evidence-refs"><a class="evidence-ref" href="#claim-antigravity-runtime-headless">antigravity-runtime-headless</a><a class="evidence-ref" href="#claim-antigravity-official-docs">antigravity-official-docs</a></div><details class="schema"><summary>Payload schema</summary><pre>{
+  &quot;type&quot;: &quot;object&quot;,
+  &quot;properties&quot;: {
+    &quot;conversationId&quot;: {
+      &quot;type&quot;: &quot;string&quot;
+    },
+    &quot;workspacePaths&quot;: {
+      &quot;type&quot;: &quot;array&quot;,
+      &quot;items&quot;: {
+        &quot;type&quot;: &quot;string&quot;
+      }
+    },
+    &quot;transcriptPath&quot;: {
+      &quot;type&quot;: &quot;string&quot;
+    },
+    &quot;artifactDirectoryPath&quot;: {
+      &quot;type&quot;: &quot;string&quot;
+    },
+    &quot;modelName&quot;: {
+      &quot;type&quot;: &quot;string&quot;
+    },
+    &quot;invocationNum&quot;: {
+      &quot;type&quot;: &quot;integer&quot;,
+      &quot;minimum&quot;: 0
+    },
+    &quot;initialNumSteps&quot;: {
+      &quot;type&quot;: &quot;integer&quot;,
+      &quot;minimum&quot;: 0
+    }
+  },
+  &quot;required&quot;: [
+    &quot;conversationId&quot;,
+    &quot;workspacePaths&quot;,
+    &quot;modelName&quot;,
+    &quot;invocationNum&quot;,
+    &quot;initialNumSteps&quot;
+  ]
+}</pre></details><details class="schema"><summary>Result schema</summary><pre>{
+  &quot;type&quot;: &quot;object&quot;,
+  &quot;properties&quot;: {
+    &quot;injectSteps&quot;: {
+      &quot;type&quot;: &quot;array&quot;,
+      &quot;items&quot;: {
+        &quot;type&quot;: &quot;object&quot;
+      }
+    },
+    &quot;terminationBehavior&quot;: {
+      &quot;type&quot;: &quot;string&quot;,
+      &quot;enum&quot;: [
+        &quot;force_continue&quot;,
+        &quot;terminate&quot;,
+        &quot;&quot;
+      ]
+    }
+  }
+}</pre></details></div></details></article><article id="event-PreToolUse" class="event-card" data-search="pretooluse agent-local hook-callback unverified hook-command" data-direction="agent-local" data-confidence="unverified"><details><summary><span class="event-name">PreToolUse</span><span class="event-meta"><span class="direction">agent-local</span><span class="confidence unverified">unverified</span></span></summary><div class="event-body"><dl><div><dt>Channel</dt><dd><a href="#channels"><code>hook-command</code></a></dd></div><div><dt>Transport</dt><dd>hook-callback</dd></div><div><dt>Trigger</dt><dd>—</dd></div><div><dt>Observation</dt><dd><code>matcher-required</code></dd></div><div><dt>Schema fidelity</dt><dd><code>{&quot;payload&quot;:&quot;structural&quot;,&quot;result&quot;:&quot;structural&quot;,&quot;limitations&quot;:[&quot;The retained 1.1.12 runtime records are legacy privacy projections. Schemas retain only fields whose native names and types survive that transform or are stated by official documentation; additional native fields may exist.&quot;]}</code></dd></div></dl><p>Runtime evidence verifies this hook family and its ordering. Complete stdin/stdout shape is documentation-backed because the retained runtime fixture is a legacy projection.</p><div class="evidence-refs"><a class="evidence-ref" href="#claim-antigravity-runtime-headless">antigravity-runtime-headless</a><a class="evidence-ref" href="#claim-antigravity-official-docs">antigravity-official-docs</a></div><details class="schema"><summary>Payload schema</summary><pre>{
+  &quot;type&quot;: &quot;object&quot;,
+  &quot;properties&quot;: {
+    &quot;conversationId&quot;: {
+      &quot;type&quot;: &quot;string&quot;
+    },
+    &quot;workspacePaths&quot;: {
+      &quot;type&quot;: &quot;array&quot;,
+      &quot;items&quot;: {
+        &quot;type&quot;: &quot;string&quot;
+      }
+    },
+    &quot;transcriptPath&quot;: {
+      &quot;type&quot;: &quot;string&quot;
+    },
+    &quot;artifactDirectoryPath&quot;: {
+      &quot;type&quot;: &quot;string&quot;
+    },
+    &quot;modelName&quot;: {
+      &quot;type&quot;: &quot;string&quot;
+    },
+    &quot;toolCall&quot;: {
+      &quot;type&quot;: &quot;object&quot;,
+      &quot;properties&quot;: {
+        &quot;name&quot;: {
+          &quot;type&quot;: &quot;string&quot;
+        },
+        &quot;args&quot;: {
+          &quot;type&quot;: &quot;object&quot;
+        }
+      },
+      &quot;required&quot;: [
+        &quot;name&quot;,
+        &quot;args&quot;
+      ]
+    },
+    &quot;stepIdx&quot;: {
+      &quot;type&quot;: &quot;integer&quot;,
+      &quot;minimum&quot;: 0
+    }
+  },
+  &quot;required&quot;: [
+    &quot;conversationId&quot;,
+    &quot;workspacePaths&quot;,
+    &quot;modelName&quot;,
+    &quot;toolCall&quot;,
+    &quot;stepIdx&quot;
+  ]
+}</pre></details><details class="schema"><summary>Result schema</summary><pre>{
+  &quot;type&quot;: &quot;object&quot;,
+  &quot;properties&quot;: {
+    &quot;decision&quot;: {
+      &quot;type&quot;: &quot;string&quot;,
+      &quot;enum&quot;: [
+        &quot;allow&quot;,
+        &quot;deny&quot;,
+        &quot;ask&quot;,
+        &quot;force_ask&quot;,
+        &quot;deny_unless_prior_grant&quot;
+      ]
+    },
+    &quot;reason&quot;: {
+      &quot;type&quot;: &quot;string&quot;
+    }
+  }
+}</pre></details></div></details></article><article id="event-result" class="event-card" data-search="result agent-to-client jsonl-record verified-headless print-stream print-json" data-direction="agent-to-client" data-confidence="verified-headless"><details><summary><span class="event-name">result</span><span class="event-meta"><span class="direction">agent-to-client</span><span class="confidence verified-headless">verified-headless</span></span></summary><div class="event-body"><dl><div><dt>Channel</dt><dd><a href="#channels"><code>print-stream</code></a> <a href="#channels"><code>print-json</code></a></dd></div><div><dt>Transport</dt><dd>jsonl-record</dd></div><div><dt>Trigger</dt><dd>—</dd></div><div><dt>Schema fidelity</dt><dd><code>{&quot;payload&quot;:&quot;structural&quot;,&quot;carrier&quot;:&quot;structural&quot;,&quot;limitations&quot;:[&quot;The retained 1.1.12 runtime records are legacy privacy projections. Schemas retain only fields whose native names and types survive that transform or are stated by official documentation; additional native fields may exist.&quot;]}</code></dd></div></dl><p>Plain JSON mode emits the result body without the stream wrapper. The legacy sanitizer replaced response with hasResponse; hasResponse is intentionally absent from the native schema.</p><div class="evidence-refs"><a class="evidence-ref" href="#claim-antigravity-runtime-headless">antigravity-runtime-headless</a></div><details class="variants"><summary>1 evidenced variants</summary><div class="variant"><code>{&quot;result.status&quot;:&quot;SUCCESS&quot;}</code><span class="confidence verified-headless">verified-headless</span><div class="evidence-refs"><a class="evidence-ref" href="#claim-antigravity-runtime-headless">antigravity-runtime-headless</a></div></div></details><details class="schema"><summary>Payload schema</summary><pre>{
+  &quot;type&quot;: &quot;object&quot;,
+  &quot;properties&quot;: {
+    &quot;result&quot;: {
+      &quot;type&quot;: &quot;object&quot;,
+      &quot;properties&quot;: {
+        &quot;conversation_id&quot;: {
+          &quot;type&quot;: &quot;string&quot;
+        },
+        &quot;status&quot;: {
+          &quot;type&quot;: &quot;string&quot;
+        },
+        &quot;num_turns&quot;: {
+          &quot;type&quot;: &quot;integer&quot;,
+          &quot;minimum&quot;: 0
+        },
+        &quot;duration_seconds&quot;: {
+          &quot;type&quot;: &quot;number&quot;,
+          &quot;minimum&quot;: 0
+        },
+        &quot;usage&quot;: {
+          &quot;type&quot;: &quot;object&quot;,
+          &quot;properties&quot;: {
+            &quot;input_tokens&quot;: {
+              &quot;type&quot;: &quot;integer&quot;,
+              &quot;minimum&quot;: 0
+            },
+            &quot;output_tokens&quot;: {
+              &quot;type&quot;: &quot;integer&quot;,
+              &quot;minimum&quot;: 0
+            },
+            &quot;thinking_tokens&quot;: {
+              &quot;type&quot;: &quot;integer&quot;,
+              &quot;minimum&quot;: 0
+            },
+            &quot;cache_read_tokens&quot;: {
+              &quot;type&quot;: &quot;integer&quot;,
+              &quot;minimum&quot;: 0
+            },
+            &quot;total_tokens&quot;: {
+              &quot;type&quot;: &quot;integer&quot;,
+              &quot;minimum&quot;: 0
+            }
+          },
+          &quot;required&quot;: [
+            &quot;input_tokens&quot;,
+            &quot;output_tokens&quot;,
+            &quot;thinking_tokens&quot;,
+            &quot;cache_read_tokens&quot;,
+            &quot;total_tokens&quot;
+          ]
+        },
+        &quot;response&quot;: {
+          &quot;type&quot;: &quot;string&quot;
+        },
+        &quot;command&quot;: {
+          &quot;type&quot;: &quot;object&quot;,
+          &quot;properties&quot;: {
+            &quot;name&quot;: {
+              &quot;type&quot;: &quot;string&quot;
+            },
+            &quot;data&quot;: {
+              &quot;type&quot;: &quot;object&quot;
+            }
+          },
+          &quot;required&quot;: [
+            &quot;name&quot;,
+            &quot;data&quot;
+          ]
+        }
+      },
+      &quot;required&quot;: [
+        &quot;conversation_id&quot;,
+        &quot;status&quot;,
+        &quot;num_turns&quot;,
+        &quot;duration_seconds&quot;,
+        &quot;usage&quot;
+      ]
+    }
+  },
+  &quot;required&quot;: [
+    &quot;result&quot;
+  ]
+}</pre></details><details class="schema"><summary>Carrier schema</summary><pre>{
+  &quot;type&quot;: &quot;object&quot;,
+  &quot;properties&quot;: {
+    &quot;event&quot;: {
+      &quot;type&quot;: &quot;string&quot;,
+      &quot;enum&quot;: [
+        &quot;result&quot;
+      ]
+    },
+    &quot;result&quot;: {
+      &quot;type&quot;: &quot;object&quot;,
+      &quot;properties&quot;: {
+        &quot;conversation_id&quot;: {
+          &quot;type&quot;: &quot;string&quot;
+        },
+        &quot;status&quot;: {
+          &quot;type&quot;: &quot;string&quot;
+        },
+        &quot;num_turns&quot;: {
+          &quot;type&quot;: &quot;integer&quot;,
+          &quot;minimum&quot;: 0
+        },
+        &quot;duration_seconds&quot;: {
+          &quot;type&quot;: &quot;number&quot;,
+          &quot;minimum&quot;: 0
+        },
+        &quot;usage&quot;: {
+          &quot;type&quot;: &quot;object&quot;,
+          &quot;properties&quot;: {
+            &quot;input_tokens&quot;: {
+              &quot;type&quot;: &quot;integer&quot;,
+              &quot;minimum&quot;: 0
+            },
+            &quot;output_tokens&quot;: {
+              &quot;type&quot;: &quot;integer&quot;,
+              &quot;minimum&quot;: 0
+            },
+            &quot;thinking_tokens&quot;: {
+              &quot;type&quot;: &quot;integer&quot;,
+              &quot;minimum&quot;: 0
+            },
+            &quot;cache_read_tokens&quot;: {
+              &quot;type&quot;: &quot;integer&quot;,
+              &quot;minimum&quot;: 0
+            },
+            &quot;total_tokens&quot;: {
+              &quot;type&quot;: &quot;integer&quot;,
+              &quot;minimum&quot;: 0
+            }
+          },
+          &quot;required&quot;: [
+            &quot;input_tokens&quot;,
+            &quot;output_tokens&quot;,
+            &quot;thinking_tokens&quot;,
+            &quot;cache_read_tokens&quot;,
+            &quot;total_tokens&quot;
+          ]
+        },
+        &quot;response&quot;: {
+          &quot;type&quot;: &quot;string&quot;
+        },
+        &quot;command&quot;: {
+          &quot;type&quot;: &quot;object&quot;,
+          &quot;properties&quot;: {
+            &quot;name&quot;: {
+              &quot;type&quot;: &quot;string&quot;
+            },
+            &quot;data&quot;: {
+              &quot;type&quot;: &quot;object&quot;
+            }
+          },
+          &quot;required&quot;: [
+            &quot;name&quot;,
+            &quot;data&quot;
+          ]
+        }
+      },
+      &quot;required&quot;: [
+        &quot;conversation_id&quot;,
+        &quot;status&quot;,
+        &quot;num_turns&quot;,
+        &quot;duration_seconds&quot;,
+        &quot;usage&quot;
+      ]
+    }
+  },
+  &quot;required&quot;: [
+    &quot;event&quot;,
+    &quot;result&quot;
+  ]
+}</pre></details></div></details></article><article id="event-step_update" class="event-card" data-search="step_update agent-to-client jsonl-record verified-headless print-stream" data-direction="agent-to-client" data-confidence="verified-headless"><details><summary><span class="event-name">step_update</span><span class="event-meta"><span class="direction">agent-to-client</span><span class="confidence verified-headless">verified-headless</span></span></summary><div class="event-body"><dl><div><dt>Channel</dt><dd><a href="#channels"><code>print-stream</code></a></dd></div><div><dt>Transport</dt><dd>jsonl-record</dd></div><div><dt>Trigger</dt><dd>—</dd></div><div><dt>Schema fidelity</dt><dd><code>{&quot;payload&quot;:&quot;structural&quot;,&quot;carrier&quot;:&quot;structural&quot;,&quot;limitations&quot;:[&quot;The retained 1.1.12 runtime records are legacy privacy projections. Schemas retain only fields whose native names and types survive that transform or are stated by official documentation; additional native fields may exist.&quot;]}</code></dd></div></dl><p>The legacy projection synthesized hasTextDelta, parameterKeys, and hasOutput. The model restores only the corresponding native field names/types proven by that transform; it does not treat the synthetic fields as vendor payload.</p><div class="evidence-refs"><a class="evidence-ref" href="#claim-antigravity-runtime-headless">antigravity-runtime-headless</a></div><details class="variants"><summary>9 evidenced variants</summary><div class="variant"><code>{&quot;step_update.step_type&quot;:&quot;agent_response&quot;}</code><span class="confidence verified-headless">verified-headless</span><div class="evidence-refs"><a class="evidence-ref" href="#claim-antigravity-runtime-headless">antigravity-runtime-headless</a></div></div><div class="variant"><code>{&quot;step_update.step_type&quot;:&quot;checkpoint&quot;}</code><span class="confidence verified-headless">verified-headless</span><div class="evidence-refs"><a class="evidence-ref" href="#claim-antigravity-runtime-headless">antigravity-runtime-headless</a></div></div><div class="variant"><code>{&quot;step_update.step_type&quot;:&quot;error_message&quot;}</code><span class="confidence verified-headless">verified-headless</span><div class="evidence-refs"><a class="evidence-ref" href="#claim-antigravity-runtime-headless">antigravity-runtime-headless</a></div></div><div class="variant"><code>{&quot;step_update.step_type&quot;:&quot;system_message&quot;}</code><span class="confidence verified-headless">verified-headless</span><div class="evidence-refs"><a class="evidence-ref" href="#claim-antigravity-runtime-headless">antigravity-runtime-headless</a></div></div><div class="variant"><code>{&quot;step_update.step_type&quot;:&quot;tool&quot;}</code><span class="confidence verified-headless">verified-headless</span><div class="evidence-refs"><a class="evidence-ref" href="#claim-antigravity-runtime-headless">antigravity-runtime-headless</a></div></div><div class="variant"><code>{&quot;step_update.step_type&quot;:&quot;unknown&quot;}</code><span class="confidence verified-headless">verified-headless</span><div class="evidence-refs"><a class="evidence-ref" href="#claim-antigravity-runtime-headless">antigravity-runtime-headless</a></div></div><div class="variant"><code>{&quot;step_update.step_type&quot;:&quot;user_input&quot;}</code><span class="confidence verified-headless">verified-headless</span><div class="evidence-refs"><a class="evidence-ref" href="#claim-antigravity-runtime-headless">antigravity-runtime-headless</a></div></div><div class="variant"><code>{&quot;step_update.state&quot;:&quot;ACTIVE&quot;}</code><span class="confidence verified-headless">verified-headless</span><div class="evidence-refs"><a class="evidence-ref" href="#claim-antigravity-runtime-headless">antigravity-runtime-headless</a></div></div><div class="variant"><code>{&quot;step_update.state&quot;:&quot;DONE&quot;}</code><span class="confidence verified-headless">verified-headless</span><div class="evidence-refs"><a class="evidence-ref" href="#claim-antigravity-runtime-headless">antigravity-runtime-headless</a></div></div></details><details class="schema"><summary>Payload schema</summary><pre>{
+  &quot;type&quot;: &quot;object&quot;,
+  &quot;properties&quot;: {
+    &quot;step_update&quot;: {
+      &quot;type&quot;: &quot;object&quot;,
+      &quot;properties&quot;: {
+        &quot;conversation_id&quot;: {
+          &quot;type&quot;: &quot;string&quot;
+        },
+        &quot;step_index&quot;: {
+          &quot;type&quot;: &quot;integer&quot;,
+          &quot;minimum&quot;: 0
+        },
+        &quot;state&quot;: {
+          &quot;type&quot;: &quot;string&quot;
+        },
+        &quot;step_type&quot;: {
+          &quot;type&quot;: &quot;string&quot;
+        },
+        &quot;duration_seconds&quot;: {
+          &quot;type&quot;: &quot;number&quot;,
+          &quot;minimum&quot;: 0
+        },
+        &quot;usage&quot;: {
+          &quot;type&quot;: &quot;object&quot;,
+          &quot;properties&quot;: {
+            &quot;input_tokens&quot;: {
+              &quot;type&quot;: &quot;integer&quot;,
+              &quot;minimum&quot;: 0
+            },
+            &quot;output_tokens&quot;: {
+              &quot;type&quot;: &quot;integer&quot;,
+              &quot;minimum&quot;: 0
+            },
+            &quot;thinking_tokens&quot;: {
+              &quot;type&quot;: &quot;integer&quot;,
+              &quot;minimum&quot;: 0
+            },
+            &quot;cache_read_tokens&quot;: {
+              &quot;type&quot;: &quot;integer&quot;,
+              &quot;minimum&quot;: 0
+            },
+            &quot;total_tokens&quot;: {
+              &quot;type&quot;: &quot;integer&quot;,
+              &quot;minimum&quot;: 0
+            }
+          },
+          &quot;required&quot;: [
+            &quot;input_tokens&quot;,
+            &quot;output_tokens&quot;,
+            &quot;thinking_tokens&quot;,
+            &quot;cache_read_tokens&quot;,
+            &quot;total_tokens&quot;
+          ]
+        },
+        &quot;tool_name&quot;: {
+          &quot;type&quot;: &quot;string&quot;
+        },
+        &quot;text_delta&quot;: {
+          &quot;type&quot;: &quot;string&quot;
+        },
+        &quot;tool_info&quot;: {
+          &quot;type&quot;: &quot;object&quot;,
+          &quot;properties&quot;: {
+            &quot;name&quot;: {
+              &quot;type&quot;: &quot;string&quot;
+            },
+            &quot;parameters&quot;: {
+              &quot;type&quot;: &quot;object&quot;
+            },
+            &quot;output&quot;: {
+              &quot;type&quot;: &quot;string&quot;
+            }
+          }
+        }
+      },
+      &quot;required&quot;: [
+        &quot;conversation_id&quot;,
+        &quot;step_index&quot;,
+        &quot;state&quot;,
+        &quot;step_type&quot;
+      ]
+    }
+  },
+  &quot;required&quot;: [
+    &quot;step_update&quot;
+  ]
+}</pre></details><details class="schema"><summary>Carrier schema</summary><pre>{
+  &quot;type&quot;: &quot;object&quot;,
+  &quot;properties&quot;: {
+    &quot;event&quot;: {
+      &quot;type&quot;: &quot;string&quot;,
+      &quot;enum&quot;: [
+        &quot;step_update&quot;
+      ]
+    },
+    &quot;step_update&quot;: {
+      &quot;type&quot;: &quot;object&quot;,
+      &quot;properties&quot;: {
+        &quot;conversation_id&quot;: {
+          &quot;type&quot;: &quot;string&quot;
+        },
+        &quot;step_index&quot;: {
+          &quot;type&quot;: &quot;integer&quot;,
+          &quot;minimum&quot;: 0
+        },
+        &quot;state&quot;: {
+          &quot;type&quot;: &quot;string&quot;
+        },
+        &quot;step_type&quot;: {
+          &quot;type&quot;: &quot;string&quot;
+        },
+        &quot;duration_seconds&quot;: {
+          &quot;type&quot;: &quot;number&quot;,
+          &quot;minimum&quot;: 0
+        },
+        &quot;usage&quot;: {
+          &quot;type&quot;: &quot;object&quot;,
+          &quot;properties&quot;: {
+            &quot;input_tokens&quot;: {
+              &quot;type&quot;: &quot;integer&quot;,
+              &quot;minimum&quot;: 0
+            },
+            &quot;output_tokens&quot;: {
+              &quot;type&quot;: &quot;integer&quot;,
+              &quot;minimum&quot;: 0
+            },
+            &quot;thinking_tokens&quot;: {
+              &quot;type&quot;: &quot;integer&quot;,
+              &quot;minimum&quot;: 0
+            },
+            &quot;cache_read_tokens&quot;: {
+              &quot;type&quot;: &quot;integer&quot;,
+              &quot;minimum&quot;: 0
+            },
+            &quot;total_tokens&quot;: {
+              &quot;type&quot;: &quot;integer&quot;,
+              &quot;minimum&quot;: 0
+            }
+          },
+          &quot;required&quot;: [
+            &quot;input_tokens&quot;,
+            &quot;output_tokens&quot;,
+            &quot;thinking_tokens&quot;,
+            &quot;cache_read_tokens&quot;,
+            &quot;total_tokens&quot;
+          ]
+        },
+        &quot;tool_name&quot;: {
+          &quot;type&quot;: &quot;string&quot;
+        },
+        &quot;text_delta&quot;: {
+          &quot;type&quot;: &quot;string&quot;
+        },
+        &quot;tool_info&quot;: {
+          &quot;type&quot;: &quot;object&quot;,
+          &quot;properties&quot;: {
+            &quot;name&quot;: {
+              &quot;type&quot;: &quot;string&quot;
+            },
+            &quot;parameters&quot;: {
+              &quot;type&quot;: &quot;object&quot;
+            },
+            &quot;output&quot;: {
+              &quot;type&quot;: &quot;string&quot;
+            }
+          }
+        }
+      },
+      &quot;required&quot;: [
+        &quot;conversation_id&quot;,
+        &quot;step_index&quot;,
+        &quot;state&quot;,
+        &quot;step_type&quot;
+      ]
+    }
+  },
+  &quot;required&quot;: [
+    &quot;event&quot;,
+    &quot;step_update&quot;
+  ]
+}</pre></details></div></details></article><article id="event-Stop" class="event-card" data-search="stop agent-local hook-callback unverified hook-command" data-direction="agent-local" data-confidence="unverified"><details><summary><span class="event-name">Stop</span><span class="event-meta"><span class="direction">agent-local</span><span class="confidence unverified">unverified</span></span></summary><div class="event-body"><dl><div><dt>Channel</dt><dd><a href="#channels"><code>hook-command</code></a></dd></div><div><dt>Transport</dt><dd>hook-callback</dd></div><div><dt>Trigger</dt><dd>—</dd></div><div><dt>Observation</dt><dd><code>passive</code></dd></div><div><dt>Schema fidelity</dt><dd><code>{&quot;payload&quot;:&quot;structural&quot;,&quot;result&quot;:&quot;structural&quot;,&quot;limitations&quot;:[&quot;The retained 1.1.12 runtime records are legacy privacy projections. Schemas retain only fields whose native names and types survive that transform or are stated by official documentation; additional native fields may exist.&quot;]}</code></dd></div></dl><p>Runtime evidence verifies this hook family and its ordering. Complete stdin/stdout shape is documentation-backed because the retained runtime fixture is a legacy projection.</p><div class="evidence-refs"><a class="evidence-ref" href="#claim-antigravity-runtime-headless">antigravity-runtime-headless</a><a class="evidence-ref" href="#claim-antigravity-official-docs">antigravity-official-docs</a></div><details class="schema"><summary>Payload schema</summary><pre>{
+  &quot;type&quot;: &quot;object&quot;,
+  &quot;properties&quot;: {
+    &quot;conversationId&quot;: {
+      &quot;type&quot;: &quot;string&quot;
+    },
+    &quot;workspacePaths&quot;: {
+      &quot;type&quot;: &quot;array&quot;,
+      &quot;items&quot;: {
+        &quot;type&quot;: &quot;string&quot;
+      }
+    },
+    &quot;transcriptPath&quot;: {
+      &quot;type&quot;: &quot;string&quot;
+    },
+    &quot;artifactDirectoryPath&quot;: {
+      &quot;type&quot;: &quot;string&quot;
+    },
+    &quot;modelName&quot;: {
+      &quot;type&quot;: &quot;string&quot;
+    },
+    &quot;executionNum&quot;: {
+      &quot;type&quot;: &quot;integer&quot;,
+      &quot;minimum&quot;: 0
+    },
+    &quot;terminationReason&quot;: {
+      &quot;type&quot;: &quot;string&quot;
+    },
+    &quot;error&quot;: {
+      &quot;type&quot;: &quot;string&quot;
+    },
+    &quot;fullyIdle&quot;: {
+      &quot;type&quot;: &quot;boolean&quot;
+    }
+  },
+  &quot;required&quot;: [
+    &quot;conversationId&quot;,
+    &quot;workspacePaths&quot;,
+    &quot;modelName&quot;,
+    &quot;terminationReason&quot;,
+    &quot;fullyIdle&quot;
+  ]
+}</pre></details><details class="schema"><summary>Result schema</summary><pre>{
+  &quot;type&quot;: &quot;object&quot;,
+  &quot;properties&quot;: {
+    &quot;decision&quot;: {
+      &quot;type&quot;: &quot;string&quot;,
+      &quot;enum&quot;: [
+        &quot;continue&quot;
+      ]
+    }
+  }
+}</pre></details></div></details></article><article id="event-transcript-jsonl" class="event-card" data-search="transcript.jsonl agent-local jsonl-record verified-headless transcript-jsonl" data-direction="agent-local" data-confidence="verified-headless"><details><summary><span class="event-name">transcript.jsonl</span><span class="event-meta"><span class="direction">agent-local</span><span class="confidence verified-headless">verified-headless</span></span></summary><div class="event-body"><dl><div><dt>Channel</dt><dd><a href="#channels"><code>transcript-jsonl</code></a></dd></div><div><dt>Transport</dt><dd>jsonl-record</dd></div><div><dt>Trigger</dt><dd>—</dd></div><div><dt>Schema fidelity</dt><dd><code>{&quot;payload&quot;:&quot;sampled&quot;,&quot;limitations&quot;:[&quot;The legacy projection copied type/source/status/step_index/created_at but replaced content with hasContent/contentChars. Content is retained only as an unconstrained optional native field.&quot;,&quot;Only transcript.jsonl was sampled; transcript_full.jsonl and the SQLite store are separate unresolved durable rails.&quot;]}</code></dd></div></dl><div class="evidence-refs"><a class="evidence-ref" href="#claim-antigravity-runtime-headless">antigravity-runtime-headless</a></div><details class="variants"><summary>8 evidenced variants</summary><div class="variant"><code>{&quot;type&quot;:&quot;CHECKPOINT&quot;}</code><span class="confidence verified-headless">verified-headless</span><div class="evidence-refs"><a class="evidence-ref" href="#claim-antigravity-runtime-headless">antigravity-runtime-headless</a></div></div><div class="variant"><code>{&quot;type&quot;:&quot;CONVERSATION_HISTORY&quot;}</code><span class="confidence verified-headless">verified-headless</span><div class="evidence-refs"><a class="evidence-ref" href="#claim-antigravity-runtime-headless">antigravity-runtime-headless</a></div></div><div class="variant"><code>{&quot;type&quot;:&quot;ERROR_MESSAGE&quot;}</code><span class="confidence verified-headless">verified-headless</span><div class="evidence-refs"><a class="evidence-ref" href="#claim-antigravity-runtime-headless">antigravity-runtime-headless</a></div></div><div class="variant"><code>{&quot;type&quot;:&quot;LIST_DIRECTORY&quot;}</code><span class="confidence verified-headless">verified-headless</span><div class="evidence-refs"><a class="evidence-ref" href="#claim-antigravity-runtime-headless">antigravity-runtime-headless</a></div></div><div class="variant"><code>{&quot;type&quot;:&quot;PLANNER_RESPONSE&quot;}</code><span class="confidence verified-headless">verified-headless</span><div class="evidence-refs"><a class="evidence-ref" href="#claim-antigravity-runtime-headless">antigravity-runtime-headless</a></div></div><div class="variant"><code>{&quot;type&quot;:&quot;SYSTEM_MESSAGE&quot;}</code><span class="confidence verified-headless">verified-headless</span><div class="evidence-refs"><a class="evidence-ref" href="#claim-antigravity-runtime-headless">antigravity-runtime-headless</a></div></div><div class="variant"><code>{&quot;type&quot;:&quot;USER_INPUT&quot;}</code><span class="confidence verified-headless">verified-headless</span><div class="evidence-refs"><a class="evidence-ref" href="#claim-antigravity-runtime-headless">antigravity-runtime-headless</a></div></div><div class="variant"><code>{&quot;type&quot;:&quot;VIEW_FILE&quot;}</code><span class="confidence verified-headless">verified-headless</span><div class="evidence-refs"><a class="evidence-ref" href="#claim-antigravity-runtime-headless">antigravity-runtime-headless</a></div></div></details><details class="schema"><summary>Payload schema</summary><pre>{
+  &quot;type&quot;: &quot;object&quot;,
+  &quot;properties&quot;: {
+    &quot;type&quot;: {
+      &quot;type&quot;: &quot;string&quot;
+    },
+    &quot;source&quot;: {
+      &quot;type&quot;: &quot;string&quot;
+    },
+    &quot;status&quot;: {
+      &quot;type&quot;: &quot;string&quot;
+    },
+    &quot;step_index&quot;: {
+      &quot;type&quot;: &quot;integer&quot;,
+      &quot;minimum&quot;: 0
+    },
+    &quot;created_at&quot;: {
+      &quot;type&quot;: &quot;string&quot;
+    },
+    &quot;content&quot;: {}
+  },
+  &quot;required&quot;: [
+    &quot;type&quot;,
+    &quot;source&quot;,
+    &quot;status&quot;,
+    &quot;step_index&quot;,
+    &quot;created_at&quot;
+  ]
+}</pre></details></div></details></article></div><p id="empty-events" class="empty" hidden>No events match these filters.</p></section><section id="evidence" class="panel"><div class="section-heading"><div><span class="eyebrow">Provenance</span><h2>Evidence</h2></div><span class="count">v2 · 3 claims</span></div><details open><summary>Immutable source references</summary><div class="table-wrap"><table><thead><tr><th>#</th><th>Relation</th><th>Repository</th><th>Revision</th><th>Details</th></tr></thead><tbody><tr><td>0</td><td>release-tag</td><td>https://github.com/google-antigravity/antigravity-cli</td><td><code>f7519c9084190ed421e89dd81c63970b5177c9ef</code></td><td><pre>{
+  &quot;sourceEquivalence&quot;: &quot;unverified&quot;,
+  &quot;contract&quot;: &quot;packages/surface/vendors/antigravity/references/antigravity@1.1.12/release.json&quot;
+}</pre></td></tr><tr><td>1</td><td>release-tag</td><td>https://github.com/google-antigravity/antigravity-cli</td><td><code>f7519c9084190ed421e89dd81c63970b5177c9ef</code></td><td><pre>{
+  &quot;referenceKind&quot;: &quot;official-documentation-bundle&quot;,
+  &quot;contract&quot;: &quot;packages/surface/vendors/antigravity/references/antigravity@1.1.12/docs.json&quot;
+}</pre></td></tr></tbody></table></div></details><details open><summary>Digest-pinned records</summary><div class="table-wrap"><table><thead><tr><th>ID</th><th>Kind</th><th>Path</th><th>Digest</th></tr></thead><tbody><tr><td><code>sanitized-captures</code></td><td>capture-set</td><td><code>packages/surface/vendors/antigravity/captures/antigravity@1.1.12</code></td><td><code>sha256:e34a9fd92a230bbcf25387a5d9c7cc0bac33f1b82955544016644540d233e2d4</code></td></tr><tr><td><code>binary-probes</code></td><td>probe-set</td><td><code>packages/surface/vendors/antigravity/probes/antigravity@1.1.12</code></td><td><code>sha256:fd06a9097500464542bc8d1306e4f6761d76cb60dca5c8c76b3b61cb36e5da67</code></td></tr><tr><td><code>official-references</code></td><td>reference-snapshot</td><td><code>packages/surface/vendors/antigravity/references/antigravity@1.1.12</code></td><td><code>sha256:f1d1a001ed6e3c9ec84cd514954fdcf0c1e837d63a1155969f143a7c81fa3a0e</code></td></tr><tr><td><code>agent-surface-model</code></td><td>model-tree</td><td><code>packages/surface/vendors/antigravity/model/antigravity@1.1.12</code></td><td><code>sha256:366719a1002bdc2d4289d9d1295ff37a77e90571017006dbf4c93530181005a7</code></td></tr></tbody></table></div></details><details><summary>Claim index</summary><div class="claim-list"><article id="claim-antigravity-runtime-headless" class="claim-card"><header><code>antigravity-runtime-headless</code><span>runtime-capture</span><span class="confidence verified-headless">verified-headless</span></header><dl><div><dt>Record</dt><dd>sanitized-captures</dd></div><div><dt>Artifact</dt><dd>installed-antigravity-1.1.12-darwin-arm64</dd></div><div><dt>Captured</dt><dd>2026-08-12T21:44:01.000Z</dd></div></dl><p>The retained fixtures are legacy privacy projections. This claim proves occurrence, ordering, joins, and explicitly retained scalar/type observations, not complete native payload shape.</p></article><article id="claim-antigravity-binary-probe" class="claim-card"><header><code>antigravity-binary-probe</code><span>binary-probe</span><span class="confidence verified-headless">verified-headless</span></header><dl><div><dt>Record</dt><dd>binary-probes</dd></div><div><dt>Artifact</dt><dd>installed-antigravity-1.1.12-darwin-arm64</dd></div><div><dt>Captured</dt><dd>2026-08-11T05:58:24.459Z</dd></div></dl></article><article id="claim-antigravity-official-docs" class="claim-card"><header><code>antigravity-official-docs</code><span>official-doc</span><span class="confidence unverified">unverified</span></header><dl><div><dt>Record</dt><dd>official-references</dd></div><div><dt>Artifact</dt><dd>—</dd></div><div><dt>Captured</dt><dd>—</dd></div></dl><p>Official documentation and changelog projection establish declared hook fields, callbacks, flags, and durable-path leads but are not exact source or runtime evidence.</p></article></div></details></section></main><script>
+const root=document.documentElement;let saved;try{saved=localStorage.getItem('surface-theme')}catch{}if(saved)root.dataset.theme=saved;
+document.querySelector('.theme').addEventListener('click',()=>{const dark=root.dataset.theme==='dark'||(!root.dataset.theme&&matchMedia('(prefers-color-scheme: dark)').matches);root.dataset.theme=dark?'light':'dark';try{localStorage.setItem('surface-theme',root.dataset.theme)}catch{}});
+const search=document.querySelector('#event-search'),direction=document.querySelector('#direction-filter'),confidence=document.querySelector('#confidence-filter'),cards=[...document.querySelectorAll('.event-card')],count=document.querySelector('#event-count'),empty=document.querySelector('#empty-events');
+function filter(){const q=search.value.trim().toLowerCase();let shown=0;for(const card of cards){const visible=(!q||card.dataset.search.includes(q))&&(!direction.value||card.dataset.direction===direction.value)&&(!confidence.value||card.dataset.confidence===confidence.value);card.hidden=!visible;if(visible)shown++}count.textContent=shown+' / '+cards.length;empty.hidden=shown!==0}
+search.addEventListener('input',filter);direction.addEventListener('change',filter);confidence.addEventListener('change',filter);
+document.querySelector('#expand-visible').addEventListener('click',()=>cards.filter(card=>!card.hidden).forEach(card=>card.firstElementChild.open=true));document.querySelector('#collapse-events').addEventListener('click',()=>cards.forEach(card=>card.firstElementChild.open=false));
+</script></body></html>

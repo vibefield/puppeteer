@@ -1,0 +1,11 @@
+{
+  "format": "puppeteer-capture-fidelity/1",
+  "vendor": "codex",
+  "vendorVersion": "0.144.2",
+  "defaultRepresentation": "type-preserving-redaction",
+  "nativeArtifacts": ["*.jsonl", "*.json"],
+  "limitations": [
+    "The c1-appserver-capture JSONL wraps native app-server records in harness dt, dir, and msg fields; those wrapper fields are not Codex protocol fields.",
+    "This historical set is retained as evidence and is not the active canonical baseline."
+  ]
+}

@@ -10,263 +10,107 @@
   "direction": "client-to-agent",
   "trigger": "Create session — Create a session at the requested location.",
   "payloadSchema": {
-    "type": "object",
     "properties": {
-      "method": {
-        "type": "string"
-      },
-      "route": {
-        "type": "string"
-      },
       "body": {
-        "type": "object",
+        "additionalProperties": false,
         "properties": {
           "agent": {
             "type": "string"
           },
           "id": {
+            "pattern": "^ses",
             "type": "string"
           },
           "location": {
-            "type": "object",
-            "properties": {
-              "directory": {
-                "type": "string"
-              },
-              "workspaceID": {
-                "type": "string"
-              }
-            },
-            "required": [
-              "directory"
-            ]
+            "$ref": "#/$defs/LocationRef"
           },
           "model": {
-            "type": "object",
-            "properties": {
-              "id": {
-                "type": "string"
-              },
-              "providerID": {
-                "type": "string"
-              },
-              "variant": {
-                "type": "string"
-              }
-            },
-            "required": [
-              "id",
-              "providerID"
-            ]
+            "$ref": "#/$defs/ModelRef"
           }
-        }
+        },
+        "type": "object"
+      },
+      "method": {
+        "type": "string"
+      },
+      "route": {
+        "type": "string"
       }
     },
     "required": [
       "method",
       "route",
       "body"
-    ]
+    ],
+    "type": "object",
+    "$defs": {
+      "LocationRef": {
+        "additionalProperties": false,
+        "properties": {
+          "directory": {
+            "type": "string"
+          },
+          "workspaceID": {
+            "pattern": "^wrk",
+            "type": "string"
+          }
+        },
+        "required": [
+          "directory"
+        ],
+        "type": "object"
+      },
+      "ModelRef": {
+        "additionalProperties": false,
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "providerID": {
+            "type": "string"
+          },
+          "variant": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "providerID"
+        ],
+        "type": "object"
+      }
+    }
   },
   "resultSchema": {
-    "type": "object",
     "properties": {
-      "method": {
-        "type": "string",
-        "enum": [
-          "POST"
-        ]
-      },
-      "route": {
-        "type": "string",
-        "enum": [
-          "/api/session"
-        ]
-      },
-      "status": {
-        "type": "integer",
-        "minimum": 200,
-        "maximum": 299
-      },
       "body": {
-        "type": "object",
+        "additionalProperties": false,
         "properties": {
           "data": {
-            "type": "object",
-            "properties": {
-              "agent": {
-                "type": "string"
-              },
-              "cost": {
-                "type": "number"
-              },
-              "id": {
-                "type": "string"
-              },
-              "location": {
-                "type": "object",
-                "properties": {
-                  "directory": {
-                    "type": "string"
-                  },
-                  "workspaceID": {
-                    "type": "string"
-                  }
-                },
-                "required": [
-                  "directory"
-                ]
-              },
-              "model": {
-                "type": "object",
-                "properties": {
-                  "id": {
-                    "type": "string"
-                  },
-                  "providerID": {
-                    "type": "string"
-                  },
-                  "variant": {
-                    "type": "string"
-                  }
-                },
-                "required": [
-                  "id",
-                  "providerID"
-                ]
-              },
-              "parentID": {
-                "type": "string"
-              },
-              "projectID": {
-                "type": "string"
-              },
-              "revert": {
-                "type": "object",
-                "properties": {
-                  "diff": {
-                    "type": "string"
-                  },
-                  "files": {
-                    "type": "array",
-                    "items": {
-                      "type": "object",
-                      "properties": {
-                        "additions": {
-                          "type": "integer",
-                          "minimum": 0
-                        },
-                        "deletions": {
-                          "type": "integer",
-                          "minimum": 0
-                        },
-                        "patch": {
-                          "type": "string"
-                        },
-                        "path": {
-                          "type": "string"
-                        },
-                        "status": {
-                          "type": "string"
-                        }
-                      },
-                      "required": [
-                        "additions",
-                        "deletions",
-                        "patch",
-                        "path",
-                        "status"
-                      ]
-                    }
-                  },
-                  "messageID": {
-                    "type": "string"
-                  },
-                  "partID": {
-                    "type": "string"
-                  },
-                  "snapshot": {
-                    "type": "string"
-                  }
-                },
-                "required": [
-                  "messageID"
-                ]
-              },
-              "subpath": {
-                "type": "string"
-              },
-              "time": {
-                "type": "object",
-                "properties": {
-                  "archived": {
-                    "type": "number"
-                  },
-                  "created": {
-                    "type": "number"
-                  },
-                  "updated": {
-                    "type": "number"
-                  }
-                },
-                "required": [
-                  "created",
-                  "updated"
-                ]
-              },
-              "title": {
-                "type": "string"
-              },
-              "tokens": {
-                "type": "object",
-                "properties": {
-                  "cache": {
-                    "type": "object",
-                    "properties": {
-                      "read": {
-                        "type": "number"
-                      },
-                      "write": {
-                        "type": "number"
-                      }
-                    },
-                    "required": [
-                      "read",
-                      "write"
-                    ]
-                  },
-                  "input": {
-                    "type": "number"
-                  },
-                  "output": {
-                    "type": "number"
-                  },
-                  "reasoning": {
-                    "type": "number"
-                  }
-                },
-                "required": [
-                  "cache",
-                  "input",
-                  "output",
-                  "reasoning"
-                ]
-              }
-            },
-            "required": [
-              "cost",
-              "id",
-              "location",
-              "projectID",
-              "time",
-              "title",
-              "tokens"
-            ]
+            "$ref": "#/$defs/SessionV2Info"
           }
         },
         "required": [
           "data"
-        ]
+        ],
+        "type": "object"
+      },
+      "method": {
+        "enum": [
+          "POST"
+        ],
+        "type": "string"
+      },
+      "route": {
+        "enum": [
+          "/api/session"
+        ],
+        "type": "string"
+      },
+      "status": {
+        "maximum": 299,
+        "minimum": 200,
+        "type": "integer"
       }
     },
     "required": [
@@ -274,87 +118,309 @@
       "route",
       "status",
       "body"
-    ]
+    ],
+    "type": "object",
+    "$defs": {
+      "SessionV2Info": {
+        "additionalProperties": false,
+        "properties": {
+          "agent": {
+            "type": "string"
+          },
+          "cost": {
+            "type": "number"
+          },
+          "id": {
+            "pattern": "^ses",
+            "type": "string"
+          },
+          "location": {
+            "$ref": "#/$defs/LocationRef"
+          },
+          "model": {
+            "$ref": "#/$defs/ModelRef"
+          },
+          "parentID": {
+            "pattern": "^ses",
+            "type": "string"
+          },
+          "projectID": {
+            "type": "string"
+          },
+          "revert": {
+            "$ref": "#/$defs/RevertState"
+          },
+          "subpath": {
+            "type": "string"
+          },
+          "time": {
+            "additionalProperties": false,
+            "properties": {
+              "archived": {
+                "type": "number"
+              },
+              "created": {
+                "type": "number"
+              },
+              "updated": {
+                "type": "number"
+              }
+            },
+            "required": [
+              "created",
+              "updated"
+            ],
+            "type": "object"
+          },
+          "title": {
+            "type": "string"
+          },
+          "tokens": {
+            "additionalProperties": false,
+            "properties": {
+              "cache": {
+                "additionalProperties": false,
+                "properties": {
+                  "read": {
+                    "type": "number"
+                  },
+                  "write": {
+                    "type": "number"
+                  }
+                },
+                "required": [
+                  "read",
+                  "write"
+                ],
+                "type": "object"
+              },
+              "input": {
+                "type": "number"
+              },
+              "output": {
+                "type": "number"
+              },
+              "reasoning": {
+                "type": "number"
+              }
+            },
+            "required": [
+              "input",
+              "output",
+              "reasoning",
+              "cache"
+            ],
+            "type": "object"
+          }
+        },
+        "required": [
+          "id",
+          "projectID",
+          "cost",
+          "tokens",
+          "time",
+          "title",
+          "location"
+        ],
+        "type": "object"
+      },
+      "LocationRef": {
+        "additionalProperties": false,
+        "properties": {
+          "directory": {
+            "type": "string"
+          },
+          "workspaceID": {
+            "pattern": "^wrk",
+            "type": "string"
+          }
+        },
+        "required": [
+          "directory"
+        ],
+        "type": "object"
+      },
+      "ModelRef": {
+        "additionalProperties": false,
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "providerID": {
+            "type": "string"
+          },
+          "variant": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "providerID"
+        ],
+        "type": "object"
+      },
+      "RevertState": {
+        "additionalProperties": false,
+        "properties": {
+          "diff": {
+            "type": "string"
+          },
+          "files": {
+            "items": {
+              "$ref": "#/$defs/FileDiff"
+            },
+            "type": "array"
+          },
+          "messageID": {
+            "pattern": "^msg_",
+            "type": "string"
+          },
+          "partID": {
+            "type": "string"
+          },
+          "snapshot": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "messageID"
+        ],
+        "type": "object"
+      },
+      "FileDiff": {
+        "additionalProperties": false,
+        "properties": {
+          "additions": {
+            "minimum": 0,
+            "type": "integer"
+          },
+          "deletions": {
+            "minimum": 0,
+            "type": "integer"
+          },
+          "patch": {
+            "type": "string"
+          },
+          "path": {
+            "type": "string"
+          },
+          "status": {
+            "enum": [
+              "added",
+              "modified",
+              "deleted"
+            ],
+            "type": "string"
+          }
+        },
+        "required": [
+          "path",
+          "status",
+          "additions",
+          "deletions",
+          "patch"
+        ],
+        "type": "object"
+      }
+    }
   },
   "recordSchema": {
-    "type": "object",
     "properties": {
       "direction": {
-        "type": "string",
         "enum": [
           "client-to-agent"
-        ]
+        ],
+        "type": "string"
       },
       "request": {
-        "type": "object",
         "properties": {
-          "method": {
-            "type": "string",
-            "enum": [
-              "POST"
-            ]
-          },
-          "route": {
-            "type": "string",
-            "enum": [
-              "/api/session"
-            ]
-          },
           "body": {
-            "type": "object",
+            "additionalProperties": false,
             "properties": {
               "agent": {
                 "type": "string"
               },
               "id": {
+                "pattern": "^ses",
                 "type": "string"
               },
               "location": {
-                "type": "object",
-                "properties": {
-                  "directory": {
-                    "type": "string"
-                  },
-                  "workspaceID": {
-                    "type": "string"
-                  }
-                },
-                "required": [
-                  "directory"
-                ]
+                "$ref": "#/$defs/LocationRef"
               },
               "model": {
-                "type": "object",
-                "properties": {
-                  "id": {
-                    "type": "string"
-                  },
-                  "providerID": {
-                    "type": "string"
-                  },
-                  "variant": {
-                    "type": "string"
-                  }
-                },
-                "required": [
-                  "id",
-                  "providerID"
-                ]
+                "$ref": "#/$defs/ModelRef"
               }
-            }
+            },
+            "type": "object"
+          },
+          "method": {
+            "enum": [
+              "POST"
+            ],
+            "type": "string"
+          },
+          "route": {
+            "enum": [
+              "/api/session"
+            ],
+            "type": "string"
           }
         },
         "required": [
           "method",
           "route",
           "body"
-        ]
+        ],
+        "type": "object"
       }
     },
     "required": [
       "direction",
       "request"
-    ]
+    ],
+    "type": "object",
+    "$defs": {
+      "LocationRef": {
+        "additionalProperties": false,
+        "properties": {
+          "directory": {
+            "type": "string"
+          },
+          "workspaceID": {
+            "pattern": "^wrk",
+            "type": "string"
+          }
+        },
+        "required": [
+          "directory"
+        ],
+        "type": "object"
+      },
+      "ModelRef": {
+        "additionalProperties": false,
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "providerID": {
+            "type": "string"
+          },
+          "variant": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "providerID"
+        ],
+        "type": "object"
+      }
+    }
+  },
+  "schemaFidelity": {
+    "payload": "semantic",
+    "result": "semantic",
+    "carrier": "semantic"
   },
   "evidence": {
     "existence": [

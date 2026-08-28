@@ -6,7 +6,14 @@
       "do": {
         "emit": {
           "event": "turn/started",
-          "with": { "threadId": "$threadId", "turn": { "id": "$uuid:turn", "status": "inProgress" } }
+          "with": {
+            "threadId": "$threadId",
+            "turn": {
+              "id": "$uuid:turn",
+              "status": "inProgress",
+              "items": []
+            }
+          }
         }
       }
     },
@@ -23,7 +30,12 @@
               "type": "userMessage",
               "id": "$uuid:user-item",
               "clientId": null,
-              "content": [{ "type": "text", "text": "$stimulus.text" }]
+              "content": [
+                {
+                  "type": "text",
+                  "text": "$stimulus.text"
+                }
+              ]
             }
           }
         }
@@ -55,7 +67,12 @@
           "event": "turn/completed",
           "with": {
             "threadId": "$threadId",
-            "turn": { "id": "$uuid:turn", "status": "completed", "error": null }
+            "turn": {
+              "id": "$uuid:turn",
+              "status": "completed",
+              "error": null,
+              "items": []
+            }
           }
         }
       }

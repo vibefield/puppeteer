@@ -10,16 +10,14 @@
   "direction": "client-to-agent",
   "trigger": "Reset worktree — Reset a worktree branch to the primary default branch.",
   "payloadSchema": {
-    "type": "object",
     "properties": {
+      "body": {
+        "$ref": "#/$defs/WorktreeResetInput"
+      },
       "method": {
         "type": "string"
       },
-      "route": {
-        "type": "string"
-      },
       "query": {
-        "type": "object",
         "properties": {
           "directory": {
             "type": "string"
@@ -27,10 +25,21 @@
           "workspace": {
             "type": "string"
           }
-        }
+        },
+        "type": "object"
       },
-      "body": {
-        "type": "object",
+      "route": {
+        "type": "string"
+      }
+    },
+    "required": [
+      "method",
+      "route"
+    ],
+    "type": "object",
+    "$defs": {
+      "WorktreeResetInput": {
+        "additionalProperties": false,
         "properties": {
           "directory": {
             "type": "string"
@@ -38,36 +47,24 @@
         },
         "required": [
           "directory"
-        ]
+        ],
+        "type": "object"
       }
-    },
-    "required": [
-      "method",
-      "route"
-    ]
+    }
   },
   "resultSchema": {
-    "type": "object",
     "properties": {
+      "body": {
+        "description": "Worktree reset",
+        "type": "boolean"
+      },
       "method": {
-        "type": "string",
         "enum": [
           "POST"
-        ]
-      },
-      "route": {
-        "type": "string",
-        "enum": [
-          "/experimental/worktree/reset"
-        ]
-      },
-      "status": {
-        "type": "integer",
-        "minimum": 200,
-        "maximum": 299
+        ],
+        "type": "string"
       },
       "query": {
-        "type": "object",
         "properties": {
           "directory": {
             "type": "string"
@@ -75,10 +72,19 @@
           "workspace": {
             "type": "string"
           }
-        }
+        },
+        "type": "object"
       },
-      "body": {
-        "type": "boolean"
+      "route": {
+        "enum": [
+          "/experimental/worktree/reset"
+        ],
+        "type": "string"
+      },
+      "status": {
+        "maximum": 299,
+        "minimum": 200,
+        "type": "integer"
       }
     },
     "required": [
@@ -86,34 +92,29 @@
       "route",
       "status",
       "body"
-    ]
+    ],
+    "type": "object"
   },
   "recordSchema": {
-    "type": "object",
     "properties": {
       "direction": {
-        "type": "string",
         "enum": [
           "client-to-agent"
-        ]
+        ],
+        "type": "string"
       },
       "request": {
-        "type": "object",
         "properties": {
+          "body": {
+            "$ref": "#/$defs/WorktreeResetInput"
+          },
           "method": {
-            "type": "string",
             "enum": [
               "POST"
-            ]
-          },
-          "route": {
-            "type": "string",
-            "enum": [
-              "/experimental/worktree/reset"
-            ]
+            ],
+            "type": "string"
           },
           "query": {
-            "type": "object",
             "properties": {
               "directory": {
                 "type": "string"
@@ -121,30 +122,47 @@
               "workspace": {
                 "type": "string"
               }
-            }
-          },
-          "body": {
-            "type": "object",
-            "properties": {
-              "directory": {
-                "type": "string"
-              }
             },
-            "required": [
-              "directory"
-            ]
+            "type": "object"
+          },
+          "route": {
+            "enum": [
+              "/experimental/worktree/reset"
+            ],
+            "type": "string"
           }
         },
         "required": [
           "method",
           "route"
-        ]
+        ],
+        "type": "object"
       }
     },
     "required": [
       "direction",
       "request"
-    ]
+    ],
+    "type": "object",
+    "$defs": {
+      "WorktreeResetInput": {
+        "additionalProperties": false,
+        "properties": {
+          "directory": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "directory"
+        ],
+        "type": "object"
+      }
+    }
+  },
+  "schemaFidelity": {
+    "payload": "semantic",
+    "result": "semantic",
+    "carrier": "semantic"
   },
   "evidence": {
     "existence": [

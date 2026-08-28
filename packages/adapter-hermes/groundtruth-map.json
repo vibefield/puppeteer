@@ -3,9 +3,12 @@
   "provider": "hermes",
   "adapterPackage": "@vibecook/puppeteer-adapter-hermes",
   "groundTruth": "packages/surface/vendors/hermes/groundtruth.json",
-  "groundTruthSha256": "5e924b841c52e4814e5766fd2341a22f12bb7d0d865b2d0925348959062f4c22",
+  "groundTruthSha256": "2da50dd5a46ef027b47aa0b30396de74a9385db910a9a3a8287d7e2314a066fc",
   "semanticEvents": [
     "approval.request",
+    "clarify.expire",
+    "clarify.request",
+    "error",
     "gateway.ready",
     "message.complete",
     "message.delta",
@@ -13,6 +16,13 @@
     "reasoning.available",
     "session.info",
     "sessions.changed",
+    "status.update",
+    "subagent.complete",
+    "subagent.progress",
+    "subagent.spawn_requested",
+    "subagent.start",
+    "subagent.thinking",
+    "subagent.tool",
     "thinking.delta",
     "tool.complete",
     "tool.generating",
@@ -24,13 +34,13 @@
     "session.resume"
   ],
   "unmapped": {
-    "count": 13,
-    "sha256": "717445d93ba102ec00efe94a84a98997411ba0982dbfe2c76e5f97d21cb94b24",
+    "count": 188,
+    "sha256": "85aaacedf1276217c88a647978a5a3296e3c0a92f793848ea7b24e966cd5b96c",
     "policy": "Not consumed by this adapter version. They remain provider-native ground truth and require explicit review when this lock changes."
   },
   "totals": {
-    "groundTruth": 28,
-    "semantic": 12,
+    "groundTruth": 213,
+    "semantic": 22,
     "observedOrControlled": 3
   }
 }

@@ -10,16 +10,27 @@
   "direction": "client-to-agent",
   "trigger": "Publish TUI event — Publish a TUI event.",
   "payloadSchema": {
-    "type": "object",
     "properties": {
+      "body": {
+        "anyOf": [
+          {
+            "$ref": "#/$defs/EventTuiPromptAppend"
+          },
+          {
+            "$ref": "#/$defs/EventTuiCommandExecute"
+          },
+          {
+            "$ref": "#/$defs/EventTuiToastShow"
+          },
+          {
+            "$ref": "#/$defs/EventTuiSessionSelect"
+          }
+        ]
+      },
       "method": {
         "type": "string"
       },
-      "route": {
-        "type": "string"
-      },
       "query": {
-        "type": "object",
         "properties": {
           "directory": {
             "type": "string"
@@ -27,147 +38,190 @@
           "workspace": {
             "type": "string"
           }
-        }
+        },
+        "type": "object"
       },
-      "body": {
-        "anyOf": [
-          {
-            "type": "object",
-            "properties": {
-              "properties": {
-                "type": "object",
-                "properties": {
-                  "text": {
-                    "type": "string"
-                  }
-                },
-                "required": [
-                  "text"
-                ]
-              },
-              "type": {
-                "type": "string"
-              }
-            },
-            "required": [
-              "properties",
-              "type"
-            ]
-          },
-          {
-            "type": "object",
-            "properties": {
-              "properties": {
-                "type": "object",
-                "properties": {
-                  "command": {
-                    "anyOf": [
-                      {
-                        "type": "string"
-                      }
-                    ]
-                  }
-                },
-                "required": [
-                  "command"
-                ]
-              },
-              "type": {
-                "type": "string"
-              }
-            },
-            "required": [
-              "properties",
-              "type"
-            ]
-          },
-          {
-            "type": "object",
-            "properties": {
-              "properties": {
-                "type": "object",
-                "properties": {
-                  "duration": {
-                    "type": "integer",
-                    "exclusiveMinimum": 0
-                  },
-                  "message": {
-                    "type": "string"
-                  },
-                  "title": {
-                    "type": "string"
-                  },
-                  "variant": {
-                    "type": "string"
-                  }
-                },
-                "required": [
-                  "message",
-                  "variant"
-                ]
-              },
-              "type": {
-                "type": "string"
-              }
-            },
-            "required": [
-              "properties",
-              "type"
-            ]
-          },
-          {
-            "type": "object",
-            "properties": {
-              "properties": {
-                "type": "object",
-                "properties": {
-                  "sessionID": {
-                    "type": "string"
-                  }
-                },
-                "required": [
-                  "sessionID"
-                ]
-              },
-              "type": {
-                "type": "string"
-              }
-            },
-            "required": [
-              "properties",
-              "type"
-            ]
-          }
-        ]
+      "route": {
+        "type": "string"
       }
     },
     "required": [
       "method",
       "route"
-    ]
+    ],
+    "type": "object",
+    "$defs": {
+      "EventTuiPromptAppend": {
+        "additionalProperties": false,
+        "properties": {
+          "properties": {
+            "additionalProperties": false,
+            "properties": {
+              "text": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "text"
+            ],
+            "type": "object"
+          },
+          "type": {
+            "enum": [
+              "tui.prompt.append"
+            ],
+            "type": "string"
+          }
+        },
+        "required": [
+          "type",
+          "properties"
+        ],
+        "type": "object"
+      },
+      "EventTuiCommandExecute": {
+        "additionalProperties": false,
+        "properties": {
+          "properties": {
+            "additionalProperties": false,
+            "properties": {
+              "command": {
+                "anyOf": [
+                  {
+                    "enum": [
+                      "session.list",
+                      "session.new",
+                      "session.share",
+                      "session.interrupt",
+                      "session.compact",
+                      "session.page.up",
+                      "session.page.down",
+                      "session.line.up",
+                      "session.line.down",
+                      "session.half.page.up",
+                      "session.half.page.down",
+                      "session.first",
+                      "session.last",
+                      "prompt.clear",
+                      "prompt.submit",
+                      "agent.cycle"
+                    ],
+                    "type": "string"
+                  },
+                  {
+                    "type": "string"
+                  }
+                ]
+              }
+            },
+            "required": [
+              "command"
+            ],
+            "type": "object"
+          },
+          "type": {
+            "enum": [
+              "tui.command.execute"
+            ],
+            "type": "string"
+          }
+        },
+        "required": [
+          "type",
+          "properties"
+        ],
+        "type": "object"
+      },
+      "EventTuiToastShow": {
+        "additionalProperties": false,
+        "properties": {
+          "properties": {
+            "additionalProperties": false,
+            "properties": {
+              "duration": {
+                "exclusiveMinimum": 0,
+                "type": "integer"
+              },
+              "message": {
+                "type": "string"
+              },
+              "title": {
+                "type": "string"
+              },
+              "variant": {
+                "enum": [
+                  "info",
+                  "success",
+                  "warning",
+                  "error"
+                ],
+                "type": "string"
+              }
+            },
+            "required": [
+              "message",
+              "variant"
+            ],
+            "type": "object"
+          },
+          "type": {
+            "enum": [
+              "tui.toast.show"
+            ],
+            "type": "string"
+          }
+        },
+        "required": [
+          "type",
+          "properties"
+        ],
+        "type": "object"
+      },
+      "EventTuiSessionSelect": {
+        "additionalProperties": false,
+        "properties": {
+          "properties": {
+            "additionalProperties": false,
+            "properties": {
+              "sessionID": {
+                "description": "Session ID to navigate to",
+                "pattern": "^ses",
+                "type": "string"
+              }
+            },
+            "required": [
+              "sessionID"
+            ],
+            "type": "object"
+          },
+          "type": {
+            "enum": [
+              "tui.session.select"
+            ],
+            "type": "string"
+          }
+        },
+        "required": [
+          "type",
+          "properties"
+        ],
+        "type": "object"
+      }
+    }
   },
   "resultSchema": {
-    "type": "object",
     "properties": {
+      "body": {
+        "description": "Event published successfully",
+        "type": "boolean"
+      },
       "method": {
-        "type": "string",
         "enum": [
           "POST"
-        ]
-      },
-      "route": {
-        "type": "string",
-        "enum": [
-          "/tui/publish"
-        ]
-      },
-      "status": {
-        "type": "integer",
-        "minimum": 200,
-        "maximum": 299
+        ],
+        "type": "string"
       },
       "query": {
-        "type": "object",
         "properties": {
           "directory": {
             "type": "string"
@@ -175,10 +229,19 @@
           "workspace": {
             "type": "string"
           }
-        }
+        },
+        "type": "object"
       },
-      "body": {
-        "type": "boolean"
+      "route": {
+        "enum": [
+          "/tui/publish"
+        ],
+        "type": "string"
+      },
+      "status": {
+        "maximum": 299,
+        "minimum": 200,
+        "type": "integer"
       }
     },
     "required": [
@@ -186,34 +249,42 @@
       "route",
       "status",
       "body"
-    ]
+    ],
+    "type": "object"
   },
   "recordSchema": {
-    "type": "object",
     "properties": {
       "direction": {
-        "type": "string",
         "enum": [
           "client-to-agent"
-        ]
+        ],
+        "type": "string"
       },
       "request": {
-        "type": "object",
         "properties": {
+          "body": {
+            "anyOf": [
+              {
+                "$ref": "#/$defs/EventTuiPromptAppend"
+              },
+              {
+                "$ref": "#/$defs/EventTuiCommandExecute"
+              },
+              {
+                "$ref": "#/$defs/EventTuiToastShow"
+              },
+              {
+                "$ref": "#/$defs/EventTuiSessionSelect"
+              }
+            ]
+          },
           "method": {
-            "type": "string",
             "enum": [
               "POST"
-            ]
-          },
-          "route": {
-            "type": "string",
-            "enum": [
-              "/tui/publish"
-            ]
+            ],
+            "type": "string"
           },
           "query": {
-            "type": "object",
             "properties": {
               "directory": {
                 "type": "string"
@@ -221,130 +292,191 @@
               "workspace": {
                 "type": "string"
               }
-            }
+            },
+            "type": "object"
           },
-          "body": {
-            "anyOf": [
-              {
-                "type": "object",
-                "properties": {
-                  "properties": {
-                    "type": "object",
-                    "properties": {
-                      "text": {
-                        "type": "string"
-                      }
-                    },
-                    "required": [
-                      "text"
-                    ]
-                  },
-                  "type": {
-                    "type": "string"
-                  }
-                },
-                "required": [
-                  "properties",
-                  "type"
-                ]
-              },
-              {
-                "type": "object",
-                "properties": {
-                  "properties": {
-                    "type": "object",
-                    "properties": {
-                      "command": {
-                        "anyOf": [
-                          {
-                            "type": "string"
-                          }
-                        ]
-                      }
-                    },
-                    "required": [
-                      "command"
-                    ]
-                  },
-                  "type": {
-                    "type": "string"
-                  }
-                },
-                "required": [
-                  "properties",
-                  "type"
-                ]
-              },
-              {
-                "type": "object",
-                "properties": {
-                  "properties": {
-                    "type": "object",
-                    "properties": {
-                      "duration": {
-                        "type": "integer",
-                        "exclusiveMinimum": 0
-                      },
-                      "message": {
-                        "type": "string"
-                      },
-                      "title": {
-                        "type": "string"
-                      },
-                      "variant": {
-                        "type": "string"
-                      }
-                    },
-                    "required": [
-                      "message",
-                      "variant"
-                    ]
-                  },
-                  "type": {
-                    "type": "string"
-                  }
-                },
-                "required": [
-                  "properties",
-                  "type"
-                ]
-              },
-              {
-                "type": "object",
-                "properties": {
-                  "properties": {
-                    "type": "object",
-                    "properties": {
-                      "sessionID": {
-                        "type": "string"
-                      }
-                    },
-                    "required": [
-                      "sessionID"
-                    ]
-                  },
-                  "type": {
-                    "type": "string"
-                  }
-                },
-                "required": [
-                  "properties",
-                  "type"
-                ]
-              }
-            ]
+          "route": {
+            "enum": [
+              "/tui/publish"
+            ],
+            "type": "string"
           }
         },
         "required": [
           "method",
           "route"
-        ]
+        ],
+        "type": "object"
       }
     },
     "required": [
       "direction",
       "request"
-    ]
+    ],
+    "type": "object",
+    "$defs": {
+      "EventTuiPromptAppend": {
+        "additionalProperties": false,
+        "properties": {
+          "properties": {
+            "additionalProperties": false,
+            "properties": {
+              "text": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "text"
+            ],
+            "type": "object"
+          },
+          "type": {
+            "enum": [
+              "tui.prompt.append"
+            ],
+            "type": "string"
+          }
+        },
+        "required": [
+          "type",
+          "properties"
+        ],
+        "type": "object"
+      },
+      "EventTuiCommandExecute": {
+        "additionalProperties": false,
+        "properties": {
+          "properties": {
+            "additionalProperties": false,
+            "properties": {
+              "command": {
+                "anyOf": [
+                  {
+                    "enum": [
+                      "session.list",
+                      "session.new",
+                      "session.share",
+                      "session.interrupt",
+                      "session.compact",
+                      "session.page.up",
+                      "session.page.down",
+                      "session.line.up",
+                      "session.line.down",
+                      "session.half.page.up",
+                      "session.half.page.down",
+                      "session.first",
+                      "session.last",
+                      "prompt.clear",
+                      "prompt.submit",
+                      "agent.cycle"
+                    ],
+                    "type": "string"
+                  },
+                  {
+                    "type": "string"
+                  }
+                ]
+              }
+            },
+            "required": [
+              "command"
+            ],
+            "type": "object"
+          },
+          "type": {
+            "enum": [
+              "tui.command.execute"
+            ],
+            "type": "string"
+          }
+        },
+        "required": [
+          "type",
+          "properties"
+        ],
+        "type": "object"
+      },
+      "EventTuiToastShow": {
+        "additionalProperties": false,
+        "properties": {
+          "properties": {
+            "additionalProperties": false,
+            "properties": {
+              "duration": {
+                "exclusiveMinimum": 0,
+                "type": "integer"
+              },
+              "message": {
+                "type": "string"
+              },
+              "title": {
+                "type": "string"
+              },
+              "variant": {
+                "enum": [
+                  "info",
+                  "success",
+                  "warning",
+                  "error"
+                ],
+                "type": "string"
+              }
+            },
+            "required": [
+              "message",
+              "variant"
+            ],
+            "type": "object"
+          },
+          "type": {
+            "enum": [
+              "tui.toast.show"
+            ],
+            "type": "string"
+          }
+        },
+        "required": [
+          "type",
+          "properties"
+        ],
+        "type": "object"
+      },
+      "EventTuiSessionSelect": {
+        "additionalProperties": false,
+        "properties": {
+          "properties": {
+            "additionalProperties": false,
+            "properties": {
+              "sessionID": {
+                "description": "Session ID to navigate to",
+                "pattern": "^ses",
+                "type": "string"
+              }
+            },
+            "required": [
+              "sessionID"
+            ],
+            "type": "object"
+          },
+          "type": {
+            "enum": [
+              "tui.session.select"
+            ],
+            "type": "string"
+          }
+        },
+        "required": [
+          "type",
+          "properties"
+        ],
+        "type": "object"
+      }
+    }
+  },
+  "schemaFidelity": {
+    "payload": "semantic",
+    "result": "semantic",
+    "carrier": "semantic"
   },
   "evidence": {
     "existence": [

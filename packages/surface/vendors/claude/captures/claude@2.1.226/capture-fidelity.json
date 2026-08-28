@@ -1,0 +1,11 @@
+{
+  "format": "puppeteer-capture-fidelity/1",
+  "vendor": "claude",
+  "vendorVersion": "2.1.226",
+  "defaultRepresentation": "type-preserving-redaction",
+  "nativeArtifacts": ["*/*.jsonl"],
+  "limitations": [
+    "Only hook stdin JSON carriers were promoted; transcripts and process diagnostics are outside this capture set.",
+    "Sensitive scalar values are replaced in place while JSON keys, containers, primitive types, and record ordering are retained."
+  ]
+}

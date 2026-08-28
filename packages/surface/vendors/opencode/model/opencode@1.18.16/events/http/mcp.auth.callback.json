@@ -10,38 +10,9 @@
   "direction": "client-to-agent",
   "trigger": "Complete MCP OAuth — Complete OAuth authentication for a Model Context Protocol (MCP) server using the authorization code.",
   "payloadSchema": {
-    "type": "object",
     "properties": {
-      "method": {
-        "type": "string"
-      },
-      "route": {
-        "type": "string"
-      },
-      "params": {
-        "type": "object",
-        "properties": {
-          "name": {
-            "type": "string"
-          }
-        },
-        "required": [
-          "name"
-        ]
-      },
-      "query": {
-        "type": "object",
-        "properties": {
-          "directory": {
-            "type": "string"
-          },
-          "workspace": {
-            "type": "string"
-          }
-        }
-      },
       "body": {
-        "type": "object",
+        "additionalProperties": false,
         "properties": {
           "code": {
             "type": "string"
@@ -49,37 +20,13 @@
         },
         "required": [
           "code"
-        ]
-      }
-    },
-    "required": [
-      "method",
-      "route",
-      "params"
-    ]
-  },
-  "resultSchema": {
-    "type": "object",
-    "properties": {
+        ],
+        "type": "object"
+      },
       "method": {
-        "type": "string",
-        "enum": [
-          "POST"
-        ]
-      },
-      "route": {
-        "type": "string",
-        "enum": [
-          "/mcp/:name/auth/callback"
-        ]
-      },
-      "status": {
-        "type": "integer",
-        "minimum": 200,
-        "maximum": 299
+        "type": "string"
       },
       "params": {
-        "type": "object",
         "properties": {
           "name": {
             "type": "string"
@@ -87,10 +34,10 @@
         },
         "required": [
           "name"
-        ]
+        ],
+        "type": "object"
       },
       "query": {
-        "type": "object",
         "properties": {
           "directory": {
             "type": "string"
@@ -98,37 +45,63 @@
           "workspace": {
             "type": "string"
           }
-        }
+        },
+        "type": "object"
       },
+      "route": {
+        "type": "string"
+      }
+    },
+    "required": [
+      "method",
+      "route",
+      "params"
+    ],
+    "type": "object"
+  },
+  "resultSchema": {
+    "properties": {
       "body": {
-        "anyOf": [
-          {
-            "type": "object",
-            "properties": {
-              "status": {
-                "type": "string"
-              }
-            },
-            "required": [
-              "status"
-            ]
-          },
-          {
-            "type": "object",
-            "properties": {
-              "error": {
-                "type": "string"
-              },
-              "status": {
-                "type": "string"
-              }
-            },
-            "required": [
-              "error",
-              "status"
-            ]
+        "$ref": "#/$defs/MCPStatus"
+      },
+      "method": {
+        "enum": [
+          "POST"
+        ],
+        "type": "string"
+      },
+      "params": {
+        "properties": {
+          "name": {
+            "type": "string"
           }
-        ]
+        },
+        "required": [
+          "name"
+        ],
+        "type": "object"
+      },
+      "query": {
+        "properties": {
+          "directory": {
+            "type": "string"
+          },
+          "workspace": {
+            "type": "string"
+          }
+        },
+        "type": "object"
+      },
+      "route": {
+        "enum": [
+          "/mcp/:name/auth/callback"
+        ],
+        "type": "string"
+      },
+      "status": {
+        "maximum": 299,
+        "minimum": 200,
+        "type": "integer"
       }
     },
     "required": [
@@ -137,56 +110,125 @@
       "status",
       "params",
       "body"
-    ]
-  },
-  "recordSchema": {
+    ],
     "type": "object",
-    "properties": {
-      "direction": {
-        "type": "string",
-        "enum": [
-          "client-to-agent"
+    "$defs": {
+      "MCPStatus": {
+        "anyOf": [
+          {
+            "$ref": "#/$defs/MCPStatusConnected"
+          },
+          {
+            "$ref": "#/$defs/MCPStatusDisabled"
+          },
+          {
+            "$ref": "#/$defs/MCPStatusFailed"
+          },
+          {
+            "$ref": "#/$defs/MCPStatusNeedsAuth"
+          },
+          {
+            "$ref": "#/$defs/MCPStatusNeedsClientRegistration"
+          }
         ]
       },
-      "request": {
-        "type": "object",
+      "MCPStatusConnected": {
+        "additionalProperties": false,
         "properties": {
-          "method": {
-            "type": "string",
+          "status": {
             "enum": [
-              "POST"
-            ]
-          },
-          "route": {
-            "type": "string",
+              "connected"
+            ],
+            "type": "string"
+          }
+        },
+        "required": [
+          "status"
+        ],
+        "type": "object"
+      },
+      "MCPStatusDisabled": {
+        "additionalProperties": false,
+        "properties": {
+          "status": {
             "enum": [
-              "/mcp/:name/auth/callback"
-            ]
+              "disabled"
+            ],
+            "type": "string"
+          }
+        },
+        "required": [
+          "status"
+        ],
+        "type": "object"
+      },
+      "MCPStatusFailed": {
+        "additionalProperties": false,
+        "properties": {
+          "error": {
+            "type": "string"
           },
-          "params": {
-            "type": "object",
-            "properties": {
-              "name": {
-                "type": "string"
-              }
-            },
-            "required": [
-              "name"
-            ]
+          "status": {
+            "enum": [
+              "failed"
+            ],
+            "type": "string"
+          }
+        },
+        "required": [
+          "status",
+          "error"
+        ],
+        "type": "object"
+      },
+      "MCPStatusNeedsAuth": {
+        "additionalProperties": false,
+        "properties": {
+          "status": {
+            "enum": [
+              "needs_auth"
+            ],
+            "type": "string"
+          }
+        },
+        "required": [
+          "status"
+        ],
+        "type": "object"
+      },
+      "MCPStatusNeedsClientRegistration": {
+        "additionalProperties": false,
+        "properties": {
+          "error": {
+            "type": "string"
           },
-          "query": {
-            "type": "object",
-            "properties": {
-              "directory": {
-                "type": "string"
-              },
-              "workspace": {
-                "type": "string"
-              }
-            }
-          },
+          "status": {
+            "enum": [
+              "needs_client_registration"
+            ],
+            "type": "string"
+          }
+        },
+        "required": [
+          "status",
+          "error"
+        ],
+        "type": "object"
+      }
+    }
+  },
+  "recordSchema": {
+    "properties": {
+      "direction": {
+        "enum": [
+          "client-to-agent"
+        ],
+        "type": "string"
+      },
+      "request": {
+        "properties": {
           "body": {
-            "type": "object",
+            "additionalProperties": false,
             "properties": {
               "code": {
                 "type": "string"
@@ -194,20 +236,62 @@
             },
             "required": [
               "code"
-            ]
+            ],
+            "type": "object"
+          },
+          "method": {
+            "enum": [
+              "POST"
+            ],
+            "type": "string"
+          },
+          "params": {
+            "properties": {
+              "name": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "name"
+            ],
+            "type": "object"
+          },
+          "query": {
+            "properties": {
+              "directory": {
+                "type": "string"
+              },
+              "workspace": {
+                "type": "string"
+              }
+            },
+            "type": "object"
+          },
+          "route": {
+            "enum": [
+              "/mcp/:name/auth/callback"
+            ],
+            "type": "string"
           }
         },
         "required": [
           "method",
           "route",
           "params"
-        ]
+        ],
+        "type": "object"
       }
     },
     "required": [
       "direction",
       "request"
-    ]
+    ],
+    "type": "object"
+  },
+  "schemaFidelity": {
+    "payload": "semantic",
+    "result": "semantic",
+    "carrier": "semantic"
   },
   "evidence": {
     "existence": [

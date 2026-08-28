@@ -10,55 +10,65 @@
   "direction": "agent-to-client",
   "trigger": "Published on the native GET /event stream.",
   "payloadSchema": {
-    "type": "object",
+    "additionalProperties": false,
     "properties": {
       "exitCode": {
-        "type": "integer",
-        "minimum": 0
+        "minimum": 0,
+        "type": "integer"
       },
       "id": {
+        "pattern": "^pty",
         "type": "string"
-      }
-    },
-    "required": [
-      "exitCode",
-      "id"
-    ]
-  },
-  "recordSchema": {
-    "type": "object",
-    "properties": {
-      "id": {
-        "type": "string"
-      },
-      "properties": {
-        "type": "object",
-        "properties": {
-          "exitCode": {
-            "type": "integer",
-            "minimum": 0
-          },
-          "id": {
-            "type": "string"
-          }
-        },
-        "required": [
-          "exitCode",
-          "id"
-        ]
-      },
-      "type": {
-        "type": "string",
-        "enum": [
-          "pty.exited"
-        ]
       }
     },
     "required": [
       "id",
-      "properties",
-      "type"
-    ]
+      "exitCode"
+    ],
+    "type": "object"
+  },
+  "recordSchema": {
+    "additionalProperties": false,
+    "properties": {
+      "id": {
+        "pattern": "^evt_",
+        "type": "string"
+      },
+      "properties": {
+        "additionalProperties": false,
+        "properties": {
+          "exitCode": {
+            "minimum": 0,
+            "type": "integer"
+          },
+          "id": {
+            "pattern": "^pty",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "exitCode"
+        ],
+        "type": "object"
+      },
+      "type": {
+        "enum": [
+          "pty.exited"
+        ],
+        "type": "string"
+      }
+    },
+    "required": [
+      "id",
+      "type",
+      "properties"
+    ],
+    "type": "object"
+  },
+  "schemaFidelity": {
+    "payload": "exact",
+    "carrier": "exact"
   },
   "evidence": {
     "existence": [

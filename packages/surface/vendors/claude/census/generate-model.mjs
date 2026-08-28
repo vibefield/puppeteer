@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 /**
- * Generate a claim-addressable ASM v2 candidate from a pinned Claude Code
+ * Generate a claim-addressable ASM v3 candidate from a pinned Claude Code
  * artifact, sanitized census records, and a reviewed snapshot of Anthropic's
  * official hook reference.
  *
@@ -10,7 +10,7 @@
  */
 import { createHash } from 'node:crypto';
 import { spawnSync } from 'node:child_process';
-import { existsSync, mkdirSync, readFileSync, statSync, writeFileSync } from 'node:fs';
+import { existsSync, mkdirSync, readFileSync, rmSync, statSync, writeFileSync } from 'node:fs';
 import { arch, platform } from 'node:os';
 import { dirname, join, relative, resolve, sep } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -29,6 +29,8 @@ const boolean = { type: 'boolean' };
 const object = { type: 'object' };
 const array = { type: 'array' };
 const unknown = {};
+const enumString = (...values) => ({ type: 'string', enum: values });
+const nullableString = { type: ['string', 'null'] };
 const RUNTIME_CLAIM = 'claude-runtime-headless';
 const BINARY_CLAIM = 'claude-binary-probe';
 const DOCS_CLAIM = 'claude-official-hooks';
@@ -55,11 +57,57 @@ const COMMON_PROPERTIES = {
   transcript_path: string,
   cwd: string,
   prompt_id: string,
-  permission_mode: string,
-  effort: object,
+  permission_mode: enumString('default', 'plan', 'acceptEdits', 'auto', 'dontAsk', 'bypassPermissions'),
+  effort: {
+    type: 'object',
+    properties: { level: enumString('low', 'medium', 'high', 'xhigh', 'max') },
+    required: ['level'],
+  },
   hook_event_name: string,
   agent_id: string,
   agent_type: string,
+};
+
+const TOOL_INPUTS = {
+  Bash: {
+    type: 'object',
+    properties: { command: string, description: string, timeout: number, run_in_background: boolean },
+    required: ['command'],
+  },
+  PowerShell: {
+    type: 'object',
+    properties: { command: string, description: string, timeout: number, run_in_background: boolean },
+    required: ['command'],
+  },
+  Write: {
+    type: 'object',
+    properties: { file_path: string, content: string },
+    required: ['file_path', 'content'],
+  },
+  Edit: {
+    type: 'object',
+    properties: { file_path: string, old_string: string, new_string: string, replace_all: boolean },
+    required: ['file_path', 'old_string', 'new_string'],
+  },
+  Read: {
+    type: 'object',
+    properties: { file_path: string, offset: number, limit: number },
+    required: ['file_path'],
+  },
+};
+
+const COMMON_RESULT_SCHEMA = {
+  type: 'object',
+  properties: {
+    continue: boolean,
+    stopReason: string,
+    suppressOutput: boolean,
+    systemMessage: string,
+    terminalSequence: string,
+    decision: enumString('block'),
+    reason: string,
+    hookSpecificOutput: object,
+  },
 };
 
 /** Reviewed against https://code.claude.com/docs/en/hooks on 2026-08-09. */
@@ -67,13 +115,18 @@ const EVENT_SPECS = {
   SessionStart: {
     transport: 'command',
     required: ['source'],
-    fields: { source: string, model: string, agent_type: string, session_title: string },
+    fields: {
+      source: enumString('startup', 'resume', 'clear', 'compact', 'fork'),
+      model: string,
+      agent_type: string,
+      session_title: string,
+    },
     notes: 'Starts or resumes a session; source may be startup, resume, clear, compact, or fork.',
   },
   Setup: {
     transport: 'command',
     required: ['trigger'],
-    fields: { trigger: string },
+    fields: { trigger: enumString('init', 'maintenance') },
     notes: 'One-time initialization hook for --init-only, -p --init, and maintenance mode.',
   },
   InstructionsLoaded: {
@@ -132,7 +185,16 @@ const EVENT_SPECS = {
   },
   PostToolBatch: {
     required: ['tool_calls'],
-    fields: { tool_calls: { type: 'array', items: { type: 'object' } } },
+    fields: {
+      tool_calls: {
+        type: 'array',
+        items: {
+          type: 'object',
+          properties: { tool_name: string, tool_input: object, tool_use_id: string, tool_response: unknown },
+          required: ['tool_name', 'tool_input', 'tool_use_id', 'tool_response'],
+        },
+      },
+    },
     notes: 'Runs once after every call in a parallel tool batch resolves.',
   },
   PermissionDenied: {
@@ -142,7 +204,24 @@ const EVENT_SPECS = {
   },
   Notification: {
     required: ['message', 'notification_type'],
-    fields: { message: string, title: string, notification_type: string },
+    fields: {
+      message: string,
+      title: string,
+      notification_type: enumString(
+        'permission_prompt',
+        'idle_prompt',
+        'auth_success',
+        'elicitation_dialog',
+        'elicitation_url_dialog',
+        'elicitation_complete',
+        'elicitation_response',
+        'agent_needs_input',
+        'agent_completed',
+        'quota_auto_resume_fired',
+        'quota_auto_resume_stale',
+        'quota_auto_resume_disabled',
+      ),
+    },
     notes: 'Native Claude Code notification.',
   },
   SubagentStart: {
@@ -197,7 +276,22 @@ const EVENT_SPECS = {
   },
   StopFailure: {
     required: ['error'],
-    fields: { error: string, error_details: unknown, last_assistant_message: string },
+    fields: {
+      error: enumString(
+        'rate_limit',
+        'overloaded',
+        'authentication_failed',
+        'oauth_org_not_allowed',
+        'billing_error',
+        'invalid_request',
+        'model_not_found',
+        'server_error',
+        'max_output_tokens',
+        'unknown',
+      ),
+      error_details: unknown,
+      last_assistant_message: string,
+    },
     notes: 'The turn ended because of an API error; hook output is observational only.',
   },
   TeammateIdle: {
@@ -207,7 +301,10 @@ const EVENT_SPECS = {
   },
   ConfigChange: {
     required: ['source'],
-    fields: { source: string, file_path: string },
+    fields: {
+      source: enumString('user_settings', 'project_settings', 'local_settings', 'policy_settings', 'skills'),
+      file_path: string,
+    },
     notes: 'A settings, policy, or skill configuration source changed.',
   },
   CwdChanged: {
@@ -217,16 +314,17 @@ const EVENT_SPECS = {
   },
   DirectoryAdded: {
     required: ['directory', 'source'],
-    fields: { directory: string, source: string },
+    fields: { directory: string, source: enumString('slash_command', 'register_repo_root') },
     notes: 'An additional working directory was registered; the hook runs asynchronously.',
   },
   FileChanged: {
-    matcherRequired: true,
+    observationMode: 'matcher-required',
     required: ['file_path', 'event'],
-    fields: { file_path: string, event: string },
+    fields: { file_path: string, event: enumString('change', 'add', 'unlink') },
     notes: 'A configured matcher watch filename changed on disk; registration without a matcher observes nothing.',
   },
   WorktreeCreate: {
+    observationMode: 'response-required',
     required: ['name'],
     fields: { name: string },
     resultSchema: {
@@ -252,17 +350,17 @@ const EVENT_SPECS = {
   },
   PreCompact: {
     required: ['trigger', 'custom_instructions'],
-    fields: { trigger: string, custom_instructions: string },
+    fields: { trigger: enumString('manual', 'auto'), custom_instructions: nullableString },
     notes: 'Context compaction is about to run and can still be blocked.',
   },
   PostCompact: {
     required: ['trigger', 'compact_summary'],
-    fields: { trigger: string, compact_summary: string },
+    fields: { trigger: enumString('manual', 'auto'), compact_summary: string },
     notes: 'Context compaction completed.',
   },
   SessionEnd: {
     required: ['reason'],
-    fields: { reason: string },
+    fields: { reason: enumString('clear', 'resume', 'logout', 'prompt_input_exit', 'other') },
     notes: 'The native session terminated; prompt_id is absent before the first prompt.',
   },
   Elicitation: {
@@ -271,7 +369,7 @@ const EVENT_SPECS = {
       mcp_server_name: string,
       message: string,
       requested_schema: object,
-      mode: string,
+      mode: enumString('form', 'url'),
       url: string,
       elicitation_id: string,
     },
@@ -279,7 +377,13 @@ const EVENT_SPECS = {
   },
   ElicitationResult: {
     required: ['mcp_server_name', 'action'],
-    fields: { mcp_server_name: string, action: string, mode: string, elicitation_id: string, content: object },
+    fields: {
+      mcp_server_name: string,
+      action: enumString('accept', 'decline', 'cancel'),
+      mode: enumString('form', 'url'),
+      elicitation_id: string,
+      content: object,
+    },
     notes: 'The user response to an MCP elicitation before it is returned to the server.',
   },
 };
@@ -426,14 +530,67 @@ function kebab(value) {
 }
 
 function eventSchema(event, spec) {
-  return {
+  const schema = {
     type: 'object',
     properties: {
       ...COMMON_PROPERTIES,
+      hook_event_name: enumString(event),
       ...spec.fields,
     },
     required: [...new Set(['session_id', 'transcript_path', 'cwd', 'hook_event_name', ...spec.required])].sort(),
   };
+  if (['PreToolUse', 'PermissionRequest', 'PostToolUse', 'PostToolUseFailure', 'PermissionDenied'].includes(event)) {
+    schema.allOf = Object.entries(TOOL_INPUTS).map(([toolName, toolInput]) => ({
+      if: {
+        type: 'object',
+        properties: { tool_name: enumString(toolName) },
+        required: ['tool_name'],
+      },
+      then: { type: 'object', properties: { tool_input: toolInput }, required: ['tool_input'] },
+    }));
+  }
+  return schema;
+}
+
+function resultSchema(event, spec) {
+  if (spec.resultSchema) return spec.resultSchema;
+  const schema = structuredClone(COMMON_RESULT_SCHEMA);
+  const hookSpecific = {
+    PreToolUse: {
+      hookEventName: enumString('PreToolUse'),
+      permissionDecision: enumString('allow', 'deny', 'ask', 'defer'),
+      permissionDecisionReason: string,
+      updatedInput: object,
+      additionalContext: string,
+    },
+    PermissionRequest: {
+      hookEventName: enumString('PermissionRequest'),
+      decision: object,
+    },
+    PermissionDenied: { hookEventName: enumString('PermissionDenied'), retry: boolean },
+    PostToolUse: {
+      hookEventName: enumString('PostToolUse'),
+      additionalContext: string,
+      updatedToolOutput: unknown,
+    },
+    PostToolUseFailure: { hookEventName: enumString('PostToolUseFailure'), additionalContext: string },
+    PostToolBatch: { hookEventName: enumString('PostToolBatch'), additionalContext: string },
+    MessageDisplay: { hookEventName: enumString('MessageDisplay'), displayContent: string },
+    Elicitation: {
+      hookEventName: enumString('Elicitation'),
+      action: enumString('accept', 'decline', 'cancel'),
+      content: object,
+    },
+    ElicitationResult: {
+      hookEventName: enumString('ElicitationResult'),
+      action: enumString('accept', 'decline', 'cancel'),
+      content: object,
+    },
+  }[event];
+  if (hookSpecific) {
+    schema.properties.hookSpecificOutput = { type: 'object', properties: hookSpecific };
+  }
+  return schema;
 }
 
 function evidenceFor(claim) {
@@ -441,36 +598,48 @@ function evidenceFor(claim) {
 }
 
 export function generateClaudeModel({ artifact, version, capturedAt, retrievedAt = capturedAt }) {
-  if (!artifact || !version || !capturedAt) {
-    throw new Error('--artifact, --version, and --captured-at are required');
-  }
-  const artifactPath = resolve(artifact);
-  if (!existsSync(artifactPath) || !statSync(artifactPath).isFile())
-    throw new Error(`artifact is not a file: ${artifact}`);
-  const versionOutput = probe(artifactPath, ['--version']);
-  if (!versionOutput.startsWith(`${version} `)) throw new Error(`expected Claude ${version}, got ${versionOutput}`);
-  const helpOutput = probe(artifactPath, ['--help']);
+  if (!version || !capturedAt) throw new Error('--version and --captured-at are required');
   const captureRoot = join(vendorRoot, 'captures', `claude@${version}`);
   if (!existsSync(captureRoot)) throw new Error(`sanitized captures are missing: ${captureRoot}`);
 
   const modelRoot = join(vendorRoot, 'model', `claude@${version}`);
   const probeRoot = join(vendorRoot, 'probes', `claude@${version}`);
   const referenceRoot = join(vendorRoot, 'references', `claude@${version}`);
+  const retainedArtifactPath = join(probeRoot, 'artifact.json');
+  const retainedVersionPath = join(probeRoot, 'version.txt');
+  const retainedHelpPath = join(probeRoot, 'help.txt');
+  const artifactPath = artifact ? resolve(artifact) : undefined;
+  if (artifactPath && (!existsSync(artifactPath) || !statSync(artifactPath).isFile())) {
+    throw new Error(`artifact is not a file: ${artifact}`);
+  }
+  if (!artifactPath && ![retainedArtifactPath, retainedVersionPath, retainedHelpPath].every(existsSync)) {
+    throw new Error('the exact artifact or the retained version/help/artifact probes are required');
+  }
+  const versionOutput = artifactPath
+    ? probe(artifactPath, ['--version'])
+    : readFileSync(retainedVersionPath, 'utf8').trim();
+  if (!versionOutput.startsWith(`${version} `)) throw new Error(`expected Claude ${version}, got ${versionOutput}`);
+  const helpOutput = artifactPath ? probe(artifactPath, ['--help']) : readFileSync(retainedHelpPath, 'utf8').trimEnd();
+  rmSync(join(modelRoot, 'events'), { recursive: true, force: true });
   mkdirSync(join(modelRoot, 'events'), { recursive: true });
   mkdirSync(probeRoot, { recursive: true });
   mkdirSync(referenceRoot, { recursive: true });
 
-  const artifactDigest = sha256File(artifactPath);
-  writeFileSync(join(probeRoot, 'version.txt'), `${versionOutput}\n`);
-  writeFileSync(join(probeRoot, 'help.txt'), `${helpOutput}\n`);
-  writeJson(join(probeRoot, 'artifact.json'), {
-    vendor: 'claude',
-    version,
-    platform: `${platform()}-${arch()}`,
-    sha256: artifactDigest,
-    capturedAt,
-  });
-  writeJson(join(probeRoot, 'status-channels.json'), inspectStatusChannels(artifactPath));
+  const artifactDigest = artifactPath
+    ? sha256File(artifactPath)
+    : JSON.parse(readFileSync(retainedArtifactPath, 'utf8')).sha256;
+  if (artifactPath) {
+    writeFileSync(join(probeRoot, 'version.txt'), `${versionOutput}\n`);
+    writeFileSync(join(probeRoot, 'help.txt'), `${helpOutput}\n`);
+    writeJson(join(probeRoot, 'artifact.json'), {
+      vendor: 'claude',
+      version,
+      platform: `${platform()}-${arch()}`,
+      sha256: artifactDigest,
+      capturedAt,
+    });
+    writeJson(join(probeRoot, 'status-channels.json'), inspectStatusChannels(artifactPath));
+  }
 
   writeJson(join(referenceRoot, 'hooks.json'), {
     vendor: 'claude',
@@ -486,15 +655,15 @@ export function generateClaudeModel({ artifact, version, capturedAt, retrievedAt
       transport: EVENT_SPECS[event].transport ?? 'http',
       requiredEventFields: EVENT_SPECS[event].required,
       fields: Object.keys(EVENT_SPECS[event].fields),
-      ...(EVENT_SPECS[event].matcherRequired ? { matcherRequired: true } : {}),
-      ...(EVENT_SPECS[event].resultSchema ? { resultSchema: EVENT_SPECS[event].resultSchema } : {}),
+      observationMode: EVENT_SPECS[event].observationMode ?? 'passive',
+      resultSchema: resultSchema(event, EVENT_SPECS[event]),
       notes: EVENT_SPECS[event].notes,
     })),
     ordering: RELATIONS.map(([from, to, kind, label]) => ({ from, to, kind, label })),
   });
 
   writeJson(join(modelRoot, 'manifest.json'), {
-    asmVersion: 2,
+    asmVersion: 3,
     vendor: 'claude',
     vendorVersion: version,
     generatedAt: capturedAt,
@@ -571,6 +740,9 @@ export function generateClaudeModel({ artifact, version, capturedAt, retrievedAt
     const spec = EVENT_SPECS[event];
     if (!spec) throw new Error(`no reviewed Claude hook spec for ${event}`);
     const captured = capturedEvents.has(event);
+    const payloadSchema = eventSchema(event, spec);
+    const callbackSchema = resultSchema(event, spec);
+    const sourceAndRuntime = captured ? [DOCS_CLAIM, RUNTIME_CLAIM] : [DOCS_CLAIM];
     writeJson(join(modelRoot, 'events', `${event}.json`), {
       surface: 'claude',
       surfaceVersion: version,
@@ -580,14 +752,27 @@ export function generateClaudeModel({ artifact, version, capturedAt, retrievedAt
       transport: spec.transport ?? 'http',
       direction: 'agent-to-client',
       trigger: spec.notes,
-      payloadSchema: eventSchema(event, spec),
-      ...(spec.resultSchema ? { resultSchema: spec.resultSchema } : {}),
-      ...(spec.matcherRequired ? { matcherRequired: true } : {}),
-      evidence: {
-        ...evidenceFor(captured ? RUNTIME_CLAIM : DOCS_CLAIM),
-        ...(spec.resultSchema ? { result: [captured ? RUNTIME_CLAIM : DOCS_CLAIM] } : {}),
+      payloadSchema,
+      resultSchema: callbackSchema,
+      recordSchema: structuredClone(payloadSchema),
+      schemaFidelity: {
+        payload: 'structural',
+        result: 'structural',
+        carrier: 'structural',
+        limitations: [
+          'Claude publishes prose and examples rather than a generated JSON Schema; undocumented optional fields may exist.',
+          'Tool-specific input constraints cover Bash, PowerShell, Write, Edit, and Read; other built-in and MCP tool inputs remain open objects.',
+          'Callback schemas retain documented control fields but do not claim every event-specific invalid-field interaction.',
+        ],
       },
-      confidence: captured ? 'verified-headless' : 'unverified',
+      observationMode: spec.observationMode ?? 'passive',
+      evidence: {
+        existence: sourceAndRuntime,
+        shape: sourceAndRuntime,
+        result: [DOCS_CLAIM],
+        carrier: sourceAndRuntime,
+      },
+      confidence: 'unverified',
       timeoutSec: spec.timeoutSec ?? 5,
       ...(captured
         ? {
@@ -739,11 +924,23 @@ export function generateClaudeModel({ artifact, version, capturedAt, retrievedAt
 
 const invokedDirectly = process.argv[1] && fileURLToPath(import.meta.url) === resolve(process.argv[1]);
 if (invokedDirectly) {
+  const retainedGroundTruth = existsSync(join(vendorRoot, 'groundtruth.json'))
+    ? JSON.parse(readFileSync(join(vendorRoot, 'groundtruth.json'), 'utf8'))
+    : undefined;
+  const version = flag('--version') ?? retainedGroundTruth?.manifest?.vendorVersion;
+  const retainedProbe =
+    version && existsSync(join(vendorRoot, 'probes', `claude@${version}`, 'artifact.json'))
+      ? JSON.parse(readFileSync(join(vendorRoot, 'probes', `claude@${version}`, 'artifact.json'), 'utf8'))
+      : undefined;
+  const retainedReference =
+    version && existsSync(join(vendorRoot, 'references', `claude@${version}`, 'hooks.json'))
+      ? JSON.parse(readFileSync(join(vendorRoot, 'references', `claude@${version}`, 'hooks.json'), 'utf8'))
+      : undefined;
   const result = generateClaudeModel({
     artifact: flag('--artifact') ?? process.env.PUPPETEER_CLAUDE_BIN,
-    version: flag('--version'),
-    capturedAt: flag('--captured-at'),
-    retrievedAt: flag('--retrieved-at'),
+    version,
+    capturedAt: flag('--captured-at') ?? retainedProbe?.capturedAt,
+    retrievedAt: flag('--retrieved-at') ?? retainedReference?.retrievedAt,
   });
   console.log(`generated ${result.modelRoot}`);
   console.log(`artifact sha256:${result.artifactDigest}`);

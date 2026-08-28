@@ -7,35 +7,74 @@
   "direction": "client-to-agent",
   "trigger": "Terminate a running `command/exec` session by client-supplied `processId`.",
   "payloadSchema": {
-    "type": "object",
+    "description": "Terminate a running `command/exec` session.",
     "properties": {
       "processId": {
+        "description": "Client-supplied, connection-scoped `processId` from the original `command/exec` request.",
         "type": "string"
       }
     },
     "required": [
       "processId"
-    ]
+    ],
+    "type": "object",
+    "$schema": "http://json-schema.org/draft-07/schema#"
   },
   "recordSchema": {
-    "type": "object",
+    "description": "Terminate a running `command/exec` session by client-supplied `processId`.",
     "properties": {
+      "id": {
+        "$ref": "#/$defs/RequestId"
+      },
       "method": {
-        "type": "string",
         "enum": [
           "command/exec/terminate"
-        ]
+        ],
+        "title": "Command/exec/terminateRequestMethod",
+        "type": "string"
       },
       "params": {
-        "type": "object"
-      },
-      "id": {}
+        "$ref": "#/$defs/CommandExecTerminateParams"
+      }
     },
     "required": [
+      "id",
       "method",
-      "params",
-      "id"
-    ]
+      "params"
+    ],
+    "title": "Command/exec/terminateRequest",
+    "type": "object",
+    "$defs": {
+      "RequestId": {
+        "anyOf": [
+          {
+            "type": "string"
+          },
+          {
+            "format": "int64",
+            "type": "integer"
+          }
+        ]
+      },
+      "CommandExecTerminateParams": {
+        "description": "Terminate a running `command/exec` session.",
+        "properties": {
+          "processId": {
+            "description": "Client-supplied, connection-scoped `processId` from the original `command/exec` request.",
+            "type": "string"
+          }
+        },
+        "required": [
+          "processId"
+        ],
+        "type": "object"
+      }
+    },
+    "$schema": "http://json-schema.org/draft-07/schema#"
+  },
+  "schemaFidelity": {
+    "payload": "exact",
+    "carrier": "exact"
   },
   "evidence": {
     "existence": [

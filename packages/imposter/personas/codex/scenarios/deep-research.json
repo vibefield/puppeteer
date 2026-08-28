@@ -7,7 +7,14 @@
       "do": {
         "emit": {
           "event": "turn/started",
-          "with": { "threadId": "$threadId", "turn": { "id": "$uuid:turn", "status": "inProgress" } }
+          "with": {
+            "threadId": "$threadId",
+            "turn": {
+              "id": "$uuid:turn",
+              "status": "inProgress",
+              "items": []
+            }
+          }
         }
       }
     },
@@ -24,7 +31,12 @@
               "type": "userMessage",
               "id": "$uuid:user-item",
               "clientId": null,
-              "content": [{ "type": "text", "text": "$stimulus.text" }]
+              "content": [
+                {
+                  "type": "text",
+                  "text": "$stimulus.text"
+                }
+              ]
             }
           }
         }
@@ -43,7 +55,12 @@
               "type": "userMessage",
               "id": "$uuid:user-item",
               "clientId": null,
-              "content": [{ "type": "text", "text": "$stimulus.text" }]
+              "content": [
+                {
+                  "type": "text",
+                  "text": "$stimulus.text"
+                }
+              ]
             }
           }
         }
@@ -58,7 +75,12 @@
             "threadId": "$threadId",
             "turnId": "$uuid:turn",
             "startedAtMs": "$nowMs",
-            "item": { "type": "reasoning", "id": "$uuid:reasoning", "summary": [], "content": [] }
+            "item": {
+              "type": "reasoning",
+              "id": "$uuid:reasoning",
+              "summary": [],
+              "content": []
+            }
           }
         }
       }
@@ -109,12 +131,14 @@
             "turnId": "$uuid:turn",
             "startedAtMs": "$nowMs",
             "item": {
-              "type": "collabToolCall",
+              "type": "collabAgentToolCall",
               "id": "$uuid:spawn-sources",
-              "tool": "spawn_agent",
+              "tool": "spawnAgent",
               "status": "inProgress",
               "senderThreadId": "$threadId",
-              "prompt": "Collect current primary sources and publication dates."
+              "prompt": "Collect current primary sources and publication dates.",
+              "receiverThreadIds": [],
+              "agentsStates": {}
             }
           }
         }
@@ -130,14 +154,14 @@
             "turnId": "$uuid:turn",
             "completedAtMs": "$nowMs",
             "item": {
-              "type": "collabToolCall",
+              "type": "collabAgentToolCall",
               "id": "$uuid:spawn-sources",
-              "tool": "spawn_agent",
+              "tool": "spawnAgent",
               "status": "completed",
               "senderThreadId": "$threadId",
-              "newThreadId": "$uuid:sources-thread",
               "prompt": "Collect current primary sources and publication dates.",
-              "agentStatus": "running"
+              "receiverThreadIds": ["$uuid:sources-thread"],
+              "agentsStates": {}
             }
           }
         }
@@ -153,12 +177,14 @@
             "turnId": "$uuid:turn",
             "startedAtMs": "$nowMs",
             "item": {
-              "type": "collabToolCall",
+              "type": "collabAgentToolCall",
               "id": "$uuid:spawn-analyst",
-              "tool": "spawn_agent",
+              "tool": "spawnAgent",
               "status": "inProgress",
               "senderThreadId": "$threadId",
-              "prompt": "Map the local repository and extract implementation constraints."
+              "prompt": "Map the local repository and extract implementation constraints.",
+              "receiverThreadIds": [],
+              "agentsStates": {}
             }
           }
         }
@@ -174,14 +200,14 @@
             "turnId": "$uuid:turn",
             "completedAtMs": "$nowMs",
             "item": {
-              "type": "collabToolCall",
+              "type": "collabAgentToolCall",
               "id": "$uuid:spawn-analyst",
-              "tool": "spawn_agent",
+              "tool": "spawnAgent",
               "status": "completed",
               "senderThreadId": "$threadId",
-              "newThreadId": "$uuid:analyst-thread",
               "prompt": "Map the local repository and extract implementation constraints.",
-              "agentStatus": "running"
+              "receiverThreadIds": ["$uuid:analyst-thread"],
+              "agentsStates": {}
             }
           }
         }
@@ -200,7 +226,10 @@
               "type": "webSearch",
               "id": "$uuid:web-search",
               "query": "current primary sources for $stimulus.text",
-              "action": "search"
+              "action": {
+                "type": "search",
+                "query": "current primary sources for $stimulus.text"
+              }
             }
           }
         }
@@ -219,7 +248,10 @@
               "type": "webSearch",
               "id": "$uuid:web-search",
               "query": "current primary sources for $stimulus.text",
-              "action": "search",
+              "action": {
+                "type": "search",
+                "query": "current primary sources for $stimulus.text"
+              },
               "results": ["official specification", "maintainer documentation", "release notes"]
             }
           }
@@ -241,7 +273,9 @@
               "server": "docs",
               "tool": "fetch_document",
               "status": "inProgress",
-              "arguments": { "uri": "https://example.com/primary-source" }
+              "arguments": {
+                "uri": "https://example.com/primary-source"
+              }
             }
           }
         }
@@ -262,8 +296,20 @@
               "server": "docs",
               "tool": "fetch_document",
               "status": "completed",
-              "arguments": { "uri": "https://example.com/primary-source" },
-              "result": { "summary": "Primary source confirms the current lifecycle and constraints." }
+              "arguments": {
+                "uri": "https://example.com/primary-source"
+              },
+              "result": {
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "{\"summary\":\"Primary source confirms the current lifecycle and constraints.\"}"
+                  }
+                ],
+                "structuredContent": {
+                  "summary": "Primary source confirms the current lifecycle and constraints."
+                }
+              }
             }
           }
         }
@@ -284,7 +330,13 @@
               "command": "rg -n 'scenario|compaction|subagent' packages draft",
               "cwd": "$threadCwd",
               "status": "inProgress",
-              "commandActions": [{ "type": "search", "query": "scenario|compaction|subagent" }]
+              "commandActions": [
+                {
+                  "type": "search",
+                  "query": "scenario|compaction|subagent",
+                  "command": "rg -n 'scenario|compaction|subagent' packages draft"
+                }
+              ]
             }
           }
         }
@@ -305,7 +357,13 @@
               "command": "rg -n 'scenario|compaction|subagent' packages draft",
               "cwd": "$threadCwd",
               "status": "completed",
-              "commandActions": [{ "type": "search", "query": "scenario|compaction|subagent" }],
+              "commandActions": [
+                {
+                  "type": "search",
+                  "query": "scenario|compaction|subagent",
+                  "command": "rg -n 'scenario|compaction|subagent' packages draft"
+                }
+              ],
               "aggregatedOutput": "Found scenario catalogs, delegation items, and compaction events.",
               "exitCode": 0,
               "durationMs": 175
@@ -324,12 +382,13 @@
             "turnId": "$uuid:turn",
             "startedAtMs": "$nowMs",
             "item": {
-              "type": "collabToolCall",
+              "type": "collabAgentToolCall",
               "id": "$uuid:wait-agents",
-              "tool": "wait_agent",
+              "tool": "wait",
               "status": "inProgress",
               "senderThreadId": "$threadId",
-              "receiverThreadId": "$uuid:sources-thread"
+              "receiverThreadIds": ["$uuid:sources-thread"],
+              "agentsStates": {}
             }
           }
         }
@@ -345,13 +404,13 @@
             "turnId": "$uuid:turn",
             "completedAtMs": "$nowMs",
             "item": {
-              "type": "collabToolCall",
+              "type": "collabAgentToolCall",
               "id": "$uuid:wait-agents",
-              "tool": "wait_agent",
+              "tool": "wait",
               "status": "completed",
               "senderThreadId": "$threadId",
-              "receiverThreadId": "$uuid:sources-thread",
-              "agentStatus": "completed"
+              "receiverThreadIds": ["$uuid:sources-thread"],
+              "agentsStates": {}
             }
           }
         }
@@ -367,13 +426,14 @@
             "turnId": "$uuid:turn",
             "startedAtMs": "$nowMs",
             "item": {
-              "type": "collabToolCall",
+              "type": "collabAgentToolCall",
               "id": "$uuid:cross-check",
-              "tool": "send_message",
+              "tool": "sendMessage",
               "status": "inProgress",
               "senderThreadId": "$threadId",
-              "receiverThreadId": "$uuid:analyst-thread",
-              "prompt": "Cross-check the primary-source claims against the repository evidence."
+              "prompt": "Cross-check the primary-source claims against the repository evidence.",
+              "receiverThreadIds": ["$uuid:analyst-thread"],
+              "agentsStates": {}
             }
           }
         }
@@ -389,14 +449,14 @@
             "turnId": "$uuid:turn",
             "completedAtMs": "$nowMs",
             "item": {
-              "type": "collabToolCall",
+              "type": "collabAgentToolCall",
               "id": "$uuid:cross-check",
-              "tool": "send_message",
+              "tool": "sendMessage",
               "status": "completed",
               "senderThreadId": "$threadId",
-              "receiverThreadId": "$uuid:analyst-thread",
               "prompt": "Cross-check the primary-source claims against the repository evidence.",
-              "agentStatus": "working"
+              "receiverThreadIds": ["$uuid:analyst-thread"],
+              "agentsStates": {}
             }
           }
         }
@@ -440,7 +500,10 @@
             "threadId": "$threadId",
             "turnId": "$uuid:turn",
             "startedAtMs": "$nowMs",
-            "item": { "type": "contextCompaction", "id": "$uuid:compaction" }
+            "item": {
+              "type": "contextCompaction",
+              "id": "$uuid:compaction"
+            }
           }
         }
       }
@@ -454,7 +517,10 @@
             "threadId": "$threadId",
             "turnId": "$uuid:turn",
             "completedAtMs": "$nowMs",
-            "item": { "type": "contextCompaction", "id": "$uuid:compaction" }
+            "item": {
+              "type": "contextCompaction",
+              "id": "$uuid:compaction"
+            }
           }
         }
       }
@@ -503,7 +569,13 @@
               "command": "rg -n 'source|claim|caveat' research-notes",
               "cwd": "$threadCwd",
               "status": "inProgress",
-              "commandActions": [{ "type": "search", "query": "source|claim|caveat" }]
+              "commandActions": [
+                {
+                  "type": "search",
+                  "query": "source|claim|caveat",
+                  "command": "rg -n 'source|claim|caveat' research-notes"
+                }
+              ]
             }
           }
         }
@@ -524,7 +596,13 @@
               "command": "rg -n 'source|claim|caveat' research-notes",
               "cwd": "$threadCwd",
               "status": "completed",
-              "commandActions": [{ "type": "search", "query": "source|claim|caveat" }],
+              "commandActions": [
+                {
+                  "type": "search",
+                  "query": "source|claim|caveat",
+                  "command": "rg -n 'source|claim|caveat' research-notes"
+                }
+              ],
               "aggregatedOutput": "Every material claim has a source or an explicit caveat.",
               "exitCode": 0,
               "durationMs": 165
@@ -542,7 +620,12 @@
             "threadId": "$threadId",
             "turnId": "$uuid:turn",
             "startedAtMs": "$nowMs",
-            "item": { "type": "agentMessage", "id": "$uuid:agent-message", "text": "", "phase": "final_answer" }
+            "item": {
+              "type": "agentMessage",
+              "id": "$uuid:agent-message",
+              "text": "",
+              "phase": "final_answer"
+            }
           }
         }
       }
@@ -585,7 +668,15 @@
       "do": {
         "emit": {
           "event": "turn/completed",
-          "with": { "threadId": "$threadId", "turn": { "id": "$uuid:turn", "status": "completed", "error": null } }
+          "with": {
+            "threadId": "$threadId",
+            "turn": {
+              "id": "$uuid:turn",
+              "status": "completed",
+              "error": null,
+              "items": []
+            }
+          }
         }
       }
     }

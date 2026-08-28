@@ -34,6 +34,13 @@
       "type"
     ]
   },
+  "schemaFidelity": {
+    "payload": "sampled",
+    "carrier": "sampled",
+    "limitations": [
+      "Schema includes only shapes present in the sanitized runtime samples."
+    ]
+  },
   "evidence": {
     "existence": [
       "opencode-runtime-permission-accept"

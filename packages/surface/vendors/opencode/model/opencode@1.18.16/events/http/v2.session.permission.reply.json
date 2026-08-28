@@ -10,42 +10,44 @@
   "direction": "client-to-agent",
   "trigger": "Reply to pending permission request — Respond to a pending permission request owned by a session.",
   "payloadSchema": {
-    "type": "object",
     "properties": {
+      "body": {
+        "additionalProperties": false,
+        "properties": {
+          "message": {
+            "type": "string"
+          },
+          "reply": {
+            "$ref": "#/$defs/PermissionV2Reply"
+          }
+        },
+        "required": [
+          "reply"
+        ],
+        "type": "object"
+      },
       "method": {
         "type": "string"
       },
-      "route": {
-        "type": "string"
-      },
       "params": {
-        "type": "object",
         "properties": {
           "requestID": {
+            "pattern": "^per",
             "type": "string"
           },
           "sessionID": {
+            "pattern": "^ses",
             "type": "string"
           }
         },
         "required": [
           "requestID",
           "sessionID"
-        ]
+        ],
+        "type": "object"
       },
-      "body": {
-        "type": "object",
-        "properties": {
-          "message": {
-            "type": "string"
-          },
-          "reply": {
-            "type": "string"
-          }
-        },
-        "required": [
-          "reply"
-        ]
+      "route": {
+        "type": "string"
       }
     },
     "required": [
@@ -53,42 +55,54 @@
       "route",
       "params",
       "body"
-    ]
+    ],
+    "type": "object",
+    "$defs": {
+      "PermissionV2Reply": {
+        "enum": [
+          "once",
+          "always",
+          "reject"
+        ],
+        "type": "string"
+      }
+    }
   },
   "resultSchema": {
-    "type": "object",
     "properties": {
       "method": {
-        "type": "string",
         "enum": [
           "POST"
-        ]
-      },
-      "route": {
-        "type": "string",
-        "enum": [
-          "/api/session/:sessionID/permission/:requestID/reply"
-        ]
-      },
-      "status": {
-        "type": "integer",
-        "minimum": 200,
-        "maximum": 299
+        ],
+        "type": "string"
       },
       "params": {
-        "type": "object",
         "properties": {
           "requestID": {
+            "pattern": "^per",
             "type": "string"
           },
           "sessionID": {
+            "pattern": "^ses",
             "type": "string"
           }
         },
         "required": [
           "requestID",
           "sessionID"
-        ]
+        ],
+        "type": "object"
+      },
+      "route": {
+        "enum": [
+          "/api/session/:sessionID/permission/:requestID/reply"
+        ],
+        "type": "string"
+      },
+      "status": {
+        "maximum": 299,
+        "minimum": 200,
+        "type": "integer"
       }
     },
     "required": [
@@ -96,60 +110,62 @@
       "route",
       "status",
       "params"
-    ]
+    ],
+    "type": "object"
   },
   "recordSchema": {
-    "type": "object",
     "properties": {
       "direction": {
-        "type": "string",
         "enum": [
           "client-to-agent"
-        ]
+        ],
+        "type": "string"
       },
       "request": {
-        "type": "object",
         "properties": {
+          "body": {
+            "additionalProperties": false,
+            "properties": {
+              "message": {
+                "type": "string"
+              },
+              "reply": {
+                "$ref": "#/$defs/PermissionV2Reply"
+              }
+            },
+            "required": [
+              "reply"
+            ],
+            "type": "object"
+          },
           "method": {
-            "type": "string",
             "enum": [
               "POST"
-            ]
-          },
-          "route": {
-            "type": "string",
-            "enum": [
-              "/api/session/:sessionID/permission/:requestID/reply"
-            ]
+            ],
+            "type": "string"
           },
           "params": {
-            "type": "object",
             "properties": {
               "requestID": {
+                "pattern": "^per",
                 "type": "string"
               },
               "sessionID": {
+                "pattern": "^ses",
                 "type": "string"
               }
             },
             "required": [
               "requestID",
               "sessionID"
-            ]
+            ],
+            "type": "object"
           },
-          "body": {
-            "type": "object",
-            "properties": {
-              "message": {
-                "type": "string"
-              },
-              "reply": {
-                "type": "string"
-              }
-            },
-            "required": [
-              "reply"
-            ]
+          "route": {
+            "enum": [
+              "/api/session/:sessionID/permission/:requestID/reply"
+            ],
+            "type": "string"
           }
         },
         "required": [
@@ -157,13 +173,30 @@
           "route",
           "params",
           "body"
-        ]
+        ],
+        "type": "object"
       }
     },
     "required": [
       "direction",
       "request"
-    ]
+    ],
+    "type": "object",
+    "$defs": {
+      "PermissionV2Reply": {
+        "enum": [
+          "once",
+          "always",
+          "reject"
+        ],
+        "type": "string"
+      }
+    }
+  },
+  "schemaFidelity": {
+    "payload": "semantic",
+    "result": "semantic",
+    "carrier": "semantic"
   },
   "evidence": {
     "existence": [

@@ -7,7 +7,6 @@
   "direction": "agent-to-client",
   "trigger": "Read the current time from an external clock owned by the client.",
   "payloadSchema": {
-    "type": "object",
     "properties": {
       "threadId": {
         "type": "string"
@@ -15,38 +14,79 @@
     },
     "required": [
       "threadId"
-    ]
+    ],
+    "type": "object",
+    "$schema": "http://json-schema.org/draft-07/schema#"
   },
   "resultSchema": {
-    "type": "object",
+    "$schema": "http://json-schema.org/draft-07/schema#",
     "properties": {
       "currentTimeAt": {
-        "type": "number"
+        "description": "Current time as whole Unix seconds.",
+        "format": "int64",
+        "type": "integer"
       }
     },
     "required": [
       "currentTimeAt"
-    ]
+    ],
+    "title": "CurrentTimeReadResponse",
+    "type": "object"
   },
   "recordSchema": {
-    "type": "object",
+    "description": "Read the current time from an external clock owned by the client.",
     "properties": {
+      "id": {
+        "$ref": "#/$defs/RequestId"
+      },
       "method": {
-        "type": "string",
         "enum": [
           "currentTime/read"
-        ]
+        ],
+        "title": "CurrentTime/readRequestMethod",
+        "type": "string"
       },
       "params": {
-        "type": "object"
-      },
-      "id": {}
+        "$ref": "#/$defs/CurrentTimeReadParams"
+      }
     },
     "required": [
+      "id",
       "method",
-      "params",
-      "id"
-    ]
+      "params"
+    ],
+    "title": "CurrentTime/readRequest",
+    "type": "object",
+    "$defs": {
+      "RequestId": {
+        "anyOf": [
+          {
+            "type": "string"
+          },
+          {
+            "format": "int64",
+            "type": "integer"
+          }
+        ]
+      },
+      "CurrentTimeReadParams": {
+        "properties": {
+          "threadId": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "threadId"
+        ],
+        "type": "object"
+      }
+    },
+    "$schema": "http://json-schema.org/draft-07/schema#"
+  },
+  "schemaFidelity": {
+    "payload": "exact",
+    "result": "exact",
+    "carrier": "exact"
   },
   "evidence": {
     "existence": [

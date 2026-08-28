@@ -10,91 +10,119 @@
   "direction": "agent-to-client",
   "trigger": "Published on the native GET /event stream.",
   "payloadSchema": {
-    "type": "object",
+    "additionalProperties": false,
     "properties": {
       "sessionID": {
+        "pattern": "^ses",
         "type": "string"
       },
       "todos": {
-        "type": "array",
         "items": {
-          "type": "object",
-          "properties": {
-            "content": {
-              "type": "string"
-            },
-            "priority": {
-              "type": "string"
-            },
-            "status": {
-              "type": "string"
-            }
-          },
-          "required": [
-            "content",
-            "priority",
-            "status"
-          ]
-        }
+          "$ref": "#/$defs/Todo"
+        },
+        "type": "array"
       }
     },
     "required": [
       "sessionID",
       "todos"
-    ]
+    ],
+    "type": "object",
+    "$defs": {
+      "Todo": {
+        "additionalProperties": false,
+        "properties": {
+          "content": {
+            "description": "Brief description of the task",
+            "type": "string"
+          },
+          "priority": {
+            "description": "Priority level of the task: high, medium, low",
+            "type": "string"
+          },
+          "status": {
+            "description": "Current status of the task: pending, in_progress, completed, cancelled",
+            "type": "string"
+          }
+        },
+        "required": [
+          "content",
+          "status",
+          "priority"
+        ],
+        "type": "object"
+      }
+    }
   },
   "recordSchema": {
-    "type": "object",
+    "additionalProperties": false,
     "properties": {
       "id": {
+        "pattern": "^evt_",
         "type": "string"
       },
       "properties": {
-        "type": "object",
+        "additionalProperties": false,
         "properties": {
           "sessionID": {
+            "pattern": "^ses",
             "type": "string"
           },
           "todos": {
-            "type": "array",
             "items": {
-              "type": "object",
-              "properties": {
-                "content": {
-                  "type": "string"
-                },
-                "priority": {
-                  "type": "string"
-                },
-                "status": {
-                  "type": "string"
-                }
-              },
-              "required": [
-                "content",
-                "priority",
-                "status"
-              ]
-            }
+              "$ref": "#/$defs/Todo"
+            },
+            "type": "array"
           }
         },
         "required": [
           "sessionID",
           "todos"
-        ]
+        ],
+        "type": "object"
       },
       "type": {
-        "type": "string",
         "enum": [
           "todo.updated"
-        ]
+        ],
+        "type": "string"
       }
     },
     "required": [
       "id",
-      "properties",
-      "type"
-    ]
+      "type",
+      "properties"
+    ],
+    "type": "object",
+    "$defs": {
+      "Todo": {
+        "additionalProperties": false,
+        "properties": {
+          "content": {
+            "description": "Brief description of the task",
+            "type": "string"
+          },
+          "priority": {
+            "description": "Priority level of the task: high, medium, low",
+            "type": "string"
+          },
+          "status": {
+            "description": "Current status of the task: pending, in_progress, completed, cancelled",
+            "type": "string"
+          }
+        },
+        "required": [
+          "content",
+          "status",
+          "priority"
+        ],
+        "type": "object"
+      }
+    }
+  },
+  "schemaFidelity": {
+    "payload": "exact",
+    "carrier": "exact"
   },
   "evidence": {
     "existence": [

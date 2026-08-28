@@ -10,102 +10,24 @@
   "direction": "agent-to-client",
   "trigger": "Published on the native GET /event stream.",
   "payloadSchema": {
-    "type": "object",
+    "additionalProperties": false,
     "properties": {
       "delivery": {
+        "enum": [
+          "steer",
+          "queue"
+        ],
         "type": "string"
       },
       "messageID": {
+        "pattern": "^msg_",
         "type": "string"
       },
       "prompt": {
-        "type": "object",
-        "properties": {
-          "agents": {
-            "type": "array",
-            "items": {
-              "type": "object",
-              "properties": {
-                "name": {
-                  "type": "string"
-                },
-                "source": {
-                  "type": "object",
-                  "properties": {
-                    "end": {
-                      "type": "number"
-                    },
-                    "start": {
-                      "type": "number"
-                    },
-                    "text": {
-                      "type": "string"
-                    }
-                  },
-                  "required": [
-                    "end",
-                    "start",
-                    "text"
-                  ]
-                }
-              },
-              "required": [
-                "name"
-              ]
-            }
-          },
-          "files": {
-            "type": "array",
-            "items": {
-              "type": "object",
-              "properties": {
-                "description": {
-                  "type": "string"
-                },
-                "mime": {
-                  "type": "string"
-                },
-                "name": {
-                  "type": "string"
-                },
-                "source": {
-                  "type": "object",
-                  "properties": {
-                    "end": {
-                      "type": "number"
-                    },
-                    "start": {
-                      "type": "number"
-                    },
-                    "text": {
-                      "type": "string"
-                    }
-                  },
-                  "required": [
-                    "end",
-                    "start",
-                    "text"
-                  ]
-                },
-                "uri": {
-                  "type": "string"
-                }
-              },
-              "required": [
-                "mime",
-                "uri"
-              ]
-            }
-          },
-          "text": {
-            "type": "string"
-          }
-        },
-        "required": [
-          "text"
-        ]
+        "$ref": "#/$defs/Prompt"
       },
       "sessionID": {
+        "pattern": "^ses",
         "type": "string"
       },
       "timestamp": {
@@ -113,116 +35,126 @@
       }
     },
     "required": [
-      "delivery",
+      "timestamp",
+      "sessionID",
       "messageID",
       "prompt",
-      "sessionID",
-      "timestamp"
-    ]
+      "delivery"
+    ],
+    "type": "object",
+    "$defs": {
+      "Prompt": {
+        "additionalProperties": false,
+        "properties": {
+          "agents": {
+            "items": {
+              "$ref": "#/$defs/PromptAgentAttachment"
+            },
+            "type": "array"
+          },
+          "files": {
+            "items": {
+              "$ref": "#/$defs/PromptFileAttachment"
+            },
+            "type": "array"
+          },
+          "text": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "text"
+        ],
+        "type": "object"
+      },
+      "PromptAgentAttachment": {
+        "additionalProperties": false,
+        "properties": {
+          "name": {
+            "type": "string"
+          },
+          "source": {
+            "$ref": "#/$defs/PromptSource"
+          }
+        },
+        "required": [
+          "name"
+        ],
+        "type": "object"
+      },
+      "PromptFileAttachment": {
+        "additionalProperties": false,
+        "properties": {
+          "description": {
+            "type": "string"
+          },
+          "mime": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "source": {
+            "$ref": "#/$defs/PromptSource"
+          },
+          "uri": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "uri",
+          "mime"
+        ],
+        "type": "object"
+      },
+      "PromptSource": {
+        "additionalProperties": false,
+        "properties": {
+          "end": {
+            "type": "number"
+          },
+          "start": {
+            "type": "number"
+          },
+          "text": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "start",
+          "end",
+          "text"
+        ],
+        "type": "object"
+      }
+    }
   },
   "recordSchema": {
-    "type": "object",
+    "additionalProperties": false,
     "properties": {
       "id": {
+        "pattern": "^evt_",
         "type": "string"
       },
       "properties": {
-        "type": "object",
+        "additionalProperties": false,
         "properties": {
           "delivery": {
+            "enum": [
+              "steer",
+              "queue"
+            ],
             "type": "string"
           },
           "messageID": {
+            "pattern": "^msg_",
             "type": "string"
           },
           "prompt": {
-            "type": "object",
-            "properties": {
-              "agents": {
-                "type": "array",
-                "items": {
-                  "type": "object",
-                  "properties": {
-                    "name": {
-                      "type": "string"
-                    },
-                    "source": {
-                      "type": "object",
-                      "properties": {
-                        "end": {
-                          "type": "number"
-                        },
-                        "start": {
-                          "type": "number"
-                        },
-                        "text": {
-                          "type": "string"
-                        }
-                      },
-                      "required": [
-                        "end",
-                        "start",
-                        "text"
-                      ]
-                    }
-                  },
-                  "required": [
-                    "name"
-                  ]
-                }
-              },
-              "files": {
-                "type": "array",
-                "items": {
-                  "type": "object",
-                  "properties": {
-                    "description": {
-                      "type": "string"
-                    },
-                    "mime": {
-                      "type": "string"
-                    },
-                    "name": {
-                      "type": "string"
-                    },
-                    "source": {
-                      "type": "object",
-                      "properties": {
-                        "end": {
-                          "type": "number"
-                        },
-                        "start": {
-                          "type": "number"
-                        },
-                        "text": {
-                          "type": "string"
-                        }
-                      },
-                      "required": [
-                        "end",
-                        "start",
-                        "text"
-                      ]
-                    },
-                    "uri": {
-                      "type": "string"
-                    }
-                  },
-                  "required": [
-                    "mime",
-                    "uri"
-                  ]
-                }
-              },
-              "text": {
-                "type": "string"
-              }
-            },
-            "required": [
-              "text"
-            ]
+            "$ref": "#/$defs/Prompt"
           },
           "sessionID": {
+            "pattern": "^ses",
             "type": "string"
           },
           "timestamp": {
@@ -230,25 +162,117 @@
           }
         },
         "required": [
-          "delivery",
+          "timestamp",
+          "sessionID",
           "messageID",
           "prompt",
-          "sessionID",
-          "timestamp"
-        ]
+          "delivery"
+        ],
+        "type": "object"
       },
       "type": {
-        "type": "string",
         "enum": [
           "session.next.prompt.admitted"
-        ]
+        ],
+        "type": "string"
       }
     },
     "required": [
       "id",
-      "properties",
-      "type"
-    ]
+      "type",
+      "properties"
+    ],
+    "type": "object",
+    "$defs": {
+      "Prompt": {
+        "additionalProperties": false,
+        "properties": {
+          "agents": {
+            "items": {
+              "$ref": "#/$defs/PromptAgentAttachment"
+            },
+            "type": "array"
+          },
+          "files": {
+            "items": {
+              "$ref": "#/$defs/PromptFileAttachment"
+            },
+            "type": "array"
+          },
+          "text": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "text"
+        ],
+        "type": "object"
+      },
+      "PromptAgentAttachment": {
+        "additionalProperties": false,
+        "properties": {
+          "name": {
+            "type": "string"
+          },
+          "source": {
+            "$ref": "#/$defs/PromptSource"
+          }
+        },
+        "required": [
+          "name"
+        ],
+        "type": "object"
+      },
+      "PromptFileAttachment": {
+        "additionalProperties": false,
+        "properties": {
+          "description": {
+            "type": "string"
+          },
+          "mime": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "source": {
+            "$ref": "#/$defs/PromptSource"
+          },
+          "uri": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "uri",
+          "mime"
+        ],
+        "type": "object"
+      },
+      "PromptSource": {
+        "additionalProperties": false,
+        "properties": {
+          "end": {
+            "type": "number"
+          },
+          "start": {
+            "type": "number"
+          },
+          "text": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "start",
+          "end",
+          "text"
+        ],
+        "type": "object"
+      }
+    }
+  },
+  "schemaFidelity": {
+    "payload": "exact",
+    "carrier": "exact"
   },
   "evidence": {
     "existence": [

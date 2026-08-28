@@ -1,0 +1,149 @@
+{
+  "surface": "hermes",
+  "surfaceVersion": "0.20.0",
+  "event": "config.set",
+  "firstSeen": "0.20.0",
+  "channel": "tui-gateway",
+  "channels": ["tui-gateway"],
+  "transport": "jsonrpc-request",
+  "direction": "client-to-agent",
+  "confidence": "unverified",
+  "notes": "Registered by tui_gateway/server.py:10468; runtime reachability was not captured.",
+  "payloadSchema": {
+    "type": "object",
+    "properties": {
+      "always": {},
+      "board_slug": {},
+      "color": {},
+      "confirm_expensive_model": {
+        "type": "string"
+      },
+      "cwd": {
+        "type": "string"
+      },
+      "description": {},
+      "folders": {},
+      "icon": {},
+      "id": {},
+      "is_primary": {
+        "type": "boolean"
+      },
+      "key": {},
+      "label": {},
+      "name": {
+        "type": "string"
+      },
+      "path": {},
+      "primary_path": {
+        "type": "string"
+      },
+      "restore": {},
+      "scope": {},
+      "session_id": {
+        "type": "string"
+      },
+      "slug": {},
+      "use": {},
+      "value": {}
+    },
+    "required": ["id"]
+  },
+  "resultSchema": {
+    "type": "object",
+    "properties": {
+      "active_id": {
+        "type": "string"
+      },
+      "branch": {},
+      "confirm_message": {},
+      "confirm_required": {},
+      "cwd": {
+        "type": "string"
+      },
+      "deferred": {},
+      "key": {},
+      "project": {},
+      "scope": {},
+      "tool_progress": {},
+      "value": {},
+      "warning": {}
+    }
+  },
+  "recordSchema": {
+    "type": "object",
+    "properties": {
+      "direction": {
+        "type": "string",
+        "enum": ["client"]
+      },
+      "jsonrpc": {
+        "type": "string",
+        "enum": ["2.0"]
+      },
+      "id": {
+        "type": "string"
+      },
+      "method": {
+        "type": "string",
+        "enum": ["config.set"]
+      },
+      "params": {
+        "type": "object",
+        "properties": {
+          "always": {},
+          "board_slug": {},
+          "color": {},
+          "confirm_expensive_model": {
+            "type": "string"
+          },
+          "cwd": {
+            "type": "string"
+          },
+          "description": {},
+          "folders": {},
+          "icon": {},
+          "id": {},
+          "is_primary": {
+            "type": "boolean"
+          },
+          "key": {},
+          "label": {},
+          "name": {
+            "type": "string"
+          },
+          "path": {},
+          "primary_path": {
+            "type": "string"
+          },
+          "restore": {},
+          "scope": {},
+          "session_id": {
+            "type": "string"
+          },
+          "slug": {},
+          "use": {},
+          "value": {}
+        },
+        "required": ["id"]
+      }
+    },
+    "required": ["direction", "jsonrpc", "id", "method", "params"]
+  },
+  "recordChannel": "tui-gateway",
+  "evidence": {
+    "existence": ["hermes-exact-source"],
+    "shape": ["hermes-exact-source"],
+    "result": ["hermes-exact-source"],
+    "carrier": ["hermes-exact-source"]
+  },
+  "schemaFidelity": {
+    "payload": "structural",
+    "result": "structural",
+    "carrier": "structural",
+    "limitations": [
+      "Python is dynamic: helper-produced, conditionally assembled, and forwarded payload/result fields remain unconstrained unless directly recoverable.",
+      "Direct params indexing proves required access; params.get access proves a known field but not optionality.",
+      "Source declarations establish legal/native shape and existence, not runtime reachability."
+    ]
+  }
+}

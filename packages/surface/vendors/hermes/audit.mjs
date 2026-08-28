@@ -4,7 +4,7 @@
 import { existsSync, readFileSync, readdirSync } from 'node:fs';
 import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { loadModel, validatePayload } from '@vibecook/puppeteer-surface';
+import { loadModel, validateSanitizedPayload } from '@vibecook/puppeteer-surface';
 import { checkCaptureDirectory } from '@vibecook/puppeteer-surface/sanitize';
 import {
   RELEASE_TAG,
@@ -125,52 +125,74 @@ export function auditHermes() {
   const groundTruthPath = join(vendorRoot, 'groundtruth.json');
   if (existsSync(groundTruthPath)) {
     const model = loadModel(vendorRoot);
-    const events = new Map(model.events.map((event) => [event.event, event]));
+    const nativeEvents = new Map();
+    for (const event of model.events) {
+      const name = event.nativeName ?? event.event;
+      const candidates = nativeEvents.get(name) ?? [];
+      candidates.push(event);
+      nativeEvents.set(name, candidates);
+    }
+    const descriptorFor = (name, direction, channel) =>
+      (nativeEvents.get(name) ?? []).find(
+        (event) => event.direction === direction && (!channel || event.channels.includes(channel)),
+      );
     notes.push(`ASM ${model.events.length} events`);
     for (const leak of checkCaptureDirectory(capturesRoot, hermesRules)) {
       problems.push(`privacy: ${leak}`);
     }
     for (const scenario of requiredScenarios) {
+      const metadataPath = join(capturesRoot, scenario, 'capture.json');
+      const metadata = existsSync(metadataPath) ? JSON.parse(readFileSync(metadataPath, 'utf8')) : {};
+      const nativeShapeEvidence =
+        metadata.schemaVersion >= 2 && metadata.representation === 'type-preserving-redaction';
+      if (!nativeShapeEvidence) notes.push(`${scenario} uses legacy occurrence/order-only privacy projection`);
       const rpcPath = join(capturesRoot, scenario, 'rpc.jsonl');
       if (!existsSync(rpcPath)) continue;
+      const requests = new Map();
       for (const [index, line] of readFileSync(rpcPath, 'utf8').split('\n').entries()) {
         if (!line.trim()) continue;
         const frame = JSON.parse(line);
         if (frame.direction === 'client') {
-          const descriptor = events.get(frame.method);
+          const descriptor = descriptorFor(frame.method, 'client-to-agent', 'tui-gateway');
           if (!descriptor) {
             problems.push(`${scenario}/rpc.jsonl:${index + 1} unmodelled ${frame.method}`);
             continue;
           }
-          if (descriptor.payloadSchema) {
-            for (const failure of validatePayload(descriptor.payloadSchema, frame.params ?? {})) {
+          requests.set(frame.id, descriptor);
+          if (nativeShapeEvidence && descriptor.payloadSchema) {
+            for (const failure of validateSanitizedPayload(descriptor.payloadSchema, frame.params ?? {})) {
               problems.push(`${scenario} ${frame.method}: ${failure}`);
             }
           }
-          if (descriptor.recordSchema) {
-            for (const failure of validatePayload(descriptor.recordSchema, frame)) {
+          if (nativeShapeEvidence && descriptor.recordSchema) {
+            for (const failure of validateSanitizedPayload(descriptor.recordSchema, frame)) {
               problems.push(`${scenario} ${frame.method} carrier: ${failure}`);
             }
           }
         } else if (frame.method === 'event') {
           const type = frame.params?.type;
-          const descriptor = events.get(type);
+          const descriptor = descriptorFor(type, 'agent-to-client', 'tui-gateway');
           if (!descriptor) {
             problems.push(`${scenario}/rpc.jsonl:${index + 1} unmodelled event ${type}`);
             continue;
           }
-          if (descriptor.payloadSchema) {
-            for (const failure of validatePayload(descriptor.payloadSchema, frame.params?.payload ?? {})) {
+          if (nativeShapeEvidence && descriptor.payloadSchema) {
+            for (const failure of validateSanitizedPayload(descriptor.payloadSchema, frame.params?.payload ?? {})) {
               problems.push(`${scenario} ${type}: ${failure}`);
             }
           }
-          if (descriptor.recordSchema) {
-            for (const failure of validatePayload(descriptor.recordSchema, frame)) {
+          if (nativeShapeEvidence && descriptor.recordSchema) {
+            for (const failure of validateSanitizedPayload(descriptor.recordSchema, frame)) {
               problems.push(`${scenario} ${type} carrier: ${failure}`);
             }
           }
         } else if (frame.result && frame.id != null) {
-          // result frames are validated against the matching request method below if needed
+          const descriptor = requests.get(frame.id);
+          if (nativeShapeEvidence && descriptor?.resultSchema) {
+            for (const failure of validateSanitizedPayload(descriptor.resultSchema, frame.result)) {
+              problems.push(`${scenario} ${descriptor.event} result: ${failure}`);
+            }
+          }
         }
       }
       const hookPath = join(capturesRoot, scenario, 'plugin-hooks.jsonl');
@@ -178,13 +200,13 @@ export function auditHermes() {
         for (const [index, line] of readFileSync(hookPath, 'utf8').split('\n').entries()) {
           if (!line.trim()) continue;
           const record = JSON.parse(line);
-          const descriptor = events.get(record.hook_event_name);
+          const descriptor = descriptorFor(record.hook_event_name, 'agent-local', 'plugin-hook');
           if (!descriptor) {
             problems.push(`${scenario}/plugin-hooks.jsonl:${index + 1} unmodelled ${record.hook_event_name}`);
             continue;
           }
-          if (descriptor.payloadSchema) {
-            for (const failure of validatePayload(descriptor.payloadSchema, record)) {
+          if (nativeShapeEvidence && descriptor.payloadSchema) {
+            for (const failure of validateSanitizedPayload(descriptor.payloadSchema, record.kwargs ?? {})) {
               problems.push(`${scenario} ${record.hook_event_name}: ${failure}`);
             }
           }
@@ -196,7 +218,7 @@ export function auditHermes() {
           if (!line.trim()) continue;
           const delivery = JSON.parse(line);
           const name = delivery.headers?.['x-hermes-event'] ?? delivery.body?.hook_event_name;
-          if (name && !events.has(name)) {
+          if (name && !descriptorFor(name, 'agent-local', 'outbound-webhook')) {
             problems.push(`${scenario}/webhooks.jsonl:${index + 1} unmodelled ${name}`);
           }
         }

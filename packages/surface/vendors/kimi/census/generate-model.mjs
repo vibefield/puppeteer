@@ -1,12 +1,13 @@
 #!/usr/bin/env node
 /** Generate the evidence-bound Kimi 0.34.0 Agent Surface Model. */
 import { execFileSync } from 'node:child_process';
-import { mkdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
+import { mkdirSync, readFileSync, readdirSync, rmSync, statSync, writeFileSync } from 'node:fs';
 import { createRequire } from 'node:module';
-import { dirname, join, relative, sep } from 'node:path';
+import { basename, dirname, join, relative, sep } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { digestTree } from '../../../scripts/check-evidence.mjs';
 import { writeGroundTruthArtifacts } from '../../../scripts/groundtruth.mjs';
+import { projectJsonSchema } from '@vibecook/puppeteer-surface';
 
 const VERSION = '0.34.0';
 
@@ -92,37 +93,62 @@ const observedHooks = new Set([
 const totalSurfaceCount = persistedWireTypes.length + hookEvents.length + 3;
 const runtimeSurfaceCount = observedWireTypes.size + observedHooks.size + 3;
 
-const runtimeEnumValues = {
-  'context.append_loop_event': {
-    'event.type': ['step.begin', 'step.end', 'content.part', 'tool.call', 'tool.result'],
-    'event.part.type': ['text', 'think'],
-    'event.providerFinishReason': ['completed', 'tool_calls'],
-  },
-  'context.append_message': {
-    'message.role': ['user', 'assistant'],
-    'message.origin.kind': ['user', 'injection', 'task', 'hook_result'],
-    'message.origin.status': ['completed'],
-  },
-  'llm.request': { kind: ['loop'] },
-  'permission.set_mode': { mode: ['auto'] },
-  'task.started': { 'info.kind': ['process'], 'info.status': ['running'] },
-  'task.terminated': { 'info.kind': ['process'], 'info.status': ['completed'] },
-  'turn.ended': { reason: ['completed', 'failed'] },
-  'turn.prompt': { 'origin.kind': ['user'] },
-  'usage.record': { usageScope: ['turn'] },
-  Notification: { hook_event_name: ['Notification'], sink: ['context'], severity: ['info'] },
-  SessionStart: { hook_event_name: ['SessionStart'], source: ['startup', 'resume'] },
-  Stop: { hook_event_name: ['Stop'] },
-  StopFailure: { hook_event_name: ['StopFailure'] },
-  TaskStarted: { hook_event_name: ['TaskStarted'], kind: ['process'], status: ['running'] },
-  TurnStarted: { hook_event_name: ['TurnStarted'], origin_kind: ['user', 'system_trigger'] },
-  SubagentStart: { hook_event_name: ['SubagentStart'] },
-  SubagentStop: { hook_event_name: ['SubagentStop'] },
-  UserPromptSubmit: { hook_event_name: ['UserPromptSubmit'] },
-  PreToolUse: { hook_event_name: ['PreToolUse'] },
-  PostToolUse: { hook_event_name: ['PostToolUse'] },
-  PostToolUseFailure: { hook_event_name: ['PostToolUseFailure'] },
+const selectedVariantPaths = {
+  'context.append_loop_event': ['event.type', 'event.part.type', 'event.providerFinishReason'],
+  'context.append_message': ['message.role', 'message.origin.kind', 'message.origin.status'],
+  'task.started': ['info.kind', 'info.status'],
+  'task.terminated': ['info.kind', 'info.status'],
+  'turn.ended': ['reason'],
+  Notification: ['sink', 'severity'],
+  SessionStart: ['source'],
+  TaskStarted: ['kind', 'status'],
+  TurnStarted: ['origin_kind'],
 };
+
+function valueAt(value, dottedPath) {
+  return dottedPath
+    .split('.')
+    .reduce(
+      (current, component) => (current !== null && typeof current === 'object' ? current[component] : undefined),
+      value,
+    );
+}
+
+function collectRuntimeVariantValues() {
+  const selected = Object.fromEntries(
+    Object.entries(selectedVariantPaths).map(([event, paths]) => [
+      event,
+      Object.fromEntries(paths.map((path) => [path, new Set()])),
+    ]),
+  );
+  const journals = walkFiles(capturesRoot)
+    .filter((path) => path.endsWith('.jsonl'))
+    .filter((path) => {
+      const artifact = relative(capturesRoot, path).split(sep).join('/');
+      return basename(path) === 'wire.jsonl' || artifact.includes('/agents/') || artifact.includes('/hooks/');
+    })
+    .sort();
+  for (const path of journals) {
+    for (const line of readFileSync(path, 'utf8').split('\n').filter(Boolean)) {
+      const record = JSON.parse(line);
+      const event = typeof record.hook_event_name === 'string' ? record.hook_event_name : record.type;
+      const paths = selected[event];
+      if (!paths) continue;
+      for (const [dottedPath, values] of Object.entries(paths)) {
+        const value = valueAt(record, dottedPath);
+        if (value !== undefined) values.add(value);
+      }
+    }
+  }
+  return Object.fromEntries(
+    Object.entries(selected).map(([event, paths]) => [
+      event,
+      Object.fromEntries(Object.entries(paths).map(([path, values]) => [path, [...values]])),
+    ]),
+  );
+}
+
+const selectedVariantValues = collectRuntimeVariantValues();
 
 function enumClaims(schema, prefix = '') {
   const claims = [];
@@ -137,17 +163,66 @@ function enumClaims(schema, prefix = '') {
 function variantsFor(event, schema) {
   const seen = new Set();
   const result = [];
-  for (const claim of enumClaims(schema)) {
+  const selectedPaths = new Set(Object.keys(selectedVariantValues[event] ?? {}));
+  for (const claim of enumClaims(schema).filter((candidate) => selectedPaths.has(candidate.path))) {
     for (const value of claim.values) {
       const key = `${claim.path}\0${JSON.stringify(value)}`;
       if (seen.has(key)) continue;
       seen.add(key);
-      const observed = runtimeEnumValues[event]?.[claim.path]?.some((candidate) => Object.is(candidate, value));
+      const observed = selectedVariantValues[event]?.[claim.path]?.some((candidate) => Object.is(candidate, value));
       result.push(variant({ [claim.path]: value }, observed ? runtimeClaim : sourceClaim));
     }
   }
   return result;
 }
+
+function walkFiles(root) {
+  return readdirSync(root, { withFileTypes: true }).flatMap((entry) => {
+    const path = join(root, entry.name);
+    return entry.isDirectory() ? walkFiles(path) : statSync(path).isFile() ? [path] : [];
+  });
+}
+
+function stripSchemaAnnotations(value, isNamedSchemaMap = false) {
+  if (Array.isArray(value)) return value.map((child) => stripSchemaAnnotations(child));
+  if (value === null || typeof value !== 'object') return value;
+  return Object.fromEntries(
+    Object.entries(value)
+      .filter(([key]) => isNamedSchemaMap || !['description', 'title', 'examples', '$comment'].includes(key))
+      .map(([key, child]) => [
+        key,
+        stripSchemaAnnotations(child, ['properties', 'patternProperties', '$defs', 'definitions'].includes(key)),
+      ]),
+  );
+}
+
+function loadRuntimeToolSchemas() {
+  const catalogs = new Map();
+  for (const path of walkFiles(capturesRoot).filter((candidate) => candidate.endsWith('wire.jsonl'))) {
+    for (const line of readFileSync(path, 'utf8').split('\n').filter(Boolean)) {
+      const record = JSON.parse(line);
+      if (record.type !== 'llm.tools_snapshot' || !Array.isArray(record.tools)) continue;
+      const catalog = record.tools
+        .map((tool) => ({ name: tool.name, schema: projectJsonSchema(stripSchemaAnnotations(tool.parameters)) }))
+        .sort((left, right) => left.name.localeCompare(right.name));
+      catalogs.set(JSON.stringify(catalog), catalog);
+    }
+  }
+  if (catalogs.size !== 1) {
+    throw new Error(`Kimi ${VERSION} captures contain ${catalogs.size} distinct runtime tool catalogs`);
+  }
+  return catalogs.values().next().value;
+}
+
+const runtimeToolSchemas = loadRuntimeToolSchemas();
+const toolCallRefinements = runtimeToolSchemas.map((tool) => ({
+  match: { 'event.type': 'tool.call', 'event.name': tool.name },
+  path: 'event.args',
+  schema: tool.schema,
+  evidence: evidence(runtimeClaim),
+  confidence: 'verified-headless',
+  fidelity: 'exact',
+}));
 
 const wireFixtures = {
   'context.append_loop_event': 'tool-success',
@@ -191,10 +266,19 @@ function recordSchema(type, payloadSchema) {
 }
 
 function writeEvent(name, document) {
+  const schemaFidelity = document.schemaFidelity ?? {
+    ...(document.payloadSchema ? { payload: 'structural' } : {}),
+    ...(document.resultSchema ? { result: 'structural' } : {}),
+    ...(document.recordSchema ? { carrier: 'structural' } : {}),
+    limitations: [
+      'The release source projection preserves recursive declared structure but intentionally leaves custom/unknown values unconstrained; runtime-only file schemas describe captured instances.',
+    ],
+  };
   writeJson(join(eventsRoot, `${name}.json`), {
     surface: 'kimi',
     surfaceVersion: VERSION,
     event: name,
+    ...((document.payloadSchema || document.resultSchema || document.recordSchema) && { schemaFidelity }),
     ...document,
   });
 }
@@ -207,7 +291,7 @@ rmSync(modelRoot, { recursive: true, force: true });
 mkdirSync(eventsRoot, { recursive: true });
 
 writeJson(join(modelRoot, 'manifest.json'), {
-  asmVersion: 2,
+  asmVersion: 3,
   vendor: 'kimi',
   vendorVersion: VERSION,
   generatedAt: artifactProbe.probedAt.slice(0, 10),
@@ -273,12 +357,13 @@ writeEvent('metadata', {
   recordChannel: 'wire',
   evidence: evidence(runtimeClaim, true, true),
   confidence: 'verified-headless',
-  variants: [variant({ protocol_version: sourceReference.wire.protocolVersion }, runtimeClaim)],
   fixture: `captures/kimi@${VERSION}/basic-turn/wire.jsonl`,
 });
 
 for (const type of persistedWireTypes) {
   const claim = observedWireTypes.has(type) ? runtimeClaim : sourceClaim;
+  const eventVariants = variantsFor(type, schemas[type]);
+  const variantDiscriminants = Object.keys(selectedVariantValues[type] ?? {});
   writeEvent(type, {
     channel: 'wire',
     channels: ['wire'],
@@ -289,7 +374,8 @@ for (const type of persistedWireTypes) {
     recordChannel: 'wire',
     evidence: evidence(claim, true, true),
     confidence: claim === runtimeClaim ? 'verified-headless' : 'unverified',
-    ...(variantsFor(type, schemas[type]).length ? { variants: variantsFor(type, schemas[type]) } : {}),
+    ...(eventVariants.length ? { variants: eventVariants, variantDiscriminants } : {}),
+    ...(type === 'context.append_loop_event' ? { payloadRefinements: toolCallRefinements } : {}),
     ...(observedWireTypes.has(type)
       ? {
           fixture: `captures/kimi@${VERSION}/${wireFixtures[type]}/wire.jsonl`,
@@ -301,6 +387,7 @@ for (const type of persistedWireTypes) {
 for (const event of hookEvents) {
   const claim = observedHooks.has(event) ? runtimeClaim : sourceClaim;
   const payloadSchema = hookSchemas[event];
+  const eventVariants = variantsFor(event, payloadSchema);
   writeEvent(event, {
     channel: 'hook-command',
     channels: ['hook-command'],
@@ -309,7 +396,9 @@ for (const event of hookEvents) {
     payloadSchema,
     evidence: evidence(claim, false, true),
     confidence: claim === runtimeClaim ? 'verified-headless' : 'unverified',
-    variants: variantsFor(event, payloadSchema),
+    ...(eventVariants.length
+      ? { variants: eventVariants, variantDiscriminants: Object.keys(selectedVariantValues[event] ?? {}) }
+      : {}),
     ...(observedHooks.has(event)
       ? { fixture: `captures/kimi@${VERSION}/${hookFixtures[event]}/hooks/${event}.jsonl` }
       : {}),

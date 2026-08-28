@@ -10,134 +10,155 @@
   "direction": "client-to-agent",
   "trigger": "Move session — Move a session to another project directory, optionally transferring local changes.",
   "payloadSchema": {
-    "type": "object",
     "properties": {
-      "method": {
-        "type": "string"
-      },
-      "route": {
-        "type": "string"
-      },
       "body": {
-        "type": "object",
+        "additionalProperties": false,
         "properties": {
           "destination": {
-            "type": "object",
-            "properties": {
-              "directory": {
-                "type": "string"
-              }
-            },
-            "required": [
-              "directory"
-            ]
+            "$ref": "#/$defs/MoveSessionDestination"
           },
           "moveChanges": {
             "type": "boolean"
           },
           "sessionID": {
+            "pattern": "^ses",
             "type": "string"
           }
         },
         "required": [
-          "destination",
-          "sessionID"
-        ]
+          "sessionID",
+          "destination"
+        ],
+        "type": "object"
+      },
+      "method": {
+        "type": "string"
+      },
+      "route": {
+        "type": "string"
       }
     },
     "required": [
       "method",
       "route"
-    ]
+    ],
+    "type": "object",
+    "$defs": {
+      "MoveSessionDestination": {
+        "additionalProperties": false,
+        "properties": {
+          "directory": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "directory"
+        ],
+        "type": "object"
+      }
+    }
   },
   "resultSchema": {
-    "type": "object",
     "properties": {
       "method": {
-        "type": "string",
         "enum": [
           "POST"
-        ]
+        ],
+        "type": "string"
       },
       "route": {
-        "type": "string",
         "enum": [
           "/experimental/control-plane/move-session"
-        ]
+        ],
+        "type": "string"
       },
       "status": {
-        "type": "integer",
+        "maximum": 299,
         "minimum": 200,
-        "maximum": 299
+        "type": "integer"
       }
     },
     "required": [
       "method",
       "route",
       "status"
-    ]
+    ],
+    "type": "object"
   },
   "recordSchema": {
-    "type": "object",
     "properties": {
       "direction": {
-        "type": "string",
         "enum": [
           "client-to-agent"
-        ]
+        ],
+        "type": "string"
       },
       "request": {
-        "type": "object",
         "properties": {
-          "method": {
-            "type": "string",
-            "enum": [
-              "POST"
-            ]
-          },
-          "route": {
-            "type": "string",
-            "enum": [
-              "/experimental/control-plane/move-session"
-            ]
-          },
           "body": {
-            "type": "object",
+            "additionalProperties": false,
             "properties": {
               "destination": {
-                "type": "object",
-                "properties": {
-                  "directory": {
-                    "type": "string"
-                  }
-                },
-                "required": [
-                  "directory"
-                ]
+                "$ref": "#/$defs/MoveSessionDestination"
               },
               "moveChanges": {
                 "type": "boolean"
               },
               "sessionID": {
+                "pattern": "^ses",
                 "type": "string"
               }
             },
             "required": [
-              "destination",
-              "sessionID"
-            ]
+              "sessionID",
+              "destination"
+            ],
+            "type": "object"
+          },
+          "method": {
+            "enum": [
+              "POST"
+            ],
+            "type": "string"
+          },
+          "route": {
+            "enum": [
+              "/experimental/control-plane/move-session"
+            ],
+            "type": "string"
           }
         },
         "required": [
           "method",
           "route"
-        ]
+        ],
+        "type": "object"
       }
     },
     "required": [
       "direction",
       "request"
-    ]
+    ],
+    "type": "object",
+    "$defs": {
+      "MoveSessionDestination": {
+        "additionalProperties": false,
+        "properties": {
+          "directory": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "directory"
+        ],
+        "type": "object"
+      }
+    }
+  },
+  "schemaFidelity": {
+    "payload": "semantic",
+    "result": "semantic",
+    "carrier": "semantic"
   },
   "evidence": {
     "existence": [

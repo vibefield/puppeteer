@@ -1,7 +1,7 @@
 import { existsSync, readdirSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { describe, expect, it } from 'vitest';
-import { loadModel } from '@vibecook/puppeteer-surface';
+import { loadModel, validatePayload } from '@vibecook/puppeteer-surface';
 import { resolveAgentModel } from '../../../../scripts/agent-model-selection.mjs';
 
 interface CapturedHookRecord {
@@ -116,16 +116,16 @@ describe('captured hook fixtures', () => {
     });
   });
 
-  it('exactly covers the events the active model labels runtime-verified', () => {
-    const verifiedEvents = readdirSync(join(selected.modelRoot, 'events'))
+  it('exactly covers the model events carrying retained runtime fixtures', () => {
+    const capturedEvents = readdirSync(join(selected.modelRoot, 'events'))
       .filter((file) => file.endsWith('.json'))
       .filter((file) => {
         const event = file.replace(/\.json$/, '');
-        return modelConfidence(event) !== 'unverified';
+        return surfaceModel.events.find((candidate) => candidate.event === event)?.fixture !== undefined;
       })
       .map((file) => file.replace(/\.json$/, ''))
       .sort();
-    expect(listHookFixtureEvents()).toEqual(verifiedEvents);
+    expect(listHookFixtureEvents()).toEqual(capturedEvents);
   });
 
   it('every record carries the common envelope and matches its file', () => {
@@ -151,6 +151,33 @@ describe('captured hook fixtures', () => {
       expect(typeof record.prompt).toBe('string');
       expect(typeof record.prompt_id).toBe('string');
     }
+  });
+
+  it('retains the documented Write and Edit input contracts without overstating their confidence', () => {
+    const descriptor = surfaceModel.events.find((event) => event.event === 'PreToolUse')!;
+    expect(descriptor.confidence).toBe('unverified');
+    expect(descriptor.schemaFidelity).toMatchObject({ payload: 'structural' });
+    const common = {
+      session_id: 'session',
+      transcript_path: '/workspace/transcripts/session.jsonl',
+      cwd: '/workspace',
+      hook_event_name: 'PreToolUse',
+      tool_use_id: 'tool',
+    };
+    expect(
+      validatePayload(descriptor.payloadSchema!, {
+        ...common,
+        tool_name: 'Write',
+        tool_input: { file_path: '/workspace/a.ts' },
+      }),
+    ).toContain('missing required field "tool_input.content"');
+    expect(
+      validatePayload(descriptor.payloadSchema!, {
+        ...common,
+        tool_name: 'Edit',
+        tool_input: { file_path: '/workspace/a.ts', old_string: 'before' },
+      }),
+    ).toContain('missing required field "tool_input.new_string"');
   });
 
   it('MessageDisplay fixtures have the streaming shape found by the probe', () => {

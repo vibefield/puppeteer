@@ -1,0 +1,11 @@
+{
+  "format": "puppeteer-capture-fidelity/1",
+  "vendor": "opencode",
+  "vendorVersion": "1.18.16",
+  "defaultRepresentation": "type-preserving-redaction",
+  "nativeArtifacts": ["*/*.jsonl"],
+  "limitations": [
+    "Only JSONL protocol carriers are promoted; raw process logs and the generated OpenAPI document remain separate evidence.",
+    "Sensitive scalar values are replaced in place while native keys, containers, primitive types, record order, and stable joins are retained."
+  ]
+}

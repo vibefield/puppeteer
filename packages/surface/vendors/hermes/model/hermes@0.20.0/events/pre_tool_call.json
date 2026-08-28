@@ -5,69 +5,62 @@
   "firstSeen": "0.20.0",
   "lastVerified": "0.20.0",
   "channel": "plugin-hook",
-  "channels": ["plugin-hook", "outbound-webhook"],
+  "channels": ["plugin-hook", "shell-hook", "outbound-webhook"],
   "transport": "hook-callback",
   "direction": "agent-local",
   "payloadSchema": {
     "type": "object",
     "properties": {
-      "hook_event_name": {
+      "api_request_id": {
         "type": "string"
       },
+      "args": {},
+      "middleware_trace": {},
       "session_id": {
-        "anyOf": [
-          {
-            "type": "string"
-          },
-          {
-            "type": "null"
-          }
-        ]
+        "type": "string"
+      },
+      "task_id": {
+        "type": "string"
+      },
+      "telemetry_schema_version": {},
+      "tool_call_id": {
+        "type": "string"
       },
       "tool_name": {
-        "anyOf": [
-          {
-            "type": "string"
-          },
-          {
-            "type": "null"
-          }
-        ]
+        "type": "string"
       },
-      "platform": {
-        "anyOf": [
-          {
-            "type": "string"
-          },
-          {
-            "type": "null"
-          }
-        ]
-      },
-      "choice": {
-        "anyOf": [
-          {
-            "type": "string"
-          },
-          {
-            "type": "null"
-          }
-        ]
-      },
-      "keys": {
-        "type": "array",
-        "items": {
-          "type": "string"
-        }
+      "turn_id": {
+        "type": "string"
       }
-    },
-    "required": ["hook_event_name", "keys"]
+    }
   },
   "evidence": {
     "existence": ["hermes-runtime-headless"],
-    "shape": ["hermes-runtime-headless"]
+    "shape": ["hermes-exact-source"],
+    "result": ["hermes-exact-source"]
   },
-  "confidence": "verified-headless",
+  "confidence": "unverified",
   "fixture": "captures/hermes@0.20.0/tool-success/plugin-hooks.jsonl",
-  "notes": "Outbound webhook is a notify-only copy of the same hook name."
+  "notes": "Outbound webhook is a notify-only copy of the same hook name.",
+  "resultSchema": {
+    "type": "object",
+    "properties": {
+      "action": {
+        "type": "string",
+        "enum": ["block"]
+      },
+      "message": {
+        "type": "string"
+      }
+    },
+    "required": ["action", "message"]
+  },
+  "schemaFidelity": {
+    "payload": "structural",
+    "result": "structural",
+    "limitations": [
+      "The primary payload is the in-process plugin callback kwargs object. Shell-hook and outbound-webhook envelopes are separately retained in the source reference.",
+      "Observed callback key inventories prove encountered top-level fields only; arbitrary plugin return values and event-specific nested values remain unconstrained."
+    ]
+  }
 }

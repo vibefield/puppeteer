@@ -3,11 +3,19 @@
   "steps": [
     {
       "at": 0,
-      "do": { "emit": { "channel": "tui-gateway", "event": "message.complete", "with": { "status": "complete", "hasText": true } } }
+      "do": {
+        "emit": {
+          "channel": "tui-gateway",
+          "event": "message.complete",
+          "with": { "text": "imposter: complete", "status": "complete" }
+        }
+      }
     },
     {
       "at": 40,
-      "do": { "emit": { "channel": "tui-gateway", "event": "message.delta", "with": { "hasText": true } } }
+      "do": {
+        "emit": { "channel": "tui-gateway", "event": "message.delta", "with": { "text": "late" } }
+      }
     }
   ]
 }

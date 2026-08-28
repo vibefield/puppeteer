@@ -1,0 +1,282 @@
+{
+  "behaviorVersion": 1,
+  "title": "Antigravity CLI 1.1.12 print, hook, and durable lifecycle",
+  "description": "Partial order observed in authorized print-mode turns. Hook invocations and transcript records are concurrent observation rails; this is not a claim about native TUI rendering.",
+  "source": "Exact 1.1.12 artifact captures; legacy projection limits shape, not observed order or joins.",
+  "lanes": [
+    {
+      "id": "print",
+      "label": "Print stream"
+    },
+    {
+      "id": "hook",
+      "label": "Command hooks"
+    },
+    {
+      "id": "durable",
+      "label": "Durable transcript"
+    }
+  ],
+  "nodes": [
+    {
+      "id": "init",
+      "event": "init",
+      "lane": "print",
+      "order": 0,
+      "confidence": "verified-headless",
+      "evidence": {
+        "existence": ["antigravity-runtime-headless"],
+        "shape": ["antigravity-runtime-headless"]
+      }
+    },
+    {
+      "id": "step-user",
+      "event": "step_update",
+      "lane": "print",
+      "order": 1,
+      "confidence": "verified-headless",
+      "evidence": {
+        "existence": ["antigravity-runtime-headless"],
+        "shape": ["antigravity-runtime-headless"]
+      },
+      "match": {
+        "step_update.step_type": "user_input"
+      }
+    },
+    {
+      "id": "step-agent",
+      "event": "step_update",
+      "lane": "print",
+      "order": 2,
+      "confidence": "verified-headless",
+      "evidence": {
+        "existence": ["antigravity-runtime-headless"],
+        "shape": ["antigravity-runtime-headless"]
+      },
+      "match": {
+        "step_update.step_type": "agent_response"
+      }
+    },
+    {
+      "id": "step-tool",
+      "event": "step_update",
+      "lane": "print",
+      "order": 3,
+      "confidence": "verified-headless",
+      "evidence": {
+        "existence": ["antigravity-runtime-headless"],
+        "shape": ["antigravity-runtime-headless"]
+      },
+      "match": {
+        "step_update.step_type": "tool"
+      }
+    },
+    {
+      "id": "result",
+      "event": "result",
+      "lane": "print",
+      "order": 4,
+      "confidence": "verified-headless",
+      "evidence": {
+        "existence": ["antigravity-runtime-headless"],
+        "shape": ["antigravity-runtime-headless"]
+      }
+    },
+    {
+      "id": "pre-invocation",
+      "event": "PreInvocation",
+      "lane": "hook",
+      "order": 1,
+      "confidence": "verified-headless",
+      "evidence": {
+        "existence": ["antigravity-runtime-headless"],
+        "shape": ["antigravity-runtime-headless"]
+      }
+    },
+    {
+      "id": "pre-tool",
+      "event": "PreToolUse",
+      "lane": "hook",
+      "order": 2,
+      "confidence": "verified-headless",
+      "evidence": {
+        "existence": ["antigravity-runtime-headless"],
+        "shape": ["antigravity-runtime-headless"]
+      }
+    },
+    {
+      "id": "post-tool",
+      "event": "PostToolUse",
+      "lane": "hook",
+      "order": 3,
+      "confidence": "verified-headless",
+      "evidence": {
+        "existence": ["antigravity-runtime-headless"],
+        "shape": ["antigravity-runtime-headless"]
+      }
+    },
+    {
+      "id": "post-invocation",
+      "event": "PostInvocation",
+      "lane": "hook",
+      "order": 4,
+      "confidence": "verified-headless",
+      "evidence": {
+        "existence": ["antigravity-runtime-headless"],
+        "shape": ["antigravity-runtime-headless"]
+      }
+    },
+    {
+      "id": "stop",
+      "event": "Stop",
+      "lane": "hook",
+      "order": 5,
+      "confidence": "verified-headless",
+      "evidence": {
+        "existence": ["antigravity-runtime-headless"],
+        "shape": ["antigravity-runtime-headless"]
+      }
+    },
+    {
+      "id": "transcript",
+      "event": "transcript.jsonl",
+      "lane": "durable",
+      "order": 2,
+      "confidence": "verified-headless",
+      "evidence": {
+        "existence": ["antigravity-runtime-headless"],
+        "shape": ["antigravity-runtime-headless"]
+      }
+    }
+  ],
+  "relations": [
+    {
+      "from": "init",
+      "to": "step-user",
+      "kind": "sequence",
+      "confidence": "verified-headless",
+      "evidence": {
+        "existence": ["antigravity-runtime-headless"],
+        "shape": ["antigravity-runtime-headless"],
+        "ordering": ["antigravity-runtime-headless"]
+      }
+    },
+    {
+      "from": "step-user",
+      "to": "step-agent",
+      "kind": "sequence",
+      "confidence": "verified-headless",
+      "evidence": {
+        "existence": ["antigravity-runtime-headless"],
+        "shape": ["antigravity-runtime-headless"],
+        "ordering": ["antigravity-runtime-headless"]
+      }
+    },
+    {
+      "from": "step-agent",
+      "to": "step-tool",
+      "kind": "conditional",
+      "label": "model requests a tool",
+      "confidence": "verified-headless",
+      "evidence": {
+        "existence": ["antigravity-runtime-headless"],
+        "shape": ["antigravity-runtime-headless"],
+        "ordering": ["antigravity-runtime-headless"]
+      }
+    },
+    {
+      "from": "step-tool",
+      "to": "step-agent",
+      "kind": "loop",
+      "label": "tool result returns to model",
+      "confidence": "verified-headless",
+      "evidence": {
+        "existence": ["antigravity-runtime-headless"],
+        "shape": ["antigravity-runtime-headless"],
+        "ordering": ["antigravity-runtime-headless"]
+      }
+    },
+    {
+      "from": "step-agent",
+      "to": "result",
+      "kind": "conditional",
+      "label": "turn completes without another tool",
+      "confidence": "verified-headless",
+      "evidence": {
+        "existence": ["antigravity-runtime-headless"],
+        "shape": ["antigravity-runtime-headless"],
+        "ordering": ["antigravity-runtime-headless"]
+      }
+    },
+    {
+      "from": "pre-invocation",
+      "to": "pre-tool",
+      "kind": "conditional",
+      "label": "invocation requests a tool",
+      "confidence": "verified-headless",
+      "evidence": {
+        "existence": ["antigravity-runtime-headless"],
+        "shape": ["antigravity-runtime-headless"],
+        "ordering": ["antigravity-runtime-headless"]
+      }
+    },
+    {
+      "from": "pre-tool",
+      "to": "post-tool",
+      "kind": "sequence",
+      "confidence": "verified-headless",
+      "evidence": {
+        "existence": ["antigravity-runtime-headless"],
+        "shape": ["antigravity-runtime-headless"],
+        "ordering": ["antigravity-runtime-headless"]
+      }
+    },
+    {
+      "from": "post-tool",
+      "to": "post-invocation",
+      "kind": "sequence",
+      "confidence": "verified-headless",
+      "evidence": {
+        "existence": ["antigravity-runtime-headless"],
+        "shape": ["antigravity-runtime-headless"],
+        "ordering": ["antigravity-runtime-headless"]
+      }
+    },
+    {
+      "from": "pre-invocation",
+      "to": "post-invocation",
+      "kind": "conditional",
+      "label": "invocation has no tool",
+      "confidence": "verified-headless",
+      "evidence": {
+        "existence": ["antigravity-runtime-headless"],
+        "shape": ["antigravity-runtime-headless"],
+        "ordering": ["antigravity-runtime-headless"]
+      }
+    },
+    {
+      "from": "post-invocation",
+      "to": "stop",
+      "kind": "conditional",
+      "label": "agent becomes fully idle",
+      "confidence": "verified-headless",
+      "evidence": {
+        "existence": ["antigravity-runtime-headless"],
+        "shape": ["antigravity-runtime-headless"],
+        "ordering": ["antigravity-runtime-headless"]
+      }
+    },
+    {
+      "from": "step-user",
+      "to": "transcript",
+      "kind": "async",
+      "label": "durable records share conversation and step identities",
+      "confidence": "verified-headless",
+      "evidence": {
+        "existence": ["antigravity-runtime-headless"],
+        "shape": ["antigravity-runtime-headless"],
+        "ordering": ["antigravity-runtime-headless"]
+      }
+    }
+  ]
+}

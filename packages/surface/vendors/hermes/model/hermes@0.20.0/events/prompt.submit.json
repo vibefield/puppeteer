@@ -11,33 +11,30 @@
   "payloadSchema": {
     "type": "object",
     "properties": {
+      "confirm_empty_truncate": {},
+      "interrupted": {
+        "type": "boolean"
+      },
+      "queued": {},
       "session_id": {
-        "type": "string"
-      },
-      "cwd": {
-        "type": "string"
-      },
-      "source": {
         "type": "string"
       },
       "text": {
         "type": "string"
       },
-      "hasText": {
-        "type": "boolean"
+      "truncate_before_user_ordinal": {
+        "type": "integer"
       }
-    },
-    "required": ["session_id"]
+    }
   },
   "resultSchema": {
     "type": "object",
     "properties": {
       "status": {
-        "type": "string",
-        "enum": ["streaming"]
-      }
-    },
-    "required": ["status"]
+        "type": "string"
+      },
+      "voice_stopped": {}
+    }
   },
   "recordSchema": {
     "type": "object",
@@ -60,23 +57,21 @@
       "params": {
         "type": "object",
         "properties": {
+          "confirm_empty_truncate": {},
+          "interrupted": {
+            "type": "boolean"
+          },
+          "queued": {},
           "session_id": {
-            "type": "string"
-          },
-          "cwd": {
-            "type": "string"
-          },
-          "source": {
             "type": "string"
           },
           "text": {
             "type": "string"
           },
-          "hasText": {
-            "type": "boolean"
+          "truncate_before_user_ordinal": {
+            "type": "integer"
           }
-        },
-        "required": ["session_id"]
+        }
       }
     },
     "required": ["direction", "jsonrpc", "id", "method", "params"]
@@ -84,11 +79,21 @@
   "recordChannel": "tui-gateway",
   "evidence": {
     "existence": ["hermes-runtime-headless"],
-    "shape": ["hermes-runtime-headless"],
-    "result": ["hermes-runtime-headless"],
-    "carrier": ["hermes-runtime-headless"]
+    "shape": ["hermes-exact-source"],
+    "result": ["hermes-exact-source"],
+    "carrier": ["hermes-exact-source"]
   },
-  "confidence": "verified-headless",
+  "confidence": "unverified",
   "fixture": "captures/hermes@0.20.0/basic-turn/rpc.jsonl",
-  "notes": "Result is only { status: \"streaming\" }. There is no native prompt id."
+  "notes": "Result is only { status: \"streaming\" }. There is no native prompt id.",
+  "schemaFidelity": {
+    "payload": "structural",
+    "result": "structural",
+    "carrier": "structural",
+    "limitations": [
+      "Python is dynamic: helper-produced, conditionally assembled, and forwarded payload/result fields remain unconstrained unless directly recoverable.",
+      "Direct params indexing proves required access; params.get access proves a known field but not optionality.",
+      "Source declarations establish legal/native shape and existence, not runtime reachability."
+    ]
+  }
 }

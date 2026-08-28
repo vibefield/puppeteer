@@ -74,9 +74,12 @@ export function createAppServerChannel(options: AppServerChannelOptions): AppSer
   let closed = false;
   let buffer = '';
 
+  const outboundCarrier = (message: Record<string, unknown>): Record<string, unknown> =>
+    options.jsonrpc ? { jsonrpc: options.jsonrpc, ...message } : message;
+
   const write = (message: Record<string, unknown>): void => {
     if (closed || !options.output.writable) return;
-    options.output.write(`${JSON.stringify(options.jsonrpc ? { jsonrpc: options.jsonrpc, ...message } : message)}\n`);
+    options.output.write(`${JSON.stringify(outboundCarrier(message))}\n`);
   };
 
   const reply = async (id: unknown, method: string, params: Record<string, unknown>): Promise<void> => {
@@ -184,7 +187,7 @@ export function createAppServerChannel(options: AppServerChannelOptions): AppSer
         throw new RpcError(INTERNAL_ERROR, `notification fields may not override ${reserved.join(', ')}`);
       }
       const message = { method, params, ...fields };
-      const violations = options.validateOutbound?.(method, message) ?? [];
+      const violations = options.validateOutbound?.(method, outboundCarrier(message)) ?? [];
       if (violations.length > 0) {
         throw new RpcError(INTERNAL_ERROR, `${method} carrier: ${violations.join('; ')}`);
       }
@@ -211,7 +214,7 @@ export function createAppServerChannel(options: AppServerChannelOptions): AppSer
           },
         });
         const message = { id, method, params };
-        const violations = options.validateOutbound?.(method, message) ?? [];
+        const violations = options.validateOutbound?.(method, outboundCarrier(message)) ?? [];
         if (violations.length > 0) {
           pending.delete(id);
           clearTimeout(timer);
