@@ -54,7 +54,7 @@ test('promotion binds one complete acquisition through test, verification, and t
   );
 });
 
-test('opencode is an explicit reviewed workflow choice with isolated real-artifact lanes', () => {
+test('OpenCode is an explicit reviewed workflow choice with isolated native-TUI and resume lanes', () => {
   assert.match(adaptation, /options: \[claude, codex, grok, hermes, kimi, opencode\]/);
   assert.match(workflow, /options: \[claude, codex, grok, hermes, kimi, opencode\]/);
   assert.match(workflow, /if: \$\{\{ inputs\.vendor == 'opencode' \}\}/);
@@ -65,7 +65,14 @@ test('opencode is an explicit reviewed workflow choice with isolated real-artifa
   assert.match(live, /if: \$\{\{ vars\.OPENCODE_LIVE_ENABLED == 'true' \}\}/);
   assert.match(live, /PUPPETEER_OPENCODE_BIN: \$\{\{ vars\.OPENCODE_BIN \}\}/);
   assert.match(protectedLiveTests.opencode, /testId: 'opencode:native-tui-wire'/);
-  assert.match(protectedLiveTests.opencode, /host\.output\(session!\.runtimeSessionId\)\.includes\(RESPONSE_MARKER\)/);
+  assert.match(
+    protectedLiveTests.opencode,
+    /host\.output\(session!\.runtimeSessionId\)\.includes\(OPENCODE_LIVE_RESPONSE_MARKER\)/,
+  );
+  assert.match(
+    protectedLiveTests.opencode,
+    /host\.output\(resumed!\.runtimeSessionId\)\.includes\(OPENCODE_LIVE_RESPONSE_MARKER\)/,
+  );
 });
 
 test('Kimi uses the same exact artifact for its cross-platform native-TUI and resume lane', () => {

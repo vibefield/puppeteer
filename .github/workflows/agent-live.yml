@@ -168,7 +168,7 @@ jobs:
           node-version: 22.18.0
           cache: pnpm
       - run: pnpm install --frozen-lockfile --filter './packages/**'
-      - name: Run OpenCode through the real native TUI, private backend, and HTTP/SSE wire
+      - name: Run OpenCode native-TUI/private-backend/HTTP-SSE/resume proof
         env:
           OPENCODE_LIVE: '1'
           PUPPETEER_OPENCODE_BIN: ${{ vars.OPENCODE_BIN }}
