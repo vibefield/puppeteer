@@ -1123,7 +1123,8 @@ export function translateAgentEventEnvelope(options: TranslateAgentEventOptions)
     case 'mode:updated':
       updates.push(...modeUpdates(event, actor));
       break;
-    case 'workspace:changed':
+    case 'workspace:file-operation':
+    case 'workspace:file-changed':
     case 'notification:received':
     case 'adapter:native-event':
       break;

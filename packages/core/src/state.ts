@@ -649,7 +649,8 @@ export function reduceSessionState(state: SessionRuntimeState, envelope: AgentEv
       break;
     }
 
-    case 'workspace:changed':
+    case 'workspace:file-operation':
+    case 'workspace:file-changed':
     case 'notification:received':
     case 'usage:tokens-used':
     case 'workflow:updated':

@@ -19,17 +19,17 @@ The runtime preserves each agent’s original terminal user interface. Claude Co
 
 The runtime does not replace these interfaces with a generic chat UI. Instead, it hosts the agent inside a pseudoterminal and adds management capabilities around it:
 
-* Process and PTY lifecycle management
-* Exact terminal rendering through xterm.js
-* Keyboard, mouse, paste, resize, and control-sequence forwarding
-* Structured lifecycle and tool-event observation through native hooks
-* Programmatic prompt submission through guarded PTY input
-* Session recording and renderer reconnection
-* Workspace isolation
-* Process-tree termination
-* Agent capability detection
-* Cross-agent event normalization
-* Optional structured or ACP execution modes for automation
+- Process and PTY lifecycle management
+- Exact terminal rendering through xterm.js
+- Keyboard, mouse, paste, resize, and control-sequence forwarding
+- Structured lifecycle and tool-event observation through native hooks
+- Programmatic prompt submission through guarded PTY input
+- Session recording and renderer reconnection
+- Workspace isolation
+- Process-tree termination
+- Agent capability detection
+- Cross-agent event normalization
+- Optional structured or ACP execution modes for automation
 
 The central architectural rule is:
 
@@ -43,31 +43,31 @@ For Claude Code, native interactive mode and structured stream-json print mode a
 
 Coding agents increasingly provide distinct terminal interfaces with their own:
 
-* Input editors
-* Permission dialogs
-* Progress indicators
-* Tool-call presentation
-* Slash commands
-* Keyboard shortcuts
-* Session pickers
-* Model and mode selectors
-* Themes and visual identity
-* Subagent and task presentation
+- Input editors
+- Permission dialogs
+- Progress indicators
+- Tool-call presentation
+- Slash commands
+- Keyboard shortcuts
+- Session pickers
+- Model and mode selectors
+- Themes and visual identity
+- Subagent and task presentation
 
 A generic orchestration application usually loses these features by replacing the native interface with a normalized chat UI.
 
 Conversely, simply spawning agent CLIs in terminals provides no reliable way to:
 
-* Know when a turn begins or ends
-* Identify tool calls
-* Detect pending permissions
-* Track active subagents
-* Submit prompts safely
-* Persist operational session state for replay and reconnection
-* Coordinate multiple sessions
-* Recover from renderer restarts
-* Isolate concurrent write-capable agents
-* Expose a stable TypeScript API
+- Know when a turn begins or ends
+- Identify tool calls
+- Detect pending permissions
+- Track active subagents
+- Submit prompts safely
+- Persist operational session state for replay and reconnection
+- Coordinate multiple sessions
+- Recover from renderer restarts
+- Isolate concurrent write-capable agents
+- Expose a stable TypeScript API
 
 This runtime must solve both sides of the problem:
 
@@ -84,13 +84,13 @@ This runtime is layer #2 of a three-part system:
 
 The persistence boundary that keeps both libraries honest:
 
-* The runtime persists **operational state only**: terminal byte recordings (information that exists nowhere else on disk), its own normalized/native event log for replay and receipts, and workspace metadata. This is the emitting side writing its own record; it never becomes a search index.
-* Spaghetti persists the **historical index**: transcripts, sessions, and cross-session search. The runtime never grows browse or search features. If runtime records later become worth searching, Spaghetti indexes them as one more file source.
+- The runtime persists **operational state only**: terminal byte recordings (information that exists nowhere else on disk), its own normalized/native event log for replay and receipts, and workspace metadata. This is the emitting side writing its own record; it never becomes a search index.
+- Spaghetti persists the **historical index**: transcripts, sessions, and cross-session search. The runtime never grows browse or search features. If runtime records later become worth searching, Spaghetti indexes them as one more file source.
 
 Two integration contracts follow:
 
-* The runtime generates the agent-native session UUID at spawn (for Claude Code, `--session-id`). Correlation between a runtime session, its transcript on disk, and Spaghetti’s index is therefore deterministic — no fingerprinting or timing heuristics.
-* The Claude transcript observer (Section 16.8) is implemented on the Spaghetti SDK rather than as a new parser.
+- The runtime generates the agent-native session UUID at spawn (for Claude Code, `--session-id`). Correlation between a runtime session, its transcript on disk, and Spaghetti’s index is therefore deterministic — no fingerprinting or timing heuristics.
+- The Claude transcript observer (Section 16.8) is implemented on the Spaghetti SDK rather than as a new parser.
 
 ⸻
 
@@ -117,16 +117,16 @@ The runtime shall:
 
 The runtime should eventually support:
 
-* Headless structured sessions
-* ACP clients
-* Agent SDK integrations
-* Remote agent hosts
-* Container-backed workspaces
-* Multi-agent workflows
-* Scheduling and resource policies
-* Session handoff
-* Shared session observation
-* CI execution
+- Headless structured sessions
+- ACP clients
+- Agent SDK integrations
+- Remote agent hosts
+- Container-backed workspaces
+- Multi-agent workflows
+- Scheduling and resource policies
+- Session handoff
+- Shared session observation
+- CI execution
 
 ⸻
 
@@ -134,16 +134,16 @@ The runtime should eventually support:
 
 The initial implementation shall not:
 
-* Rebuild Claude Code’s TUI.
-* Parse terminal text as the authoritative semantic event source.
-* Promise identical semantic coverage across all agents.
-* Merge output from two separate agent processes and present it as one session.
-* Automatically approve privileged operations by default.
-* Guarantee PTY reattachment after the Electron main process itself crashes.
-* Depend on transcript formats for lifecycle correctness. Lifecycle derives from hooks and process state; transcript observation (via Spaghetti) enriches semantic history.
-* Provide process isolation equivalent to a security sandbox.
-* Run the terminal host with administrator or root privileges.
-* Treat ACP as the controller of a simultaneously running native TUI session.
+- Rebuild Claude Code’s TUI.
+- Parse terminal text as the authoritative semantic event source.
+- Promise identical semantic coverage across all agents.
+- Merge output from two separate agent processes and present it as one session.
+- Automatically approve privileged operations by default.
+- Guarantee PTY reattachment after the Electron main process itself crashes.
+- Depend on transcript formats for lifecycle correctness. Lifecycle derives from hooks and process state; transcript observation (via Spaghetti) enriches semantic history.
+- Provide process isolation equivalent to a security sandbox.
+- Run the terminal host with administrator or root privileges.
+- Treat ACP as the controller of a simultaneously running native TUI session.
 
 ⸻
 
@@ -154,9 +154,9 @@ ADR-001 — Native TUI is a first-class execution mode
 The runtime will explicitly support:
 
 type AgentExecutionMode =
-  | "native-tui"
-  | "structured"
-  | "acp";
+| "native-tui"
+| "structured"
+| "acp";
 
 native-tui is not a fallback. It is the preferred mode when the user wants the original interface.
 
@@ -192,9 +192,9 @@ ADR-006 — Native and structured modes use separate drivers
 An agent adapter may expose multiple drivers:
 
 interface AgentAdapter {
-  nativeTui?: NativeTuiDriver;
-  structured?: StructuredDriver;
-  acp?: AcpDriver;
+nativeTui?: NativeTuiDriver;
+structured?: StructuredDriver;
+acp?: AcpDriver;
 }
 
 The caller chooses the execution mode when creating a session.
@@ -205,14 +205,14 @@ The Electron renderer shall never own or directly spawn agent processes.
 
 The Electron main process, or a future external runtime daemon, owns:
 
-* PTYs
-* Processes
-* Hook servers
-* Session state
-* Persistence
-* Workspaces
-* Secrets
-* Process-tree cleanup
+- PTYs
+- Processes
+- Hook servers
+- Session state
+- Persistence
+- Workspaces
+- Secrets
+- Process-tree cleanup
 
 ADR-008 — Unknown native events are retained
 
@@ -225,43 +225,43 @@ This prevents upstream additions from becoming data loss.
 6. System Context
 
 ┌─────────────────────────────────────────────────────────┐
-│ Electron renderer                                       │
-│                                                         │
-│  xterm.js        Session UI        Tool/activity panels │
-│      │                │                    ▲             │
+│ Electron renderer │
+│ │
+│ xterm.js Session UI Tool/activity panels │
+│ │ │ ▲ │
 └──────┼────────────────┼────────────────────┼─────────────┘
-       │ terminal IPC   │ control IPC        │ event IPC
-       ▼                ▼                    │
+│ terminal IPC │ control IPC │ event IPC
+▼ ▼ │
 ┌─────────────────────────────────────────────────────────┐
-│ Runtime host                                            │
-│ Electron main process initially                         │
-│                                                         │
-│  Session manager                                        │
-│  ├── NativeTerminalSession                              │
-│  ├── SessionStateReducer                                │
-│  ├── EventStore                                         │
-│  ├── WorkspaceProvider                                  │
-│  └── ProcessTreeController                              │
-│                                                         │
-│  Terminal pipeline                                      │
-│  ├── node-pty                                           │
-│  ├── TerminalFanout                                     │
-│  ├── HeadlessTerminalSink                               │
-│  ├── RecordingSink                                      │
-│  └── RendererSink                                       │
-│                                                         │
-│  Observer pipeline                                      │
-│  ├── NativeHookObserver                                 │
-│  ├── TranscriptObserver                                 │
-│  ├── WorkspaceObserver                                  │
-│  └── ProcessObserver                                    │
+│ Runtime host │
+│ Electron main process initially │
+│ │
+│ Session manager │
+│ ├── NativeTerminalSession │
+│ ├── SessionStateReducer │
+│ ├── EventStore │
+│ ├── WorkspaceProvider │
+│ └── ProcessTreeController │
+│ │
+│ Terminal pipeline │
+│ ├── node-pty │
+│ ├── TerminalFanout │
+│ ├── HeadlessTerminalSink │
+│ ├── RecordingSink │
+│ └── RendererSink │
+│ │
+│ Observer pipeline │
+│ ├── NativeHookObserver │
+│ ├── TranscriptObserver │
+│ ├── WorkspaceObserver │
+│ └── ProcessObserver │
 └───────────────┬─────────────────────┬───────────────────┘
-                │ PTY                 │ hook side channel
-                ▼                     ▼
-       ┌────────────────┐    ┌─────────────────────┐
-       │ Agent CLI      │    │ Local hook bridge   │
-       │ Claude Code    │───►│ authenticated IPC   │
-       └────────────────┘    └─────────────────────┘
+│ PTY │ hook side channel
+▼ ▼
+┌────────────────┐ ┌─────────────────────┐
+│ Agent CLI │ │ Local hook bridge │
+│ Claude Code │───►│ authenticated IPC │
+└────────────────┘ └─────────────────────┘
 
 ⸻
 
@@ -272,39 +272,39 @@ This prevents upstream additions from becoming data loss.
 Native TUI mode launches the normal interactive CLI inside a PTY.
 
 const session = await runtime.createSession({
-  agent: "claude-code",
-  mode: "native-tui",
-  workspace: {
-    path: process.cwd(),
-    mode: "worktree",
-  },
+agent: "claude-code",
+mode: "native-tui",
+workspace: {
+path: process.cwd(),
+mode: "worktree",
+},
 });
 
 Characteristics:
 
-* The user sees the original TUI.
-* User input goes to the PTY.
-* Agent output goes directly to xterm.js.
-* Native hooks provide semantic observations.
-* Programmatic prompts are injected through guarded terminal input.
-* Native permission dialogs remain visible and usable.
-* ACP does not control the session.
+- The user sees the original TUI.
+- User input goes to the PTY.
+- Agent output goes directly to xterm.js.
+- Native hooks provide semantic observations.
+- Programmatic prompts are injected through guarded terminal input.
+- Native permission dialogs remain visible and usable.
+- ACP does not control the session.
 
 7.2 Structured mode
 
 Structured mode uses:
 
-* An official SDK
-* JSONL input/output
-* A noninteractive CLI
-* Another agent-specific protocol
+- An official SDK
+- JSONL input/output
+- A noninteractive CLI
+- Another agent-specific protocol
 
 Characteristics:
 
-* The runtime owns presentation.
-* Machine-readable messages are authoritative.
-* Prompt submission is protocol-level.
-* The original TUI is not present.
+- The runtime owns presentation.
+- Machine-readable messages are authoritative.
+- Prompt submission is protocol-level.
+- The original TUI is not present.
 
 7.3 ACP mode
 
@@ -319,58 +319,58 @@ ACP uses request/response methods and notifications, including initialization, s
 Recommended monorepo layout:
 
 packages/
-  core/
-    src/
-      runtime.ts
-      session.ts
-      events.ts
-      state.ts
-      capabilities.ts
-      errors.ts
-  node-runtime/
-    src/
-      pty/
-      processes/
-      persistence/
-      observers/
-      environment/
-  electron/
-    src/
-      main/
-      preload/
-      renderer/
-  xterm/
-    src/
-      terminal-controller.ts
-      renderer-sink.ts
-      headless-sink.ts
-      snapshot.ts
-  workspaces/
-    src/
-      local-directory.ts
-      git-worktree.ts
-  adapter-claude/
-    src/
-      detection.ts
-      native-driver.ts
-      hook-config.ts
-      hook-normalizer.ts
-      transcript-observer.ts
-  adapter-codex/
-  adapter-gemini/
-  adapter-acp/
-    src/
-      client.ts
-      transport.ts
-      normalizer.ts
-  adapter-grok/
-    src/
-      backend.ts
-  testing/
-    src/
-      fake-agent.ts
-      fake-hook-source.ts
-      pty-fixtures.ts
+core/
+src/
+runtime.ts
+session.ts
+events.ts
+state.ts
+capabilities.ts
+errors.ts
+node-runtime/
+src/
+pty/
+processes/
+persistence/
+observers/
+environment/
+electron/
+src/
+main/
+preload/
+renderer/
+xterm/
+src/
+terminal-controller.ts
+renderer-sink.ts
+headless-sink.ts
+snapshot.ts
+workspaces/
+src/
+local-directory.ts
+git-worktree.ts
+adapter-claude/
+src/
+detection.ts
+native-driver.ts
+hook-config.ts
+hook-normalizer.ts
+transcript-observer.ts
+adapter-codex/
+adapter-gemini/
+adapter-acp/
+src/
+client.ts
+transport.ts
+normalizer.ts
+adapter-grok/
+src/
+backend.ts
+testing/
+src/
+fake-agent.ts
+fake-hook-source.ts
+pty-fixtures.ts
 
 Recommended published package boundaries:
 
@@ -393,46 +393,46 @@ The actual package prefix is a placeholder.
 9. Core Public API
 
 export interface AgentRuntime {
-  discoverAgents(
-    options?: DiscoverAgentsOptions,
-  ): Promise<AgentInstallation[]>;
-  createSession(
-    options: CreateSessionOptions,
-  ): Promise<AgentSession>;
-  getSession(sessionId: string): AgentSession | undefined;
-  listSessions(): readonly SessionSummary[];
-  dispose(): Promise<void>;
+discoverAgents(
+options?: DiscoverAgentsOptions,
+): Promise<AgentInstallation[]>;
+createSession(
+options: CreateSessionOptions,
+): Promise<AgentSession>;
+getSession(sessionId: string): AgentSession | undefined;
+listSessions(): readonly SessionSummary[];
+dispose(): Promise<void>;
 }
 export interface CreateSessionOptions {
-  agent: string;
-  mode: AgentExecutionMode;
-  installation?: AgentInstallationRef;
-  workspace: WorkspaceRequest;
-  terminal?: {
-    cols?: number;
-    rows?: number;
-    environment?: Record<string, string>;
-  };
-  agentOptions?: Record<string, unknown>;
-  persistence?: "ephemeral" | "recorded";
+agent: string;
+mode: AgentExecutionMode;
+installation?: AgentInstallationRef;
+workspace: WorkspaceRequest;
+terminal?: {
+cols?: number;
+rows?: number;
+environment?: Record<string, string>;
+};
+agentOptions?: Record<string, unknown>;
+persistence?: "ephemeral" | "recorded";
 }
 export interface AgentSession {
-  readonly id: string;
-  readonly descriptor: AgentDescriptor;
-  readonly capabilities: AgentSessionCapabilities;
-  getSnapshot(): SessionSnapshot;
-  terminalOutput(
-    options?: TerminalSubscriptionOptions,
-  ): AsyncIterable<TerminalChunk>;
-  events(
-    options?: EventSubscriptionOptions,
-  ): AsyncIterable<AgentEventEnvelope>;
-  writeInput(input: TerminalInput): Promise<void>;
-  sendPrompt(prompt: PromptSubmission): Promise<PromptReceipt>;
-  resize(size: TerminalSize): Promise<void>;
-  interrupt(): Promise<void>;
-  terminate(options?: TerminateOptions): Promise<void>;
-  dispose(): Promise<void>;
+readonly id: string;
+readonly descriptor: AgentDescriptor;
+readonly capabilities: AgentSessionCapabilities;
+getSnapshot(): SessionSnapshot;
+terminalOutput(
+options?: TerminalSubscriptionOptions,
+): AsyncIterable<TerminalChunk>;
+events(
+options?: EventSubscriptionOptions,
+): AsyncIterable<AgentEventEnvelope>;
+writeInput(input: TerminalInput): Promise<void>;
+sendPrompt(prompt: PromptSubmission): Promise<PromptReceipt>;
+resize(size: TerminalSize): Promise<void>;
+interrupt(): Promise<void>;
+terminate(options?: TerminateOptions): Promise<void>;
+dispose(): Promise<void>;
 }
 
 ⸻
@@ -440,89 +440,89 @@ export interface AgentSession {
 10. Agent Adapter API
 
 export interface AgentAdapter {
-  readonly id: string;
-  readonly displayName: string;
-  detect(
-    context: DetectionContext,
-  ): Promise<AgentInstallation[]>;
-  inspect(
-    installation: AgentInstallation,
-  ): Promise<AgentDescriptor>;
-  createNativeTuiDriver?(
-    context: DriverContext,
-  ): NativeTuiDriver;
-  createStructuredDriver?(
-    context: DriverContext,
-  ): StructuredDriver;
-  createAcpDriver?(
-    context: DriverContext,
-  ): AcpDriver;
-  normalizeNativeEvent(
-    event: NativeAdapterEvent,
-  ): readonly AgentEvent[];
+readonly id: string;
+readonly displayName: string;
+detect(
+context: DetectionContext,
+): Promise<AgentInstallation[]>;
+inspect(
+installation: AgentInstallation,
+): Promise<AgentDescriptor>;
+createNativeTuiDriver?(
+context: DriverContext,
+): NativeTuiDriver;
+createStructuredDriver?(
+context: DriverContext,
+): StructuredDriver;
+createAcpDriver?(
+context: DriverContext,
+): AcpDriver;
+normalizeNativeEvent(
+event: NativeAdapterEvent,
+): readonly AgentEvent[];
 }
 export interface AgentDescriptor {
-  id: string;
-  displayName: string;
-  version: string;
-  executable: string;
-  modes: AgentExecutionMode[];
-  capabilities: AgentCapabilities;
-  compatibility: {
-    testedRange?: string;
-    detectedFeatures: string[];
-    warnings: string[];
-  };
+id: string;
+displayName: string;
+version: string;
+executable: string;
+modes: AgentExecutionMode[];
+capabilities: AgentCapabilities;
+compatibility: {
+testedRange?: string;
+detectedFeatures: string[];
+warnings: string[];
+};
 }
 
 Adapters must capability-probe instead of relying only on hard-coded version ranges.
 
 Examples:
 
-* Inspect claude --version.
-* Inspect claude --help.
-* Verify required hook event names.
-* Verify required CLI flags.
-* Verify whether the configured settings schema is accepted.
-* Report degraded semantic observation when capabilities are missing.
+- Inspect claude --version.
+- Inspect claude --help.
+- Verify required hook event names.
+- Verify required CLI flags.
+- Verify whether the configured settings schema is accepted.
+- Report degraded semantic observation when capabilities are missing.
 
 ⸻
 
 11. Native Session Components
 
 export interface NativeTuiDriver {
-  prepare(
-    options: NativeSessionPrepareOptions,
-  ): Promise<PreparedNativeSession>;
-  spawn(
-    prepared: PreparedNativeSession,
-  ): Promise<NativeProcessHandle>;
-  createObservers(
-    prepared: PreparedNativeSession,
-  ): Promise<NativeObserver[]>;
+prepare(
+options: NativeSessionPrepareOptions,
+): Promise<PreparedNativeSession>;
+spawn(
+prepared: PreparedNativeSession,
+): Promise<NativeProcessHandle>;
+createObservers(
+prepared: PreparedNativeSession,
+): Promise<NativeObserver[]>;
 }
 export interface PreparedNativeSession {
-  command: string;
-  args: string[];
-  cwd: string;
-  env: Record<string, string>;
-  terminal: {
-    name: string;
-    cols: number;
-    rows: number;
-  };
-  filesToCleanup: string[];
-  metadata: Record<string, unknown>;
+command: string;
+args: string[];
+cwd: string;
+env: Record<string, string>;
+terminal: {
+name: string;
+cols: number;
+rows: number;
+};
+filesToCleanup: string[];
+metadata: Record<string, unknown>;
 }
 export interface NativeProcessHandle {
-  readonly pid: number;
-  onData(listener: (data: Uint8Array) => void): Disposable;
-  onExit(listener: (exit: ProcessExit) => void): Disposable;
-  write(data: Uint8Array): void;
-  resize(cols: number, rows: number): void;
-  interrupt(): Promise<void>;
-  terminate(): Promise<void>;
-  killTree(): Promise<void>;
+readonly pid: number;
+onData(listener: (data: Uint8Array) => void): Disposable;
+onExit(listener: (exit: ProcessExit) => void): Disposable;
+write(data: Uint8Array): void;
+resize(cols: number, rows: number): void;
+interrupt(): Promise<void>;
+terminate(): Promise<void>;
+killTree(): Promise<void>;
 }
 
 ⸻
@@ -532,22 +532,22 @@ export interface NativeProcessHandle {
 12.1 Output flow
 
 Agent PTY output
-      │
-      ▼
+│
+▼
 OrderedTerminalDistributor
-      │
-      ├── RendererTerminalSink
-      ├── HeadlessTerminalSink
-      ├── TerminalRecordingSink
-      └── RecentOutputRingBuffer
+│
+├── RendererTerminalSink
+├── HeadlessTerminalSink
+├── TerminalRecordingSink
+└── RecentOutputRingBuffer
 
 All sinks receive the same ordered terminal chunks.
 
 export interface TerminalChunk {
-  sessionId: string;
-  sequence: number;
-  monotonicTime: number;
-  data: Uint8Array;
+sessionId: string;
+sequence: number;
+monotonicTime: number;
+data: Uint8Array;
 }
 
 The sequence number is assigned when the runtime receives the PTY chunk, before fan-out.
@@ -557,25 +557,25 @@ The sequence number is assigned when the runtime receives the PTY chunk, before 
 The Electron renderer uses xterm.js.
 
 terminal.onData(data => {
-  runtimeApi.writeTerminalInput({
-    sessionId,
-    data,
-    encoding: "utf8",
-  });
+runtimeApi.writeTerminalInput({
+sessionId,
+data,
+encoding: "utf8",
+});
 });
 terminal.onBinary(data => {
-  runtimeApi.writeTerminalInput({
-    sessionId,
-    data,
-    encoding: "binary",
-  });
+runtimeApi.writeTerminalInput({
+sessionId,
+data,
+encoding: "binary",
+});
 });
 terminal.onResize(({ cols, rows }) => {
-  runtimeApi.resizeTerminal({
-    sessionId,
-    cols,
-    rows,
-  });
+runtimeApi.resizeTerminal({
+sessionId,
+cols,
+rows,
+});
 });
 
 xterm.js documents onData as the normal path for typed or pasted terminal input and recommends passing that data to the backing PTY. Its binary input event exists for non-UTF-8 terminal reports such as certain mouse encodings. (xtermjs.org)
@@ -586,23 +586,23 @@ The runtime maintains an optional headless terminal receiving the same ordered o
 
 Responsibilities:
 
-* Current terminal buffer
-* Cursor position
-* Terminal modes
-* Recent scrollback
-* Renderer reconnection support
-* Thumbnail or preview generation
-* Debugging
-* Detecting alternate-screen usage
-* Detecting bracketed-paste mode
+- Current terminal buffer
+- Cursor position
+- Terminal modes
+- Recent scrollback
+- Renderer reconnection support
+- Thumbnail or preview generation
+- Debugging
+- Detecting alternate-screen usage
+- Detecting bracketed-paste mode
 
 Non-responsibilities:
 
-* Detecting tool calls
-* Identifying model turns
-* Determining permission state
-* Parsing the agent protocol
-* Reconstructing authoritative assistant messages
+- Detecting tool calls
+- Identifying model turns
+- Determining permission state
+- Parsing the agent protocol
+- Reconstructing authoritative assistant messages
 
 12.4 Backpressure
 
@@ -611,17 +611,17 @@ The PTY must not be blocked indefinitely by a slow renderer.
 Each sink declares its delivery policy:
 
 type TerminalSinkPolicy =
-  | { type: "required"; maxQueueBytes: number }
-  | { type: "replayable"; maxQueueBytes: number }
-  | { type: "droppable"; maxQueueBytes: number };
+| { type: "required"; maxQueueBytes: number }
+| { type: "replayable"; maxQueueBytes: number }
+| { type: "droppable"; maxQueueBytes: number };
 
 Recommended policies:
 
-* Recorder: required
-* Headless terminal: required
-* Active renderer: replayable
-* Inactive renderer: droppable
-* Remote observer: droppable
+- Recorder: required
+- Headless terminal: required
+- Active renderer: replayable
+- Inactive renderer: droppable
+- Remote observer: droppable
 
 When a renderer falls behind:
 
@@ -638,42 +638,42 @@ When a renderer falls behind:
 
 The main process owns:
 
-* Runtime instance
-* PTYs
-* Agent processes
-* Hook bridge
-* Workspaces
-* Persistence
-* Environment variables
-* Secrets
-* Event normalization
-* Session reducer
+- Runtime instance
+- PTYs
+- Agent processes
+- Hook bridge
+- Workspaces
+- Persistence
+- Environment variables
+- Secrets
+- Event normalization
+- Session reducer
 
 13.2 Preload bridge
 
 The preload script exposes a narrow API:
 
 export interface AgentRuntimeRendererApi {
-  createSession(
-    request: CreateRendererSessionRequest,
-  ): Promise<RendererSessionDescriptor>;
-  attachTerminal(
-    sessionId: string,
-  ): Promise<MessagePort>;
-  attachEvents(
-    sessionId: string,
-  ): Promise<MessagePort>;
-  writeTerminalInput(
-    request: WriteTerminalInputRequest,
-  ): void;
-  resizeTerminal(
-    request: ResizeTerminalRequest,
-  ): void;
-  sendPrompt(
-    request: SendPromptRequest,
-  ): Promise<PromptReceipt>;
-  interrupt(sessionId: string): Promise<void>;
-  terminate(sessionId: string): Promise<void>;
+createSession(
+request: CreateRendererSessionRequest,
+): Promise<RendererSessionDescriptor>;
+attachTerminal(
+sessionId: string,
+): Promise<MessagePort>;
+attachEvents(
+sessionId: string,
+): Promise<MessagePort>;
+writeTerminalInput(
+request: WriteTerminalInputRequest,
+): void;
+resizeTerminal(
+request: ResizeTerminalRequest,
+): void;
+sendPrompt(
+request: SendPromptRequest,
+): Promise<PromptReceipt>;
+interrupt(sessionId: string): Promise<void>;
+terminate(sessionId: string): Promise<void>;
 }
 
 High-volume terminal output should use a MessagePort or equivalent streaming IPC rather than one request-response IPC call per chunk.
@@ -682,14 +682,14 @@ High-volume terminal output should use a MessagePort or equivalent streaming IPC
 
 The renderer owns:
 
-* xterm.js instance
-* Visual layout
-* Session tabs
-* Activity panels
-* Provider-neutral conversation snapshots
-* User permission notifications
-* Prompt composer
-* Terminal focus state
+- xterm.js instance
+- Visual layout
+- Session tabs
+- Activity panels
+- Provider-neutral conversation snapshots
+- User permission notifications
+- Prompt composer
+- Terminal focus state
 
 It does not receive raw adapter events, arbitrary secrets, or unrestricted
 process APIs. Event-to-conversation projection belongs to the shared runtime so
@@ -702,102 +702,104 @@ demo applications do not reconstruct provider behavior.
 14.1 Event envelope
 
 export interface AgentEventEnvelope<
-  T extends AgentEvent = AgentEvent,
+T extends AgentEvent = AgentEvent,
+
 > {
-  sequence: number;
-  sessionId: string;
-  nativeSessionId?: string;
-  turnId?: string;
-  timestamp: string;
-  monotonicTime: number;
-  source:
-    | "native-hook"
-    | "native-transcript"
-    | "workspace"
-    | "process"
-    | "terminal-inference"
-    | "runtime";
-  confidence:
-    | "authoritative"
-    | "derived"
-    | "inferred";
-  event: T;
-  nativeEvent?: unknown;
-}
+> sequence: number;
+> sessionId: string;
+> nativeSessionId?: string;
+> turnId?: string;
+> timestamp: string;
+> monotonicTime: number;
+> source:
+> | "native-hook"
+> | "native-transcript"
+> | "workspace"
+> | "process"
+> | "terminal-inference"
+> | "runtime";
+> confidence:
+> | "authoritative"
+> | "derived"
+> | "inferred";
+> event: T;
+> nativeEvent?: unknown;
+> }
 
 14.2 Core event union
 
 export type AgentEvent =
-  | SessionStartedEvent
-  | SessionReadyEvent
-  | SessionExitedEvent
-  | TurnStartedEvent
-  | TurnCompletedEvent
-  | TurnFailedEvent
-  | AssistantMessageEvent
-  | ReasoningStartedEvent
-  | ReasoningProgressEvent
-  | ReasoningSummaryEvent
-  | ReasoningCompletedEvent
-  | ToolRequestedEvent
-  | ToolStartedEvent
-  | ToolCompletedEvent
-  | ToolFailedEvent
-  | PermissionRequestedEvent
-  | PermissionResolvedEvent
-  | SubagentStartedEvent
-  | SubagentStoppedEvent
-  | TaskCreatedEvent
-  | TaskCompletedEvent
-  | WorkspaceChangedEvent
-  | ProcessStartedEvent
-  | ProcessExitedEvent
-  | NativeNotificationEvent
-  | UnknownNativeEvent;
+| SessionStartedEvent
+| SessionReadyEvent
+| SessionExitedEvent
+| TurnStartedEvent
+| TurnCompletedEvent
+| TurnFailedEvent
+| AssistantMessageEvent
+| ReasoningStartedEvent
+| ReasoningProgressEvent
+| ReasoningSummaryEvent
+| ReasoningCompletedEvent
+| ToolRequestedEvent
+| ToolStartedEvent
+| ToolCompletedEvent
+| ToolFailedEvent
+| PermissionRequestedEvent
+| PermissionResolvedEvent
+| SubagentStartedEvent
+| SubagentStoppedEvent
+| TaskCreatedEvent
+| TaskCompletedEvent
+| WorkspaceFileOperationEvent
+| WorkspaceFileChangedEvent
+| ProcessStartedEvent
+| ProcessExitedEvent
+| NativeNotificationEvent
+| UnknownNativeEvent;
 
 14.3 Example event interfaces
 
 export interface ToolRequestedEvent {
-  type: "tool.requested";
-  toolCallId: string;
-  tool: string;
-  input: unknown;
-  presentation?: ToolPresentation;
+type: "tool.requested";
+toolCallId: string;
+tool: string;
+input: unknown;
+presentation?: ToolPresentation;
 }
 export interface ReasoningStartedEvent {
-  type: "reasoning.started";
-  reasoningId?: string;
+type: "reasoning.started";
+reasoningId?: string;
 }
 export interface ReasoningProgressEvent {
-  type: "reasoning.progress";
-  reasoningId?: string;
+type: "reasoning.progress";
+reasoningId?: string;
 }
 export interface ReasoningSummaryEvent {
-  type: "reasoning.summary";
-  reasoningId?: string;
-  text: string;
-  final?: boolean;
+type: "reasoning.summary";
+reasoningId?: string;
+text: string;
+final?: boolean;
 }
 export interface ReasoningCompletedEvent {
-  type: "reasoning.completed";
-  reasoningId?: string;
+type: "reasoning.completed";
+reasoningId?: string;
 }
 export interface PermissionRequestedEvent {
-  type: "permission.requested";
-  requestId: string;
-  toolCallId?: string;
-  tool?: string;
-  input?: unknown;
-  presentation: "native-tui" | "host-ui";
+type: "permission.requested";
+requestId: string;
+toolCallId?: string;
+tool?: string;
+input?: unknown;
+presentation: "native-tui" | "host-ui";
 }
 export interface TurnCompletedEvent {
-  type: "turn.completed";
-  stopReason?: string;
+type: "turn.completed";
+stopReason?: string;
 }
 export interface UnknownNativeEvent {
-  type: "adapter.native-event";
-  adapter: string;
-  nativeType?: string;
+type: "adapter.native-event";
+adapter: string;
+nativeType?: string;
 }
 
 14.4 Correlation
@@ -829,88 +831,88 @@ the application renderer.
 Session state, turn state, tool state, permission state, and terminal state are separate.
 
 export interface SessionRuntimeState {
-  lifecycle:
-    | "preparing"
-    | "starting"
-    | "ready"
-    | "running"
-    | "interrupting"
-    | "terminating"
-    | "exited"
-    | "failed";
-  activeTurn?: {
-    id: string;
-    startedAt: string;
-    state:
-      | "submitted"
-      | "running"
-      | "completing";
-  };
-  activeReasoning?: {
-    reasoningId?: string;
-    startedAt: string;
-  };
-  tools: Map<string, ToolRuntimeState>;
-  settledTools: Map<string, "completed" | "failed">;
-  permissions: Map<string, PermissionRuntimeState>;
-  subagents: Map<string, SubagentRuntimeState>;
-  tasks: Map<string, TaskRuntimeState>;
-  terminal: {
-    cols: number;
-    rows: number;
-    attachedRenderers: number;
-    alternateScreen: boolean;
-  };
-  control: {
-    owner: "user" | "runtime" | null;
-    queuedPrompts: number;
-  };
+lifecycle:
+| "preparing"
+| "starting"
+| "ready"
+| "running"
+| "interrupting"
+| "terminating"
+| "exited"
+| "failed";
+activeTurn?: {
+id: string;
+startedAt: string;
+state:
+| "submitted"
+| "running"
+| "completing";
+};
+activeReasoning?: {
+reasoningId?: string;
+startedAt: string;
+};
+tools: Map<string, ToolRuntimeState>;
+settledTools: Map<string, "completed" | "failed">;
+permissions: Map<string, PermissionRuntimeState>;
+subagents: Map<string, SubagentRuntimeState>;
+tasks: Map<string, TaskRuntimeState>;
+terminal: {
+cols: number;
+rows: number;
+attachedRenderers: number;
+alternateScreen: boolean;
+};
+control: {
+owner: "user" | "runtime" | null;
+queuedPrompts: number;
+};
 }
 
 15.1 Simplified state flow
 
 PREPARING
-    │
-    ▼
+│
+▼
 STARTING
-    │ native session-start event
-    ▼
+│ native session-start event
+▼
 READY
-    │ user prompt submitted
-    ▼
+│ user prompt submitted
+▼
 RUNNING
-    │
-    ├── permission requested
-    │       └── permission remains separate state
-    │
-    ├── tool calls start and finish
-    │
-    └── stop / turn complete
-            ▼
-          READY
+│
+├── permission requested
+│ └── permission remains separate state
+│
+├── tool calls start and finish
+│
+└── stop / turn complete
+▼
+READY
 
 15.2 State reducer
 
 All normalized events pass through a deterministic reducer:
 
 function reduceSessionState(
-  state: SessionRuntimeState,
-  envelope: AgentEventEnvelope,
+state: SessionRuntimeState,
+envelope: AgentEventEnvelope,
 ): SessionRuntimeState;
 
 The reducer:
 
-* Must be deterministic.
-* Must tolerate duplicate events.
-* Must tolerate unknown events.
-* Must not throw because an upstream event arrived out of order.
-* Must keep terminal lifecycle state monotonic: late traffic can be retained as
+- Must be deterministic.
+- Must tolerate duplicate events.
+- Must tolerate unknown events.
+- Must not throw because an upstream event arrived out of order.
+- Must keep terminal lifecycle state monotonic: late traffic can be retained as
   evidence, but cannot reopen turns, reasoning, tools, permissions, subagents,
   or tasks after exit.
-* Must retain bounded terminal tool tombstones so duplicate completion and
+- Must retain bounded terminal tool tombstones so duplicate completion and
   completion-before-start delivery remain idempotent.
-* Should emit diagnostics for invalid transitions.
-* Must preserve the raw event log for later reprocessing.
+- Should emit diagnostics for invalid transitions.
+- Must preserve the raw event log for later reprocessing.
 
 ⸻
 
@@ -920,13 +922,13 @@ The reducer:
 
 The Claude native adapter uses:
 
-* Interactive claude
-* node-pty
-* xterm.js
-* Claude Code hooks
-* A local authenticated hook bridge
-* Optional transcript observation
-* Optional workspace and process observation
+- Interactive claude
+- node-pty
+- xterm.js
+- Claude Code hooks
+- A local authenticated hook bridge
+- Optional transcript observation
+- Optional workspace and process observation
 
 Claude Code hooks can deliver JSON context through command-hook stdin or HTTP POST bodies. Current hook lifecycle events include session, turn, tool, permission, task, subagent, message-display, notification, compaction, working-directory, configuration, and file-change events. (Claude Platform Docs)
 
@@ -949,10 +951,10 @@ Claude Code supports an explicit UUID session ID, session naming, settings overr
 16.3 Recommended command
 
 claude \
-  --session-id <runtime-generated-uuid> \
-  --name <display-name> \
-  --settings <session-settings-path> \
-  --permission-mode default
+--session-id <runtime-generated-uuid> \
+--name <display-name> \
+--settings <session-settings-path> \
+--permission-mode default
 
 Do not include:
 
@@ -968,12 +970,12 @@ Those flags belong to structured print mode rather than the native interactive s
 Use a hybrid hook bridge:
 
 Low-frequency lifecycle/control hooks
-    └── command hook
-        └── small forwarder process
-            └── local authenticated bridge
+└── command hook
+└── small forwarder process
+└── local authenticated bridge
 High-frequency supported hooks
-    └── direct HTTP hook
-        └── local authenticated bridge
+└── direct HTTP hook
+└── local authenticated bridge
 
 The command forwarder is necessary for events that do not support HTTP handlers. Direct HTTP is preferable for high-frequency events such as message display where supported, because it avoids launching a forwarding process for every event.
 
@@ -984,25 +986,25 @@ Claude’s hook documentation notes that command hooks receive JSON on stdin, wh
 Illustrative generated settings:
 
 {
-  "hooks": {
-    "SessionStart": [
-      {
-        "hooks": [
-          {
-            "type": "command",
-            "command": "<hook-forwarder-command>"
-          }
-        ]
-      }
-    ],
-    "UserPromptSubmit": [
-      {
-        "hooks": [
-          {
-            "type": "http",
-            "url": "http://127.0.0.1:<port>/hooks",
-            "headers": {
-              "Authorization": "Bearer $AGENT_RUNTIME_HOOK_TOKEN"
+"hooks": {
+"SessionStart": [
+{
+"hooks": [
+{
+"type": "command",
+"command": "<hook-forwarder-command>"
+}
+]
+}
+],
+"UserPromptSubmit": [
+{
+"hooks": [
+{
+"type": "http",
+"url": "http://127.0.0.1:<port>/hooks",
+"headers": {
+"Authorization": "Bearer $AGENT_RUNTIME_HOOK_TOKEN"
             },
             "allowedEnvVars": [
               "AGENT_RUNTIME_HOOK_TOKEN"
@@ -1020,23 +1022,23 @@ Illustrative generated settings:
             "url": "http://127.0.0.1:<port>/hooks",
             "headers": {
               "Authorization": "Bearer $AGENT_RUNTIME_HOOK_TOKEN"
-            },
-            "allowedEnvVars": [
-              "AGENT_RUNTIME_HOOK_TOKEN"
-            ],
-            "timeout": 2
-          }
-        ]
-      }
-    ],
-    "PreToolUse": [
-      {
-        "hooks": [
-          {
-            "type": "http",
-            "url": "http://127.0.0.1:<port>/hooks",
-            "headers": {
-              "Authorization": "Bearer $AGENT_RUNTIME_HOOK_TOKEN"
+},
+"allowedEnvVars": [
+"AGENT_RUNTIME_HOOK_TOKEN"
+],
+"timeout": 2
+}
+]
+}
+],
+"PreToolUse": [
+{
+"hooks": [
+{
+"type": "http",
+"url": "http://127.0.0.1:<port>/hooks",
+"headers": {
+"Authorization": "Bearer $AGENT_RUNTIME_HOOK_TOKEN"
             },
             "allowedEnvVars": [
               "AGENT_RUNTIME_HOOK_TOKEN"
@@ -1054,43 +1056,43 @@ Illustrative generated settings:
             "url": "http://127.0.0.1:<port>/hooks",
             "headers": {
               "Authorization": "Bearer $AGENT_RUNTIME_HOOK_TOKEN"
-            },
-            "allowedEnvVars": [
-              "AGENT_RUNTIME_HOOK_TOKEN"
-            ],
-            "timeout": 5
-          }
-        ]
-      }
-    ],
-    "Stop": [
-      {
-        "hooks": [
-          {
-            "type": "http",
-            "url": "http://127.0.0.1:<port>/hooks",
-            "headers": {
-              "Authorization": "Bearer $AGENT_RUNTIME_HOOK_TOKEN"
-            },
-            "allowedEnvVars": [
-              "AGENT_RUNTIME_HOOK_TOKEN"
-            ],
-            "timeout": 5
-          }
-        ]
-      }
-    ],
-    "SessionEnd": [
-      {
-        "hooks": [
-          {
-            "type": "command",
-            "command": "<hook-forwarder-command>"
-          }
-        ]
-      }
-    ]
-  }
+},
+"allowedEnvVars": [
+"AGENT_RUNTIME_HOOK_TOKEN"
+],
+"timeout": 5
+}
+]
+}
+],
+"Stop": [
+{
+"hooks": [
+{
+"type": "http",
+"url": "http://127.0.0.1:<port>/hooks",
+"headers": {
+"Authorization": "Bearer $AGENT_RUNTIME_HOOK_TOKEN"
+},
+"allowedEnvVars": [
+"AGENT_RUNTIME_HOOK_TOKEN"
+],
+"timeout": 5
+}
+]
+}
+],
+"SessionEnd": [
+{
+"hooks": [
+{
+"type": "command",
+"command": "<hook-forwarder-command>"
+}
+]
+}
+]
+}
 }
 
 The adapter should generate this from an event registry rather than maintaining a large handwritten literal.
@@ -1098,115 +1100,115 @@ The adapter should generate this from an event registry rather than maintaining 
 16.6 Hook bridge API
 
 export interface HookBridge {
-  readonly endpoint: string;
-  readonly token: string;
-  start(): Promise<void>;
-  events(): AsyncIterable<NativeHookEnvelope>;
-  respond(
-    requestId: string,
-    response: HookResponse,
-  ): Promise<void>;
-  dispose(): Promise<void>;
+readonly endpoint: string;
+readonly token: string;
+start(): Promise<void>;
+events(): AsyncIterable<NativeHookEnvelope>;
+respond(
+requestId: string,
+response: HookResponse,
+): Promise<void>;
+dispose(): Promise<void>;
 }
 
 Each inbound event receives:
 
 export interface NativeHookEnvelope {
-  requestId: string;
-  receivedAt: string;
-  remoteAddress: string;
-  body: unknown;
+requestId: string;
+receivedAt: string;
+remoteAddress: string;
+body: unknown;
 }
 
 The bridge must:
 
-* Bind only to loopback.
-* Authenticate every request.
-* Limit request-body size.
-* Apply per-event timeouts.
-* Parse JSON safely.
-* Acknowledge observational events immediately.
-* Avoid blocking the Claude interface on persistence.
-* Log malformed events without crashing the session.
-* Reject requests for unknown sessions.
-* Redact secrets before persistence.
+- Bind only to loopback.
+- Authenticate every request.
+- Limit request-body size.
+- Apply per-event timeouts.
+- Parse JSON safely.
+- Acknowledge observational events immediately.
+- Avoid blocking the Claude interface on persistence.
+- Log malformed events without crashing the session.
+- Reject requests for unknown sessions.
+- Redact secrets before persistence.
 
 16.7 Claude event normalization
 
 export function normalizeClaudeHook(
-  input: ClaudeHookInput,
+input: ClaudeHookInput,
 ): readonly AgentEvent[] {
-  switch (input.hook_event_name) {
-    case "SessionStart":
-      return [{
-        type: "session.started",
-        nativeSessionId: input.session_id,
-      }];
-    case "UserPromptSubmit":
-      return [{
-        type: "turn.started",
-        turnId: input.prompt_id,
-        prompt: input.prompt,
-      }];
-    case "MessageDisplay":
-      return [{
-        type: "assistant.message",
-        text: input.text,
-        messageId: input.message_id,
-        displayOnly: true,
-      }];
-    case "PreToolUse":
-      return [{
-        type: "tool.requested",
-        toolCallId: input.tool_use_id,
-        tool: input.tool_name,
-        input: input.tool_input,
-      }];
-    case "PermissionRequest":
-      return [{
-        type: "permission.requested",
-        requestId:
-          input.tool_use_id ?? crypto.randomUUID(),
-        toolCallId: input.tool_use_id,
-        tool: input.tool_name,
-        input: input.tool_input,
-        presentation: "native-tui",
-      }];
-    case "PostToolUse":
-      return [{
-        type: "tool.completed",
-        toolCallId: input.tool_use_id,
-        tool: input.tool_name,
-        output: input.tool_response,
-      }];
-    case "PostToolUseFailure":
-      return [{
-        type: "tool.failed",
-        toolCallId: input.tool_use_id,
-        tool: input.tool_name,
-        error: input.error,
-      }];
-    case "Stop":
-      return [{
-        type: "turn.completed",
-      }];
-    case "StopFailure":
-      return [{
-        type: "turn.failed",
-        error: input.error_type,
-      }];
-    case "SessionEnd":
-      return [{
-        type: "session.ended",
-        reason: input.reason,
-      }];
-    default:
-      return [{
-        type: "adapter.native-event",
-        adapter: "claude-code",
-        nativeType: input.hook_event_name,
-      }];
-  }
+switch (input.hook_event_name) {
+case "SessionStart":
+return [{
+type: "session.started",
+nativeSessionId: input.session_id,
+}];
+case "UserPromptSubmit":
+return [{
+type: "turn.started",
+turnId: input.prompt_id,
+prompt: input.prompt,
+}];
+case "MessageDisplay":
+return [{
+type: "assistant.message",
+text: input.text,
+messageId: input.message_id,
+displayOnly: true,
+}];
+case "PreToolUse":
+return [{
+type: "tool.requested",
+toolCallId: input.tool_use_id,
+tool: input.tool_name,
+input: input.tool_input,
+}];
+case "PermissionRequest":
+return [{
+type: "permission.requested",
+requestId:
+input.tool_use_id ?? crypto.randomUUID(),
+toolCallId: input.tool_use_id,
+tool: input.tool_name,
+input: input.tool_input,
+presentation: "native-tui",
+}];
+case "PostToolUse":
+return [{
+type: "tool.completed",
+toolCallId: input.tool_use_id,
+tool: input.tool_name,
+output: input.tool_response,
+}];
+case "PostToolUseFailure":
+return [{
+type: "tool.failed",
+toolCallId: input.tool_use_id,
+tool: input.tool_name,
+error: input.error,
+}];
+case "Stop":
+return [{
+type: "turn.completed",
+}];
+case "StopFailure":
+return [{
+type: "turn.failed",
+error: input.error_type,
+}];
+case "SessionEnd":
+return [{
+type: "session.ended",
+reason: input.reason,
+}];
+default:
+return [{
+type: "adapter.native-event",
+adapter: "claude-code",
+nativeType: input.hook_event_name,
+}];
+}
 }
 
 The real implementation must validate each event with versioned schemas rather than casting untrusted JSON.
@@ -1220,20 +1222,20 @@ Hook events commonly include a transcript path, and the runtime already knows th
 The Claude transcript observer shall be implemented as a thin wrapper over the Spaghetti SDK’s live plane (a scoped watch of the session’s transcript file), not as a new parser. Spaghetti maintains the most complete Claude Code transcript parser available — dual-engine (TypeScript and Rust) with zero-diff parity gates — so transcript observation is not best-effort enrichment: it is the strongest semantic source after hooks, and for message content it is stronger than hooks.
 
 interface TranscriptObserver {
-  support:
-    | "supported"
-    | "best-effort"
-    | "disabled";
-  events(): AsyncIterable<NativeTranscriptEvent>;
+support:
+| "supported"
+| "best-effort"
+| "disabled";
+events(): AsyncIterable<NativeTranscriptEvent>;
 }
 
 Rules:
 
-* Hook events remain authoritative for lifecycle management; transcripts are authoritative for message content and history.
-* Transcript parsing failure must not fail the session.
-* Transcript schema evolution is handled by the Spaghetti dependency, not by adapter-local parser versions.
-* Unknown records are persisted as raw native records (Spaghetti applies the same retention rule).
-* Duplicate messages are deduplicated against hook events.
+- Hook events remain authoritative for lifecycle management; transcripts are authoritative for message content and history.
+- Transcript parsing failure must not fail the session.
+- Transcript schema evolution is handled by the Spaghetti dependency, not by adapter-local parser versions.
+- Unknown records are persisted as raw native records (Spaghetti applies the same retention rule).
+- Duplicate messages are deduplicated against hook events.
 
 ⸻
 
@@ -1244,38 +1246,38 @@ Rules:
 Direct xterm input is the preferred prompt path.
 
 User keyboard
-    │
-    ▼
+│
+▼
 xterm.js onData/onBinary
-    │
-    ▼
+│
+▼
 Electron IPC
-    │
-    ▼
+│
+▼
 PTY.write
-    │
-    ▼
+│
+▼
 Claude native input editor
 
 This preserves Claude’s:
 
-* Editing behavior
-* History
-* Slash commands
-* Completion menus
-* Keyboard shortcuts
-* Permission selection
-* Pasted content handling
+- Editing behavior
+- History
+- Slash commands
+- Completion menus
+- Keyboard shortcuts
+- Permission selection
+- Pasted content handling
 
 17.2 Programmatic prompt submission
 
 Programmatic prompt submission uses PTY input and must be treated as terminal automation, not as a formal protocol request.
 
 export interface PromptSubmission {
-  text: string;
-  mode?: "paste-and-submit" | "paste-only";
-  queuePolicy?: "reject" | "queue" | "replace-queued";
-  confirmationTimeoutMs?: number;
+text: string;
+mode?: "paste-and-submit" | "paste-only";
+queuePolicy?: "reject" | "queue" | "replace-queued";
+confirmationTimeoutMs?: number;
 }
 
 Algorithm:
@@ -1296,92 +1298,92 @@ Algorithm:
 Matching the prompt payload is required, not optional: if the user submits their own prompt inside the confirmation window, an unmatched wait would misattribute the user’s turn as confirmation of the injected prompt.
 
 async function submitPromptThroughPty(
-  session: NativeTerminalSession,
-  submission: PromptSubmission,
+session: NativeTerminalSession,
+submission: PromptSubmission,
 ): Promise<PromptReceipt> {
-  await session.control.acquire("runtime");
-  try {
-    assertPromptCanBeInjected(session.state);
-    const text = submission.text.replace(/\r\n/g, "\n");
-    const confirmation = session.events.waitFor(
-      event =>
-        event.event.type === "turn.started" &&
-        promptMatches(event.event.prompt, text),
-      submission.confirmationTimeoutMs ?? 5_000,
-    );
-    session.pty.write(encode("\x1b[200~"));
-    session.pty.write(encode(text));
-    session.pty.write(encode("\x1b[201~"));
-    if (submission.mode !== "paste-only") {
-      session.pty.write(encode("\r"));
-    }
-    const event = await confirmation;
-    return {
-      status: "confirmed",
-      turnId: event.turnId,
-    };
-  } catch (error) {
-    return {
-      status: "uncertain",
-      error: normalizeError(error),
-    };
-  } finally {
-    session.control.release("runtime");
-  }
+await session.control.acquire("runtime");
+try {
+assertPromptCanBeInjected(session.state);
+const text = submission.text.replace(/\r\n/g, "\n");
+const confirmation = session.events.waitFor(
+event =>
+event.event.type === "turn.started" &&
+promptMatches(event.event.prompt, text),
+submission.confirmationTimeoutMs ?? 5_000,
+);
+session.pty.write(encode("\x1b[200~"));
+session.pty.write(encode(text));
+session.pty.write(encode("\x1b[201~"));
+if (submission.mode !== "paste-only") {
+session.pty.write(encode("\r"));
+}
+const event = await confirmation;
+return {
+status: "confirmed",
+turnId: event.turnId,
+};
+} catch (error) {
+return {
+status: "uncertain",
+error: normalizeError(error),
+};
+} finally {
+session.control.release("runtime");
+}
 }
 
 17.3 Interaction lease
 
 interface TerminalControlLease {
-  owner: "user" | "runtime" | null;
-  acquire(
-    owner: "user" | "runtime",
-  ): Promise<void>;
-  release(
-    owner: "user" | "runtime",
-  ): void;
+owner: "user" | "runtime" | null;
+acquire(
+owner: "user" | "runtime",
+): Promise<void>;
+release(
+owner: "user" | "runtime",
+): void;
 }
 
 User input has priority.
 
 When the user types during queued runtime automation:
 
-* Cancel the pending injection where possible.
-* Return terminal control to the user.
-* Preserve the queued prompt as unsent.
-* Never interleave user keystrokes with injected prompt bytes.
+- Cancel the pending injection where possible.
+- Return terminal control to the user.
+- Preserve the queued prompt as unsent.
+- Never interleave user keystrokes with injected prompt bytes.
 
 17.4 Prompt limitations
 
 Programmatic injection can fail when:
 
-* A modal overlay is active.
-* A slash-command picker is open.
-* Claude is waiting for permission.
-* The native TUI changed its input behavior.
-* The terminal is disconnected.
-* The session is busy.
-* The prompt was pasted but not submitted.
+- A modal overlay is active.
+- A slash-command picker is open.
+- Claude is waiting for permission.
+- The native TUI changed its input behavior.
+- The terminal is disconnected.
+- The session is busy.
+- The prompt was pasted but not submitted.
 
 Therefore, sendPrompt() returns a receipt instead of assuming success.
 
 export type PromptReceipt =
-  | {
-      status: "confirmed";
-      turnId?: string;
-    }
-  | {
-      status: "queued";
-      queuePosition: number;
-    }
-  | {
-      status: "rejected";
-      reason: string;
-    }
-  | {
-      status: "uncertain";
-      error?: RuntimeError;
-    };
+| {
+status: "confirmed";
+turnId?: string;
+}
+| {
+status: "queued";
+queuePosition: number;
+}
+| {
+status: "rejected";
+reason: string;
+}
+| {
+status: "uncertain";
+error?: RuntimeError;
+};
 
 ⸻
 
@@ -1395,19 +1397,19 @@ permissionPresentation: "native-tui"
 
 Claude owns:
 
-* Permission dialog rendering
-* User selection
-* Keyboard navigation
-* Remembered permission rules
-* Mode switching
+- Permission dialog rendering
+- User selection
+- Keyboard navigation
+- Remembered permission rules
+- Mode switching
 
 The runtime observes permission events and may:
 
-* Display a session badge
-* Send an operating-system notification
-* Mark the session as requiring attention
-* Record the requested tool
-* Prevent programmatic prompt injection
+- Display a session badge
+- Send an operating-system notification
+- Mark the session as requiring attention
+- Record the requested tool
+- Prevent programmatic prompt injection
 
 It does not automatically respond.
 
@@ -1426,15 +1428,15 @@ This mode is separate because it partially replaces the native interaction exper
 Even when using native dialogs, the runtime may enforce an outer safety policy:
 
 export interface RuntimePolicy {
-  evaluate(
-    action: ObservedAgentAction,
-    context: PolicyContext,
-  ): Promise<PolicyDecision>;
+evaluate(
+action: ObservedAgentAction,
+context: PolicyContext,
+): Promise<PolicyDecision>;
 }
 export type PolicyDecision =
-  | { outcome: "observe" }
-  | { outcome: "block"; reason: string }
-  | { outcome: "require-host-approval"; reason: string };
+| { outcome: "observe" }
+| { outcome: "block"; reason: string }
+| { outcome: "require-host-approval"; reason: string };
 
 Outer-policy blocking should be opt-in because it changes native behavior.
 
@@ -1445,41 +1447,41 @@ Outer-policy blocking should be opt-in because it changes native behavior.
 Every native adapter declares its observation capabilities.
 
 export interface ObservationCapabilities {
-  nativeHooks: boolean;
-  messageEvents: boolean;
-  toolEvents: boolean;
-  permissionEvents: boolean;
-  taskEvents: boolean;
-  subagentEvents: boolean;
-  transcript: boolean;
-  workspace: boolean;
-  processTree: boolean;
+nativeHooks: boolean;
+messageEvents: boolean;
+toolEvents: boolean;
+permissionEvents: boolean;
+taskEvents: boolean;
+subagentEvents: boolean;
+transcript: boolean;
+workspace: boolean;
+processTree: boolean;
 }
 
 19.1 Source hierarchy
 
 Native hooks
-    │ authoritative lifecycle and tool state
-    ▼
+│ authoritative lifecycle and tool state
+▼
 Native transcript
-    │ best-effort message and metadata enrichment
-    ▼
+│ best-effort message and metadata enrichment
+▼
 Workspace observer
-    │ file modifications, Git state
-    ▼
+│ file modifications, Git state
+▼
 Process observer
-    │ child commands, resource usage
-    ▼
+│ child commands, resource usage
+▼
 Terminal inference
-      last-resort UI inference
+last-resort UI inference
 
 19.2 Generic fallback levels
 
 type ObservationLevel =
-  | "native-hooks"
-  | "native-log"
-  | "workspace-process"
-  | "terminal-only";
+| "native-hooks"
+| "native-log"
+| "workspace-process"
+| "terminal-only";
 
 The runtime must expose the current observation level to callers.
 
@@ -1492,46 +1494,46 @@ It must never silently describe a terminal-only session as fully structured.
 20.1 Workspace abstraction
 
 export interface WorkspaceProvider {
-  create(
-    request: WorkspaceRequest,
-  ): Promise<Workspace>;
-  inspect(
-    workspaceId: string,
-  ): Promise<WorkspaceSnapshot>;
-  diff(
-    workspaceId: string,
-  ): Promise<WorkspaceDiff>;
-  reset(
-    workspaceId: string,
-  ): Promise<void>;
-  destroy(
-    workspaceId: string,
-  ): Promise<void>;
+create(
+request: WorkspaceRequest,
+): Promise<Workspace>;
+inspect(
+workspaceId: string,
+): Promise<WorkspaceSnapshot>;
+diff(
+workspaceId: string,
+): Promise<WorkspaceDiff>;
+reset(
+workspaceId: string,
+): Promise<void>;
+destroy(
+workspaceId: string,
+): Promise<void>;
 }
 
 20.2 Workspace modes
 
 export type WorkspaceRequest =
-  | {
-      path: string;
-      mode?: "direct";
-    }
-  | {
-      path: string;
-      mode: "exclusive";
-    }
-  | {
-      path: string;
-      mode: "worktree";
-      baseRef?: string;
-      branchName?: string;
-      resumeBranch?: string;
-      resumeRoot?: string;
-    }
-  | {
-      path: string;
-      mode: "copy";
-    };
+| {
+path: string;
+mode?: "direct";
+}
+| {
+path: string;
+mode: "exclusive";
+}
+| {
+path: string;
+mode: "worktree";
+baseRef?: string;
+branchName?: string;
+resumeBranch?: string;
+resumeRoot?: string;
+}
+| {
+path: string;
+mode: "copy";
+};
 
 20.3 Default policy
 
@@ -1554,15 +1556,15 @@ processes are intentionally outside the cooperative policy.
 20.4 Recorded workspace metadata
 
 interface WorkspaceSessionMetadata {
-  root: string;
-  sourcePath: string;
-  mode: "direct" | "exclusive" | "worktree" | "copy";
-  initialCommit?: string;
-  initialDirtyState?: WorkspaceDiff;
-  branch?: string;
-  finalCommit?: string;
-  finalDiff?: WorkspaceDiff;
-  filesTouched: string[];
+root: string;
+sourcePath: string;
+mode: "direct" | "exclusive" | "worktree" | "copy";
+initialCommit?: string;
+initialDirtyState?: WorkspaceDiff;
+branch?: string;
+finalCommit?: string;
+finalDiff?: WorkspaceDiff;
+filesTouched: string[];
 }
 
 The runtime owns workspace allocation and cooperative exclusivity. It should not depend on each agent independently implementing concurrency safety.
@@ -1574,17 +1576,17 @@ The runtime owns workspace allocation and cooperative exclusivity. It should not
 21.1 Spawn sequence
 
 createSession
-    │
-    ├── detect installation
-    ├── inspect capabilities
-    ├── allocate workspace
-    ├── start persistence
-    ├── start hook bridge
-    ├── generate agent settings
-    ├── create PTY
-    ├── spawn process
-    ├── start observers
-    └── wait for ready signal
+│
+├── detect installation
+├── inspect capabilities
+├── allocate workspace
+├── start persistence
+├── start hook bridge
+├── generate agent settings
+├── create PTY
+├── spawn process
+├── start observers
+└── wait for ready signal
 
 21.2 Interruption
 
@@ -1597,41 +1599,41 @@ Interruption escalation:
 5. Process-tree kill
 
 export interface InterruptPolicy {
-  ctrlCGraceMs: number;
-  terminateGraceMs: number;
-  killTreeAfterMs: number;
+ctrlCGraceMs: number;
+terminateGraceMs: number;
+killTreeAfterMs: number;
 }
 
 21.3 Process trees
 
 Agents may start:
 
-* Shells
-* Test runners
-* Build tools
-* Language servers
-* Browser processes
-* MCP servers
+- Shells
+- Test runners
+- Build tools
+- Language servers
+- Browser processes
+- MCP servers
 
 The runtime must track and terminate the complete owned process tree.
 
 Recommended implementations:
 
-* POSIX: process groups and signals
-* Windows: Job Objects through a native helper
-* Fallback: descendant enumeration with repeated termination
+- POSIX: process groups and signals
+- Windows: Job Objects through a native helper
+- Fallback: descendant enumeration with repeated termination
 
 21.4 Exit classification
 
 export type ProcessExitReason =
-  | "completed"
-  | "user-terminated"
-  | "runtime-terminated"
-  | "signal"
-  | "crash"
-  | "spawn-failed"
-  | "workspace-failed"
-  | "unknown";
+| "completed"
+| "user-terminated"
+| "runtime-terminated"
+| "signal"
+| "crash"
+| "spawn-failed"
+| "workspace-failed"
+| "unknown";
 
 A zero process exit code does not necessarily mean a turn succeeded. Process exit and semantic turn completion are separate facts.
 
@@ -1652,27 +1654,27 @@ This store is operational — replay, receipts, reconnection — not a search in
 ~~SQLite: sessions / normalized_events / native_events / workspace_snapshots / prompt_submissions / process_records~~ — rejected (above).
 
 Filesystem
-├── own-actions.jsonl        (receipts, workspace finals, exit classifications)
-├── terminal/<session-id>.bin  (OPT-IN raw recording, §23.3)
-├── generated-settings/        (already implemented; cleaned per session)
-└── diagnostics/               (on-demand export, §27.3)
+├── own-actions.jsonl (receipts, workspace finals, exit classifications)
+├── terminal/<session-id>.bin (OPT-IN raw recording, §23.3)
+├── generated-settings/ (already implemented; cleaned per session)
+└── diagnostics/ (on-demand export, §27.3)
 
 22.2 Session record
 
 interface PersistedSession {
-  id: string;
-  agentId: string;
-  agentVersion: string;
-  mode: AgentExecutionMode;
-  nativeSessionId?: string;
-  workspaceRoot: string;
-  command: string;
-  args: string[];
-  createdAt: string;
-  exitedAt?: string;
-  exitReason?: ProcessExitReason;
-  exitCode?: number;
-  capabilities: AgentSessionCapabilities;
+id: string;
+agentId: string;
+agentVersion: string;
+mode: AgentExecutionMode;
+nativeSessionId?: string;
+workspaceRoot: string;
+command: string;
+args: string[];
+createdAt: string;
+exitedAt?: string;
+exitReason?: ProcessExitReason;
+exitCode?: number;
+capabilities: AgentSessionCapabilities;
 }
 
 Do not persist secrets in command arguments or session metadata.
@@ -1682,29 +1684,29 @@ Do not persist secrets in command arguments or session metadata.
 Terminal data should be stored as framed binary chunks:
 
 interface PersistedTerminalFrame {
-  sequence: bigint;
-  monotonicTimeNs: bigint;
-  payloadLength: number;
-  payload: Uint8Array;
+sequence: bigint;
+monotonicTimeNs: bigint;
+payloadLength: number;
+payload: Uint8Array;
 }
 
 This supports:
 
-* Exact replay
-* Timing-aware playback
-* Debugging
-* Rebuilding headless state
-* Renderer reconnection
+- Exact replay
+- Timing-aware playback
+- Debugging
+- Rebuilding headless state
+- Renderer reconnection
 
 22.4 Normalized event log
 
 **Rejected with the event store (2026-07-13, see §22.1)** — normalized events are derivable from transcripts plus the own-action record; persisting the stream would duplicate durable truth. The append-only/correction discipline below stays the contract for the IN-MEMORY event stream and for the own-action JSONL:
 
 interface EventCorrection {
-  type: "runtime.event-correction";
-  targetSequence: number;
-  replacement?: AgentEvent;
-  reason: string;
+type: "runtime.event-correction";
+targetSequence: number;
+replacement?: AgentEvent;
+reason: string;
 }
 
 22.5 Renderer reconnection
@@ -1730,60 +1732,60 @@ A browser-rendered terminal exposes real shell access through JavaScript. xterm.
 
 23.1 Required controls
 
-* Electron context isolation enabled
-* Node integration disabled in the renderer
-* Narrow preload API
-* Strict Content Security Policy
-* No remote renderer content with terminal access
-* No third-party analytics scripts on terminal pages
-* No arbitrary renderer IPC channels
-* Session-scoped authorization tokens
-* Loopback-only hook bridge
-* Random hook tokens
-* Request-size limits
-* Explicit environment-variable allowlist
-* Secret redaction
-* No root or administrator runtime
-* No shell interpolation for executable arguments
-* Workspace path validation
-* Symlink-aware containment checks
-* Audit logging for host-side actions
+- Electron context isolation enabled
+- Node integration disabled in the renderer
+- Narrow preload API
+- Strict Content Security Policy
+- No remote renderer content with terminal access
+- No third-party analytics scripts on terminal pages
+- No arbitrary renderer IPC channels
+- Session-scoped authorization tokens
+- Loopback-only hook bridge
+- Random hook tokens
+- Request-size limits
+- Explicit environment-variable allowlist
+- Secret redaction
+- No root or administrator runtime
+- No shell interpolation for executable arguments
+- Workspace path validation
+- Symlink-aware containment checks
+- Audit logging for host-side actions
 
 23.2 Environment construction
 
 Do not forward the complete parent environment by default.
 
 function buildAgentEnvironment(
-  request: AgentEnvironmentRequest,
+request: AgentEnvironmentRequest,
 ): Record<string, string> {
-  return {
-    PATH: request.path,
-    HOME: request.sessionHome,
-    TERM: "xterm-256color",
-    COLORTERM: "truecolor",
-    LANG: request.locale,
-    ...request.allowedCredentials,
-    ...request.adapterVariables,
-  };
+return {
+PATH: request.path,
+HOME: request.sessionHome,
+TERM: "xterm-256color",
+COLORTERM: "truecolor",
+LANG: request.locale,
+...request.allowedCredentials,
+...request.adapterVariables,
+};
 }
 
 23.3 Sensitive terminal data
 
 Terminal recordings may contain:
 
-* Tokens
-* Passwords
-* Source code
-* Proprietary output
-* Environment values
-* User prompts
+- Tokens
+- Passwords
+- Source code
+- Proprietary output
+- Environment values
+- User prompts
 
 Recording policy must be explicit:
 
 type RecordingPolicy =
-  | "disabled"
-  | "memory-only"
-  | "persistent-raw";
+| "disabled"
+| "memory-only"
+| "persistent-raw";
 
 Default:
 
@@ -1798,38 +1800,38 @@ A persistent-redacted tier is deliberately absent. Redaction over a raw VT byte 
 24. Error Model
 
 export type RuntimeErrorCode =
-  | "AGENT_NOT_FOUND"
-  | "AGENT_VERSION_UNSUPPORTED"
-  | "CAPABILITY_MISSING"
-  | "PTY_SPAWN_FAILED"
-  | "PROCESS_EXITED"
-  | "HOOK_BRIDGE_FAILED"
-  | "HOOK_AUTH_FAILED"
-  | "HOOK_EVENT_INVALID"
-  | "PROMPT_REJECTED"
-  | "PROMPT_CONFIRMATION_TIMEOUT"
-  | "TERMINAL_DISCONNECTED"
-  | "WORKSPACE_CREATE_FAILED"
-  | "WORKSPACE_CONFLICT"
-  | "PERSISTENCE_FAILED"
-  | "PROCESS_TREE_KILL_FAILED"
-  | "SESSION_STATE_INVALID";
+| "AGENT_NOT_FOUND"
+| "AGENT_VERSION_UNSUPPORTED"
+| "CAPABILITY_MISSING"
+| "PTY_SPAWN_FAILED"
+| "PROCESS_EXITED"
+| "HOOK_BRIDGE_FAILED"
+| "HOOK_AUTH_FAILED"
+| "HOOK_EVENT_INVALID"
+| "PROMPT_REJECTED"
+| "PROMPT_CONFIRMATION_TIMEOUT"
+| "TERMINAL_DISCONNECTED"
+| "WORKSPACE_CREATE_FAILED"
+| "WORKSPACE_CONFLICT"
+| "PERSISTENCE_FAILED"
+| "PROCESS_TREE_KILL_FAILED"
+| "SESSION_STATE_INVALID";
 export interface RuntimeError {
-  code: RuntimeErrorCode;
-  message: string;
-  recoverable: boolean;
-  sessionId?: string;
-  adapterId?: string;
-  cause?: unknown;
-  metadata?: Record<string, unknown>;
+code: RuntimeErrorCode;
+message: string;
+recoverable: boolean;
+sessionId?: string;
+adapterId?: string;
+cause?: unknown;
+metadata?: Record<string, unknown>;
 }
 
 Errors are separated into:
 
-* User-visible session errors
-* Recoverable diagnostics
-* Adapter compatibility warnings
-* Internal invariant violations
+- User-visible session errors
+- Recoverable diagnostics
+- Adapter compatibility warnings
+- Internal invariant violations
 
 A failed semantic observer must not necessarily terminate a healthy PTY session.
 
@@ -1837,10 +1839,10 @@ Example degradation:
 
 Claude TUI running
 Hook bridge failed
-    │
-    ├── terminal remains usable
-    ├── observation level becomes workspace-process
-    └── UI displays degraded-observation warning
+│
+├── terminal remains usable
+├── observation level becomes workspace-process
+└── UI displays degraded-observation warning
 
 ⸻
 
@@ -1849,24 +1851,24 @@ Hook bridge failed
 Scheduling is not required for the first Claude integration, but core APIs should avoid blocking it.
 
 interface SessionResourceRequest {
-  agentSlots: number;
-  cpuWeight: number;
-  memoryMb?: number;
-  filesystemWeight?: number;
-  networkWeight?: number;
-  provider?: string;
+agentSlots: number;
+cpuWeight: number;
+memoryMb?: number;
+filesystemWeight?: number;
+networkWeight?: number;
+provider?: string;
 }
 
 Policies may include:
 
-* Maximum concurrent agent sessions
-* Maximum active turns
-* Exclusive lease per canonical workspace
-* Per-provider concurrency
-* Per-repository concurrency
-* Per-session cost limit
-* Per-session runtime limit
-* Fair queueing
+- Maximum concurrent agent sessions
+- Maximum active turns
+- Exclusive lease per canonical workspace
+- Per-provider concurrency
+- Per-repository concurrency
+- Per-session cost limit
+- Per-session runtime limit
+- Fair queueing
 
 Native TUI sessions should normally remain alive even while idle, because the session and UI state belong to the persistent process.
 
@@ -1878,21 +1880,21 @@ Native TUI sessions should normally remain alive even while idle, because the se
 
 Create fixture executables that simulate:
 
-* ANSI color output
-* Alternate-screen usage
-* Cursor movement
-* Mouse tracking
-* Bracketed paste
-* Permission dialogs
-* Long-running turns
-* Child process trees
-* Malformed UTF-8
-* Large output floods
-* Ignored interrupts
-* Crashes
-* Hook events
-* Duplicate hook events
-* Out-of-order hook events
+- ANSI color output
+- Alternate-screen usage
+- Cursor movement
+- Mouse tracking
+- Bracketed paste
+- Permission dialogs
+- Long-running turns
+- Child process trees
+- Malformed UTF-8
+- Large output floods
+- Ignored interrupts
+- Crashes
+- Hook events
+- Duplicate hook events
+- Out-of-order hook events
 
 26.2 Adapter conformance suite
 
@@ -1927,30 +1929,30 @@ Real Claude tests are opt-in and require local authentication.
 
 Test groups:
 
-* CLI capability probe
-* Settings-file validity
-* Hook delivery
-* Message-display event volume
-* Prompt confirmation
-* Native permission observation
-* Session resumption
-* Session naming
-* Process termination
-* Renderer reload
+- CLI capability probe
+- Settings-file validity
+- Hook delivery
+- Message-display event volume
+- Prompt confirmation
+- Native permission observation
+- Session resumption
+- Session naming
+- Process termination
+- Renderer reload
 
 26.4 Electron integration tests
 
 Use an Electron-compatible browser automation framework to test:
 
-* Terminal mounting
-* Key forwarding
-* Clipboard paste
-* Resize behavior
-* Multiple tabs
-* Renderer reload
-* IPC isolation
-* Session attachment
-* Terminal snapshot restoration
+- Terminal mounting
+- Key forwarding
+- Clipboard paste
+- Resize behavior
+- Multiple tabs
+- Renderer reload
+- IPC isolation
+- Session attachment
+- Terminal snapshot restoration
 
 26.5 State reducer tests
 
@@ -1958,12 +1960,12 @@ Use event-sequence fixtures and property testing.
 
 Required properties:
 
-* Replaying the same log produces the same state.
-* Duplicate events do not corrupt state.
-* Unknown events do not throw.
-* Completed tools leave the active-tool map.
-* Session exit ends active turns.
-* Permission events cannot overwrite unrelated tool state.
+- Replaying the same log produces the same state.
+- Duplicate events do not corrupt state.
+- Unknown events do not throw.
+- Completed tools leave the active-tool map.
+- Session exit ends active turns.
+- Permission events cannot overwrite unrelated tool state.
 
 ⸻
 
@@ -2005,17 +2007,17 @@ turn
 
 A user-exportable diagnostics bundle should contain:
 
-* Runtime version
-* Adapter version
-* Agent version
-* Capability probe results
-* Sanitized spawn command
-* Sanitized environment keys
-* Normalized events
-* Native event schemas
-* Terminal tail
-* Process exit information
-* Workspace metadata
+- Runtime version
+- Adapter version
+- Agent version
+- Capability probe results
+- Sanitized spawn command
+- Sanitized environment keys
+- Normalized events
+- Native event schemas
+- Terminal tail
+- Process exit information
+- Workspace metadata
 
 It should not include secrets by default.
 
@@ -2029,36 +2031,36 @@ Milestone 0 — Core contracts
 
 Implement:
 
-* Monorepo
-* Core types
-* Event envelopes
-* Session state reducer
-* Async event queues
-* Error model
-* Adapter registry
+- Monorepo
+- Core types
+- Event envelopes
+- Session state reducer
+- Async event queues
+- Error model
+- Adapter registry
 
 Exit criteria:
 
-* Fake sessions can produce terminal chunks and semantic events.
-* State can be replayed deterministically.
+- Fake sessions can produce terminal chunks and semantic events.
+- State can be replayed deterministically.
 
 Milestone 1 — PTY and Electron terminal
 
 Implement:
 
-* node-pty transport
-* xterm.js renderer
-* Binary and text input forwarding
-* Resize forwarding
-* Terminal fan-out
-* Ring buffer
-* Renderer attachment
-* Basic terminal recording
+- node-pty transport
+- xterm.js renderer
+- Binary and text input forwarding
+- Resize forwarding
+- Terminal fan-out
+- Ring buffer
+- Renderer attachment
+- Basic terminal recording
 
 Exit criteria:
 
-* Arbitrary full-screen TUIs render and accept input correctly.
-* Renderer reload restores a usable terminal view.
+- Arbitrary full-screen TUIs render and accept input correctly.
+- Renderer reload restores a usable terminal view.
 
 Note: node-pty is a native module and must be rebuilt per Electron version. Set up electron-rebuild (or prebuilds) in CI during this milestone, not later — native-module drift discovered at Milestone 4 is far more expensive.
 
@@ -2066,38 +2068,38 @@ Milestone 2 — Claude native adapter
 
 Implement:
 
-* Claude detection
-* Capability probing
-* Generated settings
-* Hook bridge
-* Hook normalizer
-* Claude state reducer integration
-* Interactive spawning
-* Native session ID and name
-* Permission observation
-* Prompt confirmation
+- Claude detection
+- Capability probing
+- Generated settings
+- Hook bridge
+- Hook normalizer
+- Claude state reducer integration
+- Interactive spawning
+- Native session ID and name
+- Permission observation
+- Prompt confirmation
 
 Exit criteria:
 
-* Claude’s original TUI is preserved.
-* Turns, tools, permissions, and session lifecycle are visible as normalized events.
-* A programmatic prompt can be submitted and confirmed.
+- Claude’s original TUI is preserved.
+- Turns, tools, permissions, and session lifecycle are visible as normalized events.
+- A programmatic prompt can be submitted and confirmed.
 
 Milestone 3 — Workspaces and cleanup
 
 Implement:
 
-* Shared directory provider
-* Git worktree provider
-* Process group or Job Object management
-* Termination escalation
-* Workspace snapshots
-* Final diff recording
+- Shared directory provider
+- Git worktree provider
+- Process group or Job Object management
+- Termination escalation
+- Workspace snapshots
+- Final diff recording
 
 Exit criteria:
 
-* Multiple Claude sessions can safely operate in separate worktrees.
-* Terminating a session removes its owned descendants.
+- Multiple Claude sessions can safely operate in separate worktrees.
+- Terminating a session removes its owned descendants.
 
 Milestone 4 — Persistence and recovery (RESCOPED 2026-07-13, see §22.1)
 
@@ -2105,15 +2107,15 @@ The event store and native-event storage are rejected (they duplicate
 transcript truth that Spaghetti already indexes); renderer reconnection
 shipped with the avocado adoption (M1.5). What remains, both thin:
 
-* Own-action JSONL record (injection receipts, workspace finals, exit
+- Own-action JSONL record (injection receipts, workspace finals, exit
   classifications, policy conflicts) under ~/.puppeteer/
-* Native resume as spawn configuration (`claude --resume <session-id>`
+- Native resume as spawn configuration (`claude --resume <session-id>`
   through the prepared-spawn path; a Resume affordance on exited sessions)
 
 Exit criteria:
 
-* Puppeteer' own actions are on disk and attributable per session.
-* An exited session can be resumed into a new terminal tab.
+- Puppeteer' own actions are on disk and attributable per session.
+- An exited session can be resumed into a new terminal tab.
 
 Milestone 5 — Second native adapter
 
@@ -2121,21 +2123,21 @@ Implement either Codex or Gemini.
 
 The purpose is to validate that:
 
-* Core abstractions are not Claude-specific.
-* Observation levels degrade honestly.
-* Adapter-specific UI remains untouched.
-* The normalized event model is extensible.
+- Core abstractions are not Claude-specific.
+- Observation levels degrade honestly.
+- Adapter-specific UI remains untouched.
+- The normalized event model is extensible.
 
 Milestone 6 — Structured and ACP modes
 
 Implement:
 
-* Structured session driver
-* ACP client driver
-* Capability negotiation
-* Protocol-level prompting
-* Protocol-level permissions
-* Client-managed command terminals
+- Structured session driver
+- ACP client driver
+- Capability negotiation
+- Protocol-level prompting
+- Protocol-level permissions
+- Client-managed command terminals
 
 These modes reuse workspace, persistence, event, policy, and scheduling infrastructure while bypassing the native-TUI driver.
 

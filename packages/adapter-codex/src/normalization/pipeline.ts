@@ -17,6 +17,7 @@ import { CodexReasoningNormalizer } from './reasoning.js';
 import { CodexSessionNormalizer } from './session.js';
 import { CodexToolNormalizer } from './tool.js';
 import { CodexTurnNormalizer } from './turn.js';
+import { CodexWorkspaceNormalizer } from './workspace.js';
 import {
   type CodexNormalizationInput,
   type CodexServerNotification,
@@ -33,6 +34,7 @@ export class CodexNotificationNormalizer {
   private readonly turn = new CodexTurnNormalizer();
   private readonly reasoning = new CodexReasoningNormalizer();
   private readonly tool = new CodexToolNormalizer();
+  private readonly workspace = new CodexWorkspaceNormalizer();
   private readonly conversation = new CodexConversationNormalizer();
   private readonly environment = new CodexEnvironmentNormalizer();
   private readonly model: CodexModelNormalizer;
@@ -61,6 +63,7 @@ export class CodexNotificationNormalizer {
     const turn = this.turn.normalize(input);
     const reasoning = this.reasoning.normalize(input);
     const tool = this.tool.normalize(input);
+    const workspace = this.workspace.normalize(input);
     const conversation = this.conversation.normalize(input);
     const environment = this.environment.normalize(input);
     const model = this.model.normalize(input);
@@ -71,6 +74,7 @@ export class CodexNotificationNormalizer {
       ...turn.events,
       ...reasoning.events,
       ...tool.events,
+      ...workspace.events,
       ...conversation.events,
       ...environment.events,
       ...model.events,
@@ -82,6 +86,7 @@ export class CodexNotificationNormalizer {
       turn.handled ||
       reasoning.handled ||
       tool.handled ||
+      workspace.handled ||
       conversation.handled ||
       environment.handled ||
       model.handled ||

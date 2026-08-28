@@ -83,6 +83,92 @@ describe('ClaudeHookNormalizer against captured fixtures', () => {
     });
   });
 
+  it('reports Write/Edit intent separately from a successful applied operation', () => {
+    const normalizer = new ClaudeHookNormalizer();
+    const input = {
+      file_path: '/workspace/src/index.ts',
+      old_string: 'const oldValue = 1;',
+      new_string: 'const newValue = 1;',
+      replace_all: false,
+    };
+    const proposed = normalizer.normalize(
+      fakeClaudeHookPayload('PreToolUse', {
+        prompt_id: 'prompt-edit',
+        tool_name: 'Edit',
+        tool_input: input,
+        tool_use_id: 'tool-edit',
+      }),
+    );
+    const applied = normalizer.normalize(
+      fakeClaudeHookPayload('PostToolUse', {
+        prompt_id: 'prompt-edit',
+        tool_name: 'Edit',
+        tool_input: input,
+        tool_response: { ok: true },
+        tool_use_id: 'tool-edit',
+      }),
+    );
+
+    expect(proposed.events).toContainEqual({
+      type: 'workspace:file-operation',
+      toolCallId: 'tool-edit',
+      phase: 'proposed',
+      changes: [
+        {
+          path: '/workspace/src/index.ts',
+          kind: 'modify',
+          details: [
+            {
+              representation: 'replacement',
+              basis: 'tool-input',
+              oldText: 'const oldValue = 1;',
+              newText: 'const newValue = 1;',
+              replaceAll: false,
+            },
+          ],
+        },
+      ],
+    });
+    expect(applied.events).toContainEqual(
+      expect.objectContaining({
+        type: 'workspace:file-operation',
+        toolCallId: 'tool-edit',
+        phase: 'applied',
+      }),
+    );
+  });
+
+  it('preserves explicitly empty Write and Edit strings', () => {
+    const normalizer = new ClaudeHookNormalizer();
+    const write = normalizer.normalize(
+      fakeClaudeHookPayload('PreToolUse', {
+        tool_name: 'Write',
+        tool_use_id: 'tool-empty-write',
+        tool_input: { file_path: '/workspace/empty.txt', content: '' },
+      }),
+    );
+    const edit = normalizer.normalize(
+      fakeClaudeHookPayload('PreToolUse', {
+        tool_name: 'Edit',
+        tool_use_id: 'tool-empty-edit',
+        tool_input: { file_path: '/workspace/a.txt', old_string: 'remove', new_string: '' },
+      }),
+    );
+
+    expect(write.events).toContainEqual(
+      expect.objectContaining({
+        type: 'workspace:file-operation',
+        changes: [expect.objectContaining({ details: [expect.objectContaining({ content: '' })] })],
+      }),
+    );
+    expect(edit.events).toContainEqual(
+      expect.objectContaining({
+        type: 'workspace:file-operation',
+        changes: [expect.objectContaining({ details: [expect.objectContaining({ newText: '' })] })],
+      }),
+    );
+  });
+
   it('classifies native tool names into provider-neutral UI presentations', () => {
     const command = normalizeOne(
       fakeClaudeHookPayload('PreToolUse', {
@@ -590,8 +676,42 @@ describe('permission correlation (no native request id)', () => {
     const denied = normalizer.normalize(
       fakeClaudeHookPayload('PermissionDenied', { ...tool, reason: 'Blocked by classifier' }) as ClaudeHookPayload,
     );
-    expect(denied.events).toEqual([{ type: 'interaction:permission-resolved', requestId, outcome: 'denied' }]);
+    expect(denied.events).toEqual([
+      { type: 'interaction:permission-resolved', requestId, outcome: 'denied' },
+      expect.objectContaining({
+        type: 'tool:failed',
+        toolCallId: tool.tool_use_id,
+        tool: tool.tool_name,
+        error: 'Blocked by classifier',
+      }),
+    ]);
     expect(normalizer.pendingPermissionRequests()).toHaveLength(0);
+  });
+
+  it('closes a denied Edit as both a failed tool and a failed file operation', () => {
+    const normalizer = new ClaudeHookNormalizer();
+    const deniedEdit = {
+      prompt_id: 'prompt-denied-edit',
+      tool_name: 'Edit',
+      tool_use_id: 'tool-denied-edit',
+      tool_input: {
+        file_path: '/workspace/a.ts',
+        old_string: 'old',
+        new_string: 'new',
+      },
+    };
+    normalizer.normalize(fakeClaudeHookPayload('PreToolUse', deniedEdit) as ClaudeHookPayload);
+    const denied = normalizer.normalize(
+      fakeClaudeHookPayload('PermissionDenied', { ...deniedEdit, reason: 'Denied' }) as ClaudeHookPayload,
+    );
+    expect(denied.events).toEqual([
+      expect.objectContaining({ type: 'tool:failed', toolCallId: 'tool-denied-edit' }),
+      expect.objectContaining({
+        type: 'workspace:file-operation',
+        toolCallId: 'tool-denied-edit',
+        phase: 'failed',
+      }),
+    ]);
   });
 
   it('closes a manual denial at the turn boundary so no permission is orphaned', () => {
@@ -703,13 +823,16 @@ describe('Claude 2.1.226 hook additions', () => {
     });
   });
 
-  it('maps workspace mutation and completed compaction hooks', () => {
+  it('keeps directory configuration separate from direct file observations', () => {
     expect(normalizeOne(fakeClaudeHookPayload('DirectoryAdded', { directory: '/workspace/other' })).events).toEqual([
-      { type: 'workspace:changed', paths: ['/workspace/other'] },
+      { type: 'adapter:native-event', adapter: 'claude-code', nativeType: 'DirectoryAdded' },
     ]);
     expect(
       normalizeOne(fakeClaudeHookPayload('FileChanged', { file_path: '/workspace/.env', event: 'change' })).events,
-    ).toEqual([{ type: 'workspace:changed', paths: ['/workspace/.env'] }]);
+    ).toEqual([{ type: 'workspace:file-changed', changes: [{ path: '/workspace/.env', kind: 'modify' }] }]);
+  });
+
+  it('maps completed compaction hooks', () => {
     expect(
       normalizeOne(fakeClaudeHookPayload('PostCompact', { trigger: 'auto', compact_summary: '...' })).events,
     ).toEqual([

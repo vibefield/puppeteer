@@ -63,7 +63,7 @@ import type {
   RecentToolRequest,
 } from './types.js';
 import { canonicalClaudeValue, claudeHookDiagnostic, claudeNumber, claudeString } from './wire.js';
-import { normalizeClaudeWorkspaceChanged } from './workspace.js';
+import { normalizeClaudeFileChanged, normalizeClaudeFileOperation } from './workspace.js';
 
 export type { ClaudeHookDiagnostic, ClaudeHookPayload, NormalizedHook } from './types.js';
 
@@ -369,6 +369,8 @@ export class ClaudeHookNormalizer {
         }
         this.rememberTool(request);
         result.events.push(normalizeClaudeToolRequested(toolCallId, toolName, body.tool_input));
+        const workspace = normalizeClaudeFileOperation(toolCallId, toolName, body.tool_input, 'proposed');
+        if (workspace) result.events.push(workspace);
         if (request.plan) {
           result.events.push(normalizeClaudePlanUpdated(request.plan, true));
         }
@@ -417,6 +419,13 @@ export class ClaudeHookNormalizer {
             claudeNumber(body.duration_ms),
           ),
         );
+        const workspace = normalizeClaudeFileOperation(
+          toolCallId,
+          claudeString(body.tool_name) ?? request?.toolName ?? toolName,
+          request?.input ?? body.tool_input,
+          'applied',
+        );
+        if (workspace) result.events.push(workspace);
         break;
       }
 
@@ -434,6 +443,13 @@ export class ClaudeHookNormalizer {
             claudeString(body.error),
           ),
         );
+        const workspace = normalizeClaudeFileOperation(
+          toolCallId,
+          claudeString(body.tool_name) ?? request?.toolName ?? toolName,
+          request?.input ?? body.tool_input,
+          'failed',
+        );
+        if (workspace) result.events.push(workspace);
         break;
       }
 
@@ -441,6 +457,9 @@ export class ClaudeHookNormalizer {
         const toolCallId = claudeString(body.tool_use_id);
         const toolName = claudeString(body.tool_name) ?? 'unknown-tool';
         const signature = { promptId, toolName, inputKey: canonicalClaudeValue(body.tool_input) };
+        const request = this.findRecentToolForPayload(promptId, toolName, body.tool_input, true);
+        const resolvedToolCallId = toolCallId ?? request?.toolCallId;
+        const terminalToolCallId = resolvedToolCallId ?? this.nextFallbackToolId(promptId, toolName);
         const before = result.events.length;
         this.resolvePermission(
           result,
@@ -448,7 +467,17 @@ export class ClaudeHookNormalizer {
           (permission) =>
             (toolCallId !== undefined && permission.toolCallId === toolCallId) || sameClaudeTool(permission, signature),
         );
-        if (toolCallId) this.recentToolRequests.delete(toolCallId);
+        if (resolvedToolCallId) this.recentToolRequests.delete(resolvedToolCallId);
+        result.events.push(
+          normalizeClaudeToolFailed(terminalToolCallId, toolName, claudeString(body.reason) ?? 'permission denied'),
+        );
+        const workspace = normalizeClaudeFileOperation(
+          terminalToolCallId,
+          toolName,
+          request?.input ?? body.tool_input,
+          'failed',
+        );
+        if (workspace) result.events.push(workspace);
         if (result.events.length === before) {
           result.events.push(normalizeClaudeNativeEvent(name));
         }
@@ -592,18 +621,16 @@ export class ClaudeHookNormalizer {
         result.events.push(normalizeClaudeNotification(body));
         break;
 
-      case 'DirectoryAdded': {
-        const workspace = normalizeClaudeWorkspaceChanged(claudeString(body.directory));
+      case 'FileChanged': {
+        const workspace = normalizeClaudeFileChanged(body);
         result.events.push(workspace ?? normalizeClaudeNativeEvent(name));
         break;
       }
 
-      case 'FileChanged':
-      case 'ConfigChange': {
-        const workspace = normalizeClaudeWorkspaceChanged(claudeString(body.file_path));
-        result.events.push(workspace ?? normalizeClaudeNativeEvent(name));
+      case 'DirectoryAdded':
+      case 'ConfigChange':
+        result.events.push(normalizeClaudeNativeEvent(name));
         break;
-      }
 
       case 'PreCompact': {
         if (this.activeCompaction) this.closeActiveCompaction(result, 'superseded');

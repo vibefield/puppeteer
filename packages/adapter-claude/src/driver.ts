@@ -94,7 +94,9 @@ function hookEventConfidence(
     (hookEventName === 'PreCompact' && event.type === 'compaction:started') ||
     (['Stop', 'StopFailure', 'SessionEnd', 'PreCompact', 'UserPromptSubmit'].includes(hookEventName) &&
       event.type === 'compaction:completed') ||
-    (['tool:requested', 'tool:started', 'tool:completed', 'tool:failed'].includes(event.type) &&
+    (['tool:requested', 'tool:started', 'tool:completed', 'tool:failed', 'workspace:file-operation'].includes(
+      event.type,
+    ) &&
       typeof payload.tool_use_id !== 'string')
   ) {
     return 'inferred';

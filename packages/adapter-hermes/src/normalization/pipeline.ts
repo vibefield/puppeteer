@@ -8,6 +8,7 @@ import { HermesInteractionNormalizer } from './interaction.js';
 import { HermesSessionNormalizer } from './session.js';
 import { HermesToolNormalizer } from './tool.js';
 import { HermesTurnNormalizer } from './turn.js';
+import { normalizeHermesWorkspace } from './workspace.js';
 import {
   hermesNativeEvent,
   parseHermesFrame,
@@ -76,8 +77,10 @@ export class HermesGatewayNormalizer {
       }
       case 'tool.start':
         return this.record(this.tool.start(parsed.payload), base);
-      case 'tool.complete':
-        return this.record(this.tool.complete(parsed.payload), base);
+      case 'tool.complete': {
+        const workspace = normalizeHermesWorkspace(parsed.payload);
+        return this.record([...this.tool.complete(parsed.payload), ...(workspace ? [workspace] : [])], base);
+      }
       case 'approval.request':
         return this.record(this.interaction.permission(parsed.payload, parsed.liveSessionId), base);
       case 'clarify.request':

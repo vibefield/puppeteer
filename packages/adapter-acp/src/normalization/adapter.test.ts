@@ -121,6 +121,68 @@ describe('AcpNotificationNormalizer', () => {
     expect(r.events).toEqual([]);
   });
 
+  it('maps ACP diff content through an explicit proposed/applied file lifecycle', () => {
+    const n = new AcpNotificationNormalizer();
+    const proposed = n.normalize(
+      note({
+        sessionUpdate: 'tool_call',
+        toolCallId: 'edit-1',
+        title: 'Edit source',
+        kind: 'edit',
+        status: 'in_progress',
+        content: [{ type: 'diff', path: '/repo/a.ts', oldText: 'old', newText: 'new' }],
+      }),
+    );
+    const applied = n.normalize(note({ sessionUpdate: 'tool_call_update', toolCallId: 'edit-1', status: 'completed' }));
+
+    expect(proposed.events.at(-1)).toEqual({
+      type: 'workspace:file-operation',
+      toolCallId: 'edit-1',
+      phase: 'in-progress',
+      changes: [
+        {
+          path: '/repo/a.ts',
+          kind: 'modify',
+          details: [
+            {
+              representation: 'content',
+              basis: 'native-file-operation',
+              before: 'old',
+              after: 'new',
+            },
+          ],
+        },
+      ],
+    });
+    expect(applied.events).toContainEqual(
+      expect.objectContaining({
+        type: 'workspace:file-operation',
+        toolCallId: 'edit-1',
+        phase: 'applied',
+      }),
+    );
+  });
+
+  it('uses ACP locations without pretending they contain exact diff text', () => {
+    const n = new AcpNotificationNormalizer();
+    const result = n.normalize(
+      note({
+        sessionUpdate: 'tool_call',
+        toolCallId: 'delete-1',
+        title: 'Delete source',
+        kind: 'delete',
+        status: 'pending',
+        locations: [{ path: '/repo/dead.ts', line: 1 }],
+      }),
+    );
+    expect(result.events.at(-1)).toEqual({
+      type: 'workspace:file-operation',
+      toolCallId: 'delete-1',
+      phase: 'proposed',
+      changes: [{ path: '/repo/dead.ts', kind: 'delete' }],
+    });
+  });
+
   it('maps usage_update to the provider-neutral context window event', () => {
     const n = new AcpNotificationNormalizer();
     const r = n.normalize(note({ sessionUpdate: 'usage_update', used: 53_000, size: 200_000 }));

@@ -987,7 +987,8 @@
                 <h3>Evidence before interpretation</h3>
                 <p>
                   Artifacts, hooks, protocols, logs, captures, and exact source establish what a provider really does.
-                  Missing evidence remains an explicit limitation.
+                  Capture representation and schema fidelity are machine-readable; missing evidence remains an explicit
+                  limitation.
                 </p>
               </article>
               <article class="card">
@@ -1234,7 +1235,7 @@
                 <div class="layer-number"><small>layer</small>0</div>
                 <div>
                   <h3>Surface ground truth</h3>
-                  <p>Evidence-backed native behavior folded into one canonical document for each agent.</p>
+                  <p>ASM v3 native behavior and schemas folded into one canonical document for each declared agent.</p>
                 </div>
                 <span class="badge tone-native">native</span>
               </article>
@@ -1364,6 +1365,22 @@
                     </p>
                   </div>
                   <div class="contract-row">
+                    <strong>Fidelity contract</strong>
+                    <p>
+                      Every capture set declares type-preserving, semantic-projection, or legacy-projection fidelity.
+                      ASM v3 separately records exact, semantic, structural, sampled, or unknown schema fidelity plus
+                      evidence-bound nested refinements.
+                    </p>
+                  </div>
+                  <div class="contract-row">
+                    <strong>Complete discovery</strong>
+                    <p>
+                      <span class="mono">upstream.json</span> declares the vendor inventory. Workflow and audit gates
+                      start there, so a missing model, generator, audit, sanitizer, privacy gate, or canonical output
+                      cannot disappear from CI.
+                    </p>
+                  </div>
+                  <div class="contract-row">
                     <strong>Canonical output</strong>
                     <p>
                       One deterministic <span class="mono">groundtruth.json</span> plus a derived local
@@ -1396,7 +1413,10 @@
     channels.json
     behavior.json
     events/
-  captures/ · probes/ · census/ <span class="comment"># evidence acquisition and audit</span></code></pre>
+  captures/&lt;vendor&gt;@&lt;version&gt;/
+    capture-fidelity.json       <span class="comment"># representation and limitations</span>
+  probes/ · references/ · census/ <span class="comment"># evidence acquisition and reproducible generation</span>
+  audit.mjs · sanitize-captures.mjs</code></pre>
                 <div class="ownership-row">
                   <span class="chip">native names</span>
                   <span class="chip">evidence confidence</span>
@@ -1511,6 +1531,25 @@
                     <p>
                       Meaningful but unmapped native records become <span class="mono">adapter:native-event</span>; they
                       are not silently discarded or guessed into a known category.
+                    </p>
+                  </article>
+                  <article class="card">
+                    <h3>File-operation evidence</h3>
+                    <p>
+                      <span class="mono">workspace:file-operation</span> correlates a mutating tool and preserves its
+                      proposed, in-progress, applied, or failed phase. Native watchers instead emit
+                      <span class="mono">workspace:file-changed</span> without an invented tool id. Applied means the
+                      native operation reported success, not that Puppeteer independently read the file back.
+                    </p>
+                  </article>
+                  <article class="card">
+                    <h3>Exactness without fabrication</h3>
+                    <p>
+                      Paths, kinds, moves, raw diffs, bounded diff previews, writes, and replacements are carried only
+                      when Layer 0 proves that native field. Each detail records whether it came from tool input, tool
+                      result, or the native file-operation carrier, and complementary details may coexist. Missing
+                      detail stays absent; presentation previews never masquerade as exact patches, and a proposed
+                      edit is never reported as an applied filesystem mutation.
                     </p>
                   </article>
                 </div>
@@ -2461,6 +2500,20 @@ provider response evidence returns independently through the observation flow</c
               <article class="card">
                 <h3>One canonical ground truth</h3>
                 <p>Each agent has one vendor-root JSON authority; versioned model trees are inputs only.</p>
+              </article>
+              <article class="card">
+                <h3>Declared truth inventory</h3>
+                <p>
+                  Every <span class="mono">upstream.json</span> vendor participates in workflow, audit, and canonical
+                  checks.
+                </p>
+              </article>
+              <article class="card">
+                <h3>Projections cannot masquerade as schemas</h3>
+                <p>
+                  Capture and schema fidelity are explicit; discarded native shape remains a limitation, never an
+                  inferred contract.
+                </p>
               </article>
               <article class="card">
                 <h3>No concrete adapter in Runtime</h3>

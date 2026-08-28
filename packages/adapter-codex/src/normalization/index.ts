@@ -8,6 +8,7 @@ export * from './reasoning.js';
 export * from './session.js';
 export * from './tool.js';
 export * from './turn.js';
+export * from './workspace.js';
 export * from './types.js';
 export * from './pipeline.js';
 export * from './monitor.js';

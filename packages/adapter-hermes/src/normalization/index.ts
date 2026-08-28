@@ -5,6 +5,7 @@ export * from './model.js';
 export * from './context-window.js';
 export * from './conversation.js';
 export * from './turn.js';
+export * from './workspace.js';
 export * from './tool.js';
 export * from './interaction.js';
 export * from './adapter.js';

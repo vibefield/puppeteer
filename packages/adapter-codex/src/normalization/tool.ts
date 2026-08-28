@@ -44,18 +44,30 @@ export class CodexToolNormalizer {
         }
         return { handled: true, events };
       }
-      case 'fileChange':
-        events.push({
-          type: phase === 'started' ? 'tool:started' : 'tool:completed',
-          toolCallId: itemId,
-          tool: 'apply_patch',
-          presentation: toolPresentation(
-            'file-edit',
-            phase === 'started' ? 'Editing files' : 'Edited files',
-            item.changes ?? item.path,
-          ),
-        });
+      case 'fileChange': {
+        const failed = phase === 'completed' && (item.status === 'failed' || item.status === 'declined');
+        events.push(
+          failed
+            ? {
+                type: 'tool:failed',
+                toolCallId: itemId,
+                tool: 'apply_patch',
+                error: `file change ended with status ${String(item.status)}`,
+                presentation: toolPresentation('file-edit', 'File edit failed', item.changes ?? item.path),
+              }
+            : {
+                type: phase === 'started' ? 'tool:started' : 'tool:completed',
+                toolCallId: itemId,
+                tool: 'apply_patch',
+                presentation: toolPresentation(
+                  'file-edit',
+                  phase === 'started' ? 'Editing files' : 'Edited files',
+                  item.changes ?? item.path,
+                ),
+              },
+        );
         return { handled: true, events };
+      }
       case 'webSearch':
         events.push({
           type: phase === 'started' ? 'tool:started' : 'tool:completed',

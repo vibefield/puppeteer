@@ -432,7 +432,7 @@ per tool call in the agentic loop (<code>PreToolUse</code>, <code>PostToolUse</c
 <p>Before v2.1.214, forked sessions reported source <code>"resume"</code>.</p>
 <h5>SessionStart input</h5>
 <p>In addition to the common input fields, SessionStart hooks receive <code>source</code> and optionally <code>model</code>, <code>agent_type</code>, and <code>session_title</code>:</p>
-<table class="def-table"><thead><tr><th>Field</th><th>Description</th></tr></thead><tbody><tr><td class="m"><code>source</code></td><td>How the session started: <code>"startup"</code> for new sessions, <code>"resume"</code> for resumed sessions, <code>"clear"</code> after <code>/clear</code>, <code>"compact"</code> after compaction, or <code>"fork"</code> for a new session forked from an existing one</td></tr><tr><td class="m"><code>model</code></td><td>The active model identifier. It can be omitted, for example after <code>/clear</code> or when a session is restored through conversation recovery, so check for the field before reading it</td></tr><tr><td class="m"><code>agent_type</code></td><td>The agent name, present when you start Claude Code with <code>claude --agent <name></code></td></tr><tr><td class="m"><code>session_title</code></td><td>The current session title if one is already set, for example via <code>--name</code> or <code>/rename</code>. A hook that emits <code>sessionTitle</code> can check <code>session_title</code> first to avoid overwriting a title the user set explicitly</td></tr></tbody></table>
+<table class="def-table"><thead><tr><th>Field</th><th>Description</th></tr></thead><tbody><tr><td class="m"><code>source</code></td><td>How the session started: <code>"startup"</code> for new sessions, <code>"resume"</code> for resumed sessions, <code>"clear"</code> after <code>/clear</code>, <code>"compact"</code> after compaction, or <code>"fork"</code> for a new session forked from an existing one</td></tr><tr><td class="m"><code>model</code></td><td>The active model identifier. It can be omitted, for example after <code>/clear</code> or when a session is restored through conversation recovery, so check for the field before reading it</td></tr><tr><td class="m"><code>agent_type</code></td><td>The agent name, present when you start Claude Code with <code>claude --agent &lt;name&gt;</code></td></tr><tr><td class="m"><code>session_title</code></td><td>The current session title if one is already set, for example via <code>--name</code> or <code>/rename</code>. A hook that emits <code>sessionTitle</code> can check <code>session_title</code> first to avoid overwriting a title the user set explicitly</td></tr></tbody></table>
 <p>``<code>json {   "session_id": "abc123",   "transcript_path": "/Users/.../.claude/projects/.../00893aaf-19fa-41d2-8238-13269b9b3ca0.jsonl",   "cwd": "/Users/...",   "hook_event_name": "SessionStart",   "source": "startup",   "model": "claude-sonnet-5" } </code>``</p>
     <p class="hook-usage"><strong>Puppeteer:</strong> We register this hook and fold it into SessionRuntimeState.</p>
   </div>
@@ -892,7 +892,7 @@ per tool call in the agentic loop (<code>PreToolUse</code>, <code>PostToolUse</c
 <p>In addition to the common input fields, FileChanged hooks receive <code>file_path</code> and <code>event</code>.</p>
 <table class="def-table"><thead><tr><th>Field</th><th>Description</th></tr></thead><tbody><tr><td class="m"><code>file_path</code></td><td>Absolute path to the file that changed</td></tr><tr><td class="m"><code>event</code></td><td>What happened: <code>"change"</code> for a modified file, <code>"add"</code> for a created file, or <code>"unlink"</code> for a deleted file</td></tr></tbody></table>
 <p>``<code>json {   "session_id": "abc123",   "transcript_path": "/Users/.../.claude/projects/.../transcript.jsonl",   "cwd": "/Users/my-project",   "hook_event_name": "FileChanged",   "file_path": "/Users/my-project/.envrc",   "event": "change" } </code>``</p>
-    <p class="hook-usage"><strong>Puppeteer:</strong> Modeled and normalized to <code>workspace:changed</code>; installed only when the caller supplies <code>fileChangeMatcher</code>.</p>
+    <p class="hook-usage"><strong>Puppeteer:</strong> Modeled as the direct observation <code>workspace:file-changed</code>; installed only when the caller supplies <code>fileChangeMatcher</code>. Write/Edit lifecycle is available independently through the default PreToolUse/PostToolUse hooks.</p>
   </div>
 </article>
 <article class="hook-card use-partial" id="hook-WorktreeCreate">
@@ -1366,8 +1366,8 @@ flowchart LR
           <tbody>
             <tr><td class="m">PreCompact</td><td>registered and retained natively; <code>PostCompact</code> separately emits <code>context-window:invalidated</code></td></tr>
             <tr><td class="m">Elicitation / ElicitationResult</td><td>registered and retained without falsely mapping every MCP form to a single permission state</td></tr>
-            <tr><td class="m">FileChanged</td><td>opt-in via <code>fileChangeMatcher</code>, then emits <code>workspace:changed</code></td></tr>
-            <tr><td class="m">ConfigChange</td><td>registered; paths emit <code>workspace:changed</code>, otherwise the native event is retained</td></tr>
+            <tr><td class="m">FileChanged</td><td>opt-in via <code>fileChangeMatcher</code>, then emits the direct observation <code>workspace:file-changed</code></td></tr>
+            <tr><td class="m">ConfigChange</td><td>registered and retained natively; configuration reload is not treated as an agent file edit</td></tr>
             <tr><td class="m">WorktreeCreate</td><td>modeled with its required result but excluded from passive observation because registration replaces native Git behavior</td></tr>
             <tr><td class="m">WorktreeRemove / TeammateIdle</td><td>registered and retained as native events</td></tr>
           </tbody>
@@ -1409,7 +1409,7 @@ flowchart LR
         <code class="m">reasoning:started</code> · <code class="m">reasoning:progress</code> ·
         <code class="m">reasoning:summary</code> · <code class="m">reasoning:completed</code> ·
         <code class="m">tool:started</code> · <code class="m">process:started</code> ·
-        <code class="m">process:exited</code> · <code class="m">workspace:changed</code> ·
+        <code class="m">process:exited</code> ·
         <code class="m">context-window:invalidated</code> <span class="none">(from hooks — the statusline does emit it)</span>
       </p>
       <p>

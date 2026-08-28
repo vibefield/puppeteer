@@ -936,7 +936,7 @@
         <div class="stats" aria-label="API summary">
           <div class="stat"><strong>1</strong><span>Agent object per runtime run</span></div>
           <div class="stat"><strong>21</strong><span>top-level event categories</span></div>
-          <div class="stat"><strong>42</strong><span>normalized event routes</span></div>
+          <div class="stat"><strong>43</strong><span>normalized event routes</span></div>
           <div class="stat"><strong>3</strong><span>selector forms</span></div>
         </div>
       </header>
@@ -1237,7 +1237,7 @@
 
             <div class="callout">
               <strong>Schema boundary.</strong> Each Core event category owns strict Zod schemas and exports TypeScript
-              types inferred from them. The exhaustive catalog binds all 42
+              types inferred from them. The exhaustive catalog binds all 43
               <span class="mono">category:event-name</span> routes to those schemas. Runtime validation uses Zod once at
               adapter ingress; listener callback narrowing is derived in TypeScript from the same catalog.
             </div>
@@ -1765,7 +1765,7 @@ unsubscribe();</code></pre>
           <section id="catalog">
             <h2>Complete event catalog</h2>
             <p class="section-note">
-              All 42 public routes are listed below. Expand a row to see the exact normalized payload. Search matches
+              All 43 public routes are listed below. Expand a row to see the exact normalized payload. Search matches
               routes, native payload types, descriptions, and field names.
             </p>
 
@@ -1785,7 +1785,7 @@ unsubscribe();</code></pre>
               <button class="filter-button" type="button" data-filter="other">Other</button>
               <button class="small-button" id="expand-visible" type="button">Expand visible</button>
               <button class="small-button" id="collapse-all" type="button">Collapse</button>
-              <span class="result-count" id="event-count">42 / 42 routes</span>
+              <span class="result-count" id="event-count">43 / 43 routes</span>
             </div>
 
             <div id="event-sections">
@@ -2638,28 +2638,147 @@ unsubscribe();</code></pre>
               <section class="category-section" id="category-workspace" data-section-category="workspace">
                 <div class="category-header">
                   <h3>Workspace category</h3>
-                  <span class="badge category-workspace">1 route</span>
-                  <p>Normalized file-change evidence.</p>
+                  <span class="badge category-workspace">2 routes</span>
+                  <p>Agent file-operation lifecycle and direct filesystem observations remain separate facts.</p>
+                  <div class="callout warning">
+                    <strong>Detailed data.</strong> These Agent events may contain source paths, content, replacements,
+                    or diffs. The generic monitor projection deliberately does not retain file identities or edit
+                    content.
+                  </div>
                 </div>
                 <div class="event-list">
                   <details class="event-card" data-category="workspace">
                     <summary>
                       <span class="event-title"
-                        ><span class="route">workspace:changed</span
-                        ><span class="native-type">workspace:changed</span></span
+                        ><span class="route">workspace:file-operation</span
+                        ><span class="native-type">workspace:file-operation</span></span
                       ><span class="badge category-workspace">workspace</span>
                     </summary>
                     <div class="event-body">
-                      <p>One or more workspace paths changed; paths may be unavailable on coarse evidence surfaces.</p>
-                      <pre><code>interface WorkspaceChangedEvent {
-  type: 'workspace:changed';
-  paths?: string[];
+                      <p>
+                        A file-mutating tool was proposed, entered progress, applied, or failed. Proposed and failed
+                        operations are never counted as filesystem mutations.
+                      </p>
+                      <pre><code>type WorkspaceFileChangeKind =
+  | 'create' | 'modify' | 'delete' | 'move' | 'unknown';
+
+type WorkspaceFileChangeDetailBasis =
+  | 'tool-input' | 'tool-result' | 'native-file-operation';
+
+type WorkspaceFileChangeDetail =
+  | { representation: 'unified-diff'; basis: WorkspaceFileChangeDetailBasis; text: string }
+  | { representation: 'diff-preview'; basis: WorkspaceFileChangeDetailBasis;
+      text: string; completeness: 'complete' | 'truncated' | 'unknown' }
+  | { representation: 'content'; basis: WorkspaceFileChangeDetailBasis;
+      before?: string | null; after?: string | null }
+  | { representation: 'write'; basis: WorkspaceFileChangeDetailBasis;
+      content: string; mode: 'overwrite' | 'append' | 'unknown' }
+  | { representation: 'replacement'; basis: WorkspaceFileChangeDetailBasis;
+      oldText: string; newText: string; replaceAll?: boolean };
+
+interface WorkspaceFileChange {
+  path: string;
+  kind: WorkspaceFileChangeKind;
+  newPath?: string;
+  details?: WorkspaceFileChangeDetail[];
+  additions?: number;
+  deletions?: number;
+}
+
+interface WorkspaceFileOperationEvent {
+  type: 'workspace:file-operation';
+  toolCallId: string;
+  phase: 'proposed' | 'in-progress' | 'applied' | 'failed';
+  changes: WorkspaceFileChange[];
 }</code></pre>
+                      <p>
+                        <span class="mono">unified-diff</span> means the native source supplied raw patch text;
+                        <span class="mono">diff-preview</span> means it supplied rendered presentation text and reports
+                        whether that preview is complete, truncated, or unknown. Consumers must not apply or parse a
+                        preview as a patch. A change can carry several complementary details—for example exact
+                        replacement intent from <span class="mono">tool-input</span> beside a completed preview from
+                        <span class="mono">tool-result</span>. Detail basis never changes lifecycle phase.
+                      </p>
+                      <p>
+                        <span class="mono">applied</span> means the native operation reported success. It is not an
+                        independent read-back of the filesystem; consumers that need observation should also use
+                        <span class="mono">workspace:file-changed</span> when that adapter exposes a watcher or hook.
+                      </p>
                       <div class="projection-row">
-                        <span class="chip">workspace evidence</span><span class="chip">monitor activity</span>
+                        <span class="chip">tool correlation</span><span class="chip">exact detail when native</span>
                       </div>
                     </div>
                   </details>
+
+                  <details class="event-card" data-category="workspace">
+                    <summary>
+                      <span class="event-title"
+                        ><span class="route">workspace:file-changed</span
+                        ><span class="native-type">workspace:file-changed</span></span
+                      ><span class="badge category-workspace">workspace</span>
+                    </summary>
+                    <div class="event-body">
+                      <p>
+                        A native filesystem hook or watcher observed a change. It deliberately carries no tool id when
+                        the source cannot prove causality.
+                      </p>
+                      <pre><code>interface WorkspaceFileChangedEvent {
+  type: 'workspace:file-changed';
+  changes: WorkspaceFileChange[];
+}</code></pre>
+                      <div class="projection-row">
+                        <span class="chip">filesystem observation</span><span class="chip">no invented causality</span>
+                      </div>
+                    </div>
+                  </details>
+                </div>
+                <div class="table-wrap">
+                  <table>
+                    <thead>
+                      <tr>
+                        <th>Adapter</th>
+                        <th>Normalized knowledge</th>
+                        <th>Honest boundary</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      <tr>
+                        <td class="route">Codex</td>
+                        <td><p>Native fileChange lifecycle; full add/delete content, update diff, and move target.</p></td>
+                        <td><p>No current general watcher for shell- or process-owned edits.</p></td>
+                      </tr>
+                      <tr>
+                        <td class="route">Claude</td>
+                        <td><p>Write/Edit input and outcome; optional FileChanged path/kind observation.</p></td>
+                        <td><p>FileChanged exists only when the caller supplies Claude’s required filename matcher.</p></td>
+                      </tr>
+                      <tr>
+                        <td class="route">OpenCode</td>
+                        <td><p>Tool intent/result plus independent add/change/unlink watcher observations.</p></td>
+                        <td><p>Result patches are indentation-normalized previews; metadata.truncated describes tool output only.</p></td>
+                      </tr>
+                      <tr>
+                        <td class="route">Kimi</td>
+                        <td><p>Write/Edit arguments correlated with their native result.</p></td>
+                        <td><p>No independent filesystem watcher in the current adapter.</p></td>
+                      </tr>
+                      <tr>
+                        <td class="route">Hermes</td>
+                        <td><p>Completion-only bounded inline preview for source-proven write_file and patch.</p></td>
+                        <td><p>The inline preview route is source-defined but not runtime-verified; no general watcher.</p></td>
+                      </tr>
+                      <tr>
+                        <td class="route">ACP / Grok</td>
+                        <td><p>Protocol-native before/after content or file locations, according to the ACP server.</p></td>
+                        <td><p>Detail and lifecycle precision depend on the server; no separate watcher route.</p></td>
+                      </tr>
+                      <tr>
+                        <td class="route">Antigravity</td>
+                        <td><p>No normalized workspace event support yet.</p></td>
+                        <td><p>Consumers receive no portable file-edit knowledge from this adapter.</p></td>
+                      </tr>
+                    </tbody>
+                  </table>
                 </div>
               </section>
 

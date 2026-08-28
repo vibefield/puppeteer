@@ -1,5 +1,6 @@
 export * from './types.js';
 export * from './turn.js';
+export * from './workspace.js';
 export * from './conversation.js';
 export * from './reasoning.js';
 export * from './tool.js';

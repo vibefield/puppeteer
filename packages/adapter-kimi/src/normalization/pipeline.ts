@@ -10,6 +10,7 @@ import { KimiInteractionNormalizer } from './interaction.js';
 import { KimiReasoningNormalizer } from './reasoning.js';
 import { KimiToolNormalizer } from './tool.js';
 import { KimiTurnNormalizer } from './turn.js';
+import { KimiWorkspaceNormalizer } from './workspace.js';
 import {
   kimiErrorText,
   kimiNativeEvent,
@@ -28,6 +29,7 @@ export class KimiWireNormalizer {
   private readonly conversation = new KimiConversationNormalizer();
   private readonly reasoning = new KimiReasoningNormalizer();
   private readonly tool = new KimiToolNormalizer();
+  private readonly workspace = new KimiWorkspaceNormalizer();
   private readonly interaction = new KimiInteractionNormalizer();
   private readonly delegation = new KimiDelegationNormalizer();
 
@@ -186,9 +188,15 @@ export class KimiWireNormalizer {
       return finish({ events, disposition: 'retained-native' });
     }
 
-    if (loopType === 'tool.call') return finish(this.tool.call(loop ?? {}, turnId));
+    if (loopType === 'tool.call') {
+      const tool = this.tool.call(loop ?? {}, turnId);
+      const workspace = tool.disposition === 'mapped' ? this.workspace.call(loop ?? {}) : undefined;
+      return finish({ ...tool, events: [...tool.events, ...(workspace ? [workspace] : [])] });
+    }
     if (loopType === 'tool.result') {
-      return finish(this.tool.result(loop ?? {}, turnId, (candidate) => this.turn.isTerminal(candidate)));
+      const tool = this.tool.result(loop ?? {}, turnId, (candidate) => this.turn.isTerminal(candidate));
+      const workspace = this.workspace.result(loop ?? {}, tool.disposition === 'mapped');
+      return finish({ ...tool, events: [...tool.events, ...(workspace ? [workspace] : [])] });
     }
     if (loopType === 'step.end') return finish({ events: [], disposition: 'no-output' });
     return finish(this.retainedLoop(loopType));

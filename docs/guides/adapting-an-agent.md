@@ -56,8 +56,8 @@ Until the last item is complete, use `baseline-pending` or `unsupported`. Do not
 | ------------------------ | ------------------------------------------------------------- | -------------------------------------------------------------------------------- | -------------------------------------------------------------------------------- |
 | 0. Scope and bootstrap   | Choose the native integration and establish repository seams  | vendor identity, package/persona/support scaffolding plan                        | no unresolved ownership or transport question blocks the design                  |
 | 1. Survey                | Observe the exact vendor artifact                             | raw private captures, sanitized tracked captures, `findings.md`, `upstream.json` | every relied-on channel has admissible evidence and privacy passes               |
-| 2. Model                 | Formalize pinned native truth                                 | versioned ASM v2 inputs plus vendor-root `groundtruth.json`                      | model, evidence, behavior, capture, and vendor audit gates pass                  |
-| 3. Emulate               | Reproduce the native surface independently                    | Imposter persona, behavior pack, scenarios, runflows, optional server table      | persona loads, scenarios validate, replay is exact, native devkit view is honest |
+| 2. Model                 | Formalize pinned native truth                                 | versioned ASM v3 inputs plus vendor-root `groundtruth.json`                      | model, evidence, behavior, capture, workflow, and vendor audit gates pass        |
+| 3. Emulate               | Reproduce the native surface independently                    | Imposter persona, behavior pack, scenarios, runflows, optional server table      | persona loads, scenarios validate, replay honors capture fidelity, native devkit view is honest |
 | 4. Adapt and normalize   | Build the real native integration and portable interpretation | adapter normalizer, driver, detection/launch projections, focused fixtures       | mapping is evidence-traceable; adapter unit and devkit review gates pass         |
 | 5. Conform and integrate | Prove the product contract                                    | shared conformance, Imposter E2E, runtime provider, package wiring               | hermetic/full tests and packaging pass; no resources are orphaned                |
 | 6. Reconcile and promote | Bind the candidate to real artifacts and declare support      | reconciliation report, platform reports, protected ledger transaction            | every promotion gate passes on exact reacquired bytes                            |
@@ -256,7 +256,7 @@ Create the vendor-specific tools under:
 packages/surface/vendors/<vendor>/
   census/
     harness.mjs
-    generate-model.mjs       # optional but recommended for repeatable schema-derived parts
+    generate-model.mjs       # required reproducible authoring path
   sanitize-captures.mjs      # or another clearly named sanitizer/checker
   audit.mjs
 ```
@@ -282,13 +282,23 @@ Do not spawn a shadow non-interactive agent to “observe” the native TUI sess
 ```text
 packages/surface/vendors/<vendor>/
   captures-raw/<vendor>@<version>/   # verbatim; gitignored/private
-  captures/<vendor>@<version>/       # sanitized, shape-faithful, tracked
+  captures/<vendor>@<version>/       # sanitized, tracked, fidelity declared
+    capture-fidelity.json            # representation and per-artifact limitations
   probes/<vendor>@<version>/         # safe artifact/version/help metadata when applicable
 ```
 
 The wildcard for `captures-raw` is already in `.gitignore`. Never commit prompts, responses, account identifiers, home paths, repository contents, bearer tokens, API keys, or raw authenticated state.
 
-Use the shared sanitizer in `@vibecook/puppeteer-surface/sanitize` and extend its rules for vendor-specific fields. Redaction and leak detection must remain paired. Sanitization must preserve types, identifier formats, and cross-record correlation; a fixture whose request and response IDs no longer join is not useful evidence.
+Use the shared sanitizer in `@vibecook/puppeteer-surface/sanitize` and extend its rules for vendor-specific fields. Redaction and leak detection must remain paired. For native JSON carriers, replace sensitive values in place: preserve every key, container, primitive type, identifier format, record order, and cross-record correlation. A fixture whose request and response IDs no longer join is not useful evidence.
+
+Every capture set must include `capture-fidelity.json` using `puppeteer-capture-fidelity/1`:
+
+- `type-preserving-redaction` means native JSON keys, containers, and primitive types survive sanitization;
+- `semantic-projection` means the named artifacts intentionally summarize or reshape their input and cannot define a native schema;
+- `legacy-privacy-projection` means information was discarded and the raw input is unavailable, so only explicitly retained observations remain admissible;
+- `overrides` records mixed sets such as type-preserving native journals alongside projected process diagnostics.
+
+The sanitizer writes this contract for every future capture. `surface:workflow:check` rejects an undeclared capture set.
 
 After sanitizing, inspect the result manually and run the detector. Treat a privacy failure as a release blocker, not a test to waive.
 
@@ -355,11 +365,11 @@ pnpm surface:groundtruth:write -- packages/surface/vendors/<vendor>/model/<vendo
 
 For slash-delimited protocol methods, mirror the slash path under `events/`, as Codex does.
 
-Use ASM v2 for every new candidate:
+Use ASM v3 for every new candidate:
 
 ```json
 {
-  "asmVersion": 2,
+  "asmVersion": 3,
   "vendor": "<vendor>",
   "vendorVersion": "<version>",
   "generatedAt": "YYYY-MM-DD",
@@ -415,10 +425,13 @@ Each event file names the exact native event or method and includes the evidence
 Rules:
 
 - Required fields must be present on every qualifying observation, not merely one example.
-- Use only the recursive JSON-schema subset supported by `packages/surface/src/model.ts`.
+- Retain the complete reachable vendor JSON Schema through `projectJsonSchema`; local `$ref` dependencies, unions, constraints, annotations, and newer vocabulary must not be silently dropped. The lightweight capture validator may implement only validation-bearing behavior it needs, but Layer 0 remains a lossless evidence record.
 - Model both protocol directions. A request whose reply is consumed or emulated needs a `resultSchema`.
 - When captures retain the whole carrier, add `recordSchema` and, for multi-rail events, `recordChannel`.
-- Use `variants` with scalar dotted-path `match` selectors for discriminated branches within one method.
+- Declare `schemaFidelity` for every retained schema. Use `exact`, `semantic`, `structural`, `sampled`, or `unknown`, and explain every known omission in `limitations`.
+- Use `nativeName` when the collision-safe ASM event identity differs from the exact wire name.
+- Use `payloadRefinements` for evidence-bound nested contracts such as one tool's `args`; do not weaken a known schema to an untyped object merely because sibling tool types differ.
+- Use `variants` with scalar dotted-path `match` selectors for runtime/behavior branches. List only enum paths whose complete legal inventory is intentionally tracked as variants in `variantDiscriminants`; ordinary schema enums do not require fake per-value runtime evidence.
 - A generated schema proves a possible shape, not that every branch occurs. Runtime confidence comes from runtime evidence.
 - An observed event missing from `events/` is drift. An unobserved source/doc branch remains explicitly `unverified`.
 - `channel` is the primary/default rail; `channels` is every observed rail.
@@ -436,7 +449,7 @@ Rules:
 
 Runtime capture and binary probe claims include the record, artifact, platform, harness, and capture timestamp. Records point to tracked trees and use `sha256-path-content-v1`. Artifacts carry platform-specific version output and SHA-256 integrity. Source references use full immutable revisions and state their relation to the artifact.
 
-Refresh record digests only after the tracked model/capture content is final:
+The model generator must write all authoring files, compute record digests after those writes, and regenerate the vendor-root canonical JSON/HTML. Refresh historical or externally attached record digests only after the tracked model/capture content is final:
 
 ```sh
 pnpm --filter @vibecook/puppeteer-surface surface:evidence:write
@@ -471,7 +484,7 @@ Add `packages/surface/vendors/<vendor>/audit.mjs` and focused tests beside the v
 - an exact binary-generated schema or source comparison detects drift;
 - artifact identity and evidence digests remain valid.
 
-Add a package script in `packages/surface/package.json` named `surface:audit:<vendor>`. The root `surface:audit` discovers vendor `audit.mjs` files, while adaptation and promotion workflows call the vendor-specific script directly.
+Add `surface:model:<vendor>`, `surface:audit:<vendor>`, `surface:sanitize:<vendor>`, and `surface:privacy:<vendor>` scripts in `packages/surface/package.json`. `upstream.json` defines the required vendor inventory: global workflow, ground-truth, and audit checks must fail when any declared vendor lacks one of these paths. They never discover only what happens to be complete.
 
 ### Model exit gate
 
@@ -480,11 +493,12 @@ Run:
 ```sh
 pnpm --filter @vibecook/puppeteer-surface typecheck
 pnpm --filter @vibecook/puppeteer-surface test
+pnpm --filter @vibecook/puppeteer-surface surface:workflow:check
 pnpm --filter @vibecook/puppeteer-surface run surface:audit:<vendor>
 pnpm surface:audit
 ```
 
-The stage is complete when the ASM loads, all tracked captures are represented and accepted, every behavior endpoint resolves, every v2 claim resolves to admissible evidence, privacy is clean, and gaps remain visibly unverified.
+The stage is complete when the ASM loads, all tracked captures have explicit fidelity and are represented honestly, every behavior endpoint resolves, every v3 claim/refinement/variant resolves to admissible evidence, privacy is clean, and gaps remain visibly unverified.
 
 ---
 
@@ -668,7 +682,7 @@ The stage is complete when:
 - every normal scenario is on-model and every intentional unknown is explicit;
 - server requests and results use their real direction;
 - native session identity survives resume and attach;
-- exact capture replay passes, including carrier and result validation;
+- fidelity-aware capture replay passes: type-preserving records validate payload, carrier, and result shape; projected legacy records validate only admissible occurrence, ordering, and joins;
 - native devkit controls do not depend on an adapter or Core reducer.
 
 ---
@@ -746,6 +760,15 @@ Rules:
 - Never infer completion from a “pre” hook or a similarly suggestive name.
 - If a server request needs request IDs, client decisions, or response correlation, normalize it in the driver where that context exists; do not fake it in a pure notification normalizer.
 
+File mutation normalization has two deliberately different routes:
+
+- `workspace:file-operation` is the agent-owned mutating-tool lifecycle. Correlate it with the native tool call id and emit only phases the source establishes: `proposed`, `in-progress`, `applied`, or `failed`. A proposal or failed operation is not evidence that the filesystem changed. `applied` means the native operation reported success; do not describe it as an independent disk read-back.
+- `workspace:file-changed` is a direct hook/watcher observation. Do not attach a tool id unless the native source establishes causality; the observation route intentionally has none.
+- Preserve every complementary native representation without converting it into a more exact-looking form: unified diff, rendered `diff-preview` with explicit completeness, before/after content, whole-file write, or old/new replacement. Put the origin on each detail (`tool-input`, `tool-result`, or `native-file-operation`); do not use one event-wide origin that overwrites exact intent with a weaker result preview. Keep path, move target, kind, and line counts absent or `unknown` when the native source does not provide them.
+- A complete `diff-preview` means the provider supplied its whole presentation value. It does not make that value an applicable patch. Likewise, a provider's generic output-truncation flag does not bound a patch unless Layer 0 proves that relationship.
+- Do not infer mutating tools from display titles or terminal output. Map only evidence-backed native tool identities or protocol-native edit/delete/move kinds.
+- Full content and diffs are detailed Agent-event data. Keep product monitor projections free of file content and file identities unless a separate consumer contract explicitly authorizes them.
+
 If the existing Core vocabulary cannot represent a genuinely cross-vendor, product-relevant fact, propose the Core event and reducer change separately. Prove it against at least two native shapes or explain why it is a universal contract. Do not add a portable event merely to avoid retaining one vendor detail.
 
 Surface confidence and normalized-envelope confidence answer different questions. `verified-headless`/`verified-interactive`/`unverified` describe the evidence behind a native ASM claim. `authoritative`/`derived`/`inferred` describe how a particular portable event was obtained. Choose the latter deliberately:
@@ -786,6 +809,7 @@ Add focused tests for:
 - stream accumulation and final boundaries;
 - allow, deny, dismiss, and unknown approval outcomes;
 - tool success/failure and stable tombstones for duplicates;
+- file-operation proposal/progress/application/failure, direct watcher separation, empty-file edits, moves, and missing-detail behavior;
 - duplicate, out-of-order, re-entrant, and late-after-exit input;
 - resume replay vs live input;
 - bounded buffers and cleanup;
@@ -1074,7 +1098,7 @@ The important outcomes are:
 
 ### 10.3 Use the candidate workflow for existing vendors
 
-After the vendor seam exists, dispatch `.github/workflows/agent-adaptation.yml` from the branch containing the reviewer-prepared ASM v2 candidate:
+After the vendor seam exists, dispatch `.github/workflows/agent-adaptation.yml` from the branch containing the reviewer-prepared ASM v3 candidate:
 
 ```sh
 gh workflow run agent-adaptation.yml \
@@ -1093,7 +1117,7 @@ The workflow:
 4. attaches those identities to already-prepared evidence without inventing claims;
 5. stages the candidate pointer/persona;
 6. audits Surface, adapter, Imposter, packages, and support metadata;
-7. performs exact replay and drift classification;
+7. performs byte-exact, fidelity-aware replay and drift classification;
 8. confines automated changes to Surface, persona, generated adapter output, findings/event-map, and the candidate pointer;
 9. may open a draft PR.
 
@@ -1174,13 +1198,13 @@ This is the review checklist for files commonly missed during a first adaptation
 
 - [ ] `packages/surface/vendors/<vendor>/upstream.json`
 - [ ] `packages/surface/vendors/<vendor>/findings.md`
-- [ ] census/probe harnesses and optional model generator
+- [ ] census/probe harnesses and required reproducible model generator
 - [ ] paired sanitizer and privacy detector tests
-- [ ] sanitized captures under the versioned capture directory
-- [ ] ASM v2 manifest, evidence, detection, channels, events, and behavior
+- [ ] sanitized captures plus `capture-fidelity.json` under every versioned capture directory
+- [ ] ASM v3 manifest, schema fidelity, evidence, detection, channels, events, refinements, variants, and behavior
 - [ ] generated vendor-root `groundtruth.json` and `groundtruth.html`, with none inside `model/`
 - [ ] vendor `audit.mjs` and focused model/capture tests
-- [ ] `surface:audit:<vendor>` script in `packages/surface/package.json`
+- [ ] model, audit, sanitize, and privacy scripts in `packages/surface/package.json`
 
 ### Imposter and native devkit
 
@@ -1230,10 +1254,10 @@ This is the review checklist for files commonly missed during a first adaptation
 ### Native truth
 
 - [ ] The exact artifact/version/platform identity is recorded.
-- [ ] Raw evidence is protected and tracked fixtures are sanitized and shape-faithful.
+- [ ] Raw evidence is protected; tracked fixtures are sanitized and their exact representation fidelity is machine-readable.
 - [ ] Every relied-on channel and every captured event/method is modeled.
 - [ ] Requests, results, complete carriers, directions, variants, and multi-rail events are represented.
-- [ ] Every ASM v2 claim resolves to admissible evidence.
+- [ ] Every ASM v3 claim, refinement, and declared behavior variant resolves to admissible evidence.
 - [ ] Native behavior is a partial order with exact names, not normalized states.
 - [ ] Known unknowns remain explicit and unverified.
 
@@ -1254,6 +1278,7 @@ This is the review checklist for files commonly missed during a first adaptation
 - [ ] Buffers are bounded and terminal/missing-boundary behavior is tested.
 - [ ] Prompt receipts and observation level are honest.
 - [ ] No semantics are derived from terminal text.
+- [ ] Agent-owned file-operation phases and direct watcher observations remain distinct; exact edit detail is preserved only when native evidence supports it.
 - [ ] Devkit ledger dispositions and Core state changes have been reviewed across representative runflows.
 - [ ] Driver-owned and unsupported coverage is labeled rather than simulated away.
 

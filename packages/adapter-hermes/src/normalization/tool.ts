@@ -31,8 +31,11 @@ export class HermesToolNormalizer {
     const toolCallId = hermesString(payload.tool_id) ?? 'hermes-tool-unknown';
     const tool = hermesString(payload.name) ?? this.toolNames.get(toolCallId) ?? 'unknown';
     const result = hermesRecord(payload.result);
+    const resultStatus = hermesString(result?.status);
     const blocked =
-      hermesString(result?.status) === 'blocked' || (typeof result?.exit_code === 'number' && result.exit_code !== 0);
+      resultStatus === 'blocked' ||
+      resultStatus === 'failed' ||
+      (typeof result?.exit_code === 'number' && result.exit_code !== 0);
     const shown = presentation(tool, true);
     if (blocked) {
       return [

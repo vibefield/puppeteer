@@ -17,6 +17,7 @@ import {
 } from './reasoning.js';
 import { normalizeOpenCodeSessionExited, normalizeOpenCodeSessionStarted } from './session.js';
 import { OpenCodeToolNormalizer } from './tool.js';
+import { OpenCodeWorkspaceNormalizer } from './workspace.js';
 import type {
   NormalizeOpenCodeOptions,
   OpenCodeNormalizedEvent,
@@ -64,6 +65,11 @@ export const OPENCODE_NORMALIZATION_EVIDENCE = {
     'groundtruth.json#behavior/nodes/reasoning-part',
   ],
   tool: ['groundtruth.json#events/message.part.updated', 'groundtruth.json#behavior/nodes/tool-pending'],
+  workspace: [
+    'groundtruth.json#events/message.part.updated',
+    'groundtruth.json#events/file.watcher.updated',
+    'groundtruth.json#behavior/nodes/tool-pending',
+  ],
   permission: [
     'groundtruth.json#events/permission.asked',
     'groundtruth.json#events/permission.replied',
@@ -105,6 +111,7 @@ export class OpenCodeNormalizer {
   private readonly delegation: OpenCodeDelegationNormalizer;
   private readonly interaction: OpenCodeInteractionNormalizer;
   private readonly tool: OpenCodeToolNormalizer;
+  private readonly workspace: OpenCodeWorkspaceNormalizer;
   private readonly seenEventIds = new Set<string>();
   private readonly seenUserMessages = new Set<string>();
   private readonly completedTurns = new Set<string>();
@@ -128,6 +135,7 @@ export class OpenCodeNormalizer {
     this.delegation = new OpenCodeDelegationNormalizer(this.maxCorrelationEntries);
     this.interaction = new OpenCodeInteractionNormalizer(this.maxCorrelationEntries);
     this.tool = new OpenCodeToolNormalizer(this.maxCorrelationEntries);
+    this.workspace = new OpenCodeWorkspaceNormalizer(this.maxCorrelationEntries);
   }
 
   normalizeSession(
@@ -195,8 +203,13 @@ export class OpenCodeNormalizer {
       case 'question.replied':
       case 'question.rejected':
         return this.questionResolved(record, timestamp, options);
+      case 'file.watcher.updated': {
+        const workspace = this.workspace.normalizeFileWatcher(record);
+        return workspace
+          ? [this.output(workspace, timestamp, options, options.nativeEvent ?? record, this.correlationFor(record))]
+          : [this.native(record, timestamp, options)];
+      }
       case 'file.edited':
-      case 'file.watcher.updated':
       case 'message.part.removed':
       case 'message.removed':
         return [this.native(record, timestamp, options)];
@@ -626,6 +639,15 @@ export class OpenCodeNormalizer {
     if (normalized.event) {
       events.push(
         this.output(normalized.event, timestamp, options, nativeEvent, {
+          promptId: turnID,
+          turnId: turnID,
+        }),
+      );
+    }
+    const workspace = this.workspace.normalizeToolPart(part);
+    if (workspace) {
+      events.push(
+        this.output(workspace, timestamp, options, nativeEvent, {
           promptId: turnID,
           turnId: turnID,
         }),

@@ -49,6 +49,9 @@ Core contracts are a foundation used by layers 2–5, not a hidden sub-layer of 
 
 - A provider has one canonical `packages/surface/vendors/<provider>/groundtruth.json`; its embedded manifest identifies the active version.
 - Versioned `model/<provider>@<version>/` trees are authoring and evidence inputs only. They never contain another canonical ground-truth file; Git history tracks changes to the root document.
+- `upstream.json` is the declared provider inventory. Workflow, audit, and canonical discovery start from it, so missing work is a failure rather than an invisible provider.
+- Every capture-version root declares `capture-fidelity.json`. Type-preserving redaction may support native shape claims; semantic and legacy projections support only the facts they explicitly retain.
+- ASM v3 records schema fidelity, exact native names, evidence-bound nested payload refinements, and explicitly selected behavior discriminants. Vendor JSON Schema ingestion retains reachable references and vocabulary instead of collapsing nested contracts.
 - Imposter depends on Surface and remains provider-native. It does not import Core, adapters, or Runtime.
 - Each supported adapter owns `groundtruth-map.json`. The map locks the ground-truth digest and partitions native names into semantic inputs, observed/control inputs, and an explicitly hashed unmapped remainder.
 - `pnpm groundtruth:mapping:check` fails when ground truth or adapter implementation references drift without review.
@@ -76,6 +79,15 @@ interface AgentAdapterBinding {
 `events.onCandidate(...)` is the only normalized observation rail. Candidates contain a canonical `category:event-name` route and normalized payload, but no runtime sequence, runtime epoch, public category field, callback, or command function. Commands travel through named services. Optional capabilities are represented by optional service ports, not sentinel events.
 
 Strict Zod schemas validate runtime data at the Core boundary. TypeScript defines callback narrowing and internal composition. Provider-native decoding stays tolerant because upstream wire formats are versioned evidence, not trusted Core values.
+
+### Workspace mutation boundary
+
+File mutation is represented by two facts rather than one ambiguous “workspace changed” signal:
+
+- `workspace:file-operation` is correlated to a native mutating tool call and carries an evidence-backed lifecycle phase (`proposed`, `in-progress`, `applied`, or `failed`). Applied means native-reported success, not independent disk verification. Each change may preserve several complementary details—native unified diff, explicitly bounded diff preview, before/after content, whole-file write, or old/new replacement—and each detail records whether it came from tool input, tool result, or the native file-operation carrier.
+- `workspace:file-changed` is a direct filesystem hook or watcher observation. It deliberately has no tool-call id because observation does not prove causality.
+
+Adapters never convert proposal into application, attach watcher activity to a guessed tool, infer edits from terminal prose, manufacture a diff from a path-only signal, or label a rendered preview as an applicable patch. Missing native detail remains missing. The detailed Agent event rail may contain source content or diffs; monitor projections do not retain file identities or content by default.
 
 Every `AgentProvider` declares one strict `AgentProviderDescriptor` (`id`, `label`). Runtime validates it once, requires
 launch and account-usage capabilities to repeat the same identity, exposes defensive copies through `providers()`, and

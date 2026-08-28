@@ -55,7 +55,11 @@ import {
 import { TurnCompletedEventSchema, TurnFailedEventSchema, TurnStartedEventSchema, type TurnEvent } from './turn.js';
 import { TokensUsedEventSchema, type UsageEvent } from './usage.js';
 import { WorkflowUpdatedEventSchema, type WorkflowEvent } from './workflow.js';
-import { WorkspaceChangedEventSchema, type WorkspaceEvent } from './workspace.js';
+import {
+  WorkspaceFileChangedEventSchema,
+  WorkspaceFileOperationEventSchema,
+  type WorkspaceEvent,
+} from './workspace.js';
 
 /** Complete normalized event union. Category modules own the individual members. */
 export type AgentEvent =
@@ -316,11 +320,17 @@ export const agentEventCatalog = {
     ModeUpdatedEventSchema,
     'A configured or effective provider mode changed.',
   ),
-  'workspace:changed': defineAgentEvent(
+  'workspace:file-operation': defineAgentEvent(
     'workspace',
-    'workspace:changed',
-    WorkspaceChangedEventSchema,
-    'The session workspace changed.',
+    'workspace:file-operation',
+    WorkspaceFileOperationEventSchema,
+    'An agent-owned file operation changed lifecycle phase.',
+  ),
+  'workspace:file-changed': defineAgentEvent(
+    'workspace',
+    'workspace:file-changed',
+    WorkspaceFileChangedEventSchema,
+    'The native filesystem surface observed one or more changed files.',
   ),
   'process:started': defineAgentEvent(
     'process',

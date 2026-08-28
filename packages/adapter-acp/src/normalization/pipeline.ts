@@ -8,11 +8,13 @@ import { normalizeAcpModel } from './model.js';
 import { AcpReasoningNormalizer } from './reasoning.js';
 import { normalizeAcpTool } from './tool.js';
 import type { NormalizedUpdate } from './types.js';
+import { AcpWorkspaceNormalizer } from './workspace.js';
 
 /** One session-scoped composition of category-focused ACP normalizers. */
 export class AcpNotificationNormalizer {
   private readonly conversation = new AcpConversationNormalizer();
   private readonly reasoning = new AcpReasoningNormalizer();
+  private readonly workspace = new AcpWorkspaceNormalizer();
 
   normalize(notification: SessionNotification): NormalizedUpdate {
     const update = notification.update;
@@ -24,7 +26,7 @@ export class AcpNotificationNormalizer {
         return { events: this.reasoning.normalize(update) };
       case 'tool_call':
       case 'tool_call_update':
-        return { events: normalizeAcpTool(update) };
+        return { events: [...normalizeAcpTool(update), ...this.workspace.normalize(update)] };
       case 'usage_update':
         return { events: normalizeAcpContextWindow(update) };
       case 'config_option_update':
