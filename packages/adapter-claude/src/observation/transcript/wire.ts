@@ -6,6 +6,7 @@ export interface ClaudeTranscriptRecord {
   index: number;
   type?: string;
   uuid?: string;
+  parentUuid?: string;
   timestamp: string;
   sessionId?: string;
   promptId?: string;
@@ -53,6 +54,7 @@ export function decodeClaudeTranscript(text: string, startIndex = 0, sourceId = 
       index: startIndex + index,
       ...(transcriptString(body.type) ? { type: transcriptString(body.type) } : {}),
       ...(transcriptString(body.uuid) ? { uuid: transcriptString(body.uuid) } : {}),
+      ...(transcriptString(body.parentUuid) ? { parentUuid: transcriptString(body.parentUuid) } : {}),
       timestamp: timestamp(body.timestamp),
       ...(transcriptString(body.sessionId ?? body.session_id)
         ? { sessionId: transcriptString(body.sessionId ?? body.session_id) }
@@ -99,6 +101,7 @@ export function safeTranscriptEvidence(record: ClaudeTranscriptRecord): Record<s
   return {
     type: record.type,
     uuid: record.uuid,
+    parentUuid: record.parentUuid,
     requestId: record.requestId,
     sessionId: record.sessionId,
     promptId: record.promptId,
