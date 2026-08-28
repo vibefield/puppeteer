@@ -153,7 +153,7 @@ describe('detectClaude', () => {
 });
 
 // Opt-in: probes the actually-installed Claude binary. Skipped unless asked.
-const realClaude = process.env.PUPPETEER_REAL_CLAUDE === '1';
+const realClaude = process.env.CLAUDE_NATIVE_TUI_LIVE === '1';
 describe.skipIf(!realClaude)('detectClaude against the real binary', () => {
   it('is the exact Surface candidate and reports the required flags', async () => {
     const result = await detectClaude();

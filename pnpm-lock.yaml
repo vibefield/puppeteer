@@ -180,6 +180,9 @@ importers:
       '@vibecook/puppeteer-testing':
         specifier: workspace:*
         version: link:../testing
+      node-pty:
+        specifier: 1.2.0-beta.15
+        version: 1.2.0-beta.15
 
   packages/adapter-codex:
     dependencies:

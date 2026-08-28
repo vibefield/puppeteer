@@ -50,6 +50,7 @@
   },
   "devDependencies": {
     "@vibecook/puppeteer-surface": "workspace:*",
-    "@vibecook/puppeteer-testing": "workspace:*"
+    "@vibecook/puppeteer-testing": "workspace:*",
+    "node-pty": "1.2.0-beta.15"
   }
 }

@@ -7,7 +7,7 @@
  * `flags`. Launch preflight is stricter and throws a typed capability error only
  * when the concrete recipe needs one of those missing flags. The exec function
  * is injected so unit tests run against fakes; the real binary is exercised
- * only by the opt-in integration test gated on PUPPETEER_REAL_CLAUDE.
+ * only by the opt-in integration test gated on CLAUDE_NATIVE_TUI_LIVE.
  */
 
 import { execFile } from 'node:child_process';
