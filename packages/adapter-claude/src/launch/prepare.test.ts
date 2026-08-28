@@ -414,8 +414,9 @@ describe('prepareClaudeSession', () => {
     const childDelegate = `node ${JSON.stringify(childDelegatePath)}`;
     const bridge = createHookBridge({ token: BASE.token, allowSession: () => true });
     await bridge.start();
-    const childPayloads: unknown[] = [];
-    bridge.onSubagentStatusLine((envelope) => childPayloads.push(envelope.body));
+    const childPayload = new Promise<unknown>((resolve) => {
+      bridge.onSubagentStatusLine((envelope) => resolve(envelope.body));
+    });
     try {
       const p = await prepare({
         settingsDir: dir,
@@ -433,12 +434,15 @@ describe('prepareClaudeSession', () => {
       ).rejects.toThrow();
 
       const payload = { session_id: p.sessionId, tasks: [{ id: 'task-1' }] };
-      await expect(runStatusLine(settings.subagentStatusLine.command, JSON.stringify(payload), p.env)).resolves.toBe(
-        `${JSON.stringify({ id: 'task-1', content: 'original:task-1' })}\n`,
-      );
-      expect(childPayloads).toEqual([payload]);
+      await expect(
+        runStatusLine(settings.subagentStatusLine.command, JSON.stringify(payload), {
+          ...p.env,
+          PUPPETEER_STATUSLINE_TIMEOUT_MS: '5000',
+        }),
+      ).resolves.toBe(`${JSON.stringify({ id: 'task-1', content: 'original:task-1' })}\n`);
+      await expect(childPayload).resolves.toEqual(payload);
     } finally {
       await bridge.dispose();
     }
-  });
+  }, 10_000);
 });

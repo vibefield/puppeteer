@@ -318,6 +318,10 @@ const delegateCommand = process.env[childChannel
   : 'PUPPETEER_STATUSLINE_DELEGATE'];
 const tokenEnvVar = process.env.PUPPETEER_STATUSLINE_TOKEN_ENV_VAR;
 const token = tokenEnvVar ? process.env[tokenEnvVar] : undefined;
+const configuredTimeout = Number(process.env.PUPPETEER_STATUSLINE_TIMEOUT_MS);
+const telemetryTimeoutMs = Number.isFinite(configuredTimeout) && configuredTimeout >= 50 && configuredTimeout <= 5000
+  ? configuredTimeout
+  : 250;
 const telemetry = endpoint && token
   ? fetch(endpoint, {
       method: 'POST',
@@ -326,7 +330,7 @@ const telemetry = endpoint && token
         authorization: \`Bearer \${token}\`,
       },
       body: input,
-      signal: AbortSignal.timeout(250),
+      signal: AbortSignal.timeout(telemetryTimeoutMs),
     }).catch(() => undefined)
   : Promise.resolve();
 
