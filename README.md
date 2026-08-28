@@ -227,8 +227,9 @@ To add a new coding agent or adapt a new upstream version, follow the
 native evidence, Surface modeling, Imposter personas and runflows,
 normalization, conformance, runtime integration, and protected promotion.
 
-Live adapter probes are opt-in with `CODEX_LIVE=1`, `GROK_LIVE=1`, or
-`PUPPETEER_REAL_CLAUDE=1`.
+Live adapter proofs are opt-in with `CLAUDE_NATIVE_TUI_LIVE=1`,
+`CODEX_NATIVE_TUI_LIVE=1`, `GROK_LIVE=1`, `HERMES_LIVE=1`, `KIMI_LIVE=1`, or
+`OPENCODE_LIVE=1`.
 
 ## Versioning
 

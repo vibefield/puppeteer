@@ -1160,7 +1160,7 @@ Run targeted checks while iterating, then the full matrix before review.
 | Full repository     | `pnpm test`                                                                     | all typechecks, script tests, package tests, and app tests pass                                 |
 | Published shape     | `pnpm pack:check`                                                               | all public packages build and tarballs contain only allowed files                               |
 
-Run live tests only against an explicitly selected artifact in an isolated environment. Existing examples use `PUPPETEER_REAL_CLAUDE=1`, `CODEX_LIVE=1`, and `GROK_LIVE=1`; define and document the equivalent for a new vendor.
+Run live tests only against an explicitly selected artifact in an isolated environment. Existing native-TUI examples use `CLAUDE_NATIVE_TUI_LIVE=1`, `CODEX_NATIVE_TUI_LIVE=1`, `GROK_LIVE=1`, `HERMES_LIVE=1`, `KIMI_LIVE=1`, and `OPENCODE_LIVE=1`; define and document the equivalent for a new vendor.
 
 For a local Godview smoke run without a Tailscale login, set `GHOSTTEA_TRUFFLE_ENABLED=false`.
 

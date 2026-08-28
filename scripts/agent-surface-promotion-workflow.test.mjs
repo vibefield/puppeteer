@@ -10,7 +10,7 @@ const adaptation = readFileSync(resolve(root, '.github/workflows/agent-adaptatio
 const live = readFileSync(resolve(root, '.github/workflows/agent-live.yml'), 'utf8');
 const protectedLiveTests = Object.fromEntries(
   Object.entries({
-    claude: 'pinned-real.live.test.ts',
+    claude: 'native-tui.live.test.ts',
     codex: 'native-tui.live.test.ts',
     grok: 'acp.live.test.ts',
     hermes: 'driver.live.test.ts',
@@ -93,6 +93,27 @@ test('Codex promotion proves the exact private app-server and native TUI without
   assert.match(
     protectedLiveTests.codex,
     /host\.output\(session!\.runtimeSessionId\)\.includes\(CODEX_LIVE_RESPONSE_MARKER\)/,
+  );
+});
+
+test('Claude promotion proves the exact native TUI, hooks, transcript, and resume without account credentials', () => {
+  const pinnedReal = job('pinned-real', 'verify');
+  assert.match(pinnedReal, /if: \$\{\{ inputs\.vendor == 'claude' \}\}/);
+  assert.match(pinnedReal, /CLAUDE_NATIVE_TUI_LIVE: '1'/);
+  assert.doesNotMatch(pinnedReal, /PUPPETEER_REAL_CLAUDE: '1'/);
+  assert.match(pinnedReal, /PUPPETEER_CLAUDE_BIN:/);
+  assert.match(pinnedReal, /@vibecook\/puppeteer-adapter-claude test/);
+  assert.match(live, /claude-live:/);
+  assert.match(live, /CLAUDE_NATIVE_TUI_LIVE: '1'/);
+  assert.match(live, /PUPPETEER_CLAUDE_BIN: \$\{\{ vars\.CLAUDE_BIN \}\}/);
+  assert.match(protectedLiveTests.claude, /testId: 'claude:native-tui-hooks'/);
+  assert.match(
+    protectedLiveTests.claude,
+    /host\.output\(session!\.runtimeSessionId\)\.includes\(CLAUDE_LIVE_RESPONSE_MARKER\)/,
+  );
+  assert.match(
+    protectedLiveTests.claude,
+    /host\.output\(resumed!\.runtimeSessionId\)\.includes\(CLAUDE_LIVE_RESPONSE_MARKER\)/,
   );
 });
 

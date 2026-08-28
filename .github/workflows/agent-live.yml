@@ -16,10 +16,10 @@ concurrency:
 # credentials. Repository variables keep each job explicitly disabled until a
 # suitable self-hosted runner with the `puppeteer-agent-live` label is available.
 jobs:
-  claude-surface:
+  claude-live:
     if: ${{ vars.CLAUDE_LIVE_ENABLED == 'true' }}
     runs-on: [self-hosted, puppeteer-agent-live]
-    timeout-minutes: 10
+    timeout-minutes: 20
     steps:
       - uses: actions/checkout@v6
         with:
@@ -32,9 +32,9 @@ jobs:
           node-version: 22.18.0
           cache: pnpm
       - run: pnpm install --frozen-lockfile --filter './packages/**'
-      - name: Probe the installed Claude surface
+      - name: Run Claude native-TUI/hooks/transcript proof
         env:
-          PUPPETEER_REAL_CLAUDE: '1'
+          CLAUDE_NATIVE_TUI_LIVE: '1'
           PUPPETEER_CLAUDE_BIN: ${{ vars.CLAUDE_BIN }}
         run: pnpm --filter @vibecook/puppeteer-adapter-claude test
 

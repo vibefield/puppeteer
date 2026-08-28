@@ -113,7 +113,7 @@ pnpm support:check                # validate support ledger and generated README
 pnpm upstream:detect              # read-only upstream release discovery
 ```
 
-Live adapter probes are opt-in and skipped by default: `CODEX_LIVE=1`, `GROK_LIVE=1`, and `PUPPETEER_REAL_CLAUDE=1`.
+Live adapter proofs are opt-in and skipped by default: `CLAUDE_NATIVE_TUI_LIVE=1`, `CODEX_NATIVE_TUI_LIVE=1`, `GROK_LIVE=1`, `HERMES_LIVE=1`, `KIMI_LIVE=1`, and `OPENCODE_LIVE=1`.
 
 ## TypeScript and package conventions
 
