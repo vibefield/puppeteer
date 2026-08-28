@@ -160,7 +160,7 @@ test('Grok uses the exact artifact in a hermetic cross-platform native-TUI adapt
   );
 });
 
-test('source-built Hermes is reconstructed generically before its protected native-TUI lane', () => {
+test('source-built Hermes is reconstructed generically before its protected native-TUI/resume lane', () => {
   const acquire = job('acquire', 'assemble');
   const pinnedReal = job('pinned-real', 'verify');
   assert.match(adaptation, /options: \[claude, codex, grok, hermes, kimi, opencode\]/);
@@ -189,6 +189,7 @@ test('source-built Hermes is reconstructed generically before its protected nati
   assert.match(pinnedReal, /PUPPETEER_HERMES_BIN:/);
   assert.match(pinnedReal, /HERMES_PYTHON:/);
   assert.match(pinnedReal, /HERMES_TUI_DIR:/);
+  assert.match(pinnedReal, /Hermes pinned-real native-TUI\/resume lane/);
   assert.match(pinnedReal, /@vibecook\/puppeteer-adapter-hermes test/);
   assert.doesNotMatch(pinnedReal, /\$AGENT_/);
   assert.match(live, /hermes-surface:/);
@@ -196,6 +197,14 @@ test('source-built Hermes is reconstructed generically before its protected nati
   assert.match(live, /packages\/surface\/vendors\/hermes\/census\/turn-census\.mjs/);
   assert.match(live, /HERMES_LIVE: '1'/);
   assert.match(live, /HERMES_TUI_DIR: \$\{\{ vars\.HERMES_TUI_DIR \}\}/);
+  assert.match(live, /Recheck the adapter through pinned native-TUI resume/);
   assert.match(protectedLiveTests.hermes, /testId: 'hermes:native-tui-gateway'/);
-  assert.match(protectedLiveTests.hermes, /host\.output\(session!\.runtimeSessionId\)\.includes\(RESPONSE_MARKER\)/);
+  assert.match(
+    protectedLiveTests.hermes,
+    /host\.output\(session!\.runtimeSessionId\)\.includes\(HERMES_LIVE_RESPONSE_MARKER\)/,
+  );
+  assert.match(
+    protectedLiveTests.hermes,
+    /host\.output\(resumed!\.runtimeSessionId\)\.includes\(HERMES_LIVE_RESPONSE_MARKER\)/,
+  );
 });

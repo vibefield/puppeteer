@@ -113,7 +113,7 @@ jobs:
           --checkout "${{ vars.HERMES_CHECKOUT }}"
           --scenario basic-turn
           --output .agent-live/hermes@0.20.0
-      - name: Recheck the adapter through the pinned native TUI
+      - name: Recheck the adapter through pinned native-TUI resume
         env:
           HERMES_LIVE: '1'
           PUPPETEER_HERMES_BIN: ${{ vars.HERMES_BIN }}
