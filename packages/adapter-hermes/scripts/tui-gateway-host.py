@@ -10,6 +10,32 @@ import socket
 import sys
 
 
+def short_circuit_disabled_wake_start() -> None:
+    """Keep a disabled wake listener from blocking native-TUI startup.
+
+    Hermes 0.20.0 probes microphone and speech dependencies before it checks
+    ``wake_word.enabled``. The handler runs inline on the WebSocket reader, so
+    a blocked probe also blocks the TUI's following resume requests. Preserve
+    the native path for enabled wake-word support and explicit enable gestures;
+    only return Hermes's documented disabled result early when it is off.
+    """
+
+    from tui_gateway import server
+
+    original_wake_start = server._methods["wake.start"]
+
+    def wake_start(rid, params: dict) -> dict:
+        if params.get("persist"):
+            return original_wake_start(rid, params)
+        config = server._load_cfg()
+        wake = config.get("wake_word") if isinstance(config, dict) else None
+        if not isinstance(wake, dict) or not wake.get("enabled"):
+            return server._ok(rid, {"started": False, "reason": "disabled"})
+        return original_wake_start(rid, params)
+
+    server._methods["wake.start"] = wake_start
+
+
 def enable_session_event_fanout() -> None:
     """Tee one session's events to the adapter and its native TUI viewer.
 
@@ -58,6 +84,7 @@ def main() -> None:
     from tui_gateway.ws import handle_ws
     import uvicorn
 
+    short_circuit_disabled_wake_start()
     enable_session_event_fanout()
 
     app = FastAPI()
