@@ -121,6 +121,8 @@ test('the full Godview boundary isolates branding and rejects provider-native be
         ['apps/godview/src/main/transport.ts', 'const hook_event_name = nativeEvent;'],
         ['apps/godview/src/main/adapter.ts', "import { driver } from '@vibecook/puppeteer-adapter-codex';"],
         ['apps/godview/src/renderer/catalog.ts', "import { all } from '@vibecook/puppeteer-builtin-providers';"],
+        ['apps/godview/src/renderer/math.ts', 'const angle = Math.PI * 2;'],
+        ['apps/godview/src/renderer/pi.ts', "if (providerId === 'pi') render();"],
       ]),
     ),
     [
@@ -131,6 +133,7 @@ test('the full Godview boundary isolates branding and rejects provider-native be
       'apps/godview/src/main/adapter.ts must not import an agent adapter',
       'apps/godview/src/main/adapter.ts contains provider-specific Godview token codex',
       "apps/godview/src/renderer/catalog.ts may not compose built-in providers outside Godview's main composition root",
+      'apps/godview/src/renderer/pi.ts contains provider-specific Godview token pi',
     ],
   );
 });

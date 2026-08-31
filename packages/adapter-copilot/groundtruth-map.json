@@ -1,0 +1,50 @@
+{
+  "format": "puppeteer-adapter-groundtruth-map/1",
+  "provider": "copilot",
+  "adapterPackage": "@vibecook/puppeteer-adapter-copilot",
+  "groundTruth": "packages/surface/vendors/copilot/groundtruth.json",
+  "groundTruthSha256": "2a662b7173f50379af5eb0c182abb530e48887b5693489f88a7bf843b4251afc",
+  "semanticEvents": [
+    "abort",
+    "assistant.message",
+    "assistant.reasoning",
+    "assistant.turn_end",
+    "assistant.turn_start",
+    "permission.completed",
+    "permission.requested",
+    "session.auto_mode_resolved",
+    "session.autopilot_objective_changed",
+    "session.compaction_complete",
+    "session.compaction_start",
+    "session.context_changed",
+    "session.context_cleared",
+    "session.error",
+    "session.mode_changed",
+    "session.model_change",
+    "session.permissions_changed",
+    "session.plan_changed",
+    "session.resume",
+    "session.shutdown",
+    "session.start",
+    "session.task_complete",
+    "session.truncation",
+    "session.workspace_file_changed",
+    "subagent.completed",
+    "subagent.failed",
+    "subagent.started",
+    "tool.execution_complete",
+    "tool.execution_start",
+    "user.message"
+  ],
+  "observedOrControlledEvents": [],
+  "unmapped": {
+    "count": 69,
+    "sha256": "1460cb948112493b07f8022e00a8f11bd93fa6307e42ac8b5d2d944be5d01053",
+    "policy": "Not consumed by this adapter version. They remain provider-native ground truth and require explicit review when this lock changes."
+  },
+  "totals": {
+    "groundTruth": 99,
+    "semantic": 30,
+    "observedOrControlled": 0
+  }
+}

@@ -1,0 +1,27 @@
+{
+  "format": "puppeteer-adapter-groundtruth-map/1",
+  "provider": "antigravity",
+  "adapterPackage": "@vibecook/puppeteer-adapter-antigravity",
+  "groundTruth": "packages/surface/vendors/antigravity/groundtruth.json",
+  "groundTruthSha256": "c851987db5f169cea2cf1c8eec1c31573b88078276b8745195f6b0c9c8663b66",
+  "semanticEvents": [
+    "CHECKPOINT",
+    "ERROR_MESSAGE",
+    "LIST_DIRECTORY",
+    "PLANNER_RESPONSE",
+    "RUN_COMMAND",
+    "USER_INPUT",
+    "VIEW_FILE"
+  ],
+  "observedOrControlledEvents": [],
+  "unmapped": {
+    "count": 70,
+    "sha256": "b3b50fe5a1cb8ed44cb39453a97e6a841b8e2877a914c7e310535c81caf78ffb",
+    "policy": "Not consumed by this adapter version. They remain provider-native ground truth and require explicit review when this lock changes."
+  },
+  "totals": {
+    "groundTruth": 77,
+    "semantic": 7,
+    "observedOrControlled": 0
+  }
+}

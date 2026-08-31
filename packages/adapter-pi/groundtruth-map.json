@@ -1,0 +1,26 @@
+{
+  "format": "puppeteer-adapter-groundtruth-map/1",
+  "provider": "pi",
+  "adapterPackage": "@vibecook/puppeteer-adapter-pi",
+  "groundTruth": "packages/surface/vendors/pi/groundtruth.json",
+  "groundTruthSha256": "47b6eaf893037278acff5269bf0781b0e449e3da03ac093cf7b929ff9dd6cf17",
+  "semanticEvents": [
+    "branch_summary",
+    "compaction",
+    "message",
+    "model_change",
+    "session",
+    "thinking_level_change"
+  ],
+  "observedOrControlledEvents": [],
+  "unmapped": {
+    "count": 36,
+    "sha256": "9d084b0ff0a12d456e7cc8bc63be9be823bc59a5ba6f92611a207054fa1df9b4",
+    "policy": "Not consumed by this adapter version. They remain provider-native ground truth and require explicit review when this lock changes."
+  },
+  "totals": {
+    "groundTruth": 42,
+    "semantic": 6,
+    "observedOrControlled": 0
+  }
+}

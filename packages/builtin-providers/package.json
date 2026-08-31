@@ -37,12 +37,15 @@
   },
   "dependencies": {
     "@vibecook/puppeteer-adapter-acp": "workspace:*",
+    "@vibecook/puppeteer-adapter-antigravity": "workspace:*",
     "@vibecook/puppeteer-adapter-claude": "workspace:*",
     "@vibecook/puppeteer-adapter-codex": "workspace:*",
+    "@vibecook/puppeteer-adapter-copilot": "workspace:*",
     "@vibecook/puppeteer-adapter-grok": "workspace:*",
     "@vibecook/puppeteer-adapter-hermes": "workspace:*",
     "@vibecook/puppeteer-adapter-kimi": "workspace:*",
     "@vibecook/puppeteer-adapter-opencode": "workspace:*",
+    "@vibecook/puppeteer-adapter-pi": "workspace:*",
     "@vibecook/puppeteer-core": "workspace:*",
     "@vibecook/puppeteer-runtime": "workspace:*"
   },

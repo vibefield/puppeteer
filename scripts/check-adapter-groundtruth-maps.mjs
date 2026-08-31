@@ -7,7 +7,7 @@ import { fileURLToPath } from 'node:url';
 
 const repositoryRoot = dirname(dirname(fileURLToPath(import.meta.url)));
 
-const adapters = ['claude', 'codex', 'grok', 'hermes', 'kimi', 'opencode'];
+const adapters = ['antigravity', 'claude', 'codex', 'copilot', 'grok', 'hermes', 'kimi', 'opencode', 'pi'];
 
 function sha256(value) {
   return createHash('sha256').update(value).digest('hex');

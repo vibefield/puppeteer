@@ -49,14 +49,18 @@ function internalProductionEdges(manifests) {
 const architectureDependencies = new Map([
   ['packages/core', []],
   ['packages/surface', []],
+  ['packages/native-observation', []],
   ['packages/imposter', ['@vibecook/puppeteer-surface']],
   ['packages/adapter-acp', ['@vibecook/puppeteer-core']],
+  ['packages/adapter-antigravity', ['@vibecook/puppeteer-core', '@vibecook/puppeteer-native-observation']],
   ['packages/adapter-claude', ['@vibecook/puppeteer-core']],
   ['packages/adapter-codex', ['@vibecook/puppeteer-core']],
+  ['packages/adapter-copilot', ['@vibecook/puppeteer-core', '@vibecook/puppeteer-native-observation']],
   ['packages/adapter-grok', ['@vibecook/puppeteer-adapter-acp', '@vibecook/puppeteer-core']],
   ['packages/adapter-hermes', ['@vibecook/puppeteer-core']],
   ['packages/adapter-kimi', ['@vibecook/puppeteer-core']],
   ['packages/adapter-opencode', ['@vibecook/puppeteer-core']],
+  ['packages/adapter-pi', ['@vibecook/puppeteer-core', '@vibecook/puppeteer-native-observation']],
   ['packages/record', ['@vibecook/puppeteer-core']],
   ['packages/testing', ['@vibecook/puppeteer-core']],
   ['packages/workspaces', []],
@@ -65,12 +69,15 @@ const architectureDependencies = new Map([
     'packages/builtin-providers',
     [
       '@vibecook/puppeteer-adapter-acp',
+      '@vibecook/puppeteer-adapter-antigravity',
       '@vibecook/puppeteer-adapter-claude',
       '@vibecook/puppeteer-adapter-codex',
+      '@vibecook/puppeteer-adapter-copilot',
       '@vibecook/puppeteer-adapter-grok',
       '@vibecook/puppeteer-adapter-hermes',
       '@vibecook/puppeteer-adapter-kimi',
       '@vibecook/puppeteer-adapter-opencode',
+      '@vibecook/puppeteer-adapter-pi',
       '@vibecook/puppeteer-core',
       '@vibecook/puppeteer-runtime',
     ],
@@ -92,11 +99,14 @@ const architectureDependencies = new Map([
   [
     'apps/imposter-control',
     [
+      '@vibecook/puppeteer-adapter-antigravity',
       '@vibecook/puppeteer-adapter-claude',
       '@vibecook/puppeteer-adapter-codex',
+      '@vibecook/puppeteer-adapter-copilot',
       '@vibecook/puppeteer-adapter-hermes',
       '@vibecook/puppeteer-adapter-kimi',
       '@vibecook/puppeteer-adapter-opencode',
+      '@vibecook/puppeteer-adapter-pi',
       '@vibecook/puppeteer-core',
       '@vibecook/puppeteer-imposter',
     ],
@@ -188,11 +198,14 @@ const requiredArchitectureDocuments = [
 
 const requiredLayerPaths = [
   'packages/adapter-claude/src/launch/native-invocation.ts',
+  'packages/adapter-antigravity/src/launch/native-invocation.ts',
   'packages/adapter-codex/src/launch/native-invocation.ts',
+  'packages/adapter-copilot/src/launch/native-invocation.ts',
   'packages/adapter-grok/src/launch/native-invocation.ts',
   'packages/adapter-hermes/src/launch/native-invocation.ts',
   'packages/adapter-kimi/src/launch/native-invocation.ts',
   'packages/adapter-opencode/src/launch/native-invocation.ts',
+  'packages/adapter-pi/src/launch/native-invocation.ts',
   'packages/core/src/adapter/binding.ts',
   'packages/core/src/adapter/index.ts',
   'packages/core/src/events/index.ts',
@@ -224,6 +237,9 @@ const forbiddenConsumerUsageTokens = [
   'kimi',
   'opencode',
   'acp',
+  'antigravity',
+  'copilot',
+  'pi',
   'five_hour',
   'seven_day',
   'cinder_cove',
@@ -245,6 +261,9 @@ const forbiddenConsumerLaunchTokens = [
   'hermes',
   'kimi',
   'opencode',
+  'antigravity',
+  'copilot',
+  'pi',
   'resumeInvocation',
   'resumeLatest',
   'appServerEnv',
@@ -256,10 +275,33 @@ const forbiddenConsumerLaunchTokens = [
   'GROK_HOME',
   'KIMI_CODE_HOME',
   'HERMES_HOME',
+  'PUPPETEER_ANTIGRAVITY_HOME',
+  'PUPPETEER_ANTIGRAVITY_DATA_ROOT',
+  'COPILOT_HOME',
+  'PI_CODING_AGENT_DIR',
+  'PI_CODING_AGENT_SESSION_DIR',
   'agentOptions',
 ];
 
-const forbiddenPrivateLaunchTokens = forbiddenConsumerLaunchTokens.slice(6);
+const forbiddenPrivateLaunchTokens = [
+  'resumeInvocation',
+  'resumeLatest',
+  'appServerEnv',
+  'kimiHome',
+  'hermesHome',
+  'AI_PERSONA',
+  'CLAUDE_CONFIG_DIR',
+  'CODEX_HOME',
+  'GROK_HOME',
+  'KIMI_CODE_HOME',
+  'HERMES_HOME',
+  'PUPPETEER_ANTIGRAVITY_HOME',
+  'PUPPETEER_ANTIGRAVITY_DATA_ROOT',
+  'COPILOT_HOME',
+  'PI_CODING_AGENT_DIR',
+  'PI_CODING_AGENT_SESSION_DIR',
+  'agentOptions',
+];
 
 const godviewBrandingPaths = new Set(['apps/godview/src/renderer/AgentIcon.tsx']);
 const godviewCompositionRootPaths = new Set(['apps/godview/src/main/main.ts']);
@@ -270,6 +312,13 @@ const forbiddenGodviewWireTokens = [
   'ScenarioRecording',
   'transcript_path',
 ];
+
+function forbiddenTokenPattern(token) {
+  // `Pi` is both a provider name and JavaScript's ubiquitous `Math.PI`.
+  // Exclude property access without weakening checks for literals, switches,
+  // identifiers, or prose that actually names the provider.
+  return new RegExp(`${token === 'pi' ? '(?<!\\.)' : ''}\\b${token}\\b`, 'iu');
+}
 
 function productionTypeScriptSources(root, directory) {
   const sources = new Map();
@@ -302,7 +351,7 @@ export function accountUsageConsumerBoundaryIssues(sources) {
       issues.push(`${path} must not import an agent adapter`);
     }
     for (const token of forbiddenConsumerUsageTokens) {
-      if (new RegExp(`\\b${token}\\b`, 'i').test(source)) {
+      if (forbiddenTokenPattern(token).test(source)) {
         issues.push(`${path} contains provider-specific account-usage token ${token}`);
       }
     }
@@ -315,7 +364,7 @@ export function launchConsumerBoundaryIssues(sources) {
   for (const [path, source] of sources) {
     if (/puppeteer-adapter-/i.test(source)) issues.push(`${path} must not import an agent adapter`);
     for (const token of forbiddenConsumerLaunchTokens) {
-      if (new RegExp(`\\b${token}\\b`, 'i').test(source)) {
+      if (forbiddenTokenPattern(token).test(source)) {
         issues.push(`${path} contains provider-specific launch token ${token}`);
       }
     }
@@ -329,7 +378,7 @@ export function launchHostBoundaryIssues(sources) {
   for (const [path, source] of sources) {
     if (/puppeteer-adapter-/i.test(source)) issues.push(`${path} must not import an agent adapter`);
     for (const token of forbiddenPrivateLaunchTokens) {
-      if (new RegExp(`\\b${token}\\b`, 'i').test(source)) {
+      if (forbiddenTokenPattern(token).test(source)) {
         issues.push(`${path} contains private launch token ${token}`);
       }
     }
@@ -352,7 +401,7 @@ export function godviewConsumerBoundaryIssues(sources) {
     }
     if (!godviewBrandingPaths.has(path)) {
       for (const token of providerTokens) {
-        if (new RegExp(`\\b${token}\\b`, 'iu').test(source)) {
+        if (forbiddenTokenPattern(token).test(source)) {
           issues.push(`${path} contains provider-specific Godview token ${token}`);
         }
       }
