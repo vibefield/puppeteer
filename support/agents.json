@@ -3,6 +3,19 @@
   "schemaVersion": 2,
   "agents": [
     {
+      "id": "antigravity",
+      "displayName": "Antigravity",
+      "kind": "vendor",
+      "adapterPackage": "@vibecook/puppeteer-adapter-antigravity",
+      "persona": "antigravity",
+      "groundTruth": "packages/surface/vendors/antigravity/groundtruth.json",
+      "candidateVersion": "1.1.20",
+      "status": "baseline-pending",
+      "blockers": [
+        "Canonical Rosetta-derived ground truth, the native-TUI adapter, Imposter persona, local conformance, and the reproducible four-platform acquisition policy are complete; the protected matching-platform real-native-TUI/resume lane and its artifact-bound receipts are not yet implemented or completed."
+      ]
+    },
+    {
       "id": "claude",
       "displayName": "Claude Code",
       "kind": "vendor",
@@ -39,6 +52,19 @@
       },
       "introducedInPuppeteer": "0.1.8",
       "candidateVersion": "0.150.0"
+    },
+    {
+      "id": "copilot",
+      "displayName": "GitHub Copilot CLI",
+      "kind": "vendor",
+      "adapterPackage": "@vibecook/puppeteer-adapter-copilot",
+      "persona": "copilot",
+      "groundTruth": "packages/surface/vendors/copilot/groundtruth.json",
+      "candidateVersion": "1.0.80",
+      "status": "baseline-pending",
+      "blockers": [
+        "Canonical Rosetta-derived ground truth, the native-TUI adapter, Imposter persona, local conformance, and the reproducible four-platform acquisition policy are complete; the protected matching-platform real-native-TUI/resume lane and its artifact-bound receipts are not yet implemented or completed."
+      ]
     },
     {
       "id": "grok",
@@ -90,6 +116,19 @@
       "status": "baseline-pending",
       "blockers": [
         "The protected four-platform adapter-through-real-native-TUI lane is implemented but has not yet completed successfully for every required platform."
+      ]
+    },
+    {
+      "id": "pi",
+      "displayName": "Pi",
+      "kind": "vendor",
+      "adapterPackage": "@vibecook/puppeteer-adapter-pi",
+      "persona": "pi",
+      "groundTruth": "packages/surface/vendors/pi/groundtruth.json",
+      "candidateVersion": "0.84.3",
+      "status": "baseline-pending",
+      "blockers": [
+        "Canonical Rosetta-derived ground truth, the native-TUI adapter, Imposter persona, local conformance, and the reproducible four-platform acquisition policy are complete; the protected matching-platform real-native-TUI/resume lane and its artifact-bound receipts are not yet implemented or completed."
       ]
     }
   ]

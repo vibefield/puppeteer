@@ -15,12 +15,15 @@ specifications versus historical material.
 ## Agent support
 
 <!-- agent-support:start -->
+[![Antigravity: baseline pending 1.1.20](https://img.shields.io/badge/Antigravity-baseline_pending_1.1.20-lightgrey)](packages/surface/vendors/antigravity/groundtruth.json)
 [![Claude Code: legacy verified 2.1.207](https://img.shields.io/badge/Claude_Code-legacy_verified_2.1.207-orange)](packages/surface/vendors/claude/groundtruth.json)
 [![Codex: legacy verified 0.147.0](https://img.shields.io/badge/Codex-legacy_verified_0.147.0-orange)](packages/surface/vendors/codex/groundtruth.json)
+[![GitHub Copilot CLI: baseline pending 1.0.80](https://img.shields.io/badge/GitHub_Copilot_CLI-baseline_pending_1.0.80-lightgrey)](packages/surface/vendors/copilot/groundtruth.json)
 [![Grok Build: baseline pending 1.0.0](https://img.shields.io/badge/Grok_Build-baseline_pending_1.0.0-lightgrey)](packages/surface/vendors/grok/groundtruth.json)
 [![Hermes Agent: baseline pending 0.20.0](https://img.shields.io/badge/Hermes_Agent-baseline_pending_0.20.0-lightgrey)](packages/surface/vendors/hermes/groundtruth.json)
 [![Kimi Code: baseline pending 0.34.0](https://img.shields.io/badge/Kimi_Code-baseline_pending_0.34.0-lightgrey)](packages/surface/vendors/kimi/groundtruth.json)
 [![OpenCode: baseline pending 1.18.16](https://img.shields.io/badge/OpenCode-baseline_pending_1.18.16-lightgrey)](packages/surface/vendors/opencode/groundtruth.json)
+[![Pi: baseline pending 0.84.3](https://img.shields.io/badge/Pi-baseline_pending_0.84.3-lightgrey)](packages/surface/vendors/pi/groundtruth.json)
 <!-- agent-support:end -->
 
 `verified` means the claim-addressable ASM v2+ model and exact artifacts passed the
@@ -57,13 +60,16 @@ update the support ledger and these badges.
 - `@vibecook/puppeteer-runtime` — provider-neutral Agent lifecycle, ingress,
   projections, and private per-Agent event bus.
 - `@vibecook/puppeteer-builtin-providers` — optional composition root for the
-  official Claude, Codex, ACP, Grok, Kimi, OpenCode, and Hermes adapters.
+  official Antigravity, Claude, Codex, GitHub Copilot CLI, ACP, Grok, Hermes,
+  Kimi, OpenCode, and Pi adapters.
 - `@vibecook/puppeteer-core` — zero-I/O event, state, session, and host
   contracts.
 - `@vibecook/puppeteer-workspaces` — direct, exclusive, worktree, and copy
   workspace modes.
-- `@vibecook/puppeteer-adapter-{claude,codex,acp,grok,kimi,opencode,hermes}` —
-  provider-specific observation and control.
+- `@vibecook/puppeteer-adapter-{antigravity,claude,codex,copilot,acp,grok,hermes,kimi,opencode,pi}`
+  — provider-specific observation and control.
+- `@vibecook/puppeteer-native-observation` — bounded append-only JSONL
+  observation shared by durable-session adapters.
 - `@vibecook/puppeteer-record` — append-only records of runtime-owned actions.
 - `@vibecook/puppeteer-surface` — promoted vendor evidence models and their
   validation/diff runtime.

@@ -8,6 +8,8 @@ const root = dirname(dirname(fileURLToPath(import.meta.url)));
 const workflow = readFileSync(resolve(root, '.github/workflows/agent-surface-promotion.yml'), 'utf8');
 const adaptation = readFileSync(resolve(root, '.github/workflows/agent-adaptation.yml'), 'utf8');
 const live = readFileSync(resolve(root, '.github/workflows/agent-live.yml'), 'utf8');
+const adaptationVendorChoices = /options: \[antigravity, claude, codex, copilot, grok, hermes, kimi, opencode, pi\]/;
+const promotionVendorChoices = /options: \[claude, codex, grok, hermes, kimi, opencode\]/;
 const protectedLiveTests = Object.fromEntries(
   Object.entries({
     claude: 'native-tui.live.test.ts',
@@ -55,8 +57,8 @@ test('promotion binds one complete acquisition through test, verification, and t
 });
 
 test('OpenCode is an explicit reviewed workflow choice with isolated native-TUI and resume lanes', () => {
-  assert.match(adaptation, /options: \[claude, codex, grok, hermes, kimi, opencode\]/);
-  assert.match(workflow, /options: \[claude, codex, grok, hermes, kimi, opencode\]/);
+  assert.match(adaptation, adaptationVendorChoices);
+  assert.match(workflow, promotionVendorChoices);
   assert.match(workflow, /if: \$\{\{ inputs\.vendor == 'opencode' \}\}/);
   assert.match(workflow, /OPENCODE_LIVE: '1'/);
   assert.match(workflow, /PUPPETEER_OPENCODE_BIN:/);
@@ -76,7 +78,7 @@ test('OpenCode is an explicit reviewed workflow choice with isolated native-TUI 
 });
 
 test('Kimi uses the same exact artifact for its cross-platform native-TUI and resume lane', () => {
-  assert.match(workflow, /options: \[claude, codex, grok, hermes, kimi, opencode\]/);
+  assert.match(workflow, promotionVendorChoices);
   assert.match(workflow, /if: \$\{\{ inputs\.vendor == 'kimi' \}\}/);
   assert.match(workflow, /KIMI_LIVE: '1'/);
   assert.match(workflow, /PUPPETEER_KIMI_BIN:/);
@@ -150,8 +152,8 @@ test('every protected provider writes its artifact-bound receipt from an execute
 });
 
 test('Grok uses the exact artifact in a hermetic cross-platform native-TUI adapter lane', () => {
-  assert.match(adaptation, /options: \[claude, codex, grok, hermes, kimi, opencode\]/);
-  assert.match(workflow, /options: \[claude, codex, grok, hermes, kimi, opencode\]/);
+  assert.match(adaptation, adaptationVendorChoices);
+  assert.match(workflow, promotionVendorChoices);
   assert.match(workflow, /if: \$\{\{ inputs\.vendor == 'grok' \}\}/);
   assert.match(workflow, /Grok pinned-real native-TUI\/resume lane/);
   assert.match(workflow, /GROK_LIVE: '1'/);
@@ -177,7 +179,7 @@ test('Grok uses the exact artifact in a hermetic cross-platform native-TUI adapt
 test('source-built Hermes is reconstructed generically before its protected native-TUI/resume lane', () => {
   const acquire = job('acquire', 'assemble');
   const pinnedReal = job('pinned-real', 'verify');
-  assert.match(adaptation, /options: \[claude, codex, grok, hermes, kimi, opencode\]/);
+  assert.match(adaptation, adaptationVendorChoices);
   assert.match(adaptation, /scripts\/resolve-agent-acquisition\.mjs/);
   assert.match(adaptation, /scripts\/materialize-installed-console\.mjs/);
   assert.match(adaptation, /steps\.policy\.outputs\.outputName/);
@@ -188,7 +190,7 @@ test('source-built Hermes is reconstructed generically before its protected nati
   assert.match(adaptation, /--node node/);
   assert.match(adaptation, /--npm npm/);
   assert.doesNotMatch(adaptation, /inputs\.vendor == 'hermes'/);
-  assert.match(workflow, /options: \[claude, codex, grok, hermes, kimi, opencode\]/);
+  assert.match(workflow, promotionVendorChoices);
   assert.match(workflow, /source_reference:/);
   assert.match(acquire, /scripts\/resolve-agent-acquisition\.mjs/);
   assert.match(acquire, /scripts\/materialize-installed-console\.mjs/);

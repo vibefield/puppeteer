@@ -7,7 +7,7 @@ on:
         description: Candidate vendor
         required: true
         type: choice
-        options: [claude, codex, grok, hermes, kimi, opencode]
+        options: [antigravity, claude, codex, copilot, grok, hermes, kimi, opencode, pi]
       version:
         description: Exact normalized vendor version
         required: true

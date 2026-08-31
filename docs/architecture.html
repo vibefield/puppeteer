@@ -938,7 +938,7 @@
         <div class="stats" aria-label="Repository summary">
           <div class="stat"><strong>2</strong><span>independent foundations</span></div>
           <div class="stat"><strong>6</strong><span>numbered product layers</span></div>
-          <div class="stat"><strong>17</strong><span>flat workspace packages</span></div>
+          <div class="stat"><strong>21</strong><span>flat workspace packages</span></div>
           <div class="stat"><strong>2</strong><span>product and development apps</span></div>
         </div>
       </header>
@@ -1743,11 +1743,12 @@
             </p>
 
             <pre><code>puppeteer/
-  packages/                     <span class="comment"># 17 publishable libraries; one responsibility each</span>
+  packages/                     <span class="comment"># 21 publishable libraries; one responsibility each</span>
     core/                        <span class="comment"># provider-neutral contracts and pure reducers</span>
     surface/                     <span class="comment"># native evidence and canonical ground truth</span>
     imposter/                    <span class="comment"># native-compatible synthetic agent executable</span>
     adapter-{acp,claude,...}/    <span class="comment"># provider/protocol bridges</span>
+    native-observation/          <span class="comment"># bounded append-only native-file observation</span>
     runtime/                     <span class="comment"># ingress, Agent, lifecycle, identity, projections</span>
     builtin-providers/           <span class="comment"># official adapters + Runtime composition root</span>
     workspaces/                  <span class="comment"># direct, exclusive, worktree, copy ownership</span>
@@ -1858,6 +1859,16 @@
                     <td class="native-type">core</td>
                   </tr>
                   <tr>
+                    <td class="route">native-observation</td>
+                    <td><p>Bounded, append-safe JSONL tailing and source-generation tracking for native stores.</p></td>
+                    <td class="native-type">none</td>
+                  </tr>
+                  <tr>
+                    <td class="route">adapter-antigravity</td>
+                    <td><p>Antigravity native TUI, transcript observation, derived correlation, and prompt control.</p></td>
+                    <td class="native-type">core · native-observation</td>
+                  </tr>
+                  <tr>
                     <td class="route">adapter-claude</td>
                     <td><p>Claude hooks, transcript/status observation, settings, prompt and usage services.</p></td>
                     <td class="native-type">core</td>
@@ -1868,6 +1879,11 @@
                       <p>Codex app-server JSON-RPC, rollout observation, approvals, and native TUI composition.</p>
                     </td>
                     <td class="native-type">core</td>
+                  </tr>
+                  <tr>
+                    <td class="route">adapter-copilot</td>
+                    <td><p>GitHub Copilot CLI native TUI, durable event-journal observation, resume, and normalization.</p></td>
+                    <td class="native-type">core · native-observation</td>
                   </tr>
                   <tr>
                     <td class="route">adapter-grok</td>
@@ -1890,6 +1906,11 @@
                     <td class="route">adapter-opencode</td>
                     <td><p>Private backend, HTTP/SSE observation and control, exact-session TUI attach.</p></td>
                     <td class="native-type">core</td>
+                  </tr>
+                  <tr>
+                    <td class="route">adapter-pi</td>
+                    <td><p>Pi native TUI, branch-aware durable session observation, resume, and normalization.</p></td>
+                    <td class="native-type">core · native-observation</td>
                   </tr>
                   <tr>
                     <td class="route">workspaces</td>
@@ -2147,7 +2168,10 @@ await runtime.dispose();</code></pre>
               <article class="api-card">
                 <h3>createBuiltinAgentRuntime(options)</h3>
                 <div class="signature">BuiltinAgentRuntime</div>
-                <p>Runtime plus Claude, Codex, ACP, Grok, Hermes, Kimi, and OpenCode provider registrations.</p>
+                <p>
+                  Runtime plus Antigravity, Claude, Codex, GitHub Copilot CLI, ACP, Grok, Hermes, Kimi, OpenCode, and
+                  Pi provider registrations.
+                </p>
               </article>
               <article class="api-card">
                 <h3>runtime.spawn(options)</h3>
