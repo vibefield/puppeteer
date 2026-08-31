@@ -1,0 +1,44 @@
+{
+  "surface": "copilot",
+  "surfaceVersion": "1.0.80",
+  "event": "session-db:session.db:todo_deps",
+  "nativeName": "session.db:todo_deps",
+  "channel": "session-db",
+  "channels": [
+    "session-db"
+  ],
+  "transport": "sqlite-row",
+  "direction": "agent-local",
+  "payloadSchema": {
+    "type": "object",
+    "properties": {
+      "depends_on": {
+        "type": "string"
+      },
+      "todo_id": {
+        "type": "string"
+      }
+    },
+    "required": [
+      "depends_on",
+      "todo_id"
+    ],
+    "additionalProperties": true
+  },
+  "schemaFidelity": {
+    "payload": "structural",
+    "limitations": [
+      "Rosetta retains observed/writer field types and requiredness, but its shape algebra intentionally omits some native validation constraints."
+    ]
+  },
+  "evidence": {
+    "existence": [
+      "copilot-rosetta-contract"
+    ],
+    "shape": [
+      "copilot-rosetta-contract"
+    ]
+  },
+  "confidence": "unverified",
+  "notes": "session-state/*/session.db*; 0 retained observation(s); source evidence: fixture."
+}

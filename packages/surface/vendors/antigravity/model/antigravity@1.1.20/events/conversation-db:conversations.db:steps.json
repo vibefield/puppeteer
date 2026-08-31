@@ -1,0 +1,60 @@
+{
+  "surface": "antigravity",
+  "surfaceVersion": "1.1.20",
+  "event": "conversation-db:conversations.db:steps",
+  "nativeName": "conversations.db:steps",
+  "channel": "conversation-db",
+  "channels": [
+    "conversation-db"
+  ],
+  "transport": "sqlite-row",
+  "direction": "agent-local",
+  "payloadSchema": {
+    "type": "object",
+    "properties": {
+      "error_details": {},
+      "has_subtrajectory": {},
+      "idx": {
+        "type": "number"
+      },
+      "metadata": {},
+      "permissions": {},
+      "render_info": {},
+      "status": {
+        "type": "number"
+      },
+      "step_format": {
+        "type": "number"
+      },
+      "step_payload": {},
+      "step_type": {
+        "type": "number"
+      },
+      "task_details": {}
+    },
+    "required": [
+      "has_subtrajectory",
+      "idx",
+      "status",
+      "step_format",
+      "step_type"
+    ],
+    "additionalProperties": true
+  },
+  "schemaFidelity": {
+    "payload": "structural",
+    "limitations": [
+      "Rosetta retains observed/writer field types and requiredness, but its shape algebra intentionally omits some native validation constraints."
+    ]
+  },
+  "evidence": {
+    "existence": [
+      "antigravity-rosetta-observed"
+    ],
+    "shape": [
+      "antigravity-rosetta-observed"
+    ]
+  },
+  "confidence": "verified-headless",
+  "notes": "conversations/*.db*; 133 retained observation(s); source evidence: fixture."
+}

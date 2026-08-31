@@ -1,0 +1,99 @@
+{
+  "surface": "antigravity",
+  "surfaceVersion": "1.1.20",
+  "event": "transcript-full:CONVERSATION_HISTORY",
+  "nativeName": "CONVERSATION_HISTORY",
+  "channel": "transcript-full",
+  "channels": [
+    "transcript-full"
+  ],
+  "transport": "jsonl-record",
+  "direction": "agent-local",
+  "payloadSchema": {
+    "type": "object",
+    "properties": {
+      "created_at": {
+        "type": "string"
+      },
+      "source": {
+        "type": "string",
+        "enum": [
+          "SYSTEM"
+        ]
+      },
+      "status": {
+        "type": "string",
+        "enum": [
+          "DONE"
+        ]
+      },
+      "step_index": {
+        "type": "number"
+      }
+    },
+    "required": [
+      "created_at",
+      "source",
+      "status",
+      "step_index"
+    ],
+    "additionalProperties": true
+  },
+  "recordSchema": {
+    "type": "object",
+    "properties": {
+      "created_at": {
+        "type": "string"
+      },
+      "source": {
+        "type": "string",
+        "enum": [
+          "SYSTEM"
+        ]
+      },
+      "status": {
+        "type": "string",
+        "enum": [
+          "DONE"
+        ]
+      },
+      "step_index": {
+        "type": "number"
+      },
+      "type": {
+        "type": "string",
+        "enum": [
+          "CONVERSATION_HISTORY"
+        ]
+      }
+    },
+    "required": [
+      "created_at",
+      "source",
+      "status",
+      "step_index",
+      "type"
+    ],
+    "additionalProperties": true
+  },
+  "schemaFidelity": {
+    "payload": "structural",
+    "carrier": "structural",
+    "limitations": [
+      "Rosetta retains observed/writer field types and requiredness, but its shape algebra intentionally omits some native validation constraints."
+    ]
+  },
+  "evidence": {
+    "existence": [
+      "antigravity-rosetta-observed"
+    ],
+    "shape": [
+      "antigravity-rosetta-observed"
+    ],
+    "carrier": [
+      "antigravity-rosetta-observed"
+    ]
+  },
+  "confidence": "verified-headless",
+  "notes": "brain/*/.system_generated/logs/transcript_full.jsonl; 4 retained observation(s); source evidence: observed."
+}

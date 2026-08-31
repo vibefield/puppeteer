@@ -1,0 +1,49 @@
+{
+  "surface": "antigravity",
+  "surfaceVersion": "1.1.20",
+  "event": "conversation-db:conversations.db:trajectory_meta",
+  "nativeName": "conversations.db:trajectory_meta",
+  "channel": "conversation-db",
+  "channels": [
+    "conversation-db"
+  ],
+  "transport": "sqlite-row",
+  "direction": "agent-local",
+  "payloadSchema": {
+    "type": "object",
+    "properties": {
+      "cascade_id": {
+        "type": "string"
+      },
+      "source": {
+        "type": "number"
+      },
+      "trajectory_id": {
+        "type": "string"
+      },
+      "trajectory_type": {
+        "type": "number"
+      }
+    },
+    "required": [
+      "trajectory_id"
+    ],
+    "additionalProperties": true
+  },
+  "schemaFidelity": {
+    "payload": "structural",
+    "limitations": [
+      "Rosetta retains observed/writer field types and requiredness, but its shape algebra intentionally omits some native validation constraints."
+    ]
+  },
+  "evidence": {
+    "existence": [
+      "antigravity-rosetta-observed"
+    ],
+    "shape": [
+      "antigravity-rosetta-observed"
+    ]
+  },
+  "confidence": "verified-headless",
+  "notes": "conversations/*.db*; 8 retained observation(s); source evidence: fixture."
+}

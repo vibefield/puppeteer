@@ -1,4 +1,64 @@
-# Antigravity CLI 1.1.12 Surface findings
+# Antigravity CLI surface findings
+
+## Current baseline: 1.1.20
+
+Status: canonical ground truth, adapter, Imposter persona, built-in provider,
+and local conformance are implemented for `1.1.20`. The baseline remains
+`baseline-pending`: no support-promotion claim is made until a guarded,
+matching-platform native-TUI/resume lane is implemented and has produced
+artifact-bound durable-observation receipts on all four platforms.
+
+The vendor-root `groundtruth.json` is the single Puppeteer truth artifact. It
+is generated from the complete Rosetta `rosetta-groundtruth/1` inventory and
+the controlled `1.1.20` fixtures retained under `references/`, `captures/`,
+and `model/`. Those directories are evidence and derived inspection views;
+they are not competing truth files.
+
+### Adapter boundary
+
+The adapter launches the native `agy`/`antigravity` TUI and observes only its
+durable, append-only
+`brain/<conversation>/.system_generated/logs/transcript.jsonl` rail. It does
+not parse terminal text, start a parallel print-mode process, modify global
+hook settings, or infer semantics from the SQLite stores. Fresh sessions bind
+to the one newly created transcript; resume uses the explicit
+`--conversation <uuid>` contract and begins after the captured replay
+boundary.
+
+The durable transcript supports normalized user turns, planner replies,
+reasoning activity, tool requests/results, and tool-input-backed workspace
+file operations. Correlation is explicitly `derived`: the native rows expose
+step indexes and result kinds rather than portable turn and tool-call IDs.
+Every unhandled native record remains visible as `adapter:native-event`.
+
+`CHECKPOINT` is deliberately not normalized as compaction. Controlled
+fixtures show it after ordinary turns, while the transcript exposes no context
+capacity, token usage, or invalidation semantics. Model, effort, mode, and cwd
+are launch intent only; their monitor capabilities are degraded or
+unsupported accordingly.
+
+Prompt submission uses guarded terminal paste and is confirmed only after the
+same text appears as a durable `USER_INPUT`. Observer corruption, replacement,
+or an unreadable journal degrades the monitor rail without claiming the native
+TUI process itself stopped.
+
+### Verification and remaining gate
+
+Deterministic tests exercise detection, managed argv normalization,
+continuation state, fresh binding, bounded resume replay, prompt receipts,
+normalization, observation degradation, and the shared agent/monitor
+conformance suites. Official release-asset acquisition is declared for
+`darwin-arm64`, `darwin-x64`, `linux-x64`, and `windows-x64`.
+
+The remaining gate is a protected, matching-platform run through the exact
+acquired executable proving native TUI launch, durable transcript attachment,
+prompt receipt, normalized completion, and `--conversation` resume. The
+historical `1.1.12` macOS signature failure below must also be re-evaluated on
+the exact `1.1.20` artifacts before promotion.
+
+---
+
+## Historical survey: 1.1.12
 
 Status: Stage 0 complete. Stage 1 authorized print-mode survey in progress on
 `darwin-arm64`. This is not an Agent Surface Model, adapter implementation,
@@ -279,7 +339,6 @@ Still outstanding before the survey exit gate:
 - matching-platform parser execution on darwin-x64, linux-x64, windows-x64;
 - macOS signature-integrity promotion gate.
 
-No model, persona, adapter, runtime provider, application entry,
-support-ledger entry, or promotion workflow should be added yet. The next
-implementation slice can start an ASM v2 from these sanitized print-mode
-and hook fixtures while the TUI census remains open.
+This historical gate applied to the `1.1.12` research slice. The current
+`1.1.20` baseline above supersedes its implementation disposition while
+retaining the unresolved evidence cautions.

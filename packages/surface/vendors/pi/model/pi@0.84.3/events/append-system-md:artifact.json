@@ -1,0 +1,22 @@
+{
+  "surface": "pi",
+  "surfaceVersion": "0.84.3",
+  "event": "append-system-md:artifact",
+  "nativeName": "agent/APPEND_SYSTEM.md",
+  "channel": "append-system-md",
+  "channels": [
+    "append-system-md"
+  ],
+  "transport": "file-artifact",
+  "direction": "agent-local",
+  "evidence": {
+    "existence": [
+      "pi-rosetta-contract"
+    ],
+    "shape": [
+      "pi-rosetta-contract"
+    ]
+  },
+  "confidence": "unverified",
+  "notes": "agent/APPEND_SYSTEM.md; non-record native artifact tracked by the complete Rosetta stream inventory."
+}

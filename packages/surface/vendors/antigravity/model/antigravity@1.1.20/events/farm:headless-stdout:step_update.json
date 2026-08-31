@@ -1,0 +1,263 @@
+{
+  "surface": "antigravity",
+  "surfaceVersion": "1.1.20",
+  "event": "farm:headless-stdout:step_update",
+  "nativeName": "step_update",
+  "channel": "farm:headless-stdout",
+  "channels": [
+    "farm:headless-stdout"
+  ],
+  "transport": "jsonl-record",
+  "direction": "agent-local",
+  "payloadSchema": {
+    "type": "object",
+    "properties": {
+      "step_update": {
+        "type": "object",
+        "properties": {
+          "conversation_id": {
+            "type": "string"
+          },
+          "duration_seconds": {
+            "type": "number"
+          },
+          "state": {
+            "type": "string",
+            "enum": [
+              "ACTIVE",
+              "DONE"
+            ]
+          },
+          "step_index": {
+            "type": "number"
+          },
+          "step_type": {
+            "type": "string",
+            "enum": [
+              "agent_response",
+              "checkpoint",
+              "system_message",
+              "tool",
+              "user_input"
+            ]
+          },
+          "text_delta": {
+            "type": "string"
+          },
+          "tool_info": {
+            "type": "object",
+            "properties": {
+              "name": {
+                "type": "string"
+              },
+              "output": {
+                "type": "string"
+              },
+              "parameters": {
+                "type": "object",
+                "properties": {
+                  "CommandLine": {
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "CommandLine"
+                ],
+                "additionalProperties": true
+              }
+            },
+            "required": [
+              "name",
+              "parameters"
+            ],
+            "additionalProperties": true
+          },
+          "tool_name": {
+            "type": "string",
+            "enum": [
+              "run_command"
+            ]
+          },
+          "usage": {
+            "type": "object",
+            "properties": {
+              "cache_read_tokens": {
+                "type": "number"
+              },
+              "input_tokens": {
+                "type": "number"
+              },
+              "output_tokens": {
+                "type": "number"
+              },
+              "thinking_tokens": {
+                "type": "number"
+              },
+              "total_tokens": {
+                "type": "number"
+              }
+            },
+            "required": [
+              "cache_read_tokens",
+              "input_tokens",
+              "output_tokens",
+              "thinking_tokens",
+              "total_tokens"
+            ],
+            "additionalProperties": true
+          }
+        },
+        "required": [
+          "conversation_id",
+          "state",
+          "step_index",
+          "step_type"
+        ],
+        "additionalProperties": true
+      }
+    },
+    "required": [
+      "step_update"
+    ],
+    "additionalProperties": true
+  },
+  "recordSchema": {
+    "type": "object",
+    "properties": {
+      "event": {
+        "type": "string",
+        "enum": [
+          "step_update"
+        ]
+      },
+      "step_update": {
+        "type": "object",
+        "properties": {
+          "conversation_id": {
+            "type": "string"
+          },
+          "duration_seconds": {
+            "type": "number"
+          },
+          "state": {
+            "type": "string",
+            "enum": [
+              "ACTIVE",
+              "DONE"
+            ]
+          },
+          "step_index": {
+            "type": "number"
+          },
+          "step_type": {
+            "type": "string",
+            "enum": [
+              "agent_response",
+              "checkpoint",
+              "system_message",
+              "tool",
+              "user_input"
+            ]
+          },
+          "text_delta": {
+            "type": "string"
+          },
+          "tool_info": {
+            "type": "object",
+            "properties": {
+              "name": {
+                "type": "string"
+              },
+              "output": {
+                "type": "string"
+              },
+              "parameters": {
+                "type": "object",
+                "properties": {
+                  "CommandLine": {
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "CommandLine"
+                ],
+                "additionalProperties": true
+              }
+            },
+            "required": [
+              "name",
+              "parameters"
+            ],
+            "additionalProperties": true
+          },
+          "tool_name": {
+            "type": "string",
+            "enum": [
+              "run_command"
+            ]
+          },
+          "usage": {
+            "type": "object",
+            "properties": {
+              "cache_read_tokens": {
+                "type": "number"
+              },
+              "input_tokens": {
+                "type": "number"
+              },
+              "output_tokens": {
+                "type": "number"
+              },
+              "thinking_tokens": {
+                "type": "number"
+              },
+              "total_tokens": {
+                "type": "number"
+              }
+            },
+            "required": [
+              "cache_read_tokens",
+              "input_tokens",
+              "output_tokens",
+              "thinking_tokens",
+              "total_tokens"
+            ],
+            "additionalProperties": true
+          }
+        },
+        "required": [
+          "conversation_id",
+          "state",
+          "step_index",
+          "step_type"
+        ],
+        "additionalProperties": true
+      }
+    },
+    "required": [
+      "event",
+      "step_update"
+    ],
+    "additionalProperties": true
+  },
+  "schemaFidelity": {
+    "payload": "structural",
+    "carrier": "structural",
+    "limitations": [
+      "Rosetta retains observed/writer field types and requiredness, but its shape algebra intentionally omits some native validation constraints."
+    ]
+  },
+  "evidence": {
+    "existence": [
+      "antigravity-rosetta-observed"
+    ],
+    "shape": [
+      "antigravity-rosetta-observed"
+    ],
+    "carrier": [
+      "antigravity-rosetta-observed"
+    ]
+  },
+  "confidence": "verified-headless",
+  "notes": "<farm>/stdout*.jsonl; 15 retained observation(s); source evidence: fixture."
+}

@@ -1,0 +1,6536 @@
+{
+  "format": "puppeteer-groundtruth/1",
+  "manifest": {
+    "asmVersion": 3,
+    "vendor": "pi",
+    "vendorVersion": "0.84.3",
+    "generatedAt": "2026-08-28",
+    "source": "Complete Rosetta rosetta-groundtruth/1 stream inventory plus type-preserving controlled native session journals.",
+    "evidence": "evidence.json"
+  },
+  "detection": {
+    "executables": [
+      "pi"
+    ],
+    "envVar": "PUPPETEER_PI_BIN",
+    "versionFlag": "--version",
+    "versionOutput": "0.84.3",
+    "versionPattern": "^(?:[^0-9]*[vV]?)?(\\d+\\.\\d+\\.\\d+(?:-[0-9A-Za-z.-]+)?).*$",
+    "helpFlag": "--help",
+    "dataRoot": "~/.pi",
+    "launchFlags": {
+      "resume": "--session",
+      "sessionId": "--session-id",
+      "sessionDirectory": "--session-dir",
+      "provider": "--provider",
+      "model": "--model",
+      "effort": "--thinking",
+      "name": "--name"
+    }
+  },
+  "channels": {
+    "channels": {
+      "session": {
+        "kind": "native-log",
+        "glob": "agent/sessions/*/*.jsonl",
+        "discipline": "append_only",
+        "evidence": "writer"
+      },
+      "settings": {
+        "kind": "native-state-json",
+        "glob": "agent/settings.json",
+        "discipline": "rewrite_in_place",
+        "evidence": "fixture",
+        "notes": "Global settings (~/.pi/agent/settings.json). Project-local .pi/settings.json lives in the cwd, not under ~/.pi. Keys from 0.84.3 docs: defaultProvider, defaultModel, defaultThinkingLevel, compaction, retry, defaultProjectTrust, enableInstallTelemetry, packages, extensions, skills, prompts, themes, sessionDir, defaultTools, …"
+      },
+      "models": {
+        "kind": "native-state-json",
+        "glob": "agent/models.json",
+        "discipline": "rewrite_in_place",
+        "evidence": "fixture",
+        "notes": "Custom providers (openai-completions / openai-responses / anthropic-messages / google-generative-ai). Farm writes the mock provider here."
+      },
+      "models-store": {
+        "kind": "native-state-json",
+        "glob": "agent/models-store.json",
+        "discipline": "rewrite_in_place",
+        "evidence": "fixture",
+        "notes": "Cached provider model catalog. Farm harvests `{}` on a first empty-home run."
+      },
+      "trust": {
+        "kind": "native-state-json",
+        "glob": "agent/trust.json",
+        "discipline": "rewrite_in_place",
+        "evidence": "research",
+        "notes": "Saved project-trust decisions. Written by /trust in interactive mode."
+      },
+      "auth": {
+        "kind": "native-state-json",
+        "glob": "agent/auth.json",
+        "discipline": "rewrite_in_place",
+        "evidence": "research",
+        "notes": "Credentials (0600) — MUST-NOT-PARSE; inventory only. Farm strips this file."
+      },
+      "keybindings": {
+        "kind": "native-state-json",
+        "glob": "agent/keybindings.json",
+        "discipline": "rewrite_in_place",
+        "evidence": "research",
+        "notes": "Custom keybindings overlay."
+      },
+      "agents-md": {
+        "kind": "native-state-markdown",
+        "glob": "agent/AGENTS.md",
+        "discipline": "rewrite_in_place",
+        "evidence": "research",
+        "notes": "Global context file concatenated with cwd/parent AGENTS.md or CLAUDE.md."
+      },
+      "system-md": {
+        "kind": "native-state-markdown",
+        "glob": "agent/SYSTEM.md",
+        "discipline": "rewrite_in_place",
+        "evidence": "research",
+        "notes": "Replaces the default system prompt when present."
+      },
+      "append-system-md": {
+        "kind": "native-state-markdown",
+        "glob": "agent/APPEND_SYSTEM.md",
+        "discipline": "rewrite_in_place",
+        "evidence": "research",
+        "notes": "Appended to the system prompt without replacing it."
+      },
+      "extensions": {
+        "kind": "native-state-text",
+        "glob": "agent/extensions/**/*",
+        "discipline": "rewrite_in_place",
+        "evidence": "research",
+        "notes": "User TypeScript extensions. Farm runs with --no-extensions."
+      },
+      "skills": {
+        "kind": "native-state-text",
+        "glob": "agent/skills/**/*",
+        "discipline": "rewrite_in_place",
+        "evidence": "research",
+        "notes": "User skills. Farm runs with --no-skills."
+      },
+      "prompts": {
+        "kind": "native-state-markdown",
+        "glob": "agent/prompts/**/*",
+        "discipline": "rewrite_in_place",
+        "evidence": "research",
+        "notes": "Prompt templates. Farm runs with --no-prompt-templates."
+      },
+      "themes": {
+        "kind": "native-state-text",
+        "glob": "agent/themes/**/*",
+        "discipline": "rewrite_in_place",
+        "evidence": "research",
+        "notes": "Custom themes. Farm runs with --no-themes."
+      },
+      "tools": {
+        "kind": "native-state-text",
+        "glob": "agent/tools/**/*",
+        "discipline": "rewrite_in_place",
+        "evidence": "research",
+        "notes": "User tools directory (getToolsDir)."
+      },
+      "bin": {
+        "kind": "native-state-text",
+        "glob": "agent/bin/**/*",
+        "discipline": "rewrite_in_place",
+        "evidence": "research",
+        "notes": "Managed binaries (fd, rg). Farm strips this tree (vendor bundle)."
+      },
+      "npm-packages": {
+        "kind": "native-state-text",
+        "glob": "agent/npm/**/*",
+        "discipline": "rewrite_in_place",
+        "evidence": "research",
+        "notes": "User-scoped npm pi packages. Farm strips this tree."
+      },
+      "git-packages": {
+        "kind": "native-state-text",
+        "glob": "agent/git/**/*",
+        "discipline": "rewrite_in_place",
+        "evidence": "research",
+        "notes": "User-scoped git pi packages. Farm strips this tree."
+      },
+      "debug-log": {
+        "kind": "native-state-text",
+        "glob": "agent/pi-debug.log",
+        "discipline": "append_only",
+        "evidence": "research",
+        "notes": "Debug log (getDebugLogPath). Farm strips logs/."
+      },
+      "farm:headless-stdout": {
+        "kind": "native-state-jsonl",
+        "glob": "<farm>/stdout*.jsonl",
+        "discipline": "append_only",
+        "evidence": "fixture",
+        "notes": "Headless stream-json stdout — corroboration surface captured by the farm, not part of the agent data root."
+      }
+    }
+  },
+  "evidenceIndex": {
+    "evidenceVersion": 2,
+    "vendor": "pi",
+    "vendorVersion": "0.84.3",
+    "artifacts": [
+      {
+        "id": "pi-0.84.3-rosetta-fixture-corpus",
+        "kind": "controlled-fixture-corpus",
+        "versionOutput": "0.84.3",
+        "platform": "darwin-arm64",
+        "capturedAt": "2026-08-25T05:29:06Z",
+        "integrity": {
+          "status": "verified",
+          "sha256": "sha256:ed6959cf3c41b7d83a92e0f9753d77cab1518fa3298c315010aeb3564a91924e"
+        }
+      }
+    ],
+    "sourceReferences": [
+      {
+        "repository": "https://github.com/earendil-works/pi",
+        "revision": "v0.84.3",
+        "relation": "exact-release"
+      }
+    ],
+    "records": [
+      {
+        "id": "pi-captures",
+        "path": "packages/surface/vendors/pi/captures/pi@0.84.3",
+        "digestAlgorithm": "sha256-path-content-v1",
+        "sha256": "374c26fa2775b6f90e6ab954ccaeb1dd046a42d2241fcf1f1e6ac72797b95f99"
+      },
+      {
+        "id": "pi-references",
+        "path": "packages/surface/vendors/pi/references/pi@0.84.3",
+        "digestAlgorithm": "sha256-path-content-v1",
+        "sha256": "3b3ffa29082fa9b6bcaa02418440270bc4b0ecc121157425a46f26b5cdbd3384"
+      }
+    ],
+    "claims": [
+      {
+        "id": "pi-rosetta-runtime",
+        "kind": "runtime-capture",
+        "confidence": "verified-headless",
+        "record": "pi-captures",
+        "artifact": "pi-0.84.3-rosetta-fixture-corpus",
+        "platform": "darwin-arm64",
+        "harness": "rosetta controlled mock-provider farm",
+        "capturedAt": "2026-08-25T05:29:06Z",
+        "notes": "Type-preserving session native journal captures."
+      },
+      {
+        "id": "pi-rosetta-observed",
+        "kind": "generated-schema",
+        "confidence": "verified-headless",
+        "record": "pi-references",
+        "artifact": "pi-0.84.3-rosetta-fixture-corpus",
+        "sourceReference": 0,
+        "platform": "darwin-arm64",
+        "harness": "rosetta controlled mock-provider farm",
+        "capturedAt": "2026-08-25T05:29:06Z",
+        "notes": "Digest-pinned Rosetta record inventory whose occurrence count is non-zero. It proves occurrence; it proves retained shape only for records classified as fixture or observed rather than writer evidence."
+      },
+      {
+        "id": "pi-rosetta-contract",
+        "kind": "generated-schema",
+        "confidence": "unverified",
+        "record": "pi-references",
+        "artifact": "pi-0.84.3-rosetta-fixture-corpus",
+        "sourceReference": 0,
+        "notes": "Digest-pinned complete Rosetta stream/shape inventory for pi@0.84.3; writer-only and zero-occurrence records establish a reviewable contract lead, not runtime occurrence."
+      }
+    ]
+  },
+  "events": [
+    {
+      "surface": "pi",
+      "surfaceVersion": "0.84.3",
+      "event": "agents-md:artifact",
+      "nativeName": "agent/AGENTS.md",
+      "channel": "agents-md",
+      "channels": [
+        "agents-md"
+      ],
+      "transport": "file-artifact",
+      "direction": "agent-local",
+      "evidence": {
+        "existence": [
+          "pi-rosetta-contract"
+        ],
+        "shape": [
+          "pi-rosetta-contract"
+        ]
+      },
+      "confidence": "unverified",
+      "notes": "agent/AGENTS.md; non-record native artifact tracked by the complete Rosetta stream inventory."
+    },
+    {
+      "surface": "pi",
+      "surfaceVersion": "0.84.3",
+      "event": "append-system-md:artifact",
+      "nativeName": "agent/APPEND_SYSTEM.md",
+      "channel": "append-system-md",
+      "channels": [
+        "append-system-md"
+      ],
+      "transport": "file-artifact",
+      "direction": "agent-local",
+      "evidence": {
+        "existence": [
+          "pi-rosetta-contract"
+        ],
+        "shape": [
+          "pi-rosetta-contract"
+        ]
+      },
+      "confidence": "unverified",
+      "notes": "agent/APPEND_SYSTEM.md; non-record native artifact tracked by the complete Rosetta stream inventory."
+    },
+    {
+      "surface": "pi",
+      "surfaceVersion": "0.84.3",
+      "event": "auth:artifact",
+      "nativeName": "agent/auth.json",
+      "channel": "auth",
+      "channels": [
+        "auth"
+      ],
+      "transport": "json-document",
+      "direction": "agent-local",
+      "evidence": {
+        "existence": [
+          "pi-rosetta-contract"
+        ],
+        "shape": [
+          "pi-rosetta-contract"
+        ]
+      },
+      "confidence": "unverified",
+      "notes": "agent/auth.json; non-record native artifact tracked by the complete Rosetta stream inventory."
+    },
+    {
+      "surface": "pi",
+      "surfaceVersion": "0.84.3",
+      "event": "bin:artifact",
+      "nativeName": "agent/bin/**/*",
+      "channel": "bin",
+      "channels": [
+        "bin"
+      ],
+      "transport": "file-artifact",
+      "direction": "agent-local",
+      "evidence": {
+        "existence": [
+          "pi-rosetta-contract"
+        ],
+        "shape": [
+          "pi-rosetta-contract"
+        ]
+      },
+      "confidence": "unverified",
+      "notes": "agent/bin/**/*; non-record native artifact tracked by the complete Rosetta stream inventory."
+    },
+    {
+      "surface": "pi",
+      "surfaceVersion": "0.84.3",
+      "event": "branch_summary",
+      "channel": "session",
+      "channels": [
+        "session"
+      ],
+      "transport": "jsonl-record",
+      "direction": "agent-local",
+      "payloadSchema": {
+        "type": "object",
+        "properties": {
+          "details": {
+            "type": "object",
+            "additionalProperties": true
+          },
+          "fromHook": {
+            "type": "boolean"
+          },
+          "fromId": {
+            "type": "string"
+          },
+          "summary": {
+            "type": "string"
+          },
+          "usage": {
+            "type": "object",
+            "properties": {
+              "cacheRead": {
+                "type": "number"
+              },
+              "cacheWrite": {
+                "type": "number"
+              },
+              "cacheWrite1h": {
+                "type": "number"
+              },
+              "cost": {
+                "type": "object",
+                "properties": {
+                  "cacheRead": {
+                    "type": "number"
+                  },
+                  "cacheWrite": {
+                    "type": "number"
+                  },
+                  "input": {
+                    "type": "number"
+                  },
+                  "output": {
+                    "type": "number"
+                  },
+                  "total": {
+                    "type": "number"
+                  }
+                },
+                "required": [
+                  "cacheRead",
+                  "cacheWrite",
+                  "input",
+                  "output",
+                  "total"
+                ],
+                "additionalProperties": true
+              },
+              "input": {
+                "type": "number"
+              },
+              "output": {
+                "type": "number"
+              },
+              "reasoning": {
+                "type": "number"
+              },
+              "totalTokens": {
+                "type": "number"
+              }
+            },
+            "required": [
+              "cacheRead",
+              "cacheWrite",
+              "cost",
+              "input",
+              "output",
+              "totalTokens"
+            ],
+            "additionalProperties": true
+          }
+        },
+        "required": [
+          "fromId",
+          "summary"
+        ],
+        "additionalProperties": true
+      },
+      "recordSchema": {
+        "type": "object",
+        "properties": {
+          "details": {
+            "type": "object",
+            "additionalProperties": true
+          },
+          "fromHook": {
+            "type": "boolean"
+          },
+          "fromId": {
+            "type": "string"
+          },
+          "id": {
+            "type": "string"
+          },
+          "parentId": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "summary": {
+            "type": "string"
+          },
+          "timestamp": {
+            "type": "string"
+          },
+          "type": {
+            "type": "string"
+          },
+          "usage": {
+            "type": "object",
+            "properties": {
+              "cacheRead": {
+                "type": "number"
+              },
+              "cacheWrite": {
+                "type": "number"
+              },
+              "cacheWrite1h": {
+                "type": "number"
+              },
+              "cost": {
+                "type": "object",
+                "properties": {
+                  "cacheRead": {
+                    "type": "number"
+                  },
+                  "cacheWrite": {
+                    "type": "number"
+                  },
+                  "input": {
+                    "type": "number"
+                  },
+                  "output": {
+                    "type": "number"
+                  },
+                  "total": {
+                    "type": "number"
+                  }
+                },
+                "required": [
+                  "cacheRead",
+                  "cacheWrite",
+                  "input",
+                  "output",
+                  "total"
+                ],
+                "additionalProperties": true
+              },
+              "input": {
+                "type": "number"
+              },
+              "output": {
+                "type": "number"
+              },
+              "reasoning": {
+                "type": "number"
+              },
+              "totalTokens": {
+                "type": "number"
+              }
+            },
+            "required": [
+              "cacheRead",
+              "cacheWrite",
+              "cost",
+              "input",
+              "output",
+              "totalTokens"
+            ],
+            "additionalProperties": true
+          }
+        },
+        "required": [
+          "fromId",
+          "id",
+          "parentId",
+          "summary",
+          "timestamp",
+          "type"
+        ],
+        "additionalProperties": true
+      },
+      "schemaFidelity": {
+        "payload": "structural",
+        "carrier": "structural",
+        "limitations": [
+          "Rosetta retains observed/writer field types and requiredness, but its shape algebra intentionally omits some native validation constraints."
+        ]
+      },
+      "evidence": {
+        "existence": [
+          "pi-rosetta-contract"
+        ],
+        "shape": [
+          "pi-rosetta-contract"
+        ],
+        "carrier": [
+          "pi-rosetta-contract"
+        ]
+      },
+      "confidence": "unverified",
+      "notes": "agent/sessions/*/*.jsonl; 0 retained observation(s); source evidence: writer."
+    },
+    {
+      "surface": "pi",
+      "surfaceVersion": "0.84.3",
+      "event": "compaction",
+      "channel": "session",
+      "channels": [
+        "session"
+      ],
+      "transport": "jsonl-record",
+      "direction": "agent-local",
+      "payloadSchema": {
+        "type": "object",
+        "properties": {
+          "details": {
+            "type": "object",
+            "properties": {
+              "modifiedFiles": {
+                "type": "array"
+              },
+              "readFiles": {
+                "type": "array"
+              }
+            },
+            "additionalProperties": true
+          },
+          "firstKeptEntryId": {
+            "type": "string"
+          },
+          "fromHook": {
+            "type": "boolean"
+          },
+          "summary": {
+            "type": "string"
+          },
+          "tokensBefore": {
+            "type": "number"
+          },
+          "usage": {
+            "type": "object",
+            "properties": {
+              "cacheRead": {
+                "type": "number"
+              },
+              "cacheWrite": {
+                "type": "number"
+              },
+              "cacheWrite1h": {
+                "type": "number"
+              },
+              "cost": {
+                "type": "object",
+                "properties": {
+                  "cacheRead": {
+                    "type": "number"
+                  },
+                  "cacheWrite": {
+                    "type": "number"
+                  },
+                  "input": {
+                    "type": "number"
+                  },
+                  "output": {
+                    "type": "number"
+                  },
+                  "total": {
+                    "type": "number"
+                  }
+                },
+                "required": [
+                  "cacheRead",
+                  "cacheWrite",
+                  "input",
+                  "output",
+                  "total"
+                ],
+                "additionalProperties": true
+              },
+              "input": {
+                "type": "number"
+              },
+              "output": {
+                "type": "number"
+              },
+              "reasoning": {
+                "type": "number"
+              },
+              "totalTokens": {
+                "type": "number"
+              }
+            },
+            "required": [
+              "cacheRead",
+              "cacheWrite",
+              "cost",
+              "input",
+              "output",
+              "totalTokens"
+            ],
+            "additionalProperties": true
+          }
+        },
+        "required": [
+          "firstKeptEntryId",
+          "summary",
+          "tokensBefore"
+        ],
+        "additionalProperties": true
+      },
+      "recordSchema": {
+        "type": "object",
+        "properties": {
+          "details": {
+            "type": "object",
+            "properties": {
+              "modifiedFiles": {
+                "type": "array"
+              },
+              "readFiles": {
+                "type": "array"
+              }
+            },
+            "additionalProperties": true
+          },
+          "firstKeptEntryId": {
+            "type": "string"
+          },
+          "fromHook": {
+            "type": "boolean"
+          },
+          "id": {
+            "type": "string"
+          },
+          "parentId": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "summary": {
+            "type": "string"
+          },
+          "timestamp": {
+            "type": "string"
+          },
+          "tokensBefore": {
+            "type": "number"
+          },
+          "type": {
+            "type": "string"
+          },
+          "usage": {
+            "type": "object",
+            "properties": {
+              "cacheRead": {
+                "type": "number"
+              },
+              "cacheWrite": {
+                "type": "number"
+              },
+              "cacheWrite1h": {
+                "type": "number"
+              },
+              "cost": {
+                "type": "object",
+                "properties": {
+                  "cacheRead": {
+                    "type": "number"
+                  },
+                  "cacheWrite": {
+                    "type": "number"
+                  },
+                  "input": {
+                    "type": "number"
+                  },
+                  "output": {
+                    "type": "number"
+                  },
+                  "total": {
+                    "type": "number"
+                  }
+                },
+                "required": [
+                  "cacheRead",
+                  "cacheWrite",
+                  "input",
+                  "output",
+                  "total"
+                ],
+                "additionalProperties": true
+              },
+              "input": {
+                "type": "number"
+              },
+              "output": {
+                "type": "number"
+              },
+              "reasoning": {
+                "type": "number"
+              },
+              "totalTokens": {
+                "type": "number"
+              }
+            },
+            "required": [
+              "cacheRead",
+              "cacheWrite",
+              "cost",
+              "input",
+              "output",
+              "totalTokens"
+            ],
+            "additionalProperties": true
+          }
+        },
+        "required": [
+          "firstKeptEntryId",
+          "id",
+          "parentId",
+          "summary",
+          "timestamp",
+          "tokensBefore",
+          "type"
+        ],
+        "additionalProperties": true
+      },
+      "schemaFidelity": {
+        "payload": "structural",
+        "carrier": "structural",
+        "limitations": [
+          "Rosetta retains observed/writer field types and requiredness, but its shape algebra intentionally omits some native validation constraints."
+        ]
+      },
+      "evidence": {
+        "existence": [
+          "pi-rosetta-runtime"
+        ],
+        "shape": [
+          "pi-rosetta-runtime"
+        ],
+        "carrier": [
+          "pi-rosetta-runtime"
+        ]
+      },
+      "confidence": "verified-headless",
+      "fixture": "captures/pi@0.84.3/compaction/events.jsonl",
+      "notes": "agent/sessions/*/*.jsonl; 1 retained observation(s); source evidence: writer."
+    },
+    {
+      "surface": "pi",
+      "surfaceVersion": "0.84.3",
+      "event": "custom",
+      "channel": "session",
+      "channels": [
+        "session"
+      ],
+      "transport": "jsonl-record",
+      "direction": "agent-local",
+      "payloadSchema": {
+        "type": "object",
+        "properties": {
+          "customType": {
+            "type": "string"
+          },
+          "data": {
+            "type": "object",
+            "additionalProperties": true
+          }
+        },
+        "required": [
+          "customType"
+        ],
+        "additionalProperties": true
+      },
+      "recordSchema": {
+        "type": "object",
+        "properties": {
+          "customType": {
+            "type": "string"
+          },
+          "data": {
+            "type": "object",
+            "additionalProperties": true
+          },
+          "id": {
+            "type": "string"
+          },
+          "parentId": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "timestamp": {
+            "type": "string"
+          },
+          "type": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "customType",
+          "id",
+          "parentId",
+          "timestamp",
+          "type"
+        ],
+        "additionalProperties": true
+      },
+      "schemaFidelity": {
+        "payload": "structural",
+        "carrier": "structural",
+        "limitations": [
+          "Rosetta retains observed/writer field types and requiredness, but its shape algebra intentionally omits some native validation constraints."
+        ]
+      },
+      "evidence": {
+        "existence": [
+          "pi-rosetta-contract"
+        ],
+        "shape": [
+          "pi-rosetta-contract"
+        ],
+        "carrier": [
+          "pi-rosetta-contract"
+        ]
+      },
+      "confidence": "unverified",
+      "notes": "agent/sessions/*/*.jsonl; 0 retained observation(s); source evidence: writer."
+    },
+    {
+      "surface": "pi",
+      "surfaceVersion": "0.84.3",
+      "event": "custom_message",
+      "channel": "session",
+      "channels": [
+        "session"
+      ],
+      "transport": "jsonl-record",
+      "direction": "agent-local",
+      "payloadSchema": {
+        "type": "object",
+        "properties": {
+          "content": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "properties": {
+                    "arguments": {
+                      "type": "object",
+                      "additionalProperties": true
+                    },
+                    "data": {
+                      "type": "string"
+                    },
+                    "id": {
+                      "type": "string"
+                    },
+                    "mimeType": {
+                      "type": "string"
+                    },
+                    "name": {
+                      "type": "string"
+                    },
+                    "namespace": {
+                      "type": "string"
+                    },
+                    "redacted": {
+                      "type": "boolean"
+                    },
+                    "text": {
+                      "type": "string"
+                    },
+                    "textSignature": {
+                      "type": "string"
+                    },
+                    "thinking": {
+                      "type": "string"
+                    },
+                    "thinkingSignature": {
+                      "type": "string"
+                    },
+                    "thoughtSignature": {
+                      "type": "string"
+                    },
+                    "type": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "type"
+                  ],
+                  "additionalProperties": true
+                }
+              }
+            ]
+          },
+          "customType": {
+            "type": "string"
+          },
+          "details": {
+            "type": "object",
+            "additionalProperties": true
+          },
+          "display": {
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "content",
+          "customType",
+          "display"
+        ],
+        "additionalProperties": true
+      },
+      "recordSchema": {
+        "type": "object",
+        "properties": {
+          "content": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "properties": {
+                    "arguments": {
+                      "type": "object",
+                      "additionalProperties": true
+                    },
+                    "data": {
+                      "type": "string"
+                    },
+                    "id": {
+                      "type": "string"
+                    },
+                    "mimeType": {
+                      "type": "string"
+                    },
+                    "name": {
+                      "type": "string"
+                    },
+                    "namespace": {
+                      "type": "string"
+                    },
+                    "redacted": {
+                      "type": "boolean"
+                    },
+                    "text": {
+                      "type": "string"
+                    },
+                    "textSignature": {
+                      "type": "string"
+                    },
+                    "thinking": {
+                      "type": "string"
+                    },
+                    "thinkingSignature": {
+                      "type": "string"
+                    },
+                    "thoughtSignature": {
+                      "type": "string"
+                    },
+                    "type": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "type"
+                  ],
+                  "additionalProperties": true
+                }
+              }
+            ]
+          },
+          "customType": {
+            "type": "string"
+          },
+          "details": {
+            "type": "object",
+            "additionalProperties": true
+          },
+          "display": {
+            "type": "boolean"
+          },
+          "id": {
+            "type": "string"
+          },
+          "parentId": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "timestamp": {
+            "type": "string"
+          },
+          "type": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "content",
+          "customType",
+          "display",
+          "id",
+          "parentId",
+          "timestamp",
+          "type"
+        ],
+        "additionalProperties": true
+      },
+      "schemaFidelity": {
+        "payload": "structural",
+        "carrier": "structural",
+        "limitations": [
+          "Rosetta retains observed/writer field types and requiredness, but its shape algebra intentionally omits some native validation constraints."
+        ]
+      },
+      "evidence": {
+        "existence": [
+          "pi-rosetta-contract"
+        ],
+        "shape": [
+          "pi-rosetta-contract"
+        ],
+        "carrier": [
+          "pi-rosetta-contract"
+        ]
+      },
+      "confidence": "unverified",
+      "notes": "agent/sessions/*/*.jsonl; 0 retained observation(s); source evidence: writer."
+    },
+    {
+      "surface": "pi",
+      "surfaceVersion": "0.84.3",
+      "event": "debug-log:artifact",
+      "nativeName": "agent/pi-debug.log",
+      "channel": "debug-log",
+      "channels": [
+        "debug-log"
+      ],
+      "transport": "file-artifact",
+      "direction": "agent-local",
+      "evidence": {
+        "existence": [
+          "pi-rosetta-contract"
+        ],
+        "shape": [
+          "pi-rosetta-contract"
+        ]
+      },
+      "confidence": "unverified",
+      "notes": "agent/pi-debug.log; non-record native artifact tracked by the complete Rosetta stream inventory."
+    },
+    {
+      "surface": "pi",
+      "surfaceVersion": "0.84.3",
+      "event": "extensions:artifact",
+      "nativeName": "agent/extensions/**/*",
+      "channel": "extensions",
+      "channels": [
+        "extensions"
+      ],
+      "transport": "file-artifact",
+      "direction": "agent-local",
+      "evidence": {
+        "existence": [
+          "pi-rosetta-contract"
+        ],
+        "shape": [
+          "pi-rosetta-contract"
+        ]
+      },
+      "confidence": "unverified",
+      "notes": "agent/extensions/**/*; non-record native artifact tracked by the complete Rosetta stream inventory."
+    },
+    {
+      "surface": "pi",
+      "surfaceVersion": "0.84.3",
+      "event": "farm:headless-stdout:agent_end",
+      "nativeName": "agent_end",
+      "channel": "farm:headless-stdout",
+      "channels": [
+        "farm:headless-stdout"
+      ],
+      "transport": "jsonl-record",
+      "direction": "agent-local",
+      "payloadSchema": {
+        "type": "object",
+        "properties": {
+          "messages": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "api": {
+                  "type": "string",
+                  "enum": [
+                    "openai-completions"
+                  ]
+                },
+                "content": {
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "properties": {
+                      "arguments": {
+                        "type": "object",
+                        "properties": {
+                          "command": {
+                            "type": "string"
+                          }
+                        },
+                        "required": [
+                          "command"
+                        ],
+                        "additionalProperties": true
+                      },
+                      "id": {
+                        "type": "string"
+                      },
+                      "name": {
+                        "type": "string"
+                      },
+                      "text": {
+                        "type": "string"
+                      },
+                      "type": {
+                        "type": "string",
+                        "enum": [
+                          "text",
+                          "toolCall"
+                        ]
+                      }
+                    },
+                    "required": [
+                      "type"
+                    ],
+                    "additionalProperties": true
+                  }
+                },
+                "errorMessage": {
+                  "type": "string"
+                },
+                "isError": {
+                  "type": "boolean"
+                },
+                "model": {
+                  "type": "string",
+                  "enum": [
+                    "mock-model"
+                  ]
+                },
+                "provider": {
+                  "type": "string",
+                  "enum": [
+                    "mock"
+                  ]
+                },
+                "rawStopReason": {
+                  "type": "string",
+                  "enum": [
+                    "content_filter",
+                    "stop",
+                    "tool_calls"
+                  ]
+                },
+                "responseId": {
+                  "type": "string"
+                },
+                "role": {
+                  "type": "string",
+                  "enum": [
+                    "assistant",
+                    "toolResult",
+                    "user"
+                  ]
+                },
+                "stopReason": {
+                  "type": "string",
+                  "enum": [
+                    "error",
+                    "stop",
+                    "toolUse"
+                  ]
+                },
+                "timestamp": {
+                  "type": "number"
+                },
+                "toolCallId": {
+                  "type": "string"
+                },
+                "toolName": {
+                  "type": "string",
+                  "enum": [
+                    "bash"
+                  ]
+                },
+                "usage": {
+                  "type": "object",
+                  "properties": {
+                    "cacheRead": {
+                      "type": "number"
+                    },
+                    "cacheWrite": {
+                      "type": "number"
+                    },
+                    "cost": {
+                      "type": "object",
+                      "properties": {
+                        "cacheRead": {
+                          "type": "number"
+                        },
+                        "cacheWrite": {
+                          "type": "number"
+                        },
+                        "input": {
+                          "type": "number"
+                        },
+                        "output": {
+                          "type": "number"
+                        },
+                        "total": {
+                          "type": "number"
+                        }
+                      },
+                      "required": [
+                        "cacheRead",
+                        "cacheWrite",
+                        "input",
+                        "output",
+                        "total"
+                      ],
+                      "additionalProperties": true
+                    },
+                    "input": {
+                      "type": "number"
+                    },
+                    "output": {
+                      "type": "number"
+                    },
+                    "reasoning": {
+                      "type": "number"
+                    },
+                    "totalTokens": {
+                      "type": "number"
+                    }
+                  },
+                  "required": [
+                    "cacheRead",
+                    "cacheWrite",
+                    "cost",
+                    "input",
+                    "output",
+                    "reasoning",
+                    "totalTokens"
+                  ],
+                  "additionalProperties": true
+                }
+              },
+              "required": [
+                "content",
+                "role",
+                "timestamp"
+              ],
+              "additionalProperties": true
+            }
+          },
+          "willRetry": {
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "messages",
+          "willRetry"
+        ],
+        "additionalProperties": true
+      },
+      "recordSchema": {
+        "type": "object",
+        "properties": {
+          "messages": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "api": {
+                  "type": "string",
+                  "enum": [
+                    "openai-completions"
+                  ]
+                },
+                "content": {
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "properties": {
+                      "arguments": {
+                        "type": "object",
+                        "properties": {
+                          "command": {
+                            "type": "string"
+                          }
+                        },
+                        "required": [
+                          "command"
+                        ],
+                        "additionalProperties": true
+                      },
+                      "id": {
+                        "type": "string"
+                      },
+                      "name": {
+                        "type": "string"
+                      },
+                      "text": {
+                        "type": "string"
+                      },
+                      "type": {
+                        "type": "string",
+                        "enum": [
+                          "text",
+                          "toolCall"
+                        ]
+                      }
+                    },
+                    "required": [
+                      "type"
+                    ],
+                    "additionalProperties": true
+                  }
+                },
+                "errorMessage": {
+                  "type": "string"
+                },
+                "isError": {
+                  "type": "boolean"
+                },
+                "model": {
+                  "type": "string",
+                  "enum": [
+                    "mock-model"
+                  ]
+                },
+                "provider": {
+                  "type": "string",
+                  "enum": [
+                    "mock"
+                  ]
+                },
+                "rawStopReason": {
+                  "type": "string",
+                  "enum": [
+                    "content_filter",
+                    "stop",
+                    "tool_calls"
+                  ]
+                },
+                "responseId": {
+                  "type": "string"
+                },
+                "role": {
+                  "type": "string",
+                  "enum": [
+                    "assistant",
+                    "toolResult",
+                    "user"
+                  ]
+                },
+                "stopReason": {
+                  "type": "string",
+                  "enum": [
+                    "error",
+                    "stop",
+                    "toolUse"
+                  ]
+                },
+                "timestamp": {
+                  "type": "number"
+                },
+                "toolCallId": {
+                  "type": "string"
+                },
+                "toolName": {
+                  "type": "string",
+                  "enum": [
+                    "bash"
+                  ]
+                },
+                "usage": {
+                  "type": "object",
+                  "properties": {
+                    "cacheRead": {
+                      "type": "number"
+                    },
+                    "cacheWrite": {
+                      "type": "number"
+                    },
+                    "cost": {
+                      "type": "object",
+                      "properties": {
+                        "cacheRead": {
+                          "type": "number"
+                        },
+                        "cacheWrite": {
+                          "type": "number"
+                        },
+                        "input": {
+                          "type": "number"
+                        },
+                        "output": {
+                          "type": "number"
+                        },
+                        "total": {
+                          "type": "number"
+                        }
+                      },
+                      "required": [
+                        "cacheRead",
+                        "cacheWrite",
+                        "input",
+                        "output",
+                        "total"
+                      ],
+                      "additionalProperties": true
+                    },
+                    "input": {
+                      "type": "number"
+                    },
+                    "output": {
+                      "type": "number"
+                    },
+                    "reasoning": {
+                      "type": "number"
+                    },
+                    "totalTokens": {
+                      "type": "number"
+                    }
+                  },
+                  "required": [
+                    "cacheRead",
+                    "cacheWrite",
+                    "cost",
+                    "input",
+                    "output",
+                    "reasoning",
+                    "totalTokens"
+                  ],
+                  "additionalProperties": true
+                }
+              },
+              "required": [
+                "content",
+                "role",
+                "timestamp"
+              ],
+              "additionalProperties": true
+            }
+          },
+          "type": {
+            "type": "string",
+            "enum": [
+              "agent_end"
+            ]
+          },
+          "willRetry": {
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "messages",
+          "type",
+          "willRetry"
+        ],
+        "additionalProperties": true
+      },
+      "schemaFidelity": {
+        "payload": "structural",
+        "carrier": "structural",
+        "limitations": [
+          "Rosetta retains observed/writer field types and requiredness, but its shape algebra intentionally omits some native validation constraints."
+        ]
+      },
+      "evidence": {
+        "existence": [
+          "pi-rosetta-observed"
+        ],
+        "shape": [
+          "pi-rosetta-observed"
+        ],
+        "carrier": [
+          "pi-rosetta-observed"
+        ]
+      },
+      "confidence": "verified-headless",
+      "notes": "<farm>/stdout*.jsonl; 10 retained observation(s); source evidence: fixture."
+    },
+    {
+      "surface": "pi",
+      "surfaceVersion": "0.84.3",
+      "event": "farm:headless-stdout:agent_settled",
+      "nativeName": "agent_settled",
+      "channel": "farm:headless-stdout",
+      "channels": [
+        "farm:headless-stdout"
+      ],
+      "transport": "jsonl-record",
+      "direction": "agent-local",
+      "payloadSchema": {
+        "type": "object",
+        "properties": {},
+        "required": [],
+        "additionalProperties": true
+      },
+      "recordSchema": {
+        "type": "object",
+        "properties": {
+          "type": {
+            "type": "string",
+            "enum": [
+              "agent_settled"
+            ]
+          }
+        },
+        "required": [
+          "type"
+        ],
+        "additionalProperties": true
+      },
+      "schemaFidelity": {
+        "payload": "structural",
+        "carrier": "structural",
+        "limitations": [
+          "Rosetta retains observed/writer field types and requiredness, but its shape algebra intentionally omits some native validation constraints."
+        ]
+      },
+      "evidence": {
+        "existence": [
+          "pi-rosetta-observed"
+        ],
+        "shape": [
+          "pi-rosetta-observed"
+        ],
+        "carrier": [
+          "pi-rosetta-observed"
+        ]
+      },
+      "confidence": "verified-headless",
+      "notes": "<farm>/stdout*.jsonl; 10 retained observation(s); source evidence: fixture."
+    },
+    {
+      "surface": "pi",
+      "surfaceVersion": "0.84.3",
+      "event": "farm:headless-stdout:agent_start",
+      "nativeName": "agent_start",
+      "channel": "farm:headless-stdout",
+      "channels": [
+        "farm:headless-stdout"
+      ],
+      "transport": "jsonl-record",
+      "direction": "agent-local",
+      "payloadSchema": {
+        "type": "object",
+        "properties": {},
+        "required": [],
+        "additionalProperties": true
+      },
+      "recordSchema": {
+        "type": "object",
+        "properties": {
+          "type": {
+            "type": "string",
+            "enum": [
+              "agent_start"
+            ]
+          }
+        },
+        "required": [
+          "type"
+        ],
+        "additionalProperties": true
+      },
+      "schemaFidelity": {
+        "payload": "structural",
+        "carrier": "structural",
+        "limitations": [
+          "Rosetta retains observed/writer field types and requiredness, but its shape algebra intentionally omits some native validation constraints."
+        ]
+      },
+      "evidence": {
+        "existence": [
+          "pi-rosetta-observed"
+        ],
+        "shape": [
+          "pi-rosetta-observed"
+        ],
+        "carrier": [
+          "pi-rosetta-observed"
+        ]
+      },
+      "confidence": "verified-headless",
+      "notes": "<farm>/stdout*.jsonl; 10 retained observation(s); source evidence: fixture."
+    },
+    {
+      "surface": "pi",
+      "surfaceVersion": "0.84.3",
+      "event": "farm:headless-stdout:compaction_end",
+      "nativeName": "compaction_end",
+      "channel": "farm:headless-stdout",
+      "channels": [
+        "farm:headless-stdout"
+      ],
+      "transport": "jsonl-record",
+      "direction": "agent-local",
+      "payloadSchema": {
+        "type": "object",
+        "properties": {
+          "aborted": {
+            "type": "boolean"
+          },
+          "reason": {
+            "type": "string",
+            "enum": [
+              "threshold"
+            ]
+          },
+          "result": {
+            "type": "object",
+            "properties": {
+              "details": {
+                "type": "object",
+                "properties": {
+                  "modifiedFiles": {
+                    "type": "array"
+                  },
+                  "readFiles": {
+                    "type": "array"
+                  }
+                },
+                "required": [
+                  "modifiedFiles",
+                  "readFiles"
+                ],
+                "additionalProperties": true
+              },
+              "estimatedTokensAfter": {
+                "type": "number"
+              },
+              "firstKeptEntryId": {
+                "type": "string"
+              },
+              "summary": {
+                "type": "string"
+              },
+              "tokensBefore": {
+                "type": "number"
+              },
+              "usage": {
+                "type": "object",
+                "properties": {
+                  "cacheRead": {
+                    "type": "number"
+                  },
+                  "cacheWrite": {
+                    "type": "number"
+                  },
+                  "cost": {
+                    "type": "object",
+                    "properties": {
+                      "cacheRead": {
+                        "type": "number"
+                      },
+                      "cacheWrite": {
+                        "type": "number"
+                      },
+                      "input": {
+                        "type": "number"
+                      },
+                      "output": {
+                        "type": "number"
+                      },
+                      "total": {
+                        "type": "number"
+                      }
+                    },
+                    "required": [
+                      "cacheRead",
+                      "cacheWrite",
+                      "input",
+                      "output",
+                      "total"
+                    ],
+                    "additionalProperties": true
+                  },
+                  "input": {
+                    "type": "number"
+                  },
+                  "output": {
+                    "type": "number"
+                  },
+                  "reasoning": {
+                    "type": "number"
+                  },
+                  "totalTokens": {
+                    "type": "number"
+                  }
+                },
+                "required": [
+                  "cacheRead",
+                  "cacheWrite",
+                  "cost",
+                  "input",
+                  "output",
+                  "reasoning",
+                  "totalTokens"
+                ],
+                "additionalProperties": true
+              }
+            },
+            "required": [
+              "details",
+              "estimatedTokensAfter",
+              "firstKeptEntryId",
+              "summary",
+              "tokensBefore",
+              "usage"
+            ],
+            "additionalProperties": true
+          },
+          "willRetry": {
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "aborted",
+          "reason",
+          "result",
+          "willRetry"
+        ],
+        "additionalProperties": true
+      },
+      "recordSchema": {
+        "type": "object",
+        "properties": {
+          "aborted": {
+            "type": "boolean"
+          },
+          "reason": {
+            "type": "string",
+            "enum": [
+              "threshold"
+            ]
+          },
+          "result": {
+            "type": "object",
+            "properties": {
+              "details": {
+                "type": "object",
+                "properties": {
+                  "modifiedFiles": {
+                    "type": "array"
+                  },
+                  "readFiles": {
+                    "type": "array"
+                  }
+                },
+                "required": [
+                  "modifiedFiles",
+                  "readFiles"
+                ],
+                "additionalProperties": true
+              },
+              "estimatedTokensAfter": {
+                "type": "number"
+              },
+              "firstKeptEntryId": {
+                "type": "string"
+              },
+              "summary": {
+                "type": "string"
+              },
+              "tokensBefore": {
+                "type": "number"
+              },
+              "usage": {
+                "type": "object",
+                "properties": {
+                  "cacheRead": {
+                    "type": "number"
+                  },
+                  "cacheWrite": {
+                    "type": "number"
+                  },
+                  "cost": {
+                    "type": "object",
+                    "properties": {
+                      "cacheRead": {
+                        "type": "number"
+                      },
+                      "cacheWrite": {
+                        "type": "number"
+                      },
+                      "input": {
+                        "type": "number"
+                      },
+                      "output": {
+                        "type": "number"
+                      },
+                      "total": {
+                        "type": "number"
+                      }
+                    },
+                    "required": [
+                      "cacheRead",
+                      "cacheWrite",
+                      "input",
+                      "output",
+                      "total"
+                    ],
+                    "additionalProperties": true
+                  },
+                  "input": {
+                    "type": "number"
+                  },
+                  "output": {
+                    "type": "number"
+                  },
+                  "reasoning": {
+                    "type": "number"
+                  },
+                  "totalTokens": {
+                    "type": "number"
+                  }
+                },
+                "required": [
+                  "cacheRead",
+                  "cacheWrite",
+                  "cost",
+                  "input",
+                  "output",
+                  "reasoning",
+                  "totalTokens"
+                ],
+                "additionalProperties": true
+              }
+            },
+            "required": [
+              "details",
+              "estimatedTokensAfter",
+              "firstKeptEntryId",
+              "summary",
+              "tokensBefore",
+              "usage"
+            ],
+            "additionalProperties": true
+          },
+          "type": {
+            "type": "string",
+            "enum": [
+              "compaction_end"
+            ]
+          },
+          "willRetry": {
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "aborted",
+          "reason",
+          "result",
+          "type",
+          "willRetry"
+        ],
+        "additionalProperties": true
+      },
+      "schemaFidelity": {
+        "payload": "structural",
+        "carrier": "structural",
+        "limitations": [
+          "Rosetta retains observed/writer field types and requiredness, but its shape algebra intentionally omits some native validation constraints."
+        ]
+      },
+      "evidence": {
+        "existence": [
+          "pi-rosetta-observed"
+        ],
+        "shape": [
+          "pi-rosetta-observed"
+        ],
+        "carrier": [
+          "pi-rosetta-observed"
+        ]
+      },
+      "confidence": "verified-headless",
+      "notes": "<farm>/stdout*.jsonl; 1 retained observation(s); source evidence: fixture."
+    },
+    {
+      "surface": "pi",
+      "surfaceVersion": "0.84.3",
+      "event": "farm:headless-stdout:compaction_start",
+      "nativeName": "compaction_start",
+      "channel": "farm:headless-stdout",
+      "channels": [
+        "farm:headless-stdout"
+      ],
+      "transport": "jsonl-record",
+      "direction": "agent-local",
+      "payloadSchema": {
+        "type": "object",
+        "properties": {
+          "reason": {
+            "type": "string",
+            "enum": [
+              "threshold"
+            ]
+          }
+        },
+        "required": [
+          "reason"
+        ],
+        "additionalProperties": true
+      },
+      "recordSchema": {
+        "type": "object",
+        "properties": {
+          "reason": {
+            "type": "string",
+            "enum": [
+              "threshold"
+            ]
+          },
+          "type": {
+            "type": "string",
+            "enum": [
+              "compaction_start"
+            ]
+          }
+        },
+        "required": [
+          "reason",
+          "type"
+        ],
+        "additionalProperties": true
+      },
+      "schemaFidelity": {
+        "payload": "structural",
+        "carrier": "structural",
+        "limitations": [
+          "Rosetta retains observed/writer field types and requiredness, but its shape algebra intentionally omits some native validation constraints."
+        ]
+      },
+      "evidence": {
+        "existence": [
+          "pi-rosetta-observed"
+        ],
+        "shape": [
+          "pi-rosetta-observed"
+        ],
+        "carrier": [
+          "pi-rosetta-observed"
+        ]
+      },
+      "confidence": "verified-headless",
+      "notes": "<farm>/stdout*.jsonl; 1 retained observation(s); source evidence: fixture."
+    },
+    {
+      "surface": "pi",
+      "surfaceVersion": "0.84.3",
+      "event": "farm:headless-stdout:message_end",
+      "nativeName": "message_end",
+      "channel": "farm:headless-stdout",
+      "channels": [
+        "farm:headless-stdout"
+      ],
+      "transport": "jsonl-record",
+      "direction": "agent-local",
+      "payloadSchema": {
+        "type": "object",
+        "properties": {
+          "message": {
+            "type": "object",
+            "properties": {
+              "api": {
+                "type": "string",
+                "enum": [
+                  "openai-completions"
+                ]
+              },
+              "content": {
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "properties": {
+                    "arguments": {
+                      "type": "object",
+                      "properties": {
+                        "command": {
+                          "type": "string"
+                        }
+                      },
+                      "required": [
+                        "command"
+                      ],
+                      "additionalProperties": true
+                    },
+                    "id": {
+                      "type": "string"
+                    },
+                    "name": {
+                      "type": "string"
+                    },
+                    "text": {
+                      "type": "string"
+                    },
+                    "type": {
+                      "type": "string",
+                      "enum": [
+                        "text",
+                        "toolCall"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "type"
+                  ],
+                  "additionalProperties": true
+                }
+              },
+              "errorMessage": {
+                "type": "string"
+              },
+              "isError": {
+                "type": "boolean"
+              },
+              "model": {
+                "type": "string",
+                "enum": [
+                  "mock-model"
+                ]
+              },
+              "provider": {
+                "type": "string",
+                "enum": [
+                  "mock"
+                ]
+              },
+              "rawStopReason": {
+                "type": "string",
+                "enum": [
+                  "content_filter",
+                  "stop",
+                  "tool_calls"
+                ]
+              },
+              "responseId": {
+                "type": "string"
+              },
+              "role": {
+                "type": "string",
+                "enum": [
+                  "assistant",
+                  "toolResult",
+                  "user"
+                ]
+              },
+              "stopReason": {
+                "type": "string",
+                "enum": [
+                  "error",
+                  "stop",
+                  "toolUse"
+                ]
+              },
+              "timestamp": {
+                "type": "number"
+              },
+              "toolCallId": {
+                "type": "string"
+              },
+              "toolName": {
+                "type": "string",
+                "enum": [
+                  "bash"
+                ]
+              },
+              "usage": {
+                "type": "object",
+                "properties": {
+                  "cacheRead": {
+                    "type": "number"
+                  },
+                  "cacheWrite": {
+                    "type": "number"
+                  },
+                  "cost": {
+                    "type": "object",
+                    "properties": {
+                      "cacheRead": {
+                        "type": "number"
+                      },
+                      "cacheWrite": {
+                        "type": "number"
+                      },
+                      "input": {
+                        "type": "number"
+                      },
+                      "output": {
+                        "type": "number"
+                      },
+                      "total": {
+                        "type": "number"
+                      }
+                    },
+                    "required": [
+                      "cacheRead",
+                      "cacheWrite",
+                      "input",
+                      "output",
+                      "total"
+                    ],
+                    "additionalProperties": true
+                  },
+                  "input": {
+                    "type": "number"
+                  },
+                  "output": {
+                    "type": "number"
+                  },
+                  "reasoning": {
+                    "type": "number"
+                  },
+                  "totalTokens": {
+                    "type": "number"
+                  }
+                },
+                "required": [
+                  "cacheRead",
+                  "cacheWrite",
+                  "cost",
+                  "input",
+                  "output",
+                  "reasoning",
+                  "totalTokens"
+                ],
+                "additionalProperties": true
+              }
+            },
+            "required": [
+              "content",
+              "role",
+              "timestamp"
+            ],
+            "additionalProperties": true
+          }
+        },
+        "required": [
+          "message"
+        ],
+        "additionalProperties": true
+      },
+      "recordSchema": {
+        "type": "object",
+        "properties": {
+          "message": {
+            "type": "object",
+            "properties": {
+              "api": {
+                "type": "string",
+                "enum": [
+                  "openai-completions"
+                ]
+              },
+              "content": {
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "properties": {
+                    "arguments": {
+                      "type": "object",
+                      "properties": {
+                        "command": {
+                          "type": "string"
+                        }
+                      },
+                      "required": [
+                        "command"
+                      ],
+                      "additionalProperties": true
+                    },
+                    "id": {
+                      "type": "string"
+                    },
+                    "name": {
+                      "type": "string"
+                    },
+                    "text": {
+                      "type": "string"
+                    },
+                    "type": {
+                      "type": "string",
+                      "enum": [
+                        "text",
+                        "toolCall"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "type"
+                  ],
+                  "additionalProperties": true
+                }
+              },
+              "errorMessage": {
+                "type": "string"
+              },
+              "isError": {
+                "type": "boolean"
+              },
+              "model": {
+                "type": "string",
+                "enum": [
+                  "mock-model"
+                ]
+              },
+              "provider": {
+                "type": "string",
+                "enum": [
+                  "mock"
+                ]
+              },
+              "rawStopReason": {
+                "type": "string",
+                "enum": [
+                  "content_filter",
+                  "stop",
+                  "tool_calls"
+                ]
+              },
+              "responseId": {
+                "type": "string"
+              },
+              "role": {
+                "type": "string",
+                "enum": [
+                  "assistant",
+                  "toolResult",
+                  "user"
+                ]
+              },
+              "stopReason": {
+                "type": "string",
+                "enum": [
+                  "error",
+                  "stop",
+                  "toolUse"
+                ]
+              },
+              "timestamp": {
+                "type": "number"
+              },
+              "toolCallId": {
+                "type": "string"
+              },
+              "toolName": {
+                "type": "string",
+                "enum": [
+                  "bash"
+                ]
+              },
+              "usage": {
+                "type": "object",
+                "properties": {
+                  "cacheRead": {
+                    "type": "number"
+                  },
+                  "cacheWrite": {
+                    "type": "number"
+                  },
+                  "cost": {
+                    "type": "object",
+                    "properties": {
+                      "cacheRead": {
+                        "type": "number"
+                      },
+                      "cacheWrite": {
+                        "type": "number"
+                      },
+                      "input": {
+                        "type": "number"
+                      },
+                      "output": {
+                        "type": "number"
+                      },
+                      "total": {
+                        "type": "number"
+                      }
+                    },
+                    "required": [
+                      "cacheRead",
+                      "cacheWrite",
+                      "input",
+                      "output",
+                      "total"
+                    ],
+                    "additionalProperties": true
+                  },
+                  "input": {
+                    "type": "number"
+                  },
+                  "output": {
+                    "type": "number"
+                  },
+                  "reasoning": {
+                    "type": "number"
+                  },
+                  "totalTokens": {
+                    "type": "number"
+                  }
+                },
+                "required": [
+                  "cacheRead",
+                  "cacheWrite",
+                  "cost",
+                  "input",
+                  "output",
+                  "reasoning",
+                  "totalTokens"
+                ],
+                "additionalProperties": true
+              }
+            },
+            "required": [
+              "content",
+              "role",
+              "timestamp"
+            ],
+            "additionalProperties": true
+          },
+          "type": {
+            "type": "string",
+            "enum": [
+              "message_end"
+            ]
+          }
+        },
+        "required": [
+          "message",
+          "type"
+        ],
+        "additionalProperties": true
+      },
+      "schemaFidelity": {
+        "payload": "structural",
+        "carrier": "structural",
+        "limitations": [
+          "Rosetta retains observed/writer field types and requiredness, but its shape algebra intentionally omits some native validation constraints."
+        ]
+      },
+      "evidence": {
+        "existence": [
+          "pi-rosetta-observed"
+        ],
+        "shape": [
+          "pi-rosetta-observed"
+        ],
+        "carrier": [
+          "pi-rosetta-observed"
+        ]
+      },
+      "confidence": "verified-headless",
+      "notes": "<farm>/stdout*.jsonl; 22 retained observation(s); source evidence: fixture."
+    },
+    {
+      "surface": "pi",
+      "surfaceVersion": "0.84.3",
+      "event": "farm:headless-stdout:message_start",
+      "nativeName": "message_start",
+      "channel": "farm:headless-stdout",
+      "channels": [
+        "farm:headless-stdout"
+      ],
+      "transport": "jsonl-record",
+      "direction": "agent-local",
+      "payloadSchema": {
+        "type": "object",
+        "properties": {
+          "message": {
+            "type": "object",
+            "properties": {
+              "api": {
+                "type": "string",
+                "enum": [
+                  "openai-completions"
+                ]
+              },
+              "content": {
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "properties": {
+                    "text": {
+                      "type": "string"
+                    },
+                    "type": {
+                      "type": "string",
+                      "enum": [
+                        "text"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "text",
+                    "type"
+                  ],
+                  "additionalProperties": true
+                }
+              },
+              "isError": {
+                "type": "boolean"
+              },
+              "model": {
+                "type": "string",
+                "enum": [
+                  "mock-model"
+                ]
+              },
+              "provider": {
+                "type": "string",
+                "enum": [
+                  "mock"
+                ]
+              },
+              "responseId": {
+                "type": "string"
+              },
+              "role": {
+                "type": "string",
+                "enum": [
+                  "assistant",
+                  "toolResult",
+                  "user"
+                ]
+              },
+              "stopReason": {
+                "type": "string",
+                "enum": [
+                  "pending"
+                ]
+              },
+              "timestamp": {
+                "type": "number"
+              },
+              "toolCallId": {
+                "type": "string"
+              },
+              "toolName": {
+                "type": "string",
+                "enum": [
+                  "bash"
+                ]
+              },
+              "usage": {
+                "type": "object",
+                "properties": {
+                  "cacheRead": {
+                    "type": "number"
+                  },
+                  "cacheWrite": {
+                    "type": "number"
+                  },
+                  "cost": {
+                    "type": "object",
+                    "properties": {
+                      "cacheRead": {
+                        "type": "number"
+                      },
+                      "cacheWrite": {
+                        "type": "number"
+                      },
+                      "input": {
+                        "type": "number"
+                      },
+                      "output": {
+                        "type": "number"
+                      },
+                      "total": {
+                        "type": "number"
+                      }
+                    },
+                    "required": [
+                      "cacheRead",
+                      "cacheWrite",
+                      "input",
+                      "output",
+                      "total"
+                    ],
+                    "additionalProperties": true
+                  },
+                  "input": {
+                    "type": "number"
+                  },
+                  "output": {
+                    "type": "number"
+                  },
+                  "totalTokens": {
+                    "type": "number"
+                  }
+                },
+                "required": [
+                  "cacheRead",
+                  "cacheWrite",
+                  "cost",
+                  "input",
+                  "output",
+                  "totalTokens"
+                ],
+                "additionalProperties": true
+              }
+            },
+            "required": [
+              "content",
+              "role",
+              "timestamp"
+            ],
+            "additionalProperties": true
+          }
+        },
+        "required": [
+          "message"
+        ],
+        "additionalProperties": true
+      },
+      "recordSchema": {
+        "type": "object",
+        "properties": {
+          "message": {
+            "type": "object",
+            "properties": {
+              "api": {
+                "type": "string",
+                "enum": [
+                  "openai-completions"
+                ]
+              },
+              "content": {
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "properties": {
+                    "text": {
+                      "type": "string"
+                    },
+                    "type": {
+                      "type": "string",
+                      "enum": [
+                        "text"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "text",
+                    "type"
+                  ],
+                  "additionalProperties": true
+                }
+              },
+              "isError": {
+                "type": "boolean"
+              },
+              "model": {
+                "type": "string",
+                "enum": [
+                  "mock-model"
+                ]
+              },
+              "provider": {
+                "type": "string",
+                "enum": [
+                  "mock"
+                ]
+              },
+              "responseId": {
+                "type": "string"
+              },
+              "role": {
+                "type": "string",
+                "enum": [
+                  "assistant",
+                  "toolResult",
+                  "user"
+                ]
+              },
+              "stopReason": {
+                "type": "string",
+                "enum": [
+                  "pending"
+                ]
+              },
+              "timestamp": {
+                "type": "number"
+              },
+              "toolCallId": {
+                "type": "string"
+              },
+              "toolName": {
+                "type": "string",
+                "enum": [
+                  "bash"
+                ]
+              },
+              "usage": {
+                "type": "object",
+                "properties": {
+                  "cacheRead": {
+                    "type": "number"
+                  },
+                  "cacheWrite": {
+                    "type": "number"
+                  },
+                  "cost": {
+                    "type": "object",
+                    "properties": {
+                      "cacheRead": {
+                        "type": "number"
+                      },
+                      "cacheWrite": {
+                        "type": "number"
+                      },
+                      "input": {
+                        "type": "number"
+                      },
+                      "output": {
+                        "type": "number"
+                      },
+                      "total": {
+                        "type": "number"
+                      }
+                    },
+                    "required": [
+                      "cacheRead",
+                      "cacheWrite",
+                      "input",
+                      "output",
+                      "total"
+                    ],
+                    "additionalProperties": true
+                  },
+                  "input": {
+                    "type": "number"
+                  },
+                  "output": {
+                    "type": "number"
+                  },
+                  "totalTokens": {
+                    "type": "number"
+                  }
+                },
+                "required": [
+                  "cacheRead",
+                  "cacheWrite",
+                  "cost",
+                  "input",
+                  "output",
+                  "totalTokens"
+                ],
+                "additionalProperties": true
+              }
+            },
+            "required": [
+              "content",
+              "role",
+              "timestamp"
+            ],
+            "additionalProperties": true
+          },
+          "type": {
+            "type": "string",
+            "enum": [
+              "message_start"
+            ]
+          }
+        },
+        "required": [
+          "message",
+          "type"
+        ],
+        "additionalProperties": true
+      },
+      "schemaFidelity": {
+        "payload": "structural",
+        "carrier": "structural",
+        "limitations": [
+          "Rosetta retains observed/writer field types and requiredness, but its shape algebra intentionally omits some native validation constraints."
+        ]
+      },
+      "evidence": {
+        "existence": [
+          "pi-rosetta-observed"
+        ],
+        "shape": [
+          "pi-rosetta-observed"
+        ],
+        "carrier": [
+          "pi-rosetta-observed"
+        ]
+      },
+      "confidence": "verified-headless",
+      "notes": "<farm>/stdout*.jsonl; 22 retained observation(s); source evidence: fixture."
+    },
+    {
+      "surface": "pi",
+      "surfaceVersion": "0.84.3",
+      "event": "farm:headless-stdout:message_update",
+      "nativeName": "message_update",
+      "channel": "farm:headless-stdout",
+      "channels": [
+        "farm:headless-stdout"
+      ],
+      "transport": "jsonl-record",
+      "direction": "agent-local",
+      "payloadSchema": {
+        "type": "object",
+        "properties": {
+          "assistantMessageEvent": {
+            "type": "object",
+            "properties": {
+              "content": {
+                "type": "string"
+              },
+              "contentIndex": {
+                "type": "number"
+              },
+              "delta": {
+                "type": "string"
+              },
+              "id": {
+                "type": "string"
+              },
+              "toolCall": {
+                "type": "object",
+                "properties": {
+                  "arguments": {
+                    "type": "object",
+                    "properties": {
+                      "command": {
+                        "type": "string"
+                      }
+                    },
+                    "required": [
+                      "command"
+                    ],
+                    "additionalProperties": true
+                  },
+                  "id": {
+                    "type": "string"
+                  },
+                  "name": {
+                    "type": "string"
+                  },
+                  "type": {
+                    "type": "string",
+                    "enum": [
+                      "toolCall"
+                    ]
+                  }
+                },
+                "required": [
+                  "arguments",
+                  "id",
+                  "name",
+                  "type"
+                ],
+                "additionalProperties": true
+              },
+              "toolName": {
+                "type": "string",
+                "enum": [
+                  "bash"
+                ]
+              },
+              "type": {
+                "type": "string",
+                "enum": [
+                  "text_delta",
+                  "text_end",
+                  "text_start",
+                  "toolcall_delta",
+                  "toolcall_end",
+                  "toolcall_start"
+                ]
+              }
+            },
+            "required": [
+              "contentIndex",
+              "type"
+            ],
+            "additionalProperties": true
+          },
+          "usage": {
+            "type": "object",
+            "properties": {
+              "cacheRead": {
+                "type": "number"
+              },
+              "cacheWrite": {
+                "type": "number"
+              },
+              "cost": {
+                "type": "object",
+                "properties": {
+                  "cacheRead": {
+                    "type": "number"
+                  },
+                  "cacheWrite": {
+                    "type": "number"
+                  },
+                  "input": {
+                    "type": "number"
+                  },
+                  "output": {
+                    "type": "number"
+                  },
+                  "total": {
+                    "type": "number"
+                  }
+                },
+                "required": [
+                  "cacheRead",
+                  "cacheWrite",
+                  "input",
+                  "output",
+                  "total"
+                ],
+                "additionalProperties": true
+              },
+              "input": {
+                "type": "number"
+              },
+              "output": {
+                "type": "number"
+              },
+              "reasoning": {
+                "type": "number"
+              },
+              "totalTokens": {
+                "type": "number"
+              }
+            },
+            "required": [
+              "cacheRead",
+              "cacheWrite",
+              "cost",
+              "input",
+              "output",
+              "totalTokens"
+            ],
+            "additionalProperties": true
+          }
+        },
+        "required": [
+          "assistantMessageEvent",
+          "usage"
+        ],
+        "additionalProperties": true
+      },
+      "recordSchema": {
+        "type": "object",
+        "properties": {
+          "assistantMessageEvent": {
+            "type": "object",
+            "properties": {
+              "content": {
+                "type": "string"
+              },
+              "contentIndex": {
+                "type": "number"
+              },
+              "delta": {
+                "type": "string"
+              },
+              "id": {
+                "type": "string"
+              },
+              "toolCall": {
+                "type": "object",
+                "properties": {
+                  "arguments": {
+                    "type": "object",
+                    "properties": {
+                      "command": {
+                        "type": "string"
+                      }
+                    },
+                    "required": [
+                      "command"
+                    ],
+                    "additionalProperties": true
+                  },
+                  "id": {
+                    "type": "string"
+                  },
+                  "name": {
+                    "type": "string"
+                  },
+                  "type": {
+                    "type": "string",
+                    "enum": [
+                      "toolCall"
+                    ]
+                  }
+                },
+                "required": [
+                  "arguments",
+                  "id",
+                  "name",
+                  "type"
+                ],
+                "additionalProperties": true
+              },
+              "toolName": {
+                "type": "string",
+                "enum": [
+                  "bash"
+                ]
+              },
+              "type": {
+                "type": "string",
+                "enum": [
+                  "text_delta",
+                  "text_end",
+                  "text_start",
+                  "toolcall_delta",
+                  "toolcall_end",
+                  "toolcall_start"
+                ]
+              }
+            },
+            "required": [
+              "contentIndex",
+              "type"
+            ],
+            "additionalProperties": true
+          },
+          "type": {
+            "type": "string",
+            "enum": [
+              "message_update"
+            ]
+          },
+          "usage": {
+            "type": "object",
+            "properties": {
+              "cacheRead": {
+                "type": "number"
+              },
+              "cacheWrite": {
+                "type": "number"
+              },
+              "cost": {
+                "type": "object",
+                "properties": {
+                  "cacheRead": {
+                    "type": "number"
+                  },
+                  "cacheWrite": {
+                    "type": "number"
+                  },
+                  "input": {
+                    "type": "number"
+                  },
+                  "output": {
+                    "type": "number"
+                  },
+                  "total": {
+                    "type": "number"
+                  }
+                },
+                "required": [
+                  "cacheRead",
+                  "cacheWrite",
+                  "input",
+                  "output",
+                  "total"
+                ],
+                "additionalProperties": true
+              },
+              "input": {
+                "type": "number"
+              },
+              "output": {
+                "type": "number"
+              },
+              "reasoning": {
+                "type": "number"
+              },
+              "totalTokens": {
+                "type": "number"
+              }
+            },
+            "required": [
+              "cacheRead",
+              "cacheWrite",
+              "cost",
+              "input",
+              "output",
+              "totalTokens"
+            ],
+            "additionalProperties": true
+          }
+        },
+        "required": [
+          "assistantMessageEvent",
+          "type",
+          "usage"
+        ],
+        "additionalProperties": true
+      },
+      "schemaFidelity": {
+        "payload": "structural",
+        "carrier": "structural",
+        "limitations": [
+          "Rosetta retains observed/writer field types and requiredness, but its shape algebra intentionally omits some native validation constraints."
+        ]
+      },
+      "evidence": {
+        "existence": [
+          "pi-rosetta-observed"
+        ],
+        "shape": [
+          "pi-rosetta-observed"
+        ],
+        "carrier": [
+          "pi-rosetta-observed"
+        ]
+      },
+      "confidence": "verified-headless",
+      "notes": "<farm>/stdout*.jsonl; 42 retained observation(s); source evidence: fixture."
+    },
+    {
+      "surface": "pi",
+      "surfaceVersion": "0.84.3",
+      "event": "farm:headless-stdout:session",
+      "nativeName": "session",
+      "channel": "farm:headless-stdout",
+      "channels": [
+        "farm:headless-stdout"
+      ],
+      "transport": "jsonl-record",
+      "direction": "agent-local",
+      "payloadSchema": {
+        "type": "object",
+        "properties": {
+          "cwd": {
+            "type": "string"
+          },
+          "id": {
+            "type": "string"
+          },
+          "parentSession": {
+            "type": "string"
+          },
+          "timestamp": {
+            "type": "string"
+          },
+          "version": {
+            "type": "number"
+          }
+        },
+        "required": [
+          "cwd",
+          "id",
+          "timestamp",
+          "version"
+        ],
+        "additionalProperties": true
+      },
+      "recordSchema": {
+        "type": "object",
+        "properties": {
+          "cwd": {
+            "type": "string"
+          },
+          "id": {
+            "type": "string"
+          },
+          "parentSession": {
+            "type": "string"
+          },
+          "timestamp": {
+            "type": "string"
+          },
+          "type": {
+            "type": "string",
+            "enum": [
+              "session"
+            ]
+          },
+          "version": {
+            "type": "number"
+          }
+        },
+        "required": [
+          "cwd",
+          "id",
+          "timestamp",
+          "type",
+          "version"
+        ],
+        "additionalProperties": true
+      },
+      "schemaFidelity": {
+        "payload": "structural",
+        "carrier": "structural",
+        "limitations": [
+          "Rosetta retains observed/writer field types and requiredness, but its shape algebra intentionally omits some native validation constraints."
+        ]
+      },
+      "evidence": {
+        "existence": [
+          "pi-rosetta-observed"
+        ],
+        "shape": [
+          "pi-rosetta-observed"
+        ],
+        "carrier": [
+          "pi-rosetta-observed"
+        ]
+      },
+      "confidence": "verified-headless",
+      "notes": "<farm>/stdout*.jsonl; 10 retained observation(s); source evidence: fixture."
+    },
+    {
+      "surface": "pi",
+      "surfaceVersion": "0.84.3",
+      "event": "farm:headless-stdout:tool_execution_end",
+      "nativeName": "tool_execution_end",
+      "channel": "farm:headless-stdout",
+      "channels": [
+        "farm:headless-stdout"
+      ],
+      "transport": "jsonl-record",
+      "direction": "agent-local",
+      "payloadSchema": {
+        "type": "object",
+        "properties": {
+          "isError": {
+            "type": "boolean"
+          },
+          "result": {
+            "type": "object",
+            "properties": {
+              "content": {
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "properties": {
+                    "text": {
+                      "type": "string"
+                    },
+                    "type": {
+                      "type": "string",
+                      "enum": [
+                        "text"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "text",
+                    "type"
+                  ],
+                  "additionalProperties": true
+                }
+              }
+            },
+            "required": [
+              "content"
+            ],
+            "additionalProperties": true
+          },
+          "toolCallId": {
+            "type": "string"
+          },
+          "toolName": {
+            "type": "string",
+            "enum": [
+              "bash"
+            ]
+          }
+        },
+        "required": [
+          "isError",
+          "result",
+          "toolCallId",
+          "toolName"
+        ],
+        "additionalProperties": true
+      },
+      "recordSchema": {
+        "type": "object",
+        "properties": {
+          "isError": {
+            "type": "boolean"
+          },
+          "result": {
+            "type": "object",
+            "properties": {
+              "content": {
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "properties": {
+                    "text": {
+                      "type": "string"
+                    },
+                    "type": {
+                      "type": "string",
+                      "enum": [
+                        "text"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "text",
+                    "type"
+                  ],
+                  "additionalProperties": true
+                }
+              }
+            },
+            "required": [
+              "content"
+            ],
+            "additionalProperties": true
+          },
+          "toolCallId": {
+            "type": "string"
+          },
+          "toolName": {
+            "type": "string",
+            "enum": [
+              "bash"
+            ]
+          },
+          "type": {
+            "type": "string",
+            "enum": [
+              "tool_execution_end"
+            ]
+          }
+        },
+        "required": [
+          "isError",
+          "result",
+          "toolCallId",
+          "toolName",
+          "type"
+        ],
+        "additionalProperties": true
+      },
+      "schemaFidelity": {
+        "payload": "structural",
+        "carrier": "structural",
+        "limitations": [
+          "Rosetta retains observed/writer field types and requiredness, but its shape algebra intentionally omits some native validation constraints."
+        ]
+      },
+      "evidence": {
+        "existence": [
+          "pi-rosetta-observed"
+        ],
+        "shape": [
+          "pi-rosetta-observed"
+        ],
+        "carrier": [
+          "pi-rosetta-observed"
+        ]
+      },
+      "confidence": "verified-headless",
+      "notes": "<farm>/stdout*.jsonl; 1 retained observation(s); source evidence: fixture."
+    },
+    {
+      "surface": "pi",
+      "surfaceVersion": "0.84.3",
+      "event": "farm:headless-stdout:tool_execution_start",
+      "nativeName": "tool_execution_start",
+      "channel": "farm:headless-stdout",
+      "channels": [
+        "farm:headless-stdout"
+      ],
+      "transport": "jsonl-record",
+      "direction": "agent-local",
+      "payloadSchema": {
+        "type": "object",
+        "properties": {
+          "args": {
+            "type": "object",
+            "properties": {
+              "command": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "command"
+            ],
+            "additionalProperties": true
+          },
+          "toolCallId": {
+            "type": "string"
+          },
+          "toolName": {
+            "type": "string",
+            "enum": [
+              "bash"
+            ]
+          }
+        },
+        "required": [
+          "args",
+          "toolCallId",
+          "toolName"
+        ],
+        "additionalProperties": true
+      },
+      "recordSchema": {
+        "type": "object",
+        "properties": {
+          "args": {
+            "type": "object",
+            "properties": {
+              "command": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "command"
+            ],
+            "additionalProperties": true
+          },
+          "toolCallId": {
+            "type": "string"
+          },
+          "toolName": {
+            "type": "string",
+            "enum": [
+              "bash"
+            ]
+          },
+          "type": {
+            "type": "string",
+            "enum": [
+              "tool_execution_start"
+            ]
+          }
+        },
+        "required": [
+          "args",
+          "toolCallId",
+          "toolName",
+          "type"
+        ],
+        "additionalProperties": true
+      },
+      "schemaFidelity": {
+        "payload": "structural",
+        "carrier": "structural",
+        "limitations": [
+          "Rosetta retains observed/writer field types and requiredness, but its shape algebra intentionally omits some native validation constraints."
+        ]
+      },
+      "evidence": {
+        "existence": [
+          "pi-rosetta-observed"
+        ],
+        "shape": [
+          "pi-rosetta-observed"
+        ],
+        "carrier": [
+          "pi-rosetta-observed"
+        ]
+      },
+      "confidence": "verified-headless",
+      "notes": "<farm>/stdout*.jsonl; 1 retained observation(s); source evidence: fixture."
+    },
+    {
+      "surface": "pi",
+      "surfaceVersion": "0.84.3",
+      "event": "farm:headless-stdout:tool_execution_update",
+      "nativeName": "tool_execution_update",
+      "channel": "farm:headless-stdout",
+      "channels": [
+        "farm:headless-stdout"
+      ],
+      "transport": "jsonl-record",
+      "direction": "agent-local",
+      "payloadSchema": {
+        "type": "object",
+        "properties": {
+          "args": {
+            "type": "object",
+            "properties": {
+              "command": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "command"
+            ],
+            "additionalProperties": true
+          },
+          "partialResult": {
+            "type": "object",
+            "properties": {
+              "content": {
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "properties": {
+                    "text": {
+                      "type": "string"
+                    },
+                    "type": {
+                      "type": "string",
+                      "enum": [
+                        "text"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "text",
+                    "type"
+                  ],
+                  "additionalProperties": true
+                }
+              },
+              "details": {
+                "type": "object",
+                "additionalProperties": true
+              }
+            },
+            "required": [
+              "content"
+            ],
+            "additionalProperties": true
+          },
+          "toolCallId": {
+            "type": "string"
+          },
+          "toolName": {
+            "type": "string",
+            "enum": [
+              "bash"
+            ]
+          }
+        },
+        "required": [
+          "args",
+          "partialResult",
+          "toolCallId",
+          "toolName"
+        ],
+        "additionalProperties": true
+      },
+      "recordSchema": {
+        "type": "object",
+        "properties": {
+          "args": {
+            "type": "object",
+            "properties": {
+              "command": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "command"
+            ],
+            "additionalProperties": true
+          },
+          "partialResult": {
+            "type": "object",
+            "properties": {
+              "content": {
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "properties": {
+                    "text": {
+                      "type": "string"
+                    },
+                    "type": {
+                      "type": "string",
+                      "enum": [
+                        "text"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "text",
+                    "type"
+                  ],
+                  "additionalProperties": true
+                }
+              },
+              "details": {
+                "type": "object",
+                "additionalProperties": true
+              }
+            },
+            "required": [
+              "content"
+            ],
+            "additionalProperties": true
+          },
+          "toolCallId": {
+            "type": "string"
+          },
+          "toolName": {
+            "type": "string",
+            "enum": [
+              "bash"
+            ]
+          },
+          "type": {
+            "type": "string",
+            "enum": [
+              "tool_execution_update"
+            ]
+          }
+        },
+        "required": [
+          "args",
+          "partialResult",
+          "toolCallId",
+          "toolName",
+          "type"
+        ],
+        "additionalProperties": true
+      },
+      "schemaFidelity": {
+        "payload": "structural",
+        "carrier": "structural",
+        "limitations": [
+          "Rosetta retains observed/writer field types and requiredness, but its shape algebra intentionally omits some native validation constraints."
+        ]
+      },
+      "evidence": {
+        "existence": [
+          "pi-rosetta-observed"
+        ],
+        "shape": [
+          "pi-rosetta-observed"
+        ],
+        "carrier": [
+          "pi-rosetta-observed"
+        ]
+      },
+      "confidence": "verified-headless",
+      "notes": "<farm>/stdout*.jsonl; 2 retained observation(s); source evidence: fixture."
+    },
+    {
+      "surface": "pi",
+      "surfaceVersion": "0.84.3",
+      "event": "farm:headless-stdout:turn_end",
+      "nativeName": "turn_end",
+      "channel": "farm:headless-stdout",
+      "channels": [
+        "farm:headless-stdout"
+      ],
+      "transport": "jsonl-record",
+      "direction": "agent-local",
+      "payloadSchema": {
+        "type": "object",
+        "properties": {
+          "message": {
+            "type": "object",
+            "properties": {
+              "api": {
+                "type": "string",
+                "enum": [
+                  "openai-completions"
+                ]
+              },
+              "content": {
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "properties": {
+                    "arguments": {
+                      "type": "object",
+                      "properties": {
+                        "command": {
+                          "type": "string"
+                        }
+                      },
+                      "required": [
+                        "command"
+                      ],
+                      "additionalProperties": true
+                    },
+                    "id": {
+                      "type": "string"
+                    },
+                    "name": {
+                      "type": "string"
+                    },
+                    "text": {
+                      "type": "string"
+                    },
+                    "type": {
+                      "type": "string",
+                      "enum": [
+                        "text",
+                        "toolCall"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "type"
+                  ],
+                  "additionalProperties": true
+                }
+              },
+              "errorMessage": {
+                "type": "string"
+              },
+              "model": {
+                "type": "string",
+                "enum": [
+                  "mock-model"
+                ]
+              },
+              "provider": {
+                "type": "string",
+                "enum": [
+                  "mock"
+                ]
+              },
+              "rawStopReason": {
+                "type": "string",
+                "enum": [
+                  "content_filter",
+                  "stop",
+                  "tool_calls"
+                ]
+              },
+              "responseId": {
+                "type": "string"
+              },
+              "role": {
+                "type": "string",
+                "enum": [
+                  "assistant"
+                ]
+              },
+              "stopReason": {
+                "type": "string",
+                "enum": [
+                  "error",
+                  "stop",
+                  "toolUse"
+                ]
+              },
+              "timestamp": {
+                "type": "number"
+              },
+              "usage": {
+                "type": "object",
+                "properties": {
+                  "cacheRead": {
+                    "type": "number"
+                  },
+                  "cacheWrite": {
+                    "type": "number"
+                  },
+                  "cost": {
+                    "type": "object",
+                    "properties": {
+                      "cacheRead": {
+                        "type": "number"
+                      },
+                      "cacheWrite": {
+                        "type": "number"
+                      },
+                      "input": {
+                        "type": "number"
+                      },
+                      "output": {
+                        "type": "number"
+                      },
+                      "total": {
+                        "type": "number"
+                      }
+                    },
+                    "required": [
+                      "cacheRead",
+                      "cacheWrite",
+                      "input",
+                      "output",
+                      "total"
+                    ],
+                    "additionalProperties": true
+                  },
+                  "input": {
+                    "type": "number"
+                  },
+                  "output": {
+                    "type": "number"
+                  },
+                  "reasoning": {
+                    "type": "number"
+                  },
+                  "totalTokens": {
+                    "type": "number"
+                  }
+                },
+                "required": [
+                  "cacheRead",
+                  "cacheWrite",
+                  "cost",
+                  "input",
+                  "output",
+                  "reasoning",
+                  "totalTokens"
+                ],
+                "additionalProperties": true
+              }
+            },
+            "required": [
+              "api",
+              "content",
+              "model",
+              "provider",
+              "rawStopReason",
+              "responseId",
+              "role",
+              "stopReason",
+              "timestamp",
+              "usage"
+            ],
+            "additionalProperties": true
+          },
+          "toolResults": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "content": {
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "properties": {
+                      "text": {
+                        "type": "string"
+                      },
+                      "type": {
+                        "type": "string",
+                        "enum": [
+                          "text"
+                        ]
+                      }
+                    },
+                    "required": [
+                      "text",
+                      "type"
+                    ],
+                    "additionalProperties": true
+                  }
+                },
+                "isError": {
+                  "type": "boolean"
+                },
+                "role": {
+                  "type": "string",
+                  "enum": [
+                    "toolResult"
+                  ]
+                },
+                "timestamp": {
+                  "type": "number"
+                },
+                "toolCallId": {
+                  "type": "string"
+                },
+                "toolName": {
+                  "type": "string",
+                  "enum": [
+                    "bash"
+                  ]
+                }
+              },
+              "required": [
+                "content",
+                "isError",
+                "role",
+                "timestamp",
+                "toolCallId",
+                "toolName"
+              ],
+              "additionalProperties": true
+            }
+          }
+        },
+        "required": [
+          "message",
+          "toolResults"
+        ],
+        "additionalProperties": true
+      },
+      "recordSchema": {
+        "type": "object",
+        "properties": {
+          "message": {
+            "type": "object",
+            "properties": {
+              "api": {
+                "type": "string",
+                "enum": [
+                  "openai-completions"
+                ]
+              },
+              "content": {
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "properties": {
+                    "arguments": {
+                      "type": "object",
+                      "properties": {
+                        "command": {
+                          "type": "string"
+                        }
+                      },
+                      "required": [
+                        "command"
+                      ],
+                      "additionalProperties": true
+                    },
+                    "id": {
+                      "type": "string"
+                    },
+                    "name": {
+                      "type": "string"
+                    },
+                    "text": {
+                      "type": "string"
+                    },
+                    "type": {
+                      "type": "string",
+                      "enum": [
+                        "text",
+                        "toolCall"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "type"
+                  ],
+                  "additionalProperties": true
+                }
+              },
+              "errorMessage": {
+                "type": "string"
+              },
+              "model": {
+                "type": "string",
+                "enum": [
+                  "mock-model"
+                ]
+              },
+              "provider": {
+                "type": "string",
+                "enum": [
+                  "mock"
+                ]
+              },
+              "rawStopReason": {
+                "type": "string",
+                "enum": [
+                  "content_filter",
+                  "stop",
+                  "tool_calls"
+                ]
+              },
+              "responseId": {
+                "type": "string"
+              },
+              "role": {
+                "type": "string",
+                "enum": [
+                  "assistant"
+                ]
+              },
+              "stopReason": {
+                "type": "string",
+                "enum": [
+                  "error",
+                  "stop",
+                  "toolUse"
+                ]
+              },
+              "timestamp": {
+                "type": "number"
+              },
+              "usage": {
+                "type": "object",
+                "properties": {
+                  "cacheRead": {
+                    "type": "number"
+                  },
+                  "cacheWrite": {
+                    "type": "number"
+                  },
+                  "cost": {
+                    "type": "object",
+                    "properties": {
+                      "cacheRead": {
+                        "type": "number"
+                      },
+                      "cacheWrite": {
+                        "type": "number"
+                      },
+                      "input": {
+                        "type": "number"
+                      },
+                      "output": {
+                        "type": "number"
+                      },
+                      "total": {
+                        "type": "number"
+                      }
+                    },
+                    "required": [
+                      "cacheRead",
+                      "cacheWrite",
+                      "input",
+                      "output",
+                      "total"
+                    ],
+                    "additionalProperties": true
+                  },
+                  "input": {
+                    "type": "number"
+                  },
+                  "output": {
+                    "type": "number"
+                  },
+                  "reasoning": {
+                    "type": "number"
+                  },
+                  "totalTokens": {
+                    "type": "number"
+                  }
+                },
+                "required": [
+                  "cacheRead",
+                  "cacheWrite",
+                  "cost",
+                  "input",
+                  "output",
+                  "reasoning",
+                  "totalTokens"
+                ],
+                "additionalProperties": true
+              }
+            },
+            "required": [
+              "api",
+              "content",
+              "model",
+              "provider",
+              "rawStopReason",
+              "responseId",
+              "role",
+              "stopReason",
+              "timestamp",
+              "usage"
+            ],
+            "additionalProperties": true
+          },
+          "toolResults": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "content": {
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "properties": {
+                      "text": {
+                        "type": "string"
+                      },
+                      "type": {
+                        "type": "string",
+                        "enum": [
+                          "text"
+                        ]
+                      }
+                    },
+                    "required": [
+                      "text",
+                      "type"
+                    ],
+                    "additionalProperties": true
+                  }
+                },
+                "isError": {
+                  "type": "boolean"
+                },
+                "role": {
+                  "type": "string",
+                  "enum": [
+                    "toolResult"
+                  ]
+                },
+                "timestamp": {
+                  "type": "number"
+                },
+                "toolCallId": {
+                  "type": "string"
+                },
+                "toolName": {
+                  "type": "string",
+                  "enum": [
+                    "bash"
+                  ]
+                }
+              },
+              "required": [
+                "content",
+                "isError",
+                "role",
+                "timestamp",
+                "toolCallId",
+                "toolName"
+              ],
+              "additionalProperties": true
+            }
+          },
+          "type": {
+            "type": "string",
+            "enum": [
+              "turn_end"
+            ]
+          }
+        },
+        "required": [
+          "message",
+          "toolResults",
+          "type"
+        ],
+        "additionalProperties": true
+      },
+      "schemaFidelity": {
+        "payload": "structural",
+        "carrier": "structural",
+        "limitations": [
+          "Rosetta retains observed/writer field types and requiredness, but its shape algebra intentionally omits some native validation constraints."
+        ]
+      },
+      "evidence": {
+        "existence": [
+          "pi-rosetta-observed"
+        ],
+        "shape": [
+          "pi-rosetta-observed"
+        ],
+        "carrier": [
+          "pi-rosetta-observed"
+        ]
+      },
+      "confidence": "verified-headless",
+      "notes": "<farm>/stdout*.jsonl; 11 retained observation(s); source evidence: fixture."
+    },
+    {
+      "surface": "pi",
+      "surfaceVersion": "0.84.3",
+      "event": "farm:headless-stdout:turn_start",
+      "nativeName": "turn_start",
+      "channel": "farm:headless-stdout",
+      "channels": [
+        "farm:headless-stdout"
+      ],
+      "transport": "jsonl-record",
+      "direction": "agent-local",
+      "payloadSchema": {
+        "type": "object",
+        "properties": {},
+        "required": [],
+        "additionalProperties": true
+      },
+      "recordSchema": {
+        "type": "object",
+        "properties": {
+          "type": {
+            "type": "string",
+            "enum": [
+              "turn_start"
+            ]
+          }
+        },
+        "required": [
+          "type"
+        ],
+        "additionalProperties": true
+      },
+      "schemaFidelity": {
+        "payload": "structural",
+        "carrier": "structural",
+        "limitations": [
+          "Rosetta retains observed/writer field types and requiredness, but its shape algebra intentionally omits some native validation constraints."
+        ]
+      },
+      "evidence": {
+        "existence": [
+          "pi-rosetta-observed"
+        ],
+        "shape": [
+          "pi-rosetta-observed"
+        ],
+        "carrier": [
+          "pi-rosetta-observed"
+        ]
+      },
+      "confidence": "verified-headless",
+      "notes": "<farm>/stdout*.jsonl; 11 retained observation(s); source evidence: fixture."
+    },
+    {
+      "surface": "pi",
+      "surfaceVersion": "0.84.3",
+      "event": "git-packages:artifact",
+      "nativeName": "agent/git/**/*",
+      "channel": "git-packages",
+      "channels": [
+        "git-packages"
+      ],
+      "transport": "file-artifact",
+      "direction": "agent-local",
+      "evidence": {
+        "existence": [
+          "pi-rosetta-contract"
+        ],
+        "shape": [
+          "pi-rosetta-contract"
+        ]
+      },
+      "confidence": "unverified",
+      "notes": "agent/git/**/*; non-record native artifact tracked by the complete Rosetta stream inventory."
+    },
+    {
+      "surface": "pi",
+      "surfaceVersion": "0.84.3",
+      "event": "keybindings:artifact",
+      "nativeName": "agent/keybindings.json",
+      "channel": "keybindings",
+      "channels": [
+        "keybindings"
+      ],
+      "transport": "json-document",
+      "direction": "agent-local",
+      "evidence": {
+        "existence": [
+          "pi-rosetta-contract"
+        ],
+        "shape": [
+          "pi-rosetta-contract"
+        ]
+      },
+      "confidence": "unverified",
+      "notes": "agent/keybindings.json; non-record native artifact tracked by the complete Rosetta stream inventory."
+    },
+    {
+      "surface": "pi",
+      "surfaceVersion": "0.84.3",
+      "event": "label",
+      "channel": "session",
+      "channels": [
+        "session"
+      ],
+      "transport": "jsonl-record",
+      "direction": "agent-local",
+      "payloadSchema": {
+        "type": "object",
+        "properties": {
+          "label": {
+            "type": "string"
+          },
+          "targetId": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "targetId"
+        ],
+        "additionalProperties": true
+      },
+      "recordSchema": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "label": {
+            "type": "string"
+          },
+          "parentId": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "targetId": {
+            "type": "string"
+          },
+          "timestamp": {
+            "type": "string"
+          },
+          "type": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "parentId",
+          "targetId",
+          "timestamp",
+          "type"
+        ],
+        "additionalProperties": true
+      },
+      "schemaFidelity": {
+        "payload": "structural",
+        "carrier": "structural",
+        "limitations": [
+          "Rosetta retains observed/writer field types and requiredness, but its shape algebra intentionally omits some native validation constraints."
+        ]
+      },
+      "evidence": {
+        "existence": [
+          "pi-rosetta-contract"
+        ],
+        "shape": [
+          "pi-rosetta-contract"
+        ],
+        "carrier": [
+          "pi-rosetta-contract"
+        ]
+      },
+      "confidence": "unverified",
+      "notes": "agent/sessions/*/*.jsonl; 0 retained observation(s); source evidence: writer."
+    },
+    {
+      "surface": "pi",
+      "surfaceVersion": "0.84.3",
+      "event": "message",
+      "channel": "session",
+      "channels": [
+        "session"
+      ],
+      "transport": "jsonl-record",
+      "direction": "agent-local",
+      "payloadSchema": {
+        "type": "object",
+        "properties": {
+          "message": {
+            "type": "object",
+            "properties": {
+              "addedToolNames": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                }
+              },
+              "api": {
+                "type": "string"
+              },
+              "cancelled": {
+                "type": "boolean"
+              },
+              "command": {
+                "type": "string"
+              },
+              "content": {
+                "anyOf": [
+                  {
+                    "type": "string"
+                  },
+                  {
+                    "type": "array",
+                    "items": {
+                      "type": "object",
+                      "properties": {
+                        "arguments": {
+                          "type": "object",
+                          "properties": {
+                            "command": {
+                              "type": "string"
+                            }
+                          },
+                          "additionalProperties": true
+                        },
+                        "data": {
+                          "type": "string"
+                        },
+                        "id": {
+                          "type": "string"
+                        },
+                        "mimeType": {
+                          "type": "string"
+                        },
+                        "name": {
+                          "type": "string"
+                        },
+                        "namespace": {
+                          "type": "string"
+                        },
+                        "redacted": {
+                          "type": "boolean"
+                        },
+                        "text": {
+                          "type": "string"
+                        },
+                        "textSignature": {
+                          "type": "string"
+                        },
+                        "thinking": {
+                          "type": "string"
+                        },
+                        "thinkingSignature": {
+                          "type": "string"
+                        },
+                        "thoughtSignature": {
+                          "type": "string"
+                        },
+                        "type": {
+                          "type": "string"
+                        }
+                      },
+                      "required": [
+                        "type"
+                      ],
+                      "additionalProperties": true
+                    }
+                  }
+                ]
+              },
+              "customType": {
+                "type": "string"
+              },
+              "deferred": {
+                "type": "object",
+                "additionalProperties": true
+              },
+              "details": {
+                "type": "object",
+                "additionalProperties": true
+              },
+              "diagnostics": {
+                "type": "array"
+              },
+              "display": {
+                "type": "boolean"
+              },
+              "endTurn": {
+                "type": "boolean"
+              },
+              "errorMessage": {
+                "type": "string"
+              },
+              "excludeFromContext": {
+                "type": "boolean"
+              },
+              "exitCode": {
+                "anyOf": [
+                  {
+                    "type": "number"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              },
+              "fromId": {
+                "type": "string"
+              },
+              "fullOutputPath": {
+                "type": "string"
+              },
+              "isError": {
+                "type": "boolean"
+              },
+              "model": {
+                "type": "string"
+              },
+              "output": {
+                "type": "string"
+              },
+              "provider": {
+                "type": "string"
+              },
+              "rawStopReason": {
+                "type": "string"
+              },
+              "responseId": {
+                "type": "string"
+              },
+              "responseModel": {
+                "type": "string"
+              },
+              "role": {
+                "type": "string"
+              },
+              "stopReason": {
+                "type": "string"
+              },
+              "summary": {
+                "type": "string"
+              },
+              "timestamp": {
+                "type": "number"
+              },
+              "tokensBefore": {
+                "type": "number"
+              },
+              "toolCallId": {
+                "type": "string"
+              },
+              "toolName": {
+                "type": "string"
+              },
+              "truncated": {
+                "type": "boolean"
+              },
+              "usage": {
+                "type": "object",
+                "properties": {
+                  "cacheRead": {
+                    "type": "number"
+                  },
+                  "cacheWrite": {
+                    "type": "number"
+                  },
+                  "cacheWrite1h": {
+                    "type": "number"
+                  },
+                  "cost": {
+                    "type": "object",
+                    "properties": {
+                      "cacheRead": {
+                        "type": "number"
+                      },
+                      "cacheWrite": {
+                        "type": "number"
+                      },
+                      "input": {
+                        "type": "number"
+                      },
+                      "output": {
+                        "type": "number"
+                      },
+                      "total": {
+                        "type": "number"
+                      }
+                    },
+                    "required": [
+                      "cacheRead",
+                      "cacheWrite",
+                      "input",
+                      "output",
+                      "total"
+                    ],
+                    "additionalProperties": true
+                  },
+                  "input": {
+                    "type": "number"
+                  },
+                  "output": {
+                    "type": "number"
+                  },
+                  "reasoning": {
+                    "type": "number"
+                  },
+                  "totalTokens": {
+                    "type": "number"
+                  }
+                },
+                "required": [
+                  "cacheRead",
+                  "cacheWrite",
+                  "cost",
+                  "input",
+                  "output",
+                  "totalTokens"
+                ],
+                "additionalProperties": true
+              }
+            },
+            "required": [
+              "role",
+              "timestamp"
+            ],
+            "additionalProperties": true
+          }
+        },
+        "required": [
+          "message"
+        ],
+        "additionalProperties": true
+      },
+      "recordSchema": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "message": {
+            "type": "object",
+            "properties": {
+              "addedToolNames": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                }
+              },
+              "api": {
+                "type": "string"
+              },
+              "cancelled": {
+                "type": "boolean"
+              },
+              "command": {
+                "type": "string"
+              },
+              "content": {
+                "anyOf": [
+                  {
+                    "type": "string"
+                  },
+                  {
+                    "type": "array",
+                    "items": {
+                      "type": "object",
+                      "properties": {
+                        "arguments": {
+                          "type": "object",
+                          "properties": {
+                            "command": {
+                              "type": "string"
+                            }
+                          },
+                          "additionalProperties": true
+                        },
+                        "data": {
+                          "type": "string"
+                        },
+                        "id": {
+                          "type": "string"
+                        },
+                        "mimeType": {
+                          "type": "string"
+                        },
+                        "name": {
+                          "type": "string"
+                        },
+                        "namespace": {
+                          "type": "string"
+                        },
+                        "redacted": {
+                          "type": "boolean"
+                        },
+                        "text": {
+                          "type": "string"
+                        },
+                        "textSignature": {
+                          "type": "string"
+                        },
+                        "thinking": {
+                          "type": "string"
+                        },
+                        "thinkingSignature": {
+                          "type": "string"
+                        },
+                        "thoughtSignature": {
+                          "type": "string"
+                        },
+                        "type": {
+                          "type": "string"
+                        }
+                      },
+                      "required": [
+                        "type"
+                      ],
+                      "additionalProperties": true
+                    }
+                  }
+                ]
+              },
+              "customType": {
+                "type": "string"
+              },
+              "deferred": {
+                "type": "object",
+                "additionalProperties": true
+              },
+              "details": {
+                "type": "object",
+                "additionalProperties": true
+              },
+              "diagnostics": {
+                "type": "array"
+              },
+              "display": {
+                "type": "boolean"
+              },
+              "endTurn": {
+                "type": "boolean"
+              },
+              "errorMessage": {
+                "type": "string"
+              },
+              "excludeFromContext": {
+                "type": "boolean"
+              },
+              "exitCode": {
+                "anyOf": [
+                  {
+                    "type": "number"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              },
+              "fromId": {
+                "type": "string"
+              },
+              "fullOutputPath": {
+                "type": "string"
+              },
+              "isError": {
+                "type": "boolean"
+              },
+              "model": {
+                "type": "string"
+              },
+              "output": {
+                "type": "string"
+              },
+              "provider": {
+                "type": "string"
+              },
+              "rawStopReason": {
+                "type": "string"
+              },
+              "responseId": {
+                "type": "string"
+              },
+              "responseModel": {
+                "type": "string"
+              },
+              "role": {
+                "type": "string"
+              },
+              "stopReason": {
+                "type": "string"
+              },
+              "summary": {
+                "type": "string"
+              },
+              "timestamp": {
+                "type": "number"
+              },
+              "tokensBefore": {
+                "type": "number"
+              },
+              "toolCallId": {
+                "type": "string"
+              },
+              "toolName": {
+                "type": "string"
+              },
+              "truncated": {
+                "type": "boolean"
+              },
+              "usage": {
+                "type": "object",
+                "properties": {
+                  "cacheRead": {
+                    "type": "number"
+                  },
+                  "cacheWrite": {
+                    "type": "number"
+                  },
+                  "cacheWrite1h": {
+                    "type": "number"
+                  },
+                  "cost": {
+                    "type": "object",
+                    "properties": {
+                      "cacheRead": {
+                        "type": "number"
+                      },
+                      "cacheWrite": {
+                        "type": "number"
+                      },
+                      "input": {
+                        "type": "number"
+                      },
+                      "output": {
+                        "type": "number"
+                      },
+                      "total": {
+                        "type": "number"
+                      }
+                    },
+                    "required": [
+                      "cacheRead",
+                      "cacheWrite",
+                      "input",
+                      "output",
+                      "total"
+                    ],
+                    "additionalProperties": true
+                  },
+                  "input": {
+                    "type": "number"
+                  },
+                  "output": {
+                    "type": "number"
+                  },
+                  "reasoning": {
+                    "type": "number"
+                  },
+                  "totalTokens": {
+                    "type": "number"
+                  }
+                },
+                "required": [
+                  "cacheRead",
+                  "cacheWrite",
+                  "cost",
+                  "input",
+                  "output",
+                  "totalTokens"
+                ],
+                "additionalProperties": true
+              }
+            },
+            "required": [
+              "role",
+              "timestamp"
+            ],
+            "additionalProperties": true
+          },
+          "parentId": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "timestamp": {
+            "type": "string"
+          },
+          "type": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "message",
+          "parentId",
+          "timestamp",
+          "type"
+        ],
+        "additionalProperties": true
+      },
+      "schemaFidelity": {
+        "payload": "structural",
+        "carrier": "structural",
+        "limitations": [
+          "Rosetta retains observed/writer field types and requiredness, but its shape algebra intentionally omits some native validation constraints."
+        ]
+      },
+      "evidence": {
+        "existence": [
+          "pi-rosetta-runtime"
+        ],
+        "shape": [
+          "pi-rosetta-runtime"
+        ],
+        "carrier": [
+          "pi-rosetta-runtime"
+        ]
+      },
+      "confidence": "verified-headless",
+      "fixture": "captures/pi@0.84.3/basic-chat/events.jsonl",
+      "notes": "agent/sessions/*/*.jsonl; 24 retained observation(s); source evidence: writer."
+    },
+    {
+      "surface": "pi",
+      "surfaceVersion": "0.84.3",
+      "event": "model_change",
+      "channel": "session",
+      "channels": [
+        "session"
+      ],
+      "transport": "jsonl-record",
+      "direction": "agent-local",
+      "payloadSchema": {
+        "type": "object",
+        "properties": {
+          "modelId": {
+            "type": "string"
+          },
+          "provider": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "modelId",
+          "provider"
+        ],
+        "additionalProperties": true
+      },
+      "recordSchema": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "modelId": {
+            "type": "string"
+          },
+          "parentId": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "provider": {
+            "type": "string"
+          },
+          "timestamp": {
+            "type": "string"
+          },
+          "type": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "modelId",
+          "parentId",
+          "provider",
+          "timestamp",
+          "type"
+        ],
+        "additionalProperties": true
+      },
+      "schemaFidelity": {
+        "payload": "structural",
+        "carrier": "structural",
+        "limitations": [
+          "Rosetta retains observed/writer field types and requiredness, but its shape algebra intentionally omits some native validation constraints."
+        ]
+      },
+      "evidence": {
+        "existence": [
+          "pi-rosetta-runtime"
+        ],
+        "shape": [
+          "pi-rosetta-runtime"
+        ],
+        "carrier": [
+          "pi-rosetta-runtime"
+        ]
+      },
+      "confidence": "verified-headless",
+      "fixture": "captures/pi@0.84.3/basic-chat/events.jsonl",
+      "notes": "agent/sessions/*/*.jsonl; 7 retained observation(s); source evidence: writer."
+    },
+    {
+      "surface": "pi",
+      "surfaceVersion": "0.84.3",
+      "event": "models-store:document",
+      "nativeName": "agent/models-store.json",
+      "channel": "models-store",
+      "channels": [
+        "models-store"
+      ],
+      "transport": "json-document",
+      "direction": "agent-local",
+      "payloadSchema": {
+        "type": "object",
+        "additionalProperties": true
+      },
+      "schemaFidelity": {
+        "payload": "structural",
+        "limitations": [
+          "Rosetta retains observed/writer field types and requiredness, but its shape algebra intentionally omits some native validation constraints."
+        ]
+      },
+      "evidence": {
+        "existence": [
+          "pi-rosetta-observed"
+        ],
+        "shape": [
+          "pi-rosetta-observed"
+        ]
+      },
+      "confidence": "verified-headless",
+      "notes": "agent/models-store.json; 6 retained observation(s); source evidence: fixture."
+    },
+    {
+      "surface": "pi",
+      "surfaceVersion": "0.84.3",
+      "event": "models:document",
+      "nativeName": "agent/models.json",
+      "channel": "models",
+      "channels": [
+        "models"
+      ],
+      "transport": "json-document",
+      "direction": "agent-local",
+      "payloadSchema": {
+        "type": "object",
+        "properties": {
+          "providers": {
+            "type": "object",
+            "properties": {
+              "mock": {
+                "type": "object",
+                "properties": {
+                  "api": {
+                    "type": "string",
+                    "enum": [
+                      "openai-completions"
+                    ]
+                  },
+                  "apiKey": {
+                    "type": "string"
+                  },
+                  "baseUrl": {
+                    "type": "string"
+                  },
+                  "compat": {
+                    "type": "object",
+                    "properties": {
+                      "supportsDeveloperRole": {
+                        "type": "boolean"
+                      },
+                      "supportsReasoningEffort": {
+                        "type": "boolean"
+                      },
+                      "supportsStore": {
+                        "type": "boolean"
+                      }
+                    },
+                    "required": [
+                      "supportsDeveloperRole",
+                      "supportsReasoningEffort",
+                      "supportsStore"
+                    ],
+                    "additionalProperties": true
+                  },
+                  "models": {
+                    "type": "array",
+                    "items": {
+                      "type": "object",
+                      "properties": {
+                        "contextWindow": {
+                          "type": "number"
+                        },
+                        "cost": {
+                          "type": "object",
+                          "properties": {
+                            "cacheRead": {
+                              "type": "number"
+                            },
+                            "cacheWrite": {
+                              "type": "number"
+                            },
+                            "input": {
+                              "type": "number"
+                            },
+                            "output": {
+                              "type": "number"
+                            }
+                          },
+                          "required": [
+                            "cacheRead",
+                            "cacheWrite",
+                            "input",
+                            "output"
+                          ],
+                          "additionalProperties": true
+                        },
+                        "id": {
+                          "type": "string"
+                        },
+                        "input": {
+                          "type": "array",
+                          "items": {
+                            "type": "string"
+                          }
+                        },
+                        "maxTokens": {
+                          "type": "number"
+                        },
+                        "name": {
+                          "type": "string"
+                        },
+                        "reasoning": {
+                          "type": "boolean"
+                        }
+                      },
+                      "required": [
+                        "contextWindow",
+                        "cost",
+                        "id",
+                        "input",
+                        "maxTokens",
+                        "name",
+                        "reasoning"
+                      ],
+                      "additionalProperties": true
+                    }
+                  }
+                },
+                "required": [
+                  "api",
+                  "apiKey",
+                  "baseUrl",
+                  "compat",
+                  "models"
+                ],
+                "additionalProperties": true
+              }
+            },
+            "required": [
+              "mock"
+            ],
+            "additionalProperties": true
+          }
+        },
+        "required": [
+          "providers"
+        ],
+        "additionalProperties": true
+      },
+      "schemaFidelity": {
+        "payload": "structural",
+        "limitations": [
+          "Rosetta retains observed/writer field types and requiredness, but its shape algebra intentionally omits some native validation constraints."
+        ]
+      },
+      "evidence": {
+        "existence": [
+          "pi-rosetta-observed"
+        ],
+        "shape": [
+          "pi-rosetta-observed"
+        ]
+      },
+      "confidence": "verified-headless",
+      "notes": "agent/models.json; 6 retained observation(s); source evidence: fixture."
+    },
+    {
+      "surface": "pi",
+      "surfaceVersion": "0.84.3",
+      "event": "npm-packages:artifact",
+      "nativeName": "agent/npm/**/*",
+      "channel": "npm-packages",
+      "channels": [
+        "npm-packages"
+      ],
+      "transport": "file-artifact",
+      "direction": "agent-local",
+      "evidence": {
+        "existence": [
+          "pi-rosetta-contract"
+        ],
+        "shape": [
+          "pi-rosetta-contract"
+        ]
+      },
+      "confidence": "unverified",
+      "notes": "agent/npm/**/*; non-record native artifact tracked by the complete Rosetta stream inventory."
+    },
+    {
+      "surface": "pi",
+      "surfaceVersion": "0.84.3",
+      "event": "prompts:artifact",
+      "nativeName": "agent/prompts/**/*",
+      "channel": "prompts",
+      "channels": [
+        "prompts"
+      ],
+      "transport": "file-artifact",
+      "direction": "agent-local",
+      "evidence": {
+        "existence": [
+          "pi-rosetta-contract"
+        ],
+        "shape": [
+          "pi-rosetta-contract"
+        ]
+      },
+      "confidence": "unverified",
+      "notes": "agent/prompts/**/*; non-record native artifact tracked by the complete Rosetta stream inventory."
+    },
+    {
+      "surface": "pi",
+      "surfaceVersion": "0.84.3",
+      "event": "session",
+      "channel": "session",
+      "channels": [
+        "session"
+      ],
+      "transport": "jsonl-record",
+      "direction": "agent-local",
+      "payloadSchema": {
+        "type": "object",
+        "properties": {
+          "cwd": {
+            "type": "string"
+          },
+          "parentSession": {
+            "type": "string"
+          },
+          "version": {
+            "type": "number"
+          }
+        },
+        "required": [
+          "cwd"
+        ],
+        "additionalProperties": true
+      },
+      "recordSchema": {
+        "type": "object",
+        "properties": {
+          "cwd": {
+            "type": "string"
+          },
+          "id": {
+            "type": "string"
+          },
+          "parentSession": {
+            "type": "string"
+          },
+          "timestamp": {
+            "type": "string"
+          },
+          "type": {
+            "type": "string"
+          },
+          "version": {
+            "type": "number"
+          }
+        },
+        "required": [
+          "cwd",
+          "id",
+          "timestamp",
+          "type"
+        ],
+        "additionalProperties": true
+      },
+      "schemaFidelity": {
+        "payload": "structural",
+        "carrier": "structural",
+        "limitations": [
+          "Rosetta retains observed/writer field types and requiredness, but its shape algebra intentionally omits some native validation constraints."
+        ]
+      },
+      "evidence": {
+        "existence": [
+          "pi-rosetta-runtime"
+        ],
+        "shape": [
+          "pi-rosetta-runtime"
+        ],
+        "carrier": [
+          "pi-rosetta-runtime"
+        ]
+      },
+      "confidence": "verified-headless",
+      "fixture": "captures/pi@0.84.3/basic-chat/events.jsonl",
+      "notes": "agent/sessions/*/*.jsonl; 7 retained observation(s); source evidence: writer."
+    },
+    {
+      "surface": "pi",
+      "surfaceVersion": "0.84.3",
+      "event": "session_info",
+      "channel": "session",
+      "channels": [
+        "session"
+      ],
+      "transport": "jsonl-record",
+      "direction": "agent-local",
+      "payloadSchema": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string"
+          }
+        },
+        "required": [],
+        "additionalProperties": true
+      },
+      "recordSchema": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "parentId": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "timestamp": {
+            "type": "string"
+          },
+          "type": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "parentId",
+          "timestamp",
+          "type"
+        ],
+        "additionalProperties": true
+      },
+      "schemaFidelity": {
+        "payload": "structural",
+        "carrier": "structural",
+        "limitations": [
+          "Rosetta retains observed/writer field types and requiredness, but its shape algebra intentionally omits some native validation constraints."
+        ]
+      },
+      "evidence": {
+        "existence": [
+          "pi-rosetta-runtime"
+        ],
+        "shape": [
+          "pi-rosetta-runtime"
+        ],
+        "carrier": [
+          "pi-rosetta-runtime"
+        ]
+      },
+      "confidence": "verified-headless",
+      "fixture": "captures/pi@0.84.3/basic-chat/events.jsonl",
+      "notes": "agent/sessions/*/*.jsonl; 1 retained observation(s); source evidence: writer."
+    },
+    {
+      "surface": "pi",
+      "surfaceVersion": "0.84.3",
+      "event": "settings:document",
+      "nativeName": "agent/settings.json",
+      "channel": "settings",
+      "channels": [
+        "settings"
+      ],
+      "transport": "json-document",
+      "direction": "agent-local",
+      "payloadSchema": {
+        "type": "object",
+        "properties": {
+          "compaction": {
+            "type": "object",
+            "properties": {
+              "enabled": {
+                "type": "boolean"
+              },
+              "keepRecentTokens": {
+                "type": "number"
+              },
+              "reserveTokens": {
+                "type": "number"
+              }
+            },
+            "required": [
+              "enabled",
+              "keepRecentTokens",
+              "reserveTokens"
+            ],
+            "additionalProperties": true
+          },
+          "defaultProjectTrust": {
+            "type": "string"
+          },
+          "enableInstallTelemetry": {
+            "type": "boolean"
+          },
+          "retry": {
+            "type": "object",
+            "properties": {
+              "enabled": {
+                "type": "boolean"
+              }
+            },
+            "required": [
+              "enabled"
+            ],
+            "additionalProperties": true
+          }
+        },
+        "required": [
+          "defaultProjectTrust",
+          "enableInstallTelemetry",
+          "retry"
+        ],
+        "additionalProperties": true
+      },
+      "schemaFidelity": {
+        "payload": "structural",
+        "limitations": [
+          "Rosetta retains observed/writer field types and requiredness, but its shape algebra intentionally omits some native validation constraints."
+        ]
+      },
+      "evidence": {
+        "existence": [
+          "pi-rosetta-observed"
+        ],
+        "shape": [
+          "pi-rosetta-observed"
+        ]
+      },
+      "confidence": "verified-headless",
+      "notes": "agent/settings.json; 6 retained observation(s); source evidence: fixture."
+    },
+    {
+      "surface": "pi",
+      "surfaceVersion": "0.84.3",
+      "event": "skills:artifact",
+      "nativeName": "agent/skills/**/*",
+      "channel": "skills",
+      "channels": [
+        "skills"
+      ],
+      "transport": "file-artifact",
+      "direction": "agent-local",
+      "evidence": {
+        "existence": [
+          "pi-rosetta-contract"
+        ],
+        "shape": [
+          "pi-rosetta-contract"
+        ]
+      },
+      "confidence": "unverified",
+      "notes": "agent/skills/**/*; non-record native artifact tracked by the complete Rosetta stream inventory."
+    },
+    {
+      "surface": "pi",
+      "surfaceVersion": "0.84.3",
+      "event": "system-md:artifact",
+      "nativeName": "agent/SYSTEM.md",
+      "channel": "system-md",
+      "channels": [
+        "system-md"
+      ],
+      "transport": "file-artifact",
+      "direction": "agent-local",
+      "evidence": {
+        "existence": [
+          "pi-rosetta-contract"
+        ],
+        "shape": [
+          "pi-rosetta-contract"
+        ]
+      },
+      "confidence": "unverified",
+      "notes": "agent/SYSTEM.md; non-record native artifact tracked by the complete Rosetta stream inventory."
+    },
+    {
+      "surface": "pi",
+      "surfaceVersion": "0.84.3",
+      "event": "themes:artifact",
+      "nativeName": "agent/themes/**/*",
+      "channel": "themes",
+      "channels": [
+        "themes"
+      ],
+      "transport": "file-artifact",
+      "direction": "agent-local",
+      "evidence": {
+        "existence": [
+          "pi-rosetta-contract"
+        ],
+        "shape": [
+          "pi-rosetta-contract"
+        ]
+      },
+      "confidence": "unverified",
+      "notes": "agent/themes/**/*; non-record native artifact tracked by the complete Rosetta stream inventory."
+    },
+    {
+      "surface": "pi",
+      "surfaceVersion": "0.84.3",
+      "event": "thinking_level_change",
+      "channel": "session",
+      "channels": [
+        "session"
+      ],
+      "transport": "jsonl-record",
+      "direction": "agent-local",
+      "payloadSchema": {
+        "type": "object",
+        "properties": {
+          "thinkingLevel": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "thinkingLevel"
+        ],
+        "additionalProperties": true
+      },
+      "recordSchema": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "parentId": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "thinkingLevel": {
+            "type": "string"
+          },
+          "timestamp": {
+            "type": "string"
+          },
+          "type": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "parentId",
+          "thinkingLevel",
+          "timestamp",
+          "type"
+        ],
+        "additionalProperties": true
+      },
+      "schemaFidelity": {
+        "payload": "structural",
+        "carrier": "structural",
+        "limitations": [
+          "Rosetta retains observed/writer field types and requiredness, but its shape algebra intentionally omits some native validation constraints."
+        ]
+      },
+      "evidence": {
+        "existence": [
+          "pi-rosetta-runtime"
+        ],
+        "shape": [
+          "pi-rosetta-runtime"
+        ],
+        "carrier": [
+          "pi-rosetta-runtime"
+        ]
+      },
+      "confidence": "verified-headless",
+      "fixture": "captures/pi@0.84.3/basic-chat/events.jsonl",
+      "notes": "agent/sessions/*/*.jsonl; 7 retained observation(s); source evidence: writer."
+    },
+    {
+      "surface": "pi",
+      "surfaceVersion": "0.84.3",
+      "event": "tools:artifact",
+      "nativeName": "agent/tools/**/*",
+      "channel": "tools",
+      "channels": [
+        "tools"
+      ],
+      "transport": "file-artifact",
+      "direction": "agent-local",
+      "evidence": {
+        "existence": [
+          "pi-rosetta-contract"
+        ],
+        "shape": [
+          "pi-rosetta-contract"
+        ]
+      },
+      "confidence": "unverified",
+      "notes": "agent/tools/**/*; non-record native artifact tracked by the complete Rosetta stream inventory."
+    },
+    {
+      "surface": "pi",
+      "surfaceVersion": "0.84.3",
+      "event": "trust:artifact",
+      "nativeName": "agent/trust.json",
+      "channel": "trust",
+      "channels": [
+        "trust"
+      ],
+      "transport": "json-document",
+      "direction": "agent-local",
+      "evidence": {
+        "existence": [
+          "pi-rosetta-contract"
+        ],
+        "shape": [
+          "pi-rosetta-contract"
+        ]
+      },
+      "confidence": "unverified",
+      "notes": "agent/trust.json; non-record native artifact tracked by the complete Rosetta stream inventory."
+    }
+  ],
+  "behavior": {
+    "behaviorVersion": 1,
+    "title": "pi native persisted-state topology",
+    "description": "Every Rosetta stream is retained as a lane. Arrows are only asserted where committed session journals prove ordering.",
+    "source": "Rosetta canonical inventory and controlled fixtures",
+    "lanes": [
+      {
+        "id": "session",
+        "label": "session",
+        "description": "append_only jsonl: agent/sessions/*/*.jsonl"
+      },
+      {
+        "id": "settings",
+        "label": "settings",
+        "description": "rewrite_in_place json: agent/settings.json"
+      },
+      {
+        "id": "models",
+        "label": "models",
+        "description": "rewrite_in_place json: agent/models.json"
+      },
+      {
+        "id": "models-store",
+        "label": "models-store",
+        "description": "rewrite_in_place json: agent/models-store.json"
+      },
+      {
+        "id": "trust",
+        "label": "trust",
+        "description": "rewrite_in_place json: agent/trust.json"
+      },
+      {
+        "id": "auth",
+        "label": "auth",
+        "description": "rewrite_in_place json: agent/auth.json"
+      },
+      {
+        "id": "keybindings",
+        "label": "keybindings",
+        "description": "rewrite_in_place json: agent/keybindings.json"
+      },
+      {
+        "id": "agents-md",
+        "label": "agents-md",
+        "description": "rewrite_in_place markdown: agent/AGENTS.md"
+      },
+      {
+        "id": "system-md",
+        "label": "system-md",
+        "description": "rewrite_in_place markdown: agent/SYSTEM.md"
+      },
+      {
+        "id": "append-system-md",
+        "label": "append-system-md",
+        "description": "rewrite_in_place markdown: agent/APPEND_SYSTEM.md"
+      },
+      {
+        "id": "extensions",
+        "label": "extensions",
+        "description": "rewrite_in_place text: agent/extensions/**/*"
+      },
+      {
+        "id": "skills",
+        "label": "skills",
+        "description": "rewrite_in_place text: agent/skills/**/*"
+      },
+      {
+        "id": "prompts",
+        "label": "prompts",
+        "description": "rewrite_in_place markdown: agent/prompts/**/*"
+      },
+      {
+        "id": "themes",
+        "label": "themes",
+        "description": "rewrite_in_place text: agent/themes/**/*"
+      },
+      {
+        "id": "tools",
+        "label": "tools",
+        "description": "rewrite_in_place text: agent/tools/**/*"
+      },
+      {
+        "id": "bin",
+        "label": "bin",
+        "description": "rewrite_in_place text: agent/bin/**/*"
+      },
+      {
+        "id": "npm-packages",
+        "label": "npm-packages",
+        "description": "rewrite_in_place text: agent/npm/**/*"
+      },
+      {
+        "id": "git-packages",
+        "label": "git-packages",
+        "description": "rewrite_in_place text: agent/git/**/*"
+      },
+      {
+        "id": "debug-log",
+        "label": "debug-log",
+        "description": "append_only text: agent/pi-debug.log"
+      },
+      {
+        "id": "farm:headless-stdout",
+        "label": "farm:headless-stdout",
+        "description": "append_only jsonl: <farm>/stdout*.jsonl"
+      }
+    ],
+    "nodes": [
+      {
+        "id": "event-001",
+        "event": "branch_summary",
+        "confidence": "unverified",
+        "evidence": {
+          "existence": [
+            "pi-rosetta-contract"
+          ],
+          "shape": [
+            "pi-rosetta-contract"
+          ]
+        },
+        "lane": "session",
+        "order": 0,
+        "label": "branch_summary"
+      },
+      {
+        "id": "event-002",
+        "event": "compaction",
+        "confidence": "verified-headless",
+        "evidence": {
+          "existence": [
+            "pi-rosetta-runtime"
+          ],
+          "shape": [
+            "pi-rosetta-runtime"
+          ]
+        },
+        "lane": "session",
+        "order": 1,
+        "label": "compaction"
+      },
+      {
+        "id": "event-003",
+        "event": "custom",
+        "confidence": "unverified",
+        "evidence": {
+          "existence": [
+            "pi-rosetta-contract"
+          ],
+          "shape": [
+            "pi-rosetta-contract"
+          ]
+        },
+        "lane": "session",
+        "order": 2,
+        "label": "custom"
+      },
+      {
+        "id": "event-004",
+        "event": "custom_message",
+        "confidence": "unverified",
+        "evidence": {
+          "existence": [
+            "pi-rosetta-contract"
+          ],
+          "shape": [
+            "pi-rosetta-contract"
+          ]
+        },
+        "lane": "session",
+        "order": 3,
+        "label": "custom_message"
+      },
+      {
+        "id": "event-005",
+        "event": "label",
+        "confidence": "unverified",
+        "evidence": {
+          "existence": [
+            "pi-rosetta-contract"
+          ],
+          "shape": [
+            "pi-rosetta-contract"
+          ]
+        },
+        "lane": "session",
+        "order": 4,
+        "label": "label"
+      },
+      {
+        "id": "event-006",
+        "event": "message",
+        "confidence": "verified-headless",
+        "evidence": {
+          "existence": [
+            "pi-rosetta-runtime"
+          ],
+          "shape": [
+            "pi-rosetta-runtime"
+          ]
+        },
+        "lane": "session",
+        "order": 5,
+        "label": "message"
+      },
+      {
+        "id": "event-007",
+        "event": "model_change",
+        "confidence": "verified-headless",
+        "evidence": {
+          "existence": [
+            "pi-rosetta-runtime"
+          ],
+          "shape": [
+            "pi-rosetta-runtime"
+          ]
+        },
+        "lane": "session",
+        "order": 6,
+        "label": "model_change"
+      },
+      {
+        "id": "event-008",
+        "event": "session",
+        "confidence": "verified-headless",
+        "evidence": {
+          "existence": [
+            "pi-rosetta-runtime"
+          ],
+          "shape": [
+            "pi-rosetta-runtime"
+          ]
+        },
+        "lane": "session",
+        "order": 7,
+        "label": "session"
+      },
+      {
+        "id": "event-009",
+        "event": "session_info",
+        "confidence": "verified-headless",
+        "evidence": {
+          "existence": [
+            "pi-rosetta-runtime"
+          ],
+          "shape": [
+            "pi-rosetta-runtime"
+          ]
+        },
+        "lane": "session",
+        "order": 8,
+        "label": "session_info"
+      },
+      {
+        "id": "event-010",
+        "event": "thinking_level_change",
+        "confidence": "verified-headless",
+        "evidence": {
+          "existence": [
+            "pi-rosetta-runtime"
+          ],
+          "shape": [
+            "pi-rosetta-runtime"
+          ]
+        },
+        "lane": "session",
+        "order": 9,
+        "label": "thinking_level_change"
+      },
+      {
+        "id": "event-011",
+        "event": "settings:document",
+        "confidence": "verified-headless",
+        "evidence": {
+          "existence": [
+            "pi-rosetta-observed"
+          ],
+          "shape": [
+            "pi-rosetta-observed"
+          ]
+        },
+        "lane": "settings",
+        "order": 0,
+        "label": "agent/settings.json"
+      },
+      {
+        "id": "event-012",
+        "event": "models:document",
+        "confidence": "verified-headless",
+        "evidence": {
+          "existence": [
+            "pi-rosetta-observed"
+          ],
+          "shape": [
+            "pi-rosetta-observed"
+          ]
+        },
+        "lane": "models",
+        "order": 0,
+        "label": "agent/models.json"
+      },
+      {
+        "id": "event-013",
+        "event": "models-store:document",
+        "confidence": "verified-headless",
+        "evidence": {
+          "existence": [
+            "pi-rosetta-observed"
+          ],
+          "shape": [
+            "pi-rosetta-observed"
+          ]
+        },
+        "lane": "models-store",
+        "order": 0,
+        "label": "agent/models-store.json"
+      },
+      {
+        "id": "event-014",
+        "event": "trust:artifact",
+        "confidence": "unverified",
+        "evidence": {
+          "existence": [
+            "pi-rosetta-contract"
+          ],
+          "shape": [
+            "pi-rosetta-contract"
+          ]
+        },
+        "lane": "trust",
+        "order": 0,
+        "label": "agent/trust.json"
+      },
+      {
+        "id": "event-015",
+        "event": "auth:artifact",
+        "confidence": "unverified",
+        "evidence": {
+          "existence": [
+            "pi-rosetta-contract"
+          ],
+          "shape": [
+            "pi-rosetta-contract"
+          ]
+        },
+        "lane": "auth",
+        "order": 0,
+        "label": "agent/auth.json"
+      },
+      {
+        "id": "event-016",
+        "event": "keybindings:artifact",
+        "confidence": "unverified",
+        "evidence": {
+          "existence": [
+            "pi-rosetta-contract"
+          ],
+          "shape": [
+            "pi-rosetta-contract"
+          ]
+        },
+        "lane": "keybindings",
+        "order": 0,
+        "label": "agent/keybindings.json"
+      },
+      {
+        "id": "event-017",
+        "event": "agents-md:artifact",
+        "confidence": "unverified",
+        "evidence": {
+          "existence": [
+            "pi-rosetta-contract"
+          ],
+          "shape": [
+            "pi-rosetta-contract"
+          ]
+        },
+        "lane": "agents-md",
+        "order": 0,
+        "label": "agent/AGENTS.md"
+      },
+      {
+        "id": "event-018",
+        "event": "system-md:artifact",
+        "confidence": "unverified",
+        "evidence": {
+          "existence": [
+            "pi-rosetta-contract"
+          ],
+          "shape": [
+            "pi-rosetta-contract"
+          ]
+        },
+        "lane": "system-md",
+        "order": 0,
+        "label": "agent/SYSTEM.md"
+      },
+      {
+        "id": "event-019",
+        "event": "append-system-md:artifact",
+        "confidence": "unverified",
+        "evidence": {
+          "existence": [
+            "pi-rosetta-contract"
+          ],
+          "shape": [
+            "pi-rosetta-contract"
+          ]
+        },
+        "lane": "append-system-md",
+        "order": 0,
+        "label": "agent/APPEND_SYSTEM.md"
+      },
+      {
+        "id": "event-020",
+        "event": "extensions:artifact",
+        "confidence": "unverified",
+        "evidence": {
+          "existence": [
+            "pi-rosetta-contract"
+          ],
+          "shape": [
+            "pi-rosetta-contract"
+          ]
+        },
+        "lane": "extensions",
+        "order": 0,
+        "label": "agent/extensions/**/*"
+      },
+      {
+        "id": "event-021",
+        "event": "skills:artifact",
+        "confidence": "unverified",
+        "evidence": {
+          "existence": [
+            "pi-rosetta-contract"
+          ],
+          "shape": [
+            "pi-rosetta-contract"
+          ]
+        },
+        "lane": "skills",
+        "order": 0,
+        "label": "agent/skills/**/*"
+      },
+      {
+        "id": "event-022",
+        "event": "prompts:artifact",
+        "confidence": "unverified",
+        "evidence": {
+          "existence": [
+            "pi-rosetta-contract"
+          ],
+          "shape": [
+            "pi-rosetta-contract"
+          ]
+        },
+        "lane": "prompts",
+        "order": 0,
+        "label": "agent/prompts/**/*"
+      },
+      {
+        "id": "event-023",
+        "event": "themes:artifact",
+        "confidence": "unverified",
+        "evidence": {
+          "existence": [
+            "pi-rosetta-contract"
+          ],
+          "shape": [
+            "pi-rosetta-contract"
+          ]
+        },
+        "lane": "themes",
+        "order": 0,
+        "label": "agent/themes/**/*"
+      },
+      {
+        "id": "event-024",
+        "event": "tools:artifact",
+        "confidence": "unverified",
+        "evidence": {
+          "existence": [
+            "pi-rosetta-contract"
+          ],
+          "shape": [
+            "pi-rosetta-contract"
+          ]
+        },
+        "lane": "tools",
+        "order": 0,
+        "label": "agent/tools/**/*"
+      },
+      {
+        "id": "event-025",
+        "event": "bin:artifact",
+        "confidence": "unverified",
+        "evidence": {
+          "existence": [
+            "pi-rosetta-contract"
+          ],
+          "shape": [
+            "pi-rosetta-contract"
+          ]
+        },
+        "lane": "bin",
+        "order": 0,
+        "label": "agent/bin/**/*"
+      },
+      {
+        "id": "event-026",
+        "event": "npm-packages:artifact",
+        "confidence": "unverified",
+        "evidence": {
+          "existence": [
+            "pi-rosetta-contract"
+          ],
+          "shape": [
+            "pi-rosetta-contract"
+          ]
+        },
+        "lane": "npm-packages",
+        "order": 0,
+        "label": "agent/npm/**/*"
+      },
+      {
+        "id": "event-027",
+        "event": "git-packages:artifact",
+        "confidence": "unverified",
+        "evidence": {
+          "existence": [
+            "pi-rosetta-contract"
+          ],
+          "shape": [
+            "pi-rosetta-contract"
+          ]
+        },
+        "lane": "git-packages",
+        "order": 0,
+        "label": "agent/git/**/*"
+      },
+      {
+        "id": "event-028",
+        "event": "debug-log:artifact",
+        "confidence": "unverified",
+        "evidence": {
+          "existence": [
+            "pi-rosetta-contract"
+          ],
+          "shape": [
+            "pi-rosetta-contract"
+          ]
+        },
+        "lane": "debug-log",
+        "order": 0,
+        "label": "agent/pi-debug.log"
+      },
+      {
+        "id": "event-029",
+        "event": "farm:headless-stdout:agent_end",
+        "confidence": "verified-headless",
+        "evidence": {
+          "existence": [
+            "pi-rosetta-observed"
+          ],
+          "shape": [
+            "pi-rosetta-observed"
+          ]
+        },
+        "lane": "farm:headless-stdout",
+        "order": 0,
+        "label": "agent_end"
+      },
+      {
+        "id": "event-030",
+        "event": "farm:headless-stdout:agent_settled",
+        "confidence": "verified-headless",
+        "evidence": {
+          "existence": [
+            "pi-rosetta-observed"
+          ],
+          "shape": [
+            "pi-rosetta-observed"
+          ]
+        },
+        "lane": "farm:headless-stdout",
+        "order": 1,
+        "label": "agent_settled"
+      },
+      {
+        "id": "event-031",
+        "event": "farm:headless-stdout:agent_start",
+        "confidence": "verified-headless",
+        "evidence": {
+          "existence": [
+            "pi-rosetta-observed"
+          ],
+          "shape": [
+            "pi-rosetta-observed"
+          ]
+        },
+        "lane": "farm:headless-stdout",
+        "order": 2,
+        "label": "agent_start"
+      },
+      {
+        "id": "event-032",
+        "event": "farm:headless-stdout:compaction_end",
+        "confidence": "verified-headless",
+        "evidence": {
+          "existence": [
+            "pi-rosetta-observed"
+          ],
+          "shape": [
+            "pi-rosetta-observed"
+          ]
+        },
+        "lane": "farm:headless-stdout",
+        "order": 3,
+        "label": "compaction_end"
+      },
+      {
+        "id": "event-033",
+        "event": "farm:headless-stdout:compaction_start",
+        "confidence": "verified-headless",
+        "evidence": {
+          "existence": [
+            "pi-rosetta-observed"
+          ],
+          "shape": [
+            "pi-rosetta-observed"
+          ]
+        },
+        "lane": "farm:headless-stdout",
+        "order": 4,
+        "label": "compaction_start"
+      },
+      {
+        "id": "event-034",
+        "event": "farm:headless-stdout:message_end",
+        "confidence": "verified-headless",
+        "evidence": {
+          "existence": [
+            "pi-rosetta-observed"
+          ],
+          "shape": [
+            "pi-rosetta-observed"
+          ]
+        },
+        "lane": "farm:headless-stdout",
+        "order": 5,
+        "label": "message_end"
+      },
+      {
+        "id": "event-035",
+        "event": "farm:headless-stdout:message_start",
+        "confidence": "verified-headless",
+        "evidence": {
+          "existence": [
+            "pi-rosetta-observed"
+          ],
+          "shape": [
+            "pi-rosetta-observed"
+          ]
+        },
+        "lane": "farm:headless-stdout",
+        "order": 6,
+        "label": "message_start"
+      },
+      {
+        "id": "event-036",
+        "event": "farm:headless-stdout:message_update",
+        "confidence": "verified-headless",
+        "evidence": {
+          "existence": [
+            "pi-rosetta-observed"
+          ],
+          "shape": [
+            "pi-rosetta-observed"
+          ]
+        },
+        "lane": "farm:headless-stdout",
+        "order": 7,
+        "label": "message_update"
+      },
+      {
+        "id": "event-037",
+        "event": "farm:headless-stdout:session",
+        "confidence": "verified-headless",
+        "evidence": {
+          "existence": [
+            "pi-rosetta-observed"
+          ],
+          "shape": [
+            "pi-rosetta-observed"
+          ]
+        },
+        "lane": "farm:headless-stdout",
+        "order": 8,
+        "label": "session"
+      },
+      {
+        "id": "event-038",
+        "event": "farm:headless-stdout:tool_execution_end",
+        "confidence": "verified-headless",
+        "evidence": {
+          "existence": [
+            "pi-rosetta-observed"
+          ],
+          "shape": [
+            "pi-rosetta-observed"
+          ]
+        },
+        "lane": "farm:headless-stdout",
+        "order": 9,
+        "label": "tool_execution_end"
+      },
+      {
+        "id": "event-039",
+        "event": "farm:headless-stdout:tool_execution_start",
+        "confidence": "verified-headless",
+        "evidence": {
+          "existence": [
+            "pi-rosetta-observed"
+          ],
+          "shape": [
+            "pi-rosetta-observed"
+          ]
+        },
+        "lane": "farm:headless-stdout",
+        "order": 10,
+        "label": "tool_execution_start"
+      },
+      {
+        "id": "event-040",
+        "event": "farm:headless-stdout:tool_execution_update",
+        "confidence": "verified-headless",
+        "evidence": {
+          "existence": [
+            "pi-rosetta-observed"
+          ],
+          "shape": [
+            "pi-rosetta-observed"
+          ]
+        },
+        "lane": "farm:headless-stdout",
+        "order": 11,
+        "label": "tool_execution_update"
+      },
+      {
+        "id": "event-041",
+        "event": "farm:headless-stdout:turn_end",
+        "confidence": "verified-headless",
+        "evidence": {
+          "existence": [
+            "pi-rosetta-observed"
+          ],
+          "shape": [
+            "pi-rosetta-observed"
+          ]
+        },
+        "lane": "farm:headless-stdout",
+        "order": 12,
+        "label": "turn_end"
+      },
+      {
+        "id": "event-042",
+        "event": "farm:headless-stdout:turn_start",
+        "confidence": "verified-headless",
+        "evidence": {
+          "existence": [
+            "pi-rosetta-observed"
+          ],
+          "shape": [
+            "pi-rosetta-observed"
+          ]
+        },
+        "lane": "farm:headless-stdout",
+        "order": 13,
+        "label": "turn_start"
+      }
+    ],
+    "relations": [
+      {
+        "from": "event-008",
+        "to": "event-009",
+        "kind": "sequence",
+        "confidence": "verified-headless",
+        "evidence": {
+          "existence": [
+            "pi-rosetta-runtime"
+          ],
+          "shape": [
+            "pi-rosetta-runtime"
+          ],
+          "ordering": [
+            "pi-rosetta-runtime"
+          ]
+        },
+        "source": "sanitized Rosetta native journal order"
+      },
+      {
+        "from": "event-009",
+        "to": "event-007",
+        "kind": "sequence",
+        "confidence": "verified-headless",
+        "evidence": {
+          "existence": [
+            "pi-rosetta-runtime"
+          ],
+          "shape": [
+            "pi-rosetta-runtime"
+          ],
+          "ordering": [
+            "pi-rosetta-runtime"
+          ]
+        },
+        "source": "sanitized Rosetta native journal order"
+      },
+      {
+        "from": "event-007",
+        "to": "event-010",
+        "kind": "sequence",
+        "confidence": "verified-headless",
+        "evidence": {
+          "existence": [
+            "pi-rosetta-runtime"
+          ],
+          "shape": [
+            "pi-rosetta-runtime"
+          ],
+          "ordering": [
+            "pi-rosetta-runtime"
+          ]
+        },
+        "source": "sanitized Rosetta native journal order"
+      },
+      {
+        "from": "event-010",
+        "to": "event-006",
+        "kind": "sequence",
+        "confidence": "verified-headless",
+        "evidence": {
+          "existence": [
+            "pi-rosetta-runtime"
+          ],
+          "shape": [
+            "pi-rosetta-runtime"
+          ],
+          "ordering": [
+            "pi-rosetta-runtime"
+          ]
+        },
+        "source": "sanitized Rosetta native journal order"
+      },
+      {
+        "from": "event-006",
+        "to": "event-006",
+        "kind": "loop",
+        "confidence": "verified-headless",
+        "evidence": {
+          "existence": [
+            "pi-rosetta-runtime"
+          ],
+          "shape": [
+            "pi-rosetta-runtime"
+          ],
+          "ordering": [
+            "pi-rosetta-runtime"
+          ]
+        },
+        "source": "sanitized Rosetta native journal order"
+      },
+      {
+        "from": "event-008",
+        "to": "event-007",
+        "kind": "sequence",
+        "confidence": "verified-headless",
+        "evidence": {
+          "existence": [
+            "pi-rosetta-runtime"
+          ],
+          "shape": [
+            "pi-rosetta-runtime"
+          ],
+          "ordering": [
+            "pi-rosetta-runtime"
+          ]
+        },
+        "source": "sanitized Rosetta native journal order"
+      },
+      {
+        "from": "event-006",
+        "to": "event-002",
+        "kind": "sequence",
+        "confidence": "verified-headless",
+        "evidence": {
+          "existence": [
+            "pi-rosetta-runtime"
+          ],
+          "shape": [
+            "pi-rosetta-runtime"
+          ],
+          "ordering": [
+            "pi-rosetta-runtime"
+          ]
+        },
+        "source": "sanitized Rosetta native journal order"
+      }
+    ]
+  }
+}

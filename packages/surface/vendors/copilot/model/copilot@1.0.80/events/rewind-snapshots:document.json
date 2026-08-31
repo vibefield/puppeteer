@@ -1,0 +1,44 @@
+{
+  "surface": "copilot",
+  "surfaceVersion": "1.0.80",
+  "event": "rewind-snapshots:document",
+  "nativeName": "session-state/*/rewind-file-snapshots/**",
+  "channel": "rewind-snapshots",
+  "channels": [
+    "rewind-snapshots"
+  ],
+  "transport": "json-document",
+  "direction": "agent-local",
+  "payloadSchema": {
+    "type": "object",
+    "properties": {
+      "schema": {
+        "type": "number"
+      },
+      "tracking": {
+        "type": "boolean"
+      }
+    },
+    "required": [
+      "schema",
+      "tracking"
+    ],
+    "additionalProperties": true
+  },
+  "schemaFidelity": {
+    "payload": "structural",
+    "limitations": [
+      "Rosetta retains observed/writer field types and requiredness, but its shape algebra intentionally omits some native validation constraints."
+    ]
+  },
+  "evidence": {
+    "existence": [
+      "copilot-rosetta-observed"
+    ],
+    "shape": [
+      "copilot-rosetta-observed"
+    ]
+  },
+  "confidence": "verified-headless",
+  "notes": "session-state/*/rewind-file-snapshots/**; 4 retained observation(s); source evidence: fixture."
+}

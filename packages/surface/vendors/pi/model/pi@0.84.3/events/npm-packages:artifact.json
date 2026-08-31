@@ -1,0 +1,22 @@
+{
+  "surface": "pi",
+  "surfaceVersion": "0.84.3",
+  "event": "npm-packages:artifact",
+  "nativeName": "agent/npm/**/*",
+  "channel": "npm-packages",
+  "channels": [
+    "npm-packages"
+  ],
+  "transport": "file-artifact",
+  "direction": "agent-local",
+  "evidence": {
+    "existence": [
+      "pi-rosetta-contract"
+    ],
+    "shape": [
+      "pi-rosetta-contract"
+    ]
+  },
+  "confidence": "unverified",
+  "notes": "agent/npm/**/*; non-record native artifact tracked by the complete Rosetta stream inventory."
+}

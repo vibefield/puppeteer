@@ -12,10 +12,12 @@ describe('canonical Surface ground truth', () => {
       'antigravity',
       'claude',
       'codex',
+      'copilot',
       'grok',
       'hermes',
       'kimi',
       'opencode',
+      'pi',
     ]);
     expect(checkGroundTruth(roots)).toEqual([]);
     for (const root of roots) {
@@ -39,5 +41,18 @@ describe('canonical Surface ground truth', () => {
     expect(html).toContain('Schema fidelity');
     expect(html).toContain('evidence-bound payload refinements');
     expect(html).toContain('Immutable source references');
+  });
+
+  it('does not promote Rosetta writer-only contracts into runtime verification', () => {
+    const roots = new Map(discoverGroundTruthRoots().map((root) => [root.split('/').at(-1), root]));
+    const event = (vendor, name) =>
+      loadGroundTruth(join(roots.get(vendor), 'groundtruth.json')).events.find((candidate) => candidate.event === name);
+
+    expect(event('antigravity', 'USER_INPUT')?.confidence).toBe('verified-headless');
+    expect(event('antigravity', 'logs:artifact')?.confidence).toBe('unverified');
+    expect(event('copilot', 'user.message')?.confidence).toBe('verified-headless');
+    expect(event('copilot', 'session.compaction_start')?.confidence).toBe('unverified');
+    expect(event('pi', 'message')?.confidence).toBe('verified-headless');
+    expect(event('pi', 'branch_summary')?.confidence).toBe('unverified');
   });
 });

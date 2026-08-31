@@ -1,0 +1,403 @@
+{
+  "surface": "copilot",
+  "surfaceVersion": "1.0.80",
+  "event": "farm:headless-stdout:tool.execution_complete",
+  "nativeName": "tool.execution_complete",
+  "channel": "farm:headless-stdout",
+  "channels": [
+    "farm:headless-stdout"
+  ],
+  "transport": "jsonl-record",
+  "direction": "agent-local",
+  "payloadSchema": {
+    "type": "object",
+    "properties": {
+      "data": {
+        "type": "object",
+        "properties": {
+          "error": {
+            "type": "object",
+            "properties": {
+              "code": {
+                "type": "string"
+              },
+              "message": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "code",
+              "message"
+            ],
+            "additionalProperties": true
+          },
+          "interactionId": {
+            "type": "string"
+          },
+          "model": {
+            "type": "string",
+            "enum": [
+              "mock-model"
+            ]
+          },
+          "result": {
+            "type": "object",
+            "properties": {
+              "content": {
+                "type": "string"
+              },
+              "contents": {
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "properties": {
+                    "cwd": {
+                      "type": "string"
+                    },
+                    "exitCode": {
+                      "type": "number"
+                    },
+                    "outputPreview": {
+                      "type": "string"
+                    },
+                    "outputTruncated": {
+                      "type": "boolean"
+                    },
+                    "shellId": {
+                      "type": "string"
+                    },
+                    "type": {
+                      "type": "string",
+                      "enum": [
+                        "shell_exit"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "cwd",
+                    "exitCode",
+                    "outputPreview",
+                    "outputTruncated",
+                    "shellId",
+                    "type"
+                  ],
+                  "additionalProperties": true
+                }
+              },
+              "detailedContent": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "content",
+              "contents",
+              "detailedContent"
+            ],
+            "additionalProperties": true
+          },
+          "rte": {
+            "type": "boolean"
+          },
+          "success": {
+            "type": "boolean"
+          },
+          "toolCallId": {
+            "type": "string"
+          },
+          "toolTelemetry": {
+            "type": "object",
+            "properties": {
+              "metrics": {
+                "type": "object",
+                "properties": {
+                  "commandTimeout": {
+                    "type": "number"
+                  }
+                },
+                "required": [
+                  "commandTimeout"
+                ],
+                "additionalProperties": true
+              },
+              "properties": {
+                "type": "object",
+                "properties": {
+                  "asyncOnlyShell": {
+                    "type": "string"
+                  },
+                  "customTimeout": {
+                    "type": "string"
+                  },
+                  "detached": {
+                    "type": "string"
+                  },
+                  "executionMode": {
+                    "type": "string",
+                    "enum": [
+                      "sync"
+                    ]
+                  },
+                  "sandboxApplied": {
+                    "type": "string"
+                  },
+                  "sandboxOptOutRequested": {
+                    "type": "string"
+                  },
+                  "shell_error_category": {
+                    "type": "string",
+                    "enum": [
+                      "permission_denied"
+                    ]
+                  }
+                },
+                "additionalProperties": true
+              }
+            },
+            "required": [
+              "properties"
+            ],
+            "additionalProperties": true
+          },
+          "turnId": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "interactionId",
+          "model",
+          "rte",
+          "success",
+          "toolCallId",
+          "toolTelemetry",
+          "turnId"
+        ],
+        "additionalProperties": true
+      },
+      "id": {
+        "type": "string"
+      },
+      "parentId": {
+        "type": "string"
+      },
+      "timestamp": {
+        "type": "string"
+      }
+    },
+    "required": [
+      "data",
+      "id",
+      "parentId",
+      "timestamp"
+    ],
+    "additionalProperties": true
+  },
+  "recordSchema": {
+    "type": "object",
+    "properties": {
+      "data": {
+        "type": "object",
+        "properties": {
+          "error": {
+            "type": "object",
+            "properties": {
+              "code": {
+                "type": "string"
+              },
+              "message": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "code",
+              "message"
+            ],
+            "additionalProperties": true
+          },
+          "interactionId": {
+            "type": "string"
+          },
+          "model": {
+            "type": "string",
+            "enum": [
+              "mock-model"
+            ]
+          },
+          "result": {
+            "type": "object",
+            "properties": {
+              "content": {
+                "type": "string"
+              },
+              "contents": {
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "properties": {
+                    "cwd": {
+                      "type": "string"
+                    },
+                    "exitCode": {
+                      "type": "number"
+                    },
+                    "outputPreview": {
+                      "type": "string"
+                    },
+                    "outputTruncated": {
+                      "type": "boolean"
+                    },
+                    "shellId": {
+                      "type": "string"
+                    },
+                    "type": {
+                      "type": "string",
+                      "enum": [
+                        "shell_exit"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "cwd",
+                    "exitCode",
+                    "outputPreview",
+                    "outputTruncated",
+                    "shellId",
+                    "type"
+                  ],
+                  "additionalProperties": true
+                }
+              },
+              "detailedContent": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "content",
+              "contents",
+              "detailedContent"
+            ],
+            "additionalProperties": true
+          },
+          "rte": {
+            "type": "boolean"
+          },
+          "success": {
+            "type": "boolean"
+          },
+          "toolCallId": {
+            "type": "string"
+          },
+          "toolTelemetry": {
+            "type": "object",
+            "properties": {
+              "metrics": {
+                "type": "object",
+                "properties": {
+                  "commandTimeout": {
+                    "type": "number"
+                  }
+                },
+                "required": [
+                  "commandTimeout"
+                ],
+                "additionalProperties": true
+              },
+              "properties": {
+                "type": "object",
+                "properties": {
+                  "asyncOnlyShell": {
+                    "type": "string"
+                  },
+                  "customTimeout": {
+                    "type": "string"
+                  },
+                  "detached": {
+                    "type": "string"
+                  },
+                  "executionMode": {
+                    "type": "string",
+                    "enum": [
+                      "sync"
+                    ]
+                  },
+                  "sandboxApplied": {
+                    "type": "string"
+                  },
+                  "sandboxOptOutRequested": {
+                    "type": "string"
+                  },
+                  "shell_error_category": {
+                    "type": "string",
+                    "enum": [
+                      "permission_denied"
+                    ]
+                  }
+                },
+                "additionalProperties": true
+              }
+            },
+            "required": [
+              "properties"
+            ],
+            "additionalProperties": true
+          },
+          "turnId": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "interactionId",
+          "model",
+          "rte",
+          "success",
+          "toolCallId",
+          "toolTelemetry",
+          "turnId"
+        ],
+        "additionalProperties": true
+      },
+      "id": {
+        "type": "string"
+      },
+      "parentId": {
+        "type": "string"
+      },
+      "timestamp": {
+        "type": "string"
+      },
+      "type": {
+        "type": "string",
+        "enum": [
+          "tool.execution_complete"
+        ]
+      }
+    },
+    "required": [
+      "data",
+      "id",
+      "parentId",
+      "timestamp",
+      "type"
+    ],
+    "additionalProperties": true
+  },
+  "schemaFidelity": {
+    "payload": "structural",
+    "carrier": "structural",
+    "limitations": [
+      "Rosetta retains observed/writer field types and requiredness, but its shape algebra intentionally omits some native validation constraints."
+    ]
+  },
+  "evidence": {
+    "existence": [
+      "copilot-rosetta-observed"
+    ],
+    "shape": [
+      "copilot-rosetta-observed"
+    ],
+    "carrier": [
+      "copilot-rosetta-observed"
+    ]
+  },
+  "confidence": "verified-headless",
+  "notes": "<farm>/stdout*.jsonl; 2 retained observation(s); source evidence: fixture."
+}

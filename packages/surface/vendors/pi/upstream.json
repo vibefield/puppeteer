@@ -1,0 +1,56 @@
+{
+  "$schema": "../../upstream.schema.json",
+  "schemaVersion": 1,
+  "vendor": "pi",
+  "repository": "https://github.com/earendil-works/pi",
+  "sourceRelation": { "strategy": "release-tag", "template": "v${version}" },
+  "detectors": [
+    {
+      "id": "github-stable",
+      "channel": "stable",
+      "kind": "github-release",
+      "url": "https://api.github.com/repos/earendil-works/pi/releases?per_page=30",
+      "tagPattern": "^v?(\\d+\\.\\d+\\.\\d+)$",
+      "prerelease": false,
+      "authoritative": true
+    }
+  ],
+  "platforms": ["darwin-arm64", "darwin-x64", "linux-x64", "windows-x64"],
+  "acquisition": {
+    "strategy": "https-template",
+    "allowedHosts": ["github.com", "objects.githubusercontent.com", "release-assets.githubusercontent.com"],
+    "maxBytes": 536870912,
+    "artifacts": {
+      "darwin-arm64": {
+        "urls": [
+          "https://github.com/earendil-works/pi/releases/download/v${version}/pi-darwin-arm64.tar.gz"
+        ],
+        "format": "tar.gz",
+        "executableBasenames": ["pi"]
+      },
+      "darwin-x64": {
+        "urls": [
+          "https://github.com/earendil-works/pi/releases/download/v${version}/pi-darwin-x64.tar.gz"
+        ],
+        "format": "tar.gz",
+        "executableBasenames": ["pi"]
+      },
+      "linux-x64": {
+        "urls": [
+          "https://github.com/earendil-works/pi/releases/download/v${version}/pi-linux-x64.tar.gz"
+        ],
+        "format": "tar.gz",
+        "executableBasenames": ["pi"]
+      },
+      "windows-x64": {
+        "urls": [
+          "https://github.com/earendil-works/pi/releases/download/v${version}/pi-windows-x64.zip"
+        ],
+        "format": "zip",
+        "executableBasenames": ["pi.exe"]
+      }
+    }
+  },
+  "analysis": ["writer-source", "native-session-journal", "conversation-resume", "controlled-census"],
+  "debounce": { "polls": 2, "minutes": 30 }
+}

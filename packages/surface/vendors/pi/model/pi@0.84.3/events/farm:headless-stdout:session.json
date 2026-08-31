@@ -1,0 +1,93 @@
+{
+  "surface": "pi",
+  "surfaceVersion": "0.84.3",
+  "event": "farm:headless-stdout:session",
+  "nativeName": "session",
+  "channel": "farm:headless-stdout",
+  "channels": [
+    "farm:headless-stdout"
+  ],
+  "transport": "jsonl-record",
+  "direction": "agent-local",
+  "payloadSchema": {
+    "type": "object",
+    "properties": {
+      "cwd": {
+        "type": "string"
+      },
+      "id": {
+        "type": "string"
+      },
+      "parentSession": {
+        "type": "string"
+      },
+      "timestamp": {
+        "type": "string"
+      },
+      "version": {
+        "type": "number"
+      }
+    },
+    "required": [
+      "cwd",
+      "id",
+      "timestamp",
+      "version"
+    ],
+    "additionalProperties": true
+  },
+  "recordSchema": {
+    "type": "object",
+    "properties": {
+      "cwd": {
+        "type": "string"
+      },
+      "id": {
+        "type": "string"
+      },
+      "parentSession": {
+        "type": "string"
+      },
+      "timestamp": {
+        "type": "string"
+      },
+      "type": {
+        "type": "string",
+        "enum": [
+          "session"
+        ]
+      },
+      "version": {
+        "type": "number"
+      }
+    },
+    "required": [
+      "cwd",
+      "id",
+      "timestamp",
+      "type",
+      "version"
+    ],
+    "additionalProperties": true
+  },
+  "schemaFidelity": {
+    "payload": "structural",
+    "carrier": "structural",
+    "limitations": [
+      "Rosetta retains observed/writer field types and requiredness, but its shape algebra intentionally omits some native validation constraints."
+    ]
+  },
+  "evidence": {
+    "existence": [
+      "pi-rosetta-observed"
+    ],
+    "shape": [
+      "pi-rosetta-observed"
+    ],
+    "carrier": [
+      "pi-rosetta-observed"
+    ]
+  },
+  "confidence": "verified-headless",
+  "notes": "<farm>/stdout*.jsonl; 10 retained observation(s); source evidence: fixture."
+}

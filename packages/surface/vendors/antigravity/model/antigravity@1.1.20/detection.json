@@ -1,0 +1,23 @@
+{
+  "executables": [
+    "agy",
+    "antigravity"
+  ],
+  "envVar": "PUPPETEER_ANTIGRAVITY_BIN",
+  "versionFlag": "--version",
+  "versionOutput": "1.1.20",
+  "versionPattern": "^(?:[^0-9]*[vV]?)?(\\d+\\.\\d+\\.\\d+(?:-[0-9A-Za-z.-]+)?).*$",
+  "helpFlag": "--help",
+  "dataRoot": "~/.gemini/antigravity-cli",
+  "launchFlags": {
+    "resume": "--conversation",
+    "model": "--model",
+    "effort": "--effort",
+    "mode": "--mode",
+    "permissions": "--dangerously-skip-permissions",
+    "sandbox": "--sandbox",
+    "agent": "--agent",
+    "project": "--project",
+    "addDirectory": "--add-dir"
+  }
+}

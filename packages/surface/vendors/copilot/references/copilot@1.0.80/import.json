@@ -1,0 +1,32 @@
+{
+  "format": "puppeteer-rosetta-import/1",
+  "vendor": "copilot",
+  "vendorVersion": "1.0.80",
+  "importedAt": "2026-08-28",
+  "importer": "packages/surface/scripts/import-rosetta.mjs",
+  "source": {
+    "project": "rosetta",
+    "canonicalSha256": "67791beab4637253c33e815fe2613537d56f2352c2f5b46fb30303afc19e15fc",
+    "files": [
+      {
+        "path": "1.0.80.writer-schema.json",
+        "sha256": "42109eab6b61dc146a0dc658287eca7537308a04f56e104120aa8cfb023e0742"
+      },
+      {
+        "path": "1.0.80.fixtures.json",
+        "sha256": "d2a32e24c52b9c8e3d20a8800f83b53554e66e2a9d2872f2046eb5c008c9c98f"
+      },
+      {
+        "path": "1.0.80.sqlite-schema.sql",
+        "sha256": "355b473c34a2a419cea50788106dc059c40ef1acb3f0551d69bb23142f786efa"
+      }
+    ]
+  },
+  "fixtureCorpus": {
+    "id": "copilot-1.0.80-rosetta-fixture-corpus",
+    "versionOutput": "1.0.80",
+    "platform": "darwin-arm64",
+    "capturedAt": "2026-08-25T05:27:58Z",
+    "sha256": "d2a32e24c52b9c8e3d20a8800f83b53554e66e2a9d2872f2046eb5c008c9c98f"
+  }
+}

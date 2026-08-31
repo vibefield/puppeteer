@@ -1,0 +1,28 @@
+{
+  "format": "puppeteer-rosetta-import/1",
+  "vendor": "pi",
+  "vendorVersion": "0.84.3",
+  "importedAt": "2026-08-28",
+  "importer": "packages/surface/scripts/import-rosetta.mjs",
+  "source": {
+    "project": "rosetta",
+    "canonicalSha256": "d78e68bf0bf96d73db6cf2a9e99ff8b4e7a116a80cadf302933ad869441cdc17",
+    "files": [
+      {
+        "path": "0.84.3.writer.json",
+        "sha256": "2865bd23b8f4393a6ec7e8ede851048b68936127f578ba52412a8270fd127e0f"
+      },
+      {
+        "path": "0.84.3.fixtures.json",
+        "sha256": "ed6959cf3c41b7d83a92e0f9753d77cab1518fa3298c315010aeb3564a91924e"
+      }
+    ]
+  },
+  "fixtureCorpus": {
+    "id": "pi-0.84.3-rosetta-fixture-corpus",
+    "versionOutput": "0.84.3",
+    "platform": "darwin-arm64",
+    "capturedAt": "2026-08-25T05:29:06Z",
+    "sha256": "ed6959cf3c41b7d83a92e0f9753d77cab1518fa3298c315010aeb3564a91924e"
+  }
+}

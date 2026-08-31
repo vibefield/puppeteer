@@ -1,0 +1,22 @@
+{
+  "surface": "antigravity",
+  "surfaceVersion": "1.1.20",
+  "event": "bin:artifact",
+  "nativeName": "bin/**/*",
+  "channel": "bin",
+  "channels": [
+    "bin"
+  ],
+  "transport": "file-artifact",
+  "direction": "agent-local",
+  "evidence": {
+    "existence": [
+      "antigravity-rosetta-contract"
+    ],
+    "shape": [
+      "antigravity-rosetta-contract"
+    ]
+  },
+  "confidence": "unverified",
+  "notes": "bin/**/*; non-record native artifact tracked by the complete Rosetta stream inventory."
+}

@@ -1,0 +1,227 @@
+{
+  "surface": "antigravity",
+  "surfaceVersion": "1.1.20",
+  "event": "transcript-full-chunks:PLANNER_RESPONSE",
+  "nativeName": "PLANNER_RESPONSE",
+  "channel": "transcript-full-chunks",
+  "channels": [
+    "transcript-full-chunks"
+  ],
+  "transport": "jsonl-record",
+  "direction": "agent-local",
+  "payloadSchema": {
+    "type": "object",
+    "properties": {
+      "content": {
+        "type": "string"
+      },
+      "created_at": {
+        "type": "string"
+      },
+      "source": {
+        "type": "string",
+        "enum": [
+          "MODEL"
+        ]
+      },
+      "status": {
+        "type": "string",
+        "enum": [
+          "DONE"
+        ]
+      },
+      "step_index": {
+        "type": "number"
+      },
+      "thinking": {
+        "type": "string"
+      },
+      "tool_calls": {
+        "type": "array",
+        "items": {
+          "type": "object",
+          "properties": {
+            "args": {
+              "type": "object",
+              "properties": {
+                "AbsolutePath": {
+                  "type": "string"
+                },
+                "commandLine": {
+                  "type": "string"
+                },
+                "DirectoryPath": {
+                  "type": "string"
+                },
+                "EndLine": {
+                  "type": "number"
+                },
+                "MaxDepth": {
+                  "type": "number"
+                },
+                "Pattern": {
+                  "type": "string"
+                },
+                "SearchDirectory": {
+                  "type": "string"
+                },
+                "StartLine": {
+                  "type": "number"
+                },
+                "toolAction": {
+                  "type": "string"
+                },
+                "toolSummary": {
+                  "type": "string"
+                },
+                "Type": {
+                  "type": "string",
+                  "enum": [
+                    "directory"
+                  ]
+                }
+              },
+              "additionalProperties": true
+            },
+            "name": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "args",
+            "name"
+          ],
+          "additionalProperties": true
+        }
+      }
+    },
+    "required": [
+      "created_at",
+      "source",
+      "status",
+      "step_index"
+    ],
+    "additionalProperties": true
+  },
+  "recordSchema": {
+    "type": "object",
+    "properties": {
+      "content": {
+        "type": "string"
+      },
+      "created_at": {
+        "type": "string"
+      },
+      "source": {
+        "type": "string",
+        "enum": [
+          "MODEL"
+        ]
+      },
+      "status": {
+        "type": "string",
+        "enum": [
+          "DONE"
+        ]
+      },
+      "step_index": {
+        "type": "number"
+      },
+      "thinking": {
+        "type": "string"
+      },
+      "tool_calls": {
+        "type": "array",
+        "items": {
+          "type": "object",
+          "properties": {
+            "args": {
+              "type": "object",
+              "properties": {
+                "AbsolutePath": {
+                  "type": "string"
+                },
+                "commandLine": {
+                  "type": "string"
+                },
+                "DirectoryPath": {
+                  "type": "string"
+                },
+                "EndLine": {
+                  "type": "number"
+                },
+                "MaxDepth": {
+                  "type": "number"
+                },
+                "Pattern": {
+                  "type": "string"
+                },
+                "SearchDirectory": {
+                  "type": "string"
+                },
+                "StartLine": {
+                  "type": "number"
+                },
+                "toolAction": {
+                  "type": "string"
+                },
+                "toolSummary": {
+                  "type": "string"
+                },
+                "Type": {
+                  "type": "string",
+                  "enum": [
+                    "directory"
+                  ]
+                }
+              },
+              "additionalProperties": true
+            },
+            "name": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "args",
+            "name"
+          ],
+          "additionalProperties": true
+        }
+      },
+      "type": {
+        "type": "string",
+        "enum": [
+          "PLANNER_RESPONSE"
+        ]
+      }
+    },
+    "required": [
+      "created_at",
+      "source",
+      "status",
+      "step_index",
+      "type"
+    ],
+    "additionalProperties": true
+  },
+  "schemaFidelity": {
+    "payload": "structural",
+    "carrier": "structural",
+    "limitations": [
+      "Rosetta retains observed/writer field types and requiredness, but its shape algebra intentionally omits some native validation constraints."
+    ]
+  },
+  "evidence": {
+    "existence": [
+      "antigravity-rosetta-observed"
+    ],
+    "shape": [
+      "antigravity-rosetta-observed"
+    ],
+    "carrier": [
+      "antigravity-rosetta-observed"
+    ]
+  },
+  "confidence": "verified-headless",
+  "notes": "brain/*/.system_generated/logs/chunks/transcript_full/*.jsonl; 59 retained observation(s); source evidence: fixture."
+}

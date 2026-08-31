@@ -1,0 +1,1993 @@
+{
+  "behaviorVersion": 1,
+  "title": "copilot native persisted-state topology",
+  "description": "Every Rosetta stream is retained as a lane. Arrows are only asserted where committed events journals prove ordering.",
+  "source": "Rosetta canonical inventory and controlled fixtures",
+  "lanes": [
+    {
+      "id": "events",
+      "label": "events",
+      "description": "append_only jsonl: session-state/*/events.jsonl"
+    },
+    {
+      "id": "session-plans",
+      "label": "session-plans",
+      "description": "rewrite_in_place markdown: session-state/*/plan.md"
+    },
+    {
+      "id": "session-checkpoints",
+      "label": "session-checkpoints",
+      "description": "rewrite_in_place markdown: session-state/*/checkpoints/**"
+    },
+    {
+      "id": "session-files",
+      "label": "session-files",
+      "description": "rewrite_in_place text: session-state/*/files/**"
+    },
+    {
+      "id": "session-research",
+      "label": "session-research",
+      "description": "rewrite_in_place text: session-state/*/research/**"
+    },
+    {
+      "id": "session-workspace",
+      "label": "session-workspace",
+      "description": "rewrite_in_place text: session-state/*/workspace.yaml"
+    },
+    {
+      "id": "session-db",
+      "label": "session-db",
+      "description": "database sqlite: session-state/*/session.db*"
+    },
+    {
+      "id": "rewind-snapshots",
+      "label": "rewind-snapshots",
+      "description": "rewrite_in_place json: session-state/*/rewind-file-snapshots/**"
+    },
+    {
+      "id": "session-locks",
+      "label": "session-locks",
+      "description": "rewrite_in_place text: session-state/*/inuse.*.lock"
+    },
+    {
+      "id": "session-store",
+      "label": "session-store",
+      "description": "database sqlite: session-store.db*"
+    },
+    {
+      "id": "settings",
+      "label": "settings",
+      "description": "rewrite_in_place json: settings.json"
+    },
+    {
+      "id": "config",
+      "label": "config",
+      "description": "rewrite_in_place json: config.json"
+    },
+    {
+      "id": "permissions",
+      "label": "permissions",
+      "description": "rewrite_in_place json: permissions-config.json"
+    },
+    {
+      "id": "mcp-config",
+      "label": "mcp-config",
+      "description": "rewrite_in_place json: mcp-config.json"
+    },
+    {
+      "id": "lsp-config",
+      "label": "lsp-config",
+      "description": "rewrite_in_place json: lsp-config.json"
+    },
+    {
+      "id": "logs",
+      "label": "logs",
+      "description": "append_only text: logs/**/*"
+    },
+    {
+      "id": "command-history",
+      "label": "command-history",
+      "description": "rewrite_in_place text: command-history-state/**/*"
+    },
+    {
+      "id": "agents",
+      "label": "agents",
+      "description": "rewrite_in_place markdown: agents/**/*"
+    },
+    {
+      "id": "skills",
+      "label": "skills",
+      "description": "rewrite_in_place markdown: skills/**/*"
+    },
+    {
+      "id": "hooks",
+      "label": "hooks",
+      "description": "rewrite_in_place text: hooks/**/*"
+    },
+    {
+      "id": "instructions",
+      "label": "instructions",
+      "description": "rewrite_in_place markdown: instructions/**/*"
+    },
+    {
+      "id": "copilot-instructions",
+      "label": "copilot-instructions",
+      "description": "rewrite_in_place markdown: copilot-instructions.md"
+    },
+    {
+      "id": "extensions",
+      "label": "extensions",
+      "description": "rewrite_in_place text: extensions/**/*"
+    },
+    {
+      "id": "installed-plugins",
+      "label": "installed-plugins",
+      "description": "rewrite_in_place text: installed-plugins/**/*"
+    },
+    {
+      "id": "plugin-data",
+      "label": "plugin-data",
+      "description": "rewrite_in_place text: plugin-data/**/*"
+    },
+    {
+      "id": "ide",
+      "label": "ide",
+      "description": "rewrite_in_place text: ide/**/*"
+    },
+    {
+      "id": "mcp-oauth",
+      "label": "mcp-oauth",
+      "description": "rewrite_in_place json: mcp-oauth-config/**/*"
+    },
+    {
+      "id": "mcp-secrets",
+      "label": "mcp-secrets",
+      "description": "rewrite_in_place text: mcp-secrets/**/*"
+    },
+    {
+      "id": "farm:headless-stdout",
+      "label": "farm:headless-stdout",
+      "description": "append_only jsonl: <farm>/stdout*.jsonl"
+    }
+  ],
+  "nodes": [
+    {
+      "id": "event-001",
+      "event": "abort",
+      "confidence": "unverified",
+      "evidence": {
+        "existence": [
+          "copilot-rosetta-contract"
+        ],
+        "shape": [
+          "copilot-rosetta-contract"
+        ]
+      },
+      "lane": "events",
+      "order": 0,
+      "label": "abort"
+    },
+    {
+      "id": "event-002",
+      "event": "assistant.message",
+      "confidence": "verified-headless",
+      "evidence": {
+        "existence": [
+          "copilot-rosetta-runtime"
+        ],
+        "shape": [
+          "copilot-rosetta-runtime"
+        ]
+      },
+      "lane": "events",
+      "order": 1,
+      "label": "assistant.message"
+    },
+    {
+      "id": "event-003",
+      "event": "assistant.reasoning",
+      "confidence": "unverified",
+      "evidence": {
+        "existence": [
+          "copilot-rosetta-contract"
+        ],
+        "shape": [
+          "copilot-rosetta-contract"
+        ]
+      },
+      "lane": "events",
+      "order": 2,
+      "label": "assistant.reasoning"
+    },
+    {
+      "id": "event-004",
+      "event": "assistant.turn_end",
+      "confidence": "verified-headless",
+      "evidence": {
+        "existence": [
+          "copilot-rosetta-runtime"
+        ],
+        "shape": [
+          "copilot-rosetta-runtime"
+        ]
+      },
+      "lane": "events",
+      "order": 3,
+      "label": "assistant.turn_end"
+    },
+    {
+      "id": "event-005",
+      "event": "assistant.turn_start",
+      "confidence": "verified-headless",
+      "evidence": {
+        "existence": [
+          "copilot-rosetta-runtime"
+        ],
+        "shape": [
+          "copilot-rosetta-runtime"
+        ]
+      },
+      "lane": "events",
+      "order": 4,
+      "label": "assistant.turn_start"
+    },
+    {
+      "id": "event-006",
+      "event": "external_tool.completed",
+      "confidence": "unverified",
+      "evidence": {
+        "existence": [
+          "copilot-rosetta-contract"
+        ],
+        "shape": [
+          "copilot-rosetta-contract"
+        ]
+      },
+      "lane": "events",
+      "order": 5,
+      "label": "external_tool.completed"
+    },
+    {
+      "id": "event-007",
+      "event": "external_tool.requested",
+      "confidence": "unverified",
+      "evidence": {
+        "existence": [
+          "copilot-rosetta-contract"
+        ],
+        "shape": [
+          "copilot-rosetta-contract"
+        ]
+      },
+      "lane": "events",
+      "order": 6,
+      "label": "external_tool.requested"
+    },
+    {
+      "id": "event-008",
+      "event": "hook.end",
+      "confidence": "unverified",
+      "evidence": {
+        "existence": [
+          "copilot-rosetta-contract"
+        ],
+        "shape": [
+          "copilot-rosetta-contract"
+        ]
+      },
+      "lane": "events",
+      "order": 7,
+      "label": "hook.end"
+    },
+    {
+      "id": "event-009",
+      "event": "hook.start",
+      "confidence": "unverified",
+      "evidence": {
+        "existence": [
+          "copilot-rosetta-contract"
+        ],
+        "shape": [
+          "copilot-rosetta-contract"
+        ]
+      },
+      "lane": "events",
+      "order": 8,
+      "label": "hook.start"
+    },
+    {
+      "id": "event-010",
+      "event": "permission.completed",
+      "confidence": "unverified",
+      "evidence": {
+        "existence": [
+          "copilot-rosetta-contract"
+        ],
+        "shape": [
+          "copilot-rosetta-contract"
+        ]
+      },
+      "lane": "events",
+      "order": 9,
+      "label": "permission.completed"
+    },
+    {
+      "id": "event-011",
+      "event": "permission.requested",
+      "confidence": "unverified",
+      "evidence": {
+        "existence": [
+          "copilot-rosetta-contract"
+        ],
+        "shape": [
+          "copilot-rosetta-contract"
+        ]
+      },
+      "lane": "events",
+      "order": 10,
+      "label": "permission.requested"
+    },
+    {
+      "id": "event-012",
+      "event": "session.auto_mode_resolved",
+      "confidence": "unverified",
+      "evidence": {
+        "existence": [
+          "copilot-rosetta-contract"
+        ],
+        "shape": [
+          "copilot-rosetta-contract"
+        ]
+      },
+      "lane": "events",
+      "order": 11,
+      "label": "session.auto_mode_resolved"
+    },
+    {
+      "id": "event-013",
+      "event": "session.autopilot_objective_changed",
+      "confidence": "unverified",
+      "evidence": {
+        "existence": [
+          "copilot-rosetta-contract"
+        ],
+        "shape": [
+          "copilot-rosetta-contract"
+        ]
+      },
+      "lane": "events",
+      "order": 12,
+      "label": "session.autopilot_objective_changed"
+    },
+    {
+      "id": "event-014",
+      "event": "session.binary_asset",
+      "confidence": "unverified",
+      "evidence": {
+        "existence": [
+          "copilot-rosetta-contract"
+        ],
+        "shape": [
+          "copilot-rosetta-contract"
+        ]
+      },
+      "lane": "events",
+      "order": 13,
+      "label": "session.binary_asset"
+    },
+    {
+      "id": "event-015",
+      "event": "session.canvas.recorded",
+      "confidence": "unverified",
+      "evidence": {
+        "existence": [
+          "copilot-rosetta-contract"
+        ],
+        "shape": [
+          "copilot-rosetta-contract"
+        ]
+      },
+      "lane": "events",
+      "order": 14,
+      "label": "session.canvas.recorded"
+    },
+    {
+      "id": "event-016",
+      "event": "session.canvas.removed",
+      "confidence": "unverified",
+      "evidence": {
+        "existence": [
+          "copilot-rosetta-contract"
+        ],
+        "shape": [
+          "copilot-rosetta-contract"
+        ]
+      },
+      "lane": "events",
+      "order": 15,
+      "label": "session.canvas.removed"
+    },
+    {
+      "id": "event-017",
+      "event": "session.compaction_complete",
+      "confidence": "unverified",
+      "evidence": {
+        "existence": [
+          "copilot-rosetta-contract"
+        ],
+        "shape": [
+          "copilot-rosetta-contract"
+        ]
+      },
+      "lane": "events",
+      "order": 16,
+      "label": "session.compaction_complete"
+    },
+    {
+      "id": "event-018",
+      "event": "session.compaction_start",
+      "confidence": "unverified",
+      "evidence": {
+        "existence": [
+          "copilot-rosetta-contract"
+        ],
+        "shape": [
+          "copilot-rosetta-contract"
+        ]
+      },
+      "lane": "events",
+      "order": 17,
+      "label": "session.compaction_start"
+    },
+    {
+      "id": "event-019",
+      "event": "session.context_changed",
+      "confidence": "unverified",
+      "evidence": {
+        "existence": [
+          "copilot-rosetta-contract"
+        ],
+        "shape": [
+          "copilot-rosetta-contract"
+        ]
+      },
+      "lane": "events",
+      "order": 18,
+      "label": "session.context_changed"
+    },
+    {
+      "id": "event-020",
+      "event": "session.context_cleared",
+      "confidence": "unverified",
+      "evidence": {
+        "existence": [
+          "copilot-rosetta-contract"
+        ],
+        "shape": [
+          "copilot-rosetta-contract"
+        ]
+      },
+      "lane": "events",
+      "order": 19,
+      "label": "session.context_cleared"
+    },
+    {
+      "id": "event-021",
+      "event": "session.error",
+      "confidence": "unverified",
+      "evidence": {
+        "existence": [
+          "copilot-rosetta-contract"
+        ],
+        "shape": [
+          "copilot-rosetta-contract"
+        ]
+      },
+      "lane": "events",
+      "order": 20,
+      "label": "session.error"
+    },
+    {
+      "id": "event-022",
+      "event": "session.handoff",
+      "confidence": "unverified",
+      "evidence": {
+        "existence": [
+          "copilot-rosetta-contract"
+        ],
+        "shape": [
+          "copilot-rosetta-contract"
+        ]
+      },
+      "lane": "events",
+      "order": 21,
+      "label": "session.handoff"
+    },
+    {
+      "id": "event-023",
+      "event": "session.info",
+      "confidence": "unverified",
+      "evidence": {
+        "existence": [
+          "copilot-rosetta-contract"
+        ],
+        "shape": [
+          "copilot-rosetta-contract"
+        ]
+      },
+      "lane": "events",
+      "order": 22,
+      "label": "session.info"
+    },
+    {
+      "id": "event-024",
+      "event": "session.mode_changed",
+      "confidence": "unverified",
+      "evidence": {
+        "existence": [
+          "copilot-rosetta-contract"
+        ],
+        "shape": [
+          "copilot-rosetta-contract"
+        ]
+      },
+      "lane": "events",
+      "order": 23,
+      "label": "session.mode_changed"
+    },
+    {
+      "id": "event-025",
+      "event": "session.model_change",
+      "confidence": "verified-headless",
+      "evidence": {
+        "existence": [
+          "copilot-rosetta-runtime"
+        ],
+        "shape": [
+          "copilot-rosetta-runtime"
+        ]
+      },
+      "lane": "events",
+      "order": 24,
+      "label": "session.model_change"
+    },
+    {
+      "id": "event-026",
+      "event": "session.permissions_changed",
+      "confidence": "verified-headless",
+      "evidence": {
+        "existence": [
+          "copilot-rosetta-runtime"
+        ],
+        "shape": [
+          "copilot-rosetta-runtime"
+        ]
+      },
+      "lane": "events",
+      "order": 25,
+      "label": "session.permissions_changed"
+    },
+    {
+      "id": "event-027",
+      "event": "session.plan_changed",
+      "confidence": "unverified",
+      "evidence": {
+        "existence": [
+          "copilot-rosetta-contract"
+        ],
+        "shape": [
+          "copilot-rosetta-contract"
+        ]
+      },
+      "lane": "events",
+      "order": 26,
+      "label": "session.plan_changed"
+    },
+    {
+      "id": "event-028",
+      "event": "session.remote_steerable_changed",
+      "confidence": "unverified",
+      "evidence": {
+        "existence": [
+          "copilot-rosetta-contract"
+        ],
+        "shape": [
+          "copilot-rosetta-contract"
+        ]
+      },
+      "lane": "events",
+      "order": 27,
+      "label": "session.remote_steerable_changed"
+    },
+    {
+      "id": "event-029",
+      "event": "session.resume",
+      "confidence": "verified-headless",
+      "evidence": {
+        "existence": [
+          "copilot-rosetta-runtime"
+        ],
+        "shape": [
+          "copilot-rosetta-runtime"
+        ]
+      },
+      "lane": "events",
+      "order": 28,
+      "label": "session.resume"
+    },
+    {
+      "id": "event-030",
+      "event": "session.schedule_cancelled",
+      "confidence": "unverified",
+      "evidence": {
+        "existence": [
+          "copilot-rosetta-contract"
+        ],
+        "shape": [
+          "copilot-rosetta-contract"
+        ]
+      },
+      "lane": "events",
+      "order": 29,
+      "label": "session.schedule_cancelled"
+    },
+    {
+      "id": "event-031",
+      "event": "session.schedule_created",
+      "confidence": "unverified",
+      "evidence": {
+        "existence": [
+          "copilot-rosetta-contract"
+        ],
+        "shape": [
+          "copilot-rosetta-contract"
+        ]
+      },
+      "lane": "events",
+      "order": 30,
+      "label": "session.schedule_created"
+    },
+    {
+      "id": "event-032",
+      "event": "session.schedule_rearmed",
+      "confidence": "unverified",
+      "evidence": {
+        "existence": [
+          "copilot-rosetta-contract"
+        ],
+        "shape": [
+          "copilot-rosetta-contract"
+        ]
+      },
+      "lane": "events",
+      "order": 31,
+      "label": "session.schedule_rearmed"
+    },
+    {
+      "id": "event-033",
+      "event": "session.session_limits_changed",
+      "confidence": "unverified",
+      "evidence": {
+        "existence": [
+          "copilot-rosetta-contract"
+        ],
+        "shape": [
+          "copilot-rosetta-contract"
+        ]
+      },
+      "lane": "events",
+      "order": 32,
+      "label": "session.session_limits_changed"
+    },
+    {
+      "id": "event-034",
+      "event": "session.shutdown",
+      "confidence": "verified-headless",
+      "evidence": {
+        "existence": [
+          "copilot-rosetta-runtime"
+        ],
+        "shape": [
+          "copilot-rosetta-runtime"
+        ]
+      },
+      "lane": "events",
+      "order": 33,
+      "label": "session.shutdown"
+    },
+    {
+      "id": "event-035",
+      "event": "session.start",
+      "confidence": "verified-headless",
+      "evidence": {
+        "existence": [
+          "copilot-rosetta-runtime"
+        ],
+        "shape": [
+          "copilot-rosetta-runtime"
+        ]
+      },
+      "lane": "events",
+      "order": 34,
+      "label": "session.start"
+    },
+    {
+      "id": "event-036",
+      "event": "session.task_complete",
+      "confidence": "unverified",
+      "evidence": {
+        "existence": [
+          "copilot-rosetta-contract"
+        ],
+        "shape": [
+          "copilot-rosetta-contract"
+        ]
+      },
+      "lane": "events",
+      "order": 35,
+      "label": "session.task_complete"
+    },
+    {
+      "id": "event-037",
+      "event": "session.truncation",
+      "confidence": "unverified",
+      "evidence": {
+        "existence": [
+          "copilot-rosetta-contract"
+        ],
+        "shape": [
+          "copilot-rosetta-contract"
+        ]
+      },
+      "lane": "events",
+      "order": 36,
+      "label": "session.truncation"
+    },
+    {
+      "id": "event-038",
+      "event": "session.usage_checkpoint",
+      "confidence": "unverified",
+      "evidence": {
+        "existence": [
+          "copilot-rosetta-contract"
+        ],
+        "shape": [
+          "copilot-rosetta-contract"
+        ]
+      },
+      "lane": "events",
+      "order": 37,
+      "label": "session.usage_checkpoint"
+    },
+    {
+      "id": "event-039",
+      "event": "session.warning",
+      "confidence": "unverified",
+      "evidence": {
+        "existence": [
+          "copilot-rosetta-contract"
+        ],
+        "shape": [
+          "copilot-rosetta-contract"
+        ]
+      },
+      "lane": "events",
+      "order": 38,
+      "label": "session.warning"
+    },
+    {
+      "id": "event-040",
+      "event": "session.workspace_file_changed",
+      "confidence": "unverified",
+      "evidence": {
+        "existence": [
+          "copilot-rosetta-contract"
+        ],
+        "shape": [
+          "copilot-rosetta-contract"
+        ]
+      },
+      "lane": "events",
+      "order": 39,
+      "label": "session.workspace_file_changed"
+    },
+    {
+      "id": "event-041",
+      "event": "skill.invoked",
+      "confidence": "unverified",
+      "evidence": {
+        "existence": [
+          "copilot-rosetta-contract"
+        ],
+        "shape": [
+          "copilot-rosetta-contract"
+        ]
+      },
+      "lane": "events",
+      "order": 40,
+      "label": "skill.invoked"
+    },
+    {
+      "id": "event-042",
+      "event": "subagent.completed",
+      "confidence": "unverified",
+      "evidence": {
+        "existence": [
+          "copilot-rosetta-contract"
+        ],
+        "shape": [
+          "copilot-rosetta-contract"
+        ]
+      },
+      "lane": "events",
+      "order": 41,
+      "label": "subagent.completed"
+    },
+    {
+      "id": "event-043",
+      "event": "subagent.deselected",
+      "confidence": "unverified",
+      "evidence": {
+        "existence": [
+          "copilot-rosetta-contract"
+        ],
+        "shape": [
+          "copilot-rosetta-contract"
+        ]
+      },
+      "lane": "events",
+      "order": 42,
+      "label": "subagent.deselected"
+    },
+    {
+      "id": "event-044",
+      "event": "subagent.failed",
+      "confidence": "unverified",
+      "evidence": {
+        "existence": [
+          "copilot-rosetta-contract"
+        ],
+        "shape": [
+          "copilot-rosetta-contract"
+        ]
+      },
+      "lane": "events",
+      "order": 43,
+      "label": "subagent.failed"
+    },
+    {
+      "id": "event-045",
+      "event": "subagent.selected",
+      "confidence": "unverified",
+      "evidence": {
+        "existence": [
+          "copilot-rosetta-contract"
+        ],
+        "shape": [
+          "copilot-rosetta-contract"
+        ]
+      },
+      "lane": "events",
+      "order": 44,
+      "label": "subagent.selected"
+    },
+    {
+      "id": "event-046",
+      "event": "subagent.started",
+      "confidence": "unverified",
+      "evidence": {
+        "existence": [
+          "copilot-rosetta-contract"
+        ],
+        "shape": [
+          "copilot-rosetta-contract"
+        ]
+      },
+      "lane": "events",
+      "order": 45,
+      "label": "subagent.started"
+    },
+    {
+      "id": "event-047",
+      "event": "system.message",
+      "confidence": "verified-headless",
+      "evidence": {
+        "existence": [
+          "copilot-rosetta-runtime"
+        ],
+        "shape": [
+          "copilot-rosetta-runtime"
+        ]
+      },
+      "lane": "events",
+      "order": 46,
+      "label": "system.message"
+    },
+    {
+      "id": "event-048",
+      "event": "system.notification",
+      "confidence": "unverified",
+      "evidence": {
+        "existence": [
+          "copilot-rosetta-contract"
+        ],
+        "shape": [
+          "copilot-rosetta-contract"
+        ]
+      },
+      "lane": "events",
+      "order": 47,
+      "label": "system.notification"
+    },
+    {
+      "id": "event-049",
+      "event": "tool_search.activated",
+      "confidence": "unverified",
+      "evidence": {
+        "existence": [
+          "copilot-rosetta-contract"
+        ],
+        "shape": [
+          "copilot-rosetta-contract"
+        ]
+      },
+      "lane": "events",
+      "order": 48,
+      "label": "tool_search.activated"
+    },
+    {
+      "id": "event-050",
+      "event": "tool.execution_complete",
+      "confidence": "verified-headless",
+      "evidence": {
+        "existence": [
+          "copilot-rosetta-runtime"
+        ],
+        "shape": [
+          "copilot-rosetta-runtime"
+        ]
+      },
+      "lane": "events",
+      "order": 49,
+      "label": "tool.execution_complete"
+    },
+    {
+      "id": "event-051",
+      "event": "tool.execution_start",
+      "confidence": "verified-headless",
+      "evidence": {
+        "existence": [
+          "copilot-rosetta-runtime"
+        ],
+        "shape": [
+          "copilot-rosetta-runtime"
+        ]
+      },
+      "lane": "events",
+      "order": 50,
+      "label": "tool.execution_start"
+    },
+    {
+      "id": "event-052",
+      "event": "tool.user_requested",
+      "confidence": "unverified",
+      "evidence": {
+        "existence": [
+          "copilot-rosetta-contract"
+        ],
+        "shape": [
+          "copilot-rosetta-contract"
+        ]
+      },
+      "lane": "events",
+      "order": 51,
+      "label": "tool.user_requested"
+    },
+    {
+      "id": "event-053",
+      "event": "user.message",
+      "confidence": "verified-headless",
+      "evidence": {
+        "existence": [
+          "copilot-rosetta-runtime"
+        ],
+        "shape": [
+          "copilot-rosetta-runtime"
+        ]
+      },
+      "lane": "events",
+      "order": 52,
+      "label": "user.message"
+    },
+    {
+      "id": "event-054",
+      "event": "session-plans:artifact",
+      "confidence": "unverified",
+      "evidence": {
+        "existence": [
+          "copilot-rosetta-contract"
+        ],
+        "shape": [
+          "copilot-rosetta-contract"
+        ]
+      },
+      "lane": "session-plans",
+      "order": 0,
+      "label": "session-state/*/plan.md"
+    },
+    {
+      "id": "event-055",
+      "event": "session-checkpoints:artifact",
+      "confidence": "unverified",
+      "evidence": {
+        "existence": [
+          "copilot-rosetta-contract"
+        ],
+        "shape": [
+          "copilot-rosetta-contract"
+        ]
+      },
+      "lane": "session-checkpoints",
+      "order": 0,
+      "label": "session-state/*/checkpoints/**"
+    },
+    {
+      "id": "event-056",
+      "event": "session-files:artifact",
+      "confidence": "unverified",
+      "evidence": {
+        "existence": [
+          "copilot-rosetta-contract"
+        ],
+        "shape": [
+          "copilot-rosetta-contract"
+        ]
+      },
+      "lane": "session-files",
+      "order": 0,
+      "label": "session-state/*/files/**"
+    },
+    {
+      "id": "event-057",
+      "event": "session-research:artifact",
+      "confidence": "unverified",
+      "evidence": {
+        "existence": [
+          "copilot-rosetta-contract"
+        ],
+        "shape": [
+          "copilot-rosetta-contract"
+        ]
+      },
+      "lane": "session-research",
+      "order": 0,
+      "label": "session-state/*/research/**"
+    },
+    {
+      "id": "event-058",
+      "event": "session-workspace:artifact",
+      "confidence": "unverified",
+      "evidence": {
+        "existence": [
+          "copilot-rosetta-contract"
+        ],
+        "shape": [
+          "copilot-rosetta-contract"
+        ]
+      },
+      "lane": "session-workspace",
+      "order": 0,
+      "label": "session-state/*/workspace.yaml"
+    },
+    {
+      "id": "event-059",
+      "event": "session-db:session.db:inbox_entries",
+      "confidence": "unverified",
+      "evidence": {
+        "existence": [
+          "copilot-rosetta-contract"
+        ],
+        "shape": [
+          "copilot-rosetta-contract"
+        ]
+      },
+      "lane": "session-db",
+      "order": 0,
+      "label": "session.db:inbox_entries"
+    },
+    {
+      "id": "event-060",
+      "event": "session-db:session.db:todo_deps",
+      "confidence": "unverified",
+      "evidence": {
+        "existence": [
+          "copilot-rosetta-contract"
+        ],
+        "shape": [
+          "copilot-rosetta-contract"
+        ]
+      },
+      "lane": "session-db",
+      "order": 1,
+      "label": "session.db:todo_deps"
+    },
+    {
+      "id": "event-061",
+      "event": "session-db:session.db:todos",
+      "confidence": "unverified",
+      "evidence": {
+        "existence": [
+          "copilot-rosetta-contract"
+        ],
+        "shape": [
+          "copilot-rosetta-contract"
+        ]
+      },
+      "lane": "session-db",
+      "order": 2,
+      "label": "session.db:todos"
+    },
+    {
+      "id": "event-062",
+      "event": "rewind-snapshots:document",
+      "confidence": "verified-headless",
+      "evidence": {
+        "existence": [
+          "copilot-rosetta-observed"
+        ],
+        "shape": [
+          "copilot-rosetta-observed"
+        ]
+      },
+      "lane": "rewind-snapshots",
+      "order": 0,
+      "label": "session-state/*/rewind-file-snapshots/**"
+    },
+    {
+      "id": "event-063",
+      "event": "session-locks:artifact",
+      "confidence": "unverified",
+      "evidence": {
+        "existence": [
+          "copilot-rosetta-contract"
+        ],
+        "shape": [
+          "copilot-rosetta-contract"
+        ]
+      },
+      "lane": "session-locks",
+      "order": 0,
+      "label": "session-state/*/inuse.*.lock"
+    },
+    {
+      "id": "event-064",
+      "event": "session-store:artifact",
+      "confidence": "unverified",
+      "evidence": {
+        "existence": [
+          "copilot-rosetta-contract"
+        ],
+        "shape": [
+          "copilot-rosetta-contract"
+        ]
+      },
+      "lane": "session-store",
+      "order": 0,
+      "label": "session-store.db*"
+    },
+    {
+      "id": "event-065",
+      "event": "settings:document",
+      "confidence": "verified-headless",
+      "evidence": {
+        "existence": [
+          "copilot-rosetta-observed"
+        ],
+        "shape": [
+          "copilot-rosetta-observed"
+        ]
+      },
+      "lane": "settings",
+      "order": 0,
+      "label": "settings.json"
+    },
+    {
+      "id": "event-066",
+      "event": "config:artifact",
+      "confidence": "unverified",
+      "evidence": {
+        "existence": [
+          "copilot-rosetta-contract"
+        ],
+        "shape": [
+          "copilot-rosetta-contract"
+        ]
+      },
+      "lane": "config",
+      "order": 0,
+      "label": "config.json"
+    },
+    {
+      "id": "event-067",
+      "event": "permissions:artifact",
+      "confidence": "unverified",
+      "evidence": {
+        "existence": [
+          "copilot-rosetta-contract"
+        ],
+        "shape": [
+          "copilot-rosetta-contract"
+        ]
+      },
+      "lane": "permissions",
+      "order": 0,
+      "label": "permissions-config.json"
+    },
+    {
+      "id": "event-068",
+      "event": "mcp-config:artifact",
+      "confidence": "unverified",
+      "evidence": {
+        "existence": [
+          "copilot-rosetta-contract"
+        ],
+        "shape": [
+          "copilot-rosetta-contract"
+        ]
+      },
+      "lane": "mcp-config",
+      "order": 0,
+      "label": "mcp-config.json"
+    },
+    {
+      "id": "event-069",
+      "event": "lsp-config:artifact",
+      "confidence": "unverified",
+      "evidence": {
+        "existence": [
+          "copilot-rosetta-contract"
+        ],
+        "shape": [
+          "copilot-rosetta-contract"
+        ]
+      },
+      "lane": "lsp-config",
+      "order": 0,
+      "label": "lsp-config.json"
+    },
+    {
+      "id": "event-070",
+      "event": "logs:artifact",
+      "confidence": "unverified",
+      "evidence": {
+        "existence": [
+          "copilot-rosetta-contract"
+        ],
+        "shape": [
+          "copilot-rosetta-contract"
+        ]
+      },
+      "lane": "logs",
+      "order": 0,
+      "label": "logs/**/*"
+    },
+    {
+      "id": "event-071",
+      "event": "command-history:artifact",
+      "confidence": "unverified",
+      "evidence": {
+        "existence": [
+          "copilot-rosetta-contract"
+        ],
+        "shape": [
+          "copilot-rosetta-contract"
+        ]
+      },
+      "lane": "command-history",
+      "order": 0,
+      "label": "command-history-state/**/*"
+    },
+    {
+      "id": "event-072",
+      "event": "agents:artifact",
+      "confidence": "unverified",
+      "evidence": {
+        "existence": [
+          "copilot-rosetta-contract"
+        ],
+        "shape": [
+          "copilot-rosetta-contract"
+        ]
+      },
+      "lane": "agents",
+      "order": 0,
+      "label": "agents/**/*"
+    },
+    {
+      "id": "event-073",
+      "event": "skills:artifact",
+      "confidence": "unverified",
+      "evidence": {
+        "existence": [
+          "copilot-rosetta-contract"
+        ],
+        "shape": [
+          "copilot-rosetta-contract"
+        ]
+      },
+      "lane": "skills",
+      "order": 0,
+      "label": "skills/**/*"
+    },
+    {
+      "id": "event-074",
+      "event": "hooks:artifact",
+      "confidence": "unverified",
+      "evidence": {
+        "existence": [
+          "copilot-rosetta-contract"
+        ],
+        "shape": [
+          "copilot-rosetta-contract"
+        ]
+      },
+      "lane": "hooks",
+      "order": 0,
+      "label": "hooks/**/*"
+    },
+    {
+      "id": "event-075",
+      "event": "instructions:artifact",
+      "confidence": "unverified",
+      "evidence": {
+        "existence": [
+          "copilot-rosetta-contract"
+        ],
+        "shape": [
+          "copilot-rosetta-contract"
+        ]
+      },
+      "lane": "instructions",
+      "order": 0,
+      "label": "instructions/**/*"
+    },
+    {
+      "id": "event-076",
+      "event": "copilot-instructions:artifact",
+      "confidence": "unverified",
+      "evidence": {
+        "existence": [
+          "copilot-rosetta-contract"
+        ],
+        "shape": [
+          "copilot-rosetta-contract"
+        ]
+      },
+      "lane": "copilot-instructions",
+      "order": 0,
+      "label": "copilot-instructions.md"
+    },
+    {
+      "id": "event-077",
+      "event": "extensions:artifact",
+      "confidence": "unverified",
+      "evidence": {
+        "existence": [
+          "copilot-rosetta-contract"
+        ],
+        "shape": [
+          "copilot-rosetta-contract"
+        ]
+      },
+      "lane": "extensions",
+      "order": 0,
+      "label": "extensions/**/*"
+    },
+    {
+      "id": "event-078",
+      "event": "installed-plugins:artifact",
+      "confidence": "unverified",
+      "evidence": {
+        "existence": [
+          "copilot-rosetta-contract"
+        ],
+        "shape": [
+          "copilot-rosetta-contract"
+        ]
+      },
+      "lane": "installed-plugins",
+      "order": 0,
+      "label": "installed-plugins/**/*"
+    },
+    {
+      "id": "event-079",
+      "event": "plugin-data:artifact",
+      "confidence": "unverified",
+      "evidence": {
+        "existence": [
+          "copilot-rosetta-contract"
+        ],
+        "shape": [
+          "copilot-rosetta-contract"
+        ]
+      },
+      "lane": "plugin-data",
+      "order": 0,
+      "label": "plugin-data/**/*"
+    },
+    {
+      "id": "event-080",
+      "event": "ide:artifact",
+      "confidence": "unverified",
+      "evidence": {
+        "existence": [
+          "copilot-rosetta-contract"
+        ],
+        "shape": [
+          "copilot-rosetta-contract"
+        ]
+      },
+      "lane": "ide",
+      "order": 0,
+      "label": "ide/**/*"
+    },
+    {
+      "id": "event-081",
+      "event": "mcp-oauth:artifact",
+      "confidence": "unverified",
+      "evidence": {
+        "existence": [
+          "copilot-rosetta-contract"
+        ],
+        "shape": [
+          "copilot-rosetta-contract"
+        ]
+      },
+      "lane": "mcp-oauth",
+      "order": 0,
+      "label": "mcp-oauth-config/**/*"
+    },
+    {
+      "id": "event-082",
+      "event": "mcp-secrets:artifact",
+      "confidence": "unverified",
+      "evidence": {
+        "existence": [
+          "copilot-rosetta-contract"
+        ],
+        "shape": [
+          "copilot-rosetta-contract"
+        ]
+      },
+      "lane": "mcp-secrets",
+      "order": 0,
+      "label": "mcp-secrets/**/*"
+    },
+    {
+      "id": "event-083",
+      "event": "farm:headless-stdout:assistant.idle",
+      "confidence": "verified-headless",
+      "evidence": {
+        "existence": [
+          "copilot-rosetta-observed"
+        ],
+        "shape": [
+          "copilot-rosetta-observed"
+        ]
+      },
+      "lane": "farm:headless-stdout",
+      "order": 0,
+      "label": "assistant.idle"
+    },
+    {
+      "id": "event-084",
+      "event": "farm:headless-stdout:assistant.message",
+      "confidence": "verified-headless",
+      "evidence": {
+        "existence": [
+          "copilot-rosetta-observed"
+        ],
+        "shape": [
+          "copilot-rosetta-observed"
+        ]
+      },
+      "lane": "farm:headless-stdout",
+      "order": 1,
+      "label": "assistant.message"
+    },
+    {
+      "id": "event-085",
+      "event": "farm:headless-stdout:assistant.message_delta",
+      "confidence": "verified-headless",
+      "evidence": {
+        "existence": [
+          "copilot-rosetta-observed"
+        ],
+        "shape": [
+          "copilot-rosetta-observed"
+        ]
+      },
+      "lane": "farm:headless-stdout",
+      "order": 2,
+      "label": "assistant.message_delta"
+    },
+    {
+      "id": "event-086",
+      "event": "farm:headless-stdout:assistant.message_start",
+      "confidence": "verified-headless",
+      "evidence": {
+        "existence": [
+          "copilot-rosetta-observed"
+        ],
+        "shape": [
+          "copilot-rosetta-observed"
+        ]
+      },
+      "lane": "farm:headless-stdout",
+      "order": 3,
+      "label": "assistant.message_start"
+    },
+    {
+      "id": "event-087",
+      "event": "farm:headless-stdout:assistant.tool_call_delta",
+      "confidence": "verified-headless",
+      "evidence": {
+        "existence": [
+          "copilot-rosetta-observed"
+        ],
+        "shape": [
+          "copilot-rosetta-observed"
+        ]
+      },
+      "lane": "farm:headless-stdout",
+      "order": 4,
+      "label": "assistant.tool_call_delta"
+    },
+    {
+      "id": "event-088",
+      "event": "farm:headless-stdout:assistant.turn_end",
+      "confidence": "verified-headless",
+      "evidence": {
+        "existence": [
+          "copilot-rosetta-observed"
+        ],
+        "shape": [
+          "copilot-rosetta-observed"
+        ]
+      },
+      "lane": "farm:headless-stdout",
+      "order": 5,
+      "label": "assistant.turn_end"
+    },
+    {
+      "id": "event-089",
+      "event": "farm:headless-stdout:assistant.turn_start",
+      "confidence": "verified-headless",
+      "evidence": {
+        "existence": [
+          "copilot-rosetta-observed"
+        ],
+        "shape": [
+          "copilot-rosetta-observed"
+        ]
+      },
+      "lane": "farm:headless-stdout",
+      "order": 6,
+      "label": "assistant.turn_start"
+    },
+    {
+      "id": "event-090",
+      "event": "farm:headless-stdout:model.call_start",
+      "confidence": "verified-headless",
+      "evidence": {
+        "existence": [
+          "copilot-rosetta-observed"
+        ],
+        "shape": [
+          "copilot-rosetta-observed"
+        ]
+      },
+      "lane": "farm:headless-stdout",
+      "order": 7,
+      "label": "model.call_start"
+    },
+    {
+      "id": "event-091",
+      "event": "farm:headless-stdout:result",
+      "confidence": "verified-headless",
+      "evidence": {
+        "existence": [
+          "copilot-rosetta-observed"
+        ],
+        "shape": [
+          "copilot-rosetta-observed"
+        ]
+      },
+      "lane": "farm:headless-stdout",
+      "order": 8,
+      "label": "result"
+    },
+    {
+      "id": "event-092",
+      "event": "farm:headless-stdout:session.background_tasks_changed",
+      "confidence": "verified-headless",
+      "evidence": {
+        "existence": [
+          "copilot-rosetta-observed"
+        ],
+        "shape": [
+          "copilot-rosetta-observed"
+        ]
+      },
+      "lane": "farm:headless-stdout",
+      "order": 9,
+      "label": "session.background_tasks_changed"
+    },
+    {
+      "id": "event-093",
+      "event": "farm:headless-stdout:session.mcp_servers_loaded",
+      "confidence": "verified-headless",
+      "evidence": {
+        "existence": [
+          "copilot-rosetta-observed"
+        ],
+        "shape": [
+          "copilot-rosetta-observed"
+        ]
+      },
+      "lane": "farm:headless-stdout",
+      "order": 10,
+      "label": "session.mcp_servers_loaded"
+    },
+    {
+      "id": "event-094",
+      "event": "farm:headless-stdout:session.skills_loaded",
+      "confidence": "verified-headless",
+      "evidence": {
+        "existence": [
+          "copilot-rosetta-observed"
+        ],
+        "shape": [
+          "copilot-rosetta-observed"
+        ]
+      },
+      "lane": "farm:headless-stdout",
+      "order": 11,
+      "label": "session.skills_loaded"
+    },
+    {
+      "id": "event-095",
+      "event": "farm:headless-stdout:session.tools_updated",
+      "confidence": "verified-headless",
+      "evidence": {
+        "existence": [
+          "copilot-rosetta-observed"
+        ],
+        "shape": [
+          "copilot-rosetta-observed"
+        ]
+      },
+      "lane": "farm:headless-stdout",
+      "order": 12,
+      "label": "session.tools_updated"
+    },
+    {
+      "id": "event-096",
+      "event": "farm:headless-stdout:tool.execution_complete",
+      "confidence": "verified-headless",
+      "evidence": {
+        "existence": [
+          "copilot-rosetta-observed"
+        ],
+        "shape": [
+          "copilot-rosetta-observed"
+        ]
+      },
+      "lane": "farm:headless-stdout",
+      "order": 13,
+      "label": "tool.execution_complete"
+    },
+    {
+      "id": "event-097",
+      "event": "farm:headless-stdout:tool.execution_partial_result",
+      "confidence": "verified-headless",
+      "evidence": {
+        "existence": [
+          "copilot-rosetta-observed"
+        ],
+        "shape": [
+          "copilot-rosetta-observed"
+        ]
+      },
+      "lane": "farm:headless-stdout",
+      "order": 14,
+      "label": "tool.execution_partial_result"
+    },
+    {
+      "id": "event-098",
+      "event": "farm:headless-stdout:tool.execution_start",
+      "confidence": "verified-headless",
+      "evidence": {
+        "existence": [
+          "copilot-rosetta-observed"
+        ],
+        "shape": [
+          "copilot-rosetta-observed"
+        ]
+      },
+      "lane": "farm:headless-stdout",
+      "order": 15,
+      "label": "tool.execution_start"
+    },
+    {
+      "id": "event-099",
+      "event": "farm:headless-stdout:user.message",
+      "confidence": "verified-headless",
+      "evidence": {
+        "existence": [
+          "copilot-rosetta-observed"
+        ],
+        "shape": [
+          "copilot-rosetta-observed"
+        ]
+      },
+      "lane": "farm:headless-stdout",
+      "order": 16,
+      "label": "user.message"
+    }
+  ],
+  "relations": [
+    {
+      "from": "event-035",
+      "to": "event-026",
+      "kind": "sequence",
+      "confidence": "verified-headless",
+      "evidence": {
+        "existence": [
+          "copilot-rosetta-runtime"
+        ],
+        "shape": [
+          "copilot-rosetta-runtime"
+        ],
+        "ordering": [
+          "copilot-rosetta-runtime"
+        ]
+      },
+      "source": "sanitized Rosetta native journal order"
+    },
+    {
+      "from": "event-026",
+      "to": "event-025",
+      "kind": "sequence",
+      "confidence": "verified-headless",
+      "evidence": {
+        "existence": [
+          "copilot-rosetta-runtime"
+        ],
+        "shape": [
+          "copilot-rosetta-runtime"
+        ],
+        "ordering": [
+          "copilot-rosetta-runtime"
+        ]
+      },
+      "source": "sanitized Rosetta native journal order"
+    },
+    {
+      "from": "event-025",
+      "to": "event-047",
+      "kind": "sequence",
+      "confidence": "verified-headless",
+      "evidence": {
+        "existence": [
+          "copilot-rosetta-runtime"
+        ],
+        "shape": [
+          "copilot-rosetta-runtime"
+        ],
+        "ordering": [
+          "copilot-rosetta-runtime"
+        ]
+      },
+      "source": "sanitized Rosetta native journal order"
+    },
+    {
+      "from": "event-047",
+      "to": "event-053",
+      "kind": "sequence",
+      "confidence": "verified-headless",
+      "evidence": {
+        "existence": [
+          "copilot-rosetta-runtime"
+        ],
+        "shape": [
+          "copilot-rosetta-runtime"
+        ],
+        "ordering": [
+          "copilot-rosetta-runtime"
+        ]
+      },
+      "source": "sanitized Rosetta native journal order"
+    },
+    {
+      "from": "event-053",
+      "to": "event-005",
+      "kind": "sequence",
+      "confidence": "verified-headless",
+      "evidence": {
+        "existence": [
+          "copilot-rosetta-runtime"
+        ],
+        "shape": [
+          "copilot-rosetta-runtime"
+        ],
+        "ordering": [
+          "copilot-rosetta-runtime"
+        ]
+      },
+      "source": "sanitized Rosetta native journal order"
+    },
+    {
+      "from": "event-005",
+      "to": "event-002",
+      "kind": "sequence",
+      "confidence": "verified-headless",
+      "evidence": {
+        "existence": [
+          "copilot-rosetta-runtime"
+        ],
+        "shape": [
+          "copilot-rosetta-runtime"
+        ],
+        "ordering": [
+          "copilot-rosetta-runtime"
+        ]
+      },
+      "source": "sanitized Rosetta native journal order"
+    },
+    {
+      "from": "event-002",
+      "to": "event-004",
+      "kind": "sequence",
+      "confidence": "verified-headless",
+      "evidence": {
+        "existence": [
+          "copilot-rosetta-runtime"
+        ],
+        "shape": [
+          "copilot-rosetta-runtime"
+        ],
+        "ordering": [
+          "copilot-rosetta-runtime"
+        ]
+      },
+      "source": "sanitized Rosetta native journal order"
+    },
+    {
+      "from": "event-004",
+      "to": "event-034",
+      "kind": "sequence",
+      "confidence": "verified-headless",
+      "evidence": {
+        "existence": [
+          "copilot-rosetta-runtime"
+        ],
+        "shape": [
+          "copilot-rosetta-runtime"
+        ],
+        "ordering": [
+          "copilot-rosetta-runtime"
+        ]
+      },
+      "source": "sanitized Rosetta native journal order"
+    },
+    {
+      "from": "event-034",
+      "to": "event-029",
+      "kind": "sequence",
+      "confidence": "verified-headless",
+      "evidence": {
+        "existence": [
+          "copilot-rosetta-runtime"
+        ],
+        "shape": [
+          "copilot-rosetta-runtime"
+        ],
+        "ordering": [
+          "copilot-rosetta-runtime"
+        ]
+      },
+      "source": "sanitized Rosetta native journal order"
+    },
+    {
+      "from": "event-029",
+      "to": "event-025",
+      "kind": "sequence",
+      "confidence": "verified-headless",
+      "evidence": {
+        "existence": [
+          "copilot-rosetta-runtime"
+        ],
+        "shape": [
+          "copilot-rosetta-runtime"
+        ],
+        "ordering": [
+          "copilot-rosetta-runtime"
+        ]
+      },
+      "source": "sanitized Rosetta native journal order"
+    },
+    {
+      "from": "event-002",
+      "to": "event-051",
+      "kind": "sequence",
+      "confidence": "verified-headless",
+      "evidence": {
+        "existence": [
+          "copilot-rosetta-runtime"
+        ],
+        "shape": [
+          "copilot-rosetta-runtime"
+        ],
+        "ordering": [
+          "copilot-rosetta-runtime"
+        ]
+      },
+      "source": "sanitized Rosetta native journal order"
+    },
+    {
+      "from": "event-051",
+      "to": "event-050",
+      "kind": "sequence",
+      "confidence": "verified-headless",
+      "evidence": {
+        "existence": [
+          "copilot-rosetta-runtime"
+        ],
+        "shape": [
+          "copilot-rosetta-runtime"
+        ],
+        "ordering": [
+          "copilot-rosetta-runtime"
+        ]
+      },
+      "source": "sanitized Rosetta native journal order"
+    },
+    {
+      "from": "event-050",
+      "to": "event-004",
+      "kind": "sequence",
+      "confidence": "verified-headless",
+      "evidence": {
+        "existence": [
+          "copilot-rosetta-runtime"
+        ],
+        "shape": [
+          "copilot-rosetta-runtime"
+        ],
+        "ordering": [
+          "copilot-rosetta-runtime"
+        ]
+      },
+      "source": "sanitized Rosetta native journal order"
+    },
+    {
+      "from": "event-004",
+      "to": "event-005",
+      "kind": "sequence",
+      "confidence": "verified-headless",
+      "evidence": {
+        "existence": [
+          "copilot-rosetta-runtime"
+        ],
+        "shape": [
+          "copilot-rosetta-runtime"
+        ],
+        "ordering": [
+          "copilot-rosetta-runtime"
+        ]
+      },
+      "source": "sanitized Rosetta native journal order"
+    }
+  ]
+}

@@ -1,0 +1,149 @@
+{
+  "surface": "pi",
+  "surfaceVersion": "0.84.3",
+  "event": "farm:headless-stdout:tool_execution_end",
+  "nativeName": "tool_execution_end",
+  "channel": "farm:headless-stdout",
+  "channels": [
+    "farm:headless-stdout"
+  ],
+  "transport": "jsonl-record",
+  "direction": "agent-local",
+  "payloadSchema": {
+    "type": "object",
+    "properties": {
+      "isError": {
+        "type": "boolean"
+      },
+      "result": {
+        "type": "object",
+        "properties": {
+          "content": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "text": {
+                  "type": "string"
+                },
+                "type": {
+                  "type": "string",
+                  "enum": [
+                    "text"
+                  ]
+                }
+              },
+              "required": [
+                "text",
+                "type"
+              ],
+              "additionalProperties": true
+            }
+          }
+        },
+        "required": [
+          "content"
+        ],
+        "additionalProperties": true
+      },
+      "toolCallId": {
+        "type": "string"
+      },
+      "toolName": {
+        "type": "string",
+        "enum": [
+          "bash"
+        ]
+      }
+    },
+    "required": [
+      "isError",
+      "result",
+      "toolCallId",
+      "toolName"
+    ],
+    "additionalProperties": true
+  },
+  "recordSchema": {
+    "type": "object",
+    "properties": {
+      "isError": {
+        "type": "boolean"
+      },
+      "result": {
+        "type": "object",
+        "properties": {
+          "content": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "text": {
+                  "type": "string"
+                },
+                "type": {
+                  "type": "string",
+                  "enum": [
+                    "text"
+                  ]
+                }
+              },
+              "required": [
+                "text",
+                "type"
+              ],
+              "additionalProperties": true
+            }
+          }
+        },
+        "required": [
+          "content"
+        ],
+        "additionalProperties": true
+      },
+      "toolCallId": {
+        "type": "string"
+      },
+      "toolName": {
+        "type": "string",
+        "enum": [
+          "bash"
+        ]
+      },
+      "type": {
+        "type": "string",
+        "enum": [
+          "tool_execution_end"
+        ]
+      }
+    },
+    "required": [
+      "isError",
+      "result",
+      "toolCallId",
+      "toolName",
+      "type"
+    ],
+    "additionalProperties": true
+  },
+  "schemaFidelity": {
+    "payload": "structural",
+    "carrier": "structural",
+    "limitations": [
+      "Rosetta retains observed/writer field types and requiredness, but its shape algebra intentionally omits some native validation constraints."
+    ]
+  },
+  "evidence": {
+    "existence": [
+      "pi-rosetta-observed"
+    ],
+    "shape": [
+      "pi-rosetta-observed"
+    ],
+    "carrier": [
+      "pi-rosetta-observed"
+    ]
+  },
+  "confidence": "verified-headless",
+  "notes": "<farm>/stdout*.jsonl; 1 retained observation(s); source evidence: fixture."
+}

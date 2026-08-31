@@ -1,0 +1,22 @@
+{
+  "surface": "pi",
+  "surfaceVersion": "0.84.3",
+  "event": "trust:artifact",
+  "nativeName": "agent/trust.json",
+  "channel": "trust",
+  "channels": [
+    "trust"
+  ],
+  "transport": "json-document",
+  "direction": "agent-local",
+  "evidence": {
+    "existence": [
+      "pi-rosetta-contract"
+    ],
+    "shape": [
+      "pi-rosetta-contract"
+    ]
+  },
+  "confidence": "unverified",
+  "notes": "agent/trust.json; non-record native artifact tracked by the complete Rosetta stream inventory."
+}

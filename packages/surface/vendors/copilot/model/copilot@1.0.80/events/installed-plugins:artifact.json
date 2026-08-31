@@ -1,0 +1,22 @@
+{
+  "surface": "copilot",
+  "surfaceVersion": "1.0.80",
+  "event": "installed-plugins:artifact",
+  "nativeName": "installed-plugins/**/*",
+  "channel": "installed-plugins",
+  "channels": [
+    "installed-plugins"
+  ],
+  "transport": "file-artifact",
+  "direction": "agent-local",
+  "evidence": {
+    "existence": [
+      "copilot-rosetta-contract"
+    ],
+    "shape": [
+      "copilot-rosetta-contract"
+    ]
+  },
+  "confidence": "unverified",
+  "notes": "installed-plugins/**/*; non-record native artifact tracked by the complete Rosetta stream inventory."
+}

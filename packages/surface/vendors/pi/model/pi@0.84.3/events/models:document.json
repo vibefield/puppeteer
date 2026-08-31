@@ -1,0 +1,154 @@
+{
+  "surface": "pi",
+  "surfaceVersion": "0.84.3",
+  "event": "models:document",
+  "nativeName": "agent/models.json",
+  "channel": "models",
+  "channels": [
+    "models"
+  ],
+  "transport": "json-document",
+  "direction": "agent-local",
+  "payloadSchema": {
+    "type": "object",
+    "properties": {
+      "providers": {
+        "type": "object",
+        "properties": {
+          "mock": {
+            "type": "object",
+            "properties": {
+              "api": {
+                "type": "string",
+                "enum": [
+                  "openai-completions"
+                ]
+              },
+              "apiKey": {
+                "type": "string"
+              },
+              "baseUrl": {
+                "type": "string"
+              },
+              "compat": {
+                "type": "object",
+                "properties": {
+                  "supportsDeveloperRole": {
+                    "type": "boolean"
+                  },
+                  "supportsReasoningEffort": {
+                    "type": "boolean"
+                  },
+                  "supportsStore": {
+                    "type": "boolean"
+                  }
+                },
+                "required": [
+                  "supportsDeveloperRole",
+                  "supportsReasoningEffort",
+                  "supportsStore"
+                ],
+                "additionalProperties": true
+              },
+              "models": {
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "properties": {
+                    "contextWindow": {
+                      "type": "number"
+                    },
+                    "cost": {
+                      "type": "object",
+                      "properties": {
+                        "cacheRead": {
+                          "type": "number"
+                        },
+                        "cacheWrite": {
+                          "type": "number"
+                        },
+                        "input": {
+                          "type": "number"
+                        },
+                        "output": {
+                          "type": "number"
+                        }
+                      },
+                      "required": [
+                        "cacheRead",
+                        "cacheWrite",
+                        "input",
+                        "output"
+                      ],
+                      "additionalProperties": true
+                    },
+                    "id": {
+                      "type": "string"
+                    },
+                    "input": {
+                      "type": "array",
+                      "items": {
+                        "type": "string"
+                      }
+                    },
+                    "maxTokens": {
+                      "type": "number"
+                    },
+                    "name": {
+                      "type": "string"
+                    },
+                    "reasoning": {
+                      "type": "boolean"
+                    }
+                  },
+                  "required": [
+                    "contextWindow",
+                    "cost",
+                    "id",
+                    "input",
+                    "maxTokens",
+                    "name",
+                    "reasoning"
+                  ],
+                  "additionalProperties": true
+                }
+              }
+            },
+            "required": [
+              "api",
+              "apiKey",
+              "baseUrl",
+              "compat",
+              "models"
+            ],
+            "additionalProperties": true
+          }
+        },
+        "required": [
+          "mock"
+        ],
+        "additionalProperties": true
+      }
+    },
+    "required": [
+      "providers"
+    ],
+    "additionalProperties": true
+  },
+  "schemaFidelity": {
+    "payload": "structural",
+    "limitations": [
+      "Rosetta retains observed/writer field types and requiredness, but its shape algebra intentionally omits some native validation constraints."
+    ]
+  },
+  "evidence": {
+    "existence": [
+      "pi-rosetta-observed"
+    ],
+    "shape": [
+      "pi-rosetta-observed"
+    ]
+  },
+  "confidence": "verified-headless",
+  "notes": "agent/models.json; 6 retained observation(s); source evidence: fixture."
+}

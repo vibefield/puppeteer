@@ -1,0 +1,13 @@
+{
+  "format": "puppeteer-capture-fidelity/1",
+  "vendor": "copilot",
+  "vendorVersion": "1.0.80",
+  "defaultRepresentation": "type-preserving-redaction",
+  "nativeArtifacts": [
+    "**/*.jsonl"
+  ],
+  "limitations": [
+    "Only the events append-only journal is copied from each Rosetta scenario; the committed Rosetta reference preserves the complete 29-stream inventory.",
+    "All native object keys, containers, primitive types, and record ordering are retained; sensitive scalar values are redacted in place."
+  ]
+}

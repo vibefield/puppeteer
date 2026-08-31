@@ -1,0 +1,20 @@
+{
+  "executables": [
+    "pi"
+  ],
+  "envVar": "PUPPETEER_PI_BIN",
+  "versionFlag": "--version",
+  "versionOutput": "0.84.3",
+  "versionPattern": "^(?:[^0-9]*[vV]?)?(\\d+\\.\\d+\\.\\d+(?:-[0-9A-Za-z.-]+)?).*$",
+  "helpFlag": "--help",
+  "dataRoot": "~/.pi",
+  "launchFlags": {
+    "resume": "--session",
+    "sessionId": "--session-id",
+    "sessionDirectory": "--session-dir",
+    "provider": "--provider",
+    "model": "--model",
+    "effort": "--thinking",
+    "name": "--name"
+  }
+}

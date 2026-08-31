@@ -1,0 +1,45 @@
+{
+  "surface": "antigravity",
+  "surfaceVersion": "1.1.20",
+  "event": "conversation-db:conversations.db:gen_metadata",
+  "nativeName": "conversations.db:gen_metadata",
+  "channel": "conversation-db",
+  "channels": [
+    "conversation-db"
+  ],
+  "transport": "sqlite-row",
+  "direction": "agent-local",
+  "payloadSchema": {
+    "type": "object",
+    "properties": {
+      "data": {},
+      "idx": {
+        "type": "number"
+      },
+      "size": {
+        "type": "number"
+      }
+    },
+    "required": [
+      "idx",
+      "size"
+    ],
+    "additionalProperties": true
+  },
+  "schemaFidelity": {
+    "payload": "structural",
+    "limitations": [
+      "Rosetta retains observed/writer field types and requiredness, but its shape algebra intentionally omits some native validation constraints."
+    ]
+  },
+  "evidence": {
+    "existence": [
+      "antigravity-rosetta-observed"
+    ],
+    "shape": [
+      "antigravity-rosetta-observed"
+    ]
+  },
+  "confidence": "verified-headless",
+  "notes": "conversations/*.db*; 57 retained observation(s); source evidence: fixture."
+}

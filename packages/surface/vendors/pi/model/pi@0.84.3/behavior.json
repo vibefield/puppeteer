@@ -1,0 +1,910 @@
+{
+  "behaviorVersion": 1,
+  "title": "pi native persisted-state topology",
+  "description": "Every Rosetta stream is retained as a lane. Arrows are only asserted where committed session journals prove ordering.",
+  "source": "Rosetta canonical inventory and controlled fixtures",
+  "lanes": [
+    {
+      "id": "session",
+      "label": "session",
+      "description": "append_only jsonl: agent/sessions/*/*.jsonl"
+    },
+    {
+      "id": "settings",
+      "label": "settings",
+      "description": "rewrite_in_place json: agent/settings.json"
+    },
+    {
+      "id": "models",
+      "label": "models",
+      "description": "rewrite_in_place json: agent/models.json"
+    },
+    {
+      "id": "models-store",
+      "label": "models-store",
+      "description": "rewrite_in_place json: agent/models-store.json"
+    },
+    {
+      "id": "trust",
+      "label": "trust",
+      "description": "rewrite_in_place json: agent/trust.json"
+    },
+    {
+      "id": "auth",
+      "label": "auth",
+      "description": "rewrite_in_place json: agent/auth.json"
+    },
+    {
+      "id": "keybindings",
+      "label": "keybindings",
+      "description": "rewrite_in_place json: agent/keybindings.json"
+    },
+    {
+      "id": "agents-md",
+      "label": "agents-md",
+      "description": "rewrite_in_place markdown: agent/AGENTS.md"
+    },
+    {
+      "id": "system-md",
+      "label": "system-md",
+      "description": "rewrite_in_place markdown: agent/SYSTEM.md"
+    },
+    {
+      "id": "append-system-md",
+      "label": "append-system-md",
+      "description": "rewrite_in_place markdown: agent/APPEND_SYSTEM.md"
+    },
+    {
+      "id": "extensions",
+      "label": "extensions",
+      "description": "rewrite_in_place text: agent/extensions/**/*"
+    },
+    {
+      "id": "skills",
+      "label": "skills",
+      "description": "rewrite_in_place text: agent/skills/**/*"
+    },
+    {
+      "id": "prompts",
+      "label": "prompts",
+      "description": "rewrite_in_place markdown: agent/prompts/**/*"
+    },
+    {
+      "id": "themes",
+      "label": "themes",
+      "description": "rewrite_in_place text: agent/themes/**/*"
+    },
+    {
+      "id": "tools",
+      "label": "tools",
+      "description": "rewrite_in_place text: agent/tools/**/*"
+    },
+    {
+      "id": "bin",
+      "label": "bin",
+      "description": "rewrite_in_place text: agent/bin/**/*"
+    },
+    {
+      "id": "npm-packages",
+      "label": "npm-packages",
+      "description": "rewrite_in_place text: agent/npm/**/*"
+    },
+    {
+      "id": "git-packages",
+      "label": "git-packages",
+      "description": "rewrite_in_place text: agent/git/**/*"
+    },
+    {
+      "id": "debug-log",
+      "label": "debug-log",
+      "description": "append_only text: agent/pi-debug.log"
+    },
+    {
+      "id": "farm:headless-stdout",
+      "label": "farm:headless-stdout",
+      "description": "append_only jsonl: <farm>/stdout*.jsonl"
+    }
+  ],
+  "nodes": [
+    {
+      "id": "event-001",
+      "event": "branch_summary",
+      "confidence": "unverified",
+      "evidence": {
+        "existence": [
+          "pi-rosetta-contract"
+        ],
+        "shape": [
+          "pi-rosetta-contract"
+        ]
+      },
+      "lane": "session",
+      "order": 0,
+      "label": "branch_summary"
+    },
+    {
+      "id": "event-002",
+      "event": "compaction",
+      "confidence": "verified-headless",
+      "evidence": {
+        "existence": [
+          "pi-rosetta-runtime"
+        ],
+        "shape": [
+          "pi-rosetta-runtime"
+        ]
+      },
+      "lane": "session",
+      "order": 1,
+      "label": "compaction"
+    },
+    {
+      "id": "event-003",
+      "event": "custom",
+      "confidence": "unverified",
+      "evidence": {
+        "existence": [
+          "pi-rosetta-contract"
+        ],
+        "shape": [
+          "pi-rosetta-contract"
+        ]
+      },
+      "lane": "session",
+      "order": 2,
+      "label": "custom"
+    },
+    {
+      "id": "event-004",
+      "event": "custom_message",
+      "confidence": "unverified",
+      "evidence": {
+        "existence": [
+          "pi-rosetta-contract"
+        ],
+        "shape": [
+          "pi-rosetta-contract"
+        ]
+      },
+      "lane": "session",
+      "order": 3,
+      "label": "custom_message"
+    },
+    {
+      "id": "event-005",
+      "event": "label",
+      "confidence": "unverified",
+      "evidence": {
+        "existence": [
+          "pi-rosetta-contract"
+        ],
+        "shape": [
+          "pi-rosetta-contract"
+        ]
+      },
+      "lane": "session",
+      "order": 4,
+      "label": "label"
+    },
+    {
+      "id": "event-006",
+      "event": "message",
+      "confidence": "verified-headless",
+      "evidence": {
+        "existence": [
+          "pi-rosetta-runtime"
+        ],
+        "shape": [
+          "pi-rosetta-runtime"
+        ]
+      },
+      "lane": "session",
+      "order": 5,
+      "label": "message"
+    },
+    {
+      "id": "event-007",
+      "event": "model_change",
+      "confidence": "verified-headless",
+      "evidence": {
+        "existence": [
+          "pi-rosetta-runtime"
+        ],
+        "shape": [
+          "pi-rosetta-runtime"
+        ]
+      },
+      "lane": "session",
+      "order": 6,
+      "label": "model_change"
+    },
+    {
+      "id": "event-008",
+      "event": "session",
+      "confidence": "verified-headless",
+      "evidence": {
+        "existence": [
+          "pi-rosetta-runtime"
+        ],
+        "shape": [
+          "pi-rosetta-runtime"
+        ]
+      },
+      "lane": "session",
+      "order": 7,
+      "label": "session"
+    },
+    {
+      "id": "event-009",
+      "event": "session_info",
+      "confidence": "verified-headless",
+      "evidence": {
+        "existence": [
+          "pi-rosetta-runtime"
+        ],
+        "shape": [
+          "pi-rosetta-runtime"
+        ]
+      },
+      "lane": "session",
+      "order": 8,
+      "label": "session_info"
+    },
+    {
+      "id": "event-010",
+      "event": "thinking_level_change",
+      "confidence": "verified-headless",
+      "evidence": {
+        "existence": [
+          "pi-rosetta-runtime"
+        ],
+        "shape": [
+          "pi-rosetta-runtime"
+        ]
+      },
+      "lane": "session",
+      "order": 9,
+      "label": "thinking_level_change"
+    },
+    {
+      "id": "event-011",
+      "event": "settings:document",
+      "confidence": "verified-headless",
+      "evidence": {
+        "existence": [
+          "pi-rosetta-observed"
+        ],
+        "shape": [
+          "pi-rosetta-observed"
+        ]
+      },
+      "lane": "settings",
+      "order": 0,
+      "label": "agent/settings.json"
+    },
+    {
+      "id": "event-012",
+      "event": "models:document",
+      "confidence": "verified-headless",
+      "evidence": {
+        "existence": [
+          "pi-rosetta-observed"
+        ],
+        "shape": [
+          "pi-rosetta-observed"
+        ]
+      },
+      "lane": "models",
+      "order": 0,
+      "label": "agent/models.json"
+    },
+    {
+      "id": "event-013",
+      "event": "models-store:document",
+      "confidence": "verified-headless",
+      "evidence": {
+        "existence": [
+          "pi-rosetta-observed"
+        ],
+        "shape": [
+          "pi-rosetta-observed"
+        ]
+      },
+      "lane": "models-store",
+      "order": 0,
+      "label": "agent/models-store.json"
+    },
+    {
+      "id": "event-014",
+      "event": "trust:artifact",
+      "confidence": "unverified",
+      "evidence": {
+        "existence": [
+          "pi-rosetta-contract"
+        ],
+        "shape": [
+          "pi-rosetta-contract"
+        ]
+      },
+      "lane": "trust",
+      "order": 0,
+      "label": "agent/trust.json"
+    },
+    {
+      "id": "event-015",
+      "event": "auth:artifact",
+      "confidence": "unverified",
+      "evidence": {
+        "existence": [
+          "pi-rosetta-contract"
+        ],
+        "shape": [
+          "pi-rosetta-contract"
+        ]
+      },
+      "lane": "auth",
+      "order": 0,
+      "label": "agent/auth.json"
+    },
+    {
+      "id": "event-016",
+      "event": "keybindings:artifact",
+      "confidence": "unverified",
+      "evidence": {
+        "existence": [
+          "pi-rosetta-contract"
+        ],
+        "shape": [
+          "pi-rosetta-contract"
+        ]
+      },
+      "lane": "keybindings",
+      "order": 0,
+      "label": "agent/keybindings.json"
+    },
+    {
+      "id": "event-017",
+      "event": "agents-md:artifact",
+      "confidence": "unverified",
+      "evidence": {
+        "existence": [
+          "pi-rosetta-contract"
+        ],
+        "shape": [
+          "pi-rosetta-contract"
+        ]
+      },
+      "lane": "agents-md",
+      "order": 0,
+      "label": "agent/AGENTS.md"
+    },
+    {
+      "id": "event-018",
+      "event": "system-md:artifact",
+      "confidence": "unverified",
+      "evidence": {
+        "existence": [
+          "pi-rosetta-contract"
+        ],
+        "shape": [
+          "pi-rosetta-contract"
+        ]
+      },
+      "lane": "system-md",
+      "order": 0,
+      "label": "agent/SYSTEM.md"
+    },
+    {
+      "id": "event-019",
+      "event": "append-system-md:artifact",
+      "confidence": "unverified",
+      "evidence": {
+        "existence": [
+          "pi-rosetta-contract"
+        ],
+        "shape": [
+          "pi-rosetta-contract"
+        ]
+      },
+      "lane": "append-system-md",
+      "order": 0,
+      "label": "agent/APPEND_SYSTEM.md"
+    },
+    {
+      "id": "event-020",
+      "event": "extensions:artifact",
+      "confidence": "unverified",
+      "evidence": {
+        "existence": [
+          "pi-rosetta-contract"
+        ],
+        "shape": [
+          "pi-rosetta-contract"
+        ]
+      },
+      "lane": "extensions",
+      "order": 0,
+      "label": "agent/extensions/**/*"
+    },
+    {
+      "id": "event-021",
+      "event": "skills:artifact",
+      "confidence": "unverified",
+      "evidence": {
+        "existence": [
+          "pi-rosetta-contract"
+        ],
+        "shape": [
+          "pi-rosetta-contract"
+        ]
+      },
+      "lane": "skills",
+      "order": 0,
+      "label": "agent/skills/**/*"
+    },
+    {
+      "id": "event-022",
+      "event": "prompts:artifact",
+      "confidence": "unverified",
+      "evidence": {
+        "existence": [
+          "pi-rosetta-contract"
+        ],
+        "shape": [
+          "pi-rosetta-contract"
+        ]
+      },
+      "lane": "prompts",
+      "order": 0,
+      "label": "agent/prompts/**/*"
+    },
+    {
+      "id": "event-023",
+      "event": "themes:artifact",
+      "confidence": "unverified",
+      "evidence": {
+        "existence": [
+          "pi-rosetta-contract"
+        ],
+        "shape": [
+          "pi-rosetta-contract"
+        ]
+      },
+      "lane": "themes",
+      "order": 0,
+      "label": "agent/themes/**/*"
+    },
+    {
+      "id": "event-024",
+      "event": "tools:artifact",
+      "confidence": "unverified",
+      "evidence": {
+        "existence": [
+          "pi-rosetta-contract"
+        ],
+        "shape": [
+          "pi-rosetta-contract"
+        ]
+      },
+      "lane": "tools",
+      "order": 0,
+      "label": "agent/tools/**/*"
+    },
+    {
+      "id": "event-025",
+      "event": "bin:artifact",
+      "confidence": "unverified",
+      "evidence": {
+        "existence": [
+          "pi-rosetta-contract"
+        ],
+        "shape": [
+          "pi-rosetta-contract"
+        ]
+      },
+      "lane": "bin",
+      "order": 0,
+      "label": "agent/bin/**/*"
+    },
+    {
+      "id": "event-026",
+      "event": "npm-packages:artifact",
+      "confidence": "unverified",
+      "evidence": {
+        "existence": [
+          "pi-rosetta-contract"
+        ],
+        "shape": [
+          "pi-rosetta-contract"
+        ]
+      },
+      "lane": "npm-packages",
+      "order": 0,
+      "label": "agent/npm/**/*"
+    },
+    {
+      "id": "event-027",
+      "event": "git-packages:artifact",
+      "confidence": "unverified",
+      "evidence": {
+        "existence": [
+          "pi-rosetta-contract"
+        ],
+        "shape": [
+          "pi-rosetta-contract"
+        ]
+      },
+      "lane": "git-packages",
+      "order": 0,
+      "label": "agent/git/**/*"
+    },
+    {
+      "id": "event-028",
+      "event": "debug-log:artifact",
+      "confidence": "unverified",
+      "evidence": {
+        "existence": [
+          "pi-rosetta-contract"
+        ],
+        "shape": [
+          "pi-rosetta-contract"
+        ]
+      },
+      "lane": "debug-log",
+      "order": 0,
+      "label": "agent/pi-debug.log"
+    },
+    {
+      "id": "event-029",
+      "event": "farm:headless-stdout:agent_end",
+      "confidence": "verified-headless",
+      "evidence": {
+        "existence": [
+          "pi-rosetta-observed"
+        ],
+        "shape": [
+          "pi-rosetta-observed"
+        ]
+      },
+      "lane": "farm:headless-stdout",
+      "order": 0,
+      "label": "agent_end"
+    },
+    {
+      "id": "event-030",
+      "event": "farm:headless-stdout:agent_settled",
+      "confidence": "verified-headless",
+      "evidence": {
+        "existence": [
+          "pi-rosetta-observed"
+        ],
+        "shape": [
+          "pi-rosetta-observed"
+        ]
+      },
+      "lane": "farm:headless-stdout",
+      "order": 1,
+      "label": "agent_settled"
+    },
+    {
+      "id": "event-031",
+      "event": "farm:headless-stdout:agent_start",
+      "confidence": "verified-headless",
+      "evidence": {
+        "existence": [
+          "pi-rosetta-observed"
+        ],
+        "shape": [
+          "pi-rosetta-observed"
+        ]
+      },
+      "lane": "farm:headless-stdout",
+      "order": 2,
+      "label": "agent_start"
+    },
+    {
+      "id": "event-032",
+      "event": "farm:headless-stdout:compaction_end",
+      "confidence": "verified-headless",
+      "evidence": {
+        "existence": [
+          "pi-rosetta-observed"
+        ],
+        "shape": [
+          "pi-rosetta-observed"
+        ]
+      },
+      "lane": "farm:headless-stdout",
+      "order": 3,
+      "label": "compaction_end"
+    },
+    {
+      "id": "event-033",
+      "event": "farm:headless-stdout:compaction_start",
+      "confidence": "verified-headless",
+      "evidence": {
+        "existence": [
+          "pi-rosetta-observed"
+        ],
+        "shape": [
+          "pi-rosetta-observed"
+        ]
+      },
+      "lane": "farm:headless-stdout",
+      "order": 4,
+      "label": "compaction_start"
+    },
+    {
+      "id": "event-034",
+      "event": "farm:headless-stdout:message_end",
+      "confidence": "verified-headless",
+      "evidence": {
+        "existence": [
+          "pi-rosetta-observed"
+        ],
+        "shape": [
+          "pi-rosetta-observed"
+        ]
+      },
+      "lane": "farm:headless-stdout",
+      "order": 5,
+      "label": "message_end"
+    },
+    {
+      "id": "event-035",
+      "event": "farm:headless-stdout:message_start",
+      "confidence": "verified-headless",
+      "evidence": {
+        "existence": [
+          "pi-rosetta-observed"
+        ],
+        "shape": [
+          "pi-rosetta-observed"
+        ]
+      },
+      "lane": "farm:headless-stdout",
+      "order": 6,
+      "label": "message_start"
+    },
+    {
+      "id": "event-036",
+      "event": "farm:headless-stdout:message_update",
+      "confidence": "verified-headless",
+      "evidence": {
+        "existence": [
+          "pi-rosetta-observed"
+        ],
+        "shape": [
+          "pi-rosetta-observed"
+        ]
+      },
+      "lane": "farm:headless-stdout",
+      "order": 7,
+      "label": "message_update"
+    },
+    {
+      "id": "event-037",
+      "event": "farm:headless-stdout:session",
+      "confidence": "verified-headless",
+      "evidence": {
+        "existence": [
+          "pi-rosetta-observed"
+        ],
+        "shape": [
+          "pi-rosetta-observed"
+        ]
+      },
+      "lane": "farm:headless-stdout",
+      "order": 8,
+      "label": "session"
+    },
+    {
+      "id": "event-038",
+      "event": "farm:headless-stdout:tool_execution_end",
+      "confidence": "verified-headless",
+      "evidence": {
+        "existence": [
+          "pi-rosetta-observed"
+        ],
+        "shape": [
+          "pi-rosetta-observed"
+        ]
+      },
+      "lane": "farm:headless-stdout",
+      "order": 9,
+      "label": "tool_execution_end"
+    },
+    {
+      "id": "event-039",
+      "event": "farm:headless-stdout:tool_execution_start",
+      "confidence": "verified-headless",
+      "evidence": {
+        "existence": [
+          "pi-rosetta-observed"
+        ],
+        "shape": [
+          "pi-rosetta-observed"
+        ]
+      },
+      "lane": "farm:headless-stdout",
+      "order": 10,
+      "label": "tool_execution_start"
+    },
+    {
+      "id": "event-040",
+      "event": "farm:headless-stdout:tool_execution_update",
+      "confidence": "verified-headless",
+      "evidence": {
+        "existence": [
+          "pi-rosetta-observed"
+        ],
+        "shape": [
+          "pi-rosetta-observed"
+        ]
+      },
+      "lane": "farm:headless-stdout",
+      "order": 11,
+      "label": "tool_execution_update"
+    },
+    {
+      "id": "event-041",
+      "event": "farm:headless-stdout:turn_end",
+      "confidence": "verified-headless",
+      "evidence": {
+        "existence": [
+          "pi-rosetta-observed"
+        ],
+        "shape": [
+          "pi-rosetta-observed"
+        ]
+      },
+      "lane": "farm:headless-stdout",
+      "order": 12,
+      "label": "turn_end"
+    },
+    {
+      "id": "event-042",
+      "event": "farm:headless-stdout:turn_start",
+      "confidence": "verified-headless",
+      "evidence": {
+        "existence": [
+          "pi-rosetta-observed"
+        ],
+        "shape": [
+          "pi-rosetta-observed"
+        ]
+      },
+      "lane": "farm:headless-stdout",
+      "order": 13,
+      "label": "turn_start"
+    }
+  ],
+  "relations": [
+    {
+      "from": "event-008",
+      "to": "event-009",
+      "kind": "sequence",
+      "confidence": "verified-headless",
+      "evidence": {
+        "existence": [
+          "pi-rosetta-runtime"
+        ],
+        "shape": [
+          "pi-rosetta-runtime"
+        ],
+        "ordering": [
+          "pi-rosetta-runtime"
+        ]
+      },
+      "source": "sanitized Rosetta native journal order"
+    },
+    {
+      "from": "event-009",
+      "to": "event-007",
+      "kind": "sequence",
+      "confidence": "verified-headless",
+      "evidence": {
+        "existence": [
+          "pi-rosetta-runtime"
+        ],
+        "shape": [
+          "pi-rosetta-runtime"
+        ],
+        "ordering": [
+          "pi-rosetta-runtime"
+        ]
+      },
+      "source": "sanitized Rosetta native journal order"
+    },
+    {
+      "from": "event-007",
+      "to": "event-010",
+      "kind": "sequence",
+      "confidence": "verified-headless",
+      "evidence": {
+        "existence": [
+          "pi-rosetta-runtime"
+        ],
+        "shape": [
+          "pi-rosetta-runtime"
+        ],
+        "ordering": [
+          "pi-rosetta-runtime"
+        ]
+      },
+      "source": "sanitized Rosetta native journal order"
+    },
+    {
+      "from": "event-010",
+      "to": "event-006",
+      "kind": "sequence",
+      "confidence": "verified-headless",
+      "evidence": {
+        "existence": [
+          "pi-rosetta-runtime"
+        ],
+        "shape": [
+          "pi-rosetta-runtime"
+        ],
+        "ordering": [
+          "pi-rosetta-runtime"
+        ]
+      },
+      "source": "sanitized Rosetta native journal order"
+    },
+    {
+      "from": "event-006",
+      "to": "event-006",
+      "kind": "loop",
+      "confidence": "verified-headless",
+      "evidence": {
+        "existence": [
+          "pi-rosetta-runtime"
+        ],
+        "shape": [
+          "pi-rosetta-runtime"
+        ],
+        "ordering": [
+          "pi-rosetta-runtime"
+        ]
+      },
+      "source": "sanitized Rosetta native journal order"
+    },
+    {
+      "from": "event-008",
+      "to": "event-007",
+      "kind": "sequence",
+      "confidence": "verified-headless",
+      "evidence": {
+        "existence": [
+          "pi-rosetta-runtime"
+        ],
+        "shape": [
+          "pi-rosetta-runtime"
+        ],
+        "ordering": [
+          "pi-rosetta-runtime"
+        ]
+      },
+      "source": "sanitized Rosetta native journal order"
+    },
+    {
+      "from": "event-006",
+      "to": "event-002",
+      "kind": "sequence",
+      "confidence": "verified-headless",
+      "evidence": {
+        "existence": [
+          "pi-rosetta-runtime"
+        ],
+        "shape": [
+          "pi-rosetta-runtime"
+        ],
+        "ordering": [
+          "pi-rosetta-runtime"
+        ]
+      },
+      "source": "sanitized Rosetta native journal order"
+    }
+  ]
+}

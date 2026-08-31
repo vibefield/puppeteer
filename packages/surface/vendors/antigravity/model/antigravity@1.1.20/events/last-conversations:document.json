@@ -1,0 +1,40 @@
+{
+  "surface": "antigravity",
+  "surfaceVersion": "1.1.20",
+  "event": "last-conversations:document",
+  "nativeName": "cache/last_conversations.json",
+  "channel": "last-conversations",
+  "channels": [
+    "last-conversations"
+  ],
+  "transport": "json-document",
+  "direction": "agent-local",
+  "payloadSchema": {
+    "type": "object",
+    "properties": {
+      "<dynamic>": {
+        "type": "string"
+      }
+    },
+    "required": [
+      "<dynamic>"
+    ],
+    "additionalProperties": true
+  },
+  "schemaFidelity": {
+    "payload": "structural",
+    "limitations": [
+      "Rosetta retains observed/writer field types and requiredness, but its shape algebra intentionally omits some native validation constraints."
+    ]
+  },
+  "evidence": {
+    "existence": [
+      "antigravity-rosetta-observed"
+    ],
+    "shape": [
+      "antigravity-rosetta-observed"
+    ]
+  },
+  "confidence": "verified-headless",
+  "notes": "cache/last_conversations.json; 3 retained observation(s); source evidence: fixture."
+}

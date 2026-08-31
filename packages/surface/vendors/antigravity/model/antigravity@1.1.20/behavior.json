@@ -1,0 +1,1548 @@
+{
+  "behaviorVersion": 1,
+  "title": "antigravity native persisted-state topology",
+  "description": "Every Rosetta stream is retained as a lane. Arrows are only asserted where committed transcript journals prove ordering.",
+  "source": "Rosetta canonical inventory and controlled fixtures",
+  "lanes": [
+    {
+      "id": "transcript",
+      "label": "transcript",
+      "description": "append_only jsonl: brain/*/.system_generated/logs/transcript.jsonl"
+    },
+    {
+      "id": "transcript-full",
+      "label": "transcript-full",
+      "description": "append_only jsonl: brain/*/.system_generated/logs/transcript_full.jsonl"
+    },
+    {
+      "id": "transcript-chunks",
+      "label": "transcript-chunks",
+      "description": "append_only jsonl: brain/*/.system_generated/logs/chunks/transcript/*.jsonl"
+    },
+    {
+      "id": "transcript-full-chunks",
+      "label": "transcript-full-chunks",
+      "description": "append_only jsonl: brain/*/.system_generated/logs/chunks/transcript_full/*.jsonl"
+    },
+    {
+      "id": "conversation-message-index",
+      "label": "conversation-message-index",
+      "description": "rewrite_in_place json: brain/*/.system_generated/messages/read.json"
+    },
+    {
+      "id": "conversation-messages",
+      "label": "conversation-messages",
+      "description": "rewrite_in_place json: brain/*/.system_generated/messages/*.json"
+    },
+    {
+      "id": "undelivered-messages",
+      "label": "undelivered-messages",
+      "description": "rewrite_in_place text: brain/*/.system_generated/messages/undelivered/**/*"
+    },
+    {
+      "id": "conversation-db",
+      "label": "conversation-db",
+      "description": "database sqlite: conversations/*.db*"
+    },
+    {
+      "id": "conversation-summaries",
+      "label": "conversation-summaries",
+      "description": "database sqlite: conversation_summaries.db*"
+    },
+    {
+      "id": "last-conversations",
+      "label": "last-conversations",
+      "description": "rewrite_in_place json: cache/last_conversations.json"
+    },
+    {
+      "id": "conversation-metadata",
+      "label": "conversation-metadata",
+      "description": "rewrite_in_place json: cache/conversation_metadata.json"
+    },
+    {
+      "id": "settings",
+      "label": "settings",
+      "description": "rewrite_in_place json: settings.json"
+    },
+    {
+      "id": "history",
+      "label": "history",
+      "description": "append_only jsonl: history.jsonl"
+    },
+    {
+      "id": "installation-id",
+      "label": "installation-id",
+      "description": "rewrite_in_place text: installation_id"
+    },
+    {
+      "id": "onboarding-cache",
+      "label": "onboarding-cache",
+      "description": "rewrite_in_place json: cache/onboarding.json"
+    },
+    {
+      "id": "default-project",
+      "label": "default-project",
+      "description": "rewrite_in_place text: cache/default_project_id.txt"
+    },
+    {
+      "id": "jetski-state",
+      "label": "jetski-state",
+      "description": "rewrite_in_place text: jetski_state.pbtxt"
+    },
+    {
+      "id": "implicit-protobuf",
+      "label": "implicit-protobuf",
+      "description": "rewrite_in_place text: implicit/*.pb"
+    },
+    {
+      "id": "knowledge",
+      "label": "knowledge",
+      "description": "rewrite_in_place text: knowledge/**/*"
+    },
+    {
+      "id": "brain-scratch",
+      "label": "brain-scratch",
+      "description": "rewrite_in_place text: brain/*/scratch/**/*"
+    },
+    {
+      "id": "user-uploaded",
+      "label": "user-uploaded",
+      "description": "rewrite_in_place text: brain/*/.user_uploaded/**/*"
+    },
+    {
+      "id": "scratch",
+      "label": "scratch",
+      "description": "rewrite_in_place text: scratch/**/*"
+    },
+    {
+      "id": "logs",
+      "label": "logs",
+      "description": "append_only text: log/**/*"
+    },
+    {
+      "id": "cli-log",
+      "label": "cli-log",
+      "description": "rewrite_in_place text: cli.log"
+    },
+    {
+      "id": "presence",
+      "label": "presence",
+      "description": "rewrite_in_place text: presence/*"
+    },
+    {
+      "id": "updater",
+      "label": "updater",
+      "description": "rewrite_in_place text: updater/**/*"
+    },
+    {
+      "id": "crashes",
+      "label": "crashes",
+      "description": "append_only text: crashes/**/*"
+    },
+    {
+      "id": "last-check",
+      "label": "last-check",
+      "description": "rewrite_in_place text: last_check.timestamp"
+    },
+    {
+      "id": "changelog-cache",
+      "label": "changelog-cache",
+      "description": "rewrite_in_place markdown: cache/CHANGELOG.md"
+    },
+    {
+      "id": "builtin",
+      "label": "builtin",
+      "description": "rewrite_in_place text: builtin/**/*"
+    },
+    {
+      "id": "bin",
+      "label": "bin",
+      "description": "rewrite_in_place text: bin/**/*"
+    },
+    {
+      "id": "farm:headless-stdout",
+      "label": "farm:headless-stdout",
+      "description": "append_only jsonl: <farm>/stdout*.jsonl"
+    }
+  ],
+  "nodes": [
+    {
+      "id": "event-001",
+      "event": "CHECKPOINT",
+      "confidence": "verified-headless",
+      "evidence": {
+        "existence": [
+          "antigravity-rosetta-runtime"
+        ],
+        "shape": [
+          "antigravity-rosetta-runtime"
+        ]
+      },
+      "lane": "transcript",
+      "order": 0,
+      "label": "CHECKPOINT"
+    },
+    {
+      "id": "event-002",
+      "event": "CONVERSATION_HISTORY",
+      "confidence": "verified-headless",
+      "evidence": {
+        "existence": [
+          "antigravity-rosetta-observed"
+        ],
+        "shape": [
+          "antigravity-rosetta-observed"
+        ]
+      },
+      "lane": "transcript",
+      "order": 1,
+      "label": "CONVERSATION_HISTORY"
+    },
+    {
+      "id": "event-003",
+      "event": "ERROR_MESSAGE",
+      "confidence": "verified-headless",
+      "evidence": {
+        "existence": [
+          "antigravity-rosetta-observed"
+        ],
+        "shape": [
+          "antigravity-rosetta-observed"
+        ]
+      },
+      "lane": "transcript",
+      "order": 2,
+      "label": "ERROR_MESSAGE"
+    },
+    {
+      "id": "event-004",
+      "event": "GENERIC",
+      "confidence": "verified-headless",
+      "evidence": {
+        "existence": [
+          "antigravity-rosetta-observed"
+        ],
+        "shape": [
+          "antigravity-rosetta-observed"
+        ]
+      },
+      "lane": "transcript",
+      "order": 3,
+      "label": "GENERIC"
+    },
+    {
+      "id": "event-005",
+      "event": "LIST_DIRECTORY",
+      "confidence": "verified-headless",
+      "evidence": {
+        "existence": [
+          "antigravity-rosetta-observed"
+        ],
+        "shape": [
+          "antigravity-rosetta-observed"
+        ]
+      },
+      "lane": "transcript",
+      "order": 4,
+      "label": "LIST_DIRECTORY"
+    },
+    {
+      "id": "event-006",
+      "event": "PLANNER_RESPONSE",
+      "confidence": "verified-headless",
+      "evidence": {
+        "existence": [
+          "antigravity-rosetta-runtime"
+        ],
+        "shape": [
+          "antigravity-rosetta-runtime"
+        ]
+      },
+      "lane": "transcript",
+      "order": 5,
+      "label": "PLANNER_RESPONSE"
+    },
+    {
+      "id": "event-007",
+      "event": "RUN_COMMAND",
+      "confidence": "verified-headless",
+      "evidence": {
+        "existence": [
+          "antigravity-rosetta-runtime"
+        ],
+        "shape": [
+          "antigravity-rosetta-runtime"
+        ]
+      },
+      "lane": "transcript",
+      "order": 6,
+      "label": "RUN_COMMAND"
+    },
+    {
+      "id": "event-008",
+      "event": "SYSTEM_MESSAGE",
+      "confidence": "verified-headless",
+      "evidence": {
+        "existence": [
+          "antigravity-rosetta-runtime"
+        ],
+        "shape": [
+          "antigravity-rosetta-runtime"
+        ]
+      },
+      "lane": "transcript",
+      "order": 7,
+      "label": "SYSTEM_MESSAGE"
+    },
+    {
+      "id": "event-009",
+      "event": "USER_INPUT",
+      "confidence": "verified-headless",
+      "evidence": {
+        "existence": [
+          "antigravity-rosetta-runtime"
+        ],
+        "shape": [
+          "antigravity-rosetta-runtime"
+        ]
+      },
+      "lane": "transcript",
+      "order": 8,
+      "label": "USER_INPUT"
+    },
+    {
+      "id": "event-010",
+      "event": "VIEW_FILE",
+      "confidence": "verified-headless",
+      "evidence": {
+        "existence": [
+          "antigravity-rosetta-observed"
+        ],
+        "shape": [
+          "antigravity-rosetta-observed"
+        ]
+      },
+      "lane": "transcript",
+      "order": 9,
+      "label": "VIEW_FILE"
+    },
+    {
+      "id": "event-011",
+      "event": "transcript-full:CHECKPOINT",
+      "confidence": "verified-headless",
+      "evidence": {
+        "existence": [
+          "antigravity-rosetta-observed"
+        ],
+        "shape": [
+          "antigravity-rosetta-observed"
+        ]
+      },
+      "lane": "transcript-full",
+      "order": 0,
+      "label": "CHECKPOINT"
+    },
+    {
+      "id": "event-012",
+      "event": "transcript-full:CONVERSATION_HISTORY",
+      "confidence": "verified-headless",
+      "evidence": {
+        "existence": [
+          "antigravity-rosetta-observed"
+        ],
+        "shape": [
+          "antigravity-rosetta-observed"
+        ]
+      },
+      "lane": "transcript-full",
+      "order": 1,
+      "label": "CONVERSATION_HISTORY"
+    },
+    {
+      "id": "event-013",
+      "event": "transcript-full:ERROR_MESSAGE",
+      "confidence": "verified-headless",
+      "evidence": {
+        "existence": [
+          "antigravity-rosetta-observed"
+        ],
+        "shape": [
+          "antigravity-rosetta-observed"
+        ]
+      },
+      "lane": "transcript-full",
+      "order": 2,
+      "label": "ERROR_MESSAGE"
+    },
+    {
+      "id": "event-014",
+      "event": "transcript-full:GENERIC",
+      "confidence": "verified-headless",
+      "evidence": {
+        "existence": [
+          "antigravity-rosetta-observed"
+        ],
+        "shape": [
+          "antigravity-rosetta-observed"
+        ]
+      },
+      "lane": "transcript-full",
+      "order": 3,
+      "label": "GENERIC"
+    },
+    {
+      "id": "event-015",
+      "event": "transcript-full:LIST_DIRECTORY",
+      "confidence": "verified-headless",
+      "evidence": {
+        "existence": [
+          "antigravity-rosetta-observed"
+        ],
+        "shape": [
+          "antigravity-rosetta-observed"
+        ]
+      },
+      "lane": "transcript-full",
+      "order": 4,
+      "label": "LIST_DIRECTORY"
+    },
+    {
+      "id": "event-016",
+      "event": "transcript-full:PLANNER_RESPONSE",
+      "confidence": "verified-headless",
+      "evidence": {
+        "existence": [
+          "antigravity-rosetta-observed"
+        ],
+        "shape": [
+          "antigravity-rosetta-observed"
+        ]
+      },
+      "lane": "transcript-full",
+      "order": 5,
+      "label": "PLANNER_RESPONSE"
+    },
+    {
+      "id": "event-017",
+      "event": "transcript-full:RUN_COMMAND",
+      "confidence": "verified-headless",
+      "evidence": {
+        "existence": [
+          "antigravity-rosetta-observed"
+        ],
+        "shape": [
+          "antigravity-rosetta-observed"
+        ]
+      },
+      "lane": "transcript-full",
+      "order": 6,
+      "label": "RUN_COMMAND"
+    },
+    {
+      "id": "event-018",
+      "event": "transcript-full:SYSTEM_MESSAGE",
+      "confidence": "verified-headless",
+      "evidence": {
+        "existence": [
+          "antigravity-rosetta-observed"
+        ],
+        "shape": [
+          "antigravity-rosetta-observed"
+        ]
+      },
+      "lane": "transcript-full",
+      "order": 7,
+      "label": "SYSTEM_MESSAGE"
+    },
+    {
+      "id": "event-019",
+      "event": "transcript-full:USER_INPUT",
+      "confidence": "verified-headless",
+      "evidence": {
+        "existence": [
+          "antigravity-rosetta-observed"
+        ],
+        "shape": [
+          "antigravity-rosetta-observed"
+        ]
+      },
+      "lane": "transcript-full",
+      "order": 8,
+      "label": "USER_INPUT"
+    },
+    {
+      "id": "event-020",
+      "event": "transcript-full:VIEW_FILE",
+      "confidence": "verified-headless",
+      "evidence": {
+        "existence": [
+          "antigravity-rosetta-observed"
+        ],
+        "shape": [
+          "antigravity-rosetta-observed"
+        ]
+      },
+      "lane": "transcript-full",
+      "order": 9,
+      "label": "VIEW_FILE"
+    },
+    {
+      "id": "event-021",
+      "event": "transcript-chunks:CHECKPOINT",
+      "confidence": "verified-headless",
+      "evidence": {
+        "existence": [
+          "antigravity-rosetta-observed"
+        ],
+        "shape": [
+          "antigravity-rosetta-observed"
+        ]
+      },
+      "lane": "transcript-chunks",
+      "order": 0,
+      "label": "CHECKPOINT"
+    },
+    {
+      "id": "event-022",
+      "event": "transcript-chunks:CONVERSATION_HISTORY",
+      "confidence": "verified-headless",
+      "evidence": {
+        "existence": [
+          "antigravity-rosetta-observed"
+        ],
+        "shape": [
+          "antigravity-rosetta-observed"
+        ]
+      },
+      "lane": "transcript-chunks",
+      "order": 1,
+      "label": "CONVERSATION_HISTORY"
+    },
+    {
+      "id": "event-023",
+      "event": "transcript-chunks:ERROR_MESSAGE",
+      "confidence": "verified-headless",
+      "evidence": {
+        "existence": [
+          "antigravity-rosetta-observed"
+        ],
+        "shape": [
+          "antigravity-rosetta-observed"
+        ]
+      },
+      "lane": "transcript-chunks",
+      "order": 2,
+      "label": "ERROR_MESSAGE"
+    },
+    {
+      "id": "event-024",
+      "event": "transcript-chunks:GENERIC",
+      "confidence": "verified-headless",
+      "evidence": {
+        "existence": [
+          "antigravity-rosetta-observed"
+        ],
+        "shape": [
+          "antigravity-rosetta-observed"
+        ]
+      },
+      "lane": "transcript-chunks",
+      "order": 3,
+      "label": "GENERIC"
+    },
+    {
+      "id": "event-025",
+      "event": "transcript-chunks:LIST_DIRECTORY",
+      "confidence": "verified-headless",
+      "evidence": {
+        "existence": [
+          "antigravity-rosetta-observed"
+        ],
+        "shape": [
+          "antigravity-rosetta-observed"
+        ]
+      },
+      "lane": "transcript-chunks",
+      "order": 4,
+      "label": "LIST_DIRECTORY"
+    },
+    {
+      "id": "event-026",
+      "event": "transcript-chunks:PLANNER_RESPONSE",
+      "confidence": "verified-headless",
+      "evidence": {
+        "existence": [
+          "antigravity-rosetta-observed"
+        ],
+        "shape": [
+          "antigravity-rosetta-observed"
+        ]
+      },
+      "lane": "transcript-chunks",
+      "order": 5,
+      "label": "PLANNER_RESPONSE"
+    },
+    {
+      "id": "event-027",
+      "event": "transcript-chunks:RUN_COMMAND",
+      "confidence": "verified-headless",
+      "evidence": {
+        "existence": [
+          "antigravity-rosetta-observed"
+        ],
+        "shape": [
+          "antigravity-rosetta-observed"
+        ]
+      },
+      "lane": "transcript-chunks",
+      "order": 6,
+      "label": "RUN_COMMAND"
+    },
+    {
+      "id": "event-028",
+      "event": "transcript-chunks:SYSTEM_MESSAGE",
+      "confidence": "verified-headless",
+      "evidence": {
+        "existence": [
+          "antigravity-rosetta-observed"
+        ],
+        "shape": [
+          "antigravity-rosetta-observed"
+        ]
+      },
+      "lane": "transcript-chunks",
+      "order": 7,
+      "label": "SYSTEM_MESSAGE"
+    },
+    {
+      "id": "event-029",
+      "event": "transcript-chunks:USER_INPUT",
+      "confidence": "verified-headless",
+      "evidence": {
+        "existence": [
+          "antigravity-rosetta-observed"
+        ],
+        "shape": [
+          "antigravity-rosetta-observed"
+        ]
+      },
+      "lane": "transcript-chunks",
+      "order": 8,
+      "label": "USER_INPUT"
+    },
+    {
+      "id": "event-030",
+      "event": "transcript-chunks:VIEW_FILE",
+      "confidence": "verified-headless",
+      "evidence": {
+        "existence": [
+          "antigravity-rosetta-observed"
+        ],
+        "shape": [
+          "antigravity-rosetta-observed"
+        ]
+      },
+      "lane": "transcript-chunks",
+      "order": 9,
+      "label": "VIEW_FILE"
+    },
+    {
+      "id": "event-031",
+      "event": "transcript-full-chunks:CHECKPOINT",
+      "confidence": "verified-headless",
+      "evidence": {
+        "existence": [
+          "antigravity-rosetta-observed"
+        ],
+        "shape": [
+          "antigravity-rosetta-observed"
+        ]
+      },
+      "lane": "transcript-full-chunks",
+      "order": 0,
+      "label": "CHECKPOINT"
+    },
+    {
+      "id": "event-032",
+      "event": "transcript-full-chunks:CONVERSATION_HISTORY",
+      "confidence": "verified-headless",
+      "evidence": {
+        "existence": [
+          "antigravity-rosetta-observed"
+        ],
+        "shape": [
+          "antigravity-rosetta-observed"
+        ]
+      },
+      "lane": "transcript-full-chunks",
+      "order": 1,
+      "label": "CONVERSATION_HISTORY"
+    },
+    {
+      "id": "event-033",
+      "event": "transcript-full-chunks:ERROR_MESSAGE",
+      "confidence": "verified-headless",
+      "evidence": {
+        "existence": [
+          "antigravity-rosetta-observed"
+        ],
+        "shape": [
+          "antigravity-rosetta-observed"
+        ]
+      },
+      "lane": "transcript-full-chunks",
+      "order": 2,
+      "label": "ERROR_MESSAGE"
+    },
+    {
+      "id": "event-034",
+      "event": "transcript-full-chunks:GENERIC",
+      "confidence": "verified-headless",
+      "evidence": {
+        "existence": [
+          "antigravity-rosetta-observed"
+        ],
+        "shape": [
+          "antigravity-rosetta-observed"
+        ]
+      },
+      "lane": "transcript-full-chunks",
+      "order": 3,
+      "label": "GENERIC"
+    },
+    {
+      "id": "event-035",
+      "event": "transcript-full-chunks:LIST_DIRECTORY",
+      "confidence": "verified-headless",
+      "evidence": {
+        "existence": [
+          "antigravity-rosetta-observed"
+        ],
+        "shape": [
+          "antigravity-rosetta-observed"
+        ]
+      },
+      "lane": "transcript-full-chunks",
+      "order": 4,
+      "label": "LIST_DIRECTORY"
+    },
+    {
+      "id": "event-036",
+      "event": "transcript-full-chunks:PLANNER_RESPONSE",
+      "confidence": "verified-headless",
+      "evidence": {
+        "existence": [
+          "antigravity-rosetta-observed"
+        ],
+        "shape": [
+          "antigravity-rosetta-observed"
+        ]
+      },
+      "lane": "transcript-full-chunks",
+      "order": 5,
+      "label": "PLANNER_RESPONSE"
+    },
+    {
+      "id": "event-037",
+      "event": "transcript-full-chunks:RUN_COMMAND",
+      "confidence": "verified-headless",
+      "evidence": {
+        "existence": [
+          "antigravity-rosetta-observed"
+        ],
+        "shape": [
+          "antigravity-rosetta-observed"
+        ]
+      },
+      "lane": "transcript-full-chunks",
+      "order": 6,
+      "label": "RUN_COMMAND"
+    },
+    {
+      "id": "event-038",
+      "event": "transcript-full-chunks:SYSTEM_MESSAGE",
+      "confidence": "verified-headless",
+      "evidence": {
+        "existence": [
+          "antigravity-rosetta-observed"
+        ],
+        "shape": [
+          "antigravity-rosetta-observed"
+        ]
+      },
+      "lane": "transcript-full-chunks",
+      "order": 7,
+      "label": "SYSTEM_MESSAGE"
+    },
+    {
+      "id": "event-039",
+      "event": "transcript-full-chunks:USER_INPUT",
+      "confidence": "verified-headless",
+      "evidence": {
+        "existence": [
+          "antigravity-rosetta-observed"
+        ],
+        "shape": [
+          "antigravity-rosetta-observed"
+        ]
+      },
+      "lane": "transcript-full-chunks",
+      "order": 8,
+      "label": "USER_INPUT"
+    },
+    {
+      "id": "event-040",
+      "event": "transcript-full-chunks:VIEW_FILE",
+      "confidence": "verified-headless",
+      "evidence": {
+        "existence": [
+          "antigravity-rosetta-observed"
+        ],
+        "shape": [
+          "antigravity-rosetta-observed"
+        ]
+      },
+      "lane": "transcript-full-chunks",
+      "order": 9,
+      "label": "VIEW_FILE"
+    },
+    {
+      "id": "event-041",
+      "event": "conversation-message-index:document",
+      "confidence": "verified-headless",
+      "evidence": {
+        "existence": [
+          "antigravity-rosetta-observed"
+        ],
+        "shape": [
+          "antigravity-rosetta-observed"
+        ]
+      },
+      "lane": "conversation-message-index",
+      "order": 0,
+      "label": "brain/*/.system_generated/messages/read.json"
+    },
+    {
+      "id": "event-042",
+      "event": "conversation-messages:document",
+      "confidence": "verified-headless",
+      "evidence": {
+        "existence": [
+          "antigravity-rosetta-observed"
+        ],
+        "shape": [
+          "antigravity-rosetta-observed"
+        ]
+      },
+      "lane": "conversation-messages",
+      "order": 0,
+      "label": "brain/*/.system_generated/messages/*.json"
+    },
+    {
+      "id": "event-043",
+      "event": "undelivered-messages:artifact",
+      "confidence": "unverified",
+      "evidence": {
+        "existence": [
+          "antigravity-rosetta-contract"
+        ],
+        "shape": [
+          "antigravity-rosetta-contract"
+        ]
+      },
+      "lane": "undelivered-messages",
+      "order": 0,
+      "label": "brain/*/.system_generated/messages/undelivered/**/*"
+    },
+    {
+      "id": "event-044",
+      "event": "conversation-db:conversations.db:battle_mode_infos",
+      "confidence": "unverified",
+      "evidence": {
+        "existence": [
+          "antigravity-rosetta-contract"
+        ],
+        "shape": [
+          "antigravity-rosetta-contract"
+        ]
+      },
+      "lane": "conversation-db",
+      "order": 0,
+      "label": "conversations.db:battle_mode_infos"
+    },
+    {
+      "id": "event-045",
+      "event": "conversation-db:conversations.db:executor_metadata",
+      "confidence": "verified-headless",
+      "evidence": {
+        "existence": [
+          "antigravity-rosetta-observed"
+        ],
+        "shape": [
+          "antigravity-rosetta-observed"
+        ]
+      },
+      "lane": "conversation-db",
+      "order": 1,
+      "label": "conversations.db:executor_metadata"
+    },
+    {
+      "id": "event-046",
+      "event": "conversation-db:conversations.db:gen_metadata",
+      "confidence": "verified-headless",
+      "evidence": {
+        "existence": [
+          "antigravity-rosetta-observed"
+        ],
+        "shape": [
+          "antigravity-rosetta-observed"
+        ]
+      },
+      "lane": "conversation-db",
+      "order": 2,
+      "label": "conversations.db:gen_metadata"
+    },
+    {
+      "id": "event-047",
+      "event": "conversation-db:conversations.db:parent_references",
+      "confidence": "unverified",
+      "evidence": {
+        "existence": [
+          "antigravity-rosetta-contract"
+        ],
+        "shape": [
+          "antigravity-rosetta-contract"
+        ]
+      },
+      "lane": "conversation-db",
+      "order": 3,
+      "label": "conversations.db:parent_references"
+    },
+    {
+      "id": "event-048",
+      "event": "conversation-db:conversations.db:steps",
+      "confidence": "verified-headless",
+      "evidence": {
+        "existence": [
+          "antigravity-rosetta-observed"
+        ],
+        "shape": [
+          "antigravity-rosetta-observed"
+        ]
+      },
+      "lane": "conversation-db",
+      "order": 4,
+      "label": "conversations.db:steps"
+    },
+    {
+      "id": "event-049",
+      "event": "conversation-db:conversations.db:trajectory_meta",
+      "confidence": "verified-headless",
+      "evidence": {
+        "existence": [
+          "antigravity-rosetta-observed"
+        ],
+        "shape": [
+          "antigravity-rosetta-observed"
+        ]
+      },
+      "lane": "conversation-db",
+      "order": 5,
+      "label": "conversations.db:trajectory_meta"
+    },
+    {
+      "id": "event-050",
+      "event": "conversation-db:conversations.db:trajectory_metadata_blob",
+      "confidence": "verified-headless",
+      "evidence": {
+        "existence": [
+          "antigravity-rosetta-observed"
+        ],
+        "shape": [
+          "antigravity-rosetta-observed"
+        ]
+      },
+      "lane": "conversation-db",
+      "order": 6,
+      "label": "conversations.db:trajectory_metadata_blob"
+    },
+    {
+      "id": "event-051",
+      "event": "conversation-summaries:conversation_summaries.db:conversation_summaries",
+      "confidence": "verified-headless",
+      "evidence": {
+        "existence": [
+          "antigravity-rosetta-observed"
+        ],
+        "shape": [
+          "antigravity-rosetta-observed"
+        ]
+      },
+      "lane": "conversation-summaries",
+      "order": 0,
+      "label": "conversation_summaries.db:conversation_summaries"
+    },
+    {
+      "id": "event-052",
+      "event": "last-conversations:document",
+      "confidence": "verified-headless",
+      "evidence": {
+        "existence": [
+          "antigravity-rosetta-observed"
+        ],
+        "shape": [
+          "antigravity-rosetta-observed"
+        ]
+      },
+      "lane": "last-conversations",
+      "order": 0,
+      "label": "cache/last_conversations.json"
+    },
+    {
+      "id": "event-053",
+      "event": "conversation-metadata:document",
+      "confidence": "verified-headless",
+      "evidence": {
+        "existence": [
+          "antigravity-rosetta-observed"
+        ],
+        "shape": [
+          "antigravity-rosetta-observed"
+        ]
+      },
+      "lane": "conversation-metadata",
+      "order": 0,
+      "label": "cache/conversation_metadata.json"
+    },
+    {
+      "id": "event-054",
+      "event": "settings:document",
+      "confidence": "verified-headless",
+      "evidence": {
+        "existence": [
+          "antigravity-rosetta-observed"
+        ],
+        "shape": [
+          "antigravity-rosetta-observed"
+        ]
+      },
+      "lane": "settings",
+      "order": 0,
+      "label": "settings.json"
+    },
+    {
+      "id": "event-055",
+      "event": "history:<dynamic>",
+      "confidence": "verified-headless",
+      "evidence": {
+        "existence": [
+          "antigravity-rosetta-observed"
+        ],
+        "shape": [
+          "antigravity-rosetta-observed"
+        ]
+      },
+      "lane": "history",
+      "order": 0,
+      "label": "<dynamic>"
+    },
+    {
+      "id": "event-056",
+      "event": "history:<untyped>",
+      "confidence": "verified-headless",
+      "evidence": {
+        "existence": [
+          "antigravity-rosetta-observed"
+        ],
+        "shape": [
+          "antigravity-rosetta-observed"
+        ]
+      },
+      "lane": "history",
+      "order": 1,
+      "label": "<untyped>"
+    },
+    {
+      "id": "event-057",
+      "event": "installation-id:artifact",
+      "confidence": "unverified",
+      "evidence": {
+        "existence": [
+          "antigravity-rosetta-contract"
+        ],
+        "shape": [
+          "antigravity-rosetta-contract"
+        ]
+      },
+      "lane": "installation-id",
+      "order": 0,
+      "label": "installation_id"
+    },
+    {
+      "id": "event-058",
+      "event": "onboarding-cache:document",
+      "confidence": "verified-headless",
+      "evidence": {
+        "existence": [
+          "antigravity-rosetta-observed"
+        ],
+        "shape": [
+          "antigravity-rosetta-observed"
+        ]
+      },
+      "lane": "onboarding-cache",
+      "order": 0,
+      "label": "cache/onboarding.json"
+    },
+    {
+      "id": "event-059",
+      "event": "default-project:artifact",
+      "confidence": "unverified",
+      "evidence": {
+        "existence": [
+          "antigravity-rosetta-contract"
+        ],
+        "shape": [
+          "antigravity-rosetta-contract"
+        ]
+      },
+      "lane": "default-project",
+      "order": 0,
+      "label": "cache/default_project_id.txt"
+    },
+    {
+      "id": "event-060",
+      "event": "jetski-state:artifact",
+      "confidence": "unverified",
+      "evidence": {
+        "existence": [
+          "antigravity-rosetta-contract"
+        ],
+        "shape": [
+          "antigravity-rosetta-contract"
+        ]
+      },
+      "lane": "jetski-state",
+      "order": 0,
+      "label": "jetski_state.pbtxt"
+    },
+    {
+      "id": "event-061",
+      "event": "implicit-protobuf:artifact",
+      "confidence": "unverified",
+      "evidence": {
+        "existence": [
+          "antigravity-rosetta-contract"
+        ],
+        "shape": [
+          "antigravity-rosetta-contract"
+        ]
+      },
+      "lane": "implicit-protobuf",
+      "order": 0,
+      "label": "implicit/*.pb"
+    },
+    {
+      "id": "event-062",
+      "event": "knowledge:artifact",
+      "confidence": "unverified",
+      "evidence": {
+        "existence": [
+          "antigravity-rosetta-contract"
+        ],
+        "shape": [
+          "antigravity-rosetta-contract"
+        ]
+      },
+      "lane": "knowledge",
+      "order": 0,
+      "label": "knowledge/**/*"
+    },
+    {
+      "id": "event-063",
+      "event": "brain-scratch:artifact",
+      "confidence": "unverified",
+      "evidence": {
+        "existence": [
+          "antigravity-rosetta-contract"
+        ],
+        "shape": [
+          "antigravity-rosetta-contract"
+        ]
+      },
+      "lane": "brain-scratch",
+      "order": 0,
+      "label": "brain/*/scratch/**/*"
+    },
+    {
+      "id": "event-064",
+      "event": "user-uploaded:artifact",
+      "confidence": "unverified",
+      "evidence": {
+        "existence": [
+          "antigravity-rosetta-contract"
+        ],
+        "shape": [
+          "antigravity-rosetta-contract"
+        ]
+      },
+      "lane": "user-uploaded",
+      "order": 0,
+      "label": "brain/*/.user_uploaded/**/*"
+    },
+    {
+      "id": "event-065",
+      "event": "scratch:artifact",
+      "confidence": "unverified",
+      "evidence": {
+        "existence": [
+          "antigravity-rosetta-contract"
+        ],
+        "shape": [
+          "antigravity-rosetta-contract"
+        ]
+      },
+      "lane": "scratch",
+      "order": 0,
+      "label": "scratch/**/*"
+    },
+    {
+      "id": "event-066",
+      "event": "logs:artifact",
+      "confidence": "unverified",
+      "evidence": {
+        "existence": [
+          "antigravity-rosetta-contract"
+        ],
+        "shape": [
+          "antigravity-rosetta-contract"
+        ]
+      },
+      "lane": "logs",
+      "order": 0,
+      "label": "log/**/*"
+    },
+    {
+      "id": "event-067",
+      "event": "cli-log:artifact",
+      "confidence": "unverified",
+      "evidence": {
+        "existence": [
+          "antigravity-rosetta-contract"
+        ],
+        "shape": [
+          "antigravity-rosetta-contract"
+        ]
+      },
+      "lane": "cli-log",
+      "order": 0,
+      "label": "cli.log"
+    },
+    {
+      "id": "event-068",
+      "event": "presence:artifact",
+      "confidence": "unverified",
+      "evidence": {
+        "existence": [
+          "antigravity-rosetta-contract"
+        ],
+        "shape": [
+          "antigravity-rosetta-contract"
+        ]
+      },
+      "lane": "presence",
+      "order": 0,
+      "label": "presence/*"
+    },
+    {
+      "id": "event-069",
+      "event": "updater:artifact",
+      "confidence": "unverified",
+      "evidence": {
+        "existence": [
+          "antigravity-rosetta-contract"
+        ],
+        "shape": [
+          "antigravity-rosetta-contract"
+        ]
+      },
+      "lane": "updater",
+      "order": 0,
+      "label": "updater/**/*"
+    },
+    {
+      "id": "event-070",
+      "event": "crashes:artifact",
+      "confidence": "unverified",
+      "evidence": {
+        "existence": [
+          "antigravity-rosetta-contract"
+        ],
+        "shape": [
+          "antigravity-rosetta-contract"
+        ]
+      },
+      "lane": "crashes",
+      "order": 0,
+      "label": "crashes/**/*"
+    },
+    {
+      "id": "event-071",
+      "event": "last-check:artifact",
+      "confidence": "unverified",
+      "evidence": {
+        "existence": [
+          "antigravity-rosetta-contract"
+        ],
+        "shape": [
+          "antigravity-rosetta-contract"
+        ]
+      },
+      "lane": "last-check",
+      "order": 0,
+      "label": "last_check.timestamp"
+    },
+    {
+      "id": "event-072",
+      "event": "changelog-cache:artifact",
+      "confidence": "unverified",
+      "evidence": {
+        "existence": [
+          "antigravity-rosetta-contract"
+        ],
+        "shape": [
+          "antigravity-rosetta-contract"
+        ]
+      },
+      "lane": "changelog-cache",
+      "order": 0,
+      "label": "cache/CHANGELOG.md"
+    },
+    {
+      "id": "event-073",
+      "event": "builtin:artifact",
+      "confidence": "unverified",
+      "evidence": {
+        "existence": [
+          "antigravity-rosetta-contract"
+        ],
+        "shape": [
+          "antigravity-rosetta-contract"
+        ]
+      },
+      "lane": "builtin",
+      "order": 0,
+      "label": "builtin/**/*"
+    },
+    {
+      "id": "event-074",
+      "event": "bin:artifact",
+      "confidence": "unverified",
+      "evidence": {
+        "existence": [
+          "antigravity-rosetta-contract"
+        ],
+        "shape": [
+          "antigravity-rosetta-contract"
+        ]
+      },
+      "lane": "bin",
+      "order": 0,
+      "label": "bin/**/*"
+    },
+    {
+      "id": "event-075",
+      "event": "farm:headless-stdout:init",
+      "confidence": "verified-headless",
+      "evidence": {
+        "existence": [
+          "antigravity-rosetta-observed"
+        ],
+        "shape": [
+          "antigravity-rosetta-observed"
+        ]
+      },
+      "lane": "farm:headless-stdout",
+      "order": 0,
+      "label": "init"
+    },
+    {
+      "id": "event-076",
+      "event": "farm:headless-stdout:result",
+      "confidence": "verified-headless",
+      "evidence": {
+        "existence": [
+          "antigravity-rosetta-observed"
+        ],
+        "shape": [
+          "antigravity-rosetta-observed"
+        ]
+      },
+      "lane": "farm:headless-stdout",
+      "order": 1,
+      "label": "result"
+    },
+    {
+      "id": "event-077",
+      "event": "farm:headless-stdout:step_update",
+      "confidence": "verified-headless",
+      "evidence": {
+        "existence": [
+          "antigravity-rosetta-observed"
+        ],
+        "shape": [
+          "antigravity-rosetta-observed"
+        ]
+      },
+      "lane": "farm:headless-stdout",
+      "order": 2,
+      "label": "step_update"
+    }
+  ],
+  "relations": [
+    {
+      "from": "event-009",
+      "to": "event-006",
+      "kind": "sequence",
+      "confidence": "verified-headless",
+      "evidence": {
+        "existence": [
+          "antigravity-rosetta-runtime"
+        ],
+        "shape": [
+          "antigravity-rosetta-runtime"
+        ],
+        "ordering": [
+          "antigravity-rosetta-runtime"
+        ]
+      },
+      "source": "sanitized Rosetta native journal order"
+    },
+    {
+      "from": "event-006",
+      "to": "event-001",
+      "kind": "sequence",
+      "confidence": "verified-headless",
+      "evidence": {
+        "existence": [
+          "antigravity-rosetta-runtime"
+        ],
+        "shape": [
+          "antigravity-rosetta-runtime"
+        ],
+        "ordering": [
+          "antigravity-rosetta-runtime"
+        ]
+      },
+      "source": "sanitized Rosetta native journal order"
+    },
+    {
+      "from": "event-001",
+      "to": "event-009",
+      "kind": "sequence",
+      "confidence": "verified-headless",
+      "evidence": {
+        "existence": [
+          "antigravity-rosetta-runtime"
+        ],
+        "shape": [
+          "antigravity-rosetta-runtime"
+        ],
+        "ordering": [
+          "antigravity-rosetta-runtime"
+        ]
+      },
+      "source": "sanitized Rosetta native journal order"
+    },
+    {
+      "from": "event-009",
+      "to": "event-008",
+      "kind": "sequence",
+      "confidence": "verified-headless",
+      "evidence": {
+        "existence": [
+          "antigravity-rosetta-runtime"
+        ],
+        "shape": [
+          "antigravity-rosetta-runtime"
+        ],
+        "ordering": [
+          "antigravity-rosetta-runtime"
+        ]
+      },
+      "source": "sanitized Rosetta native journal order"
+    },
+    {
+      "from": "event-008",
+      "to": "event-006",
+      "kind": "sequence",
+      "confidence": "verified-headless",
+      "evidence": {
+        "existence": [
+          "antigravity-rosetta-runtime"
+        ],
+        "shape": [
+          "antigravity-rosetta-runtime"
+        ],
+        "ordering": [
+          "antigravity-rosetta-runtime"
+        ]
+      },
+      "source": "sanitized Rosetta native journal order"
+    },
+    {
+      "from": "event-006",
+      "to": "event-007",
+      "kind": "sequence",
+      "confidence": "verified-headless",
+      "evidence": {
+        "existence": [
+          "antigravity-rosetta-runtime"
+        ],
+        "shape": [
+          "antigravity-rosetta-runtime"
+        ],
+        "ordering": [
+          "antigravity-rosetta-runtime"
+        ]
+      },
+      "source": "sanitized Rosetta native journal order"
+    },
+    {
+      "from": "event-007",
+      "to": "event-001",
+      "kind": "sequence",
+      "confidence": "verified-headless",
+      "evidence": {
+        "existence": [
+          "antigravity-rosetta-runtime"
+        ],
+        "shape": [
+          "antigravity-rosetta-runtime"
+        ],
+        "ordering": [
+          "antigravity-rosetta-runtime"
+        ]
+      },
+      "source": "sanitized Rosetta native journal order"
+    },
+    {
+      "from": "event-001",
+      "to": "event-006",
+      "kind": "sequence",
+      "confidence": "verified-headless",
+      "evidence": {
+        "existence": [
+          "antigravity-rosetta-runtime"
+        ],
+        "shape": [
+          "antigravity-rosetta-runtime"
+        ],
+        "ordering": [
+          "antigravity-rosetta-runtime"
+        ]
+      },
+      "source": "sanitized Rosetta native journal order"
+    }
+  ]
+}

@@ -1,0 +1,311 @@
+{
+  "surface": "copilot",
+  "surfaceVersion": "1.0.80",
+  "event": "session.compaction_complete",
+  "channel": "events",
+  "channels": [
+    "events"
+  ],
+  "transport": "jsonl-record",
+  "direction": "agent-local",
+  "payloadSchema": {
+    "type": "object",
+    "properties": {
+      "checkpointNumber": {
+        "type": "number"
+      },
+      "checkpointPath": {
+        "type": "string"
+      },
+      "compactionTokensUsed": {
+        "type": "object",
+        "properties": {
+          "cacheReadTokens": {
+            "type": "number"
+          },
+          "cacheWriteTokens": {
+            "type": "number"
+          },
+          "copilotUsage": {
+            "type": "object",
+            "properties": {
+              "tokenDetails": {
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "properties": {
+                    "batchSize": {},
+                    "costPerBatch": {},
+                    "tokenCount": {},
+                    "tokenType": {}
+                  },
+                  "required": [
+                    "batchSize",
+                    "costPerBatch",
+                    "tokenCount",
+                    "tokenType"
+                  ],
+                  "additionalProperties": true
+                }
+              },
+              "totalNanoAiu": {
+                "type": "number"
+              }
+            },
+            "required": [
+              "totalNanoAiu"
+            ],
+            "additionalProperties": true
+          },
+          "duration": {
+            "type": "number"
+          },
+          "inputTokens": {
+            "type": "number"
+          },
+          "model": {
+            "type": "string"
+          },
+          "outputTokens": {
+            "type": "number"
+          }
+        },
+        "additionalProperties": true
+      },
+      "conversationTokens": {
+        "type": "number"
+      },
+      "customInstructions": {
+        "type": "string"
+      },
+      "error": {
+        "type": "string"
+      },
+      "messagesRemoved": {
+        "type": "number"
+      },
+      "postCompactionTokens": {
+        "type": "number"
+      },
+      "preCompactionMessagesLength": {
+        "type": "number"
+      },
+      "preCompactionTokens": {
+        "type": "number"
+      },
+      "requestId": {
+        "type": "string"
+      },
+      "serviceRequestId": {
+        "type": "string"
+      },
+      "statusCode": {
+        "type": "number"
+      },
+      "success": {
+        "type": "boolean"
+      },
+      "summaryContent": {
+        "type": "string"
+      },
+      "systemTokens": {
+        "type": "number"
+      },
+      "tokenLimit": {
+        "type": "number"
+      },
+      "tokensRemoved": {
+        "type": "number"
+      },
+      "toolDefinitionsTokens": {
+        "type": "number"
+      },
+      "trigger": {
+        "type": "string"
+      }
+    },
+    "required": [
+      "success"
+    ],
+    "additionalProperties": true
+  },
+  "recordSchema": {
+    "type": "object",
+    "properties": {
+      "agentId": {
+        "type": "string"
+      },
+      "data": {
+        "type": "object",
+        "properties": {
+          "checkpointNumber": {
+            "type": "number"
+          },
+          "checkpointPath": {
+            "type": "string"
+          },
+          "compactionTokensUsed": {
+            "type": "object",
+            "properties": {
+              "cacheReadTokens": {
+                "type": "number"
+              },
+              "cacheWriteTokens": {
+                "type": "number"
+              },
+              "copilotUsage": {
+                "type": "object",
+                "properties": {
+                  "tokenDetails": {
+                    "type": "array",
+                    "items": {
+                      "type": "object",
+                      "properties": {
+                        "batchSize": {},
+                        "costPerBatch": {},
+                        "tokenCount": {},
+                        "tokenType": {}
+                      },
+                      "required": [
+                        "batchSize",
+                        "costPerBatch",
+                        "tokenCount",
+                        "tokenType"
+                      ],
+                      "additionalProperties": true
+                    }
+                  },
+                  "totalNanoAiu": {
+                    "type": "number"
+                  }
+                },
+                "required": [
+                  "totalNanoAiu"
+                ],
+                "additionalProperties": true
+              },
+              "duration": {
+                "type": "number"
+              },
+              "inputTokens": {
+                "type": "number"
+              },
+              "model": {
+                "type": "string"
+              },
+              "outputTokens": {
+                "type": "number"
+              }
+            },
+            "additionalProperties": true
+          },
+          "conversationTokens": {
+            "type": "number"
+          },
+          "customInstructions": {
+            "type": "string"
+          },
+          "error": {
+            "type": "string"
+          },
+          "messagesRemoved": {
+            "type": "number"
+          },
+          "postCompactionTokens": {
+            "type": "number"
+          },
+          "preCompactionMessagesLength": {
+            "type": "number"
+          },
+          "preCompactionTokens": {
+            "type": "number"
+          },
+          "requestId": {
+            "type": "string"
+          },
+          "serviceRequestId": {
+            "type": "string"
+          },
+          "statusCode": {
+            "type": "number"
+          },
+          "success": {
+            "type": "boolean"
+          },
+          "summaryContent": {
+            "type": "string"
+          },
+          "systemTokens": {
+            "type": "number"
+          },
+          "tokenLimit": {
+            "type": "number"
+          },
+          "tokensRemoved": {
+            "type": "number"
+          },
+          "toolDefinitionsTokens": {
+            "type": "number"
+          },
+          "trigger": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "success"
+        ],
+        "additionalProperties": true
+      },
+      "ephemeral": {
+        "type": "boolean"
+      },
+      "id": {
+        "type": "string"
+      },
+      "parentId": {
+        "anyOf": [
+          {
+            "type": "string"
+          },
+          {
+            "type": "null"
+          }
+        ]
+      },
+      "timestamp": {
+        "type": "string"
+      },
+      "type": {
+        "type": "string"
+      }
+    },
+    "required": [
+      "data",
+      "id",
+      "parentId",
+      "timestamp",
+      "type"
+    ],
+    "additionalProperties": true
+  },
+  "schemaFidelity": {
+    "payload": "structural",
+    "carrier": "structural",
+    "limitations": [
+      "Rosetta retains observed/writer field types and requiredness, but its shape algebra intentionally omits some native validation constraints."
+    ]
+  },
+  "evidence": {
+    "existence": [
+      "copilot-rosetta-contract"
+    ],
+    "shape": [
+      "copilot-rosetta-contract"
+    ],
+    "carrier": [
+      "copilot-rosetta-contract"
+    ]
+  },
+  "confidence": "unverified",
+  "notes": "session-state/*/events.jsonl; 0 retained observation(s); source evidence: writer."
+}

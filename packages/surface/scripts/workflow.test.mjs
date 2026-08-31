@@ -7,10 +7,12 @@ describe('Layer 0 workflow inventory', () => {
       'antigravity',
       'claude',
       'codex',
+      'copilot',
       'grok',
       'hermes',
       'kimi',
       'opencode',
+      'pi',
     ]);
     expect(auditSurfaceWorkflow()).toEqual([]);
   });

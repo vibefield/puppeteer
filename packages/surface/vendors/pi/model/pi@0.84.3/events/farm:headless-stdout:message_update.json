@@ -1,0 +1,329 @@
+{
+  "surface": "pi",
+  "surfaceVersion": "0.84.3",
+  "event": "farm:headless-stdout:message_update",
+  "nativeName": "message_update",
+  "channel": "farm:headless-stdout",
+  "channels": [
+    "farm:headless-stdout"
+  ],
+  "transport": "jsonl-record",
+  "direction": "agent-local",
+  "payloadSchema": {
+    "type": "object",
+    "properties": {
+      "assistantMessageEvent": {
+        "type": "object",
+        "properties": {
+          "content": {
+            "type": "string"
+          },
+          "contentIndex": {
+            "type": "number"
+          },
+          "delta": {
+            "type": "string"
+          },
+          "id": {
+            "type": "string"
+          },
+          "toolCall": {
+            "type": "object",
+            "properties": {
+              "arguments": {
+                "type": "object",
+                "properties": {
+                  "command": {
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "command"
+                ],
+                "additionalProperties": true
+              },
+              "id": {
+                "type": "string"
+              },
+              "name": {
+                "type": "string"
+              },
+              "type": {
+                "type": "string",
+                "enum": [
+                  "toolCall"
+                ]
+              }
+            },
+            "required": [
+              "arguments",
+              "id",
+              "name",
+              "type"
+            ],
+            "additionalProperties": true
+          },
+          "toolName": {
+            "type": "string",
+            "enum": [
+              "bash"
+            ]
+          },
+          "type": {
+            "type": "string",
+            "enum": [
+              "text_delta",
+              "text_end",
+              "text_start",
+              "toolcall_delta",
+              "toolcall_end",
+              "toolcall_start"
+            ]
+          }
+        },
+        "required": [
+          "contentIndex",
+          "type"
+        ],
+        "additionalProperties": true
+      },
+      "usage": {
+        "type": "object",
+        "properties": {
+          "cacheRead": {
+            "type": "number"
+          },
+          "cacheWrite": {
+            "type": "number"
+          },
+          "cost": {
+            "type": "object",
+            "properties": {
+              "cacheRead": {
+                "type": "number"
+              },
+              "cacheWrite": {
+                "type": "number"
+              },
+              "input": {
+                "type": "number"
+              },
+              "output": {
+                "type": "number"
+              },
+              "total": {
+                "type": "number"
+              }
+            },
+            "required": [
+              "cacheRead",
+              "cacheWrite",
+              "input",
+              "output",
+              "total"
+            ],
+            "additionalProperties": true
+          },
+          "input": {
+            "type": "number"
+          },
+          "output": {
+            "type": "number"
+          },
+          "reasoning": {
+            "type": "number"
+          },
+          "totalTokens": {
+            "type": "number"
+          }
+        },
+        "required": [
+          "cacheRead",
+          "cacheWrite",
+          "cost",
+          "input",
+          "output",
+          "totalTokens"
+        ],
+        "additionalProperties": true
+      }
+    },
+    "required": [
+      "assistantMessageEvent",
+      "usage"
+    ],
+    "additionalProperties": true
+  },
+  "recordSchema": {
+    "type": "object",
+    "properties": {
+      "assistantMessageEvent": {
+        "type": "object",
+        "properties": {
+          "content": {
+            "type": "string"
+          },
+          "contentIndex": {
+            "type": "number"
+          },
+          "delta": {
+            "type": "string"
+          },
+          "id": {
+            "type": "string"
+          },
+          "toolCall": {
+            "type": "object",
+            "properties": {
+              "arguments": {
+                "type": "object",
+                "properties": {
+                  "command": {
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "command"
+                ],
+                "additionalProperties": true
+              },
+              "id": {
+                "type": "string"
+              },
+              "name": {
+                "type": "string"
+              },
+              "type": {
+                "type": "string",
+                "enum": [
+                  "toolCall"
+                ]
+              }
+            },
+            "required": [
+              "arguments",
+              "id",
+              "name",
+              "type"
+            ],
+            "additionalProperties": true
+          },
+          "toolName": {
+            "type": "string",
+            "enum": [
+              "bash"
+            ]
+          },
+          "type": {
+            "type": "string",
+            "enum": [
+              "text_delta",
+              "text_end",
+              "text_start",
+              "toolcall_delta",
+              "toolcall_end",
+              "toolcall_start"
+            ]
+          }
+        },
+        "required": [
+          "contentIndex",
+          "type"
+        ],
+        "additionalProperties": true
+      },
+      "type": {
+        "type": "string",
+        "enum": [
+          "message_update"
+        ]
+      },
+      "usage": {
+        "type": "object",
+        "properties": {
+          "cacheRead": {
+            "type": "number"
+          },
+          "cacheWrite": {
+            "type": "number"
+          },
+          "cost": {
+            "type": "object",
+            "properties": {
+              "cacheRead": {
+                "type": "number"
+              },
+              "cacheWrite": {
+                "type": "number"
+              },
+              "input": {
+                "type": "number"
+              },
+              "output": {
+                "type": "number"
+              },
+              "total": {
+                "type": "number"
+              }
+            },
+            "required": [
+              "cacheRead",
+              "cacheWrite",
+              "input",
+              "output",
+              "total"
+            ],
+            "additionalProperties": true
+          },
+          "input": {
+            "type": "number"
+          },
+          "output": {
+            "type": "number"
+          },
+          "reasoning": {
+            "type": "number"
+          },
+          "totalTokens": {
+            "type": "number"
+          }
+        },
+        "required": [
+          "cacheRead",
+          "cacheWrite",
+          "cost",
+          "input",
+          "output",
+          "totalTokens"
+        ],
+        "additionalProperties": true
+      }
+    },
+    "required": [
+      "assistantMessageEvent",
+      "type",
+      "usage"
+    ],
+    "additionalProperties": true
+  },
+  "schemaFidelity": {
+    "payload": "structural",
+    "carrier": "structural",
+    "limitations": [
+      "Rosetta retains observed/writer field types and requiredness, but its shape algebra intentionally omits some native validation constraints."
+    ]
+  },
+  "evidence": {
+    "existence": [
+      "pi-rosetta-observed"
+    ],
+    "shape": [
+      "pi-rosetta-observed"
+    ],
+    "carrier": [
+      "pi-rosetta-observed"
+    ]
+  },
+  "confidence": "verified-headless",
+  "notes": "<farm>/stdout*.jsonl; 42 retained observation(s); source evidence: fixture."
+}

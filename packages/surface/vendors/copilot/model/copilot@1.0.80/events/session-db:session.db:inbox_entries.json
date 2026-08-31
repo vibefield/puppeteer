@@ -1,0 +1,86 @@
+{
+  "surface": "copilot",
+  "surfaceVersion": "1.0.80",
+  "event": "session-db:session.db:inbox_entries",
+  "nativeName": "session.db:inbox_entries",
+  "channel": "session-db",
+  "channels": [
+    "session-db"
+  ],
+  "transport": "sqlite-row",
+  "direction": "agent-local",
+  "payloadSchema": {
+    "type": "object",
+    "properties": {
+      "content": {
+        "type": "string"
+      },
+      "id": {
+        "type": "string"
+      },
+      "interaction_id": {
+        "type": "string"
+      },
+      "notified_at": {
+        "type": "number"
+      },
+      "read_at": {
+        "type": "number"
+      },
+      "recipient_session_id": {
+        "type": "string"
+      },
+      "sender_id": {
+        "type": "string"
+      },
+      "sender_name": {
+        "type": "string"
+      },
+      "sender_type": {
+        "type": "string"
+      },
+      "sent_at": {
+        "type": "number"
+      },
+      "sequence": {
+        "type": "number"
+      },
+      "summary": {
+        "type": "string"
+      },
+      "unread": {
+        "type": "number"
+      }
+    },
+    "required": [
+      "content",
+      "id",
+      "interaction_id",
+      "recipient_session_id",
+      "sender_id",
+      "sender_name",
+      "sender_type",
+      "sent_at",
+      "sequence",
+      "summary",
+      "unread"
+    ],
+    "additionalProperties": true
+  },
+  "schemaFidelity": {
+    "payload": "structural",
+    "limitations": [
+      "Rosetta retains observed/writer field types and requiredness, but its shape algebra intentionally omits some native validation constraints."
+    ]
+  },
+  "evidence": {
+    "existence": [
+      "copilot-rosetta-contract"
+    ],
+    "shape": [
+      "copilot-rosetta-contract"
+    ]
+  },
+  "confidence": "unverified",
+  "notes": "session-state/*/session.db*; 0 retained observation(s); source evidence: fixture."
+}

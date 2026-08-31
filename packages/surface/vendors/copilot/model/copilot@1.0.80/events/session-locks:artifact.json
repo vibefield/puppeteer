@@ -1,0 +1,22 @@
+{
+  "surface": "copilot",
+  "surfaceVersion": "1.0.80",
+  "event": "session-locks:artifact",
+  "nativeName": "session-state/*/inuse.*.lock",
+  "channel": "session-locks",
+  "channels": [
+    "session-locks"
+  ],
+  "transport": "file-artifact",
+  "direction": "agent-local",
+  "evidence": {
+    "existence": [
+      "copilot-rosetta-contract"
+    ],
+    "shape": [
+      "copilot-rosetta-contract"
+    ]
+  },
+  "confidence": "unverified",
+  "notes": "session-state/*/inuse.*.lock; non-record native artifact tracked by the complete Rosetta stream inventory."
+}

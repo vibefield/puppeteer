@@ -16,7 +16,7 @@ function response(body, contentType = 'text/plain') {
 test('all upstream definitions are structurally safe and discoverable', () => {
   assert.deepEqual(validateUpstreamConfigs(), []);
   const discovered = loadUpstreamConfigs().map(({ config }) => config.vendor);
-  for (const vendor of ['antigravity', 'claude', 'codex', 'grok', 'hermes', 'kimi', 'opencode']) {
+  for (const vendor of ['antigravity', 'claude', 'codex', 'copilot', 'grok', 'hermes', 'kimi', 'opencode', 'pi']) {
     assert.ok(discovered.includes(vendor), `missing upstream definition for ${vendor}`);
   }
 });

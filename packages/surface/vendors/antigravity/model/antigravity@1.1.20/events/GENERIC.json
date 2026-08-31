@@ -1,0 +1,110 @@
+{
+  "surface": "antigravity",
+  "surfaceVersion": "1.1.20",
+  "event": "GENERIC",
+  "channel": "transcript",
+  "channels": [
+    "transcript"
+  ],
+  "transport": "jsonl-record",
+  "direction": "agent-local",
+  "payloadSchema": {
+    "type": "object",
+    "properties": {
+      "content": {
+        "type": "string"
+      },
+      "source": {
+        "type": "string",
+        "enum": [
+          "MODEL"
+        ]
+      },
+      "status": {
+        "type": "string",
+        "enum": [
+          "DONE"
+        ]
+      },
+      "truncated_fields": {
+        "type": "array",
+        "items": {
+          "type": "string"
+        }
+      }
+    },
+    "required": [
+      "content",
+      "source",
+      "status"
+    ],
+    "additionalProperties": true
+  },
+  "recordSchema": {
+    "type": "object",
+    "properties": {
+      "content": {
+        "type": "string"
+      },
+      "created_at": {
+        "type": "string"
+      },
+      "source": {
+        "type": "string",
+        "enum": [
+          "MODEL"
+        ]
+      },
+      "status": {
+        "type": "string",
+        "enum": [
+          "DONE"
+        ]
+      },
+      "step_index": {
+        "type": "number"
+      },
+      "truncated_fields": {
+        "type": "array",
+        "items": {
+          "type": "string"
+        }
+      },
+      "type": {
+        "type": "string",
+        "enum": [
+          "GENERIC"
+        ]
+      }
+    },
+    "required": [
+      "content",
+      "created_at",
+      "source",
+      "status",
+      "step_index",
+      "type"
+    ],
+    "additionalProperties": true
+  },
+  "schemaFidelity": {
+    "payload": "structural",
+    "carrier": "structural",
+    "limitations": [
+      "Rosetta retains observed/writer field types and requiredness, but its shape algebra intentionally omits some native validation constraints."
+    ]
+  },
+  "evidence": {
+    "existence": [
+      "antigravity-rosetta-observed"
+    ],
+    "shape": [
+      "antigravity-rosetta-observed"
+    ],
+    "carrier": [
+      "antigravity-rosetta-observed"
+    ]
+  },
+  "confidence": "verified-headless",
+  "notes": "brain/*/.system_generated/logs/transcript.jsonl; 35 retained observation(s); source evidence: observed."
+}

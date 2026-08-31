@@ -1,0 +1,22 @@
+{
+  "surface": "antigravity",
+  "surfaceVersion": "1.1.20",
+  "event": "last-check:artifact",
+  "nativeName": "last_check.timestamp",
+  "channel": "last-check",
+  "channels": [
+    "last-check"
+  ],
+  "transport": "file-artifact",
+  "direction": "agent-local",
+  "evidence": {
+    "existence": [
+      "antigravity-rosetta-contract"
+    ],
+    "shape": [
+      "antigravity-rosetta-contract"
+    ]
+  },
+  "confidence": "unverified",
+  "notes": "last_check.timestamp; non-record native artifact tracked by the complete Rosetta stream inventory."
+}

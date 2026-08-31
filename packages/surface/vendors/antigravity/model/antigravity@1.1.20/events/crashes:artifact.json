@@ -1,0 +1,22 @@
+{
+  "surface": "antigravity",
+  "surfaceVersion": "1.1.20",
+  "event": "crashes:artifact",
+  "nativeName": "crashes/**/*",
+  "channel": "crashes",
+  "channels": [
+    "crashes"
+  ],
+  "transport": "file-artifact",
+  "direction": "agent-local",
+  "evidence": {
+    "existence": [
+      "antigravity-rosetta-contract"
+    ],
+    "shape": [
+      "antigravity-rosetta-contract"
+    ]
+  },
+  "confidence": "unverified",
+  "notes": "crashes/**/*; non-record native artifact tracked by the complete Rosetta stream inventory."
+}

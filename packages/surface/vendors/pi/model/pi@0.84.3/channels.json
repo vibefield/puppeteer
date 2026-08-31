@@ -1,0 +1,143 @@
+{
+  "channels": {
+    "session": {
+      "kind": "native-log",
+      "glob": "agent/sessions/*/*.jsonl",
+      "discipline": "append_only",
+      "evidence": "writer"
+    },
+    "settings": {
+      "kind": "native-state-json",
+      "glob": "agent/settings.json",
+      "discipline": "rewrite_in_place",
+      "evidence": "fixture",
+      "notes": "Global settings (~/.pi/agent/settings.json). Project-local .pi/settings.json lives in the cwd, not under ~/.pi. Keys from 0.84.3 docs: defaultProvider, defaultModel, defaultThinkingLevel, compaction, retry, defaultProjectTrust, enableInstallTelemetry, packages, extensions, skills, prompts, themes, sessionDir, defaultTools, …"
+    },
+    "models": {
+      "kind": "native-state-json",
+      "glob": "agent/models.json",
+      "discipline": "rewrite_in_place",
+      "evidence": "fixture",
+      "notes": "Custom providers (openai-completions / openai-responses / anthropic-messages / google-generative-ai). Farm writes the mock provider here."
+    },
+    "models-store": {
+      "kind": "native-state-json",
+      "glob": "agent/models-store.json",
+      "discipline": "rewrite_in_place",
+      "evidence": "fixture",
+      "notes": "Cached provider model catalog. Farm harvests `{}` on a first empty-home run."
+    },
+    "trust": {
+      "kind": "native-state-json",
+      "glob": "agent/trust.json",
+      "discipline": "rewrite_in_place",
+      "evidence": "research",
+      "notes": "Saved project-trust decisions. Written by /trust in interactive mode."
+    },
+    "auth": {
+      "kind": "native-state-json",
+      "glob": "agent/auth.json",
+      "discipline": "rewrite_in_place",
+      "evidence": "research",
+      "notes": "Credentials (0600) — MUST-NOT-PARSE; inventory only. Farm strips this file."
+    },
+    "keybindings": {
+      "kind": "native-state-json",
+      "glob": "agent/keybindings.json",
+      "discipline": "rewrite_in_place",
+      "evidence": "research",
+      "notes": "Custom keybindings overlay."
+    },
+    "agents-md": {
+      "kind": "native-state-markdown",
+      "glob": "agent/AGENTS.md",
+      "discipline": "rewrite_in_place",
+      "evidence": "research",
+      "notes": "Global context file concatenated with cwd/parent AGENTS.md or CLAUDE.md."
+    },
+    "system-md": {
+      "kind": "native-state-markdown",
+      "glob": "agent/SYSTEM.md",
+      "discipline": "rewrite_in_place",
+      "evidence": "research",
+      "notes": "Replaces the default system prompt when present."
+    },
+    "append-system-md": {
+      "kind": "native-state-markdown",
+      "glob": "agent/APPEND_SYSTEM.md",
+      "discipline": "rewrite_in_place",
+      "evidence": "research",
+      "notes": "Appended to the system prompt without replacing it."
+    },
+    "extensions": {
+      "kind": "native-state-text",
+      "glob": "agent/extensions/**/*",
+      "discipline": "rewrite_in_place",
+      "evidence": "research",
+      "notes": "User TypeScript extensions. Farm runs with --no-extensions."
+    },
+    "skills": {
+      "kind": "native-state-text",
+      "glob": "agent/skills/**/*",
+      "discipline": "rewrite_in_place",
+      "evidence": "research",
+      "notes": "User skills. Farm runs with --no-skills."
+    },
+    "prompts": {
+      "kind": "native-state-markdown",
+      "glob": "agent/prompts/**/*",
+      "discipline": "rewrite_in_place",
+      "evidence": "research",
+      "notes": "Prompt templates. Farm runs with --no-prompt-templates."
+    },
+    "themes": {
+      "kind": "native-state-text",
+      "glob": "agent/themes/**/*",
+      "discipline": "rewrite_in_place",
+      "evidence": "research",
+      "notes": "Custom themes. Farm runs with --no-themes."
+    },
+    "tools": {
+      "kind": "native-state-text",
+      "glob": "agent/tools/**/*",
+      "discipline": "rewrite_in_place",
+      "evidence": "research",
+      "notes": "User tools directory (getToolsDir)."
+    },
+    "bin": {
+      "kind": "native-state-text",
+      "glob": "agent/bin/**/*",
+      "discipline": "rewrite_in_place",
+      "evidence": "research",
+      "notes": "Managed binaries (fd, rg). Farm strips this tree (vendor bundle)."
+    },
+    "npm-packages": {
+      "kind": "native-state-text",
+      "glob": "agent/npm/**/*",
+      "discipline": "rewrite_in_place",
+      "evidence": "research",
+      "notes": "User-scoped npm pi packages. Farm strips this tree."
+    },
+    "git-packages": {
+      "kind": "native-state-text",
+      "glob": "agent/git/**/*",
+      "discipline": "rewrite_in_place",
+      "evidence": "research",
+      "notes": "User-scoped git pi packages. Farm strips this tree."
+    },
+    "debug-log": {
+      "kind": "native-state-text",
+      "glob": "agent/pi-debug.log",
+      "discipline": "append_only",
+      "evidence": "research",
+      "notes": "Debug log (getDebugLogPath). Farm strips logs/."
+    },
+    "farm:headless-stdout": {
+      "kind": "native-state-jsonl",
+      "glob": "<farm>/stdout*.jsonl",
+      "discipline": "append_only",
+      "evidence": "fixture",
+      "notes": "Headless stream-json stdout — corroboration surface captured by the farm, not part of the agent data root."
+    }
+  }
+}

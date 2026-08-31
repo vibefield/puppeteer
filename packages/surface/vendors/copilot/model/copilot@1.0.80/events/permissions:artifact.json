@@ -1,0 +1,22 @@
+{
+  "surface": "copilot",
+  "surfaceVersion": "1.0.80",
+  "event": "permissions:artifact",
+  "nativeName": "permissions-config.json",
+  "channel": "permissions",
+  "channels": [
+    "permissions"
+  ],
+  "transport": "json-document",
+  "direction": "agent-local",
+  "evidence": {
+    "existence": [
+      "copilot-rosetta-contract"
+    ],
+    "shape": [
+      "copilot-rosetta-contract"
+    ]
+  },
+  "confidence": "unverified",
+  "notes": "permissions-config.json; non-record native artifact tracked by the complete Rosetta stream inventory."
+}

@@ -1,0 +1,820 @@
+{
+  "surface": "copilot",
+  "surfaceVersion": "1.0.80",
+  "event": "tool.execution_complete",
+  "channel": "events",
+  "channels": [
+    "events"
+  ],
+  "transport": "jsonl-record",
+  "direction": "agent-local",
+  "payloadSchema": {
+    "type": "object",
+    "properties": {
+      "error": {
+        "type": "object",
+        "properties": {
+          "code": {
+            "type": "string"
+          },
+          "message": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "message"
+        ],
+        "additionalProperties": true
+      },
+      "interactionId": {
+        "type": "string"
+      },
+      "isUserRequested": {
+        "type": "boolean"
+      },
+      "mcpMeta": {},
+      "model": {
+        "type": "string"
+      },
+      "parentToolCallId": {
+        "type": "string"
+      },
+      "result": {
+        "type": "object",
+        "properties": {
+          "binaryResultsForLlm": {
+            "type": "array",
+            "items": {
+              "anyOf": [
+                {
+                  "type": "object",
+                  "properties": {
+                    "data": {},
+                    "description": {},
+                    "metadata": {},
+                    "mimeType": {},
+                    "type": {}
+                  },
+                  "required": [
+                    "data",
+                    "mimeType",
+                    "type"
+                  ],
+                  "additionalProperties": true
+                },
+                {
+                  "type": "object",
+                  "properties": {
+                    "byteLength": {},
+                    "description": {},
+                    "metadata": {},
+                    "mimeType": {},
+                    "omittedReason": {},
+                    "type": {}
+                  },
+                  "required": [
+                    "byteLength",
+                    "mimeType",
+                    "omittedReason",
+                    "type"
+                  ],
+                  "additionalProperties": true
+                },
+                {
+                  "type": "object",
+                  "properties": {
+                    "assetId": {},
+                    "byteLength": {},
+                    "description": {},
+                    "metadata": {},
+                    "mimeType": {},
+                    "type": {}
+                  },
+                  "required": [
+                    "assetId",
+                    "byteLength",
+                    "mimeType",
+                    "type"
+                  ],
+                  "additionalProperties": true
+                }
+              ]
+            }
+          },
+          "citableSources": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "content": {
+                  "type": "string"
+                },
+                "id": {
+                  "type": "string"
+                },
+                "path": {
+                  "type": "string"
+                },
+                "title": {
+                  "type": "string"
+                },
+                "url": {
+                  "type": "string"
+                }
+              },
+              "required": [
+                "content",
+                "id"
+              ],
+              "additionalProperties": true
+            }
+          },
+          "content": {
+            "type": "string"
+          },
+          "contents": {
+            "type": "array",
+            "items": {
+              "anyOf": [
+                {
+                  "type": "object",
+                  "properties": {
+                    "text": {},
+                    "type": {}
+                  },
+                  "required": [
+                    "text",
+                    "type"
+                  ],
+                  "additionalProperties": true
+                },
+                {
+                  "type": "object",
+                  "properties": {
+                    "cwd": {},
+                    "exitCode": {},
+                    "text": {},
+                    "type": {}
+                  },
+                  "required": [
+                    "text",
+                    "type"
+                  ],
+                  "additionalProperties": true
+                },
+                {
+                  "type": "object",
+                  "properties": {
+                    "cwd": {},
+                    "exitCode": {},
+                    "outputPreview": {},
+                    "outputTruncated": {},
+                    "shellId": {},
+                    "type": {}
+                  },
+                  "required": [
+                    "exitCode",
+                    "shellId",
+                    "type"
+                  ],
+                  "additionalProperties": true
+                },
+                {
+                  "type": "object",
+                  "properties": {
+                    "data": {},
+                    "mimeType": {},
+                    "type": {}
+                  },
+                  "required": [
+                    "data",
+                    "mimeType",
+                    "type"
+                  ],
+                  "additionalProperties": true
+                },
+                {
+                  "type": "object",
+                  "properties": {
+                    "description": {},
+                    "icons": {},
+                    "mimeType": {},
+                    "name": {},
+                    "size": {},
+                    "title": {},
+                    "type": {},
+                    "uri": {}
+                  },
+                  "required": [
+                    "name",
+                    "type",
+                    "uri"
+                  ],
+                  "additionalProperties": true
+                },
+                {
+                  "type": "object",
+                  "properties": {
+                    "resource": {},
+                    "type": {}
+                  },
+                  "required": [
+                    "resource",
+                    "type"
+                  ],
+                  "additionalProperties": true
+                }
+              ]
+            }
+          },
+          "detailedContent": {
+            "type": "string"
+          },
+          "mcpMeta": {},
+          "structuredContent": {},
+          "uiResource": {
+            "type": "object",
+            "properties": {
+              "_meta": {
+                "type": "object",
+                "properties": {
+                  "ui": {
+                    "type": "object",
+                    "properties": {
+                      "csp": {},
+                      "domain": {},
+                      "permissions": {},
+                      "prefersBorder": {}
+                    },
+                    "additionalProperties": true
+                  }
+                },
+                "additionalProperties": true
+              },
+              "blob": {
+                "type": "string"
+              },
+              "mimeType": {
+                "type": "string"
+              },
+              "text": {
+                "type": "string"
+              },
+              "uri": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "mimeType",
+              "uri"
+            ],
+            "additionalProperties": true
+          }
+        },
+        "required": [
+          "content"
+        ],
+        "additionalProperties": true
+      },
+      "rte": {
+        "type": "boolean"
+      },
+      "sandboxed": {
+        "type": "boolean"
+      },
+      "success": {
+        "type": "boolean"
+      },
+      "toolCallId": {
+        "type": "string"
+      },
+      "toolDescription": {
+        "type": "object",
+        "properties": {
+          "_meta": {
+            "type": "object",
+            "properties": {
+              "ui": {
+                "type": "object",
+                "properties": {
+                  "resourceUri": {
+                    "type": "string"
+                  },
+                  "visibility": {
+                    "type": "array",
+                    "items": {}
+                  }
+                },
+                "additionalProperties": true
+              }
+            },
+            "additionalProperties": true
+          },
+          "description": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "name"
+        ],
+        "additionalProperties": true
+      },
+      "toolTelemetry": {
+        "type": "object",
+        "properties": {
+          "metrics": {
+            "type": "object",
+            "properties": {
+              "commandTimeout": {
+                "type": "number"
+              }
+            },
+            "required": [
+              "commandTimeout"
+            ],
+            "additionalProperties": true
+          },
+          "properties": {
+            "type": "object",
+            "properties": {
+              "asyncOnlyShell": {
+                "type": "string"
+              },
+              "customTimeout": {
+                "type": "string"
+              },
+              "detached": {
+                "type": "string"
+              },
+              "executionMode": {
+                "type": "string",
+                "enum": [
+                  "sync"
+                ]
+              },
+              "sandboxApplied": {
+                "type": "string"
+              },
+              "sandboxOptOutRequested": {
+                "type": "string"
+              },
+              "shell_error_category": {
+                "type": "string",
+                "enum": [
+                  "permission_denied"
+                ]
+              }
+            },
+            "additionalProperties": true
+          }
+        },
+        "additionalProperties": true
+      },
+      "turnId": {
+        "type": "string"
+      }
+    },
+    "required": [
+      "success",
+      "toolCallId"
+    ],
+    "additionalProperties": true
+  },
+  "recordSchema": {
+    "type": "object",
+    "properties": {
+      "agentId": {
+        "type": "string"
+      },
+      "data": {
+        "type": "object",
+        "properties": {
+          "error": {
+            "type": "object",
+            "properties": {
+              "code": {
+                "type": "string"
+              },
+              "message": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "message"
+            ],
+            "additionalProperties": true
+          },
+          "interactionId": {
+            "type": "string"
+          },
+          "isUserRequested": {
+            "type": "boolean"
+          },
+          "mcpMeta": {},
+          "model": {
+            "type": "string"
+          },
+          "parentToolCallId": {
+            "type": "string"
+          },
+          "result": {
+            "type": "object",
+            "properties": {
+              "binaryResultsForLlm": {
+                "type": "array",
+                "items": {
+                  "anyOf": [
+                    {
+                      "type": "object",
+                      "properties": {
+                        "data": {},
+                        "description": {},
+                        "metadata": {},
+                        "mimeType": {},
+                        "type": {}
+                      },
+                      "required": [
+                        "data",
+                        "mimeType",
+                        "type"
+                      ],
+                      "additionalProperties": true
+                    },
+                    {
+                      "type": "object",
+                      "properties": {
+                        "byteLength": {},
+                        "description": {},
+                        "metadata": {},
+                        "mimeType": {},
+                        "omittedReason": {},
+                        "type": {}
+                      },
+                      "required": [
+                        "byteLength",
+                        "mimeType",
+                        "omittedReason",
+                        "type"
+                      ],
+                      "additionalProperties": true
+                    },
+                    {
+                      "type": "object",
+                      "properties": {
+                        "assetId": {},
+                        "byteLength": {},
+                        "description": {},
+                        "metadata": {},
+                        "mimeType": {},
+                        "type": {}
+                      },
+                      "required": [
+                        "assetId",
+                        "byteLength",
+                        "mimeType",
+                        "type"
+                      ],
+                      "additionalProperties": true
+                    }
+                  ]
+                }
+              },
+              "citableSources": {
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "properties": {
+                    "content": {
+                      "type": "string"
+                    },
+                    "id": {
+                      "type": "string"
+                    },
+                    "path": {
+                      "type": "string"
+                    },
+                    "title": {
+                      "type": "string"
+                    },
+                    "url": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "content",
+                    "id"
+                  ],
+                  "additionalProperties": true
+                }
+              },
+              "content": {
+                "type": "string"
+              },
+              "contents": {
+                "type": "array",
+                "items": {
+                  "anyOf": [
+                    {
+                      "type": "object",
+                      "properties": {
+                        "text": {},
+                        "type": {}
+                      },
+                      "required": [
+                        "text",
+                        "type"
+                      ],
+                      "additionalProperties": true
+                    },
+                    {
+                      "type": "object",
+                      "properties": {
+                        "cwd": {},
+                        "exitCode": {},
+                        "text": {},
+                        "type": {}
+                      },
+                      "required": [
+                        "text",
+                        "type"
+                      ],
+                      "additionalProperties": true
+                    },
+                    {
+                      "type": "object",
+                      "properties": {
+                        "cwd": {},
+                        "exitCode": {},
+                        "outputPreview": {},
+                        "outputTruncated": {},
+                        "shellId": {},
+                        "type": {}
+                      },
+                      "required": [
+                        "exitCode",
+                        "shellId",
+                        "type"
+                      ],
+                      "additionalProperties": true
+                    },
+                    {
+                      "type": "object",
+                      "properties": {
+                        "data": {},
+                        "mimeType": {},
+                        "type": {}
+                      },
+                      "required": [
+                        "data",
+                        "mimeType",
+                        "type"
+                      ],
+                      "additionalProperties": true
+                    },
+                    {
+                      "type": "object",
+                      "properties": {
+                        "description": {},
+                        "icons": {},
+                        "mimeType": {},
+                        "name": {},
+                        "size": {},
+                        "title": {},
+                        "type": {},
+                        "uri": {}
+                      },
+                      "required": [
+                        "name",
+                        "type",
+                        "uri"
+                      ],
+                      "additionalProperties": true
+                    },
+                    {
+                      "type": "object",
+                      "properties": {
+                        "resource": {},
+                        "type": {}
+                      },
+                      "required": [
+                        "resource",
+                        "type"
+                      ],
+                      "additionalProperties": true
+                    }
+                  ]
+                }
+              },
+              "detailedContent": {
+                "type": "string"
+              },
+              "mcpMeta": {},
+              "structuredContent": {},
+              "uiResource": {
+                "type": "object",
+                "properties": {
+                  "_meta": {
+                    "type": "object",
+                    "properties": {
+                      "ui": {
+                        "type": "object",
+                        "properties": {
+                          "csp": {},
+                          "domain": {},
+                          "permissions": {},
+                          "prefersBorder": {}
+                        },
+                        "additionalProperties": true
+                      }
+                    },
+                    "additionalProperties": true
+                  },
+                  "blob": {
+                    "type": "string"
+                  },
+                  "mimeType": {
+                    "type": "string"
+                  },
+                  "text": {
+                    "type": "string"
+                  },
+                  "uri": {
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "mimeType",
+                  "uri"
+                ],
+                "additionalProperties": true
+              }
+            },
+            "required": [
+              "content"
+            ],
+            "additionalProperties": true
+          },
+          "rte": {
+            "type": "boolean"
+          },
+          "sandboxed": {
+            "type": "boolean"
+          },
+          "success": {
+            "type": "boolean"
+          },
+          "toolCallId": {
+            "type": "string"
+          },
+          "toolDescription": {
+            "type": "object",
+            "properties": {
+              "_meta": {
+                "type": "object",
+                "properties": {
+                  "ui": {
+                    "type": "object",
+                    "properties": {
+                      "resourceUri": {
+                        "type": "string"
+                      },
+                      "visibility": {
+                        "type": "array",
+                        "items": {}
+                      }
+                    },
+                    "additionalProperties": true
+                  }
+                },
+                "additionalProperties": true
+              },
+              "description": {
+                "type": "string"
+              },
+              "name": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "name"
+            ],
+            "additionalProperties": true
+          },
+          "toolTelemetry": {
+            "type": "object",
+            "properties": {
+              "metrics": {
+                "type": "object",
+                "properties": {
+                  "commandTimeout": {
+                    "type": "number"
+                  }
+                },
+                "required": [
+                  "commandTimeout"
+                ],
+                "additionalProperties": true
+              },
+              "properties": {
+                "type": "object",
+                "properties": {
+                  "asyncOnlyShell": {
+                    "type": "string"
+                  },
+                  "customTimeout": {
+                    "type": "string"
+                  },
+                  "detached": {
+                    "type": "string"
+                  },
+                  "executionMode": {
+                    "type": "string",
+                    "enum": [
+                      "sync"
+                    ]
+                  },
+                  "sandboxApplied": {
+                    "type": "string"
+                  },
+                  "sandboxOptOutRequested": {
+                    "type": "string"
+                  },
+                  "shell_error_category": {
+                    "type": "string",
+                    "enum": [
+                      "permission_denied"
+                    ]
+                  }
+                },
+                "additionalProperties": true
+              }
+            },
+            "additionalProperties": true
+          },
+          "turnId": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "success",
+          "toolCallId"
+        ],
+        "additionalProperties": true
+      },
+      "ephemeral": {
+        "type": "boolean"
+      },
+      "id": {
+        "type": "string"
+      },
+      "parentId": {
+        "anyOf": [
+          {
+            "type": "string"
+          },
+          {
+            "type": "null"
+          }
+        ]
+      },
+      "timestamp": {
+        "type": "string"
+      },
+      "type": {
+        "type": "string"
+      }
+    },
+    "required": [
+      "data",
+      "id",
+      "parentId",
+      "timestamp",
+      "type"
+    ],
+    "additionalProperties": true
+  },
+  "schemaFidelity": {
+    "payload": "structural",
+    "carrier": "structural",
+    "limitations": [
+      "Rosetta retains observed/writer field types and requiredness, but its shape algebra intentionally omits some native validation constraints."
+    ]
+  },
+  "evidence": {
+    "existence": [
+      "copilot-rosetta-runtime"
+    ],
+    "shape": [
+      "copilot-rosetta-runtime"
+    ],
+    "carrier": [
+      "copilot-rosetta-runtime"
+    ]
+  },
+  "confidence": "verified-headless",
+  "fixture": "captures/copilot@1.0.80/tool-denied/events.jsonl",
+  "notes": "session-state/*/events.jsonl; 2 retained observation(s); source evidence: writer."
+}

@@ -1,0 +1,22 @@
+{
+  "surface": "copilot",
+  "surfaceVersion": "1.0.80",
+  "event": "command-history:artifact",
+  "nativeName": "command-history-state/**/*",
+  "channel": "command-history",
+  "channels": [
+    "command-history"
+  ],
+  "transport": "file-artifact",
+  "direction": "agent-local",
+  "evidence": {
+    "existence": [
+      "copilot-rosetta-contract"
+    ],
+    "shape": [
+      "copilot-rosetta-contract"
+    ]
+  },
+  "confidence": "unverified",
+  "notes": "command-history-state/**/*; non-record native artifact tracked by the complete Rosetta stream inventory."
+}

@@ -1,0 +1,22 @@
+{
+  "surface": "antigravity",
+  "surfaceVersion": "1.1.20",
+  "event": "user-uploaded:artifact",
+  "nativeName": "brain/*/.user_uploaded/**/*",
+  "channel": "user-uploaded",
+  "channels": [
+    "user-uploaded"
+  ],
+  "transport": "file-artifact",
+  "direction": "agent-local",
+  "evidence": {
+    "existence": [
+      "antigravity-rosetta-contract"
+    ],
+    "shape": [
+      "antigravity-rosetta-contract"
+    ]
+  },
+  "confidence": "unverified",
+  "notes": "brain/*/.user_uploaded/**/*; non-record native artifact tracked by the complete Rosetta stream inventory."
+}

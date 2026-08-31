@@ -1,0 +1,22 @@
+{
+  "surface": "pi",
+  "surfaceVersion": "0.84.3",
+  "event": "keybindings:artifact",
+  "nativeName": "agent/keybindings.json",
+  "channel": "keybindings",
+  "channels": [
+    "keybindings"
+  ],
+  "transport": "json-document",
+  "direction": "agent-local",
+  "evidence": {
+    "existence": [
+      "pi-rosetta-contract"
+    ],
+    "shape": [
+      "pi-rosetta-contract"
+    ]
+  },
+  "confidence": "unverified",
+  "notes": "agent/keybindings.json; non-record native artifact tracked by the complete Rosetta stream inventory."
+}

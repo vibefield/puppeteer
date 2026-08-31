@@ -1,0 +1,87 @@
+{
+  "surface": "pi",
+  "surfaceVersion": "0.84.3",
+  "event": "model_change",
+  "channel": "session",
+  "channels": [
+    "session"
+  ],
+  "transport": "jsonl-record",
+  "direction": "agent-local",
+  "payloadSchema": {
+    "type": "object",
+    "properties": {
+      "modelId": {
+        "type": "string"
+      },
+      "provider": {
+        "type": "string"
+      }
+    },
+    "required": [
+      "modelId",
+      "provider"
+    ],
+    "additionalProperties": true
+  },
+  "recordSchema": {
+    "type": "object",
+    "properties": {
+      "id": {
+        "type": "string"
+      },
+      "modelId": {
+        "type": "string"
+      },
+      "parentId": {
+        "anyOf": [
+          {
+            "type": "string"
+          },
+          {
+            "type": "null"
+          }
+        ]
+      },
+      "provider": {
+        "type": "string"
+      },
+      "timestamp": {
+        "type": "string"
+      },
+      "type": {
+        "type": "string"
+      }
+    },
+    "required": [
+      "id",
+      "modelId",
+      "parentId",
+      "provider",
+      "timestamp",
+      "type"
+    ],
+    "additionalProperties": true
+  },
+  "schemaFidelity": {
+    "payload": "structural",
+    "carrier": "structural",
+    "limitations": [
+      "Rosetta retains observed/writer field types and requiredness, but its shape algebra intentionally omits some native validation constraints."
+    ]
+  },
+  "evidence": {
+    "existence": [
+      "pi-rosetta-runtime"
+    ],
+    "shape": [
+      "pi-rosetta-runtime"
+    ],
+    "carrier": [
+      "pi-rosetta-runtime"
+    ]
+  },
+  "confidence": "verified-headless",
+  "fixture": "captures/pi@0.84.3/basic-chat/events.jsonl",
+  "notes": "agent/sessions/*/*.jsonl; 7 retained observation(s); source evidence: writer."
+}

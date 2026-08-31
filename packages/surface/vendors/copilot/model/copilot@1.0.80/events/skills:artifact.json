@@ -1,0 +1,22 @@
+{
+  "surface": "copilot",
+  "surfaceVersion": "1.0.80",
+  "event": "skills:artifact",
+  "nativeName": "skills/**/*",
+  "channel": "skills",
+  "channels": [
+    "skills"
+  ],
+  "transport": "file-artifact",
+  "direction": "agent-local",
+  "evidence": {
+    "existence": [
+      "copilot-rosetta-contract"
+    ],
+    "shape": [
+      "copilot-rosetta-contract"
+    ]
+  },
+  "confidence": "unverified",
+  "notes": "skills/**/*; non-record native artifact tracked by the complete Rosetta stream inventory."
+}

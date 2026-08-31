@@ -1,0 +1,293 @@
+{
+  "surface": "pi",
+  "surfaceVersion": "0.84.3",
+  "event": "farm:headless-stdout:compaction_end",
+  "nativeName": "compaction_end",
+  "channel": "farm:headless-stdout",
+  "channels": [
+    "farm:headless-stdout"
+  ],
+  "transport": "jsonl-record",
+  "direction": "agent-local",
+  "payloadSchema": {
+    "type": "object",
+    "properties": {
+      "aborted": {
+        "type": "boolean"
+      },
+      "reason": {
+        "type": "string",
+        "enum": [
+          "threshold"
+        ]
+      },
+      "result": {
+        "type": "object",
+        "properties": {
+          "details": {
+            "type": "object",
+            "properties": {
+              "modifiedFiles": {
+                "type": "array"
+              },
+              "readFiles": {
+                "type": "array"
+              }
+            },
+            "required": [
+              "modifiedFiles",
+              "readFiles"
+            ],
+            "additionalProperties": true
+          },
+          "estimatedTokensAfter": {
+            "type": "number"
+          },
+          "firstKeptEntryId": {
+            "type": "string"
+          },
+          "summary": {
+            "type": "string"
+          },
+          "tokensBefore": {
+            "type": "number"
+          },
+          "usage": {
+            "type": "object",
+            "properties": {
+              "cacheRead": {
+                "type": "number"
+              },
+              "cacheWrite": {
+                "type": "number"
+              },
+              "cost": {
+                "type": "object",
+                "properties": {
+                  "cacheRead": {
+                    "type": "number"
+                  },
+                  "cacheWrite": {
+                    "type": "number"
+                  },
+                  "input": {
+                    "type": "number"
+                  },
+                  "output": {
+                    "type": "number"
+                  },
+                  "total": {
+                    "type": "number"
+                  }
+                },
+                "required": [
+                  "cacheRead",
+                  "cacheWrite",
+                  "input",
+                  "output",
+                  "total"
+                ],
+                "additionalProperties": true
+              },
+              "input": {
+                "type": "number"
+              },
+              "output": {
+                "type": "number"
+              },
+              "reasoning": {
+                "type": "number"
+              },
+              "totalTokens": {
+                "type": "number"
+              }
+            },
+            "required": [
+              "cacheRead",
+              "cacheWrite",
+              "cost",
+              "input",
+              "output",
+              "reasoning",
+              "totalTokens"
+            ],
+            "additionalProperties": true
+          }
+        },
+        "required": [
+          "details",
+          "estimatedTokensAfter",
+          "firstKeptEntryId",
+          "summary",
+          "tokensBefore",
+          "usage"
+        ],
+        "additionalProperties": true
+      },
+      "willRetry": {
+        "type": "boolean"
+      }
+    },
+    "required": [
+      "aborted",
+      "reason",
+      "result",
+      "willRetry"
+    ],
+    "additionalProperties": true
+  },
+  "recordSchema": {
+    "type": "object",
+    "properties": {
+      "aborted": {
+        "type": "boolean"
+      },
+      "reason": {
+        "type": "string",
+        "enum": [
+          "threshold"
+        ]
+      },
+      "result": {
+        "type": "object",
+        "properties": {
+          "details": {
+            "type": "object",
+            "properties": {
+              "modifiedFiles": {
+                "type": "array"
+              },
+              "readFiles": {
+                "type": "array"
+              }
+            },
+            "required": [
+              "modifiedFiles",
+              "readFiles"
+            ],
+            "additionalProperties": true
+          },
+          "estimatedTokensAfter": {
+            "type": "number"
+          },
+          "firstKeptEntryId": {
+            "type": "string"
+          },
+          "summary": {
+            "type": "string"
+          },
+          "tokensBefore": {
+            "type": "number"
+          },
+          "usage": {
+            "type": "object",
+            "properties": {
+              "cacheRead": {
+                "type": "number"
+              },
+              "cacheWrite": {
+                "type": "number"
+              },
+              "cost": {
+                "type": "object",
+                "properties": {
+                  "cacheRead": {
+                    "type": "number"
+                  },
+                  "cacheWrite": {
+                    "type": "number"
+                  },
+                  "input": {
+                    "type": "number"
+                  },
+                  "output": {
+                    "type": "number"
+                  },
+                  "total": {
+                    "type": "number"
+                  }
+                },
+                "required": [
+                  "cacheRead",
+                  "cacheWrite",
+                  "input",
+                  "output",
+                  "total"
+                ],
+                "additionalProperties": true
+              },
+              "input": {
+                "type": "number"
+              },
+              "output": {
+                "type": "number"
+              },
+              "reasoning": {
+                "type": "number"
+              },
+              "totalTokens": {
+                "type": "number"
+              }
+            },
+            "required": [
+              "cacheRead",
+              "cacheWrite",
+              "cost",
+              "input",
+              "output",
+              "reasoning",
+              "totalTokens"
+            ],
+            "additionalProperties": true
+          }
+        },
+        "required": [
+          "details",
+          "estimatedTokensAfter",
+          "firstKeptEntryId",
+          "summary",
+          "tokensBefore",
+          "usage"
+        ],
+        "additionalProperties": true
+      },
+      "type": {
+        "type": "string",
+        "enum": [
+          "compaction_end"
+        ]
+      },
+      "willRetry": {
+        "type": "boolean"
+      }
+    },
+    "required": [
+      "aborted",
+      "reason",
+      "result",
+      "type",
+      "willRetry"
+    ],
+    "additionalProperties": true
+  },
+  "schemaFidelity": {
+    "payload": "structural",
+    "carrier": "structural",
+    "limitations": [
+      "Rosetta retains observed/writer field types and requiredness, but its shape algebra intentionally omits some native validation constraints."
+    ]
+  },
+  "evidence": {
+    "existence": [
+      "pi-rosetta-observed"
+    ],
+    "shape": [
+      "pi-rosetta-observed"
+    ],
+    "carrier": [
+      "pi-rosetta-observed"
+    ]
+  },
+  "confidence": "verified-headless",
+  "notes": "<farm>/stdout*.jsonl; 1 retained observation(s); source evidence: fixture."
+}

@@ -1,0 +1,22 @@
+{
+  "surface": "copilot",
+  "surfaceVersion": "1.0.80",
+  "event": "mcp-oauth:artifact",
+  "nativeName": "mcp-oauth-config/**/*",
+  "channel": "mcp-oauth",
+  "channels": [
+    "mcp-oauth"
+  ],
+  "transport": "json-document",
+  "direction": "agent-local",
+  "evidence": {
+    "existence": [
+      "copilot-rosetta-contract"
+    ],
+    "shape": [
+      "copilot-rosetta-contract"
+    ]
+  },
+  "confidence": "unverified",
+  "notes": "mcp-oauth-config/**/*; non-record native artifact tracked by the complete Rosetta stream inventory."
+}

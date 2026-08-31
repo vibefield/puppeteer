@@ -1,0 +1,22 @@
+{
+  "surface": "antigravity",
+  "surfaceVersion": "1.1.20",
+  "event": "default-project:artifact",
+  "nativeName": "cache/default_project_id.txt",
+  "channel": "default-project",
+  "channels": [
+    "default-project"
+  ],
+  "transport": "file-artifact",
+  "direction": "agent-local",
+  "evidence": {
+    "existence": [
+      "antigravity-rosetta-contract"
+    ],
+    "shape": [
+      "antigravity-rosetta-contract"
+    ]
+  },
+  "confidence": "unverified",
+  "notes": "cache/default_project_id.txt; non-record native artifact tracked by the complete Rosetta stream inventory."
+}

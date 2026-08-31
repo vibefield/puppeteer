@@ -1,0 +1,22 @@
+{
+  "surface": "copilot",
+  "surfaceVersion": "1.0.80",
+  "event": "ide:artifact",
+  "nativeName": "ide/**/*",
+  "channel": "ide",
+  "channels": [
+    "ide"
+  ],
+  "transport": "file-artifact",
+  "direction": "agent-local",
+  "evidence": {
+    "existence": [
+      "copilot-rosetta-contract"
+    ],
+    "shape": [
+      "copilot-rosetta-contract"
+    ]
+  },
+  "confidence": "unverified",
+  "notes": "ide/**/*; non-record native artifact tracked by the complete Rosetta stream inventory."
+}

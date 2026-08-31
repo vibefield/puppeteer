@@ -1,0 +1,64 @@
+{
+  "surface": "antigravity",
+  "surfaceVersion": "1.1.20",
+  "event": "conversation-messages:document",
+  "nativeName": "brain/*/.system_generated/messages/*.json",
+  "channel": "conversation-messages",
+  "channels": [
+    "conversation-messages"
+  ],
+  "transport": "json-document",
+  "direction": "agent-local",
+  "payloadSchema": {
+    "type": "object",
+    "properties": {
+      "content": {
+        "type": "string"
+      },
+      "hideFromUser": {
+        "type": "boolean"
+      },
+      "id": {
+        "type": "string"
+      },
+      "priority": {
+        "type": "string"
+      },
+      "recipient": {
+        "type": "string"
+      },
+      "sender": {
+        "type": "string"
+      },
+      "timestamp": {
+        "type": "string"
+      }
+    },
+    "required": [
+      "content",
+      "hideFromUser",
+      "id",
+      "priority",
+      "recipient",
+      "sender",
+      "timestamp"
+    ],
+    "additionalProperties": true
+  },
+  "schemaFidelity": {
+    "payload": "structural",
+    "limitations": [
+      "Rosetta retains observed/writer field types and requiredness, but its shape algebra intentionally omits some native validation constraints."
+    ]
+  },
+  "evidence": {
+    "existence": [
+      "antigravity-rosetta-observed"
+    ],
+    "shape": [
+      "antigravity-rosetta-observed"
+    ]
+  },
+  "confidence": "verified-headless",
+  "notes": "brain/*/.system_generated/messages/*.json; 1 retained observation(s); source evidence: fixture."
+}

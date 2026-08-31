@@ -1,0 +1,22 @@
+{
+  "surface": "copilot",
+  "surfaceVersion": "1.0.80",
+  "event": "config:artifact",
+  "nativeName": "config.json",
+  "channel": "config",
+  "channels": [
+    "config"
+  ],
+  "transport": "json-document",
+  "direction": "agent-local",
+  "evidence": {
+    "existence": [
+      "copilot-rosetta-contract"
+    ],
+    "shape": [
+      "copilot-rosetta-contract"
+    ]
+  },
+  "confidence": "unverified",
+  "notes": "config.json; non-record native artifact tracked by the complete Rosetta stream inventory."
+}

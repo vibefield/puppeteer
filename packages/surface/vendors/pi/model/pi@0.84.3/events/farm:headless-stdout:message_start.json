@@ -1,0 +1,337 @@
+{
+  "surface": "pi",
+  "surfaceVersion": "0.84.3",
+  "event": "farm:headless-stdout:message_start",
+  "nativeName": "message_start",
+  "channel": "farm:headless-stdout",
+  "channels": [
+    "farm:headless-stdout"
+  ],
+  "transport": "jsonl-record",
+  "direction": "agent-local",
+  "payloadSchema": {
+    "type": "object",
+    "properties": {
+      "message": {
+        "type": "object",
+        "properties": {
+          "api": {
+            "type": "string",
+            "enum": [
+              "openai-completions"
+            ]
+          },
+          "content": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "text": {
+                  "type": "string"
+                },
+                "type": {
+                  "type": "string",
+                  "enum": [
+                    "text"
+                  ]
+                }
+              },
+              "required": [
+                "text",
+                "type"
+              ],
+              "additionalProperties": true
+            }
+          },
+          "isError": {
+            "type": "boolean"
+          },
+          "model": {
+            "type": "string",
+            "enum": [
+              "mock-model"
+            ]
+          },
+          "provider": {
+            "type": "string",
+            "enum": [
+              "mock"
+            ]
+          },
+          "responseId": {
+            "type": "string"
+          },
+          "role": {
+            "type": "string",
+            "enum": [
+              "assistant",
+              "toolResult",
+              "user"
+            ]
+          },
+          "stopReason": {
+            "type": "string",
+            "enum": [
+              "pending"
+            ]
+          },
+          "timestamp": {
+            "type": "number"
+          },
+          "toolCallId": {
+            "type": "string"
+          },
+          "toolName": {
+            "type": "string",
+            "enum": [
+              "bash"
+            ]
+          },
+          "usage": {
+            "type": "object",
+            "properties": {
+              "cacheRead": {
+                "type": "number"
+              },
+              "cacheWrite": {
+                "type": "number"
+              },
+              "cost": {
+                "type": "object",
+                "properties": {
+                  "cacheRead": {
+                    "type": "number"
+                  },
+                  "cacheWrite": {
+                    "type": "number"
+                  },
+                  "input": {
+                    "type": "number"
+                  },
+                  "output": {
+                    "type": "number"
+                  },
+                  "total": {
+                    "type": "number"
+                  }
+                },
+                "required": [
+                  "cacheRead",
+                  "cacheWrite",
+                  "input",
+                  "output",
+                  "total"
+                ],
+                "additionalProperties": true
+              },
+              "input": {
+                "type": "number"
+              },
+              "output": {
+                "type": "number"
+              },
+              "totalTokens": {
+                "type": "number"
+              }
+            },
+            "required": [
+              "cacheRead",
+              "cacheWrite",
+              "cost",
+              "input",
+              "output",
+              "totalTokens"
+            ],
+            "additionalProperties": true
+          }
+        },
+        "required": [
+          "content",
+          "role",
+          "timestamp"
+        ],
+        "additionalProperties": true
+      }
+    },
+    "required": [
+      "message"
+    ],
+    "additionalProperties": true
+  },
+  "recordSchema": {
+    "type": "object",
+    "properties": {
+      "message": {
+        "type": "object",
+        "properties": {
+          "api": {
+            "type": "string",
+            "enum": [
+              "openai-completions"
+            ]
+          },
+          "content": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "text": {
+                  "type": "string"
+                },
+                "type": {
+                  "type": "string",
+                  "enum": [
+                    "text"
+                  ]
+                }
+              },
+              "required": [
+                "text",
+                "type"
+              ],
+              "additionalProperties": true
+            }
+          },
+          "isError": {
+            "type": "boolean"
+          },
+          "model": {
+            "type": "string",
+            "enum": [
+              "mock-model"
+            ]
+          },
+          "provider": {
+            "type": "string",
+            "enum": [
+              "mock"
+            ]
+          },
+          "responseId": {
+            "type": "string"
+          },
+          "role": {
+            "type": "string",
+            "enum": [
+              "assistant",
+              "toolResult",
+              "user"
+            ]
+          },
+          "stopReason": {
+            "type": "string",
+            "enum": [
+              "pending"
+            ]
+          },
+          "timestamp": {
+            "type": "number"
+          },
+          "toolCallId": {
+            "type": "string"
+          },
+          "toolName": {
+            "type": "string",
+            "enum": [
+              "bash"
+            ]
+          },
+          "usage": {
+            "type": "object",
+            "properties": {
+              "cacheRead": {
+                "type": "number"
+              },
+              "cacheWrite": {
+                "type": "number"
+              },
+              "cost": {
+                "type": "object",
+                "properties": {
+                  "cacheRead": {
+                    "type": "number"
+                  },
+                  "cacheWrite": {
+                    "type": "number"
+                  },
+                  "input": {
+                    "type": "number"
+                  },
+                  "output": {
+                    "type": "number"
+                  },
+                  "total": {
+                    "type": "number"
+                  }
+                },
+                "required": [
+                  "cacheRead",
+                  "cacheWrite",
+                  "input",
+                  "output",
+                  "total"
+                ],
+                "additionalProperties": true
+              },
+              "input": {
+                "type": "number"
+              },
+              "output": {
+                "type": "number"
+              },
+              "totalTokens": {
+                "type": "number"
+              }
+            },
+            "required": [
+              "cacheRead",
+              "cacheWrite",
+              "cost",
+              "input",
+              "output",
+              "totalTokens"
+            ],
+            "additionalProperties": true
+          }
+        },
+        "required": [
+          "content",
+          "role",
+          "timestamp"
+        ],
+        "additionalProperties": true
+      },
+      "type": {
+        "type": "string",
+        "enum": [
+          "message_start"
+        ]
+      }
+    },
+    "required": [
+      "message",
+      "type"
+    ],
+    "additionalProperties": true
+  },
+  "schemaFidelity": {
+    "payload": "structural",
+    "carrier": "structural",
+    "limitations": [
+      "Rosetta retains observed/writer field types and requiredness, but its shape algebra intentionally omits some native validation constraints."
+    ]
+  },
+  "evidence": {
+    "existence": [
+      "pi-rosetta-observed"
+    ],
+    "shape": [
+      "pi-rosetta-observed"
+    ],
+    "carrier": [
+      "pi-rosetta-observed"
+    ]
+  },
+  "confidence": "verified-headless",
+  "notes": "<farm>/stdout*.jsonl; 22 retained observation(s); source evidence: fixture."
+}

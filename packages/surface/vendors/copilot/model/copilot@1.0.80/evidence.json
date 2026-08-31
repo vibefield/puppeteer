@@ -1,0 +1,73 @@
+{
+  "evidenceVersion": 2,
+  "vendor": "copilot",
+  "vendorVersion": "1.0.80",
+  "artifacts": [
+    {
+      "id": "copilot-1.0.80-rosetta-fixture-corpus",
+      "kind": "controlled-fixture-corpus",
+      "versionOutput": "1.0.80",
+      "platform": "darwin-arm64",
+      "capturedAt": "2026-08-25T05:27:58Z",
+      "integrity": {
+        "status": "verified",
+        "sha256": "sha256:d2a32e24c52b9c8e3d20a8800f83b53554e66e2a9d2872f2046eb5c008c9c98f"
+      }
+    }
+  ],
+  "sourceReferences": [
+    {
+      "repository": "https://github.com/github/copilot-cli",
+      "revision": "v1.0.80",
+      "relation": "exact-release"
+    }
+  ],
+  "records": [
+    {
+      "id": "copilot-captures",
+      "path": "packages/surface/vendors/copilot/captures/copilot@1.0.80",
+      "digestAlgorithm": "sha256-path-content-v1",
+      "sha256": "3cab17380acd3ca194ce7d43082d5c638e427c763ded708e6687170f3b624dc1"
+    },
+    {
+      "id": "copilot-references",
+      "path": "packages/surface/vendors/copilot/references/copilot@1.0.80",
+      "digestAlgorithm": "sha256-path-content-v1",
+      "sha256": "5685805ee5456dcb46b5a57ba2f87e19a48a1cfccfd097cc8f6f7d463c132391"
+    }
+  ],
+  "claims": [
+    {
+      "id": "copilot-rosetta-runtime",
+      "kind": "runtime-capture",
+      "confidence": "verified-headless",
+      "record": "copilot-captures",
+      "artifact": "copilot-1.0.80-rosetta-fixture-corpus",
+      "platform": "darwin-arm64",
+      "harness": "rosetta controlled mock-provider farm",
+      "capturedAt": "2026-08-25T05:27:58Z",
+      "notes": "Type-preserving events native journal captures."
+    },
+    {
+      "id": "copilot-rosetta-observed",
+      "kind": "generated-schema",
+      "confidence": "verified-headless",
+      "record": "copilot-references",
+      "artifact": "copilot-1.0.80-rosetta-fixture-corpus",
+      "sourceReference": 0,
+      "platform": "darwin-arm64",
+      "harness": "rosetta controlled mock-provider farm",
+      "capturedAt": "2026-08-25T05:27:58Z",
+      "notes": "Digest-pinned Rosetta record inventory whose occurrence count is non-zero. It proves occurrence; it proves retained shape only for records classified as fixture or observed rather than writer evidence."
+    },
+    {
+      "id": "copilot-rosetta-contract",
+      "kind": "generated-schema",
+      "confidence": "unverified",
+      "record": "copilot-references",
+      "artifact": "copilot-1.0.80-rosetta-fixture-corpus",
+      "sourceReference": 0,
+      "notes": "Digest-pinned complete Rosetta stream/shape inventory for copilot@1.0.80; writer-only and zero-occurrence records establish a reviewable contract lead, not runtime occurrence."
+    }
+  ]
+}

@@ -16,6 +16,7 @@ import { AUTHORIZED_SCENARIOS } from './census/authorized-census.mjs';
 import { VERSION } from './census/harness.mjs';
 import { antigravityRules } from './privacy.mjs';
 import { writeCaptureFidelity } from '../../scripts/capture-fidelity.mjs';
+import { resolveAgentModel } from '../../../../scripts/agent-model-selection.mjs';
 
 const vendorRoot = dirname(fileURLToPath(import.meta.url));
 
@@ -200,7 +201,8 @@ redacted in place. Process stdout framing is represented explicitly by
 const invokedDirectly = process.argv[1] && fileURLToPath(import.meta.url) === resolve(process.argv[1]);
 if (invokedDirectly) {
   if (process.argv.includes('--check')) {
-    const captures = join(vendorRoot, 'captures', `antigravity@${VERSION}`);
+    const selected = resolveAgentModel({ vendor: 'antigravity' });
+    const captures = selected.capturesRoot;
     const leaks = existsSync(captures)
       ? checkCaptureDirectory(captures, antigravityRules)
       : ['captures directory missing'];
@@ -208,7 +210,7 @@ if (invokedDirectly) {
       console.error(leaks.join('\n'));
       process.exit(1);
     }
-    console.log(`antigravity@${VERSION} sanitized captures: clean`);
+    console.log(`antigravity@${selected.version} sanitized captures: clean`);
   } else {
     const output = sanitizeAntigravityCaptureSet();
     console.log(`wrote sanitized Antigravity captures to ${output}`);

@@ -1,0 +1,47 @@
+{
+  "surface": "antigravity",
+  "surfaceVersion": "1.1.20",
+  "event": "settings:document",
+  "nativeName": "settings.json",
+  "channel": "settings",
+  "channels": [
+    "settings"
+  ],
+  "transport": "json-document",
+  "direction": "agent-local",
+  "payloadSchema": {
+    "type": "object",
+    "properties": {
+      "modelProvider": {
+        "type": "string",
+        "enum": [
+          "gemini"
+        ]
+      },
+      "toolPermission": {
+        "type": "string"
+      }
+    },
+    "required": [
+      "modelProvider",
+      "toolPermission"
+    ],
+    "additionalProperties": true
+  },
+  "schemaFidelity": {
+    "payload": "structural",
+    "limitations": [
+      "Rosetta retains observed/writer field types and requiredness, but its shape algebra intentionally omits some native validation constraints."
+    ]
+  },
+  "evidence": {
+    "existence": [
+      "antigravity-rosetta-observed"
+    ],
+    "shape": [
+      "antigravity-rosetta-observed"
+    ]
+  },
+  "confidence": "verified-headless",
+  "notes": "settings.json; 3 retained observation(s); source evidence: fixture."
+}

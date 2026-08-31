@@ -1,0 +1,22 @@
+{
+  "surface": "pi",
+  "surfaceVersion": "0.84.3",
+  "event": "auth:artifact",
+  "nativeName": "agent/auth.json",
+  "channel": "auth",
+  "channels": [
+    "auth"
+  ],
+  "transport": "json-document",
+  "direction": "agent-local",
+  "evidence": {
+    "existence": [
+      "pi-rosetta-contract"
+    ],
+    "shape": [
+      "pi-rosetta-contract"
+    ]
+  },
+  "confidence": "unverified",
+  "notes": "agent/auth.json; non-record native artifact tracked by the complete Rosetta stream inventory."
+}

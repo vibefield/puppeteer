@@ -1,0 +1,52 @@
+{
+  "surface": "copilot",
+  "surfaceVersion": "1.0.80",
+  "event": "settings:document",
+  "nativeName": "settings.json",
+  "channel": "settings",
+  "channels": [
+    "settings"
+  ],
+  "transport": "json-document",
+  "direction": "agent-local",
+  "payloadSchema": {
+    "type": "object",
+    "properties": {
+      "autoUpdate": {
+        "type": "boolean"
+      },
+      "banner": {
+        "type": "string"
+      },
+      "beep": {
+        "type": "boolean"
+      },
+      "remoteExport": {
+        "type": "boolean"
+      }
+    },
+    "required": [
+      "autoUpdate",
+      "banner",
+      "beep",
+      "remoteExport"
+    ],
+    "additionalProperties": true
+  },
+  "schemaFidelity": {
+    "payload": "structural",
+    "limitations": [
+      "Rosetta retains observed/writer field types and requiredness, but its shape algebra intentionally omits some native validation constraints."
+    ]
+  },
+  "evidence": {
+    "existence": [
+      "copilot-rosetta-observed"
+    ],
+    "shape": [
+      "copilot-rosetta-observed"
+    ]
+  },
+  "confidence": "verified-headless",
+  "notes": "settings.json; 4 retained observation(s); source evidence: fixture."
+}

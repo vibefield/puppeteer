@@ -1,0 +1,735 @@
+{
+  "surface": "copilot",
+  "surfaceVersion": "1.0.80",
+  "event": "permission.completed",
+  "channel": "events",
+  "channels": [
+    "events"
+  ],
+  "transport": "jsonl-record",
+  "direction": "agent-local",
+  "payloadSchema": {
+    "type": "object",
+    "properties": {
+      "requestId": {
+        "type": "string"
+      },
+      "result": {
+        "anyOf": [
+          {
+            "type": "object",
+            "properties": {
+              "kind": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "kind"
+            ],
+            "additionalProperties": true
+          },
+          {
+            "type": "object",
+            "properties": {
+              "approval": {
+                "anyOf": [
+                  {
+                    "type": "object",
+                    "properties": {
+                      "commandIdentifiers": {},
+                      "kind": {}
+                    },
+                    "required": [
+                      "commandIdentifiers",
+                      "kind"
+                    ],
+                    "additionalProperties": true
+                  },
+                  {
+                    "type": "object",
+                    "properties": {
+                      "kind": {}
+                    },
+                    "required": [
+                      "kind"
+                    ],
+                    "additionalProperties": true
+                  },
+                  {
+                    "type": "object",
+                    "properties": {
+                      "kind": {},
+                      "serverName": {},
+                      "toolName": {}
+                    },
+                    "required": [
+                      "kind",
+                      "serverName",
+                      "toolName"
+                    ],
+                    "additionalProperties": true
+                  },
+                  {
+                    "type": "object",
+                    "properties": {
+                      "kind": {},
+                      "toolName": {}
+                    },
+                    "required": [
+                      "kind",
+                      "toolName"
+                    ],
+                    "additionalProperties": true
+                  },
+                  {
+                    "type": "object",
+                    "properties": {
+                      "kind": {},
+                      "operation": {}
+                    },
+                    "required": [
+                      "kind"
+                    ],
+                    "additionalProperties": true
+                  },
+                  {
+                    "type": "object",
+                    "properties": {
+                      "approvalKey": {},
+                      "kind": {}
+                    },
+                    "required": [
+                      "kind"
+                    ],
+                    "additionalProperties": true
+                  },
+                  {
+                    "type": "object",
+                    "properties": {
+                      "extensionName": {},
+                      "kind": {}
+                    },
+                    "required": [
+                      "extensionName",
+                      "kind"
+                    ],
+                    "additionalProperties": true
+                  }
+                ]
+              },
+              "kind": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "approval",
+              "kind"
+            ],
+            "additionalProperties": true
+          },
+          {
+            "type": "object",
+            "properties": {
+              "approval": {
+                "anyOf": [
+                  {
+                    "type": "object",
+                    "properties": {
+                      "commandIdentifiers": {},
+                      "kind": {}
+                    },
+                    "required": [
+                      "commandIdentifiers",
+                      "kind"
+                    ],
+                    "additionalProperties": true
+                  },
+                  {
+                    "type": "object",
+                    "properties": {
+                      "kind": {}
+                    },
+                    "required": [
+                      "kind"
+                    ],
+                    "additionalProperties": true
+                  },
+                  {
+                    "type": "object",
+                    "properties": {
+                      "kind": {},
+                      "serverName": {},
+                      "toolName": {}
+                    },
+                    "required": [
+                      "kind",
+                      "serverName",
+                      "toolName"
+                    ],
+                    "additionalProperties": true
+                  },
+                  {
+                    "type": "object",
+                    "properties": {
+                      "kind": {},
+                      "toolName": {}
+                    },
+                    "required": [
+                      "kind",
+                      "toolName"
+                    ],
+                    "additionalProperties": true
+                  },
+                  {
+                    "type": "object",
+                    "properties": {
+                      "kind": {},
+                      "operation": {}
+                    },
+                    "required": [
+                      "kind"
+                    ],
+                    "additionalProperties": true
+                  },
+                  {
+                    "type": "object",
+                    "properties": {
+                      "approvalKey": {},
+                      "kind": {}
+                    },
+                    "required": [
+                      "kind"
+                    ],
+                    "additionalProperties": true
+                  },
+                  {
+                    "type": "object",
+                    "properties": {
+                      "extensionName": {},
+                      "kind": {}
+                    },
+                    "required": [
+                      "extensionName",
+                      "kind"
+                    ],
+                    "additionalProperties": true
+                  }
+                ]
+              },
+              "kind": {
+                "type": "string"
+              },
+              "locationKey": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "approval",
+              "kind",
+              "locationKey"
+            ],
+            "additionalProperties": true
+          },
+          {
+            "type": "object",
+            "properties": {
+              "kind": {
+                "type": "string"
+              },
+              "reason": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "kind"
+            ],
+            "additionalProperties": true
+          },
+          {
+            "type": "object",
+            "properties": {
+              "kind": {
+                "type": "string"
+              },
+              "rules": {
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "properties": {
+                    "argument": {},
+                    "kind": {}
+                  },
+                  "required": [
+                    "argument",
+                    "kind"
+                  ],
+                  "additionalProperties": true
+                }
+              }
+            },
+            "required": [
+              "kind",
+              "rules"
+            ],
+            "additionalProperties": true
+          },
+          {
+            "type": "object",
+            "properties": {
+              "feedback": {
+                "type": "string"
+              },
+              "forceReject": {
+                "type": "boolean"
+              },
+              "kind": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "kind"
+            ],
+            "additionalProperties": true
+          },
+          {
+            "type": "object",
+            "properties": {
+              "kind": {
+                "type": "string"
+              },
+              "message": {
+                "type": "string"
+              },
+              "path": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "kind",
+              "message",
+              "path"
+            ],
+            "additionalProperties": true
+          },
+          {
+            "type": "object",
+            "properties": {
+              "interrupt": {
+                "type": "boolean"
+              },
+              "kind": {
+                "type": "string"
+              },
+              "message": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "kind"
+            ],
+            "additionalProperties": true
+          }
+        ]
+      },
+      "toolCallId": {
+        "type": "string"
+      }
+    },
+    "required": [
+      "requestId",
+      "result"
+    ],
+    "additionalProperties": true
+  },
+  "recordSchema": {
+    "type": "object",
+    "properties": {
+      "agentId": {
+        "type": "string"
+      },
+      "data": {
+        "type": "object",
+        "properties": {
+          "requestId": {
+            "type": "string"
+          },
+          "result": {
+            "anyOf": [
+              {
+                "type": "object",
+                "properties": {
+                  "kind": {
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "kind"
+                ],
+                "additionalProperties": true
+              },
+              {
+                "type": "object",
+                "properties": {
+                  "approval": {
+                    "anyOf": [
+                      {
+                        "type": "object",
+                        "properties": {
+                          "commandIdentifiers": {},
+                          "kind": {}
+                        },
+                        "required": [
+                          "commandIdentifiers",
+                          "kind"
+                        ],
+                        "additionalProperties": true
+                      },
+                      {
+                        "type": "object",
+                        "properties": {
+                          "kind": {}
+                        },
+                        "required": [
+                          "kind"
+                        ],
+                        "additionalProperties": true
+                      },
+                      {
+                        "type": "object",
+                        "properties": {
+                          "kind": {},
+                          "serverName": {},
+                          "toolName": {}
+                        },
+                        "required": [
+                          "kind",
+                          "serverName",
+                          "toolName"
+                        ],
+                        "additionalProperties": true
+                      },
+                      {
+                        "type": "object",
+                        "properties": {
+                          "kind": {},
+                          "toolName": {}
+                        },
+                        "required": [
+                          "kind",
+                          "toolName"
+                        ],
+                        "additionalProperties": true
+                      },
+                      {
+                        "type": "object",
+                        "properties": {
+                          "kind": {},
+                          "operation": {}
+                        },
+                        "required": [
+                          "kind"
+                        ],
+                        "additionalProperties": true
+                      },
+                      {
+                        "type": "object",
+                        "properties": {
+                          "approvalKey": {},
+                          "kind": {}
+                        },
+                        "required": [
+                          "kind"
+                        ],
+                        "additionalProperties": true
+                      },
+                      {
+                        "type": "object",
+                        "properties": {
+                          "extensionName": {},
+                          "kind": {}
+                        },
+                        "required": [
+                          "extensionName",
+                          "kind"
+                        ],
+                        "additionalProperties": true
+                      }
+                    ]
+                  },
+                  "kind": {
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "approval",
+                  "kind"
+                ],
+                "additionalProperties": true
+              },
+              {
+                "type": "object",
+                "properties": {
+                  "approval": {
+                    "anyOf": [
+                      {
+                        "type": "object",
+                        "properties": {
+                          "commandIdentifiers": {},
+                          "kind": {}
+                        },
+                        "required": [
+                          "commandIdentifiers",
+                          "kind"
+                        ],
+                        "additionalProperties": true
+                      },
+                      {
+                        "type": "object",
+                        "properties": {
+                          "kind": {}
+                        },
+                        "required": [
+                          "kind"
+                        ],
+                        "additionalProperties": true
+                      },
+                      {
+                        "type": "object",
+                        "properties": {
+                          "kind": {},
+                          "serverName": {},
+                          "toolName": {}
+                        },
+                        "required": [
+                          "kind",
+                          "serverName",
+                          "toolName"
+                        ],
+                        "additionalProperties": true
+                      },
+                      {
+                        "type": "object",
+                        "properties": {
+                          "kind": {},
+                          "toolName": {}
+                        },
+                        "required": [
+                          "kind",
+                          "toolName"
+                        ],
+                        "additionalProperties": true
+                      },
+                      {
+                        "type": "object",
+                        "properties": {
+                          "kind": {},
+                          "operation": {}
+                        },
+                        "required": [
+                          "kind"
+                        ],
+                        "additionalProperties": true
+                      },
+                      {
+                        "type": "object",
+                        "properties": {
+                          "approvalKey": {},
+                          "kind": {}
+                        },
+                        "required": [
+                          "kind"
+                        ],
+                        "additionalProperties": true
+                      },
+                      {
+                        "type": "object",
+                        "properties": {
+                          "extensionName": {},
+                          "kind": {}
+                        },
+                        "required": [
+                          "extensionName",
+                          "kind"
+                        ],
+                        "additionalProperties": true
+                      }
+                    ]
+                  },
+                  "kind": {
+                    "type": "string"
+                  },
+                  "locationKey": {
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "approval",
+                  "kind",
+                  "locationKey"
+                ],
+                "additionalProperties": true
+              },
+              {
+                "type": "object",
+                "properties": {
+                  "kind": {
+                    "type": "string"
+                  },
+                  "reason": {
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "kind"
+                ],
+                "additionalProperties": true
+              },
+              {
+                "type": "object",
+                "properties": {
+                  "kind": {
+                    "type": "string"
+                  },
+                  "rules": {
+                    "type": "array",
+                    "items": {
+                      "type": "object",
+                      "properties": {
+                        "argument": {},
+                        "kind": {}
+                      },
+                      "required": [
+                        "argument",
+                        "kind"
+                      ],
+                      "additionalProperties": true
+                    }
+                  }
+                },
+                "required": [
+                  "kind",
+                  "rules"
+                ],
+                "additionalProperties": true
+              },
+              {
+                "type": "object",
+                "properties": {
+                  "feedback": {
+                    "type": "string"
+                  },
+                  "forceReject": {
+                    "type": "boolean"
+                  },
+                  "kind": {
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "kind"
+                ],
+                "additionalProperties": true
+              },
+              {
+                "type": "object",
+                "properties": {
+                  "kind": {
+                    "type": "string"
+                  },
+                  "message": {
+                    "type": "string"
+                  },
+                  "path": {
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "kind",
+                  "message",
+                  "path"
+                ],
+                "additionalProperties": true
+              },
+              {
+                "type": "object",
+                "properties": {
+                  "interrupt": {
+                    "type": "boolean"
+                  },
+                  "kind": {
+                    "type": "string"
+                  },
+                  "message": {
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "kind"
+                ],
+                "additionalProperties": true
+              }
+            ]
+          },
+          "toolCallId": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "requestId",
+          "result"
+        ],
+        "additionalProperties": true
+      },
+      "ephemeral": {
+        "type": "boolean"
+      },
+      "id": {
+        "type": "string"
+      },
+      "parentId": {
+        "anyOf": [
+          {
+            "type": "string"
+          },
+          {
+            "type": "null"
+          }
+        ]
+      },
+      "timestamp": {
+        "type": "string"
+      },
+      "type": {
+        "type": "string"
+      }
+    },
+    "required": [
+      "data",
+      "id",
+      "parentId",
+      "timestamp",
+      "type"
+    ],
+    "additionalProperties": true
+  },
+  "schemaFidelity": {
+    "payload": "structural",
+    "carrier": "structural",
+    "limitations": [
+      "Rosetta retains observed/writer field types and requiredness, but its shape algebra intentionally omits some native validation constraints."
+    ]
+  },
+  "evidence": {
+    "existence": [
+      "copilot-rosetta-contract"
+    ],
+    "shape": [
+      "copilot-rosetta-contract"
+    ],
+    "carrier": [
+      "copilot-rosetta-contract"
+    ]
+  },
+  "confidence": "unverified",
+  "notes": "session-state/*/events.jsonl; 0 retained observation(s); source evidence: writer."
+}

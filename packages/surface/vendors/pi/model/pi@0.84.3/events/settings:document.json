@@ -1,0 +1,77 @@
+{
+  "surface": "pi",
+  "surfaceVersion": "0.84.3",
+  "event": "settings:document",
+  "nativeName": "agent/settings.json",
+  "channel": "settings",
+  "channels": [
+    "settings"
+  ],
+  "transport": "json-document",
+  "direction": "agent-local",
+  "payloadSchema": {
+    "type": "object",
+    "properties": {
+      "compaction": {
+        "type": "object",
+        "properties": {
+          "enabled": {
+            "type": "boolean"
+          },
+          "keepRecentTokens": {
+            "type": "number"
+          },
+          "reserveTokens": {
+            "type": "number"
+          }
+        },
+        "required": [
+          "enabled",
+          "keepRecentTokens",
+          "reserveTokens"
+        ],
+        "additionalProperties": true
+      },
+      "defaultProjectTrust": {
+        "type": "string"
+      },
+      "enableInstallTelemetry": {
+        "type": "boolean"
+      },
+      "retry": {
+        "type": "object",
+        "properties": {
+          "enabled": {
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "enabled"
+        ],
+        "additionalProperties": true
+      }
+    },
+    "required": [
+      "defaultProjectTrust",
+      "enableInstallTelemetry",
+      "retry"
+    ],
+    "additionalProperties": true
+  },
+  "schemaFidelity": {
+    "payload": "structural",
+    "limitations": [
+      "Rosetta retains observed/writer field types and requiredness, but its shape algebra intentionally omits some native validation constraints."
+    ]
+  },
+  "evidence": {
+    "existence": [
+      "pi-rosetta-observed"
+    ],
+    "shape": [
+      "pi-rosetta-observed"
+    ]
+  },
+  "confidence": "verified-headless",
+  "notes": "agent/settings.json; 6 retained observation(s); source evidence: fixture."
+}

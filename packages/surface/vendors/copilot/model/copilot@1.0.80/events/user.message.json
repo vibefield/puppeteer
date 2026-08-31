@@ -1,0 +1,1272 @@
+{
+  "surface": "copilot",
+  "surfaceVersion": "1.0.80",
+  "event": "user.message",
+  "channel": "events",
+  "channels": [
+    "events"
+  ],
+  "transport": "jsonl-record",
+  "direction": "agent-local",
+  "payloadSchema": {
+    "type": "object",
+    "properties": {
+      "agentMode": {
+        "type": "string"
+      },
+      "attachments": {
+        "type": "array",
+        "items": {
+          "anyOf": [
+            {
+              "type": "object",
+              "properties": {
+                "assetId": {
+                  "type": "string"
+                },
+                "byteLength": {
+                  "type": "number"
+                },
+                "displayName": {
+                  "type": "string"
+                },
+                "lineRange": {
+                  "type": "object",
+                  "properties": {
+                    "end": {},
+                    "start": {}
+                  },
+                  "required": [
+                    "end",
+                    "start"
+                  ],
+                  "additionalProperties": true
+                },
+                "mimeType": {
+                  "type": "string"
+                },
+                "omittedReason": {
+                  "type": "string"
+                },
+                "path": {
+                  "type": "string"
+                },
+                "taggedFilesEntry": {
+                  "type": "string"
+                },
+                "type": {
+                  "type": "string"
+                }
+              },
+              "required": [
+                "displayName",
+                "path",
+                "type"
+              ],
+              "additionalProperties": true
+            },
+            {
+              "type": "object",
+              "properties": {
+                "displayName": {
+                  "type": "string"
+                },
+                "path": {
+                  "type": "string"
+                },
+                "taggedFilesEntry": {
+                  "type": "string"
+                },
+                "type": {
+                  "type": "string"
+                }
+              },
+              "required": [
+                "displayName",
+                "path",
+                "type"
+              ],
+              "additionalProperties": true
+            },
+            {
+              "type": "object",
+              "properties": {
+                "displayName": {
+                  "type": "string"
+                },
+                "filePath": {
+                  "type": "string"
+                },
+                "selection": {
+                  "type": "object",
+                  "properties": {
+                    "end": {},
+                    "start": {}
+                  },
+                  "required": [
+                    "end",
+                    "start"
+                  ],
+                  "additionalProperties": true
+                },
+                "text": {
+                  "type": "string"
+                },
+                "type": {
+                  "type": "string"
+                }
+              },
+              "required": [
+                "displayName",
+                "filePath",
+                "selection",
+                "text",
+                "type"
+              ],
+              "additionalProperties": true
+            },
+            {
+              "type": "object",
+              "properties": {
+                "number": {
+                  "type": "number"
+                },
+                "referenceType": {
+                  "type": "string"
+                },
+                "state": {
+                  "type": "string"
+                },
+                "title": {
+                  "type": "string"
+                },
+                "type": {
+                  "type": "string"
+                },
+                "url": {
+                  "type": "string"
+                }
+              },
+              "required": [
+                "number",
+                "referenceType",
+                "state",
+                "title",
+                "type",
+                "url"
+              ],
+              "additionalProperties": true
+            },
+            {
+              "type": "object",
+              "properties": {
+                "message": {
+                  "type": "string"
+                },
+                "oid": {
+                  "type": "string"
+                },
+                "repo": {
+                  "type": "object",
+                  "properties": {
+                    "id": {},
+                    "name": {},
+                    "owner": {}
+                  },
+                  "required": [
+                    "name",
+                    "owner"
+                  ],
+                  "additionalProperties": true
+                },
+                "type": {
+                  "type": "string"
+                },
+                "url": {
+                  "type": "string"
+                }
+              },
+              "required": [
+                "message",
+                "oid",
+                "repo",
+                "type",
+                "url"
+              ],
+              "additionalProperties": true
+            },
+            {
+              "type": "object",
+              "properties": {
+                "name": {
+                  "type": "string"
+                },
+                "repo": {
+                  "type": "object",
+                  "properties": {
+                    "id": {},
+                    "name": {},
+                    "owner": {}
+                  },
+                  "required": [
+                    "name",
+                    "owner"
+                  ],
+                  "additionalProperties": true
+                },
+                "tagName": {
+                  "type": "string"
+                },
+                "type": {
+                  "type": "string"
+                },
+                "url": {
+                  "type": "string"
+                }
+              },
+              "required": [
+                "name",
+                "repo",
+                "tagName",
+                "type",
+                "url"
+              ],
+              "additionalProperties": true
+            },
+            {
+              "type": "object",
+              "properties": {
+                "conclusion": {
+                  "type": "string"
+                },
+                "jobId": {
+                  "type": "number"
+                },
+                "jobName": {
+                  "type": "string"
+                },
+                "repo": {
+                  "type": "object",
+                  "properties": {
+                    "id": {},
+                    "name": {},
+                    "owner": {}
+                  },
+                  "required": [
+                    "name",
+                    "owner"
+                  ],
+                  "additionalProperties": true
+                },
+                "type": {
+                  "type": "string"
+                },
+                "url": {
+                  "type": "string"
+                },
+                "workflowName": {
+                  "type": "string"
+                }
+              },
+              "required": [
+                "jobId",
+                "jobName",
+                "repo",
+                "type",
+                "url",
+                "workflowName"
+              ],
+              "additionalProperties": true
+            },
+            {
+              "type": "object",
+              "properties": {
+                "description": {
+                  "type": "string"
+                },
+                "ref": {
+                  "type": "string"
+                },
+                "repo": {
+                  "type": "object",
+                  "properties": {
+                    "id": {},
+                    "name": {},
+                    "owner": {}
+                  },
+                  "required": [
+                    "name",
+                    "owner"
+                  ],
+                  "additionalProperties": true
+                },
+                "type": {
+                  "type": "string"
+                },
+                "url": {
+                  "type": "string"
+                }
+              },
+              "required": [
+                "repo",
+                "type",
+                "url"
+              ],
+              "additionalProperties": true
+            },
+            {
+              "type": "object",
+              "properties": {
+                "base": {
+                  "type": "object",
+                  "properties": {
+                    "path": {},
+                    "ref": {},
+                    "repo": {}
+                  },
+                  "required": [
+                    "path",
+                    "ref",
+                    "repo"
+                  ],
+                  "additionalProperties": true
+                },
+                "head": {
+                  "type": "object",
+                  "properties": {
+                    "path": {},
+                    "ref": {},
+                    "repo": {}
+                  },
+                  "required": [
+                    "path",
+                    "ref",
+                    "repo"
+                  ],
+                  "additionalProperties": true
+                },
+                "type": {
+                  "type": "string"
+                },
+                "url": {
+                  "type": "string"
+                }
+              },
+              "required": [
+                "type",
+                "url"
+              ],
+              "additionalProperties": true
+            },
+            {
+              "type": "object",
+              "properties": {
+                "base": {
+                  "type": "object",
+                  "properties": {
+                    "repo": {},
+                    "revision": {}
+                  },
+                  "required": [
+                    "repo",
+                    "revision"
+                  ],
+                  "additionalProperties": true
+                },
+                "head": {
+                  "type": "object",
+                  "properties": {
+                    "repo": {},
+                    "revision": {}
+                  },
+                  "required": [
+                    "repo",
+                    "revision"
+                  ],
+                  "additionalProperties": true
+                },
+                "type": {
+                  "type": "string"
+                },
+                "url": {
+                  "type": "string"
+                }
+              },
+              "required": [
+                "base",
+                "head",
+                "type",
+                "url"
+              ],
+              "additionalProperties": true
+            },
+            {
+              "type": "object",
+              "properties": {
+                "type": {
+                  "type": "string"
+                },
+                "url": {
+                  "type": "string"
+                }
+              },
+              "required": [
+                "type",
+                "url"
+              ],
+              "additionalProperties": true
+            },
+            {
+              "type": "object",
+              "properties": {
+                "path": {
+                  "type": "string"
+                },
+                "ref": {
+                  "type": "string"
+                },
+                "repo": {
+                  "type": "object",
+                  "properties": {
+                    "id": {},
+                    "name": {},
+                    "owner": {}
+                  },
+                  "required": [
+                    "name",
+                    "owner"
+                  ],
+                  "additionalProperties": true
+                },
+                "type": {
+                  "type": "string"
+                },
+                "url": {
+                  "type": "string"
+                }
+              },
+              "required": [
+                "path",
+                "ref",
+                "repo",
+                "type",
+                "url"
+              ],
+              "additionalProperties": true
+            },
+            {
+              "type": "object",
+              "properties": {
+                "lineRange": {
+                  "type": "object",
+                  "properties": {
+                    "end": {},
+                    "start": {}
+                  },
+                  "required": [
+                    "end",
+                    "start"
+                  ],
+                  "additionalProperties": true
+                },
+                "path": {
+                  "type": "string"
+                },
+                "ref": {
+                  "type": "string"
+                },
+                "repo": {
+                  "type": "object",
+                  "properties": {
+                    "id": {},
+                    "name": {},
+                    "owner": {}
+                  },
+                  "required": [
+                    "name",
+                    "owner"
+                  ],
+                  "additionalProperties": true
+                },
+                "type": {
+                  "type": "string"
+                },
+                "url": {
+                  "type": "string"
+                }
+              },
+              "required": [
+                "lineRange",
+                "path",
+                "ref",
+                "repo",
+                "type",
+                "url"
+              ],
+              "additionalProperties": true
+            },
+            {
+              "type": "object",
+              "properties": {
+                "assetId": {
+                  "type": "string"
+                },
+                "byteLength": {
+                  "type": "number"
+                },
+                "data": {
+                  "type": "string"
+                },
+                "displayName": {
+                  "type": "string"
+                },
+                "mimeType": {
+                  "type": "string"
+                },
+                "omittedReason": {
+                  "type": "string"
+                },
+                "type": {
+                  "type": "string"
+                }
+              },
+              "required": [
+                "mimeType",
+                "type"
+              ],
+              "additionalProperties": true
+            },
+            {
+              "type": "object",
+              "properties": {
+                "canvasId": {
+                  "type": "string"
+                },
+                "capturedAt": {
+                  "type": "string"
+                },
+                "extensionId": {
+                  "type": "string"
+                },
+                "instanceId": {
+                  "type": "string"
+                },
+                "payload": {},
+                "title": {
+                  "type": "string"
+                },
+                "type": {
+                  "type": "string"
+                }
+              },
+              "required": [
+                "capturedAt",
+                "extensionId",
+                "title",
+                "type"
+              ],
+              "additionalProperties": true
+            }
+          ]
+        }
+      },
+      "content": {
+        "type": "string"
+      },
+      "delivery": {
+        "type": "string"
+      },
+      "interactionId": {
+        "type": "string"
+      },
+      "isAutopilotContinuation": {
+        "type": "boolean"
+      },
+      "nativeDocumentPathFallbackPaths": {
+        "type": "array",
+        "items": {
+          "type": "string"
+        }
+      },
+      "parentAgentTaskId": {
+        "type": "string"
+      },
+      "source": {
+        "type": "string"
+      },
+      "supportedNativeDocumentMimeTypes": {
+        "type": "array",
+        "items": {
+          "type": "string"
+        }
+      },
+      "transformedContent": {
+        "type": "string"
+      }
+    },
+    "required": [
+      "content"
+    ],
+    "additionalProperties": true
+  },
+  "recordSchema": {
+    "type": "object",
+    "properties": {
+      "agentId": {
+        "type": "string"
+      },
+      "data": {
+        "type": "object",
+        "properties": {
+          "agentMode": {
+            "type": "string"
+          },
+          "attachments": {
+            "type": "array",
+            "items": {
+              "anyOf": [
+                {
+                  "type": "object",
+                  "properties": {
+                    "assetId": {
+                      "type": "string"
+                    },
+                    "byteLength": {
+                      "type": "number"
+                    },
+                    "displayName": {
+                      "type": "string"
+                    },
+                    "lineRange": {
+                      "type": "object",
+                      "properties": {
+                        "end": {},
+                        "start": {}
+                      },
+                      "required": [
+                        "end",
+                        "start"
+                      ],
+                      "additionalProperties": true
+                    },
+                    "mimeType": {
+                      "type": "string"
+                    },
+                    "omittedReason": {
+                      "type": "string"
+                    },
+                    "path": {
+                      "type": "string"
+                    },
+                    "taggedFilesEntry": {
+                      "type": "string"
+                    },
+                    "type": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "displayName",
+                    "path",
+                    "type"
+                  ],
+                  "additionalProperties": true
+                },
+                {
+                  "type": "object",
+                  "properties": {
+                    "displayName": {
+                      "type": "string"
+                    },
+                    "path": {
+                      "type": "string"
+                    },
+                    "taggedFilesEntry": {
+                      "type": "string"
+                    },
+                    "type": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "displayName",
+                    "path",
+                    "type"
+                  ],
+                  "additionalProperties": true
+                },
+                {
+                  "type": "object",
+                  "properties": {
+                    "displayName": {
+                      "type": "string"
+                    },
+                    "filePath": {
+                      "type": "string"
+                    },
+                    "selection": {
+                      "type": "object",
+                      "properties": {
+                        "end": {},
+                        "start": {}
+                      },
+                      "required": [
+                        "end",
+                        "start"
+                      ],
+                      "additionalProperties": true
+                    },
+                    "text": {
+                      "type": "string"
+                    },
+                    "type": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "displayName",
+                    "filePath",
+                    "selection",
+                    "text",
+                    "type"
+                  ],
+                  "additionalProperties": true
+                },
+                {
+                  "type": "object",
+                  "properties": {
+                    "number": {
+                      "type": "number"
+                    },
+                    "referenceType": {
+                      "type": "string"
+                    },
+                    "state": {
+                      "type": "string"
+                    },
+                    "title": {
+                      "type": "string"
+                    },
+                    "type": {
+                      "type": "string"
+                    },
+                    "url": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "number",
+                    "referenceType",
+                    "state",
+                    "title",
+                    "type",
+                    "url"
+                  ],
+                  "additionalProperties": true
+                },
+                {
+                  "type": "object",
+                  "properties": {
+                    "message": {
+                      "type": "string"
+                    },
+                    "oid": {
+                      "type": "string"
+                    },
+                    "repo": {
+                      "type": "object",
+                      "properties": {
+                        "id": {},
+                        "name": {},
+                        "owner": {}
+                      },
+                      "required": [
+                        "name",
+                        "owner"
+                      ],
+                      "additionalProperties": true
+                    },
+                    "type": {
+                      "type": "string"
+                    },
+                    "url": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "message",
+                    "oid",
+                    "repo",
+                    "type",
+                    "url"
+                  ],
+                  "additionalProperties": true
+                },
+                {
+                  "type": "object",
+                  "properties": {
+                    "name": {
+                      "type": "string"
+                    },
+                    "repo": {
+                      "type": "object",
+                      "properties": {
+                        "id": {},
+                        "name": {},
+                        "owner": {}
+                      },
+                      "required": [
+                        "name",
+                        "owner"
+                      ],
+                      "additionalProperties": true
+                    },
+                    "tagName": {
+                      "type": "string"
+                    },
+                    "type": {
+                      "type": "string"
+                    },
+                    "url": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "name",
+                    "repo",
+                    "tagName",
+                    "type",
+                    "url"
+                  ],
+                  "additionalProperties": true
+                },
+                {
+                  "type": "object",
+                  "properties": {
+                    "conclusion": {
+                      "type": "string"
+                    },
+                    "jobId": {
+                      "type": "number"
+                    },
+                    "jobName": {
+                      "type": "string"
+                    },
+                    "repo": {
+                      "type": "object",
+                      "properties": {
+                        "id": {},
+                        "name": {},
+                        "owner": {}
+                      },
+                      "required": [
+                        "name",
+                        "owner"
+                      ],
+                      "additionalProperties": true
+                    },
+                    "type": {
+                      "type": "string"
+                    },
+                    "url": {
+                      "type": "string"
+                    },
+                    "workflowName": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "jobId",
+                    "jobName",
+                    "repo",
+                    "type",
+                    "url",
+                    "workflowName"
+                  ],
+                  "additionalProperties": true
+                },
+                {
+                  "type": "object",
+                  "properties": {
+                    "description": {
+                      "type": "string"
+                    },
+                    "ref": {
+                      "type": "string"
+                    },
+                    "repo": {
+                      "type": "object",
+                      "properties": {
+                        "id": {},
+                        "name": {},
+                        "owner": {}
+                      },
+                      "required": [
+                        "name",
+                        "owner"
+                      ],
+                      "additionalProperties": true
+                    },
+                    "type": {
+                      "type": "string"
+                    },
+                    "url": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "repo",
+                    "type",
+                    "url"
+                  ],
+                  "additionalProperties": true
+                },
+                {
+                  "type": "object",
+                  "properties": {
+                    "base": {
+                      "type": "object",
+                      "properties": {
+                        "path": {},
+                        "ref": {},
+                        "repo": {}
+                      },
+                      "required": [
+                        "path",
+                        "ref",
+                        "repo"
+                      ],
+                      "additionalProperties": true
+                    },
+                    "head": {
+                      "type": "object",
+                      "properties": {
+                        "path": {},
+                        "ref": {},
+                        "repo": {}
+                      },
+                      "required": [
+                        "path",
+                        "ref",
+                        "repo"
+                      ],
+                      "additionalProperties": true
+                    },
+                    "type": {
+                      "type": "string"
+                    },
+                    "url": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "type",
+                    "url"
+                  ],
+                  "additionalProperties": true
+                },
+                {
+                  "type": "object",
+                  "properties": {
+                    "base": {
+                      "type": "object",
+                      "properties": {
+                        "repo": {},
+                        "revision": {}
+                      },
+                      "required": [
+                        "repo",
+                        "revision"
+                      ],
+                      "additionalProperties": true
+                    },
+                    "head": {
+                      "type": "object",
+                      "properties": {
+                        "repo": {},
+                        "revision": {}
+                      },
+                      "required": [
+                        "repo",
+                        "revision"
+                      ],
+                      "additionalProperties": true
+                    },
+                    "type": {
+                      "type": "string"
+                    },
+                    "url": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "base",
+                    "head",
+                    "type",
+                    "url"
+                  ],
+                  "additionalProperties": true
+                },
+                {
+                  "type": "object",
+                  "properties": {
+                    "type": {
+                      "type": "string"
+                    },
+                    "url": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "type",
+                    "url"
+                  ],
+                  "additionalProperties": true
+                },
+                {
+                  "type": "object",
+                  "properties": {
+                    "path": {
+                      "type": "string"
+                    },
+                    "ref": {
+                      "type": "string"
+                    },
+                    "repo": {
+                      "type": "object",
+                      "properties": {
+                        "id": {},
+                        "name": {},
+                        "owner": {}
+                      },
+                      "required": [
+                        "name",
+                        "owner"
+                      ],
+                      "additionalProperties": true
+                    },
+                    "type": {
+                      "type": "string"
+                    },
+                    "url": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "path",
+                    "ref",
+                    "repo",
+                    "type",
+                    "url"
+                  ],
+                  "additionalProperties": true
+                },
+                {
+                  "type": "object",
+                  "properties": {
+                    "lineRange": {
+                      "type": "object",
+                      "properties": {
+                        "end": {},
+                        "start": {}
+                      },
+                      "required": [
+                        "end",
+                        "start"
+                      ],
+                      "additionalProperties": true
+                    },
+                    "path": {
+                      "type": "string"
+                    },
+                    "ref": {
+                      "type": "string"
+                    },
+                    "repo": {
+                      "type": "object",
+                      "properties": {
+                        "id": {},
+                        "name": {},
+                        "owner": {}
+                      },
+                      "required": [
+                        "name",
+                        "owner"
+                      ],
+                      "additionalProperties": true
+                    },
+                    "type": {
+                      "type": "string"
+                    },
+                    "url": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "lineRange",
+                    "path",
+                    "ref",
+                    "repo",
+                    "type",
+                    "url"
+                  ],
+                  "additionalProperties": true
+                },
+                {
+                  "type": "object",
+                  "properties": {
+                    "assetId": {
+                      "type": "string"
+                    },
+                    "byteLength": {
+                      "type": "number"
+                    },
+                    "data": {
+                      "type": "string"
+                    },
+                    "displayName": {
+                      "type": "string"
+                    },
+                    "mimeType": {
+                      "type": "string"
+                    },
+                    "omittedReason": {
+                      "type": "string"
+                    },
+                    "type": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "mimeType",
+                    "type"
+                  ],
+                  "additionalProperties": true
+                },
+                {
+                  "type": "object",
+                  "properties": {
+                    "canvasId": {
+                      "type": "string"
+                    },
+                    "capturedAt": {
+                      "type": "string"
+                    },
+                    "extensionId": {
+                      "type": "string"
+                    },
+                    "instanceId": {
+                      "type": "string"
+                    },
+                    "payload": {},
+                    "title": {
+                      "type": "string"
+                    },
+                    "type": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "capturedAt",
+                    "extensionId",
+                    "title",
+                    "type"
+                  ],
+                  "additionalProperties": true
+                }
+              ]
+            }
+          },
+          "content": {
+            "type": "string"
+          },
+          "delivery": {
+            "type": "string"
+          },
+          "interactionId": {
+            "type": "string"
+          },
+          "isAutopilotContinuation": {
+            "type": "boolean"
+          },
+          "nativeDocumentPathFallbackPaths": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "parentAgentTaskId": {
+            "type": "string"
+          },
+          "source": {
+            "type": "string"
+          },
+          "supportedNativeDocumentMimeTypes": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "transformedContent": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "content"
+        ],
+        "additionalProperties": true
+      },
+      "ephemeral": {
+        "type": "boolean"
+      },
+      "id": {
+        "type": "string"
+      },
+      "parentId": {
+        "anyOf": [
+          {
+            "type": "string"
+          },
+          {
+            "type": "null"
+          }
+        ]
+      },
+      "timestamp": {
+        "type": "string"
+      },
+      "type": {
+        "type": "string"
+      }
+    },
+    "required": [
+      "data",
+      "id",
+      "parentId",
+      "timestamp",
+      "type"
+    ],
+    "additionalProperties": true
+  },
+  "schemaFidelity": {
+    "payload": "structural",
+    "carrier": "structural",
+    "limitations": [
+      "Rosetta retains observed/writer field types and requiredness, but its shape algebra intentionally omits some native validation constraints."
+    ]
+  },
+  "evidence": {
+    "existence": [
+      "copilot-rosetta-runtime"
+    ],
+    "shape": [
+      "copilot-rosetta-runtime"
+    ],
+    "carrier": [
+      "copilot-rosetta-runtime"
+    ]
+  },
+  "confidence": "verified-headless",
+  "fixture": "captures/copilot@1.0.80/basic-chat/events.jsonl",
+  "notes": "session-state/*/events.jsonl; 5 retained observation(s); source evidence: writer."
+}

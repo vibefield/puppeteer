@@ -1,0 +1,56 @@
+{
+  "$schema": "../../upstream.schema.json",
+  "schemaVersion": 1,
+  "vendor": "copilot",
+  "repository": "https://github.com/github/copilot-cli",
+  "sourceRelation": { "strategy": "release-tag", "template": "v${version}" },
+  "detectors": [
+    {
+      "id": "github-stable",
+      "channel": "stable",
+      "kind": "github-release",
+      "url": "https://api.github.com/repos/github/copilot-cli/releases?per_page=30",
+      "tagPattern": "^v?(\\d+\\.\\d+\\.\\d+)$",
+      "prerelease": false,
+      "authoritative": true
+    }
+  ],
+  "platforms": ["darwin-arm64", "darwin-x64", "linux-x64", "windows-x64"],
+  "acquisition": {
+    "strategy": "https-template",
+    "allowedHosts": ["registry.npmjs.org"],
+    "maxBytes": 536870912,
+    "artifacts": {
+      "darwin-arm64": {
+        "urls": [
+          "https://registry.npmjs.org/@github/copilot-darwin-arm64/-/copilot-darwin-arm64-${version}.tgz"
+        ],
+        "format": "tar.gz",
+        "executableBasenames": ["copilot"]
+      },
+      "darwin-x64": {
+        "urls": [
+          "https://registry.npmjs.org/@github/copilot-darwin-x64/-/copilot-darwin-x64-${version}.tgz"
+        ],
+        "format": "tar.gz",
+        "executableBasenames": ["copilot"]
+      },
+      "linux-x64": {
+        "urls": [
+          "https://registry.npmjs.org/@github/copilot-linux-x64/-/copilot-linux-x64-${version}.tgz"
+        ],
+        "format": "tar.gz",
+        "executableBasenames": ["copilot"]
+      },
+      "windows-x64": {
+        "urls": [
+          "https://registry.npmjs.org/@github/copilot-win32-x64/-/copilot-win32-x64-${version}.tgz"
+        ],
+        "format": "tar.gz",
+        "executableBasenames": ["copilot.exe"]
+      }
+    }
+  },
+  "analysis": ["writer-schema", "native-session-journal", "conversation-resume", "controlled-census"],
+  "debounce": { "polls": 2, "minutes": 30 }
+}

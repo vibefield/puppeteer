@@ -1,0 +1,13 @@
+{
+  "format": "puppeteer-capture-fidelity/1",
+  "vendor": "antigravity",
+  "vendorVersion": "1.1.20",
+  "defaultRepresentation": "type-preserving-redaction",
+  "nativeArtifacts": [
+    "**/*.jsonl"
+  ],
+  "limitations": [
+    "Only the transcript append-only journal is copied from each Rosetta scenario; the committed Rosetta reference preserves the complete 32-stream inventory.",
+    "All native object keys, containers, primitive types, and record ordering are retained; sensitive scalar values are redacted in place."
+  ]
+}

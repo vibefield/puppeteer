@@ -1,0 +1,22 @@
+{
+  "surface": "pi",
+  "surfaceVersion": "0.84.3",
+  "event": "skills:artifact",
+  "nativeName": "agent/skills/**/*",
+  "channel": "skills",
+  "channels": [
+    "skills"
+  ],
+  "transport": "file-artifact",
+  "direction": "agent-local",
+  "evidence": {
+    "existence": [
+      "pi-rosetta-contract"
+    ],
+    "shape": [
+      "pi-rosetta-contract"
+    ]
+  },
+  "confidence": "unverified",
+  "notes": "agent/skills/**/*; non-record native artifact tracked by the complete Rosetta stream inventory."
+}

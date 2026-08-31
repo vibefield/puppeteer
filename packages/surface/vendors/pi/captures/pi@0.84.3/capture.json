@@ -1,0 +1,16 @@
+{
+  "schemaVersion": 2,
+  "representation": "type-preserving-redaction",
+  "vendor": "pi",
+  "vendorVersion": "0.84.3",
+  "mode": "imported-rosetta-controlled-native-journals",
+  "scenarios": [
+    "basic-chat",
+    "compaction",
+    "error",
+    "fork",
+    "resume",
+    "tool-use"
+  ],
+  "records": 47
+}

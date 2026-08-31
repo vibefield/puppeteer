@@ -1,0 +1,207 @@
+{
+  "channels": {
+    "events": {
+      "kind": "native-log",
+      "glob": "session-state/*/events.jsonl",
+      "discipline": "append_only",
+      "evidence": "writer",
+      "notes": "Writer JSON Schema for persisted session events (ephemeral streaming types omitted). Field requiredness is the schema contract; fixtures prove what the CLI actually writes."
+    },
+    "session-plans": {
+      "kind": "native-state-markdown",
+      "glob": "session-state/*/plan.md",
+      "discipline": "rewrite_in_place",
+      "evidence": "research",
+      "notes": "Per-session agent planning document when plan mode is used."
+    },
+    "session-checkpoints": {
+      "kind": "native-state-markdown",
+      "glob": "session-state/*/checkpoints/**",
+      "discipline": "rewrite_in_place",
+      "evidence": "fixture",
+      "notes": "Checkpoint history. 1.0.80 writes checkpoints/index.md (markdown table); compaction scenarios may add numbered JSON snapshots."
+    },
+    "session-files": {
+      "kind": "native-state-text",
+      "glob": "session-state/*/files/**",
+      "discipline": "rewrite_in_place",
+      "evidence": "research",
+      "notes": "Session-scoped artifacts the agent created during the turn."
+    },
+    "session-research": {
+      "kind": "native-state-text",
+      "glob": "session-state/*/research/**",
+      "discipline": "rewrite_in_place",
+      "evidence": "research",
+      "notes": "Per-session research/ scratch directory. The CLI creates it empty on every farmed session; no files observed yet."
+    },
+    "session-workspace": {
+      "kind": "native-state-text",
+      "glob": "session-state/*/workspace.yaml",
+      "discipline": "rewrite_in_place",
+      "evidence": "fixture",
+      "notes": "Per-session workspace metadata: id, cwd, client_name, name, timestamps."
+    },
+    "session-db": {
+      "kind": "native-state-sqlite",
+      "glob": "session-state/*/session.db*",
+      "discipline": "database",
+      "evidence": "fixture",
+      "notes": "Per-session SQLite (todos, todo_deps, inbox_entries). Distinct from the derived session-store.db index. The agent documents this as the default 'session' SQL database in system.message."
+    },
+    "rewind-snapshots": {
+      "kind": "native-state-json",
+      "glob": "session-state/*/rewind-file-snapshots/**",
+      "discipline": "rewrite_in_place",
+      "evidence": "fixture",
+      "notes": "Rewind/file-snapshot tracking. 1.0.80 writes tracking.json {schema, tracking}."
+    },
+    "session-locks": {
+      "kind": "native-state-text",
+      "glob": "session-state/*/inuse.*.lock",
+      "discipline": "rewrite_in_place",
+      "evidence": "research",
+      "notes": "Volatile process locks; stripped at harvest."
+    },
+    "session-store": {
+      "kind": "native-state-sqlite",
+      "glob": "session-store.db*",
+      "discipline": "database",
+      "evidence": "research",
+      "notes": "Derived, rebuildable SQLite index (`/chronicle reindex`). EXCLUDE from harvest and from parsers — events.jsonl is the source of truth."
+    },
+    "settings": {
+      "kind": "native-state-json",
+      "glob": "settings.json",
+      "discipline": "rewrite_in_place",
+      "evidence": "fixture",
+      "notes": "User-editable JSONC settings (model, autoUpdate, remoteExport, …). Farm writes a hermetic stub; the CLI may rewrite it."
+    },
+    "config": {
+      "kind": "native-state-json",
+      "glob": "config.json",
+      "discipline": "rewrite_in_place",
+      "evidence": "fixture",
+      "notes": "Automatically managed application state (JSONC with leading comments). May contain authentication — MUST-NOT-PARSE beyond inventory. Farm observed firstLaunchAt only."
+    },
+    "permissions": {
+      "kind": "native-state-json",
+      "glob": "permissions-config.json",
+      "discipline": "rewrite_in_place",
+      "evidence": "research",
+      "notes": "Saved tool/directory approvals keyed by absolute project path."
+    },
+    "mcp-config": {
+      "kind": "native-state-json",
+      "glob": "mcp-config.json",
+      "discipline": "rewrite_in_place",
+      "evidence": "research",
+      "notes": "User-level MCP server definitions."
+    },
+    "lsp-config": {
+      "kind": "native-state-json",
+      "glob": "lsp-config.json",
+      "discipline": "rewrite_in_place",
+      "evidence": "research",
+      "notes": "User-level LSP server definitions."
+    },
+    "logs": {
+      "kind": "native-state-text",
+      "glob": "logs/**/*",
+      "discipline": "append_only",
+      "evidence": "research",
+      "notes": "Per-process debug logs (`process-{timestamp}-{pid}.log`). Volatile; stripped at harvest."
+    },
+    "command-history": {
+      "kind": "native-state-text",
+      "glob": "command-history-state/**/*",
+      "discipline": "rewrite_in_place",
+      "evidence": "research",
+      "notes": "Interactive reverse-search command history. Not transcript ground truth."
+    },
+    "agents": {
+      "kind": "native-state-markdown",
+      "glob": "agents/**/*",
+      "discipline": "rewrite_in_place",
+      "evidence": "research",
+      "notes": "Personal custom agent definitions (*.agent.md)."
+    },
+    "skills": {
+      "kind": "native-state-markdown",
+      "glob": "skills/**/*",
+      "discipline": "rewrite_in_place",
+      "evidence": "research",
+      "notes": "Personal custom skills (SKILL.md trees)."
+    },
+    "hooks": {
+      "kind": "native-state-text",
+      "glob": "hooks/**/*",
+      "discipline": "rewrite_in_place",
+      "evidence": "research",
+      "notes": "User-level hook scripts."
+    },
+    "instructions": {
+      "kind": "native-state-markdown",
+      "glob": "instructions/**/*",
+      "discipline": "rewrite_in_place",
+      "evidence": "research",
+      "notes": "Additional personal *.instructions.md files."
+    },
+    "copilot-instructions": {
+      "kind": "native-state-markdown",
+      "glob": "copilot-instructions.md",
+      "discipline": "rewrite_in_place",
+      "evidence": "research",
+      "notes": "Personal custom instructions applied to every session."
+    },
+    "extensions": {
+      "kind": "native-state-text",
+      "glob": "extensions/**/*",
+      "discipline": "rewrite_in_place",
+      "evidence": "research",
+      "notes": "User-authored extension files."
+    },
+    "installed-plugins": {
+      "kind": "native-state-text",
+      "glob": "installed-plugins/**/*",
+      "discipline": "rewrite_in_place",
+      "evidence": "research",
+      "notes": "Marketplace plugin payloads. Vendor bundle; stripped at harvest."
+    },
+    "plugin-data": {
+      "kind": "native-state-text",
+      "glob": "plugin-data/**/*",
+      "discipline": "rewrite_in_place",
+      "evidence": "research",
+      "notes": "Persistent data owned by installed plugins."
+    },
+    "ide": {
+      "kind": "native-state-text",
+      "glob": "ide/**/*",
+      "discipline": "rewrite_in_place",
+      "evidence": "research",
+      "notes": "IDE integration lock files (VS Code)."
+    },
+    "mcp-oauth": {
+      "kind": "native-state-json",
+      "glob": "mcp-oauth-config/**/*",
+      "discipline": "rewrite_in_place",
+      "evidence": "research",
+      "notes": "MCP OAuth fallback tokens — MUST-NOT-PARSE; inventory only."
+    },
+    "mcp-secrets": {
+      "kind": "native-state-text",
+      "glob": "mcp-secrets/**/*",
+      "discipline": "rewrite_in_place",
+      "evidence": "research",
+      "notes": "MCP secret placeholder fallback storage — MUST-NOT-PARSE; inventory only."
+    },
+    "farm:headless-stdout": {
+      "kind": "native-state-jsonl",
+      "glob": "<farm>/stdout*.jsonl",
+      "discipline": "append_only",
+      "evidence": "fixture",
+      "notes": "Headless stream-json stdout — corroboration surface captured by the farm, not part of the agent data root."
+    }
+  }
+}

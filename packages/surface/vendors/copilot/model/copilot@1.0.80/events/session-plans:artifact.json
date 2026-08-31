@@ -1,0 +1,22 @@
+{
+  "surface": "copilot",
+  "surfaceVersion": "1.0.80",
+  "event": "session-plans:artifact",
+  "nativeName": "session-state/*/plan.md",
+  "channel": "session-plans",
+  "channels": [
+    "session-plans"
+  ],
+  "transport": "file-artifact",
+  "direction": "agent-local",
+  "evidence": {
+    "existence": [
+      "copilot-rosetta-contract"
+    ],
+    "shape": [
+      "copilot-rosetta-contract"
+    ]
+  },
+  "confidence": "unverified",
+  "notes": "session-state/*/plan.md; non-record native artifact tracked by the complete Rosetta stream inventory."
+}

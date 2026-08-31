@@ -1,0 +1,176 @@
+{
+  "surface": "copilot",
+  "surfaceVersion": "1.0.80",
+  "event": "session.model_change",
+  "channel": "events",
+  "channels": [
+    "events"
+  ],
+  "transport": "jsonl-record",
+  "direction": "agent-local",
+  "payloadSchema": {
+    "type": "object",
+    "properties": {
+      "cause": {
+        "type": "string"
+      },
+      "contextTier": {
+        "anyOf": [
+          {
+            "type": "string"
+          },
+          {
+            "type": "null"
+          }
+        ]
+      },
+      "newModel": {
+        "type": "string"
+      },
+      "previousModel": {
+        "type": "string"
+      },
+      "previousReasoningEffort": {
+        "type": "string"
+      },
+      "previousReasoningSummary": {
+        "type": "string"
+      },
+      "previousVerbosity": {
+        "type": "string"
+      },
+      "reasoningEffort": {
+        "anyOf": [
+          {
+            "type": "string"
+          },
+          {
+            "type": "null"
+          }
+        ]
+      },
+      "reasoningSummary": {
+        "type": "string"
+      },
+      "verbosity": {
+        "type": "string"
+      }
+    },
+    "required": [
+      "newModel"
+    ],
+    "additionalProperties": true
+  },
+  "recordSchema": {
+    "type": "object",
+    "properties": {
+      "agentId": {
+        "type": "string"
+      },
+      "data": {
+        "type": "object",
+        "properties": {
+          "cause": {
+            "type": "string"
+          },
+          "contextTier": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "newModel": {
+            "type": "string"
+          },
+          "previousModel": {
+            "type": "string"
+          },
+          "previousReasoningEffort": {
+            "type": "string"
+          },
+          "previousReasoningSummary": {
+            "type": "string"
+          },
+          "previousVerbosity": {
+            "type": "string"
+          },
+          "reasoningEffort": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "reasoningSummary": {
+            "type": "string"
+          },
+          "verbosity": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "newModel"
+        ],
+        "additionalProperties": true
+      },
+      "ephemeral": {
+        "type": "boolean"
+      },
+      "id": {
+        "type": "string"
+      },
+      "parentId": {
+        "anyOf": [
+          {
+            "type": "string"
+          },
+          {
+            "type": "null"
+          }
+        ]
+      },
+      "timestamp": {
+        "type": "string"
+      },
+      "type": {
+        "type": "string"
+      }
+    },
+    "required": [
+      "data",
+      "id",
+      "parentId",
+      "timestamp",
+      "type"
+    ],
+    "additionalProperties": true
+  },
+  "schemaFidelity": {
+    "payload": "structural",
+    "carrier": "structural",
+    "limitations": [
+      "Rosetta retains observed/writer field types and requiredness, but its shape algebra intentionally omits some native validation constraints."
+    ]
+  },
+  "evidence": {
+    "existence": [
+      "copilot-rosetta-runtime"
+    ],
+    "shape": [
+      "copilot-rosetta-runtime"
+    ],
+    "carrier": [
+      "copilot-rosetta-runtime"
+    ]
+  },
+  "confidence": "verified-headless",
+  "fixture": "captures/copilot@1.0.80/basic-chat/events.jsonl",
+  "notes": "session-state/*/events.jsonl; 5 retained observation(s); source evidence: writer."
+}

@@ -1,0 +1,73 @@
+{
+  "evidenceVersion": 2,
+  "vendor": "antigravity",
+  "vendorVersion": "1.1.20",
+  "artifacts": [
+    {
+      "id": "antigravity-1.1.20-rosetta-fixture-corpus",
+      "kind": "controlled-fixture-corpus",
+      "versionOutput": "1.1.20",
+      "platform": "darwin-arm64",
+      "capturedAt": "2026-08-25T05:10:43Z",
+      "integrity": {
+        "status": "verified",
+        "sha256": "sha256:83a5f3745b7f4cd37292760905762b8467a2a2acbb2857b39182bd855a5567c3"
+      }
+    }
+  ],
+  "sourceReferences": [
+    {
+      "repository": "https://github.com/google-antigravity/antigravity-cli",
+      "revision": "1.1.20",
+      "relation": "exact-release"
+    }
+  ],
+  "records": [
+    {
+      "id": "antigravity-captures",
+      "path": "packages/surface/vendors/antigravity/captures/antigravity@1.1.20",
+      "digestAlgorithm": "sha256-path-content-v1",
+      "sha256": "0a4b423ca9ad40bba0b8234c5e436cdfab13307910361bdd6417e6cf9009c0b8"
+    },
+    {
+      "id": "antigravity-references",
+      "path": "packages/surface/vendors/antigravity/references/antigravity@1.1.20",
+      "digestAlgorithm": "sha256-path-content-v1",
+      "sha256": "83a6f10c717087b5b12a27598d8ccbc1cb6014279428f8dcc1b09af3fdfa6d46"
+    }
+  ],
+  "claims": [
+    {
+      "id": "antigravity-rosetta-runtime",
+      "kind": "runtime-capture",
+      "confidence": "verified-headless",
+      "record": "antigravity-captures",
+      "artifact": "antigravity-1.1.20-rosetta-fixture-corpus",
+      "platform": "darwin-arm64",
+      "harness": "rosetta controlled mock-provider farm",
+      "capturedAt": "2026-08-25T05:10:43Z",
+      "notes": "Type-preserving transcript native journal captures."
+    },
+    {
+      "id": "antigravity-rosetta-observed",
+      "kind": "generated-schema",
+      "confidence": "verified-headless",
+      "record": "antigravity-references",
+      "artifact": "antigravity-1.1.20-rosetta-fixture-corpus",
+      "sourceReference": 0,
+      "platform": "darwin-arm64",
+      "harness": "rosetta controlled mock-provider farm",
+      "capturedAt": "2026-08-25T05:10:43Z",
+      "notes": "Digest-pinned Rosetta record inventory whose occurrence count is non-zero. It proves occurrence; it proves retained shape only for records classified as fixture or observed rather than writer evidence."
+    },
+    {
+      "id": "antigravity-rosetta-contract",
+      "kind": "generated-schema",
+      "confidence": "unverified",
+      "record": "antigravity-references",
+      "artifact": "antigravity-1.1.20-rosetta-fixture-corpus",
+      "sourceReference": 0,
+      "notes": "Digest-pinned complete Rosetta stream/shape inventory for antigravity@1.1.20; writer-only and zero-occurrence records establish a reviewable contract lead, not runtime occurrence."
+    }
+  ]
+}

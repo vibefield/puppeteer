@@ -1,0 +1,106 @@
+{
+  "surface": "antigravity",
+  "surfaceVersion": "1.1.20",
+  "event": "ERROR_MESSAGE",
+  "channel": "transcript",
+  "channels": [
+    "transcript"
+  ],
+  "transport": "jsonl-record",
+  "direction": "agent-local",
+  "payloadSchema": {
+    "type": "object",
+    "properties": {
+      "content": {
+        "type": "string"
+      },
+      "error": {
+        "type": "string"
+      },
+      "source": {
+        "type": "string",
+        "enum": [
+          "SYSTEM"
+        ]
+      },
+      "status": {
+        "type": "string",
+        "enum": [
+          "DONE"
+        ]
+      }
+    },
+    "required": [
+      "content",
+      "error",
+      "source",
+      "status"
+    ],
+    "additionalProperties": true
+  },
+  "recordSchema": {
+    "type": "object",
+    "properties": {
+      "content": {
+        "type": "string"
+      },
+      "created_at": {
+        "type": "string"
+      },
+      "error": {
+        "type": "string"
+      },
+      "source": {
+        "type": "string",
+        "enum": [
+          "SYSTEM"
+        ]
+      },
+      "status": {
+        "type": "string",
+        "enum": [
+          "DONE"
+        ]
+      },
+      "step_index": {
+        "type": "number"
+      },
+      "type": {
+        "type": "string",
+        "enum": [
+          "ERROR_MESSAGE"
+        ]
+      }
+    },
+    "required": [
+      "content",
+      "created_at",
+      "error",
+      "source",
+      "status",
+      "step_index",
+      "type"
+    ],
+    "additionalProperties": true
+  },
+  "schemaFidelity": {
+    "payload": "structural",
+    "carrier": "structural",
+    "limitations": [
+      "Rosetta retains observed/writer field types and requiredness, but its shape algebra intentionally omits some native validation constraints."
+    ]
+  },
+  "evidence": {
+    "existence": [
+      "antigravity-rosetta-observed"
+    ],
+    "shape": [
+      "antigravity-rosetta-observed"
+    ],
+    "carrier": [
+      "antigravity-rosetta-observed"
+    ]
+  },
+  "confidence": "verified-headless",
+  "notes": "brain/*/.system_generated/logs/transcript.jsonl; 2 retained observation(s); source evidence: observed."
+}

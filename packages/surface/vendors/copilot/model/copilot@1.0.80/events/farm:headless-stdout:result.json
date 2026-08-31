@@ -1,0 +1,163 @@
+{
+  "surface": "copilot",
+  "surfaceVersion": "1.0.80",
+  "event": "farm:headless-stdout:result",
+  "nativeName": "result",
+  "channel": "farm:headless-stdout",
+  "channels": [
+    "farm:headless-stdout"
+  ],
+  "transport": "jsonl-record",
+  "direction": "agent-local",
+  "payloadSchema": {
+    "type": "object",
+    "properties": {
+      "exitCode": {
+        "type": "number"
+      },
+      "sessionId": {
+        "type": "string"
+      },
+      "timestamp": {
+        "type": "string"
+      },
+      "usage": {
+        "type": "object",
+        "properties": {
+          "codeChanges": {
+            "type": "object",
+            "properties": {
+              "filesModified": {
+                "type": "array"
+              },
+              "linesAdded": {
+                "type": "number"
+              },
+              "linesRemoved": {
+                "type": "number"
+              }
+            },
+            "required": [
+              "filesModified",
+              "linesAdded",
+              "linesRemoved"
+            ],
+            "additionalProperties": true
+          },
+          "premiumRequests": {
+            "type": "number"
+          },
+          "sessionDurationMs": {
+            "type": "number"
+          },
+          "totalApiDurationMs": {
+            "type": "number"
+          }
+        },
+        "required": [
+          "codeChanges",
+          "premiumRequests",
+          "sessionDurationMs",
+          "totalApiDurationMs"
+        ],
+        "additionalProperties": true
+      }
+    },
+    "required": [
+      "exitCode",
+      "sessionId",
+      "timestamp",
+      "usage"
+    ],
+    "additionalProperties": true
+  },
+  "recordSchema": {
+    "type": "object",
+    "properties": {
+      "exitCode": {
+        "type": "number"
+      },
+      "sessionId": {
+        "type": "string"
+      },
+      "timestamp": {
+        "type": "string"
+      },
+      "type": {
+        "type": "string",
+        "enum": [
+          "result"
+        ]
+      },
+      "usage": {
+        "type": "object",
+        "properties": {
+          "codeChanges": {
+            "type": "object",
+            "properties": {
+              "filesModified": {
+                "type": "array"
+              },
+              "linesAdded": {
+                "type": "number"
+              },
+              "linesRemoved": {
+                "type": "number"
+              }
+            },
+            "required": [
+              "filesModified",
+              "linesAdded",
+              "linesRemoved"
+            ],
+            "additionalProperties": true
+          },
+          "premiumRequests": {
+            "type": "number"
+          },
+          "sessionDurationMs": {
+            "type": "number"
+          },
+          "totalApiDurationMs": {
+            "type": "number"
+          }
+        },
+        "required": [
+          "codeChanges",
+          "premiumRequests",
+          "sessionDurationMs",
+          "totalApiDurationMs"
+        ],
+        "additionalProperties": true
+      }
+    },
+    "required": [
+      "exitCode",
+      "sessionId",
+      "timestamp",
+      "type",
+      "usage"
+    ],
+    "additionalProperties": true
+  },
+  "schemaFidelity": {
+    "payload": "structural",
+    "carrier": "structural",
+    "limitations": [
+      "Rosetta retains observed/writer field types and requiredness, but its shape algebra intentionally omits some native validation constraints."
+    ]
+  },
+  "evidence": {
+    "existence": [
+      "copilot-rosetta-observed"
+    ],
+    "shape": [
+      "copilot-rosetta-observed"
+    ],
+    "carrier": [
+      "copilot-rosetta-observed"
+    ]
+  },
+  "confidence": "verified-headless",
+  "notes": "<farm>/stdout*.jsonl; 5 retained observation(s); source evidence: fixture."
+}

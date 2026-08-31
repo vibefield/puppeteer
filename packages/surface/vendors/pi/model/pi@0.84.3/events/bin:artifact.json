@@ -1,0 +1,22 @@
+{
+  "surface": "pi",
+  "surfaceVersion": "0.84.3",
+  "event": "bin:artifact",
+  "nativeName": "agent/bin/**/*",
+  "channel": "bin",
+  "channels": [
+    "bin"
+  ],
+  "transport": "file-artifact",
+  "direction": "agent-local",
+  "evidence": {
+    "existence": [
+      "pi-rosetta-contract"
+    ],
+    "shape": [
+      "pi-rosetta-contract"
+    ]
+  },
+  "confidence": "unverified",
+  "notes": "agent/bin/**/*; non-record native artifact tracked by the complete Rosetta stream inventory."
+}

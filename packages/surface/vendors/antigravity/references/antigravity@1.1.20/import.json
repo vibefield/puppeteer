@@ -1,0 +1,32 @@
+{
+  "format": "puppeteer-rosetta-import/1",
+  "vendor": "antigravity",
+  "vendorVersion": "1.1.20",
+  "importedAt": "2026-08-28",
+  "importer": "packages/surface/scripts/import-rosetta.mjs",
+  "source": {
+    "project": "rosetta",
+    "canonicalSha256": "f4e7610cd3bcf6f7bd16bc2ddfa902ad296965be7ab0e2f9fc62acce5f76722d",
+    "files": [
+      {
+        "path": "1.1.20.fixtures.json",
+        "sha256": "83a5f3745b7f4cd37292760905762b8467a2a2acbb2857b39182bd855a5567c3"
+      },
+      {
+        "path": "observed-2026-08-25.json",
+        "sha256": "025a335340aa50bf2655815f2958f12921f77a2e9af2b6dbaa8c10d6bc695627"
+      },
+      {
+        "path": "observed-2026-08-28.json",
+        "sha256": "452158886d27aac4904f2bddfab705ff5da9c9d724d14ec0d90e3f34af00cf23"
+      }
+    ]
+  },
+  "fixtureCorpus": {
+    "id": "antigravity-1.1.20-rosetta-fixture-corpus",
+    "versionOutput": "1.1.20",
+    "platform": "darwin-arm64",
+    "capturedAt": "2026-08-25T05:10:43Z",
+    "sha256": "83a5f3745b7f4cd37292760905762b8467a2a2acbb2857b39182bd855a5567c3"
+  }
+}

@@ -1,0 +1,326 @@
+{
+  "surface": "copilot",
+  "surfaceVersion": "1.0.80",
+  "event": "session.start",
+  "channel": "events",
+  "channels": [
+    "events"
+  ],
+  "transport": "jsonl-record",
+  "direction": "agent-local",
+  "payloadSchema": {
+    "type": "object",
+    "properties": {
+      "alreadyInUse": {
+        "type": "boolean"
+      },
+      "context": {
+        "type": "object",
+        "properties": {
+          "baseCommit": {
+            "type": "string"
+          },
+          "branch": {
+            "type": "string"
+          },
+          "cwd": {
+            "type": "string"
+          },
+          "gitRoot": {
+            "type": "string"
+          },
+          "headCommit": {
+            "type": "string"
+          },
+          "hostType": {
+            "type": "string"
+          },
+          "pendingGitContext": {
+            "type": "boolean"
+          },
+          "repository": {
+            "type": "string"
+          },
+          "repositoryHost": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "cwd"
+        ],
+        "additionalProperties": true
+      },
+      "contextTier": {
+        "anyOf": [
+          {
+            "type": "string"
+          },
+          {
+            "type": "null"
+          }
+        ]
+      },
+      "copilotVersion": {
+        "type": "string"
+      },
+      "detachedFromSpawningParentSessionId": {
+        "type": "string"
+      },
+      "githubMcpToolConfig": {
+        "type": "object",
+        "properties": {
+          "additionalTools": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "additionalToolsets": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "enableAllTools": {
+            "type": "boolean"
+          },
+          "enableInsidersMode": {
+            "type": "boolean"
+          }
+        },
+        "additionalProperties": true
+      },
+      "producer": {
+        "type": "string"
+      },
+      "reasoningEffort": {
+        "type": "string"
+      },
+      "reasoningSummary": {
+        "type": "string"
+      },
+      "remoteSteerable": {
+        "type": "boolean"
+      },
+      "selectedModel": {
+        "type": "string"
+      },
+      "sessionId": {
+        "type": "string"
+      },
+      "sessionLimits": {
+        "type": "object",
+        "properties": {
+          "maxAiCredits": {
+            "type": "number"
+          }
+        },
+        "additionalProperties": true
+      },
+      "startTime": {
+        "type": "string"
+      },
+      "verbosity": {
+        "type": "string"
+      },
+      "version": {
+        "type": "number"
+      }
+    },
+    "required": [
+      "copilotVersion",
+      "producer",
+      "sessionId",
+      "startTime",
+      "version"
+    ],
+    "additionalProperties": true
+  },
+  "recordSchema": {
+    "type": "object",
+    "properties": {
+      "agentId": {
+        "type": "string"
+      },
+      "data": {
+        "type": "object",
+        "properties": {
+          "alreadyInUse": {
+            "type": "boolean"
+          },
+          "context": {
+            "type": "object",
+            "properties": {
+              "baseCommit": {
+                "type": "string"
+              },
+              "branch": {
+                "type": "string"
+              },
+              "cwd": {
+                "type": "string"
+              },
+              "gitRoot": {
+                "type": "string"
+              },
+              "headCommit": {
+                "type": "string"
+              },
+              "hostType": {
+                "type": "string"
+              },
+              "pendingGitContext": {
+                "type": "boolean"
+              },
+              "repository": {
+                "type": "string"
+              },
+              "repositoryHost": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "cwd"
+            ],
+            "additionalProperties": true
+          },
+          "contextTier": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "copilotVersion": {
+            "type": "string"
+          },
+          "detachedFromSpawningParentSessionId": {
+            "type": "string"
+          },
+          "githubMcpToolConfig": {
+            "type": "object",
+            "properties": {
+              "additionalTools": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                }
+              },
+              "additionalToolsets": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                }
+              },
+              "enableAllTools": {
+                "type": "boolean"
+              },
+              "enableInsidersMode": {
+                "type": "boolean"
+              }
+            },
+            "additionalProperties": true
+          },
+          "producer": {
+            "type": "string"
+          },
+          "reasoningEffort": {
+            "type": "string"
+          },
+          "reasoningSummary": {
+            "type": "string"
+          },
+          "remoteSteerable": {
+            "type": "boolean"
+          },
+          "selectedModel": {
+            "type": "string"
+          },
+          "sessionId": {
+            "type": "string"
+          },
+          "sessionLimits": {
+            "type": "object",
+            "properties": {
+              "maxAiCredits": {
+                "type": "number"
+              }
+            },
+            "additionalProperties": true
+          },
+          "startTime": {
+            "type": "string"
+          },
+          "verbosity": {
+            "type": "string"
+          },
+          "version": {
+            "type": "number"
+          }
+        },
+        "required": [
+          "copilotVersion",
+          "producer",
+          "sessionId",
+          "startTime",
+          "version"
+        ],
+        "additionalProperties": true
+      },
+      "ephemeral": {
+        "type": "boolean"
+      },
+      "id": {
+        "type": "string"
+      },
+      "parentId": {
+        "anyOf": [
+          {
+            "type": "string"
+          },
+          {
+            "type": "null"
+          }
+        ]
+      },
+      "timestamp": {
+        "type": "string"
+      },
+      "type": {
+        "type": "string"
+      }
+    },
+    "required": [
+      "data",
+      "id",
+      "parentId",
+      "timestamp",
+      "type"
+    ],
+    "additionalProperties": true
+  },
+  "schemaFidelity": {
+    "payload": "structural",
+    "carrier": "structural",
+    "limitations": [
+      "Rosetta retains observed/writer field types and requiredness, but its shape algebra intentionally omits some native validation constraints."
+    ]
+  },
+  "evidence": {
+    "existence": [
+      "copilot-rosetta-runtime"
+    ],
+    "shape": [
+      "copilot-rosetta-runtime"
+    ],
+    "carrier": [
+      "copilot-rosetta-runtime"
+    ]
+  },
+  "confidence": "verified-headless",
+  "fixture": "captures/copilot@1.0.80/basic-chat/events.jsonl",
+  "notes": "session-state/*/events.jsonl; 4 retained observation(s); source evidence: writer."
+}

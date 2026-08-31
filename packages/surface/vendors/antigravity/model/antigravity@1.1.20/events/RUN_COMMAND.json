@@ -1,0 +1,107 @@
+{
+  "surface": "antigravity",
+  "surfaceVersion": "1.1.20",
+  "event": "RUN_COMMAND",
+  "channel": "transcript",
+  "channels": [
+    "transcript"
+  ],
+  "transport": "jsonl-record",
+  "direction": "agent-local",
+  "payloadSchema": {
+    "type": "object",
+    "properties": {
+      "content": {
+        "type": "string"
+      },
+      "exit_code": {
+        "type": "number"
+      },
+      "source": {
+        "type": "string",
+        "enum": [
+          "MODEL"
+        ]
+      },
+      "status": {
+        "type": "string",
+        "enum": [
+          "DONE"
+        ]
+      }
+    },
+    "required": [
+      "content",
+      "exit_code",
+      "source",
+      "status"
+    ],
+    "additionalProperties": true
+  },
+  "recordSchema": {
+    "type": "object",
+    "properties": {
+      "content": {
+        "type": "string"
+      },
+      "created_at": {
+        "type": "string"
+      },
+      "exit_code": {
+        "type": "number"
+      },
+      "source": {
+        "type": "string",
+        "enum": [
+          "MODEL"
+        ]
+      },
+      "status": {
+        "type": "string",
+        "enum": [
+          "DONE"
+        ]
+      },
+      "step_index": {
+        "type": "number"
+      },
+      "type": {
+        "type": "string",
+        "enum": [
+          "RUN_COMMAND"
+        ]
+      }
+    },
+    "required": [
+      "content",
+      "created_at",
+      "exit_code",
+      "source",
+      "status",
+      "step_index",
+      "type"
+    ],
+    "additionalProperties": true
+  },
+  "schemaFidelity": {
+    "payload": "structural",
+    "carrier": "structural",
+    "limitations": [
+      "Rosetta retains observed/writer field types and requiredness, but its shape algebra intentionally omits some native validation constraints."
+    ]
+  },
+  "evidence": {
+    "existence": [
+      "antigravity-rosetta-runtime"
+    ],
+    "shape": [
+      "antigravity-rosetta-runtime"
+    ],
+    "carrier": [
+      "antigravity-rosetta-runtime"
+    ]
+  },
+  "confidence": "verified-headless",
+  "fixture": "captures/antigravity@1.1.20/tool-use/events.jsonl",
+  "notes": "brain/*/.system_generated/logs/transcript.jsonl; 1 retained observation(s); source evidence: fixture."
+}

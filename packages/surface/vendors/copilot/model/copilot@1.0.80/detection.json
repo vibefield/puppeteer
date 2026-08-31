@@ -1,0 +1,22 @@
+{
+  "executables": [
+    "copilot"
+  ],
+  "envVar": "PUPPETEER_COPILOT_BIN",
+  "versionFlag": "--version",
+  "versionOutput": "1.0.80",
+  "versionPattern": "^(?:[^0-9]*[vV]?)?(\\d+\\.\\d+\\.\\d+(?:-[0-9A-Za-z.-]+)?).*$",
+  "helpFlag": "--help",
+  "dataRoot": "~/.copilot",
+  "launchFlags": {
+    "resume": "--resume",
+    "sessionId": "--session-id",
+    "model": "--model",
+    "effort": "--reasoning-effort",
+    "mode": "--mode",
+    "permissions": "--allow-all",
+    "agent": "--agent",
+    "context": "--context",
+    "name": "--name"
+  }
+}

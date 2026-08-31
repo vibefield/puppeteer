@@ -1,0 +1,92 @@
+{
+  "surface": "antigravity",
+  "surfaceVersion": "1.1.20",
+  "event": "history:<dynamic>",
+  "nativeName": "<dynamic>",
+  "channel": "history",
+  "channels": [
+    "history"
+  ],
+  "transport": "jsonl-record",
+  "direction": "agent-local",
+  "payloadSchema": {
+    "type": "object",
+    "properties": {
+      "conversationId": {
+        "type": "string"
+      },
+      "display": {
+        "type": "string"
+      },
+      "timestamp": {
+        "type": "number"
+      },
+      "type": {
+        "type": "string",
+        "enum": [
+          "slash_command"
+        ]
+      },
+      "workspace": {
+        "type": "string"
+      }
+    },
+    "required": [
+      "display",
+      "timestamp",
+      "type",
+      "workspace"
+    ],
+    "additionalProperties": true
+  },
+  "recordSchema": {
+    "type": "object",
+    "properties": {
+      "conversationId": {
+        "type": "string"
+      },
+      "display": {
+        "type": "string"
+      },
+      "timestamp": {
+        "type": "number"
+      },
+      "type": {
+        "type": "string",
+        "enum": [
+          "slash_command"
+        ]
+      },
+      "workspace": {
+        "type": "string"
+      }
+    },
+    "required": [
+      "display",
+      "timestamp",
+      "type",
+      "workspace"
+    ],
+    "additionalProperties": true
+  },
+  "schemaFidelity": {
+    "payload": "structural",
+    "carrier": "structural",
+    "limitations": [
+      "Rosetta retains observed/writer field types and requiredness, but its shape algebra intentionally omits some native validation constraints."
+    ]
+  },
+  "evidence": {
+    "existence": [
+      "antigravity-rosetta-observed"
+    ],
+    "shape": [
+      "antigravity-rosetta-observed"
+    ],
+    "carrier": [
+      "antigravity-rosetta-observed"
+    ]
+  },
+  "confidence": "verified-headless",
+  "notes": "history.jsonl; 3 retained observation(s); source evidence: observed."
+}

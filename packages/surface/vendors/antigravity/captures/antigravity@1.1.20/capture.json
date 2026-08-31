@@ -1,0 +1,13 @@
+{
+  "schemaVersion": 2,
+  "representation": "type-preserving-redaction",
+  "vendor": "antigravity",
+  "vendorVersion": "1.1.20",
+  "mode": "imported-rosetta-controlled-native-journals",
+  "scenarios": [
+    "basic-chat",
+    "resume",
+    "tool-use"
+  ],
+  "records": 14
+}

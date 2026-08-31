@@ -1,0 +1,228 @@
+{
+  "channels": {
+    "transcript": {
+      "kind": "native-log",
+      "glob": "brain/*/.system_generated/logs/transcript.jsonl",
+      "discipline": "append_only",
+      "evidence": "fixture",
+      "notes": "Primary transcript JSONL. Fixture 1.1.20: USER_INPUT, PLANNER_RESPONSE (optional tool_calls[{name,args}]), RUN_COMMAND (exit_code+content), CHECKPOINT, SYSTEM_MESSAGE. Organic census additionally: CONVERSATION_HISTORY (no content), LIST_DIRECTORY, VIEW_FILE, ERROR_MESSAGE (error+content). Envelope: type, source, status, step_index, created_at."
+    },
+    "transcript-full": {
+      "kind": "native-state-jsonl",
+      "glob": "brain/*/.system_generated/logs/transcript_full.jsonl",
+      "discipline": "append_only",
+      "evidence": "fixture",
+      "notes": "Sibling of transcript.jsonl. Hook stdin transcriptPath points here. Same record vocabulary as transcript."
+    },
+    "transcript-chunks": {
+      "kind": "native-state-jsonl",
+      "glob": "brain/*/.system_generated/logs/chunks/transcript/*.jsonl",
+      "discipline": "append_only",
+      "evidence": "fixture",
+      "notes": "Chunked copy of transcript.jsonl (00000000.jsonl in 1.1.20, same bytes as the parent file)."
+    },
+    "transcript-full-chunks": {
+      "kind": "native-state-jsonl",
+      "glob": "brain/*/.system_generated/logs/chunks/transcript_full/*.jsonl",
+      "discipline": "append_only",
+      "evidence": "fixture",
+      "notes": "Chunked copy of transcript_full.jsonl."
+    },
+    "conversation-message-index": {
+      "kind": "native-state-json",
+      "glob": "brain/*/.system_generated/messages/read.json",
+      "discipline": "rewrite_in_place",
+      "evidence": "fixture",
+      "notes": "Map of message-id → bool (read). Resume fixture only. Keys are UUIDs and collapse to <dynamic> in the canonical shape."
+    },
+    "conversation-messages": {
+      "kind": "native-state-json",
+      "glob": "brain/*/.system_generated/messages/*.json",
+      "discipline": "rewrite_in_place",
+      "evidence": "fixture",
+      "notes": "Per-message JSON (id, recipient, sender, priority, timestamp, hideFromUser, content). read.json is a separate stream and must be listed first so it does not merge into this shape."
+    },
+    "undelivered-messages": {
+      "kind": "native-state-text",
+      "glob": "brain/*/.system_generated/messages/undelivered/**/*",
+      "discipline": "rewrite_in_place",
+      "evidence": "research",
+      "notes": "Empty undelivered/ dir created on resume in 1.1.20. Promote when a file appears."
+    },
+    "conversation-db": {
+      "kind": "native-state-sqlite",
+      "glob": "conversations/*.db*",
+      "discipline": "database",
+      "evidence": "fixture",
+      "notes": "Durable conversation store. One WAL-mode SQLite file per conversation UUID plus -wal/-shm. Schema dump identity is conversations.db (UUID filenames collapsed). Tables: steps (blob payloads), trajectory_meta, gen_metadata, executor_metadata, parent_references, trajectory_metadata_blob, battle_mode_infos. Schema dump: sources/<version>.sqlite-schema.sql."
+    },
+    "conversation-summaries": {
+      "kind": "native-state-sqlite",
+      "glob": "conversation_summaries.db*",
+      "discipline": "database",
+      "evidence": "fixture",
+      "notes": "Summary index: conversation_id, title, preview, step_count, workspace_uris, parent_conversation_id, app_data_dir, timestamps."
+    },
+    "last-conversations": {
+      "kind": "native-state-json",
+      "glob": "cache/last_conversations.json",
+      "discipline": "rewrite_in_place",
+      "evidence": "fixture",
+      "notes": "Launch-cwd → conversation UUID for --continue/-c. Redacted farm keys collapse to <dynamic>."
+    },
+    "conversation-metadata": {
+      "kind": "native-state-json",
+      "glob": "cache/conversation_metadata.json",
+      "discipline": "rewrite_in_place",
+      "evidence": "fixture",
+      "notes": "Cache of conversation summaries under conversations.<uuid>. UUID keys collapse to <dynamic>. Written on resume in 1.1.20."
+    },
+    "settings": {
+      "kind": "native-state-json",
+      "glob": "settings.json",
+      "discipline": "rewrite_in_place",
+      "evidence": "fixture",
+      "notes": "Sparse user settings. Farm writes modelProvider=gemini (required for GEMINI_API_KEY) and toolPermission=always-proceed. Live organic file has been seen with trustedWorkspaces[]."
+    },
+    "history": {
+      "kind": "native-state-jsonl",
+      "glob": "history.jsonl",
+      "discipline": "append_only",
+      "evidence": "observed",
+      "notes": "Prompt history. Organic keys: display, timestamp (int), workspace, type. Print-mode farm does not write this file."
+    },
+    "installation-id": {
+      "kind": "native-state-text",
+      "glob": "installation_id",
+      "discipline": "rewrite_in_place",
+      "evidence": "fixture",
+      "notes": "Install identity UUID."
+    },
+    "onboarding-cache": {
+      "kind": "native-state-json",
+      "glob": "cache/onboarding.json",
+      "discipline": "rewrite_in_place",
+      "evidence": "fixture",
+      "notes": "Onboarding completion flags."
+    },
+    "default-project": {
+      "kind": "native-state-text",
+      "glob": "cache/default_project_id.txt",
+      "discipline": "rewrite_in_place",
+      "evidence": "fixture",
+      "notes": "Default CLI project id (fixture: default-cli-project)."
+    },
+    "jetski-state": {
+      "kind": "native-state-text",
+      "glob": "jetski_state.pbtxt",
+      "discipline": "rewrite_in_place",
+      "evidence": "fixture",
+      "notes": "Protobuf-text jetski runtime state. Inventory only; do not parse."
+    },
+    "implicit-protobuf": {
+      "kind": "native-state-text",
+      "glob": "implicit/*.pb",
+      "discipline": "rewrite_in_place",
+      "evidence": "research",
+      "notes": "Unpublished binary protobuf blobs. Inventory only; do not parse. Organic 1.1.12 writes these; print-mode farm does not."
+    },
+    "knowledge": {
+      "kind": "native-state-text",
+      "glob": "knowledge/**/*",
+      "discipline": "rewrite_in_place",
+      "evidence": "fixture",
+      "notes": "Knowledge lock/files. Fixture: empty knowledge.lock."
+    },
+    "brain-scratch": {
+      "kind": "native-state-text",
+      "glob": "brain/*/scratch/**/*",
+      "discipline": "rewrite_in_place",
+      "evidence": "research",
+      "notes": "Per-conversation scratch dir. Created empty in 1.1.20 farm."
+    },
+    "user-uploaded": {
+      "kind": "native-state-text",
+      "glob": "brain/*/.user_uploaded/**/*",
+      "discipline": "rewrite_in_place",
+      "evidence": "research",
+      "notes": "Per-conversation user-upload dir. Created empty in 1.1.20 farm."
+    },
+    "scratch": {
+      "kind": "native-state-text",
+      "glob": "scratch/**/*",
+      "discipline": "rewrite_in_place",
+      "evidence": "research",
+      "notes": "CLI-root scratch dir. Created empty in 1.1.20 farm."
+    },
+    "logs": {
+      "kind": "native-state-text",
+      "glob": "log/**/*",
+      "discipline": "append_only",
+      "evidence": "research",
+      "notes": "CLI logs — volatile; stripped at harvest."
+    },
+    "cli-log": {
+      "kind": "native-state-text",
+      "glob": "cli.log",
+      "discipline": "rewrite_in_place",
+      "evidence": "research",
+      "notes": "Symlink to the current log/cli-*.log. Stripped at harvest."
+    },
+    "presence": {
+      "kind": "native-state-text",
+      "glob": "presence/*",
+      "discipline": "rewrite_in_place",
+      "evidence": "research",
+      "notes": "Per-conversation presence locks. Stripped at harvest."
+    },
+    "updater": {
+      "kind": "native-state-text",
+      "glob": "updater/**/*",
+      "discipline": "rewrite_in_place",
+      "evidence": "research",
+      "notes": "Auto-updater lock/state. Stripped at harvest."
+    },
+    "crashes": {
+      "kind": "native-state-text",
+      "glob": "crashes/**/*",
+      "discipline": "append_only",
+      "evidence": "research",
+      "notes": "Crash logs. Stripped at harvest."
+    },
+    "last-check": {
+      "kind": "native-state-text",
+      "glob": "last_check.timestamp",
+      "discipline": "rewrite_in_place",
+      "evidence": "research",
+      "notes": "Updater last-check stamp. Stripped at harvest."
+    },
+    "changelog-cache": {
+      "kind": "native-state-markdown",
+      "glob": "cache/CHANGELOG.md",
+      "discipline": "rewrite_in_place",
+      "evidence": "research",
+      "notes": "Vendor changelog cache. Stripped at harvest."
+    },
+    "builtin": {
+      "kind": "native-state-text",
+      "glob": "builtin/**/*",
+      "discipline": "rewrite_in_place",
+      "evidence": "research",
+      "notes": "Vendor-bundled skills. Stripped at harvest."
+    },
+    "bin": {
+      "kind": "native-state-text",
+      "glob": "bin/**/*",
+      "discipline": "rewrite_in_place",
+      "evidence": "research",
+      "notes": "Vendor helper binaries (e.g. webm_encoder). Stripped at harvest."
+    },
+    "farm:headless-stdout": {
+      "kind": "native-state-jsonl",
+      "glob": "<farm>/stdout*.jsonl",
+      "discipline": "append_only",
+      "evidence": "fixture",
+      "notes": "Headless stream-json stdout — corroboration surface captured by the farm, not part of the agent data root."
+    }
+  }
+}

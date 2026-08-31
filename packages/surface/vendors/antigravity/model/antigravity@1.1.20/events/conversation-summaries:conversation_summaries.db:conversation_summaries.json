@@ -1,0 +1,104 @@
+{
+  "surface": "antigravity",
+  "surfaceVersion": "1.1.20",
+  "event": "conversation-summaries:conversation_summaries.db:conversation_summaries",
+  "nativeName": "conversation_summaries.db:conversation_summaries",
+  "channel": "conversation-summaries",
+  "channels": [
+    "conversation-summaries"
+  ],
+  "transport": "sqlite-row",
+  "direction": "agent-local",
+  "payloadSchema": {
+    "type": "object",
+    "properties": {
+      "agent_name": {
+        "type": "string"
+      },
+      "app_data_dir": {
+        "type": "string"
+      },
+      "battle_id": {
+        "type": "string"
+      },
+      "conversation_id": {
+        "type": "string"
+      },
+      "killed": {},
+      "last_modified_time": {},
+      "last_user_input_step_index": {
+        "type": "number"
+      },
+      "last_user_input_time": {},
+      "nesting_depth": {
+        "type": "number"
+      },
+      "not_fully_idle": {},
+      "parent_conversation_id": {
+        "type": "string"
+      },
+      "preview": {
+        "type": "string"
+      },
+      "project_id": {
+        "type": "string"
+      },
+      "source": {
+        "type": "string"
+      },
+      "status": {
+        "type": "string"
+      },
+      "step_count": {
+        "type": "number"
+      },
+      "title": {
+        "type": "string"
+      },
+      "winning_conversation_id": {
+        "type": "string"
+      },
+      "workspace_uris": {
+        "type": "string"
+      }
+    },
+    "required": [
+      "agent_name",
+      "app_data_dir",
+      "battle_id",
+      "conversation_id",
+      "killed",
+      "last_modified_time",
+      "last_user_input_step_index",
+      "last_user_input_time",
+      "nesting_depth",
+      "not_fully_idle",
+      "parent_conversation_id",
+      "preview",
+      "project_id",
+      "source",
+      "status",
+      "step_count",
+      "title",
+      "winning_conversation_id",
+      "workspace_uris"
+    ],
+    "additionalProperties": true
+  },
+  "schemaFidelity": {
+    "payload": "structural",
+    "limitations": [
+      "Rosetta retains observed/writer field types and requiredness, but its shape algebra intentionally omits some native validation constraints."
+    ]
+  },
+  "evidence": {
+    "existence": [
+      "antigravity-rosetta-observed"
+    ],
+    "shape": [
+      "antigravity-rosetta-observed"
+    ]
+  },
+  "confidence": "verified-headless",
+  "notes": "conversation_summaries.db*; 3 retained observation(s); source evidence: fixture."
+}

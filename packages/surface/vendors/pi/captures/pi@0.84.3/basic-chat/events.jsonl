@@ -1,0 +1,6 @@
+{"type":"session","version":3,"id":"a11a5ed0-1799-4c94-a465-d3d320225d75","timestamp":"<redacted:timestamp>","cwd":"/workspace"}
+{"type":"session_info","id":"anon-abc83c4433501c12","parentId":null,"timestamp":"<redacted:timestamp>","name":"rosetta-basic-chat"}
+{"type":"model_change","id":"anon-964a29c913180d5c","parentId":"anon-abc83c4433501c12","timestamp":"<redacted:timestamp>","provider":"mock","modelId":"anon-52b9ff92b8e55df1"}
+{"type":"thinking_level_change","id":"anon-d7f54904501d2eb7","parentId":"anon-964a29c913180d5c","timestamp":"<redacted:timestamp>","thinkingLevel":"off"}
+{"type":"message","id":"anon-fe2ac55d0f6b97dc","parentId":"anon-d7f54904501d2eb7","timestamp":"<redacted:timestamp>","message":{"role":"user","content":[{"type":"text","text":"<redacted:text>"}],"timestamp":1767225600000}}
+{"type":"message","id":"anon-c03cd9c083f5971f","parentId":"anon-fe2ac55d0f6b97dc","timestamp":"<redacted:timestamp>","message":{"role":"assistant","content":[{"type":"text","text":"<redacted:text>"}],"api":"openai-completions","provider":"mock","model":"mock-model","usage":{"input":128,"output":32,"cacheRead":0,"cacheWrite":0,"reasoning":0,"totalTokens":160,"cost":{"input":0,"output":0,"cacheRead":0,"cacheWrite":0,"total":0}},"stopReason":"stop","timestamp":1767225600000,"responseId":"anon-6965b9ec61294b64","rawStopReason":"stop"}}

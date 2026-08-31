@@ -1,0 +1,22 @@
+{
+  "surface": "pi",
+  "surfaceVersion": "0.84.3",
+  "event": "extensions:artifact",
+  "nativeName": "agent/extensions/**/*",
+  "channel": "extensions",
+  "channels": [
+    "extensions"
+  ],
+  "transport": "file-artifact",
+  "direction": "agent-local",
+  "evidence": {
+    "existence": [
+      "pi-rosetta-contract"
+    ],
+    "shape": [
+      "pi-rosetta-contract"
+    ]
+  },
+  "confidence": "unverified",
+  "notes": "agent/extensions/**/*; non-record native artifact tracked by the complete Rosetta stream inventory."
+}

@@ -1,0 +1,255 @@
+{
+  "surface": "copilot",
+  "surfaceVersion": "1.0.80",
+  "event": "farm:headless-stdout:assistant.message",
+  "nativeName": "assistant.message",
+  "channel": "farm:headless-stdout",
+  "channels": [
+    "farm:headless-stdout"
+  ],
+  "transport": "jsonl-record",
+  "direction": "agent-local",
+  "payloadSchema": {
+    "type": "object",
+    "properties": {
+      "data": {
+        "type": "object",
+        "properties": {
+          "apiCallId": {
+            "type": "string"
+          },
+          "content": {
+            "type": "string"
+          },
+          "interactionId": {
+            "type": "string"
+          },
+          "messageId": {
+            "type": "string"
+          },
+          "model": {
+            "type": "string",
+            "enum": [
+              "mock-model"
+            ]
+          },
+          "outputTokens": {
+            "type": "number"
+          },
+          "rte": {
+            "type": "boolean"
+          },
+          "toolRequests": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "arguments": {
+                  "type": "object",
+                  "properties": {
+                    "command": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "command"
+                  ],
+                  "additionalProperties": true
+                },
+                "intentionSummary": {
+                  "type": "string"
+                },
+                "name": {
+                  "type": "string"
+                },
+                "toolCallId": {
+                  "type": "string"
+                },
+                "type": {
+                  "type": "string",
+                  "enum": [
+                    "function"
+                  ]
+                }
+              },
+              "required": [
+                "arguments",
+                "intentionSummary",
+                "name",
+                "toolCallId",
+                "type"
+              ],
+              "additionalProperties": true
+            }
+          },
+          "turnId": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "apiCallId",
+          "content",
+          "interactionId",
+          "messageId",
+          "model",
+          "outputTokens",
+          "rte",
+          "toolRequests",
+          "turnId"
+        ],
+        "additionalProperties": true
+      },
+      "id": {
+        "type": "string"
+      },
+      "parentId": {
+        "type": "string"
+      },
+      "timestamp": {
+        "type": "string"
+      }
+    },
+    "required": [
+      "data",
+      "id",
+      "parentId",
+      "timestamp"
+    ],
+    "additionalProperties": true
+  },
+  "recordSchema": {
+    "type": "object",
+    "properties": {
+      "data": {
+        "type": "object",
+        "properties": {
+          "apiCallId": {
+            "type": "string"
+          },
+          "content": {
+            "type": "string"
+          },
+          "interactionId": {
+            "type": "string"
+          },
+          "messageId": {
+            "type": "string"
+          },
+          "model": {
+            "type": "string",
+            "enum": [
+              "mock-model"
+            ]
+          },
+          "outputTokens": {
+            "type": "number"
+          },
+          "rte": {
+            "type": "boolean"
+          },
+          "toolRequests": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "arguments": {
+                  "type": "object",
+                  "properties": {
+                    "command": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "command"
+                  ],
+                  "additionalProperties": true
+                },
+                "intentionSummary": {
+                  "type": "string"
+                },
+                "name": {
+                  "type": "string"
+                },
+                "toolCallId": {
+                  "type": "string"
+                },
+                "type": {
+                  "type": "string",
+                  "enum": [
+                    "function"
+                  ]
+                }
+              },
+              "required": [
+                "arguments",
+                "intentionSummary",
+                "name",
+                "toolCallId",
+                "type"
+              ],
+              "additionalProperties": true
+            }
+          },
+          "turnId": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "apiCallId",
+          "content",
+          "interactionId",
+          "messageId",
+          "model",
+          "outputTokens",
+          "rte",
+          "toolRequests",
+          "turnId"
+        ],
+        "additionalProperties": true
+      },
+      "id": {
+        "type": "string"
+      },
+      "parentId": {
+        "type": "string"
+      },
+      "timestamp": {
+        "type": "string"
+      },
+      "type": {
+        "type": "string",
+        "enum": [
+          "assistant.message"
+        ]
+      }
+    },
+    "required": [
+      "data",
+      "id",
+      "parentId",
+      "timestamp",
+      "type"
+    ],
+    "additionalProperties": true
+  },
+  "schemaFidelity": {
+    "payload": "structural",
+    "carrier": "structural",
+    "limitations": [
+      "Rosetta retains observed/writer field types and requiredness, but its shape algebra intentionally omits some native validation constraints."
+    ]
+  },
+  "evidence": {
+    "existence": [
+      "copilot-rosetta-observed"
+    ],
+    "shape": [
+      "copilot-rosetta-observed"
+    ],
+    "carrier": [
+      "copilot-rosetta-observed"
+    ]
+  },
+  "confidence": "verified-headless",
+  "notes": "<farm>/stdout*.jsonl; 7 retained observation(s); source evidence: fixture."
+}

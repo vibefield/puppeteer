@@ -1,0 +1,515 @@
+{
+  "surface": "pi",
+  "surfaceVersion": "0.84.3",
+  "event": "farm:headless-stdout:turn_end",
+  "nativeName": "turn_end",
+  "channel": "farm:headless-stdout",
+  "channels": [
+    "farm:headless-stdout"
+  ],
+  "transport": "jsonl-record",
+  "direction": "agent-local",
+  "payloadSchema": {
+    "type": "object",
+    "properties": {
+      "message": {
+        "type": "object",
+        "properties": {
+          "api": {
+            "type": "string",
+            "enum": [
+              "openai-completions"
+            ]
+          },
+          "content": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "arguments": {
+                  "type": "object",
+                  "properties": {
+                    "command": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "command"
+                  ],
+                  "additionalProperties": true
+                },
+                "id": {
+                  "type": "string"
+                },
+                "name": {
+                  "type": "string"
+                },
+                "text": {
+                  "type": "string"
+                },
+                "type": {
+                  "type": "string",
+                  "enum": [
+                    "text",
+                    "toolCall"
+                  ]
+                }
+              },
+              "required": [
+                "type"
+              ],
+              "additionalProperties": true
+            }
+          },
+          "errorMessage": {
+            "type": "string"
+          },
+          "model": {
+            "type": "string",
+            "enum": [
+              "mock-model"
+            ]
+          },
+          "provider": {
+            "type": "string",
+            "enum": [
+              "mock"
+            ]
+          },
+          "rawStopReason": {
+            "type": "string",
+            "enum": [
+              "content_filter",
+              "stop",
+              "tool_calls"
+            ]
+          },
+          "responseId": {
+            "type": "string"
+          },
+          "role": {
+            "type": "string",
+            "enum": [
+              "assistant"
+            ]
+          },
+          "stopReason": {
+            "type": "string",
+            "enum": [
+              "error",
+              "stop",
+              "toolUse"
+            ]
+          },
+          "timestamp": {
+            "type": "number"
+          },
+          "usage": {
+            "type": "object",
+            "properties": {
+              "cacheRead": {
+                "type": "number"
+              },
+              "cacheWrite": {
+                "type": "number"
+              },
+              "cost": {
+                "type": "object",
+                "properties": {
+                  "cacheRead": {
+                    "type": "number"
+                  },
+                  "cacheWrite": {
+                    "type": "number"
+                  },
+                  "input": {
+                    "type": "number"
+                  },
+                  "output": {
+                    "type": "number"
+                  },
+                  "total": {
+                    "type": "number"
+                  }
+                },
+                "required": [
+                  "cacheRead",
+                  "cacheWrite",
+                  "input",
+                  "output",
+                  "total"
+                ],
+                "additionalProperties": true
+              },
+              "input": {
+                "type": "number"
+              },
+              "output": {
+                "type": "number"
+              },
+              "reasoning": {
+                "type": "number"
+              },
+              "totalTokens": {
+                "type": "number"
+              }
+            },
+            "required": [
+              "cacheRead",
+              "cacheWrite",
+              "cost",
+              "input",
+              "output",
+              "reasoning",
+              "totalTokens"
+            ],
+            "additionalProperties": true
+          }
+        },
+        "required": [
+          "api",
+          "content",
+          "model",
+          "provider",
+          "rawStopReason",
+          "responseId",
+          "role",
+          "stopReason",
+          "timestamp",
+          "usage"
+        ],
+        "additionalProperties": true
+      },
+      "toolResults": {
+        "type": "array",
+        "items": {
+          "type": "object",
+          "properties": {
+            "content": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "properties": {
+                  "text": {
+                    "type": "string"
+                  },
+                  "type": {
+                    "type": "string",
+                    "enum": [
+                      "text"
+                    ]
+                  }
+                },
+                "required": [
+                  "text",
+                  "type"
+                ],
+                "additionalProperties": true
+              }
+            },
+            "isError": {
+              "type": "boolean"
+            },
+            "role": {
+              "type": "string",
+              "enum": [
+                "toolResult"
+              ]
+            },
+            "timestamp": {
+              "type": "number"
+            },
+            "toolCallId": {
+              "type": "string"
+            },
+            "toolName": {
+              "type": "string",
+              "enum": [
+                "bash"
+              ]
+            }
+          },
+          "required": [
+            "content",
+            "isError",
+            "role",
+            "timestamp",
+            "toolCallId",
+            "toolName"
+          ],
+          "additionalProperties": true
+        }
+      }
+    },
+    "required": [
+      "message",
+      "toolResults"
+    ],
+    "additionalProperties": true
+  },
+  "recordSchema": {
+    "type": "object",
+    "properties": {
+      "message": {
+        "type": "object",
+        "properties": {
+          "api": {
+            "type": "string",
+            "enum": [
+              "openai-completions"
+            ]
+          },
+          "content": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "arguments": {
+                  "type": "object",
+                  "properties": {
+                    "command": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "command"
+                  ],
+                  "additionalProperties": true
+                },
+                "id": {
+                  "type": "string"
+                },
+                "name": {
+                  "type": "string"
+                },
+                "text": {
+                  "type": "string"
+                },
+                "type": {
+                  "type": "string",
+                  "enum": [
+                    "text",
+                    "toolCall"
+                  ]
+                }
+              },
+              "required": [
+                "type"
+              ],
+              "additionalProperties": true
+            }
+          },
+          "errorMessage": {
+            "type": "string"
+          },
+          "model": {
+            "type": "string",
+            "enum": [
+              "mock-model"
+            ]
+          },
+          "provider": {
+            "type": "string",
+            "enum": [
+              "mock"
+            ]
+          },
+          "rawStopReason": {
+            "type": "string",
+            "enum": [
+              "content_filter",
+              "stop",
+              "tool_calls"
+            ]
+          },
+          "responseId": {
+            "type": "string"
+          },
+          "role": {
+            "type": "string",
+            "enum": [
+              "assistant"
+            ]
+          },
+          "stopReason": {
+            "type": "string",
+            "enum": [
+              "error",
+              "stop",
+              "toolUse"
+            ]
+          },
+          "timestamp": {
+            "type": "number"
+          },
+          "usage": {
+            "type": "object",
+            "properties": {
+              "cacheRead": {
+                "type": "number"
+              },
+              "cacheWrite": {
+                "type": "number"
+              },
+              "cost": {
+                "type": "object",
+                "properties": {
+                  "cacheRead": {
+                    "type": "number"
+                  },
+                  "cacheWrite": {
+                    "type": "number"
+                  },
+                  "input": {
+                    "type": "number"
+                  },
+                  "output": {
+                    "type": "number"
+                  },
+                  "total": {
+                    "type": "number"
+                  }
+                },
+                "required": [
+                  "cacheRead",
+                  "cacheWrite",
+                  "input",
+                  "output",
+                  "total"
+                ],
+                "additionalProperties": true
+              },
+              "input": {
+                "type": "number"
+              },
+              "output": {
+                "type": "number"
+              },
+              "reasoning": {
+                "type": "number"
+              },
+              "totalTokens": {
+                "type": "number"
+              }
+            },
+            "required": [
+              "cacheRead",
+              "cacheWrite",
+              "cost",
+              "input",
+              "output",
+              "reasoning",
+              "totalTokens"
+            ],
+            "additionalProperties": true
+          }
+        },
+        "required": [
+          "api",
+          "content",
+          "model",
+          "provider",
+          "rawStopReason",
+          "responseId",
+          "role",
+          "stopReason",
+          "timestamp",
+          "usage"
+        ],
+        "additionalProperties": true
+      },
+      "toolResults": {
+        "type": "array",
+        "items": {
+          "type": "object",
+          "properties": {
+            "content": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "properties": {
+                  "text": {
+                    "type": "string"
+                  },
+                  "type": {
+                    "type": "string",
+                    "enum": [
+                      "text"
+                    ]
+                  }
+                },
+                "required": [
+                  "text",
+                  "type"
+                ],
+                "additionalProperties": true
+              }
+            },
+            "isError": {
+              "type": "boolean"
+            },
+            "role": {
+              "type": "string",
+              "enum": [
+                "toolResult"
+              ]
+            },
+            "timestamp": {
+              "type": "number"
+            },
+            "toolCallId": {
+              "type": "string"
+            },
+            "toolName": {
+              "type": "string",
+              "enum": [
+                "bash"
+              ]
+            }
+          },
+          "required": [
+            "content",
+            "isError",
+            "role",
+            "timestamp",
+            "toolCallId",
+            "toolName"
+          ],
+          "additionalProperties": true
+        }
+      },
+      "type": {
+        "type": "string",
+        "enum": [
+          "turn_end"
+        ]
+      }
+    },
+    "required": [
+      "message",
+      "toolResults",
+      "type"
+    ],
+    "additionalProperties": true
+  },
+  "schemaFidelity": {
+    "payload": "structural",
+    "carrier": "structural",
+    "limitations": [
+      "Rosetta retains observed/writer field types and requiredness, but its shape algebra intentionally omits some native validation constraints."
+    ]
+  },
+  "evidence": {
+    "existence": [
+      "pi-rosetta-observed"
+    ],
+    "shape": [
+      "pi-rosetta-observed"
+    ],
+    "carrier": [
+      "pi-rosetta-observed"
+    ]
+  },
+  "confidence": "verified-headless",
+  "notes": "<farm>/stdout*.jsonl; 11 retained observation(s); source evidence: fixture."
+}

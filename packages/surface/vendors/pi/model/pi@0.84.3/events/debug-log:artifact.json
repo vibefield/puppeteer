@@ -1,0 +1,22 @@
+{
+  "surface": "pi",
+  "surfaceVersion": "0.84.3",
+  "event": "debug-log:artifact",
+  "nativeName": "agent/pi-debug.log",
+  "channel": "debug-log",
+  "channels": [
+    "debug-log"
+  ],
+  "transport": "file-artifact",
+  "direction": "agent-local",
+  "evidence": {
+    "existence": [
+      "pi-rosetta-contract"
+    ],
+    "shape": [
+      "pi-rosetta-contract"
+    ]
+  },
+  "confidence": "unverified",
+  "notes": "agent/pi-debug.log; non-record native artifact tracked by the complete Rosetta stream inventory."
+}
