@@ -17,6 +17,7 @@
  *   "$string:<template>" coerce one resolved primitive binding to a string
  *   "$encodeURIComponent:<template>" URI-encode one resolved string binding
  *   "$workdirKey:<template>" Kimi-v2-compatible opaque workspace key
+ *   "$concat:<part>:<part>" concatenate literal parts and resolved bindings
  */
 
 import { createHash } from 'node:crypto';
@@ -63,6 +64,20 @@ export function substitute(value: unknown, context: TemplateContext): unknown {
         throw new Error(`${stringPrefix} requires a primitive template`);
       }
       return String(resolved);
+    }
+    const concatPrefix = '$concat:';
+    if (value.startsWith(concatPrefix)) {
+      return value
+        .slice(concatPrefix.length)
+        .split(':')
+        .map((part) => {
+          const resolved = part.startsWith('$') ? substitute(part, context) : part;
+          if (!['string', 'number', 'boolean'].includes(typeof resolved)) {
+            throw new Error(`${concatPrefix} parts must resolve to primitives`);
+          }
+          return String(resolved);
+        })
+        .join('');
     }
     const encodePrefix = '$encodeURIComponent:';
     if (value.startsWith(encodePrefix)) {

@@ -9,9 +9,12 @@
  */
 import { ClaudeHookNormalizer, type ClaudeHookPayload } from '@vibecook/puppeteer-adapter-claude';
 import { CodexNotificationNormalizer, type CodexServerNotification } from '@vibecook/puppeteer-adapter-codex';
+import { AntigravityTranscriptNormalizer } from '@vibecook/puppeteer-adapter-antigravity';
+import { CopilotSessionNormalizer } from '@vibecook/puppeteer-adapter-copilot';
 import { KimiWireNormalizer } from '@vibecook/puppeteer-adapter-kimi';
 import { HermesGatewayNormalizer } from '@vibecook/puppeteer-adapter-hermes';
 import { OpenCodeNormalizer, type OpenCodeSseRecord } from '@vibecook/puppeteer-adapter-opencode';
+import { PiSessionNormalizer } from '@vibecook/puppeteer-adapter-pi';
 import {
   createEnvelopeStamper,
   createInitialSessionState,
@@ -216,6 +219,31 @@ function isRecord(value: unknown): value is Record<string, unknown> {
 
 function createNormalizer(view: SessionView): NativeNormalizer | undefined {
   const { vendor } = view;
+  if (vendor === 'antigravity') {
+    const normalizer = new AntigravityTranscriptNormalizer();
+    return {
+      normalize(_session, entry) {
+        const nativeEvent = {
+          ...(entry.payload ?? {}),
+          type: entry.event,
+          created_at: entry.at,
+          step_index: entry.sequence - 1,
+        };
+        const normalized = normalizer.normalize(nativeEvent);
+        return {
+          events: normalized.events,
+          promptId: normalized.promptId,
+          turnId: normalized.turnId,
+          source: normalized.source,
+          confidence: normalized.confidence,
+          timestamp: normalized.timestamp,
+          nativeEvent,
+          disposition: normalized.disposition,
+        };
+      },
+    };
+  }
+
   if (vendor === 'claude') {
     const normalizer = new ClaudeHookNormalizer();
     return {
@@ -264,6 +292,31 @@ function createNormalizer(view: SessionView): NativeNormalizer | undefined {
                 explanation: 'Codex defers turn:started until the matching userMessage item supplies the prompt.',
               }
             : {}),
+        };
+      },
+    };
+  }
+
+  if (vendor === 'copilot') {
+    const normalizer = new CopilotSessionNormalizer();
+    return {
+      normalize(_session, entry) {
+        const nativeEvent = {
+          type: entry.event,
+          id: `control:${entry.sequence}`,
+          timestamp: entry.at,
+          data: entry.payload ?? {},
+        };
+        const normalized = normalizer.normalize(nativeEvent);
+        return {
+          events: normalized.events,
+          promptId: normalized.promptId,
+          turnId: normalized.turnId,
+          source: normalized.source,
+          confidence: normalized.confidence,
+          timestamp: normalized.timestamp,
+          nativeEvent,
+          disposition: normalized.disposition,
         };
       },
     };
@@ -381,6 +434,31 @@ function createNormalizer(view: SessionView): NativeNormalizer | undefined {
     };
   }
 
+  if (vendor === 'pi') {
+    const normalizer = new PiSessionNormalizer();
+    return {
+      normalize(_session, entry) {
+        const nativeEvent = {
+          id: `control:${entry.sequence}`,
+          timestamp: entry.at,
+          ...(entry.payload ?? {}),
+          type: entry.event,
+        };
+        const normalized = normalizer.normalize(nativeEvent);
+        return {
+          events: normalized.events,
+          promptId: normalized.promptId,
+          turnId: normalized.turnId,
+          source: normalized.source,
+          confidence: normalized.confidence,
+          timestamp: normalized.timestamp,
+          nativeEvent,
+          disposition: normalized.disposition,
+        };
+      },
+    };
+  }
+
   return undefined;
 }
 
@@ -472,6 +550,24 @@ function limitationsFor(vendor: string, supported: boolean): string[] {
       'This projection replays the authoritative main-agent wire journal; hook and state mirrors are shown natively but are not reduced twice.',
       'Private subagent journals require their journal identity from the live observer and are not reconstructed from the flat control log.',
       'This view exercises the pure normalizer; prompt injection, session discovery, tailing, and replay boundaries remain driver-conformance concerns.',
+    ];
+  }
+  if (vendor === 'antigravity') {
+    return [
+      'This projection rebuilds transcript envelope fields from the ordered control log; the live observer remains authoritative for file cursor and replay boundaries.',
+      'Antigravity turn and tool correlation is derived because the native transcript exposes step indexes and result kinds rather than stable portable identifiers.',
+    ];
+  }
+  if (vendor === 'copilot') {
+    return [
+      'This projection rebuilds Copilot journal envelopes around control-log payloads; live file identity, parent links, cursor boundaries, and singleton replay remain observer-conformance concerns.',
+      'The projection exercises the stateful session normalizer, not native launch, resume, or prompt injection.',
+    ];
+  }
+  if (vendor === 'pi') {
+    return [
+      'This projection rebuilds Pi journal envelope fields around control-log payloads; live entry identity, parent links, cursor boundaries, and branch selection remain observer-conformance concerns.',
+      'The projection exercises the stateful session normalizer, not native launch, resume, or prompt injection.',
     ];
   }
   if (vendor === 'opencode') {

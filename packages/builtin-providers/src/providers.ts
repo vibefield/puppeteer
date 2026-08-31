@@ -3,6 +3,15 @@ import type { AgentProviderDescriptor } from '@vibecook/puppeteer-core';
 import type { AgentProvider } from '@vibecook/puppeteer-runtime';
 import { createAcpSession, type AcpConnector } from '@vibecook/puppeteer-adapter-acp';
 import {
+  captureAntigravityContinuationState,
+  createAntigravityTuiSession,
+  normalizeAntigravityNativeInvocation,
+  prepareAntigravityTuiSession,
+  restoreAntigravityContinuationState,
+  type AntigravityNativeInvocationOptions,
+  type CreateAntigravityTuiSessionOptions,
+} from '@vibecook/puppeteer-adapter-antigravity';
+import {
   createClaudeAccountUsageService,
   captureClaudeContinuationState,
   createClaudeSession,
@@ -21,6 +30,15 @@ import {
   restoreCodexContinuationState,
   type CodexNativeInvocationOptions,
 } from '@vibecook/puppeteer-adapter-codex';
+import {
+  captureCopilotContinuationState,
+  createCopilotTuiSession,
+  normalizeCopilotNativeInvocation,
+  prepareCopilotTuiSession,
+  restoreCopilotContinuationState,
+  type CopilotNativeInvocationOptions,
+  type CreateCopilotTuiSessionOptions,
+} from '@vibecook/puppeteer-adapter-copilot';
 import {
   captureGrokContinuationState,
   createGrokAccountUsageService,
@@ -57,15 +75,27 @@ import {
   type CreateHermesTuiSessionOptions,
   type HermesNativeInvocationOptions,
 } from '@vibecook/puppeteer-adapter-hermes';
+import {
+  capturePiContinuationState,
+  createPiTuiSession,
+  normalizePiNativeInvocation,
+  preparePiTuiSession,
+  restorePiContinuationState,
+  type CreatePiTuiSessionOptions,
+  type PiNativeInvocationOptions,
+} from '@vibecook/puppeteer-adapter-pi';
 import type {
   AcpAgentOptions,
+  AntigravityAgentOptions,
   BuiltinAgentKind,
   BuiltinExecutableAgentKind,
   ClaudeAgentOptions,
   CodexAgentOptions,
+  CopilotAgentOptions,
   GrokAgentOptions,
   KimiAgentOptions,
   OpenCodeAgentOptions,
+  PiAgentOptions,
   HermesAgentOptions,
 } from './types.js';
 
@@ -81,6 +111,15 @@ type OpenCodeProviderOptions = OpenCodeAgentOptions &
 type HermesProviderOptions = HermesAgentOptions &
   HermesNativeInvocationOptions &
   Pick<CreateHermesTuiSessionOptions, 'executable' | 'python' | 'env' | 'gatewayUrl'>;
+type AntigravityProviderOptions = AntigravityAgentOptions &
+  AntigravityNativeInvocationOptions &
+  Pick<CreateAntigravityTuiSessionOptions, 'pollIntervalMs' | 'maxReplayBytes' | 'promptConfirmationTimeoutMs'>;
+type CopilotProviderOptions = CopilotAgentOptions &
+  CopilotNativeInvocationOptions &
+  Pick<CreateCopilotTuiSessionOptions, 'pollIntervalMs' | 'maxReplayBytes' | 'promptConfirmationTimeoutMs'>;
+type PiProviderOptions = PiAgentOptions &
+  PiNativeInvocationOptions &
+  Pick<CreatePiTuiSessionOptions, 'pollIntervalMs' | 'maxReplayBytes'>;
 
 export interface BuiltinProviderOptions {
   executables?: Partial<Record<BuiltinExecutableAgentKind, string>>;
@@ -98,6 +137,9 @@ const BUILTIN_PROVIDER_DESCRIPTORS = {
   kimi: { id: 'kimi', label: 'Kimi' },
   opencode: { id: 'opencode', label: 'OpenCode' },
   hermes: { id: 'hermes', label: 'Hermes' },
+  antigravity: { id: 'antigravity', label: 'Antigravity' },
+  copilot: { id: 'copilot', label: 'GitHub Copilot' },
+  pi: { id: 'pi', label: 'Pi' },
 } as const satisfies Record<BuiltinAgentKind, AgentProviderDescriptor>;
 
 /**
@@ -113,6 +155,9 @@ export function createBuiltinProviders(options: BuiltinProviderOptions = {}): Ag
     kimi: executables.kimi ?? process.env.PUPPETEER_KIMI_BIN,
     opencode: executables.opencode ?? process.env.PUPPETEER_OPENCODE_BIN,
     hermes: executables.hermes ?? process.env.PUPPETEER_HERMES_BIN,
+    antigravity: executables.antigravity ?? process.env.PUPPETEER_ANTIGRAVITY_BIN,
+    copilot: executables.copilot ?? process.env.PUPPETEER_COPILOT_BIN,
+    pi: executables.pi ?? process.env.PUPPETEER_PI_BIN,
   };
   const claudeLaunchFor = async (
     resume: string | undefined,
@@ -484,6 +529,198 @@ export function createBuiltinProviders(options: BuiltinProviderOptions = {}): Ag
           backendStartupTimeoutMs: launch?.backendStartupTimeoutMs,
           backendShutdownTimeoutMs: launch?.backendShutdownTimeoutMs,
           reconnectDelayMs: launch?.reconnectDelayMs,
+        });
+      },
+    },
+    {
+      descriptor: BUILTIN_PROVIDER_DESCRIPTORS.antigravity,
+      executionMode: 'native-tui',
+      launch: {
+        provider: {
+          ...BUILTIN_PROVIDER_DESCRIPTORS.antigravity,
+          resume: true,
+          nativeInvocation: {
+            commands: [
+              { name: 'agy', executable: resolved.antigravity ?? 'agy' },
+              { name: 'antigravity', executable: resolved.antigravity ?? 'agy' },
+            ],
+            environmentVariables: ['PUPPETEER_ANTIGRAVITY_HOME', 'PUPPETEER_ANTIGRAVITY_DATA_ROOT'],
+            imposter: { state: 'isolated-root' },
+          },
+        },
+        normalizeInvocation: normalizeAntigravityNativeInvocation,
+        continuation: {
+          capture: ({ agentOptions, cwd }) =>
+            captureAntigravityContinuationState(agentOptions as AntigravityProviderOptions | undefined, cwd),
+          restore: (state) =>
+            restoreAntigravityContinuationState(state, { imposterExecutable: options.imposterExecutable }),
+        },
+      },
+      createSession: ({ cwd, resume, host, agentOptions }) => {
+        const launch = agentOptions as AntigravityProviderOptions | undefined;
+        return createAntigravityTuiSession({
+          cwd,
+          resume,
+          host,
+          executable: launch?.executable ?? resolved.antigravity,
+          env: launch?.env,
+          antigravityHome: launch?.antigravityHome,
+          dataRoot: launch?.dataRoot,
+          model: launch?.model,
+          effort: launch?.effort,
+          mode: launch?.mode,
+          skipPermissions: launch?.skipPermissions,
+          sandbox: launch?.sandbox,
+          agent: launch?.agent,
+          project: launch?.project,
+          addDirs: launch?.addDirs,
+          pollIntervalMs: launch?.pollIntervalMs,
+          maxReplayBytes: launch?.maxReplayBytes,
+          promptConfirmationTimeoutMs: launch?.promptConfirmationTimeoutMs,
+        });
+      },
+      prepareSession: ({ cwd, resume, host, agentOptions }) => {
+        const launch = agentOptions as AntigravityProviderOptions | undefined;
+        return prepareAntigravityTuiSession({
+          cwd,
+          resume,
+          host,
+          executable: launch?.executable ?? resolved.antigravity,
+          env: launch?.env,
+          antigravityHome: launch?.antigravityHome,
+          dataRoot: launch?.dataRoot,
+          model: launch?.model,
+          effort: launch?.effort,
+          mode: launch?.mode,
+          skipPermissions: launch?.skipPermissions,
+          sandbox: launch?.sandbox,
+          agent: launch?.agent,
+          project: launch?.project,
+          addDirs: launch?.addDirs,
+          pollIntervalMs: launch?.pollIntervalMs,
+          maxReplayBytes: launch?.maxReplayBytes,
+          promptConfirmationTimeoutMs: launch?.promptConfirmationTimeoutMs,
+        });
+      },
+    },
+    {
+      descriptor: BUILTIN_PROVIDER_DESCRIPTORS.copilot,
+      executionMode: 'native-tui',
+      launch: {
+        provider: {
+          ...BUILTIN_PROVIDER_DESCRIPTORS.copilot,
+          resume: true,
+          nativeInvocation: {
+            commands: [{ name: 'copilot', executable: resolved.copilot ?? 'copilot' }],
+            environmentVariables: ['COPILOT_HOME'],
+            imposter: { state: 'isolated-root' },
+          },
+        },
+        normalizeInvocation: normalizeCopilotNativeInvocation,
+        continuation: {
+          capture: ({ agentOptions, cwd }) =>
+            captureCopilotContinuationState(agentOptions as CopilotProviderOptions | undefined, cwd),
+          restore: (state) =>
+            restoreCopilotContinuationState(state, { imposterExecutable: options.imposterExecutable }),
+        },
+      },
+      createSession: ({ cwd, resume, title, host, agentOptions }) => {
+        const launch = agentOptions as CopilotProviderOptions | undefined;
+        return createCopilotTuiSession({
+          cwd,
+          resume,
+          title: launch?.name ?? title,
+          host,
+          executable: launch?.executable ?? resolved.copilot,
+          env: launch?.env,
+          copilotHome: launch?.copilotHome,
+          model: launch?.model,
+          effort: launch?.effort,
+          mode: launch?.mode,
+          allowAll: launch?.allowAll,
+          agent: launch?.agent,
+          context: launch?.context,
+          pollIntervalMs: launch?.pollIntervalMs,
+          maxReplayBytes: launch?.maxReplayBytes,
+          promptConfirmationTimeoutMs: launch?.promptConfirmationTimeoutMs,
+        });
+      },
+      prepareSession: ({ cwd, resume, title, host, agentOptions }) => {
+        const launch = agentOptions as CopilotProviderOptions | undefined;
+        return prepareCopilotTuiSession({
+          cwd,
+          resume,
+          title: launch?.name ?? title,
+          host,
+          executable: launch?.executable ?? resolved.copilot,
+          env: launch?.env,
+          copilotHome: launch?.copilotHome,
+          model: launch?.model,
+          effort: launch?.effort,
+          mode: launch?.mode,
+          allowAll: launch?.allowAll,
+          agent: launch?.agent,
+          context: launch?.context,
+          pollIntervalMs: launch?.pollIntervalMs,
+          maxReplayBytes: launch?.maxReplayBytes,
+          promptConfirmationTimeoutMs: launch?.promptConfirmationTimeoutMs,
+        });
+      },
+    },
+    {
+      descriptor: BUILTIN_PROVIDER_DESCRIPTORS.pi,
+      executionMode: 'native-tui',
+      launch: {
+        provider: {
+          ...BUILTIN_PROVIDER_DESCRIPTORS.pi,
+          resume: true,
+          nativeInvocation: {
+            commands: [{ name: 'pi', executable: resolved.pi ?? 'pi' }],
+            environmentVariables: ['PI_CODING_AGENT_DIR', 'PI_CODING_AGENT_SESSION_DIR'],
+            imposter: { state: 'isolated-root' },
+          },
+        },
+        normalizeInvocation: normalizePiNativeInvocation,
+        continuation: {
+          capture: ({ agentOptions, cwd }) =>
+            capturePiContinuationState(agentOptions as PiProviderOptions | undefined, cwd),
+          restore: (state) => restorePiContinuationState(state, { imposterExecutable: options.imposterExecutable }),
+        },
+      },
+      createSession: ({ cwd, resume, title, host, agentOptions }) => {
+        const launch = agentOptions as PiProviderOptions | undefined;
+        return createPiTuiSession({
+          cwd,
+          resume,
+          host,
+          executable: launch?.executable ?? resolved.pi,
+          env: launch?.env,
+          piAgentDir: launch?.piAgentDir,
+          sessionDir: launch?.sessionDir,
+          provider: launch?.provider,
+          model: launch?.model,
+          thinking: launch?.thinking,
+          name: launch?.name ?? title,
+          pollIntervalMs: launch?.pollIntervalMs,
+          maxReplayBytes: launch?.maxReplayBytes,
+        });
+      },
+      prepareSession: ({ cwd, resume, title, host, agentOptions }) => {
+        const launch = agentOptions as PiProviderOptions | undefined;
+        return preparePiTuiSession({
+          cwd,
+          resume,
+          host,
+          executable: launch?.executable ?? resolved.pi,
+          env: launch?.env,
+          piAgentDir: launch?.piAgentDir,
+          sessionDir: launch?.sessionDir,
+          provider: launch?.provider,
+          model: launch?.model,
+          thinking: launch?.thinking,
+          name: launch?.name ?? title,
+          pollIntervalMs: launch?.pollIntervalMs,
+          maxReplayBytes: launch?.maxReplayBytes,
         });
       },
     },

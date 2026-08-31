@@ -1,0 +1,19 @@
+{
+  "session.start": [
+    { "channel": "native-log", "event": "session", "with": { "version": 3, "id": "$sessionId", "cwd": "$cwd" } },
+    { "channel": "native-log", "event": "model_change", "with": { "parentId": null, "provider": "imposter", "modelId": "$modelId" } },
+    { "channel": "native-log", "event": "thinking_level_change", "with": { "thinkingLevel": "off" } }
+  ],
+  "turn.start": [
+    { "channel": "native-log", "event": "message", "with": { "message": { "role": "user", "content": [{ "type": "text", "text": "$op.text" }], "timestamp": "$nowMs" } } }
+  ],
+  "assistant.delta": [
+    { "channel": "native-log", "event": "message", "with": { "message": { "role": "assistant", "content": [{ "type": "text", "text": "$op.text" }], "api": "openai-completions", "provider": "imposter", "model": "$modelId", "usage": { "input": 12, "output": 4, "cacheRead": 0, "cacheWrite": 0, "reasoning": 0, "totalTokens": 16, "cost": { "input": 0, "output": 0, "cacheRead": 0, "cacheWrite": 0, "total": 0 } }, "stopReason": "stop", "timestamp": "$nowMs", "responseId": "$uuid:response", "rawStopReason": "stop" } } }
+  ],
+  "tool.start": [
+    { "channel": "native-log", "event": "message", "with": { "message": { "role": "assistant", "content": [{ "type": "toolCall", "id": "$op.toolId", "name": "$op.tool", "arguments": "$op.input" }], "api": "openai-completions", "provider": "imposter", "model": "$modelId", "usage": { "input": 12, "output": 4, "cacheRead": 0, "cacheWrite": 0, "reasoning": 0, "totalTokens": 16, "cost": { "input": 0, "output": 0, "cacheRead": 0, "cacheWrite": 0, "total": 0 } }, "stopReason": "toolUse", "timestamp": "$nowMs", "responseId": "$uuid:tool-response", "rawStopReason": "tool_calls" } } }
+  ],
+  "tool.end": [
+    { "channel": "native-log", "event": "message", "with": { "message": { "role": "toolResult", "toolCallId": "$op.toolId", "toolName": "$op.tool", "content": [{ "type": "text", "text": "$op.output" }], "isError": false, "timestamp": "$nowMs" } } }
+  ]
+}

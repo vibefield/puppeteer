@@ -1,0 +1,16 @@
+{
+  "vendor": "pi",
+  "asm": { "package": "@vibecook/puppeteer-surface", "path": "vendors/pi" },
+  "shimNames": ["pi"],
+  "envelope": {},
+  "nativeStore": {
+    "rootEnv": "PI_CODING_AGENT_DIR",
+    "sessionPath": ["sessions"],
+    "updatesFile": "$concat:$sessionId:.jsonl",
+    "recordFormat": "flat-record",
+    "recordTimestamp": { "field": "timestamp", "format": "iso" },
+    "recordIdentity": { "idField": "id", "parentField": "parentId", "omitParentFor": ["session"] },
+    "singletonEvents": ["session", "model_change", "thinking_level_change"]
+  },
+  "boot": [{ "op": "session.start" }, { "op": "session.ready" }]
+}

@@ -1,0 +1,28 @@
+{
+  "session.start": [
+    { "channel": "native-log", "event": "session.start", "with": { "sessionId": "$sessionId", "version": 1, "producer": "copilot-agent", "copilotVersion": "$vendorVersion", "startTime": "$now", "contextTier": null, "context": { "cwd": "$cwd" }, "alreadyInUse": false, "remoteSteerable": false } },
+    { "channel": "native-log", "event": "session.permissions_changed", "with": { "previousAllowAllPermissions": false, "allowAllPermissions": true, "previousAllowAllPermissionMode": "off", "allowAllPermissionMode": "on" } },
+    { "channel": "native-log", "event": "session.model_change", "with": { "contextTier": null, "newModel": "$modelId", "reasoningEffort": null } }
+  ],
+  "turn.start": [
+    { "channel": "native-log", "event": "user.message", "with": { "content": "$op.text", "attachments": [], "supportedNativeDocumentMimeTypes": [], "delivery": "idle", "interactionId": "$uuid:interaction" } },
+    { "channel": "native-log", "event": "assistant.turn_start", "with": { "turnId": "$string:$turnIndex", "interactionId": "$uuid:interaction" } }
+  ],
+  "assistant.delta": [
+    { "channel": "native-log", "event": "assistant.message", "with": { "messageId": "$uuid:assistant-message", "model": "$modelId", "content": "$op.text", "toolRequests": [], "interactionId": "$uuid:interaction", "turnId": "$string:$turnIndex", "outputTokens": 4, "rte": false } }
+  ],
+  "tool.start": [
+    { "channel": "native-log", "event": "assistant.message", "with": { "messageId": "$uuid:tool-message", "model": "$modelId", "content": "", "toolRequests": [{ "toolCallId": "$op.toolId", "name": "$op.tool", "arguments": "$op.input", "type": "function" }], "interactionId": "$uuid:interaction", "turnId": "$string:$turnIndex", "outputTokens": 4, "rte": false } },
+    { "channel": "native-log", "event": "tool.execution_start", "with": { "toolCallId": "$op.toolId", "toolName": "$op.tool", "arguments": "$op.input", "turnId": "$string:$turnIndex", "model": "$modelId", "rte": false } }
+  ],
+  "tool.end": [
+    { "channel": "native-log", "event": "tool.execution_complete", "with": { "toolCallId": "$op.toolId", "model": "$modelId", "interactionId": "$uuid:interaction", "turnId": "$string:$turnIndex", "rte": false, "success": true, "result": "$op.output" } },
+    { "channel": "native-log", "event": "assistant.turn_end", "with": { "turnId": "$string:$turnIndex" } }
+  ],
+  "turn.end": [
+    { "channel": "native-log", "event": "assistant.turn_end", "with": { "turnId": "$string:$turnIndex" } }
+  ],
+  "session.end": [
+    { "channel": "native-log", "event": "session.shutdown", "with": { "shutdownType": "user", "sessionStartTime": "$now", "totalApiDurationMs": 0, "modelMetrics": {}, "codeChanges": { "filesModified": [], "linesAdded": 0, "linesRemoved": 0 } } }
+  ]
+}

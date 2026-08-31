@@ -1,10 +1,13 @@
 import type { CreateAcpSessionOptions } from '@vibecook/puppeteer-adapter-acp';
+import type { CreateAntigravityTuiSessionOptions } from '@vibecook/puppeteer-adapter-antigravity';
 import type { ClaudeHookDiagnostic, ClaudeSettingSource } from '@vibecook/puppeteer-adapter-claude';
 import type { CreateCodexTuiSessionOptions } from '@vibecook/puppeteer-adapter-codex';
+import type { CreateCopilotTuiSessionOptions } from '@vibecook/puppeteer-adapter-copilot';
 import type { CreateGrokSessionOptions } from '@vibecook/puppeteer-adapter-grok';
 import type { CreateHermesTuiSessionOptions } from '@vibecook/puppeteer-adapter-hermes';
 import type { CreateKimiTuiSessionOptions } from '@vibecook/puppeteer-adapter-kimi';
 import type { CreateOpenCodeTuiSessionOptions } from '@vibecook/puppeteer-adapter-opencode';
+import type { CreatePiTuiSessionOptions } from '@vibecook/puppeteer-adapter-pi';
 import type {
   AgentRuntime,
   CreateAgentSessionResult,
@@ -14,7 +17,8 @@ import type {
 } from '@vibecook/puppeteer-runtime';
 
 /** Provider ids bundled by the optional turn-key composition package. */
-export type BuiltinAgentKind = 'claude' | 'codex' | 'acp' | 'grok' | 'kimi' | 'opencode' | 'hermes';
+export type BuiltinAgentKind =
+  'claude' | 'codex' | 'acp' | 'grok' | 'kimi' | 'opencode' | 'hermes' | 'antigravity' | 'copilot' | 'pi';
 export type BuiltinExecutableAgentKind = Exclude<BuiltinAgentKind, 'acp'>;
 
 export interface ClaudeAgentOptions {
@@ -49,6 +53,36 @@ export type OpenCodeAgentOptions = Pick<
   'agent' | 'model' | 'permission' | 'contextWindowCapacityTokens' | 'promptConfirmationTimeoutMs'
 >;
 export type HermesAgentOptions = Pick<CreateHermesTuiSessionOptions, 'yolo' | 'promptConfirmationTimeoutMs'>;
+export type AntigravityAgentOptions = Pick<
+  CreateAntigravityTuiSessionOptions,
+  | 'model'
+  | 'effort'
+  | 'mode'
+  | 'skipPermissions'
+  | 'sandbox'
+  | 'agent'
+  | 'project'
+  | 'addDirs'
+  | 'pollIntervalMs'
+  | 'maxReplayBytes'
+  | 'promptConfirmationTimeoutMs'
+>;
+export type CopilotAgentOptions = Pick<
+  CreateCopilotTuiSessionOptions,
+  | 'model'
+  | 'effort'
+  | 'mode'
+  | 'allowAll'
+  | 'agent'
+  | 'context'
+  | 'pollIntervalMs'
+  | 'maxReplayBytes'
+  | 'promptConfirmationTimeoutMs'
+>;
+export type PiAgentOptions = Pick<
+  CreatePiTuiSessionOptions,
+  'provider' | 'model' | 'thinking' | 'name' | 'pollIntervalMs' | 'maxReplayBytes'
+>;
 
 type BuiltinCreateBase = Omit<SpawnAgentOptions, 'agent' | 'agentOptions'>;
 
@@ -59,7 +93,10 @@ export type BuiltinCreateAgentSessionOptions =
   | (BuiltinCreateBase & { agent: 'grok'; agentOptions?: GrokAgentOptions })
   | (BuiltinCreateBase & { agent: 'kimi'; agentOptions?: KimiAgentOptions })
   | (BuiltinCreateBase & { agent: 'opencode'; agentOptions?: OpenCodeAgentOptions })
-  | (BuiltinCreateBase & { agent: 'hermes'; agentOptions?: HermesAgentOptions });
+  | (BuiltinCreateBase & { agent: 'hermes'; agentOptions?: HermesAgentOptions })
+  | (BuiltinCreateBase & { agent: 'antigravity'; agentOptions?: AntigravityAgentOptions })
+  | (BuiltinCreateBase & { agent: 'copilot'; agentOptions?: CopilotAgentOptions })
+  | (BuiltinCreateBase & { agent: 'pi'; agentOptions?: PiAgentOptions });
 
 /** Runtime facade whose provider discriminator narrows its native launch options. */
 export type BuiltinAgentRuntime = Omit<AgentRuntime, 'spawn' | 'createSession' | 'prepareSession'> & {

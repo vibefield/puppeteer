@@ -120,6 +120,29 @@ export interface NativeStoreDocument {
   indexPath?: string[];
   /** Native JSONL carrier. Omitted preserves the legacy timestamp/method/params envelope. */
   recordFormat?: 'method-params' | 'flat-record';
+  /** Discriminator field for a flat record. Defaults to `type`. */
+  recordTypeField?: string;
+  /** Optional field that contains the event payload inside the flat carrier. */
+  recordPayloadField?: string;
+  /** Optional per-record native clock synthesized only when the op did not supply one. */
+  recordTimestamp?: {
+    field: string;
+    format: 'epoch-ms' | 'iso';
+    omitFor?: string[];
+  };
+  /** Optional append-order ordinal synthesized only when the op did not supply one. */
+  recordSequence?: {
+    field: string;
+    start?: number;
+  };
+  /** Optional fresh record id and previous-record correlation for append-only journals. */
+  recordIdentity?: {
+    idField: string;
+    parentField?: string;
+    omitParentFor?: string[];
+  };
+  /** Event types that can occur at most once in one append-only journal. */
+  singletonEvents?: string[];
   /** Persist validated JSON-RPC notifications so a served thread can replay them on resume. */
   mirrorJsonRpc?: boolean;
 }

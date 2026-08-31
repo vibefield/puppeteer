@@ -12,7 +12,7 @@ import { createRequire } from 'node:module';
 import { tmpdir } from 'node:os';
 import { dirname, join } from 'node:path';
 import type { EmulatorSpawner } from './plane.js';
-import { createPersonaSessionId } from '@vibecook/puppeteer-imposter';
+import { createPersonaLaunchSpec, createPersonaSessionId } from '@vibecook/puppeteer-imposter';
 
 export interface PersonaSpawnerOptions {
   /** Test overrides for the control channel the imposter dials. */
@@ -25,11 +25,9 @@ export function imposterBin(): string {
   return join(dirname(require.resolve('@vibecook/puppeteer-imposter/package.json')), 'bin', 'ai.mjs');
 }
 
-export type SpawnablePersona = 'claude' | 'codex' | 'grok' | 'kimi' | 'opencode' | 'hermes';
-
 /** Spawn one persona directly, preserving the native plane's boundary. */
 export function createPersonaSpawner(
-  vendor: SpawnablePersona,
+  vendor: string,
   label: string,
   options: PersonaSpawnerOptions = {},
 ): EmulatorSpawner & {
@@ -53,17 +51,12 @@ export function createPersonaSpawner(
       const sessionId = createPersonaSessionId(vendor);
       let child: ChildProcess | undefined;
       try {
-        const sessionArguments = vendor === 'kimi' ? ['--session', sessionId] : ['--session-id', sessionId];
-        child = spawn(process.execPath, [bin, ...sessionArguments], {
+        const launch = createPersonaLaunchSpec(vendor, sessionId, cwd);
+        child = spawn(process.execPath, [bin, ...launch.args], {
           cwd,
           env: {
             ...process.env,
-            AI_PERSONA: vendor,
-            PUPPETEER_IMPOSTER_TUI: 'off',
-            PUPPETEER_IMPOSTER_HOME: cwd,
-            ...(vendor === 'grok' ? { GROK_HOME: cwd } : {}),
-            ...(vendor === 'kimi' ? { KIMI_CODE_HOME: cwd } : {}),
-            ...(vendor === 'hermes' ? { HERMES_HOME: cwd } : {}),
+            ...launch.env,
             ...(options.controlSocketPath ? { PUPPETEER_IMPOSTER_SOCKET: options.controlSocketPath } : {}),
             ...(options.controlTokenPath ? { PUPPETEER_IMPOSTER_TOKEN_FILE: options.controlTokenPath } : {}),
           },

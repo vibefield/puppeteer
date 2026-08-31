@@ -1,0 +1,50 @@
+{
+  "name": "happy-turn",
+  "steps": [
+    {
+      "at": 0,
+      "do": {
+        "emit": {
+          "channel": "events",
+          "event": "user.message",
+          "with": { "content": "$stimulus.text", "interactionId": "$uuid:interaction" }
+        }
+      }
+    },
+    {
+      "at": 20,
+      "do": {
+        "emit": {
+          "channel": "events",
+          "event": "assistant.turn_start",
+          "with": { "turnId": "0", "interactionId": "$uuid:interaction" }
+        }
+      }
+    },
+    {
+      "at": 40,
+      "do": {
+        "emit": {
+          "channel": "events",
+          "event": "assistant.message",
+          "with": {
+            "messageId": "$uuid:message",
+            "model": "$modelId",
+            "content": "imposter: ok",
+            "toolRequests": [],
+            "interactionId": "$uuid:interaction",
+            "turnId": "0",
+            "outputTokens": 4,
+            "rte": false
+          }
+        }
+      }
+    },
+    {
+      "at": 60,
+      "do": {
+        "emit": { "channel": "events", "event": "assistant.turn_end", "with": { "turnId": "0" } }
+      }
+    }
+  ]
+}

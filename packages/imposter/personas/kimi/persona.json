@@ -15,7 +15,9 @@
     "sessionPath": ["sessions", "$workdirKey", "$sessionId"],
     "updatesPath": ["agents", "main", "wire.jsonl"],
     "indexPath": ["session_index.jsonl"],
-    "recordFormat": "flat-record"
+    "recordFormat": "flat-record",
+    "recordTimestamp": { "field": "time", "format": "epoch-ms", "omitFor": ["metadata"] },
+    "singletonEvents": ["metadata"]
   },
   "boot": [{ "op": "session.start" }, { "op": "session.ready" }]
 }

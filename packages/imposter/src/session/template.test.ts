@@ -32,6 +32,13 @@ describe('session template transforms', () => {
     expect(() => substitute('$string:$value', { bindings: { $value: { turn: 2 } } })).toThrow(/requires a primitive/);
   });
 
+  it('concatenates bindings and literal filename components explicitly', () => {
+    expect(substitute('$concat:$sessionId:.jsonl', { bindings: { $sessionId: 'session-one' } })).toBe(
+      'session-one.jsonl',
+    );
+    expect(() => substitute('$concat:$value:.jsonl', { bindings: { $value: {} } })).toThrow(/parts must resolve/);
+  });
+
   it('provides native timestamps in both ISO and Unix-second forms', () => {
     expect(substitute('$now', {})).toMatch(/^\d{4}-\d{2}-\d{2}T/);
     expect(substitute('$nowSeconds', {})).toBe(Math.floor(Date.now() / 1_000));

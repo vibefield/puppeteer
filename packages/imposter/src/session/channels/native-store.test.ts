@@ -109,6 +109,8 @@ describe('vendor-native session store', () => {
       updatesPath: ['agents', 'main', 'wire.jsonl'],
       indexPath: ['session_index.jsonl'],
       recordFormat: 'flat-record' as const,
+      recordTimestamp: { field: 'time', format: 'epoch-ms' as const, omitFor: ['metadata'] },
+      singletonEvents: ['metadata'],
     };
     const store = createNativeSessionStore(
       root,
@@ -142,5 +144,81 @@ describe('vendor-native session store', () => {
         .split('\n')
         .map((line) => JSON.parse(line) as Record<string, unknown>),
     ).toEqual([indexEntry]);
+  });
+
+  it('builds declarative ISO, sequence, and identity envelopes for native journals', () => {
+    const root = mkdtempSync(join(tmpdir(), 'puppeteer-native-store-envelope-'));
+    roots.push(root);
+    const store = createNativeSessionStore(
+      root,
+      {
+        sessionPath: ['sessions'],
+        updatesFile: '$concat:$sessionId:.jsonl',
+        recordFormat: 'flat-record',
+        recordTimestamp: { field: 'timestamp', format: 'iso' },
+        recordSequence: { field: 'step_index', start: 4 },
+        recordIdentity: { idField: 'id', parentField: 'parentId', omitParentFor: ['session.start'] },
+      },
+      { $sessionId: 'session-one' },
+    );
+    store.append('session.start', { id: 'session-one' });
+    store.append('user.message', { data: { content: 'hello' } });
+    const records = readFileSync(store.updatesPath, 'utf8')
+      .trim()
+      .split('\n')
+      .map((line) => JSON.parse(line));
+    expect(store.updatesPath).toBe(join(root, 'sessions', 'session-one.jsonl'));
+    expect(records[0]).toMatchObject({ type: 'session.start', id: 'session-one', step_index: 4 });
+    expect(records[0]).not.toHaveProperty('parentId');
+    expect(records[1]).toMatchObject({ type: 'user.message', parentId: 'session-one', step_index: 5 });
+    expect(records[1].id).toMatch(/^[0-9a-f-]{36}$/);
+    expect(records[1].timestamp).toMatch(/^\d{4}-\d{2}-\d{2}T/);
+  });
+
+  it('wraps payloads and resumes singleton, sequence, and identity state from disk', () => {
+    const root = mkdtempSync(join(tmpdir(), 'puppeteer-native-store-resume-'));
+    roots.push(root);
+    const wrappedDocument = {
+      sessionPath: ['session-state', '$sessionId'],
+      updatesFile: 'events.jsonl',
+      recordFormat: 'flat-record' as const,
+      recordPayloadField: 'data',
+      recordTimestamp: { field: 'timestamp', format: 'iso' as const },
+      recordSequence: { field: 'ordinal', start: 0 },
+      recordIdentity: { idField: 'id', parentField: 'parentId' },
+      singletonEvents: ['session.start'],
+    };
+    const bindings = { $sessionId: 'session-one' };
+    const first = createNativeSessionStore(root, wrappedDocument, bindings);
+    first.append('session.start', { sessionId: 'session-one' });
+    first.append('user.message', { content: 'first' });
+
+    const initial = readFileSync(first.updatesPath, 'utf8')
+      .trim()
+      .split('\n')
+      .map((line) => JSON.parse(line));
+    const priorId = initial[1].id as string;
+    expect(initial[0]).toMatchObject({ type: 'session.start', data: { sessionId: 'session-one' }, ordinal: 0 });
+    expect(initial[1]).toMatchObject({ type: 'user.message', data: { content: 'first' }, ordinal: 1 });
+
+    const resumed = createNativeSessionStore(root, wrappedDocument, bindings);
+    resumed.append('session.start', { sessionId: 'session-one' });
+    resumed.append('assistant.message', { content: 'continued' });
+
+    const records = readFileSync(resumed.updatesPath, 'utf8')
+      .trim()
+      .split('\n')
+      .map((line) => JSON.parse(line));
+    expect(records).toHaveLength(3);
+    expect(records[2]).toMatchObject({
+      type: 'assistant.message',
+      data: { content: 'continued' },
+      ordinal: 2,
+      parentId: priorId,
+    });
+    expect(resumed.readUpdates()[2]).toMatchObject({
+      method: 'assistant.message',
+      params: { content: 'continued' },
+    });
   });
 });

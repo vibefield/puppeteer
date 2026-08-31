@@ -58,3 +58,4 @@ export {
   type ScenarioTimelineStep,
 } from './session/scenario.ts';
 export { createPersonaSessionId } from './persona/load.ts';
+export { createPersonaLaunchSpec, type PersonaLaunchSpec } from './persona/launch.ts';

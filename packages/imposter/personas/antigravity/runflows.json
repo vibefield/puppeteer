@@ -1,0 +1,6 @@
+{
+  "version": 1,
+  "flows": [
+    { "id": "happy-turn", "intent": "turn.basic", "scenario": "happy-turn", "title": "Basic Antigravity transcript turn", "summary": "Native USER_INPUT followed by a terminal PLANNER_RESPONSE.", "kind": "typical", "danger": "safe", "tags": ["transcript", "turn"], "defaultStimulus": { "text": "hello" }, "defaultSpeed": 4 }
+  ]
+}

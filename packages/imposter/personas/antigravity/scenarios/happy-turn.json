@@ -1,0 +1,25 @@
+{
+  "name": "happy-turn",
+  "steps": [
+    {
+      "at": 0,
+      "do": {
+        "emit": {
+          "channel": "transcript",
+          "event": "USER_INPUT",
+          "with": { "source": "USER_EXPLICIT", "status": "DONE", "content": "$stimulus.text" }
+        }
+      }
+    },
+    {
+      "at": 40,
+      "do": {
+        "emit": {
+          "channel": "transcript",
+          "event": "PLANNER_RESPONSE",
+          "with": { "source": "MODEL", "status": "DONE", "content": "imposter: ok" }
+        }
+      }
+    }
+  ]
+}

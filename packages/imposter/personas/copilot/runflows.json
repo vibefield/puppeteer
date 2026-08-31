@@ -1,0 +1,6 @@
+{
+  "version": 1,
+  "flows": [
+    { "id": "happy-turn", "intent": "turn.basic", "scenario": "happy-turn", "title": "Basic Copilot interaction", "summary": "One interactionId spanning the durable assistant cycle.", "kind": "typical", "danger": "safe", "tags": ["events", "interaction"], "defaultStimulus": { "text": "hello" }, "defaultSpeed": 4 }
+  ]
+}

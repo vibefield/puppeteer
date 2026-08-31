@@ -28,6 +28,7 @@ import {
   type OpsDocument,
   type Persona,
   type PersonaDocument,
+  type NativeStoreDocument,
   type RunflowDescriptor,
 } from './types.ts';
 import type { ServeDocument } from '../session/serve.ts';
@@ -356,6 +357,77 @@ function parsePersonaDocument(path: string, value: unknown): PersonaDocument {
     if (recordFormat !== undefined && !['method-params', 'flat-record'].includes(String(recordFormat))) {
       throw new Error(`imposter: ${path} nativeStore.recordFormat must be method-params or flat-record`);
     }
+    const fieldName = (value: unknown, label: string): string => {
+      if (typeof value !== 'string' || !/^[A-Za-z_][A-Za-z0-9_]*$/u.test(value)) {
+        throw new Error(`imposter: ${path} nativeStore.${label} must be a safe field name`);
+      }
+      return value;
+    };
+    const stringArray = (value: unknown, label: string): string[] | undefined => {
+      if (value === undefined) return undefined;
+      if (!Array.isArray(value) || value.some((entry) => typeof entry !== 'string' || entry.length === 0)) {
+        throw new Error(`imposter: ${path} nativeStore.${label} must be an array of non-empty strings`);
+      }
+      return value as string[];
+    };
+    const recordTypeField =
+      nativeStoreRecord.recordTypeField === undefined
+        ? undefined
+        : fieldName(nativeStoreRecord.recordTypeField, 'recordTypeField');
+    const recordPayloadField =
+      nativeStoreRecord.recordPayloadField === undefined
+        ? undefined
+        : fieldName(nativeStoreRecord.recordPayloadField, 'recordPayloadField');
+    const timestampRecord =
+      nativeStoreRecord.recordTimestamp === undefined
+        ? undefined
+        : requireRecord(path, nativeStoreRecord.recordTimestamp, 'nativeStore.recordTimestamp');
+    let recordTimestamp: NonNullable<NativeStoreDocument['recordTimestamp']> | undefined;
+    if (timestampRecord) {
+      const format = requireString(path, timestampRecord, 'format');
+      if (!['epoch-ms', 'iso'].includes(format)) {
+        throw new Error(`imposter: ${path} nativeStore.recordTimestamp.format must be epoch-ms or iso`);
+      }
+      const omitFor = stringArray(timestampRecord.omitFor, 'recordTimestamp.omitFor');
+      recordTimestamp = {
+        field: fieldName(timestampRecord.field, 'recordTimestamp.field'),
+        format: format as 'epoch-ms' | 'iso',
+        ...(omitFor === undefined ? {} : { omitFor }),
+      };
+    }
+    const sequenceRecord =
+      nativeStoreRecord.recordSequence === undefined
+        ? undefined
+        : requireRecord(path, nativeStoreRecord.recordSequence, 'nativeStore.recordSequence');
+    let recordSequence: NonNullable<NativeStoreDocument['recordSequence']> | undefined;
+    if (sequenceRecord) {
+      if (
+        sequenceRecord.start !== undefined &&
+        (!Number.isInteger(sequenceRecord.start) || (sequenceRecord.start as number) < 0)
+      ) {
+        throw new Error(`imposter: ${path} nativeStore.recordSequence.start must be a non-negative integer`);
+      }
+      recordSequence = {
+        field: fieldName(sequenceRecord.field, 'recordSequence.field'),
+        ...(sequenceRecord.start === undefined ? {} : { start: sequenceRecord.start as number }),
+      };
+    }
+    const identityRecord =
+      nativeStoreRecord.recordIdentity === undefined
+        ? undefined
+        : requireRecord(path, nativeStoreRecord.recordIdentity, 'nativeStore.recordIdentity');
+    let recordIdentity: NonNullable<NativeStoreDocument['recordIdentity']> | undefined;
+    if (identityRecord) {
+      const omitParentFor = stringArray(identityRecord.omitParentFor, 'recordIdentity.omitParentFor');
+      recordIdentity = {
+        idField: fieldName(identityRecord.idField, 'recordIdentity.idField'),
+        ...(identityRecord.parentField === undefined
+          ? {}
+          : { parentField: fieldName(identityRecord.parentField, 'recordIdentity.parentField') }),
+        ...(omitParentFor === undefined ? {} : { omitParentFor }),
+      };
+    }
+    const singletonEvents = stringArray(nativeStoreRecord.singletonEvents, 'singletonEvents');
     if (nativeStoreRecord.mirrorJsonRpc !== undefined && typeof nativeStoreRecord.mirrorJsonRpc !== 'boolean') {
       throw new Error(`imposter: ${path} nativeStore.mirrorJsonRpc must be a boolean`);
     }
@@ -370,6 +442,12 @@ function parsePersonaDocument(path: string, value: unknown): PersonaDocument {
       ...(recordFormat === undefined
         ? {}
         : { recordFormat: recordFormat as NonNullable<PersonaDocument['nativeStore']>['recordFormat'] }),
+      ...(recordTypeField === undefined ? {} : { recordTypeField }),
+      ...(recordPayloadField === undefined ? {} : { recordPayloadField }),
+      ...(recordTimestamp === undefined ? {} : { recordTimestamp }),
+      ...(recordSequence === undefined ? {} : { recordSequence }),
+      ...(recordIdentity === undefined ? {} : { recordIdentity }),
+      ...(singletonEvents === undefined ? {} : { singletonEvents }),
       ...(nativeStoreRecord.mirrorJsonRpc === undefined
         ? {}
         : { mirrorJsonRpc: nativeStoreRecord.mirrorJsonRpc as boolean }),

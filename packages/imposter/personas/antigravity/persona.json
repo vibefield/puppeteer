@@ -1,0 +1,15 @@
+{
+  "vendor": "antigravity",
+  "asm": { "package": "@vibecook/puppeteer-surface", "path": "vendors/antigravity" },
+  "shimNames": ["agy", "antigravity"],
+  "envelope": {},
+  "nativeStore": {
+    "rootEnv": "PUPPETEER_ANTIGRAVITY_DATA_ROOT",
+    "sessionPath": ["brain", "$sessionId", ".system_generated", "logs"],
+    "updatesFile": "transcript.jsonl",
+    "recordFormat": "flat-record",
+    "recordTimestamp": { "field": "created_at", "format": "iso" },
+    "recordSequence": { "field": "step_index", "start": 0 }
+  },
+  "boot": [{ "op": "session.start" }, { "op": "session.ready" }]
+}

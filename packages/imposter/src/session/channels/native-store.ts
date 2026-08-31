@@ -8,7 +8,7 @@
  * an explicitly supplied persona-native root is honored for faithful resume.
  */
 
-import { appendFileSync, existsSync, mkdirSync, readFileSync, statSync, writeFileSync } from 'node:fs';
+import { appendFileSync, existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { basename, dirname, join, resolve, sep } from 'node:path';
 import type { NativeStoreDocument } from '../../persona/types.ts';
 import { substitute } from '../template.ts';
@@ -74,12 +74,18 @@ export function createNativeSessionStore(
   bindings: Record<string, unknown>,
   options: NativeSessionStoreOptions = {},
 ): NativeSessionStore {
+  interface JournalState {
+    methods: Set<string>;
+    nextSequence: number;
+    previousRecordId?: string;
+  }
+  const journalStates = new Map<string, JournalState>();
   const directory = (): string => resolveNativeSessionDirectory(root, document, bindings);
   const updatesPath = (): string => {
     const base = directory();
     const components = document.updatesPath
       ? safePathComponents(document.updatesPath.map((component) => String(substitute(component, { bindings }))))
-      : [safeFileName(document.updatesFile ?? '')];
+      : [safeFileName(String(substitute(document.updatesFile ?? '', { bindings })))];
     const path = resolve(base, ...components);
     if (!path.startsWith(`${resolve(base)}${sep}`)) {
       throw new Error('imposter native store updates path escaped its session');
@@ -103,6 +109,44 @@ export function createNativeSessionStore(
     mkdirSync(path, { recursive: true });
     return path;
   };
+  const journalState = (): JournalState => {
+    const path = updatesPath();
+    const existing = journalStates.get(path);
+    if (existing) return existing;
+    const state: JournalState = {
+      methods: new Set(),
+      nextSequence: document.recordSequence?.start ?? 0,
+    };
+    if (existsSync(path)) {
+      const typeField = document.recordTypeField ?? 'type';
+      for (const [index, line] of readFileSync(path, 'utf8').split(/\r?\n/u).entries()) {
+        if (line.trim().length === 0) continue;
+        let record: unknown;
+        try {
+          record = JSON.parse(line);
+        } catch (error) {
+          throw new Error(
+            `imposter native store cannot continue ${path}:${index + 1}: ${error instanceof Error ? error.message : String(error)}`,
+          );
+        }
+        if (record === null || typeof record !== 'object' || Array.isArray(record)) {
+          throw new Error(`imposter native store cannot continue ${path}:${index + 1}: record must be an object`);
+        }
+        const carrier = record as Record<string, unknown>;
+        if (typeof carrier[typeField] === 'string') state.methods.add(carrier[typeField]);
+        const sequenceField = document.recordSequence?.field;
+        const ordinal = sequenceField === undefined ? undefined : carrier[sequenceField];
+        if (typeof ordinal === 'number' && Number.isInteger(ordinal)) {
+          state.nextSequence = Math.max(state.nextSequence, ordinal + 1);
+        }
+        const idField = document.recordIdentity?.idField;
+        const id = idField === undefined ? undefined : carrier[idField];
+        if (typeof id === 'string') state.previousRecordId = id;
+      }
+    }
+    journalStates.set(path, state);
+    return state;
+  };
 
   return {
     get directory() {
@@ -116,11 +160,32 @@ export function createNativeSessionStore(
     },
     append(method, params) {
       const flat = document.recordFormat === 'flat-record';
-      const envelope = flat
+      const state = journalState();
+      if (flat && document.singletonEvents?.includes(method) && state.methods.has(method)) return;
+      const automatic: Record<string, unknown> = {};
+      if (flat && document.recordTimestamp && !document.recordTimestamp.omitFor?.includes(method)) {
+        automatic[document.recordTimestamp.field] =
+          document.recordTimestamp.format === 'iso' ? new Date().toISOString() : Date.now();
+      }
+      if (flat && document.recordSequence) {
+        automatic[document.recordSequence.field] = state.nextSequence;
+      }
+      if (flat && document.recordIdentity) {
+        automatic[document.recordIdentity.idField] = crypto.randomUUID();
+        if (document.recordIdentity.parentField && !document.recordIdentity.omitParentFor?.includes(method)) {
+          automatic[document.recordIdentity.parentField] = state.previousRecordId ?? null;
+        }
+      }
+      const typeField = document.recordTypeField ?? 'type';
+      const payload = document.recordPayloadField ? { [document.recordPayloadField]: params } : params;
+      const envelope: Record<string, unknown> = flat
         ? {
-            ...params,
-            type: method,
-            ...(method === 'metadata' || params.time !== undefined ? {} : { time: Date.now() }),
+            ...automatic,
+            ...payload,
+            [typeField]: method,
+            ...(!document.recordTimestamp && method !== 'metadata' && params.time === undefined
+              ? { time: Date.now() }
+              : {}),
           }
         : {
             // Grok's persisted envelope uses Unix epoch milliseconds. Keep this
@@ -135,9 +200,18 @@ export function createNativeSessionStore(
       if (violations.length > 0) {
         throw new Error(`imposter refused an off-model native record for ${method}: ${violations.join('; ')}`);
       }
-      // Kimi journals have one immutable metadata header. A resumed Imposter
-      // session may replay the boot op, but it must not append a second header.
-      if (flat && method === 'metadata' && existsSync(updatesPath()) && statSync(updatesPath()).size > 0) return;
+      state.methods.add(method);
+      if (flat && document.recordSequence) {
+        const ordinal = envelope[document.recordSequence.field];
+        state.nextSequence =
+          typeof ordinal === 'number' && Number.isInteger(ordinal)
+            ? Math.max(state.nextSequence, ordinal + 1)
+            : state.nextSequence + 1;
+      }
+      if (flat && document.recordIdentity) {
+        const id = envelope[document.recordIdentity.idField];
+        if (typeof id === 'string') state.previousRecordId = id;
+      }
       ready();
       mkdirSync(dirname(updatesPath()), { recursive: true });
       appendFileSync(updatesPath(), `${JSON.stringify(envelope)}\n`, 'utf8');
@@ -187,12 +261,32 @@ export function createNativeSessionStore(
           }
           const record = value as Record<string, unknown>;
           if (document.recordFormat === 'flat-record') {
-            if (typeof record.type !== 'string') {
+            const typeField = document.recordTypeField ?? 'type';
+            if (typeof record[typeField] !== 'string') {
               throw new Error(`imposter native store record ${path}:${index + 1} has an invalid flat envelope`);
             }
-            const { type, time, created_at: createdAt, ...params } = record;
-            const timestamp = typeof time === 'number' ? time : typeof createdAt === 'number' ? createdAt : 0;
-            return { timestamp, method: type, params };
+            const method = record[typeField] as string;
+            const timestampField = document.recordTimestamp?.field;
+            const rawTimestamp = timestampField ? record[timestampField] : (record.time ?? record.created_at);
+            const timestamp =
+              typeof rawTimestamp === 'number'
+                ? rawTimestamp
+                : typeof rawTimestamp === 'string'
+                  ? Date.parse(rawTimestamp) || 0
+                  : 0;
+            const nestedPayload =
+              document.recordPayloadField === undefined ? undefined : record[document.recordPayloadField];
+            if (
+              document.recordPayloadField !== undefined &&
+              (nestedPayload === null || typeof nestedPayload !== 'object' || Array.isArray(nestedPayload))
+            ) {
+              throw new Error(`imposter native store record ${path}:${index + 1} has an invalid payload field`);
+            }
+            const params =
+              document.recordPayloadField === undefined
+                ? Object.fromEntries(Object.entries(record).filter(([name]) => name !== typeField))
+                : (nestedPayload as Record<string, unknown>);
+            return { timestamp, method, params };
           }
           if (
             typeof record.timestamp !== 'number' ||

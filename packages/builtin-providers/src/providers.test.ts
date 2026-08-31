@@ -4,6 +4,11 @@ import type { AcpConnector } from '@vibecook/puppeteer-adapter-acp';
 
 const adapters = vi.hoisted(() => ({
   createAcpSession: vi.fn(),
+  createAntigravityTuiSession: vi.fn(),
+  prepareAntigravityTuiSession: vi.fn(),
+  normalizeAntigravityNativeInvocation: vi.fn(() => ({ status: 'accepted' })),
+  captureAntigravityContinuationState: vi.fn(),
+  restoreAntigravityContinuationState: vi.fn(),
   createClaudeAccountUsageService: vi.fn(),
   createClaudeSession: vi.fn(),
   fetchClaudeAccountUsage: vi.fn(),
@@ -20,6 +25,11 @@ const adapters = vi.hoisted(() => ({
   normalizeCodexNativeInvocation: vi.fn(() => ({ status: 'accepted' })),
   captureCodexContinuationState: vi.fn(),
   restoreCodexContinuationState: vi.fn(),
+  createCopilotTuiSession: vi.fn(),
+  prepareCopilotTuiSession: vi.fn(),
+  normalizeCopilotNativeInvocation: vi.fn(() => ({ status: 'accepted' })),
+  captureCopilotContinuationState: vi.fn(),
+  restoreCopilotContinuationState: vi.fn(),
   createGrokAccountUsageService: vi.fn(),
   createGrokBackend: vi.fn(),
   fetchGrokAccountUsage: vi.fn(),
@@ -41,10 +51,23 @@ const adapters = vi.hoisted(() => ({
   normalizeHermesNativeInvocation: vi.fn(() => ({ status: 'accepted' })),
   captureHermesContinuationState: vi.fn(),
   restoreHermesContinuationState: vi.fn(),
+  createPiTuiSession: vi.fn(),
+  preparePiTuiSession: vi.fn(),
+  normalizePiNativeInvocation: vi.fn(() => ({ status: 'accepted' })),
+  capturePiContinuationState: vi.fn(),
+  restorePiContinuationState: vi.fn(),
 }));
 
 vi.mock('@vibecook/puppeteer-adapter-acp', () => ({
   createAcpSession: adapters.createAcpSession,
+}));
+
+vi.mock('@vibecook/puppeteer-adapter-antigravity', () => ({
+  createAntigravityTuiSession: adapters.createAntigravityTuiSession,
+  prepareAntigravityTuiSession: adapters.prepareAntigravityTuiSession,
+  normalizeAntigravityNativeInvocation: adapters.normalizeAntigravityNativeInvocation,
+  captureAntigravityContinuationState: adapters.captureAntigravityContinuationState,
+  restoreAntigravityContinuationState: adapters.restoreAntigravityContinuationState,
 }));
 
 vi.mock('@vibecook/puppeteer-adapter-claude', () => ({
@@ -67,6 +90,14 @@ vi.mock('@vibecook/puppeteer-adapter-codex', () => ({
   normalizeCodexNativeInvocation: adapters.normalizeCodexNativeInvocation,
   captureCodexContinuationState: adapters.captureCodexContinuationState,
   restoreCodexContinuationState: adapters.restoreCodexContinuationState,
+}));
+
+vi.mock('@vibecook/puppeteer-adapter-copilot', () => ({
+  createCopilotTuiSession: adapters.createCopilotTuiSession,
+  prepareCopilotTuiSession: adapters.prepareCopilotTuiSession,
+  normalizeCopilotNativeInvocation: adapters.normalizeCopilotNativeInvocation,
+  captureCopilotContinuationState: adapters.captureCopilotContinuationState,
+  restoreCopilotContinuationState: adapters.restoreCopilotContinuationState,
 }));
 
 vi.mock('@vibecook/puppeteer-adapter-grok', () => ({
@@ -100,6 +131,14 @@ vi.mock('@vibecook/puppeteer-adapter-hermes', () => ({
   normalizeHermesNativeInvocation: adapters.normalizeHermesNativeInvocation,
   captureHermesContinuationState: adapters.captureHermesContinuationState,
   restoreHermesContinuationState: adapters.restoreHermesContinuationState,
+}));
+
+vi.mock('@vibecook/puppeteer-adapter-pi', () => ({
+  createPiTuiSession: adapters.createPiTuiSession,
+  preparePiTuiSession: adapters.preparePiTuiSession,
+  normalizePiNativeInvocation: adapters.normalizePiNativeInvocation,
+  capturePiContinuationState: adapters.capturePiContinuationState,
+  restorePiContinuationState: adapters.restorePiContinuationState,
 }));
 
 import { createBuiltinProviders } from './providers.js';
@@ -168,6 +207,8 @@ describe('createBuiltinProviders launch options', () => {
       fetch: adapters.fetchGrokAccountUsage,
     });
     adapters.createAcpSession.mockResolvedValue(fakeSession('acp'));
+    adapters.createAntigravityTuiSession.mockResolvedValue(fakeSession('antigravity'));
+    adapters.prepareAntigravityTuiSession.mockResolvedValue(fakePreparation('antigravity'));
     adapters.createClaudeSession.mockResolvedValue(fakeSession('claude'));
     adapters.fetchClaudeAccountUsage.mockResolvedValue({
       status: 'unauthenticated',
@@ -199,6 +240,8 @@ describe('createBuiltinProviders launch options', () => {
       retryable: true,
     });
     adapters.prepareCodexTuiSession.mockResolvedValue(fakePreparation('codex'));
+    adapters.createCopilotTuiSession.mockResolvedValue(fakeSession('copilot'));
+    adapters.prepareCopilotTuiSession.mockResolvedValue(fakePreparation('copilot'));
     adapters.createGrokBackend.mockReturnValue({
       createSession: vi.fn(),
       prepareSession: vi.fn(async () => fakePreparation('grok')),
@@ -216,6 +259,8 @@ describe('createBuiltinProviders launch options', () => {
     adapters.prepareOpenCodeTuiSession.mockResolvedValue(fakePreparation('opencode'));
     adapters.createHermesTuiSession.mockResolvedValue(fakeSession('hermes'));
     adapters.prepareHermesTuiSession.mockResolvedValue(fakePreparation('hermes'));
+    adapters.createPiTuiSession.mockResolvedValue(fakeSession('pi'));
+    adapters.preparePiTuiSession.mockResolvedValue(fakePreparation('pi'));
   });
 
   it('forwards Claude model and permission mode to the native driver', async () => {
@@ -335,6 +380,9 @@ describe('createBuiltinProviders launch options', () => {
       ['grok', { state: 'isolated-root' }],
       ['kimi', { state: 'isolated-root' }],
       ['opencode', { state: 'isolated-root' }],
+      ['antigravity', { state: 'isolated-root' }],
+      ['copilot', { state: 'isolated-root' }],
+      ['pi', { state: 'isolated-root' }],
     ]);
     const opencode = providers.find((provider) => provider.descriptor.id === 'opencode')!;
     opencode.launch!.continuation!.restore('opaque-state', { cwd: '/repo' });
@@ -568,6 +616,118 @@ describe('createBuiltinProviders launch options', () => {
     expect(hermes.accountUsage).toBeUndefined();
   });
 
+  it('forwards Antigravity, Copilot, and Pi native launch options without consumer-side recipes', async () => {
+    const providers = createBuiltinProviders({
+      executables: {
+        antigravity: '/opt/agy',
+        copilot: '/opt/copilot',
+        pi: '/opt/pi',
+      },
+    });
+    const antigravity = providers.find((provider) => provider.descriptor.id === 'antigravity')!;
+    const copilot = providers.find((provider) => provider.descriptor.id === 'copilot')!;
+    const pi = providers.find((provider) => provider.descriptor.id === 'pi')!;
+
+    await antigravity.createSession({
+      cwd: '/work/repo',
+      resume: 'conversation-1',
+      host,
+      agentOptions: {
+        dataRoot: '/tmp/antigravity-data',
+        model: 'gemini-pro',
+        effort: 'high',
+        mode: 'plan',
+        skipPermissions: true,
+      },
+    });
+    expect(adapters.createAntigravityTuiSession).toHaveBeenCalledWith(
+      expect.objectContaining({
+        cwd: '/work/repo',
+        resume: 'conversation-1',
+        host,
+        executable: '/opt/agy',
+        dataRoot: '/tmp/antigravity-data',
+        model: 'gemini-pro',
+        effort: 'high',
+        mode: 'plan',
+        skipPermissions: true,
+      }),
+    );
+
+    await copilot.createSession({
+      cwd: '/work/repo',
+      resume: 'session-1',
+      title: 'review',
+      host,
+      agentOptions: {
+        copilotHome: '/tmp/copilot-home',
+        name: 'native-review',
+        model: 'gpt-5',
+        effort: 'high',
+        mode: 'autopilot',
+        allowAll: true,
+      },
+    });
+    expect(adapters.createCopilotTuiSession).toHaveBeenCalledWith(
+      expect.objectContaining({
+        cwd: '/work/repo',
+        resume: 'session-1',
+        title: 'native-review',
+        host,
+        executable: '/opt/copilot',
+        copilotHome: '/tmp/copilot-home',
+        model: 'gpt-5',
+        effort: 'high',
+        mode: 'autopilot',
+        allowAll: true,
+      }),
+    );
+
+    await pi.createSession({
+      cwd: '/work/repo',
+      resume: 'session-2',
+      title: 'review',
+      host,
+      agentOptions: {
+        sessionDir: '/tmp/pi-sessions',
+        provider: 'openai',
+        model: 'gpt-5',
+        thinking: 'high',
+      },
+    });
+    expect(adapters.createPiTuiSession).toHaveBeenCalledWith(
+      expect.objectContaining({
+        cwd: '/work/repo',
+        resume: 'session-2',
+        host,
+        executable: '/opt/pi',
+        sessionDir: '/tmp/pi-sessions',
+        provider: 'openai',
+        model: 'gpt-5',
+        thinking: 'high',
+        name: 'review',
+      }),
+    );
+
+    await antigravity.prepareSession!({ cwd: '/work/repo', host });
+    await copilot.prepareSession!({
+      cwd: '/work/repo',
+      title: 'consumer-title',
+      host,
+      agentOptions: { name: 'native-title' },
+    });
+    await pi.prepareSession!({ cwd: '/work/repo', host });
+    expect(adapters.prepareAntigravityTuiSession).toHaveBeenCalledWith(
+      expect.objectContaining({ cwd: '/work/repo', executable: '/opt/agy', host }),
+    );
+    expect(adapters.prepareCopilotTuiSession).toHaveBeenCalledWith(
+      expect.objectContaining({ cwd: '/work/repo', executable: '/opt/copilot', title: 'native-title', host }),
+    );
+    expect(adapters.preparePiTuiSession).toHaveBeenCalledWith(
+      expect.objectContaining({ cwd: '/work/repo', executable: '/opt/pi', host }),
+    );
+  });
+
   it('exposes prepare/adopt for native providers while generic ACP stays explicitly unsupported', async () => {
     const providers = createBuiltinProviders({
       executables: {
@@ -728,6 +888,24 @@ const typedHermesRequest: BuiltinCreateAgentSessionOptions = {
   agentOptions: { yolo: false },
 };
 void typedHermesRequest;
+
+const typedAntigravityRequest: BuiltinCreateAgentSessionOptions = {
+  agent: 'antigravity',
+  agentOptions: { model: 'gemini-pro', effort: 'high', mode: 'plan' },
+};
+void typedAntigravityRequest;
+
+const typedCopilotRequest: BuiltinCreateAgentSessionOptions = {
+  agent: 'copilot',
+  agentOptions: { model: 'gpt-5', effort: 'high', mode: 'autopilot' },
+};
+void typedCopilotRequest;
+
+const typedPiRequest: BuiltinCreateAgentSessionOptions = {
+  agent: 'pi',
+  agentOptions: { provider: 'openai', model: 'gpt-5', thinking: 'high' },
+};
+void typedPiRequest;
 
 type BuiltinPrepareRequest = Parameters<BuiltinAgentRuntime['prepareSession']>[0];
 const typedCodexPreparation: BuiltinPrepareRequest = {

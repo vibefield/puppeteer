@@ -1,0 +1,52 @@
+{
+  "name": "happy-turn",
+  "steps": [
+    {
+      "at": 0,
+      "do": {
+        "emit": {
+          "channel": "session",
+          "event": "message",
+          "with": {
+            "message": {
+              "role": "user",
+              "content": [{ "type": "text", "text": "$stimulus.text" }],
+              "timestamp": 1767225600000
+            }
+          }
+        }
+      }
+    },
+    {
+      "at": 40,
+      "do": {
+        "emit": {
+          "channel": "session",
+          "event": "message",
+          "with": {
+            "message": {
+              "role": "assistant",
+              "content": [{ "type": "text", "text": "imposter: ok" }],
+              "api": "openai-completions",
+              "provider": "imposter",
+              "model": "$modelId",
+              "usage": {
+                "input": 12,
+                "output": 4,
+                "cacheRead": 0,
+                "cacheWrite": 0,
+                "reasoning": 0,
+                "totalTokens": 16,
+                "cost": { "input": 0, "output": 0, "cacheRead": 0, "cacheWrite": 0, "total": 0 }
+              },
+              "stopReason": "stop",
+              "timestamp": 1767225600040,
+              "responseId": "$uuid:response",
+              "rawStopReason": "stop"
+            }
+          }
+        }
+      }
+    }
+  ]
+}

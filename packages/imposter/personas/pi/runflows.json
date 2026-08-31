@@ -1,0 +1,6 @@
+{
+  "version": 1,
+  "flows": [
+    { "id": "happy-turn", "intent": "turn.basic", "scenario": "happy-turn", "title": "Basic Pi session turn", "summary": "User and terminal assistant messages in the native session-v3 journal.", "kind": "typical", "danger": "safe", "tags": ["session-v3", "turn"], "defaultStimulus": { "text": "hello" }, "defaultSpeed": 4 }
+  ]
+}

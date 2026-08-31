@@ -38,15 +38,21 @@ function session(
   }>,
 ): SessionView {
   const defaultChannel =
-    vendor === 'claude'
-      ? 'hooks'
-      : vendor === 'kimi'
-        ? 'wire'
-        : vendor === 'opencode'
-          ? 'sse'
-          : vendor === 'hermes'
-            ? 'tui-gateway'
-            : 'jsonrpc';
+    vendor === 'antigravity'
+      ? 'transcript'
+      : vendor === 'claude'
+        ? 'hooks'
+        : vendor === 'copilot'
+          ? 'session-events'
+          : vendor === 'kimi'
+            ? 'wire'
+            : vendor === 'opencode'
+              ? 'sse'
+              : vendor === 'hermes'
+                ? 'tui-gateway'
+                : vendor === 'pi'
+                  ? 'session-jsonl'
+                  : 'jsonrpc';
   const channelFor = (transport: (typeof events)[number]['transport']): string => {
     if (transport === 'command-stdin') return 'hook-command';
     if (transport === 'json-file') return 'session-state';
@@ -88,6 +94,38 @@ function session(
 }
 
 describe('normalization lab projection', () => {
+  it('replays Antigravity transcript records with explicitly derived correlation', () => {
+    const view = session('antigravity', [
+      { event: 'USER_INPUT', transport: 'jsonl-record' },
+      { event: 'PLANNER_RESPONSE', transport: 'jsonl-record' },
+      { event: 'RUN_COMMAND', transport: 'jsonl-record' },
+    ]);
+    const lab = createNormalizationLab();
+    const snapshot = lab.synchronize(view, [
+      emitted(1, 'USER_INPUT', { source: 'USER_EXPLICIT', status: 'DONE', content: 'run it' }),
+      emitted(2, 'PLANNER_RESPONSE', {
+        source: 'MODEL',
+        status: 'DONE',
+        tool_calls: [{ name: 'run_command', args: { commandLine: 'echo ok' } }],
+      }),
+      emitted(3, 'RUN_COMMAND', { source: 'MODEL', status: 'DONE', exit_code: 0, content: 'ok' }),
+      emitted(4, 'PLANNER_RESPONSE', { source: 'MODEL', status: 'DONE', content: 'done' }),
+    ]) as NormalizationSnapshot;
+
+    expect(snapshot.supported).toBe(true);
+    expect(snapshot.traces.map((trace) => trace.disposition)).toEqual(['mapped', 'mapped', 'mapped', 'mapped']);
+    expect(snapshot.traces[0]!.events[0]).toMatchObject({
+      confidence: 'derived',
+      event: { type: 'turn:started', turnId: 'turn:0', prompt: 'run it' },
+    });
+    expect(snapshot.state).toMatchObject({
+      lifecycle: 'ready',
+      lastAssistantMessage: 'done',
+      counters: { toolsCompleted: 1 },
+    });
+    expect(snapshot.limitations.join(' ')).toContain('step indexes');
+  });
+
   it('replays Claude records in native sequence order into deterministic Core state', () => {
     const view = session('claude', [
       { event: 'SessionStart', transport: 'hook' },
@@ -226,6 +264,48 @@ describe('normalization lab projection', () => {
       noOutput: 1,
       driverOwned: 1,
     });
+  });
+
+  it('replays GitHub Copilot CLI journal records through the stateful session normalizer', () => {
+    const view = session('copilot', [
+      { event: 'session.start', transport: 'jsonl-record' },
+      { event: 'user.message', transport: 'jsonl-record' },
+      { event: 'assistant.turn_start', transport: 'jsonl-record' },
+      { event: 'assistant.message', transport: 'jsonl-record' },
+      { event: 'assistant.turn_end', transport: 'jsonl-record' },
+    ]);
+    const lab = createNormalizationLab();
+    const snapshot = lab.synchronize(view, [
+      emitted(1, 'session.start', {
+        sessionId: view.sessionId,
+        version: 1,
+        producer: 'copilot-agent',
+        copilotVersion: 'test',
+        startTime: '2026-08-09T00:00:00.000Z',
+        context: { cwd: '/work' },
+      }),
+      emitted(2, 'user.message', { content: 'hello', interactionId: 'interaction-1' }),
+      emitted(3, 'assistant.turn_start', { turnId: '0', interactionId: 'interaction-1' }),
+      emitted(4, 'assistant.message', {
+        messageId: 'message-1',
+        turnId: '0',
+        interactionId: 'interaction-1',
+        content: 'hi',
+        toolRequests: [],
+      }),
+      emitted(5, 'assistant.turn_end', { turnId: '0' }),
+    ]) as NormalizationSnapshot;
+
+    expect(snapshot.supported).toBe(true);
+    expect(snapshot.traces.map((trace) => trace.disposition)).toEqual([
+      'mapped',
+      'mapped',
+      'no-output',
+      'mapped',
+      'mapped',
+    ]);
+    expect(snapshot.state).toMatchObject({ lifecycle: 'ready', activeTurn: undefined, lastAssistantMessage: 'hi' });
+    expect(snapshot.limitations.join(' ')).toContain('parent links');
   });
 
   it('replays Kimi wire records while keeping hook/state mirrors native-only', () => {
@@ -473,6 +553,38 @@ describe('normalization lab projection', () => {
       },
     });
     expect(first.limitations.join(' ')).toContain('native-TUI approvals');
+  });
+
+  it('replays Pi session JSONL with message and turn correlation', () => {
+    const view = session('pi', [
+      { event: 'session', transport: 'jsonl-record' },
+      { event: 'message', transport: 'jsonl-record' },
+    ]);
+    const lab = createNormalizationLab();
+    const snapshot = lab.synchronize(view, [
+      emitted(1, 'session', { version: 3, id: view.sessionId, cwd: '/work' }),
+      emitted(2, 'message', {
+        message: { role: 'user', content: [{ type: 'text', text: 'hello' }] },
+      }),
+      emitted(3, 'message', {
+        message: {
+          role: 'assistant',
+          content: [{ type: 'text', text: 'hi' }],
+          stopReason: 'stop',
+          usage: { input: 4, output: 2, totalTokens: 6 },
+        },
+      }),
+    ]) as NormalizationSnapshot;
+
+    expect(snapshot.supported).toBe(true);
+    expect(snapshot.traces.map((trace) => trace.disposition)).toEqual(['mapped', 'mapped', 'mapped']);
+    expect(snapshot.state).toMatchObject({
+      lifecycle: 'ready',
+      activeTurn: undefined,
+      lastAssistantMessage: 'hi',
+      environment: { currentCwd: { value: '/work' } },
+    });
+    expect(snapshot.limitations.join(' ')).toContain('branch selection');
   });
 
   it('labels a vendor without a pure emitted-record normalizer instead of inventing semantics', () => {

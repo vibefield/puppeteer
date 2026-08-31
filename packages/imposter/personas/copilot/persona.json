@@ -1,0 +1,17 @@
+{
+  "vendor": "copilot",
+  "asm": { "package": "@vibecook/puppeteer-surface", "path": "vendors/copilot" },
+  "shimNames": ["copilot"],
+  "envelope": {},
+  "nativeStore": {
+    "rootEnv": "COPILOT_HOME",
+    "sessionPath": ["session-state", "$sessionId"],
+    "updatesFile": "events.jsonl",
+    "recordFormat": "flat-record",
+    "recordPayloadField": "data",
+    "recordTimestamp": { "field": "timestamp", "format": "iso" },
+    "recordIdentity": { "idField": "id", "parentField": "parentId" },
+    "singletonEvents": ["session.start", "session.permissions_changed", "session.model_change"]
+  },
+  "boot": [{ "op": "session.start" }, { "op": "session.ready" }]
+}

@@ -1,0 +1,14 @@
+{
+  "turn.start": [
+    { "channel": "native-log", "event": "USER_INPUT", "with": { "source": "USER_EXPLICIT", "status": "DONE", "content": "$op.text" } }
+  ],
+  "tool.start": [
+    { "channel": "native-log", "event": "PLANNER_RESPONSE", "with": { "source": "MODEL", "status": "DONE", "tool_calls": [{ "name": "$op.tool", "args": "$op.input" }] } }
+  ],
+  "tool.end": [
+    { "channel": "native-log", "event": "RUN_COMMAND", "with": { "source": "MODEL", "status": "DONE", "exit_code": 0, "content": "$op.output" } }
+  ],
+  "turn.end": [
+    { "channel": "native-log", "event": "PLANNER_RESPONSE", "with": { "source": "MODEL", "status": "DONE", "content": "$reply" } }
+  ]
+}

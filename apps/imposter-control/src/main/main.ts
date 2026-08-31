@@ -44,12 +44,15 @@ export function loadConsoleAsset(path: string): { body: string; contentType: str
 
 const smoke = process.argv.includes('--smoke');
 const spawners = [
+  createPersonaSpawner('antigravity', 'Antigravity native surface'),
   createPersonaSpawner('claude', 'Claude native surface'),
   createPersonaSpawner('codex', 'Codex native surface'),
+  createPersonaSpawner('copilot', 'GitHub Copilot CLI native surface'),
   createPersonaSpawner('grok', 'Grok native surface'),
   createPersonaSpawner('kimi', 'Kimi native surface'),
   createPersonaSpawner('opencode', 'OpenCode native surface'),
   createPersonaSpawner('hermes', 'Hermes native surface'),
+  createPersonaSpawner('pi', 'Pi native surface'),
 ];
 const plane = createControlPlane({
   uiHtml: loadConsoleUi(),
