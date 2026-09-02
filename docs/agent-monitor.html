@@ -1,0 +1,3492 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta
+      name="description"
+      content="System diagram and current interface reference for Puppeteer's runtime monitor, transport-neutral store, React bindings, Electron IPC relay, and Godview product views."
+    />
+    <title>Puppeteer Agent Monitor System</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      rel="stylesheet"
+      href="https://fonts.googleapis.com/css2?family=Spectral:wght@500;600;700&amp;family=Source+Sans+3:ital,wght@0,400;0,500;0,600;0,700;1,400&amp;family=JetBrains+Mono:wght@400;500;600&amp;display=swap"
+    />
+    <style>
+      :root {
+        color-scheme: light;
+        --bg: #f7f6f2;
+        --paper: #ffffff;
+        --paper-2: #f1f0eb;
+        --ink: #202328;
+        --muted: #666c73;
+        --faint: #8c9197;
+        --line: #dcd9d1;
+        --line-strong: #c8c4ba;
+        --copper: #9f4c28;
+        --copper-bg: rgba(159, 76, 40, 0.09);
+        --teal: #176b61;
+        --teal-bg: rgba(23, 107, 97, 0.09);
+        --blue: #355b8c;
+        --blue-bg: rgba(53, 91, 140, 0.09);
+        --purple: #6b4f8f;
+        --purple-bg: rgba(107, 79, 143, 0.09);
+        --amber: #8a6418;
+        --amber-bg: rgba(138, 100, 24, 0.1);
+        --red: #a13f45;
+        --red-bg: rgba(161, 63, 69, 0.09);
+        --shadow: 0 10px 35px rgba(35, 38, 43, 0.055);
+        --code-bg: #20242a;
+        --code-ink: #e7e5df;
+        --code-muted: #aeb4bc;
+      }
+
+      :root[data-theme='dark'] {
+        color-scheme: dark;
+        --bg: #15171a;
+        --paper: #1d2024;
+        --paper-2: #25292e;
+        --ink: #e8e6e0;
+        --muted: #a1a6ad;
+        --faint: #838991;
+        --line: #34383e;
+        --line-strong: #464b52;
+        --copper: #da815a;
+        --copper-bg: rgba(218, 129, 90, 0.12);
+        --teal: #63b7a9;
+        --teal-bg: rgba(99, 183, 169, 0.12);
+        --blue: #83a8da;
+        --blue-bg: rgba(131, 168, 218, 0.12);
+        --purple: #b69adc;
+        --purple-bg: rgba(182, 154, 220, 0.12);
+        --amber: #d2ad58;
+        --amber-bg: rgba(210, 173, 88, 0.12);
+        --red: #df858a;
+        --red-bg: rgba(223, 133, 138, 0.12);
+        --shadow: 0 12px 40px rgba(0, 0, 0, 0.22);
+        --code-bg: #101216;
+        --code-ink: #e8e6df;
+        --code-muted: #9ca4ae;
+      }
+
+      @media (prefers-color-scheme: dark) {
+        :root:not([data-theme='light']) {
+          color-scheme: dark;
+          --bg: #15171a;
+          --paper: #1d2024;
+          --paper-2: #25292e;
+          --ink: #e8e6e0;
+          --muted: #a1a6ad;
+          --faint: #838991;
+          --line: #34383e;
+          --line-strong: #464b52;
+          --copper: #da815a;
+          --copper-bg: rgba(218, 129, 90, 0.12);
+          --teal: #63b7a9;
+          --teal-bg: rgba(99, 183, 169, 0.12);
+          --blue: #83a8da;
+          --blue-bg: rgba(131, 168, 218, 0.12);
+          --purple: #b69adc;
+          --purple-bg: rgba(182, 154, 220, 0.12);
+          --amber: #d2ad58;
+          --amber-bg: rgba(210, 173, 88, 0.12);
+          --red: #df858a;
+          --red-bg: rgba(223, 133, 138, 0.12);
+          --shadow: 0 12px 40px rgba(0, 0, 0, 0.22);
+          --code-bg: #101216;
+          --code-ink: #e8e6df;
+          --code-muted: #9ca4ae;
+        }
+      }
+
+      * {
+        box-sizing: border-box;
+      }
+
+      html {
+        scroll-behavior: smooth;
+        scroll-padding-top: 28px;
+      }
+
+      body {
+        margin: 0;
+        background: var(--bg);
+        color: var(--ink);
+        font-family: 'Source Sans 3', 'Segoe UI', system-ui, sans-serif;
+        font-size: 15.5px;
+        line-height: 1.58;
+      }
+
+      a {
+        color: var(--teal);
+        text-decoration-thickness: 1px;
+        text-underline-offset: 3px;
+      }
+
+      button,
+      input {
+        font: inherit;
+      }
+
+      code,
+      pre,
+      .mono {
+        font-family: 'JetBrains Mono', 'SFMono-Regular', Consolas, monospace;
+      }
+
+      code:not(pre code) {
+        padding: 0.08em 0.32em;
+        border: 1px solid var(--line);
+        border-radius: 4px;
+        background: var(--paper-2);
+        font-size: 0.84em;
+      }
+
+      .skip-link {
+        position: fixed;
+        z-index: 20;
+        top: 8px;
+        left: 8px;
+        padding: 7px 10px;
+        border-radius: 6px;
+        background: var(--paper);
+        color: var(--ink);
+        box-shadow: var(--shadow);
+        transform: translateY(-160%);
+      }
+
+      .skip-link:focus {
+        transform: translateY(0);
+      }
+
+      .shell {
+        width: min(1480px, 100%);
+        margin: 0 auto;
+        padding: 42px 28px 90px;
+      }
+
+      .hero {
+        max-width: 1200px;
+        margin: 0 auto 26px;
+      }
+
+      .hero-top {
+        display: flex;
+        align-items: flex-start;
+        justify-content: space-between;
+        gap: 24px;
+      }
+
+      .eyebrow {
+        color: var(--copper);
+        font-family: 'JetBrains Mono', monospace;
+        font-size: 11px;
+        font-weight: 600;
+        letter-spacing: 0.14em;
+        text-transform: uppercase;
+      }
+
+      h1,
+      h2,
+      h3 {
+        text-wrap: balance;
+      }
+
+      h1 {
+        margin: 10px 0 9px;
+        font-family: Spectral, Georgia, serif;
+        font-size: clamp(36px, 5vw, 56px);
+        font-weight: 600;
+        letter-spacing: -0.025em;
+        line-height: 1.04;
+      }
+
+      .subtitle {
+        max-width: 80ch;
+        margin: 0;
+        color: var(--muted);
+        font-size: 17px;
+      }
+
+      .theme-button {
+        flex: none;
+        padding: 8px 11px;
+        border: 1px solid var(--line);
+        border-radius: 8px;
+        background: var(--paper);
+        color: var(--muted);
+        cursor: pointer;
+      }
+
+      .theme-button:hover,
+      .theme-button:focus-visible {
+        border-color: var(--line-strong);
+        color: var(--ink);
+      }
+
+      .pipeline {
+        margin-top: 24px;
+        padding: 14px 17px;
+        overflow-x: auto;
+        border: 1px solid var(--line);
+        border-radius: 9px;
+        background: var(--paper);
+        box-shadow: var(--shadow);
+        color: var(--muted);
+        font-family: 'JetBrains Mono', monospace;
+        font-size: 12px;
+        white-space: nowrap;
+      }
+
+      .pipeline b {
+        color: var(--ink);
+        font-weight: 600;
+      }
+
+      .pipeline .input {
+        color: var(--copper);
+      }
+
+      .pipeline .runtime {
+        color: var(--teal);
+      }
+
+      .pipeline .react {
+        color: var(--purple);
+      }
+
+      .stats {
+        display: grid;
+        grid-template-columns: repeat(4, minmax(0, 1fr));
+        gap: 12px;
+        margin-top: 18px;
+      }
+
+      .stat {
+        padding: 13px 15px;
+        border: 1px solid var(--line);
+        border-radius: 9px;
+        background: color-mix(in srgb, var(--paper) 76%, transparent);
+      }
+
+      .stat strong {
+        display: block;
+        font-family: Spectral, Georgia, serif;
+        font-size: 25px;
+        font-weight: 600;
+        line-height: 1;
+      }
+
+      .stat span {
+        color: var(--muted);
+        font-size: 12px;
+      }
+
+      .layout {
+        display: grid;
+        grid-template-columns: 215px minmax(0, 1fr);
+        gap: 34px;
+        align-items: start;
+      }
+
+      .toc {
+        position: sticky;
+        top: 20px;
+        max-height: calc(100vh - 40px);
+        padding: 16px;
+        overflow-y: auto;
+        border: 1px solid var(--line);
+        border-radius: 10px;
+        background: var(--paper);
+        box-shadow: var(--shadow);
+      }
+
+      .toc-title {
+        margin: 0 0 9px;
+        color: var(--faint);
+        font-family: 'JetBrains Mono', monospace;
+        font-size: 10px;
+        font-weight: 600;
+        letter-spacing: 0.12em;
+        text-transform: uppercase;
+      }
+
+      .toc a {
+        display: block;
+        padding: 5px 7px;
+        border-radius: 5px;
+        color: var(--muted);
+        font-size: 13px;
+        text-decoration: none;
+      }
+
+      .toc a:hover,
+      .toc a:focus-visible {
+        background: var(--paper-2);
+        color: var(--ink);
+      }
+
+      .toc .sub-link {
+        padding-left: 18px;
+        font-size: 12px;
+      }
+
+      main {
+        min-width: 0;
+      }
+
+      section {
+        margin-bottom: 64px;
+      }
+
+      h2 {
+        margin: 0 0 7px;
+        font-family: Spectral, Georgia, serif;
+        font-size: 30px;
+        font-weight: 600;
+        letter-spacing: -0.015em;
+      }
+
+      h3 {
+        margin: 26px 0 7px;
+        font-family: Spectral, Georgia, serif;
+        font-size: 20px;
+        font-weight: 600;
+      }
+
+      .section-note {
+        max-width: 86ch;
+        margin: 0 0 20px;
+        color: var(--muted);
+      }
+
+      .callout {
+        margin: 18px 0;
+        padding: 14px 16px;
+        border: 1px solid var(--line);
+        border-left: 3px solid var(--teal);
+        border-radius: 8px;
+        background: var(--teal-bg);
+        color: var(--muted);
+      }
+
+      .callout strong {
+        color: var(--ink);
+      }
+
+      .callout.warning {
+        border-left-color: var(--amber);
+        background: var(--amber-bg);
+      }
+
+      .callout.security {
+        border-left-color: var(--blue);
+        background: var(--blue-bg);
+      }
+
+      pre {
+        position: relative;
+        margin: 14px 0;
+        padding: 17px 19px;
+        overflow-x: auto;
+        border-radius: 9px;
+        background: var(--code-bg);
+        color: var(--code-ink);
+        font-size: 12.5px;
+        line-height: 1.65;
+        tab-size: 2;
+      }
+
+      pre .comment {
+        color: var(--code-muted);
+      }
+
+      .copy-button {
+        position: absolute;
+        top: 8px;
+        right: 8px;
+        padding: 4px 8px;
+        border: 1px solid rgba(255, 255, 255, 0.16);
+        border-radius: 5px;
+        background: rgba(255, 255, 255, 0.08);
+        color: #ccd2da;
+        font-family: 'Source Sans 3', sans-serif;
+        font-size: 11px;
+        cursor: pointer;
+      }
+
+      .copy-button:hover,
+      .copy-button:focus-visible {
+        background: rgba(255, 255, 255, 0.14);
+      }
+
+      .diagram {
+        overflow-x: auto;
+        border: 1px solid var(--line);
+        border-radius: 11px;
+        background: var(--paper);
+        box-shadow: var(--shadow);
+      }
+
+      .diagram svg {
+        display: block;
+        width: 100%;
+        min-width: 1080px;
+        height: auto;
+      }
+
+      .flow-item {
+        transition: opacity 160ms ease;
+      }
+
+      .flow-item.is-dim {
+        opacity: 0.12;
+      }
+
+      figcaption {
+        margin-top: 10px;
+        color: var(--muted);
+        font-size: 13px;
+      }
+
+      .flow-tools {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 8px;
+        align-items: center;
+        margin: 16px 0 10px;
+      }
+
+      .flow-tools > span {
+        margin-right: 2px;
+        color: var(--faint);
+        font-family: 'JetBrains Mono', monospace;
+        font-size: 10px;
+        font-weight: 600;
+        letter-spacing: 0.1em;
+        text-transform: uppercase;
+      }
+
+      .flow-button,
+      .small-button {
+        padding: 6px 9px;
+        border: 1px solid var(--line);
+        border-radius: 6px;
+        background: var(--paper);
+        color: var(--muted);
+        font-size: 12px;
+        cursor: pointer;
+      }
+
+      .flow-button:hover,
+      .flow-button:focus-visible,
+      .flow-button.active,
+      .small-button:hover,
+      .small-button:focus-visible {
+        border-color: var(--line-strong);
+        background: var(--paper-2);
+        color: var(--ink);
+      }
+
+      .flow-button.active {
+        box-shadow: inset 0 -2px 0 var(--teal);
+      }
+
+      .legend {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 8px 17px;
+        margin: 10px 0 16px;
+        color: var(--muted);
+        font-size: 12.5px;
+      }
+
+      .legend-item {
+        display: inline-flex;
+        gap: 6px;
+        align-items: center;
+      }
+
+      .legend-line {
+        width: 22px;
+        height: 2px;
+        border-radius: 2px;
+        background: var(--muted);
+      }
+
+      .legend-line.input {
+        background: var(--copper);
+      }
+
+      .legend-line.state {
+        background: var(--teal);
+      }
+
+      .legend-line.notice {
+        background: var(--purple);
+      }
+
+      .legend-line.action {
+        background: var(--blue);
+      }
+
+      .cards {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+        gap: 14px;
+      }
+
+      .card {
+        padding: 17px;
+        border: 1px solid var(--line);
+        border-radius: 10px;
+        background: var(--paper);
+        box-shadow: var(--shadow);
+      }
+
+      .card h3 {
+        margin: 0 0 6px;
+        font-family: 'JetBrains Mono', monospace;
+        font-size: 14px;
+      }
+
+      .card p,
+      .card li {
+        color: var(--muted);
+        font-size: 13px;
+      }
+
+      .card p {
+        margin: 0;
+      }
+
+      .card ul {
+        margin: 8px 0 0;
+        padding-left: 18px;
+      }
+
+      .numbered-flow {
+        display: grid;
+        grid-template-columns: repeat(7, minmax(125px, 1fr));
+        gap: 9px;
+        margin-top: 18px;
+        overflow-x: auto;
+      }
+
+      .numbered-step {
+        position: relative;
+        min-height: 104px;
+        padding: 13px;
+        border: 1px solid var(--line);
+        border-radius: 9px;
+        background: var(--paper);
+      }
+
+      .numbered-step:not(:last-child)::after {
+        content: '→';
+        position: absolute;
+        z-index: 2;
+        top: 36px;
+        right: -10px;
+        color: var(--faint);
+      }
+
+      .numbered-step b {
+        display: block;
+        margin-bottom: 5px;
+        color: var(--copper);
+        font-family: 'JetBrains Mono', monospace;
+        font-size: 10px;
+        letter-spacing: 0.08em;
+      }
+
+      .numbered-step strong {
+        display: block;
+        font-size: 13px;
+      }
+
+      .numbered-step span {
+        display: block;
+        margin-top: 4px;
+        color: var(--muted);
+        font-size: 11.5px;
+        line-height: 1.35;
+      }
+
+      .table-wrap {
+        overflow-x: auto;
+        border: 1px solid var(--line);
+        border-radius: 10px;
+        background: var(--paper);
+        box-shadow: var(--shadow);
+      }
+
+      table {
+        width: 100%;
+        min-width: 720px;
+        border-collapse: collapse;
+        font-size: 13.5px;
+      }
+
+      th {
+        padding: 11px 14px;
+        border-bottom: 1px solid var(--line);
+        color: var(--faint);
+        font-family: 'JetBrains Mono', monospace;
+        font-size: 10px;
+        font-weight: 600;
+        letter-spacing: 0.09em;
+        text-align: left;
+        text-transform: uppercase;
+      }
+
+      td {
+        padding: 10px 14px;
+        border-bottom: 1px solid var(--line);
+        vertical-align: top;
+      }
+
+      tr:last-child td {
+        border-bottom: 0;
+      }
+
+      td:first-child {
+        white-space: nowrap;
+      }
+
+      td p {
+        margin: 0;
+        color: var(--muted);
+      }
+
+      .route {
+        color: var(--ink);
+        font-family: 'JetBrains Mono', monospace;
+        font-size: 12px;
+        font-weight: 600;
+      }
+
+      .type-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(330px, 1fr));
+        gap: 14px;
+      }
+
+      .type-card {
+        min-width: 0;
+        padding: 16px;
+        border: 1px solid var(--line);
+        border-radius: 9px;
+        background: var(--paper);
+      }
+
+      .type-card h3 {
+        margin: 0;
+        font-family: 'JetBrains Mono', monospace;
+        font-size: 13px;
+      }
+
+      .type-card > p {
+        margin: 5px 0 0;
+        color: var(--muted);
+        font-size: 12.5px;
+      }
+
+      .type-card pre {
+        font-size: 11.5px;
+      }
+
+      details.api-card {
+        align-self: start;
+        border: 1px solid var(--line);
+        border-radius: 9px;
+        background: var(--paper);
+        box-shadow: var(--shadow);
+      }
+
+      details.api-card[open] {
+        border-color: var(--line-strong);
+      }
+
+      summary {
+        display: grid;
+        grid-template-columns: minmax(0, 1fr) auto;
+        gap: 10px;
+        align-items: center;
+        padding: 13px 14px;
+        cursor: pointer;
+        list-style: none;
+      }
+
+      summary::-webkit-details-marker {
+        display: none;
+      }
+
+      summary::after {
+        content: '+';
+        color: var(--faint);
+        font-family: 'JetBrains Mono', monospace;
+        font-size: 16px;
+      }
+
+      details[open] summary::after {
+        content: '−';
+      }
+
+      .api-title strong {
+        display: block;
+        font-family: 'JetBrains Mono', monospace;
+        font-size: 12px;
+      }
+
+      .api-title span {
+        display: block;
+        margin-top: 2px;
+        color: var(--muted);
+        font-size: 12px;
+      }
+
+      .api-body {
+        padding: 0 14px 14px;
+        border-top: 1px solid var(--line);
+      }
+
+      .api-body p {
+        margin: 11px 0 0;
+        color: var(--muted);
+        font-size: 13px;
+      }
+
+      .api-body pre {
+        margin-bottom: 0;
+        font-size: 11.5px;
+      }
+
+      .ownership-stack {
+        display: grid;
+        grid-template-columns: repeat(5, minmax(150px, 1fr));
+        gap: 10px;
+        align-items: stretch;
+        overflow-x: auto;
+      }
+
+      .ownership-node {
+        position: relative;
+        min-width: 150px;
+        padding: 16px;
+        border: 1px solid var(--line);
+        border-radius: 10px;
+        background: var(--paper);
+      }
+
+      .ownership-node:not(:last-child)::after {
+        content: '→';
+        position: absolute;
+        top: 50%;
+        right: -10px;
+        z-index: 2;
+        color: var(--faint);
+        transform: translateY(-50%);
+      }
+
+      .ownership-node b {
+        display: block;
+        margin-bottom: 7px;
+        color: var(--teal);
+        font-family: 'JetBrains Mono', monospace;
+        font-size: 11px;
+      }
+
+      .ownership-node span {
+        display: block;
+        color: var(--muted);
+        font-size: 12px;
+      }
+
+      .status-grid {
+        display: grid;
+        grid-template-columns: repeat(4, minmax(0, 1fr));
+        gap: 12px;
+      }
+
+      .status-card {
+        padding: 16px;
+        border: 1px solid var(--line);
+        border-radius: 9px;
+        background: var(--paper);
+      }
+
+      .status-card strong {
+        display: block;
+        font-family: 'JetBrains Mono', monospace;
+        font-size: 12px;
+      }
+
+      .status-card p {
+        margin: 6px 0 0;
+        color: var(--muted);
+        font-size: 12.5px;
+      }
+
+      .status-card.idle {
+        border-top: 3px solid var(--blue);
+      }
+
+      .status-card.working {
+        border-top: 3px solid var(--teal);
+      }
+
+      .status-card.blocked {
+        border-top: 3px solid var(--red);
+      }
+
+      .status-card.freshness {
+        border-top: 3px solid var(--amber);
+      }
+
+      .ui-shell {
+        padding: 13px;
+        border: 1px solid var(--line-strong);
+        border-radius: 12px;
+        background: var(--paper-2);
+        box-shadow: var(--shadow);
+      }
+
+      .ui-header {
+        display: grid;
+        grid-template-columns: minmax(130px, 1fr) auto auto auto;
+        gap: 8px;
+        align-items: center;
+        padding: 10px 12px;
+        border: 1px solid var(--line);
+        border-radius: 8px;
+        background: var(--paper);
+      }
+
+      .ui-brand strong,
+      .ui-chip {
+        font-family: 'JetBrains Mono', monospace;
+        font-size: 10px;
+        letter-spacing: 0.07em;
+      }
+
+      .ui-brand small {
+        display: block;
+        color: var(--faint);
+        font-size: 9px;
+      }
+
+      .ui-chip {
+        padding: 5px 7px;
+        border: 1px solid var(--line);
+        border-radius: 5px;
+        color: var(--muted);
+        white-space: nowrap;
+      }
+
+      .ui-notice {
+        width: min(520px, 75%);
+        margin: 8px 0 8px auto;
+        padding: 7px 10px;
+        border: 1px solid color-mix(in srgb, var(--purple) 35%, var(--line));
+        border-radius: 6px;
+        background: var(--purple-bg);
+        color: var(--purple);
+        font-size: 11px;
+      }
+
+      .ui-stage {
+        position: relative;
+        display: grid;
+        grid-template-columns: minmax(0, 1fr) 245px;
+        gap: 10px;
+        min-height: 330px;
+        padding: 10px;
+        border: 1px solid var(--line);
+        border-radius: 8px;
+        background: var(--paper);
+      }
+
+      .ui-view {
+        position: relative;
+        min-height: 306px;
+        overflow: hidden;
+        border: 1px dashed var(--line-strong);
+        border-radius: 7px;
+        background:
+          linear-gradient(var(--line) 1px, transparent 1px), linear-gradient(90deg, var(--line) 1px, transparent 1px);
+        background-size: 32px 32px;
+      }
+
+      .ui-view-label {
+        position: absolute;
+        top: 12px;
+        left: 14px;
+        color: var(--faint);
+        font-family: 'JetBrains Mono', monospace;
+        font-size: 9px;
+        letter-spacing: 0.1em;
+      }
+
+      .ui-bubble {
+        position: absolute;
+        display: grid;
+        width: 84px;
+        height: 84px;
+        place-items: center;
+        border: 2px solid var(--teal);
+        border-radius: 50%;
+        background: color-mix(in srgb, var(--teal-bg) 84%, var(--paper));
+        color: var(--teal);
+        font-family: 'JetBrains Mono', monospace;
+        font-size: 9px;
+        text-align: center;
+      }
+
+      .ui-bubble.one {
+        top: 72px;
+        left: 20%;
+      }
+
+      .ui-bubble.two {
+        right: 20%;
+        bottom: 46px;
+        width: 106px;
+        height: 106px;
+        border-color: var(--red);
+        background: color-mix(in srgb, var(--red-bg) 84%, var(--paper));
+        color: var(--red);
+      }
+
+      .ui-usage {
+        position: absolute;
+        z-index: 2;
+        top: 12px;
+        right: 267px;
+        width: 180px;
+        padding: 8px 10px;
+        border: 1px solid var(--line);
+        border-radius: 6px;
+        background: var(--paper);
+        color: var(--muted);
+        font-family: 'JetBrains Mono', monospace;
+        font-size: 9px;
+      }
+
+      .ui-inspector {
+        padding: 12px;
+        overflow: hidden;
+        border: 1px solid var(--line);
+        border-radius: 7px;
+        background: var(--paper-2);
+      }
+
+      .ui-inspector strong {
+        display: block;
+        color: var(--teal);
+        font-family: 'JetBrains Mono', monospace;
+        font-size: 10px;
+      }
+
+      .ui-inspector span {
+        display: block;
+        margin-top: 12px;
+        padding-bottom: 8px;
+        border-bottom: 1px solid var(--line);
+        color: var(--muted);
+        font-size: 10px;
+      }
+
+      .ui-deck {
+        display: grid;
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+        gap: 8px;
+        margin-top: 10px;
+      }
+
+      .ui-terminal {
+        min-height: 76px;
+        padding: 9px;
+        border: 1px solid var(--line);
+        border-radius: 7px;
+        background: var(--code-bg);
+        color: var(--code-muted);
+        font-family: 'JetBrains Mono', monospace;
+        font-size: 9px;
+      }
+
+      .ui-terminal::before {
+        content: '●  ●  ●';
+        display: block;
+        margin-bottom: 12px;
+        color: var(--faint);
+        letter-spacing: 3px;
+      }
+
+      .sequence-diagram svg {
+        min-width: 920px;
+      }
+
+      .source-list {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+        gap: 10px;
+      }
+
+      .source-link {
+        display: block;
+        padding: 13px 14px;
+        border: 1px solid var(--line);
+        border-radius: 8px;
+        background: var(--paper);
+        color: var(--ink);
+        text-decoration: none;
+      }
+
+      .source-link:hover,
+      .source-link:focus-visible {
+        border-color: var(--line-strong);
+        box-shadow: var(--shadow);
+      }
+
+      .source-link strong {
+        display: block;
+        color: var(--teal);
+        font-family: 'JetBrains Mono', monospace;
+        font-size: 11px;
+        overflow-wrap: anywhere;
+      }
+
+      .source-link span {
+        display: block;
+        margin-top: 4px;
+        color: var(--muted);
+        font-size: 12px;
+      }
+
+      footer {
+        max-width: 1200px;
+        margin: 0 auto;
+        padding-top: 19px;
+        border-top: 1px solid var(--line);
+        color: var(--muted);
+        font-size: 13px;
+      }
+
+      @media (max-width: 1080px) {
+        .numbered-flow {
+          grid-template-columns: repeat(7, 145px);
+        }
+
+        .ownership-stack {
+          grid-template-columns: repeat(5, 175px);
+        }
+      }
+
+      @media (max-width: 980px) {
+        .layout {
+          display: block;
+        }
+
+        .toc {
+          position: relative;
+          top: auto;
+          display: flex;
+          gap: 3px;
+          margin-bottom: 32px;
+          overflow-x: auto;
+          white-space: nowrap;
+        }
+
+        .toc-title,
+        .toc .sub-link {
+          display: none;
+        }
+
+        .toc a {
+          flex: none;
+        }
+
+        .status-grid {
+          grid-template-columns: repeat(2, minmax(0, 1fr));
+        }
+      }
+
+      @media (max-width: 680px) {
+        .shell {
+          padding: 28px 16px 64px;
+        }
+
+        .hero-top {
+          display: block;
+        }
+
+        .theme-button {
+          margin-top: 14px;
+        }
+
+        .stats {
+          grid-template-columns: repeat(2, minmax(0, 1fr));
+        }
+
+        h2 {
+          font-size: 26px;
+        }
+
+        .ui-header {
+          grid-template-columns: 1fr auto;
+        }
+
+        .ui-header .ui-chip:nth-of-type(2),
+        .ui-header .ui-chip:nth-of-type(3) {
+          display: none;
+        }
+
+        .ui-stage {
+          display: block;
+        }
+
+        .ui-usage {
+          right: 22px;
+        }
+
+        .ui-inspector {
+          margin-top: 10px;
+        }
+
+        .ui-deck {
+          grid-template-columns: 1fr;
+        }
+
+        .status-grid {
+          grid-template-columns: 1fr;
+        }
+      }
+
+      @media (prefers-reduced-motion: reduce) {
+        html {
+          scroll-behavior: auto;
+        }
+
+        .flow-item {
+          transition: none;
+        }
+      }
+
+      @media print {
+        :root {
+          color-scheme: light;
+          --bg: #fff;
+          --paper: #fff;
+          --paper-2: #f5f5f2;
+          --ink: #16181b;
+          --muted: #51555b;
+          --line: #d3d0c8;
+          --shadow: none;
+        }
+
+        .theme-button,
+        .toc,
+        .flow-tools,
+        .copy-button,
+        .skip-link {
+          display: none !important;
+        }
+
+        .layout {
+          display: block;
+        }
+
+        .diagram {
+          overflow: visible;
+        }
+
+        details.api-card {
+          break-inside: avoid;
+        }
+
+        details.api-card:not([open]) > .api-body {
+          display: block;
+        }
+
+        summary::after {
+          display: none;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <a class="skip-link" href="#content">Skip to content</a>
+    <div class="shell">
+      <header class="hero" id="top">
+        <div class="hero-top">
+          <div>
+            <div class="eyebrow">puppeteer · layer 5 · implementation reference</div>
+            <h1>Agent Monitor System</h1>
+            <p class="subtitle">
+              The current path from evidence-backed runtime observations to immutable monitor snapshots, race-free
+              delivery, React subscriptions, and Godview’s terminal-aware swarm and list. This page follows the working
+              implementation rather than the archived monitor design.
+            </p>
+          </div>
+          <button class="theme-button" id="theme-toggle" type="button" aria-label="Toggle color theme">Theme</button>
+        </div>
+
+        <div class="pipeline" aria-label="Agent monitor pipeline">
+          <b class="input">native + runtime + workspace evidence</b>&nbsp; → &nbsp;<b class="runtime"
+            >one AgentMonitorService</b
+          >&nbsp; → &nbsp;immutable full snapshots&nbsp; → &nbsp;epoch/revision relay&nbsp; → &nbsp;<b class="react"
+            >external store + React</b
+          >&nbsp; → &nbsp;product projection&nbsp; → &nbsp;swarm · list · inspector
+        </div>
+
+        <div class="stats" aria-label="Monitor summary">
+          <div class="stat"><strong>3</strong><span>independent evidence planes</span></div>
+          <div class="stat"><strong>11</strong><span>provider-neutral metric families</span></div>
+          <div class="stat"><strong>4</strong><span>portable React subscription hooks</span></div>
+          <div class="stat"><strong>2</strong><span>registered Godview monitor views</span></div>
+        </div>
+      </header>
+
+      <div class="layout">
+        <nav class="toc" aria-label="Contents">
+          <p class="toc-title">Contents</p>
+          <a href="#system-map">System map</a>
+          <a href="#ownership">Layer ownership</a>
+          <a href="#runtime-projection">Runtime projection</a>
+          <a href="#public-api">Public API</a>
+          <a href="#store-react">Store + React</a>
+          <a href="#godview">Godview interface</a>
+          <a class="sub-link" href="#godview-transport">IPC transport</a>
+          <a class="sub-link" href="#godview-views">view contract</a>
+          <a href="#state-contract">State contract</a>
+          <a href="#ordering">Ordering + recovery</a>
+          <a href="#security">Trust + privacy</a>
+          <a href="#sources">Source index</a>
+        </nav>
+
+        <main id="content">
+          <section id="system-map">
+            <h2>End-to-end system map</h2>
+            <p class="section-note">
+              One runtime-owned monitor service reduces three evidence planes for each runtime run. Consumers receive
+              full replacements, never patches. Godview’s global callbacks discover runs; the actual main-process stream
+              comes from a race-free per-run handle and crosses the renderer boundary through a revision-aware relay.
+            </p>
+
+            <div class="callout">
+              <strong>Canonical seam.</strong> Provider-native facts stop at adapter normalization. Product views
+              receive <span class="mono">MonitorAgent[]</span>, actions, and parameters; they do not import Runtime,
+              adapters, IPC, terminal internals, or provider files.
+            </div>
+
+            <div class="flow-tools" aria-label="Highlight a diagram rail">
+              <span>Highlight rail</span>
+              <button class="flow-button active" type="button" data-rail-control="all" aria-pressed="true">All</button>
+              <button class="flow-button" type="button" data-rail-control="input" aria-pressed="false">Evidence</button>
+              <button class="flow-button" type="button" data-rail-control="state" aria-pressed="false">State</button>
+              <button class="flow-button" type="button" data-rail-control="notice" aria-pressed="false">
+                Notifications
+              </button>
+              <button class="flow-button" type="button" data-rail-control="action" aria-pressed="false">Actions</button>
+            </div>
+            <div class="legend" aria-label="Diagram rail legend">
+              <span class="legend-item"><i class="legend-line input"></i> normalized evidence</span>
+              <span class="legend-item"><i class="legend-line state"></i> full state replacement</span>
+              <span class="legend-item"><i class="legend-line notice"></i> transition notification</span>
+              <span class="legend-item"><i class="legend-line action"></i> bounded user action</span>
+            </div>
+
+            <figure>
+              <div class="diagram" id="monitor-flow-diagram">
+                <svg
+                  viewBox="0 0 1260 760"
+                  role="img"
+                  aria-label="Three evidence planes enter one runtime AgentMonitorService. It publishes immutable monitor states and notifications through Agent handles and a Godview IPC relay. The renderer store feeds a product projection and pure React views, while bounded acknowledgment and artifact-read actions return through IPC."
+                >
+                  <defs>
+                    <marker
+                      id="arrow-copper"
+                      viewBox="0 0 10 10"
+                      refX="9"
+                      refY="5"
+                      markerWidth="7"
+                      markerHeight="7"
+                      orient="auto"
+                    >
+                      <path d="M 0 0 L 10 5 L 0 10 z" style="fill: var(--copper)" />
+                    </marker>
+                    <marker
+                      id="arrow-teal"
+                      viewBox="0 0 10 10"
+                      refX="9"
+                      refY="5"
+                      markerWidth="7"
+                      markerHeight="7"
+                      orient="auto"
+                    >
+                      <path d="M 0 0 L 10 5 L 0 10 z" style="fill: var(--teal)" />
+                    </marker>
+                    <marker
+                      id="arrow-purple"
+                      viewBox="0 0 10 10"
+                      refX="9"
+                      refY="5"
+                      markerWidth="7"
+                      markerHeight="7"
+                      orient="auto"
+                    >
+                      <path d="M 0 0 L 10 5 L 0 10 z" style="fill: var(--purple)" />
+                    </marker>
+                    <marker
+                      id="arrow-blue"
+                      viewBox="0 0 10 10"
+                      refX="9"
+                      refY="5"
+                      markerWidth="7"
+                      markerHeight="7"
+                      orient="auto"
+                    >
+                      <path d="M 0 0 L 10 5 L 0 10 z" style="fill: var(--blue)" />
+                    </marker>
+                  </defs>
+
+                  <rect x="20" y="46" width="226" height="602" rx="12" fill="var(--paper-2)" stroke="var(--line)" />
+                  <text
+                    x="133"
+                    y="76"
+                    text-anchor="middle"
+                    fill="var(--muted)"
+                    font-size="11"
+                    font-family="JetBrains Mono"
+                    letter-spacing="1.2"
+                  >
+                    EVIDENCE PLANES
+                  </text>
+
+                  <g class="flow-item" data-rails="input">
+                    <rect x="42" y="106" width="182" height="118" rx="9" fill="var(--paper)" stroke="var(--copper)" />
+                    <text
+                      x="58"
+                      y="135"
+                      fill="var(--copper)"
+                      font-size="10"
+                      font-family="JetBrains Mono"
+                      font-weight="600"
+                    >
+                      SEMANTIC
+                    </text>
+                    <text x="58" y="160" fill="var(--ink)" font-size="14" font-family="Source Sans 3">
+                      adapter native sources
+                    </text>
+                    <text x="58" y="181" fill="var(--muted)" font-size="11" font-family="Source Sans 3">
+                      hooks · protocols · logs
+                    </text>
+                    <rect x="58" y="193" width="145" height="22" rx="4" fill="var(--copper-bg)" />
+                    <text
+                      x="130"
+                      y="208"
+                      text-anchor="middle"
+                      fill="var(--copper)"
+                      font-size="10"
+                      font-family="JetBrains Mono"
+                    >
+                      monitor:batch
+                    </text>
+                  </g>
+
+                  <g class="flow-item" data-rails="input">
+                    <rect x="42" y="244" width="182" height="118" rx="9" fill="var(--paper)" stroke="var(--copper)" />
+                    <text
+                      x="58"
+                      y="273"
+                      fill="var(--copper)"
+                      font-size="10"
+                      font-family="JetBrains Mono"
+                      font-weight="600"
+                    >
+                      RUNTIME
+                    </text>
+                    <text x="58" y="298" fill="var(--ink)" font-size="14" font-family="Source Sans 3">
+                      normalized Agent events
+                    </text>
+                    <text x="58" y="319" fill="var(--muted)" font-size="11" font-family="Source Sans 3">
+                      lifecycle · turn · tool · mode
+                    </text>
+                    <rect x="58" y="331" width="145" height="22" rx="4" fill="var(--copper-bg)" />
+                    <text
+                      x="130"
+                      y="346"
+                      text-anchor="middle"
+                      fill="var(--copper)"
+                      font-size="10"
+                      font-family="JetBrains Mono"
+                    >
+                      RuntimeMonitorInput
+                    </text>
+                  </g>
+
+                  <g class="flow-item" data-rails="input">
+                    <rect x="42" y="382" width="182" height="118" rx="9" fill="var(--paper)" stroke="var(--copper)" />
+                    <text
+                      x="58"
+                      y="411"
+                      fill="var(--copper)"
+                      font-size="10"
+                      font-family="JetBrains Mono"
+                      font-weight="600"
+                    >
+                      WORKSPACE
+                    </text>
+                    <text x="58" y="436" fill="var(--ink)" font-size="14" font-family="Source Sans 3">
+                      host-owned evidence
+                    </text>
+                    <text x="58" y="457" fill="var(--muted)" font-size="11" font-family="Source Sans 3">
+                      process · cwd · Git · provenance
+                    </text>
+                    <rect x="58" y="469" width="145" height="22" rx="4" fill="var(--copper-bg)" />
+                    <text
+                      x="130"
+                      y="484"
+                      text-anchor="middle"
+                      fill="var(--copper)"
+                      font-size="10"
+                      font-family="JetBrains Mono"
+                    >
+                      WorkspaceObservation
+                    </text>
+                  </g>
+
+                  <g class="flow-item" data-rails="input state notice">
+                    <path
+                      d="M 224 165 H 268 M 224 303 H 268 M 224 441 H 268 M 268 441 V 130 H 292"
+                      fill="none"
+                      stroke="var(--copper)"
+                      stroke-width="2"
+                    />
+                    <circle cx="268" cy="303" r="4" fill="var(--copper)" />
+                  </g>
+
+                  <rect
+                    x="292"
+                    y="46"
+                    width="320"
+                    height="602"
+                    rx="12"
+                    fill="var(--paper)"
+                    stroke="var(--teal)"
+                    stroke-width="2"
+                  />
+                  <text
+                    x="452"
+                    y="76"
+                    text-anchor="middle"
+                    fill="var(--teal)"
+                    font-size="11"
+                    font-family="JetBrains Mono"
+                    letter-spacing="1.2"
+                    font-weight="600"
+                  >
+                    ONE OWNER PER RUNTIME RUN
+                  </text>
+
+                  <g class="flow-item" data-rails="input state notice">
+                    <rect x="316" y="101" width="272" height="58" rx="8" fill="var(--teal-bg)" />
+                    <text
+                      x="452"
+                      y="127"
+                      text-anchor="middle"
+                      fill="var(--teal)"
+                      font-size="14"
+                      font-family="JetBrains Mono"
+                      font-weight="600"
+                    >
+                      AgentMonitorService
+                    </text>
+                    <text
+                      x="452"
+                      y="147"
+                      text-anchor="middle"
+                      fill="var(--muted)"
+                      font-size="11"
+                      font-family="Source Sans 3"
+                    >
+                      validate · correlate run id + epoch
+                    </text>
+                  </g>
+
+                  <g class="flow-item" data-rails="input state notice">
+                    <path
+                      d="M 268 130 H 316"
+                      fill="none"
+                      stroke="var(--copper)"
+                      stroke-width="2"
+                      marker-end="url(#arrow-copper)"
+                    />
+                  </g>
+
+                  <g class="flow-item" data-rails="input state notice">
+                    <rect x="330" y="185" width="244" height="70" rx="8" fill="var(--paper-2)" stroke="var(--line)" />
+                    <text
+                      x="452"
+                      y="212"
+                      text-anchor="middle"
+                      fill="var(--ink)"
+                      font-size="13"
+                      font-family="JetBrains Mono"
+                    >
+                      private accumulator
+                    </text>
+                    <text
+                      x="452"
+                      y="233"
+                      text-anchor="middle"
+                      fill="var(--muted)"
+                      font-size="11"
+                      font-family="Source Sans 3"
+                    >
+                      source-owned facts · watermarks · coverage
+                    </text>
+                  </g>
+
+                  <g class="flow-item" data-rails="input state notice">
+                    <line
+                      x1="452"
+                      y1="159"
+                      x2="452"
+                      y2="185"
+                      stroke="var(--copper)"
+                      stroke-width="2"
+                      marker-end="url(#arrow-copper)"
+                    />
+                    <rect x="330" y="281" width="244" height="70" rx="8" fill="var(--paper-2)" stroke="var(--line)" />
+                    <text
+                      x="452"
+                      y="308"
+                      text-anchor="middle"
+                      fill="var(--ink)"
+                      font-size="13"
+                      font-family="JetBrains Mono"
+                    >
+                      pure reducer
+                    </text>
+                    <text
+                      x="452"
+                      y="329"
+                      text-anchor="middle"
+                      fill="var(--muted)"
+                      font-size="11"
+                      font-family="Source Sans 3"
+                    >
+                      upsert · retract · replace · correction
+                    </text>
+                    <line
+                      x1="452"
+                      y1="255"
+                      x2="452"
+                      y2="281"
+                      stroke="var(--copper)"
+                      stroke-width="2"
+                      marker-end="url(#arrow-copper)"
+                    />
+                  </g>
+
+                  <g class="flow-item" data-rails="state notice">
+                    <rect x="330" y="377" width="244" height="70" rx="8" fill="var(--teal-bg)" stroke="var(--teal)" />
+                    <text
+                      x="452"
+                      y="404"
+                      text-anchor="middle"
+                      fill="var(--teal)"
+                      font-size="13"
+                      font-family="JetBrains Mono"
+                    >
+                      full-state projector
+                    </text>
+                    <text
+                      x="452"
+                      y="425"
+                      text-anchor="middle"
+                      fill="var(--muted)"
+                      font-size="11"
+                      font-family="Source Sans 3"
+                    >
+                      deep freeze · bound · revision on change
+                    </text>
+                    <line
+                      x1="452"
+                      y1="351"
+                      x2="452"
+                      y2="377"
+                      stroke="var(--teal)"
+                      stroke-width="2"
+                      marker-end="url(#arrow-teal)"
+                    />
+                  </g>
+
+                  <g class="flow-item" data-rails="state notice">
+                    <rect x="330" y="473" width="244" height="70" rx="8" fill="var(--paper-2)" stroke="var(--line)" />
+                    <text
+                      x="452"
+                      y="500"
+                      text-anchor="middle"
+                      fill="var(--ink)"
+                      font-size="13"
+                      font-family="JetBrains Mono"
+                    >
+                      publication scheduler
+                    </text>
+                    <text
+                      x="452"
+                      y="521"
+                      text-anchor="middle"
+                      fill="var(--muted)"
+                      font-size="11"
+                      font-family="Source Sans 3"
+                    >
+                      coalesce · leases · rate · freshness
+                    </text>
+                    <line
+                      x1="452"
+                      y1="447"
+                      x2="452"
+                      y2="473"
+                      stroke="var(--teal)"
+                      stroke-width="2"
+                      marker-end="url(#arrow-teal)"
+                    />
+                  </g>
+
+                  <g class="flow-item" data-rails="action">
+                    <rect x="330" y="569" width="244" height="48" rx="8" fill="var(--blue-bg)" stroke="var(--blue)" />
+                    <text
+                      x="452"
+                      y="590"
+                      text-anchor="middle"
+                      fill="var(--blue)"
+                      font-size="11"
+                      font-family="JetBrains Mono"
+                      font-weight="600"
+                    >
+                      BOUNDED COMMAND PORTS
+                    </text>
+                    <text
+                      x="452"
+                      y="607"
+                      text-anchor="middle"
+                      fill="var(--muted)"
+                      font-size="10"
+                      font-family="Source Sans 3"
+                    >
+                      ack failure · read opaque artifact
+                    </text>
+                  </g>
+
+                  <rect x="650" y="46" width="252" height="602" rx="12" fill="var(--paper-2)" stroke="var(--line)" />
+                  <text
+                    x="776"
+                    y="76"
+                    text-anchor="middle"
+                    fill="var(--muted)"
+                    font-size="11"
+                    font-family="JetBrains Mono"
+                    letter-spacing="1.2"
+                  >
+                    DELIVERY
+                  </text>
+
+                  <g class="flow-item" data-rails="state action">
+                    <rect x="674" y="104" width="204" height="92" rx="9" fill="var(--paper)" stroke="var(--teal)" />
+                    <text
+                      x="692"
+                      y="131"
+                      fill="var(--teal)"
+                      font-size="10"
+                      font-family="JetBrains Mono"
+                      font-weight="600"
+                    >
+                      AGENT API
+                    </text>
+                    <text x="692" y="155" fill="var(--ink)" font-size="12" font-family="JetBrains Mono">
+                      .monitor · .status · .alive
+                    </text>
+                    <text x="692" y="176" fill="var(--muted)" font-size="11" font-family="Source Sans 3">
+                      observe · artifact · acknowledge
+                    </text>
+                  </g>
+
+                  <g class="flow-item" data-rails="state notice action">
+                    <rect x="674" y="222" width="204" height="108" rx="9" fill="var(--paper)" stroke="var(--teal)" />
+                    <text
+                      x="692"
+                      y="249"
+                      fill="var(--teal)"
+                      font-size="10"
+                      font-family="JetBrains Mono"
+                      font-weight="600"
+                    >
+                      AgentMonitorHandle
+                    </text>
+                    <text x="692" y="273" fill="var(--ink)" font-size="12" font-family="JetBrains Mono">
+                      states: conflated latest
+                    </text>
+                    <text x="692" y="294" fill="var(--purple)" font-size="12" font-family="JetBrains Mono">
+                      notices: bounded FIFO
+                    </text>
+                    <text x="692" y="315" fill="var(--muted)" font-size="11" font-family="Source Sans 3">
+                      subscribe before current snapshot
+                    </text>
+                  </g>
+
+                  <g class="flow-item" data-rails="state notice">
+                    <rect x="674" y="356" width="204" height="102" rx="9" fill="var(--paper)" stroke="var(--line)" />
+                    <text
+                      x="692"
+                      y="383"
+                      fill="var(--purple)"
+                      font-size="10"
+                      font-family="JetBrains Mono"
+                      font-weight="600"
+                    >
+                      RUNTIME DISCOVERY
+                    </text>
+                    <text x="692" y="407" fill="var(--ink)" font-size="12" font-family="JetBrains Mono">
+                      onMonitorState / Notice
+                    </text>
+                    <text x="692" y="428" fill="var(--ink)" font-size="12" font-family="JetBrains Mono">
+                      onMonitorRemoved
+                    </text>
+                    <text x="692" y="447" fill="var(--muted)" font-size="10" font-family="Source Sans 3">
+                      host-wide discovery, not replay
+                    </text>
+                  </g>
+
+                  <g class="flow-item" data-rails="state notice">
+                    <line
+                      x1="574"
+                      y1="412"
+                      x2="674"
+                      y2="150"
+                      stroke="var(--teal)"
+                      stroke-width="2"
+                      marker-end="url(#arrow-teal)"
+                    />
+                    <line
+                      x1="574"
+                      y1="508"
+                      x2="674"
+                      y2="276"
+                      stroke="var(--teal)"
+                      stroke-width="2"
+                      marker-end="url(#arrow-teal)"
+                    />
+                    <line
+                      x1="574"
+                      y1="522"
+                      x2="674"
+                      y2="407"
+                      stroke="var(--purple)"
+                      stroke-width="2"
+                      marker-end="url(#arrow-purple)"
+                    />
+                  </g>
+
+                  <g class="flow-item" data-rails="action">
+                    <path
+                      d="M 674 586 H 612 H 574"
+                      fill="none"
+                      stroke="var(--blue)"
+                      stroke-width="2"
+                      marker-end="url(#arrow-blue)"
+                    />
+                  </g>
+
+                  <rect
+                    x="940"
+                    y="46"
+                    width="300"
+                    height="670"
+                    rx="12"
+                    fill="var(--paper)"
+                    stroke="var(--purple)"
+                    stroke-width="2"
+                  />
+                  <text
+                    x="1090"
+                    y="76"
+                    text-anchor="middle"
+                    fill="var(--purple)"
+                    font-size="11"
+                    font-family="JetBrains Mono"
+                    letter-spacing="1.2"
+                    font-weight="600"
+                  >
+                    GODVIEW PRODUCT
+                  </text>
+
+                  <g class="flow-item" data-rails="state notice action">
+                    <rect x="964" y="104" width="252" height="82" rx="9" fill="var(--paper-2)" stroke="var(--line)" />
+                    <text
+                      x="982"
+                      y="131"
+                      fill="var(--purple)"
+                      font-size="10"
+                      font-family="JetBrains Mono"
+                      font-weight="600"
+                    >
+                      MAIN · MonitorIpcRelay
+                    </text>
+                    <text x="982" y="153" fill="var(--ink)" font-size="12" font-family="Source Sans 3">
+                      run ↔ terminal routing · tombstones
+                    </text>
+                    <text x="982" y="172" fill="var(--muted)" font-size="10" font-family="Source Sans 3">
+                      reconnect state only; notices not retained
+                    </text>
+                  </g>
+
+                  <g class="flow-item" data-rails="state notice action">
+                    <rect x="964" y="210" width="252" height="62" rx="9" fill="var(--paper-2)" stroke="var(--line)" />
+                    <text
+                      x="982"
+                      y="237"
+                      fill="var(--blue)"
+                      font-size="10"
+                      font-family="JetBrains Mono"
+                      font-weight="600"
+                    >
+                      PRELOAD · contextBridge
+                    </text>
+                    <text x="982" y="258" fill="var(--muted)" font-size="11" font-family="Source Sans 3">
+                      six typed monitor IPC surfaces
+                    </text>
+                  </g>
+
+                  <g class="flow-item" data-rails="state notice">
+                    <rect x="964" y="296" width="252" height="86" rx="9" fill="var(--teal-bg)" stroke="var(--teal)" />
+                    <text
+                      x="982"
+                      y="323"
+                      fill="var(--teal)"
+                      font-size="10"
+                      font-family="JetBrains Mono"
+                      font-weight="600"
+                    >
+                      RENDERER · monitor store
+                    </text>
+                    <text x="982" y="345" fill="var(--ink)" font-size="12" font-family="JetBrains Mono">
+                      epoch / revision / removals
+                    </text>
+                    <text x="982" y="365" fill="var(--muted)" font-size="10" font-family="Source Sans 3">
+                      deep freeze · dedupe · last 4 notices
+                    </text>
+                  </g>
+
+                  <g class="flow-item" data-rails="state notice action">
+                    <rect x="964" y="406" width="252" height="86" rx="9" fill="var(--paper-2)" stroke="var(--line)" />
+                    <text
+                      x="982"
+                      y="433"
+                      fill="var(--purple)"
+                      font-size="10"
+                      font-family="JetBrains Mono"
+                      font-weight="600"
+                    >
+                      useMonitorAgents()
+                    </text>
+                    <text x="982" y="455" fill="var(--ink)" font-size="12" font-family="Source Sans 3">
+                      sessions + terminals + pane attachments
+                    </text>
+                    <text x="982" y="475" fill="var(--muted)" font-size="10" font-family="Source Sans 3">
+                      live-first bootstrap · frame-batched records
+                    </text>
+                  </g>
+
+                  <g class="flow-item" data-rails="state action">
+                    <rect
+                      x="964"
+                      y="516"
+                      width="252"
+                      height="72"
+                      rx="9"
+                      fill="var(--purple-bg)"
+                      stroke="var(--purple)"
+                    />
+                    <text
+                      x="982"
+                      y="543"
+                      fill="var(--purple)"
+                      font-size="10"
+                      font-family="JetBrains Mono"
+                      font-weight="600"
+                    >
+                      MonitorAgent[] + actions
+                    </text>
+                    <text x="982" y="565" fill="var(--ink)" font-size="12" font-family="Source Sans 3">
+                      portable view input · product facets
+                    </text>
+                    <text x="982" y="582" fill="var(--muted)" font-size="10" font-family="Source Sans 3">
+                      select · createAt · parameters
+                    </text>
+                  </g>
+
+                  <g class="flow-item" data-rails="state action">
+                    <rect x="964" y="612" width="76" height="68" rx="8" fill="var(--paper-2)" stroke="var(--teal)" />
+                    <text
+                      x="1002"
+                      y="641"
+                      text-anchor="middle"
+                      fill="var(--teal)"
+                      font-size="10"
+                      font-family="JetBrains Mono"
+                    >
+                      SWARM
+                    </text>
+                    <text
+                      x="1002"
+                      y="660"
+                      text-anchor="middle"
+                      fill="var(--muted)"
+                      font-size="9"
+                      font-family="Source Sans 3"
+                    >
+                      spatial
+                    </text>
+                    <rect x="1052" y="612" width="76" height="68" rx="8" fill="var(--paper-2)" stroke="var(--teal)" />
+                    <text
+                      x="1090"
+                      y="641"
+                      text-anchor="middle"
+                      fill="var(--teal)"
+                      font-size="10"
+                      font-family="JetBrains Mono"
+                    >
+                      LIST
+                    </text>
+                    <text
+                      x="1090"
+                      y="660"
+                      text-anchor="middle"
+                      fill="var(--muted)"
+                      font-size="9"
+                      font-family="Source Sans 3"
+                    >
+                      attention
+                    </text>
+                    <rect x="1140" y="612" width="76" height="68" rx="8" fill="var(--paper-2)" stroke="var(--line)" />
+                    <text
+                      x="1178"
+                      y="641"
+                      text-anchor="middle"
+                      fill="var(--ink)"
+                      font-size="9"
+                      font-family="JetBrains Mono"
+                    >
+                      INSPECT
+                    </text>
+                    <text
+                      x="1178"
+                      y="660"
+                      text-anchor="middle"
+                      fill="var(--muted)"
+                      font-size="9"
+                      font-family="Source Sans 3"
+                    >
+                      active run
+                    </text>
+                  </g>
+
+                  <g class="flow-item" data-rails="state">
+                    <path
+                      d="M 878 276 H 918 V 145 H 964"
+                      fill="none"
+                      stroke="var(--teal)"
+                      stroke-width="2"
+                      marker-end="url(#arrow-teal)"
+                    />
+                    <line
+                      x1="1090"
+                      y1="186"
+                      x2="1090"
+                      y2="210"
+                      stroke="var(--teal)"
+                      stroke-width="2"
+                      marker-end="url(#arrow-teal)"
+                    />
+                    <line
+                      x1="1090"
+                      y1="272"
+                      x2="1090"
+                      y2="296"
+                      stroke="var(--teal)"
+                      stroke-width="2"
+                      marker-end="url(#arrow-teal)"
+                    />
+                    <line
+                      x1="1090"
+                      y1="382"
+                      x2="1090"
+                      y2="406"
+                      stroke="var(--teal)"
+                      stroke-width="2"
+                      marker-end="url(#arrow-teal)"
+                    />
+                    <line
+                      x1="1090"
+                      y1="492"
+                      x2="1090"
+                      y2="516"
+                      stroke="var(--teal)"
+                      stroke-width="2"
+                      marker-end="url(#arrow-teal)"
+                    />
+                    <line
+                      x1="1090"
+                      y1="588"
+                      x2="1090"
+                      y2="612"
+                      stroke="var(--teal)"
+                      stroke-width="2"
+                      marker-end="url(#arrow-teal)"
+                    />
+                  </g>
+
+                  <g class="flow-item" data-rails="notice">
+                    <path
+                      d="M 878 407 H 908 V 116 H 964"
+                      fill="none"
+                      stroke="var(--purple)"
+                      stroke-width="1.5"
+                      stroke-dasharray="3 4"
+                      marker-end="url(#arrow-purple)"
+                    />
+                    <text
+                      x="902"
+                      y="251"
+                      text-anchor="middle"
+                      fill="var(--purple)"
+                      font-size="8"
+                      font-family="JetBrains Mono"
+                      transform="rotate(-90 902 251)"
+                    >
+                      discover · start handle
+                    </text>
+                    <path
+                      d="M 878 300 H 928 V 165 H 964"
+                      fill="none"
+                      stroke="var(--purple)"
+                      stroke-width="2"
+                      stroke-dasharray="5 4"
+                      marker-end="url(#arrow-purple)"
+                    />
+                    <path
+                      d="M 1204 326 H 1227 V 436 H 1216"
+                      fill="none"
+                      stroke="var(--purple)"
+                      stroke-width="2"
+                      stroke-dasharray="5 4"
+                      marker-end="url(#arrow-purple)"
+                    />
+                  </g>
+
+                  <g class="flow-item" data-rails="action">
+                    <path
+                      d="M 1140 680 V 700 H 924 V 250 H 964"
+                      fill="none"
+                      stroke="var(--blue)"
+                      stroke-width="2"
+                      marker-end="url(#arrow-blue)"
+                    />
+                    <path
+                      d="M 964 241 H 924 V 586 H 878"
+                      fill="none"
+                      stroke="var(--blue)"
+                      stroke-width="2"
+                      marker-end="url(#arrow-blue)"
+                    />
+                    <text
+                      x="930"
+                      y="565"
+                      text-anchor="middle"
+                      fill="var(--blue)"
+                      font-size="9"
+                      font-family="JetBrains Mono"
+                      transform="rotate(-90 930 565)"
+                    >
+                      ack / artifact read
+                    </text>
+                  </g>
+                </svg>
+              </div>
+              <figcaption>
+                State, notifications, and commands have different delivery semantics. Account-wide usage is
+                intentionally absent: it is provider-scoped shell chrome, not part of a run’s
+                <span class="mono">AgentMonitorState</span>.
+              </figcaption>
+            </figure>
+
+            <div class="numbered-flow" aria-label="Monitor processing stages">
+              <div class="numbered-step">
+                <b>01</b><strong>Observe</strong><span>Native, runtime, and workspace sources stay independent.</span>
+              </div>
+              <div class="numbered-step">
+                <b>02</b><strong>Normalize</strong><span>Strict provider-neutral family updates enter Core.</span>
+              </div>
+              <div class="numbered-step">
+                <b>03</b><strong>Reduce</strong
+                ><span>Source identity, correction, coverage, and watermarks reconcile.</span>
+              </div>
+              <div class="numbered-step">
+                <b>04</b><strong>Project</strong><span>One bounded, JSON-plain, deeply frozen full snapshot.</span>
+              </div>
+              <div class="numbered-step">
+                <b>05</b><strong>Order</strong
+                ><span>Epoch/revision checks and removal seals reject stale delivery.</span>
+              </div>
+              <div class="numbered-step">
+                <b>06</b><strong>Enrich</strong><span>Godview joins terminal, pane, workspace, and handoff facts.</span>
+              </div>
+              <div class="numbered-step">
+                <b>07</b><strong>Render</strong><span>Pure views choose spatial or attention-first presentation.</span>
+              </div>
+            </div>
+          </section>
+
+          <section id="ownership">
+            <h2>Layer ownership</h2>
+            <p class="section-note">
+              The monitor is a sequence of narrow contracts, not a React feature reaching backward into an agent. Each
+              package owns one concern and the production dependency direction is enforced by repository checks.
+            </p>
+
+            <div class="ownership-stack" aria-label="Monitor package dependency direction">
+              <div class="ownership-node">
+                <b>CORE</b><span>State schema, reducer, projector, ordering, freshness, presentation helpers.</span>
+              </div>
+              <div class="ownership-node">
+                <b>RUNTIME</b><span>Per-run service, host evidence, handle streams, lifecycle, bounded controls.</span>
+              </div>
+              <div class="ownership-node">
+                <b>MONITOR</b><span>Transport-neutral external store, tombstones, notification retention.</span>
+              </div>
+              <div class="ownership-node">
+                <b>REACT</b
+                ><span><span class="mono">useSyncExternalStore</span> hooks and generic view definition.</span>
+              </div>
+              <div class="ownership-node">
+                <b>PRODUCT</b><span>IPC transport, terminal-aware projection, shell chrome, registered views.</span>
+              </div>
+            </div>
+
+            <div class="callout warning">
+              <strong>Dependency nuance.</strong> Runtime and Monitor both consume Core; Monitor does not depend on
+              Runtime. React depends only on Core and Monitor. Godview is the composition point that knows Runtime,
+              Monitor, React, Electron, and Ghosttea.
+            </div>
+
+            <div class="table-wrap">
+              <table>
+                <thead>
+                  <tr>
+                    <th>Owner</th>
+                    <th>Owns</th>
+                    <th>Deliberately does not own</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr>
+                    <td class="route">core</td>
+                    <td><p>Evidence algebra, state meaning, immutable public shape.</p></td>
+                    <td><p>I/O, clocks, React, IPC, product layout.</p></td>
+                  </tr>
+                  <tr>
+                    <td class="route">runtime</td>
+                    <td><p>One monitor service per run, scheduling, Agent controls and streams.</p></td>
+                    <td><p>Concrete adapters, renderer transport, terminal UI.</p></td>
+                  </tr>
+                  <tr>
+                    <td class="route">monitor</td>
+                    <td><p>Full-replacement acceptance, removal epochs, stable external snapshots.</p></td>
+                    <td><p>Where data came from or how a product displays it.</p></td>
+                  </tr>
+                  <tr>
+                    <td class="route">react</td>
+                    <td><p>Store subscriptions and a portable component contract.</p></td>
+                    <td><p>A default visual system, runtime access, IPC, terminal actions.</p></td>
+                  </tr>
+                  <tr>
+                    <td class="route">godview</td>
+                    <td><p>Electron relay, session joins, view registry, shell and inspector.</p></td>
+                    <td><p>Provider mechanics or semantic extraction from terminal text.</p></td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+          </section>
+
+          <section id="runtime-projection">
+            <h2>Runtime projection</h2>
+            <p class="section-note">
+              <span class="mono">AgentMonitorService</span> is both an Agent projection service and the shared source
+              for every per-run handle. It validates semantic batches, translates ordinary normalized events, accepts
+              workspace observations, and publishes only when the public projection changes.
+            </p>
+
+            <div class="type-grid">
+              <article class="type-card">
+                <h3>semantic plane</h3>
+                <p>
+                  Adapter-issued <span class="mono">monitor:batch</span> data with producer epoch, optional sequence,
+                  capabilities, coverage, evidence, and bootstrap/live/correction/resync phase.
+                </p>
+              </article>
+              <article class="type-card">
+                <h3>runtime plane</h3>
+                <p>
+                  Ordinary Agent events translated to monitor updates, plus exact runtime lifecycle and prompt receipts.
+                  Only host evidence can prove process death.
+                </p>
+              </article>
+              <article class="type-card">
+                <h3>workspace plane</h3>
+                <p>
+                  Runtime-owned cwd, Git, worktree, allocation, baseline, finalization, and interference evidence.
+                  Private provenance is not copied wholesale into renderer state.
+                </p>
+              </article>
+            </div>
+
+            <h3>Correction-aware update algebra</h3>
+            <pre><code>type MonitorFamilyUpdate =
+  | { family: MonitorMetricFamily; operation: 'upsert'; key: string; value: MonitorFamilyValue }
+  | { family: MonitorMetricFamily; operation: 'retract'; key: string }
+  | {
+      family: MonitorMetricFamily;
+      operation: 'replace';
+      values: Array&lt;{ key: string; value: MonitorFamilyValue }&gt;;
+      coverage: 'complete' | 'partial' | 'unavailable';
+    };
+
+type MonitorObservationPhase = 'bootstrap' | 'live' | 'correction' | 'resync';</code></pre>
+
+            <h3>Publication policy</h3>
+            <div class="cards">
+              <article class="card">
+                <h3>Ordinary change</h3>
+                <p>Coalesced for 100 ms by default, so bursts produce fewer full-state publications.</p>
+              </article>
+              <article class="card">
+                <h3>Urgent change</h3>
+                <p>
+                  Alive transitions, blocker changes, native-session identity, and readiness barriers flush immediately.
+                </p>
+              </article>
+              <article class="card">
+                <h3>Scheduled truth</h3>
+                <p>
+                  Activity leases, burn-rate windows, and the 30-second freshness boundary trigger clock-owned
+                  projections.
+                </p>
+              </article>
+              <article class="card">
+                <h3>No public change</h3>
+                <p>The projector returns the previous object, preserving reference identity and revision.</p>
+              </article>
+              <article class="card">
+                <h3>Transition notice</h3>
+                <p>
+                  Derived from unbounded before/after projections; bootstrap, correction, resync, and replacement stay
+                  silent.
+                </p>
+              </article>
+              <article class="card">
+                <h3>Terminal failure</h3>
+                <p>
+                  The service can freeze a bounded final public snapshot after releasing provider and scheduler
+                  resources.
+                </p>
+              </article>
+            </div>
+
+            <div class="callout">
+              <strong>Three orthogonal answers.</strong> <span class="mono">agent.lifecycle</span> describes detailed
+              session phases, <span class="mono">agent.alive</span> is host-owned process liveness, and
+              <span class="mono">agent.status</span> is the product-facing idle/working/blocked projection.
+            </div>
+          </section>
+
+          <section id="public-api">
+            <h2>Public monitor API</h2>
+            <p class="section-note">
+              Application code normally starts from the <span class="mono">Agent</span> returned by
+              <span class="mono">spawn()</span>. Host and IPC integrations can use the Runtime-wide lookup and discovery
+              methods. The handle is the race-free, per-consumer streaming surface.
+            </p>
+
+            <pre><code>const result = await runtime.spawn({
+  agent: 'claude',
+  workspace: { mode: 'worktree', path: process.cwd() },
+});
+if ('error' in result) throw new Error(result.error.message);
+
+const agent = result.agent;
+console.log(agent.alive, agent.status, agent.monitor.revision);
+
+const handle = agent.observeMonitor();
+await handle.ready;
+
+void (async () =&gt; {
+  for await (const state of handle.states) renderLatest(state);
+})();
+
+void (async () =&gt; {
+  for await (const notice of handle.notifications) enqueueNotice(notice);
+})();
+
+// Closing this consumer never closes the provider session.
+await handle.close();</code></pre>
+
+            <div class="table-wrap">
+              <table>
+                <thead>
+                  <tr>
+                    <th>Surface</th>
+                    <th>Signature</th>
+                    <th>Meaning</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr>
+                    <td class="route">Agent.alive</td>
+                    <td class="mono">boolean</td>
+                    <td><p>Host-owned process liveness.</p></td>
+                  </tr>
+                  <tr>
+                    <td class="route">Agent.status</td>
+                    <td class="mono">idle | working | blocked</td>
+                    <td><p>Operational projection, not lifecycle or freshness.</p></td>
+                  </tr>
+                  <tr>
+                    <td class="route">Agent.monitor</td>
+                    <td class="mono">AgentMonitorState</td>
+                    <td><p>Current deeply immutable renderer-safe snapshot.</p></td>
+                  </tr>
+                  <tr>
+                    <td class="route">observeMonitor()</td>
+                    <td class="mono">AgentMonitorHandle</td>
+                    <td><p>Race-free state and notification streams for one run.</p></td>
+                  </tr>
+                  <tr>
+                    <td class="route">readMonitorArtifact()</td>
+                    <td class="mono">Promise&lt;MonitorArtifactReadResult&gt;</td>
+                    <td><p>Bounded read through an adapter-issued opaque reference.</p></td>
+                  </tr>
+                  <tr>
+                    <td class="route">acknowledgeFailureBlocker()</td>
+                    <td class="mono">boolean</td>
+                    <td><p>Dismisses a failure blocker; does not answer questions or permissions.</p></td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+
+            <h3>Handle contract</h3>
+            <pre><code>interface AgentMonitorHandle {
+  states: AsyncIterable&lt;AgentMonitorState&gt;;
+  notifications: AsyncIterable&lt;MonitorNotification&gt;;
+  ready: Promise&lt;AgentMonitorState&gt;;
+  current(): AgentMonitorState | undefined;
+  readArtifact(
+    artifactId: string,
+    options?: { maxBytes?: number },
+  ): Promise&lt;MonitorArtifactReadResult&gt;;
+  close(): Promise&lt;void&gt;;
+}</code></pre>
+
+            <div class="cards">
+              <article class="card">
+                <h3>State queue</h3>
+                <p>Conflated: a slow consumer receives the latest full replacement, not every intermediate revision.</p>
+              </article>
+              <article class="card">
+                <h3>Notice queue</h3>
+                <p>
+                  FIFO and bounded. Overflow rejects the iterator with
+                  <span class="mono">MonitorNotificationGapError</span>; resubscribe for current state.
+                </p>
+              </article>
+              <article class="card">
+                <h3>Initial race</h3>
+                <p>
+                  The source subscribes before reading <span class="mono">current()</span>; equal or older snapshots are
+                  rejected.
+                </p>
+              </article>
+            </div>
+
+            <h3>Runtime host surface</h3>
+            <div class="type-grid">
+              <details class="api-card" open>
+                <summary>
+                  <span class="api-title"
+                    ><strong>lookup + stream</strong><span>Current run state and race-free observation</span></span
+                  >
+                </summary>
+                <div class="api-body">
+                  <pre><code>monitorState(runtimeRunId): AgentMonitorState | undefined;
+observeMonitor(runtimeRunId): AgentMonitorHandle;</code></pre>
+                </div>
+              </details>
+              <details class="api-card">
+                <summary>
+                  <span class="api-title"
+                    ><strong>host discovery</strong><span>Global publication and removal callbacks</span></span
+                  >
+                </summary>
+                <div class="api-body">
+                  <pre><code>onMonitorState(listener): () =&gt; void;
+onMonitorNotification(listener): () =&gt; void;
+onMonitorRemoved(listener): () =&gt; void;</code></pre>
+                  <p>Used to discover which per-run handle to start. They are not a reconnect replay log.</p>
+                </div>
+              </details>
+              <details class="api-card">
+                <summary>
+                  <span class="api-title"
+                    ><strong>bounded actions</strong><span>Failure retention and artifact content</span></span
+                  >
+                </summary>
+                <div class="api-body">
+                  <pre><code>acknowledgeFailureBlocker(
+  runtimeRunId,
+  blockerId,
+): Promise&lt;boolean&gt;;
+
+readMonitorArtifact(
+  runtimeRunId,
+  artifactId,
+  options?,
+): Promise&lt;MonitorArtifactReadResult&gt;;</code></pre>
+                </div>
+              </details>
+            </div>
+          </section>
+
+          <section id="store-react">
+            <h2>Transport-neutral store and React bindings</h2>
+            <p class="section-note">
+              <span class="mono">@vibecook/puppeteer-monitor</span> accepts any transport that can list current states
+              and publish state, notification, and removal messages. <span class="mono">@vibecook/puppeteer-react</span>
+              is deliberately thin: four hooks plus generic view props and a view definition.
+            </p>
+
+            <pre><code>const store = createAgentMonitorStore({ notificationCapacity: 4 });
+const connection = connectAgentMonitorStore(store, source);
+await connection.ready;
+
+function MonitorPanel({ runtimeRunId }: { runtimeRunId: string }) {
+  const state = useAgentMonitor(store, runtimeRunId);
+  const notifications = useAgentMonitorNotifications(store);
+  // ...
+}
+
+connection.close();</code></pre>
+
+            <div class="table-wrap">
+              <table>
+                <thead>
+                  <tr>
+                    <th>Store method</th>
+                    <th>Contract</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr>
+                    <td class="route">getSnapshot()</td>
+                    <td>
+                      <p>
+                        Referentially stable <span class="mono">{ states, notifications }</span> until a public
+                        collection changes.
+                      </p>
+                    </td>
+                  </tr>
+                  <tr>
+                    <td class="route">getState(runId)</td>
+                    <td><p>One immutable full state for narrow subscriptions.</p></td>
+                  </tr>
+                  <tr>
+                    <td class="route">subscribe(listener)</td>
+                    <td><p>External-store subscription; listener faults are isolated and optionally reported.</p></td>
+                  </tr>
+                  <tr>
+                    <td class="route">acceptState(s)</td>
+                    <td><p>Accept only a strictly newer epoch/revision; batch publication happens once.</p></td>
+                  </tr>
+                  <tr>
+                    <td class="route">remove(removal)</td>
+                    <td><p>Delete visible state and seal the removal epoch against late messages.</p></td>
+                  </tr>
+                  <tr>
+                    <td class="route">acceptNotification()</td>
+                    <td><p>Deduplicate by run + notification id, retain the configured newest window.</p></td>
+                  </tr>
+                  <tr>
+                    <td class="route">dismissNotification()</td>
+                    <td><p>Remove one retained notice without changing run state.</p></td>
+                  </tr>
+                  <tr>
+                    <td class="route">clear()</td>
+                    <td><p>Clear states, seals, and notifications; publish only when something changed.</p></td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+
+            <h3>React surface</h3>
+            <div class="type-grid">
+              <article class="type-card">
+                <h3>useAgentMonitorStore</h3>
+                <p>Subscribes to the complete stable snapshot.</p>
+              </article>
+              <article class="type-card">
+                <h3>useAgentMonitorStates</h3>
+                <p>Returns the current immutable state collection.</p>
+              </article>
+              <article class="type-card">
+                <h3>useAgentMonitor</h3>
+                <p>Selects one runtime run; unrelated run revisions do not rerender it.</p>
+              </article>
+              <article class="type-card">
+                <h3>useAgentMonitorNotifications</h3>
+                <p>Returns the store’s bounded retained notice collection.</p>
+              </article>
+            </div>
+
+            <h3>Portable view contract</h3>
+            <pre><code>interface AgentMonitorViewProps&lt;Item, Actions, Parameters&gt; {
+  agents: readonly Item[];
+  actions: Actions;
+  parameters: Parameters;
+}
+
+interface AgentMonitorViewDefinition&lt;Item, Actions, Parameters&gt; {
+  readonly id: string;
+  readonly label: string;
+  readonly Component: ComponentType&lt;
+    AgentMonitorViewProps&lt;Item, Actions, Parameters&gt;
+  &gt;;
+}</code></pre>
+
+            <div class="callout">
+              <strong>No blessed UI component.</strong> The React package does not prescribe a card, table, swarm, or
+              status color. It standardizes subscription behavior and the data/actions/parameters seam so products can
+              own their interface without breaking runtime boundaries.
+            </div>
+          </section>
+
+          <section id="godview">
+            <h2>Godview interface design</h2>
+            <p class="section-note">
+              Godview is both a monitor and a terminal workspace. Its shell owns chrome and terminal actions; the active
+              registered view receives only a product projection. The inspector is shell-owned because it follows the
+              currently mounted agent rather than defining another topology view.
+            </p>
+
+            <figure>
+              <div
+                class="ui-shell"
+                role="img"
+                aria-label="Godview shell with header controls, notification feed, monitor stage containing a selected view, account usage overlay and active-agent inspector, followed by terminal panes."
+              >
+                <div class="ui-header">
+                  <div class="ui-brand"><strong>GODVIEW</strong><small>AGENT TOPOLOGY</small></div>
+                  <span class="ui-chip">SWARM ▾</span>
+                  <span class="ui-chip">BLOCK 1 · WORK 2 · IDLE 3</span>
+                  <span class="ui-chip">TUNE · THEME</span>
+                </div>
+                <div class="ui-notice">planning:updated · bounded notification feed ×</div>
+                <div class="ui-stage">
+                  <div class="ui-usage">ACCOUNT USAGE · separate provider rail</div>
+                  <div class="ui-view">
+                    <span class="ui-view-label">REGISTERED MONITOR VIEW</span>
+                    <span class="ui-bubble one">working<br />project A</span>
+                    <span class="ui-bubble two">blocked<br />project B</span>
+                  </div>
+                  <aside class="ui-inspector">
+                    <strong>RUNTIME OBSERVATION</strong>
+                    <span>metrics · model · effort · modes</span>
+                    <span>blockers · questions · failure ack</span>
+                    <span>plan · tasks · actors · team</span>
+                    <span>workflows · artifact preview</span>
+                    <span>environment · readiness · omitted</span>
+                  </aside>
+                </div>
+                <div class="ui-deck">
+                  <div class="ui-terminal">native agent TUI</div>
+                  <div class="ui-terminal">interactive shell</div>
+                  <div class="ui-terminal">mirrored pane</div>
+                </div>
+              </div>
+              <figcaption>
+                The account-usage panel overlays the stage as shell chrome. In Swarm it becomes a Matter.js collision
+                obstacle; flow views clear it using the shell-published chrome height.
+              </figcaption>
+            </figure>
+
+            <h3 id="godview-transport">Main → preload → renderer transport</h3>
+            <p class="section-note">
+              The main process keeps reconnect state in <span class="mono">MonitorIpcRelay</span>, maps stable runtime
+              runs to current terminal sessions, and broadcasts through a narrow preload bridge. The renderer subscribes
+              before concurrently listing sessions and monitor snapshots, so live publications win over stale bootstrap
+              results.
+            </p>
+
+            <div class="table-wrap">
+              <table>
+                <thead>
+                  <tr>
+                    <th>Bridge surface</th>
+                    <th>Direction</th>
+                    <th>Payload / behavior</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr>
+                    <td class="route">listAgentMonitors</td>
+                    <td>renderer → main</td>
+                    <td><p>Sorted reconnect snapshot of relay-held full states.</p></td>
+                  </tr>
+                  <tr>
+                    <td class="route">onAgentMonitorState</td>
+                    <td>main → renderer</td>
+                    <td><p>Run id, nullable terminal id, and full state.</p></td>
+                  </tr>
+                  <tr>
+                    <td class="route">onAgentMonitorNotification</td>
+                    <td>main → renderer</td>
+                    <td><p>Ephemeral transition notice; main intentionally does not retain notices.</p></td>
+                  </tr>
+                  <tr>
+                    <td class="route">onAgentMonitorRemoved</td>
+                    <td>main → renderer</td>
+                    <td><p>Run id, terminal id, and last known epoch/revision seal.</p></td>
+                  </tr>
+                  <tr>
+                    <td class="route">acknowledgeAgentFailure</td>
+                    <td>renderer → main</td>
+                    <td><p>Opaque run/blocker ids; only retained dead failures may be acknowledged.</p></td>
+                  </tr>
+                  <tr>
+                    <td class="route">readAgentMonitorArtifact</td>
+                    <td>renderer → main</td>
+                    <td><p>Opaque run/artifact ids plus explicit byte cap; result is sanitized.</p></td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+
+            <h3>Product projection</h3>
+            <pre><code>interface MonitorAgent {
+  id: string;                 // stable through terminal → agent promotion
+  session: SessionSummary;
+  status: 'idle' | 'working' | 'blocked';
+  project: string;
+  detail: string;
+  color: string;
+  stale?: boolean;            // presentation metadata, not a fourth status
+  active: boolean;
+  attachment?: PaneAttachment;
+  cwd?: string;
+  spawnHint?: { x: number; y: number };
+  agent?: {
+    provider: AgentProviderDescriptor;
+    model?: string;
+    branch?: string;
+    contextWindow?: MonitorContextState;
+    monitor: AgentMonitorState;
+    teamAggregate?: AgentMonitorTeamAggregate;
+    recency: 'fresh' | 'stale' | 'unknown';
+    info: AgentSessionInfo;
+  };
+}</code></pre>
+
+            <div class="callout warning">
+              <strong>Terminal is a facet boundary.</strong> Unclaimed terminals remain visible without inventing an
+              Agent monitor. Agent-backed rows appear only when a canonical monitor state exists. Stable handoff
+              identity preserves view-local placement when an ended agent PTY becomes a live shell.
+            </div>
+
+            <h3 id="godview-views">Registered views</h3>
+            <div class="cards">
+              <article class="card">
+                <h3>swarm</h3>
+                <p>
+                  Matter.js spatial field. Bubbles are draggable and selectable; a 520 ms empty-stage long press creates
+                  a terminal at that point. Agent idle uses the working-size body, working becomes ignited, and blocked
+                  remains blocked.
+                </p>
+              </article>
+              <article class="card">
+                <h3>list</h3>
+                <p>
+                  Non-spatial proof of the same contract. Agent-backed rows precede terminals, then sort blocked →
+                  working → idle and by creation time. It ignores spawn hints and creates terminals without position.
+                </p>
+              </article>
+              <article class="card">
+                <h3>inspector</h3>
+                <p>
+                  Shell-owned detail for the active agent: metrics, blockers and structured questions, tasks, actors,
+                  teams, workflows, artifact previews, environment, readiness, and bounded omissions.
+                </p>
+              </article>
+              <article class="card">
+                <h3>view registry</h3>
+                <p>
+                  A view is one directory and one registry entry. Its component receives
+                  <span class="mono">agents</span>, <span class="mono">actions</span>, and normalized per-view
+                  parameters—never runtime or workspace objects.
+                </p>
+              </article>
+            </div>
+
+            <pre><code>interface MonitorActions {
+  select(agent: MonitorAgent): void;
+  createAt(position?: { x: number; y: number }): void | Promise&lt;void&gt;;
+}
+
+interface AgentMonitorView extends AgentMonitorViewDefinition&lt;
+  MonitorAgent,
+  MonitorActions,
+  MonitorParameters
+&gt; {
+  readonly parameterGroups: readonly MonitorParameterGroup[];
+}
+
+const MONITOR_VIEWS = [swarmMonitorView, listMonitorView];</code></pre>
+          </section>
+
+          <section id="state-contract">
+            <h2>Current state contract</h2>
+            <p class="section-note">
+              This is the complete renderer-facing shape in the current Core source. It includes fields omitted from the
+              older summary in <span class="mono">agent-api.html</span>: effort, modes, team, bounded omission counts,
+              and session identity/timing.
+            </p>
+
+            <pre><code>interface AgentMonitorState {
+  schemaVersion: number;
+  runtimeEpoch: number;
+  revision: number;
+  runtimeRunId: string;
+
+  status: 'idle' | 'working' | 'blocked';
+  statusSince: string;
+  blockers: MonitorBlocker[];
+  activity?: MonitorActivity;
+
+  usage: MonitorUsageState;
+  context?: MonitorContextState;
+  model?: MonitorModelState;
+  effort?: MonitorEffortState;
+  modes: MonitorModesState;
+
+  plan?: MonitorPlanState;
+  tasks: MonitorTaskState[];
+  subagents: MonitorSubagentState[];
+  team?: MonitorTeamState;
+  workflows: MonitorWorkflowState[];
+
+  omitted?: Partial&lt;Record&lt;MonitorBoundedCollection, number&gt;&gt;;
+  compaction: MonitorCompactionState;
+  environment: MonitorEnvironmentState;
+  session: MonitorSessionState;
+  freshness: MonitorFreshnessState;
+  alive: boolean;
+}</code></pre>
+
+            <h3>Metric families</h3>
+            <div class="table-wrap">
+              <table>
+                <thead>
+                  <tr>
+                    <th>Family</th>
+                    <th>Value variants</th>
+                    <th>Public projection</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr>
+                    <td class="route">status</td>
+                    <td>run · activity · interaction · failure</td>
+                    <td><p>Alive, activity, permission/question/failure blockers, three-state status.</p></td>
+                  </tr>
+                  <tr>
+                    <td class="route">usage</td>
+                    <td>usage</td>
+                    <td><p>Run/root/actor totals, samples, token categories, cost, bounded-window burn rate.</p></td>
+                  </tr>
+                  <tr>
+                    <td class="route">context</td>
+                    <td>context</td>
+                    <td><p>Used/capacity/percent and provider/derived/unavailable percentage source.</p></td>
+                  </tr>
+                  <tr>
+                    <td class="route">model</td>
+                    <td>model</td>
+                    <td><p>Effective and configured model with configured/observed intent.</p></td>
+                  </tr>
+                  <tr>
+                    <td class="route">effort</td>
+                    <td>effort</td>
+                    <td><p>Effective and configured effort with evidence intent.</p></td>
+                  </tr>
+                  <tr>
+                    <td class="route">mode</td>
+                    <td>execution · provider-session · provider-permission</td>
+                    <td><p>Runtime execution mode plus raw/normalized provider modes.</p></td>
+                  </tr>
+                  <tr>
+                    <td class="route">planning</td>
+                    <td>plan · task</td>
+                    <td><p>Steps, task lifecycle, actor/team ownership, provisionality.</p></td>
+                  </tr>
+                  <tr>
+                    <td class="route">delegation</td>
+                    <td>actor · affiliation · team · team-member</td>
+                    <td><p>Subagents, current team, teammates, cross-run joins, actor metrics.</p></td>
+                  </tr>
+                  <tr>
+                    <td class="route">workflow</td>
+                    <td>workflow</td>
+                    <td><p>Active state, actor keys, and opaque bounded artifact references.</p></td>
+                  </tr>
+                  <tr>
+                    <td class="route">compaction</td>
+                    <td>compaction</td>
+                    <td><p>Active/provisional state, last outcome and cumulative count.</p></td>
+                  </tr>
+                  <tr>
+                    <td class="route">environment</td>
+                    <td>environment</td>
+                    <td><p>Root cwd, Git state, and bounded worktree paths.</p></td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+
+            <h3>Status and freshness stay separate</h3>
+            <div class="status-grid">
+              <article class="status-card idle">
+                <strong>idle</strong>
+                <p>No projected blocker and no active projected activity. The process may be alive or ended.</p>
+              </article>
+              <article class="status-card working">
+                <strong>working</strong>
+                <p>No blocker and an active projected activity, selected by deterministic priority.</p>
+              </article>
+              <article class="status-card blocked">
+                <strong>blocked</strong>
+                <p>
+                  At least one pending permission/question or active failure. Failure outranks question, then
+                  permission.
+                </p>
+              </article>
+              <article class="status-card freshness">
+                <strong>freshness</strong>
+                <p>
+                  Support, availability, and fresh/stale/unknown recency are metadata; staleness never creates a fourth
+                  status.
+                </p>
+              </article>
+            </div>
+
+            <h3>Bounded public collections</h3>
+            <div class="table-wrap">
+              <table>
+                <thead>
+                  <tr>
+                    <th>Collection</th>
+                    <th>Cap</th>
+                    <th>Collection</th>
+                    <th>Cap</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr>
+                    <td class="route">blockers</td>
+                    <td>64</td>
+                    <td class="route">usageSamples</td>
+                    <td>256</td>
+                  </tr>
+                  <tr>
+                    <td class="route">planSteps</td>
+                    <td>256</td>
+                    <td class="route">tasks</td>
+                    <td>512</td>
+                  </tr>
+                  <tr>
+                    <td class="route">subagents</td>
+                    <td>256</td>
+                    <td class="route">teammates</td>
+                    <td>256</td>
+                  </tr>
+                  <tr>
+                    <td class="route">workflows</td>
+                    <td>128</td>
+                    <td class="route">artifactRefs</td>
+                    <td>32</td>
+                  </tr>
+                  <tr>
+                    <td class="route">workflowActorRunKeys</td>
+                    <td>256</td>
+                    <td class="route">worktrees</td>
+                    <td>256</td>
+                  </tr>
+                  <tr>
+                    <td class="route">questions</td>
+                    <td>64</td>
+                    <td class="route">questionOptions</td>
+                    <td>128</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+
+            <div class="callout">
+              <strong>Visible truncation.</strong> The projector records discarded counts in
+              <span class="mono">state.omitted</span>; the inspector displays them rather than making a bounded snapshot
+              look complete.
+            </div>
+
+            <h3>Transition notifications</h3>
+            <p class="section-note">
+              Notifications are attention hints, not a second source of truth. Current types cover blocker entry, plan
+              and task transitions, subagents, teams, workflows, compaction, cwd/worktrees, and session end.
+            </p>
+            <pre><code>type MonitorNotification = {
+  notificationId: string; // stable from run + input identity + type + entity key
+  runtimeRunId: string;
+  at: string;
+  type:
+    | 'blocked.entered'
+    | 'plan.created' | 'planning:updated'
+    | 'delegation:task-created' | 'delegation:task-completed'
+    | 'delegation:subagent-started' | 'delegation:subagent-stopped'
+    | 'team.observed' | 'team.member-added' | 'team.member-removed' | 'team.member-idle'
+    | 'workflow.started' | 'workflow.completed'
+    | 'compaction:started' | 'compaction:completed'
+    | 'cwd.changed' | 'worktree.created' | 'worktree.removed'
+    | 'session.ended';
+  summary?: string;
+};</code></pre>
+          </section>
+
+          <section id="ordering">
+            <h2>Ordering, removal, and renderer recovery</h2>
+            <p class="section-note">
+              The same strict rule is shared by Core, the main relay, and the renderer store: higher runtime epoch wins;
+              within one epoch, only a higher revision wins. Removal seals an epoch, so late publications cannot
+              resurrect a dead run. A durable identity can return only at a provably newer epoch.
+            </p>
+
+            <pre><code>function isNewerMonitorRevision(candidate, current) {
+  return candidate.runtimeEpoch &gt; current.runtimeEpoch ||
+    (candidate.runtimeEpoch === current.runtimeEpoch &amp;&amp;
+      candidate.revision &gt; current.revision);
+}
+
+function isMonitorStateAfterRemoval(state, sealedEpoch) {
+  return sealedEpoch !== null &amp;&amp; state.runtimeEpoch &gt; sealedEpoch;
+}</code></pre>
+
+            <figure>
+              <div class="diagram sequence-diagram">
+                <svg
+                  viewBox="0 0 1040 455"
+                  role="img"
+                  aria-label="A live revision eight arrives before an older list snapshot revision seven and is retained. Removal seals epoch two and rejects a late revision nine. Explicit reconstruction at epoch three revision one is accepted."
+                >
+                  <defs>
+                    <marker
+                      id="seq-teal"
+                      viewBox="0 0 10 10"
+                      refX="9"
+                      refY="5"
+                      markerWidth="7"
+                      markerHeight="7"
+                      orient="auto"
+                    >
+                      <path d="M 0 0 L 10 5 L 0 10 z" style="fill: var(--teal)" />
+                    </marker>
+                    <marker
+                      id="seq-red"
+                      viewBox="0 0 10 10"
+                      refX="9"
+                      refY="5"
+                      markerWidth="7"
+                      markerHeight="7"
+                      orient="auto"
+                    >
+                      <path d="M 0 0 L 10 5 L 0 10 z" style="fill: var(--red)" />
+                    </marker>
+                    <marker
+                      id="seq-purple"
+                      viewBox="0 0 10 10"
+                      refX="9"
+                      refY="5"
+                      markerWidth="7"
+                      markerHeight="7"
+                      orient="auto"
+                    >
+                      <path d="M 0 0 L 10 5 L 0 10 z" style="fill: var(--purple)" />
+                    </marker>
+                  </defs>
+                  <g font-family="JetBrains Mono" font-size="11" fill="var(--ink)">
+                    <text x="116" y="42" text-anchor="middle">RUNTIME</text>
+                    <text x="332" y="42" text-anchor="middle">MAIN RELAY</text>
+                    <text x="548" y="42" text-anchor="middle">PRELOAD</text>
+                    <text x="764" y="42" text-anchor="middle">RENDERER STORE</text>
+                    <text x="942" y="42" text-anchor="middle">REACT VIEW</text>
+                  </g>
+                  <g stroke="var(--line-strong)" stroke-width="1" stroke-dasharray="4 5">
+                    <line x1="116" y1="60" x2="116" y2="425" />
+                    <line x1="332" y1="60" x2="332" y2="425" />
+                    <line x1="548" y1="60" x2="548" y2="425" />
+                    <line x1="764" y1="60" x2="764" y2="425" />
+                    <line x1="942" y1="60" x2="942" y2="425" />
+                  </g>
+                  <g font-family="Source Sans 3" font-size="11">
+                    <line
+                      x1="764"
+                      y1="82"
+                      x2="548"
+                      y2="82"
+                      stroke="var(--purple)"
+                      stroke-width="2"
+                      marker-end="url(#seq-purple)"
+                    />
+                    <line
+                      x1="548"
+                      y1="100"
+                      x2="332"
+                      y2="100"
+                      stroke="var(--purple)"
+                      stroke-width="2"
+                      marker-end="url(#seq-purple)"
+                    />
+                    <text x="548" y="72" text-anchor="middle" fill="var(--purple)">
+                      list request captures revision 7
+                    </text>
+
+                    <line
+                      x1="116"
+                      y1="138"
+                      x2="332"
+                      y2="138"
+                      stroke="var(--teal)"
+                      stroke-width="2"
+                      marker-end="url(#seq-teal)"
+                    />
+                    <text x="224" y="128" text-anchor="middle" fill="var(--teal)">
+                      live state · epoch 2 / revision 8
+                    </text>
+                    <line
+                      x1="332"
+                      y1="158"
+                      x2="548"
+                      y2="158"
+                      stroke="var(--teal)"
+                      stroke-width="2"
+                      marker-end="url(#seq-teal)"
+                    />
+                    <line
+                      x1="548"
+                      y1="178"
+                      x2="764"
+                      y2="178"
+                      stroke="var(--teal)"
+                      stroke-width="2"
+                      marker-end="url(#seq-teal)"
+                    />
+                    <line
+                      x1="764"
+                      y1="198"
+                      x2="942"
+                      y2="198"
+                      stroke="var(--teal)"
+                      stroke-width="2"
+                      marker-end="url(#seq-teal)"
+                    />
+                    <text x="850" y="189" text-anchor="middle" fill="var(--teal)">publish rev 8</text>
+
+                    <line
+                      x1="332"
+                      y1="226"
+                      x2="548"
+                      y2="226"
+                      stroke="var(--purple)"
+                      stroke-width="2"
+                      marker-end="url(#seq-purple)"
+                    />
+                    <line
+                      x1="548"
+                      y1="246"
+                      x2="764"
+                      y2="246"
+                      stroke="var(--purple)"
+                      stroke-width="2"
+                      marker-end="url(#seq-purple)"
+                    />
+                    <text x="548" y="263" text-anchor="middle" fill="var(--muted)">
+                      delayed epoch 2 / revision 7 → rejected as older
+                    </text>
+
+                    <line
+                      x1="116"
+                      y1="294"
+                      x2="332"
+                      y2="294"
+                      stroke="var(--red)"
+                      stroke-width="2"
+                      marker-end="url(#seq-red)"
+                    />
+                    <text x="224" y="284" text-anchor="middle" fill="var(--red)">remove run · seal epoch 2</text>
+                    <line
+                      x1="332"
+                      y1="314"
+                      x2="764"
+                      y2="314"
+                      stroke="var(--red)"
+                      stroke-width="2"
+                      marker-end="url(#seq-red)"
+                    />
+                    <line
+                      x1="764"
+                      y1="334"
+                      x2="942"
+                      y2="334"
+                      stroke="var(--red)"
+                      stroke-width="2"
+                      marker-end="url(#seq-red)"
+                    />
+                    <text x="850" y="325" text-anchor="middle" fill="var(--red)">state removed</text>
+
+                    <line
+                      x1="116"
+                      y1="366"
+                      x2="764"
+                      y2="366"
+                      stroke="var(--red)"
+                      stroke-width="1.5"
+                      stroke-dasharray="5 4"
+                      marker-end="url(#seq-red)"
+                    />
+                    <text x="440" y="357" text-anchor="middle" fill="var(--red)">
+                      late epoch 2 / revision 9 → rejected by seal
+                    </text>
+
+                    <line
+                      x1="116"
+                      y1="408"
+                      x2="764"
+                      y2="408"
+                      stroke="var(--teal)"
+                      stroke-width="2"
+                      marker-end="url(#seq-teal)"
+                    />
+                    <text x="440" y="398" text-anchor="middle" fill="var(--teal)">
+                      explicit reconstruction · epoch 3 / revision 1
+                    </text>
+                    <line
+                      x1="764"
+                      y1="428"
+                      x2="942"
+                      y2="428"
+                      stroke="var(--teal)"
+                      stroke-width="2"
+                      marker-end="url(#seq-teal)"
+                    />
+                    <text x="850" y="419" text-anchor="middle" fill="var(--teal)">revived</text>
+                  </g>
+                </svg>
+              </div>
+              <figcaption>
+                A removal with unknown epoch uses a null seal. Because later ordering cannot be proven, that store
+                instance will not revive the identity; reconnect from an authoritative source instead.
+              </figcaption>
+            </figure>
+
+            <div class="cards">
+              <article class="card">
+                <h3>Runtime handle</h3>
+                <p>Subscribes before reading current state. State is conflated; notification overflow is explicit.</p>
+              </article>
+              <article class="card">
+                <h3>Main relay</h3>
+                <p>
+                  Retains current reconnect state, up to 2,048 removal tombstones, and a 1,024-id notification dedupe
+                  window.
+                </p>
+              </article>
+              <article class="card">
+                <h3>Renderer store</h3>
+                <p>Deep-freezes accepted JSON trees, seals removals, and exposes stable snapshots to React.</p>
+              </article>
+              <article class="card">
+                <h3>Godview bootstrap</h3>
+                <p>
+                  Installs live listeners first, then lists sessions and monitors in parallel and merges without
+                  overwriting newer data.
+                </p>
+              </article>
+            </div>
+          </section>
+
+          <section id="security">
+            <h2>Trust, safety, and privacy boundaries</h2>
+            <p class="section-note">
+              Monitor state is intended for renderers, but artifact content and renderer-issued actions cross a stronger
+              boundary. Godview validates the sender, treats identities as opaque labels, imposes hard byte limits, and
+              removes provider-authored failure text from unsuccessful reads before returning it to the renderer.
+            </p>
+
+            <div class="cards">
+              <article class="card">
+                <h3>No terminal semantics</h3>
+                <p>
+                  Neither monitor status nor activity is inferred from terminal text. Native hooks/protocols/logs and
+                  explicit host/workspace evidence supply meaning.
+                </p>
+              </article>
+              <article class="card">
+                <h3>Renderer isolation</h3>
+                <p>
+                  Electron main owns Runtime. Preload exposes a narrow <span class="mono">contextBridge</span>; requests
+                  are accepted only from a registered Godview tab.
+                </p>
+              </article>
+              <article class="card">
+                <h3>Opaque identifiers</h3>
+                <p>
+                  Run, blocker, and artifact ids are trimmed labels up to 512 characters—not paths, file URLs, drive
+                  paths, or NUL-bearing values.
+                </p>
+              </article>
+              <article class="card">
+                <h3>Bounded artifacts</h3>
+                <p>
+                  Runtime default is 256 KiB, hard maximum is 1 MiB, and the inspector asks for 64 KiB. Every attempted
+                  read is auditable.
+                </p>
+              </article>
+              <article class="card">
+                <h3>Narrow acknowledgment</h3>
+                <p>
+                  IPC acknowledgment works only for a retained, dead failure blocker. Permission and question blockers
+                  remain owned by the native agent interaction.
+                </p>
+              </article>
+              <article class="card">
+                <h3>Bounded public state</h3>
+                <p>
+                  Collections are deterministically capped and omissions disclosed. Large evidence ledgers and workspace
+                  provenance remain private to the accumulator.
+                </p>
+              </article>
+            </div>
+
+            <div class="callout security">
+              <strong>Workspace detail boundary.</strong> The public environment may include cwd, Git state, and
+              worktree paths. Touched file identities, file contents, fingerprints, and detailed workspace provenance do
+              not enter the monitor snapshot by default; detailed normalized Agent events remain a separate authorized
+              rail.
+            </div>
+
+            <h3>Artifact action path</h3>
+            <pre><code>React inspector
+  → PuppeteerBridge.readAgentMonitorArtifact({ runId, artifactId, maxBytes })
+  → sender + opaque-id + safe-integer + 1 MiB validation
+  → relay confirms the run is currently known
+  → Runtime resolves the projected ArtifactRef
+  → adapter services.artifacts.read(opaqueId, { maxBytes })
+  → returned bytes checked again
+  → audit record
+  → unsuccessful provider message stripped at IPC boundary
+  → React renders content as text in &lt;pre&gt;</code></pre>
+          </section>
+
+          <section id="sources">
+            <h2>Canonical source index</h2>
+            <p class="section-note">
+              The diagram is derived from these current implementation files. Historical monitor plans under
+              <span class="mono">docs/archive/</span> are useful rationale, not the active contract.
+            </p>
+            <div class="source-list">
+              <a class="source-link" href="../packages/core/src/monitor/types.ts"
+                ><strong>core/monitor/types.ts</strong
+                ><span>Public state, notifications, handle and artifact result contracts.</span></a
+              >
+              <a class="source-link" href="../packages/core/src/monitor/internal-types.ts"
+                ><strong>core/monitor/internal-types.ts</strong
+                ><span>Evidence planes, family update algebra, accumulator SPI.</span></a
+              >
+              <a class="source-link" href="../packages/core/src/monitor/project.ts"
+                ><strong>core/monitor/project.ts</strong
+                ><span>Status, metrics, team/workflow/environment and bounded projection.</span></a
+              >
+              <a class="source-link" href="../packages/core/src/monitor/ordering.ts"
+                ><strong>core/monitor/ordering.ts</strong><span>Shared epoch/revision and removal-seal rules.</span></a
+              >
+              <a class="source-link" href="../packages/runtime/src/services/monitor-service.ts"
+                ><strong>runtime/services/monitor-service.ts</strong
+                ><span>Per-run owner, scheduling, publication and bounded commands.</span></a
+              >
+              <a class="source-link" href="../packages/runtime/src/monitor/handle.ts"
+                ><strong>runtime/monitor/handle.ts</strong
+                ><span>Race-free conflated state and FIFO notification streams.</span></a
+              >
+              <a class="source-link" href="../packages/runtime/src/agent.ts"
+                ><strong>runtime/agent.ts</strong
+                ><span>Per-Agent getters, monitor handle, artifact and failure APIs.</span></a
+              >
+              <a class="source-link" href="../packages/monitor/src/store.ts"
+                ><strong>monitor/store.ts</strong><span>Transport-neutral external store and source connector.</span></a
+              >
+              <a class="source-link" href="../packages/react/src/hooks.ts"
+                ><strong>react/hooks.ts</strong
+                ><span>Four <span class="mono">useSyncExternalStore</span> bindings.</span></a
+              >
+              <a class="source-link" href="../packages/react/src/view.ts"
+                ><strong>react/view.ts</strong><span>Portable generic view props and definition.</span></a
+              >
+              <a class="source-link" href="../apps/godview/src/main/monitor-ipc.ts"
+                ><strong>godview/main/monitor-ipc.ts</strong
+                ><span>Relay, tombstones, race-free handles and IPC validation.</span></a
+              >
+              <a class="source-link" href="../apps/godview/src/preload/preload.ts"
+                ><strong>godview/preload/preload.ts</strong
+                ><span>Narrow renderer bridge and typed monitor channels.</span></a
+              >
+              <a class="source-link" href="../apps/godview/src/renderer/main.tsx"
+                ><strong>godview/renderer/main.tsx</strong
+                ><span>Shell composition, status controls, notification feed, view and inspector.</span></a
+              >
+              <a class="source-link" href="../apps/godview/src/renderer/monitor/useMonitorAgents.ts"
+                ><strong>godview/monitor/useMonitorAgents.ts</strong
+                ><span>Live-first renderer bootstrap and combined subscription.</span></a
+              >
+              <a class="source-link" href="../apps/godview/src/renderer/monitor/agents.ts"
+                ><strong>godview/monitor/agents.ts</strong
+                ><span>Pure session/terminal → <span class="mono">MonitorAgent[]</span> projection.</span></a
+              >
+              <a class="source-link" href="../apps/godview/src/renderer/monitor/types.ts"
+                ><strong>godview/monitor/types.ts</strong
+                ><span>Product facets, actions and extended view contract.</span></a
+              >
+              <a class="source-link" href="../apps/godview/src/renderer/monitor/registry.ts"
+                ><strong>godview/monitor/registry.ts</strong
+                ><span>Swarm/list registration and persisted-id fallback.</span></a
+              >
+              <a class="source-link" href="../apps/godview/src/renderer/views/swarm/AgentSwarm.tsx"
+                ><strong>godview/views/swarm/AgentSwarm.tsx</strong
+                ><span>Spatial physics, visual-state mapping, selection and terminal creation.</span></a
+              >
+              <a class="source-link" href="../apps/godview/src/renderer/views/list/AgentList.tsx"
+                ><strong>godview/views/list/AgentList.tsx</strong
+                ><span>Attention-first non-spatial projection of the same view props.</span></a
+              >
+              <a class="source-link" href="../apps/godview/src/renderer/AgentMonitorInspector.tsx"
+                ><strong>godview/AgentMonitorInspector.tsx</strong
+                ><span>Active-run metrics, blockers, teams, artifacts and readiness.</span></a
+              >
+              <a class="source-link" href="rfcs/004-layered-agent-runtime.md"
+                ><strong>RFC 004</strong><span>Accepted layer and presentation-boundary decision.</span></a
+              >
+              <a class="source-link" href="agent-api.html"
+                ><strong>Agent API &amp; Event Catalog</strong
+                ><span>Companion reference for the owning Agent and normalized event rail.</span></a
+              >
+            </div>
+          </section>
+        </main>
+      </div>
+
+      <footer>
+        Derived from the canonical contracts in <span class="mono">packages/core/src/monitor/</span>,
+        <span class="mono">packages/runtime/src/monitor/</span>, <span class="mono">packages/monitor</span>,
+        <span class="mono">packages/react</span>, and the current Godview implementation. Reference date: 2026-09-01.
+      </footer>
+    </div>
+
+    <script>
+      (() => {
+        const root = document.documentElement;
+        const themeButton = document.getElementById('theme-toggle');
+        let storedTheme;
+        try {
+          storedTheme = localStorage.getItem('puppeteer-agent-monitor-theme');
+        } catch {
+          storedTheme = undefined;
+        }
+        if (storedTheme === 'light' || storedTheme === 'dark') root.dataset.theme = storedTheme;
+
+        themeButton.addEventListener('click', () => {
+          const current = root.dataset.theme;
+          const systemDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+          const next = current === 'dark' || (!current && systemDark) ? 'light' : 'dark';
+          root.dataset.theme = next;
+          try {
+            localStorage.setItem('puppeteer-agent-monitor-theme', next);
+          } catch {
+            // File URLs may not expose persistent storage; the in-page theme still changes.
+          }
+        });
+
+        document.querySelectorAll('pre').forEach((pre) => {
+          const button = document.createElement('button');
+          button.type = 'button';
+          button.className = 'copy-button';
+          button.textContent = 'Copy';
+          button.addEventListener('click', async () => {
+            const code = pre.querySelector('code')?.textContent ?? pre.textContent;
+            try {
+              await navigator.clipboard.writeText(code);
+              button.textContent = 'Copied';
+              window.setTimeout(() => (button.textContent = 'Copy'), 1200);
+            } catch {
+              button.textContent = 'Select text';
+            }
+          });
+          pre.appendChild(button);
+        });
+
+        const flowItems = [...document.querySelectorAll('#monitor-flow-diagram .flow-item')];
+        const flowButtons = [...document.querySelectorAll('[data-rail-control]')];
+        const selectRail = (rail) => {
+          flowItems.forEach((item) => {
+            const rails = (item.dataset.rails ?? '').split(/\s+/);
+            item.classList.toggle('is-dim', rail !== 'all' && !rails.includes(rail));
+          });
+          flowButtons.forEach((button) => {
+            const selected = button.dataset.railControl === rail;
+            button.classList.toggle('active', selected);
+            button.setAttribute('aria-pressed', String(selected));
+          });
+        };
+        flowButtons.forEach((button) => button.addEventListener('click', () => selectRail(button.dataset.railControl)));
+
+        const details = [...document.querySelectorAll('details.api-card')];
+        let printOpenState = [];
+        window.addEventListener('beforeprint', () => {
+          printOpenState = details.map((detail) => detail.open);
+          details.forEach((detail) => (detail.open = true));
+        });
+        window.addEventListener('afterprint', () => {
+          details.forEach((detail, index) => (detail.open = printOpenState[index]));
+        });
+      })();
+    </script>
+  </body>
+</html>

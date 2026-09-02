@@ -10,6 +10,7 @@ The repository keeps current decisions, active work, and history in separate pla
 - [`rfcs/003-native-observation-sources.md`](rfcs/003-native-observation-sources.md) assigns live semantic observation to adapters and retires the Spaghetti runtime dependency.
 - [`rfcs/001-evidence-backed-runtime-observation.md`](rfcs/001-evidence-backed-runtime-observation.md) defines the implemented evidence accumulator, three-state monitor, lifecycle, retention, and privacy contract.
 - [`agent-api.html`](agent-api.html) is the visual Agent API and event-flow reference.
+- [`agent-monitor.html`](agent-monitor.html) is the current monitor system diagram and React/Godview interface reference.
 
 ## Current developer guides
 
