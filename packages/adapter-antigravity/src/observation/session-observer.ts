@@ -1,3 +1,4 @@
+import { resolve } from 'node:path';
 import { createAppendOnlyJsonlTail } from '@vibecook/puppeteer-native-observation';
 import type { AgentEvent, AgentEventConfidence, AgentEventSource, AgentEventSourceRef } from '@vibecook/puppeteer-core';
 import { AntigravityTranscriptNormalizer } from '../normalization/pipeline.js';
@@ -31,6 +32,25 @@ export interface AntigravitySessionObserver {
   poll(): Promise<void>;
   stop(): Promise<void>;
 }
+
+interface PromptWaiter {
+  text: string;
+  correlatable: boolean;
+  resolve(result: AntigravityPromptEchoResult): void;
+  timeout: ReturnType<typeof setTimeout>;
+}
+
+interface SessionDiscovery {
+  baseline: Set<string>;
+  waiters: Map<number, PromptWaiter>;
+  boundSessionId?: string;
+}
+
+// Observers sharing a native store must not claim each other's conversations.
+// Each observer remembers claims made during its lifetime, even after the
+// claiming observer stops, so a delayed launch cannot adopt an older peer.
+const discoveriesByRoot = new Map<string, Set<SessionDiscovery>>();
+
 export function createAntigravitySessionObserver(options: {
   root: string;
   location?: AntigravitySessionLocation;
@@ -43,10 +63,7 @@ export function createAntigravitySessionObserver(options: {
   const events = new Set<(event: AntigravityObservedEvent) => void>();
   const errors = new Set<(error: Error) => void>();
   const binds = new Set<(location: AntigravitySessionLocation) => void>();
-  const waiters = new Map<
-    number,
-    { text: string; resolve(result: AntigravityPromptEchoResult): void; timeout: ReturnType<typeof setTimeout> }
-  >();
+  const waiters = new Map<number, PromptWaiter>();
   const baseline = new Set(options.baselineSessionIds ?? []);
   let location = options.location;
   let tail = location
@@ -58,6 +75,15 @@ export function createAntigravitySessionObserver(options: {
   let waiterId = 0,
     stopped = false,
     polling: Promise<void> | undefined;
+  const root = resolve(options.root);
+  const discoveries = discoveriesByRoot.get(root) ?? new Set<SessionDiscovery>();
+  const discovery: SessionDiscovery = { baseline, waiters, boundSessionId: options.location?.sessionId };
+  for (const peer of discoveries) {
+    if (peer.boundSessionId) baseline.add(peer.boundSessionId);
+    if (discovery.boundSessionId) peer.baseline.add(discovery.boundSessionId);
+  }
+  discoveries.add(discovery);
+  discoveriesByRoot.set(root, discoveries);
   const report = (value: unknown) => {
     const error = value instanceof Error ? value : new Error(String(value));
     for (const listener of errors) {
@@ -67,9 +93,13 @@ export function createAntigravitySessionObserver(options: {
     }
   };
   const bind = (next: AntigravitySessionLocation) => {
-    if (location) return;
-    location = next;
+    if (location || stopped || baseline.has(next.sessionId)) return;
     tail = createAppendOnlyJsonlTail(next.transcriptPath, { maxReplayBytes: options.maxReplayBytes });
+    location = next;
+    discovery.boundSessionId = next.sessionId;
+    for (const peer of discoveries) {
+      if (peer !== discovery) peer.baseline.add(next.sessionId);
+    }
     for (const listener of binds) {
       try {
         listener(next);
@@ -80,12 +110,14 @@ export function createAntigravitySessionObserver(options: {
     if (location) return;
     const candidates = (await listAntigravitySessions(options.root)).filter((item) => !baseline.has(item.sessionId));
     if (!candidates.length) return;
-    if (candidates.length === 1) return bind(candidates[0]!);
-    for (const waiter of waiters.values()) {
+    // A newly created file proves only that some process started. Even one
+    // candidate needs a prompt echo before it can identify this terminal.
+    for (const [id, waiter] of waiters) {
+      if (!waiter.correlatable) continue;
       const matches = [];
       for (const candidate of candidates)
         if (await transcriptContainsPrompt(candidate.transcriptPath, waiter.text)) matches.push(candidate);
-      if (matches.length === 1) {
+      if (matches.length === 1 && waiter.correlatable && waiters.get(id) === waiter) {
         bind(matches[0]!);
         return;
       }
@@ -168,7 +200,20 @@ export function createAntigravitySessionObserver(options: {
         if (waiters.delete(id))
           resolve({ matched: false, reason: 'durable Antigravity USER_INPUT confirmation timed out' });
       }, timeoutMs);
-      waiters.set(id, { text, resolve, timeout });
+      const waiter: PromptWaiter = { text, resolve, timeout, correlatable: true };
+      if (!location) {
+        for (const peer of discoveries) {
+          if (peer.boundSessionId) continue;
+          for (const pending of peer.waiters.values()) {
+            if (pending.text !== text) continue;
+            // Identical concurrent submissions cannot identify either launch,
+            // even if one transcript becomes visible before the other.
+            pending.correlatable = false;
+            waiter.correlatable = false;
+          }
+        }
+      }
+      waiters.set(id, waiter);
       return {
         promise,
         cancel() {
@@ -194,6 +239,8 @@ export function createAntigravitySessionObserver(options: {
       events.clear();
       errors.clear();
       binds.clear();
+      discoveries.delete(discovery);
+      if (discoveries.size === 0) discoveriesByRoot.delete(root);
     },
   };
 }

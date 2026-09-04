@@ -478,6 +478,7 @@ export function createAgentRuntime(options: AgentRuntimeOptions): AgentRuntime {
   const preparationCleanups = new Map<string, Promise<void>>();
   const workspaceFinalizations = new WeakMap<Workspace, Promise<RuntimeWorkspaceFinalization>>();
   const inflightCreations = new Map<string, InflightCreation>();
+  const pendingCreations = new Set<Promise<CreateAgentSessionResult | PrepareAgentSessionResult>>();
   const claims = new Map<string, Map<symbol, 'direct' | 'exclusive'>>();
   const listeners = new Set<(terminalSessionId: string, envelope: RuntimeAgentEventEnvelope) => void>();
   const monitorStateListeners = new Set<(state: AgentMonitorState) => void>();
@@ -1085,6 +1086,20 @@ export function createAgentRuntime(options: AgentRuntimeOptions): AgentRuntime {
   }
 
   function beginCreation<T extends CreateAgentSessionResult | PrepareAgentSessionResult>(
+    operation: RuntimeCreationOperation,
+    request: CreateAgentSessionOptions,
+    execute: (run: ManagedRun) => Promise<T>,
+  ): Promise<T> {
+    // Idempotency tracks only requests with creationRequestId. Shutdown must
+    // also wait for anonymous requests, including workspace/provider awaits.
+    const promise = Promise.resolve().then(() => executeCreation(operation, request, execute));
+    pendingCreations.add(promise);
+    const clear = () => pendingCreations.delete(promise);
+    promise.then(clear, clear);
+    return promise;
+  }
+
+  function executeCreation<T extends CreateAgentSessionResult | PrepareAgentSessionResult>(
     operation: RuntimeCreationOperation,
     request: CreateAgentSessionOptions,
     execute: (run: ManagedRun) => Promise<T>,
@@ -2262,6 +2277,10 @@ export function createAgentRuntime(options: AgentRuntimeOptions): AgentRuntime {
           ...lease,
         };
         preparations.set(preparationId, managed);
+        if (disposed) {
+          await destroyUnusedPreparation(managed, 'cancelled', 'runtime-disposal');
+          return preparationFailure('PREPARATION_CANCELLED', 'agent runtime was disposed during preparation', run);
+        }
         return publicInfo;
       });
     },
@@ -2649,6 +2668,7 @@ export function createAgentRuntime(options: AgentRuntimeOptions): AgentRuntime {
     async dispose() {
       if (disposed) return [];
       disposed = true;
+      await Promise.allSettled([...pendingCreations]);
       const pendingAdoptions = [...preparations.values()]
         .filter((preparation) => preparation.status === 'adopting')
         .map((preparation) => preparation.adoption!);

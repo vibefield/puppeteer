@@ -2299,6 +2299,117 @@ describe('createAgentRuntime', () => {
     await execFileAsync('git', ['-C', root, 'worktree', 'prune']);
   });
 
+  it.each([undefined, 'pending-preparation'])(
+    'waits for pending preparation cleanup during shutdown (%s)',
+    async (creationRequestId) => {
+      const root = await mkdtemp(join(tmpdir(), 'puppeteer-runtime-pending-prepare-'));
+      const source = join(root, 'source');
+      await mkdir(source);
+      const workspacesRoot = join(root, 'copies');
+      const recorder = createActionRecorder({ path: join(root, 'own-actions.jsonl') });
+      let release!: () => void;
+      let entered!: () => void;
+      const gate = new Promise<void>((resolve) => (release = resolve));
+      const started = new Promise<void>((resolve) => (entered = resolve));
+      const hooks = { prepareCount: 0, adoptCount: 0, disposeCount: 0 };
+      const provider = preparableProvider('one', hooks);
+      const prepare = provider.prepareSession!;
+      provider.prepareSession = async (options) => {
+        const prepared = await prepare(options);
+        entered();
+        await gate;
+        return prepared;
+      };
+      provider.dispose = vi.fn();
+      const runtime = createAgentRuntime({
+        host,
+        defaultCwd: source,
+        recorder,
+        creationRegistry: createFileCreationRequestRegistry({ directory: join(root, 'registry') }),
+        providers: [provider],
+      });
+      const pending = runtime.prepareSession({
+        agent: 'one',
+        creationRequestId,
+        workspace: { mode: 'copy', workspacesRoot },
+      });
+      let shutdown: ReturnType<typeof runtime.dispose> | undefined;
+      try {
+        await started;
+        let finished = false;
+        shutdown = runtime.dispose().then((result) => {
+          finished = true;
+          return result;
+        });
+        await new Promise((resolve) => setImmediate(resolve));
+        expect(finished).toBe(false);
+        expect(provider.dispose).not.toHaveBeenCalled();
+
+        release();
+        const result = await pending;
+        expect(result).toMatchObject({ error: { code: 'PREPARATION_CANCELLED' } });
+        await shutdown;
+        await runtime.dispose();
+        expect(hooks.disposeCount).toBe(1);
+        expect(provider.dispose).toHaveBeenCalledTimes(1);
+        expect(await readdir(workspacesRoot)).toEqual([]);
+        const finals = (await recorder.read()).filter(
+          (record) => isOwnActionV2(record) && record.type === 'workspace.finalized',
+        );
+        expect(finals).toEqual([
+          expect.objectContaining({ trigger: 'runtime-disposal', cleanupOutcome: 'removed', retained: false }),
+        ]);
+      } finally {
+        release();
+        await pending;
+        await shutdown;
+        await runtime.dispose();
+        await rm(root, { recursive: true, force: true });
+      }
+    },
+  );
+
+  it('waits for an anonymous session creation before disposing its provider', async () => {
+    const root = await mkdtemp(join(tmpdir(), 'puppeteer-runtime-pending-create-'));
+    let release!: () => void;
+    let entered!: () => void;
+    const gate = new Promise<void>((resolve) => (release = resolve));
+    const started = new Promise<void>((resolve) => (entered = resolve));
+    const provider = fakeProvider('one', new Map());
+    const create = provider.createSession;
+    const sessionDispose = vi.fn(async () => undefined);
+    provider.createSession = async (options) => {
+      entered();
+      await gate;
+      return { ...(await create(options)), dispose: sessionDispose };
+    };
+    provider.dispose = vi.fn(() => {
+      expect(sessionDispose).toHaveBeenCalledTimes(1);
+    });
+    const runtime = createAgentRuntime({ host, defaultCwd: root, providers: [provider] });
+    const pending = runtime.createSession({ agent: 'one' });
+    let shutdown: ReturnType<typeof runtime.dispose> | undefined;
+    try {
+      await started;
+      shutdown = runtime.dispose();
+      await new Promise((resolve) => setImmediate(resolve));
+      expect(provider.dispose).not.toHaveBeenCalled();
+      release();
+      const result = await pending;
+      expect(result).not.toHaveProperty('error');
+      await shutdown;
+      expect(sessionDispose).toHaveBeenCalledTimes(1);
+      expect(provider.dispose).toHaveBeenCalledTimes(1);
+      expect(runtime.sessionInfo('one-runtime-1')).toBeUndefined();
+    } finally {
+      release();
+      await pending;
+      await shutdown;
+      await runtime.dispose();
+      await rm(root, { recursive: true, force: true });
+    }
+  });
+
   it('finalizes an active workspace once when the runtime is disposed repeatedly', async () => {
     const root = await makeRepo();
     const recordRoot = await mkdtemp(join(tmpdir(), 'puppeteer-runtime-disposal-records-'));

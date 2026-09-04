@@ -21,7 +21,11 @@ durable, append-only
 `brain/<conversation>/.system_generated/logs/transcript.jsonl` rail. It does
 not parse terminal text, start a parallel print-mode process, modify global
 hook settings, or infer semantics from the SQLite stores. Fresh sessions bind
-to the one newly created transcript; resume uses the explicit
+only after a submitted prompt uniquely matches a new transcript. Concurrent
+observers exclude conversations claimed by their peers; identical overlapping
+submissions remain uncorrelated. A fresh TUI used only through direct keyboard
+input remains unbound until a runtime-submitted prompt can establish the link.
+Resume uses the explicit
 `--conversation <uuid>` contract and begins after the captured replay
 boundary.
 
