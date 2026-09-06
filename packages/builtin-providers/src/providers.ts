@@ -1,9 +1,17 @@
 import { basename } from 'node:path';
-import type { AgentProviderDescriptor } from '@vibecook/puppeteer-core';
+import type {
+  AgentNativeInvocation,
+  AgentNativeInvocationResolution,
+  AgentProfile,
+  AgentProviderDescriptor,
+  ProfileService,
+} from '@vibecook/puppeteer-core';
 import type { AgentProvider } from '@vibecook/puppeteer-runtime';
 import { createAcpSession, type AcpConnector } from '@vibecook/puppeteer-adapter-acp';
 import {
   captureAntigravityContinuationState,
+  createAntigravityDistributionService,
+  createAntigravityProfileService,
   createAntigravityTuiSession,
   normalizeAntigravityNativeInvocation,
   prepareAntigravityTuiSession,
@@ -13,6 +21,8 @@ import {
 } from '@vibecook/puppeteer-adapter-antigravity';
 import {
   createClaudeAccountUsageService,
+  createClaudeDistributionService,
+  createClaudeProfileService,
   captureClaudeContinuationState,
   createClaudeSession,
   normalizeClaudeNativeInvocation,
@@ -23,6 +33,8 @@ import {
 } from '@vibecook/puppeteer-adapter-claude';
 import {
   createCodexAccountUsageService,
+  createCodexDistributionService,
+  createCodexProfileService,
   captureCodexContinuationState,
   createCodexTuiSession,
   normalizeCodexNativeInvocation,
@@ -32,6 +44,8 @@ import {
 } from '@vibecook/puppeteer-adapter-codex';
 import {
   captureCopilotContinuationState,
+  createCopilotDistributionService,
+  createCopilotProfileService,
   createCopilotTuiSession,
   normalizeCopilotNativeInvocation,
   prepareCopilotTuiSession,
@@ -41,6 +55,8 @@ import {
 } from '@vibecook/puppeteer-adapter-copilot';
 import {
   captureGrokContinuationState,
+  createGrokDistributionService,
+  createGrokProfileService,
   createGrokAccountUsageService,
   createGrokBackend,
   normalizeGrokNativeInvocation,
@@ -50,6 +66,8 @@ import {
 } from '@vibecook/puppeteer-adapter-grok';
 import {
   captureKimiContinuationState,
+  createKimiDistributionService,
+  createKimiProfileService,
   createKimiTuiSession,
   normalizeKimiNativeInvocation,
   prepareKimiTuiSession,
@@ -59,6 +77,8 @@ import {
 } from '@vibecook/puppeteer-adapter-kimi';
 import {
   captureOpenCodeContinuationState,
+  createOpenCodeDistributionService,
+  createOpenCodeProfileService,
   createOpenCodeTuiSession,
   normalizeOpenCodeNativeInvocation,
   prepareOpenCodeTuiSession,
@@ -68,6 +88,8 @@ import {
 } from '@vibecook/puppeteer-adapter-opencode';
 import {
   captureHermesContinuationState,
+  createHermesDistributionService,
+  createHermesProfileService,
   createHermesTuiSession,
   normalizeHermesNativeInvocation,
   prepareHermesTuiSession,
@@ -77,6 +99,8 @@ import {
 } from '@vibecook/puppeteer-adapter-hermes';
 import {
   capturePiContinuationState,
+  createPiDistributionService,
+  createPiProfileService,
   createPiTuiSession,
   normalizePiNativeInvocation,
   preparePiTuiSession,
@@ -143,6 +167,41 @@ const BUILTIN_PROVIDER_DESCRIPTORS = {
 } as const satisfies Record<BuiltinAgentKind, AgentProviderDescriptor>;
 
 /**
+ * A selected profile binds exactly like a shell-forwarded launch: the adapter's
+ * own native-invocation normalizer turns the binding variables into native
+ * options, so this composition root never learns which variable a provider
+ * uses or how it maps to a launch option.
+ */
+function withProfileBinding<
+  Options extends { env?: Record<string, string>; appServerEnv?: Record<string, string> },
+  Bound extends Partial<Options>,
+>(
+  providerId: string,
+  cwd: string,
+  profile: AgentProfile | undefined,
+  profiles: ProfileService,
+  normalize: (invocation: AgentNativeInvocation) => AgentNativeInvocationResolution<Bound>,
+  launch: Options | undefined,
+): Options | undefined {
+  if (!profile) return launch;
+  const environment = profiles.bindingEnvironment(profile);
+  if (Object.keys(environment).length === 0) return launch;
+  const resolution = normalize({ providerId, cwd, argv: [], environment, implementation: { kind: 'native' } });
+  if (resolution.status === 'rejected') {
+    throw new Error(`profile ${profile.id} cannot bind ${providerId}: ${resolution.reason}`);
+  }
+  const bound: Partial<Options> = resolution.options ?? {};
+  return {
+    ...launch,
+    ...bound,
+    ...(launch?.env || bound.env ? { env: { ...launch?.env, ...bound.env } } : {}),
+    ...(launch?.appServerEnv || bound.appServerEnv
+      ? { appServerEnv: { ...launch?.appServerEnv, ...bound.appServerEnv } }
+      : {}),
+  } as Options;
+}
+
+/**
  * Construct the built-in providers. All CLI-specific recipes and shared service
  * lifetimes terminate here; callers only see AgentProvider/AgentRuntime.
  */
@@ -158,6 +217,42 @@ export function createBuiltinProviders(options: BuiltinProviderOptions = {}): Ag
     antigravity: executables.antigravity ?? process.env.PUPPETEER_ANTIGRAVITY_BIN,
     copilot: executables.copilot ?? process.env.PUPPETEER_COPILOT_BIN,
     pi: executables.pi ?? process.env.PUPPETEER_PI_BIN,
+  };
+  // Provider-scoped capabilities live for the composition's lifetime, like account usage.
+  const services = {
+    claude: {
+      distribution: createClaudeDistributionService({ executable: resolved.claude }),
+      profiles: createClaudeProfileService(),
+    },
+    codex: {
+      distribution: createCodexDistributionService({ executable: resolved.codex }),
+      profiles: createCodexProfileService(),
+    },
+    grok: {
+      distribution: createGrokDistributionService({ executable: resolved.grok }),
+      profiles: createGrokProfileService(),
+    },
+    kimi: {
+      distribution: createKimiDistributionService({ executable: resolved.kimi }),
+      profiles: createKimiProfileService(),
+    },
+    opencode: {
+      distribution: createOpenCodeDistributionService({ executable: resolved.opencode }),
+      profiles: createOpenCodeProfileService(),
+    },
+    hermes: {
+      distribution: createHermesDistributionService({ executable: resolved.hermes }),
+      profiles: createHermesProfileService(),
+    },
+    antigravity: {
+      distribution: createAntigravityDistributionService({ executable: resolved.antigravity }),
+      profiles: createAntigravityProfileService(),
+    },
+    copilot: {
+      distribution: createCopilotDistributionService({ executable: resolved.copilot }),
+      profiles: createCopilotProfileService(),
+    },
+    pi: { distribution: createPiDistributionService({ executable: resolved.pi }), profiles: createPiProfileService() },
   };
   const claudeLaunchFor = async (
     resume: string | undefined,
@@ -210,6 +305,8 @@ export function createBuiltinProviders(options: BuiltinProviderOptions = {}): Ag
     {
       descriptor: BUILTIN_PROVIDER_DESCRIPTORS.claude,
       executionMode: 'native-tui',
+      distribution: services.claude.distribution,
+      profiles: services.claude.profiles,
       accountUsage: createClaudeAccountUsageService(),
       launch: {
         provider: {
@@ -228,8 +325,15 @@ export function createBuiltinProviders(options: BuiltinProviderOptions = {}): Ag
           restore: (state) => restoreClaudeContinuationState(state, { imposterExecutable: options.imposterExecutable }),
         },
       },
-      async createSession({ cwd, resume, title, host, agentOptions }) {
-        const launch = agentOptions as ClaudeProviderOptions | undefined;
+      async createSession({ cwd, resume, title, host, agentOptions, profile }) {
+        const launch = withProfileBinding(
+          'claude',
+          cwd,
+          profile,
+          services.claude.profiles,
+          normalizeClaudeNativeInvocation,
+          agentOptions as ClaudeProviderOptions | undefined,
+        );
         const { executable, providerVersion } = await claudeLaunchFor(resume, title, launch);
         return createClaudeSession({
           cwd,
@@ -253,8 +357,15 @@ export function createBuiltinProviders(options: BuiltinProviderOptions = {}): Ag
           },
         });
       },
-      async prepareSession({ cwd, resume, title, host, agentOptions }) {
-        const launch = agentOptions as ClaudeProviderOptions | undefined;
+      async prepareSession({ cwd, resume, title, host, agentOptions, profile }) {
+        const launch = withProfileBinding(
+          'claude',
+          cwd,
+          profile,
+          services.claude.profiles,
+          normalizeClaudeNativeInvocation,
+          agentOptions as ClaudeProviderOptions | undefined,
+        );
         const { executable, providerVersion } = await claudeLaunchFor(resume, title, launch);
         const prepared = await prepareClaudeTuiSession({
           cwd,
@@ -286,6 +397,8 @@ export function createBuiltinProviders(options: BuiltinProviderOptions = {}): Ag
     {
       descriptor: BUILTIN_PROVIDER_DESCRIPTORS.codex,
       executionMode: 'native-tui',
+      distribution: services.codex.distribution,
+      profiles: services.codex.profiles,
       accountUsage: createCodexAccountUsageService({ executable: resolved.codex }),
       launch: {
         provider: {
@@ -304,8 +417,15 @@ export function createBuiltinProviders(options: BuiltinProviderOptions = {}): Ag
           restore: (state) => restoreCodexContinuationState(state, { imposterExecutable: options.imposterExecutable }),
         },
       },
-      createSession: ({ cwd, resume, host, agentOptions }) => {
-        const launch = agentOptions as CodexProviderOptions | undefined;
+      createSession: ({ cwd, resume, host, agentOptions, profile }) => {
+        const launch = withProfileBinding(
+          'codex',
+          cwd,
+          profile,
+          services.codex.profiles,
+          normalizeCodexNativeInvocation,
+          agentOptions as CodexProviderOptions | undefined,
+        );
         return createCodexTuiSession({
           cwd,
           resume,
@@ -320,8 +440,15 @@ export function createBuiltinProviders(options: BuiltinProviderOptions = {}): Ag
           appServerEnv: launch?.appServerEnv,
         });
       },
-      async prepareSession({ cwd, resume, host, agentOptions }) {
-        const launch = agentOptions as CodexProviderOptions | undefined;
+      async prepareSession({ cwd, resume, host, agentOptions, profile }) {
+        const launch = withProfileBinding(
+          'codex',
+          cwd,
+          profile,
+          services.codex.profiles,
+          normalizeCodexNativeInvocation,
+          agentOptions as CodexProviderOptions | undefined,
+        );
         return prepareCodexTuiSession({
           cwd,
           resume,
@@ -360,6 +487,8 @@ export function createBuiltinProviders(options: BuiltinProviderOptions = {}): Ag
     {
       descriptor: BUILTIN_PROVIDER_DESCRIPTORS.grok,
       executionMode: 'native-tui',
+      distribution: services.grok.distribution,
+      profiles: services.grok.profiles,
       accountUsage: createGrokAccountUsageService(),
       launch: {
         provider: {
@@ -378,8 +507,15 @@ export function createBuiltinProviders(options: BuiltinProviderOptions = {}): Ag
           restore: (state) => restoreGrokContinuationState(state, { imposterExecutable: options.imposterExecutable }),
         },
       },
-      createSession: ({ cwd, resume, host, agentOptions }) => {
-        const launch = agentOptions as GrokProviderOptions | undefined;
+      createSession: ({ cwd, resume, host, agentOptions, profile }) => {
+        const launch = withProfileBinding(
+          'grok',
+          cwd,
+          profile,
+          services.grok.profiles,
+          normalizeGrokNativeInvocation,
+          agentOptions as GrokProviderOptions | undefined,
+        );
         return grokBackendFor(launch, host).createSession({
           cwd,
           resume,
@@ -392,8 +528,15 @@ export function createBuiltinProviders(options: BuiltinProviderOptions = {}): Ag
           onElicitation: launch?.onElicitation,
         });
       },
-      prepareSession: ({ cwd, resume, host, agentOptions }) => {
-        const launch = agentOptions as GrokProviderOptions | undefined;
+      prepareSession: ({ cwd, resume, host, agentOptions, profile }) => {
+        const launch = withProfileBinding(
+          'grok',
+          cwd,
+          profile,
+          services.grok.profiles,
+          normalizeGrokNativeInvocation,
+          agentOptions as GrokProviderOptions | undefined,
+        );
         return grokBackendFor(launch, host).prepareSession({
           cwd,
           resume,
@@ -414,6 +557,8 @@ export function createBuiltinProviders(options: BuiltinProviderOptions = {}): Ag
     {
       descriptor: BUILTIN_PROVIDER_DESCRIPTORS.kimi,
       executionMode: 'native-tui',
+      distribution: services.kimi.distribution,
+      profiles: services.kimi.profiles,
       launch: {
         provider: {
           ...BUILTIN_PROVIDER_DESCRIPTORS.kimi,
@@ -433,8 +578,15 @@ export function createBuiltinProviders(options: BuiltinProviderOptions = {}): Ag
           restore: (state) => restoreKimiContinuationState(state, { imposterExecutable: options.imposterExecutable }),
         },
       },
-      createSession: ({ cwd, resume, host, agentOptions }) => {
-        const launch = agentOptions as KimiProviderOptions | undefined;
+      createSession: ({ cwd, resume, host, agentOptions, profile }) => {
+        const launch = withProfileBinding(
+          'kimi',
+          cwd,
+          profile,
+          services.kimi.profiles,
+          normalizeKimiNativeInvocation,
+          agentOptions as KimiProviderOptions | undefined,
+        );
         return createKimiTuiSession({
           cwd,
           resume,
@@ -452,8 +604,15 @@ export function createBuiltinProviders(options: BuiltinProviderOptions = {}): Ag
           promptConfirmationTimeoutMs: launch?.promptConfirmationTimeoutMs,
         });
       },
-      prepareSession: ({ cwd, resume, host, agentOptions }) => {
-        const launch = agentOptions as KimiProviderOptions | undefined;
+      prepareSession: ({ cwd, resume, host, agentOptions, profile }) => {
+        const launch = withProfileBinding(
+          'kimi',
+          cwd,
+          profile,
+          services.kimi.profiles,
+          normalizeKimiNativeInvocation,
+          agentOptions as KimiProviderOptions | undefined,
+        );
         return prepareKimiTuiSession({
           cwd,
           resume,
@@ -475,13 +634,15 @@ export function createBuiltinProviders(options: BuiltinProviderOptions = {}): Ag
     {
       descriptor: BUILTIN_PROVIDER_DESCRIPTORS.opencode,
       executionMode: 'native-tui',
+      distribution: services.opencode.distribution,
+      profiles: services.opencode.profiles,
       launch: {
         provider: {
           ...BUILTIN_PROVIDER_DESCRIPTORS.opencode,
           resume: true,
           nativeInvocation: {
             commands: [{ name: 'opencode', executable: resolved.opencode ?? 'opencode' }],
-            environmentVariables: [],
+            environmentVariables: ['XDG_DATA_HOME'],
             imposter: { state: 'isolated-root' },
           },
         },
@@ -493,8 +654,15 @@ export function createBuiltinProviders(options: BuiltinProviderOptions = {}): Ag
             restoreOpenCodeContinuationState(state, { imposterExecutable: options.imposterExecutable }),
         },
       },
-      createSession: ({ cwd, resume, title, host, agentOptions }) => {
-        const launch = agentOptions as OpenCodeProviderOptions | undefined;
+      createSession: ({ cwd, resume, title, host, agentOptions, profile }) => {
+        const launch = withProfileBinding(
+          'opencode',
+          cwd,
+          profile,
+          services.opencode.profiles,
+          normalizeOpenCodeNativeInvocation,
+          agentOptions as OpenCodeProviderOptions | undefined,
+        );
         return createOpenCodeTuiSession({
           cwd,
           resume,
@@ -512,8 +680,15 @@ export function createBuiltinProviders(options: BuiltinProviderOptions = {}): Ag
           reconnectDelayMs: launch?.reconnectDelayMs,
         });
       },
-      prepareSession: ({ cwd, resume, title, host, agentOptions }) => {
-        const launch = agentOptions as OpenCodeProviderOptions | undefined;
+      prepareSession: ({ cwd, resume, title, host, agentOptions, profile }) => {
+        const launch = withProfileBinding(
+          'opencode',
+          cwd,
+          profile,
+          services.opencode.profiles,
+          normalizeOpenCodeNativeInvocation,
+          agentOptions as OpenCodeProviderOptions | undefined,
+        );
         return prepareOpenCodeTuiSession({
           cwd,
           resume,
@@ -535,6 +710,8 @@ export function createBuiltinProviders(options: BuiltinProviderOptions = {}): Ag
     {
       descriptor: BUILTIN_PROVIDER_DESCRIPTORS.antigravity,
       executionMode: 'native-tui',
+      distribution: services.antigravity.distribution,
+      profiles: services.antigravity.profiles,
       launch: {
         provider: {
           ...BUILTIN_PROVIDER_DESCRIPTORS.antigravity,
@@ -556,8 +733,15 @@ export function createBuiltinProviders(options: BuiltinProviderOptions = {}): Ag
             restoreAntigravityContinuationState(state, { imposterExecutable: options.imposterExecutable }),
         },
       },
-      createSession: ({ cwd, resume, host, agentOptions }) => {
-        const launch = agentOptions as AntigravityProviderOptions | undefined;
+      createSession: ({ cwd, resume, host, agentOptions, profile }) => {
+        const launch = withProfileBinding(
+          'antigravity',
+          cwd,
+          profile,
+          services.antigravity.profiles,
+          normalizeAntigravityNativeInvocation,
+          agentOptions as AntigravityProviderOptions | undefined,
+        );
         return createAntigravityTuiSession({
           cwd,
           resume,
@@ -579,8 +763,15 @@ export function createBuiltinProviders(options: BuiltinProviderOptions = {}): Ag
           promptConfirmationTimeoutMs: launch?.promptConfirmationTimeoutMs,
         });
       },
-      prepareSession: ({ cwd, resume, host, agentOptions }) => {
-        const launch = agentOptions as AntigravityProviderOptions | undefined;
+      prepareSession: ({ cwd, resume, host, agentOptions, profile }) => {
+        const launch = withProfileBinding(
+          'antigravity',
+          cwd,
+          profile,
+          services.antigravity.profiles,
+          normalizeAntigravityNativeInvocation,
+          agentOptions as AntigravityProviderOptions | undefined,
+        );
         return prepareAntigravityTuiSession({
           cwd,
           resume,
@@ -606,6 +797,8 @@ export function createBuiltinProviders(options: BuiltinProviderOptions = {}): Ag
     {
       descriptor: BUILTIN_PROVIDER_DESCRIPTORS.copilot,
       executionMode: 'native-tui',
+      distribution: services.copilot.distribution,
+      profiles: services.copilot.profiles,
       launch: {
         provider: {
           ...BUILTIN_PROVIDER_DESCRIPTORS.copilot,
@@ -624,8 +817,15 @@ export function createBuiltinProviders(options: BuiltinProviderOptions = {}): Ag
             restoreCopilotContinuationState(state, { imposterExecutable: options.imposterExecutable }),
         },
       },
-      createSession: ({ cwd, resume, title, host, agentOptions }) => {
-        const launch = agentOptions as CopilotProviderOptions | undefined;
+      createSession: ({ cwd, resume, title, host, agentOptions, profile }) => {
+        const launch = withProfileBinding(
+          'copilot',
+          cwd,
+          profile,
+          services.copilot.profiles,
+          normalizeCopilotNativeInvocation,
+          agentOptions as CopilotProviderOptions | undefined,
+        );
         return createCopilotTuiSession({
           cwd,
           resume,
@@ -645,8 +845,15 @@ export function createBuiltinProviders(options: BuiltinProviderOptions = {}): Ag
           promptConfirmationTimeoutMs: launch?.promptConfirmationTimeoutMs,
         });
       },
-      prepareSession: ({ cwd, resume, title, host, agentOptions }) => {
-        const launch = agentOptions as CopilotProviderOptions | undefined;
+      prepareSession: ({ cwd, resume, title, host, agentOptions, profile }) => {
+        const launch = withProfileBinding(
+          'copilot',
+          cwd,
+          profile,
+          services.copilot.profiles,
+          normalizeCopilotNativeInvocation,
+          agentOptions as CopilotProviderOptions | undefined,
+        );
         return prepareCopilotTuiSession({
           cwd,
           resume,
@@ -670,6 +877,8 @@ export function createBuiltinProviders(options: BuiltinProviderOptions = {}): Ag
     {
       descriptor: BUILTIN_PROVIDER_DESCRIPTORS.pi,
       executionMode: 'native-tui',
+      distribution: services.pi.distribution,
+      profiles: services.pi.profiles,
       launch: {
         provider: {
           ...BUILTIN_PROVIDER_DESCRIPTORS.pi,
@@ -687,8 +896,15 @@ export function createBuiltinProviders(options: BuiltinProviderOptions = {}): Ag
           restore: (state) => restorePiContinuationState(state, { imposterExecutable: options.imposterExecutable }),
         },
       },
-      createSession: ({ cwd, resume, title, host, agentOptions }) => {
-        const launch = agentOptions as PiProviderOptions | undefined;
+      createSession: ({ cwd, resume, title, host, agentOptions, profile }) => {
+        const launch = withProfileBinding(
+          'pi',
+          cwd,
+          profile,
+          services.pi.profiles,
+          normalizePiNativeInvocation,
+          agentOptions as PiProviderOptions | undefined,
+        );
         return createPiTuiSession({
           cwd,
           resume,
@@ -705,8 +921,15 @@ export function createBuiltinProviders(options: BuiltinProviderOptions = {}): Ag
           maxReplayBytes: launch?.maxReplayBytes,
         });
       },
-      prepareSession: ({ cwd, resume, title, host, agentOptions }) => {
-        const launch = agentOptions as PiProviderOptions | undefined;
+      prepareSession: ({ cwd, resume, title, host, agentOptions, profile }) => {
+        const launch = withProfileBinding(
+          'pi',
+          cwd,
+          profile,
+          services.pi.profiles,
+          normalizePiNativeInvocation,
+          agentOptions as PiProviderOptions | undefined,
+        );
         return preparePiTuiSession({
           cwd,
           resume,
@@ -727,6 +950,8 @@ export function createBuiltinProviders(options: BuiltinProviderOptions = {}): Ag
     {
       descriptor: BUILTIN_PROVIDER_DESCRIPTORS.hermes,
       executionMode: 'native-tui',
+      distribution: services.hermes.distribution,
+      profiles: services.hermes.profiles,
       launch: {
         provider: {
           ...BUILTIN_PROVIDER_DESCRIPTORS.hermes,
@@ -745,8 +970,15 @@ export function createBuiltinProviders(options: BuiltinProviderOptions = {}): Ag
           restore: restoreHermesContinuationState,
         },
       },
-      createSession: ({ cwd, resume, host, agentOptions }) => {
-        const launch = agentOptions as HermesProviderOptions | undefined;
+      createSession: ({ cwd, resume, host, agentOptions, profile }) => {
+        const launch = withProfileBinding(
+          'hermes',
+          cwd,
+          profile,
+          services.hermes.profiles,
+          normalizeHermesNativeInvocation,
+          agentOptions as HermesProviderOptions | undefined,
+        );
         return createHermesTuiSession({
           cwd,
           resume,
@@ -760,8 +992,15 @@ export function createBuiltinProviders(options: BuiltinProviderOptions = {}): Ag
           promptConfirmationTimeoutMs: launch?.promptConfirmationTimeoutMs,
         });
       },
-      prepareSession: ({ cwd, resume, host, agentOptions }) => {
-        const launch = agentOptions as HermesProviderOptions | undefined;
+      prepareSession: ({ cwd, resume, host, agentOptions, profile }) => {
+        const launch = withProfileBinding(
+          'hermes',
+          cwd,
+          profile,
+          services.hermes.profiles,
+          normalizeHermesNativeInvocation,
+          agentOptions as HermesProviderOptions | undefined,
+        );
         return prepareHermesTuiSession({
           cwd,
           resume,

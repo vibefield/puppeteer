@@ -35,6 +35,7 @@
   "observedOrControlledEvents": [
     "account/chatgptAuthTokens/refresh",
     "account/rateLimits/read",
+    "account/read",
     "applyPatchApproval",
     "attestation/generate",
     "currentTime/read",
@@ -55,13 +56,13 @@
     "turn/start"
   ],
   "unmapped": {
-    "count": 198,
-    "sha256": "985f4f03be64751f033ba1afbf47b058ed0ae877a493f716f109a8455745c8fa",
+    "count": 197,
+    "sha256": "89de76d07580603b415f7339400ae00ddbdd64cee888bd1eff11f61406d5e240",
     "policy": "Not consumed by this adapter version. They remain provider-native ground truth and require explicit review when this lock changes."
   },
   "totals": {
     "groundTruth": 244,
     "semantic": 26,
-    "observedOrControlled": 20
+    "observedOrControlled": 21
   }
 }

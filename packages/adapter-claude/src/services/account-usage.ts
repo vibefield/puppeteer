@@ -1,4 +1,5 @@
 import { execFile } from 'node:child_process';
+import { createHash } from 'node:crypto';
 import { readFile } from 'node:fs/promises';
 import { homedir } from 'node:os';
 import { join } from 'node:path';
@@ -11,6 +12,7 @@ import type {
   AccountUsageService,
   AccountUsageSnapshot,
   AccountUsageSource,
+  AgentProfile,
 } from '@vibecook/puppeteer-core';
 
 export const CLAUDE_USAGE_ENDPOINT = 'https://api.anthropic.com/api/oauth/usage';
@@ -21,6 +23,23 @@ export const CLAUDE_OAUTH_CLIENT_ID = '9d1c250a-e61b-44d9-88ed-5944d1962f5e';
 export const CLAUDE_OAUTH_TOKEN_ENDPOINT = 'https://platform.claude.com/v1/oauth/token';
 
 const KEYCHAIN_SERVICE = 'Claude Code-credentials';
+
+/**
+ * Keychain service name for one Claude Code config root.
+ *
+ * Probed 2026-09-06 on Claude Code 2.1.263 (RFC 006 "Resolved questions" §1):
+ * the binary uses the bare service name when `CLAUDE_CONFIG_DIR` is unset and
+ * `Claude Code-credentials-<sha256(configDir, NFC).hex[0:8]>` when it is set, so
+ * a process bound to a profile root reads that profile's item and no other.
+ * Pass no root for the native default; pass the managed root otherwise.
+ */
+export function claudeKeychainService(dataRoot?: string): string {
+  const root = dataRoot?.trim();
+  if (!root) return KEYCHAIN_SERVICE;
+  const digest = createHash('sha256').update(root.normalize('NFC'), 'utf8').digest('hex').slice(0, 8);
+  return `${KEYCHAIN_SERVICE}-${digest}`;
+}
+
 /** Older Claude Code installs used `unknown`; current installs use the macOS username. */
 const KEYCHAIN_ACCOUNT_FALLBACKS = ['unknown'] as const;
 /** Refresh slightly before the stored expiry so we never ship a near-dead access token. */
@@ -121,12 +140,11 @@ function keychainAccountCandidates(env: NodeJS.ProcessEnv = process.env): string
   return [...new Set([...preferred, ...KEYCHAIN_ACCOUNT_FALLBACKS])];
 }
 
-async function readKeychainPayloadForAccount(account: string): Promise<string> {
-  const { stdout } = await execFileAsync(
-    'security',
-    ['find-generic-password', '-s', KEYCHAIN_SERVICE, '-a', account, '-w'],
-    { timeout: 5_000, maxBuffer: 1024 * 1024 },
-  );
+async function readKeychainPayloadForAccount(service: string, account: string): Promise<string> {
+  const { stdout } = await execFileAsync('security', ['find-generic-password', '-s', service, '-a', account, '-w'], {
+    timeout: 5_000,
+    maxBuffer: 1024 * 1024,
+  });
   return stdout;
 }
 
@@ -135,7 +153,10 @@ async function readKeychainPayloadForAccount(account: string): Promise<string> {
  * (current installs use the macOS username; older ones used `unknown`). Prefer
  * the freshest document that still contains an access token.
  */
-async function defaultKeychainPayload(env: NodeJS.ProcessEnv = process.env): Promise<string> {
+async function defaultKeychainPayload(
+  env: NodeJS.ProcessEnv = process.env,
+  service: string = KEYCHAIN_SERVICE,
+): Promise<string> {
   let best:
     | {
         payload: string;
@@ -162,13 +183,13 @@ async function defaultKeychainPayload(env: NodeJS.ProcessEnv = process.env): Pro
   let rank = 0;
   for (const account of keychainAccountCandidates(env)) {
     try {
-      consider(await readKeychainPayloadForAccount(account), rank++);
+      consider(await readKeychainPayloadForAccount(service, account), rank++);
     } catch {
       // Try the next account.
     }
   }
   try {
-    const { stdout } = await execFileAsync('security', ['find-generic-password', '-s', KEYCHAIN_SERVICE, '-w'], {
+    const { stdout } = await execFileAsync('security', ['find-generic-password', '-s', service, '-w'], {
       timeout: 5_000,
       maxBuffer: 1024 * 1024,
     });
@@ -184,6 +205,8 @@ async function defaultKeychainPayload(env: NodeJS.ProcessEnv = process.env): Pro
 export interface ClaudeCredentialOptions {
   env?: NodeJS.ProcessEnv;
   credentialsPath?: string;
+  /** Keychain service name; defaults to the native-default item. See {@link claudeKeychainService}. */
+  keychainService?: string;
   /** Defaults to true on macOS after file lookup fails. */
   useKeychain?: boolean;
   /** Test seam for a read-only credential lookup. */
@@ -214,7 +237,11 @@ async function loadClaudeCredentialDocument(
   try {
     const read =
       options.readKeychainPayload ??
-      ((() => defaultKeychainPayload(options.env ?? process.env)) as () => Promise<string | { payload: string }>);
+      ((() =>
+        defaultKeychainPayload(
+          options.env ?? process.env,
+          options.keychainService ?? KEYCHAIN_SERVICE,
+        )) as () => Promise<string | { payload: string }>);
     const loaded = await read();
     const payload = typeof loaded === 'string' ? loaded : loaded.payload;
     const document = rec(JSON.parse(payload));
@@ -721,11 +748,53 @@ export async function fetchClaudeAccountUsage(
   });
 }
 
+/**
+ * Credential lookup bound to one profile root.
+ *
+ * A managed profile launches Claude Code with `CLAUDE_CONFIG_DIR`, so its
+ * credentials live in that root's file store and under that root's Keychain
+ * service name. The ambient token overrides are dropped for managed profiles:
+ * they belong to whichever account the shell is logged into and would otherwise
+ * report the wrong account's usage under a profile's label.
+ */
+function credentialOptionsForProfile(profile: AgentProfile | undefined): ClaudeCredentialOptions {
+  if (!profile || profile.kind !== 'managed') return {};
+  const env = { ...process.env };
+  delete env.CLAUDE_CODE_OAUTH_TOKEN;
+  delete env.CLAUDE_ACCESS_TOKEN;
+  delete env.CLAUDE_CONFIG_DIR;
+  return {
+    env,
+    credentialsPath: join(profile.dataRoot, '.credentials.json'),
+    keychainService: claudeKeychainService(profile.dataRoot),
+  };
+}
+
+/** @internal Use `fetchClaudeAccountUsageForProfile` outside adapter tests. */
+export async function fetchClaudeAccountUsageForProfileWithDependencies(
+  profile: AgentProfile | undefined,
+  options: FetchClaudeAccountUsageDependencies = {},
+): Promise<AccountUsageFetchResult> {
+  const result = await fetchClaudeAccountUsageWithDependencies({ ...options, ...credentialOptionsForProfile(profile) });
+  if (!profile || result.status !== 'available') return result;
+  return { ...result, snapshot: { ...result.snapshot, profileId: profile.id } };
+}
+
+/** Read Claude account usage for the native default account, or for one profile's root. */
+export async function fetchClaudeAccountUsageForProfile(
+  profile?: AgentProfile,
+  options: FetchClaudeAccountUsageOptions = {},
+): Promise<AccountUsageFetchResult> {
+  return fetchClaudeAccountUsageForProfileWithDependencies(profile, {
+    ...(options.timeoutMs !== undefined ? { timeoutMs: options.timeoutMs } : {}),
+  });
+}
+
 /** Complete account-usage capability advertised by the Claude adapter. */
 export function createClaudeAccountUsageService(): AccountUsageService {
   return {
     provider: CLAUDE_ACCOUNT_USAGE_PROVIDER,
-    fetch: () => fetchClaudeAccountUsage(),
+    fetch: (options) => fetchClaudeAccountUsageForProfile(options?.profile),
     subscribe: (listener) => onClaudeAccountUsage(listener),
   };
 }

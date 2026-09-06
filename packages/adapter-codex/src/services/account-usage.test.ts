@@ -1,5 +1,11 @@
 import { describe, expect, it } from 'vitest';
-import { createCodexAccountUsageService, fetchCodexAccountUsage, normalizeCodexAccountUsage } from './account-usage.js';
+import {
+  createCodexAccountUsageService,
+  fetchCodexAccountUsage,
+  fetchCodexAccountUsageForProfile,
+  normalizeCodexAccountUsage,
+} from './account-usage.js';
+import type { AgentProfile } from '@vibecook/puppeteer-core';
 import type { Transport } from '../transport/app-server-client.js';
 
 const fixture = {
@@ -229,5 +235,76 @@ describe('Codex account usage', () => {
     });
     expect(scripted.sent).toEqual([]);
     expect(scripted.closed()).toBe(true);
+  });
+});
+
+describe('Codex account usage per profile', () => {
+  const managed: AgentProfile = {
+    id: 'codex:7a10',
+    provider: 'codex',
+    label: 'Work',
+    kind: 'managed',
+    dataRoot: '/Users/test/.puppeteer/profiles/codex/7a10',
+    createdAt: '2026-09-06T00:00:00.000Z',
+  };
+  const nativeDefault: AgentProfile = { ...managed, id: 'codex:native-default', kind: 'native-default' };
+
+  function recordingSpawn(): {
+    spawnTransport: (options: { executable?: string; env?: Record<string, string> }) => Transport;
+    spawns: Array<{ executable?: string; env?: Record<string, string> }>;
+  } {
+    const spawns: Array<{ executable?: string; env?: Record<string, string> }> = [];
+    return {
+      spawns,
+      spawnTransport(options) {
+        spawns.push(options);
+        return scriptedTransport((request) => ({
+          jsonrpc: '2.0',
+          id: request.id,
+          result: request.method === 'account/rateLimits/read' ? fixture : {},
+        })).transport;
+      },
+    };
+  }
+
+  it('binds the app-server to the profile root and stamps the profile id', async () => {
+    const spawn = recordingSpawn();
+    const result = await fetchCodexAccountUsageForProfile(managed, { spawnTransport: spawn.spawnTransport });
+
+    expect(result).toMatchObject({ status: 'available' });
+    if (result.status !== 'available') return;
+    expect(result.snapshot.profileId).toBe('codex:7a10');
+    expect(spawn.spawns).toEqual([{ env: { CODEX_HOME: '/Users/test/.puppeteer/profiles/codex/7a10' } }]);
+  });
+
+  it('reads the native default account without a binding', async () => {
+    const spawn = recordingSpawn();
+    const result = await fetchCodexAccountUsageForProfile(nativeDefault, { spawnTransport: spawn.spawnTransport });
+
+    expect(result).toMatchObject({ status: 'available' });
+    if (result.status !== 'available') return;
+    expect(result.snapshot.profileId).toBe('codex:native-default');
+    expect(spawn.spawns).toEqual([{}]);
+  });
+
+  it('leaves a snapshot unstamped when no profile was selected', async () => {
+    const spawn = recordingSpawn();
+    const result = await fetchCodexAccountUsageForProfile(undefined, { spawnTransport: spawn.spawnTransport });
+
+    expect(result).toMatchObject({ status: 'available' });
+    if (result.status !== 'available') return;
+    expect(result.snapshot.profileId).toBeUndefined();
+    expect(spawn.spawns).toEqual([{}]);
+  });
+
+  it('routes the service fetch through the selected profile', async () => {
+    const spawn = recordingSpawn();
+    const service = createCodexAccountUsageService({ spawnTransport: spawn.spawnTransport });
+    const result = await service.fetch({ profile: managed });
+
+    expect(result).toMatchObject({ status: 'available' });
+    if (result.status !== 'available') return;
+    expect(result.snapshot.profileId).toBe('codex:7a10');
+    expect(spawn.spawns).toEqual([{ env: { CODEX_HOME: '/Users/test/.puppeteer/profiles/codex/7a10' } }]);
   });
 });

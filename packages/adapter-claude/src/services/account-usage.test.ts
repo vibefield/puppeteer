@@ -6,7 +6,9 @@ import {
   CLAUDE_OAUTH_BETA,
   CLAUDE_USAGE_ENDPOINT,
   claudeAccountUsageFromStatusLine,
+  claudeKeychainService,
   createClaudeAccountUsageService,
+  fetchClaudeAccountUsageForProfileWithDependencies,
   fetchClaudeAccountUsageWithDependencies,
   findClaudeAccessToken,
   getClaudeStatusLineAccountUsage,
@@ -197,6 +199,7 @@ describe('Claude account usage', () => {
     expect(publicApi).not.toHaveProperty('findClaudeAccessToken');
     expect(publicApi).not.toHaveProperty('resolveClaudeAccessToken');
     expect(publicApi).not.toHaveProperty('fetchClaudeAccountUsageWithDependencies');
+    expect(publicApi).not.toHaveProperty('fetchClaudeAccountUsageForProfileWithDependencies');
   });
 
   it('sends the required OAuth headers and never returns the credential', async () => {
@@ -407,5 +410,77 @@ describe('Claude account usage', () => {
     expect(fetchImpl).toHaveBeenCalledOnce();
     expect(requestUrl).toBe(CLAUDE_USAGE_ENDPOINT);
     await expect(readFile(credentialsPath, 'utf8')).resolves.toBe(original);
+  });
+});
+
+describe('Claude credential lookup per profile root', () => {
+  // Probed 2026-09-06 on Claude Code 2.1.263 (RFC 006 "Resolved questions" §1).
+  // The digests are sha256(root, NFC).hex[0:8] and are asserted as literals so a
+  // change to the derivation cannot pass silently.
+  it('uses the unsuffixed Keychain service for the native default root', () => {
+    expect(claudeKeychainService()).toBe('Claude Code-credentials');
+    expect(claudeKeychainService('')).toBe('Claude Code-credentials');
+    expect(claudeKeychainService('   ')).toBe('Claude Code-credentials');
+  });
+
+  it('suffixes the Keychain service with the config-dir digest for a managed root', () => {
+    expect(claudeKeychainService('/Users/test/.puppeteer/profiles/claude/9f2b')).toBe(
+      'Claude Code-credentials-bfe77fcf',
+    );
+    expect(claudeKeychainService('/Users/test/.claude')).toBe('Claude Code-credentials-462977e4');
+  });
+
+  it('normalizes the root to NFC before hashing so both Unicode forms agree', () => {
+    const composed = '/Users/test/profiles/caf\u00e9';
+    const decomposed = '/Users/test/profiles/cafe\u0301';
+    expect(claudeKeychainService(composed)).toBe('Claude Code-credentials-8d81606d');
+    expect(claudeKeychainService(decomposed)).toBe(claudeKeychainService(composed));
+  });
+
+  it('stamps the profile id on a snapshot read for one profile', async () => {
+    const profile = {
+      id: 'claude:9f2b',
+      provider: 'claude' as const,
+      label: 'Work',
+      kind: 'managed' as const,
+      dataRoot: '/Users/test/.puppeteer/profiles/claude/9f2b',
+      createdAt: '2026-09-06T00:00:00.000Z',
+    };
+    const fetchImpl = vi.fn(
+      async () =>
+        new Response(JSON.stringify({ five_hour: { utilization: 12 } }), {
+          status: 200,
+          headers: { 'content-type': 'application/json' },
+        }),
+    ) as typeof fetch;
+
+    const result = await fetchClaudeAccountUsageForProfileWithDependencies(profile, {
+      resolveAccessToken: async () => 'token-from-the-profile-root',
+      fetchImpl,
+      now: () => new Date('2026-09-06T12:00:00.000Z'),
+    });
+
+    expect(result).toMatchObject({ status: 'available' });
+    if (result.status !== 'available') return;
+    expect(result.snapshot.profileId).toBe('claude:9f2b');
+  });
+
+  it('leaves a snapshot unstamped when no profile was selected', async () => {
+    const fetchImpl = vi.fn(
+      async () =>
+        new Response(JSON.stringify({ five_hour: { utilization: 12 } }), {
+          status: 200,
+          headers: { 'content-type': 'application/json' },
+        }),
+    ) as typeof fetch;
+
+    const result = await fetchClaudeAccountUsageForProfileWithDependencies(undefined, {
+      resolveAccessToken: async () => 'ambient-token',
+      fetchImpl,
+    });
+
+    expect(result).toMatchObject({ status: 'available' });
+    if (result.status !== 'available') return;
+    expect(result.snapshot.profileId).toBeUndefined();
   });
 });

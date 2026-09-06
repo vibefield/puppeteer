@@ -3,10 +3,22 @@ import { z } from 'zod';
 import type { AgentNativeInvocation, AgentNativeInvocationResolution } from '@vibecook/puppeteer-core';
 
 const SAFE_NATIVE_SESSION_ID = /^[A-Za-z0-9._-]+$/u;
-const OpenCodeContinuationStateSchema = z.strictObject({
-  version: z.literal(1),
-  imposterRoot: z.string().trim().min(1).max(8_192),
-});
+const ContinuationPathSchema = z.string().trim().min(1).max(8_192);
+/**
+ * Version 1 recorded only an Imposter root. Version 2 adds the data root a
+ * profile binds, so a resumed session lands in the same account. Version 1
+ * documents keep decoding.
+ */
+const OpenCodeContinuationStateSchema = z.union([
+  z.strictObject({ version: z.literal(1), imposterRoot: ContinuationPathSchema }),
+  z
+    .strictObject({
+      version: z.literal(2),
+      dataHome: ContinuationPathSchema.optional(),
+      imposterRoot: ContinuationPathSchema.optional(),
+    })
+    .refine((value) => value.dataHome !== undefined || value.imposterRoot !== undefined),
+]);
 
 export interface OpenCodeNativeInvocationOptions {
   executable?: string;
@@ -39,12 +51,21 @@ export function normalizeOpenCodeNativeInvocation(
   }
 
   const options: OpenCodeNativeInvocationOptions = {};
+  const environment: Record<string, string> = {};
+  // OpenCode keys its credentials, database, and logs off XDG_DATA_HOME
+  // (`$XDG_DATA_HOME/opencode/{auth.json,opencode.db,log}`, verified 2026-09-06
+  // on 1.18.23), so this is the variable an account profile binds. The adapter
+  // forwards it to both the private backend and the attached TUI.
+  const dataHome = invocation.environment.XDG_DATA_HOME;
+  if (dataHome) environment.XDG_DATA_HOME = resolve(invocation.cwd, dataHome);
   if (invocation.implementation.kind === 'imposter') {
     const stateRoot = invocation.implementation.stateRoot;
     if (!stateRoot) return { status: 'rejected', reason: 'OpenCode imposter requires an isolated state root' };
     options.executable = invocation.implementation.executable;
-    options.env = { AI_PERSONA: 'opencode', PUPPETEER_IMPOSTER_HOME: stateRoot };
+    environment.AI_PERSONA = 'opencode';
+    environment.PUPPETEER_IMPOSTER_HOME = stateRoot;
   }
+  if (Object.keys(environment).length > 0) options.env = environment;
   return {
     status: 'accepted',
     ...(resume ? { resume } : {}),
@@ -52,12 +73,24 @@ export function normalizeOpenCodeNativeInvocation(
   };
 }
 
+/**
+ * Only the launch's own environment is captured. Unlike a provider-specific
+ * root variable, XDG_DATA_HOME is a general one the host process may carry for
+ * unrelated reasons, so it is never read from `process.env` here: that would
+ * pin an unrelated directory into every continuation.
+ */
 export function captureOpenCodeContinuationState(
   options: OpenCodeNativeInvocationOptions | undefined,
   cwd: string,
 ): string | undefined {
+  const dataHome = options?.env?.XDG_DATA_HOME;
   const imposterRoot = options?.env?.PUPPETEER_IMPOSTER_HOME;
-  return imposterRoot?.trim() ? JSON.stringify({ version: 1, imposterRoot: resolve(cwd, imposterRoot) }) : undefined;
+  if (!dataHome?.trim() && !imposterRoot?.trim()) return undefined;
+  return JSON.stringify({
+    version: 2,
+    ...(dataHome?.trim() ? { dataHome: resolve(cwd, dataHome) } : {}),
+    ...(imposterRoot?.trim() ? { imposterRoot: resolve(cwd, imposterRoot) } : {}),
+  });
 }
 
 export function restoreOpenCodeContinuationState(
@@ -73,14 +106,16 @@ export function restoreOpenCodeContinuationState(
   }
   const parsed = OpenCodeContinuationStateSchema.safeParse(decoded);
   if (!parsed.success) throw new Error('invalid OpenCode continuation state', { cause: parsed.error });
-  if (!options.imposterExecutable) {
+  const value = parsed.data;
+  const imposterRoot = value.imposterRoot;
+  if (imposterRoot && !options.imposterExecutable) {
     throw new Error('OpenCode continuation requires the configured imposter executable');
   }
   return {
-    executable: options.imposterExecutable,
+    ...(imposterRoot ? { executable: options.imposterExecutable } : {}),
     env: {
-      AI_PERSONA: 'opencode',
-      PUPPETEER_IMPOSTER_HOME: parsed.data.imposterRoot,
+      ...(value.version === 2 && value.dataHome ? { XDG_DATA_HOME: value.dataHome } : {}),
+      ...(imposterRoot ? { AI_PERSONA: 'opencode', PUPPETEER_IMPOSTER_HOME: imposterRoot } : {}),
     },
   };
 }

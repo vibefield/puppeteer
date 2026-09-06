@@ -7,6 +7,8 @@ import {
   AgentLaunchProviderSchema,
   AgentNativeInvocationSchema,
   AgentProviderDescriptorSchema,
+  DistributionProviderSchema,
+  ProfileProviderSchema,
   agentEventCategory,
   agentEventType,
   isAgentEventType,
@@ -20,11 +22,18 @@ import {
   type AgentEventEnvelope,
   type AgentEventSource,
   type AgentContinuation,
+  type AgentInstallation,
   type AgentLaunchProvider,
   type AgentMonitorState,
+  type AgentProfile,
   type AgentAdapterBinding,
   type AgentProviderDescriptor,
+  type DistributionProvider,
   type ExternalRef,
+  type ProfileFailure,
+  type ProfileIdentity,
+  type ProfileProvider,
+  type UpdateReceipt,
   type MonitorNotification,
   type PromptReceipt,
   type PromptSubmission,
@@ -65,16 +74,39 @@ import type {
   AgentWorkspaceFinal,
   AgentWorkspaceInfo,
   CancelPreparedSessionResult,
+  CheckReleasesOptions,
   CreateAgentSessionOptions,
   CreateAgentSessionResult,
+  CreateProfileOptions,
+  InspectInstallationsOptions,
   PreparationFailure,
   PreparedAgentSessionInfo,
   PreparedProviderSession,
   PrepareAgentSessionResult,
+  ProfileLoginResult,
+  ReleaseCheckResult,
   RestoreAgentSessionOptions,
   RuntimeAgentEventEnvelope,
   RuntimeRunInfo,
+  StartProfileLoginOptions,
+  UpdateInstallationOptions,
 } from './types.js';
+import {
+  createInstallationInventory,
+  type InstallInventory,
+  type InventoryProvider,
+} from './distribution/inventory.js';
+import { checkProviderReleases, createReleaseEtagCache } from './distribution/releases.js';
+import { defaultUpdateTranscriptsDirectory, runInstallationUpdate } from './distribution/update.js';
+import {
+  createFileProfileStore,
+  createProfileRegistry,
+  nativeDefaultProfileId,
+  type ProfileRegistry,
+  type ProfileRegistryProvider,
+} from './profiles/registry.js';
+import { createProfileOnboarding, type ProfileOnboarding } from './profiles/onboarding.js';
+import { createProfileRootAllocator } from './profiles/roots.js';
 import { cloneAgentSessionInfo, createAgentController, type Agent, type AgentController } from './agent.js';
 import { createGitStateObserver, type GitStateObserver } from './observation/git.js';
 import {
@@ -161,6 +193,8 @@ interface ManagedRun {
   recordedNativeSessionRevision?: number;
   continuationState?: string;
   launchImplementation?: AgentContinuation['implementation'];
+  /** Account profile this run is bound to, either selected by the caller or attributed from the launch environment. */
+  profileId?: string;
   creationClaim?: CreationRequestClaimRef;
   preparationId?: string;
   terminalOutcome?: CreationRequestTerminalOutcome;
@@ -345,6 +379,35 @@ function cloneProviderDescriptor(provider: AgentProviderDescriptor): AgentProvid
   return { ...provider };
 }
 
+function cloneDistributionProvider(provider: DistributionProvider): DistributionProvider {
+  return {
+    ...provider,
+    commands: [...provider.commands],
+    npmPackages: [...provider.npmPackages],
+    brewNames: [...provider.brewNames],
+    detectors: provider.detectors.map((detector) => ({ ...detector })),
+  };
+}
+
+function cloneProfileProvider(provider: ProfileProvider): ProfileProvider {
+  return {
+    ...provider,
+    support: { ...provider.support, sharedSurfaces: [...provider.support.sharedSurfaces] },
+  };
+}
+
+/**
+ * Stamp the requested profile onto an available snapshot before validation, so
+ * a consumer can key usage by account without the adapter having to know which
+ * profile the host asked about.
+ */
+function stampUsageProfile(result: unknown, profileId: string | undefined): unknown {
+  if (profileId === undefined || !result || typeof result !== 'object') return result;
+  const candidate = result as { status?: unknown; snapshot?: unknown };
+  if (candidate.status !== 'available' || !candidate.snapshot || typeof candidate.snapshot !== 'object') return result;
+  return { ...candidate, snapshot: { ...(candidate.snapshot as Record<string, unknown>), profileId } };
+}
+
 function identityFields(identity: RuntimeRunIdentity): {
   runtimeRunId: string;
   runtimeEpoch: number;
@@ -467,6 +530,33 @@ export function createAgentRuntime(options: AgentRuntimeOptions): AgentRuntime {
     return [descriptor];
   });
   const accountUsageProvidersById = new Map(accountUsageProviders.map((provider) => [provider.id, provider]));
+  const distributionProviders = [...providers.values()].flatMap((provider): DistributionProvider[] => {
+    if (!provider.distribution) return [];
+    const descriptor = DistributionProviderSchema.parse(provider.distribution.provider);
+    if (descriptor.id !== provider.descriptor.id || descriptor.label !== provider.descriptor.label) {
+      throw new Error(
+        `distribution provider ${JSON.stringify({ id: descriptor.id, label: descriptor.label })} does not match agent provider ${JSON.stringify(provider.descriptor)}`,
+      );
+    }
+    return [descriptor];
+  });
+  const distributionProvidersById = new Map(distributionProviders.map((provider) => [provider.id, provider]));
+  const profileProviders = [...providers.values()].flatMap((provider): ProfileProvider[] => {
+    if (!provider.profiles) return [];
+    const descriptor = ProfileProviderSchema.parse(provider.profiles.provider);
+    if (descriptor.id !== provider.descriptor.id || descriptor.label !== provider.descriptor.label) {
+      throw new Error(
+        `profile provider ${JSON.stringify({ id: descriptor.id, label: descriptor.label })} does not match agent provider ${JSON.stringify(provider.descriptor)}`,
+      );
+    }
+    return [descriptor];
+  });
+  const profileRegistryProviders = new Map<string, ProfileRegistryProvider>(
+    profileProviders.map((descriptor) => [
+      descriptor.id,
+      { provider: descriptor, service: providers.get(descriptor.id)!.profiles! },
+    ]),
+  );
   const monitorClock = options.monitorClock ?? createSystemMonitorClock();
   const runs = new Map<string, ManagedRun>();
   const terminalFailuresByRunId = new Map<string, TerminalFailureEntry>();
@@ -487,6 +577,7 @@ export function createAgentRuntime(options: AgentRuntimeOptions): AgentRuntime {
   const acknowledgedFailureBlockers = new Set<string>();
   const accountUsageListeners = new Set<(provider: AccountUsageProvider, result: AccountUsageFetchResult) => void>();
   const accountUsageInflight = new Map<string, Promise<AccountUsageFetchResult>>();
+  const profileListeners = new Set<(profiles: AgentProfile[]) => void>();
   const preparationTtlMs = options.preparationTtlMs ?? 30_000;
   const terminalFailureCapacity = options.terminalFailureCapacity ?? DEFAULT_TERMINAL_FAILURE_CAPACITY;
   if (!Number.isFinite(preparationTtlMs) || preparationTtlMs <= 0) {
@@ -498,6 +589,111 @@ export function createAgentRuntime(options: AgentRuntimeOptions): AgentRuntime {
   let disposed = false;
 
   const report = (err: unknown): void => options.onError?.(err instanceof Error ? err : new Error(String(err)));
+
+  const inventory: InstallInventory = createInstallationInventory({
+    providers: [...providers.values()].flatMap((provider): InventoryProvider[] => {
+      const service = provider.distribution;
+      if (!service) return [];
+      return [
+        {
+          providerId: provider.descriptor.id,
+          service,
+          // The launcher the runtime would actually exec, so the active install
+          // is the one this runtime binds rather than the first on PATH.
+          launchExecutables: (provider.launch?.provider.nativeInvocation?.commands ?? []).map(
+            (command) => command.executable,
+          ),
+        },
+      ];
+    }),
+    ...(options.distribution?.searchPath === undefined ? {} : { searchPath: options.distribution.searchPath }),
+    onError: report,
+  });
+  const releaseCache = createReleaseEtagCache();
+
+  /**
+   * The profile registry reads a file, so it is built on first use rather than
+   * at construction: a runtime that never touches profiles never touches disk.
+   */
+  let profileServices: Promise<{ registry: ProfileRegistry; onboarding: ProfileOnboarding }> | undefined;
+  let profileRegistryForDispose: ProfileRegistry | undefined;
+  function profileRuntime(): Promise<{ registry: ProfileRegistry; onboarding: ProfileOnboarding }> {
+    profileServices ??= (async () => {
+      const registry = createProfileRegistry({
+        providers: [...profileRegistryProviders.values()],
+        store: options.profiles?.store ?? createFileProfileStore(),
+        onError: report,
+      });
+      profileRegistryForDispose = registry;
+      registry.onChange((snapshot) => {
+        for (const listener of profileListeners) {
+          try {
+            listener(snapshot);
+          } catch (error) {
+            report(error);
+          }
+        }
+      });
+      const onboarding = createProfileOnboarding({
+        registry,
+        providers: profileRegistryProviders,
+        allocator: createProfileRootAllocator({
+          ...(options.profiles?.rootsDirectory === undefined
+            ? {}
+            : { rootsDirectory: options.profiles.rootsDirectory }),
+        }),
+        host: options.host,
+        defaultCwd: options.defaultCwd,
+        onError: report,
+      });
+      return { registry, onboarding };
+    })();
+    return profileServices;
+  }
+
+  /** Resolve a requested profile id for one provider before any resource is allocated. */
+  async function resolveSessionProfile(
+    providerId: string,
+    profileId: string,
+  ): Promise<{ profile: AgentProfile } | { error: string }> {
+    if (!profileRegistryProviders.has(providerId)) {
+      return { error: `agent provider does not expose account profiles: ${providerId}` };
+    }
+    const profile = await (await profileRuntime()).registry.get(profileId);
+    if (!profile) return { error: `unknown account profile: ${profileId}` };
+    if (profile.provider !== providerId) {
+      return { error: `account profile ${profileId} belongs to ${profile.provider}, not ${providerId}` };
+    }
+    return { profile };
+  }
+
+  /**
+   * Attribute a native shell invocation to an account profile from the launch
+   * environment alone.
+   *
+   * A managed profile matches when every one of its binding variables is
+   * present with its own value. An environment that carries none of this
+   * provider's binding names is the vendor's default root. An environment that
+   * carries a binding name with an unknown value is a root Puppeteer did not
+   * allocate, so it is left unattributed rather than mislabelled.
+   */
+  async function attributeInvocationProfile(
+    providerId: string,
+    environment: Record<string, string>,
+  ): Promise<string | undefined> {
+    const entry = profileRegistryProviders.get(providerId);
+    if (!entry || !entry.provider.support.supported) return undefined;
+    const managed = await (await profileRuntime()).registry.managed(providerId);
+    const bindingNames = new Set<string>();
+    for (const profile of managed) {
+      const binding = entry.service.bindingEnvironment(profile);
+      const names = Object.keys(binding);
+      for (const name of names) bindingNames.add(name);
+      if (names.length > 0 && names.every((name) => environment[name] === binding[name])) return profile.id;
+    }
+    if ([...bindingNames].some((name) => environment[name] !== undefined)) return undefined;
+    return entry.provider.support.nativeDefaultRoot ? nativeDefaultProfileId(providerId) : undefined;
+  }
 
   function continuationFor(provider: AgentProvider, nativeSessionId: string, run: ManagedRun): AgentContinuation {
     return AgentContinuationSchema.parse({
@@ -1004,6 +1200,8 @@ export function createAgentRuntime(options: AgentRuntimeOptions): AgentRuntime {
       ...(request.resume === undefined ? {} : { resume: request.resume }),
       ...(request.title === undefined ? {} : { title: request.title }),
       ...(request.agentOptions === undefined ? {} : { agentOptions: request.agentOptions }),
+      // Two requests that differ only by account are different runs.
+      ...(request.profile === undefined ? {} : { profile: request.profile }),
     });
   }
 
@@ -1632,6 +1830,7 @@ export function createAgentRuntime(options: AgentRuntimeOptions): AgentRuntime {
     };
     if (extras.preparationId !== undefined) info.preparationId = extras.preparationId;
     if (extras.processId !== undefined) info.processId = extras.processId;
+    if (run.profileId !== undefined) info.profileId = run.profileId;
     if (!run.monitor) throw new Error(`runtime monitor was not installed for run ${run.identity.runtimeRunId}`);
     let managed: ManagedSession | undefined;
     const agentController = createAgentController({
@@ -1944,6 +2143,9 @@ export function createAgentRuntime(options: AgentRuntimeOptions): AgentRuntime {
         externalRefs: request.externalRefs,
         workspace: request.workspace,
         resume: continuation.nativeSessionId,
+        // Resolved by createSession, which fails the resume with
+        // AGENT_PROFILE_NOT_FOUND when the id is unknown or foreign.
+        profile: request.profile,
       };
       if (!provider) return spawnAgent(spawnRequest);
       if (descriptor && !descriptor.resume) {
@@ -1989,9 +2191,11 @@ export function createAgentRuntime(options: AgentRuntimeOptions): AgentRuntime {
       return launchProviders.map(cloneLaunchProvider);
     },
 
-    async accountUsage(providerId): Promise<AccountUsageFetchResult> {
+    async accountUsage(providerId, profileId): Promise<AccountUsageFetchResult> {
       if (disposed) throw new Error('agent runtime is disposed');
-      const existing = accountUsageInflight.get(providerId);
+      // One account has one quota, so reads coalesce per provider and profile.
+      const key = `${providerId} ${profileId ?? ''}`;
+      const existing = accountUsageInflight.get(key);
       if (existing) return existing;
 
       const provider = providers.get(providerId);
@@ -2014,9 +2218,22 @@ export function createAgentRuntime(options: AgentRuntimeOptions): AgentRuntime {
       }
 
       const descriptor = accountUsageProvidersById.get(providerId)!;
-      const request = Promise.resolve()
-        .then(() => service.fetch())
-        .then((result) => validateAccountUsageResult(descriptor, result))
+      // Registered before the first await so concurrent callers coalesce even
+      // while the profile is still being resolved.
+      const request = (async (): Promise<AccountUsageFetchResult> => {
+        let profile: AgentProfile | undefined;
+        if (profileId !== undefined) {
+          const resolved = await resolveSessionProfile(providerId, profileId);
+          if ('error' in resolved) {
+            return { status: 'unsupported', provider: providerId, message: resolved.error, retryable: false };
+          }
+          profile = resolved.profile;
+        }
+        // The native default account is read without a profile: its root is
+        // whatever the adapter uses when no variable is bound.
+        const result = await (profile?.kind === 'managed' ? service.fetch({ profile }) : service.fetch());
+        return validateAccountUsageResult(descriptor, stampUsageProfile(result, profileId));
+      })()
         .catch((error: unknown): AccountUsageFetchResult => {
           report(error);
           return {
@@ -2026,9 +2243,138 @@ export function createAgentRuntime(options: AgentRuntimeOptions): AgentRuntime {
             retryable: true,
           };
         })
-        .finally(() => accountUsageInflight.delete(providerId));
-      accountUsageInflight.set(providerId, request);
+        .finally(() => accountUsageInflight.delete(key));
+      accountUsageInflight.set(key, request);
       return request;
+    },
+
+    distributionProviders() {
+      return distributionProviders.map(cloneDistributionProvider);
+    },
+
+    async inspectInstallations(request: InspectInstallationsOptions = {}): Promise<AgentInstallation[]> {
+      if (disposed) throw new Error('agent runtime is disposed');
+      return inventory.inspect(request);
+    },
+
+    async checkReleases(request: CheckReleasesOptions): Promise<ReleaseCheckResult> {
+      if (disposed) throw new Error('agent runtime is disposed');
+      const descriptor = distributionProvidersById.get(request.providerId);
+      const service = providers.get(request.providerId)?.distribution;
+      if (!descriptor || !service) {
+        return {
+          provider: request.providerId,
+          checkedAt: new Date().toISOString(),
+          releases: [],
+          behind: [],
+          failures: [
+            {
+              status: 'unsupported',
+              provider: request.providerId,
+              message: `agent provider does not expose distribution: ${request.providerId}`,
+              retryable: false,
+            },
+          ],
+        };
+      }
+      const installed = await inventory.active(request.providerId);
+      return checkProviderReleases({
+        provider: descriptor,
+        service,
+        ...(installed === undefined ? {} : { installed }),
+        network: request.network === true,
+        fetch: options.distribution?.fetch ?? globalThis.fetch,
+        cache: releaseCache,
+        onError: report,
+      });
+    },
+
+    async updateInstallation(request: UpdateInstallationOptions): Promise<UpdateReceipt> {
+      if (disposed) throw new Error('agent runtime is disposed');
+      const startedAt = new Date().toISOString();
+      const descriptor = distributionProvidersById.get(request.providerId);
+      const service = providers.get(request.providerId)?.distribution;
+      if (!descriptor || !service) {
+        return {
+          provider: request.providerId,
+          status: 'unsupported',
+          startedAt,
+          finishedAt: new Date().toISOString(),
+          message: `agent provider does not expose distribution: ${request.providerId}`,
+        };
+      }
+      const installations = await inventory.inspect({ providerId: request.providerId });
+      const install =
+        request.executable === undefined
+          ? installations.find((entry) => entry.active)
+          : installations.find((entry) => entry.executable === request.executable);
+      if (!install) {
+        return {
+          provider: request.providerId,
+          status: 'failed',
+          startedAt,
+          finishedAt: new Date().toISOString(),
+          message: `no installation found for ${request.providerId}`,
+        };
+      }
+      return runInstallationUpdate({
+        provider: descriptor,
+        service,
+        install,
+        reinspect: async () => {
+          const refreshed = await inventory.inspect({ providerId: request.providerId, refresh: true });
+          return (
+            refreshed.find((entry) => entry.executable === install.executable) ??
+            refreshed.find((entry) => entry.active)
+          );
+        },
+        transcriptsDirectory: options.distribution?.transcriptsDirectory ?? defaultUpdateTranscriptsDirectory(),
+        onError: report,
+      });
+    },
+
+    profileProviders() {
+      return profileProviders.map(cloneProfileProvider);
+    },
+
+    async profiles(providerId?: string): Promise<AgentProfile[]> {
+      if (disposed) throw new Error('agent runtime is disposed');
+      return (await profileRuntime()).registry.list(providerId);
+    },
+
+    async profile(profileId: string): Promise<AgentProfile | undefined> {
+      if (disposed) throw new Error('agent runtime is disposed');
+      return (await profileRuntime()).registry.get(profileId);
+    },
+
+    async createProfile(request: CreateProfileOptions): Promise<AgentProfile | ProfileFailure> {
+      if (disposed) throw new Error('agent runtime is disposed');
+      return (await profileRuntime()).onboarding.createProfile(request);
+    },
+
+    async removeProfile(profileId: string): Promise<boolean> {
+      if (disposed) throw new Error('agent runtime is disposed');
+      return (await profileRuntime()).onboarding.removeProfile(profileId);
+    },
+
+    async profileBindingEnvironment(profileIds: readonly string[]): Promise<Record<string, string>> {
+      if (disposed) throw new Error('agent runtime is disposed');
+      return (await profileRuntime()).onboarding.bindingEnvironment(profileIds);
+    },
+
+    async startProfileLogin(request: StartProfileLoginOptions): Promise<ProfileLoginResult> {
+      if (disposed) throw new Error('agent runtime is disposed');
+      return (await profileRuntime()).onboarding.startLogin(request);
+    },
+
+    async verifyProfile(profileId: string): Promise<ProfileIdentity | ProfileFailure> {
+      if (disposed) throw new Error('agent runtime is disposed');
+      return (await profileRuntime()).onboarding.verifyProfile(profileId);
+    },
+
+    onProfilesChanged(listener) {
+      profileListeners.add(listener);
+      return () => profileListeners.delete(listener);
     },
 
     createSession(request: CreateAgentSessionOptions): Promise<CreateAgentSessionResult> {
@@ -2041,6 +2387,18 @@ export function createAgentRuntime(options: AgentRuntimeOptions): AgentRuntime {
           await markRunTerminal(run, { kind: 'failed', code: 'AGENT_NOT_FOUND' });
           await recordRunStartFailure(run, 'provider-lookup', 'AGENT_NOT_FOUND');
           return sessionFailure(run, 'AGENT_NOT_FOUND', `unknown agent provider: ${request.agent}`);
+        }
+
+        let profile: AgentProfile | undefined;
+        if (request.profile !== undefined) {
+          const resolved = await resolveSessionProfile(request.agent, request.profile);
+          if ('error' in resolved) {
+            await markRunTerminal(run, { kind: 'failed', code: 'AGENT_PROFILE_NOT_FOUND' });
+            await recordRunStartFailure(run, 'validation', 'AGENT_PROFILE_NOT_FOUND');
+            return sessionFailure(run, 'AGENT_PROFILE_NOT_FOUND', resolved.error);
+          }
+          profile = resolved.profile;
+          run.profileId = profile.id;
         }
 
         let lease: WorkspaceLease | WorkspaceLeaseFailure;
@@ -2065,6 +2423,7 @@ export function createAgentRuntime(options: AgentRuntimeOptions): AgentRuntime {
           title: request.title,
           host: options.host,
           agentOptions: request.agentOptions,
+          ...(profile === undefined ? {} : { profile }),
         };
         let session: AgentAdapterBinding;
         try {
@@ -2173,6 +2532,13 @@ export function createAgentRuntime(options: AgentRuntimeOptions): AgentRuntime {
       if (run) {
         run.launchImplementation = invocation.implementation.kind;
         result.continuation = continuationFor(provider, result.nativeSession.id, run);
+        // Attribution only labels the run. The adapter already read its own
+        // root variable out of the invocation, so its options are untouched.
+        try {
+          run.profileId = await attributeInvocationProfile(invocation.providerId, invocation.environment);
+        } catch (error) {
+          report(error);
+        }
       }
       return result;
     },
@@ -2198,6 +2564,18 @@ export function createAgentRuntime(options: AgentRuntimeOptions): AgentRuntime {
           );
         }
 
+        let profile: AgentProfile | undefined;
+        if (request.profile !== undefined) {
+          const resolved = await resolveSessionProfile(request.agent, request.profile);
+          if ('error' in resolved) {
+            await markRunTerminal(run, { kind: 'failed', code: 'AGENT_PROFILE_NOT_FOUND' });
+            await recordRunStartFailure(run, 'validation', 'AGENT_PROFILE_NOT_FOUND');
+            return preparationFailure('AGENT_PROFILE_NOT_FOUND', resolved.error, run);
+          }
+          profile = resolved.profile;
+          run.profileId = profile.id;
+        }
+
         let lease: WorkspaceLease | WorkspaceLeaseFailure;
         try {
           lease = await acquireWorkspace(request, run);
@@ -2220,6 +2598,7 @@ export function createAgentRuntime(options: AgentRuntimeOptions): AgentRuntime {
           title: request.title,
           host: options.host,
           agentOptions: request.agentOptions,
+          ...(profile === undefined ? {} : { profile }),
         };
         let prepared: PreparedProviderSession;
         try {
@@ -2695,6 +3074,10 @@ export function createAgentRuntime(options: AgentRuntimeOptions): AgentRuntime {
       monitorNotificationListeners.clear();
       monitorRemovedListeners.clear();
       accountUsageListeners.clear();
+      profileListeners.clear();
+      profileRegistryForDispose?.dispose();
+      inventory.invalidate();
+      releaseCache.clear();
       return finals.filter((value): value is AgentWorkspaceFinal => value !== undefined);
     },
   };

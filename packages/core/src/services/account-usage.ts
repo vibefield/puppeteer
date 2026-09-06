@@ -1,5 +1,6 @@
 import { z } from 'zod';
 import { AgentProviderDescriptorSchema, AgentProviderIdSchema } from './provider.js';
+import { AgentProfileIdSchema, type AgentProfile } from './profiles.js';
 
 /**
  * Provider-neutral account usage and quota contracts.
@@ -74,6 +75,8 @@ export const AccountUsageSnapshotSchema = z
     metrics: z.array(AccountUsageMetricSchema),
     /** Account-wide credits that are not represented by a percentage meter. */
     credits: AccountUsageCreditsSchema.optional(),
+    /** Present when the snapshot was read for one registered profile rather than the native default. */
+    profileId: AgentProfileIdSchema.optional(),
   })
   .superRefine((snapshot, context) => {
     const ids = new Set<string>();
@@ -124,6 +127,7 @@ export type AccountUsageProvider = z.infer<typeof AccountUsageProviderSchema>;
 /** One adapter-owned account-usage service, independent of live sessions. */
 export interface AccountUsageService {
   readonly provider: AccountUsageProvider;
-  fetch(): Promise<AccountUsageFetchResult>;
+  /** Read usage for the native default account, or for one profile's root when given. */
+  fetch(options?: { profile?: AgentProfile }): Promise<AccountUsageFetchResult>;
   subscribe?(listener: (result: AccountUsageFetchResult) => void): () => void;
 }

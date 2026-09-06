@@ -28,3 +28,5 @@ export {
   type HermesTuiSession,
   type PreparedHermesTuiSession,
 } from './driver.js';
+export * from './services/distribution.js';
+export * from './services/profiles.js';

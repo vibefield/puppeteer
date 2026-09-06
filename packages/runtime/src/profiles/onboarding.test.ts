@@ -1,0 +1,309 @@
+import { mkdtemp, readdir, stat } from 'node:fs/promises';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
+import { describe, expect, it, vi } from 'vitest';
+import type {
+  AgentHost,
+  AgentProfile,
+  ProfileIdentity,
+  ProfileProvider,
+  ProfileService,
+  TerminalSpec,
+} from '@vibecook/puppeteer-core';
+import { createProfileOnboarding } from './onboarding.js';
+import { createProfileRegistry, nativeDefaultProfileId, type ProfileRegistryProvider } from './registry.js';
+import { createProfileRootAllocator } from './roots.js';
+
+const identity: ProfileIdentity = {
+  loggedIn: true,
+  email: 'user@example.com',
+  plan: 'max',
+  verifiedAt: '2026-09-06T12:00:00.000Z',
+  source: { kind: 'native-status', stability: 'documented' },
+};
+
+interface FakeProvider extends ProfileRegistryProvider {
+  spawnedSpecs: TerminalSpec[];
+  initialized: AgentProfile[];
+}
+
+function fakeProvider(
+  id: string,
+  options: {
+    variable?: string;
+    supported?: boolean;
+    verify?: ProfileService['verify'];
+    initializeRoot?: ProfileService['initializeRoot'];
+  } = {},
+): FakeProvider {
+  const variable = options.variable ?? `${id.toUpperCase()}_HOME`;
+  const provider: ProfileProvider = {
+    id,
+    label: id,
+    support: {
+      supported: options.supported ?? true,
+      identity: 'native-status',
+      sharedSurfaces: [],
+      nativeDefaultRoot: `/home/user/.${id}`,
+    },
+  };
+  const initialized: AgentProfile[] = [];
+  const service: ProfileService = {
+    provider,
+    bindingEnvironment: (profile) => (profile.kind === 'native-default' ? {} : { [variable]: profile.dataRoot }),
+    loginInvocation: (_profile, invocation) => ({
+      command: id,
+      args: ['login'],
+      cwd: invocation.cwd,
+      env: { NO_COLOR: '1' },
+    }),
+    verify: options.verify ?? (async () => identity),
+    ...(options.initializeRoot === undefined
+      ? {
+          async initializeRoot(profile) {
+            initialized.push(profile);
+          },
+        }
+      : { initializeRoot: options.initializeRoot }),
+  };
+  return { provider, service, spawnedSpecs: [], initialized };
+}
+
+function harness(entries: FakeProvider[], overrides: { host?: AgentHost } = {}) {
+  const providers = new Map(entries.map((entry) => [entry.provider.id, entry as ProfileRegistryProvider]));
+  const stored: { snapshot?: { version: 1; profiles: AgentProfile[] } } = {};
+  const registry = createProfileRegistry({
+    providers: entries,
+    store: {
+      async load() {
+        return stored.snapshot;
+      },
+      async save(snapshot) {
+        stored.snapshot = snapshot as { version: 1; profiles: AgentProfile[] };
+      },
+    },
+  });
+  const spawned: TerminalSpec[] = [];
+  const host: AgentHost = overrides.host ?? {
+    async spawnTerminal(spec) {
+      spawned.push(spec);
+      return { runtimeSessionId: `terminal-${spawned.length}` };
+    },
+    async automateTerminal() {
+      return { accepted: true };
+    },
+  };
+  return { providers, registry, stored, spawned, host };
+}
+
+async function onboarding(entries: FakeProvider[], overrides: { host?: AgentHost } = {}) {
+  const box = harness(entries, overrides);
+  const rootsDirectory = join(await mkdtemp(join(tmpdir(), 'puppeteer-onboarding-')), 'profiles');
+  return {
+    ...box,
+    rootsDirectory,
+    onboarding: createProfileOnboarding({
+      registry: box.registry,
+      providers: box.providers,
+      allocator: createProfileRootAllocator({ rootsDirectory }),
+      host: box.host,
+      defaultCwd: '/workspace',
+      now: () => new Date('2026-09-06T12:00:00.000Z'),
+    }),
+  };
+}
+
+describe('createProfileOnboarding', () => {
+  it('allocates a root, lets the adapter prepare it, and registers the profile', async () => {
+    const alpha = fakeProvider('alpha');
+    const box = await onboarding([alpha]);
+
+    const created = await box.onboarding.createProfile({ providerId: 'alpha', label: '  Work  ' });
+    expect(created).toMatchObject({ provider: 'alpha', label: 'Work', kind: 'managed' });
+    const profile = created as AgentProfile;
+    expect(profile.dataRoot).toBe(join(box.rootsDirectory, 'alpha', profile.id));
+    expect((await stat(profile.dataRoot)).mode & 0o777).toBe(0o700);
+    expect(alpha.initialized).toEqual([profile]);
+    expect(box.stored.snapshot?.profiles).toEqual([profile]);
+  });
+
+  it('rejects bad labels and providers that do not support profiles', async () => {
+    const box = await onboarding([fakeProvider('alpha'), fakeProvider('beta', { supported: false })]);
+
+    await expect(box.onboarding.createProfile({ providerId: 'alpha', label: '   ' })).resolves.toMatchObject({
+      status: 'invalid',
+      retryable: false,
+    });
+    await expect(box.onboarding.createProfile({ providerId: 'alpha', label: 'x'.repeat(65) })).resolves.toMatchObject({
+      status: 'invalid',
+    });
+    await expect(box.onboarding.createProfile({ providerId: 'beta', label: 'Work' })).resolves.toMatchObject({
+      status: 'unsupported',
+      provider: 'beta',
+    });
+    await expect(box.onboarding.createProfile({ providerId: 'ghost', label: 'Work' })).resolves.toMatchObject({
+      status: 'unsupported',
+      provider: 'ghost',
+    });
+    expect(box.stored.snapshot?.profiles ?? []).toEqual([]);
+  });
+
+  it('does not register a profile whose root the adapter could not prepare', async () => {
+    const onError = vi.fn();
+    const failing = fakeProvider('alpha', {
+      async initializeRoot() {
+        throw new Error('config write failed');
+      },
+    });
+    const box = harness([failing]);
+    const rootsDirectory = join(await mkdtemp(join(tmpdir(), 'puppeteer-onboarding-')), 'profiles');
+    const flow = createProfileOnboarding({
+      registry: box.registry,
+      providers: box.providers,
+      allocator: createProfileRootAllocator({ rootsDirectory }),
+      host: box.host,
+      defaultCwd: '/workspace',
+      onError,
+    });
+
+    await expect(flow.createProfile({ providerId: 'alpha', label: 'Work' })).resolves.toMatchObject({
+      status: 'unavailable',
+      retryable: true,
+    });
+    expect(box.stored.snapshot?.profiles ?? []).toEqual([]);
+    expect(onError).toHaveBeenCalled();
+    // The allocated directory is left behind rather than deleted blindly.
+    await expect(readdir(join(rootsDirectory, 'alpha'))).resolves.toHaveLength(1);
+  });
+
+  it('merges binding variables and refuses two profiles of one provider', async () => {
+    const alpha = fakeProvider('alpha', { variable: 'ALPHA_HOME' });
+    const beta = fakeProvider('beta', { variable: 'BETA_HOME' });
+    const box = await onboarding([alpha, beta]);
+    const first = (await box.onboarding.createProfile({ providerId: 'alpha', label: 'Work' })) as AgentProfile;
+    const second = (await box.onboarding.createProfile({ providerId: 'alpha', label: 'Personal' })) as AgentProfile;
+    const other = (await box.onboarding.createProfile({ providerId: 'beta', label: 'Work' })) as AgentProfile;
+
+    await expect(box.onboarding.bindingEnvironment([first.id, other.id])).resolves.toEqual({
+      ALPHA_HOME: first.dataRoot,
+      BETA_HOME: other.dataRoot,
+    });
+    // The native default injects nothing: it is the vendor's own root.
+    await expect(box.onboarding.bindingEnvironment([nativeDefaultProfileId('beta')])).resolves.toEqual({});
+    await expect(box.onboarding.bindingEnvironment([])).resolves.toEqual({});
+    await expect(box.onboarding.bindingEnvironment([first.id, second.id])).rejects.toThrow('more than once');
+    await expect(box.onboarding.bindingEnvironment(['ghost'])).rejects.toThrow('unknown agent profile');
+  });
+
+  it('spawns the native login with the binding merged over the adapter environment', async () => {
+    const alpha = fakeProvider('alpha', { variable: 'ALPHA_HOME' });
+    const box = await onboarding([alpha]);
+    const profile = (await box.onboarding.createProfile({ providerId: 'alpha', label: 'Work' })) as AgentProfile;
+
+    await expect(box.onboarding.startLogin({ profileId: profile.id })).resolves.toEqual({
+      runtimeSessionId: 'terminal-1',
+      profile,
+    });
+    expect(box.spawned[0]).toEqual({
+      command: 'alpha',
+      args: ['login'],
+      cwd: '/workspace',
+      env: { NO_COLOR: '1', ALPHA_HOME: profile.dataRoot },
+    });
+
+    await box.onboarding.startLogin({ profileId: nativeDefaultProfileId('alpha'), cwd: '/elsewhere' });
+    expect(box.spawned[1]).toMatchObject({ cwd: '/elsewhere', env: { NO_COLOR: '1' } });
+    await expect(box.onboarding.startLogin({ profileId: 'ghost' })).resolves.toMatchObject({ status: 'not-found' });
+  });
+
+  it('reports a login the host could not start as retryable', async () => {
+    const onError = vi.fn();
+    const alpha = fakeProvider('alpha');
+    const box = harness([alpha], {
+      host: {
+        async spawnTerminal() {
+          throw new Error('no pty available');
+        },
+        async automateTerminal() {
+          return { accepted: true };
+        },
+      },
+    });
+    const flow = createProfileOnboarding({
+      registry: box.registry,
+      providers: box.providers,
+      allocator: createProfileRootAllocator({
+        rootsDirectory: join(await mkdtemp(join(tmpdir(), 'puppeteer-onboarding-')), 'profiles'),
+      }),
+      host: box.host,
+      defaultCwd: '/workspace',
+      onError,
+    });
+
+    await expect(flow.startLogin({ profileId: nativeDefaultProfileId('alpha') })).resolves.toMatchObject({
+      status: 'unavailable',
+      retryable: true,
+    });
+    expect(onError).toHaveBeenCalled();
+  });
+
+  it('persists the identity a verification read back and passes adapter failures through', async () => {
+    const alpha = fakeProvider('alpha');
+    const box = await onboarding([alpha]);
+    const profile = (await box.onboarding.createProfile({ providerId: 'alpha', label: 'Work' })) as AgentProfile;
+
+    await expect(box.onboarding.verifyProfile(profile.id)).resolves.toEqual(identity);
+    expect(box.stored.snapshot?.profiles[0]?.identity).toEqual(identity);
+    await expect(box.onboarding.verifyProfile('ghost')).resolves.toMatchObject({ status: 'not-found' });
+
+    const silent = fakeProvider('beta', {
+      async verify() {
+        return { status: 'unsupported', provider: 'beta', message: 'no native identity surface', retryable: false };
+      },
+    });
+    const other = await onboarding([silent]);
+    await expect(other.onboarding.verifyProfile(nativeDefaultProfileId('beta'))).resolves.toEqual({
+      status: 'unsupported',
+      provider: 'beta',
+      message: 'no native identity surface',
+      retryable: false,
+    });
+  });
+
+  it('never lets an adapter fault escape verification', async () => {
+    const onError = vi.fn();
+    const box = harness([
+      fakeProvider('alpha', {
+        async verify() {
+          throw new Error('keychain read failed for token sk-secret');
+        },
+      }),
+    ]);
+    const flow = createProfileOnboarding({
+      registry: box.registry,
+      providers: box.providers,
+      allocator: createProfileRootAllocator({
+        rootsDirectory: join(await mkdtemp(join(tmpdir(), 'puppeteer-onboarding-')), 'profiles'),
+      }),
+      host: box.host,
+      defaultCwd: '/workspace',
+      onError,
+    });
+
+    const failure = await flow.verifyProfile(nativeDefaultProfileId('alpha'));
+    expect(failure).toMatchObject({ status: 'unavailable', provider: 'alpha', retryable: true });
+    expect(JSON.stringify(failure)).not.toContain('sk-secret');
+  });
+
+  it('removes managed profiles only and leaves the root on disk', async () => {
+    const alpha = fakeProvider('alpha');
+    const box = await onboarding([alpha]);
+    const profile = (await box.onboarding.createProfile({ providerId: 'alpha', label: 'Work' })) as AgentProfile;
+
+    await expect(box.onboarding.removeProfile(nativeDefaultProfileId('alpha'))).resolves.toBe(false);
+    await expect(box.onboarding.removeProfile('ghost')).resolves.toBe(false);
+    await expect(box.onboarding.removeProfile(profile.id)).resolves.toBe(true);
+    expect(box.stored.snapshot?.profiles).toEqual([]);
+    await expect(stat(profile.dataRoot)).resolves.toBeDefined();
+  });
+});

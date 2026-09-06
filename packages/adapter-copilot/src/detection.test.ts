@@ -11,5 +11,12 @@ describe('Copilot detection', () => {
   it('parses only a complete semantic version token', () => {
     expect(parseCopilotVersion(`GitHub Copilot CLI ${COPILOT_SURFACE_VERSION}`)).toBe(COPILOT_SURFACE_VERSION);
     expect(parseCopilotVersion('copilot development')).toBeUndefined();
+    expect(parseCopilotVersion('1.0.80.5')).toBeUndefined();
+  });
+
+  it('parses the native sentence-terminated output observed on 1.0.80', () => {
+    expect(parseCopilotVersion("GitHub Copilot CLI 1.0.80.\nRun 'copilot update' to check for updates.\n")).toBe(
+      '1.0.80',
+    );
   });
 });

@@ -45,3 +45,5 @@ export {
   type OpenCodeTuiSession,
   type PreparedOpenCodeTuiSession,
 } from './driver.js';
+export * from './services/distribution.js';
+export * from './services/profiles.js';

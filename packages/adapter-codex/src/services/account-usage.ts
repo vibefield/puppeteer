@@ -5,6 +5,7 @@ import type {
   AccountUsageProvider,
   AccountUsageService,
   AccountUsageSnapshot,
+  AgentProfile,
 } from '@vibecook/puppeteer-core';
 import { PUPPETEER_VERSION } from '@vibecook/puppeteer-core';
 import {
@@ -202,6 +203,10 @@ export interface FetchCodexAccountUsageOptions {
   executable?: string;
   requestTimeoutMs?: number;
   now?: () => Date;
+  /** Extra app-server environment, merged over this process's own. Carries the profile binding. */
+  env?: Record<string, string>;
+  /** Injected transport factory; the default spawns `codex app-server` over stdio. */
+  spawnTransport?: (options: { executable?: string; env?: Record<string, string> }) => Transport;
 }
 
 function codexFailure(error: unknown): AccountUsageFetchResult {
@@ -244,8 +249,9 @@ export async function fetchCodexAccountUsage(
   try {
     transport =
       options.transport ??
-      spawnAppServerTransport({
-        executable: options.executable,
+      (options.spawnTransport ?? spawnAppServerTransport)({
+        ...(options.executable !== undefined ? { executable: options.executable } : {}),
+        ...(options.env ? { env: options.env } : {}),
       });
     client = new AppServerClient(transport, { requestTimeoutMs: options.requestTimeoutMs });
     await client.request('initialize', { clientInfo: CLIENT_INFO, capabilities: {} });
@@ -269,12 +275,30 @@ export async function fetchCodexAccountUsage(
   }
 }
 
+/**
+ * Read Codex account usage for the native default account, or for one profile's
+ * root. A managed profile binds the app-server to its own `CODEX_HOME`, so the
+ * quotas come back for the account that root is logged into.
+ */
+export async function fetchCodexAccountUsageForProfile(
+  profile?: AgentProfile,
+  options: Omit<FetchCodexAccountUsageOptions, 'transport'> = {},
+): Promise<AccountUsageFetchResult> {
+  const binding = profile?.kind === 'managed' ? { CODEX_HOME: profile.dataRoot } : undefined;
+  const result = await fetchCodexAccountUsage({
+    ...options,
+    ...(binding ? { env: { ...options.env, ...binding } } : {}),
+  });
+  if (!profile || result.status !== 'available') return result;
+  return { ...result, snapshot: { ...result.snapshot, profileId: profile.id } };
+}
+
 /** Complete account-usage capability advertised by the Codex adapter. */
 export function createCodexAccountUsageService(
   options: Omit<FetchCodexAccountUsageOptions, 'transport'> = {},
 ): AccountUsageService {
   return {
     provider: CODEX_ACCOUNT_USAGE_PROVIDER,
-    fetch: () => fetchCodexAccountUsage(options),
+    fetch: (fetchOptions) => fetchCodexAccountUsageForProfile(fetchOptions?.profile, options),
   };
 }

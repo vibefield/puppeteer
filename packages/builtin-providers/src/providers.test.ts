@@ -1,68 +1,115 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import type { AgentAdapterBinding, AgentHost } from '@vibecook/puppeteer-core';
+import type { AgentAdapterBinding, AgentHost, AgentProfile } from '@vibecook/puppeteer-core';
 import type { AcpConnector } from '@vibecook/puppeteer-adapter-acp';
 
-const adapters = vi.hoisted(() => ({
-  createAcpSession: vi.fn(),
-  createAntigravityTuiSession: vi.fn(),
-  prepareAntigravityTuiSession: vi.fn(),
-  normalizeAntigravityNativeInvocation: vi.fn(() => ({ status: 'accepted' })),
-  captureAntigravityContinuationState: vi.fn(),
-  restoreAntigravityContinuationState: vi.fn(),
-  createClaudeAccountUsageService: vi.fn(),
-  createClaudeSession: vi.fn(),
-  fetchClaudeAccountUsage: vi.fn(),
-  onClaudeAccountUsage: vi.fn(() => () => undefined),
-  preflightClaudeLaunch: vi.fn(),
-  prepareClaudeTuiSession: vi.fn(),
-  normalizeClaudeNativeInvocation: vi.fn(() => ({ status: 'accepted' })),
-  captureClaudeContinuationState: vi.fn(),
-  restoreClaudeContinuationState: vi.fn(),
-  createCodexAccountUsageService: vi.fn(),
-  createCodexTuiSession: vi.fn(),
-  fetchCodexAccountUsage: vi.fn(),
-  prepareCodexTuiSession: vi.fn(),
-  normalizeCodexNativeInvocation: vi.fn(() => ({ status: 'accepted' })),
-  captureCodexContinuationState: vi.fn(),
-  restoreCodexContinuationState: vi.fn(),
-  createCopilotTuiSession: vi.fn(),
-  prepareCopilotTuiSession: vi.fn(),
-  normalizeCopilotNativeInvocation: vi.fn(() => ({ status: 'accepted' })),
-  captureCopilotContinuationState: vi.fn(),
-  restoreCopilotContinuationState: vi.fn(),
-  createGrokAccountUsageService: vi.fn(),
-  createGrokBackend: vi.fn(),
-  fetchGrokAccountUsage: vi.fn(),
-  normalizeGrokNativeInvocation: vi.fn(() => ({ status: 'accepted' })),
-  captureGrokContinuationState: vi.fn(),
-  restoreGrokContinuationState: vi.fn(),
-  createKimiTuiSession: vi.fn(),
-  prepareKimiTuiSession: vi.fn(),
-  normalizeKimiNativeInvocation: vi.fn(() => ({ status: 'accepted' })),
-  captureKimiContinuationState: vi.fn(),
-  restoreKimiContinuationState: vi.fn(),
-  createOpenCodeTuiSession: vi.fn(),
-  prepareOpenCodeTuiSession: vi.fn(),
-  normalizeOpenCodeNativeInvocation: vi.fn(() => ({ status: 'accepted' })),
-  captureOpenCodeContinuationState: vi.fn(),
-  restoreOpenCodeContinuationState: vi.fn(),
-  createHermesTuiSession: vi.fn(),
-  prepareHermesTuiSession: vi.fn(),
-  normalizeHermesNativeInvocation: vi.fn(() => ({ status: 'accepted' })),
-  captureHermesContinuationState: vi.fn(),
-  restoreHermesContinuationState: vi.fn(),
-  createPiTuiSession: vi.fn(),
-  preparePiTuiSession: vi.fn(),
-  normalizePiNativeInvocation: vi.fn(() => ({ status: 'accepted' })),
-  capturePiContinuationState: vi.fn(),
-  restorePiContinuationState: vi.fn(),
-}));
+const adapters = vi.hoisted(() => {
+  // Minimal valid provider-scoped capabilities so composition passes runtime schema checks.
+  const fakeDistribution = (id: string, label: string, command: string) => ({
+    provider: {
+      id,
+      label,
+      commands: [command],
+      npmPackages: [],
+      brewNames: [],
+      detectors: [],
+      nativeUpdateCheck: false,
+    },
+    inspect: vi.fn(async () => undefined),
+    recipeFor: vi.fn(() => ({ kind: 'manual' as const, instructions: 'not applicable' })),
+  });
+  const fakeProfiles = (id: string, label: string) => ({
+    provider: { id, label, support: { supported: true, identity: 'none' as const, sharedSurfaces: [] } },
+    bindingEnvironment: vi.fn(() => ({})),
+    loginInvocation: vi.fn(() => ({ command: id, args: ['login'], cwd: '/work' })),
+    verify: vi.fn(async () => ({
+      status: 'unsupported' as const,
+      provider: id,
+      message: 'no identity',
+      retryable: false,
+    })),
+  });
+  return {
+    createAntigravityDistributionService: vi.fn(() => fakeDistribution('antigravity', 'Antigravity', 'agy')),
+    createAntigravityProfileService: vi.fn(() => fakeProfiles('antigravity', 'Antigravity')),
+    createClaudeDistributionService: vi.fn(() => fakeDistribution('claude', 'Claude', 'claude')),
+    createClaudeProfileService: vi.fn(() => fakeProfiles('claude', 'Claude')),
+    createCodexDistributionService: vi.fn(() => fakeDistribution('codex', 'Codex', 'codex')),
+    createCodexProfileService: vi.fn(() => fakeProfiles('codex', 'Codex')),
+    createCopilotDistributionService: vi.fn(() => fakeDistribution('copilot', 'GitHub Copilot', 'copilot')),
+    createCopilotProfileService: vi.fn(() => fakeProfiles('copilot', 'GitHub Copilot')),
+    createGrokDistributionService: vi.fn(() => fakeDistribution('grok', 'Grok', 'grok')),
+    createGrokProfileService: vi.fn(() => fakeProfiles('grok', 'Grok')),
+    createKimiDistributionService: vi.fn(() => fakeDistribution('kimi', 'Kimi', 'kimi')),
+    createKimiProfileService: vi.fn(() => fakeProfiles('kimi', 'Kimi')),
+    createOpenCodeDistributionService: vi.fn(() => fakeDistribution('opencode', 'OpenCode', 'opencode')),
+    createOpenCodeProfileService: vi.fn(() => fakeProfiles('opencode', 'OpenCode')),
+    createHermesDistributionService: vi.fn(() => fakeDistribution('hermes', 'Hermes', 'hermes')),
+    createHermesProfileService: vi.fn(() => fakeProfiles('hermes', 'Hermes')),
+    createPiDistributionService: vi.fn(() => fakeDistribution('pi', 'Pi', 'pi')),
+    createPiProfileService: vi.fn(() => fakeProfiles('pi', 'Pi')),
+    createAcpSession: vi.fn(),
+    createAntigravityTuiSession: vi.fn(),
+    prepareAntigravityTuiSession: vi.fn(),
+    normalizeAntigravityNativeInvocation: vi.fn(() => ({ status: 'accepted' })),
+    captureAntigravityContinuationState: vi.fn(),
+    restoreAntigravityContinuationState: vi.fn(),
+    createClaudeAccountUsageService: vi.fn(),
+    createClaudeSession: vi.fn(),
+    fetchClaudeAccountUsage: vi.fn(),
+    onClaudeAccountUsage: vi.fn(() => () => undefined),
+    preflightClaudeLaunch: vi.fn(),
+    prepareClaudeTuiSession: vi.fn(),
+    normalizeClaudeNativeInvocation: vi.fn(() => ({ status: 'accepted' })),
+    captureClaudeContinuationState: vi.fn(),
+    restoreClaudeContinuationState: vi.fn(),
+    createCodexAccountUsageService: vi.fn(),
+    createCodexTuiSession: vi.fn(),
+    fetchCodexAccountUsage: vi.fn(),
+    prepareCodexTuiSession: vi.fn(),
+    normalizeCodexNativeInvocation: vi.fn(() => ({ status: 'accepted' })),
+    captureCodexContinuationState: vi.fn(),
+    restoreCodexContinuationState: vi.fn(),
+    createCopilotTuiSession: vi.fn(),
+    prepareCopilotTuiSession: vi.fn(),
+    normalizeCopilotNativeInvocation: vi.fn(() => ({ status: 'accepted' })),
+    captureCopilotContinuationState: vi.fn(),
+    restoreCopilotContinuationState: vi.fn(),
+    createGrokAccountUsageService: vi.fn(),
+    createGrokBackend: vi.fn(),
+    fetchGrokAccountUsage: vi.fn(),
+    normalizeGrokNativeInvocation: vi.fn(() => ({ status: 'accepted' })),
+    captureGrokContinuationState: vi.fn(),
+    restoreGrokContinuationState: vi.fn(),
+    createKimiTuiSession: vi.fn(),
+    prepareKimiTuiSession: vi.fn(),
+    normalizeKimiNativeInvocation: vi.fn(() => ({ status: 'accepted' })),
+    captureKimiContinuationState: vi.fn(),
+    restoreKimiContinuationState: vi.fn(),
+    createOpenCodeTuiSession: vi.fn(),
+    prepareOpenCodeTuiSession: vi.fn(),
+    normalizeOpenCodeNativeInvocation: vi.fn(() => ({ status: 'accepted' })),
+    captureOpenCodeContinuationState: vi.fn(),
+    restoreOpenCodeContinuationState: vi.fn(),
+    createHermesTuiSession: vi.fn(),
+    prepareHermesTuiSession: vi.fn(),
+    normalizeHermesNativeInvocation: vi.fn(() => ({ status: 'accepted' })),
+    captureHermesContinuationState: vi.fn(),
+    restoreHermesContinuationState: vi.fn(),
+    createPiTuiSession: vi.fn(),
+    preparePiTuiSession: vi.fn(),
+    normalizePiNativeInvocation: vi.fn(() => ({ status: 'accepted' })),
+    capturePiContinuationState: vi.fn(),
+    restorePiContinuationState: vi.fn(),
+  };
+});
 
 vi.mock('@vibecook/puppeteer-adapter-acp', () => ({
   createAcpSession: adapters.createAcpSession,
 }));
 
 vi.mock('@vibecook/puppeteer-adapter-antigravity', () => ({
+  createAntigravityDistributionService: adapters.createAntigravityDistributionService,
+  createAntigravityProfileService: adapters.createAntigravityProfileService,
   createAntigravityTuiSession: adapters.createAntigravityTuiSession,
   prepareAntigravityTuiSession: adapters.prepareAntigravityTuiSession,
   normalizeAntigravityNativeInvocation: adapters.normalizeAntigravityNativeInvocation,
@@ -71,6 +118,8 @@ vi.mock('@vibecook/puppeteer-adapter-antigravity', () => ({
 }));
 
 vi.mock('@vibecook/puppeteer-adapter-claude', () => ({
+  createClaudeDistributionService: adapters.createClaudeDistributionService,
+  createClaudeProfileService: adapters.createClaudeProfileService,
   createClaudeAccountUsageService: adapters.createClaudeAccountUsageService,
   createClaudeSession: adapters.createClaudeSession,
   fetchClaudeAccountUsage: adapters.fetchClaudeAccountUsage,
@@ -83,6 +132,8 @@ vi.mock('@vibecook/puppeteer-adapter-claude', () => ({
 }));
 
 vi.mock('@vibecook/puppeteer-adapter-codex', () => ({
+  createCodexDistributionService: adapters.createCodexDistributionService,
+  createCodexProfileService: adapters.createCodexProfileService,
   createCodexAccountUsageService: adapters.createCodexAccountUsageService,
   createCodexTuiSession: adapters.createCodexTuiSession,
   fetchCodexAccountUsage: adapters.fetchCodexAccountUsage,
@@ -93,6 +144,8 @@ vi.mock('@vibecook/puppeteer-adapter-codex', () => ({
 }));
 
 vi.mock('@vibecook/puppeteer-adapter-copilot', () => ({
+  createCopilotDistributionService: adapters.createCopilotDistributionService,
+  createCopilotProfileService: adapters.createCopilotProfileService,
   createCopilotTuiSession: adapters.createCopilotTuiSession,
   prepareCopilotTuiSession: adapters.prepareCopilotTuiSession,
   normalizeCopilotNativeInvocation: adapters.normalizeCopilotNativeInvocation,
@@ -101,6 +154,8 @@ vi.mock('@vibecook/puppeteer-adapter-copilot', () => ({
 }));
 
 vi.mock('@vibecook/puppeteer-adapter-grok', () => ({
+  createGrokDistributionService: adapters.createGrokDistributionService,
+  createGrokProfileService: adapters.createGrokProfileService,
   createGrokAccountUsageService: adapters.createGrokAccountUsageService,
   createGrokBackend: adapters.createGrokBackend,
   fetchGrokAccountUsage: adapters.fetchGrokAccountUsage,
@@ -110,6 +165,8 @@ vi.mock('@vibecook/puppeteer-adapter-grok', () => ({
 }));
 
 vi.mock('@vibecook/puppeteer-adapter-kimi', () => ({
+  createKimiDistributionService: adapters.createKimiDistributionService,
+  createKimiProfileService: adapters.createKimiProfileService,
   createKimiTuiSession: adapters.createKimiTuiSession,
   prepareKimiTuiSession: adapters.prepareKimiTuiSession,
   normalizeKimiNativeInvocation: adapters.normalizeKimiNativeInvocation,
@@ -118,6 +175,8 @@ vi.mock('@vibecook/puppeteer-adapter-kimi', () => ({
 }));
 
 vi.mock('@vibecook/puppeteer-adapter-opencode', () => ({
+  createOpenCodeDistributionService: adapters.createOpenCodeDistributionService,
+  createOpenCodeProfileService: adapters.createOpenCodeProfileService,
   createOpenCodeTuiSession: adapters.createOpenCodeTuiSession,
   prepareOpenCodeTuiSession: adapters.prepareOpenCodeTuiSession,
   normalizeOpenCodeNativeInvocation: adapters.normalizeOpenCodeNativeInvocation,
@@ -126,6 +185,8 @@ vi.mock('@vibecook/puppeteer-adapter-opencode', () => ({
 }));
 
 vi.mock('@vibecook/puppeteer-adapter-hermes', () => ({
+  createHermesDistributionService: adapters.createHermesDistributionService,
+  createHermesProfileService: adapters.createHermesProfileService,
   createHermesTuiSession: adapters.createHermesTuiSession,
   prepareHermesTuiSession: adapters.prepareHermesTuiSession,
   normalizeHermesNativeInvocation: adapters.normalizeHermesNativeInvocation,
@@ -134,6 +195,8 @@ vi.mock('@vibecook/puppeteer-adapter-hermes', () => ({
 }));
 
 vi.mock('@vibecook/puppeteer-adapter-pi', () => ({
+  createPiDistributionService: adapters.createPiDistributionService,
+  createPiProfileService: adapters.createPiProfileService,
   createPiTuiSession: adapters.createPiTuiSession,
   preparePiTuiSession: adapters.preparePiTuiSession,
   normalizePiNativeInvocation: adapters.normalizePiNativeInvocation,
@@ -261,6 +324,81 @@ describe('createBuiltinProviders launch options', () => {
     adapters.prepareHermesTuiSession.mockResolvedValue(fakePreparation('hermes'));
     adapters.createPiTuiSession.mockResolvedValue(fakeSession('pi'));
     adapters.preparePiTuiSession.mockResolvedValue(fakePreparation('pi'));
+  });
+
+  it('exposes distribution and profile capabilities on every executable provider', () => {
+    for (const provider of createBuiltinProviders()) {
+      if (provider.descriptor.id === 'acp') {
+        expect(provider.distribution).toBeUndefined();
+        expect(provider.profiles).toBeUndefined();
+        continue;
+      }
+      expect(provider.distribution?.provider.id).toBe(provider.descriptor.id);
+      expect(provider.distribution?.provider.label).toBe(provider.descriptor.label);
+      expect(provider.profiles?.provider.id).toBe(provider.descriptor.id);
+    }
+  });
+
+  it('binds a selected profile through the adapter normalizer, never through a consumer-side recipe', async () => {
+    const providers = createBuiltinProviders({ executables: { claude: '/opt/claude', codex: '/opt/codex' } });
+    const claude = providers.find((provider) => provider.descriptor.id === 'claude')!;
+    const codex = providers.find((provider) => provider.descriptor.id === 'codex')!;
+    const profile: AgentProfile = {
+      id: 'p1',
+      provider: 'claude',
+      label: 'Work',
+      kind: 'managed',
+      dataRoot: '/roots/claude/p1',
+      createdAt: '2026-09-06T00:00:00.000Z',
+    };
+    vi.mocked(claude.profiles!.bindingEnvironment).mockReturnValue({ CLAUDE_CONFIG_DIR: '/roots/claude/p1' });
+    adapters.normalizeClaudeNativeInvocation.mockReturnValue({
+      status: 'accepted',
+      options: { configDir: '/roots/claude/p1' },
+    } as ReturnType<typeof adapters.normalizeClaudeNativeInvocation>);
+
+    await claude.createSession({ cwd: '/work/repo', host, profile, agentOptions: { model: 'claude-fable-5' } });
+
+    expect(adapters.normalizeClaudeNativeInvocation).toHaveBeenCalledWith({
+      providerId: 'claude',
+      cwd: '/work/repo',
+      argv: [],
+      environment: { CLAUDE_CONFIG_DIR: '/roots/claude/p1' },
+      implementation: { kind: 'native' },
+    });
+    expect(adapters.createClaudeSession).toHaveBeenCalledWith(
+      expect.objectContaining({ configDir: '/roots/claude/p1', model: 'claude-fable-5' }),
+    );
+
+    const codexProfile: AgentProfile = { ...profile, id: 'p2', provider: 'codex', dataRoot: '/roots/codex/p2' };
+    vi.mocked(codex.profiles!.bindingEnvironment).mockReturnValue({ CODEX_HOME: '/roots/codex/p2' });
+    adapters.normalizeCodexNativeInvocation.mockReturnValue({
+      status: 'accepted',
+      options: { env: { CODEX_HOME: '/roots/codex/p2' }, appServerEnv: { CODEX_HOME: '/roots/codex/p2' } },
+    } as ReturnType<typeof adapters.normalizeCodexNativeInvocation>);
+
+    await codex.createSession({
+      cwd: '/work/repo',
+      host,
+      profile: codexProfile,
+      agentOptions: { model: 'gpt-5.6-sol' },
+    });
+
+    expect(adapters.createCodexTuiSession).toHaveBeenCalledWith(
+      expect.objectContaining({
+        env: { CODEX_HOME: '/roots/codex/p2' },
+        appServerEnv: { CODEX_HOME: '/roots/codex/p2' },
+        model: 'gpt-5.6-sol',
+      }),
+    );
+  });
+
+  it('leaves launches without a profile untouched by profile binding', async () => {
+    const claude = createBuiltinProviders({ executables: { claude: '/opt/claude' } }).find(
+      (provider) => provider.descriptor.id === 'claude',
+    )!;
+    await claude.createSession({ cwd: '/work/repo', host, agentOptions: { model: 'claude-fable-5' } });
+    expect(adapters.normalizeClaudeNativeInvocation).not.toHaveBeenCalled();
   });
 
   it('forwards Claude model and permission mode to the native driver', async () => {

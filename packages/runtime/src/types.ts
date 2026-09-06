@@ -3,6 +3,18 @@ import type {
   AccountUsageProvider,
   AccountUsageService,
   AgentContinuation,
+  AgentInstallation,
+  AgentProfile,
+  DistributionFailure,
+  DistributionProvider,
+  DistributionService,
+  ProfileFailure,
+  ProfileIdentity,
+  ProfileProvider,
+  ProfileService,
+  ReleaseChannel,
+  ReleaseSnapshot,
+  UpdateReceipt,
   AgentExecutionMode,
   AgentEvent,
   AgentEventEnvelope,
@@ -62,6 +74,8 @@ export interface AgentProviderSessionOptions {
   host: AgentHost;
   /** Provider-owned launch options. Built-in callers get a discriminated typed facade below. */
   agentOptions?: unknown;
+  /** Registered account profile whose root the adapter binds through its own variable. */
+  profile?: AgentProfile;
 }
 
 /** Provider-private continuation codec. Its state is opaque above the adapter boundary. */
@@ -85,6 +99,10 @@ export interface AgentProvider {
   createSession(options: AgentProviderSessionOptions): Promise<AgentAdapterBinding>;
   /** Adapter-owned account-wide quota capability, independent of any session. */
   readonly accountUsage?: AccountUsageService;
+  /** Adapter-owned install classification, release detectors, and update recipes. */
+  readonly distribution?: DistributionService;
+  /** Adapter-owned account-profile binding, login, and identity verification. */
+  readonly profiles?: ProfileService;
   /** Adapter-owned CLI grammar, transport topology, and continuation semantics. */
   readonly launch?: AgentProviderLaunchService;
   /** Optional split-phase launch for caller-owned terminals. Generic ACP intentionally omits this capability. */
@@ -130,6 +148,8 @@ export interface CreateAgentSessionOptions {
   workspace?: AgentWorkspaceRequest;
   /** Opaque to the runtime; interpreted only by the selected provider. */
   agentOptions?: unknown;
+  /** Registered profile id; the runtime resolves it and hands the provider the profile. */
+  profile?: string;
 }
 
 /** Consumer-facing spawn request. Native resume identity is accepted only through resume(). */
@@ -143,6 +163,12 @@ export interface ResumeAgentOptions {
   creationRequestId?: string;
   externalRefs?: readonly ExternalRef[];
   workspace?: AgentWorkspaceRequest;
+  /**
+   * Registered profile id the host persisted beside the continuation. The
+   * continuation already carries the account root for providers that record
+   * it, so this re-binds the root explicitly and attributes the resumed run.
+   */
+  profile?: string;
 }
 
 /** Host-only native invocation request. Adapters normalize it before normal preparation. */
@@ -175,11 +201,14 @@ export interface AgentSessionInfo {
   /** External shim/vendor PID retained across exec, for caller-side lifecycle correlation. */
   processId?: number;
   workspace: AgentWorkspaceInfo;
+  /** Registered profile this run is bound to, when one was selected or matched from the launch environment. */
+  profileId?: string;
 }
 
 export type AgentSessionErrorCode =
   | WorkspaceErrorCode
   | 'AGENT_NOT_FOUND'
+  | 'AGENT_PROFILE_NOT_FOUND'
   | 'AGENT_SESSION_CREATE_FAILED'
   | 'INVALID_CREATION_REQUEST_ID'
   | 'INVALID_EXTERNAL_REFS'
@@ -207,6 +236,7 @@ export type SpawnAgentResult = Agent | AgentSessionFailure;
 export type PreparationErrorCode =
   | WorkspaceErrorCode
   | 'AGENT_NOT_FOUND'
+  | 'AGENT_PROFILE_NOT_FOUND'
   | 'AGENT_SESSION_CREATE_FAILED'
   | 'INVALID_CREATION_REQUEST_ID'
   | 'INVALID_EXTERNAL_REFS'
@@ -315,7 +345,76 @@ export interface AgentRuntimeOptions {
   monitorNotificationCapacity?: number;
   /** Maximum unacknowledged failed monitors retained by one host. Default: 256. */
   terminalFailureCapacity?: number;
+  profiles?: ProfileRuntimeOptions;
+  distribution?: DistributionRuntimeOptions;
 }
+
+/** Host-injected persistence for the profile registry. */
+export interface ProfileStore {
+  load(): Promise<ProfileRegistrySnapshot | undefined>;
+  save(snapshot: ProfileRegistrySnapshot): Promise<void>;
+}
+
+export interface ProfileRegistrySnapshot {
+  version: 1;
+  profiles: AgentProfile[];
+}
+
+export interface ProfileRuntimeOptions {
+  /** Defaults to ~/.puppeteer/profiles.json with atomic 0600 writes. */
+  store?: ProfileStore;
+  /** Defaults to ~/.puppeteer/profiles; managed roots are <dir>/<providerId>/<uuid> created 0700. */
+  rootsDirectory?: string;
+}
+
+export interface DistributionRuntimeOptions {
+  /** Where opaque update transcripts are written 0600. Defaults to ~/.puppeteer/updates. */
+  transcriptsDirectory?: string;
+  /** Injectable fetch for release detectors; defaults to globalThis.fetch. */
+  fetch?: typeof fetch;
+  /** PATH-style list searched for candidates; defaults to process.env.PATH. */
+  searchPath?: string;
+}
+
+export interface InspectInstallationsOptions {
+  providerId?: string;
+  /** Discard the cached inventory before inspecting. */
+  refresh?: boolean;
+}
+
+export interface CheckReleasesOptions {
+  providerId: string;
+  /** Permit outbound requests to declared detectors; native oracles run regardless. */
+  network?: boolean;
+}
+
+export interface ReleaseCheckResult {
+  provider: string;
+  checkedAt: string;
+  installed?: AgentInstallation;
+  releases: ReleaseSnapshot[];
+  /** Newest release per channel that is newer than the active install. */
+  behind: { channel: ReleaseChannel; version: string }[];
+  failures: DistributionFailure[];
+}
+
+export interface UpdateInstallationOptions {
+  providerId: string;
+  /** Defaults to the active install. */
+  executable?: string;
+}
+
+export interface CreateProfileOptions {
+  providerId: string;
+  label: string;
+}
+
+export interface StartProfileLoginOptions {
+  profileId: string;
+  cwd?: string;
+}
+
+export type ProfileLoginResult = { runtimeSessionId: string; profile: AgentProfile } | ProfileFailure;
 
 export type RuntimeRunStatus = 'allocated' | 'preparing' | 'prepared' | 'active' | 'terminal';
 
@@ -366,10 +465,34 @@ export interface AgentRuntime {
   providers(): readonly AgentProviderDescriptor[];
   /** Enumerate every adapter that advertises account usage. */
   accountUsageProviders(): readonly AccountUsageProvider[];
-  /** Fetch account-wide usage for a provider; concurrent calls for one provider are coalesced. */
-  accountUsage(providerId: string): Promise<AccountUsageFetchResult>;
+  /** Fetch account-wide usage for a provider, or for one registered profile; concurrent calls are coalesced per target. */
+  accountUsage(providerId: string, profileId?: string): Promise<AccountUsageFetchResult>;
   /** Enumerate adapter-declared launch capabilities for terminal hosts and product discovery. */
   launchProviders(): readonly AgentLaunchProvider[];
+  /** Enumerate every adapter that advertises distribution facts. */
+  distributionProviders(): readonly DistributionProvider[];
+  /** Discover and classify installed executables; cached until refresh. */
+  inspectInstallations(options?: InspectInstallationsOptions): Promise<AgentInstallation[]>;
+  /** Compare the active install against native oracles and declared release detectors. */
+  checkReleases(options: CheckReleasesOptions): Promise<ReleaseCheckResult>;
+  /** Run the adapter's update recipe and re-inspect; the receipt is evidence, not parsed output. */
+  updateInstallation(options: UpdateInstallationOptions): Promise<UpdateReceipt>;
+  /** Enumerate every adapter that advertises account profiles. */
+  profileProviders(): readonly ProfileProvider[];
+  /** Registered profiles plus one synthetic native-default profile per supporting provider. */
+  profiles(providerId?: string): Promise<AgentProfile[]>;
+  profile(profileId: string): Promise<AgentProfile | undefined>;
+  /** Allocate an immutable managed root and register it; the account is empty until login. */
+  createProfile(options: CreateProfileOptions): Promise<AgentProfile | ProfileFailure>;
+  /** Unregister a managed profile. The root stays on disk; deleting it is the user's decision. */
+  removeProfile(profileId: string): Promise<boolean>;
+  /** Merged binding variables for a set of profiles, at most one per provider, for seeding a host terminal. */
+  profileBindingEnvironment(profileIds: readonly string[]): Promise<Record<string, string>>;
+  /** Spawn the native login in a host terminal bound to the profile root. */
+  startProfileLogin(options: StartProfileLoginOptions): Promise<ProfileLoginResult>;
+  /** Re-read native identity for a profile and persist it on the registry entry. */
+  verifyProfile(profileId: string): Promise<ProfileIdentity | ProfileFailure>;
+  onProfilesChanged(listener: (profiles: AgentProfile[]) => void): () => void;
   /** @deprecated Compatibility/IPC surface. Use spawn() to receive an Agent. */
   createSession(options: CreateAgentSessionOptions): Promise<CreateAgentSessionResult>;
   /** Host SPI: normalize a native CLI invocation and prepare its adapter-owned recipe. */

@@ -24,8 +24,10 @@ export {
   CLAUDE_ACCOUNT_USAGE_PROVIDER,
   CLAUDE_USAGE_ENDPOINT,
   claudeAccountUsageFromStatusLine,
+  claudeKeychainService,
   createClaudeAccountUsageService,
   fetchClaudeAccountUsage,
+  fetchClaudeAccountUsageForProfile,
   getClaudeStatusLineAccountUsage,
   normalizeClaudeAccountUsage,
   observeClaudeStatusLineAccountUsage,
@@ -33,4 +35,6 @@ export {
   type FetchClaudeAccountUsageOptions,
 } from './services/account-usage.js';
 export * from './services/prompt.js';
+export * from './services/distribution.js';
+export * from './services/profiles.js';
 export * from './driver.js';

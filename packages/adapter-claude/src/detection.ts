@@ -49,6 +49,9 @@ const flags = Object.fromEntries(
   ]),
 ) as Record<keyof ClaudeFlagSupport, string[]>;
 
+/** Native version flag from the generated detection surface; reused by the distribution service. */
+export const CLAUDE_VERSION_FLAG = surface.versionFlag;
+
 /** Injected process runner; the default wraps node:child_process execFile. */
 export type ClaudeExec = (file: string, args: string[]) => Promise<{ stdout: string }>;
 
@@ -112,7 +115,7 @@ export class ClaudeCapabilityError extends Error {
 const execFileAsync = promisify(execFile);
 const SCRIPT_EXECUTABLE = /\.(mjs|cjs|js|ts)$/;
 
-const defaultExec: ClaudeExec = async (file, args) => {
+export const defaultClaudeExec: ClaudeExec = async (file, args) => {
   // Adapter/Imposter development commonly supplies a JavaScript entry point.
   // Match launch preparation by running scripts under Node; Electron resolves
   // `node` from PATH rather than accidentally entering Electron-as-Node.
@@ -132,7 +135,7 @@ function errMessage(err: unknown): string {
 }
 
 /** `<semver> (Claude Code)` → `<semver>`; undefined when no semver is present. */
-function parseVersion(stdout: string): string | undefined {
+export function parseClaudeVersion(stdout: string): string | undefined {
   return stdout.match(versionPattern)?.[1];
 }
 
@@ -147,20 +150,20 @@ function helpHasFlag(help: string, flag: string): boolean {
   return new RegExp(`(^|[\\s,('"\`])${escaped}([\\s,)='"\`]|$)`, 'm').test(help);
 }
 
-function resolveExecutable(executable?: string): string {
-  return executable ?? process.env[surface.envVar] ?? surface.executables[0] ?? 'claude';
+/** Resolution order: explicit option → `PUPPETEER_CLAUDE_BIN` → PATH lookup of `claude`. */
+export function resolveClaudeExecutable(explicit?: string, environment: NodeJS.ProcessEnv = process.env): string {
+  return explicit ?? environment[surface.envVar] ?? surface.executables[0] ?? 'claude';
 }
 
 export async function detectClaude(options: DetectClaudeOptions = {}): Promise<ClaudeDetection> {
-  const exec = options.exec ?? defaultExec;
-  // Resolution order: explicit option → env override → PATH lookup of `claude`.
-  const executable = resolveExecutable(options.executable);
+  const exec = options.exec ?? defaultClaudeExec;
+  const executable = resolveClaudeExecutable(options.executable);
   const warnings: string[] = [];
 
   let version: string | undefined;
   try {
     const { stdout } = await exec(executable, [surface.versionFlag]);
-    version = parseVersion(stdout);
+    version = parseClaudeVersion(stdout);
     if (!version) {
       warnings.push(`could not parse version from \`${executable} ${surface.versionFlag}\`: ${stdout.trim()}`);
     }
@@ -223,10 +226,10 @@ export type ClaudeLaunchPreflight = (options: PreflightClaudeLaunchOptions) => P
  * Build a process-lifetime preflight. Detection is cached per resolved executable,
  * while each launch still checks only the flags its concrete recipe will use.
  */
-export function createClaudeLaunchPreflight(exec: ClaudeExec = defaultExec): ClaudeLaunchPreflight {
+export function createClaudeLaunchPreflight(exec: ClaudeExec = defaultClaudeExec): ClaudeLaunchPreflight {
   const detections = new Map<string, Promise<ClaudeDetection>>();
   return async (options) => {
-    const executable = resolveExecutable(options.executable);
+    const executable = resolveClaudeExecutable(options.executable);
     let detection = detections.get(executable);
     if (!detection) {
       detection = detectClaude({ executable, exec });

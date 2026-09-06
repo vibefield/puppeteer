@@ -23,9 +23,17 @@ export function resolveHermesExecutable(explicit?: string): string {
   return explicit ?? process.env[HERMES_EXECUTABLE_ENV] ?? HERMES_DEFAULT_EXECUTABLE;
 }
 
+/**
+ * Hermes 0.20.5 appends ` · upstream <sha>` to the banner the Surface pattern
+ * was captured from (probed 2026-09-06: `Hermes Agent v0.20.5 (2026.8.19) · upstream 79b8703d`).
+ * The generated pattern stays authoritative; this tolerant fallback only relaxes the end anchor.
+ */
+const HERMES_VERSION_BANNER_WITH_SUFFIX = /^Hermes Agent v(\d+\.\d+\.\d+) \((\d{4}\.\d{1,2}\.\d{1,2})\)(?:\s.*)?$/;
+
 export function parseHermesVersion(output: string): { version: string; releaseTag: string } | undefined {
   for (const line of output.split(/\r?\n/)) {
-    const match = line.trim().match(HERMES_VERSION_PATTERN);
+    const trimmed = line.trim();
+    const match = trimmed.match(HERMES_VERSION_PATTERN) ?? trimmed.match(HERMES_VERSION_BANNER_WITH_SUFFIX);
     if (match?.[1] && match[2]) return { version: match[1], releaseTag: match[2] };
   }
   return undefined;

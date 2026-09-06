@@ -43,3 +43,16 @@ describe('Hermes detection contract', () => {
     });
   });
 });
+
+describe('parseHermesVersion banner tolerance', () => {
+  it('reads the 0.20.0 banner recorded in Surface and the 0.20.5 banner with an upstream suffix', () => {
+    expect(parseHermesVersion('Hermes Agent v0.20.0 (2026.8.3)')).toEqual({
+      version: '0.20.0',
+      releaseTag: '2026.8.3',
+    });
+    expect(
+      parseHermesVersion('Hermes Agent v0.20.5 (2026.8.19) · upstream 79b8703d\nInstall directory: /x/hermes-agent'),
+    ).toEqual({ version: '0.20.5', releaseTag: '2026.8.19' });
+    expect(parseHermesVersion('hermes 1.2.3')).toBeUndefined();
+  });
+});

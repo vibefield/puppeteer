@@ -15,15 +15,17 @@ import {
   type AgentEvent,
   type AgentEventEnvelope,
   type AgentHost,
+  type AgentProfile,
   type AgentAdapterBinding,
   type ObservationLevel,
+  type ProfileService,
 } from '@vibecook/puppeteer-core';
 import type { AdapterMonitorObservationBatch } from '@vibecook/puppeteer-core/monitor-spi';
 import { createActionRecorder, isOwnActionV2 } from '@vibecook/puppeteer-record';
 import { createWorkspace } from '@vibecook/puppeteer-workspaces';
 import { createFileCreationRequestRegistry, type CreationRequestRegistry } from './identity/creation-registry.js';
 import { createAgentRuntime } from './runtime.js';
-import type { AgentProvider } from './types.js';
+import type { AgentProvider, ProfileStore } from './types.js';
 
 const host: AgentHost = {
   async spawnTerminal() {
@@ -215,6 +217,44 @@ function sessionHarness(
 
 function standaloneSession(sessionId: string, runtimeSessionId: string): AgentAdapterBinding {
   return sessionHarness(sessionId, runtimeSessionId).session;
+}
+
+/** A provider-neutral profile capability whose binding variable is its own root. */
+function exampleProfileService(id = 'example', label = 'Example'): ProfileService {
+  const variable = `${id.toUpperCase()}_HOME`;
+  return {
+    provider: {
+      id,
+      label,
+      support: {
+        supported: true,
+        identity: 'native-status',
+        sharedSurfaces: [],
+        nativeDefaultRoot: `/home/user/.${id}`,
+      },
+    },
+    bindingEnvironment: (profile) => (profile.kind === 'native-default' ? {} : { [variable]: profile.dataRoot }),
+    loginInvocation: (_profile, options) => ({ command: id, args: ['login'], cwd: options.cwd }),
+    async verify() {
+      return {
+        loggedIn: true,
+        verifiedAt: '2026-09-06T12:00:00.000Z',
+        source: { kind: 'native-status', stability: 'documented' },
+      };
+    },
+  };
+}
+
+function memoryProfileStore(): ProfileStore {
+  let snapshot: { version: 1; profiles: AgentProfile[] } | undefined;
+  return {
+    async load() {
+      return snapshot;
+    },
+    async save(next) {
+      snapshot = next;
+    },
+  };
 }
 
 describe('createAgentRuntime', () => {
@@ -2885,5 +2925,390 @@ describe('createAgentRuntime', () => {
     await expect(runtime.acknowledgeFailureBlocker(result.runtimeRunId, 'run:runtime')).resolves.toBe(true);
     expect(runtime.monitorState(result.runtimeRunId)).toBeUndefined();
     await runtime.dispose();
+  });
+
+  it('binds a spawn to a registered profile and hands the adapter the resolved account', async () => {
+    const root = await mkdtemp(join(tmpdir(), 'puppeteer-runtime-profile-spawn-'));
+    const handles = new Map<string, { emit: (event: AgentEventEnvelope) => void }>();
+    const base = fakeProvider('example', handles);
+    const seenProfiles: Array<AgentProfile | undefined> = [];
+    const provider: AgentProvider = {
+      ...base,
+      descriptor: { id: 'example', label: 'Example' },
+      createSession(providerOptions) {
+        seenProfiles.push(providerOptions.profile);
+        return base.createSession(providerOptions);
+      },
+      profiles: exampleProfileService(),
+    };
+    const store = memoryProfileStore();
+    const runtime = createAgentRuntime({
+      host,
+      defaultCwd: root,
+      providers: [provider],
+      profiles: { store, rootsDirectory: join(root, 'profiles') },
+    });
+
+    expect(runtime.profileProviders()).toEqual([
+      {
+        id: 'example',
+        label: 'Example',
+        support: {
+          supported: true,
+          identity: 'native-status',
+          sharedSurfaces: [],
+          nativeDefaultRoot: '/home/user/.example',
+        },
+      },
+    ]);
+
+    const changed: string[][] = [];
+    runtime.onProfilesChanged((profiles) => changed.push(profiles.map((profile) => profile.id)));
+    const created = await runtime.createProfile({ providerId: 'example', label: 'Work' });
+    if ('status' in created) throw new Error(created.message);
+    expect(changed.at(-1)).toEqual(['example:native-default', created.id]);
+    await expect(runtime.profiles('example')).resolves.toHaveLength(2);
+    await expect(runtime.profile(created.id)).resolves.toMatchObject({ label: 'Work' });
+
+    const spawned = await runtime.spawn({ agent: 'example', profile: created.id });
+    if ('error' in spawned) throw new Error(spawned.error.message);
+    expect(seenProfiles).toEqual([created]);
+    expect(spawned.info.profileId).toBe(created.id);
+    expect(runtime.sessionInfo(spawned.info.terminalSessionId)?.profileId).toBe(created.id);
+
+    await expect(runtime.profileBindingEnvironment([created.id])).resolves.toEqual({
+      EXAMPLE_HOME: created.dataRoot,
+    });
+    await runtime.dispose();
+    await rm(root, { recursive: true, force: true });
+  });
+
+  it('fails a spawn with a clear error when the profile is unknown or belongs to another provider', async () => {
+    const root = await mkdtemp(join(tmpdir(), 'puppeteer-runtime-profile-unknown-'));
+    const handles = new Map<string, { emit: (event: AgentEventEnvelope) => void }>();
+    const provider: AgentProvider = {
+      ...preparableProvider('example', { prepareCount: 0, adoptCount: 0, disposeCount: 0 }),
+      descriptor: { id: 'example', label: 'Example' },
+      profiles: exampleProfileService(),
+    };
+    const third: AgentProvider = {
+      ...fakeProvider('third', handles),
+      descriptor: { id: 'third', label: 'Third' },
+      profiles: exampleProfileService('third', 'Third'),
+    };
+    const withoutProfiles: AgentProvider = {
+      ...fakeProvider('other', handles),
+      descriptor: { id: 'other', label: 'Other' },
+    };
+    const runtime = createAgentRuntime({
+      host,
+      defaultCwd: root,
+      providers: [provider, third, withoutProfiles],
+      profiles: { store: memoryProfileStore(), rootsDirectory: join(root, 'profiles') },
+    });
+
+    await expect(runtime.createSession({ agent: 'example', profile: 'nope' })).resolves.toMatchObject({
+      error: { code: 'AGENT_PROFILE_NOT_FOUND', message: 'unknown account profile: nope' },
+    });
+    await expect(runtime.createSession({ agent: 'other', profile: 'example:native-default' })).resolves.toMatchObject({
+      error: {
+        code: 'AGENT_PROFILE_NOT_FOUND',
+        message: 'agent provider does not expose account profiles: other',
+      },
+    });
+    await expect(runtime.prepareSession({ agent: 'example', profile: 'third:native-default' })).resolves.toMatchObject({
+      error: {
+        code: 'AGENT_PROFILE_NOT_FOUND',
+        message: 'account profile third:native-default belongs to third, not example',
+      },
+    });
+    await runtime.dispose();
+    await rm(root, { recursive: true, force: true });
+  });
+
+  it('attributes a native invocation to a profile from its launch environment alone', async () => {
+    const root = await mkdtemp(join(tmpdir(), 'puppeteer-runtime-profile-attribution-'));
+    const hooks = { prepareCount: 0, adoptCount: 0, disposeCount: 0 };
+    const normalizeInvocation = vi.fn(() => ({ status: 'accepted' as const }));
+    const provider: AgentProvider = {
+      ...preparableProvider('example', hooks),
+      descriptor: { id: 'example', label: 'Example' },
+      profiles: exampleProfileService(),
+      launch: {
+        provider: {
+          id: 'example',
+          label: 'Example',
+          resume: true,
+          nativeInvocation: {
+            commands: [{ name: 'example', executable: '/opt/example' }],
+            environmentVariables: ['EXAMPLE_HOME'],
+          },
+        },
+        normalizeInvocation,
+      },
+    };
+    const runtime = createAgentRuntime({
+      host,
+      defaultCwd: root,
+      providers: [provider],
+      profiles: { store: memoryProfileStore(), rootsDirectory: join(root, 'profiles') },
+    });
+    const created = await runtime.createProfile({ providerId: 'example', label: 'Work' });
+    if ('status' in created) throw new Error(created.message);
+
+    const attribute = async (environment: Record<string, string>): Promise<string | undefined> => {
+      const prepared = await runtime.prepareInvocation({
+        providerId: 'example',
+        cwd: root,
+        argv: [],
+        environment,
+        implementation: { kind: 'native' },
+      });
+      if ('error' in prepared) throw new Error(prepared.error.message);
+      const adopted = await runtime.adoptPrepared(prepared.preparationId, {
+        terminalSessionId: `terminal-${prepared.preparationId}`,
+      });
+      if ('error' in adopted) throw new Error(adopted.error.message);
+      await runtime.handleProcessExit(adopted.terminalSessionId, {
+        exitCode: 0,
+        signal: null,
+        reason: 'process-exit',
+      });
+      return adopted.profileId;
+    };
+
+    await expect(attribute({ EXAMPLE_HOME: created.dataRoot })).resolves.toBe(created.id);
+    // No binding variable at all is the vendor's own root.
+    await expect(attribute({})).resolves.toBe('example:native-default');
+    // A root Puppeteer did not allocate is left unattributed rather than mislabelled.
+    await expect(attribute({ EXAMPLE_HOME: '/somewhere/else' })).resolves.toBeUndefined();
+    // Attribution never rewrites what the adapter was handed.
+    expect(normalizeInvocation).toHaveBeenCalledTimes(3);
+    await runtime.dispose();
+    await rm(root, { recursive: true, force: true });
+  });
+
+  it('reads account usage per profile, stamps the snapshot, and coalesces per account', async () => {
+    const root = await mkdtemp(join(tmpdir(), 'puppeteer-runtime-profile-usage-'));
+    const handles = new Map<string, { emit: (event: AgentEventEnvelope) => void }>();
+    const fetched: Array<string | undefined> = [];
+    const gates: Array<() => void> = [];
+    const provider: AgentProvider = {
+      ...fakeProvider('example', handles),
+      descriptor: { id: 'example', label: 'Example' },
+      profiles: exampleProfileService(),
+      accountUsage: {
+        provider: { id: 'example', label: 'Example', refresh: { pollIntervalMs: 60_000 } },
+        async fetch(usageOptions) {
+          fetched.push(usageOptions?.profile?.id);
+          await new Promise<void>((resolve) => gates.push(resolve));
+          return {
+            status: 'available',
+            snapshot: {
+              provider: 'example',
+              fetchedAt: '2026-09-06T12:00:00.000Z',
+              scope: 'subscription',
+              source: { kind: 'native-protocol', stability: 'documented' },
+              metrics: [],
+            },
+          };
+        },
+      },
+    };
+    const runtime = createAgentRuntime({
+      host,
+      defaultCwd: root,
+      providers: [provider],
+      profiles: { store: memoryProfileStore(), rootsDirectory: join(root, 'profiles') },
+    });
+    const created = await runtime.createProfile({ providerId: 'example', label: 'Work' });
+    if ('status' in created) throw new Error(created.message);
+
+    const managed = runtime.accountUsage('example', created.id);
+    const managedAgain = runtime.accountUsage('example', created.id);
+    const nativeDefault = runtime.accountUsage('example', 'example:native-default');
+    await vi.waitFor(() => expect(gates).toHaveLength(2));
+    for (const release of gates) release();
+
+    // One account has one quota, so the two managed reads share one fetch.
+    expect(fetched).toEqual([created.id, undefined]);
+    await expect(managed).resolves.toMatchObject({ snapshot: { profileId: created.id } });
+    await expect(managedAgain).resolves.toMatchObject({ snapshot: { profileId: created.id } });
+    await expect(nativeDefault).resolves.toMatchObject({ snapshot: { profileId: 'example:native-default' } });
+
+    await expect(runtime.accountUsage('example', 'ghost')).resolves.toEqual({
+      status: 'unsupported',
+      provider: 'example',
+      message: 'unknown account profile: ghost',
+      retryable: false,
+    });
+    await runtime.dispose();
+    await rm(root, { recursive: true, force: true });
+  });
+
+  it('exposes distribution providers, inventory, releases, and update receipts', async () => {
+    const root = await mkdtemp(join(tmpdir(), 'puppeteer-runtime-distribution-'));
+    const binDirectory = join(root, 'bin');
+    await mkdir(binDirectory, { recursive: true });
+    await writeFile(join(binDirectory, 'example'), '#!/bin/sh\n');
+    const handles = new Map<string, { emit: (event: AgentEventEnvelope) => void }>();
+    const distributionProvider = {
+      id: 'example',
+      label: 'Example',
+      commands: ['example'],
+      npmPackages: [],
+      brewNames: [],
+      detectors: [
+        {
+          kind: 'text' as const,
+          id: 'vendor-stable',
+          channel: 'stable' as const,
+          url: 'https://downloads.example.com/stable',
+          versionPattern: '^(\\d+\\.\\d+\\.\\d+)',
+        },
+      ],
+      nativeUpdateCheck: false,
+    };
+    let version = '1.2.3';
+    const provider: AgentProvider = {
+      ...fakeProvider('example', handles),
+      descriptor: { id: 'example', label: 'Example' },
+      distribution: {
+        provider: distributionProvider,
+        async inspect(candidate) {
+          return {
+            provider: 'example',
+            executable: candidate.executable,
+            realPath: candidate.realPath,
+            version,
+            method: 'standalone-binary',
+            autoUpdate: 'unknown',
+            detectedAt: '2026-09-06T12:00:00.000Z',
+            warnings: [],
+          };
+        },
+        recipeFor: () => ({ kind: 'manual', instructions: 'reinstall from the vendor site' }),
+      },
+    };
+    const runtime = createAgentRuntime({
+      host,
+      defaultCwd: root,
+      providers: [provider],
+      distribution: {
+        searchPath: binDirectory,
+        transcriptsDirectory: join(root, 'updates'),
+        fetch: (async () => new Response('1.3.0\n', { status: 200 })) as unknown as typeof fetch,
+      },
+    });
+
+    expect(runtime.distributionProviders()).toEqual([distributionProvider]);
+    const installations = await runtime.inspectInstallations();
+    expect(installations).toMatchObject([
+      { provider: 'example', executable: join(binDirectory, 'example'), origin: 'path', active: true },
+    ]);
+
+    await expect(runtime.checkReleases({ providerId: 'example' })).resolves.toMatchObject({
+      releases: [],
+      behind: [],
+    });
+    await expect(runtime.checkReleases({ providerId: 'example', network: true })).resolves.toMatchObject({
+      behind: [{ channel: 'stable', version: '1.3.0' }],
+    });
+    await expect(runtime.checkReleases({ providerId: 'missing' })).resolves.toMatchObject({
+      failures: [{ status: 'unsupported', provider: 'missing' }],
+    });
+
+    version = '1.3.0';
+    // A manual recipe is reported rather than reinvented as a download.
+    await expect(runtime.updateInstallation({ providerId: 'example' })).resolves.toMatchObject({
+      status: 'unsupported',
+      message: 'reinstall from the vendor site',
+    });
+    await expect(runtime.updateInstallation({ providerId: 'missing' })).resolves.toMatchObject({
+      status: 'unsupported',
+    });
+    await runtime.dispose();
+    await rm(root, { recursive: true, force: true });
+  });
+
+  it('resumes into a registered profile and hands the adapter its root again', async () => {
+    const root = await mkdtemp(join(tmpdir(), 'puppeteer-runtime-resume-profile-'));
+    const handles = new Map<string, { emit: (event: AgentEventEnvelope) => void }>();
+    const base = fakeProvider('example', handles);
+    const seenProfiles: Array<AgentProfile | undefined> = [];
+    const provider: AgentProvider = {
+      ...base,
+      descriptor: { id: 'example', label: 'Example' },
+      createSession(providerOptions) {
+        seenProfiles.push(providerOptions.profile);
+        return base.createSession(providerOptions);
+      },
+      profiles: exampleProfileService(),
+    };
+    const runtime = createAgentRuntime({
+      host,
+      defaultCwd: root,
+      providers: [provider],
+      profiles: { store: memoryProfileStore(), rootsDirectory: join(root, 'profiles') },
+    });
+    const created = await runtime.createProfile({ providerId: 'example', label: 'Work' });
+    if ('status' in created) throw new Error(created.message);
+
+    const spawned = await runtime.spawn({ agent: 'example', profile: created.id });
+    if ('error' in spawned) throw new Error(spawned.error.message);
+    const continuation = spawned.info.continuation;
+
+    const resumed = await runtime.resume({ continuation, profile: created.id });
+    if ('error' in resumed) throw new Error(resumed.error.message);
+    // The adapter re-binds the root even if the continuation had lost it.
+    expect(seenProfiles).toEqual([created, created]);
+    expect(resumed.info.profileId).toBe(created.id);
+    expect(runtime.sessionInfo(resumed.info.terminalSessionId)?.profileId).toBe(created.id);
+
+    // Without a profile id a resume behaves exactly as it always has.
+    const unattributed = await runtime.resume({ continuation });
+    if ('error' in unattributed) throw new Error(unattributed.error.message);
+    expect(seenProfiles.at(-1)).toBeUndefined();
+    expect(unattributed.info.profileId).toBeUndefined();
+
+    await runtime.dispose();
+    await rm(root, { recursive: true, force: true });
+  });
+
+  it('fails a resume whose profile is unknown or belongs to another provider', async () => {
+    const root = await mkdtemp(join(tmpdir(), 'puppeteer-runtime-resume-profile-unknown-'));
+    const handles = new Map<string, { emit: (event: AgentEventEnvelope) => void }>();
+    const provider: AgentProvider = {
+      ...fakeProvider('example', handles),
+      descriptor: { id: 'example', label: 'Example' },
+      profiles: exampleProfileService(),
+    };
+    const third: AgentProvider = {
+      ...fakeProvider('third', handles),
+      descriptor: { id: 'third', label: 'Third' },
+      profiles: exampleProfileService('third', 'Third'),
+    };
+    const runtime = createAgentRuntime({
+      host,
+      defaultCwd: root,
+      providers: [provider, third],
+      profiles: { store: memoryProfileStore(), rootsDirectory: join(root, 'profiles') },
+    });
+
+    const spawned = await runtime.spawn({ agent: 'example' });
+    if ('error' in spawned) throw new Error(spawned.error.message);
+    const continuation = spawned.info.continuation;
+
+    await expect(runtime.resume({ continuation, profile: 'nope' })).resolves.toMatchObject({
+      error: { code: 'AGENT_PROFILE_NOT_FOUND', message: 'unknown account profile: nope' },
+    });
+    await expect(runtime.resume({ continuation, profile: 'third:native-default' })).resolves.toMatchObject({
+      error: {
+        code: 'AGENT_PROFILE_NOT_FOUND',
+        message: 'account profile third:native-default belongs to third, not example',
+      },
+    });
+    await runtime.dispose();
+    await rm(root, { recursive: true, force: true });
   });
 });

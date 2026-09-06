@@ -206,10 +206,19 @@ function positiveTimeout(value: number): number {
   return value;
 }
 
-/** Default transport: spawn `codex app-server` and speak newline-delimited JSON over stdio. */
-export function spawnAppServerTransport(opts?: { executable?: string; args?: string[] }): Transport {
+/**
+ * Default transport: spawn `codex app-server` and speak newline-delimited JSON
+ * over stdio. `env` is merged over this process's own environment and carries
+ * the account-profile binding (`CODEX_HOME`) when one is selected.
+ */
+export function spawnAppServerTransport(opts?: {
+  executable?: string;
+  args?: string[];
+  env?: Record<string, string>;
+}): Transport {
   const child = spawn(resolveCodexExecutable(opts?.executable), ['app-server', ...(opts?.args ?? [])], {
     stdio: ['pipe', 'pipe', 'pipe'],
+    ...(opts?.env ? { env: { ...process.env, ...opts.env } } : {}),
   });
   const rl = createInterface({ input: child.stdout });
   let onMsg: ((m: unknown) => void) | undefined;
