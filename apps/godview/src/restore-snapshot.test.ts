@@ -367,3 +367,73 @@ describe('restore snapshot schema', () => {
     expect(preferredRestoreWindow(base)?.slotId).toBe('agent-slot');
   });
 });
+
+describe('account attribution across a restart', () => {
+  it('persists the account a run was launched under, in the snapshot and in the pane metadata', () => {
+    const info = agent('agent');
+    info.profileId = '9a7f1c22';
+    const snapshot = buildRestoreSnapshot({
+      windows: [],
+      agents: new Map([['agent', { info, session: info.session }]]),
+      updatedAtMs: 1,
+    });
+
+    expect(snapshot.agents[0]?.profileId).toBe('9a7f1c22');
+    expect(paneRecoveryMetadata(info.session, info).descriptor).toMatchObject({
+      kind: 'agent',
+      profileId: '9a7f1c22',
+    });
+    expect(readRestoreSnapshot(JSON.parse(JSON.stringify(snapshot)) as unknown)?.agents[0]?.profileId).toBe('9a7f1c22');
+  });
+
+  it('omits the field for a run bound to no registered account', () => {
+    const info = agent('agent');
+    const snapshot = buildRestoreSnapshot({
+      windows: [],
+      agents: new Map([['agent', { info, session: info.session }]]),
+      updatedAtMs: 1,
+    });
+
+    expect(snapshot.agents[0]).not.toHaveProperty('profileId');
+    expect(paneRecoveryMetadata(info.session, info).descriptor).not.toHaveProperty('profileId');
+  });
+
+  it('decodes a snapshot written before accounts existed', () => {
+    const legacy = {
+      version: 3,
+      updatedAtMs: 1,
+      windows: [],
+      agents: [
+        {
+          runtimeSessionId: 'agent',
+          kind: 'agent',
+          continuation: { providerId: 'claude', nativeSessionId: 'native-agent', implementation: 'native' },
+          cwd: '/repo',
+          workspace: { mode: 'direct', root: '/repo', sourcePath: '/repo' },
+        },
+      ],
+    };
+
+    const restored = readRestoreSnapshot(legacy);
+    expect(restored?.agents).toHaveLength(1);
+    expect(restored?.agents[0]).not.toHaveProperty('profileId');
+  });
+
+  it('drops a malformed account reference rather than resuming against it', () => {
+    const descriptor = readRestoreDescriptor({
+      kind: 'agent',
+      continuation: { providerId: 'claude', nativeSessionId: 'native-agent', implementation: 'native' },
+      workspace: { mode: 'direct', root: '/repo', sourcePath: '/repo' },
+      profileId: '../../elsewhere',
+    });
+    expect(descriptor).not.toHaveProperty('profileId');
+
+    const numeric = readRestoreDescriptor({
+      kind: 'agent',
+      continuation: { providerId: 'claude', nativeSessionId: 'native-agent', implementation: 'native' },
+      workspace: { mode: 'direct', root: '/repo', sourcePath: '/repo' },
+      profileId: 7,
+    });
+    expect(numeric).not.toHaveProperty('profileId');
+  });
+});

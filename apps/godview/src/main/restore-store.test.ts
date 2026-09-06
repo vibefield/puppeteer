@@ -94,3 +94,27 @@ describe('durable restore store', () => {
     expect(readDurableRestoreState(root)).toBeUndefined();
   });
 });
+
+describe('account attribution in the durable store', () => {
+  function withProfile(updatedAtMs: number, profileId: string): RestoreSnapshot {
+    const base = snapshot(updatedAtMs);
+    return { ...base, agents: base.agents.map((agent) => ({ ...agent, profileId })) };
+  }
+
+  it('round-trips the account a run was launched under', () => {
+    const root = directory();
+    const committed = writeDurableRestoreState(root, withProfile(1, 'example-agent:native-default'));
+
+    expect(committed.snapshot.agents[0]?.profileId).toBe('example-agent:native-default');
+    expect(readDurableRestoreState(root)?.snapshot).toEqual(withProfile(1, 'example-agent:native-default'));
+  });
+
+  it('reads a generation written before accounts existed', () => {
+    const root = directory();
+    writeDurableRestoreState(root, snapshot(1));
+
+    const restored = readDurableRestoreState(root);
+    expect(restored?.snapshot.agents[0]).not.toHaveProperty('profileId');
+    expect(restored?.snapshot).toEqual(snapshot(1));
+  });
+});

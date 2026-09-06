@@ -3,15 +3,24 @@ import type {
   AccountUsageFailure,
   AccountUsageFetchResult,
   AccountUsageProvider,
+  AgentInstallation,
+  AgentProfile,
   AgentProviderDescriptor,
+  DistributionProvider,
   MonitorArtifactReadResult,
+  ProfileFailure,
+  ProfileIdentity,
+  ProfileProvider,
   PromptReceipt as CorePromptReceipt,
+  UpdateReceipt,
 } from '@vibecook/puppeteer-core';
 import type {
   AgentSessionFailure as RuntimeAgentSessionFailure,
   AgentSessionInfo as RuntimeAgentSessionInfo,
   AgentWorkspaceFinal,
   AgentWorkspaceInfo,
+  ProfileLoginResult,
+  ReleaseCheckResult,
 } from '@vibecook/puppeteer-runtime';
 import type {
   AcknowledgeAgentFailureRequest,
@@ -34,9 +43,24 @@ export type {
   AgentMonitorStateMessage,
   ReadAgentMonitorArtifactRequest,
 } from './main/monitor-ipc.js';
+export type {
+  AgentInstallation,
+  AgentProfile,
+  DistributionProvider,
+  ProfileFailure,
+  ProfileIdentity,
+  ProfileProvider,
+  UpdateReceipt,
+} from '@vibecook/puppeteer-core';
+export type { ProfileLoginResult, ReleaseCheckResult } from '@vibecook/puppeteer-runtime';
+
 export interface AccountUsageEntry {
   provider: AccountUsageProvider;
   result: AccountUsageFetchResult;
+  /** The account this reading belongs to; absent while no registry answer exists. */
+  profileId?: string;
+  /** Registry label for that account, so a row can name it without a second lookup. */
+  profileLabel?: string;
   /** The last good snapshot is retained when a later refresh fails. */
   stale?: boolean;
   refreshFailure?: AccountUsageFailure;
@@ -45,6 +69,51 @@ export interface AccountUsageEntry {
 export interface AccountUsageBatch {
   refreshedAt: string;
   entries: AccountUsageEntry[];
+}
+
+/** One inspection of every executable the host can find, with the descriptors that name them. */
+export interface AgentInstallationsSnapshot {
+  providers: DistributionProvider[];
+  installations: AgentInstallation[];
+  inspectedAt: string;
+}
+
+export interface InstallationsRequest {
+  /** Discard the runtime's cached inventory before inspecting. */
+  refresh?: boolean;
+}
+
+export interface CheckReleasesRequest {
+  providerId: string;
+}
+
+export interface UpdateInstallationRequest {
+  providerId: string;
+}
+
+export interface CreateProfileRequest {
+  providerId: string;
+  label: string;
+}
+
+export interface StartProfileLoginRequest {
+  profileId: string;
+  cwd?: string;
+}
+
+/** Provider id -> the profile new terminals bind to when none is named. */
+export type ProfileDefaults = Record<string, string>;
+
+export interface SetProfileDefaultRequest {
+  providerId: string;
+  /** Null clears the default, so new terminals inherit nothing for that provider. */
+  profileId: string | null;
+}
+
+export interface NewTerminalTabRequest {
+  cwd?: string;
+  /** At most one profile per provider; absent means the persisted defaults. */
+  profileIds?: string[];
 }
 
 export interface CreateAgentSessionOptions {
@@ -111,4 +180,22 @@ export interface PuppeteerBridge {
   accountUsage(): Promise<AccountUsageBatch>;
   refreshAccountUsage(): Promise<AccountUsageBatch>;
   onAccountUsage(cb: (batch: AccountUsageBatch) => void): () => void;
+  /** Every executable the host can find for every provider that declares distribution facts. */
+  installations(request?: InstallationsRequest): Promise<AgentInstallationsSnapshot>;
+  /** Explicit user action: the only path allowed to reach the network. */
+  checkReleases(request: CheckReleasesRequest): Promise<ReleaseCheckResult>;
+  /** Runs the provider's own updater; the receipt is a fresh inspection, never parsed output. */
+  updateInstallation(request: UpdateInstallationRequest): Promise<UpdateReceipt>;
+  profileProviders(): Promise<ProfileProvider[]>;
+  profiles(): Promise<AgentProfile[]>;
+  createProfile(request: CreateProfileRequest): Promise<AgentProfile | ProfileFailure>;
+  /** Opens the native login in its own tab; main verifies the account when that terminal ends. */
+  startProfileLogin(request: StartProfileLoginRequest): Promise<ProfileLoginResult>;
+  verifyProfile(profileId: string): Promise<ProfileIdentity | ProfileFailure>;
+  removeProfile(profileId: string): Promise<boolean>;
+  onProfiles(cb: (profiles: AgentProfile[]) => void): () => void;
+  profileDefaults(): Promise<ProfileDefaults>;
+  setProfileDefault(request: SetProfileDefaultRequest): Promise<ProfileDefaults>;
+  /** A new tab whose pane environment carries the named profiles, or the persisted defaults. */
+  newTerminalTab(request?: NewTerminalTabRequest): Promise<boolean>;
 }

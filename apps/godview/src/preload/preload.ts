@@ -4,19 +4,35 @@ import { createGhostteaClipboardBridge, forwardGhostteaRendererPorts } from '@vi
 import type {
   AcknowledgeAgentFailureRequest,
   AccountUsageBatch,
+  AgentInstallationsSnapshot,
   AgentMonitorNotificationMessage,
   AgentMonitorRemovedMessage,
   AgentMonitorStateMessage,
+  AgentProfile,
   AgentSessionSnapshot,
   AgentSessionInfo,
+  CheckReleasesRequest,
+  CreateProfileRequest,
+  InstallationsRequest,
+  NewTerminalTabRequest,
+  ProfileDefaults,
+  ProfileFailure,
+  ProfileIdentity,
+  ProfileLoginResult,
+  ProfileProvider,
   PuppeteerBridge,
   CreateAgentSessionOptions,
   CreateAgentSessionResult,
   PromptReceipt,
   ReadAgentMonitorArtifactRequest,
+  ReleaseCheckResult,
   PaneRehydrationRequest,
+  SetProfileDefaultRequest,
+  StartProfileLoginRequest,
   SubmitPromptOptions,
   TerminalSessionHandoff,
+  UpdateInstallationRequest,
+  UpdateReceipt,
   WorkspaceDiff,
   WorkspaceFinalEvent,
 } from '../protocol.js';
@@ -86,6 +102,28 @@ const puppeteer: PuppeteerBridge = {
     ipcRenderer.invoke('puppeteer:read-agent-monitor-artifact', request),
   workspaceDiff: (runtimeSessionId: string): Promise<WorkspaceDiff | null> =>
     ipcRenderer.invoke('puppeteer:workspace-diff', runtimeSessionId),
+  installations: (request?: InstallationsRequest): Promise<AgentInstallationsSnapshot> =>
+    ipcRenderer.invoke('puppeteer:installations', request),
+  checkReleases: (request: CheckReleasesRequest): Promise<ReleaseCheckResult> =>
+    ipcRenderer.invoke('puppeteer:check-releases', request),
+  updateInstallation: (request: UpdateInstallationRequest): Promise<UpdateReceipt> =>
+    ipcRenderer.invoke('puppeteer:update-installation', request),
+  profileProviders: (): Promise<ProfileProvider[]> => ipcRenderer.invoke('puppeteer:profile-providers'),
+  profiles: (): Promise<AgentProfile[]> => ipcRenderer.invoke('puppeteer:profiles'),
+  createProfile: (request: CreateProfileRequest): Promise<AgentProfile | ProfileFailure> =>
+    ipcRenderer.invoke('puppeteer:create-profile', request),
+  startProfileLogin: (request: StartProfileLoginRequest): Promise<ProfileLoginResult> =>
+    ipcRenderer.invoke('puppeteer:start-profile-login', request),
+  verifyProfile: (profileId: string): Promise<ProfileIdentity | ProfileFailure> =>
+    ipcRenderer.invoke('puppeteer:verify-profile', profileId),
+  removeProfile: (profileId: string): Promise<boolean> => ipcRenderer.invoke('puppeteer:remove-profile', profileId),
+  onProfiles: (callback: (profiles: AgentProfile[]) => void): (() => void) =>
+    onIpcMessage('puppeteer:profiles', callback),
+  profileDefaults: (): Promise<ProfileDefaults> => ipcRenderer.invoke('puppeteer:profile-defaults'),
+  setProfileDefault: (request: SetProfileDefaultRequest): Promise<ProfileDefaults> =>
+    ipcRenderer.invoke('puppeteer:set-profile-default', request),
+  newTerminalTab: (request?: NewTerminalTabRequest): Promise<boolean> =>
+    ipcRenderer.invoke('puppeteer:new-terminal-tab', request),
   onWorkspaceFinal: (callback: (event: WorkspaceFinalEvent) => void): (() => void) => {
     const listener = (_event: Electron.IpcRendererEvent, final: WorkspaceFinalEvent): void => callback(final);
     ipcRenderer.on('puppeteer:workspace-final', listener);

@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import type { AccountUsageFetchResult, AccountUsageProvider } from '@vibecook/puppeteer-core';
 import type { AccountUsageEntry } from '../protocol.js';
-import { accountUsageView, formatUsageReset } from './account-usage.js';
+import { accountUsageView, accountUsageViews, formatUsageReset } from './account-usage.js';
 
 const NOW = Date.parse('2026-07-23T20:00:00.000Z');
 const PROVIDER: AccountUsageProvider = {
@@ -138,5 +138,52 @@ describe('account usage display model', () => {
     expect(formatUsageReset('2026-07-23T20:00:30.000Z', NOW)).toBe('1m');
     expect(formatUsageReset('2026-07-24T21:00:00.000Z', NOW)).toBe('1d 1h');
     expect(formatUsageReset('invalid', NOW)).toBeUndefined();
+  });
+});
+
+describe('per-account usage rows', () => {
+  const SECOND: AccountUsageProvider = { id: 'other-agent', label: 'Other Agent', refresh: { pollIntervalMs: 60_000 } };
+
+  const reading = (provider: AccountUsageProvider, profileId?: string, profileLabel?: string): AccountUsageEntry => ({
+    provider,
+    ...(profileId ? { profileId } : {}),
+    ...(profileLabel ? { profileLabel } : {}),
+    result: {
+      status: 'available',
+      snapshot: {
+        provider: provider.id,
+        fetchedAt: '2026-07-23T20:00:00.000Z',
+        scope: 'subscription',
+        source: { kind: 'native-protocol', stability: 'documented' },
+        metrics: [],
+        ...(profileId ? { profileId } : {}),
+      },
+    },
+  });
+
+  it('names the account only where a provider holds more than one', () => {
+    const views = accountUsageViews(
+      {
+        refreshedAt: '2026-07-23T20:00:00.000Z',
+        entries: [
+          reading(PROVIDER, 'example-agent:native-default', 'Default'),
+          reading(PROVIDER, '9a7f', 'Second seat'),
+          reading(SECOND, 'other-agent:native-default', 'Default'),
+        ],
+      },
+      NOW,
+    );
+
+    expect(views.map((view) => [view.key, view.accountLabel])).toEqual([
+      ['example-agent:example-agent:native-default', 'DEFAULT'],
+      ['example-agent:9a7f', 'SECOND SEAT'],
+      ['other-agent:other-agent:native-default', undefined],
+    ]);
+  });
+
+  it('falls back to the provider id as the row key when no account is known', () => {
+    const views = accountUsageViews({ refreshedAt: '2026-07-23T20:00:00.000Z', entries: [reading(PROVIDER)] }, NOW);
+    expect(views[0]?.key).toBe('example-agent');
+    expect(views[0]?.accountLabel).toBeUndefined();
   });
 });

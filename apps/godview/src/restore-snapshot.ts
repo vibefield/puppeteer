@@ -26,6 +26,12 @@ export type RestoreDescriptor =
       continuation: AgentContinuation;
       cwd?: string;
       workspace: RestoreAgentWorkspace;
+      /**
+       * Registered account this run was launched under. Absent in snapshots
+       * written before accounts existed, and absent for a run bound to none;
+       * either way the resume falls back to the continuation's own root.
+       */
+      profileId?: string;
     };
 
 export interface PaneRecoveryMetadataV1 {
@@ -90,7 +96,7 @@ export interface RestoreSnapshotWindowInput {
 }
 
 export interface RestoreSnapshotAgentInput {
-  info: Pick<AgentSessionInfo, 'continuation' | 'runtimeSessionId' | 'workspace'>;
+  info: Pick<AgentSessionInfo, 'continuation' | 'runtimeSessionId' | 'workspace' | 'profileId'>;
   session: Pick<SessionSummary, 'cwd' | 'exited'>;
   /** False once the managed agent child returned to its still-open shell pane. */
   agentProcessAlive?: boolean;
@@ -126,6 +132,16 @@ function usable(value: unknown): string | undefined {
   if (typeof value !== 'string') return undefined;
   const normalized = value.trim();
   return normalized && normalized.length <= MAX_RESTORE_STRING ? normalized : undefined;
+}
+
+// Mirrors AgentProfileIdSchema in @vibecook/puppeteer-core. A persisted id is
+// handed back to the runtime on resume, so a malformed one is dropped here
+// rather than carried forward as an unresolvable account reference.
+const PROFILE_ID = /^[A-Za-z0-9][A-Za-z0-9:._-]{0,127}$/u;
+
+function usableProfileId(value: unknown): string | undefined {
+  const candidate = usable(value);
+  return candidate && PROFILE_ID.test(candidate) ? candidate : undefined;
 }
 
 function parseWorkspace(value: unknown): RestoreAgentWorkspace | undefined {
@@ -172,11 +188,13 @@ export function readRestoreDescriptor(value: unknown): RestoreDescriptor | undef
   const continuation = parseContinuation(value);
   const workspace = parseWorkspace(value.workspace);
   if (!continuation || !workspace) return undefined;
+  const profileId = usableProfileId(value.profileId);
   return {
     kind: 'agent',
     continuation,
     ...(cwd ? { cwd } : {}),
     workspace,
+    ...(profileId ? { profileId } : {}),
   };
 }
 
@@ -198,6 +216,7 @@ function descriptorForAgent(agent: RestoreSnapshotAgentInput): RestoreSnapshotAg
   const workspace = agent.info.workspace;
   const cwd = usable(workspace.sourcePath) ?? usable(workspace.root) ?? usable(agent.session.cwd);
   const branch = usable(workspace.branch);
+  const profileId = usableProfileId(agent.info.profileId);
   return {
     runtimeSessionId: agent.info.runtimeSessionId,
     kind: 'agent',
@@ -209,12 +228,13 @@ function descriptorForAgent(agent: RestoreSnapshotAgentInput): RestoreSnapshotAg
       sourcePath: workspace.sourcePath,
       ...(branch ? { branch } : {}),
     },
+    ...(profileId ? { profileId } : {}),
   };
 }
 
 export function paneRecoveryMetadata(
   session: Pick<SessionSummary, 'id' | 'cwd' | 'exited'>,
-  agent?: Pick<AgentSessionInfo, 'continuation' | 'runtimeSessionId' | 'workspace'>,
+  agent?: Pick<AgentSessionInfo, 'continuation' | 'runtimeSessionId' | 'workspace' | 'profileId'>,
 ): PaneRecoveryMetadataV1 {
   let paneDescriptor: RestoreDescriptor;
   if (agent) {

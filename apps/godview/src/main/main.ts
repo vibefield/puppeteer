@@ -40,16 +40,28 @@ import {
 } from '@vibecook/puppeteer-runtime';
 import type {
   AccountUsageBatch,
+  AgentInstallationsSnapshot,
+  AgentProfile,
   AgentSessionInfo,
   AgentSessionSnapshot,
+  CheckReleasesRequest,
   CreateAgentSessionOptions,
   CreateAgentSessionResult,
+  CreateProfileRequest,
+  InstallationsRequest,
+  NewTerminalTabRequest,
   PaneRehydrationRequest,
+  ProfileDefaults,
+  ProfileLoginResult,
   PromptReceipt,
+  SetProfileDefaultRequest,
+  StartProfileLoginRequest,
   SubmitPromptOptions,
   TerminalSessionHandoff,
+  UpdateInstallationRequest,
 } from '../protocol.js';
-import { createAccountUsageMonitor } from './account-usage-monitor.js';
+import { createAccountUsageMonitor, type AccountUsageProfileRef } from './account-usage-monitor.js';
+import { createProfileDefaultsStore, profileDefaultIds, retainKnownProfileDefaults } from './agent-profile-defaults.js';
 import {
   acknowledgeAgentFailureForIpc,
   connectMonitorIpcRelay,
@@ -105,6 +117,7 @@ import { readRestoreManifest, restorePaneFor, restorePromptDetail, summarizeRest
 import {
   buildRestoreSnapshot,
   MAX_RESTORE_PANES_PER_WINDOW,
+  PANE_RECOVERY_METADATA_VERSION,
   paneRecoveryMetadata,
   preferredRestoreWindow,
   readPaneRecoveryMetadata,
@@ -624,9 +637,22 @@ const agentRuntime: AgentRuntime = createBuiltinAgentRuntime({
 const monitorConnection = connectMonitorIpcRelay(agentRuntime, monitorRelay, (error) =>
   process.stderr.write(`[main] monitor IPC: ${error.message}\n`),
 );
+/** Which account a new terminal binds to when the user names none. */
+const profileDefaultsStore = createProfileDefaultsStore(join(app.getPath('userData'), 'agent-profile-defaults.json'));
+/** Login terminals awaiting their exit, so the account is verified from native evidence afterwards. */
+const pendingProfileLogins = new Map<string, { profileId: string; timer: NodeJS.Timeout }>();
+const PROFILE_LOGIN_TIMEOUT_MS = 10 * 60_000;
+
+/** Registered accounts per provider, as the usage monitor needs them. */
+async function usageProfileRefs(): Promise<AccountUsageProfileRef[]> {
+  const profiles = await agentRuntime.profiles();
+  return profiles.map((profile) => ({ id: profile.id, provider: profile.provider, label: profile.label }));
+}
+
 const accountUsageMonitor = createAccountUsageMonitor({
   providers: agentRuntime.accountUsageProviders(),
-  fetchUsage: (providerId) => agentRuntime.accountUsage(providerId),
+  fetchUsage: (providerId, profileId) => agentRuntime.accountUsage(providerId, profileId),
+  listProfiles: usageProfileRefs,
   publish: (batch: AccountUsageBatch) => {
     if (!quitting) broadcast('puppeteer:account-usage', batch);
   },
@@ -635,6 +661,13 @@ const accountUsageMonitor = createAccountUsageMonitor({
 agentRuntime.onAccountUsage((provider, result) => {
   if (quitting) return;
   accountUsageMonitor.ingest(provider.id, result);
+});
+agentRuntime.onProfilesChanged((profiles) => {
+  if (quitting) return;
+  broadcast('puppeteer:profiles', profiles);
+  void accountUsageMonitor
+    .refreshProfiles()
+    .catch((error: unknown) => process.stderr.write(`[main] account usage profiles: ${String(error)}\n`));
 });
 function pushWorkspaceFinal(final: AgentWorkspaceFinal): void {
   const record = agentRecords.get(final.runtimeSessionId);
@@ -748,6 +781,8 @@ function commitRestoreCheckpoint(): RestoreSnapshot | undefined {
           continuation: { ...pending.continuation },
           runtimeSessionId: pending.runtimeSessionId,
           workspace: pending.workspace as AgentSessionInfo['workspace'],
+          // An agent waiting to rebind keeps its account across checkpoints.
+          ...(pending.profileId ? { profileId: pending.profileId } : {}),
         },
         session: {
           cwd: pending.cwd ?? pending.workspace.sourcePath,
@@ -1015,6 +1050,9 @@ function wireAutomation(client: GhostteaAutomationClient): void {
   client.on('session-exited', (event) => {
     void onSessionExited(event);
   });
+  // An account is verified when its login terminal ends, independently of the
+  // agent-session bookkeeping above: a login pane owns no run.
+  client.on('session-exited', (event) => finishProfileLogin(event.sessionId));
 }
 
 async function ensureBackend(): Promise<void> {
@@ -1274,6 +1312,9 @@ async function recoverDescriptor(
           continuation: descriptor.continuation,
           ...(descriptor.cwd ? { cwd: descriptor.cwd } : {}),
           workspace: restoredWorkspaceRequest(descriptor),
+          // The account the run was launched under, so a restart resumes into
+          // the same root and the session keeps its attribution.
+          ...(descriptor.profileId ? { profile: descriptor.profileId } : {}),
         },
         owner,
         originSessionId,
@@ -1511,6 +1552,175 @@ async function initializeSpawnThrough(): Promise<void> {
   };
 }
 
+function usableCwd(value: unknown): string | undefined {
+  return typeof value === 'string' && value.trim() ? value : undefined;
+}
+
+/** A tab holding exactly the session main just created, mounted the way a restored pane is. */
+function singlePaneWorkspaceDocument(session: SessionSummary): RestoreWorkspaceDocument {
+  const paneId = `godview-pane-${randomUUID()}`;
+  const cwd = usableCwd(session.cwd);
+  return {
+    version: 1,
+    root: {
+      kind: 'pane',
+      id: paneId,
+      sessionId: session.id,
+      meta: {
+        type: 'godview-pane-recovery',
+        version: PANE_RECOVERY_METADATA_VERSION,
+        exited: false,
+        descriptor: { kind: 'terminal', ...(cwd ? { cwd } : {}) },
+      },
+    },
+    activePaneId: paneId,
+    zoomedPaneId: null,
+  };
+}
+
+async function attachSessionAsTab(session: SessionSummary, owner?: BrowserWindow): Promise<BrowserWindow> {
+  const cwd = usableCwd(session.cwd);
+  const window = await createWindow({
+    ...(owner ? { tabOf: owner } : {}),
+    restoreWorkspace: singlePaneWorkspaceDocument(session),
+    claimExistingSessions: false,
+    ...(cwd ? { initialCwd: cwd } : {}),
+  });
+  tabs.get(window)?.sessionIds.add(session.id);
+  scheduleRestoreCheckpoint(true);
+  return window;
+}
+
+/**
+ * Variables that bind a pane to the named accounts, or to the persisted
+ * defaults when the caller names none. The runtime owns what each name is;
+ * this host only merges the record it hands back.
+ */
+async function profileBindingEnvironment(profileIds?: readonly string[]): Promise<Record<string, string>> {
+  let ids = (profileIds ?? []).filter((id) => typeof id === 'string' && id.trim().length > 0);
+  if (ids.length === 0) {
+    const stored = profileDefaultsStore.read();
+    if (Object.keys(stored).length === 0) return {};
+    const registered = await agentRuntime.profiles();
+    const retained = retainKnownProfileDefaults(
+      stored,
+      registered.map((profile) => profile.id),
+    );
+    // A default pointing at an unregistered account is stale preference, not a
+    // failure: drop it so the pane opens unbound and the file self-heals.
+    if (Object.keys(retained).length !== Object.keys(stored).length) profileDefaultsStore.write(retained);
+    ids = profileDefaultIds(retained);
+  }
+  if (ids.length === 0) return {};
+  try {
+    return await agentRuntime.profileBindingEnvironment(ids);
+  } catch (error) {
+    process.stderr.write(`[main] profile binding unavailable: ${String(error)}\n`);
+    return {};
+  }
+}
+
+/**
+ * A new tab whose pane carries the selected accounts.
+ *
+ * The daemon environment already holds the spawn-through interception, so the
+ * binding is an override on top of it rather than a replacement; with no
+ * binding the tab is created exactly as it was before profiles existed.
+ */
+async function openTerminalTab(request: NewTerminalTabRequest, owner?: BrowserWindow): Promise<boolean> {
+  const cwd = usableCwd(request.cwd);
+  const overrides = await profileBindingEnvironment(request.profileIds);
+  if (Object.keys(overrides).length === 0) {
+    await createWindow({
+      ...(owner ? { tabOf: owner } : {}),
+      ...(cwd ? { initialCwd: cwd } : {}),
+      freshWorkspace: true,
+    });
+    return true;
+  }
+  await ensureBackend();
+  const session = await backend!.automation.createSession({
+    executable: defaultShell(),
+    args: [],
+    ...(cwd ? { cwd } : {}),
+    environment: { mode: 'inherit', overrides },
+    cols: DEFAULT_COLS,
+    rows: DEFAULT_ROWS,
+    persistence: 'terminate-with-app',
+    programKind: 'interactive-shell',
+  });
+  await attachSessionAsTab(session, owner);
+  return true;
+}
+
+async function broadcastProfiles(): Promise<void> {
+  if (quitting) return;
+  try {
+    broadcast('puppeteer:profiles', await agentRuntime.profiles());
+  } catch (error) {
+    process.stderr.write(`[main] profiles unavailable: ${String(error)}\n`);
+  }
+}
+
+/**
+ * The login pane's exit is the whole signal: its output is never captured and
+ * never parsed, and the account's state is re-read from native evidence.
+ */
+function finishProfileLogin(runtimeSessionId: string): void {
+  const pending = pendingProfileLogins.get(runtimeSessionId);
+  if (!pending) return;
+  clearTimeout(pending.timer);
+  pendingProfileLogins.delete(runtimeSessionId);
+  if (quitting) return;
+  void agentRuntime.verifyProfile(pending.profileId).then(
+    () => void broadcastProfiles(),
+    (error: unknown) => {
+      process.stderr.write(`[main] account verification failed: ${String(error)}\n`);
+      void broadcastProfiles();
+    },
+  );
+}
+
+function watchProfileLogin(runtimeSessionId: string, profileId: string): void {
+  const existing = pendingProfileLogins.get(runtimeSessionId);
+  if (existing) clearTimeout(existing.timer);
+  // A login left open indefinitely still gets one verification, so an account
+  // that was signed in but never closed does not stay unverified forever.
+  const timer = setTimeout(() => finishProfileLogin(runtimeSessionId), PROFILE_LOGIN_TIMEOUT_MS);
+  timer.unref?.();
+  pendingProfileLogins.set(runtimeSessionId, { profileId, timer });
+}
+
+async function startProfileLogin(
+  request: StartProfileLoginRequest,
+  owner?: BrowserWindow,
+): Promise<ProfileLoginResult> {
+  await ensureBackend();
+  const cwd = usableCwd(request.cwd);
+  const result = await agentRuntime.startProfileLogin({ profileId: request.profileId, ...(cwd ? { cwd } : {}) });
+  if (!('runtimeSessionId' in result)) return result;
+  try {
+    const session = await backend!.automation.getSession(result.runtimeSessionId);
+    await attachSessionAsTab(session, owner);
+  } catch (error) {
+    // The terminal is live even when no viewport could be opened for it; the
+    // watch below still verifies the account when it ends.
+    process.stderr.write(`[main] could not attach the login terminal: ${String(error)}\n`);
+  }
+  watchProfileLogin(result.runtimeSessionId, result.profile.id);
+  void broadcastProfiles();
+  return result;
+}
+
+async function inspectInstallations(request?: InstallationsRequest): Promise<AgentInstallationsSnapshot> {
+  const installations = await agentRuntime.inspectInstallations(request?.refresh ? { refresh: true } : undefined);
+  return {
+    providers: [...agentRuntime.distributionProviders()],
+    installations,
+    inspectedAt: new Date().toISOString(),
+  };
+}
+
 function registerIpc(): void {
   ipcMain.handle('puppeteer:account-usage', () => accountUsageMonitor.snapshot());
   ipcMain.handle('puppeteer:refresh-account-usage', () => accountUsageMonitor.refresh());
@@ -1564,6 +1774,60 @@ function registerIpc(): void {
   ipcMain.handle('puppeteer:workspace-diff', (_event, runtimeSessionId: string) =>
     agentRuntime.workspaceDiff(runtimeSessionId),
   );
+  ipcMain.handle(
+    'puppeteer:installations',
+    (_event, request: InstallationsRequest | undefined): Promise<AgentInstallationsSnapshot> =>
+      inspectInstallations(request),
+  );
+  // The only outbound path in this application, and only because a person
+  // pressed the button that reaches it.
+  ipcMain.handle('puppeteer:check-releases', (_event, request: CheckReleasesRequest) =>
+    agentRuntime.checkReleases({ providerId: request.providerId, network: true }),
+  );
+  ipcMain.handle('puppeteer:update-installation', (_event, request: UpdateInstallationRequest) =>
+    agentRuntime.updateInstallation({ providerId: request.providerId }),
+  );
+  ipcMain.handle('puppeteer:profile-providers', () => [...agentRuntime.profileProviders()]);
+  ipcMain.handle('puppeteer:profiles', (): Promise<AgentProfile[]> => agentRuntime.profiles());
+  ipcMain.handle('puppeteer:create-profile', async (_event, request: CreateProfileRequest) => {
+    const created = await agentRuntime.createProfile({ providerId: request.providerId, label: request.label });
+    if ('id' in created) void broadcastProfiles();
+    return created;
+  });
+  ipcMain.handle(
+    'puppeteer:start-profile-login',
+    (event, request: StartProfileLoginRequest): Promise<ProfileLoginResult> => {
+      const owner = BrowserWindow.fromWebContents(event.sender);
+      return startProfileLogin(request, owner && tabs.get(owner) ? owner : undefined);
+    },
+  );
+  ipcMain.handle('puppeteer:verify-profile', async (_event, profileId: string) => {
+    const identity = await agentRuntime.verifyProfile(profileId);
+    void broadcastProfiles();
+    return identity;
+  });
+  ipcMain.handle('puppeteer:remove-profile', async (_event, profileId: string): Promise<boolean> => {
+    const removed = await agentRuntime.removeProfile(profileId);
+    if (removed) {
+      const registered = await agentRuntime.profiles();
+      profileDefaultsStore.write(
+        retainKnownProfileDefaults(
+          profileDefaultsStore.read(),
+          registered.map((profile) => profile.id),
+        ),
+      );
+      void broadcastProfiles();
+    }
+    return removed;
+  });
+  ipcMain.handle('puppeteer:profile-defaults', (): ProfileDefaults => profileDefaultsStore.read());
+  ipcMain.handle('puppeteer:set-profile-default', (_event, request: SetProfileDefaultRequest): ProfileDefaults =>
+    profileDefaultsStore.set(request.providerId, request.profileId),
+  );
+  ipcMain.handle('puppeteer:new-terminal-tab', (event, request: NewTerminalTabRequest | undefined) => {
+    const owner = BrowserWindow.fromWebContents(event.sender);
+    return openTerminalTab(request ?? {}, owner && tabs.get(owner) ? owner : undefined);
+  });
 }
 
 ipcMain.on('terminal-context-menu', (event, canCopy: boolean) => {
@@ -1758,11 +2022,9 @@ ipcMain.on('terminal-config-editor-dirty', (event, payload: unknown) => {
 ipcMain.on('terminal-new-tab', (event, cwd: unknown) => {
   const window = BrowserWindow.fromWebContents(event.sender);
   if (!window || !tabs.get(window)) return;
-  void createWindow({
-    tabOf: window,
-    initialCwd: typeof cwd === 'string' && cwd.trim() ? cwd : undefined,
-    freshWorkspace: true,
-  }).catch((error) => console.error('failed to create tab', error));
+  void openTerminalTab({ ...(usableCwd(cwd) ? { cwd: usableCwd(cwd)! } : {}) }, window).catch((error) =>
+    console.error('failed to create tab', error),
+  );
 });
 
 ipcMain.on('terminal-select-tab', (event, target: unknown) => {
@@ -2515,6 +2777,11 @@ app
       return;
     }
     accountUsageMonitor.start();
+    // The registry decides how many readings a provider has; without this the
+    // first poll would be one unkeyed row per provider until an account changed.
+    void accountUsageMonitor
+      .refreshProfiles()
+      .catch((error: unknown) => process.stderr.write(`[main] account usage profiles: ${String(error)}\n`));
     await openInitialWindows();
     // Development flow: create only provider ids advertised by Runtime. The
     // shim spawn-through path is POSIX-only, so this also supports Windows.

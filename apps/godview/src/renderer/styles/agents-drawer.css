@@ -1,0 +1,417 @@
+/* The Agents drawer: installs and accounts.
+
+   Shell chrome, so it wears the instrument skin the header and the tuning panel
+   already wear — the same panel material, the same monospace scale, the same
+   scoped names resolved from tokens.css. No colour of its own: an install that
+   is behind, an account that is signed out, and an update that failed are all
+   said in words and marks, never by tinting a row. */
+
+.vf-agents-drawer {
+  position: fixed;
+  z-index: 1000;
+  top: 48px;
+  right: 8px;
+  width: min(420px, calc(100vw - 16px));
+  max-height: calc(100vh - 56px);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  border: 1px solid var(--panel-border);
+  border-radius: 7px;
+  color: var(--text-main);
+  background: var(--panel-bg);
+  box-shadow: 0 16px 38px rgba(0, 0, 0, 0.28);
+  font-family: ui-monospace, 'SFMono-Regular', 'SF Mono', Menlo, Monaco, Consolas, monospace;
+  font-size: 10px;
+  font-synthesis: none;
+  user-select: none;
+  -webkit-app-region: no-drag;
+}
+
+.vf-agents-drawer button,
+.vf-agents-drawer input {
+  font: inherit;
+}
+
+.vf-agents-drawer-header {
+  height: 32px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 0 9px 0 11px;
+  border-bottom: 1px solid var(--panel-border);
+  font-size: 9px;
+  font-weight: 800;
+  letter-spacing: 0.12em;
+}
+
+.vf-agents-drawer-header > span:first-child {
+  margin-right: auto;
+}
+
+.vf-agents-drawer-header > button:last-child {
+  width: 21px;
+  height: 21px;
+  padding: 0;
+  border: 0;
+  border-radius: 4px;
+  color: var(--text-muted);
+  background: transparent;
+  font-size: 17px;
+  line-height: 1;
+  cursor: pointer;
+}
+
+.vf-agents-drawer-header > button:last-child:hover {
+  color: var(--text-main);
+  background: var(--control-hover-bg);
+}
+
+.vf-agents-drawer-tabs {
+  display: flex;
+  gap: 4px;
+}
+
+.vf-agents-drawer-tabs button {
+  height: 20px;
+  padding: 0 7px;
+  border: 1px solid var(--panel-border);
+  border-radius: 5px;
+  color: var(--text-muted);
+  background: transparent;
+  font-size: 8px;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  cursor: pointer;
+  transition: 120ms ease;
+}
+
+.vf-agents-drawer-tabs button:hover,
+.vf-agents-drawer-tabs button.is-current {
+  border-color: var(--control-hover-border);
+  color: var(--text-main);
+  background: var(--control-hover-bg);
+}
+
+.vf-agents-drawer-body {
+  min-height: 0;
+  overflow: auto;
+  padding: 0 0 10px;
+}
+
+.vf-agents-drawer-toolbar {
+  height: 28px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 11px;
+  border-bottom: 1px solid var(--panel-border);
+  color: var(--text-faint);
+  font-size: 8px;
+  font-weight: 800;
+  letter-spacing: 0.1em;
+}
+
+.vf-agents-drawer-list {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.vf-agents-drawer-install,
+.vf-agents-drawer-account {
+  display: grid;
+  gap: 6px;
+  padding: 9px 11px;
+  border-bottom: 1px solid var(--panel-border);
+}
+
+.vf-agents-drawer-install.is-inactive,
+.vf-agents-drawer-install.is-missing {
+  color: var(--text-muted);
+}
+
+.vf-agents-drawer-install-head,
+.vf-agents-drawer-account-head {
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  gap: 7px;
+}
+
+.vf-agents-drawer-mark {
+  width: 13px;
+  height: 13px;
+  display: grid;
+  place-items: center;
+  flex: 0 0 13px;
+  color: var(--text-main);
+  font-size: 11px;
+}
+
+.vf-agents-drawer-name {
+  min-width: 0;
+  display: grid;
+  gap: 1px;
+  margin-right: auto;
+  line-height: 1.2;
+}
+
+.vf-agents-drawer-name strong {
+  overflow: hidden;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  color: var(--text-main);
+  font-size: 10px;
+  font-weight: 700;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.vf-agents-drawer-name strong i {
+  color: var(--text-muted);
+  font-size: 7px;
+  font-style: normal;
+}
+
+.vf-agents-drawer-name small,
+.vf-agents-drawer-identity small {
+  overflow: hidden;
+  color: var(--text-faint);
+  font-size: 7px;
+  font-weight: 800;
+  letter-spacing: 0.04em;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.vf-agents-drawer-version {
+  color: var(--text-main);
+  font-size: 9px;
+  font-variant-numeric: tabular-nums;
+}
+
+.vf-agents-drawer-mark-behind {
+  padding: 1px 4px;
+  border: 1px solid var(--control-hover-border);
+  border-radius: 3px;
+  color: var(--text-main);
+  font-size: 7px;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+}
+
+.vf-agents-drawer-facts {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 3px 8px;
+}
+
+.vf-agents-drawer-fact {
+  min-width: 0;
+  display: grid;
+  grid-template-columns: 52px minmax(0, 1fr);
+  gap: 5px;
+  align-items: baseline;
+}
+
+.vf-agents-drawer-fact small {
+  color: var(--text-faint);
+  font-size: 7px;
+  font-weight: 800;
+  letter-spacing: 0.06em;
+}
+
+.vf-agents-drawer-fact span {
+  overflow: hidden;
+  color: var(--text-muted);
+  font-size: 8px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.vf-agents-drawer-releases {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 10px;
+  align-items: center;
+}
+
+.vf-agents-drawer-release {
+  display: flex;
+  align-items: baseline;
+  gap: 4px;
+  color: var(--text-muted);
+  font-size: 8px;
+}
+
+.vf-agents-drawer-release small {
+  color: var(--text-faint);
+  font-size: 7px;
+  font-weight: 800;
+  letter-spacing: 0.06em;
+}
+
+.vf-agents-drawer-release.is-behind span {
+  color: var(--text-main);
+  font-weight: 700;
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+
+.vf-agents-drawer-identity {
+  min-width: 0;
+  display: grid;
+  gap: 1px;
+  justify-items: end;
+  text-align: right;
+}
+
+.vf-agents-drawer-identity > span {
+  color: var(--text-muted);
+  font-size: 8px;
+  font-weight: 800;
+  letter-spacing: 0.06em;
+}
+
+.vf-agents-drawer-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+}
+
+.vf-agents-drawer-actions button,
+.vf-agents-drawer-add button,
+.vf-agents-drawer-add-toggle,
+.vf-agents-drawer-toolbar button {
+  height: 20px;
+  padding: 0 7px;
+  border: 1px solid var(--panel-border);
+  border-radius: 4px;
+  color: var(--text-muted);
+  background: transparent;
+  font-size: 8px;
+  font-weight: 800;
+  letter-spacing: 0.06em;
+  cursor: pointer;
+  transition: 120ms ease;
+}
+
+.vf-agents-drawer-actions button:hover:enabled,
+.vf-agents-drawer-add button:hover:enabled,
+.vf-agents-drawer-add-toggle:hover,
+.vf-agents-drawer-toolbar button:hover:enabled {
+  border-color: var(--control-hover-border);
+  color: var(--text-main);
+  background: var(--control-hover-bg);
+}
+
+.vf-agents-drawer button:disabled {
+  opacity: 0.4;
+  cursor: default;
+}
+
+.vf-agents-drawer button:focus-visible,
+.vf-agents-drawer input:focus-visible {
+  outline: 1px solid var(--text-main);
+  outline-offset: 2px;
+}
+
+.vf-agents-drawer-group {
+  border-bottom: 1px solid var(--panel-border);
+}
+
+.vf-agents-drawer-group > header {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  padding: 8px 11px 6px;
+  color: var(--text-main);
+}
+
+.vf-agents-drawer-group > header strong {
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: 0.06em;
+}
+
+.vf-agents-drawer-group > header small {
+  overflow: hidden;
+  color: var(--text-faint);
+  font-size: 7px;
+  font-weight: 800;
+  letter-spacing: 0.04em;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.vf-agents-drawer-group .vf-agents-drawer-account:last-child {
+  border-bottom: 0;
+}
+
+.vf-agents-drawer-add {
+  display: flex;
+  gap: 4px;
+  padding: 0 11px 10px;
+}
+
+.vf-agents-drawer-add input {
+  min-width: 0;
+  flex: 1;
+  height: 20px;
+  padding: 0 6px;
+  border: 1px solid var(--panel-border);
+  border-radius: 4px;
+  color: var(--text-main);
+  background: var(--control-hover-bg);
+  font-size: 9px;
+}
+
+.vf-agents-drawer-add-toggle {
+  margin: 0 11px 10px;
+}
+
+.vf-agents-drawer-receipt {
+  display: flex;
+  gap: 6px;
+  align-items: baseline;
+  margin: 0;
+}
+
+.vf-agents-drawer-receipt strong {
+  color: var(--text-main);
+  font-size: 8px;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+}
+
+.vf-agents-drawer-receipt span {
+  overflow: hidden;
+  color: var(--text-muted);
+  font-size: 8px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.vf-agents-drawer-note,
+.vf-agents-drawer-error,
+.vf-agents-drawer-empty {
+  margin: 0;
+  color: var(--text-faint);
+  font-size: 8px;
+  line-height: 1.4;
+}
+
+.vf-agents-drawer-error,
+.vf-agents-drawer-empty {
+  padding: 9px 11px;
+}
+
+.vf-agents-drawer-error {
+  color: var(--text-main);
+}
+
+.vf-agents-drawer-group > .vf-agents-drawer-note {
+  padding: 0 11px 9px;
+}
