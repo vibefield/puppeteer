@@ -1,5 +1,10 @@
 # Puppeteer
 
+[![CI](https://github.com/vibefield/puppeteer/actions/workflows/ci.yml/badge.svg)](https://github.com/vibefield/puppeteer/actions/workflows/ci.yml)
+
+Repository setup, required checks, publishing, and recovery are documented in
+[GitHub CI/CD](docs/github-cicd.md).
+
 Puppeteer hosts coding agents' native terminal interfaces while providing a
 provider-neutral TypeScript runtime for lifecycle, observation, prompt control,
 workspace isolation, and operational receipts.
@@ -211,12 +216,15 @@ pnpm release:trust
 
 `release:publish` verifies, builds, and publishes the public packages in
 dependency order, skipping versions already present in the registry.
-`release:trust` configures each package to trust `vibecook-dev/puppeteer`'s
+`release:trust` configures each package to trust `vibefield/puppeteer`'s
 `release.yml` GitHub Actions workflow for `npm publish`; it requires npm 11.15
 or newer, npm account 2FA, and an authenticated interactive npm session.
 
-Afterward, release-please owns release PRs and tags, and the Release workflow
-publishes through tokenless npm trusted publishing. To retry a partial
+After configuring trust for `vibefield/puppeteer`, set the repository variable
+`NPM_PUBLISH_ENABLED=true`. Release Please owns release PRs and tags, and the
+Release workflow publishes through tokenless npm trusted publishing after CI
+passes on the exact main commit. Provenance requires a public source repository
+and is disabled while this repository is private. To retry a partial
 publication, dispatch the workflow from `main` with the existing release tag:
 
 ```sh
