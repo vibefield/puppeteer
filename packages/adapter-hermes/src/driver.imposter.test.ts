@@ -63,5 +63,7 @@ describe('Hermes adapter against Imposter', () => {
     expect(observed.some((event) => event.event.type === 'turn:completed')).toBe(true);
     expect(projection.state.lifecycle).toBe('ready');
     projection.dispose();
+    await session.dispose();
+    expect((fixture.transport as HermesStdioClient).processExited()).toBe(true);
   }, 20_000);
 });

@@ -77,9 +77,13 @@ export async function startOpenCodeBackend(options: StartOpenCodeBackendOptions 
   }
   const username = 'opencode';
   const password = randomBytes(32).toString('base64url');
+  // Node scripts (including the conformance fixture) cannot be spawned via
+  // a shebang on Windows. Keep argv as an array and avoid a command shell.
+  const nodeScript = /\.(?:mjs|cjs|js)$/i.test(executable);
   const child = spawn(
-    executable,
+    nodeScript ? process.execPath : executable,
     [
+      ...(nodeScript ? [executable] : []),
       OPENCODE_LAUNCH_FLAGS.serve,
       OPENCODE_LAUNCH_FLAGS.hostname,
       hostname,
@@ -92,6 +96,7 @@ export async function startOpenCodeBackend(options: StartOpenCodeBackendOptions 
       env: {
         ...process.env,
         ...options.env,
+        ...(nodeScript && process.versions.electron ? { ELECTRON_RUN_AS_NODE: '1' } : {}),
         OPENCODE_SERVER_USERNAME: username,
         OPENCODE_SERVER_PASSWORD: password,
       },

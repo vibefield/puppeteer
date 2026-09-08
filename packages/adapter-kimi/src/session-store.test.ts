@@ -1,6 +1,6 @@
 import { mkdtemp, mkdir, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
-import { join } from 'node:path';
+import { join, resolve } from 'node:path';
 import { afterEach, describe, expect, it } from 'vitest';
 import {
   encodeKimiWorkDirKey,
@@ -30,8 +30,8 @@ describe('Kimi session-store addressing', () => {
     expect(encodeKimiWorkDirKey('/Users/example/Projects/puppeteer/')).toBe('wd_puppeteer_8be84339a83f');
     expect(encodeKimiWorkDirKey('/')).toBe('wd_workspace_8a5edab28263');
     expect(encodeKimiWorkDirKey('C:\\Repo')).toBe('wd_repo_99094984865d');
-    expect(resolveKimiHome('/explicit', { KIMI_CODE_HOME: '/ambient' })).toBe('/explicit');
-    expect(resolveKimiHome(undefined, { KIMI_CODE_HOME: '/ambient' })).toBe('/ambient');
+    expect(resolveKimiHome('/explicit', { KIMI_CODE_HOME: '/ambient' })).toBe(resolve('/explicit'));
+    expect(resolveKimiHome(undefined, { KIMI_CODE_HOME: '/ambient' })).toBe(resolve('/ambient'));
   });
 
   it('folds a safe append-only index and rejects deletions and escaping paths', async () => {
