@@ -113,7 +113,7 @@ jobs:
         run: npm install --global npm@12.0.1
       - run: pnpm install --frozen-lockfile --filter './packages/**'
       - run: pnpm -r --filter './packages/**' typecheck
-      - run: pnpm -r --no-bail --workspace-concurrency=1 --filter './packages/**' test
+      - run: pnpm -r --no-bail --workspace-concurrency=1 --filter './packages/**' test --testTimeout=15000
       - run: pnpm -r --filter './packages/**' build
       - run: node scripts/pack-check.mjs
       - name: Publish lockstep package train

@@ -15,7 +15,9 @@ deletes merged branches automatically.
 
 The CI workflow runs on PRs, main pushes, merge groups, and manual dispatch.
 Linux, Windows, and macOS each run library typechecks, unit/conformance tests,
-repository automation tests, builds, and package packing checks. The private
+repository automation tests, builds, and package packing checks. Package tests
+use a 15-second per-test budget on hosted runners for real Git and process I/O;
+their assertions and internal operation deadlines still apply. The private
 apps are typechecked and tested on all three platforms; Linux also checks the
 Godview bundle without native prebuilds. Live agent credentials and Electron
 smoke tests are not needed for these checks. Existing opt-in live-agent workflows
