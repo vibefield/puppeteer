@@ -43,7 +43,7 @@ jobs:
         run: node --test scripts/*.test.mjs
       - run: pnpm -r --filter './packages/**' typecheck
       # Process-backed adapter tests need enough CPU for their own deadlines.
-      - run: pnpm -r --workspace-concurrency=1 --filter './packages/**' test
+      - run: pnpm -r --no-bail --workspace-concurrency=1 --filter './packages/**' test
       - run: pnpm -r --filter './packages/**' build
       - run: node scripts/pack-check.mjs
 
