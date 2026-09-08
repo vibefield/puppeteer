@@ -1,3 +1,4 @@
+import { resolve } from 'node:path';
 import { describe, expect, it } from 'vitest';
 import { unknownSessionActivity, type SessionSummary } from '@vibecook/ghosttea-protocol';
 import type { AgentSessionInfo } from './protocol.js';
@@ -215,12 +216,14 @@ describe('restore snapshot schema', () => {
   it('round-trips only an absolute Claude config root and rebuilds narrow provider options', () => {
     const info = agent('agent');
     const launch = claudeRestoreLaunchProvenance('../claude-profile', info.workspace.root);
-    expect(launch).toEqual({ kind: 'claude', configDir: '/worktrees/claude-profile' });
+    expect(launch).toEqual({ kind: 'claude', configDir: resolve(info.workspace.root, '../claude-profile') });
 
     const metadata = paneRecoveryMetadata(info.session, info, launch);
     expect(metadata.descriptor).toMatchObject({ launch });
     if (metadata.descriptor.kind !== 'agent') throw new Error('expected agent descriptor');
-    expect(restoredAgentOptions(metadata.descriptor)).toEqual({ configDir: '/worktrees/claude-profile' });
+    expect(restoredAgentOptions(metadata.descriptor)).toEqual({
+      configDir: resolve(info.workspace.root, '../claude-profile'),
+    });
 
     expect(
       readRestoreDescriptor({

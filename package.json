@@ -8,11 +8,11 @@
   "author": "James Yong",
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/vibecook-dev/puppeteer.git"
+    "url": "git+https://github.com/vibefield/puppeteer.git"
   },
-  "homepage": "https://github.com/vibecook-dev/puppeteer#readme",
+  "homepage": "https://github.com/vibefield/puppeteer#readme",
   "bugs": {
-    "url": "https://github.com/vibecook-dev/puppeteer/issues"
+    "url": "https://github.com/vibefield/puppeteer/issues"
   },
   "scripts": {
     "build": "pnpm -r build",
@@ -56,6 +56,7 @@
     "format:check": "prettier --check \"packages/*/src/**/*.{ts,tsx}\"",
     "format": "prettier --write \"packages/*/src/**/*.{ts,tsx}\""
   },
+  "packageManager": "pnpm@10.34.5",
   "engines": {
     "node": ">=22.18.0"
   },

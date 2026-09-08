@@ -8,3 +8,6 @@ dist/
 .puppeteer/
 .agent-adaptation/
 packages/surface/vendors/*/captures-raw/
+__pycache__/
+*.py[cod]
+.DS_Store

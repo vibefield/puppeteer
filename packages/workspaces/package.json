@@ -7,7 +7,7 @@
   "author": "James Yong",
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/vibecook-dev/puppeteer.git",
+    "url": "git+https://github.com/vibefield/puppeteer.git",
     "directory": "packages/workspaces"
   },
   "main": "./src/index.ts",
@@ -17,7 +17,6 @@
   },
   "publishConfig": {
     "access": "public",
-    "provenance": true,
     "main": "./dist/index.js",
     "types": "./dist/index.d.ts",
     "exports": {

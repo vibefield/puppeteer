@@ -1,4 +1,4 @@
-import { mkdtemp, readdir, readFile, writeFile } from 'node:fs/promises';
+import { chmod, mkdtemp, readdir, readFile, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { describe, expect, it } from 'vitest';
@@ -9,6 +9,24 @@ async function registryDirectory(): Promise<string> {
 }
 
 describe('file creation request registry', () => {
+  it.skipIf(process.platform === 'win32')('rejects a group-readable registry on POSIX', async () => {
+    const directory = await registryDirectory();
+    try {
+      await chmod(directory, 0o750);
+      const registry = createFileCreationRequestRegistry({ directory });
+      await expect(
+        registry.claim({
+          creationRequestId: 'private-request',
+          canonicalFingerprint: '{}',
+          proposedRuntimeRunId: 'private-run',
+          operation: 'create',
+        }),
+      ).rejects.toThrow('must not be accessible by group or other users');
+    } finally {
+      await rm(directory, { recursive: true, force: true });
+    }
+  });
+
   it('atomically elects one allocation for concurrent compatible claims', async () => {
     const directory = await registryDirectory();
     const registry = createFileCreationRequestRegistry({ directory });

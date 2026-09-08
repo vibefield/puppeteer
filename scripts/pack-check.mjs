@@ -24,7 +24,7 @@ try {
     const tarball = readdirSync(destination).find((file) => file.endsWith('.tgz') && !before.has(file));
     if (!tarball) throw new Error(`Could not identify tarball for ${directory}`);
     const entries = execFileSync('tar', ['-tzf', join(destination, tarball)], { encoding: 'utf8' })
-      .split('\n')
+      .split(/\r?\n/)
       .filter(Boolean);
     if (!entries.some((entry) => entry.startsWith('package/dist/'))) {
       throw new Error(`${packageName} tarball contains no dist output`);
