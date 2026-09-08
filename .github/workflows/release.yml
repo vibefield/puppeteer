@@ -105,7 +105,8 @@ jobs:
           version: 10.34.5
       - uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38 # v6
         with:
-          node-version: 22.18.0
+          # npm 12 requires Node 22.22.2 or newer on the Node 22 line.
+          node-version: 22.22.2
           registry-url: https://registry.npmjs.org
           package-manager-cache: false
       - name: Install npm with trusted-publishing support

@@ -228,5 +228,5 @@ and is disabled while this repository is private. To retry a partial
 publication, dispatch the workflow from `main` with the existing release tag:
 
 ```sh
-gh workflow run release.yml --ref main -f tag=v0.1.1
+gh workflow run release.yml --repo vibefield/puppeteer --ref main -f tag=vX.Y.Z
 ```

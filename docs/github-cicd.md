@@ -43,7 +43,8 @@ GitHub release. The publish job verifies that:
 - `NPM_PUBLISH_ENABLED` is `true`.
 
 It then rebuilds and checks package tarballs, publishes in dependency order, and
-skips versions already present in npm. Only the publish job has OIDC permission.
+skips versions already present in npm. Only the publish job has OIDC permission. It uses Node 22.22.2 to satisfy
+npm 12.0.1's engine requirement, while CI tests the library's Node 22.18.0 minimum.
 Publication jobs are serialized and are never cancelled by a newer release.
 
 No npm token is stored in GitHub. Configure each package's npm trusted publisher
