@@ -58,11 +58,11 @@ jobs:
     runs-on: ${{ matrix.runner }}
     timeout-minutes: 15
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
         with:
           persist-credentials: false
 
-      - uses: actions/setup-node@v6
+      - uses: actions/setup-node@v7
         with:
           node-version: 22.18.0
 
@@ -83,7 +83,7 @@ jobs:
           --output ".agent-adaptation/artifacts/${{ matrix.platform }}/version.txt"
           --home ".agent-adaptation/home/${{ matrix.platform }}"
 
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         with:
           name: agent-artifact-${{ matrix.platform }}
           path: .agent-adaptation/artifacts
@@ -95,11 +95,11 @@ jobs:
     runs-on: ubuntu-24.04
     timeout-minutes: 5
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
         with:
           persist-credentials: false
 
-      - uses: actions/download-artifact@v5
+      - uses: actions/download-artifact@v8
         with:
           pattern: agent-artifact-*
           path: .agent-adaptation/artifacts
@@ -113,7 +113,7 @@ jobs:
           --directory .agent-adaptation/artifacts
           --output .agent-adaptation/acquisition.json
 
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         with:
           name: agent-acquisition
           path: .agent-adaptation/acquisition.json
@@ -125,7 +125,7 @@ jobs:
     runs-on: ubuntu-24.04
     timeout-minutes: 45
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
         with:
           fetch-depth: 0
           persist-credentials: false
@@ -134,14 +134,14 @@ jobs:
         with:
           version: 10.34.5
 
-      - uses: actions/setup-node@v6
+      - uses: actions/setup-node@v7
         with:
           node-version: 22.18.0
           cache: pnpm
 
       - run: pnpm install --frozen-lockfile --filter './packages/**'
 
-      - uses: actions/download-artifact@v5
+      - uses: actions/download-artifact@v8
         with:
           name: agent-acquisition
           path: .agent-adaptation
@@ -189,7 +189,7 @@ jobs:
           git add -A
           git diff --cached --binary --output=.agent-adaptation/candidate.patch
 
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         with:
           name: agent-candidate-output
           path: .agent-adaptation/candidate.patch
@@ -204,11 +204,11 @@ jobs:
       contents: write
       pull-requests: write
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
         with:
           fetch-depth: 0
 
-      - uses: actions/download-artifact@v5
+      - uses: actions/download-artifact@v8
         with:
           name: agent-candidate-output
           path: .agent-adaptation

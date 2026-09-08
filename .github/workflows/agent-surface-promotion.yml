@@ -55,10 +55,10 @@ jobs:
     runs-on: ${{ matrix.runner }}
     timeout-minutes: 15
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
         with:
           persist-credentials: false
-      - uses: actions/setup-node@v6
+      - uses: actions/setup-node@v7
         with:
           node-version: 22.18.0
       - run: >-
@@ -74,7 +74,7 @@ jobs:
           --version "$AGENT_VERSION"
           --output ".agent-adaptation/artifacts/${{ matrix.platform }}/version.txt"
           --home ".agent-adaptation/home/${{ matrix.platform }}"
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         with:
           name: promotion-artifact-${{ matrix.platform }}
           path: .agent-adaptation/artifacts
@@ -85,10 +85,10 @@ jobs:
     needs: acquire
     runs-on: ubuntu-24.04
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
         with:
           persist-credentials: false
-      - uses: actions/download-artifact@v5
+      - uses: actions/download-artifact@v8
         with:
           pattern: promotion-artifact-*
           path: .agent-adaptation/artifacts
@@ -99,7 +99,7 @@ jobs:
           --version "$AGENT_VERSION"
           --directory .agent-adaptation/artifacts
           --output .agent-adaptation/acquisition.json
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         with:
           name: promotion-acquisition
           path: .agent-adaptation/acquisition.json
@@ -127,23 +127,23 @@ jobs:
     runs-on: ${{ matrix.runner }}
     timeout-minutes: 30
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
         with:
           persist-credentials: false
       - uses: pnpm/action-setup@v6
         with:
           version: 10.34.5
-      - uses: actions/setup-node@v6
+      - uses: actions/setup-node@v7
         with:
           node-version: 22.18.0
           cache: pnpm
       - run: pnpm install --frozen-lockfile --filter './packages/**'
-      - uses: actions/download-artifact@v5
+      - uses: actions/download-artifact@v8
         with:
           pattern: promotion-artifact-*
           path: .agent-adaptation/artifacts
           merge-multiple: true
-      - uses: actions/download-artifact@v5
+      - uses: actions/download-artifact@v8
         with:
           name: promotion-acquisition
           path: .agent-adaptation
@@ -195,7 +195,7 @@ jobs:
           --surface-audit passed
           --adapter-real passed
           --output ".agent-adaptation/${{ matrix.platform }}.json"
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         with:
           name: promotion-platform-${{ matrix.platform }}
           path: .agent-adaptation/${{ matrix.platform }}.json
@@ -207,26 +207,26 @@ jobs:
     runs-on: ubuntu-24.04
     timeout-minutes: 60
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
         with:
           fetch-depth: 0
           persist-credentials: false
       - uses: pnpm/action-setup@v6
         with:
           version: 10.34.5
-      - uses: actions/setup-node@v6
+      - uses: actions/setup-node@v7
         with:
           node-version: 22.18.0
           cache: pnpm
       - run: pnpm install --frozen-lockfile
         env:
           ELECTRON_SKIP_BINARY_DOWNLOAD: '1'
-      - uses: actions/download-artifact@v5
+      - uses: actions/download-artifact@v8
         with:
           pattern: promotion-platform-*
           path: .agent-adaptation/platforms
           merge-multiple: true
-      - uses: actions/download-artifact@v5
+      - uses: actions/download-artifact@v8
         with:
           name: promotion-acquisition
           path: .agent-adaptation
@@ -244,7 +244,7 @@ jobs:
           --platform-report .agent-adaptation/platforms/linux-x64.json
           --platform-report .agent-adaptation/platforms/windows-x64.json
           --output .agent-adaptation/verification.json
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         with:
           name: promotion-verification
           path: .agent-adaptation/verification.json
@@ -258,21 +258,21 @@ jobs:
     permissions:
       contents: write
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
         with:
           fetch-depth: 0
       - uses: pnpm/action-setup@v6
         with:
           version: 10.34.5
-      - uses: actions/setup-node@v6
+      - uses: actions/setup-node@v7
         with:
           node-version: 22.18.0
       - run: pnpm install --frozen-lockfile --filter './packages/**'
-      - uses: actions/download-artifact@v5
+      - uses: actions/download-artifact@v8
         with:
           name: promotion-verification
           path: .agent-adaptation
-      - uses: actions/download-artifact@v5
+      - uses: actions/download-artifact@v8
         with:
           name: promotion-acquisition
           path: .agent-adaptation
