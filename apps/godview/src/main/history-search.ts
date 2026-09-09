@@ -44,6 +44,8 @@ const V17_SEARCH_LIMIT = 1000;
 const DEFAULT_SEARCH_LIMIT = 300;
 const MAX_CHILD_LOOKUPS_PER_SEARCH = 32;
 const FACTS_TTL_MS = 15_000;
+/** A session the daemon has not ingested yet is asked about again sooner than a known one is refreshed. */
+const MISS_TTL_MS = 3_000;
 const VERSION_TTL_MS = 60_000;
 const REQUEST_TIMEOUT_MS = 8_000;
 
@@ -408,13 +410,35 @@ export function createHistorySearchService(options: HistorySearchServiceOptions)
     }
   }
 
-  async function protocolVersion(): Promise<number | undefined> {
+  interface DaemonIdentity {
+    origin: string;
+    source: HistoryOriginSource;
+    version: number;
+  }
+
+  /** The daemon generation behind the current origin, from any answer within the TTL, else one status call. */
+  async function identity(): Promise<DaemonIdentity | undefined> {
     const resolved = options.origin();
     if (!resolved) return undefined;
     const known = versionByOrigin.get(resolved.origin);
-    if (known && now() - known.at < VERSION_TTL_MS) return known.version;
+    if (known && now() - known.at < VERSION_TTL_MS) return { ...resolved, version: known.version };
     const result = await call('/api/status');
-    return result.ok ? result.version : undefined;
+    return result.ok ? { ...resolved, version: result.version } : undefined;
+  }
+
+  async function protocolVersion(): Promise<number | undefined> {
+    return (await identity())?.version;
+  }
+
+  function statusOf(who: DaemonIdentity): HistorySearchStatus {
+    return {
+      origin: who.origin,
+      source: who.source,
+      reachable: true,
+      protocolVersion: who.version,
+      capabilities: { sessionScope: who.version >= 18, prefix: who.version >= 18 },
+      checkedAt: new Date(now()).toISOString(),
+    };
   }
 
   function rememberRow(row: DaemonSessionRow): void {
@@ -496,7 +520,7 @@ export function createHistorySearchService(options: HistorySearchServiceOptions)
     const at = now();
     const stale = nativeSessionIds.filter((id) => {
       const cached = factsByNativeId.get(id);
-      return !cached || at - cached.at >= FACTS_TTL_MS;
+      return !cached || at - cached.at >= (cached.row ? FACTS_TTL_MS : MISS_TTL_MS);
     });
     if (stale.length > 0) {
       const rows = await lookupRows(stale);
@@ -549,10 +573,12 @@ export function createHistorySearchService(options: HistorySearchServiceOptions)
 
   async function search(request: HistorySearchRequest): Promise<HistorySearchResponse> {
     const query = normalizeHistoryQuery(request.query);
-    const current = await status();
-    if (!current.reachable || current.protocolVersion === undefined) {
-      return { status: current, answered: false, hits: [], clipped: false };
-    }
+    // One question per keystroke means no separate status round trip: the
+    // daemon's generation is remembered from its last answer, and the search
+    // answer itself carries readiness.
+    const who = await identity();
+    if (!who) return { status: await status(), answered: false, hits: [], clipped: false };
+    const current = statusOf(who);
     if (query === '') return { status: current, answered: true, hits: [], clipped: false };
 
     // The live runs' canonical roots, when the caller scoped to live runs.
@@ -575,7 +601,7 @@ export function createHistorySearchService(options: HistorySearchServiceOptions)
     const limit = request.limit ?? DEFAULT_SEARCH_LIMIT;
     const params = new URLSearchParams({ q: query });
     let effectiveLimit = limit;
-    if (current.protocolVersion >= 18) {
+    if (who.version >= 18) {
       if (scoped) params.set('sessions', [...roots.keys()].join(','));
       params.set('prefix', String(request.prefix ?? true));
       params.set('limit', String(limit));
@@ -589,7 +615,15 @@ export function createHistorySearchService(options: HistorySearchServiceOptions)
     }
     const result = await call(`/api/search?${params.toString()}`);
     if (!result.ok) {
-      return { status: { ...current, detail: result.failure }, answered: false, hits: [], clipped: false };
+      // An HTTP answer means the daemon is there and refused the question; no
+      // answer at all means it is gone.
+      const reachable = result.status !== undefined;
+      return {
+        status: { ...current, reachable, detail: result.failure },
+        answered: false,
+        hits: [],
+        clipped: false,
+      };
     }
     const body = isRecord(result.body) ? result.body : {};
     const state = decodeSearchState(body.state);
@@ -608,7 +642,7 @@ export function createHistorySearchService(options: HistorySearchServiceOptions)
     for (const hit of raw) {
       let root = roots.get(hit.sessionId);
       if (!root) {
-        if (scoped && current.protocolVersion < 18) continue;
+        if (scoped && who.version < 18) continue;
         root = await rootOf(hit.sessionId, budget);
         if (scoped && (!root || !roots.has(root.id))) continue;
       }
