@@ -8,6 +8,7 @@ import {
   monitorAgentCounts,
   nextMonitorAgentForStatus,
   type MonitorAgentRecord,
+  type MonitorTerminalRecord,
 } from './agents.js';
 
 function session(id: string, overrides: Partial<SessionSummary> = {}): SessionSummary {
@@ -117,11 +118,54 @@ describe('monitor agent assembly', () => {
       agents: [],
       terminals: [{ session: session('terminal-a'), cwd: '/project/godview' }],
       sessions: new Map([
-        ['terminal-a', session('terminal-a', { activity: { kind: 'foreground-job' } as SessionActivity })],
+        [
+          'terminal-a',
+          session('terminal-a', {
+            cwd: '/project/other-folder',
+            activity: { kind: 'foreground-job' } as SessionActivity,
+          }),
+        ],
       ]),
     });
-    expect(terminal).toMatchObject({ status: 'working', project: 'godview' });
+    expect(terminal).toMatchObject({
+      status: 'working',
+      project: 'other-folder',
+      cwd: '/project/other-folder',
+      detail: '/project/other-folder',
+    });
     expect(terminal!.agent).toBeUndefined();
+  });
+
+  it('follows mounted shell directory changes while preserving its identity and spawn position', () => {
+    const spawnHint = { x: 10, y: 20 };
+    let terminals: readonly MonitorTerminalRecord[] = [
+      { session: session('terminal-a'), cwd: '/project/godview', spawnHint },
+    ];
+    for (const cwd of ['/project/other-folder', '/project/godview']) {
+      terminals = mergeMonitorTerminals({
+        explicit: terminals,
+        workspaceSessions: [session('terminal-a', { cwd })],
+        identities: new Map([['terminal-a', 'stable-terminal']]),
+      });
+      expect(terminals[0]).toMatchObject({ id: 'stable-terminal', cwd, spawnHint });
+      const [terminal] = assembleMonitorAgents({ agents: [], terminals });
+      expect(terminal).toMatchObject({
+        id: 'stable-terminal',
+        project: cwd.split('/').at(-1),
+        cwd,
+        detail: cwd,
+        spawnHint,
+      });
+    }
+  });
+
+  it('uses the remembered folder when live terminal metadata has no directory', () => {
+    const terminals = mergeMonitorTerminals({
+      explicit: [{ session: session('terminal-a'), cwd: '/project/fallback' }],
+      workspaceSessions: [session('terminal-a', { cwd: null })],
+    });
+    const [terminal] = assembleMonitorAgents({ agents: [], terminals });
+    expect(terminal).toMatchObject({ project: 'fallback', cwd: '/project/fallback', detail: '/project/fallback' });
   });
 
   it('keeps monitor identity through a shell handoff and rejects dead terminal placeholders', () => {

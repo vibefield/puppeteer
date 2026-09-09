@@ -21,6 +21,7 @@ export interface MonitorTerminalRecord {
   /** Optional stable visual identity across a dead-PTY -> shell handoff. */
   id?: string;
   session: SessionSummary;
+  /** Remembered directory used only when the live session has no cwd metadata. */
   cwd?: string;
   spawnHint?: { x: number; y: number };
 }
@@ -38,7 +39,7 @@ export function mergeMonitorTerminals(input: MergeMonitorTerminalsInput): readon
   for (const session of input.workspaceSessions) {
     if (session.exited || input.exitedSessionIds?.has(session.id)) continue;
     const existing = bySession.get(session.id);
-    const cwd = existing?.cwd ?? session.cwd ?? undefined;
+    const cwd = session.cwd ?? existing?.cwd ?? undefined;
     const identity = input.identities?.get(session.id);
     bySession.set(session.id, {
       ...existing,
@@ -116,7 +117,7 @@ export function monitorAgentFromSession(
 export function monitorAgentFromTerminal(record: MonitorTerminalRecord): MonitorAgent {
   const { session, cwd, spawnHint } = record;
   const id = record.id ?? session.id;
-  const path = cwd ?? session.cwd ?? undefined;
+  const path = session.cwd ?? cwd ?? undefined;
   return {
     id,
     session,
