@@ -13,6 +13,10 @@ import type {
   AgentSessionInfo,
   CheckReleasesRequest,
   CreateProfileRequest,
+  HistorySearchRequest,
+  HistorySearchResponse,
+  HistorySearchStatus,
+  HistorySessionFacts,
   InstallationsRequest,
   NewTerminalTabRequest,
   ProfileDefaults,
@@ -124,6 +128,11 @@ const puppeteer: PuppeteerBridge = {
     ipcRenderer.invoke('puppeteer:set-profile-default', request),
   newTerminalTab: (request?: NewTerminalTabRequest): Promise<boolean> =>
     ipcRenderer.invoke('puppeteer:new-terminal-tab', request),
+  historyStatus: (): Promise<HistorySearchStatus> => ipcRenderer.invoke('puppeteer:history-status'),
+  historyFacts: (nativeSessionIds: string[]): Promise<HistorySessionFacts[]> =>
+    ipcRenderer.invoke('puppeteer:history-facts', nativeSessionIds),
+  historySearch: (request: HistorySearchRequest): Promise<HistorySearchResponse> =>
+    ipcRenderer.invoke('puppeteer:history-search', request),
   onWorkspaceFinal: (callback: (event: WorkspaceFinalEvent) => void): (() => void) => {
     const listener = (_event: Electron.IpcRendererEvent, final: WorkspaceFinalEvent): void => callback(final);
     ipcRenderer.on('puppeteer:workspace-final', listener);

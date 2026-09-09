@@ -48,6 +48,9 @@ import type {
   CreateAgentSessionOptions,
   CreateAgentSessionResult,
   CreateProfileRequest,
+  HistorySearchResponse,
+  HistorySearchStatus,
+  HistorySessionFacts,
   InstallationsRequest,
   NewTerminalTabRequest,
   PaneRehydrationRequest,
@@ -62,6 +65,15 @@ import type {
 } from '../protocol.js';
 import { createAccountUsageMonitor, type AccountUsageProfileRef } from './account-usage-monitor.js';
 import { createProfileDefaultsStore, profileDefaultIds, retainKnownProfileDefaults } from './agent-profile-defaults.js';
+import {
+  createHistorySearchService,
+  defaultAnnounceDirectory,
+  discoverAnnouncedDaemons,
+  parseHistoryFactsRequest,
+  parseHistorySearchRequest,
+  resolveHistoryOrigin,
+} from './history-search.js';
+import { createHistorySettingsStore } from './history-settings.js';
 import {
   acknowledgeAgentFailureForIpc,
   connectMonitorIpcRelay,
@@ -641,6 +653,31 @@ const monitorConnection = connectMonitorIpcRelay(agentRuntime, monitorRelay, (er
 const profileDefaultsStore = createProfileDefaultsStore(join(app.getPath('userData'), 'agent-profile-defaults.json'));
 /** Login terminals awaiting their exit, so the account is verified from native evidence afterwards. */
 const pendingProfileLogins = new Map<string, { profileId: string; timer: NodeJS.Timeout }>();
+/** Where the transcript history daemon lives; hand-edited, never written by Godview. */
+const historySettingsStore = createHistorySettingsStore(join(app.getPath('userData'), 'history-search.json'));
+const historyAnnounceDirectory = defaultAnnounceDirectory(process.platform, process.env);
+const HISTORY_ORIGIN_TTL_MS = 10_000;
+let historyOriginCache: { at: number; value: ReturnType<typeof resolveHistoryOrigin> } | undefined;
+/** Resolved per call so a daemon that restarts on another port is followed; the announce directory is read at most every few seconds. */
+function currentHistoryOrigin(): ReturnType<typeof resolveHistoryOrigin> | undefined {
+  const settings = historySettingsStore.read();
+  if (!settings.enabled) return undefined;
+  const now = Date.now();
+  if (historyOriginCache && now - historyOriginCache.at < HISTORY_ORIGIN_TTL_MS) return historyOriginCache.value;
+  const value = resolveHistoryOrigin({
+    ...(settings.origin ? { configured: settings.origin } : {}),
+    ...(process.env.GODVIEW_HISTORY_DAEMON ? { environment: process.env.GODVIEW_HISTORY_DAEMON } : {}),
+    announced: discoverAnnouncedDaemons(historyAnnounceDirectory),
+  });
+  historyOriginCache = { at: now, value };
+  return value;
+}
+// Loopback only, and only ever the daemon the user's own settings or the
+// daemon's own announcement point at; the service refuses any other origin.
+const historySearch = createHistorySearchService({
+  fetch: (input, init) => globalThis.fetch(input, init),
+  origin: currentHistoryOrigin,
+});
 const PROFILE_LOGIN_TIMEOUT_MS = 10 * 60_000;
 
 /** Registered accounts per provider, as the usage monitor needs them. */
@@ -1827,6 +1864,36 @@ function registerIpc(): void {
   ipcMain.handle('puppeteer:new-terminal-tab', (event, request: NewTerminalTabRequest | undefined) => {
     const owner = BrowserWindow.fromWebContents(event.sender);
     return openTerminalTab(request ?? {}, owner && tabs.get(owner) ? owner : undefined);
+  });
+  ipcMain.handle('puppeteer:history-status', (event): Promise<HistorySearchStatus> => {
+    const window = BrowserWindow.fromWebContents(event.sender);
+    if (!window || !tabs.get(window)) {
+      return Promise.resolve({ reachable: false, detail: 'not a Godview window', checkedAt: new Date().toISOString() });
+    }
+    return historySearch.status();
+  });
+  ipcMain.handle('puppeteer:history-facts', (event, input: unknown): Promise<HistorySessionFacts[]> => {
+    const window = BrowserWindow.fromWebContents(event.sender);
+    const ids = parseHistoryFactsRequest(input);
+    if (!window || !tabs.get(window) || !ids) return Promise.resolve([]);
+    return historySearch.facts(ids);
+  });
+  ipcMain.handle('puppeteer:history-search', (event, input: unknown): Promise<HistorySearchResponse> => {
+    const window = BrowserWindow.fromWebContents(event.sender);
+    const request = parseHistorySearchRequest(input);
+    if (!window || !tabs.get(window) || !request) {
+      return Promise.resolve({
+        status: {
+          reachable: false,
+          detail: 'the search request was not understood',
+          checkedAt: new Date().toISOString(),
+        },
+        answered: false,
+        hits: [],
+        clipped: false,
+      });
+    }
+    return historySearch.search(request);
   });
 }
 
