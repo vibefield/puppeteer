@@ -1,6 +1,17 @@
 packages:
   - packages/*
   - apps/*
+# Temporary sibling-checkout overrides for Godview development. Remove this
+# block and run pnpm install to return to the versions in package.json.
+overrides:
+  '@vibecook/ghosttea': link:../electron-ghostty/packages/ghosttea
+  '@vibecook/ghosttea-client': link:../electron-ghostty/packages/ghosttea-client
+  '@vibecook/ghosttea-electron': link:../electron-ghostty/packages/ghosttea-electron
+  '@vibecook/ghosttea-frame': link:../electron-ghostty/packages/ghosttea-frame
+  '@vibecook/ghosttea-native-tabs': link:../electron-ghostty/packages/ghosttea-native-tabs
+  '@vibecook/ghosttea-protocol': link:../electron-ghostty/packages/ghosttea-protocol
+  '@vibecook/ghosttea-react': link:../electron-ghostty/packages/ghosttea-react
+  '@vibecook/ghosttead': link:../electron-ghostty/packages/ghosttead
 allowBuilds:
   '@parcel/watcher': true
   '@vibecook/truffle': true

@@ -19,6 +19,8 @@
     "typecheck": "pnpm -r typecheck",
     "test": "pnpm typecheck && pnpm packages:check && pnpm groundtruth:mapping:check && pnpm support:check && node --test scripts/*.test.mjs && pnpm -r test",
     "godview": "pnpm --filter godview start",
+    "godview:local": "pnpm godview:local:build && pnpm --filter godview exec electron .",
+    "godview:local:build": "npm --prefix ../electron-ghostty run build:sdk && pnpm godview:bundle",
     "godview:bundle": "pnpm --filter godview bundle",
     "godview:smoke": "pnpm --filter godview smoke",
     "godview:appearance-smoke": "pnpm --filter godview appearance-smoke",
