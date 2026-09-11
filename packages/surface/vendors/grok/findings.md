@@ -19,6 +19,14 @@ The controlled capture includes an ACP protocol-version-1 `initialize` request; 
 
 The observed turn order was user message, user-prompt hook, optional thought chunks, assistant message, response completion, stop hook, and turn completion. The durable update log and state files carry prompt correlation, usage, model/context values, compaction count, turn count, and tool-call count. Imposter resume restores these cumulative fields plus message count and the original creation time; emitting a durable compaction checkpoint advances and persists the counter once.
 
+## Live monitor follow-up (2026-09-11)
+
+A read-only attachment to a running Grok 1.0.25 session confirmed that `signals.json` can remain at the previous turn's context occupancy throughout a long tool loop. Live `updates.jsonl` records carry the advancing occupancy in `params._meta.totalTokens`; `agentTimestampMs` is milliseconds, while the outer durable `timestamp` is Unix seconds. Before the first signals snapshot, `models_cache.json` supplies capacity at `models[modelId].context_window`, using the current model from `summary.json`. Occupancy never contributes to billed token usage.
+
+The live ACP `response_completed` extension supplies per-response usage and a signature. The newer payload uses `input_tokens`, `output_tokens`, `cache_read_input_tokens`, `cache_creation_input_tokens`, and `reasoning_tokens`. Input excludes the separate cache buckets; output already includes reasoning. The durable `turn_completed.usage` uses camelCase totals that already include cached input. The adapter hashes response identities for deduplication, publishes live response contributions, and reconciles the final turn total against those contributions. Replayed history restores totals without generating live burn.
+
+These follow-up observations and regression fixtures do not promote the pinned 1.0.0 Surface baseline or its platform support claims.
+
 ## Compaction and agent teams
 
 The supplemental public source names `auto_compact_started`, `auto_compact_completed`, `auto_compact_failed`, `auto_compact_cancelled`, the persist-only `compaction_checkpoint`, and `subagent_spawned` / `subagent_progress` / `subagent_finished`. Newer public source also contains workflow and goal updates. They are represented in the native behavior graph, not normalized here.

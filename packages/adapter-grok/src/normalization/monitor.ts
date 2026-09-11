@@ -12,6 +12,7 @@ import type {
 } from '@vibecook/puppeteer-core/monitor-spi';
 import type { GrokObservedEvent } from './types.js';
 import { GROK_CONTRACT, GROK_MONITOR_CAPABILITIES } from './monitor-capabilities.js';
+import { GrokUsageEvidence } from './usage.js';
 
 export { GROK_MONITOR_CAPABILITIES } from './monitor-capabilities.js';
 
@@ -53,21 +54,6 @@ function safeMode(value: unknown): string | undefined {
   return str(object?.id) ?? str(object?.value) ?? str(object?.type);
 }
 
-function promptUsage(update: Record<string, unknown>): {
-  inputTokens?: number;
-  outputTokens?: number;
-  deltaTokens: number;
-} | null {
-  const usage = rec(update.usage);
-  if (!usage || usage.usageIsIncomplete === true || usage.usage_is_incomplete === true) return null;
-  const totalTokens = finiteNonNegative(usage.totalTokens ?? usage.total_tokens);
-  const inputTokens = finiteNonNegative(usage.inputTokens ?? usage.input_tokens);
-  const outputTokens = finiteNonNegative(usage.outputTokens ?? usage.output_tokens);
-  const deltaTokens = totalTokens ?? (inputTokens ?? 0) + (outputTokens ?? 0);
-  if (totalTokens === undefined && inputTokens === undefined && outputTokens === undefined) return null;
-  return { inputTokens, outputTokens, deltaTokens };
-}
-
 function rawPlan(update: Record<string, unknown>): Array<{ text: string; status: string }> | undefined {
   if (str(update.sessionUpdate) !== 'plan') return undefined;
   const entries = Array.isArray(update.entries) ? update.entries : undefined;
@@ -103,6 +89,8 @@ export class GrokMonitorEvidence {
   private readonly epoch: string;
   private sequence = 0;
   private contextCapacity: number | undefined;
+  private activePromptId: string | undefined;
+  private readonly usage = new GrokUsageEvidence();
   private readonly childTypes = new Map<string, string | undefined>();
 
   constructor(private readonly options: GrokMonitorEvidenceOptions) {
@@ -245,6 +233,9 @@ export class GrokMonitorEvidence {
     const updates: MonitorFamilyUpdate[] = [];
     let quality: AdapterMonitorObservationBatch['quality'] = 'exact';
     let provisional = false;
+    if (event.type === 'turn:started') this.activePromptId = promptId ?? event.turnId;
+    const usagePromptId =
+      str(update?.prompt_id) ?? str(rec(nested?.params._meta)?.promptId) ?? promptId ?? this.activePromptId;
 
     if (event.type === 'context-window:updated') {
       this.contextCapacity = event.capacityTokens;
@@ -290,23 +281,16 @@ export class GrokMonitorEvidence {
     const isTurnCompletedEvent =
       event.type === 'turn:completed' ||
       (event.type === 'adapter:native-event' && event.adapter === 'grok' && event.nativeType === 'turn_completed');
-    if (isTurnCompletedEvent && kind === 'turn_completed' && update) {
-      const usage = promptUsage(update);
-      const usagePromptId = str(update.prompt_id) ?? promptId;
-      if (usage && usagePromptId) {
-        const usageId = `grok-turn:${this.options.nativeSessionId()}:${usagePromptId}`;
-        updates.push(
-          upsert('usage', usageId, {
-            kind: 'usage',
-            usageId,
-            boundary: 'response',
-            canonical: true,
-            deltaTokens: usage.deltaTokens,
-            inputTokens: usage.inputTokens,
-            outputTokens: usage.outputTokens,
-          }),
-        );
-      }
+    if (update && ((isTurnCompletedEvent && kind === 'turn_completed') || kind === 'response_completed')) {
+      updates.push(
+        ...this.usage.normalize(
+          this.options.nativeSessionId(),
+          usagePromptId,
+          update,
+          str(update.signature) ?? str(rec(nested?.params._meta)?.eventId),
+        ),
+      );
+      if (kind === 'turn_completed' && usagePromptId === this.activePromptId) this.activePromptId = undefined;
     }
 
     const plan = update ? rawPlan(update) : undefined;

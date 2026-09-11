@@ -25,10 +25,10 @@ export const GROK_MONITOR_CAPABILITIES: readonly ObservationCapability[] = [
     support: 'supported',
     actorScope: 'root',
     latency: 'response',
-    source: 'grok-turn-completed-usage',
+    source: 'grok-response-and-turn-completed-usage',
     contractVersion: GROK_CONTRACT,
     limitations: [
-      'Canonical usage is emitted only for complete per-turn usage objects.',
+      'Complete, identified response usage updates live; durable turn totals reconcile missed responses.',
       'signals.json and subagent progress are context occupancy, never billed burn.',
       'No verified per-subagent billed usage surface exists on the pinned artifact.',
     ],
@@ -38,9 +38,12 @@ export const GROK_MONITOR_CAPABILITIES: readonly ObservationCapability[] = [
     support: 'supported',
     actorScope: 'root',
     latency: 'sample',
-    source: 'grok-signals-json-and-acp-usage-update',
+    source: 'grok-update-metadata-model-cache-signals-json-and-acp-usage-update',
     contractVersion: GROK_CONTRACT,
-    limitations: ['Per-child context is source-backed but absent from the pinned runtime census.'],
+    limitations: [
+      'Per-child context is source-backed but absent from the pinned runtime census.',
+      'Before signals.json exists, context capacity requires the selected model in the native model cache.',
+    ],
   },
   {
     family: 'model',

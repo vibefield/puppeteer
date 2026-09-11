@@ -276,7 +276,7 @@ describe('createPendingControlSession', () => {
     await session.dispose();
   });
 
-  it('prefers standard ACP context usage over the native signals fallback', async () => {
+  it('continues refreshing native context after an ACP context update', async () => {
     const control = fakeControl();
     const observed = fakeObserver();
     const session = createPendingControlSession('sid', 'rt', () => control.session, observed.observer);
@@ -302,10 +302,10 @@ describe('createPendingControlSession', () => {
     });
 
     expect(projection.state.contextWindow).toMatchObject({
-      usedTokens: 40,
+      usedTokens: 50,
       capacityTokens: 100,
-      modelId: 'protocol',
-      source: 'native-protocol',
+      modelId: 'fallback',
+      source: 'native-log',
     });
     projection.dispose();
     await session.dispose();

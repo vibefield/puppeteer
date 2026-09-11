@@ -2,6 +2,11 @@ import { describe, expect, it } from 'vitest';
 import { agentEventType, type AdapterEventCandidate, type AgentEvent } from '@vibecook/puppeteer-core';
 import { GROK_MONITOR_CAPABILITIES, GrokMonitorEvidence } from './monitor.js';
 import type { GrokObservedEvent } from './types.js';
+import {
+  createMonitorAccumulatorState,
+  projectAgentMonitorState,
+  reduceMonitorAccumulator,
+} from '@vibecook/puppeteer-core/monitor-spi';
 
 const SESSION = 'grok-session';
 const AT = '2026-08-08T00:00:00.000Z';
@@ -46,6 +51,80 @@ function candidate(update: Record<string, unknown>, event?: AgentEvent): Adapter
 }
 
 describe('GrokMonitorEvidence', () => {
+  it('publishes live response burn and reconciles the final turn without double counting', () => {
+    const projector = evidence();
+    let state = createMonitorAccumulatorState({
+      runtimeRunId: 'run',
+      runtimeEpoch: 1,
+      providerId: 'grok',
+      executionMode: 'native-tui',
+      observationLevel: 'native-log',
+      allocatedAt: AT,
+    });
+    const apply = (batch: ReturnType<GrokMonitorEvidence['controlCandidateBatch']>) => {
+      if (batch)
+        state = reduceMonitorAccumulator(state, {
+          ...batch,
+          kind: 'semantic',
+          runtimeRunId: 'run',
+          runtimeEpoch: 1,
+        }).state;
+    };
+    apply(
+      projector.observedBatch(
+        {
+          ...observed(
+            { type: 'turn:started', turnId: 'prompt-1' },
+            record({ sessionUpdate: 'user_message_chunk' }),
+            'prompt-1',
+          ),
+          phase: 'live',
+        },
+        AT,
+      ),
+    );
+    const response = candidate({
+      sessionUpdate: 'response_completed',
+      signature: 'response-1',
+      usage: { inputTokens: 120, outputTokens: 30 },
+    });
+    response.timestamp = '2026-08-08T00:00:01.000Z';
+    apply(projector.controlCandidateBatch(response));
+    apply(projector.controlCandidateBatch(response));
+    expect(projectAgentMonitorState(state, { asOf: response.timestamp }).usage).toMatchObject({
+      cumulativeTokens: 150,
+      inputTokens: 120,
+      outputTokens: 30,
+      burnRatePerMin: 150,
+    });
+    apply(
+      projector.controlCandidateBatch({
+        ...candidate({
+          sessionUpdate: 'response_completed',
+          signature: 'response-2',
+          usage: { inputTokens: 200, outputTokens: 50 },
+        }),
+        timestamp: '2026-08-08T00:00:02.000Z',
+      }),
+    );
+    const completed = candidate({
+      sessionUpdate: 'turn_completed',
+      prompt_id: 'prompt-1',
+      usage: { totalTokens: 500, inputTokens: 400, outputTokens: 100 },
+    });
+    completed.timestamp = '2026-08-08T00:00:03.000Z';
+    apply(projector.controlCandidateBatch(completed));
+    apply(projector.controlCandidateBatch(completed));
+    apply(projector.controlCandidateBatch(response));
+    expect(projectAgentMonitorState(state, { asOf: completed.timestamp }).usage).toMatchObject({
+      cumulativeTokens: 500,
+      inputTokens: 400,
+      outputTokens: 100,
+      burnRatePerMin: 500,
+      samples: expect.arrayContaining([expect.objectContaining({ cumulativeTokens: 150 })]),
+    });
+  });
+
   it('declares every checklist family without claiming unverified workflow parity', () => {
     expect(GROK_MONITOR_CAPABILITIES.map(({ family }) => family).sort()).toEqual(
       [
@@ -72,6 +151,101 @@ describe('GrokMonitorEvidence', () => {
     expect(GROK_MONITOR_CAPABILITIES.find(({ family }) => family === 'delegation')).toMatchObject({
       support: 'degraded',
     });
+  });
+
+  it('includes cached input once and keeps reasoning within native response output', () => {
+    const batch = evidence().controlCandidateBatch(
+      candidate({
+        sessionUpdate: 'response_completed',
+        prompt_id: 'prompt-1',
+        signature: 'private-signature',
+        usage: {
+          input_tokens: 3_123,
+          output_tokens: 4_591,
+          cache_read_input_tokens: 167_168,
+          cache_creation_input_tokens: 0,
+          reasoning_tokens: 4_588,
+        },
+      }),
+    );
+    expect(batch?.updates).toEqual([
+      expect.objectContaining({
+        family: 'usage',
+        value: expect.objectContaining({ inputTokens: 170_291, outputTokens: 4_591, deltaTokens: 174_882 }),
+      }),
+    ]);
+    expect(JSON.stringify(batch)).not.toContain('private-signature');
+  });
+
+  it('keeps replayed response usage out of live burn', () => {
+    const projector = evidence();
+    const batch = projector.observedBatch(
+      observed(
+        { type: 'adapter:native-event', adapter: 'grok', nativeType: 'response_completed' },
+        record({
+          sessionUpdate: 'response_completed',
+          signature: 'response-1',
+          usage: { inputTokens: 10, outputTokens: 5 },
+        }),
+        'prompt-1',
+      ),
+      AT,
+    )!;
+    const initial = createMonitorAccumulatorState({
+      runtimeRunId: 'run',
+      runtimeEpoch: 1,
+      providerId: 'grok',
+      executionMode: 'native-tui',
+      observationLevel: 'native-log',
+      allocatedAt: AT,
+    });
+    const { state } = reduceMonitorAccumulator(initial, {
+      ...batch,
+      kind: 'semantic',
+      runtimeRunId: 'run',
+      runtimeEpoch: 1,
+    });
+    const usage = projectAgentMonitorState(state, { asOf: AT }).usage;
+    expect(usage.cumulativeTokens).toBe(15);
+    expect(usage.burnRatePerMin).toBeUndefined();
+  });
+
+  it('does not publish incomplete or uncorrelated response usage', () => {
+    const projector = evidence();
+    for (const update of [
+      { signature: 'no-prompt', usage: { inputTokens: 100 } },
+      { prompt_id: 'p', usage: { inputTokens: 100 } },
+      { prompt_id: 'p', signature: 'incomplete', usage: { inputTokens: 100, usage_is_incomplete: true } },
+    ]) {
+      expect(projector.controlCandidateBatch(candidate({ sessionUpdate: 'response_completed', ...update }))).toBeNull();
+    }
+  });
+
+  it('replaces streamed usage when a corrected durable total is smaller', () => {
+    const projector = evidence();
+    const response = projector.controlCandidateBatch(
+      candidate({
+        sessionUpdate: 'response_completed',
+        prompt_id: 'p',
+        signature: 'r',
+        usage: { inputTokens: 100, outputTokens: 50 },
+      }),
+    )!;
+    const completed = candidate({
+      sessionUpdate: 'turn_completed',
+      prompt_id: 'p',
+      usage: { inputTokens: 80, outputTokens: 20 },
+    });
+    const responseUpdate = response.updates[0];
+    if (responseUpdate?.operation !== 'upsert') throw new Error('expected a response usage contribution');
+    expect(projector.controlCandidateBatch(completed)?.updates).toEqual([
+      { family: 'usage', operation: 'retract', key: responseUpdate.key },
+      expect.objectContaining({
+        family: 'usage',
+        value: expect.objectContaining({ deltaTokens: 100, inputTokens: 80, outputTokens: 20 }),
+      }),
+    ]);
+    expect(projector.controlCandidateBatch(completed)?.updates).toHaveLength(1);
   });
 
   it('maps captured turn usage as canonical burn while keeping signals as context only', () => {

@@ -3,7 +3,12 @@
 import { open, readdir, readFile, stat } from 'node:fs/promises';
 import { basename, dirname, join } from 'node:path';
 import { GrokUpdateNormalizer } from '../normalization/pipeline.js';
-import type { GrokObservedEvent, GrokSessionObserver } from '../normalization/types.js';
+import {
+  grokRecordTimestamp,
+  type GrokObservedEvent,
+  type GrokSessionObserver,
+  type GrokUpdateRecord,
+} from '../normalization/types.js';
 
 interface GrokSignals {
   contextTokensUsed?: number;
@@ -26,6 +31,7 @@ export interface GrokSessionObserverOptions {
   pollIntervalMs?: number;
   signalsPath?: string;
   summaryPath?: string;
+  modelsCachePath?: string;
   /** Maximum allocation used for each append-only log read. */
   readChunkBytes?: number;
   /** Refuse one unterminated JSONL record after this many bytes. */
@@ -43,8 +49,12 @@ export function createGrokSessionObserver(
   const errorListeners = new Set<(error: Error) => void>();
   let offset = 0;
   let lastSignalsMeasurement: string | undefined;
+  let contextCapacity: number | undefined;
+  let lastContextMeasurement: string | undefined;
+  let lastContextTimestamp = 0;
   let lastCompactionCount: number | undefined;
   let lastEnvironment: string | undefined;
+  let lastModelId: string | undefined;
   let currentUpdatesPath = updatesPath;
   let currentSessionDirectory = dirname(updatesPath);
   const sessionId = basename(currentSessionDirectory);
@@ -90,8 +100,37 @@ export function createGrokSessionObserver(
   const normalizeUpdateLine = (line: Buffer): void => {
     if (line.length === 0) return;
     try {
-      for (const event of normalizer.normalize(JSON.parse(line.toString('utf8')))) {
+      const record = JSON.parse(line.toString('utf8')) as GrokUpdateRecord;
+      for (const event of normalizer.normalize(record)) {
         emit({ ...event, phase: bootstrap ? 'bootstrap' : 'live' });
+      }
+      // Grok writes signals.json at turn boundaries. During a long tool loop,
+      // update metadata carries the same context occupancy shown by its TUI.
+      const usedTokens = record.params?._meta?.totalTokens;
+      const timestamp = grokRecordTimestamp(record);
+      const at = timestamp ? Date.parse(timestamp) : undefined;
+      if (
+        (record.method === 'session/update' || record.method === '_x.ai/session/update') &&
+        typeof record.params?.update?.sessionUpdate === 'string' &&
+        typeof usedTokens === 'number' &&
+        Number.isFinite(usedTokens) &&
+        usedTokens >= 0 &&
+        contextCapacity !== undefined &&
+        at !== undefined &&
+        at >= lastContextTimestamp
+      ) {
+        lastContextTimestamp = at;
+        const measurement = `${usedTokens}:${contextCapacity}`;
+        if (measurement === lastContextMeasurement) return;
+        lastContextMeasurement = measurement;
+        emit({
+          event: { type: 'context-window:updated', usedTokens, capacityTokens: contextCapacity },
+          timestamp,
+          phase: bootstrap ? 'bootstrap' : 'live',
+          source: 'native-log',
+          confidence: 'authoritative',
+          nativeEvent: record,
+        });
       }
     } catch (error) {
       report(new Error(`invalid Grok update record: ${error instanceof Error ? error.message : String(error)}`));
@@ -215,6 +254,7 @@ export function createGrokSessionObserver(
     const signalsPath = options.signalsPath ?? join(currentSessionDirectory, 'signals.json');
     try {
       const raw = await readFile(signalsPath, 'utf8');
+      const signalsTimestamp = (await stat(signalsPath)).mtimeMs;
       let signals: GrokSignals;
       try {
         signals = JSON.parse(raw) as GrokSignals;
@@ -234,6 +274,14 @@ export function createGrokSessionObserver(
       const usedTokens = signals.contextTokensUsed;
       const capacityTokens = signals.contextWindowTokens;
       if (
+        contextCapacity === undefined &&
+        typeof capacityTokens === 'number' &&
+        Number.isFinite(capacityTokens) &&
+        capacityTokens > 0
+      ) {
+        contextCapacity = capacityTokens;
+      }
+      if (
         typeof usedTokens !== 'number' ||
         !Number.isFinite(usedTokens) ||
         usedTokens < 0 ||
@@ -242,6 +290,8 @@ export function createGrokSessionObserver(
         capacityTokens <= 0
       ) {
         if (compacted) {
+          lastSignalsMeasurement = undefined;
+          lastContextMeasurement = undefined;
           emit({
             event: { type: 'context-window:invalidated', reason: 'compacted' },
             phase: bootstrap ? 'bootstrap' : 'live',
@@ -257,6 +307,10 @@ export function createGrokSessionObserver(
       const fingerprint = `${usedTokens}:${capacityTokens}:${modelId ?? ''}`;
       if (fingerprint === lastSignalsMeasurement) return;
       lastSignalsMeasurement = fingerprint;
+      if (signalsTimestamp < lastContextTimestamp) return;
+      contextCapacity = capacityTokens;
+      lastContextTimestamp = signalsTimestamp;
+      lastContextMeasurement = `${usedTokens}:${capacityTokens}`;
       emit({
         event: { type: 'context-window:updated', usedTokens, capacityTokens, modelId },
         phase: bootstrap ? 'bootstrap' : 'live',
@@ -297,6 +351,22 @@ export function createGrokSessionObserver(
       };
       if (currentCwd) emit({ ...observation, event: { type: 'environment:updated', currentCwd } });
       if (modelId) {
+        if (modelId !== lastModelId) {
+          const needsCapacity = contextCapacity === undefined || lastModelId !== undefined;
+          lastModelId = modelId;
+          // Fresh sessions do not have signals.json until their first turn
+          // finishes. Grok's own model cache supplies capacity in the meantime.
+          try {
+            const cache = JSON.parse(
+              await readFile(options.modelsCachePath ?? join(dirname(sessionsRoot), 'models_cache.json'), 'utf8'),
+            );
+            const capacity = cache?.models?.[modelId]?.context_window;
+            if (needsCapacity && typeof capacity === 'number' && Number.isFinite(capacity) && capacity > 0)
+              contextCapacity = capacity;
+          } catch {
+            // Signals/ACP remain authoritative when there is no cached model.
+          }
+        }
         emit({ ...observation, event: { type: 'model:updated', model: { id: modelId, provider: 'xai' } } });
       }
     } catch (error) {
@@ -309,7 +379,12 @@ export function createGrokSessionObserver(
   const poll = async (): Promise<void> => {
     if (stopped) return;
     if (polling) return polling;
-    polling = Promise.all([pollUpdates(), pollSignals(), pollSummary()])
+    // Load capacity before replaying metadata so even the first prompt can
+    // publish a live context measurement. Historical metadata cannot replace
+    // a newer signals snapshot because both carry their measurement time.
+    polling = pollSignals()
+      .then(pollSummary)
+      .then(pollUpdates)
       .then(() => {
         if (bootstrapUpdatesComplete) bootstrap = false;
       })

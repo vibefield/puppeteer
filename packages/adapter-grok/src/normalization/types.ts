@@ -1,6 +1,6 @@
 import type { AgentEvent, AgentEventConfidence, AgentEventSource } from '@vibecook/puppeteer-core';
 
-export type GrokUpdateMeta = { promptId?: string; agentTimestampMs?: number };
+export type GrokUpdateMeta = { promptId?: string; agentTimestampMs?: number; totalTokens?: number };
 
 export interface GrokUpdate {
   sessionUpdate?: string;
@@ -55,7 +55,10 @@ export function grokRecordTimestamp(record: GrokUpdateRecord): string | undefine
   const agentMs = record.params?._meta?.agentTimestampMs;
   if (typeof agentMs === 'number' && Number.isFinite(agentMs)) return new Date(agentMs).toISOString();
   const value = typeof record.timestamp === 'string' ? Number(record.timestamp) : record.timestamp;
-  return typeof value === 'number' && Number.isFinite(value) ? new Date(value).toISOString() : undefined;
+  // Durable records use Unix seconds; older fixtures used milliseconds.
+  return typeof value === 'number' && Number.isFinite(value)
+    ? new Date(value < 1_000_000_000_000 ? value * 1_000 : value).toISOString()
+    : undefined;
 }
 
 export function grokTextContent(update: GrokUpdate): string {

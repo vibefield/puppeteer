@@ -10,6 +10,87 @@ import { grokUpdatesPath, latestGrokSessionId } from './session-discovery.js';
 
 const temporaryDirectories: string[] = [];
 
+it('uses the native model cache for live context before the first signals snapshot', async () => {
+  const directory = await mkdtemp(join(tmpdir(), 'puppeteer-grok-initial-context-'));
+  temporaryDirectories.push(directory);
+  const updatesPath = grokUpdatesPath('/repo', 'session', directory);
+  await mkdir(dirname(updatesPath), { recursive: true });
+  await writeFile(
+    join(directory, 'models_cache.json'),
+    JSON.stringify({ models: { 'grok-4.6': { context_window: 500_000 } } }),
+  );
+  await writeFile(join(dirname(updatesPath), 'summary.json'), JSON.stringify({ current_model_id: 'grok-4.6' }));
+  await writeFile(
+    updatesPath,
+    JSON.stringify({
+      timestamp: 1_789_167_927,
+      method: 'session/update',
+      params: {
+        sessionId: 'session',
+        update: { sessionUpdate: 'agent_thought_chunk' },
+        _meta: { promptId: 'p', totalTokens: 1_897 },
+      },
+    }) + '\n',
+  );
+  const observer = createGrokSessionObserver(updatesPath, { pollIntervalMs: 60_000 });
+  const received: GrokObservedEvent[] = [];
+  observer.onEvent((event) => received.push(event));
+  try {
+    await observer.poll();
+    expect(received).toContainEqual(
+      expect.objectContaining({
+        event: { type: 'context-window:updated', usedTokens: 1_897, capacityTokens: 500_000 },
+        timestamp: '2026-09-11T23:05:27.000Z',
+      }),
+    );
+  } finally {
+    observer.stop();
+  }
+});
+
+it('refreshes context from live log metadata while signals still describe the previous turn', async () => {
+  const directory = await mkdtemp(join(tmpdir(), 'puppeteer-grok-live-context-'));
+  temporaryDirectories.push(directory);
+  const updatesPath = join(directory, 'updates.jsonl');
+  const signalsPath = join(directory, 'signals.json');
+  await writeFile(updatesPath, '');
+  await writeFile(signalsPath, JSON.stringify({ contextTokensUsed: 10, contextWindowTokens: 500_000 }));
+  const at = 1_784_669_125_000;
+  await utimes(signalsPath, new Date(at - 1_000), new Date(at - 1_000));
+  const observer = createGrokSessionObserver(updatesPath, { pollIntervalMs: 60_000 });
+  const received: GrokObservedEvent[] = [];
+  observer.onEvent((event) => received.push(event));
+  try {
+    await observer.poll();
+    for (const totalTokens of [120_000, 121_000]) {
+      await appendFile(
+        updatesPath,
+        JSON.stringify({
+          method: 'session/update',
+          timestamp: at / 1_000,
+          params: {
+            sessionId: 'grok-session',
+            update: { sessionUpdate: 'agent_thought_chunk' },
+            _meta: { promptId: 'prompt-1', agentTimestampMs: at, totalTokens },
+          },
+        }) + '\n',
+      );
+      await observer.poll();
+    }
+    const context = received.filter(({ event }) => event.type === 'context-window:updated');
+    expect(context.map(({ event }) => event)).toEqual([
+      { type: 'context-window:updated', usedTokens: 10, capacityTokens: 500_000, modelId: undefined },
+      { type: 'context-window:updated', usedTokens: 120_000, capacityTokens: 500_000 },
+      { type: 'context-window:updated', usedTokens: 121_000, capacityTokens: 500_000 },
+    ]);
+    expect(context.at(-1)).toMatchObject({ phase: 'live', timestamp: new Date(at).toISOString() });
+    await observer.poll();
+    expect(received.filter(({ event }) => event.type === 'context-window:updated')).toHaveLength(3);
+  } finally {
+    observer.stop();
+  }
+});
+
 afterEach(async () => {
   await Promise.all(temporaryDirectories.splice(0).map((directory) => rm(directory, { recursive: true, force: true })));
 });
@@ -343,11 +424,17 @@ describe('createGrokSessionObserver', () => {
     await observer.poll();
     await writeFile(signalsPath, JSON.stringify({ compactionCount: 1 }));
     await observer.poll();
+    await writeFile(
+      signalsPath,
+      JSON.stringify({ contextTokensUsed: 100, contextWindowTokens: 1_000, compactionCount: 1 }),
+    );
+    await observer.poll();
     observer.stop();
 
     expect(received.map(({ event }) => event)).toEqual([
       { type: 'context-window:updated', usedTokens: 100, capacityTokens: 1_000, modelId: undefined },
       { type: 'context-window:invalidated', reason: 'compacted' },
+      { type: 'context-window:updated', usedTokens: 100, capacityTokens: 1_000, modelId: undefined },
     ]);
   });
 

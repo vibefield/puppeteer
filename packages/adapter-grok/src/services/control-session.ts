@@ -34,7 +34,6 @@ export function createPendingControlSession(
   let unsubscribeControl: (() => void) | undefined;
   let unsubscribeObserver: (() => void) | undefined;
   let unsubscribeObserverError: (() => void) | undefined;
-  let protocolContextAvailable = false;
   let controlDegraded = false;
 
   function emitMonitorBatch(batch: AdapterMonitorObservationBatch | null): void {
@@ -55,13 +54,6 @@ export function createPendingControlSession(
     // previous pane's session_end would incorrectly terminate the newly
     // resumed binding before its live control rail can serve another turn.
     if (observed.phase === 'bootstrap' && observed.event.type === 'session:exited') return;
-    if (
-      protocolContextAvailable &&
-      observed.source === 'native-log' &&
-      observed.event.type.startsWith('context-window:')
-    ) {
-      return;
-    }
     if (!monitorAlreadyObserved) {
       emitMonitorBatch(monitorEvidence.observedBatch(observed, observed.timestamp ?? new Date().toISOString()));
     }
@@ -143,7 +135,8 @@ export function createPendingControlSession(
         return;
       }
       // The native log owns TUI conversation and lifecycle. ACP remains the
-      // live authority for host-side permissions and standard context usage.
+      // live authority for host-side permissions and adds standard context
+      // updates alongside the durable log's live context metadata.
       const allowedWithObserver = [
         'interaction:permission-requested',
         'interaction:permission-resolved',
@@ -153,7 +146,6 @@ export function createPendingControlSession(
       ];
       const liveNativeTruth = candidate.event.type === 'adapter:native-event' && candidate.event.adapter === 'grok';
       if (observer && !allowedWithObserver.includes(candidate.event.type) && !liveNativeTruth) return;
-      if (candidate.event.type.startsWith('context-window:')) protocolContextAvailable = true;
       applyObserved(
         {
           event: candidate.event,
