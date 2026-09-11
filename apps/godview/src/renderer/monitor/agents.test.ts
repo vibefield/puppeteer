@@ -248,6 +248,25 @@ describe('monitor agent assembly', () => {
     expect(agent).toMatchObject({ status: 'idle', detail: 'idle · 120 tokens · 12 tok/min' });
   });
 
+  it("reads the total from the shell's usage ledger when it keeps one, by stable identity", () => {
+    const record = agentRecord('runtime-a', 'terminal-a');
+    const monitor = monitorState('run-runtime-a', 'idle', {
+      usage: { cumulativeTokens: 120, burnRatePerMin: 12, burnRateWindowMs: 60_000, samples: [] },
+    });
+    record.monitor = monitorMessage(monitor, 'terminal-a');
+    const history = { total: 1_500, steps: [], stepMs: 30_000 };
+
+    const [agent] = assembleMonitorAgents({
+      agents: [record],
+      terminals: [],
+      identities: new Map([['terminal-a', 'stable-a']]),
+      usage: new Map([['stable-a', history]]),
+      nowMs: Date.parse('2026-08-17T00:00:01.000Z'),
+    });
+    expect(agent).toMatchObject({ id: 'stable-a', detail: 'idle · 1,500 tokens · 12 tok/min' });
+    expect(agent?.agent?.usage).toBe(history);
+  });
+
   it('retains a dead question-blocked monitor with choices until monitor removal', () => {
     const record = agentRecord('runtime-a', 'terminal-a');
     record.info = { ...record.info, session: session('terminal-a', { exited: true }) };

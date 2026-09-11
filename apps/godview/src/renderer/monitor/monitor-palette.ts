@@ -62,7 +62,7 @@ export interface SwarmPalette {
   textMain: string;
   textMuted: string;
   panelBg: string;
-  /** §2.5's orange: blocked light, the redline, the hot ring. */
+  /** §2.5's orange: blocked light and the hot ring. */
   orange: string;
   /** The branch dot's green. */
   green: string;

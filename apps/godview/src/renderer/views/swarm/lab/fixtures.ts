@@ -4,13 +4,12 @@ import {
   type AgentMonitorState,
   type MonitorActivityKind,
   type MonitorBlocker,
-  type MonitorUsageSample,
 } from '@vibecook/puppeteer-core';
 import type { AgentSessionInfo } from '../../../../protocol.js';
 import { AGENT_MARK_PROVIDERS } from '../../../AgentIcon.js';
 import type { MonitorAgent, MonitorAgentFacet } from '../../../monitor/types.js';
 import type { SwarmBubbleModel } from '../bubble-model.js';
-import { BURN_SAMPLE_COUNT, BURN_WINDOW_MS } from '../burn-series.js';
+import { USAGE_STEP_COUNT, USAGE_STEP_MS, type UsageHistory } from '../../../monitor/usage-ledger.js';
 
 // Fixture agents for the design lab: every drawn state and every setting worth
 // comparing, as the same `MonitorAgent` shape the view receives, so the lab
@@ -58,36 +57,17 @@ function session(id: string, activityKind: 'shell-idle' | 'foreground-job', nowM
   } as unknown as SessionSummary;
 }
 
-/** Cumulative token samples that reproduce a rate curve over the last ten minutes. */
-function usageSamples(ratesPerMin: readonly number[], nowMs: number): MonitorUsageSample[] {
-  const bucketMs = BURN_WINDOW_MS / BURN_SAMPLE_COUNT;
-  let cumulative = 120_000;
+/** The ledger's history for a rate curve over the last ten minutes: one step per bar. */
+function usageHistory(shape: BurnShape, total: number | undefined): UsageHistory {
+  const steps = Array.from(
+    { length: USAGE_STEP_COUNT },
+    (_, index) => (BURN_SHAPES[shape](index * 2) * USAGE_STEP_MS) / 60_000,
+  );
   // The prompt side carries most of the burn, the completion side a swelling
   // fraction of it, so the two sides of the chart read differently.
-  let input = 96_000;
-  let output = 24_000;
-  const samples: MonitorUsageSample[] = [
-    {
-      at: new Date(nowMs - BURN_WINDOW_MS).toISOString(),
-      cumulativeTokens: cumulative,
-      inputTokens: input,
-      outputTokens: output,
-    },
-  ];
-  ratesPerMin.forEach((rate, index) => {
-    const tokens = (rate * bucketMs) / 60_000;
-    const outputShare = 0.18 + 0.12 * Math.sin(index / 4);
-    cumulative += tokens;
-    output += tokens * outputShare;
-    input += tokens * (1 - outputShare);
-    samples.push({
-      at: new Date(nowMs - BURN_WINDOW_MS + (index + 1) * bucketMs).toISOString(),
-      cumulativeTokens: cumulative,
-      inputTokens: input,
-      outputTokens: output,
-    });
-  });
-  return samples;
+  const output = steps.map((tokens, index) => tokens * (0.18 + 0.12 * Math.sin(index / 2)));
+  const input = steps.map((tokens, index) => tokens - output[index]!);
+  return { ...(total === undefined ? {} : { total }), steps, sides: { output, input }, stepMs: USAGE_STEP_MS };
 }
 
 const wobble = (index: number, amount: number): number => 1 + amount * Math.sin(index * 1.7) * Math.cos(index * 0.6);
@@ -100,11 +80,6 @@ export const BURN_SHAPES = {
 } as const;
 
 export type BurnShape = keyof typeof BURN_SHAPES;
-
-function burn(shape: BurnShape, nowMs: number): { samples: MonitorUsageSample[]; burnRatePerMin: number } {
-  const rates = Array.from({ length: BURN_SAMPLE_COUNT }, (_, index) => BURN_SHAPES[shape](index));
-  return { samples: usageSamples(rates, nowMs), burnRatePerMin: rates[rates.length - 1]! };
-}
 
 interface AgentSpec {
   id: string;
@@ -152,10 +127,7 @@ function monitorState(spec: AgentSpec, nowMs: number): AgentMonitorState {
     blockers,
     ...(spec.activity ? { activity: { kind: spec.activity.kind, line: spec.activity.line, since: at } } : {}),
     ...(spec.message ? { lastAssistantMessage: { text: spec.message, at, final: true } } : {}),
-    usage: {
-      ...(spec.burn ? burn(spec.burn, nowMs) : { samples: [] }),
-      ...(spec.tokens === undefined ? {} : { cumulativeTokens: spec.tokens }),
-    },
+    usage: { samples: [], ...(spec.tokens === undefined ? {} : { cumulativeTokens: spec.tokens }) },
     ...(spec.contextPercent === undefined
       ? {}
       : { context: { usedPercent: spec.contextPercent, percentageSource: 'provider', asOf: at } }),
@@ -183,6 +155,11 @@ export function agentFixture(spec: AgentSpec, nowMs: number): MonitorAgent {
     ...(spec.branch ? { branch: spec.branch } : {}),
     ...(monitor.context ? { contextWindow: monitor.context } : {}),
     monitor,
+    ...(spec.burn
+      ? { usage: usageHistory(spec.burn, spec.tokens) }
+      : spec.tokens === undefined
+        ? {}
+        : { usage: { total: spec.tokens, steps: new Array<number>(USAGE_STEP_COUNT).fill(0), stepMs: USAGE_STEP_MS } }),
     recency: spec.stale ? 'stale' : 'fresh',
     info: {} as AgentSessionInfo,
   };
@@ -359,7 +336,7 @@ export function stateStages(nowMs: number): LabStage[] {
     {
       id: 'working-hot',
       title: 'Working, hot',
-      note: 'The burn past the redline and the context past 80%: both turn orange.',
+      note: 'A burn climbing to its tallest column and the context past 80%: only the context turns orange; the newest column is the ink.',
       agent: agentFixture(
         {
           id: 'w2',

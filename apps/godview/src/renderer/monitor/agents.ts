@@ -11,6 +11,7 @@ import { folderName } from '../folder-name.js';
 import type { PaneAttachment } from '../pane-attachments.js';
 import { projectTint, type ProjectTint } from '../project-tint.js';
 import type { MonitorAgent } from './types.js';
+import type { UsageHistory } from './usage-ledger.js';
 
 export interface MonitorAgentRecord {
   info: AgentSessionInfo;
@@ -66,6 +67,13 @@ export interface AssembleMonitorAgentsInput {
   nowMs?: number;
   /** The theme's tint for project colours and the ramp for sessions with no project (record §02). */
   colours?: MonitorColours;
+  /** The UI's usage ledger, by stable monitor identity. */
+  usage?: ReadonlyMap<string, UsageHistory>;
+}
+
+/** The identity views key on: stable across PTY handoffs when the shell knows one, else the live terminal id. */
+export function monitorIdentity(sessionId: string, identities?: ReadonlyMap<string, string>): string {
+  return identities?.get(sessionId) ?? sessionId;
 }
 
 export interface MonitorColours {
@@ -86,7 +94,12 @@ function sessionColour(project: { seq: number } | undefined, colours: MonitorCol
 /** Undefined for a session that has stopped being worth showing at all. */
 export function monitorAgentFromSession(
   record: MonitorAgentRecord,
-  options: { allMonitorStates?: readonly AgentMonitorState[]; nowMs?: number; colours?: MonitorColours } = {},
+  options: {
+    allMonitorStates?: readonly AgentMonitorState[];
+    nowMs?: number;
+    colours?: MonitorColours;
+    usage?: UsageHistory;
+  } = {},
 ): MonitorAgent | undefined {
   const { info, monitor } = record;
   if (!monitor) return undefined;
@@ -95,7 +108,8 @@ export function monitorAgentFromSession(
   const currentCwd = current.environment.cwd;
   const branch = current.environment.git?.branch ?? info.workspace.branch;
   const cwd = currentCwd || info.workspace.sourcePath || info.workspace.root || info.session.cwd || undefined;
-  const cumulativeTokens = current.usage.cumulativeTokens;
+  // The ledger's held total where the shell keeps one; Core's estimate only for a caller without a ledger.
+  const cumulativeTokens = options.usage?.total ?? current.usage.cumulativeTokens;
   const burn = current.usage.burnRatePerMin;
   const detail = [
     headline.detail,
@@ -125,6 +139,7 @@ export function monitorAgentFromSession(
       ...(branch ? { branch } : {}),
       ...(current.context ? { contextWindow: current.context } : {}),
       monitor: current,
+      ...(options.usage ? { usage: options.usage } : {}),
       ...(teamAggregate ? { teamAggregate } : {}),
       recency,
       info,
@@ -163,6 +178,9 @@ export function assembleMonitorAgents(input: AssembleMonitorAgentsInput): readon
         allMonitorStates,
         nowMs: input.nowMs,
         ...(input.colours ? { colours: input.colours } : {}),
+        ...(input.usage?.has(monitorIdentity(record.info.session.id, input.identities))
+          ? { usage: input.usage.get(monitorIdentity(record.info.session.id, input.identities)) }
+          : {}),
       }),
     )
     .filter((agent): agent is MonitorAgent => agent !== undefined)
@@ -181,6 +199,7 @@ export function assembleMonitorAgents(input: AssembleMonitorAgentsInput): readon
     const attachment = input.attachments?.get(agent.session.id);
     return {
       ...agent,
+      // A terminal record may carry its own stable id, so the fallback is the row's, not the session's.
       id: input.identities?.get(agent.session.id) ?? agent.id,
       active: input.activeSessionId === agent.session.id,
       ...(attachment ? { attachment } : {}),

@@ -43,17 +43,17 @@ fn fs(in: BodyVertex) -> @location(0) vec4f {
     out = over(out, premul(vec4f(body.accent.rgb, 0.95 * body.accent.a)) * flood * inside);
   }
 
-  // The burn bars: ten minutes of rate, oldest left, as rounded columns in
-  // the theme's ink either side of a baseline through the middle of the band
-  // under the model line: output up, input down, each side filling its half
-  // of the band at the top of the scale. Twenty bars of thirty seconds, each
-  // the mean of two samples; the newest pair is full and breathes, orange
-  // when the burn is hot.
+  // The burn bars: ten minutes of the UI ledger's steps, oldest left, as
+  // rounded columns in the theme's ink either side of a baseline through the
+  // middle of the band under the model line: output up, input down, each side
+  // scaled so its tallest column fills its half of the band. Twenty bars of
+  // thirty seconds, one sample each; the newest is the ink at full strength,
+  // breathing, and never a colour.
   if (has(flags, F_GRAPH) && inside > 0.0) {
     let diameter = 2.0 * r;
     let top = body.graph.x;
     let bottom = body.graph.y;
-    let bars = 20.0;
+    let bars = f32(GRAPH_SAMPLES);
     let halfSpan = r * BARS_SPAN;
     let pitch = 2.0 * halfSpan / bars;
     let half = pitch * 0.3;
@@ -61,8 +61,8 @@ fn fs(in: BodyVertex) -> @location(0) vec4f {
     let index = u32(floor(x01 * bars));
     let first = body.flags.y;
     let firstDown = first + GRAPH_SAMPLES;
-    let up = 0.5 * (samples[first + index * 2u] + samples[first + index * 2u + 1u]);
-    let down = 0.5 * (samples[firstDown + index * 2u] + samples[firstDown + index * 2u + 1u]);
+    let up = samples[first + index];
+    let down = samples[firstDown + index];
     let centre = (f32(index) + 0.5) * pitch - halfSpan;
     let baseline = 0.5 * (top + bottom) * diameter - r;
     let reach = 0.5 * (bottom - top) * diameter - 1.0;
@@ -75,12 +75,10 @@ fn fs(in: BodyVertex) -> @location(0) vec4f {
     let qDown = vec2f(abs(p.x - centre), p.y - (downEnd - half));
     let dDown = max(length(max(qDown, vec2f(0.0))) + min(max(qDown.x, qDown.y), 0.0) - half, (baseline + 0.5) - p.y);
     let barCoverage = max(cov(dUp), cov(dDown)) * step(abs(p.x), halfSpan);
-    let newest = index == u32(bars) - 1u;
-    let hot = has(flags, F_GRAPH_HOT);
+    let newest = index == GRAPH_SAMPLES - 1u;
     let breathe = 0.5 + 0.5 * sin(time * TAU / 1.6 + body.motion.y);
-    let barColour = select(body.ink.rgb, frame.orange.rgb, hot && newest);
     let alpha = select(0.45, mix(0.8, 1.0, breathe), newest) * body.motion.w;
-    out = over(out, premul(vec4f(barColour, alpha)) * barCoverage * inside);
+    out = over(out, premul(vec4f(body.ink.rgb, alpha)) * barCoverage * inside);
     // The baseline itself, a hairline in the ink across the bars' span.
     let baselineCoverage = cov(abs(p.y - baseline) - 0.5) * step(abs(p.x), halfSpan);
     out = over(out, premul(vec4f(body.ink.rgb, 0.22 * body.motion.w)) * baselineCoverage * inside);

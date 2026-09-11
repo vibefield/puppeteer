@@ -9,11 +9,13 @@ import type { MonitorPalette } from './monitor-palette.js';
 import {
   assembleMonitorAgents,
   mergeMonitorTerminals,
+  monitorIdentity,
   type MonitorAgentRecord,
   type MonitorTerminalRecord,
 } from './agents.js';
 import type { MonitorActions, MonitorAgent } from './types.js';
 import { EMPTY_UNREAD_LEDGER, reconcileUnread, type UnreadLedger } from './unread.js';
+import { EMPTY_USAGE_LEDGER, reconcileUsage, USAGE_STEP_MS, type UsageLedger } from './usage-ledger.js';
 
 export interface UseMonitorAgentsOptions {
   workspace?: GhostteaWorkspaceContext;
@@ -56,6 +58,9 @@ export function useMonitorAgents({
   const monitorSnapshot = useAgentMonitorStore(monitorStore);
   const [nowMs, setNowMs] = useState(Date.now());
   const unreadRef = useRef<UnreadLedger>(EMPTY_UNREAD_LEDGER);
+  const usageRef = useRef<UsageLedger>(EMPTY_USAGE_LEDGER);
+  /** The usage ledger's clock: a fold at every step boundary, whether or not anything else changed. */
+  const [usageStep, setUsageStep] = useState(0);
 
   useEffect(() => {
     let alive = true;
@@ -163,6 +168,22 @@ export function useMonitorAgents({
     return () => window.clearInterval(timer);
   }, []);
 
+  useEffect(() => {
+    let interval: number | undefined;
+    // Aligned to the step boundaries, so every agent's bars shift together.
+    const timeout = window.setTimeout(
+      () => {
+        setUsageStep((step) => step + 1);
+        interval = window.setInterval(() => setUsageStep((step) => step + 1), USAGE_STEP_MS);
+      },
+      USAGE_STEP_MS - (Date.now() % USAGE_STEP_MS),
+    );
+    return () => {
+      window.clearTimeout(timeout);
+      if (interval !== undefined) window.clearInterval(interval);
+    };
+  }, []);
+
   useEffect(
     () =>
       onSessionExited((sessionId) => {
@@ -196,6 +217,18 @@ export function useMonitorAgents({
   );
 
   const agents = useMemo(() => {
+    // The usage ledger is folded before assembly so every view reads the held
+    // total and the stepped burn, never Core's moving estimate. `usageStep`
+    // is its clock; the fold itself reads the wall clock.
+    const usage = reconcileUsage(
+      usageRef.current,
+      [...records.values()].map((record) => ({
+        id: monitorIdentity(record.info.session.id, terminalIdentities),
+        ...(record.monitor ? { usage: record.monitor.state.usage } : {}),
+      })),
+      Date.now(),
+    );
+    usageRef.current = usage;
     const assembled = assembleMonitorAgents({
       agents: [...records.values()],
       terminals: visibleTerminals,
@@ -204,6 +237,7 @@ export function useMonitorAgents({
       identities: terminalIdentities,
       nowMs,
       colours: { tint: palette.tint, neutral: palette.neutral },
+      usage: usage.histories,
       ...(workspace?.activeSession ? { activeSessionId: workspace.activeSession.id } : {}),
     });
     // Unread is a fold over successive projections; the ledger is the only
@@ -245,6 +279,7 @@ export function useMonitorAgents({
     records,
     sessions,
     terminalIdentities,
+    usageStep,
     visibleTerminals,
     workspace?.activeSession,
   ]);

@@ -2,8 +2,20 @@ import { describe, expect, it } from 'vitest';
 import { AGENT_MONITOR_SCHEMA_VERSION, type AgentMonitorState } from '@vibecook/puppeteer-core';
 import type { AgentSessionInfo } from '../../../protocol.js';
 import type { MonitorAgent, MonitorAgentFacet } from '../../monitor/types.js';
+import { USAGE_STEP_COUNT, USAGE_STEP_MS, type UsageHistory } from '../../monitor/usage-ledger.js';
 import { bubbleModel, formatTokens, workingShares } from './bubble-model.js';
 import { DEFAULT_SWARM_PARAMETERS } from './swarm-parameters.js';
+
+/** A ledger history with the given total and a burn on both sides, its newest step the tallest. */
+function usageHistory(total: number): UsageHistory {
+  const steps = Array.from({ length: USAGE_STEP_COUNT }, (_, index) => (index + 1) * 100);
+  return {
+    total,
+    steps,
+    sides: { output: steps.map((step) => step / 4), input: steps.map((step) => (step * 3) / 4) },
+    stepMs: USAGE_STEP_MS,
+  };
+}
 
 const NOW = Date.parse('2026-09-06T10:00:00.000Z');
 const AT = new Date(NOW - 5_000).toISOString();
@@ -153,7 +165,7 @@ describe('bubbleModel', () => {
       status: 'working',
       activity: { kind: 'tool', line: 'Editing tokens.css', since: AT },
       context: { usedPercent: 62.7, percentageSource: 'provider', asOf: AT },
-      usage: { samples: [], burnRatePerMin: 20_000, cumulativeTokens: 1_240_000 },
+      usage: { samples: [], burnRatePerMin: 20_000, cumulativeTokens: 999 },
       effort: { value: 'high', intent: 'observed' },
       environment: {
         worktrees: [],
@@ -161,7 +173,10 @@ describe('bubbleModel', () => {
       },
     });
     const model = bubbleModel({
-      agent: agent({ status: 'working' }, { monitor, branch: 'swarm', contextWindow: monitor.context }),
+      agent: agent(
+        { status: 'working' },
+        { monitor, branch: 'swarm', contextWindow: monitor.context, usage: usageHistory(1_240_000) },
+      ),
       parameters,
       nowMs: NOW,
       unread: false,
@@ -177,9 +192,12 @@ describe('bubbleModel', () => {
       top: { text: '62%', hot: false, none: false },
       bottom: { text: '1.2M', hot: false, none: false },
     });
-    expect(model.graph?.up).toHaveLength(40);
-    expect(model.graph?.down).toHaveLength(40);
-    expect(model.graphHot).toBe(true);
+    // The ledger's figure, not Core's estimate, and the bars scaled to the tallest step.
+    expect(model.graph?.up).toHaveLength(USAGE_STEP_COUNT);
+    expect(model.graph?.down).toHaveLength(USAGE_STEP_COUNT);
+    expect(model.graph?.split).toBe(true);
+    expect(model.graph?.up[USAGE_STEP_COUNT - 1]).toBe(1);
+    expect(model.graph?.up[0]).toBeCloseTo(1 / USAGE_STEP_COUNT, 6);
     expect(model.watermark?.sprite).toBe('imposter');
   });
 
@@ -192,11 +210,8 @@ describe('bubbleModel', () => {
   });
 
   it('places working sessions by total tokens, least 0 and most 1, and leaves a lone session at 0', () => {
-    const working = (id: string, cumulativeTokens: number): MonitorAgent => ({
-      ...agent(
-        { status: 'working' },
-        { monitor: monitorState({ status: 'working', usage: { samples: [], cumulativeTokens } }) },
-      ),
+    const working = (id: string, total: number): MonitorAgent => ({
+      ...agent({ status: 'working' }, { monitor: monitorState({ status: 'working' }), usage: usageHistory(total) }),
       id,
     });
     const shares = workingShares([

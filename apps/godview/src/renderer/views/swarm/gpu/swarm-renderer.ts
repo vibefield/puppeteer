@@ -1,9 +1,9 @@
 import { AGENT_MARK_ATLAS, agentMarkSvg, agentMarkTile } from '../../../AgentIcon.js';
 import type { SwarmBubbleModel } from '../bubble-model.js';
-import { BURN_SAMPLE_COUNT } from '../burn-series.js';
+import { BURN_BAR_COUNT } from '../burn-bars.js';
 
 /** Each body's samples: the completion side, then the prompt side. */
-const BODY_SAMPLES = BURN_SAMPLE_COUNT * 2;
+const BODY_SAMPLES = BURN_BAR_COUNT * 2;
 import { layoutCopy, type CopyLayout, type CopyTone, type TextStyle } from '../text-layout.js';
 import { luminance, type Rgba } from './color.js';
 import { GlyphAtlas } from './glyph-atlas.js';
@@ -120,7 +120,6 @@ const F_RIM = 16;
 const F_STALE = 32;
 const F_LINKED = 64;
 const F_FOCUS = 128;
-const F_GRAPH_HOT = 256;
 const F_RING_HOT = 512;
 const F_RING = 1024;
 const F_SHADOW = 2048;
@@ -642,7 +641,6 @@ export async function createSwarmRenderer(canvas: HTMLCanvasElement): Promise<Sw
     if (model.stale) flags |= F_STALE;
     if (body.link) flags |= F_LINKED;
     if (body.focus) flags |= F_FOCUS;
-    if (model.graphHot) flags |= F_GRAPH_HOT;
     if (model.ring) flags |= F_RING;
     if (model.ring?.hot) flags |= F_RING_HOT;
 
@@ -678,7 +676,7 @@ export async function createSwarmRenderer(canvas: HTMLCanvasElement): Promise<Sw
     bodyData[offset + 43] = 0;
     if (model.graph) {
       sampleData.set(model.graph.up, index * BODY_SAMPLES);
-      sampleData.set(model.graph.down, index * BODY_SAMPLES + BURN_SAMPLE_COUNT);
+      sampleData.set(model.graph.down, index * BODY_SAMPLES + BURN_BAR_COUNT);
     }
     return colours.ink;
   };

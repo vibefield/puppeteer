@@ -16,6 +16,7 @@ import type { AgentVisualStatus } from '../agent-status.js';
 import type { PaneAttachment } from '../pane-attachments.js';
 import type { MonitorPalette } from './monitor-palette.js';
 import type { MonitorParameterGroup, MonitorParameters } from './parameters.js';
+import type { UsageHistory } from './usage-ledger.js';
 
 /** The agent half of a monitored session; absent while a terminal holds no agent. */
 export interface MonitorAgentFacet {
@@ -26,6 +27,10 @@ export interface MonitorAgentFacet {
   branch?: string;
   contextWindow?: MonitorContextState;
   monitor: AgentMonitorState;
+  /** The UI's own account of the tokens (`usage-ledger.ts`): the held total
+   * and the burn per step. Views read this, never `monitor.usage`, which is
+   * Core's corrected estimate and moves with every source. */
+  usage?: UsageHistory;
   teamAggregate?: AgentMonitorTeamAggregate;
   recency: MonitorRecency;
   /** The runtime identity and canonical monitor projection behind this view row. */

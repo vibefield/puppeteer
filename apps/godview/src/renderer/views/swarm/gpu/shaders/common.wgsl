@@ -51,7 +51,6 @@ const F_RIM: u32 = 16u;
 const F_STALE: u32 = 32u;
 const F_LINKED: u32 = 64u;
 const F_FOCUS: u32 = 128u;
-const F_GRAPH_HOT: u32 = 256u;
 const F_RING_HOT: u32 = 512u;
 const F_RING: u32 = 1024u;
 const F_SHADOW: u32 = 2048u;
@@ -66,7 +65,7 @@ const LIGHT_GUTTER_RATIO: f32 = 2.0 / 60.0;
 // The burn bars span this much of the diameter, centred, so they stay clear of the rim.
 const BARS_SPAN: f32 = 0.56;
 // Per side; a body's samples are the output side then the input side.
-const GRAPH_SAMPLES: u32 = 40u;
+const GRAPH_SAMPLES: u32 = 20u;
 
 @group(0) @binding(0) var<uniform> frame: Frame;
 @group(0) @binding(1) var<storage, read> bodies: array<Body>;

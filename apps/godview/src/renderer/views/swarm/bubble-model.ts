@@ -1,6 +1,6 @@
 import type { AgentVisualStatus } from '../../agent-status.js';
 import type { MonitorAgent } from '../../monitor/types.js';
-import { BURN_HOT, burnSeries, burnSides, type BurnSides } from './burn-series.js';
+import { burnBars, type BurnBars } from './burn-bars.js';
 import { radiusForStatus, type SwarmParameters } from './swarm-parameters.js';
 import type { CopyLine, TextStyle } from './text-layout.js';
 
@@ -37,9 +37,8 @@ export interface SwarmBubbleModel {
   figures?: { top?: SwarmFigure; bottom?: SwarmFigure };
   /** The context ring on the rim in the ink, every agent body. */
   ring?: { percent: number; hot: boolean };
-  /** The burn bars' two sides, forty intensities each, oldest first: output up, input down. */
-  graph?: BurnSides;
-  graphHot: boolean;
+  /** The burn bars' two sides, twenty columns each, oldest first, each side against its tallest: output up, input down. */
+  graph?: BurnBars;
   /** Blocked: the accent floods the body from the centre. */
   flood: boolean;
   /** Transparent body with a rim: the unclaimed terminal. */
@@ -106,7 +105,7 @@ export function workingShares(agents: readonly MonitorAgent[]): Map<string, numb
   const totals: [string, number][] = [];
   for (const agent of agents) {
     if (agent.status !== 'working' || !agent.agent) continue;
-    totals.push([agent.id, agent.agent.monitor.usage.cumulativeTokens ?? 0]);
+    totals.push([agent.id, agent.agent.usage?.total ?? 0]);
   }
   const shares = new Map<string, number>();
   if (totals.length === 0) return shares;
@@ -199,7 +198,6 @@ export function bubbleModel(input: BubbleModelInput): SwarmBubbleModel {
       radius: radiusForStatus(parameters, 'idle'),
       copy,
       copyMaxWidthRatio: 0.9,
-      graphHot: false,
       flood: false,
       hollow: true,
       running,
@@ -233,16 +231,8 @@ export function bubbleModel(input: BubbleModelInput): SwarmBubbleModel {
   const message = latestMessage(agent);
 
   if (appearance === 'working') {
-    const burnInput = {
-      samples: facet.monitor.usage.samples,
-      nowMs,
-      ...(facet.monitor.usage.burnRatePerMin === undefined
-        ? {}
-        : { burnRatePerMin: facet.monitor.usage.burnRatePerMin }),
-    };
-    const series = burnSeries(burnInput);
-    const total = facet.monitor.usage.cumulativeTokens;
-    const hot = (series[series.length - 1] ?? 0) >= BURN_HOT;
+    // The UI's ledger, never Core's estimate: the held total and the stepped burn.
+    const total = facet.usage?.total;
     const copy: CopyLine[] = [
       ...(facet.branch
         ? [
@@ -282,8 +272,7 @@ export function bubbleModel(input: BubbleModelInput): SwarmBubbleModel {
         bottom: { text: total === undefined ? '--' : formatTokens(total), hot: false, none: total === undefined },
       },
       ...(ring ? { ring } : {}),
-      graph: burnSides(burnInput),
-      graphHot: hot,
+      ...(facet.usage ? { graph: burnBars(facet.usage) } : {}),
       flood: false,
       hollow: false,
       running: false,
@@ -345,7 +334,6 @@ export function bubbleModel(input: BubbleModelInput): SwarmBubbleModel {
     copy,
     copyMaxWidthRatio: 0.84,
     ...(ring ? { ring } : {}),
-    graphHot: false,
     flood: appearance === 'blocked',
     hollow: false,
     running: false,
