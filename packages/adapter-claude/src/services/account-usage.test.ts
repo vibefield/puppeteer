@@ -123,7 +123,7 @@ describe('Claude account usage', () => {
     });
   });
 
-  it('preserves current optional, overage, and structured credit limits', () => {
+  it('names optional credits correctly and emits one budget per credit limit', () => {
     const snapshot = normalizeClaudeAccountUsage(
       {
         five_hour: { utilization: 12, resets_at: 1_800_000_000 },
@@ -161,19 +161,11 @@ describe('Claude account usage', () => {
         resetsAt: '2027-01-15T08:00:00.000Z',
       },
       {
-        id: 'subscription:cinder_cove:window',
-        label: 'FABLE',
-        description: 'Fable 5 usage',
-        kind: 'window',
-        usedPercent: 22,
-        resetsAt: '2027-01-22T08:00:00.000Z',
-      },
-      {
-        id: 'extra_usage:window',
+        id: 'cinder_cove:budget',
         label: 'CREDIT',
-        description: 'Usage credits usage',
-        kind: 'window',
-        usedPercent: 25,
+        description: 'Claude Code and Cowork credit',
+        kind: 'budget',
+        usedPercent: 22,
         resetsAt: '2027-01-22T08:00:00.000Z',
       },
       {
@@ -191,6 +183,103 @@ describe('Claude account usage', () => {
         kind: 'budget',
         usedPercent: 25,
         resetsAt: '2027-01-22T08:00:00.000Z',
+      },
+    ]);
+  });
+
+  it('coalesces the live OAuth legacy and structured limits and uses the supplied model name', () => {
+    // Shape observed from /api/oauth/usage with Claude Code 2.1.269, 2026-09-11.
+    const reset = '2026-09-16T16:00:00.477157+00:00';
+    const snapshot = normalizeClaudeAccountUsage({
+      five_hour: { utilization: 0, resets_at: null },
+      seven_day: { utilization: 12, resets_at: reset },
+      seven_day_sonnet: null,
+      nimbus_quill: { utilization: 0, resets_at: null },
+      extra_usage: { is_enabled: false, monthly_limit: null, used_credits: null, utilization: null },
+      limits: [
+        { kind: 'session', group: 'session', percent: 0, resets_at: null, scope: null },
+        { kind: 'weekly_all', group: 'weekly', percent: 12, resets_at: reset, scope: null },
+        {
+          kind: 'weekly_scoped',
+          group: 'weekly',
+          percent: 24,
+          resets_at: reset,
+          scope: { model: { id: null, display_name: 'Fable' }, surface: null },
+        },
+      ],
+      spend: { used: { currency: 'USD' }, limit: null, percent: 0, disabled_reason: null },
+    });
+    expect(snapshot.metrics.map(({ id, label, kind, usedPercent }) => ({ id, label, kind, usedPercent }))).toEqual([
+      { id: 'subscription:five_hour:window', label: '5H', kind: 'window', usedPercent: 0 },
+      { id: 'subscription:seven_day:window', label: '7D', kind: 'window', usedPercent: 12 },
+      { id: 'subscription:seven_day_fable:window', label: 'FABLE', kind: 'window', usedPercent: 24 },
+    ]);
+    expect(snapshot.metrics[2]).toMatchObject({
+      description: 'Current week (Fable) usage',
+      durationMinutes: 10_080,
+      resetsAt: '2026-09-16T16:00:00.477Z',
+    });
+  });
+
+  it('supports structured-only limits with stable identities independent of array order', () => {
+    const limits = [
+      { kind: 'session', percent: 9 },
+      { kind: 'weekly_all', percent: 18 },
+      { kind: 'weekly_scoped', percent: 36, scope: { model: { display_name: 'Fable 5.1' } } },
+      {
+        kind: 'weekly_scoped',
+        percent: 50,
+        scope: { model: { display_name: 'Fable 5.1' }, surface: { display_name: 'Claude Code' } },
+      },
+    ];
+    const metrics = normalizeClaudeAccountUsage({ limits }).metrics;
+    expect(metrics.map(({ label }) => label)).toEqual(['5H', '7D', 'FABLE 5.1 / CLAUDE CODE', 'FABLE 5.1']);
+    expect(new Set(metrics.map(({ id }) => id)).size).toBe(4);
+    expect(normalizeClaudeAccountUsage({ limits: [...limits].reverse() }).metrics).toEqual(metrics);
+  });
+
+  it('uses structured values for matching legacy model limits without conflating different models', () => {
+    const snapshot = normalizeClaudeAccountUsage({
+      seven_day_sonnet: { utilization: 10 },
+      limits: [
+        { kind: 'weekly_scoped', percent: 20, scope: { model: { display_name: 'Sonnet' } } },
+        { kind: 'weekly_scoped', percent: 20, scope: { model: { display_name: 'Fable' } } },
+      ],
+    });
+    expect(snapshot.metrics.map(({ label, usedPercent }) => ({ label, usedPercent }))).toEqual([
+      { label: 'FABLE', usedPercent: 20 },
+      { label: 'SONNET', usedPercent: 20 },
+    ]);
+  });
+
+  it('omits disabled budgets, unknown backend counters, and unnamed structured limits', () => {
+    expect(
+      normalizeClaudeAccountUsage({
+        extra_usage: { is_enabled: false, monthly_limit: 100, used_credits: 0, utilization: 0 },
+        internal_counter: { percent: 80 },
+        limits: [
+          { percent: 25 },
+          { id: 'disabled_credit', is_enabled: false, utilization: 0, limit: 100, used: 0 },
+          { kind: 'weekly_scoped', percent: 25, scope: { model: { id: 'opaque-model-id' } } },
+          { kind: 'weekly_scoped', percent: null, scope: { model: { display_name: 'Fable' } } },
+        ],
+      }).metrics,
+    ).toEqual([]);
+  });
+
+  it('labels documented gateway spend limits as budgets', () => {
+    expect(
+      claudeAccountUsageFromStatusLine({
+        rate_limits: { spend_limit: { used_percentage: 62.8, resets_at: 1_800_000_000 } },
+      })?.snapshot.metrics,
+    ).toEqual([
+      {
+        id: 'spend_limit:budget',
+        label: 'SPEND',
+        description: 'Spend limit',
+        kind: 'budget',
+        usedPercent: 62.8,
+        resetsAt: '2027-01-15T08:00:00.000Z',
       },
     ]);
   });

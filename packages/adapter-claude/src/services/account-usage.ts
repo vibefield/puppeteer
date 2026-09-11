@@ -339,8 +339,9 @@ function firstTimestamp(window: Record<string, unknown>, keys: readonly string[]
 function metricDescription(id: string): string {
   if (id === 'five_hour') return '5-hour';
   if (id === 'seven_day') return '7-day';
-  if (id === 'cinder_cove') return 'Fable 5';
+  if (id === 'cinder_cove') return 'Claude Code and Cowork credit';
   if (id === 'extra_usage') return 'Usage credits';
+  if (id === 'spend_limit') return 'Spend limit';
   if (id === 'overage') return 'Overage';
   if (id.startsWith('seven_day_')) return `7-day ${id.slice('seven_day_'.length).replaceAll('_', ' ')}`;
   return id.replaceAll('_', ' ');
@@ -349,7 +350,8 @@ function metricDescription(id: string): string {
 function metricLabel(id: string, name?: string): string {
   if (id === 'five_hour') return '5H';
   if (id === 'seven_day') return '7D';
-  if (id === 'cinder_cove') return 'FABLE';
+  if (id === 'cinder_cove') return 'CREDIT';
+  if (id === 'spend_limit') return 'SPEND';
   if (id === 'extra_usage' || /credit/i.test(`${id} ${name ?? ''}`)) return 'CREDIT';
   if (id === 'overage') return 'OVERAGE';
   if (id.startsWith('seven_day_')) return id.slice('seven_day_'.length).replaceAll('_', ' ').toUpperCase();
@@ -388,13 +390,14 @@ function normalizeWindow(id: string, value: unknown, group = 'subscription'): Ra
   const resetsAt = firstTimestamp(window, ['resets_at', 'reset_at', 'reset_time', 'expires_at', 'expiry']);
   if (usedPercent === undefined || usedPercent < 0) return undefined;
   const durationMinutes = windowDurationMinutes(id);
+  const name = firstString(window, ['display_name', 'label', 'name']);
   const metricId = group === 'subscription' ? `${group}:${id}:window` : `${group}:window`;
   return {
     rank: metricRank(id, 'window'),
     metric: {
       id: metricId,
-      label: metricLabel(id),
-      description: `${metricDescription(id)} usage`,
+      label: metricLabel(id, name),
+      description: name ?? `${metricDescription(id)} usage`,
       kind: 'window',
       usedPercent,
       ...(durationMinutes !== undefined ? { durationMinutes } : {}),
@@ -454,17 +457,59 @@ function hasBudgetState(value: unknown): boolean {
 
 function normalizeAuxiliaryMetrics(id: string, value: unknown): RankedMetric[] {
   const limit = rec(value);
-  if (!limit) return [];
+  if (!limit || firstBoolean(limit, ['is_enabled', 'enabled']) === false) return [];
   const name = firstString(limit, ['display_name', 'label', 'name']) ?? metricDescription(id);
-  const window = normalizeWindow(id, limit, id);
   const budget = normalizeBudget(id, name, limit);
-  return [window, budget].filter((candidate): candidate is RankedMetric => candidate !== undefined);
+  if (budget) return [budget];
+  const window = normalizeWindow(id, limit, id);
+  // Credits can expose a percentage without amounts. They are still one
+  // budget, not a second subscription window alongside the amount-based meter.
+  return window
+    ? [
+        {
+          rank: metricRank(id, 'budget'),
+          metric: { ...window.metric, id: `${id}:budget`, kind: 'budget', description: name },
+        },
+      ]
+    : [];
 }
 
-function limitEntryId(value: unknown, fallback: string): string {
+function limitEntryId(value: unknown, fallback: string | undefined): string | undefined {
   const limit = rec(value);
   if (!limit) return fallback;
-  return firstString(limit, ['id', 'type', 'rate_limit_type', 'key']) ?? fallback;
+  return firstString(limit, ['id', 'type', 'rate_limit_type', 'key', 'display_name', 'label', 'name']) ?? fallback;
+}
+
+/** Legacy fields whose meanings are known; arbitrary backend counters are not user-facing limits. */
+const LEGACY_USAGE_WINDOWS = new Set([
+  'five_hour',
+  'seven_day',
+  'seven_day_oauth_apps',
+  'seven_day_opus',
+  'seven_day_sonnet',
+]);
+
+/** Current OAuth limits[] uses kind and scope, not an id or a display name on the entry itself. */
+function normalizeStructuredWindow(value: unknown): RankedMetric | undefined {
+  const limit = rec(value);
+  if (!limit) return undefined;
+  if (limit.kind === 'session') return normalizeWindow('five_hour', limit);
+  if (limit.kind === 'weekly_all') return normalizeWindow('seven_day', limit);
+  if (limit.kind !== 'weekly_scoped') return undefined;
+
+  const scope = rec(limit.scope);
+  const model = firstString(rec(scope?.model) ?? {}, ['display_name']);
+  const surface = firstString(rec(scope?.surface) ?? {}, ['display_name']);
+  if (!model && !surface) return undefined;
+  const scopeKey = (name: string): string => encodeURIComponent(name.toLowerCase());
+  const id = `seven_day_${model ? scopeKey(model) : ''}${surface ? `:surface:${scopeKey(surface)}` : ''}`;
+  const normalized = normalizeWindow(id, limit);
+  if (!normalized) return undefined;
+  const name = [model, surface].filter(Boolean).join(' / ');
+  return {
+    ...normalized,
+    metric: { ...normalized.metric, label: name.toUpperCase(), description: `Current week (${name}) usage` },
+  };
 }
 
 const DEFAULT_OAUTH_SOURCE: AccountUsageSource = { kind: 'oauth-endpoint', stability: 'experimental' };
@@ -480,7 +525,7 @@ export const CLAUDE_ACCOUNT_USAGE_PROVIDER: AccountUsageProvider = {
   },
 };
 
-/** Normalize Claude's experimental OAuth usage response, including optional and future quota families. */
+/** Normalize named Claude quotas, coalescing legacy and structured representations of the same limit. */
 export function normalizeClaudeAccountUsage(
   value: unknown,
   fetchedAt = new Date().toISOString(),
@@ -500,9 +545,17 @@ export function normalizeClaudeAccountUsage(
     for (const entry of normalized) metrics.set(entry.metric.id, entry);
     return true;
   };
-  const addStructuredEntry = (id: string, candidate: unknown): void => {
-    const normalizedId = limitEntryId(candidate, id);
+  const addStructuredEntry = (id: string | undefined, candidate: unknown): void => {
     const record = rec(candidate);
+    if (firstBoolean(record ?? {}, ['is_enabled', 'enabled']) === false) return;
+    const window = normalizeStructuredWindow(candidate);
+    if (window) {
+      metrics.set(window.metric.id, window);
+      return;
+    }
+    if (record?.kind === 'session' || record?.kind === 'weekly_all' || record?.kind === 'weekly_scoped') return;
+    const normalizedId = limitEntryId(candidate, id);
+    if (!normalizedId) return;
     const hasAuxiliaryState =
       hasBudgetState(record) ||
       firstBoolean(record ?? {}, ['is_enabled', 'enabled']) !== undefined ||
@@ -512,21 +565,24 @@ export function normalizeClaudeAccountUsage(
   };
 
   for (const [id, candidate] of Object.entries(response)) {
-    if (id === 'extra_usage' || id === 'overage') {
+    if (id === 'extra_usage' || id === 'overage' || id === 'cinder_cove') {
       addAuxiliary(id, candidate);
       continue;
     }
-    if (id !== 'rate_limits' && id !== 'limits') addWindow(id, candidate);
+    if (LEGACY_USAGE_WINDOWS.has(id)) addWindow(id, candidate);
   }
 
   const rateLimits = rec(response.rate_limits);
   if (rateLimits) {
-    for (const [id, candidate] of Object.entries(rateLimits)) addWindow(id, candidate);
+    for (const [id, candidate] of Object.entries(rateLimits)) {
+      if (id === 'spend_limit') addAuxiliary(id, candidate);
+      else if (LEGACY_USAGE_WINDOWS.has(id)) addWindow(id, candidate);
+    }
   }
 
   const limits = response.limits;
   if (Array.isArray(limits)) {
-    limits.forEach((candidate, index) => addStructuredEntry(`limit_${index + 1}`, candidate));
+    limits.forEach((candidate) => addStructuredEntry(undefined, candidate));
   } else {
     const limitMap = rec(limits);
     if (limitMap) {
