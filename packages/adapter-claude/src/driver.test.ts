@@ -1196,4 +1196,119 @@ describe('createClaudeSession (full loop, test-as-Claude)', () => {
     projection.dispose();
     await session.dispose();
   });
+
+  it('binds a native resume to the session Claude announces, not the boot session that loads instructions first', async () => {
+    // Claude 2.1.269 (probed 2026-09-11, packages/surface/vendors/claude/findings.md
+    // §6.1): `claude --resume` boots a throwaway session and fires its
+    // InstructionsLoaded before the picker is shown; the chosen session then
+    // announces itself with a SessionStart whose source is `resume` and never
+    // re-fires InstructionsLoaded.
+    const bootId = '7f0d2c8e-1c3a-4c1e-9f3a-2d3c4b5a6f70';
+    const selectedId = '7f0d2c8e-1c3a-4c1e-9f3a-2d3c4b5a6f71';
+    const foreignId = '7f0d2c8e-1c3a-4c1e-9f3a-2d3c4b5a6f72';
+    const prepared = await prepareClaudeTuiSession({
+      cwd: '/tmp',
+      resumeInvocation: ['--resume'],
+      automate: async () => ({ accepted: true }),
+    });
+    const session = await prepared.adopt('resume-picker-pane');
+    const projection = projectAgentEvents(session);
+    const provisionalId = session.sessionId;
+    const settings = JSON.parse(readFileSync(prepared.launch.settingsPath, 'utf8')) as {
+      hooks: Record<string, Array<{ hooks: Array<{ url?: string }> }>>;
+    };
+    const endpoint = settings.hooks.UserPromptSubmit[0].hooks[0].url!;
+    const headers = {
+      'content-type': 'application/json',
+      authorization: `Bearer ${prepared.launch.env.PUPPETEER_HOOK_TOKEN}`,
+    };
+    const post = (url: string, body: Record<string, unknown>) =>
+      fetch(url, { method: 'POST', headers, body: JSON.stringify(body) });
+    const transcripts = mkdtempSync(join(tmpdir(), 'driver-picker-boot-'));
+    const bootTranscript = join(transcripts, `${bootId}.jsonl`);
+    const selectedTranscript = join(transcripts, `${selectedId}.jsonl`);
+    writeFileSync(bootTranscript, '');
+    writeFileSync(selectedTranscript, '');
+    const eventTypes = () => projection.envelopes.map(({ event }) => event.type);
+
+    // The boot session, whether it announces itself or only loads
+    // instructions, is acknowledged and never observed.
+    const bootStart = await post(endpoint, {
+      session_id: bootId,
+      cwd: '/tmp',
+      hook_event_name: 'SessionStart',
+      source: 'startup',
+      transcript_path: bootTranscript,
+    });
+    expect(bootStart.status).toBe(200);
+    const bootInstructions = await post(endpoint, {
+      session_id: bootId,
+      cwd: '/tmp',
+      hook_event_name: 'InstructionsLoaded',
+      load_reason: 'session_start',
+      transcript_path: bootTranscript,
+    });
+    expect(bootInstructions.status).toBe(200);
+    expect(session.sessionId).toBe(provisionalId);
+    expect(session.transcriptPath()).toBeUndefined();
+    expect(eventTypes()).not.toContain('session:started');
+    expect(eventTypes()).not.toContain('session:ready');
+
+    // The announcement binds the bridge and the transcript it names.
+    const announced = await post(endpoint, {
+      session_id: selectedId,
+      cwd: '/tmp',
+      hook_event_name: 'SessionStart',
+      source: 'resume',
+      transcript_path: selectedTranscript,
+    });
+    expect(announced.status).toBe(200);
+    expect(session.sessionId).toBe(selectedId);
+    expect(projection.state.lifecycle).toBe('ready');
+    await session.pollTranscript();
+    expect(session.transcriptPath()).toBe(selectedTranscript);
+
+    const status = await post(prepared.launch.env.PUPPETEER_STATUSLINE_ENDPOINT, {
+      session_id: selectedId,
+      model: { id: 'claude-fable-5-1', display_name: 'Fable 5.1' },
+      effort: { level: 'max' },
+      context_window: { context_window_size: 1_000_000, current_usage: {}, used_percentage: 4 },
+    });
+    expect(status.status).toBe(200);
+    expect(projection.state.environment.model?.value).toMatchObject({
+      id: 'claude-fable-5-1',
+      displayName: 'Fable 5.1',
+    });
+    expect(projection.state.contextWindow?.usedPercent).toBe(4);
+
+    // A late boot hook is still dropped; the chosen session's first turn is
+    // observed and makes the choice final.
+    const bootEnd = await post(endpoint, {
+      session_id: bootId,
+      cwd: '/tmp',
+      hook_event_name: 'SessionEnd',
+      reason: 'other',
+    });
+    expect(bootEnd.status).toBe(200);
+    expect(eventTypes()).not.toContain('session:exited');
+    const prompt = await post(endpoint, {
+      session_id: selectedId,
+      cwd: '/tmp',
+      hook_event_name: 'UserPromptSubmit',
+      prompt: 'typed after resume',
+      prompt_id: 'p-resumed',
+    });
+    expect(prompt.status).toBe(200);
+    expect(projection.state.lifecycle).toBe('running');
+    const foreignStart = await post(endpoint, {
+      session_id: foreignId,
+      cwd: '/tmp',
+      hook_event_name: 'SessionStart',
+      source: 'resume',
+    });
+    expect(foreignStart.status).toBe(403);
+    expect(session.sessionId).toBe(selectedId);
+    projection.dispose();
+    await session.dispose();
+  });
 });

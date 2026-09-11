@@ -215,6 +215,8 @@ export async function prepareClaudeTuiSession(
   const sessionId = options.resume ?? randomUUID();
   let selectedSessionId = options.resume ?? (options.resumeInvocation ? undefined : sessionId);
   let selectionLocked = options.resume !== undefined;
+  // Sessions a native resume launch runs that are never the one resumed.
+  const bootSessionIds = new Set<string>();
   const otelUsageUnavailableReason =
     options.observeOtlpUsage === false
       ? 'Authenticated OTLP request logs were disabled by the session option.'
@@ -238,24 +240,36 @@ export async function prepareClaudeTuiSession(
       if (!options.resumeInvocation) {
         return id === selectedSessionId;
       }
-      // The native resume picker renders status lines for the currently
-      // highlighted conversation before the user commits a selection. That
-      // preview must not claim the bridge. Claude can also emit SessionStart
-      // for a picker preview before it emits the final resumed SessionStart,
-      // so SessionStart may rebind only until the selected session reaches its
-      // boot-finished InstructionsLoaded hook.
-      if ((kind === 'statusline' || kind === 'subagent-statusline') && selectedSessionId === undefined) return true;
-      if (kind === 'hook' && body.hook_event_name === 'SessionStart') {
-        if (selectionLocked) return id === selectedSessionId;
+      // Claude chooses the session after launch (`--resume` picker, `--continue`).
+      // Until it announces the choice with the resumed session's SessionStart,
+      // the process runs a throwaway boot session: 2.1.269 fires that session's
+      // InstructionsLoaded (load_reason session_start) before the picker is
+      // even shown, and a release may announce it with a `startup`
+      // SessionStart (packages/surface/vendors/claude/findings.md §6). Neither
+      // is ever the session observed here, so its hooks are acknowledged and
+      // dropped rather than allowed to bind. Status lines rendered for the
+      // highlighted conversation stay visible but claim nothing. The choice
+      // may still move while only SessionStarts have arrived; the first hook
+      // the announced session runs makes it final.
+      const isHook = kind === 'hook';
+      const isSessionStart = isHook && body.hook_event_name === 'SessionStart';
+      if (!selectionLocked && isSessionStart && body.source !== 'startup') {
+        bootSessionIds.delete(id);
         selectedSessionId = id;
         return true;
       }
-      selectedSessionId ??= id;
-      if (id !== selectedSessionId) return false;
-      if (kind === 'hook' && body.hook_event_name === 'InstructionsLoaded' && body.load_reason === 'session_start') {
-        selectionLocked = true;
+      if (id === selectedSessionId) {
+        if (isHook) selectionLocked = true;
+        return true;
       }
-      return true;
+      if (
+        bootSessionIds.has(id) ||
+        (!selectionLocked && (isSessionStart || (selectedSessionId === undefined && isHook)))
+      ) {
+        bootSessionIds.add(id);
+        return 'ignore';
+      }
+      return selectedSessionId === undefined && !isHook;
     },
   });
   await bridge.start();
@@ -704,15 +718,10 @@ function createPreparedClaudeSession(
         // Diagnostic consumers must not affect Claude or the normalized stream.
       }
     }
-    // A picker preview can emit SessionStart. Wait for the selected session's
-    // boot-finished hook before binding its durable transcript.
-    if (
-      normalized.transcriptPath &&
-      (!options.resumeInvocation ||
-        (body.hook_event_name === 'InstructionsLoaded' && body.load_reason === 'session_start'))
-    ) {
-      ensureSemanticProvider(normalized.transcriptPath);
-    }
+    // The bridge admits only the selected session's hooks, so the first
+    // transcript path to arrive is that session's durable history — on a
+    // native resume, the path its SessionStart announces.
+    if (normalized.transcriptPath) ensureSemanticProvider(normalized.transcriptPath);
     const deliver = (): void => {
       const hookEventName = typeof body.hook_event_name === 'string' ? body.hook_event_name : 'unknown';
       if (normalized.sessionId) monitorEvidence.observeNativeSession(normalized.sessionId);

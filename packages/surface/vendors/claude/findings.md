@@ -170,3 +170,19 @@ The original raw headless and interactive probe captures were sanitized into the
 - Resume is spawn configuration, not storage: pass `--resume <id>` and **do NOT** also pass `--session-id` (the resumed session keeps its own id + transcript, so the puppeteer↔spaghetti join contract is preserved automatically).
 - `--settings` composes with `--resume` (the hook bridge still attaches to a resumed session) — the generated settings file is passed exactly as for a fresh spawn.
 - Gotcha: `-p --resume <id> "<prompt>"` warns "no stdin data received in 3s" before proceeding — a print-mode quirk; interactive (native-TUI) resume is unaffected.
+
+### 6.1 Native picker and continue order (2.1.269 probe, 2026-09-11)
+
+Probed the interactive TUI with an isolated `CLAUDE_CONFIG_DIR`, a loopback model, and `--settings` carrying `hooks` (http + command) plus a `statusLine` that POST to a sink, with one session of the workspace on disk. Order observed, by launch form:
+
+| Launch | Order |
+| --- | --- |
+| `claude --resume` (picker) | `InstructionsLoaded` (`load_reason: session_start`) for a **fresh boot session id**, before the picker is shown → user selects → `SessionStart` (`source: resume`, the selected id, its `transcript_path`) → status line for the selected id → … → `SessionEnd`. The selected session never re-fires `InstructionsLoaded`. |
+| `claude --continue` | `SessionStart` (`source: resume`) → status line → `InstructionsLoaded` (`session_start`), all for the resumed id. |
+| `claude --resume <id>` | Same as `--continue`. |
+
+Implications for the adapter (`driver.ts` allow-list and transcript attachment):
+
+- The boot session's hooks carry an id that never becomes a session. They must not bind the bridge; answering them 403 only makes Claude record a hook failure, so the bridge acknowledges and drops them.
+- The announcement of the chosen session is the `SessionStart` whose `source` is `resume`; a `startup` SessionStart in a resume launch is the boot shell. The transcript to observe is the one that SessionStart names.
+- `InstructionsLoaded` is not a boot-finished signal on the picker path, so `session:ready` is not available there; `session:started` alone marks the run alive.

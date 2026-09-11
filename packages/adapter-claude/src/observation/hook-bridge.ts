@@ -9,8 +9,10 @@
  * - acknowledges observational events IMMEDIATELY (Claude's hook timeout is
  *   seconds — nothing downstream of the 200 may block the agent)
  * - parses JSON safely; malformed events are logged to the sink, never thrown
- * - rejects hook/status events for sessions this bridge does not own; batched
- *   OTLP records are exact-session filtered by the owning driver after decode
+ * - rejects hook/status events for sessions this bridge does not own, and
+ *   acknowledges without observing the ones the owner asks it to ignore (a
+ *   native resume's throwaway boot session); batched OTLP records are
+ *   exact-session filtered by the owning driver after decode
  *
  * Payloads carry no timestamps — `receivedAt` is stamped here and is the
  * ingestion clock retained on the adapter candidate upstream.
@@ -31,9 +33,20 @@ export type NativeOtelLogsEnvelope = NativeHookEnvelope;
 
 export type HookBridgeRequestKind = 'hook' | 'statusline' | 'subagent-statusline' | 'otel-logs';
 
+/**
+ * The owner's verdict on one request: observe it, refuse it (403), or
+ * acknowledge it and drop it (200, no fan-out) when the session is real but not
+ * the one being observed.
+ */
+export type HookBridgeSessionVerdict = boolean | 'ignore';
+
 export interface HookBridgeOptions {
   /** Explicit hook/status session allow-list; events for other sessions get 403. */
-  allowSession: (sessionId: string, kind: HookBridgeRequestKind, body: Readonly<Record<string, unknown>>) => boolean;
+  allowSession: (
+    sessionId: string,
+    kind: HookBridgeRequestKind,
+    body: Readonly<Record<string, unknown>>,
+  ) => HookBridgeSessionVerdict;
   port?: number;
   token?: string;
   maxBodyBytes?: number;
@@ -177,8 +190,16 @@ export function createHookBridge(options: HookBridgeOptions): HookBridge {
 
       if (requestKind !== 'otel-logs') {
         const sessionId = body.session_id;
-        if (typeof sessionId !== 'string' || !options.allowSession(sessionId, requestKind, body)) {
+        const verdict = typeof sessionId === 'string' ? options.allowSession(sessionId, requestKind, body) : false;
+        if (verdict === false) {
           reject(res, 403, 'unknown-session', String(sessionId ?? 'missing session_id'));
+          return;
+        }
+        if (verdict === 'ignore') {
+          // Claude delivered a legitimate hook for a session nobody observes;
+          // a refusal would only make Claude record a failure against it.
+          res.writeHead(200, { 'content-type': 'application/json' });
+          res.end('{}');
           return;
         }
       }

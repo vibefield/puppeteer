@@ -113,6 +113,28 @@ describe('createHookBridge', () => {
     expect(errors[0].kind).toBe('unknown-session');
   });
 
+  it('acknowledges and drops events its owner asks it to ignore', async () => {
+    const bootSession = '00000000-0000-4000-8000-0000000000b0';
+    const errors: Array<{ kind: string; detail: string }> = [];
+    const events: NativeHookEnvelope[] = [];
+    bridge = createHookBridge({
+      allowSession: (id) => (id === OWNED_SESSION ? true : id === bootSession ? 'ignore' : false),
+      onProtocolError: (kind, detail) => errors.push({ kind, detail }),
+    });
+    bridge.onEvent((e) => events.push(e));
+    await bridge.start();
+    const boot = fakeClaudeHookPayload('Stop', { session_id: bootSession });
+    expect((await post(bridge.endpoint(), bridge.token, JSON.stringify(boot))).status).toBe(200);
+    expect(events).toHaveLength(0);
+    expect(errors).toEqual([]);
+    const owned = fakeClaudeHookPayload('Stop', { session_id: OWNED_SESSION });
+    expect((await post(bridge.endpoint(), bridge.token, JSON.stringify(owned))).status).toBe(200);
+    expect(events).toHaveLength(1);
+    const foreign = fakeClaudeHookPayload('Stop', { session_id: 'someone-elses-session' });
+    expect((await post(bridge.endpoint(), bridge.token, JSON.stringify(foreign))).status).toBe(403);
+    expect(errors.map((e) => e.kind)).toEqual(['unknown-session']);
+  });
+
   it('rejects malformed JSON with 400 without crashing', async () => {
     const { bridge: b, events, errors } = await startBridge();
     expect((await post(b.endpoint(), b.token, '{nope')).status).toBe(400);
