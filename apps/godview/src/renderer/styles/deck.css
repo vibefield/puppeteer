@@ -92,21 +92,6 @@
   background: transparent;
 }
 
-/* Ghosttea's settings button, one per window, leaves the top-right corner to
-   the badge: it waits in the bottom-left band at the bar's control size, and
-   shows only under the pointer as Ghosttea already has it. */
-.vf-godview-terminal-deck .ghosttea-settings-button {
-  top: auto;
-  right: auto;
-  bottom: 9px;
-  left: 8px;
-  width: 22px;
-  height: 22px;
-  border-radius: 6px;
-  font-size: 12px;
-  line-height: 20px;
-}
-
 /* The view-only chip takes the middle of the top band, clear of the badge. */
 .vf-godview-terminal-deck .ghostty-pane-access {
   top: 8px;

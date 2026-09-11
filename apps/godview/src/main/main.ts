@@ -223,7 +223,7 @@ const DEFAULT_TERMINAL_CONFIG = [
   '# Godview terminal overrides (Ghostty-compatible syntax).',
   '# Existing Ghostty config files are imported before this profile-owned overlay.',
   '# Light and dark color selections are stored separately by Godview.',
-  '# Use the terminal deck Settings button for themes, opacity, shaders, and advanced settings.',
+  '# Use the app header Settings button for themes, opacity, shaders, and advanced settings.',
   '',
 ].join('\n');
 const loadedAppearanceProfiles = loadAppearanceProfiles();

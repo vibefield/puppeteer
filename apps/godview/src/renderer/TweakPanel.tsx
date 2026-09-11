@@ -7,7 +7,7 @@ import type { MonitorParameterDefinition, MonitorParameterGroup, MonitorParamete
 // The stage-surface and bubble-colour controls are a live measuring instrument
 // and stay memory-only; the monitor sections write through to the stores that
 // already own their keys. Terminal appearance is not here because Ghosttea's
-// own settings in the deck already own it durably.
+// own settings, opened from the app header, already own it durably.
 
 export interface GodviewTuning {
   stageColor: string;

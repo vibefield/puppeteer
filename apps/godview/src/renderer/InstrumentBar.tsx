@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState, type FocusEvent, type ReactElement, type ReactNode } from 'react';
 import type { GodviewTheme } from '../appearance-themes.js';
 import type { AgentVisualStatus } from './agent-status.js';
+import type { WorkspaceSettings } from './deck/workspace-settings.js';
 import type { AgentMonitorView } from './monitor/types.js';
 
 // The instrument bar (record §04): 40px, no words. Counters on the left where
@@ -40,6 +41,15 @@ const MARKS: Record<string, ReactNode> = {
   ),
   // The crate: the installed agents and their accounts.
   agents: <path d="M4 9.5h16V20H4zM4 9.5l2.2-4.5h11.6L20 9.5M10 13.5h4" />,
+  settings: (
+    <>
+      <path
+        d="m9 3-.5 2.5-2 1.2L4 6l-3 5 2 1.7V15l-2 1.7 3 5 2.5-.7 2 1.2L9 25h6l.5-2.8 2-1.2 2.5.7 3-5-2-1.7v-2.3l2-1.7-3-5-2.5.7-2-1.2L15 3Z"
+        transform="translate(2 0) scale(.83)"
+      />
+      <circle cx="12" cy="11.6" r="3" />
+    </>
+  ),
 };
 
 function Mark({ id, fallback }: { id: string; fallback: string }) {
@@ -120,6 +130,7 @@ export interface InstrumentBarProps {
   onToggleAgents(): void;
   tuneOpen: boolean;
   onToggleTune(): void;
+  settings: WorkspaceSettings | undefined;
   theme: GodviewTheme;
   onThemeChange(theme: GodviewTheme): void;
 }
@@ -136,6 +147,7 @@ export function InstrumentBar({
   onToggleAgents,
   tuneOpen,
   onToggleTune,
+  settings,
   theme,
   onThemeChange,
 }: InstrumentBarProps) {
@@ -223,6 +235,21 @@ export function InstrumentBar({
           <Mark id="tune" fallback="T" />
         </button>
       </Tip>
+
+      {settings ? (
+        <Tip label="SETTINGS" end>
+          <button
+            type="button"
+            className="vf-godview-bar-control is-square"
+            aria-label="Open settings"
+            aria-haspopup="dialog"
+            disabled={!settings.enabled}
+            onClick={settings.open}
+          >
+            <Mark id="settings" fallback="S" />
+          </button>
+        </Tip>
+      ) : null}
 
       <Tip label={`SWITCH TO ${nextTheme.toUpperCase()}`} end>
         <button

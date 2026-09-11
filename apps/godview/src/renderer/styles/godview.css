@@ -234,6 +234,11 @@ body {
   padding: 0;
 }
 
+.vf-godview-bar-control:disabled {
+  opacity: 0.4;
+  pointer-events: none;
+}
+
 .vf-godview-bar-control:hover,
 .vf-godview-bar-control.is-on {
   border-color: var(--control-hover-border);
@@ -1577,7 +1582,8 @@ body {
 }
 
 .vf-godview-terminal-deck .ghosttea-settings-button {
-  opacity: 0.78;
+  /* The app header forwards to this launcher; Ghosttea still owns the dialog. */
+  display: none;
 }
 
 .vf-godview-terminal-deck .appearance-settings-backdrop {

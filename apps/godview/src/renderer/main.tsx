@@ -65,6 +65,7 @@ import { buildPaneAttachments } from './pane-attachments.js';
 import { paneSessionLaunchSource } from './pane-session.js';
 import { DeckFrames } from './deck/DeckFrames.js';
 import { useTerminalGround } from './deck/terminal-ground.js';
+import { useWorkspaceSettings } from './deck/workspace-settings.js';
 import '@vibecook/ghosttea-react/styles.css';
 import '@vibecook/ghosttea-react/workspace.css';
 import './styles/tokens.css';
@@ -194,6 +195,7 @@ function Godview() {
   const stageRef = useRef<HTMLElement>(null);
   const chromeRef = useRef<HTMLDivElement>(null);
   const deckRef = useRef<HTMLElement>(null);
+  const settings = useWorkspaceSettings(deckRef);
   const palette = useMonitorPalette();
   const profiles = useAgentProfiles();
   const terminalGround = useTerminalGround(theme);
@@ -569,6 +571,7 @@ function Godview() {
         onToggleAgents={() => setAgentsDrawerOpen((current) => !current)}
         tuneOpen={tweakPanelOpen}
         onToggleTune={() => setTweakPanelOpen((current) => !current)}
+        settings={settings}
         theme={theme}
         onThemeChange={changeTheme}
       />
