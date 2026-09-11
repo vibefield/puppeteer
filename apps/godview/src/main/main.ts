@@ -20,6 +20,7 @@ import {
   GhostteaElectronBackend,
   GhostteaConfigDocumentConflictError,
   installGhostteaClipboardHost,
+  installGhostteaLinkHost,
   installGhostteaEditShortcuts,
   type GhostteaAutomationClient,
   type GhostteaElectronBackendOptions,
@@ -151,6 +152,7 @@ import {
   type RestoreWorkspaceDocument,
 } from '../restore-snapshot.js';
 import { discardDurableRestoreState, readDurableRestoreState, writeDurableRestoreState } from './restore-store.js';
+import { runTerminalLinksSmoke } from './terminal-links-smoke.js';
 
 declare const __dirname: string;
 
@@ -160,6 +162,8 @@ const ADOPTED_PROCESS_EXIT_GRACE_MS = 5_000;
 const SHUTDOWN_CLEANUP_TIMEOUT_MS = 7_000;
 const SMOKE = process.argv.includes('--smoke');
 const APPEARANCE_SMOKE = process.argv.includes('--appearance-smoke');
+const LINKS_SMOKE = process.argv.includes('--links-smoke');
+const openedSmokeLinks: string[] = [];
 const RESTORE_SMOKE_ARGUMENT = process.argv.find(
   (argument) => argument === '--restore-smoke' || argument.startsWith('--restore-smoke='),
 );
@@ -240,6 +244,17 @@ if (!ownsTruffleState) {
 }
 
 const clipboardHost = installGhostteaClipboardHost(ipcMain, clipboard);
+installGhostteaLinkHost(
+  ipcMain,
+  LINKS_SMOKE
+    ? {
+        openExternal: async (url) => {
+          openedSmokeLinks.push(url);
+        },
+      }
+    : shell,
+  (sender) => trustedManagedConfigEditorSender(sender, sender.mainFrame),
+);
 
 const tabs = new GodviewTabRegistry<BrowserWindow>();
 let backend: GhostteaElectronBackend | undefined;
@@ -2932,8 +2947,16 @@ app
       });
     }
     await initializeSpawnThrough();
-    if (SMOKE || APPEARANCE_SMOKE || SPAWN_THROUGH_SMOKE || RESTORE_SMOKE || AGENT_SMOKE) {
-      if (SPAWN_THROUGH_SMOKE) await runSpawnThroughSmoke(SPAWN_THROUGH_SMOKE);
+    if (SMOKE || LINKS_SMOKE || APPEARANCE_SMOKE || SPAWN_THROUGH_SMOKE || RESTORE_SMOKE || AGENT_SMOKE) {
+      if (LINKS_SMOKE) {
+        await ensureBackend();
+        await runTerminalLinksSmoke({
+          client: backend!.automation,
+          createWindow: () => createWindow({ slotId: 'godview-links-smoke', freshWorkspace: true }),
+          opened: openedSmokeLinks,
+          profile: app.getPath('userData'),
+        });
+      } else if (SPAWN_THROUGH_SMOKE) await runSpawnThroughSmoke(SPAWN_THROUGH_SMOKE);
       else if (RESTORE_SMOKE_PHASE === 'seed') {
         await runRestoreRestartSeedSmoke();
         return;
@@ -2972,8 +2995,9 @@ app
         .catch((error) => console.error(`[main] autocreate ${provider.label} failed`, error));
     }
   })
-  .catch((error) => {
+  .catch(async (error) => {
     console.error(error);
+    if (LINKS_SMOKE) await shutdown().catch((cleanupError: unknown) => console.error(cleanupError));
     app.exit(1);
   });
 

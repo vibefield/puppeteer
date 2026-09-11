@@ -144,6 +144,7 @@ const terminalRuntime = createGhostteaTerminalRuntime({
   // Godview windows are viewports, not PTY owners. Agent sessions remain live
   // while bubbles and panes attach, detach, or mirror them.
   platform: {
+    openExternal: (url) => window.desktop.openExternal(url),
     writeClipboard: (text) => window.desktop.writeClipboard(text),
     forceCanvasFallback: () => sessionStorage.getItem('ghosttea:force-canvas-fallback') === '1',
     setForceCanvasFallback: (enabled) => {

@@ -13,6 +13,7 @@
     "start": "pnpm bundle && electron .",
     "smoke": "pnpm bundle && electron . --smoke",
     "appearance-smoke": "pnpm bundle && node appearance-smoke.mjs",
+    "links-smoke": "pnpm bundle && node links-smoke.mjs",
     "test": "vitest run",
     "typecheck": "tsc -p tsconfig.json --noEmit",
     "restore-smoke": "pnpm bundle && node restore-smoke.mjs",

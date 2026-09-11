@@ -23,6 +23,17 @@ Reload the Godview window after renderer changes. Restart Godview after changes
 to main/preload, the terminal daemon, or native addons. Builds do not reload or
 restart running sessions automatically.
 
+The terminal link feature needs both the updated SDK and daemon. After staging
+the rebuilt daemon (or setting `GHOSTTEAD_BIN`), run `pnpm godview:local:build`
+and restart Godview. Command-hover and Command-click on macOS (Ctrl elsewhere)
+support plain URLs and OSC 8 links, including wrapped links. `link-url = false`
+disables automatic URL matching while keeping explicit OSC 8 links available.
+
+Run `pnpm --filter godview links-smoke` to exercise the complete link path in an
+isolated Godview profile with a mouse-reporting TUI fixture. It records URL
+opening requests without launching a browser. Set `GODVIEW_KEEP_LINK_SMOKE=1`
+to retain the screenshot and fixture artifacts.
+
 The local command uses Ghosttea's standard `build:sdk` script. It does not
 compile Rust or native addons.
 

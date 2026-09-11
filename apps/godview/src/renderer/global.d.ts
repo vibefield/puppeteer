@@ -15,6 +15,7 @@ declare global {
       initialCwd?: string;
       defaultShell: string;
       writeClipboard: (text: string) => void;
+      openExternal: (url: string) => Promise<void>;
       readClipboard: () => Promise<string>;
       setTerminalCanCopy: (canCopy: boolean) => void;
       showContextMenu: (canCopy: boolean) => void;

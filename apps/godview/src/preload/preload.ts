@@ -1,6 +1,10 @@
 import { contextBridge, ipcRenderer } from 'electron';
 import type { SessionSummary } from '@vibecook/ghosttea-protocol';
-import { createGhostteaClipboardBridge, forwardGhostteaRendererPorts } from '@vibecook/ghosttea-electron/preload';
+import {
+  createGhostteaClipboardBridge,
+  createGhostteaLinkBridge,
+  forwardGhostteaRendererPorts,
+} from '@vibecook/ghosttea-electron/preload';
 import type {
   AcknowledgeAgentFailureRequest,
   AccountUsageBatch,
@@ -156,6 +160,7 @@ contextBridge.exposeInMainWorld('desktop', {
   defaultShell:
     process.platform === 'win32' ? (process.env.COMSPEC ?? 'powershell.exe') : (process.env.SHELL ?? '/bin/zsh'),
   writeClipboard: clipboardBridge.writeText,
+  openExternal: createGhostteaLinkBridge(ipcRenderer).openExternal,
   readClipboard: clipboardBridge.readText,
   setTerminalCanCopy: clipboardBridge.setCanCopy,
   showContextMenu: (canCopy: boolean) => ipcRenderer.send('terminal-context-menu', canCopy),
