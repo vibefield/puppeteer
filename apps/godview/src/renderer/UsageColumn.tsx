@@ -13,7 +13,7 @@ import { usageTiles, type UsageTile, type UsageWindowView } from './account-usag
 
 const RING_RADIUS: Record<UsageWindowView['slot'], number> = { 0: 8.6, 1: 11.8, 2: 15 };
 const UNMEASURED_RADIUS = 11.8;
-const POPUP_WIDTH = 176;
+const POPUP_WIDTH = 192;
 const POPUP_GAP = 10;
 const POPUP_INSET = 6;
 /** Where the connector may sit: inside the popup's rounded corners. */

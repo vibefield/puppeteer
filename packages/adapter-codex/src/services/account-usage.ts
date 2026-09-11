@@ -58,10 +58,18 @@ function compactLabel(value: string): string {
 }
 
 function specializedLimitLabel(id: string, name: string | undefined): string | undefined {
-  const identity = `${id} ${name ?? ''}`;
+  if (id === 'codex') return undefined;
+  const identity = compactLabel(`${id} ${name ?? ''}`);
   if (/\bspark\b/i.test(identity)) return 'SPARK';
   if (/\bmini\b/i.test(identity)) return 'MINI';
-  return undefined;
+  return compactLabel(name ?? id) || 'LIMIT';
+}
+
+function windowDurationLabel(minutes: number | undefined): string | undefined {
+  if (minutes === undefined || !Number.isSafeInteger(minutes) || minutes <= 0) return undefined;
+  if (minutes % 1440 === 0) return `${minutes / 1440}D`;
+  if (minutes % 60 === 0) return `${minutes / 60}H`;
+  return `${minutes}M`;
 }
 
 function normalizeWindow(
@@ -79,22 +87,21 @@ function normalizeWindow(
   const duration = finite(window.windowDurationMins);
   const resetsAt = unixSecondsIso(window.resetsAt);
   const specialized = specializedLimitLabel(limitId, limitName);
-  const label = duration === 300 ? '5H' : duration === 10_080 ? (specialized ?? '7D') : compactLabel(id) || 'LIMIT';
-  const rank =
-    duration === 300
-      ? (specialized ? 5 : 0) + providerOrder / 100
-      : duration === 10_080
-        ? 20 + (specialized ? 5 : 0) + providerOrder / 100
-        : 60 + providerOrder / 100;
+  const period = windowDurationLabel(duration);
+  const windowLabel = period ?? compactLabel(id);
+  const label = specialized ? `${specialized} ${windowLabel}` : windowLabel;
+  // Keep the base account limits first. A model-specific short window must
+  // retain its model name and must not occupy the base account's 5H ring.
+  const rank = (specialized ? 40 : 0) + (duration === 300 ? 0 : duration === 10_080 ? 20 : 30) + providerOrder / 100;
   return {
     rank,
     metric: {
       id: `${limitId}:${id}:window`,
       label,
-      description: `${limitName ?? limitId} ${label} usage`,
+      description: `${limitName ?? limitId} ${windowLabel} usage`,
       kind: 'window',
       usedPercent,
-      ...(duration !== undefined && duration > 0 ? { durationMinutes: duration } : {}),
+      ...(period ? { durationMinutes: duration! } : {}),
       ...(resetsAt ? { resetsAt } : {}),
     },
   };

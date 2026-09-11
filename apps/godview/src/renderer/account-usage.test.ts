@@ -301,6 +301,28 @@ describe('the usage column', () => {
     expect(tiles.map((tile) => tile.aria)).not.toContainEqual(expect.stringContaining('native detail'));
   });
 
+  it('keeps named model windows out of an absent base-account short-window ring', () => {
+    const [tile] = usageTiles(
+      {
+        refreshedAt: '2026-07-23T20:00:00.000Z',
+        entries: [
+          available('codex', [
+            { label: '7D', used: 96 },
+            { label: 'SPARK 5H', used: 0 },
+            { label: 'SPARK 7D', used: 0 },
+          ]),
+        ],
+      },
+      NOW,
+    );
+    expect(tile?.windows.map(({ label }) => label)).toEqual(['7D', 'SPARK 5H', 'SPARK 7D']);
+    expect(tile?.rings.map(({ slot, label }) => ({ slot, label }))).toEqual([
+      { slot: 1, label: '7D' },
+      { slot: 2, label: 'SPARK 5H' },
+    ]);
+    expect(tile?.figure).toBe('96%');
+  });
+
   it('formats fetch ages compactly', () => {
     expect(formatUsageAge('2026-07-23T19:59:50.000Z', NOW)).toBe('10s AGO');
     expect(formatUsageAge('2026-07-23T19:57:00.000Z', NOW)).toBe('3m AGO');

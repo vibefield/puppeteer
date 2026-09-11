@@ -100,8 +100,8 @@ describe('Codex account usage', () => {
         },
         {
           id: 'codex_spark:primary:window',
-          label: 'SPARK',
-          description: 'Codex Spark SPARK usage',
+          label: 'SPARK 7D',
+          description: 'Codex Spark 7D usage',
           kind: 'window',
           usedPercent: 7,
           durationMinutes: 10_080,
@@ -109,6 +109,67 @@ describe('Codex account usage', () => {
         },
       ],
     });
+  });
+
+  it('keeps both Spark windows distinct from a weekly-only base account limit', () => {
+    // Shape observed from Codex 0.154.0 account/rateLimits/read, 2026-09-11.
+    const base = {
+      limitId: 'codex',
+      limitName: null,
+      primary: { usedPercent: 96, windowDurationMins: 10_080, resetsAt: 1_789_435_505 },
+      secondary: null,
+    };
+    const snapshot = normalizeCodexAccountUsage({
+      rateLimits: base,
+      rateLimitsByLimitId: {
+        codex_bengalfox: {
+          limitId: 'codex_bengalfox',
+          limitName: 'GPT-5.3-Codex-Spark',
+          primary: { usedPercent: 0, windowDurationMins: 300, resetsAt: 1_789_185_722 },
+          secondary: { usedPercent: 0, windowDurationMins: 10_080, resetsAt: 1_789_772_522 },
+        },
+        codex: base,
+      },
+    });
+    expect(
+      snapshot.metrics.map(({ label, usedPercent, durationMinutes }) => ({ label, usedPercent, durationMinutes })),
+    ).toEqual([
+      { label: '7D', usedPercent: 96, durationMinutes: 10_080 },
+      { label: 'SPARK 5H', usedPercent: 0, durationMinutes: 300 },
+      { label: 'SPARK 7D', usedPercent: 0, durationMinutes: 10_080 },
+    ]);
+    expect(snapshot.metrics[1]?.description).toBe('GPT-5.3-Codex-Spark 5H usage');
+    expect(snapshot.metrics[2]?.description).toBe('GPT-5.3-Codex-Spark 7D usage');
+  });
+
+  it.each([
+    ['codex_spark', undefined, 'SPARK'],
+    ['codex_mini', undefined, 'MINI'],
+    ['codex_other', 'Code review', 'CODE REVIEW'],
+    ['codex_other', undefined, 'OTHER'],
+  ])('retains the bucket identity for %s even without a known model name', (limitId, limitName, label) => {
+    const snapshot = normalizeCodexAccountUsage({
+      rateLimitsByLimitId: {
+        [limitId!]: {
+          limitId,
+          limitName,
+          primary: { usedPercent: 10, windowDurationMins: 300 },
+          secondary: { usedPercent: 20, windowDurationMins: 10_080 },
+        },
+      },
+    });
+    expect(snapshot.metrics.map((metric) => metric.label)).toEqual([`${label} 5H`, `${label} 7D`]);
+  });
+
+  it.each([
+    [15, '15M'],
+    [60, '1H'],
+    [1440, '1D'],
+  ])('names a %s-minute window by its actual duration', (duration, label) => {
+    const snapshot = normalizeCodexAccountUsage({
+      rateLimits: { limitId: 'codex', primary: { usedPercent: 25, windowDurationMins: duration } },
+    });
+    expect(snapshot.metrics[0]?.label).toBe(label);
   });
 
   it('falls back to the backward-compatible single bucket and tolerates missing metadata', () => {

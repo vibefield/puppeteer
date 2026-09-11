@@ -820,7 +820,7 @@ body {
 .vf-usage-popup {
   position: absolute;
   z-index: 9;
-  width: 176px;
+  width: 192px;
   padding: 7px 9px 8px;
   border: 1px solid var(--panel-border);
   border-radius: 6px;
@@ -908,7 +908,7 @@ body {
 .vf-usage-popup-row {
   height: 14px;
   display: grid;
-  grid-template-columns: 38px minmax(0, 1fr) 28px 40px;
+  grid-template-columns: 54px minmax(0, 1fr) 28px 40px;
   align-items: center;
   gap: 6px;
 }
