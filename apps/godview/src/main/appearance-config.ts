@@ -1,4 +1,4 @@
-import type { RendererConfig } from '@vibecook/ghosttea-protocol';
+import type { ConfigDiagnostic, RendererConfig } from '@vibecook/ghosttea-protocol';
 import type { GodviewTerminalColorTheme } from '../appearance-themes.js';
 
 export interface ManagedAppearanceUpdate {
@@ -158,10 +158,30 @@ function sameValues(left: readonly unknown[], right: readonly unknown[]): boolea
   return left.length === right.length && left.every((value, index) => value === right[index]);
 }
 
+/**
+ * Keys the daemon parsed but does not apply. Ghosttead reports them as
+ * `recognized-not-applied` diagnostics on validation (the 0.7.0 prebuild did
+ * so for `palette` and `cursor-text`; 0.11.1 applies both); a requested value
+ * for one of them is absent from the effective projection by construction,
+ * not because another configuration layer shadowed it.
+ */
+export function unappliedAppearanceKeys(diagnostics: readonly ConfigDiagnostic[]): Set<string> {
+  const keys = new Set<string>();
+  for (const diagnostic of diagnostics) {
+    if (diagnostic.code === 'recognized-not-applied' && diagnostic.key) keys.add(diagnostic.key);
+  }
+  return keys;
+}
+
 /** Return requested values that another config layer shadowed. */
-export function appearanceUpdateMismatches(renderer: RendererConfig, update: ManagedAppearanceUpdate): string[] {
+export function appearanceUpdateMismatches(
+  renderer: RendererConfig,
+  update: ManagedAppearanceUpdate,
+  unapplied: ReadonlySet<string> = new Set(),
+): string[] {
   const mismatches: string[] = [];
   const checkColor = (name: string, actual: readonly number[], expected: string): void => {
+    if (unapplied.has(name)) return;
     if (!sameValues(actual, colorBytes(expected))) mismatches.push(name);
   };
   if (update.theme) {
@@ -171,18 +191,23 @@ export function appearanceUpdateMismatches(renderer: RendererConfig, update: Man
     checkColor('cursor-text', renderer.cursorText ?? renderer.background, update.theme.cursorText);
     checkColor('selection-background', renderer.selectionBackground, update.theme.selection);
     checkColor('selection-foreground', renderer.selectionForeground, update.theme.selectionForeground);
-    const palette = new Map((renderer.palette ?? []).map((entry) => [entry.index, entry.color]));
-    for (let index = 0; index < update.theme.palette.length; index += 1) {
-      if (!sameValues(palette.get(index) ?? [], colorBytes(update.theme.palette[index]!))) {
-        mismatches.push(`palette ${index}`);
+    if (!unapplied.has('palette')) {
+      const palette = new Map((renderer.palette ?? []).map((entry) => [entry.index, entry.color]));
+      for (let index = 0; index < update.theme.palette.length; index += 1) {
+        if (!sameValues(palette.get(index) ?? [], colorBytes(update.theme.palette[index]!))) {
+          mismatches.push(`palette ${index}`);
+        }
       }
     }
   }
   const expectedOpacity = Number(update.backgroundOpacity.toFixed(2));
-  if (Math.abs((renderer.backgroundOpacity ?? 1) - expectedOpacity) > 0.0001) {
+  if (!unapplied.has('background-opacity') && Math.abs((renderer.backgroundOpacity ?? 1) - expectedOpacity) > 0.0001) {
     mismatches.push('background-opacity');
   }
-  if ((renderer.backgroundOpacityCells ?? false) !== update.backgroundOpacityCells) {
+  if (
+    !unapplied.has('background-opacity-cells') &&
+    (renderer.backgroundOpacityCells ?? false) !== update.backgroundOpacityCells
+  ) {
     mismatches.push('background-opacity-cells');
   }
   const shaderEffects =
@@ -191,8 +216,13 @@ export function appearanceUpdateMismatches(renderer: RendererConfig, update: Man
       : renderer.postProcess === 'better-crt'
         ? ['ghosttea:better-crt']
         : [];
-  if (!sameValues(shaderEffects, update.shaderEffects)) mismatches.push('custom-shader');
-  if ((renderer.customShaderAnimation ?? false) !== update.shaderAnimation) {
+  if (!unapplied.has('custom-shader') && !sameValues(shaderEffects, update.shaderEffects)) {
+    mismatches.push('custom-shader');
+  }
+  if (
+    !unapplied.has('custom-shader-animation') &&
+    (renderer.customShaderAnimation ?? false) !== update.shaderAnimation
+  ) {
     mismatches.push('custom-shader-animation');
   }
   return mismatches;

@@ -1,5 +1,10 @@
 import type { RendererConfig } from '@vibecook/ghosttea-protocol';
-import { GODVIEW_TERMINAL_THEMES, type GodviewTerminalColorTheme, type GodviewTheme } from '../appearance-themes.js';
+import {
+  GODVIEW_TERMINAL_THEMES,
+  RETIRED_GHOSTTEA_LIGHT_THEME,
+  type GodviewTerminalColorTheme,
+  type GodviewTheme,
+} from '../appearance-themes.js';
 import { validateAppearanceTheme, type ManagedAppearanceUpdate } from './appearance-config.js';
 
 export const APPEARANCE_PROFILES_VERSION = 1;
@@ -45,6 +50,20 @@ export function parseAppearanceProfiles(contents: string): AppearanceProfiles {
 
 export function serializeAppearanceProfiles(profiles: AppearanceProfiles): string {
   return `${JSON.stringify(profiles, null, 2)}\n`;
+}
+
+/**
+ * A profile file persisted before 2026-09-10 carries the retired "Ghosttea
+ * Light" preset as its light selection. That was the default, never a choice,
+ * so it moves to the decided One Half Light; a custom or catalog selection is
+ * left alone. Returns the same object when nothing needs to move.
+ */
+export function migrateRetiredAppearanceProfiles(profiles: AppearanceProfiles): AppearanceProfiles {
+  const light = profiles.light;
+  if (light.name !== RETIRED_GHOSTTEA_LIGHT_THEME.name || !sameAppearanceTheme(light, RETIRED_GHOSTTEA_LIGHT_THEME)) {
+    return profiles;
+  }
+  return replaceAppearanceProfile(profiles, 'light', GODVIEW_TERMINAL_THEMES.light);
 }
 
 export function replaceAppearanceProfile(

@@ -62,11 +62,14 @@ import {
 import { FindSheet } from './find/FindSheet.js';
 import { useMonitorAgents } from './monitor/useMonitorAgents.js';
 import { buildPaneAttachments } from './pane-attachments.js';
-import { paneBadgeLabel, paneSessionLaunchSource } from './pane-session.js';
+import { paneSessionLaunchSource } from './pane-session.js';
+import { DeckFrames } from './deck/DeckFrames.js';
+import { useTerminalGround } from './deck/terminal-ground.js';
 import '@vibecook/ghosttea-react/styles.css';
 import '@vibecook/ghosttea-react/workspace.css';
 import './styles/tokens.css';
 import './styles/godview.css';
+import './styles/deck.css';
 import './styles/agents-drawer.css';
 import './styles/find-sheet.css';
 
@@ -191,8 +194,10 @@ function Godview() {
   const nextPaneHue = useRef(Math.random() * 360);
   const stageRef = useRef<HTMLElement>(null);
   const chromeRef = useRef<HTMLDivElement>(null);
+  const deckRef = useRef<HTMLElement>(null);
   const palette = useMonitorPalette();
   const profiles = useAgentProfiles();
+  const terminalGround = useTerminalGround(theme);
   const view = monitorViewFor(viewId);
   // Seeded on boot and on every switch, so the fallback is a guard rather than a
   // path. Memoized regardless: a fresh object here would re-fire the save effect
@@ -480,14 +485,19 @@ function Godview() {
     return () => window.clearInterval(timer);
   }, []);
 
+  // Only the colour: the badge and the rest of the frame are the deck's own
+  // (`deck/PaneFrame.tsx`), drawn into the pane Ghosttea lays out.
   const decoratePane = useCallback(
-    (session: SessionSummary, paneId: string): GhostteaWorkspacePaneDecoration => {
-      const monitored = agentsBySession.get(session.id);
-      const label = paneBadgeLabel(session, monitored?.agent ? monitored.project : undefined, monitored?.cwd);
+    (_session: SessionSummary, paneId: string): GhostteaWorkspacePaneDecoration => {
       const color = paneColors.get(paneId);
-      return { label, ...(color ? { color } : {}) };
+      return color ? { color } : {};
     },
-    [agentsBySession, paneColors],
+    [paneColors],
+  );
+
+  const mountResumedSession = useCallback(
+    (session: SessionSummary): void => workspace?.mountSession(session),
+    [workspace],
   );
 
   const updateParameter = useCallback(
@@ -630,7 +640,17 @@ function Godview() {
         ) : null}
       </section>
 
-      <section className="vf-godview-terminal-deck" aria-label="Terminal panes">
+      <section
+        ref={deckRef}
+        className="vf-godview-terminal-deck"
+        aria-label="Terminal panes"
+        style={
+          {
+            '--vf-godview-terminal-bg': terminalGround.background,
+            '--vf-godview-terminal-ink': terminalGround.foreground,
+          } as CSSProperties
+        }
+      >
         <WorkspaceReporterContext.Provider value={setWorkspace}>
           <GhostteaWorkspace
             platform={platform}
@@ -652,6 +672,13 @@ function Godview() {
             {...(window.desktop.initialCwd ? { initialCwd: window.desktop.initialCwd } : {})}
           />
         </WorkspaceReporterContext.Provider>
+        <DeckFrames
+          deckRef={deckRef}
+          panes={workspace?.panes ?? []}
+          agentsBySession={agentsBySession}
+          paneColors={paneColors}
+          onResume={mountResumedSession}
+        />
       </section>
     </div>
   );

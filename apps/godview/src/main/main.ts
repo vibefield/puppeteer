@@ -61,6 +61,7 @@ import type {
   StartProfileLoginRequest,
   SubmitPromptOptions,
   TerminalSessionHandoff,
+  AgentInterruptResult,
   UpdateInstallationRequest,
 } from '../protocol.js';
 import { createAccountUsageMonitor, type AccountUsageProfileRef } from './account-usage-monitor.js';
@@ -85,6 +86,7 @@ import {
   appearanceBlock,
   appearanceUpdateMismatches,
   patchAppearanceBlock,
+  unappliedAppearanceKeys,
   validateAppearanceUpdate,
   type ManagedAppearanceUpdate,
 } from './appearance-config.js';
@@ -92,6 +94,7 @@ import {
   appearanceThemeFromRenderer,
   appearanceUpdateForMode,
   defaultAppearanceProfiles,
+  migrateRetiredAppearanceProfiles,
   parseAppearanceProfiles,
   replaceAppearanceProfile,
   serializeAppearanceProfiles,
@@ -322,17 +325,20 @@ function loadAppearanceProfiles(): { profiles: AppearanceProfiles; persisted: bo
     return { profiles: defaultAppearanceProfiles(), persisted: false };
   }
   try {
-    return {
-      profiles: parseAppearanceProfiles(readFileSync(terminalAppearanceProfilesPath, 'utf8')),
-      persisted: true,
-    };
+    const stored = parseAppearanceProfiles(readFileSync(terminalAppearanceProfilesPath, 'utf8'));
+    const profiles = migrateRetiredAppearanceProfiles(stored);
+    // Written back at once and reported as persisted: the first activation
+    // would otherwise read the retired colours out of the previous managed
+    // block and capture them over the decided theme.
+    if (profiles !== stored) writeAppearanceProfilesFile(profiles);
+    return { profiles, persisted: true };
   } catch (error) {
     console.warn('[main] ignoring invalid terminal appearance profiles', error);
     return { profiles: defaultAppearanceProfiles(), persisted: false };
   }
 }
 
-function persistAppearanceProfiles(profiles: AppearanceProfiles): void {
+function writeAppearanceProfilesFile(profiles: AppearanceProfiles): void {
   mkdirSync(app.getPath('userData'), { recursive: true, mode: 0o700 });
   const temporaryPath = `${terminalAppearanceProfilesPath}.${process.pid}.${randomUUID()}.tmp`;
   try {
@@ -342,6 +348,10 @@ function persistAppearanceProfiles(profiles: AppearanceProfiles): void {
   } finally {
     rmSync(temporaryPath, { force: true });
   }
+}
+
+function persistAppearanceProfiles(profiles: AppearanceProfiles): void {
+  writeAppearanceProfilesFile(profiles);
   appearanceProfiles = profiles;
   appearanceProfilesPersisted = true;
 }
@@ -475,7 +485,11 @@ async function writeManagedAppearance(update: ManagedAppearanceUpdate): Promise<
     if (validation.blockingErrors.length > 0) {
       throw new Error(validation.blockingErrors.map((diagnostic) => diagnostic.message).join('\n'));
     }
-    const mismatches = appearanceUpdateMismatches(validation.config.renderer, update);
+    const mismatches = appearanceUpdateMismatches(
+      validation.config.renderer,
+      update,
+      unappliedAppearanceKeys(validation.config.diagnostics),
+    );
     if (mismatches.length > 0) {
       throw new Error(
         `Appearance settings are overridden by an included configuration layer: ${mismatches.join(', ')}`,
@@ -1807,6 +1821,57 @@ function registerIpc(): void {
     (_event, options: SubmitPromptOptions): Promise<PromptReceipt> =>
       agentRuntime.agent(options.runtimeSessionId)?.submitPrompt({ text: options.text }) ??
       Promise.resolve({ status: 'rejected', reason: 'agent session not found' }),
+  );
+  // The pane's stop verb. There is no runtime interrupt service; stopping a
+  // turn is what the agent's own TUI does on ^C, so the host sends exactly
+  // that through Ghosttea's automation, which yields to a human mid-keystroke.
+  ipcMain.handle(
+    'puppeteer:interrupt-agent',
+    async (event, runtimeSessionId: unknown): Promise<AgentInterruptResult> => {
+      const window = BrowserWindow.fromWebContents(event.sender);
+      if (!window || !tabs.get(window) || typeof runtimeSessionId !== 'string') {
+        return { accepted: false, reason: 'agent-not-running' };
+      }
+      const record = agentRecords.get(runtimeSessionId);
+      if (!record || !record.agentProcessAlive) return { accepted: false, reason: 'agent-not-running' };
+      await ensureBackend();
+      const result = await backend!.automation.interrupt(runtimeSessionId);
+      return result.accepted
+        ? { accepted: true }
+        : { accepted: false, reason: result.reason ?? 'human-input-conflict' };
+    },
+  );
+  // The pane's resume verb: the exited run's own continuation, the same way a
+  // restore resumes it, mounted by the renderer into the pane that asked.
+  ipcMain.handle(
+    'puppeteer:resume-agent-session',
+    async (event, runtimeSessionId: unknown): Promise<CreateAgentSessionResult> => {
+      const owner = BrowserWindow.fromWebContents(event.sender);
+      const failure = (message: string): CreateAgentSessionResult => ({
+        runtimeRunId: '',
+        runtimeEpoch: 0,
+        externalRefs: [],
+        error: { code: 'AGENT_NOT_FOUND', message },
+      });
+      if (!owner || !tabs.get(owner) || typeof runtimeSessionId !== 'string') return failure('unknown pane');
+      const record = agentRecords.get(runtimeSessionId);
+      if (!record || record.agentProcessAlive) return failure('no exited agent to resume');
+      const descriptor = paneRecoveryMetadata(record.session, record.info).descriptor;
+      if (descriptor.kind !== 'agent') return failure('no exited agent to resume');
+      const resumable = agentRuntime
+        .launchProviders()
+        .some((provider) => provider.id === descriptor.continuation.providerId && provider.resume);
+      if (!resumable) return failure(`${descriptor.continuation.providerId} cannot resume a session`);
+      return resumeAgentSession(
+        {
+          continuation: descriptor.continuation,
+          ...(descriptor.cwd ? { cwd: descriptor.cwd } : {}),
+          workspace: restoredWorkspaceRequest(descriptor),
+          ...(descriptor.profileId ? { profile: descriptor.profileId } : {}),
+        },
+        owner,
+      );
+    },
   );
   ipcMain.handle('puppeteer:workspace-diff', (_event, runtimeSessionId: string) =>
     agentRuntime.workspaceDiff(runtimeSessionId),

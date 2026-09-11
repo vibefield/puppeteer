@@ -5,6 +5,7 @@ import type {
   AcknowledgeAgentFailureRequest,
   AccountUsageBatch,
   AgentInstallationsSnapshot,
+  AgentInterruptResult,
   AgentMonitorNotificationMessage,
   AgentMonitorRemovedMessage,
   AgentMonitorStateMessage,
@@ -93,6 +94,10 @@ const puppeteer: PuppeteerBridge = {
   },
   submitPrompt: (options: SubmitPromptOptions): Promise<PromptReceipt> =>
     ipcRenderer.invoke('puppeteer:submit-prompt', options),
+  interruptAgent: (runtimeSessionId: string): Promise<AgentInterruptResult> =>
+    ipcRenderer.invoke('puppeteer:interrupt-agent', runtimeSessionId),
+  resumeAgentSession: (runtimeSessionId: string): Promise<CreateAgentSessionResult> =>
+    ipcRenderer.invoke('puppeteer:resume-agent-session', runtimeSessionId),
   listAgentMonitors: (): Promise<AgentMonitorStateMessage[]> => ipcRenderer.invoke('puppeteer:list-agent-monitors'),
   onAgentMonitorState: (callback: (message: AgentMonitorStateMessage) => void): (() => void) =>
     onIpcMessage('puppeteer:agent-monitor-state', callback),

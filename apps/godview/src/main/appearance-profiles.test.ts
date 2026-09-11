@@ -1,10 +1,11 @@
 import { describe, expect, it } from 'vitest';
 import type { RendererConfig } from '@vibecook/ghosttea-protocol';
-import { GHOSTTEA_DARK_THEME, GHOSTTEA_LIGHT_THEME } from '../appearance-themes.js';
+import { GHOSTTEA_DARK_THEME, ONE_HALF_LIGHT_THEME, RETIRED_GHOSTTEA_LIGHT_THEME } from '../appearance-themes.js';
 import {
   appearanceThemeFromRenderer,
   appearanceUpdateForMode,
   defaultAppearanceProfiles,
+  migrateRetiredAppearanceProfiles,
   parseAppearanceProfiles,
   replaceAppearanceProfile,
   serializeAppearanceProfiles,
@@ -35,11 +36,28 @@ function rendererFor(theme = GHOSTTEA_DARK_THEME): RendererConfig {
 }
 
 describe('mode-specific appearance profiles', () => {
-  it('starts with separate legacy light and dark selections', () => {
+  it('starts with One Half Light and the Ghostty default', () => {
     const profiles = defaultAppearanceProfiles();
-    expect(profiles.light.name).toBe('Ghosttea Light');
+    expect(profiles.light.name).toBe('One Half Light');
     expect(profiles.dark.name).toBe('Ghosttea Dark');
     expect(profiles.light.background).not.toBe(profiles.dark.background);
+  });
+
+  it('moves a persisted retired light preset to One Half Light and leaves a choice alone', () => {
+    const retired = replaceAppearanceProfile(defaultAppearanceProfiles(), 'light', RETIRED_GHOSTTEA_LIGHT_THEME);
+    const migrated = migrateRetiredAppearanceProfiles(retired);
+    expect(migrated).not.toBe(retired);
+    expect(migrated.light).toEqual(ONE_HALF_LIGHT_THEME);
+    expect(migrated.dark).toEqual(retired.dark);
+
+    const chosen = replaceAppearanceProfile(defaultAppearanceProfiles(), 'light', {
+      ...RETIRED_GHOSTTEA_LIGHT_THEME,
+      name: 'Custom Light',
+      background: '#ffffff',
+    });
+    expect(migrateRetiredAppearanceProfiles(chosen)).toBe(chosen);
+    const current = defaultAppearanceProfiles();
+    expect(migrateRetiredAppearanceProfiles(current)).toBe(current);
   });
 
   it('round-trips validated profile files', () => {
@@ -52,8 +70,8 @@ describe('mode-specific appearance profiles', () => {
   });
 
   it('combines mode colors with profile-wide opacity and shaders', () => {
-    expect(appearanceUpdateForMode(rendererFor(), GHOSTTEA_LIGHT_THEME)).toMatchObject({
-      theme: { name: 'Ghosttea Light' },
+    expect(appearanceUpdateForMode(rendererFor(), ONE_HALF_LIGHT_THEME)).toMatchObject({
+      theme: { name: 'One Half Light' },
       backgroundOpacity: 0.64,
       backgroundOpacityCells: true,
       shaderEffects: ['ghosttea:crt'],
@@ -71,7 +89,7 @@ describe('mode-specific appearance profiles', () => {
 
   it('does not invent a restorable profile from a sparse ANSI palette', () => {
     expect(
-      appearanceThemeFromRenderer({ ...rendererFor(), palette: [] }, 'light', GHOSTTEA_LIGHT_THEME),
+      appearanceThemeFromRenderer({ ...rendererFor(), palette: [] }, 'light', ONE_HALF_LIGHT_THEME),
     ).toBeUndefined();
   });
 });

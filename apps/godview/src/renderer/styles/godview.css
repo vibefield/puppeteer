@@ -56,8 +56,6 @@ body {
   --blocked-bg: var(--vf-card-deep);
   --blocked-text: var(--vf-godview-light-panel-bg);
   --blocked-border: var(--vf-card-deep);
-  --terminal-bg: var(--vf-godview-light-terminal-bg);
-  --terminal-divider: var(--vf-godview-light-terminal-divider);
   --pane-access-text: rgba(20, 20, 20, 0.6);
   --pane-access-border: rgba(0, 0, 0, 0.12);
   --pane-access-bg: rgba(247, 247, 247, 0.8);
@@ -85,8 +83,6 @@ body {
   --blocked-bg: var(--vf-godview-dark-text-main);
   --blocked-text: var(--vf-card-deep);
   --blocked-border: var(--vf-godview-dark-text-main);
-  --terminal-bg: var(--vf-godview-dark-terminal-bg);
-  --terminal-divider: var(--vf-godview-dark-terminal-divider);
   --pane-access-text: rgba(255, 255, 255, 0.62);
   --pane-access-border: rgba(255, 255, 255, 0.14);
   --pane-access-bg: rgba(22, 24, 29, 0.82);
@@ -1522,15 +1518,24 @@ body {
   letter-spacing: 0.08em;
 }
 
-/* The deck. Ghosttea draws the terminal tint with renderer-native alpha; an
-   opaque CSS deck would hide both that alpha and the window's glass below it. */
+/* The deck draws on the terminal theme's own ground, never on the window's
+   glass (record §07): main.tsx publishes the live theme's background and ink
+   as `--vf-godview-terminal-bg` and `--vf-godview-terminal-ink`, and the pane
+   frame (deck.css) mixes everything it draws from that ink. The ground is
+   what shows in a rounded pane's corners and between two panes. In VibeField
+   the host lowers `--vf-godview-deck-opacity` to make the deck a sheet over
+   its canvas; standalone it is the ground at 100%. */
 .vf-godview-terminal-deck {
   position: relative;
   min-width: 0;
   min-height: 0;
   flex: 1 1 auto;
   overflow: hidden;
-  background: transparent;
+  background: color-mix(
+    in srgb,
+    var(--vf-godview-terminal-bg, #282c34) var(--vf-godview-deck-opacity, 100%),
+    transparent
+  );
 }
 
 /* A live WebGPU canvas may be promoted above ordinary DOM overlays on macOS.
@@ -1593,37 +1598,9 @@ body {
   content: 'DARK MODE';
 }
 
-.vf-godview-terminal-deck .ghostty-pane-badge {
-  padding: 3px 9px;
-  color: var(--vf-godview-dark-text-main);
-  background: var(--ghostty-pane-color);
-  font-size: 8px;
-  font-weight: 800;
-  letter-spacing: 0.04em;
-  text-transform: uppercase;
-  transition:
-    color 160ms ease,
-    background-color 160ms ease,
-    box-shadow 160ms ease;
-}
-
-.vf-godview-terminal-deck .ghostty-pane:not(.is-active) .ghostty-pane-badge {
-  color: var(--ghostty-pane-color);
-  background: transparent;
-  box-shadow: inset 0 0 0 1px var(--ghostty-pane-color);
-}
-
-.vf-godview-terminal-deck .ghostty-pane.is-active[data-pane-accent]::before {
-  border-color: var(--ghostty-pane-color);
-  box-shadow: inset 0 0 12px color-mix(in srgb, var(--ghostty-pane-color) 18%, transparent);
-}
-
-.vf-godview-terminal-deck .ghostty-split-divider {
-  background: var(--terminal-divider);
-}
-
+/* The pane's own chrome (badge, readout, verbs, meter, line and glow) is
+   deck.css; Ghosttea's badge is not asked for. */
 .vf-godview-terminal-deck .ghostty-pane-access {
-  top: 24px;
   color: var(--pane-access-text);
   border-color: var(--pane-access-border);
   background: var(--pane-access-bg);

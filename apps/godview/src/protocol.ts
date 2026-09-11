@@ -146,6 +146,10 @@ export interface SubmitPromptOptions {
   text: string;
 }
 
+/** The pane's stop verb: whether the agent's native interrupt was delivered. */
+export type AgentInterruptResult =
+  { accepted: true } | { accepted: false; reason: 'agent-not-running' | 'human-input-conflict' | string };
+
 export interface PaneRehydrationRequest {
   meta: unknown;
   sessionId: string;
@@ -238,6 +242,10 @@ export interface PuppeteerBridge {
   onAgentSession(cb: (info: AgentSessionInfo) => void): () => void;
   onAgentRemoved(cb: (runtimeSessionId: string) => void): () => void;
   submitPrompt(opts: SubmitPromptOptions): Promise<PromptReceipt>;
+  /** Stop the agent's current turn with its own native interrupt (what ^C does in its TUI). */
+  interruptAgent(runtimeSessionId: string): Promise<AgentInterruptResult>;
+  /** Resume an exited agent from its own continuation; the caller mounts the returned session. */
+  resumeAgentSession(runtimeSessionId: string): Promise<CreateAgentSessionResult>;
   listAgentMonitors(): Promise<AgentMonitorStateMessage[]>;
   onAgentMonitorState(cb: (message: AgentMonitorStateMessage) => void): () => void;
   onAgentMonitorNotification(cb: (message: AgentMonitorNotificationMessage) => void): () => void;

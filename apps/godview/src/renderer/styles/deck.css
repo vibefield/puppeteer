@@ -1,0 +1,369 @@
+/* The deck's pane frame, decided 2026-09-10 (design-system record §07).
+
+   Ghosttea owns the terminal; the skin owns what is drawn around it. The
+   terminal sits on its theme's own ground, One Half Light beside Ghostty's
+   dark default, with no card, no divider and no brackets. A 1px line in the
+   pane colour and a soft inner glow mark the selected pane, and only that
+   pane rounds its corners. The name is a badge growing out of the top edge;
+   the model and effort are a quiet readout at the top-left; the context share
+   is a thick grey bar along the bottom edge with its figure in the corner;
+   the verbs appear only under the pointer. Every colour here is mixed from
+   the terminal's own ink (`--vf-godview-terminal-ink`), which main.tsx reads
+   from the live configuration, so a theme edited in Settings moves the frame
+   with it. Nothing inside a pane has a ground of its own: in VibeField the
+   deck becomes a translucent sheet by `--vf-godview-deck-opacity` alone. */
+
+/* ── the ground and the safe areas ─────────────────────────────────────── */
+
+/* Ghosttea sizes its grid from the pane's content box and keeps a 2px origin
+   inside the surface, so the inset is padding here; it lands the grid at
+   36 · 30 · 32 · 32 (top · right · bottom · left) and nothing a TUI draws ever
+   meets the frame. Under 220px the sides tighten to 16px and 14px; the
+   bands keep their height. */
+.vf-godview-terminal-deck .ghostty-pane {
+  padding: 34px 28px 30px 30px;
+  transition:
+    border-radius 240ms ease,
+    padding 160ms ease;
+}
+
+.vf-godview-terminal-deck .ghostty-pane[data-vf-narrow] {
+  padding-right: 12px;
+  padding-left: 14px;
+}
+
+/* Only the selected pane rounds; the line, the glow, the badge and the
+   meter's ends follow because the pane clips its own box. */
+.vf-godview-terminal-deck .ghostty-pane.is-active {
+  border-radius: 8px;
+}
+
+/* The line and the glow live on Ghosttea's own accent layer. */
+.vf-godview-terminal-deck .ghostty-pane[data-pane-accent]::before {
+  border-color: transparent;
+  box-shadow:
+    inset 0 0 34px -8px transparent,
+    inset 0 0 5px -1px transparent;
+  transition:
+    border-color 240ms ease,
+    box-shadow 320ms ease,
+    border-radius 240ms ease;
+}
+
+.vf-godview-terminal-deck .ghostty-pane.is-active[data-pane-accent]::before {
+  border-color: var(--ghostty-pane-color);
+  border-radius: 8px;
+  box-shadow:
+    inset 0 0 34px -8px color-mix(in srgb, var(--ghostty-pane-color) 62%, transparent),
+    inset 0 0 5px -1px color-mix(in srgb, var(--ghostty-pane-color) 30%, transparent);
+}
+
+/* Two resting panes meet with no visible edge; the divider keeps its grip. */
+.vf-godview-terminal-deck .ghostty-split-divider {
+  background: transparent;
+}
+
+/* Ghosttea's settings button, one per window, leaves the top-right corner to
+   the badge: it waits in the bottom-left band at the bar's control size, and
+   shows only under the pointer as Ghosttea already has it. */
+.vf-godview-terminal-deck .ghosttea-settings-button {
+  top: auto;
+  right: auto;
+  bottom: 9px;
+  left: 8px;
+  width: 22px;
+  height: 22px;
+  border-radius: 6px;
+  font-size: 12px;
+  line-height: 20px;
+}
+
+/* The view-only chip takes the middle of the top band, clear of the badge. */
+.vf-godview-terminal-deck .ghostty-pane-access {
+  top: 8px;
+  right: auto;
+  left: 50%;
+  transform: translateX(-50%);
+}
+
+/* ── the frame ─────────────────────────────────────────────────────────── */
+
+.vf-pane-frame {
+  --ink: var(--vf-godview-terminal-ink, currentColor);
+  --pane-color: var(--ghostty-pane-color, var(--vf-accent-1));
+  position: absolute;
+  z-index: 7;
+  inset: 0;
+  container-type: inline-size;
+  color: var(--ink);
+  font-family: ui-monospace, 'SFMono-Regular', 'SF Mono', Menlo, Monaco, Consolas, monospace;
+  font-synthesis: none;
+  font-variant-numeric: tabular-nums;
+  pointer-events: none;
+  user-select: none;
+}
+
+/* one row along the top edge: readout · verbs · badge */
+.vf-pane-top {
+  position: absolute;
+  top: 0;
+  right: 0;
+  left: 0;
+  display: flex;
+  align-items: flex-start;
+  justify-content: flex-end;
+  gap: 4px;
+}
+
+/* the readout: model · effort, lowercase, at the top-left; shrinks before the badge */
+.vf-pane-readout {
+  flex: 0 4 auto;
+  min-width: 0;
+  margin: 6px auto 0 11px;
+  overflow: hidden;
+  color: color-mix(in srgb, var(--ink) 50%, transparent);
+  font-size: 10.5px;
+  font-weight: 500;
+  line-height: 1;
+  letter-spacing: 0.01em;
+  text-overflow: ellipsis;
+  text-transform: lowercase;
+  white-space: nowrap;
+}
+
+.vf-pane-readout em {
+  font-style: italic;
+}
+
+/* the verbs: stop with the turn's time, resume in green after an exit,
+   fullscreen; bare glyphs in the pane colour, only under the pointer. They
+   appear at once and leave 120ms after it. */
+.vf-pane-verbs {
+  display: none;
+  flex: none;
+  align-items: flex-start;
+  gap: 12px;
+  padding: 0 6px 0 0;
+  opacity: 0;
+  transition:
+    opacity 120ms ease,
+    display 120ms allow-discrete;
+}
+
+.vf-godview-terminal-deck .ghostty-pane:hover .vf-pane-verbs,
+.vf-pane-frame.is-stopping .vf-pane-verbs {
+  display: inline-flex;
+  opacity: 1;
+  transition: none;
+}
+
+.vf-pane-verb {
+  --verb-color: var(--pane-color);
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  height: 23px;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  color: var(--verb-color);
+  background: transparent;
+  font: inherit;
+  font-size: 10.5px;
+  font-weight: 600;
+  line-height: 1;
+  white-space: nowrap;
+  cursor: pointer;
+  pointer-events: auto;
+}
+
+.vf-pane-verb:focus-visible {
+  border-radius: 2px;
+  outline: 1px solid var(--verb-color);
+  outline-offset: 2px;
+}
+
+.vf-pane-verb > i {
+  display: inline-block;
+  width: 7px;
+  height: 7px;
+  border-radius: 1px;
+  background: currentColor;
+}
+
+.vf-pane-verb.is-resume {
+  --verb-color: var(--vf-green);
+}
+
+.vf-pane-verb.is-resume > i {
+  width: 0;
+  height: 0;
+  border-style: solid;
+  border-width: 4px 0 4px 7px;
+  border-color: transparent transparent transparent currentColor;
+  border-radius: 0;
+  background: transparent;
+}
+
+/* stopping: the square hollow and blinking until the run leaves `working` */
+.vf-pane-frame.is-stopping .vf-pane-verb.is-stop > i {
+  background: transparent;
+  box-shadow: inset 0 0 0 1.5px currentColor;
+  animation: vf-pane-blink 1s steps(1, end) infinite;
+}
+
+.vf-pane-verb svg {
+  width: 10px;
+  height: 10px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 2.2;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+/* the badge: OS mark · agent mark · name, in the terminal's type, growing out
+   of the top edge at the right. Selected: the pane colour, white, inner corner
+   5px, outer corner cut by the pane's radius. */
+.vf-pane-badge {
+  position: relative;
+  display: inline-flex;
+  flex: none;
+  align-items: stretch;
+  min-width: 0;
+  border-radius: 0 0 4px 4px;
+  color: color-mix(in srgb, var(--ink) 62%, transparent);
+  background: color-mix(in srgb, var(--ink) 8%, transparent);
+  font-size: 11.5px;
+  font-weight: 600;
+  line-height: 1.4;
+  white-space: nowrap;
+  transition:
+    color 160ms ease,
+    background-color 160ms ease,
+    border-radius 160ms ease;
+}
+
+.vf-pane-badge-name {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+  padding: 3px 10px 4px;
+}
+
+.vf-pane-os {
+  width: 10px;
+  height: 10px;
+  opacity: 0.8;
+}
+
+.vf-pane-mark {
+  display: inline-flex;
+  font-size: 10px;
+}
+
+.vf-pane-name {
+  min-width: 0;
+  max-width: 50cqw;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.vf-godview-terminal-deck .ghostty-pane.is-active .vf-pane-badge {
+  border-radius: 0 0 0 5px;
+  color: #fff;
+  background: var(--pane-color);
+}
+
+/* the meter: a 6px track along the whole bottom edge, filled from the left to
+   the share; always grey, heavier past 80%, never orange */
+.vf-pane-meter {
+  position: absolute;
+  z-index: 6;
+  right: 0;
+  bottom: 0;
+  left: 0;
+  height: 6px;
+  background: color-mix(in srgb, var(--ink) 10%, transparent);
+}
+
+.vf-pane-meter::before {
+  position: absolute;
+  inset: 0 auto 0 0;
+  width: calc(100% * var(--ctx, 0));
+  background: color-mix(in srgb, var(--ink) 34%, transparent);
+  content: '';
+  transition: width 420ms cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.vf-pane-meter.is-hot::before {
+  background: color-mix(in srgb, var(--ink) 82%, transparent);
+}
+
+/* the figure, in the bottom-right corner above the track */
+.vf-pane-bottom {
+  position: absolute;
+  right: 0;
+  bottom: 0;
+  left: 0;
+  display: flex;
+  align-items: flex-end;
+  justify-content: flex-end;
+  gap: 10px;
+  padding: 0 10px 11px 11px;
+}
+
+.vf-pane-figure {
+  color: color-mix(in srgb, var(--ink) 52%, transparent);
+  font-size: 10px;
+  font-weight: 600;
+  line-height: 1;
+}
+
+.vf-pane-figure.is-hot {
+  color: color-mix(in srgb, var(--ink) 82%, transparent);
+  font-weight: 700;
+}
+
+/* ── narrow panes: container queries on the frame, never on the window ─── */
+
+@container (max-width: 300px) {
+  .vf-godview-terminal-deck .ghostty-pane:hover .vf-pane-readout {
+    display: none;
+  }
+}
+
+@container (max-width: 220px) {
+  .vf-pane-readout {
+    display: none;
+  }
+
+  .vf-pane-verb.is-stop .vf-pane-verb-text {
+    display: none;
+  }
+
+  .vf-pane-verbs {
+    gap: 9px;
+  }
+}
+
+@keyframes vf-pane-blink {
+  50% {
+    opacity: 0.25;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .vf-godview-terminal-deck .ghostty-pane,
+  .vf-godview-terminal-deck .ghostty-pane[data-pane-accent]::before,
+  .vf-pane-verbs,
+  .vf-pane-badge,
+  .vf-pane-meter::before {
+    transition: none;
+  }
+
+  .vf-pane-frame.is-stopping .vf-pane-verb.is-stop > i {
+    animation: none;
+  }
+}
