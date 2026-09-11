@@ -10,6 +10,7 @@ import type { AgentProvider } from '@vibecook/puppeteer-runtime';
 import { createAcpSession, type AcpConnector } from '@vibecook/puppeteer-adapter-acp';
 import {
   captureAntigravityContinuationState,
+  createAntigravityAccountUsageService,
   createAntigravityDistributionService,
   createAntigravityProfileService,
   createAntigravityTuiSession,
@@ -712,6 +713,7 @@ export function createBuiltinProviders(options: BuiltinProviderOptions = {}): Ag
       executionMode: 'native-tui',
       distribution: services.antigravity.distribution,
       profiles: services.antigravity.profiles,
+      accountUsage: createAntigravityAccountUsageService({ executable: resolved.antigravity }),
       launch: {
         provider: {
           ...BUILTIN_PROVIDER_DESCRIPTORS.antigravity,

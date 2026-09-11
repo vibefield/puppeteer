@@ -31,6 +31,8 @@ const adapters = vi.hoisted(() => {
   return {
     createAntigravityDistributionService: vi.fn(() => fakeDistribution('antigravity', 'Antigravity', 'agy')),
     createAntigravityProfileService: vi.fn(() => fakeProfiles('antigravity', 'Antigravity')),
+    createAntigravityAccountUsageService: vi.fn(),
+    fetchAntigravityAccountUsage: vi.fn(),
     createClaudeDistributionService: vi.fn(() => fakeDistribution('claude', 'Claude', 'claude')),
     createClaudeProfileService: vi.fn(() => fakeProfiles('claude', 'Claude')),
     createCodexDistributionService: vi.fn(() => fakeDistribution('codex', 'Codex', 'codex')),
@@ -110,6 +112,7 @@ vi.mock('@vibecook/puppeteer-adapter-acp', () => ({
 vi.mock('@vibecook/puppeteer-adapter-antigravity', () => ({
   createAntigravityDistributionService: adapters.createAntigravityDistributionService,
   createAntigravityProfileService: adapters.createAntigravityProfileService,
+  createAntigravityAccountUsageService: adapters.createAntigravityAccountUsageService,
   createAntigravityTuiSession: adapters.createAntigravityTuiSession,
   prepareAntigravityTuiSession: adapters.prepareAntigravityTuiSession,
   normalizeAntigravityNativeInvocation: adapters.normalizeAntigravityNativeInvocation,
@@ -269,6 +272,10 @@ describe('createBuiltinProviders launch options', () => {
       provider: { id: 'grok', label: 'Grok', refresh: { pollIntervalMs: 15 * 60_000 } },
       fetch: adapters.fetchGrokAccountUsage,
     });
+    adapters.createAntigravityAccountUsageService.mockImplementation((options: { executable?: string } = {}) => ({
+      provider: { id: 'antigravity', label: 'Antigravity', refresh: { pollIntervalMs: 5 * 60_000 } },
+      fetch: () => adapters.fetchAntigravityAccountUsage(options),
+    }));
     adapters.createAcpSession.mockResolvedValue(fakeSession('acp'));
     adapters.createAntigravityTuiSession.mockResolvedValue(fakeSession('antigravity'));
     adapters.prepareAntigravityTuiSession.mockResolvedValue(fakePreparation('antigravity'));
@@ -313,6 +320,12 @@ describe('createBuiltinProviders launch options', () => {
     adapters.fetchGrokAccountUsage.mockResolvedValue({
       status: 'unsupported',
       provider: 'grok',
+      message: 'missing',
+      retryable: false,
+    });
+    adapters.fetchAntigravityAccountUsage.mockResolvedValue({
+      status: 'unauthenticated',
+      provider: 'antigravity',
       message: 'missing',
       retryable: false,
     });
@@ -488,22 +501,26 @@ describe('createBuiltinProviders launch options', () => {
   });
 
   it('exposes provider-level account usage independently of sessions', async () => {
-    const providers = createBuiltinProviders({ executables: { codex: '/opt/codex' } });
+    const providers = createBuiltinProviders({ executables: { codex: '/opt/codex', antigravity: '/opt/agy' } });
     const claude = providers.find((provider) => provider.descriptor.id === 'claude')!;
     const codex = providers.find((provider) => provider.descriptor.id === 'codex')!;
     const acp = providers.find((provider) => provider.descriptor.id === 'acp')!;
     const grok = providers.find((provider) => provider.descriptor.id === 'grok')!;
+    const antigravity = providers.find((provider) => provider.descriptor.id === 'antigravity')!;
 
     await claude.accountUsage!.fetch();
     await codex.accountUsage!.fetch();
     await grok.accountUsage!.fetch();
+    await antigravity.accountUsage!.fetch();
 
     expect(adapters.fetchClaudeAccountUsage).toHaveBeenCalledWith();
     expect(adapters.fetchCodexAccountUsage).toHaveBeenCalledWith({ executable: '/opt/codex' });
     expect(adapters.fetchGrokAccountUsage).toHaveBeenCalledWith();
+    expect(adapters.fetchAntigravityAccountUsage).toHaveBeenCalledWith({ executable: '/opt/agy' });
     expect(acp.accountUsage).toBeUndefined();
     expect(claude.accountUsage?.subscribe).toEqual(expect.any(Function));
     expect(codex.accountUsage?.subscribe).toBeUndefined();
+    expect(antigravity.accountUsage?.subscribe).toBeUndefined();
   });
 
   it('advertises only durable Imposter routes and resolves opaque continuation topology in adapters', () => {
