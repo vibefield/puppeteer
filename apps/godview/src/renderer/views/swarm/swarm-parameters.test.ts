@@ -8,14 +8,19 @@ import {
 } from './swarm-parameters.js';
 
 describe('swarm parameters', () => {
-  it('matches the original prototype defaults', () => {
+  it('matches the decided defaults', () => {
     expect(DEFAULT_SWARM_PARAMETERS).toEqual({
       gravityPull: 0.0002,
       restitution: 0,
       frictionAir: 0.2,
-      radiusIdle: 40,
-      radiusWorking: 50,
-      radiusBlocked: 70,
+      bubbleFillOpacity: 0.72,
+      glowReach: 34,
+      glowStrength: 0.8,
+      glowBreath: 0,
+      radiusIdle: 50,
+      radiusWorking: 60,
+      radiusWorkingMax: 80,
+      radiusBlocked: 50,
     });
   });
 
@@ -26,12 +31,12 @@ describe('swarm parameters', () => {
   it('restores finite values and clamps them to the tweak panel ranges', () => {
     expect(
       normalizeSwarmParameters({ gravityPull: 2, restitution: -1, radiusWorking: 91, radiusBlocked: NaN }),
-    ).toMatchObject({ gravityPull: 0.005, restitution: 0, radiusWorking: 91, radiusBlocked: 70 });
+    ).toMatchObject({ gravityPull: 0.005, restitution: 0, radiusWorking: 91, radiusBlocked: 50 });
   });
 
   it('maps every live status to its configured radius', () => {
-    expect(radiusForStatus(DEFAULT_SWARM_PARAMETERS, 'idle')).toBe(40);
-    expect(radiusForStatus(DEFAULT_SWARM_PARAMETERS, 'working')).toBe(50);
-    expect(radiusForStatus(DEFAULT_SWARM_PARAMETERS, 'blocked')).toBe(70);
+    expect(radiusForStatus(DEFAULT_SWARM_PARAMETERS, 'idle')).toBe(50);
+    expect(radiusForStatus(DEFAULT_SWARM_PARAMETERS, 'working')).toBe(60);
+    expect(radiusForStatus(DEFAULT_SWARM_PARAMETERS, 'blocked')).toBe(50);
   });
 });

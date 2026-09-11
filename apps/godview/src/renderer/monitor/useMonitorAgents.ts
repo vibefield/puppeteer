@@ -1,10 +1,11 @@
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import type { GhostteaWorkspaceContext } from '@vibecook/ghosttea-react/workspace';
 import type { MonitorNotification } from '@vibecook/puppeteer-core';
 import { createAgentMonitorStore } from '@vibecook/puppeteer-monitor';
 import { useAgentMonitorStore } from '@vibecook/puppeteer-react';
 import type { AgentMonitorRemovedMessage, AgentMonitorStateMessage, AgentSessionInfo } from '../../protocol.js';
 import type { PaneAttachment } from '../pane-attachments.js';
+import type { MonitorPalette } from './monitor-palette.js';
 import {
   assembleMonitorAgents,
   mergeMonitorTerminals,
@@ -12,6 +13,7 @@ import {
   type MonitorTerminalRecord,
 } from './agents.js';
 import type { MonitorActions, MonitorAgent } from './types.js';
+import { EMPTY_UNREAD_LEDGER, reconcileUnread, type UnreadLedger } from './unread.js';
 
 export interface UseMonitorAgentsOptions {
   workspace?: GhostteaWorkspaceContext;
@@ -20,6 +22,10 @@ export interface UseMonitorAgentsOptions {
   terminalIdentities?: ReadonlyMap<string, string>;
   /** Terminal-runtime exits, so a placeholder for a closed terminal stops being shown. */
   onSessionExited(listener: (sessionId: string) => void): () => void;
+  /** The live tokens; a row's colour is the §2.6 slot its id hashes to. */
+  palette: MonitorPalette;
+  /** Account id -> label, so a row can name the account its session was launched under. */
+  profileLabels?: ReadonlyMap<string, string>;
 }
 
 export interface MonitorAgentsResult {
@@ -40,6 +46,8 @@ export function useMonitorAgents({
   attachments,
   terminalIdentities,
   onSessionExited,
+  palette,
+  profileLabels,
 }: UseMonitorAgentsOptions): MonitorAgentsResult {
   const [records, setRecords] = useState(() => new Map<string, MonitorAgentRecord>());
   const [terminals, setTerminals] = useState<readonly MonitorTerminalRecord[]>([]);
@@ -47,6 +55,7 @@ export function useMonitorAgents({
   const [monitorStore] = useState(() => createAgentMonitorStore({ notificationCapacity: 4 }));
   const monitorSnapshot = useAgentMonitorStore(monitorStore);
   const [nowMs, setNowMs] = useState(Date.now());
+  const unreadRef = useRef<UnreadLedger>(EMPTY_UNREAD_LEDGER);
 
   useEffect(() => {
     let alive = true;
@@ -187,16 +196,57 @@ export function useMonitorAgents({
   );
 
   const agents = useMemo(() => {
-    return assembleMonitorAgents({
+    const assembled = assembleMonitorAgents({
       agents: [...records.values()],
       terminals: visibleTerminals,
       sessions,
       attachments,
       identities: terminalIdentities,
       nowMs,
+      accents: palette.accents,
       ...(workspace?.activeSession ? { activeSessionId: workspace.activeSession.id } : {}),
     });
-  }, [attachments, nowMs, records, sessions, terminalIdentities, visibleTerminals, workspace?.activeSession]);
+    // Unread is a fold over successive projections; the ledger is the only
+    // state here that is not derivable from one snapshot.
+    const ledger = reconcileUnread(
+      unreadRef.current,
+      assembled.map((agent) => {
+        const statusSinceMs = agent.agent ? Date.parse(agent.agent.monitor.statusSince) : Number.NaN;
+        return {
+          id: agent.id,
+          status: agent.status,
+          active: agent.active,
+          hasAgent: agent.agent !== undefined,
+          ...(Number.isFinite(statusSinceMs) ? { statusSinceMs } : {}),
+        };
+      }),
+      Date.now(),
+    );
+    unreadRef.current = ledger;
+    return assembled.map((agent) => {
+      const unread = ledger.unreadIds.has(agent.id);
+      // The account is an identity ground, resolved from the registry rather
+      // than from anything the session said about itself.
+      const profileId = agent.agent?.info.profileId;
+      const account = profileId ? profileLabels?.get(profileId) : undefined;
+      if (!unread && !account) return agent;
+      return {
+        ...agent,
+        ...(unread ? { unread: true } : {}),
+        ...(account && agent.agent ? { agent: { ...agent.agent, account } } : {}),
+      };
+    });
+  }, [
+    attachments,
+    nowMs,
+    palette.accents,
+    profileLabels,
+    records,
+    sessions,
+    terminalIdentities,
+    visibleTerminals,
+    workspace?.activeSession,
+  ]);
 
   const select = useCallback(
     (agent: MonitorAgent): void => {

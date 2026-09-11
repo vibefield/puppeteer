@@ -27,12 +27,22 @@ import {
 import { withGodviewTerminalThemes, type GodviewTheme } from '../appearance-themes.js';
 import { paneRecoveryMetadata } from '../restore-snapshot.js';
 import type { TerminalSessionHandoff } from '../protocol.js';
-import { AccountUsagePanel } from './AccountUsagePanel.js';
 import { AgentMonitorInspector } from './AgentMonitorInspector.js';
-import { TweakPanel, type TweakSection } from './TweakPanel.js';
+import { AgentsDrawer } from './AgentsDrawer.js';
+import { InstrumentBar } from './InstrumentBar.js';
+import { UsageColumn } from './UsageColumn.js';
+import { useAgentProfiles } from './agent-profiles.js';
+import {
+  TweakPanel,
+  defaultGodviewTuning,
+  godviewTuningStyle,
+  type GodviewTuning,
+  type TweakSection,
+} from './TweakPanel.js';
 import type { AgentVisualStatus } from './agent-status.js';
 import { MONITOR_CHROME_ATTRIBUTE, MONITOR_STAGE_CLASS } from './monitor/chrome.js';
 import { monitorAgentCounts, nextMonitorAgentForStatus } from './monitor/agents.js';
+import { useMonitorPalette } from './monitor/monitor-palette.js';
 import {
   loadMonitorParameters,
   monitorParameterDefaults,
@@ -41,26 +51,48 @@ import {
   type MonitorParameters,
 } from './monitor/parameters.js';
 import { MONITOR_VIEWS, monitorViewFor } from './monitor/registry.js';
+import type { AgentMonitorView } from './monitor/types.js';
+import {
+  SCANLINE_DENSITY_KEY,
+  SCANLINE_OPACITY_KEY,
+  STAGE_HEIGHT_KEY,
+  STAGE_PARAMETER_GROUPS,
+  VIGNETTE_OPACITY_KEY,
+} from './monitor/stage-parameters.js';
+import { FindSheet } from './find/FindSheet.js';
 import { useMonitorAgents } from './monitor/useMonitorAgents.js';
 import { buildPaneAttachments } from './pane-attachments.js';
 import { paneBadgeLabel, paneSessionLaunchSource } from './pane-session.js';
-import { SCREEN_PARAMETER_GROUPS } from './screen-parameters.js';
 import '@vibecook/ghosttea-react/styles.css';
 import '@vibecook/ghosttea-react/workspace.css';
-import './styles.css';
+import './styles/tokens.css';
+import './styles/godview.css';
+import './styles/agents-drawer.css';
+import './styles/find-sheet.css';
 
 GHOSTTY_COLOR_THEMES.splice(0, GHOSTTY_COLOR_THEMES.length, ...withGodviewTerminalThemes(GHOSTTY_COLOR_THEMES));
 
 const THEME_STORAGE_KEY = 'godview:color-theme:v1';
 const VIEW_STORAGE_KEY = 'godview:monitor-view:v1';
-const SCREEN_PARAMETERS_KEY = 'godview:screen-parameters:v1';
+// The stage's tunables predate their name: the key keeps every installation's
+// CRT values, and the stage height lands from its default.
+const STAGE_PARAMETERS_KEY = 'godview:screen-parameters:v1';
 // Where every tunable lived before views owned their own controls; read as a
 // seed so an installation keeps the look it was tuned to.
 const LEGACY_PARAMETERS_KEY = 'godview:swarm-parameters:v1';
 const WORKSPACE_STORAGE_KEY = `godview:ghosttea-workspace:v2:${window.desktop.tabId}`;
 
-function viewParametersKey(viewId: string): string {
-  return `godview:monitor-parameters:v1:${viewId}`;
+function viewParametersKey(view: AgentMonitorView): string {
+  return `godview:monitor-parameters:v1:${view.id}${view.parametersRevision ? `:${view.parametersRevision}` : ''}`;
+}
+
+/** A revised view starts from its own defaults; the legacy seed is for views that never moved. */
+function loadViewParameters(view: AgentMonitorView): MonitorParameters {
+  return loadMonitorParameters(
+    viewParametersKey(view),
+    view.parameterGroups,
+    view.parametersRevision ? undefined : LEGACY_PARAMETERS_KEY,
+  );
 }
 
 // A slot is reused across windows, so an explicitly new tab starts from an
@@ -139,18 +171,19 @@ function WorkspaceReporter({ workspace }: { workspace: GhostteaWorkspaceContext 
 function Godview() {
   const [active, setActive] = useState(document.visibilityState !== 'hidden');
   const [theme, setTheme] = useState<GodviewTheme>(bootTheme);
+  // The stage-surface and bubble-colour instrument. Memory-only, and re-seeded
+  // from the tokens on every theme change so a light tune never bleeds into dark.
+  const [tuning, setTuning] = useState<GodviewTuning>(() => defaultGodviewTuning(bootTheme));
   const [viewId, setViewId] = useState(bootViewId);
   const [parametersByView, setParametersByView] = useState<Record<string, MonitorParameters>>(() => ({
-    [bootViewId]: loadMonitorParameters(
-      viewParametersKey(bootViewId),
-      monitorViewFor(bootViewId).parameterGroups,
-      LEGACY_PARAMETERS_KEY,
-    ),
+    [bootViewId]: loadViewParameters(monitorViewFor(bootViewId)),
   }));
-  const [screenParameters, setScreenParameters] = useState<MonitorParameters>(() =>
-    loadMonitorParameters(SCREEN_PARAMETERS_KEY, SCREEN_PARAMETER_GROUPS, LEGACY_PARAMETERS_KEY),
+  const [stageParameters, setStageParameters] = useState<MonitorParameters>(() =>
+    loadMonitorParameters(STAGE_PARAMETERS_KEY, STAGE_PARAMETER_GROUPS, LEGACY_PARAMETERS_KEY),
   );
   const [tweakPanelOpen, setTweakPanelOpen] = useState(false);
+  const [agentsDrawerOpen, setAgentsDrawerOpen] = useState(false);
+  const [findOpen, setFindOpen] = useState(false);
   const [workspace, setWorkspace] = useState<GhostteaWorkspaceContext>();
   const [terminalIdentities, setTerminalIdentities] = useState<ReadonlyMap<string, string>>(() => new Map());
   const [paneColors, setPaneColors] = useState<ReadonlyMap<string, string>>(() => new Map());
@@ -158,6 +191,8 @@ function Godview() {
   const nextPaneHue = useRef(Math.random() * 360);
   const stageRef = useRef<HTMLElement>(null);
   const chromeRef = useRef<HTMLDivElement>(null);
+  const palette = useMonitorPalette();
+  const profiles = useAgentProfiles();
   const view = monitorViewFor(viewId);
   // Seeded on boot and on every switch, so the fallback is a guard rather than a
   // path. Memoized regardless: a fresh object here would re-fire the save effect
@@ -200,6 +235,15 @@ function Godview() {
     [theme],
   );
 
+  const changeTheme = useCallback((next: GodviewTheme): void => {
+    setTheme(next);
+    setTuning(defaultGodviewTuning(next));
+  }, []);
+
+  const changeTuning = useCallback((patch: Partial<GodviewTuning>): void => {
+    setTuning((current) => ({ ...current, ...patch }));
+  }, []);
+
   useEffect(() => {
     const updateVisibility = (): void => setActive(document.visibilityState !== 'hidden');
     document.addEventListener('visibilitychange', updateVisibility);
@@ -216,7 +260,7 @@ function Godview() {
     window.desktop.setTheme(theme);
   }, [theme]);
 
-  useEffect(() => window.desktop.onThemeChanged(setTheme), []);
+  useEffect(() => window.desktop.onThemeChanged(changeTheme), [changeTheme]);
 
   useEffect(() => {
     try {
@@ -226,8 +270,8 @@ function Godview() {
     }
   }, [viewId]);
 
-  useEffect(() => saveMonitorParameters(viewParametersKey(view.id), parameters), [parameters, view]);
-  useEffect(() => saveMonitorParameters(SCREEN_PARAMETERS_KEY, screenParameters), [screenParameters]);
+  useEffect(() => saveMonitorParameters(viewParametersKey(view), parameters), [parameters, view]);
+  useEffect(() => saveMonitorParameters(STAGE_PARAMETERS_KEY, stageParameters), [stageParameters]);
 
   useEffect(() => {
     if (!tweakPanelOpen) return;
@@ -238,14 +282,18 @@ function Godview() {
     return () => window.removeEventListener('keydown', closeOnEscape);
   }, [tweakPanelOpen]);
 
-  // Views that lay out in flow clear the chrome with this; the swarm instead
+  // Views that lay out in flow clear the chrome with these; the swarm instead
   // reads the chrome's rect directly and steers bodies around it.
   useEffect(() => {
     const stage = stageRef.current;
     const chrome = chromeRef.current;
     if (!stage || !chrome) return;
-    const publish = (): void =>
-      stage.style.setProperty('--monitor-chrome-height', `${Math.round(chrome.getBoundingClientRect().height)}px`);
+    const publish = (): void => {
+      const rect = chrome.getBoundingClientRect();
+      const stageRect = stage.getBoundingClientRect();
+      stage.style.setProperty('--vf-monitor-chrome-height', `${Math.round(rect.height)}px`);
+      stage.style.setProperty('--vf-monitor-chrome-right', `${Math.round(rect.right - stageRect.left)}px`);
+    };
     const observer = new ResizeObserver(publish);
     observer.observe(chrome);
     publish();
@@ -322,6 +370,8 @@ function Godview() {
     attachments: paneAttachments,
     terminalIdentities,
     onSessionExited,
+    palette,
+    profileLabels: profiles.labels,
   });
   const agentsBySession = useMemo(() => new Map(agents.map((agent) => [agent.session.id, agent] as const)), [agents]);
   const activeAgent = agents.find((agent) => agent.active);
@@ -349,6 +399,18 @@ function Godview() {
     window.addEventListener('keydown', onKeyDown, true);
     return () => window.removeEventListener('keydown', onKeyDown, true);
   }, [selectNextStatus]);
+
+  // ⌘F summons Find. The terminal has no find of its own, so nothing is stolen.
+  useEffect(() => {
+    const onKeyDown = (event: KeyboardEvent): void => {
+      if (!event.metaKey || event.altKey || event.ctrlKey || event.shiftKey || event.code !== 'KeyF') return;
+      event.preventDefault();
+      event.stopImmediatePropagation();
+      setFindOpen((current) => !current);
+    };
+    window.addEventListener('keydown', onKeyDown, true);
+    return () => window.removeEventListener('keydown', onKeyDown, true);
+  }, []);
 
   const createSplitSession = useCallback(
     async (selectedSession: SessionSummary): Promise<SessionSummary> => {
@@ -438,30 +500,27 @@ function Godview() {
     [view],
   );
 
-  const updateScreenParameter = useCallback((key: string, value: number): void => {
-    setScreenParameters((current) => normalizeMonitorParameters(SCREEN_PARAMETER_GROUPS, { ...current, [key]: value }));
+  const updateStageParameter = useCallback((key: string, value: number): void => {
+    setStageParameters((current) => normalizeMonitorParameters(STAGE_PARAMETER_GROUPS, { ...current, [key]: value }));
   }, []);
 
   const selectView = useCallback((nextViewId: string): void => {
     const next = monitorViewFor(nextViewId);
     setParametersByView((current) =>
-      current[next.id]
-        ? current
-        : {
-            ...current,
-            [next.id]: loadMonitorParameters(viewParametersKey(next.id), next.parameterGroups, LEGACY_PARAMETERS_KEY),
-          },
+      current[next.id] ? current : { ...current, [next.id]: loadViewParameters(next) },
     );
     setViewId(next.id);
   }, []);
 
+  // The stage's groups first, then the active view's own — rebuilt when the
+  // view changes, which is what makes a view's controls come and go with it.
   const tweakSections = useMemo<readonly TweakSection[]>(
     () => [
-      ...SCREEN_PARAMETER_GROUPS.map((group) => ({
-        id: `screen:${group.title}`,
+      ...STAGE_PARAMETER_GROUPS.map((group) => ({
+        id: `stage:${group.title}`,
         group,
-        values: screenParameters,
-        onChange: updateScreenParameter,
+        values: stageParameters,
+        onChange: updateStageParameter,
       })),
       ...view.parameterGroups.map((group) => ({
         id: `${view.id}:${group.title}`,
@@ -470,157 +529,130 @@ function Godview() {
         onChange: updateParameter,
       })),
     ],
-    [parameters, screenParameters, updateParameter, updateScreenParameter, view],
+    [parameters, stageParameters, updateParameter, updateStageParameter, view],
   );
 
   const screenStyle = {
-    '--scanline-density': `${screenParameters.scanlineDensity}px`,
-    '--scanline-opacity': screenParameters.scanlineOpacity,
-    '--vignette-opacity': screenParameters.vignetteOpacity,
+    ...godviewTuningStyle(tuning),
+    '--vf-monitor-stage-height': `${stageParameters[STAGE_HEIGHT_KEY] ?? 35}%`,
+    '--vf-scanline-density': `${stageParameters[SCANLINE_DENSITY_KEY] ?? 2}px`,
+    '--vf-scanline-opacity': stageParameters[SCANLINE_OPACITY_KEY] ?? 0.4,
+    '--vf-vignette-opacity': stageParameters[VIGNETTE_OPACITY_KEY] ?? 1,
   } as CSSProperties;
   const MonitorView = view.Component;
 
   return (
-    <div className={`godview-screen theme-${theme} platform-${window.desktop.platform}`} style={screenStyle}>
-      <div className="godview-scanlines" aria-hidden="true" />
-      <div className="godview-vignette" aria-hidden="true" />
-      <main className="godview-app">
-        <header className="godview-header">
-          <div className="godview-window-controls" aria-hidden="true">
-            <i className="is-close" />
-            <i className="is-minimize" />
-            <i className="is-expand" />
-          </div>
-          <div className="godview-title">
-            <span>GODVIEW</span>
-            <small>AGENT TOPOLOGY</small>
-          </div>
-          <div className="godview-header-actions">
-            <select
-              className="godview-view-switch"
-              aria-label="Monitor view"
-              value={view.id}
-              onChange={(event) => selectView(event.currentTarget.value)}
-            >
-              {MONITOR_VIEWS.map((candidate) => (
-                <option key={candidate.id} value={candidate.id}>
-                  {candidate.label}
-                </option>
-              ))}
-            </select>
-            <nav className="godview-status-controls" aria-label="Agent status shortcuts">
-              <button type="button" onClick={() => selectNextStatus('blocked')}>
-                BLOCK {counts.blocked}
-                <kbd>⌘1</kbd>
-              </button>
-              <button type="button" onClick={() => selectNextStatus('working')}>
-                WORK {counts.working}
-                <kbd>⌘2</kbd>
-              </button>
-              <button type="button" onClick={() => selectNextStatus('idle')}>
-                IDLE {counts.idle}
-                <kbd>⌘3</kbd>
-              </button>
-            </nav>
-            <button
-              className={`godview-tweak-toggle${tweakPanelOpen ? ' is-open' : ''}`}
-              type="button"
-              aria-controls="godview-tweak-panel"
-              aria-expanded={tweakPanelOpen}
-              onClick={() => setTweakPanelOpen((current) => !current)}
-            >
-              TUNE
-            </button>
-            <button
-              className="godview-theme-switch"
-              type="button"
-              role="switch"
-              aria-checked={theme === 'dark'}
-              aria-label={`Switch to ${theme === 'light' ? 'dark' : 'light'} theme`}
-              title={`Switch to ${theme === 'light' ? 'dark' : 'light'} theme`}
-              onClick={() => setTheme((current) => (current === 'light' ? 'dark' : 'light'))}
-            >
-              <span aria-hidden="true">☼</span>
-              <span className="godview-theme-switch-track" aria-hidden="true">
-                <i />
-              </span>
-              <span aria-hidden="true">◐</span>
-            </button>
-          </div>
-        </header>
+    <div
+      className={`vf-godview theme-${theme} platform-${window.desktop.platform}`}
+      data-godview-open="true"
+      data-godview-tuning-open={tweakPanelOpen ? 'true' : 'false'}
+      data-godview-animations="on"
+      style={screenStyle}
+    >
+      <div className="vf-godview-scanlines" aria-hidden="true" />
+      <div className="vf-godview-vignette" aria-hidden="true" />
+      <InstrumentBar
+        counts={counts}
+        onSelectStatus={selectNextStatus}
+        views={MONITOR_VIEWS}
+        viewId={view.id}
+        onSelectView={selectView}
+        findOpen={findOpen}
+        onToggleFind={() => setFindOpen((current) => !current)}
+        agentsOpen={agentsDrawerOpen}
+        onToggleAgents={() => setAgentsDrawerOpen((current) => !current)}
+        tuneOpen={tweakPanelOpen}
+        onToggleTune={() => setTweakPanelOpen((current) => !current)}
+        theme={theme}
+        onThemeChange={changeTheme}
+      />
 
-        {notifications.length ? (
-          <div className="godview-monitor-feed" aria-live="polite" aria-label="Agent monitor notifications">
-            {notifications.map((message) => (
-              <div className="godview-monitor-notice" key={`${message.runtimeRunId}:${message.notificationId}`}>
-                <span>{message.summary ?? message.type}</span>
-                <button
-                  type="button"
-                  aria-label="Dismiss notification"
-                  onClick={() => dismissNotification(message.runtimeRunId, message.notificationId)}
-                >
-                  ×
-                </button>
-              </div>
-            ))}
-          </div>
+      {notifications.length ? (
+        <div className="vf-godview-monitor-feed" aria-live="polite" aria-label="Agent monitor notifications">
+          {notifications.map((message) => (
+            <div className="vf-godview-monitor-notice" key={`${message.runtimeRunId}:${message.notificationId}`}>
+              <span>{message.summary ?? message.type}</span>
+              <button
+                type="button"
+                aria-label="Dismiss notification"
+                onClick={() => dismissNotification(message.runtimeRunId, message.notificationId)}
+              >
+                ×
+              </button>
+            </div>
+          ))}
+        </div>
+      ) : null}
+
+      <AgentsDrawer open={agentsDrawerOpen} profiles={profiles} onClose={() => setAgentsDrawerOpen(false)} />
+
+      <FindSheet
+        open={findOpen}
+        agents={agents}
+        onClose={() => setFindOpen(false)}
+        onSelect={(agent) => {
+          actions.select(agent);
+          setFindOpen(false);
+        }}
+      />
+
+      <TweakPanel
+        open={tweakPanelOpen}
+        theme={theme}
+        value={tuning}
+        sections={tweakSections}
+        onClose={() => setTweakPanelOpen(false)}
+        onThemeChange={changeTheme}
+        onChange={changeTuning}
+        onReset={() => {
+          setTuning(defaultGodviewTuning(theme));
+          setStageParameters(monitorParameterDefaults(STAGE_PARAMETER_GROUPS));
+          setParametersByView((current) => ({
+            ...current,
+            [view.id]: monitorParameterDefaults(view.parameterGroups),
+          }));
+        }}
+      />
+
+      <section ref={stageRef} className={MONITOR_STAGE_CLASS} aria-label="Agent monitor">
+        <MonitorView agents={agents} parameters={parameters} actions={actions} palette={palette} />
+        <div ref={chromeRef} className="vf-monitor-chrome" {...{ [MONITOR_CHROME_ATTRIBUTE]: '' }}>
+          <UsageColumn />
+        </div>
+        {activeAgent?.agent?.monitor ? (
+          <AgentMonitorInspector
+            key={activeAgent.agent.monitor.runtimeRunId}
+            state={activeAgent.agent.monitor}
+            allStates={agents.flatMap((agent) => (agent.agent?.monitor ? [agent.agent.monitor] : []))}
+            nowMs={Date.now()}
+            {...(activeAgent.agent.account ? { account: activeAgent.agent.account } : {})}
+          />
         ) : null}
+      </section>
 
-        <TweakPanel
-          open={tweakPanelOpen}
-          theme={theme}
-          sections={tweakSections}
-          onClose={() => setTweakPanelOpen(false)}
-          onThemeChange={setTheme}
-          onReset={() => {
-            setTheme('light');
-            setScreenParameters(monitorParameterDefaults(SCREEN_PARAMETER_GROUPS));
-            setParametersByView((current) => ({
-              ...current,
-              [view.id]: monitorParameterDefaults(view.parameterGroups),
-            }));
-          }}
-        />
-
-        <section ref={stageRef} className={MONITOR_STAGE_CLASS} aria-label="Agent monitor">
-          <MonitorView agents={agents} parameters={parameters} actions={actions} />
-          <div ref={chromeRef} className="godview-monitor-chrome" {...{ [MONITOR_CHROME_ATTRIBUTE]: '' }}>
-            <AccountUsagePanel />
-          </div>
-          {activeAgent?.agent?.monitor ? (
-            <AgentMonitorInspector
-              key={activeAgent.agent.monitor.runtimeRunId}
-              state={activeAgent.agent.monitor}
-              allStates={agents.flatMap((agent) => (agent.agent?.monitor ? [agent.agent.monitor] : []))}
-              nowMs={Date.now()}
-            />
-          ) : null}
-        </section>
-
-        <section className="godview-terminal-deck" aria-label="Terminal panes">
-          <WorkspaceReporterContext.Provider value={setWorkspace}>
-            <GhostteaWorkspace
-              platform={platform}
-              {...(!window.desktop.saveAppearance
-                ? { theme: theme === 'dark' ? TERMINAL_THEMES.midnight : TERMINAL_THEMES.daylight }
-                : {})}
-              storageKey={WORKSPACE_STORAGE_KEY}
-              sidebar={WorkspaceReporter}
-              decoratePane={decoratePane}
-              paneMeta={persistPaneRecovery}
-              createSplitSession={createSplitSession}
-              onRehydratePane={rehydratePane}
-              claimExistingSessions={window.desktop.claimExistingSessions}
-              enableRemoteSessions={window.desktop.remoteSessionsEnabled}
-              active={active}
-              showTitlebar={false}
-              onSessionsChange={reportTabSessions}
-              onActiveSessionChange={(session) => window.desktop.updateActiveCwd(session?.cwd ?? undefined)}
-              {...(window.desktop.initialCwd ? { initialCwd: window.desktop.initialCwd } : {})}
-            />
-          </WorkspaceReporterContext.Provider>
-        </section>
-      </main>
+      <section className="vf-godview-terminal-deck" aria-label="Terminal panes">
+        <WorkspaceReporterContext.Provider value={setWorkspace}>
+          <GhostteaWorkspace
+            platform={platform}
+            {...(!window.desktop.saveAppearance
+              ? { theme: theme === 'dark' ? TERMINAL_THEMES.midnight : TERMINAL_THEMES.daylight }
+              : {})}
+            storageKey={WORKSPACE_STORAGE_KEY}
+            sidebar={WorkspaceReporter}
+            decoratePane={decoratePane}
+            paneMeta={persistPaneRecovery}
+            createSplitSession={createSplitSession}
+            onRehydratePane={rehydratePane}
+            claimExistingSessions={window.desktop.claimExistingSessions}
+            enableRemoteSessions={window.desktop.remoteSessionsEnabled}
+            active={active}
+            showTitlebar={false}
+            onSessionsChange={reportTabSessions}
+            onActiveSessionChange={(session) => window.desktop.updateActiveCwd(session?.cwd ?? undefined)}
+            {...(window.desktop.initialCwd ? { initialCwd: window.desktop.initialCwd } : {})}
+          />
+        </WorkspaceReporterContext.Provider>
+      </section>
     </div>
   );
 }

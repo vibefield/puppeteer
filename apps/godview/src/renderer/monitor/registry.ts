@@ -1,4 +1,5 @@
 import { listMonitorView } from '../views/list/index.js';
+import { rainMonitorView } from '../views/rain/index.js';
 import { swarmMonitorView } from '../views/swarm/index.js';
 import type { AgentMonitorView } from './types.js';
 
@@ -7,7 +8,7 @@ import type { AgentMonitorView } from './types.js';
  * `views/` and one entry here — the same shape `createBuiltinProviders` gives
  * agent providers in packages/runtime.
  */
-export const MONITOR_VIEWS: readonly AgentMonitorView[] = [swarmMonitorView, listMonitorView];
+export const MONITOR_VIEWS: readonly AgentMonitorView[] = [swarmMonitorView, listMonitorView, rainMonitorView];
 
 export const DEFAULT_MONITOR_VIEW_ID = swarmMonitorView.id;
 

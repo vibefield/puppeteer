@@ -62,7 +62,7 @@ function familyQualifier(state: AgentMonitorState, family: MonitorMetricFamily, 
 
 function Metric({ label, value }: { label: string; value: string }) {
   return (
-    <span className="godview-inspector-metric">
+    <span className="vf-godview-inspector-metric">
       <small>{label}</small>
       <strong>{value}</strong>
     </span>
@@ -73,10 +73,13 @@ export function AgentMonitorInspector({
   state,
   allStates,
   nowMs,
+  account,
 }: {
   state: AgentMonitorState;
   allStates: readonly AgentMonitorState[];
   nowMs: number;
+  /** Label of the account this run is bound to, when it is a registered one. */
+  account?: string;
 }) {
   const [artifactResults, setArtifactResults] = useState<Record<string, MonitorArtifactReadResult>>({});
   const [busyArtifact, setBusyArtifact] = useState<string>();
@@ -108,13 +111,14 @@ export function AgentMonitorInspector({
   };
 
   return (
-    <aside className="godview-monitor-inspector" aria-label="Agent runtime details">
+    <aside className="vf-godview-monitor-inspector" aria-label="Agent runtime details">
       <header>
         <strong>RUNTIME OBSERVATION</strong>
+        {account ? <small>{account}</small> : null}
         <span className={`is-${state.status}`}>{state.status}</span>
       </header>
 
-      <div className="godview-inspector-metrics">
+      <div className="vf-godview-inspector-metrics">
         <Metric label="run tokens" value={number(state.usage.cumulativeTokens)} />
         <Metric
           label={
@@ -176,12 +180,12 @@ export function AgentMonitorInspector({
         <section>
           <h4>Needs attention</h4>
           {state.blockers.map((blocker) => (
-            <article className={`godview-inspector-blocker is-${blocker.kind}`} key={blocker.id}>
+            <article className={`vf-godview-inspector-blocker is-${blocker.kind}`} key={blocker.id}>
               <strong>{blocker.kind}</strong>
               <span>{monitorBlockerDetail(blocker)}</span>
               {blocker.kind === 'question'
                 ? blocker.questions.map((question, index) => (
-                    <div className="godview-inspector-question" key={question.id ?? `${blocker.id}:${index}`}>
+                    <div className="vf-godview-inspector-question" key={question.id ?? `${blocker.id}:${index}`}>
                       {question.header ? <b>{question.header}</b> : null}
                       <span>{question.prompt}</span>
                       {question.options?.length ? (
@@ -383,7 +387,7 @@ export function AgentMonitorInspector({
 
       <section>
         <h4>Observation readiness</h4>
-        <ul className="godview-inspector-readiness">
+        <ul className="vf-godview-inspector-readiness">
           {DETAIL_FAMILIES.map((family) => (
             <li key={family}>
               <span>{family}</span>

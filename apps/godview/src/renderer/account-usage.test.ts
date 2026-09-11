@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import type { AccountUsageFetchResult, AccountUsageProvider } from '@vibecook/puppeteer-core';
 import type { AccountUsageEntry } from '../protocol.js';
-import { accountUsageView, accountUsageViews, formatUsageReset } from './account-usage.js';
+import { accountUsageView, accountUsageViews, formatUsageAge, formatUsageReset, usageTiles } from './account-usage.js';
 
 const NOW = Date.parse('2026-07-23T20:00:00.000Z');
 const PROVIDER: AccountUsageProvider = {
@@ -185,5 +185,127 @@ describe('per-account usage rows', () => {
     const views = accountUsageViews({ refreshedAt: '2026-07-23T20:00:00.000Z', entries: [reading(PROVIDER)] }, NOW);
     expect(views[0]?.key).toBe('example-agent');
     expect(views[0]?.accountLabel).toBeUndefined();
+  });
+});
+
+describe('the usage column', () => {
+  const at = (iso: string) => iso;
+  function available(
+    id: string,
+    metrics: { label: string; used: number; resetsAt?: string }[],
+    extra: Partial<AccountUsageEntry> = {},
+  ): AccountUsageEntry {
+    return {
+      provider: { ...PROVIDER, id, label: id },
+      result: {
+        status: 'available',
+        snapshot: {
+          provider: id,
+          fetchedAt: at('2026-07-23T19:59:48.000Z'),
+          scope: 'subscription',
+          source: { kind: 'native-protocol', stability: 'documented' },
+          metrics: metrics.map((metric, index) => ({
+            id: `${id}-${index}`,
+            label: metric.label,
+            kind: 'window' as const,
+            usedPercent: metric.used,
+            ...(metric.resetsAt ? { resetsAt: metric.resetsAt } : {}),
+          })),
+        },
+      },
+      ...extra,
+    };
+  }
+  function failed(
+    id: string,
+    status: 'unauthenticated' | 'unsupported' | 'unavailable',
+    code?: 'rate-limited',
+  ): AccountUsageEntry {
+    return {
+      provider: { ...PROVIDER, id, label: id },
+      result: { status, provider: id, message: 'native detail', retryable: true, ...(code ? { code } : {}) },
+    };
+  }
+
+  it('places windows in fixed ring slots by kind and keeps every window for the popup', () => {
+    const [tile] = usageTiles(
+      {
+        refreshedAt: at('2026-07-23T20:00:00.000Z'),
+        entries: [
+          available('claude', [
+            { label: '5H', used: 12, resetsAt: '2026-07-23T23:31:00.000Z' },
+            { label: '7D', used: 25 },
+            { label: 'FABLE', used: 58 },
+            { label: 'OPUS', used: 71 },
+          ]),
+        ],
+      },
+      NOW,
+    );
+    expect(tile?.rings.map((ring) => [ring.slot, ring.label])).toEqual([
+      [0, '5H'],
+      [1, '7D'],
+      [2, 'OPUS'],
+    ]);
+    expect(tile?.windows.map((window) => window.label)).toEqual(['5H', '7D', 'FABLE', 'OPUS']);
+    expect(tile?.figure).toBe('71%');
+    expect(tile?.hot).toBe(false);
+    expect(tile?.foot).toEqual({ lead: 'FETCHED', strong: '12s AGO', count: '4 WINDOWS' });
+    expect(tile?.windows[0]?.resetLabel).toBe('3h 31m');
+  });
+
+  it('orders by pressure: rate limited, then the tightest window, then the unmeasured states', () => {
+    const tiles = usageTiles(
+      {
+        refreshedAt: at('2026-07-23T20:00:00.000Z'),
+        entries: [
+          failed('grok', 'unsupported'),
+          available('pi', []),
+          available('codex', [{ label: '5H', used: 33 }]),
+          failed('hermes', 'unauthenticated'),
+          available('opencode', [
+            { label: '5H', used: 88 },
+            { label: '7D', used: 52 },
+          ]),
+          available('antigravity', [{ label: '5H', used: 100 }], {
+            refreshFailure: {
+              status: 'unavailable',
+              provider: 'antigravity',
+              message: 'native detail',
+              retryable: true,
+              code: 'rate-limited',
+              retryAt: '2026-07-23T20:42:00.000Z',
+            },
+          }),
+          failed('kimi', 'unavailable'),
+        ],
+      },
+      NOW,
+    );
+    expect(tiles.map((tile) => [tile.key, tile.state, tile.figure])).toEqual([
+      ['antigravity', 'rate-limited', 'RL'],
+      ['opencode', 'available', '88%'],
+      ['codex', 'available', '33%'],
+      ['hermes', 'unauthenticated', 'SIGN IN'],
+      ['grok', 'unsupported', 'N/A'],
+      ['pi', 'no-data', 'NO DATA'],
+      ['kimi', 'unavailable', 'RETRY'],
+    ]);
+    expect(tiles[0]?.hot).toBe(true);
+    expect(tiles[0]?.foot).toEqual({ lead: 'RETRYING', strong: 'IN 42m', count: '1 WINDOW' });
+    expect(tiles[1]?.hot).toBe(true);
+    expect(tiles[1]?.rings.map((ring) => ring.hot)).toEqual([true, false]);
+    expect(tiles[3]?.figureFaint).toBe(true);
+    expect(tiles[3]?.note).toMatch(/Sign in/);
+    expect(tiles[3]?.foot).toEqual({ lead: 'CHECKED', strong: '0s AGO' });
+    expect(tiles.map((tile) => tile.aria)).not.toContainEqual(expect.stringContaining('native detail'));
+  });
+
+  it('formats fetch ages compactly', () => {
+    expect(formatUsageAge('2026-07-23T19:59:50.000Z', NOW)).toBe('10s AGO');
+    expect(formatUsageAge('2026-07-23T19:57:00.000Z', NOW)).toBe('3m AGO');
+    expect(formatUsageAge('2026-07-23T17:00:00.000Z', NOW)).toBe('3h AGO');
+    expect(formatUsageAge('2026-07-21T20:00:00.000Z', NOW)).toBe('2d AGO');
+    expect(formatUsageAge(undefined, NOW)).toBeUndefined();
   });
 });

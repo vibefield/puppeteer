@@ -7,7 +7,7 @@
  * scrolling view clears it with `--monitor-chrome-height`. A view that does not
  * care simply never looks.
  */
-export const MONITOR_STAGE_CLASS = 'godview-monitor-stage';
+export const MONITOR_STAGE_CLASS = 'vf-godview-monitor-stage';
 export const MONITOR_CHROME_ATTRIBUTE = 'data-monitor-chrome';
 export const MONITOR_CHROME_SELECTOR = `[${MONITOR_CHROME_ATTRIBUTE}]`;
 

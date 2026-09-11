@@ -1,48 +1,39 @@
-import {
-  useEffect,
-  useMemo,
-  useRef,
-  useState,
-  type CSSProperties,
-  type PointerEvent as ReactPointerEvent,
-} from 'react';
+import { useEffect, useMemo, useRef, useState, type PointerEvent as ReactPointerEvent } from 'react';
 import Matter from 'matter-js';
-import { AgentIcon } from '../../AgentIcon.js';
-import type { AgentVisualStatus } from '../../agent-status.js';
 import { monitorChromeElements } from '../../monitor/chrome.js';
 import type { AgentMonitorProps, MonitorAgent } from '../../monitor/types.js';
-import { normalizeSwarmParameters, radiusForStatus, type SwarmParameters } from './swarm-parameters.js';
+import { bubbleModel, workingShares, type SwarmBubbleModel } from './bubble-model.js';
+import { resolveCssColor, type Rgba } from './gpu/color.js';
+import { createSwarmRenderer, type RenderBody, type SwarmRenderer, type SwarmTheme } from './gpu/swarm-renderer.js';
+import { normalizeSwarmParameters, type SwarmParameters } from './swarm-parameters.js';
+import { resolveSwarmTheme } from './swarm-theme.js';
+import './swarm.css';
 
-interface IgnitionParticleStyle extends CSSProperties {
-  '--ignition-angle': string;
-  '--ignition-delay': string;
-  '--ignition-distance': string;
-  '--ignition-duration': string;
-  '--ignition-size': string;
-}
-
-function particleNoise(index: number, channel: number): number {
-  const value = Math.sin((index + 1) * 12.9898 + (channel + 1) * 78.233) * 43758.5453;
-  return value - Math.floor(value);
-}
-
-const IGNITION_PARTICLES: readonly IgnitionParticleStyle[] = Array.from({ length: 24 }, (_, index) => ({
-  '--ignition-angle': `${(particleNoise(index, 0) * 360).toFixed(2)}deg`,
-  '--ignition-delay': `${(-particleNoise(index, 1) * 2.2).toFixed(2)}s`,
-  '--ignition-distance': `${(24 + particleNoise(index, 2) * 34).toFixed(2)}px`,
-  '--ignition-duration': `${(1.05 + particleNoise(index, 3) * 1.35).toFixed(2)}s`,
-  '--ignition-size': `${(2 + particleNoise(index, 4) * 1.5).toFixed(2)}px`,
-}));
+// The swarm — the matter.js agent field, drawn by WebGPU (RFC 005).
+//
+// Status is size and treatment, never a decorative hue: the per-bubble color is
+// a §2.6 ORGANIZATIONAL accent (stable per session, groups and labels), and the
+// state reading comes from §2.5 through the palette the stage hands down.
+//
+// This file owns physics, placement, pointer gestures, field-level creation,
+// and the DOM that is not drawing: a hidden button per body for keyboard and
+// assistive access, and the hover tooltip. `bubble-model.ts` owns what a body
+// says; `gpu/swarm-renderer.ts` owns how it is painted.
 
 interface PhysicsBody {
   body: Matter.Body;
+  /** The physics radius, which jumps; the visual one springs after it. */
   currentRadius: number;
   targetRadius: number;
-  pointerId?: number;
-  pointerStartX: number;
-  pointerStartY: number;
+  visualRadius: number;
+  visualVelocity: number;
+  spawnedAt: number;
+  seed: number;
+  /** Arrival order, for a stable draw order within one status. */
+  arrival: number;
   dragConstraint?: Matter.Constraint;
-  dragged: boolean;
+  /** When this terminal's foreground job was first seen. */
+  runningSince?: number;
 }
 
 interface ChromeObstacle {
@@ -58,63 +49,42 @@ interface PhysicsWorld {
   obstacles: readonly ChromeObstacle[];
 }
 
+interface Drag {
+  id: string;
+  pointerId: number;
+  startX: number;
+  startY: number;
+  dragged: boolean;
+}
+
+interface Hold {
+  pointerId: number;
+  clientX: number;
+  clientY: number;
+  x: number;
+  y: number;
+  startedAt: number;
+}
+
 const PHYSICAL_GAP = 4;
 const CHROME_OBSTACLE_PADDING = 7;
 const DRAG_STIFFNESS = 0.2;
 const WALL_THICKNESS = 5000;
-const SPAWN_DURATION_MS = 720;
 const SPAWN_CLEARANCE = 12;
 const SPAWN_CANDIDATES = 40;
 const GOLDEN_ANGLE = Math.PI * (3 - Math.sqrt(5));
 const LONG_PRESS_DURATION_MS = 520;
 const LONG_PRESS_MOVE_TOLERANCE = 8;
+const SPAWN_DURATION_MS = 720;
+/** Critically damped: about 90% of a size change lands within 300ms. */
+const RADIUS_SPRING_OMEGA = 16;
+const GRID_PITCH = 24;
+/** The burn graph scrolls: models are refreshed on this cadence even when nothing else changed. */
+const MODEL_REFRESH_MS = 1000;
+const STATUS_RANK: Record<SwarmBubbleModel['appearance'], number> = { idle: 0, working: 1, blocked: 2 };
 
-type SwarmVisualState = AgentVisualStatus | 'ignited';
-
-/**
- * The swarm's own reading of status, and the reason a live agent is never drawn
- * at the idle size: the smallest body is reserved for a terminal nobody has
- * claimed, so an agent merely sitting ready still reads as present.
- */
-function swarmVisualState(agent: MonitorAgent): SwarmVisualState {
-  if (!agent.agent) return agent.status;
-  switch (agent.status) {
-    case 'idle':
-      return 'working';
-    case 'working':
-      return 'ignited';
-    case 'blocked':
-      return 'blocked';
-  }
-}
-
-function swarmAppearance(state: SwarmVisualState): AgentVisualStatus {
-  return state === 'ignited' ? 'working' : state;
-}
-
-function animateSpawn(element: HTMLButtonElement): void {
-  if (
-    typeof element.animate !== 'function' ||
-    (typeof window.matchMedia === 'function' && window.matchMedia('(prefers-reduced-motion: reduce)').matches)
-  ) {
-    return;
-  }
-
-  const animation = element.animate(
-    [
-      { transform: 'scale(0)', opacity: 0, offset: 0, easing: 'cubic-bezier(0.16, 1, 0.3, 1)' },
-      { transform: 'scale(1.2)', opacity: 1, offset: 0.52, easing: 'cubic-bezier(0.22, 1, 0.36, 1)' },
-      { transform: 'scale(0.96)', opacity: 1, offset: 0.72, easing: 'ease-out' },
-      { transform: 'scale(1.035)', opacity: 1, offset: 0.88, easing: 'ease-in-out' },
-      { transform: 'scale(1)', opacity: 1, offset: 1 },
-    ],
-    { duration: SPAWN_DURATION_MS, fill: 'both' },
-  );
-
-  void animation.finished.then(
-    () => animation.cancel(),
-    () => undefined,
-  );
+function prefersReducedMotion(): boolean {
+  return typeof window.matchMedia === 'function' && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
 }
 
 function findSpawnPosition(
@@ -167,42 +137,57 @@ function clampSpawnPosition(width: number, height: number, radius: number, posit
   };
 }
 
-interface PendingLongPress {
-  pointerId: number;
-  clientX: number;
-  clientY: number;
-  position: { x: number; y: number };
+/** The arrival curve the DOM used to replay: 0 → 1.2 → 0.96 → 1.035 → 1 over 720ms. */
+function arrival(elapsedMs: number): { scale: number; opacity: number } {
+  const t = elapsedMs / SPAWN_DURATION_MS;
+  if (t >= 1) return { scale: 1, opacity: 1 };
+  if (t <= 0) return { scale: 0, opacity: 0 };
+  const outQuint = (u: number): number => 1 - (1 - u) ** 5;
+  const outQuad = (u: number): number => 1 - (1 - u) ** 2;
+  const inOut = (u: number): number => (u < 0.5 ? 2 * u * u : 1 - (-2 * u + 2) ** 2 / 2);
+  if (t < 0.52) {
+    const u = outQuint(t / 0.52);
+    return { scale: 1.2 * u, opacity: u };
+  }
+  if (t < 0.72) return { scale: 1.2 + (0.96 - 1.2) * outQuint((t - 0.52) / 0.2), opacity: 1 };
+  if (t < 0.88) return { scale: 0.96 + (1.035 - 0.96) * outQuad((t - 0.72) / 0.16), opacity: 1 };
+  return { scale: 1.035 + (1 - 1.035) * inOut((t - 0.88) / 0.12), opacity: 1 };
 }
 
-export function AgentSwarm({ agents, parameters, actions }: AgentMonitorProps) {
+export function AgentSwarm({ agents, parameters, actions, palette }: AgentMonitorProps) {
   const swarm = useMemo<SwarmParameters>(() => normalizeSwarmParameters(parameters), [parameters]);
-  const containerRef = useRef<HTMLDivElement>(null);
-  const elementRefs = useRef(new Map<string, HTMLDivElement>());
-  const bubbleRefs = useRef(new Map<string, HTMLButtonElement>());
+  const containerRef = useRef<HTMLElement>(null);
+  const canvasRef = useRef<HTMLCanvasElement>(null);
   const bodiesRef = useRef(new Map<string, PhysicsBody>());
-  const spawnedIdsRef = useRef(new Set<string>());
-  const longPressRef = useRef<PendingLongPress | undefined>(undefined);
-  const longPressTimerRef = useRef<number | undefined>(undefined);
   const worldRef = useRef<PhysicsWorld | undefined>(undefined);
+  const rendererRef = useRef<SwarmRenderer | undefined>(undefined);
   const parametersRef = useRef(swarm);
-  const [longPressPosition, setLongPressPosition] = useState<{ x: number; y: number }>();
+  const agentsRef = useRef<readonly MonitorAgent[]>(agents);
+  const modelsRef = useRef<{ byId: Map<string, SwarmBubbleModel>; at: number; agents: readonly MonitorAgent[] }>({
+    byId: new Map(),
+    at: 0,
+    agents: [],
+  });
+  const themeRef = useRef<SwarmTheme | undefined>(undefined);
+  const colourCacheRef = useRef(new Map<string, Rgba>());
+  const orderRef = useRef<readonly RenderBody[]>([]);
+  const arrivalCounterRef = useRef(0);
+  const dragRef = useRef<Drag | undefined>(undefined);
+  const holdRef = useRef<Hold | undefined>(undefined);
+  const holdTimerRef = useRef<number | undefined>(undefined);
+  const focusedIdRef = useRef<string | undefined>(undefined);
+  const hoveredIdRef = useRef<string | undefined>(undefined);
+  const [hovered, setHovered] = useState<{ agent: MonitorAgent; x: number; y: number } | undefined>(undefined);
+  const [cursor, setCursor] = useState<'default' | 'grab' | 'grabbing'>('default');
+  const [failure, setFailure] = useState<string | undefined>(undefined);
 
-  const cancelLongPress = (): void => {
-    if (longPressTimerRef.current !== undefined) window.clearTimeout(longPressTimerRef.current);
-    longPressTimerRef.current = undefined;
-    longPressRef.current = undefined;
-    setLongPressPosition(undefined);
-  };
-
-  useEffect(
-    () => () => {
-      if (longPressTimerRef.current !== undefined) window.clearTimeout(longPressTimerRef.current);
-    },
-    [],
-  );
+  useEffect(() => {
+    agentsRef.current = agents;
+  }, [agents]);
 
   useEffect(() => {
     parametersRef.current = swarm;
+    modelsRef.current.at = 0;
     const world = worldRef.current;
     if (!world) return;
     for (const wrapper of bodiesRef.current.values()) {
@@ -212,6 +197,62 @@ export function AgentSwarm({ agents, parameters, actions }: AgentMonitorProps) {
     for (const wall of world.walls) wall.restitution = swarm.restitution;
     for (const obstacle of world.obstacles) obstacle.body.restitution = swarm.restitution;
   }, [swarm]);
+
+  // The palette arrives as CSS; the GPU wants numbers. Resolved here, once per
+  // theme, in the container's own cascade so any syntax the tokens use resolves.
+  useEffect(() => {
+    themeRef.current = resolveSwarmTheme(palette.swarm, containerRef.current ?? undefined);
+    colourCacheRef.current.clear();
+  }, [palette]);
+
+  const cancelHold = (): void => {
+    if (holdTimerRef.current !== undefined) window.clearTimeout(holdTimerRef.current);
+    holdTimerRef.current = undefined;
+    holdRef.current = undefined;
+  };
+
+  useEffect(
+    () => () => {
+      if (holdTimerRef.current !== undefined) window.clearTimeout(holdTimerRef.current);
+    },
+    [],
+  );
+
+  // The renderer: created once the canvas exists, rebuilt if the device is lost.
+  useEffect(() => {
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+    let alive = true;
+    let current: SwarmRenderer | undefined;
+    const start = async (): Promise<void> => {
+      const result = await createSwarmRenderer(canvas);
+      if (!alive) {
+        if (result.ok) result.renderer.destroy();
+        return;
+      }
+      if (!result.ok) {
+        setFailure(result.reason);
+        return;
+      }
+      current = result.renderer;
+      rendererRef.current = current;
+      setFailure(undefined);
+      const container = containerRef.current;
+      if (container) current.resize(container.clientWidth, container.clientHeight, window.devicePixelRatio || 1);
+      void current.lost.then((info) => {
+        if (!alive || rendererRef.current !== current) return;
+        console.warn('[swarm] WebGPU device lost, rebuilding', info.message);
+        rendererRef.current = undefined;
+        void start();
+      });
+    };
+    void start();
+    return () => {
+      alive = false;
+      rendererRef.current = undefined;
+      current?.destroy();
+    };
+  }, []);
 
   useEffect(() => {
     const container = containerRef.current;
@@ -243,10 +284,12 @@ export function AgentSwarm({ agents, parameters, actions }: AgentMonitorProps) {
     });
     Matter.Composite.add(engine.world, [...walls, ...obstacles.map((obstacle) => obstacle.body)]);
     worldRef.current = { engine, walls, obstacles };
+    const root = container.closest<HTMLElement>('.vf-godview');
 
     const updateBounds = (): void => {
       width = container.clientWidth;
       height = container.clientHeight;
+      rendererRef.current?.resize(width, height, window.devicePixelRatio || 1);
       Matter.Body.setPosition(walls[0], { x: width / 2, y: height + WALL_THICKNESS / 2 });
       Matter.Body.setPosition(walls[1], { x: width / 2, y: -WALL_THICKNESS / 2 });
       Matter.Body.setPosition(walls[2], { x: -WALL_THICKNESS / 2, y: height / 2 });
@@ -272,12 +315,55 @@ export function AgentSwarm({ agents, parameters, actions }: AgentMonitorProps) {
     for (const obstacle of obstacles) resizeObserver.observe(obstacle.element);
     updateBounds();
 
+    const accentOf = (value: string): Rgba => {
+      const cached = colourCacheRef.current.get(value);
+      if (cached) return cached;
+      const resolved = resolveCssColor(value, container);
+      colourCacheRef.current.set(value, resolved);
+      return resolved;
+    };
+
+    const refreshModels = (now: number): void => {
+      const models = modelsRef.current;
+      const nowMs = Date.now();
+      const byId = new Map<string, SwarmBubbleModel>();
+      const shares = workingShares(agentsRef.current);
+      for (const agent of agentsRef.current) {
+        const wrapper = bodiesRef.current.get(agent.id);
+        byId.set(
+          agent.id,
+          bubbleModel({
+            agent,
+            parameters: parametersRef.current,
+            nowMs,
+            unread: agent.unread === true,
+            workingShare: shares.get(agent.id) ?? 0,
+            ...(wrapper?.runningSince === undefined ? {} : { runningSinceMs: wrapper.runningSince }),
+          }),
+        );
+      }
+      models.byId = byId;
+      models.at = now;
+      models.agents = agentsRef.current;
+    };
+
     let frame = 0;
     let previousTime = performance.now();
+    let dpr = window.devicePixelRatio || 1;
+    const started = performance.now();
     const render = (time: number): void => {
+      frame = requestAnimationFrame(render);
       const delta = Math.min(1000 / 30, Math.max(1000 / 120, time - previousTime));
       previousTime = time;
       const currentParameters = parametersRef.current;
+      const nextDpr = window.devicePixelRatio || 1;
+      if (nextDpr !== dpr) {
+        dpr = nextDpr;
+        rendererRef.current?.resize(width, height, dpr);
+      }
+      const models = modelsRef.current;
+      if (models.agents !== agentsRef.current || time - models.at >= MODEL_REFRESH_MS) refreshModels(time);
+
       for (const wrapper of bodiesRef.current.values()) {
         const { body } = wrapper;
         if (!wrapper.dragConstraint) {
@@ -291,25 +377,69 @@ export function AgentSwarm({ agents, parameters, actions }: AgentMonitorProps) {
           Matter.Body.scale(body, scale, scale);
           wrapper.currentRadius = wrapper.targetRadius;
         }
+        // The visual radius follows on a critically damped spring.
+        const dt = delta / 1000;
+        const displacement = wrapper.visualRadius - wrapper.targetRadius;
+        wrapper.visualVelocity +=
+          (-RADIUS_SPRING_OMEGA * RADIUS_SPRING_OMEGA * displacement -
+            2 * RADIUS_SPRING_OMEGA * wrapper.visualVelocity) *
+          dt;
+        wrapper.visualRadius += wrapper.visualVelocity * dt;
+        if (Math.abs(wrapper.visualRadius - wrapper.targetRadius) < 0.01 && Math.abs(wrapper.visualVelocity) < 0.01) {
+          wrapper.visualRadius = wrapper.targetRadius;
+          wrapper.visualVelocity = 0;
+        }
       }
 
       Matter.Engine.update(engine, delta);
 
+      const renderer = rendererRef.current;
+      const theme = themeRef.current;
+      if (!renderer || !theme) return;
+      const motion = !prefersReducedMotion() && root?.getAttribute('data-godview-animations') !== 'off';
+      const focused = focusedIdRef.current;
+      const bodies: RenderBody[] = [];
       for (const [id, wrapper] of bodiesRef.current) {
-        const element = elementRefs.current.get(id);
-        const bubble = bubbleRefs.current.get(id);
-        if (!element || !bubble) continue;
-        const radius = wrapper.currentRadius;
-        element.style.width = `${radius * 2}px`;
-        element.style.height = `${radius * 2}px`;
-        element.style.transform = `translate3d(${wrapper.body.position.x - radius}px, ${wrapper.body.position.y - radius}px, 0)`;
-        if (!spawnedIdsRef.current.has(id)) {
-          spawnedIdsRef.current.add(id);
-          animateSpawn(bubble);
-          element.style.visibility = '';
-        }
+        const model = models.byId.get(id);
+        if (!model) continue;
+        const landing = motion ? arrival(time - wrapper.spawnedAt) : { scale: 1, opacity: 1 };
+        bodies.push({
+          model,
+          x: wrapper.body.position.x,
+          y: wrapper.body.position.y,
+          radius: wrapper.visualRadius,
+          scale: landing.scale,
+          opacity: landing.opacity,
+          focus: focused === id,
+          seed: wrapper.seed,
+          accent: accentOf(model.accent),
+          ...(model.linked ? { link: accentOf(model.linked) } : {}),
+        });
       }
-      frame = requestAnimationFrame(render);
+      bodies.sort((left, right) => {
+        const rank = STATUS_RANK[left.model.appearance] - STATUS_RANK[right.model.appearance];
+        if (rank !== 0) return rank;
+        return (
+          (bodiesRef.current.get(left.model.id)?.arrival ?? 0) - (bodiesRef.current.get(right.model.id)?.arrival ?? 0)
+        );
+      });
+      orderRef.current = bodies;
+
+      const hold = holdRef.current;
+      renderer.render({
+        time: (time - started) / 1000,
+        motion,
+        fillOpacity: currentParameters.bubbleFillOpacity,
+        gridPitch: GRID_PITCH,
+        glow: {
+          reach: currentParameters.glowReach,
+          strength: currentParameters.glowStrength,
+          breath: currentParameters.glowBreath,
+        },
+        theme,
+        bodies,
+        ...(hold ? { hold: { x: hold.x, y: hold.y, progress: (time - hold.startedAt) / LONG_PRESS_DURATION_MS } } : {}),
+      });
     };
     frame = requestAnimationFrame(render);
 
@@ -317,6 +447,7 @@ export function AgentSwarm({ agents, parameters, actions }: AgentMonitorProps) {
       cancelAnimationFrame(frame);
       resizeObserver.disconnect();
       bodiesRef.current.clear();
+      orderRef.current = [];
       Matter.Engine.clear(engine);
       Matter.Composite.clear(engine.world, false, true);
       worldRef.current = undefined;
@@ -335,13 +466,27 @@ export function AgentSwarm({ agents, parameters, actions }: AgentMonitorProps) {
       if (wrapper.dragConstraint) Matter.Composite.remove(world.engine.world, wrapper.dragConstraint);
       Matter.Composite.remove(world.engine.world, wrapper.body);
       bodiesRef.current.delete(id);
-      spawnedIdsRef.current.delete(id);
+      if (dragRef.current?.id === id) dragRef.current = undefined;
     }
+    const nowMs = Date.now();
+    const shares = workingShares(agents);
     for (const agent of agents) {
-      const targetRadius = radiusForStatus(swarm, swarmAppearance(swarmVisualState(agent)));
+      const model = bubbleModel({
+        agent,
+        parameters: swarm,
+        nowMs,
+        unread: agent.unread === true,
+        workingShare: shares.get(agent.id) ?? 0,
+      });
+      const targetRadius = model.radius;
       const existing = bodiesRef.current.get(agent.id);
       if (existing) {
         existing.targetRadius = targetRadius;
+        // The clock starts at the first sight of a foreground job and survives
+        // an `unknown` observation; only the shell's idle prompt, or an agent
+        // claiming the terminal, stops it.
+        if (model.state === 'terminal-running') existing.runningSince ??= nowMs;
+        else if (agent.agent || agent.session.activity?.kind !== 'unknown') delete existing.runningSince;
         continue;
       }
       const spawnPosition = agent.spawnHint
@@ -352,228 +497,243 @@ export function AgentSwarm({ agents, parameters, actions }: AgentMonitorProps) {
         frictionAir: swarm.frictionAir,
         friction: 0.1,
       });
+      arrivalCounterRef.current += 1;
       bodiesRef.current.set(agent.id, {
         body,
         currentRadius: targetRadius,
         targetRadius,
-        pointerStartX: 0,
-        pointerStartY: 0,
-        dragged: false,
+        visualRadius: targetRadius,
+        visualVelocity: 0,
+        spawnedAt: performance.now(),
+        seed: Math.random() * Math.PI * 2,
+        arrival: arrivalCounterRef.current,
+        ...(model.state === 'terminal-running' ? { runningSince: nowMs } : {}),
       });
       Matter.Composite.add(world.engine.world, body);
     }
+    modelsRef.current.at = 0;
   }, [agents, swarm]);
 
-  const moveBody = (event: ReactPointerEvent<HTMLButtonElement>, id: string): void => {
-    const wrapper = bodiesRef.current.get(id);
+  const localPoint = (event: ReactPointerEvent<HTMLElement>): { x: number; y: number } | undefined => {
     const bounds = containerRef.current?.getBoundingClientRect();
-    if (!wrapper || !bounds || wrapper.pointerId !== event.pointerId || !wrapper.dragConstraint) return;
-    const x = event.clientX - bounds.left;
-    const y = event.clientY - bounds.top;
-    if (Math.hypot(x - wrapper.pointerStartX, y - wrapper.pointerStartY) >= 5) wrapper.dragged = true;
-    wrapper.dragConstraint.pointA.x = x;
-    wrapper.dragConstraint.pointA.y = y;
+    if (!bounds) return undefined;
+    return { x: event.clientX - bounds.left, y: event.clientY - bounds.top };
   };
+
+  /** The topmost body under the point, in draw order. */
+  const hitTest = (x: number, y: number): RenderBody | undefined => {
+    const order = orderRef.current;
+    for (let index = order.length - 1; index >= 0; index -= 1) {
+      const candidate = order[index]!;
+      if (Math.hypot(x - candidate.x, y - candidate.y) <= candidate.radius * candidate.scale) return candidate;
+    }
+    return undefined;
+  };
+
+  const agentById = (id: string): MonitorAgent | undefined => agentsRef.current.find((agent) => agent.id === id);
+
+  const endDrag = (): void => {
+    const drag = dragRef.current;
+    const world = worldRef.current;
+    if (!drag) return;
+    const wrapper = bodiesRef.current.get(drag.id);
+    if (world && wrapper?.dragConstraint) Matter.Composite.remove(world.engine.world, wrapper.dragConstraint);
+    if (wrapper) delete wrapper.dragConstraint;
+    dragRef.current = undefined;
+  };
+
+  const updateHover = (id: string | undefined, x: number, y: number): void => {
+    if (id === hoveredIdRef.current) {
+      if (id) setHovered((current) => (current ? { ...current, x, y } : current));
+      return;
+    }
+    hoveredIdRef.current = id;
+    const agent = id ? agentById(id) : undefined;
+    setHovered(agent ? { agent, x, y } : undefined);
+    setCursor(agent ? 'grab' : 'default');
+  };
+
+  const onPointerDown = (event: ReactPointerEvent<HTMLElement>): void => {
+    if (event.button !== 0) return;
+    const point = localPoint(event);
+    const world = worldRef.current;
+    if (!point || !world) return;
+    cancelHold();
+    const hit = hitTest(point.x, point.y);
+    if (hit) {
+      const wrapper = bodiesRef.current.get(hit.model.id);
+      if (!wrapper) return;
+      endDrag();
+      wrapper.dragConstraint = Matter.Constraint.create({
+        pointA: { x: point.x, y: point.y },
+        bodyB: wrapper.body,
+        pointB: { x: point.x - wrapper.body.position.x, y: point.y - wrapper.body.position.y },
+        stiffness: DRAG_STIFFNESS,
+        render: { visible: false },
+      });
+      Matter.Composite.add(world.engine.world, wrapper.dragConstraint);
+      dragRef.current = {
+        id: hit.model.id,
+        pointerId: event.pointerId,
+        startX: point.x,
+        startY: point.y,
+        dragged: false,
+      };
+      event.currentTarget.setPointerCapture(event.pointerId);
+      setCursor('grabbing');
+      setHovered(undefined);
+      event.preventDefault();
+      return;
+    }
+    // Empty field: hold to create a terminal here.
+    const hold: Hold = {
+      pointerId: event.pointerId,
+      clientX: event.clientX,
+      clientY: event.clientY,
+      x: point.x,
+      y: point.y,
+      startedAt: performance.now(),
+    };
+    holdRef.current = hold;
+    event.currentTarget.setPointerCapture(event.pointerId);
+    holdTimerRef.current = window.setTimeout(() => {
+      if (holdRef.current !== hold) return;
+      holdTimerRef.current = undefined;
+      holdRef.current = undefined;
+      void actions.createAt({ x: hold.x, y: hold.y });
+    }, LONG_PRESS_DURATION_MS);
+  };
+
+  const onPointerMove = (event: ReactPointerEvent<HTMLElement>): void => {
+    const point = localPoint(event);
+    if (!point) return;
+    const drag = dragRef.current;
+    if (drag && drag.pointerId === event.pointerId) {
+      const wrapper = bodiesRef.current.get(drag.id);
+      if (!wrapper?.dragConstraint) return;
+      if (Math.hypot(point.x - drag.startX, point.y - drag.startY) >= 5) drag.dragged = true;
+      wrapper.dragConstraint.pointA.x = point.x;
+      wrapper.dragConstraint.pointA.y = point.y;
+      return;
+    }
+    const hold = holdRef.current;
+    if (hold && hold.pointerId === event.pointerId) {
+      if (Math.hypot(event.clientX - hold.clientX, event.clientY - hold.clientY) > LONG_PRESS_MOVE_TOLERANCE)
+        cancelHold();
+      return;
+    }
+    updateHover(hitTest(point.x, point.y)?.model.id, point.x, point.y);
+  };
+
+  const onPointerUp = (event: ReactPointerEvent<HTMLElement>): void => {
+    const point = localPoint(event);
+    const drag = dragRef.current;
+    if (drag && drag.pointerId === event.pointerId) {
+      const wrapper = bodiesRef.current.get(drag.id);
+      if (point && wrapper?.dragConstraint) {
+        wrapper.dragConstraint.pointA.x = point.x;
+        wrapper.dragConstraint.pointA.y = point.y;
+      }
+      const wasDragged = drag.dragged;
+      endDrag();
+      if (!wasDragged) {
+        const agent = agentById(drag.id);
+        if (agent) actions.select(agent);
+        if (wrapper) {
+          Matter.Body.applyForce(wrapper.body, wrapper.body.position, {
+            x: (Math.random() - 0.5) * 0.003,
+            y: (Math.random() - 0.5) * 0.003,
+          });
+        }
+      }
+      setCursor(point && hitTest(point.x, point.y) ? 'grab' : 'default');
+    }
+    if (holdRef.current?.pointerId === event.pointerId) cancelHold();
+    if (event.currentTarget.hasPointerCapture(event.pointerId))
+      event.currentTarget.releasePointerCapture(event.pointerId);
+  };
+
+  const onPointerCancel = (event: ReactPointerEvent<HTMLElement>): void => {
+    if (dragRef.current?.pointerId === event.pointerId) endDrag();
+    if (holdRef.current?.pointerId === event.pointerId) cancelHold();
+    setCursor('default');
+  };
+
+  const onPointerLeave = (): void => {
+    if (dragRef.current) return;
+    updateHover(undefined, 0, 0);
+  };
+
+  const modelFor = (agent: MonitorAgent): SwarmBubbleModel =>
+    modelsRef.current.byId.get(agent.id) ??
+    bubbleModel({
+      agent,
+      parameters: swarm,
+      nowMs: Date.now(),
+      unread: agent.unread === true,
+      workingShare: workingShares(agentsRef.current).get(agent.id) ?? 0,
+    });
 
   return (
     <section
       ref={containerRef}
-      className="godview-swarm"
+      className="vf-monitor-swarm"
+      style={{ cursor }}
       aria-label="Running agent status field"
-      onPointerDown={(event) => {
-        if (event.button !== 0 || event.target !== event.currentTarget) return;
-        const bounds = event.currentTarget.getBoundingClientRect();
-        const pending = {
-          pointerId: event.pointerId,
-          clientX: event.clientX,
-          clientY: event.clientY,
-          position: { x: event.clientX - bounds.left, y: event.clientY - bounds.top },
-        };
-        cancelLongPress();
-        longPressRef.current = pending;
-        setLongPressPosition(pending.position);
-        event.currentTarget.setPointerCapture(event.pointerId);
-        longPressTimerRef.current = window.setTimeout(() => {
-          if (longPressRef.current !== pending) return;
-          longPressTimerRef.current = undefined;
-          longPressRef.current = undefined;
-          setLongPressPosition(undefined);
-          void actions.createAt(pending.position);
-        }, LONG_PRESS_DURATION_MS);
-      }}
-      onPointerMove={(event) => {
-        const pending = longPressRef.current;
-        if (!pending || pending.pointerId !== event.pointerId) return;
-        if (Math.hypot(event.clientX - pending.clientX, event.clientY - pending.clientY) > LONG_PRESS_MOVE_TOLERANCE) {
-          cancelLongPress();
-        }
-      }}
-      onPointerUp={(event) => {
-        if (longPressRef.current?.pointerId === event.pointerId) cancelLongPress();
-        if (event.currentTarget.hasPointerCapture(event.pointerId)) {
-          event.currentTarget.releasePointerCapture(event.pointerId);
-        }
-      }}
-      onPointerCancel={(event) => {
-        if (longPressRef.current?.pointerId === event.pointerId) cancelLongPress();
-      }}
+      onPointerDown={onPointerDown}
+      onPointerMove={onPointerMove}
+      onPointerUp={onPointerUp}
+      onPointerCancel={onPointerCancel}
+      onPointerLeave={onPointerLeave}
     >
-      <div className="godview-swarm-grid" aria-hidden="true" />
-      {longPressPosition ? (
-        <span
-          className="godview-long-press-indicator"
-          style={{ left: longPressPosition.x, top: longPressPosition.y }}
-          aria-hidden="true"
-        />
-      ) : null}
-      {agents.length === 0 ? (
-        <div className="godview-swarm-empty">
+      <canvas ref={canvasRef} className="vf-monitor-swarm-canvas" aria-hidden="true" />
+      {failure ? (
+        <div className="vf-monitor-empty" role="status">
+          <span>WEBGPU UNAVAILABLE</span>
+          <small>{failure}</small>
+        </div>
+      ) : agents.length === 0 ? (
+        <div className="vf-monitor-empty">
           <span>NO ACTIVE AGENTS</span>
           <small>Launch an agent from a terminal pane.</small>
         </div>
       ) : null}
-      {agents.map((agent) => {
-        const facet = agent.agent;
-        const visualState = swarmVisualState(agent);
-        const appearance = swarmAppearance(visualState);
-        const ignited = visualState === 'ignited';
-        const linkedColor = agent.attachment?.primary;
-        const style = { '--agent-color': linkedColor ?? agent.color } as CSSProperties;
-        const contextWindow = facet?.contextWindow;
-        const contextPercent =
-          contextWindow?.usedPercent === undefined ? undefined : Math.floor(contextWindow.usedPercent);
-        const contextLabel =
-          contextPercent === undefined ? 'CTX:--%' : `CTX:${contextPercent.toString().padStart(2, '0')}%`;
-        return (
-          <div
-            key={agent.id}
-            className={`agent-bubble-positioner is-${appearance}`}
-            ref={(element) => {
-              if (element) {
-                elementRefs.current.set(agent.id, element);
-                if (!spawnedIdsRef.current.has(agent.id)) element.style.visibility = 'hidden';
-              } else {
-                elementRefs.current.delete(agent.id);
-              }
-            }}
-          >
-            <button
-              ref={(element) => {
-                if (element) bubbleRefs.current.set(agent.id, element);
-                else bubbleRefs.current.delete(agent.id);
-              }}
-              type="button"
-              className={`agent-bubble is-${appearance}${ignited ? ' is-ignited' : ''}${facet ? '' : ' is-unassigned'}${linkedColor ? ' is-linked' : ''}${agent.active ? ' is-active' : ''}${agent.stale ? ' is-stale' : ''}`}
-              style={style}
-              aria-current={agent.active ? 'true' : undefined}
-              aria-label={
-                facet
-                  ? `${agent.project}, ${facet.model ?? facet.provider.label}, ${agent.status}: ${agent.detail}, ${contextLabel}`
-                  : `${agent.project}, unassigned terminal, ${agent.status}`
-              }
-              title={
-                facet ? `${agent.project} · ${facet.model ?? facet.provider.label} · ${agent.detail}` : agent.detail
-              }
-              onPointerDown={(event) => {
-                const wrapper = bodiesRef.current.get(agent.id);
-                const world = worldRef.current;
-                const bounds = containerRef.current?.getBoundingClientRect();
-                if (!wrapper || !world || !bounds) return;
-                const x = event.clientX - bounds.left;
-                const y = event.clientY - bounds.top;
-                if (wrapper.dragConstraint) Matter.Composite.remove(world.engine.world, wrapper.dragConstraint);
-                wrapper.dragConstraint = Matter.Constraint.create({
-                  pointA: { x, y },
-                  bodyB: wrapper.body,
-                  pointB: { x: x - wrapper.body.position.x, y: y - wrapper.body.position.y },
-                  stiffness: DRAG_STIFFNESS,
-                  render: { visible: false },
-                });
-                Matter.Composite.add(world.engine.world, wrapper.dragConstraint);
-                event.currentTarget.setPointerCapture(event.pointerId);
-                wrapper.pointerId = event.pointerId;
-                wrapper.pointerStartX = x;
-                wrapper.pointerStartY = y;
-                wrapper.dragged = false;
-                event.preventDefault();
-              }}
-              onPointerMove={(event) => moveBody(event, agent.id)}
-              onPointerUp={(event) => {
-                const wrapper = bodiesRef.current.get(agent.id);
-                const world = worldRef.current;
-                if (!wrapper) return;
-                moveBody(event, agent.id);
-                if (world && wrapper.dragConstraint)
-                  Matter.Composite.remove(world.engine.world, wrapper.dragConstraint);
-                delete wrapper.dragConstraint;
-                if (event.currentTarget.hasPointerCapture(event.pointerId)) {
-                  event.currentTarget.releasePointerCapture(event.pointerId);
-                }
-                wrapper.pointerId = undefined;
-              }}
-              onPointerCancel={() => {
-                const wrapper = bodiesRef.current.get(agent.id);
-                const world = worldRef.current;
-                if (!wrapper) return;
-                if (world && wrapper.dragConstraint)
-                  Matter.Composite.remove(world.engine.world, wrapper.dragConstraint);
-                delete wrapper.dragConstraint;
-                wrapper.pointerId = undefined;
-              }}
-              onClick={() => {
-                const wrapper = bodiesRef.current.get(agent.id);
-                if (wrapper?.dragged) {
-                  wrapper.dragged = false;
-                  return;
-                }
-                actions.select(agent);
-                if (wrapper) {
-                  Matter.Body.applyForce(wrapper.body, wrapper.body.position, {
-                    x: (Math.random() - 0.5) * 0.003,
-                    y: (Math.random() - 0.5) * 0.003,
-                  });
-                }
-              }}
-            >
-              {contextPercent !== undefined ? (
-                <span
-                  className="agent-bubble-context-fill"
-                  style={{ height: `${contextPercent}%` }}
-                  aria-hidden="true"
-                />
-              ) : null}
-              {ignited ? (
-                <span className="agent-bubble-ignition" aria-hidden="true">
-                  <i className="agent-bubble-core-glow" />
-                  <span className="agent-bubble-particles">
-                    {IGNITION_PARTICLES.map((particleStyle, index) => (
-                      <i className="agent-bubble-particle" key={index} style={particleStyle} />
-                    ))}
-                  </span>
-                </span>
-              ) : null}
-              {agent.attachment?.mirrors.length ? (
-                <span className="agent-bubble-mirror-rings" aria-hidden="true">
-                  {agent.attachment.mirrors.map((color, index) => (
-                    <i key={`${color}-${index}`} style={{ inset: `${4 + index * 3}px`, borderColor: color }} />
-                  ))}
-                </span>
-              ) : null}
-              {facet ? (
-                <span className="agent-bubble-glyph" aria-hidden="true">
-                  <AgentIcon providerId={facet.provider.id} />
-                </span>
-              ) : null}
-              <span className="agent-bubble-copy">
-                {facet?.branch ? <span className="agent-bubble-branch">{facet.branch}</span> : null}
-                <strong>{agent.project}</strong>
-                {facet ? <span className="agent-bubble-provider">{facet.model ?? facet.provider.label}</span> : null}
-              </span>
-              {facet ? <span className="agent-bubble-context">{contextLabel}</span> : null}
-            </button>
-          </div>
-        );
-      })}
+      {hovered ? (
+        <span
+          className="vf-monitor-swarm-tooltip"
+          style={{ left: hovered.x, top: hovered.y }}
+          role="tooltip"
+          aria-hidden="true"
+        >
+          {modelFor(hovered.agent).title}
+        </span>
+      ) : null}
+      {/* Every body, reachable without a pointer. Focus draws a ring on the canvas. */}
+      <ul className="vf-monitor-swarm-list" aria-label="Agents">
+        {agents.map((agent) => {
+          const model = modelFor(agent);
+          return (
+            <li key={agent.id}>
+              <button
+                type="button"
+                aria-label={model.ariaLabel}
+                aria-current={agent.active ? 'true' : undefined}
+                data-agent-bubble-status={agent.status}
+                data-agent-bubble-visual={model.state}
+                onFocus={() => {
+                  focusedIdRef.current = agent.id;
+                }}
+                onBlur={() => {
+                  if (focusedIdRef.current === agent.id) focusedIdRef.current = undefined;
+                }}
+                onClick={() => actions.select(agent)}
+              >
+                {model.title}
+              </button>
+            </li>
+          );
+        })}
+      </ul>
     </section>
   );
 }

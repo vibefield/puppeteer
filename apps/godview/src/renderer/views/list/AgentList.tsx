@@ -19,64 +19,75 @@ function compareAgents(left: MonitorAgent, right: MonitorAgent): number {
   return byStatus !== 0 ? byStatus : left.session.createdAtMs - right.session.createdAtMs;
 }
 
-export function AgentList({ agents, parameters, actions }: AgentMonitorProps) {
+export function AgentList({ agents, parameters, actions, palette }: AgentMonitorProps) {
   const { rowHeight, projectWidth } = normalizeListParameters(parameters);
   const ordered = useMemo(() => [...agents].sort(compareAgents), [agents]);
   const style = {
-    '--list-row-height': `${rowHeight}px`,
-    '--list-project-width': `${projectWidth}px`,
+    '--vf-monitor-row-height': `${rowHeight}px`,
+    '--vf-monitor-project-width': `${projectWidth}px`,
+    '--vf-monitor-working': palette.status.working,
+    '--vf-monitor-blocked': palette.status.blocked,
+    '--vf-monitor-idle': palette.status.idle,
   } as CSSProperties;
 
   return (
-    <section className="godview-list" style={style} aria-label="Running agent list">
-      <div className="godview-list-toolbar">
-        <span className="godview-list-count">{ordered.length} SESSIONS</span>
-        <button type="button" className="godview-list-new" onClick={() => void actions.createAt()}>
+    <section className="vf-monitor-list" style={style} aria-label="Running agent list">
+      <div className="vf-monitor-list-toolbar">
+        <span className="vf-monitor-list-count">{ordered.length} SESSIONS</span>
+        <button type="button" className="vf-monitor-list-new" onClick={() => void actions.createAt()}>
           ＋ TERMINAL
         </button>
       </div>
       {ordered.length === 0 ? (
-        <div className="godview-list-empty">
+        <div className="vf-monitor-empty">
           <span>NO ACTIVE AGENTS</span>
           <small>Launch an agent from a terminal pane.</small>
         </div>
       ) : (
-        <ul className="godview-list-rows">
+        <ul className="vf-monitor-list-rows">
           {ordered.map((agent) => {
             const facet = agent.agent;
-            const contextPercent =
-              facet?.contextWindow?.usedPercent === undefined ? undefined : Math.floor(facet.contextWindow.usedPercent);
+            const usedPercent = facet?.contextWindow?.usedPercent;
+            const contextPercent = usedPercent === undefined ? undefined : Math.floor(usedPercent);
             const rowStyle = { '--agent-color': agent.attachment?.primary ?? agent.color } as CSSProperties;
+            const name = facet
+              ? [facet.model ?? facet.provider.label, facet.account].filter(Boolean).join(', ')
+              : 'terminal';
             return (
               <li key={agent.id}>
                 <button
                   type="button"
-                  className={`godview-list-row is-${agent.status}${agent.active ? ' is-active' : ''}${
+                  className={`vf-monitor-list-row is-${agent.status}${agent.active ? ' is-active' : ''}${
                     agent.stale ? ' is-stale' : ''
                   }${agent.attachment ? ' is-linked' : ''}`}
                   style={rowStyle}
                   aria-current={agent.active ? 'true' : undefined}
+                  // The status belongs to the ROW's name, not to the dot: a
+                  // labelled dot reads out as a bare "blocked" with nothing
+                  // attached, while the row is the thing being described.
+                  aria-label={`${agent.project}, ${name}, ${agent.status}: ${agent.detail}`}
                   onClick={() => actions.select(agent)}
                 >
-                  <span className="godview-list-status" aria-label={agent.status} />
-                  <span className="godview-list-project">
+                  <span className="vf-monitor-list-status" aria-hidden="true" />
+                  <span className="vf-monitor-list-project">
                     <strong>{agent.project}</strong>
                     {facet?.branch ? <small>{facet.branch}</small> : null}
                   </span>
-                  <span className="godview-list-agent">
+                  <span className="vf-monitor-list-agent">
                     {facet ? (
                       <>
                         <i aria-hidden="true">
                           <AgentIcon providerId={facet.provider.id} />
                         </i>
                         {facet.model ?? facet.provider.label}
+                        {facet.account ? <small>{facet.account}</small> : null}
                       </>
                     ) : (
-                      <span className="godview-list-terminal">terminal</span>
+                      <span className="vf-monitor-list-terminal">terminal</span>
                     )}
                   </span>
-                  <span className="godview-list-detail">{agent.detail}</span>
-                  <span className="godview-list-context">
+                  <span className="vf-monitor-list-detail">{agent.detail}</span>
+                  <span className="vf-monitor-list-context">
                     {contextPercent === undefined ? '—' : `${contextPercent}%`}
                   </span>
                 </button>

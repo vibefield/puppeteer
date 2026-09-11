@@ -99,6 +99,9 @@ await Promise.all([
     target: 'es2022',
     jsx: 'automatic',
     splitting: true,
+    // WGSL ships as source text: the swarm compiles its shaders on the device at
+    // run time, and a string module keeps the shader files readable as shaders.
+    loader: { '.wgsl': 'text', '.png': 'dataurl' },
     plugins: [reactSingletonPlugin],
   }),
 ]);

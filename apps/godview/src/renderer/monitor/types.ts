@@ -1,3 +1,4 @@
+import type { ComponentType } from 'react';
 import type { SessionSummary } from '@vibecook/ghosttea-protocol';
 import type {
   AgentMonitorViewDefinition,
@@ -13,12 +14,15 @@ import type {
 import type { AgentSessionInfo } from '../../protocol.js';
 import type { AgentVisualStatus } from '../agent-status.js';
 import type { PaneAttachment } from '../pane-attachments.js';
+import type { MonitorPalette } from './monitor-palette.js';
 import type { MonitorParameterGroup, MonitorParameters } from './parameters.js';
 
 /** The agent half of a monitored session; absent while a terminal holds no agent. */
 export interface MonitorAgentFacet {
   provider: AgentProviderDescriptor;
   model?: string;
+  /** Label of the account this run is bound to; absent when it is not registered. */
+  account?: string;
   branch?: string;
   contextWindow?: MonitorContextState;
   monitor: AgentMonitorState;
@@ -41,6 +45,8 @@ export interface MonitorAgent {
   status: AgentVisualStatus;
   project: string;
   detail: string;
+  /** A §2.6 organizational accent, resolved from the live tokens by the slot
+   * this session's id hashes to. It groups and labels; it never signals state. */
   color: string;
   /** Evidence recency is presentation metadata, never a fourth status. */
   stale?: boolean;
@@ -51,6 +57,8 @@ export interface MonitorAgent {
   cwd?: string;
   /** Where the user asked for it, for views that place new arrivals spatially. */
   spawnHint?: { x: number; y: number };
+  /** Finished something while another pane was active (`monitor/unread.ts`). */
+  unread?: boolean;
   agent?: MonitorAgentFacet;
 }
 
@@ -61,7 +69,13 @@ export interface MonitorActions {
   createAt(position?: { x: number; y: number }): void | Promise<void>;
 }
 
-export type AgentMonitorProps = PortableAgentMonitorViewProps<MonitorAgent, MonitorActions, MonitorParameters>;
+export type AgentMonitorProps = PortableAgentMonitorViewProps<MonitorAgent, MonitorActions, MonitorParameters> & {
+  /** The live tokens (`monitor-palette.ts`). Passed rather than read because two
+   * of the three views paint into a canvas, which cannot inherit a custom
+   * property — and a view that resolved its own would be a second reader of the
+   * design system with its own idea of when to re-read it. */
+  readonly palette: MonitorPalette;
+};
 
 /**
  * A way of looking at the running agents. Adding one is a file plus a line in
@@ -72,6 +86,15 @@ export type AgentMonitorProps = PortableAgentMonitorViewProps<MonitorAgent, Moni
  * workspace, or a terminal, which is what keeps it structurally unable to break
  * the invariant that semantics never come from terminal text (DESIGN ADR-003).
  */
-export interface AgentMonitorView extends AgentMonitorViewDefinition<MonitorAgent, MonitorActions, MonitorParameters> {
+export interface AgentMonitorView extends Omit<
+  AgentMonitorViewDefinition<MonitorAgent, MonitorActions, MonitorParameters>,
+  'Component'
+> {
   readonly parameterGroups: readonly MonitorParameterGroup[];
+  /** Set when a view's defaults were re-decided: the tunables are stored under
+   * the revision, so every installation lands on the new defaults instead of
+   * keeping the values the old design had saved. Later tunes persist as before. */
+  readonly parametersRevision?: string;
+  /** The portable contract's component, plus the palette the shell resolves for it. */
+  readonly Component: ComponentType<AgentMonitorProps>;
 }

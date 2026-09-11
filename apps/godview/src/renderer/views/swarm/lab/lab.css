@@ -1,0 +1,177 @@
+/* The swarm design lab's own layout. Colours are the Godview tokens: the page root carries
+   `vf-godview theme-light|dark`, so the swarm palette resolves exactly as it does in the app. */
+
+/* The app stylesheet pins html and body to the window; the lab is a document that scrolls. */
+html,
+body {
+  height: auto;
+  min-height: 100%;
+  margin: 0;
+  overflow: auto;
+  background: #0a0a0a;
+  user-select: text;
+}
+
+.swarm-lab.vf-godview {
+  position: relative;
+  min-height: 100vh;
+  height: auto;
+  display: block;
+  overflow: visible;
+  user-select: text;
+}
+
+.lab-canvas {
+  position: absolute;
+  z-index: 0;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  display: block;
+  pointer-events: none;
+}
+
+.lab-header,
+.lab-parts,
+.lab-notice {
+  position: relative;
+  z-index: 2;
+}
+
+.lab-header {
+  max-width: 1080px;
+  margin: 0 auto;
+  padding: 36px 28px 8px;
+}
+
+.lab-header h1 {
+  margin: 0 0 6px;
+  font-size: 22px;
+  font-weight: 800;
+  letter-spacing: -0.02em;
+}
+
+.lab-header p {
+  max-width: 68ch;
+  margin: 0 0 18px;
+  color: var(--text-muted);
+  font-size: 12px;
+  line-height: 1.5;
+}
+
+.lab-controls {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px 18px;
+  padding: 10px 12px;
+  border: 1px solid var(--panel-border);
+  border-radius: 8px;
+  background: color-mix(in srgb, var(--panel-bg) 88%, transparent);
+  font-size: 10px;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.lab-theme {
+  padding: 4px 10px;
+  border: 1px solid var(--panel-border);
+  border-radius: 5px;
+  color: var(--text-main);
+  background: var(--panel-bg);
+  font: inherit;
+  cursor: pointer;
+}
+
+.lab-check,
+.lab-slider {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  color: var(--text-muted);
+}
+
+.lab-slider input {
+  width: 90px;
+  accent-color: var(--text-main);
+}
+
+.lab-slider-value {
+  min-width: 3ch;
+  color: var(--text-main);
+  font-variant-numeric: tabular-nums;
+}
+
+.lab-notice {
+  max-width: 1080px;
+  margin: 12px auto;
+  padding: 10px 28px;
+  color: var(--vf-orange);
+  font-size: 12px;
+}
+
+.lab-parts {
+  max-width: 1080px;
+  margin: 0 auto;
+  padding: 8px 28px 80px;
+}
+
+.lab-part h2 {
+  margin: 34px 0 4px;
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+}
+
+.lab-lede {
+  max-width: 68ch;
+  margin: 0 0 14px;
+  font-size: 12px;
+  line-height: 1.5;
+  color: var(--text-muted);
+}
+
+.lab-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+  gap: 14px;
+}
+
+.lab-stage {
+  margin: 0;
+  border: 1px solid color-mix(in srgb, var(--panel-border) 70%, transparent);
+  border-radius: 10px;
+}
+
+.lab-cell {
+  height: 176px;
+}
+
+.lab-marks {
+  grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+}
+
+.lab-mark-cell {
+  height: 84px;
+}
+
+.lab-stage figcaption {
+  padding: 0 12px 12px;
+  font-size: 10.5px;
+  line-height: 1.45;
+  color: var(--text-muted);
+}
+
+.lab-stage figcaption b {
+  display: block;
+  color: var(--text-main);
+  font-weight: 800;
+}
+
+.lab-cluster {
+  height: 340px;
+  border: 1px solid color-mix(in srgb, var(--panel-border) 70%, transparent);
+  border-radius: 10px;
+}

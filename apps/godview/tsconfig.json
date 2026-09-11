@@ -4,7 +4,7 @@
     "rootDir": "src",
     "noEmit": true,
     "lib": ["ES2022", "DOM", "DOM.Iterable"],
-    "types": ["node"],
+    "types": ["node", "@webgpu/types"],
     "jsx": "react-jsx"
   },
   "include": ["src"]

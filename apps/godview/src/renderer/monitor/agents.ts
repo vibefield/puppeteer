@@ -6,7 +6,7 @@ import {
   type AgentMonitorState,
 } from '@vibecook/puppeteer-core';
 import type { AgentMonitorStateMessage, AgentSessionInfo } from '../../protocol.js';
-import { agentColor, classifyTerminalStatus, projectLabel, type AgentVisualStatus } from '../agent-status.js';
+import { agentAccent, classifyTerminalStatus, projectLabel, type AgentVisualStatus } from '../agent-status.js';
 import { folderName } from '../folder-name.js';
 import type { PaneAttachment } from '../pane-attachments.js';
 import type { MonitorAgent } from './types.js';
@@ -63,12 +63,14 @@ export interface AssembleMonitorAgentsInput {
   identities?: ReadonlyMap<string, string>;
   activeSessionId?: string;
   nowMs?: number;
+  /** §2.6's accents in slot order; a session's colour is the slot its id hashes to. */
+  accents?: readonly string[];
 }
 
 /** Undefined for a session that has stopped being worth showing at all. */
 export function monitorAgentFromSession(
   record: MonitorAgentRecord,
-  options: { allMonitorStates?: readonly AgentMonitorState[]; nowMs?: number } = {},
+  options: { allMonitorStates?: readonly AgentMonitorState[]; nowMs?: number; accents?: readonly string[] } = {},
 ): MonitorAgent | undefined {
   const { info, monitor } = record;
   if (!monitor) return undefined;
@@ -97,7 +99,7 @@ export function monitorAgentFromSession(
     status: current.status,
     project: projectLabel(info, currentCwd),
     detail,
-    color: agentColor(info.runtimeSessionId),
+    color: agentAccent(info.runtimeSessionId, options.accents ?? []),
     active: false,
     ...(recency === 'stale' ? { stale: true } : {}),
     ...(cwd ? { cwd } : {}),
@@ -114,7 +116,7 @@ export function monitorAgentFromSession(
   };
 }
 
-export function monitorAgentFromTerminal(record: MonitorTerminalRecord): MonitorAgent {
+export function monitorAgentFromTerminal(record: MonitorTerminalRecord, accents: readonly string[] = []): MonitorAgent {
   const { session, cwd, spawnHint } = record;
   const id = record.id ?? session.id;
   const path = session.cwd ?? cwd ?? undefined;
@@ -124,7 +126,7 @@ export function monitorAgentFromTerminal(record: MonitorTerminalRecord): Monitor
     status: classifyTerminalStatus(session.activity),
     project: folderName(path, 'terminal'),
     detail: path || 'Unassigned terminal',
-    color: agentColor(id),
+    color: agentAccent(id, accents),
     active: false,
     ...(path ? { cwd: path } : {}),
     ...(spawnHint ? { spawnHint } : {}),
@@ -143,6 +145,7 @@ export function assembleMonitorAgents(input: AssembleMonitorAgentsInput): readon
       monitorAgentFromSession(record, {
         allMonitorStates,
         nowMs: input.nowMs,
+        ...(input.accents ? { accents: input.accents } : {}),
       }),
     )
     .filter((agent): agent is MonitorAgent => agent !== undefined)
@@ -155,7 +158,7 @@ export function assembleMonitorAgents(input: AssembleMonitorAgentsInput): readon
       session: input.sessions?.get(terminal.session.id) ?? terminal.session,
     }))
     .filter((terminal) => !terminal.session.exited)
-    .map(monitorAgentFromTerminal);
+    .map((terminal) => monitorAgentFromTerminal(terminal, input.accents));
 
   return [...agents, ...terminals].map((agent) => {
     const attachment = input.attachments?.get(agent.session.id);
