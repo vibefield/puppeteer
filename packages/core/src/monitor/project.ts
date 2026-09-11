@@ -6,6 +6,7 @@ import type {
   MonitorActivityKind,
   MonitorBlocker,
   MonitorBoundedCollection,
+  MonitorAssistantMessageState,
   MonitorContextState,
   MonitorEffortState,
   MonitorFamilyAvailability,
@@ -176,6 +177,8 @@ function logicalEntryKey(entry: MonitorStoredEntry): string {
       return JSON.stringify([entry.family, actor ? actorLocalSourceKey(entry, actor) : entry.key, actor]);
     case 'environment':
       return JSON.stringify([entry.family, actor || 'root']);
+    case 'message':
+      return JSON.stringify([entry.family, 'message', actor || 'root']);
   }
 }
 
@@ -211,6 +214,7 @@ function actorOf(value: MonitorFamilyValue): ActorRunRef | undefined {
     case 'plan':
     case 'task':
     case 'compaction':
+    case 'message':
       return value.actor;
     case 'actor':
     case 'affiliation':
@@ -436,6 +440,19 @@ function rootEntries<T extends MonitorFamilyValue['kind']>(
     (entry): entry is MonitorStoredEntry & { value: Extract<MonitorFamilyValue, { kind: T }> } =>
       entry.value.kind === kind && (actorOf(entry.value) === undefined || actorOf(entry.value)?.role === 'root'),
   );
+}
+
+function projectAssistantMessage(entries: readonly MonitorStoredEntry[]): MonitorAssistantMessageState | undefined {
+  const latest = rootEntries(entries, 'message').sort(
+    (a, b) => time(b.effectiveAt ?? b.observedAt) - time(a.effectiveAt ?? a.observedAt) || compareEntryPreference(a, b),
+  )[0];
+  if (!latest) return undefined;
+  return {
+    text: latest.value.text,
+    at: latest.effectiveAt ?? latest.observedAt,
+    final: latest.value.final,
+    ...(latest.value.messageId ? { messageId: latest.value.messageId } : {}),
+  };
 }
 
 function projectContext(entries: readonly MonitorStoredEntry[]): MonitorContextState | undefined {
@@ -1035,6 +1052,7 @@ export function projectAgentMonitorState(
   if (usageProjection.omittedSamples > 0) omitted.usageSamples = usageProjection.omittedSamples;
 
   const context = projectContext(entries);
+  const lastAssistantMessage = projectAssistantMessage(entries);
   const model = projectModel(entries);
   const effort = projectEffort(entries);
   const plan = projectPlan(entries, omitted, unbounded);
@@ -1102,6 +1120,7 @@ export function projectAgentMonitorState(
     'workflow',
     'compaction',
     'environment',
+    'conversation',
   ];
   for (const family of familyNames) {
     const freshness = familySupport(accumulator, entries, family);
@@ -1126,6 +1145,7 @@ export function projectAgentMonitorState(
     statusSince,
     blockers: blockerProjection.blockers,
     ...(activity ? { activity } : {}),
+    ...(lastAssistantMessage ? { lastAssistantMessage } : {}),
     usage: usageProjection.usage,
     ...(context ? { context } : {}),
     ...(model ? { model } : {}),

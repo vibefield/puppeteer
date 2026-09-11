@@ -36,6 +36,24 @@ function meterContribution(value: MonitorUsageFamilyValue): number | undefined {
   return finiteNonNegative(value.meterTokens) ?? totalContribution(value);
 }
 
+/** The prompt side of a contribution: input, cache reads, and cache creation. */
+function inputSide(value: MonitorUsageFamilyValue): number | undefined {
+  const buckets = [
+    finiteNonNegative(value.inputTokens),
+    finiteNonNegative(value.cacheReadTokens),
+    finiteNonNegative(value.cacheCreationTokens),
+  ].filter((bucket): bucket is number => bucket !== undefined);
+  return buckets.length > 0 ? buckets.reduce((total, bucket) => total + bucket, 0) : undefined;
+}
+
+/** The completion side of a contribution: output and reasoning. */
+function outputSide(value: MonitorUsageFamilyValue): number | undefined {
+  const buckets = [finiteNonNegative(value.outputTokens), finiteNonNegative(value.reasoningTokens)].filter(
+    (bucket): bucket is number => bucket !== undefined,
+  );
+  return buckets.length > 0 ? buckets.reduce((total, bucket) => total + bucket, 0) : undefined;
+}
+
 function canonicalTotals(
   entries: readonly MonitorStoredEntry[],
 ): Pick<
@@ -233,12 +251,25 @@ export function projectMonitorUsageLedger(
 
   if (canonicalContributions.length > 0) {
     let running = 0;
+    // The sides run alongside the total once a contribution splits them, so a
+    // consumer can chart prompt and completion rates separately.
+    let runningInput: number | undefined;
+    let runningOutput: number | undefined;
     projectedSamples = canonicalContributions.map((entry) => {
       const value = entry.value as MonitorUsageFamilyValue;
       const amount = totalContribution(value) ?? 0;
       running += amount;
+      const input = inputSide(value);
+      const output = outputSide(value);
+      if (input !== undefined) runningInput = (runningInput ?? 0) + input;
+      if (output !== undefined) runningOutput = (runningOutput ?? 0) + output;
       if (value.actor) actorTotals.set(value.actor.runKey, (actorTotals.get(value.actor.runKey) ?? 0) + amount);
-      return { at: entry.effectiveAt ?? entry.observedAt, cumulativeTokens: running };
+      return {
+        at: entry.effectiveAt ?? entry.observedAt,
+        cumulativeTokens: running,
+        ...(runningInput !== undefined ? { inputTokens: runningInput } : {}),
+        ...(runningOutput !== undefined ? { outputTokens: runningOutput } : {}),
+      };
     });
     cumulativeTokens = running;
   } else if (canonicalCumulative.length > 0) {

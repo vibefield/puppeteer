@@ -496,6 +496,40 @@ describe('monitor accumulator', () => {
     expect(projection.usage.burnRatePerMin).toBe(600);
   });
 
+  it('runs the prompt and completion sides alongside the total on canonical usage samples', () => {
+    const response = (id: string, breakdown: Record<string, number>) => ({
+      key: id,
+      value: { kind: 'usage' as const, usageId: id, boundary: 'response' as const, canonical: true, ...breakdown },
+    });
+    const state = reduceMonitorAccumulator(
+      initial(),
+      semantic(
+        'usage-1',
+        'live',
+        [
+          {
+            family: 'usage',
+            operation: 'replace',
+            coverage: 'complete',
+            values: [
+              response('r1', { inputTokens: 200, cacheReadTokens: 50, outputTokens: 100 }),
+              response('r2', { inputTokens: 100, outputTokens: 40, reasoningTokens: 10 }),
+            ],
+          },
+        ],
+        { sequence: 1, observedAt: '2026-08-16T12:00:01.000Z' },
+      ),
+    ).state;
+    const projection = projectAgentMonitorState(state, {
+      asOf: '2026-08-16T12:00:11.000Z',
+      burnRateWindowMs: 60_000,
+    });
+    expect(projection.usage.samples).toEqual([
+      { at: '2026-08-16T12:00:01.000Z', cumulativeTokens: 350, inputTokens: 250, outputTokens: 100 },
+      { at: '2026-08-16T12:00:01.000Z', cumulativeTokens: 500, inputTokens: 350, outputTokens: 150 },
+    ]);
+  });
+
   it('retains producer readiness, capability, coverage, and source watermarks', () => {
     const input = {
       ...semantic('capabilities', 'bootstrap', [], { sequence: 1 }),
@@ -808,5 +842,37 @@ describe('monitor accumulator', () => {
     });
     expect(second.accepted).toBe(true);
     expect(projectAgentMonitorState(second.state).status).toBe('idle');
+  });
+});
+
+describe('assistant message', () => {
+  it("keeps the root agent's latest reply, bounded, and never a child's", () => {
+    const child = { actorKey: 'workflow:worker', actorRole: 'child' as const, agentType: 'worker' };
+    const state = apply(initial(), [
+      runtime({ type: 'session:ready' }, 1),
+      runtime({ type: 'conversation:assistant-message', text: 'Looking at the tests', final: false }, 2),
+      runtime({ type: 'conversation:assistant-message', text: 'child reply', final: true }, 3, child),
+      runtime(
+        {
+          type: 'conversation:assistant-message',
+          messageId: 'm1',
+          text: 'Looking at the tests now. Two fail.',
+          final: true,
+        },
+        4,
+      ),
+    ]);
+    expect(projectAgentMonitorState(state).lastAssistantMessage).toMatchObject({
+      text: 'Looking at the tests now. Two fail.',
+      final: true,
+      messageId: 'm1',
+    });
+    const bounded = apply(state, [
+      runtime({ type: 'turn:completed', turnId: 't', lastAssistantMessage: 'x'.repeat(500) }, 5),
+    ]);
+    expect(projectAgentMonitorState(bounded).lastAssistantMessage?.text).toHaveLength(401);
+    expect(
+      projectAgentMonitorState(apply(initial(), [runtime({ type: 'session:ready' }, 1)])).lastAssistantMessage,
+    ).toBeUndefined();
   });
 });

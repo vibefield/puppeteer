@@ -660,6 +660,15 @@ function actorScopedKey(key: string, actor?: ActorRunRef): string {
   return actor ? JSON.stringify([key, actor.runKey]) : key;
 }
 
+/** The public state is lossy by design: a reply is kept only as far as a view can show. */
+const MAX_ASSISTANT_MESSAGE_CHARS = 400;
+
+function boundAssistantMessage(text: string): string | undefined {
+  const trimmed = text.trim();
+  if (trimmed.length === 0) return undefined;
+  return trimmed.length > MAX_ASSISTANT_MESSAGE_CHARS ? `${trimmed.slice(0, MAX_ASSISTANT_MESSAGE_CHARS)}…` : trimmed;
+}
+
 function unexpectedExit(reason: ProcessExitReason): boolean {
   return reason === 'crash' || reason === 'signal' || reason === 'spawn-failed' || reason === 'workspace-failed';
 }
@@ -789,13 +798,26 @@ export function translateAgentEventEnvelope(options: TranslateAgentEventOptions)
         retract('status', actorScopedKey('failure:turn', actor)),
       );
       break;
-    case 'turn:completed':
+    case 'turn:completed': {
       updates.push(
         retract('status', actorScopedKey('turn', actor)),
         retract('status', actorScopedKey('responding', actor)),
         retract('status', actorScopedKey('reasoning', actor)),
       );
+      const completed =
+        event.lastAssistantMessage === undefined ? undefined : boundAssistantMessage(event.lastAssistantMessage);
+      if (completed !== undefined) {
+        updates.push(
+          upsert('conversation', actorScopedKey('message', actor), {
+            kind: 'message',
+            text: completed,
+            final: true,
+            ...(actor ? { actor } : {}),
+          }),
+        );
+      }
       break;
+    }
     case 'turn:failed':
       updates.push(
         retract('status', actorScopedKey('turn', actor)),
@@ -812,7 +834,7 @@ export function translateAgentEventEnvelope(options: TranslateAgentEventOptions)
         }),
       );
       break;
-    case 'conversation:assistant-message':
+    case 'conversation:assistant-message': {
       updates.push(
         event.final === false
           ? upsert('status', actorScopedKey('responding', actor), {
@@ -825,7 +847,20 @@ export function translateAgentEventEnvelope(options: TranslateAgentEventOptions)
             })
           : retract('status', actorScopedKey('responding', actor)),
       );
+      const text = boundAssistantMessage(event.text);
+      if (text !== undefined) {
+        updates.push(
+          upsert('conversation', actorScopedKey('message', actor), {
+            kind: 'message',
+            text,
+            final: event.final !== false,
+            ...(event.messageId ? { messageId: event.messageId } : {}),
+            ...(actor ? { actor } : {}),
+          }),
+        );
+      }
       break;
+    }
     case 'reasoning:started':
     case 'reasoning:progress':
     case 'reasoning:summary':

@@ -21,6 +21,7 @@ const MonitorMetricFamilySchema = z.enum([
   'workflow',
   'compaction',
   'environment',
+  'conversation',
 ]);
 
 const ActorRunRefSchema = z.strictObject({
@@ -132,6 +133,13 @@ const MonitorUsageValueSchema = z
       value.costUsd !== undefined,
     { message: 'monitor usage observation must contain a token count or cost' },
   );
+const MonitorMessageValueSchema = z.strictObject({
+  kind: z.literal('message'),
+  actor: ActorRunRefSchema.optional(),
+  text: z.string().max(4096),
+  final: z.boolean(),
+  messageId: NonEmptyStringSchema.optional(),
+});
 const MonitorContextValueSchema = z.strictObject({
   kind: z.literal('context'),
   actor: ActorRunRefSchema.optional(),
@@ -299,6 +307,7 @@ const MonitorFamilyUpdateSchema = z.union([
   familyUpdateSchema(z.literal('workflow'), MonitorWorkflowValueSchema),
   familyUpdateSchema(z.literal('compaction'), MonitorCompactionValueSchema),
   familyUpdateSchema(z.literal('environment'), MonitorEnvironmentValueSchema),
+  familyUpdateSchema(z.literal('conversation'), MonitorMessageValueSchema),
 ]);
 
 export const AdapterMonitorObservationBatchSchema = z.strictObject({

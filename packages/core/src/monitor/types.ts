@@ -119,6 +119,18 @@ export interface MonitorActivity {
   since: string;
 }
 
+/**
+ * The root agent's latest assistant message, bounded. Provider display and
+ * transcript observation both feed it; `final` is false while a reply is still
+ * streaming. Views show it as one line; the full text is never what this is for.
+ */
+export interface MonitorAssistantMessageState {
+  text: string;
+  at: string;
+  final: boolean;
+  messageId?: string;
+}
+
 export type MonitorMetricFamily =
   | 'status'
   | 'usage'
@@ -130,7 +142,8 @@ export type MonitorMetricFamily =
   | 'delegation'
   | 'workflow'
   | 'compaction'
-  | 'environment';
+  | 'environment'
+  | 'conversation';
 
 export type MonitorBoundedCollection =
   | 'blockers'
@@ -149,6 +162,10 @@ export type MonitorBoundedCollection =
 export interface MonitorUsageSample {
   at: string;
   cumulativeTokens: number;
+  /** Cumulative prompt-side tokens (input, cache reads, cache creation) when the source splits usage. */
+  inputTokens?: number;
+  /** Cumulative completion-side tokens (output, reasoning) when the source splits usage. */
+  outputTokens?: number;
 }
 
 export interface MonitorUsageAggregate {
@@ -347,6 +364,7 @@ export interface AgentMonitorState {
   statusSince: string;
   blockers: MonitorBlocker[];
   activity?: MonitorActivity;
+  lastAssistantMessage?: MonitorAssistantMessageState;
 
   usage: MonitorUsageState;
   context?: MonitorContextState;

@@ -147,6 +147,15 @@ export interface MonitorUsageFamilyValue {
   costUsd?: number;
 }
 
+export interface MonitorMessageFamilyValue {
+  kind: 'message';
+  actor?: ActorRunRef;
+  /** Bounded at the reducer; the accumulated text so far, not a delta. */
+  text: string;
+  final: boolean;
+  messageId?: string;
+}
+
 export interface MonitorContextFamilyValue {
   kind: 'context';
   actor?: ActorRunRef;
@@ -292,6 +301,7 @@ export interface MonitorFamilyValueMap {
   workflow: MonitorWorkflowFamilyValue;
   compaction: MonitorCompactionFamilyValue;
   environment: MonitorEnvironmentFamilyValue;
+  conversation: MonitorMessageFamilyValue;
 }
 
 export type MonitorFamilyValue = MonitorFamilyValueMap[MonitorMetricFamily];
