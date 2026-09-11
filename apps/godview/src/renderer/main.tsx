@@ -657,6 +657,7 @@ function Godview() {
             decoratePane={decoratePane}
             paneMeta={persistPaneRecovery}
             createSplitSession={createSplitSession}
+            splitSizing="equal"
             onRehydratePane={rehydratePane}
             claimExistingSessions={window.desktop.claimExistingSessions}
             enableRemoteSessions={window.desktop.remoteSessionsEnabled}
