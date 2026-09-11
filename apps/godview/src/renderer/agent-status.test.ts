@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import type { AgentSessionInfo } from '../protocol.js';
-import { agentAccent, agentAccentSlot, classifyTerminalStatus, projectLabel } from './agent-status.js';
+import { classifyTerminalStatus, projectLabel } from './agent-status.js';
 
 const info = {
   provider: { id: 'codex', label: 'Codex' },
@@ -28,14 +28,5 @@ describe('Godview agent status', () => {
       session: { ...info.session, cwd: null },
     };
     expect(projectLabel(providerFallback)).toBe('Codex');
-  });
-
-  it('assigns a stable per-session accent slot and resolves it from the palette', () => {
-    const accents = ['a', 'b', 'c', 'd', 'e', 'f', 'g', 'h'];
-    expect(agentAccentSlot('session-1', accents.length)).toBe(agentAccentSlot('session-1', accents.length));
-    expect(agentAccentSlot('session-1', accents.length)).toBeGreaterThanOrEqual(0);
-    expect(agentAccentSlot('session-1', accents.length)).toBeLessThan(accents.length);
-    expect(agentAccent('session-1', accents)).toBe(accents[agentAccentSlot('session-1', accents.length)]);
-    expect(agentAccent('session-1', [])).toBe('currentColor');
   });
 });

@@ -34,7 +34,12 @@ export interface LabStage {
   patch?: (model: SwarmBubbleModel) => SwarmBubbleModel;
 }
 
-const ACCENT = (slot: number): string => `var(--vf-accent-${slot})`;
+/** A project's colour, dealt from its sequence: the lab sets these on its root per theme (`main.ts`). */
+const PROJECT = (seq: number): string => `var(--lab-project-${seq})`;
+/** A bare terminal belongs to no project and wears the ramp. */
+const NEUTRAL = 'var(--text-faint)';
+/** The one pane a mounted fixture is shown in. */
+const MOUNTED = { primaryPaneId: 'pane', paneIds: ['pane'] } as const;
 
 function session(id: string, activityKind: 'shell-idle' | 'foreground-job', nowMs: number): SessionSummary {
   return {
@@ -116,6 +121,7 @@ interface AgentSpec {
   stale?: boolean;
   active?: boolean;
   mounted?: boolean;
+  /** The project's dealt sequence plus one, so the lab's eight projects read 1…8. */
   accent?: number;
   detail?: string;
   /** Which vendor mark to wear, by atlas index; defaults to the accent slot. */
@@ -180,35 +186,28 @@ export function agentFixture(spec: AgentSpec, nowMs: number): MonitorAgent {
     recency: spec.stale ? 'stale' : 'fresh',
     info: {} as AgentSessionInfo,
   };
-  const paneColour = ACCENT(spec.accent ?? 1);
   return {
     id: spec.id,
     session: session(spec.id, 'foreground-job', nowMs),
     status: spec.status,
     project: spec.project,
     detail: spec.detail ?? spec.activity?.line ?? spec.status,
-    color: ACCENT(spec.accent ?? 1),
+    color: PROJECT((spec.accent ?? 1) - 1),
     active: spec.active === true,
     ...(spec.stale ? { stale: true } : {}),
-    ...(spec.mounted || spec.active ? { attachment: { primary: paneColour, mirrors: [] } } : {}),
+    ...(spec.mounted || spec.active ? { attachment: MOUNTED } : {}),
     agent: facet,
   };
 }
 
-export function terminalFixture(
-  id: string,
-  project: string,
-  running: boolean,
-  nowMs: number,
-  accent = 5,
-): MonitorAgent {
+export function terminalFixture(id: string, project: string, running: boolean, nowMs: number): MonitorAgent {
   return {
     id,
     session: session(id, running ? 'foreground-job' : 'shell-idle', nowMs),
     status: running ? 'working' : 'idle',
     project,
     detail: '/Users/james/Projects/' + project,
-    color: ACCENT(accent),
+    color: NEUTRAL,
     active: false,
   };
 }
@@ -220,13 +219,13 @@ export function stateStages(nowMs: number): LabStage[] {
       id: 'terminal-empty',
       title: 'Terminal, empty',
       note: 'Dashed rim, the folder, "empty".',
-      agent: terminalFixture('t1', 'voyager', false, nowMs, 5),
+      agent: terminalFixture('t1', 'voyager', false, nowMs),
     },
     {
       id: 'terminal-running',
       title: 'Terminal, running',
       note: 'Solid faint rim, the comet, the clock since the job began.',
-      agent: terminalFixture('t2', 'study', true, nowMs, 8),
+      agent: terminalFixture('t2', 'study', true, nowMs),
       runningSinceMs: nowMs - 83_000,
     },
     {
@@ -303,7 +302,7 @@ export function stateStages(nowMs: number): LabStage[] {
     {
       id: 'idle-mounted',
       title: 'Idle, mounted in a pane',
-      note: 'The pane colour as a band a thirtieth of the radius wide outside the rim, the gutter, and as the outer light beyond it; the gauge a twelfth of the radius wide, in the ink. At 60 that is 2px and 5px.',
+      note: 'The project colour as a band a thirtieth of the radius wide outside the rim, the gutter, and nothing beyond it; the gauge a twelfth of the radius wide, in the ink. At 60 that is 2px and 5px.',
       agent: agentFixture(
         {
           id: 'a5',
@@ -313,6 +312,24 @@ export function stateStages(nowMs: number): LabStage[] {
           effort: 'medium',
           contextPercent: 12,
           mounted: true,
+          accent: 5,
+        },
+        nowMs,
+      ),
+    },
+    {
+      id: 'idle-selected',
+      title: 'Idle, in the selected pane',
+      note: 'The same band, and the outer light beyond it: the one body whose pane is the selected one.',
+      agent: agentFixture(
+        {
+          id: 'a5s',
+          project: 'voyager',
+          status: 'idle',
+          model: 'Sonnet 5',
+          effort: 'medium',
+          contextPercent: 12,
+          active: true,
           accent: 5,
         },
         nowMs,
@@ -508,7 +525,7 @@ export function stateStages(nowMs: number): LabStage[] {
     {
       id: 'blocked-mounted',
       title: 'Blocked, mounted',
-      note: 'The flood inside and the pane light outside, both the pane colour.',
+      note: 'The flood inside and the band outside, both the project colour; the light joins only while its pane is selected.',
       agent: agentFixture(
         {
           id: 'b4',
@@ -553,7 +570,7 @@ export function stateStages(nowMs: number): LabStage[] {
   ];
 }
 
-/** Part II: the pane light, three weights, on the same mounted idle body. */
+/** Part II: the pane light, three weights, on the same idle body in the selected pane. */
 export function lightStages(nowMs: number): LabStage[] {
   const mounted = (id: string): MonitorAgent =>
     agentFixture(
@@ -564,7 +581,7 @@ export function lightStages(nowMs: number): LabStage[] {
         model: 'Sonnet 5',
         effort: 'medium',
         contextPercent: 31,
-        mounted: true,
+        active: true,
         accent: 5,
       },
       nowMs,
@@ -597,12 +614,12 @@ export function lightStages(nowMs: number): LabStage[] {
 /** Part III: a settled cluster, the field as it actually looks. */
 export function clusterStages(nowMs: number): LabStage[] {
   return [
-    { id: 'c1', title: '', note: '', agent: terminalFixture('c-t1', 'voyager', false, nowMs, 5) },
+    { id: 'c1', title: '', note: '', agent: terminalFixture('c-t1', 'voyager', false, nowMs) },
     {
       id: 'c2',
       title: '',
       note: '',
-      agent: terminalFixture('c-t2', 'study', true, nowMs, 8),
+      agent: terminalFixture('c-t2', 'study', true, nowMs),
       runningSinceMs: nowMs - 341_000,
     },
     {

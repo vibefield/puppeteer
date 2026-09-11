@@ -49,7 +49,7 @@ export function AgentList({ agents, parameters, actions, palette }: AgentMonitor
             const facet = agent.agent;
             const usedPercent = facet?.contextWindow?.usedPercent;
             const contextPercent = usedPercent === undefined ? undefined : Math.floor(usedPercent);
-            const rowStyle = { '--agent-color': agent.attachment?.primary ?? agent.color } as CSSProperties;
+            const rowStyle = { '--agent-color': agent.color } as CSSProperties;
             const name = facet
               ? [facet.model ?? facet.provider.label, facet.account].filter(Boolean).join(', ')
               : 'terminal';

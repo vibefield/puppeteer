@@ -190,8 +190,6 @@ function Godview() {
   const [workspace, setWorkspace] = useState<GhostteaWorkspaceContext>();
   const [terminalIdentities, setTerminalIdentities] = useState<ReadonlyMap<string, string>>(() => new Map());
   const [paneColors, setPaneColors] = useState<ReadonlyMap<string, string>>(() => new Map());
-  const paneColorRegistry = useRef(new Map<string, string>());
-  const nextPaneHue = useRef(Math.random() * 360);
   const stageRef = useRef<HTMLElement>(null);
   const chromeRef = useRef<HTMLDivElement>(null);
   const deckRef = useRef<HTMLElement>(null);
@@ -305,29 +303,9 @@ function Godview() {
     return () => observer.disconnect();
   }, []);
 
-  useEffect(() => {
-    const next = new Map<string, string>();
-    for (const pane of workspace?.panes ?? []) {
-      let color = paneColorRegistry.current.get(pane.id);
-      if (!color) {
-        color = `hsl(${Math.round(nextPaneHue.current)} 72% 48%)`;
-        nextPaneHue.current = (nextPaneHue.current + 137.508) % 360;
-        paneColorRegistry.current.set(pane.id, color);
-      }
-      next.set(pane.id, color);
-    }
-    for (const paneId of paneColorRegistry.current.keys()) {
-      if (!next.has(paneId)) paneColorRegistry.current.delete(paneId);
-    }
-    setPaneColors((current) => {
-      if (current.size === next.size && [...next].every(([id, color]) => current.get(id) === color)) return current;
-      return next;
-    });
-  }, [workspace?.panes]);
-
   const paneAttachments = useMemo(
-    () => buildPaneAttachments(workspace?.panes ?? [], paneColors, workspace?.activePaneId),
-    [paneColors, workspace?.activePaneId, workspace?.panes],
+    () => buildPaneAttachments(workspace?.panes ?? [], workspace?.activePaneId),
+    [workspace?.activePaneId, workspace?.panes],
   );
 
   const onSessionExited = useCallback((listener: (sessionId: string) => void) => {
@@ -380,6 +358,22 @@ function Godview() {
   });
   const agentsBySession = useMemo(() => new Map(agents.map((agent) => [agent.session.id, agent] as const)), [agents]);
   const activeAgent = agents.find((agent) => agent.active);
+
+  // A pane owns no colour (record §02, P-4): it wears the project colour of
+  // the agent mounted in it, and nothing while it shows a bare shell. Held as
+  // state with an equality check so Ghosttea's workspace is not redrawn on
+  // every monitor tick.
+  useEffect(() => {
+    const next = new Map<string, string>();
+    for (const pane of workspace?.panes ?? []) {
+      const agent = agentsBySession.get(pane.session.id);
+      if (agent?.agent) next.set(pane.id, agent.color);
+    }
+    setPaneColors((current) => {
+      if (current.size === next.size && [...next].every(([id, color]) => current.get(id) === color)) return current;
+      return next;
+    });
+  }, [agentsBySession, workspace?.panes]);
   const counts = useMemo(() => monitorAgentCounts(agents), [agents]);
 
   const selectNextStatus = useCallback(
@@ -485,8 +479,9 @@ function Godview() {
     return () => window.clearInterval(timer);
   }, []);
 
-  // Only the colour: the badge and the rest of the frame are the deck's own
-  // (`deck/PaneFrame.tsx`), drawn into the pane Ghosttea lays out.
+  // Only the colour, and only for a pane holding an agent: the badge and the
+  // rest of the frame are the deck's own (`deck/PaneFrame.tsx`), drawn into
+  // the pane Ghosttea lays out.
   const decoratePane = useCallback(
     (_session: SessionSummary, paneId: string): GhostteaWorkspacePaneDecoration => {
       const color = paneColors.get(paneId);

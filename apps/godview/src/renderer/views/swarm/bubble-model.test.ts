@@ -256,15 +256,18 @@ describe('bubbleModel', () => {
 
   it('carries the pane link, the stale flag, and the accessible copy', () => {
     const model = bubbleModel({
-      agent: agent({ stale: true, attachment: { primary: '#ec4899', mirrors: ['#22c55e'] } }, {}),
+      agent: agent({ stale: true, color: '#ec4899', attachment: { primaryPaneId: 'pane', paneIds: ['pane'] } }, {}),
       parameters,
       nowMs: NOW,
       unread: false,
     });
     expect(model.stale).toBe(true);
+    // The pane light is the body's own colour: a pane wears the session's, never one of its own.
     expect(model.linked).toBe('#ec4899');
     expect(model.accent).toBe('#ec4899');
-    expect(model.mirrors).toEqual(['#22c55e']);
+    expect(
+      bubbleModel({ agent: agent({ color: '#ec4899' }, {}), parameters, nowMs: NOW, unread: false }).linked,
+    ).toBeUndefined();
     expect(model.ariaLabel).toBe('puppeteer, Fable 5.1, idle: Editing tokens.css, CTX:--%');
     expect(model.title).toBe('puppeteer · Fable 5.1 · Editing tokens.css');
   });

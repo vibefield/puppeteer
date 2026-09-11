@@ -6,23 +6,19 @@ const panes = [
   { id: 'pane-b', session: { id: 'shared-session' } },
   { id: 'pane-c', session: { id: 'other-session' } },
 ] as const;
-const paneColors = new Map([
-  ['pane-a', '#f00'],
-  ['pane-b', '#0f0'],
-  ['pane-c', '#00f'],
-]);
 
 describe('pane attachments', () => {
-  it('uses the active pane color as the primary ring and keeps mirrors in pane order', () => {
-    expect(buildPaneAttachments(panes, paneColors, 'pane-b').get('shared-session')).toEqual({
-      primary: '#0f0',
-      mirrors: ['#f00'],
+  it('puts the active pane first and keeps the rest in tree order', () => {
+    expect(buildPaneAttachments(panes, 'pane-b').get('shared-session')).toEqual({
+      primaryPaneId: 'pane-b',
+      paneIds: ['pane-b', 'pane-a'],
     });
   });
 
-  it('uses the first attachment when that session is not selected', () => {
-    const attachments = buildPaneAttachments(panes, paneColors, 'pane-c');
-    expect(attachments.get('shared-session')).toEqual({ primary: '#f00', mirrors: ['#0f0'] });
-    expect(attachments.get('other-session')).toEqual({ primary: '#00f', mirrors: [] });
+  it('uses the first pane when that session is not selected', () => {
+    const attachments = buildPaneAttachments(panes, 'pane-c');
+    expect(attachments.get('shared-session')).toEqual({ primaryPaneId: 'pane-a', paneIds: ['pane-a', 'pane-b'] });
+    expect(attachments.get('other-session')).toEqual({ primaryPaneId: 'pane-c', paneIds: ['pane-c'] });
+    expect(attachments.has('unmounted-session')).toBe(false);
   });
 });

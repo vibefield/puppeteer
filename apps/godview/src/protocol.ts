@@ -128,8 +128,25 @@ export interface CreateAgentSessionOptions {
   };
 }
 
+/**
+ * The project an agent runs in, dealt by main the first time an agent runs in
+ * a source root (design-system record §02). Colour belongs to the project:
+ * the renderer turns `seq` into the hue, and a pane wears the colour of the
+ * agent mounted in it, never one of its own.
+ */
+export interface AgentProjectRef {
+  /** The canonical source root: the real path, folded to the repository a worktree or copy was cut from. */
+  key: string;
+  /** The root's folder name. */
+  name: string;
+  /** First-seen order, never reused; the hue is dealt from it. */
+  seq: number;
+}
+
 export interface AgentSessionInfo extends RuntimeAgentSessionInfo {
   session: SessionSummary;
+  /** Absent only until main has folded the workspace to its project. */
+  project?: AgentProjectRef;
 }
 
 export type AgentSessionFailure = RuntimeAgentSessionFailure;

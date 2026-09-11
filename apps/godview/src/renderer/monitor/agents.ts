@@ -6,9 +6,10 @@ import {
   type AgentMonitorState,
 } from '@vibecook/puppeteer-core';
 import type { AgentMonitorStateMessage, AgentSessionInfo } from '../../protocol.js';
-import { agentAccent, classifyTerminalStatus, projectLabel, type AgentVisualStatus } from '../agent-status.js';
+import { classifyTerminalStatus, projectLabel, type AgentVisualStatus } from '../agent-status.js';
 import { folderName } from '../folder-name.js';
 import type { PaneAttachment } from '../pane-attachments.js';
+import { projectTint, type ProjectTint } from '../project-tint.js';
 import type { MonitorAgent } from './types.js';
 
 export interface MonitorAgentRecord {
@@ -63,14 +64,29 @@ export interface AssembleMonitorAgentsInput {
   identities?: ReadonlyMap<string, string>;
   activeSessionId?: string;
   nowMs?: number;
-  /** §2.6's accents in slot order; a session's colour is the slot its id hashes to. */
-  accents?: readonly string[];
+  /** The theme's tint for project colours and the ramp for sessions with no project (record §02). */
+  colours?: MonitorColours;
+}
+
+export interface MonitorColours {
+  tint: ProjectTint;
+  neutral: string;
+}
+
+/**
+ * The project's dealt tint, or the ramp until main has folded the workspace to
+ * its project. With no palette mounted the answer is `currentColor`: a
+ * rendering with no colour rather than an invented one.
+ */
+function sessionColour(project: { seq: number } | undefined, colours: MonitorColours | undefined): string {
+  if (!colours) return 'currentColor';
+  return project ? projectTint(project.seq, colours.tint) : colours.neutral;
 }
 
 /** Undefined for a session that has stopped being worth showing at all. */
 export function monitorAgentFromSession(
   record: MonitorAgentRecord,
-  options: { allMonitorStates?: readonly AgentMonitorState[]; nowMs?: number; accents?: readonly string[] } = {},
+  options: { allMonitorStates?: readonly AgentMonitorState[]; nowMs?: number; colours?: MonitorColours } = {},
 ): MonitorAgent | undefined {
   const { info, monitor } = record;
   if (!monitor) return undefined;
@@ -99,7 +115,7 @@ export function monitorAgentFromSession(
     status: current.status,
     project: projectLabel(info, currentCwd),
     detail,
-    color: agentAccent(info.runtimeSessionId, options.accents ?? []),
+    color: sessionColour(info.project, options.colours),
     active: false,
     ...(recency === 'stale' ? { stale: true } : {}),
     ...(cwd ? { cwd } : {}),
@@ -116,7 +132,8 @@ export function monitorAgentFromSession(
   };
 }
 
-export function monitorAgentFromTerminal(record: MonitorTerminalRecord, accents: readonly string[] = []): MonitorAgent {
+/** A terminal no agent has claimed belongs to no project, so it wears the ramp, not a colour. */
+export function monitorAgentFromTerminal(record: MonitorTerminalRecord, colours?: MonitorColours): MonitorAgent {
   const { session, cwd, spawnHint } = record;
   const id = record.id ?? session.id;
   const path = session.cwd ?? cwd ?? undefined;
@@ -126,7 +143,7 @@ export function monitorAgentFromTerminal(record: MonitorTerminalRecord, accents:
     status: classifyTerminalStatus(session.activity),
     project: folderName(path, 'terminal'),
     detail: path || 'Unassigned terminal',
-    color: agentAccent(id, accents),
+    color: sessionColour(undefined, colours),
     active: false,
     ...(path ? { cwd: path } : {}),
     ...(spawnHint ? { spawnHint } : {}),
@@ -145,7 +162,7 @@ export function assembleMonitorAgents(input: AssembleMonitorAgentsInput): readon
       monitorAgentFromSession(record, {
         allMonitorStates,
         nowMs: input.nowMs,
-        ...(input.accents ? { accents: input.accents } : {}),
+        ...(input.colours ? { colours: input.colours } : {}),
       }),
     )
     .filter((agent): agent is MonitorAgent => agent !== undefined)
@@ -158,7 +175,7 @@ export function assembleMonitorAgents(input: AssembleMonitorAgentsInput): readon
       session: input.sessions?.get(terminal.session.id) ?? terminal.session,
     }))
     .filter((terminal) => !terminal.session.exited)
-    .map((terminal) => monitorAgentFromTerminal(terminal, input.accents));
+    .map((terminal) => monitorAgentFromTerminal(terminal, input.colours));
 
   return [...agents, ...terminals].map((agent) => {
     const attachment = input.attachments?.get(agent.session.id);

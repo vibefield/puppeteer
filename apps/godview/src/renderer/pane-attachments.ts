@@ -1,6 +1,13 @@
+/**
+ * Which panes show a session. Panes carry no colour of their own (record §02,
+ * P-4): a pane wears the project colour of the agent mounted in it, so the
+ * only pane fact a view needs is where a session is mounted.
+ */
 export interface PaneAttachment {
-  primary: string;
-  mirrors: readonly string[];
+  /** The pane the session is worked in: the active pane when it shows this session, else its first pane. */
+  primaryPaneId: string;
+  /** Every pane showing the session, the primary first, the rest in tree order. */
+  paneIds: readonly string[];
 }
 
 interface MountedPane {
@@ -10,28 +17,23 @@ interface MountedPane {
 
 export function buildPaneAttachments(
   panes: readonly MountedPane[],
-  paneColors: ReadonlyMap<string, string>,
   activePaneId?: string,
 ): ReadonlyMap<string, PaneAttachment> {
-  const colorsBySession = new Map<string, { paneId: string; color: string }[]>();
-
+  const panesBySession = new Map<string, string[]>();
   for (const pane of panes) {
-    const color = paneColors.get(pane.id);
-    if (!color) continue;
-    const attachments = colorsBySession.get(pane.session.id) ?? [];
-    attachments.push({ paneId: pane.id, color });
-    colorsBySession.set(pane.session.id, attachments);
+    const paneIds = panesBySession.get(pane.session.id) ?? [];
+    paneIds.push(pane.id);
+    panesBySession.set(pane.session.id, paneIds);
   }
 
   const result = new Map<string, PaneAttachment>();
-  for (const [sessionId, attachments] of colorsBySession) {
-    const activeIndex = attachments.findIndex(({ paneId }) => paneId === activePaneId);
-    const primaryIndex = activeIndex >= 0 ? activeIndex : 0;
+  for (const [sessionId, paneIds] of panesBySession) {
+    const activeIndex = activePaneId === undefined ? -1 : paneIds.indexOf(activePaneId);
+    const primaryPaneId = paneIds[activeIndex >= 0 ? activeIndex : 0]!;
     result.set(sessionId, {
-      primary: attachments[primaryIndex].color,
-      mirrors: attachments.filter((_, index) => index !== primaryIndex).map(({ color }) => color),
+      primaryPaneId,
+      paneIds: [primaryPaneId, ...paneIds.filter((paneId) => paneId !== primaryPaneId)],
     });
   }
-
   return result;
 }

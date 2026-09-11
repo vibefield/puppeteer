@@ -61,6 +61,11 @@ body {
   --pane-access-bg: rgba(247, 247, 247, 0.8);
   --crt-scanline: rgba(0, 0, 0, 0.08);
   --crt-vignette: rgba(0, 0, 0, 0.15);
+  /* §02 project colour: the theme's lightness and chroma; only the hue is the
+     project's. Kit tokens in waiting — vibe-field has not landed them yet, so
+     the skin defines them here and monitor-palette.ts reads them. */
+  --tint-l: 0.6;
+  --tint-c: 0.15;
   color-scheme: light;
 }
 
@@ -88,6 +93,8 @@ body {
   --pane-access-bg: rgba(22, 24, 29, 0.82);
   --crt-scanline: rgba(0, 0, 0, 0.3);
   --crt-vignette: rgba(0, 0, 0, 0.75);
+  --tint-l: 0.74;
+  --tint-c: 0.15;
   color-scheme: dark;
 }
 

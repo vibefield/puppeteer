@@ -1,5 +1,6 @@
 import { AGENT_MARK_CANDIDATES } from '../../../AgentIcon.js';
 import { readMonitorPalette } from '../../../monitor/monitor-palette.js';
+import { projectTint } from '../../../project-tint.js';
 import { bubbleModel, type SwarmBubbleModel } from '../bubble-model.js';
 import { resolveCssColor, type Rgba } from '../gpu/color.js';
 import {
@@ -226,7 +227,7 @@ async function main(): Promise<void> {
   addPart('States', 'Every drawn state, one body each, at the sizes the sliders hold.', stateStages(nowMs), 'grid');
   addPart(
     'The pane light, weighed',
-    'The mount’s light under three settings on the idle body. The sliders above set the app’s; these are fixed for comparison.',
+    'The selected pane’s light under three settings on the idle body. The sliders above set the app’s; these are fixed for comparison.',
     lightStages(nowMs),
     'grid',
   );
@@ -254,7 +255,14 @@ async function main(): Promise<void> {
     }
   };
 
+  // The fixtures name their projects by sequence (`--lab-project-N`); the
+  // colours are dealt here from the theme's tint, exactly as the app deals them.
+  const dealProjects = (): void => {
+    const { tint } = readMonitorPalette();
+    for (let seq = 0; seq < 8; seq += 1) root.style.setProperty(`--lab-project-${seq}`, projectTint(seq, tint));
+  };
   const applyTheme = (): void => {
+    dealProjects();
     theme = resolveSwarmTheme(readMonitorPalette().swarm, root);
     colourCache.clear();
     rebuild();

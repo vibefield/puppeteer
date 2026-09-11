@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import type { AgentVisualStatus } from '../agent-status.js';
+import type { ProjectTint } from '../project-tint.js';
 
 // The monitor's colors, READ FROM THE TOKENS — ported from vibe-field's
 // monitor/monitor-palette.ts.
@@ -15,15 +16,17 @@ import type { AgentVisualStatus } from '../agent-status.js';
 //   blocked → --vf-orange   · "needs attention", and the Godview ring-1 color
 //   idle    → the text ramp · muted, no hue — an agent doing nothing is not a
 //                             state to alarm at
-// and the per-agent relationship color is §2.6's organizational accent set,
-// which groups and labels and never signals state.
-
-/** How many accent slots §2.6 defines. A ninth accent is one token plus this number. */
-export const ACCENT_SLOTS = 8;
+// and the per-agent relationship colour is the PROJECT's (record §02): main
+// deals each project a sequence, `project-tint.ts` turns it into a hue, and
+// the theme supplies the lightness and chroma through two tokens the skin
+// defines until vibe-field's kit lands them. A bare terminal belongs to no
+// project and wears the ramp. Identity never signals state.
 
 export interface MonitorPalette {
-  /** §2.6, in declared order. Index is the accent SLOT an id hashes to. */
-  accents: readonly string[];
+  /** §02: the theme's lightness and chroma for every project tint (`--tint-l`, `--tint-c`). */
+  tint: ProjectTint;
+  /** The ramp a session with no project wears: a colour that is not a colour. */
+  neutral: string;
   /** §2.5 + §2.4, as CSS colors. */
   status: Readonly<Record<AgentVisualStatus, string>>;
   /** The same three, as `"r, g, b"` for canvas `rgba()` composition. */
@@ -90,6 +93,11 @@ function readScopedToken(name: string, fallback: string): string {
   return value === '' ? fallback : value;
 }
 
+function readScopedNumber(name: string, fallback: number): number {
+  const value = Number.parseFloat(readScopedToken(name, ''));
+  return Number.isFinite(value) ? value : fallback;
+}
+
 function readSwarmPalette(): SwarmPalette {
   return {
     idleBg: readScopedToken('--idle-bg', '#000000'),
@@ -124,19 +132,19 @@ export function hexToRgb255(hex: string): string {
  * Fallbacks are BLACK-ish rather than plausible colors on purpose: an absent
  * token means the stylesheet is not in the document, and a monitor that quietly
  * paints a hardcoded green in that case would be hiding the fault it should be
- * showing. The one exception is the accent list, which falls back to the stage
- * color — every bubble the same, obviously wrong, cheap to notice.
+ * showing. The tint falls back to no lightness for the same reason: every
+ * project black, obviously wrong, cheap to notice.
  */
 export function readMonitorPalette(): MonitorPalette {
   const stage = readToken('--vf-card-deep', '#000000');
-  const accents = Array.from({ length: ACCENT_SLOTS }, (_, index) => readToken(`--vf-accent-${index + 1}`, stage));
   const status = {
     working: readToken('--vf-green', '#000000'),
     blocked: readToken('--vf-orange', '#000000'),
     idle: TEXT_TERTIARY,
   } as const;
   return {
-    accents,
+    tint: { l: readScopedNumber('--tint-l', 0), c: readScopedNumber('--tint-c', 0) },
+    neutral: readScopedToken('--text-faint', '#000000'),
     status,
     statusRgb: {
       working: hexToRgb255(status.working),
@@ -175,9 +183,9 @@ export function readMonitorPalette(): MonitorPalette {
  * The palette, live.
  *
  * Re-sampled on a `data-theme` change, which is how this window stamps a theme.
- * Today §2.6's accents and §2.5's states are theme-invariant, so the observer
- * will usually change nothing — it is here so that the day one of them GAINS a
- * dark variant, the canvas views follow without anyone remembering they exist.
+ * The project tint has a lightness per theme, so every bubble's colour moves
+ * with the switch; §2.5's states are theme-invariant today, and the observer
+ * is what lets them gain a dark variant without anyone remembering it exists.
  */
 export function useMonitorPalette(): MonitorPalette {
   const [palette, setPalette] = useState(readMonitorPalette);

@@ -635,8 +635,9 @@ export async function createSwarmRenderer(canvas: HTMLCanvasElement): Promise<Sw
     if (model.running) flags |= F_RUNNING;
     if (model.graph) flags |= F_GRAPH;
     if (model.flood) flags |= F_FLOOD;
-    // The outer light: the pane's colour on a mounted body.
-    if (body.link) flags |= F_GLOW;
+    // The outer light: only on the body whose pane is the selected one. Every
+    // other mounted body wears its colour as the band alone.
+    if (body.link && model.active) flags |= F_GLOW;
     if (model.appearance === 'working' && !model.hollow) flags |= F_RIM | F_SHADOW | F_CORE;
     if (model.stale) flags |= F_STALE;
     if (body.link) flags |= F_LINKED;

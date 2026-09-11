@@ -146,20 +146,21 @@ export function RainView({ agents, parameters, actions, palette }: AgentMonitorP
       context2d.fillStyle = colors.rain.stage;
       context2d.fillRect(0, 0, width, height);
 
-      // Pane linkage rides its own channel — a wash behind the column — so the
+      // Pane linkage rides its own channel — a wash behind the column in the
+      // session's own colour, one stripe per further pane showing it — so the
       // glyph colors stay free to mean status, selection, and hover.
       if (settings.paneTint > 0) {
         for (const [column, drop] of drops) {
-          const attachment = byId.get(drop.agentId)?.attachment;
-          if (!attachment) continue;
+          const agent = byId.get(drop.agentId);
+          const attachment = agent?.attachment;
+          if (!agent || !attachment) continue;
           context2d.globalAlpha = settings.paneTint;
-          context2d.fillStyle = attachment.primary;
+          context2d.fillStyle = agent.color;
           context2d.fillRect(column * cell, 0, cell, height);
           context2d.globalAlpha = Math.min(0.6, settings.paneTint * 2.2);
-          attachment.mirrors.forEach((color, index) => {
-            context2d.fillStyle = color;
-            context2d.fillRect(column * cell + index * 2, 0, 2, height);
-          });
+          for (let mirror = 1; mirror < attachment.paneIds.length; mirror += 1) {
+            context2d.fillRect(column * cell + (mirror - 1) * 2, 0, 2, height);
+          }
         }
         context2d.globalAlpha = 1;
       }

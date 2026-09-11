@@ -1,6 +1,6 @@
-// The outer light in the pane's colour, which is the body's accent when the
-// body is mounted: the mark of a mounted pane. Drawn after every body so it
-// falls on neighbours the way light does. Two falloffs of the distance outside the rim: a tight photographic rim
+// The outer light in the body's own colour: the mark of the body mounted in
+// the SELECTED pane. Every other mounted body wears the band alone. Drawn
+// after every body so it falls on neighbours the way light does. Two falloffs of the distance outside the rim: a tight photographic rim
 // and a designer halo (power 2.65, the fit from the glow study), scaled by the
 // tunable reach and strength, breathing if asked.
 

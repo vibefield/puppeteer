@@ -45,14 +45,17 @@ export interface MonitorAgent {
   status: AgentVisualStatus;
   project: string;
   detail: string;
-  /** A §2.6 organizational accent, resolved from the live tokens by the slot
-   * this session's id hashes to. It groups and labels; it never signals state. */
+  /** The project's colour (record §02): main deals the project a sequence the
+   * first time an agent runs in it, and the theme's tint turns that into a
+   * hue. A bare terminal belongs to no project and wears the ramp. It groups
+   * and labels; it never signals state. */
   color: string;
   /** Evidence recency is presentation metadata, never a fourth status. */
   stale?: boolean;
   /** Mounted in the pane the user is working in. */
   active: boolean;
-  /** Colors of the panes showing this session; absent when it is mounted nowhere. */
+  /** The panes showing this session; absent when it is mounted nowhere. A pane
+   * wears this session's colour, never one of its own. */
   attachment?: PaneAttachment;
   cwd?: string;
   /** Where the user asked for it, for views that place new arrivals spatially. */

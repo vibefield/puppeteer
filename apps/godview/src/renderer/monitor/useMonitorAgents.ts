@@ -22,7 +22,7 @@ export interface UseMonitorAgentsOptions {
   terminalIdentities?: ReadonlyMap<string, string>;
   /** Terminal-runtime exits, so a placeholder for a closed terminal stops being shown. */
   onSessionExited(listener: (sessionId: string) => void): () => void;
-  /** The live tokens; a row's colour is the §2.6 slot its id hashes to. */
+  /** The live tokens; a row's colour is its project's tint, or the ramp with no project. */
   palette: MonitorPalette;
   /** Account id -> label, so a row can name the account its session was launched under. */
   profileLabels?: ReadonlyMap<string, string>;
@@ -203,7 +203,7 @@ export function useMonitorAgents({
       attachments,
       identities: terminalIdentities,
       nowMs,
-      accents: palette.accents,
+      colours: { tint: palette.tint, neutral: palette.neutral },
       ...(workspace?.activeSession ? { activeSessionId: workspace.activeSession.id } : {}),
     });
     // Unread is a fold over successive projections; the ledger is the only
@@ -239,7 +239,8 @@ export function useMonitorAgents({
   }, [
     attachments,
     nowMs,
-    palette.accents,
+    palette.neutral,
+    palette.tint,
     profileLabels,
     records,
     sessions,

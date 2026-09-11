@@ -96,7 +96,7 @@ function FindRowView({
   const place = [row.title ? agent.project : undefined, facet?.branch].filter(Boolean).join(' · ');
   const model = facet ? (facet.model ?? facet.provider.label) : 'terminal';
   const speaker = facet?.provider.label ?? 'agent';
-  const style = { '--agent-color': agent.attachment?.primary ?? agent.color } as CSSProperties;
+  const style = { '--agent-color': agent.color } as CSSProperties;
   return (
     <li
       id={optionId(index)}

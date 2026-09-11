@@ -34,6 +34,7 @@ import {
   buildAgentEnvironment,
   type AgentRuntime,
   type AgentWorkspaceFinal,
+  type AgentWorkspaceInfo,
   type AgentWorkspaceRequest,
   type ResumeAgentOptions,
   type SpawnAgentResult,
@@ -42,6 +43,7 @@ import type {
   AccountUsageBatch,
   AgentInstallationsSnapshot,
   AgentProfile,
+  AgentProjectRef,
   AgentSessionInfo,
   AgentSessionSnapshot,
   CheckReleasesRequest,
@@ -66,6 +68,7 @@ import type {
 } from '../protocol.js';
 import { createAccountUsageMonitor, type AccountUsageProfileRef } from './account-usage-monitor.js';
 import { createProfileDefaultsStore, profileDefaultIds, retainKnownProfileDefaults } from './agent-profile-defaults.js';
+import { createProjectRegistry } from './project-registry.js';
 import {
   createHistorySearchService,
   defaultAnnounceDirectory,
@@ -665,6 +668,8 @@ const monitorConnection = connectMonitorIpcRelay(agentRuntime, monitorRelay, (er
 );
 /** Which account a new terminal binds to when the user names none. */
 const profileDefaultsStore = createProfileDefaultsStore(join(app.getPath('userData'), 'agent-profile-defaults.json'));
+/** The projects agents have run in, each dealt a colour sequence for life (record §02). */
+const projectRegistry = createProjectRegistry(join(app.getPath('userData'), 'projects.json'));
 /** Login terminals awaiting their exit, so the account is verified from native evidence afterwards. */
 const pendingProfileLogins = new Map<string, { profileId: string; timer: NodeJS.Timeout }>();
 /** Where the transcript history daemon lives; hand-edited, never written by Godview. */
@@ -1005,6 +1010,30 @@ async function openInitialWindows(): Promise<void> {
   if (tabs.records().length === 0) await createWindow({ freshWorkspace: true });
   restoreCheckpointReady = true;
   scheduleRestoreCheckpoint(true);
+}
+
+/** The folder a workspace was cut from: the source for a worktree or copy, the cwd for a direct run. */
+function projectSource(workspace: AgentWorkspaceInfo): string {
+  return workspace.sourcePath || workspace.root;
+}
+
+/** The project this workspace belongs to; a registry failure costs the colour, never the launch. */
+async function dealProject(workspace: AgentWorkspaceInfo): Promise<AgentProjectRef | undefined> {
+  try {
+    return await projectRegistry.deal(projectSource(workspace));
+  } catch (error) {
+    process.stderr.write(`[main] could not deal a project for ${projectSource(workspace)}: ${String(error)}\n`);
+    return undefined;
+  }
+}
+
+/** Deal after the fact for a record remembered without its project, and tell every renderer. */
+async function dealProjectLater(runtimeSessionId: string, workspace: AgentWorkspaceInfo): Promise<void> {
+  const project = await dealProject(workspace);
+  const record = agentRecords.get(runtimeSessionId);
+  if (!project || !record || record.info.project) return;
+  record.info = { ...record.info, project };
+  broadcast('puppeteer:agent-session', record.info);
 }
 
 function rememberAgent(info: AgentSessionInfo, session: SessionSummary): void {
@@ -1492,11 +1521,15 @@ async function registerSpawnedAgent(
 ): Promise<CreateAgentSessionResult> {
   if ('error' in spawned) return spawned;
   const result = spawned.info;
-  const session = await backend!.automation.getSession(result.runtimeSessionId);
+  const [session, project] = await Promise.all([
+    backend!.automation.getSession(result.runtimeSessionId),
+    dealProject(result.workspace),
+  ]);
   const info: AgentSessionInfo = {
     ...result,
     provider: { ...result.provider },
     session,
+    ...(project ? { project } : {}),
   };
   if (restoringSessionId) {
     pendingRestoreAgents.delete(restoringSessionId);
@@ -1532,14 +1565,19 @@ async function handleSpawnThroughRequest(request: SpawnThroughRequest): Promise<
     },
     listSessions: () => backend!.automation.listSessions(),
     onAdopted: ({ info: adopted, session, processId, preparationId }) => {
+      // Adoption is synchronous, so a project seen before is dealt at once and
+      // a new folder is folded afterwards and the record re-broadcast.
+      const known = projectRegistry.known(projectSource(adopted.workspace));
       const info: AgentSessionInfo = {
         ...adopted,
         provider: { ...adopted.provider },
         session,
+        ...(known ? { project: known } : {}),
       };
       managedTerminalIds.add(session.id);
       rememberAgent(info, session);
       monitorAdoptedProcess(session.id, processId, preparationId);
+      if (!known) void dealProjectLater(info.runtimeSessionId, adopted.workspace);
     },
   });
 }

@@ -29,7 +29,7 @@ export interface SwarmBubbleModel {
   /** The three-way reading that picks the body's colours and size. */
   appearance: AgentVisualStatus;
   radius: number;
-  /** §2.6 organizational accent (the pane's colour when mounted): the pane light, the flood, the centre light. */
+  /** The project's colour (record §02): the pane light when mounted, the flood, the centre light. */
   accent: string;
   copy: CopyLine[];
   copyMaxWidthRatio: number;
@@ -49,9 +49,9 @@ export interface SwarmBubbleModel {
   unread: boolean;
   stale: boolean;
   active: boolean;
-  /** The pane colour this session is mounted in, drawn as the outer light. */
+  /** A mounted body's band, in its own colour since the pane wears the session's and never its own; the
+   * outer light joins it only while `active`, that is, while its pane is the selected one. */
   linked?: string;
-  mirrors: readonly string[];
   /** The provider mark, watermarked behind the copy. */
   watermark?: { sprite: string; opacity: number };
   blockerKind?: SwarmBlockerKind;
@@ -164,15 +164,12 @@ export function bubbleModel(input: BubbleModelInput): SwarmBubbleModel {
   const facet = agent.agent;
   const percent = contextPercent(agent);
   const contextLabel = percent === undefined ? 'CTX:--%' : `CTX:${percent.toString().padStart(2, '0')}%`;
-  const linked = agent.attachment?.primary;
-  const mirrors = agent.attachment?.mirrors ?? [];
   const base = {
     id: agent.id,
-    accent: linked ?? agent.color,
-    mirrors,
+    accent: agent.color,
     stale: agent.stale === true,
     active: agent.active,
-    ...(linked ? { linked } : {}),
+    ...(agent.attachment ? { linked: agent.color } : {}),
   };
 
   if (!facet) {

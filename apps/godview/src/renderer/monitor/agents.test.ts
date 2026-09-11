@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import type { SessionActivity, SessionSummary } from '@vibecook/ghosttea-protocol';
 import type { AgentMonitorState, AgentMonitorStatus } from '@vibecook/puppeteer-core';
 import type { AgentMonitorStateMessage, AgentSessionInfo } from '../../protocol.js';
+import { projectTint } from '../project-tint.js';
 import {
   assembleMonitorAgents,
   mergeMonitorTerminals,
@@ -103,7 +104,7 @@ describe('monitor agent assembly', () => {
   });
 
   it('folds the shell-owned pane facts in, so no view looks them up itself', () => {
-    const attachment = { primary: 'hsl(10 72% 48%)', mirrors: ['hsl(60 72% 48%)'] };
+    const attachment = { primaryPaneId: 'pane-a', paneIds: ['pane-a', 'pane-b'] };
     const [agent] = assembleMonitorAgents({
       agents: [agentRecord('runtime-a', 'terminal-a')],
       terminals: [],
@@ -111,6 +112,23 @@ describe('monitor agent assembly', () => {
       activeSessionId: 'terminal-a',
     });
     expect(agent).toMatchObject({ active: true, attachment });
+  });
+
+  it('colours an agent from its dealt project and a bare terminal from the ramp', () => {
+    const colours = { tint: { l: 0.6, c: 0.15 }, neutral: '#b8b8b8' };
+    const dealt = agentRecord('runtime-a', 'terminal-a');
+    dealt.info = { ...dealt.info, project: { key: '/project/godview', name: 'godview', seq: 2 } };
+    const [agent, undealt, terminal] = assembleMonitorAgents({
+      agents: [dealt, agentRecord('runtime-b', 'terminal-b', {}, 5)],
+      terminals: [{ session: session('terminal-c') }],
+      colours,
+    });
+    expect(agent!.color).toBe(projectTint(2, colours.tint));
+    // Until main has folded the workspace to its project there is no colour to wear.
+    expect(undealt!.color).toBe('#b8b8b8');
+    expect(terminal!.color).toBe('#b8b8b8');
+    // Without a palette nothing is invented.
+    expect(assembleMonitorAgents({ agents: [dealt], terminals: [] })[0]!.color).toBe('currentColor');
   });
 
   it('refreshes a terminal placeholder from the live session summary', () => {

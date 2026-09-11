@@ -19,9 +19,9 @@ fn fs(in: BodyVertex) -> @location(0) vec4f {
   let dist = length(p);
   let d = dist - r;
   let inside = cov(d);
-  // A mounted body wears its pane colour as a band a thirtieth of the radius
-  // wide just outside the rim, the gutter, and the light starts where the band
-  // stops.
+  // A mounted body wears its colour as a band a thirtieth of the radius wide
+  // just outside the rim, the gutter; the light of the selected pane's body
+  // starts where the band stops.
   let linked = has(flags, F_LINKED);
   let edge = select(0.0, r * LIGHT_GUTTER_RATIO, linked);
   let time = frame.viewport.w;
@@ -144,8 +144,8 @@ fn fs(in: BodyVertex) -> @location(0) vec4f {
     }
   }
 
-  // Mounted in a pane: the pane's colour as the gutter band outside the rim,
-  // then the outer light (the glow pass).
+  // Mounted in a pane: the body's colour as the gutter band outside the rim;
+  // the outer light (the glow pass) joins it only for the selected pane's body.
   if (linked) {
     out = over(out, premul(body.link) * cov(abs(d - edge * 0.5) - edge * 0.5));
   }
