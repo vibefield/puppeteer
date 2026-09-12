@@ -195,7 +195,7 @@ export function assembleMonitorAgents(input: AssembleMonitorAgentsInput): readon
     .filter((terminal) => !terminal.session.exited)
     .map((terminal) => monitorAgentFromTerminal(terminal, input.colours));
 
-  return [...agents, ...terminals].map((agent) => {
+  const decorate = (agent: MonitorAgent): MonitorAgent => {
     const attachment = input.attachments?.get(agent.session.id);
     return {
       ...agent,
@@ -204,7 +204,14 @@ export function assembleMonitorAgents(input: AssembleMonitorAgentsInput): readon
       active: input.activeSessionId === agent.session.id,
       ...(attachment ? { attachment } : {}),
     };
-  });
+  };
+  const agentRows = agents.map(decorate);
+  // One identity, one row. A crashed agent keeps its row until the failure is
+  // acknowledged, while the shell its pane was handed already wears its
+  // identity so placement survives; the agent's row speaks for both until it
+  // goes, and the shell's row takes over then.
+  const spoken = new Set(agentRows.map((agent) => agent.id));
+  return [...agentRows, ...terminals.map(decorate).filter((terminal) => !spoken.has(terminal.id))];
 }
 
 /** Agent-backed only: the status shortcuts navigate agents, not bare terminals. */

@@ -202,6 +202,20 @@ describe('monitor agent assembly', () => {
     });
   });
 
+  it('lets a crashed agent speak for the shell its pane was handed, one row per identity', () => {
+    const record = agentRecord('runtime-a', 'terminal-a');
+    record.info = { ...record.info, session: session('terminal-a', { exited: true, exitCode: 1 }) };
+    const assembled = assembleMonitorAgents({
+      agents: [record],
+      terminals: [{ session: session('shell') }],
+      identities: new Map([['shell', 'terminal-a']]),
+      activeSessionId: 'shell',
+    });
+    expect(assembled.map((agent) => [agent.id, agent.session.id, agent.agent !== undefined])).toEqual([
+      ['terminal-a', 'terminal-a', true],
+    ]);
+  });
+
   it('discovers restored workspace shells without a creation-only terminal record', () => {
     expect(
       mergeMonitorTerminals({
