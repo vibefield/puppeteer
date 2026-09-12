@@ -984,6 +984,7 @@ describe('createClaudeSession (full loop, test-as-Claude)', () => {
     const session = await createClaudeSession({
       cwd: '/tmp',
       resume: resumeId,
+      configDir: join(transcriptDirectory, '.claude'),
       ports: {
         spawn: async (p) => {
           prepared = p;

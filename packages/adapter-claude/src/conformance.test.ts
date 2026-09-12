@@ -1,4 +1,6 @@
-import { existsSync, readFileSync } from 'node:fs';
+import { existsSync, mkdirSync, mkdtempSync, readFileSync, writeFileSync } from 'node:fs';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
 import {
   runAgentMonitorConformance,
   runAgentAdapterConformance,
@@ -12,6 +14,8 @@ const REPLY = 'done!';
 
 /** Build a live ClaudeSession driven through its real hook bridge (test-as-Claude). */
 let runtimeCounter = 0;
+/** An isolated Claude config root: a resume is refused unless the conversation is on disk under it. */
+const configRoot = mkdtempSync(join(tmpdir(), 'claude-conformance-config-'));
 
 interface ClaudeConformanceHarness extends AgentAdapterHarness {
   closeObservationRail(): void;
@@ -22,10 +26,17 @@ async function claudeHarness(resume?: string): Promise<ClaudeConformanceHarness>
   let closeObservationRail = (): void => {
     throw new Error('Claude hook bridge unavailable listener is not attached');
   };
+  if (resume) {
+    // This harness never writes a transcript; the resume pre-flight wants one on disk.
+    const project = join(configRoot, 'projects', '-tmp');
+    mkdirSync(project, { recursive: true });
+    writeFileSync(join(project, `${resume}.jsonl`), '');
+  }
   const session = await createClaudeSession({
     cwd: '/tmp',
     title: 'conformance',
     resume,
+    configDir: configRoot,
     ports: {
       spawn: async (p) => {
         prepared = p;

@@ -12,9 +12,9 @@
 
 import { randomUUID } from 'node:crypto';
 import { Buffer } from 'node:buffer';
-import { constants, accessSync } from 'node:fs';
+import { constants, accessSync, existsSync, readdirSync } from 'node:fs';
 import { mkdtemp, rm, writeFile } from 'node:fs/promises';
-import { tmpdir } from 'node:os';
+import { homedir, tmpdir } from 'node:os';
 import { delimiter, join, resolve } from 'node:path';
 import { CLAUDE_HOOK_FORWARDER_SOURCE, generateHookSettings } from './settings.js';
 import {
@@ -82,6 +82,39 @@ export interface PreparedClaudeSession {
   hookForwarderPath: string;
   statusLineForwarderPath?: string;
   filesToCleanup: string[];
+}
+
+/**
+ * Where Claude keeps a conversation: `<root>/projects/<cwd slug>/<id>.jsonl`,
+ * the root being the config dir (the imposter mirrors the layout under its
+ * state root). Claude finds a session by id from any directory (probed
+ * 2.1.269, 2026-09-11), so every project folder is searched.
+ */
+export function locateClaudeTranscript(sessionId: string, root: string): string | undefined {
+  const projects = join(root, 'projects');
+  let folders: string[];
+  try {
+    folders = readdirSync(projects);
+  } catch {
+    return undefined;
+  }
+  for (const folder of folders) {
+    const candidate = join(projects, folder, `${sessionId}.jsonl`);
+    if (existsSync(candidate)) return candidate;
+  }
+  return undefined;
+}
+
+/** A resume of a conversation that is not on disk: refused before launch rather than crashed after it. */
+export class ClaudeConversationMissingError extends Error {
+  readonly code = 'CLAUDE_CONVERSATION_MISSING';
+  constructor(
+    readonly sessionId: string,
+    readonly root: string,
+  ) {
+    super(`Claude conversation ${sessionId} is not on disk under ${join(root, 'projects')}; it cannot be resumed`);
+    this.name = 'ClaudeConversationMissingError';
+  }
 }
 
 const CLAUDE_OTEL_CONFLICT_KEYS = [
@@ -187,6 +220,15 @@ export async function prepareClaudeSession(options: PrepareClaudeSessionOptions)
   // cwd. Resolve it at that same boundary before both discovery and spawn so
   // an Electron/main-process cwd cannot select a different delegate.
   const claudeConfigDir = rawClaudeConfigDir ? resolve(options.cwd, rawClaudeConfigDir) : undefined;
+  if (options.resume !== undefined) {
+    // `claude --resume <id>` for an id with no transcript exits at once with
+    // "No conversation found", which a host can only read as a crash. A
+    // provisional identity (a picker that was never answered, a session that
+    // never took a turn) is the usual way a persisted continuation gets here.
+    // Refuse before launch so the caller can fall back instead.
+    const root = options.env?.PUPPETEER_IMPOSTER_HOME ?? claudeConfigDir ?? join(homedir(), '.claude');
+    if (!locateClaudeTranscript(sessionId, root)) throw new ClaudeConversationMissingError(sessionId, root);
+  }
   const discoveredStatusChannels = statusLineForwarderPath
     ? await resolveClaudeStatusChannels(options.cwd, {
         settingSources: options.settingSources,

@@ -267,15 +267,39 @@ describe('prepareClaudeSession', () => {
     expect(p.args).not.toContain('--name');
   });
 
+  /** A config root holding one conversation, the way Claude lays its projects out. */
+  function conversationRoot(resumeId: string): string {
+    const root = mkdtempSync(join(tmpdir(), 'prepare-resume-'));
+    const project = join(root, 'projects', '-work-repo');
+    mkdirSync(project, { recursive: true });
+    writeFileSync(join(project, `${resumeId}.jsonl`), '');
+    return root;
+  }
+
   it('resume uses --resume with the resumed id and NEVER --session-id (mutually exclusive)', async () => {
     const resumeId = '64a61b19-f4d8-4f96-ba56-07024b470813';
-    const p = await prepare({ resume: resumeId });
+    const p = await prepare({ resume: resumeId, configDir: conversationRoot(resumeId) });
     expect(p.sessionId).toBe(resumeId); // join contract preserved: same id
     expect(p.args).toContain('--resume');
     expect(p.args[p.args.indexOf('--resume') + 1]).toBe(resumeId);
     expect(p.args).not.toContain('--session-id');
     // Settings still attach on resume (the hook bridge follows a resumed session).
     expect(p.args).toContain('--settings');
+  });
+
+  it('refuses to resume a conversation that is not on disk, before anything is launched', async () => {
+    const resumeId = '64a61b19-f4d8-4f96-ba56-07024b470814';
+    const root = mkdtempSync(join(tmpdir(), 'prepare-resume-missing-'));
+    mkdirSync(join(root, 'projects', '-elsewhere'), { recursive: true });
+    await expect(prepare({ resume: resumeId, configDir: root })).rejects.toMatchObject({
+      name: 'ClaudeConversationMissingError',
+      code: 'CLAUDE_CONVERSATION_MISSING',
+      sessionId: resumeId,
+    });
+    // The imposter keeps the same layout under its own state root.
+    const imposterRoot = conversationRoot(resumeId);
+    const p = await prepare({ resume: resumeId, env: { PUPPETEER_IMPOSTER_HOME: imposterRoot } });
+    expect(p.args).toContain('--resume');
   });
 
   it('preserves a native resume picker invocation without forcing --session-id', async () => {
