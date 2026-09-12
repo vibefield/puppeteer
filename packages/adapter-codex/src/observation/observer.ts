@@ -114,6 +114,17 @@ export async function createCodexObserver(opts: CreateCodexObserverOptions): Pro
   });
   const threadListeners = new Set<(info: CodexThreadInfo) => void>();
   const queuedLiveNotifications: Array<{ method: string; params: Record<string, unknown> }> = [];
+  let hasEventSubscriber = false;
+  let historyReplayed = false;
+  let pendingHistoryReplay: (() => void) | undefined;
+  let pendingRailClosure: (() => void) | undefined;
+
+  function flushHistoryReplay(): void {
+    if (!hasEventSubscriber || !pendingHistoryReplay) return;
+    const replay = pendingHistoryReplay;
+    pendingHistoryReplay = undefined;
+    replay();
+  }
 
   function emitMonitorBatch(batch: AdapterMonitorObservationBatch | null): void {
     if (!batch) return;
@@ -249,21 +260,35 @@ export async function createCodexObserver(opts: CreateCodexObserverOptions): Pro
         } catch {
           // History enrichment must never prevent live resume attachment.
         }
+        const contextWindow = threadPath ? await readLastCodexContextWindow(threadPath) : undefined;
         apply({ type: 'session:started', nativeSessionId: threadId }, 'native-hook');
-        const replayedTurnIds = replayCompletedTurns(history);
-
-        // thread/resume opens the live stream before thread/read resolves. Keep
-        // live traffic behind this replay barrier so the normalizer
-        // always sees old turns first. If thread/read already contains a turn
-        // that completed while it was in flight, discard that turn's queued
-        // protocol notifications rather than reducing it twice.
+        // A resumed history can exceed the event source's 256-event startup
+        // buffer and evict session:started (leaving the monitor "Starting").
+        // Replay only once the runtime has subscribed, so history streams
+        // directly to its consumer without dropping bootstrap metadata.
+        pendingHistoryReplay = () => {
+          const replayedTurnIds = replayCompletedTurns(history);
+          if (contextWindow && !contextWindowObserved) {
+            emitMonitorBatch(
+              monitorEvidence.contextBootstrapBatch(contextWindow, new Date().toISOString(), 'rollout-token-count'),
+            );
+            apply(contextWindow, 'native-log', { path: threadPath, bootstrap: 'rollout-token-count' });
+          }
+          historyReplayed = true;
+          // Keep live traffic behind the replay barrier, including traffic
+          // received between attachment and the first runtime subscription.
+          // A completed turn already in thread/read must not be reduced twice.
+          for (const notification of queuedLiveNotifications.splice(0)) {
+            const turnId = notificationTurnId(notification.params);
+            if (turnId && replayedTurnIds.has(turnId) && isTurnStreamNotification(notification.method)) continue;
+            consumeNotification(notification.method, notification.params);
+          }
+          pendingRailClosure?.();
+          pendingRailClosure = undefined;
+        };
         attached = true;
         attaching = false;
-        for (const notification of queuedLiveNotifications.splice(0)) {
-          const turnId = notificationTurnId(notification.params);
-          if (turnId && replayedTurnIds.has(turnId) && isTurnStreamNotification(notification.method)) continue;
-          consumeNotification(notification.method, notification.params);
-        }
+        flushHistoryReplay();
       } catch {
         if (disposed || railClosed) break;
         await new Promise((r) => setTimeout(r, delay));
@@ -273,15 +298,6 @@ export async function createCodexObserver(opts: CreateCodexObserverOptions): Pro
     if (!attached) {
       attaching = false; // disposed before the thread ever materialized
       return;
-    }
-    if (threadPath && !contextWindowObserved) {
-      const contextWindow = await readLastCodexContextWindow(threadPath);
-      if (contextWindow && !contextWindowObserved) {
-        emitMonitorBatch(
-          monitorEvidence.contextBootstrapBatch(contextWindow, new Date().toISOString(), 'rollout-token-count'),
-        );
-        apply(contextWindow, 'native-log', { path: threadPath, bootstrap: 'rollout-token-count' });
-      }
     }
     for (const l of threadListeners) l({ threadId, path: threadPath });
   }
@@ -301,6 +317,10 @@ export async function createCodexObserver(opts: CreateCodexObserverOptions): Pro
         if (tid && (!opts.selectThread || opts.selectThread(tid))) void attach(tid, thread);
       }
       return; // ignore everything until we've attached to a thread
+    }
+    if (!historyReplayed) {
+      queuedLiveNotifications.push({ method, params: params ?? {} });
+      return;
     }
     // Only our thread's notifications drive the normalized stream (avoid cross-thread bleed).
     consumeNotification(method, params ?? {});
@@ -329,13 +349,21 @@ export async function createCodexObserver(opts: CreateCodexObserverOptions): Pro
     observation = 'terminal-only';
     const observedAt = new Date().toISOString();
     const detail = signal ? `signal:${signal}` : code === null ? 'transport closed' : `exit:${code}`;
-    emitMonitorBatch(monitorEvidence.railUnavailableBatch(observedAt, detail));
-    if (attached) {
-      apply({ type: 'adapter:native-event', adapter: 'codex', nativeType: 'app-server.transport.closed' }, 'runtime', {
-        code,
-        signal,
-      });
-    }
+    const publishClosure = () => {
+      emitMonitorBatch(monitorEvidence.railUnavailableBatch(observedAt, detail));
+      if (attached) {
+        apply(
+          { type: 'adapter:native-event', adapter: 'codex', nativeType: 'app-server.transport.closed' },
+          'runtime',
+          {
+            code,
+            signal,
+          },
+        );
+      }
+    };
+    if (attached && !historyReplayed) pendingRailClosure = publishClosure;
+    else publishClosure();
   });
 
   await client.request('initialize', { clientInfo: CLIENT_INFO, capabilities: {} });
@@ -401,7 +429,14 @@ export async function createCodexObserver(opts: CreateCodexObserverOptions): Pro
     },
     observationLevel: () => observation,
     threadPath: () => threadPath,
-    events,
+    events: {
+      onCandidate(listener) {
+        const unsubscribe = events.onCandidate(listener);
+        hasEventSubscriber = true;
+        flushHistoryReplay();
+        return unsubscribe;
+      },
+    },
     onThread(listener) {
       threadListeners.add(listener);
       return () => threadListeners.delete(listener);
@@ -409,6 +444,9 @@ export async function createCodexObserver(opts: CreateCodexObserverOptions): Pro
     attachThread: (threadId) => attach(threadId, undefined),
     async dispose() {
       disposed = true; // stop the attach retry loop if it is still running
+      pendingHistoryReplay = undefined;
+      pendingRailClosure = undefined;
+      queuedLiveNotifications.length = 0;
       events.close();
       await client.close();
     },

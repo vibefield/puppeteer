@@ -1,7 +1,14 @@
 import { describe, it, expect, vi } from 'vitest';
-import { safeParseAgentEvent, type AdapterEventCandidate } from '@vibecook/puppeteer-core';
+import { safeParseAgentEvent, type AdapterEventCandidate, type AgentEventEnvelope } from '@vibecook/puppeteer-core';
+import {
+  createMonitorAccumulatorState,
+  projectAgentMonitorState,
+  reduceMonitorAccumulator,
+  translateAgentEventEnvelope,
+} from '@vibecook/puppeteer-core/monitor-spi';
 import { projectAgentEvents } from '@vibecook/puppeteer-testing';
 import { createCodexObserver } from './observer.js';
+import * as rolloutContext from './rollout-context.js';
 import type { Transport } from '../transport/app-server-client.js';
 
 /**
@@ -78,6 +85,25 @@ function controllable(
 }
 
 const threadStarted = { jsonrpc: '2.0', method: 'thread/started', params: { thread: { id: 'th-1' } } };
+
+function monitorFromEvents(envelopes: readonly AgentEventEnvelope[]) {
+  const identity = { runtimeRunId: 'run-codex', runtimeEpoch: 1 };
+  let state = createMonitorAccumulatorState({
+    ...identity,
+    allocatedAt: '2026-09-11T12:00:00.000Z',
+    providerId: 'codex',
+    executionMode: 'native-tui',
+    observationLevel: 'structured',
+  });
+  for (const envelope of envelopes) {
+    const input =
+      envelope.event.type === 'monitor:batch'
+        ? { ...envelope.event.batch, ...identity, kind: 'semantic' as const }
+        : translateAgentEventEnvelope({ ...identity, envelope });
+    state = reduceMonitorAccumulator(state, input).state;
+  }
+  return projectAgentMonitorState(state);
+}
 
 describe('createCodexObserver attach resilience', () => {
   it('keeps retrying thread/resume until it succeeds, then attaches (no one-shot give-up)', async () => {
@@ -333,6 +359,148 @@ describe('createCodexObserver controller-owned bootstrap', () => {
       threadId: 'th-history',
       includeTurns: true,
     });
+    projection.dispose();
+    await obs.dispose();
+  });
+
+  it.each([false, true])('preserves startup and long history before subscription (live turn: %s)', async (liveTurn) => {
+    const history = {
+      thread: {
+        id: 'th-long-history',
+        status: { type: 'idle' },
+        turns: [
+          {
+            id: 'turn-old',
+            status: 'completed',
+            items: [
+              { type: 'userMessage', id: 'user-old', content: [{ type: 'text', text: 'Old prompt' }] },
+              ...Array.from({ length: 150 }, (_, index) => ({
+                type: 'commandExecution',
+                id: `command-${index}`,
+                command: 'pwd',
+                status: 'completed',
+                exitCode: 0,
+              })),
+              { type: 'agentMessage', id: 'assistant-old', text: 'Old answer' },
+            ],
+          },
+        ],
+      },
+    };
+    const t = controllable(0, history);
+    const obs = await createCodexObserver({ transport: t.transport, threadId: 'th-long-history' });
+    if (liveTurn) {
+      // The TUI can start work after attachment but before runtime subscribes.
+      t.deliver({ method: 'turn/started', params: { threadId: 'th-long-history', turn: { id: 'turn-live' } } });
+      t.deliver({
+        method: 'item/completed',
+        params: {
+          threadId: 'th-long-history',
+          turnId: 'turn-live',
+          item: { type: 'userMessage', id: 'user-live', content: [{ type: 'text', text: 'New prompt' }] },
+        },
+      });
+    }
+    const projection = projectAgentEvents(obs);
+    expect(projection.envelopes.length).toBeGreaterThan(256);
+    expect(projection.envelopes.some(({ event }) => event.type === 'session:started')).toBe(true);
+    expect(projection.monitorBatches.some((batch) => batch.capabilities?.length)).toBe(true);
+    expect(projection.envelopes.filter(({ event }) => event.type === 'tool:completed')).toHaveLength(150);
+    expect(projection.state.lastAssistantMessage).toBe('Old answer');
+    expect(monitorFromEvents(projection.envelopes).status).toBe(liveTurn ? 'working' : 'idle');
+    if (liveTurn) {
+      expect(projection.state.activeTurn?.id).toBe('turn-live');
+      t.deliver({
+        method: 'turn/completed',
+        params: { threadId: 'th-long-history', turn: { id: 'turn-live', status: 'completed' } },
+      });
+      expect(monitorFromEvents(projection.envelopes).status).toBe('idle');
+    }
+    projection.dispose();
+    await obs.dispose();
+  });
+
+  it.each(['pendingInit', 'running', 'active', 'inProgress'])(
+    'does not treat historical subagent status %s as live work',
+    async (status) => {
+      const t = controllable(0, {
+        thread: {
+          id: 'th-history',
+          turns: [
+            {
+              id: 'turn-old',
+              status: 'completed',
+              items: [
+                {
+                  type: 'collabAgentToolCall',
+                  id: 'spawn-old',
+                  tool: 'spawnAgent',
+                  status: 'completed',
+                  senderThreadId: 'th-history',
+                  receiverThreadIds: ['child-old'],
+                  agentsStates: { 'child-old': { status } },
+                  model: 'gpt-5.6-sol',
+                  reasoningEffort: 'high',
+                },
+              ],
+            },
+          ],
+        },
+      });
+      const obs = await createCodexObserver({ transport: t.transport, threadId: 'th-history' });
+      const projection = projectAgentEvents(obs);
+      const restored = monitorFromEvents(projection.envelopes);
+      expect(restored.status).toBe('idle');
+      expect(restored.subagents).toMatchObject([
+        { id: 'child-old', active: false, modelId: 'gpt-5.6-sol', effort: 'high' },
+      ]);
+      t.deliver({ method: 'turn/started', params: { threadId: 'child-old', turn: { id: 'child-live-turn' } } });
+      expect(monitorFromEvents(projection.envelopes).status).toBe('working');
+      t.deliver({
+        method: 'turn/completed',
+        params: { threadId: 'child-old', turn: { id: 'child-live-turn', status: 'completed' } },
+      });
+      expect(monitorFromEvents(projection.envelopes).status).toBe('idle');
+      projection.dispose();
+      await obs.dispose();
+    },
+  );
+
+  it('applies the latest rollout context after replaying old compaction items', async () => {
+    const context = vi.spyOn(rolloutContext, 'readLastCodexContextWindow').mockResolvedValue({
+      type: 'context-window:updated',
+      usedTokens: 42,
+      capacityTokens: 100,
+    });
+    const t = controllable(0, {
+      thread: {
+        id: 'th-history',
+        path: '/tmp/rollout-history.jsonl',
+        turns: [{ id: 'turn-old', status: 'completed', items: [{ type: 'contextCompaction', id: 'compact-old' }] }],
+      },
+    });
+    try {
+      const obs = await createCodexObserver({ transport: t.transport, threadId: 'th-history' });
+      const projection = projectAgentEvents(obs);
+      expect(monitorFromEvents(projection.envelopes).context).toMatchObject({ usedTokens: 42, capacityTokens: 100 });
+      projection.dispose();
+      await obs.dispose();
+    } finally {
+      context.mockRestore();
+    }
+  });
+
+  it('keeps connection loss newer than deferred history evidence', async () => {
+    const t = controllable(0, {
+      thread: {
+        id: 'th-history',
+        turns: [{ id: 'turn-old', status: 'completed', items: [{ type: 'contextCompaction', id: 'compact-old' }] }],
+      },
+    });
+    const obs = await createCodexObserver({ transport: t.transport, threadId: 'th-history' });
+    t.fireClose();
+    const projection = projectAgentEvents(obs);
+    expect(projection.monitorBatches.at(-1)).toMatchObject({ readiness: 'degraded', completeness: 'unavailable' });
     projection.dispose();
     await obs.dispose();
   });

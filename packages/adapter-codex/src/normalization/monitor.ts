@@ -606,7 +606,10 @@ export class CodexMonitorEvidence {
             const child = this.registerChild(childId, senderThreadId);
             if (!child) continue;
             const nativeState = rec(states[childId]);
-            const state = actorState(str(nativeState?.status));
+            const recordedState = actorState(str(nativeState?.status));
+            // A replayed collaboration item says what the child was doing at
+            // that old tool call, not whether it is running after a restart.
+            const state = phase === 'bootstrap' && recordedState === 'active' ? 'unknown' : recordedState;
             const fallbackState = str(item?.status) === 'failed' || phase === 'bootstrap' ? 'unknown' : 'active';
             updates.push(
               upsert('delegation', `actor:${child.runKey}`, {
