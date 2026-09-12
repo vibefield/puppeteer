@@ -1116,8 +1116,10 @@ per tool call in the agentic loop (<code>PreToolUse</code>, <code>PostToolUse</c
           <h4>Transcript</h4>
           <p>Path from hook <code>transcript_path</code>. Existing assistant messages form a silent baseline on every
           attachment, including native resume and picker rebinds. Later assistant changes remain observable;
-          historical prompts, replies and <code>turn:*</code> are never replayed. Model, diagnostic and workflow
-          snapshots remain available. Hooks do not wait for the initial transcript read.</p>
+          historical prompts, replies and <code>turn:*</code> are never replayed. Model snapshots remain available;
+          unknown transcript metadata produces no events. Hooks do not wait for the initial transcript read.
+          Workflow journals are not read;
+          OTLP supplies workflow run IDs and names, with membership and completion unavailable.</p>
 
           <h4>Observation level</h4>
           <p><code>terminal-only</code> until the first hook arrives, then <code>native-hooks</code>.</p>

@@ -66,12 +66,10 @@ const CLAUDE_MONITOR_CAPABILITY_BASE: readonly ObservationCapability[] = [
   {
     family: 'workflow',
     support: 'degraded',
-    actorScope: 'current-actors',
-    latency: 'sample',
-    source: 'claude-otel-and-workflow-journals',
-    limitations: [
-      'OTLP supplies workflow identity and name; run journals supply exact worker membership and completion.',
-    ],
+    actorScope: 'session',
+    latency: 'response',
+    source: 'claude-otlp-logs',
+    limitations: ['OTLP identifies workflow runs and names only; worker membership and completion are unavailable.'],
   },
   {
     family: 'compaction',
@@ -97,8 +95,21 @@ export function claudeMonitorCapabilities(
   otelUsageVerified = otelUsageEnabled,
 ): readonly ObservationCapability[] {
   if (otelUsageEnabled && otelUsageVerified) return CLAUDE_MONITOR_CAPABILITY_BASE;
-  return CLAUDE_MONITOR_CAPABILITY_BASE.map((capability) =>
-    capability.family === 'usage'
+  return CLAUDE_MONITOR_CAPABILITY_BASE.map((capability) => {
+    if (capability.family === 'workflow') {
+      return {
+        ...capability,
+        support: otelUsageEnabled ? ('degraded' as const) : ('unsupported' as const),
+        source: otelUsageEnabled ? 'claude-otlp-probe' : 'none',
+        limitations: [
+          ...capability.limitations,
+          otelUsageEnabled
+            ? 'The provider version is unknown; OTLP workflow identity is safely probed.'
+            : unavailableReason,
+        ],
+      };
+    }
+    return capability.family === 'usage'
       ? {
           ...capability,
           support: 'degraded' as const,
@@ -115,8 +126,8 @@ export function claudeMonitorCapabilities(
               : []),
           ],
         }
-      : capability,
-  );
+      : capability;
+  });
 }
 
 export const CLAUDE_MONITOR_CAPABILITIES = claudeMonitorCapabilities(true);

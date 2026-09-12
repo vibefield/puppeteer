@@ -86,6 +86,7 @@ describe('Claude OTLP log normalization', () => {
     expect(normalizeClaudeOtelWorkflow(records[0]!)).toMatchObject({
       event: { type: 'workflow:updated', workflowId: 'workflow-1', name: 'research', active: true },
     });
+    expect(normalizeClaudeOtelWorkflow(records[0]!)?.event).not.toHaveProperty('members');
   });
 
   it('keeps explicit root requests actorless and isolates auxiliary requests', () => {

@@ -6,7 +6,7 @@
  * POSTs fixture-shaped hook payloads with the env-carried token.
  */
 
-import { appendFileSync, existsSync, mkdirSync, mkdtempSync, readFileSync, writeFileSync } from 'node:fs';
+import { appendFileSync, existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { afterEach, describe, expect, it, vi } from 'vitest';
@@ -576,6 +576,139 @@ describe('createClaudeSession (full loop, test-as-Claude)', () => {
     expect(events.filter(({ event }) => event.type === 'usage:tokens-used')).toHaveLength(2);
   });
 
+  it('observes workflow identity only from authenticated OTLP despite journal changes', async () => {
+    const { session, projection, prepared, events, token, hook } = await startSession({ providerVersion: '2.1.245' });
+    const dir = mkdtempSync(join(tmpdir(), 'driver-workflow-otlp-'));
+    try {
+      const transcript = join(dir, `${session.sessionId}.jsonl`);
+      writeFileSync(transcript, '');
+      const workflowDirectory = join(dir, session.sessionId, 'subagents', 'workflows', 'workflow-1');
+      mkdirSync(workflowDirectory, { recursive: true });
+      const journal = join(workflowDirectory, 'journal.jsonl');
+      writeFileSync(journal, JSON.stringify({ type: 'started', agentId: 'journal-worker' }) + '\n');
+      await hook('SessionStart', { transcript_path: transcript });
+      await session.pollTranscript();
+      const workflows = () => events.filter(({ event }) => event.type === 'workflow:updated');
+      expect(workflows()).toEqual([]);
+
+      const post = (nativeSessionId = session.sessionId, name = 'research') =>
+        fetch(prepared.env.OTEL_EXPORTER_OTLP_LOGS_ENDPOINT, {
+          method: 'POST',
+          headers: { 'content-type': 'application/json', authorization: `Bearer ${token}` },
+          body: JSON.stringify({
+            resourceLogs: [
+              {
+                scopeLogs: [
+                  {
+                    logRecords: [
+                      {
+                        body: { stringValue: 'claude_code.api_request' },
+                        attributes: Object.entries({
+                          'event.name': 'api_request',
+                          'session.id': nativeSessionId,
+                          'workflow.run_id': 'workflow-1',
+                          'workflow.name': name,
+                        }).map(([key, value]) => ({ key, value: { stringValue: value } })),
+                      },
+                    ],
+                  },
+                ],
+              },
+            ],
+          }),
+        });
+      expect((await post('foreign-session')).status).toBe(200);
+      expect(workflows()).toEqual([]);
+      expect((await post()).status).toBe(200);
+      expect(workflows()).toEqual([
+        expect.objectContaining({
+          source: 'native-telemetry',
+          event: { type: 'workflow:updated', workflowId: 'workflow-1', name: 'research', active: true },
+        }),
+      ]);
+
+      appendFileSync(journal, JSON.stringify({ type: 'result', agentId: 'journal-worker' }) + '\n');
+      await session.pollTranscript();
+      expect((await post()).status).toBe(200);
+      expect(workflows()).toHaveLength(1);
+      expect((await post(session.sessionId, 'review')).status).toBe(200);
+      expect(workflows().map(({ event }) => event)).toEqual([
+        { type: 'workflow:updated', workflowId: 'workflow-1', name: 'research', active: true },
+        { type: 'workflow:updated', workflowId: 'workflow-1', name: 'review', active: true },
+      ]);
+      expect(workflows().every(({ source }) => source === 'native-telemetry')).toBe(true);
+    } finally {
+      projection.dispose();
+      await session.dispose();
+      rmSync(dir, { recursive: true, force: true });
+    }
+  });
+
+  it('ignores root and child transcript metadata while observing live text and models', async () => {
+    const { session, projection, events, hook } = await startSession();
+    const dir = mkdtempSync(join(tmpdir(), 'driver-no-transcript-metadata-'));
+    try {
+      const row = (fields: Record<string, unknown>) =>
+        JSON.stringify({ sessionId: session.sessionId, ...fields }) + '\n';
+      const transcript = join(dir, `${session.sessionId}.jsonl`);
+      writeFileSync(
+        transcript,
+        Array.from({ length: 2_000 }, (_, index) => row({ type: 'attachment', uuid: `metadata-${index}` })).join(''),
+      );
+      const children = join(dir, session.sessionId, 'subagents');
+      mkdirSync(children, { recursive: true });
+      const childTranscript = join(children, 'agent-worker.jsonl');
+      writeFileSync(childTranscript, row({ type: 'future-type', uuid: 'child-metadata', agentId: 'worker' }));
+      const unknownEvents = projection.state.counters.unknownEvents;
+
+      await hook('SessionStart', { transcript_path: transcript });
+      await session.pollTranscript();
+      const transcriptEvents = () => events.filter(({ source }) => source === 'native-transcript');
+      expect(transcriptEvents()).toEqual([]);
+      expect(projection.state.counters.unknownEvents).toBe(unknownEvents);
+
+      appendFileSync(transcript, row({ type: 'progress', uuid: 'later-metadata' }) + row({ uuid: 'untyped-metadata' }));
+      appendFileSync(childTranscript, row({ type: 'system', uuid: 'later-child-metadata', agentId: 'worker' }));
+      await session.pollTranscript();
+      expect(transcriptEvents()).toEqual([]);
+      expect(projection.state.counters.unknownEvents).toBe(unknownEvents);
+
+      appendFileSync(
+        transcript,
+        row({
+          type: 'assistant',
+          uuid: 'live-reply',
+          message: { role: 'assistant', model: 'root-model', content: 'New reply' },
+        }),
+      );
+      appendFileSync(
+        childTranscript,
+        row({
+          type: 'assistant',
+          uuid: 'child-reply',
+          agentId: 'worker',
+          message: { role: 'assistant', model: 'child-model', content: 'Child reply' },
+        }),
+      );
+      await session.pollTranscript();
+      expect(transcriptEvents().map(({ event }) => event.type)).toEqual([
+        'conversation:assistant-message',
+        'model:updated',
+        'model:updated',
+      ]);
+      expect(projection.state.lastAssistantMessage).toBe('New reply');
+      expect(transcriptEvents().find(({ agentId }) => agentId === 'worker')?.event).toMatchObject({
+        type: 'model:updated',
+        model: { id: 'child-model' },
+      });
+      expect(projection.state.counters.unknownEvents).toBe(unknownEvents);
+    } finally {
+      projection.dispose();
+      await session.dispose();
+      rmSync(dir, { recursive: true, force: true });
+    }
+  });
+
   it.each([true, false])('observes transcript text without token usage when OTLP is enabled=%s', async (enabled) => {
     const { session, projection, events, hook } = await startSession({
       providerVersion: '2.1.245',
@@ -1046,6 +1179,7 @@ describe('createClaudeSession (full loop, test-as-Claude)', () => {
           userType: 'external',
           message: { role: 'user', content: [{ type: 'text', text: 'What did we decide?' }] },
         }),
+        JSON.stringify({ type: 'attachment', uuid: 'history-metadata', sessionId: resumeId }),
         JSON.stringify({
           parentUuid: 'history-prompt',
           type: 'assistant',

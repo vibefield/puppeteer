@@ -1,7 +1,7 @@
 /**
  * Native Claude session preparation (DESIGN §16.2 steps 4–5, 8; §11
  * PreparedNativeSession). Allocates the runtime session UUID used by hooks,
- * OTLP records, transcripts, and workflow journals, writes the generated hook
+ * OTLP records and transcripts, writes the generated hook
  * settings to a per-session file, and builds the interactive spawn command.
  *
  * The command is native-interactive ONLY (§16.3): never -p/--print/

@@ -7,7 +7,6 @@ import type {
   SemanticObservationPollHint,
   SemanticObservationProvider,
 } from '../semantic-provider.js';
-import { createClaudeWorkflowJournalObserver } from '../workflow/journal.js';
 import { claudeTranscriptConversationFingerprint, projectClaudeTranscriptAssistants } from './conversation.js';
 import { projectClaudeTranscriptModel } from './model.js';
 import {
@@ -15,18 +14,6 @@ import {
   type ClaudeSessionTranscriptSnapshot,
 } from './services/session-reader.js';
 import { createTranscriptYield } from './services/yield.js';
-import { safeTranscriptEvidence, transcriptRecordId } from './wire.js';
-
-const TRANSCRIPT_CAPABILITIES: readonly ObservationCapability[] = [
-  {
-    family: 'workflow',
-    support: 'degraded',
-    actorScope: 'current-actors',
-    latency: 'sample',
-    source: 'claude-workflow-journals',
-    limitations: ['Membership is exact for journaled workers; abandoned starts settle after an idle timeout.'],
-  },
-] as const;
 
 const DEFAULT_TRANSCRIPT_POLL_INTERVAL_MS = 1_000;
 
@@ -52,7 +39,7 @@ function retainMapKeys<Key, Value>(map: Map<Key, Value>, active: ReadonlySet<Key
 
 export class ClaudeTranscriptObservationProvider implements SemanticObservationProvider {
   capabilities(): Promise<readonly ObservationCapability[]> {
-    return Promise.resolve(TRANSCRIPT_CAPABILITIES);
+    return Promise.resolve([]);
   }
 
   attach(request: SemanticObservationAttachRequest): Promise<SemanticObservationHandle> {
@@ -60,17 +47,14 @@ export class ClaudeTranscriptObservationProvider implements SemanticObservationP
     const batchListeners = new Set<(batch: AdapterMonitorObservationBatch) => void>();
     const errorListeners = new Set<(error: Error) => void>();
     const assistantFingerprints = new Map<string, string>();
-    const evidenceFingerprints = new Map<string, string>();
-    const workflowFingerprints = new Map<string, string>();
+    const modelFingerprints = new Map<string | undefined, string>();
     let lastTranscript: ClaudeSessionTranscriptSnapshot | undefined;
     let firstTranscriptPoll = true;
-    let firstWorkflowPoll = true;
     let disposed = false;
     let timer: ReturnType<typeof setInterval> | undefined;
     let activePoll: Promise<void> | undefined;
     let pendingPoll: Promise<void> | undefined;
     const transcriptReader = createClaudeSessionTranscriptReader(request.transcriptPath, request.nativeSessionId);
-    const workflowObserver = createClaudeWorkflowJournalObserver(request.transcriptPath, request.nativeSessionId);
 
     const emitEvent = (value: SemanticObservationEvent): void => notify(eventListeners, value);
 
@@ -93,43 +77,26 @@ export class ClaudeTranscriptObservationProvider implements SemanticObservationP
       // Compare the final evidence for each identity, not every historical
       // revision against the previous poll's final value (A -> B -> A -> B).
       // Moving replacements to the end retains final-occurrence order.
-      const latest = new Map<string, SemanticObservationEvent>();
-      const select = (key: string, value: SemanticObservationEvent): void => {
-        latest.delete(key);
-        latest.set(key, value);
-      };
+      const latestModels = new Map<string | undefined, SemanticObservationEvent>();
 
       for (const record of records.all) {
         const model = projectClaudeTranscriptModel(record);
-        if (model) select(`model:${JSON.stringify(model.agentId ?? null)}`, model);
-
-        const role = record.message?.role;
-        const knownConversation =
-          record.type === 'user' || record.type === 'assistant' || role === 'user' || role === 'assistant';
-        if (!knownConversation && !model) {
-          const key = `native:${record.sourceId}:${transcriptRecordId(record)}:${record.type ?? 'record'}`;
-          select(key, {
-            event: {
-              type: 'adapter:native-event',
-              adapter: 'claude-code',
-              nativeType: `transcript:${record.type ?? 'record'}`,
-            },
-            timestamp: record.timestamp,
-            nativeEvent: safeTranscriptEvidence(record),
-          });
+        if (model) {
+          latestModels.delete(model.agentId);
+          latestModels.set(model.agentId, model);
         }
         const pause = yieldIfNeeded();
         if (pause) await pause;
         if (disposed) return;
       }
-      for (const [key, value] of latest) {
+      for (const [key, value] of latestModels) {
         const fingerprint = JSON.stringify([value.event, value.agentId ?? null, value.agentType ?? null]);
-        if (evidenceFingerprints.get(key) === fingerprint) continue;
-        evidenceFingerprints.set(key, fingerprint);
+        if (modelFingerprints.get(key) === fingerprint) continue;
+        modelFingerprints.set(key, fingerprint);
         pending.push(firstTranscriptPoll ? { ...value, replay: true } : value);
       }
       retainMapKeys(assistantFingerprints, activeAssistantKeys);
-      retainMapKeys(evidenceFingerprints, new Set(latest.keys()));
+      retainMapKeys(modelFingerprints, new Set(latestModels.keys()));
       for (const event of pending) {
         if (disposed) return;
         emitEvent(event);
@@ -140,38 +107,10 @@ export class ClaudeTranscriptObservationProvider implements SemanticObservationP
       firstTranscriptPoll = false;
     };
 
-    const projectWorkflows = async (): Promise<void> => {
-      const workflows = await workflowObserver.read();
-      if (disposed) return;
-      const yieldIfNeeded = createTranscriptYield();
-      const activeWorkflowIds = new Set(workflows.map(({ event }) => event.workflowId));
-      for (const workflow of workflows) {
-        const fingerprint = JSON.stringify(workflow.event);
-        if (workflowFingerprints.get(workflow.event.workflowId) === fingerprint) continue;
-        workflowFingerprints.set(workflow.event.workflowId, fingerprint);
-        emitEvent({
-          event: workflow.event,
-          timestamp: workflow.timestamp,
-          ...(firstWorkflowPoll ? { replay: true } : {}),
-          nativeEvent: workflow.nativeEvent,
-        });
-        const pause = yieldIfNeeded();
-        if (pause) await pause;
-        if (disposed) return;
-      }
-      retainMapKeys(workflowFingerprints, activeWorkflowIds);
-      firstWorkflowPoll = false;
-    };
-
     const project = async (): Promise<void> => {
       if (disposed) return;
       try {
         await projectTranscript();
-      } catch (error) {
-        notify(errorListeners, error instanceof Error ? error : new Error(String(error)));
-      }
-      try {
-        await projectWorkflows();
       } catch (error) {
         notify(errorListeners, error instanceof Error ? error : new Error(String(error)));
       }

@@ -10,7 +10,7 @@
  *     → ports.spawn (the host carries the hook token in its explicit env grant)
  *     → hook bridge (loopback HTTP; the ONLY session it accepts is ours)
  *     → category normalizers → candidate event source → runtime ingress
- *     → live transcript + workflow-journal provider (lazy: attached at the
+ *     → live transcript provider (lazy: attached at the
  *       first hook payload that hands us transcript_path)
  *     → authenticated OTLP logs (settled request usage, when available)
  *     → prompt injector (uses ports.automate; confirmation and
@@ -158,7 +158,7 @@ export interface CreateClaudeSessionOptions {
    * semantic transcript observer alive. Never set this for product sessions.
    */
   hookRailFaultInjection?: ClaudeHookRailFaultInjection;
-  /** Injectable durable observer; defaults to live transcript updates + workflow journals. */
+  /** Injectable durable observer; defaults to live transcript updates. */
   semanticProviderFactory?: () => SemanticObservationProvider;
   /** Enable authenticated Claude OTLP request-completion logs. Defaults to true when no exporter conflict exists. */
   observeOtlpUsage?: boolean;

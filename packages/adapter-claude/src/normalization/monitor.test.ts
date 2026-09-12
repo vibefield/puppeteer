@@ -10,7 +10,7 @@ function family(batch: AdapterMonitorObservationBatch, name: MonitorFamilyUpdate
 }
 
 describe('ClaudeMonitorEvidence', () => {
-  it('declares every monitor family including journal-backed workflows', () => {
+  it('declares workflow identity without claiming worker membership or completion', () => {
     const evidence = new ClaudeMonitorEvidence({ nativeSessionId: () => SESSION_ID, epoch: 'status-epoch' });
     const capabilities = evidence.capabilitiesBatch(AT).capabilities ?? [];
     expect(capabilities.map(({ family }) => family).sort()).toEqual(
@@ -29,7 +29,10 @@ describe('ClaudeMonitorEvidence', () => {
     );
     expect(capabilities.find(({ family }) => family === 'workflow')).toMatchObject({
       support: 'degraded',
-      source: 'claude-otel-and-workflow-journals',
+      actorScope: 'session',
+      latency: 'response',
+      source: 'claude-otlp-logs',
+      limitations: ['OTLP identifies workflow runs and names only; worker membership and completion are unavailable.'],
     });
   });
 
@@ -49,6 +52,11 @@ describe('ClaudeMonitorEvidence', () => {
         'Settled request usage is unavailable; only visible child status estimates may be observed.',
       ]),
     });
+    expect(evidence.capabilitiesBatch(AT).capabilities?.find(({ family }) => family === 'workflow')).toMatchObject({
+      support: 'unsupported',
+      source: 'none',
+      limitations: expect.arrayContaining(['known old provider version']),
+    });
   });
 
   it.each([
@@ -62,6 +70,11 @@ describe('ClaudeMonitorEvidence', () => {
     });
     expect(evidence.capabilitiesBatch(AT).capabilities?.find(({ family }) => family === 'usage')).toMatchObject({
       support,
+      source,
+      latency: 'response',
+    });
+    expect(evidence.capabilitiesBatch(AT).capabilities?.find(({ family }) => family === 'workflow')).toMatchObject({
+      support: 'degraded',
       source,
       latency: 'response',
     });

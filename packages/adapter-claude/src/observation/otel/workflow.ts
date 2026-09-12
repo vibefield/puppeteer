@@ -6,7 +6,7 @@ export interface ClaudeOtelWorkflowObservation {
   timestamp: string;
 }
 
-/** OTel identifies the run and name; the journal adapter supplies exact membership. */
+/** OTel identifies an observed run and name, without worker membership or completion. */
 export function normalizeClaudeOtelWorkflow(record: ClaudeOtelLogRecord): ClaudeOtelWorkflowObservation | undefined {
   const workflowId = otelString(record, 'workflow.run_id');
   if (!workflowId) return undefined;

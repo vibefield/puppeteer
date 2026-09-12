@@ -1,4 +1,5 @@
 import { appendFileSync, mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
+import * as fsPromises from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { afterEach, describe, expect, it, vi } from 'vitest';
@@ -6,6 +7,11 @@ import type { SemanticObservationEvent, SemanticObservationHandle } from '../sem
 import { ClaudeTranscriptObservationProvider } from './provider.js';
 import * as sessionReader from './services/session-reader.js';
 import { decodeClaudeTranscript } from './wire.js';
+
+vi.mock('node:fs/promises', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('node:fs/promises')>();
+  return { ...actual, readdir: vi.fn(actual.readdir), open: vi.fn(actual.open) };
+});
 
 const roots: string[] = [];
 const handles: SemanticObservationHandle[] = [];
@@ -93,7 +99,7 @@ describe('ClaudeTranscriptObservationProvider', () => {
     events.length = 0;
     appendFileSync(path, JSON.stringify({ type: 'attachment', uuid: 'metadata' }) + '\n');
     await handle.poll();
-    expect(events.map(({ event }) => event.type)).toEqual(['adapter:native-event']);
+    expect(events).toEqual([]);
 
     const rebound = await new ClaudeTranscriptObservationProvider().attach({
       nativeSessionId: 'session-1',
@@ -104,7 +110,7 @@ describe('ClaudeTranscriptObservationProvider', () => {
     const reboundEvents: SemanticObservationEvent[] = [];
     rebound.onEvent((event) => reboundEvents.push(event));
     await rebound.poll();
-    expect(reboundEvents.map(({ event }) => event.type)).toEqual(['adapter:native-event']);
+    expect(reboundEvents).toEqual([]);
   });
 
   it('compares final actor models once without publishing transcript usage', async () => {
@@ -125,7 +131,7 @@ describe('ClaudeTranscriptObservationProvider', () => {
     // not only the reader's unchanged-file shortcut.
     appendFileSync(path, JSON.stringify({ type: 'attachment', uuid: 'metadata' }) + '\n');
     await handle.poll();
-    expect(events.map(({ event }) => event.type)).toEqual(['adapter:native-event']);
+    expect(events).toEqual([]);
     events.length = 0;
 
     appendFileSync(path, usageRow(4, { tokens: 1, model: 'model-c' }));
@@ -171,29 +177,43 @@ describe('ClaudeTranscriptObservationProvider', () => {
     expect(events).toEqual([]);
   });
 
-  it('continues workflow polling while the transcript snapshot is unchanged', async () => {
-    const { root, handle, events } = await fixture(usageRow(1));
-    await handle.poll();
-    events.length = 0;
-    const directory = join(root, 'session-1', 'subagents', 'workflows', 'workflow-1');
+  it('does not read workflow journals at attachment or on later polls', async () => {
+    const { root, path, handle, events } = await fixture(usageRow(1));
+    const workflowRoot = join(root, 'session-1', 'subagents', 'workflows');
+    const directory = join(workflowRoot, 'workflow-1');
     mkdirSync(directory, { recursive: true });
     const journal = join(directory, 'journal.jsonl');
     writeFileSync(journal, JSON.stringify({ type: 'started', agentId: 'worker' }) + '\n');
+    const listings = vi.mocked(fsPromises.readdir).mockClear();
+    const opens = vi.mocked(fsPromises.open).mockClear();
+    const errors: Error[] = [];
+    handle.onError((error) => errors.push(error));
+
     await handle.poll();
+    expect(events.map(({ event }) => event.type)).toEqual(['model:updated']);
+    events.length = 0;
     appendFileSync(journal, JSON.stringify({ type: 'result', agentId: 'worker' }) + '\n');
     await handle.poll();
+    expect(events).toEqual([]);
+
+    // An invalid workflow directory cannot affect transcript observation.
+    rmSync(workflowRoot, { recursive: true });
+    writeFileSync(workflowRoot, 'not a directory');
+    appendFileSync(path, usageRow(2, { model: 'new-model' }));
+    await handle.poll();
     expect(events.map(({ event }) => event)).toEqual([
-      expect.objectContaining({ type: 'workflow:updated', active: true }),
-      expect.objectContaining({ type: 'workflow:updated', active: false }),
+      expect.objectContaining({ type: 'model:updated', model: { id: 'new-model', provider: 'anthropic' } }),
     ]);
+    expect(errors).toEqual([]);
+    expect(
+      [...listings.mock.calls, ...opens.mock.calls].filter(([path]) => String(path).startsWith(workflowRoot)),
+    ).toEqual([]);
   });
 
-  it('allows other event-loop work to run before a large replay finishes', async () => {
+  it('allows other event-loop work to run before a large model snapshot finishes', async () => {
     const count = 2_000;
     const { handle, events } = await fixture(
-      Array.from({ length: count }, (_, index) =>
-        JSON.stringify({ type: 'attachment', uuid: `metadata-${index}` }),
-      ).join('\n') + '\n',
+      Array.from({ length: count }, (_, index) => usageRow(index, { agentId: `worker-${index}` })).join(''),
     );
     let deliveredAtYield = 0;
     handle.onEvent(() => {
@@ -209,11 +229,9 @@ describe('ClaudeTranscriptObservationProvider', () => {
     expect(events.every(({ replay }) => replay)).toBe(true);
   });
 
-  it('stops replay delivery when disposed during a yielded batch', async () => {
+  it('stops model delivery when disposed during a yielded batch', async () => {
     const { handle, events } = await fixture(
-      Array.from({ length: 2_000 }, (_, index) =>
-        JSON.stringify({ type: 'attachment', uuid: `metadata-${index}` }),
-      ).join('\n') + '\n',
+      Array.from({ length: 2_000 }, (_, index) => usageRow(index, { agentId: `worker-${index}` })).join(''),
     );
     let disposal: Promise<void> | undefined;
     handle.onEvent(() => {
@@ -256,7 +274,7 @@ describe('ClaudeTranscriptObservationProvider', () => {
     ]);
   });
 
-  it('observes model and workflow snapshots without replaying historical conversation or usage', async () => {
+  it('observes model snapshots without importing conversation, usage or workflow history', async () => {
     const root = mkdtempSync(join(tmpdir(), 'claude-transcript-provider-'));
     roots.push(root);
     const sessionId = 'session-1';
@@ -312,20 +330,9 @@ describe('ClaudeTranscriptObservationProvider', () => {
     handle.onEvent((event) => events.push(event));
     await handle.poll();
 
-    expect(events.filter(({ replay }) => replay).map(({ event }) => event.type)).toEqual([
-      'model:updated',
-      'workflow:updated',
-    ]);
-    expect((await provider.capabilities()).some(({ family }) => family === 'usage')).toBe(false);
-    expect(events.find(({ event }) => event.type === 'workflow:updated')?.event).toEqual({
-      type: 'workflow:updated',
-      workflowId: 'workflow-1',
-      active: true,
-      members: [
-        { agentId: 'worker-a', agentType: 'researcher', state: 'completed' },
-        { agentId: 'worker-b', agentType: 'reviewer', state: 'active' },
-      ],
-    });
+    expect(events.map(({ event }) => event.type)).toEqual(['model:updated']);
+    expect(events.every(({ replay }) => replay)).toBe(true);
+    expect(await provider.capabilities()).toEqual([]);
 
     const count = events.length;
     await handle.poll();
@@ -380,20 +387,15 @@ describe('ClaudeTranscriptObservationProvider', () => {
     await handle.dispose();
   });
 
-  it('continues workflow observation when transcript reading fails', async () => {
+  it('reports transcript read failures and recovers on the next poll', async () => {
     const root = mkdtempSync(join(tmpdir(), 'claude-transcript-isolation-'));
     roots.push(root);
     const sessionId = 'session-1';
     const transcriptPath = join(root, 'transcript.jsonl');
     mkdirSync(transcriptPath);
-    const workflowDirectory = join(root, sessionId, 'subagents', 'workflows', 'workflow-1');
-    mkdirSync(workflowDirectory, { recursive: true });
-    writeFileSync(
-      join(workflowDirectory, 'journal.jsonl'),
-      `${JSON.stringify({ type: 'started', agentId: 'worker-a' })}\n`,
-    );
     const provider = new ClaudeTranscriptObservationProvider();
-    const handle = await provider.attach({ nativeSessionId: sessionId, transcriptPath });
+    const handle = await provider.attach({ nativeSessionId: sessionId, transcriptPath, pollIntervalMs: 0 });
+    handles.push(handle);
     const events: SemanticObservationEvent[] = [];
     const errors: Error[] = [];
     handle.onEvent((event) => events.push(event));
@@ -402,10 +404,11 @@ describe('ClaudeTranscriptObservationProvider', () => {
     await handle.poll();
 
     expect(errors).toHaveLength(1);
-    expect(events.find(({ event }) => event.type === 'workflow:updated')?.event).toMatchObject({
-      workflowId: 'workflow-1',
-      active: true,
-    });
-    await handle.dispose();
+    expect(events).toEqual([]);
+    rmSync(transcriptPath, { recursive: true });
+    writeFileSync(transcriptPath, usageRow(1));
+    await handle.poll();
+    expect(errors).toHaveLength(1);
+    expect(events.map(({ event }) => event.type)).toEqual(['model:updated']);
   });
 });

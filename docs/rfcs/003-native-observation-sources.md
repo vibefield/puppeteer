@@ -35,12 +35,16 @@ provider hook / OTLP log / transcript / journal / status
 | usage        | authenticated OTLP log `api_request`     | child status samples are estimates; no transcript token import |
 | compaction   | native compact hooks                     | none; transcript history is re-read after invalidation         |
 | reasoning    | reasoning hooks and child status         | provider-specific activity evidence                            |
-| delegation   | subagent hooks and child status          | workflow journals for exact workflow members                   |
-| workflow     | OTLP `workflow.run_id` / `workflow.name` | per-run `journal.jsonl` for member ids and completion          |
+| delegation   | subagent hooks and child status          | no file-based workflow membership                              |
+| workflow     | OTLP `workflow.run_id` / `workflow.name` | worker membership and completion unavailable                   |
 
 These categories do not require a general semantic database. Search, cross-session history, and analytics can remain a separate data product that indexes provider files without being in the live process dependency graph.
 
-Claude's native TUI owns resumed conversation history. The adapter silently baselines existing assistant messages on every transcript attachment, including resume-picker rebinds. It does not publish historical prompts, replies or synthetic turn outcomes. Later assistant changes remain observable while that dependency is audited separately. Hooks never wait for the initial transcript read; model, diagnostic and workflow snapshots retain their independent observation paths.
+Claude's native TUI owns resumed conversation history. The adapter silently baselines existing assistant messages on every transcript attachment, including resume-picker rebinds. It does not publish historical prompts, replies or synthetic turn outcomes. Later assistant changes remain observable while that dependency is audited separately. Hooks never wait for the initial transcript read; model snapshots retain their observation path.
+
+The transcript provider emits only live assistant changes and model observations. Unknown transcript metadata is not converted into diagnostic events or replayed on attachment. Native hook diagnostics and observer failures remain observable through their own paths.
+
+Workflow journal observation was removed on 2026-09-11. The adapter does not discover or read workflow journals, reconstruct membership, or infer completion from idle time. OTLP supplies only observed run IDs and names. Workflow capability reporting states these limits and reports unsupported when the OTLP route is unavailable.
 
 ## Usage rules learned from the burn-rate probe
 
@@ -79,8 +83,6 @@ packages/adapter-claude/src/observation/
     services/
       jsonl-reader.ts   # append-aware, reset-aware, bounded reader
       session-reader.ts # bounded root + exact-session child sidecars
-  workflow/
-    journal.ts          # append-aware, bounded exact membership reader
   hook-bridge.ts        # authenticated loopback transport service
 ```
 
