@@ -3350,3 +3350,183 @@ describe('createAgentRuntime', () => {
     await rm(root, { recursive: true, force: true });
   });
 });
+
+describe('stable ingress — re-attaching a run to a process that outlived the host (AR-4 / PU-1)', () => {
+  it('threads the host ingress to the provider and lets it report what was bound', async () => {
+    const root = await mkdtemp(join(tmpdir(), 'puppeteer-runtime-ingress-'));
+    const handles = new Map<string, { emit: (event: AgentEventEnvelope) => void }>();
+    const seen: unknown[] = [];
+    const provider: AgentProvider = {
+      ...fakeProvider('one', handles),
+      async createSession(options) {
+        seen.push(options.ingress);
+        options.ingress?.onBound?.({ port: 4242, token: 'minted' });
+        return standaloneSession('native-ingress', 'terminal-ingress');
+      },
+    };
+    const runtime = createAgentRuntime({ host, defaultCwd: root, providers: [provider] });
+    const bound: unknown[] = [];
+    const spawned = await runtime.spawn({
+      agent: 'one',
+      ingress: { token: 'pinned', onBound: (value) => bound.push(value) },
+    });
+    if ('error' in spawned) throw new Error(spawned.error.message);
+    expect(seen[0]).toMatchObject({ token: 'pinned' });
+    expect(bound).toEqual([{ port: 4242, token: 'minted' }]);
+    await runtime.dispose();
+  });
+
+  it('attaches to a running terminal through the provider and restores the run at the next epoch', async () => {
+    const root = await mkdtemp(join(tmpdir(), 'puppeteer-runtime-attach-'));
+    const registryDirectory = await mkdtemp(join(tmpdir(), 'puppeteer-runtime-attach-registry-'));
+    const handles = new Map<string, { emit: (event: AgentEventEnvelope) => void }>();
+    const attachCalls: unknown[] = [];
+    const providerFor = () =>
+      ({
+        ...fakeProvider('one', handles),
+        async createSession() {
+          return standaloneSession('native-attach', 'terminal-attach');
+        },
+        async attachSession(options) {
+          attachCalls.push(options);
+          return standaloneSession(options.sessionId, options.runtimeSessionId);
+        },
+      }) satisfies AgentProvider;
+
+    // The first host: a spawn with a durable creation request, as a host that
+    // means to survive itself must make it.
+    const first = createAgentRuntime({
+      host,
+      defaultCwd: root,
+      providers: [providerFor()],
+      creationRegistry: createFileCreationRequestRegistry({ directory: registryDirectory }),
+    });
+    const created = await first.createSession({ agent: 'one', creationRequestId: 'attach-run-one', cwd: root });
+    if ('error' in created) throw new Error(created.error.message);
+    expect(created.runtimeEpoch).toBe(1);
+    // The host leaves; the terminal (and the process in it) do not. A detach
+    // keeps the durable claim allocated — a plain dispose would close the run.
+    await first.dispose({ detach: true });
+
+    // The second host re-attaches from what it persisted.
+    const second = createAgentRuntime({
+      host,
+      defaultCwd: root,
+      providers: [providerFor()],
+      creationRegistry: createFileCreationRequestRegistry({ directory: registryDirectory }),
+    });
+    const attached = await second.attach({
+      agent: 'one',
+      creationRequestId: 'attach-run-one',
+      runtimeRunId: created.runtimeRunId,
+      expectedRuntimeEpoch: created.runtimeEpoch,
+      sessionId: created.nativeSession.id,
+      terminalSessionId: created.terminalSessionId,
+      cwd: root,
+      ingress: { port: 4242, token: 'pinned' },
+    });
+    if ('error' in attached) throw new Error(attached.error.message);
+    expect(attached.runtimeRunId).toBe(created.runtimeRunId);
+    expect(attached.runtimeEpoch).toBe(2);
+    expect(attached.terminalSessionId).toBe('terminal-attach');
+    expect(attached.nativeSession.id).toBe('native-attach');
+    expect(attached.continuation.nativeSessionId).toBe('native-attach');
+    expect(attachCalls[0]).toMatchObject({
+      sessionId: 'native-attach',
+      runtimeSessionId: 'terminal-attach',
+      cwd: root,
+      ingress: { port: 4242, token: 'pinned' },
+      host,
+    });
+    // The run is live again: the Agent is reachable by its terminal, and the
+    // same epoch cannot be restored twice.
+    expect(second.agent('terminal-attach')?.runtimeRunId).toBe(created.runtimeRunId);
+    expect(second.runtimeRunInfo(created.runtimeRunId)).toMatchObject({ status: 'active' });
+    await second.dispose();
+  });
+
+  it('answers ATTACH_UNSUPPORTED for a provider without attachSession, ATTACH_FAILED for a binding that names another terminal, and disposes it', async () => {
+    const root = await mkdtemp(join(tmpdir(), 'puppeteer-runtime-attach-refuse-'));
+    const registryDirectory = await mkdtemp(join(tmpdir(), 'puppeteer-runtime-attach-refuse-registry-'));
+    const handles = new Map<string, { emit: (event: AgentEventEnvelope) => void }>();
+    const plain = fakeProvider('plain', handles);
+    let disposed = 0;
+    const mismatched: AgentProvider = {
+      ...fakeProvider('mismatched', handles),
+      async attachSession(options) {
+        const binding = standaloneSession(options.sessionId, 'some-other-terminal');
+        return { ...binding, dispose: async () => void (disposed += 1) };
+      },
+    };
+    const runtime = createAgentRuntime({
+      host,
+      defaultCwd: root,
+      providers: [plain, mismatched],
+      creationRegistry: createFileCreationRequestRegistry({ directory: registryDirectory }),
+    });
+    const base = {
+      creationRequestId: 'attach-refuse',
+      runtimeRunId: 'run-refuse',
+      expectedRuntimeEpoch: 1,
+      sessionId: 'native-refuse',
+      terminalSessionId: 'terminal-refuse',
+      cwd: root,
+    };
+    const unsupported = await runtime.attach({ ...base, agent: 'plain' });
+    expect('error' in unsupported && unsupported.error.code).toBe('ATTACH_UNSUPPORTED');
+    const failed = await runtime.attach({ ...base, agent: 'mismatched' });
+    expect('error' in failed && failed.error.code).toBe('ATTACH_FAILED');
+    expect(disposed).toBe(1);
+    const unknown = await runtime.attach({ ...base, agent: 'nope' });
+    expect('error' in unknown && unknown.error.code).toBe('AGENT_NOT_FOUND');
+    await runtime.dispose();
+  });
+});
+
+describe('dispose({ detach }) — the host leaves, the sessions stay', () => {
+  it('a plain dispose closes the run for good; a detach leaves its claim restorable', async () => {
+    const root = await mkdtemp(join(tmpdir(), 'puppeteer-runtime-detach-'));
+    const registryDirectory = await mkdtemp(join(tmpdir(), 'puppeteer-runtime-detach-registry-'));
+    const handles = new Map<string, { emit: (event: AgentEventEnvelope) => void }>();
+    const provider = (): AgentProvider => ({
+      ...fakeProvider('one', handles),
+      async createSession(options) {
+        return standaloneSession(options.resume ?? 'native-detach', `terminal-${options.title ?? 'x'}`);
+      },
+      async attachSession(options) {
+        return standaloneSession(options.sessionId, options.runtimeSessionId);
+      },
+    });
+    const registry = () => createFileCreationRequestRegistry({ directory: registryDirectory });
+    const first = createAgentRuntime({ host, defaultCwd: root, providers: [provider()], creationRegistry: registry() });
+    const closed = await first.createSession({ agent: 'one', creationRequestId: 'closed-run', cwd: root, title: 'a' });
+    const kept = await first.createSession({ agent: 'one', creationRequestId: 'kept-run', cwd: root, title: 'b' });
+    if ('error' in closed || 'error' in kept) throw new Error('unexpected create failure');
+    // one run closed by the host (its process ended), one merely left behind
+    await first.handleProcessExit(closed.terminalSessionId, { exitCode: 0, signal: null, reason: 'completed' });
+    const finals = await first.dispose({ detach: true });
+    expect(finals).toEqual([]);
+
+    const second = createAgentRuntime({
+      host,
+      defaultCwd: root,
+      providers: [provider()],
+      creationRegistry: registry(),
+    });
+    const attach = (info: typeof kept, creationRequestId: string) =>
+      second.attach({
+        agent: 'one',
+        creationRequestId,
+        runtimeRunId: info.runtimeRunId,
+        expectedRuntimeEpoch: info.runtimeEpoch,
+        sessionId: info.nativeSession.id,
+        terminalSessionId: info.terminalSessionId,
+        cwd: root,
+      });
+    const restored = await attach(kept, 'kept-run');
+    expect('error' in restored ? restored.error.code : restored.runtimeEpoch).toBe(2);
+    const refused = await attach(closed, 'closed-run');
+    expect('error' in refused && refused.error.code).toBe('RUNTIME_RESTORE_FAILED');
+    await second.dispose();
+  });
+});

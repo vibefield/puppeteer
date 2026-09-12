@@ -85,6 +85,7 @@ import type {
   PrepareAgentSessionResult,
   ProfileLoginResult,
   ReleaseCheckResult,
+  AttachAgentOptions,
   RestoreAgentSessionOptions,
   RuntimeAgentEventEnvelope,
   RuntimeRunInfo,
@@ -1614,8 +1615,28 @@ export function createAgentRuntime(options: AgentRuntimeOptions): AgentRuntime {
   async function closeManaged(
     managed: ManagedSession,
     exit?: AgentProcessExit,
+    mode: { detach?: boolean | undefined } = {},
   ): Promise<AgentWorkspaceFinal | undefined> {
     if (sessionsByTerminalId.get(managed.info.terminalSessionId) !== managed) return undefined;
+    if (mode.detach) {
+      // The HOST is leaving; the process, its terminal and its workspace are
+      // not (stable ingress). Nothing is marked terminal, nothing is
+      // finalized, no exit is dispatched or recorded: the durable claim stays
+      // allocated for the host that re-attaches, the adapter's observation is
+      // released, and the workspace lease is merely dropped here.
+      sessionsByTerminalId.delete(managed.info.terminalSessionId);
+      if (sessionsByRunId.get(managed.run.identity.runtimeRunId) === managed) {
+        sessionsByRunId.delete(managed.run.identity.runtimeRunId);
+      }
+      managed.unsubscribe();
+      managed.run.monitor?.detachSession();
+      managed.gitObserver?.stop();
+      await managed.agentController.dispose().catch(report);
+      managed.releaseClaim();
+      removeRunMonitor(managed.run);
+      releaseTerminalRun(managed.run);
+      return undefined;
+    }
     const normalizedExitReason = exit ? processExitReason(exit) : undefined;
     if (exit) {
       managed.dispatch(
@@ -2149,6 +2170,7 @@ export function createAgentRuntime(options: AgentRuntimeOptions): AgentRuntime {
         // Resolved by createSession, which fails the resume with
         // AGENT_PROFILE_NOT_FOUND when the id is unknown or foreign.
         profile: request.profile,
+        ingress: request.ingress,
       };
       if (!provider) return spawnAgent(spawnRequest);
       if (descriptor && !descriptor.resume) {
@@ -2465,6 +2487,7 @@ export function createAgentRuntime(options: AgentRuntimeOptions): AgentRuntime {
           host: options.host,
           agentOptions: request.agentOptions,
           ...(profile === undefined ? {} : { profile }),
+          ...(request.ingress === undefined ? {} : { ingress: request.ingress }),
         };
         let session: AgentAdapterBinding;
         try {
@@ -2640,6 +2663,7 @@ export function createAgentRuntime(options: AgentRuntimeOptions): AgentRuntime {
           host: options.host,
           agentOptions: request.agentOptions,
           ...(profile === undefined ? {} : { profile }),
+          ...(request.ingress === undefined ? {} : { ingress: request.ingress }),
         };
         let prepared: PreparedProviderSession;
         try {
@@ -2997,6 +3021,109 @@ export function createAgentRuntime(options: AgentRuntimeOptions): AgentRuntime {
       }
     },
 
+    async attach(request: AttachAgentOptions): Promise<CreateAgentSessionResult> {
+      if (disposed) throw new Error('agent runtime is disposed');
+      const provisional: ManagedRun = runs.get(request.runtimeRunId) ?? {
+        identity: {
+          runtimeRunId: request.runtimeRunId,
+          runtimeEpoch: request.expectedRuntimeEpoch,
+          providerId: request.agent,
+          creationRequestId: request.creationRequestId,
+          externalRefs: [...(request.externalRefs ?? [])],
+        },
+        operation: 'create',
+        status: 'allocated',
+      };
+      const provider = providers.get(request.agent);
+      if (!provider) {
+        return sessionFailure(provisional, 'AGENT_NOT_FOUND', `unknown agent provider: ${request.agent}`);
+      }
+      if (!provider.attachSession) {
+        return sessionFailure(
+          provisional,
+          'ATTACH_UNSUPPORTED',
+          `agent provider cannot attach to a running session: ${request.agent}`,
+        );
+      }
+      let profile: AgentProfile | undefined;
+      if (request.profile !== undefined) {
+        const resolved = await resolveSessionProfile(request.agent, request.profile);
+        if ('error' in resolved) return sessionFailure(provisional, 'AGENT_PROFILE_NOT_FOUND', resolved.error);
+        profile = resolved.profile;
+      }
+      let session: AgentAdapterBinding;
+      try {
+        session = await provider.attachSession({
+          runtimeRunId: request.runtimeRunId,
+          sessionId: request.sessionId,
+          runtimeSessionId: request.terminalSessionId,
+          cwd: request.cwd,
+          host: options.host,
+          ...(request.ingress === undefined ? {} : { ingress: request.ingress }),
+          agentOptions: request.agentOptions,
+          ...(profile === undefined ? {} : { profile }),
+        });
+      } catch (error) {
+        report(error);
+        return sessionFailure(
+          provisional,
+          'ATTACH_FAILED',
+          `agent provider could not attach to the running session: ${
+            error instanceof Error ? error.message : String(error)
+          }`,
+        );
+      }
+      if (session.sessionId !== request.sessionId || session.runtimeSessionId !== request.terminalSessionId) {
+        await session.dispose().catch(report);
+        return sessionFailure(
+          provisional,
+          'ATTACH_FAILED',
+          'agent provider attached a different native session or terminal than the host asked for',
+        );
+      }
+      let workspace: Workspace;
+      try {
+        workspace = await createWorkspace({
+          mode: request.workspace?.mode ?? 'direct',
+          path: request.workspace?.path ?? request.cwd,
+          baseRef: request.workspace?.baseRef,
+          branchName: request.workspace?.branchName,
+          resumeBranch: request.workspace?.resumeBranch,
+          resumeRoot: request.workspace?.resumeRoot,
+          workspacesRoot: request.workspace?.workspacesRoot,
+        });
+      } catch (error) {
+        await session.dispose().catch(report);
+        if (error instanceof WorkspaceError) return sessionFailure(provisional, error.code, error.message);
+        throw error;
+      }
+      const restored = await this.restoreSession({
+        creationRequestId: request.creationRequestId,
+        runtimeRunId: request.runtimeRunId,
+        expectedRuntimeEpoch: request.expectedRuntimeEpoch,
+        agent: request.agent,
+        session,
+        workspace,
+        ...(request.externalRefs === undefined ? {} : { externalRefs: request.externalRefs }),
+      });
+      if ('error' in restored) {
+        // Bindings are idempotent to dispose; a failure inside the bind path
+        // already released it, every earlier refusal did not.
+        await session.dispose().catch(report);
+        await workspace.destroy().catch(report);
+        return restored;
+      }
+      if (profile !== undefined) {
+        const managed = sessionsByRunId.get(restored.runtimeRunId);
+        if (managed) {
+          managed.run.profileId = profile.id;
+          managed.info.profileId = profile.id;
+          return cloneAgentSessionInfo(managed.info);
+        }
+      }
+      return restored;
+    },
+
     cancelPrepared,
 
     runtimeRunInfo: (id) => {
@@ -3085,9 +3212,10 @@ export function createAgentRuntime(options: AgentRuntimeOptions): AgentRuntime {
       return managed ? closeManaged(managed, exit) : undefined;
     },
 
-    async dispose() {
+    async dispose(disposeOptions) {
       if (disposed) return [];
       disposed = true;
+      const detach = disposeOptions?.detach === true;
       prewarmAbort.abort();
       await Promise.allSettled([...pendingPrewarms.values()]);
       await Promise.allSettled([...pendingCreations]);
@@ -3100,7 +3228,9 @@ export function createAgentRuntime(options: AgentRuntimeOptions): AgentRuntime {
           .filter((preparation) => preparation.status === 'prepared')
           .map((preparation) => destroyUnusedPreparation(preparation, 'cancelled')),
       );
-      const finals = await Promise.all([...sessionsByTerminalId.values()].map((managed) => closeManaged(managed)));
+      const finals = await Promise.all(
+        [...sessionsByTerminalId.values()].map((managed) => closeManaged(managed, undefined, { detach })),
+      );
       for (const unsubscribe of providerAccountUsageUnsubs) {
         try {
           unsubscribe();

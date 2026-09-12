@@ -7,6 +7,7 @@
  */
 
 import { appendFileSync, existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
+import { createServer } from 'node:http';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { afterEach, describe, expect, it, vi } from 'vitest';
@@ -16,7 +17,7 @@ import {
   type TerminalAutomationOperation,
 } from '@vibecook/puppeteer-core';
 import { projectAgentEvents } from '@vibecook/puppeteer-testing';
-import { createClaudeSession, prepareClaudeTuiSession, type ClaudeSession } from './driver.js';
+import { attachClaudeTuiSession, createClaudeSession, prepareClaudeTuiSession, type ClaudeSession } from './driver.js';
 import type { PreparedClaudeSession } from './launch/prepare.js';
 import type { ClaudeHookDiagnostic } from './normalization/index.js';
 import type { HookBridge, NativeHookEnvelope } from './observation/hook-bridge.js';
@@ -1672,5 +1673,179 @@ describe('createClaudeSession (full loop, test-as-Claude)', () => {
     expect(session.sessionId).toBe(selectedId);
     projection.dispose();
     await session.dispose();
+  });
+});
+
+describe('stable ingress: the bridge a host can pin, learn, and rebind (AR-4 / PU-1)', () => {
+  it('reports the bound ingress before launch, and an attach on the same port and token observes the running process', async () => {
+    let bound: { port: number; token: string } | undefined;
+    let prepared: PreparedClaudeSession | undefined;
+    const automations: TerminalAutomationOperation[] = [];
+    const launched = await createClaudeSession({
+      cwd: '/tmp',
+      ingress: { onBound: (value) => void (bound = value) },
+      ports: {
+        spawn: async (p) => {
+          prepared = p;
+          return { runtimeSessionId: 'rt-attach' };
+        },
+        automate: async (_id, operation) => {
+          automations.push(operation);
+          return { accepted: true };
+        },
+      },
+    });
+    // What the host learned is exactly what the process was launched against.
+    expect(bound).toBeDefined();
+    const settings = JSON.parse(readFileSync(prepared!.settingsPath, 'utf8')) as {
+      hooks: Record<string, Array<{ hooks: Array<{ type: string; url?: string }> }>>;
+    };
+    const endpoint = settings.hooks.UserPromptSubmit![0]!.hooks[0]!.url!;
+    expect(Number(new URL(endpoint).port)).toBe(bound!.port);
+    expect(prepared!.env.PUPPETEER_HOOK_TOKEN).toBe(bound!.token);
+    const sessionId = launched.sessionId;
+
+    // The host dies: its bridge goes with it, the process and its transcript stay.
+    await launched.dispose();
+    const configDir = mkdtempSync(join(tmpdir(), 'driver-attach-root-'));
+    const project = join(configDir, 'projects', '-tmp');
+    mkdirSync(project, { recursive: true });
+    const transcript = join(project, `${sessionId}.jsonl`);
+    writeFileSync(
+      transcript,
+      `${JSON.stringify({
+        parentUuid: null,
+        type: 'assistant',
+        uuid: 'u-attach',
+        timestamp: '2026-09-12T00:00:00.000Z',
+        sessionId,
+        cwd: '/tmp',
+        version: '1',
+        gitBranch: 'main',
+        isSidechain: false,
+        userType: 'external',
+        requestId: 'request-attach',
+        message: {
+          id: 'msg_attach',
+          type: 'message',
+          role: 'assistant',
+          model: 'm',
+          content: [{ type: 'text', text: 'still here' }],
+          stop_reason: null,
+          usage: { input_tokens: 1, output_tokens: 1, cache_creation_input_tokens: 0, cache_read_input_tokens: 0 },
+        },
+      })}\n`,
+    );
+
+    // A new host rebinds the same ingress and adopts the same terminal.
+    const attached = await attachClaudeTuiSession({
+      sessionId,
+      runtimeSessionId: 'rt-attach',
+      cwd: '/tmp',
+      ingress: bound!,
+      configDir,
+      automate: async (id, operation) => {
+        expect(id).toBe('rt-attach');
+        automations.push(operation);
+        return { accepted: true };
+      },
+    });
+    sessions.push(attached);
+    const projection = projectAgentEvents(attached);
+    expect(attached.sessionId).toBe(sessionId);
+    expect(attached.runtimeSessionId).toBe('rt-attach');
+    // The durable rail was armed from the transcript the id names, not from a hook.
+    expect(attached.transcriptPath()).toBe(transcript);
+    await attached.pollTranscript();
+    // The rail is armed; what was already on disk is the silent baseline
+    // (no conversation replay), so the first read observes nothing.
+    await vi.waitFor(() => expect(attached.observationLevel()).toBe('native-log'));
+    expect(projection.envelopes.some((e) => e.source === 'native-transcript')).toBe(false);
+    // …and what the running process appends from now on is live.
+    appendFileSync(
+      transcript,
+      `${JSON.stringify({
+        parentUuid: 'u-attach',
+        type: 'assistant',
+        uuid: 'u-attach-2',
+        timestamp: '2026-09-12T00:00:01.000Z',
+        sessionId,
+        cwd: '/tmp',
+        version: '1',
+        gitBranch: 'main',
+        isSidechain: false,
+        userType: 'external',
+        requestId: 'request-attach-2',
+        message: {
+          id: 'msg_attach_2',
+          type: 'message',
+          role: 'assistant',
+          model: 'm',
+          content: [{ type: 'text', text: 'after the restart, still here' }],
+          stop_reason: null,
+          usage: { input_tokens: 1, output_tokens: 1, cache_creation_input_tokens: 0, cache_read_input_tokens: 0 },
+        },
+      })}\n`,
+    );
+    await attached.pollTranscript();
+    await vi.waitFor(() => {
+      const live = projection.envelopes.find((e) => e.source === 'native-transcript');
+      expect(live?.event).toMatchObject({
+        type: 'conversation:assistant-message',
+        text: 'after the restart, still here',
+      });
+    });
+
+    // The running process keeps posting to the ingress it was launched with;
+    // the rebound bridge accepts its bearer and its session.
+    const res = await fetch(endpoint, {
+      method: 'POST',
+      headers: { 'content-type': 'application/json', authorization: `Bearer ${bound!.token}` },
+      body: JSON.stringify({
+        session_id: sessionId,
+        transcript_path: transcript,
+        cwd: '/tmp',
+        hook_event_name: 'UserPromptSubmit',
+        prompt: 'after the restart',
+        prompt_id: 'p-attach',
+      }),
+    });
+    expect(res.status).toBe(200);
+    await vi.waitFor(() => {
+      expect(attached.observationLevel()).toBe('native-hooks');
+      expect(projection.envelopes.some((e) => e.source === 'native-hook')).toBe(true);
+    });
+    // A foreign session on the same bridge is still refused.
+    const foreign = await fetch(endpoint, {
+      method: 'POST',
+      headers: { 'content-type': 'application/json', authorization: `Bearer ${bound!.token}` },
+      body: JSON.stringify({ session_id: 'someone-else', cwd: '/tmp', hook_event_name: 'UserPromptSubmit' }),
+    });
+    expect(foreign.status).toBe(403);
+    // …and automation routes to the adopted terminal.
+    const receipt = await attached.services.prompt.submit({ text: 'hello again', mode: 'paste-only' });
+    expect(receipt.status).not.toBe('rejected');
+    expect(automations.at(-1)).toMatchObject({ kind: 'paste', text: 'hello again' });
+    rmSync(configDir, { recursive: true, force: true });
+  });
+
+  it('fails an attach before adopting anything when the pinned port is taken', async () => {
+    const holder = createServer();
+    await new Promise<void>((resolve) => holder.listen(0, '127.0.0.1', resolve));
+    const address = holder.address();
+    const port = typeof address === 'object' && address ? address.port : 0;
+    try {
+      await expect(
+        attachClaudeTuiSession({
+          sessionId: '00000000-0000-4000-8000-00000000abcd',
+          runtimeSessionId: 'rt-taken',
+          cwd: '/tmp',
+          ingress: { port, token: 'pinned' },
+          automate: async () => ({ accepted: true }),
+        }),
+      ).rejects.toThrow();
+    } finally {
+      await new Promise<void>((resolve) => holder.close(() => resolve()));
+    }
   });
 });

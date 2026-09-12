@@ -59,4 +59,32 @@ export interface AgentTuiSessionOptions {
   resume?: string | undefined;
   /** The host capability the adapter spawns/writes its terminal through. */
   host: AgentHost;
+  /** The host's say over the session's loopback ingress (see {@link HostIngress}). */
+  ingress?: HostIngress | undefined;
+}
+
+/**
+ * Stable ingress — the host's say over the loopback endpoint an adapter's
+ * process posts to (hooks, status lines, telemetry). An adapter that binds one
+ * mints it ephemeral by default; a host that outlives its own process
+ * (a daemon that restarts under a running agent) needs that endpoint to be
+ * PINNABLE and REPORTED, so it can persist `{port, token}` beside the session
+ * and hand them back to `attachSession` after a restart: the running agent keeps
+ * posting to the same port with the same bearer, and a rebound listener picks
+ * the stream up where the old host left it. Adapters without an ingress ignore
+ * this entirely; `onBound` is never called for them.
+ */
+export interface HostIngress {
+  /** Bind this port (a re-attach to a process launched against it). Absent or 0 = ephemeral. */
+  port?: number | undefined;
+  /** Use this bearer token. Absent = the adapter mints one. */
+  token?: string | undefined;
+  /** The ingress actually bound, reported once the listener is up and BEFORE the process launches. */
+  onBound?: ((bound: BoundIngress) => void) | undefined;
+}
+
+/** The ingress a session's process was launched against. */
+export interface BoundIngress {
+  port: number;
+  token: string;
 }

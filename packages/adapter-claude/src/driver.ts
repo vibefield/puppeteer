@@ -21,10 +21,14 @@
  */
 
 import { randomUUID } from 'node:crypto';
+import { homedir } from 'node:os';
+import { join, resolve } from 'node:path';
 import {
   type AgentEvent,
   type AgentEventConfidence,
   type AgentAdapterBinding,
+  type BoundIngress,
+  type HostIngress,
   type ObservationLevel,
   type TerminalAutomationOperation,
   type TerminalAutomationResult,
@@ -36,6 +40,7 @@ import {
   prepareClaudeSession,
   cleanupClaudeSession,
   hasClaudeOtelExporterConflict,
+  locateClaudeTranscript,
   type PreparedClaudeSession,
 } from './launch/prepare.js';
 import { createClaudeArtifactService } from './services/artifacts.js';
@@ -150,6 +155,12 @@ export interface CreateClaudeSessionOptions {
   transcriptPollIntervalMs?: number | undefined;
   /** Non-blocking reports for malformed known hooks retained as native evidence. */
   onDiagnostic?: ((diagnostic: ClaudeHookDiagnostic) => void) | undefined;
+  /**
+   * Stable ingress (core `HostIngress`): pin the hook bridge's port and token
+   * and learn what was bound before the process launches, so a host that
+   * outlives its own process can re-attach (`attachClaudeTuiSession`).
+   */
+  ingress?: HostIngress | undefined;
   /** Injectable bridge factory for deterministic transport-failure tests. */
   hookBridgeFactory?: ((options: HookBridgeOptions) => HookBridge) | undefined;
   /**
@@ -189,6 +200,41 @@ export interface PrepareClaudeTuiSessionOptions extends Omit<CreateClaudeSession
 }
 
 /**
+ * Bind to a Claude Code process that is ALREADY RUNNING in a host terminal —
+ * the restart half of stable ingress. The process was launched against a hook
+ * bridge on `ingress.port` with `ingress.token` (its settings and env carry
+ * both), so a listener rebound on exactly that ingress receives the hooks,
+ * status lines and telemetry it keeps posting; its durable transcript is found
+ * by the session id under the config root and tailed from the start. Nothing
+ * is launched; the terminal is adopted as-is.
+ */
+export interface AttachClaudeTuiSessionOptions extends Pick<
+  CreateClaudeSessionOptions,
+  | 'cwd'
+  | 'env'
+  | 'permissionMode'
+  | 'model'
+  | 'effort'
+  | 'providerVersion'
+  | 'configDir'
+  | 'transcriptPollIntervalMs'
+  | 'onDiagnostic'
+  | 'hookBridgeFactory'
+  | 'semanticProviderFactory'
+  | 'observeOtlpUsage'
+  | 'observeSubagentStatus'
+> {
+  /** The native session id the running process announced. */
+  sessionId: string;
+  /** The host's id for the terminal the process is running in. */
+  runtimeSessionId: string;
+  /** The ingress the process was launched against — rebound as-is. */
+  ingress: BoundIngress;
+  /** Route semantic automation to the adopted terminal. */
+  automate(runtimeSessionId: string, operation: TerminalAutomationOperation): Promise<TerminalAutomationResult>;
+}
+
+/**
  * A live Claude hook bridge plus an authoritative launch recipe that has not
  * yet been bound to a host terminal. Call `adopt` before executing `launch` so
  * the runtime is subscribed before Claude can emit its first hook.
@@ -215,17 +261,9 @@ export async function prepareClaudeTuiSession(
   let selectionLocked = options.resume !== undefined;
   // Sessions a native resume launch runs that are never the one resumed.
   const bootSessionIds = new Set<string>();
-  const otelUsageUnavailableReason =
-    options.observeOtlpUsage === false
-      ? 'Authenticated OTLP request logs were disabled by the session option.'
-      : !supportsClaudeOtelLogs(options.providerVersion)
-        ? `Claude ${options.providerVersion} predates the locally verified OTLP log contract.`
-        : hasClaudeOtelExporterConflict()
-          ? 'Authenticated OTLP setup was disabled because the launching environment already owns exporter settings.'
-          : undefined;
-  const otelUsageEnabled = otelUsageUnavailableReason === undefined;
-  const otelUsageVerified = isClaudeOtelLogsVerified(options.providerVersion);
+  const { otelUsageEnabled, otelUsageUnavailableReason, otelUsageVerified } = otelUsagePolicy(options);
   const bridge: HookBridge = (options.hookBridgeFactory ?? createHookBridge)({
+    ...ingressPins(options.ingress),
     allowSession: (id, kind, body) => {
       // `/clear` is a native in-process identity rotation regardless of how
       // the original conversation was selected. Once authenticated, its
@@ -271,6 +309,7 @@ export async function prepareClaudeTuiSession(
     },
   });
   await bridge.start();
+  reportBound(bridge, options.ingress);
 
   try {
     const prepared = await prepareClaudeSession({
@@ -298,15 +337,21 @@ export async function prepareClaudeTuiSession(
     });
 
     try {
-      return createPreparedClaudeSession(
+      const observation = createClaudeObservation(
         options,
         bridge,
-        prepared,
+        { sessionId: prepared.sessionId, cleanup: () => cleanupClaudeSession(prepared) },
         () => selectedSessionId ?? prepared.sessionId,
         otelUsageEnabled,
         otelUsageUnavailableReason,
         otelUsageVerified,
       );
+      return {
+        sessionId: prepared.sessionId,
+        launch: prepared,
+        adopt: observation.adopt,
+        dispose: observation.dispose,
+      };
     } catch (error) {
       await cleanupClaudeSession(prepared);
       throw error;
@@ -317,15 +362,71 @@ export async function prepareClaudeTuiSession(
   }
 }
 
-function createPreparedClaudeSession(
+/** What the OTLP usage rail may do for this session, from the caller's option and the launch environment. */
+function otelUsagePolicy(options: Pick<CreateClaudeSessionOptions, 'observeOtlpUsage' | 'providerVersion'>): {
+  otelUsageEnabled: boolean;
+  otelUsageUnavailableReason: string | undefined;
+  otelUsageVerified: boolean;
+} {
+  const otelUsageUnavailableReason =
+    options.observeOtlpUsage === false
+      ? 'Authenticated OTLP request logs were disabled by the session option.'
+      : !supportsClaudeOtelLogs(options.providerVersion)
+        ? `Claude ${options.providerVersion} predates the locally verified OTLP log contract.`
+        : hasClaudeOtelExporterConflict()
+          ? 'Authenticated OTLP setup was disabled because the launching environment already owns exporter settings.'
+          : undefined;
+  return {
+    otelUsageEnabled: otelUsageUnavailableReason === undefined,
+    otelUsageUnavailableReason,
+    otelUsageVerified: isClaudeOtelLogsVerified(options.providerVersion),
+  };
+}
+
+/** The bridge options a host's ingress pins: only the keys it set (a fake bridge sees no `undefined`). */
+function ingressPins(ingress: HostIngress | undefined): Pick<HookBridgeOptions, 'port' | 'token'> {
+  return {
+    ...(ingress?.port !== undefined && ingress.port !== 0 ? { port: ingress.port } : {}),
+    ...(ingress?.token !== undefined ? { token: ingress.token } : {}),
+  };
+}
+
+/** Tell the host what the bridge bound — port from the endpoint URL, the bearer as minted or pinned. */
+function reportBound(bridge: HookBridge, ingress: HostIngress | undefined): void {
+  if (!ingress?.onBound) return;
+  let port: number;
+  try {
+    port = Number(new URL(bridge.endpoint()).port);
+  } catch {
+    return;
+  }
+  if (!Number.isInteger(port) || port <= 0) return;
+  ingress.onBound({ port, token: bridge.token });
+}
+
+/** The identity an observation is bound to: the native session, and what to clean when it ends. */
+interface ClaudeBoundIdentity {
+  sessionId: string;
+  cleanup(): Promise<void>;
+}
+
+/** A live bridge with its observation rails, adoptable by exactly one terminal. */
+interface ClaudeObservation {
+  adopt(runtimeSessionId: string): Promise<ClaudeSession>;
+  dispose(): Promise<void>;
+  /** Arm the durable transcript rail now rather than at the first hook (a re-attach knows the path already). */
+  observeTranscript(path: string): void;
+}
+
+function createClaudeObservation(
   options: PrepareClaudeTuiSessionOptions,
   bridge: HookBridge,
-  prepared: PreparedClaudeSession,
-  nativeSessionId: () => string = () => prepared.sessionId,
+  bound: ClaudeBoundIdentity,
+  nativeSessionId: () => string = () => bound.sessionId,
   otelUsageEnabled = false,
   otelUsageUnavailableReason?: string,
   otelUsageVerified = false,
-): PreparedClaudeTuiSession {
+): ClaudeObservation {
   const normalizer = new ClaudeHookNormalizer();
   const events = new ClaudeEventSource({ sessionId: nativeSessionId, providerVersion: options.providerVersion });
   let observation: ObservationLevel = 'terminal-only';
@@ -344,6 +445,11 @@ function createPreparedClaudeSession(
   let adoptedRuntimeSessionId: string | undefined;
   let adoptedSession: ClaudeSession | undefined;
   let disposed = false;
+  // A transcript known before anyone listens (a re-attach) is armed at the
+  // first subscription, like configured intent and capabilities: events
+  // published into an empty room are lost, and the first read replays.
+  let pendingTranscript: string | undefined;
+  let subscribed = false;
   let capabilitiesBatch = monitorEvidence.capabilitiesBatch(new Date().toISOString());
   let semanticCapabilitiesPublished = false;
   let hookRailAvailable = true;
@@ -619,6 +725,9 @@ function createPreparedClaudeSession(
         return undefined;
       }
       semanticHandle = handle;
+      // A tailed transcript is native-log observation. Hooks upgrade it; they
+      // never come first for a re-attached session, which announces nothing.
+      if (observation === 'terminal-only') observation = 'native-log';
       handle.onEvent((semantic) => {
         if (disposed || generation !== semanticGeneration) return;
         apply(semantic.event, {
@@ -819,12 +928,10 @@ function createPreparedClaudeSession(
     const attached = await semanticAttachment?.catch(() => undefined);
     await attached?.dispose();
     await bridge.dispose();
-    await cleanupClaudeSession(prepared);
+    await bound.cleanup();
   }
 
   return {
-    sessionId: prepared.sessionId,
-    launch: prepared,
     async adopt(runtimeSessionId): Promise<ClaudeSession> {
       if (disposed) throw new Error('prepared Claude session is disposed');
       if (adoptedRuntimeSessionId && adoptedRuntimeSessionId !== runtimeSessionId) {
@@ -842,8 +949,14 @@ function createPreparedClaudeSession(
         events: {
           onCandidate(listener) {
             const unsubscribe = events.onCandidate(listener);
+            subscribed = true;
             publishConfiguredIntent();
             void publishCapabilities();
+            if (pendingTranscript !== undefined) {
+              const path = pendingTranscript;
+              pendingTranscript = undefined;
+              ensureSemanticProvider(path);
+            }
             return unsubscribe;
           },
         },
@@ -860,7 +973,62 @@ function createPreparedClaudeSession(
       return adoptedSession;
     },
     dispose,
+    observeTranscript: (path) => {
+      if (disposed) return;
+      if (subscribed) ensureSemanticProvider(path);
+      else pendingTranscript = path;
+    },
   };
+}
+
+/**
+ * Bind to a running Claude Code process (see {@link AttachClaudeTuiSessionOptions}).
+ * Fails — before anything is adopted — when the pinned port cannot be bound:
+ * the host then knows the ingress is lost and resumes the continuation instead.
+ */
+export async function attachClaudeTuiSession(options: AttachClaudeTuiSessionOptions): Promise<ClaudeSession> {
+  if (!Number.isInteger(options.ingress.port) || options.ingress.port <= 0 || options.ingress.token.length === 0) {
+    throw new Error('Claude attach needs the ingress the process was launched against (a positive port and a token)');
+  }
+  const { otelUsageEnabled, otelUsageUnavailableReason, otelUsageVerified } = otelUsagePolicy(options);
+  let selectedSessionId = options.sessionId;
+  const bridge: HookBridge = (options.hookBridgeFactory ?? createHookBridge)({
+    port: options.ingress.port,
+    token: options.ingress.token,
+    allowSession: (id, kind, body) => {
+      // `/clear` rotates the native identity in-process; the attached session
+      // follows it exactly as a spawned one does.
+      if (kind === 'hook' && body.hook_event_name === 'SessionStart' && body.source === 'clear') {
+        selectedSessionId = id;
+        return true;
+      }
+      return id === selectedSessionId;
+    },
+  });
+  await bridge.start();
+  try {
+    const observation = createClaudeObservation(
+      { ...options, ingress: undefined },
+      bridge,
+      { sessionId: options.sessionId, cleanup: async () => undefined },
+      () => selectedSessionId,
+      otelUsageEnabled,
+      otelUsageUnavailableReason,
+      otelUsageVerified,
+    );
+    // The durable rail first: a quiet session announces nothing until its next
+    // hook, and its transcript already says where it stands.
+    const configDir = (options.configDir ?? options.env?.CLAUDE_CONFIG_DIR ?? process.env.CLAUDE_CONFIG_DIR)?.trim();
+    const root =
+      options.env?.PUPPETEER_IMPOSTER_HOME ??
+      (configDir ? resolve(options.cwd, configDir) : join(homedir(), '.claude'));
+    const transcript = locateClaudeTranscript(options.sessionId, root);
+    if (transcript !== undefined) observation.observeTranscript(transcript);
+    return await observation.adopt(options.runtimeSessionId);
+  } catch (err) {
+    await bridge.dispose();
+    throw err;
+  }
 }
 
 export async function createClaudeSession(options: CreateClaudeSessionOptions): Promise<ClaudeSession> {
@@ -880,6 +1048,7 @@ export async function createClaudeSession(options: CreateClaudeSessionOptions): 
     resumeInvocation: options.resumeInvocation,
     transcriptPollIntervalMs: options.transcriptPollIntervalMs,
     onDiagnostic: options.onDiagnostic,
+    ingress: options.ingress,
     hookBridgeFactory: options.hookBridgeFactory,
     hookRailFaultInjection: options.hookRailFaultInjection,
     semanticProviderFactory: options.semanticProviderFactory,

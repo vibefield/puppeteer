@@ -60,6 +60,7 @@ const adapters = vi.hoisted(() => {
     restoreAntigravityContinuationState: vi.fn(),
     createClaudeAccountUsageService: vi.fn(),
     createClaudeSession: vi.fn(),
+    attachClaudeTuiSession: vi.fn(),
     fetchClaudeAccountUsage: vi.fn(),
     onClaudeAccountUsage: vi.fn(() => () => undefined),
     preflightClaudeLaunch: vi.fn(),
@@ -129,6 +130,7 @@ vi.mock('@vibecook/puppeteer-adapter-claude', () => ({
   createClaudeProfileService: adapters.createClaudeProfileService,
   createClaudeAccountUsageService: adapters.createClaudeAccountUsageService,
   createClaudeSession: adapters.createClaudeSession,
+  attachClaudeTuiSession: adapters.attachClaudeTuiSession,
   fetchClaudeAccountUsage: adapters.fetchClaudeAccountUsage,
   onClaudeAccountUsage: adapters.onClaudeAccountUsage,
   preflightClaudeLaunch: adapters.preflightClaudeLaunch,
@@ -1123,3 +1125,82 @@ const mismatchedPreparation: BuiltinPrepareRequest = {
   agentOptions: { approvalPolicy: 'never' },
 };
 void mismatchedPreparation;
+
+describe('stable ingress (AR-4 / PU-1)', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    adapters.createClaudeAccountUsageService.mockReturnValue({
+      provider: {
+        id: 'claude',
+        label: 'Claude',
+        refresh: { pollIntervalMs: 30 * 60_000, pushUpdatePollIntervalMs: 30 * 60_000 },
+      },
+      fetch: adapters.fetchClaudeAccountUsage,
+      subscribe: adapters.onClaudeAccountUsage,
+    });
+    adapters.createCodexAccountUsageService.mockImplementation((options: { executable?: string } = {}) => ({
+      provider: { id: 'codex', label: 'Codex', refresh: { pollIntervalMs: 60_000 } },
+      fetch: () => adapters.fetchCodexAccountUsage(options),
+    }));
+    adapters.createGrokAccountUsageService.mockImplementation((options: { executable?: string } = {}) => ({
+      provider: { id: 'grok', label: 'Grok', refresh: { pollIntervalMs: 15 * 60_000 } },
+      fetch: () => adapters.fetchGrokAccountUsage(options),
+    }));
+    adapters.createAntigravityAccountUsageService.mockImplementation((options: { executable?: string } = {}) => ({
+      provider: { id: 'antigravity', label: 'Antigravity', refresh: { pollIntervalMs: 5 * 60_000 } },
+      fetch: () => adapters.fetchAntigravityAccountUsage(options),
+    }));
+    adapters.createKimiAccountUsageService.mockReturnValue({
+      provider: { id: 'kimi', label: 'Kimi', refresh: { pollIntervalMs: 5 * 60_000 } },
+      fetch: adapters.fetchKimiAccountUsage,
+    });
+    adapters.createClaudeSession.mockResolvedValue(fakeSession('claude'));
+    adapters.attachClaudeTuiSession.mockResolvedValue(fakeSession('claude'));
+    adapters.preflightClaudeLaunch.mockImplementation(async ({ executable }: { executable?: string }) => ({
+      executable: executable ?? 'claude',
+    }));
+  });
+
+  it('forwards the host ingress through Claude createSession and exposes attachSession on Claude only', async () => {
+    const providers = createBuiltinProviders({ executables: { claude: '/opt/claude' } });
+    const claude = providers.find((provider) => provider.descriptor.id === 'claude')!;
+    const onBound = vi.fn();
+    await claude.createSession({ cwd: '/work/repo', host, ingress: { port: 4242, token: 'pinned', onBound } });
+    expect(adapters.createClaudeSession).toHaveBeenCalledWith(
+      expect.objectContaining({ ingress: { port: 4242, token: 'pinned', onBound } }),
+    );
+
+    expect(typeof claude.attachSession).toBe('function');
+    for (const provider of providers) {
+      if (provider.descriptor.id !== 'claude') expect(provider.attachSession).toBeUndefined();
+    }
+    await claude.attachSession!({
+      sessionId: 'native-1',
+      runtimeSessionId: 'pane-1',
+      cwd: '/work/repo',
+      host,
+      ingress: { port: 4242, token: 'pinned' },
+      agentOptions: { model: 'claude-fable-5' },
+    });
+    expect(adapters.attachClaudeTuiSession).toHaveBeenCalledWith(
+      expect.objectContaining({
+        sessionId: 'native-1',
+        runtimeSessionId: 'pane-1',
+        cwd: '/work/repo',
+        ingress: { port: 4242, token: 'pinned' },
+        model: 'claude-fable-5',
+        automate: host.automateTerminal,
+      }),
+    );
+  });
+
+  it('refuses a Claude attach without the ingress the process was launched against', async () => {
+    const claude = createBuiltinProviders({ executables: { claude: '/opt/claude' } }).find(
+      (provider) => provider.descriptor.id === 'claude',
+    )!;
+    await expect(
+      claude.attachSession!({ sessionId: 'native-1', runtimeSessionId: 'pane-1', cwd: '/work/repo', host }),
+    ).rejects.toThrow(/ingress/);
+    expect(adapters.attachClaudeTuiSession).not.toHaveBeenCalled();
+  });
+});

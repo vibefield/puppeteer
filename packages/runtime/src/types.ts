@@ -21,6 +21,8 @@ import type {
   AgentEventSourceRef,
   AgentHost,
   AgentLaunchProvider,
+  BoundIngress,
+  HostIngress,
   AgentNativeInvocation,
   AgentNativeInvocationResolution,
   AgentProviderDescriptor,
@@ -76,6 +78,33 @@ export interface AgentProviderSessionOptions {
   agentOptions?: unknown;
   /** Registered account profile whose root the adapter binds through its own variable. */
   profile?: AgentProfile | undefined;
+  /** The host's say over the session's loopback ingress (stable ingress; adapters without one ignore it). */
+  ingress?: HostIngress | undefined;
+}
+
+/**
+ * A provider binding for a process that is ALREADY RUNNING in a host terminal
+ * (stable ingress, the restart half): the host knows the native session id it
+ * persisted, the terminal it lives in, and the ingress the process was
+ * launched against. The adapter rebinds its listener on that ingress, re-arms
+ * its durable observation by id, and answers a binding exactly as
+ * `createSession` would have — without launching anything.
+ */
+export interface AttachProviderSessionOptions {
+  /** Runtime-owned join identity for private diagnostics; adapters must not reinterpret it. */
+  runtimeRunId?: RuntimeRunId | undefined;
+  /** The native session id the running process announced. */
+  sessionId: string;
+  /** The host's id for the terminal the process is running in. */
+  runtimeSessionId: string;
+  cwd: string;
+  host: AgentHost;
+  /** The ingress the process was launched against, when the adapter has one. */
+  ingress?: BoundIngress | undefined;
+  /** Provider-owned launch options the original launch carried, when the host kept them. */
+  agentOptions?: unknown;
+  /** Registered account profile the run was bound to. */
+  profile?: AgentProfile | undefined;
 }
 
 /** Provider-private continuation codec. Its state is opaque above the adapter boundary. */
@@ -109,6 +138,12 @@ export interface AgentProvider {
   prewarm?(options: { profile?: AgentProfile; signal: AbortSignal }): Promise<void>;
   /** Optional split-phase launch for caller-owned terminals. Generic ACP intentionally omits this capability. */
   prepareSession?(options: AgentProviderSessionOptions): Promise<PreparedProviderSession>;
+  /**
+   * Optional binding for a process already running in a host terminal (stable
+   * ingress, the restart half). Absent = the provider cannot re-attach; a host
+   * then resumes the continuation instead.
+   */
+  attachSession?(options: AttachProviderSessionOptions): Promise<AgentAdapterBinding>;
   dispose?(): void | Promise<void>;
 }
 
@@ -152,6 +187,8 @@ export interface CreateAgentSessionOptions {
   agentOptions?: unknown;
   /** Registered profile id; the runtime resolves it and hands the provider the profile. */
   profile?: string | undefined;
+  /** The host's say over the session's loopback ingress (stable ingress). */
+  ingress?: HostIngress | undefined;
 }
 
 /** Consumer-facing spawn request. Native resume identity is accepted only through resume(). */
@@ -171,6 +208,8 @@ export interface ResumeAgentOptions {
    * it, so this re-binds the root explicitly and attributes the resumed run.
    */
   profile?: string | undefined;
+  /** The host's say over the session's loopback ingress (stable ingress). */
+  ingress?: HostIngress | undefined;
 }
 
 /** Host-only native invocation request. Adapters normalize it before normal preparation. */
@@ -220,7 +259,9 @@ export type AgentSessionErrorCode =
   | 'CREATION_REQUEST_RECOVERY_REQUIRED'
   | 'CREATION_REQUEST_TERMINAL'
   | 'RUNTIME_RUN_CONFLICT'
-  | 'RUNTIME_RESTORE_FAILED';
+  | 'RUNTIME_RESTORE_FAILED'
+  | 'ATTACH_UNSUPPORTED'
+  | 'ATTACH_FAILED';
 
 export interface AgentSessionFailure {
   runtimeRunId: RuntimeRunId;
@@ -444,6 +485,36 @@ export interface RuntimeAgentEventEnvelope<T extends AgentEvent = AgentEvent> ex
   sourceEventRef?: RuntimeSourceEventRef;
 }
 
+/**
+ * Re-attach a run to a process that outlived the host (stable ingress): the
+ * host hands back what it persisted at launch — the run's durable identity
+ * (creation request, run id, the epoch it last saw), the native session id,
+ * the terminal, the cwd and the ingress — and the runtime asks the provider
+ * for a binding to the running process, rebuilds the workspace, and restores
+ * the run at the next epoch. A provider without `attachSession` answers
+ * `ATTACH_UNSUPPORTED`; a host then resumes the continuation instead.
+ */
+export interface AttachAgentOptions {
+  agent: string;
+  creationRequestId: string;
+  runtimeRunId: RuntimeRunId;
+  expectedRuntimeEpoch: number;
+  /** The native session id the running process announced (persisted by the host). */
+  sessionId: string;
+  /** The host's id for the terminal the process is running in. */
+  terminalSessionId: string;
+  cwd: string;
+  /** The ingress the process was launched against, when the adapter has one. */
+  ingress?: BoundIngress | undefined;
+  /** Registered profile id the run was bound to. */
+  profile?: string | undefined;
+  /** Provider-owned launch options the original launch carried, when the host kept them. */
+  agentOptions?: unknown;
+  /** The workspace the run was launched in; defaults to direct mode at `cwd`. */
+  workspace?: AgentWorkspaceRequest | undefined;
+  externalRefs?: readonly ExternalRef[] | undefined;
+}
+
 /** Explicit host reconstruction after loss of runtime continuity. */
 export interface RestoreAgentSessionOptions {
   creationRequestId: string;
@@ -512,6 +583,8 @@ export interface AgentRuntime {
   prepareSession(options: CreateAgentSessionOptions): Promise<PrepareAgentSessionResult>;
   adoptPrepared(preparationId: string, options: AdoptPreparedSessionOptions): Promise<AdoptPreparedSessionResult>;
   restoreSession(options: RestoreAgentSessionOptions): Promise<CreateAgentSessionResult>;
+  /** Re-attach a run to a process that outlived the host (see {@link AttachAgentOptions}). */
+  attach(options: AttachAgentOptions): Promise<CreateAgentSessionResult>;
   cancelPrepared(preparationId: string): Promise<CancelPreparedSessionResult>;
   runtimeRunInfo(runtimeRunId: RuntimeRunId): RuntimeRunInfo | undefined;
   monitorState(runtimeRunId: RuntimeRunId): AgentMonitorState | undefined;
@@ -546,5 +619,16 @@ export interface AgentRuntime {
   submitPrompt(terminalSessionId: string, submission: PromptSubmission): Promise<PromptReceipt>;
   workspaceDiff(terminalSessionId: string): Promise<WorkspaceDiff | null>;
   handleProcessExit(terminalSessionId: string, exit: AgentProcessExit): Promise<AgentWorkspaceFinal | undefined>;
-  dispose(): Promise<AgentWorkspaceFinal[]>;
+  /**
+   * Tear the runtime down. With `detach`, the managed sessions are RELEASED
+   * rather than closed (stable ingress): their processes, terminals and
+   * workspaces live on, their durable claims stay allocated, no exit is
+   * dispatched — the host that comes back re-attaches through `attach`.
+   */
+  dispose(options?: DisposeAgentRuntimeOptions): Promise<AgentWorkspaceFinal[]>;
+}
+
+export interface DisposeAgentRuntimeOptions {
+  /** Release the sessions for a later re-attach instead of closing them. */
+  detach?: boolean | undefined;
 }

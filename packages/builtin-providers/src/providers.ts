@@ -25,6 +25,7 @@ import {
   createClaudeDistributionService,
   createClaudeProfileService,
   captureClaudeContinuationState,
+  attachClaudeTuiSession,
   createClaudeSession,
   normalizeClaudeNativeInvocation,
   preflightClaudeLaunch,
@@ -328,7 +329,7 @@ export function createBuiltinProviders(options: BuiltinProviderOptions = {}): Ag
           restore: (state) => restoreClaudeContinuationState(state, { imposterExecutable: options.imposterExecutable }),
         },
       },
-      async createSession({ cwd, resume, title, host, agentOptions, profile }) {
+      async createSession({ cwd, resume, title, host, agentOptions, profile, ingress }) {
         const launch = withProfileBinding(
           'claude',
           cwd,
@@ -354,10 +355,42 @@ export function createBuiltinProviders(options: BuiltinProviderOptions = {}): Ag
           resumeInvocation: launch?.resumeInvocation,
           onDiagnostic: launch?.onDiagnostic,
           observeSubagentStatus: true,
+          ingress,
           ports: {
             spawn: (prepared) => host.spawnTerminal(prepared),
             automate: host.automateTerminal,
           },
+        });
+      },
+      // Stable ingress, the restart half: a Claude that outlived its host keeps
+      // posting to the bridge it was launched against; rebinding that ingress
+      // and tailing the transcript by id is the whole re-attach. The profile
+      // binding resolves the config root the same way a launch does.
+      async attachSession({ sessionId, runtimeSessionId, cwd, host, agentOptions, profile, ingress }) {
+        if (!ingress) {
+          throw new Error('Claude attach needs the ingress the process was launched against');
+        }
+        const launch = withProfileBinding(
+          'claude',
+          cwd,
+          profile,
+          services.claude.profiles,
+          normalizeClaudeNativeInvocation,
+          agentOptions as ClaudeProviderOptions | undefined,
+        );
+        return attachClaudeTuiSession({
+          sessionId,
+          runtimeSessionId,
+          cwd,
+          ingress,
+          env: launch?.env,
+          permissionMode: launch?.permissionMode,
+          model: launch?.model,
+          effort: launch?.effort,
+          configDir: launch?.configDir,
+          onDiagnostic: launch?.onDiagnostic,
+          observeSubagentStatus: true,
+          automate: host.automateTerminal,
         });
       },
       async prepareSession({ cwd, resume, title, host, agentOptions, profile }) {

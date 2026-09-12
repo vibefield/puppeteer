@@ -95,3 +95,37 @@ Independent native-source queues are isolated: a stalled or malformed source can
 - Hooks remain lifecycle truth; transcript failure cannot end a live process.
 - The dependency graph and runtime failure surface are smaller.
 - Provider schema drift is now our responsibility, so each wire decoder requires fixtures, tolerant unknown-field behavior, version/capability reporting, and bounded input handling.
+
+## Stable ingress (2026-09-12)
+
+A host that outlives its own process — a resident daemon that restarts under a running agent — loses every native
+source the moment it exits: the hook bridge was bound ephemerally with a token minted for the launch, and the launched
+process keeps posting into a closed port. Until now the only recovery was resume-respawn, which is a new process and
+a turn boundary the user did not choose. Three additions make the bridge a stable ingress instead:
+
+- **The host may pin and must be able to learn the ingress.** `HostIngress` (core `host.ts`) rides every session
+  request (`AgentTuiSessionOptions.ingress`, runtime `createSession`/`spawn`/`resume`): a host pins `port` and
+  `token` or lets the adapter mint them, and `onBound` reports what was bound once the listener is up and before the
+  process launches — the moment a host that persists `{port, token}` beside its session records has everything it
+  needs. Adapters without a loopback ingress ignore the field; `onBound` never fires for them.
+- **A provider may bind to a process that is already running.** `AgentProvider.attachSession` takes the native
+  session id the process announced, the terminal it lives in, the cwd, the profile and the ingress, and answers an
+  `AgentAdapterBinding` exactly as `createSession` would — without launching. The Claude adapter's
+  `attachClaudeTuiSession` rebinds the bridge on the pinned port and token (a taken port fails before anything is
+  adopted, so the host knows the ingress is lost and resumes instead), locks the allow-list to the session (following
+  `/clear` as a spawned session does), locates the transcript by id under the config root and arms the durable rail
+  at the first subscription — the existing records are the silent baseline, as on every attachment — and adopts the
+  terminal. Observation reads `native-log` from the transcript until the next hook upgrades it. The runtime's
+  `attach` wraps it: provider binding → workspace rebuilt at the recorded cwd → `restoreSession` at the next epoch;
+  `ATTACH_UNSUPPORTED` names a provider without the path, `ATTACH_FAILED` a binding that could not be made or that
+  names another terminal.
+- **A host may leave without ending the runs.** `dispose({ detach: true })` releases every managed session — the
+  adapter's observation, the monitors, the workspace lease — and marks nothing terminal: the durable creation claim
+  stays allocated, no `process:exited` is dispatched or recorded, and the host that comes back re-attaches. A plain
+  `dispose` still closes the runs for good; `handleProcessExit` is unchanged.
+
+What stays with the host: choosing to pin, persisting what was bound (owner-only, like every other credential the
+host keeps), knowing which terminals are still alive after it returns, and the resume fallback for providers with no
+attach path. What stays out of this RFC: buffering hooks posted while no host is listening (a native relay would
+carry that; it is a different process and a different lifetime), and any vendor's own reconnection story beyond
+Claude's — Codex and Grok rebuild their app-server and leader sockets by id and are the next candidates.
