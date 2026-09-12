@@ -1,8 +1,8 @@
 import { describe, expect, it } from 'vitest';
-import { projectClaudeTranscriptConversation } from './conversation.js';
+import { projectClaudeTranscriptAssistants } from './conversation.js';
 import { decodeClaudeTranscript } from './wire.js';
 
-describe('Claude transcript conversation projection', () => {
+describe('Claude transcript assistant projection', () => {
   it('uses parent causality when teardown flushes an assistant before its prompt', () => {
     const records = decodeClaudeTranscript(
       [
@@ -29,8 +29,7 @@ describe('Claude transcript conversation projection', () => {
       ].join('\n'),
     );
 
-    expect(projectClaudeTranscriptConversation(records).history.map(({ event }) => event)).toEqual([
-      { type: 'turn:started', turnId: 'prompt-1', prompt: 'Original prompt' },
+    expect([...projectClaudeTranscriptAssistants(records).values()].map(({ event }) => event)).toEqual([
       {
         type: 'conversation:assistant-message',
         messageId: 'assistant-1',
@@ -39,11 +38,10 @@ describe('Claude transcript conversation projection', () => {
         final: true,
         displayOnly: false,
       },
-      { type: 'turn:completed', turnId: 'prompt-1', lastAssistantMessage: 'Durable answer' },
     ]);
   });
 
-  it('does not invent completion for a prompt with no assistant response', () => {
+  it('does not reconstruct historical prompts or synthesize turn outcomes', () => {
     const records = decodeClaudeTranscript(
       [
         JSON.stringify({
@@ -61,15 +59,6 @@ describe('Claude transcript conversation projection', () => {
       ].join('\n'),
     );
 
-    expect(projectClaudeTranscriptConversation(records).history.map(({ event }) => event)).toEqual([
-      { type: 'turn:started', turnId: 'prompt-1', prompt: 'First prompt' },
-      {
-        type: 'turn:failed',
-        turnId: 'prompt-1',
-        error: 'superseded by a newer user prompt before an assistant response',
-      },
-      { type: 'turn:started', turnId: 'prompt-2', prompt: 'Replacement prompt' },
-      { type: 'turn:failed', turnId: 'prompt-2', error: 'interrupted before an assistant response' },
-    ]);
+    expect([...projectClaudeTranscriptAssistants(records).values()]).toEqual([]);
   });
 });

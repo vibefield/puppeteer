@@ -46,7 +46,6 @@ async function fixture(contents: string) {
   const handle = await new ClaudeTranscriptObservationProvider().attach({
     nativeSessionId: 'session-1',
     transcriptPath: path,
-    bootstrap: true,
     pollIntervalMs: 0,
   });
   handles.push(handle);
@@ -56,6 +55,58 @@ async function fixture(contents: string) {
 }
 
 describe('ClaudeTranscriptObservationProvider', () => {
+  it.each(['\n', ''])('baselines existing messages with EOF=%j and publishes only later changes', async (ending) => {
+    const row = (type: 'user' | 'assistant', id: string, text: string) =>
+      JSON.stringify({
+        type,
+        uuid: id,
+        sessionId: 'session-1',
+        timestamp: '2026-09-11T16:30:00.000Z',
+        message: { role: type, content: text },
+      });
+    const { path, handle, events } = await fixture(
+      row('user', 'old-prompt', 'Old prompt') + '\n' + row('assistant', 'old-reply', 'Old reply') + ending,
+    );
+    await handle.poll();
+    await handle.poll();
+    expect(events).toEqual([]);
+
+    appendFileSync(
+      path,
+      '\n' + row('user', 'new-prompt', 'New prompt') + '\n' + row('assistant', 'new-reply', 'New reply') + '\n',
+    );
+    await handle.poll();
+    expect(events).toEqual([
+      expect.objectContaining({
+        turnId: 'new-prompt',
+        event: {
+          type: 'conversation:assistant-message',
+          messageId: 'new-reply',
+          turnId: 'new-prompt',
+          text: 'New reply',
+          final: true,
+          displayOnly: false,
+        },
+      }),
+    ]);
+    expect(events[0]?.replay).toBeUndefined();
+    events.length = 0;
+    appendFileSync(path, JSON.stringify({ type: 'attachment', uuid: 'metadata' }) + '\n');
+    await handle.poll();
+    expect(events.map(({ event }) => event.type)).toEqual(['adapter:native-event']);
+
+    const rebound = await new ClaudeTranscriptObservationProvider().attach({
+      nativeSessionId: 'session-1',
+      transcriptPath: path,
+      pollIntervalMs: 0,
+    });
+    handles.push(rebound);
+    const reboundEvents: SemanticObservationEvent[] = [];
+    rebound.onEvent((event) => reboundEvents.push(event));
+    await rebound.poll();
+    expect(reboundEvents.map(({ event }) => event.type)).toEqual(['adapter:native-event']);
+  });
+
   it('compares final actor models once without publishing transcript usage', async () => {
     const { path, handle, events } = await fixture(
       usageRow(1) + usageRow(2, { model: 'model-b' }) + usageRow(3, { requestId: 'request-2' }),
@@ -205,7 +256,7 @@ describe('ClaudeTranscriptObservationProvider', () => {
     ]);
   });
 
-  it('replays root conversation and reads exact workflow members without importing historical usage', async () => {
+  it('observes model and workflow snapshots without replaying historical conversation or usage', async () => {
     const root = mkdtempSync(join(tmpdir(), 'claude-transcript-provider-'));
     roots.push(root);
     const sessionId = 'session-1';
@@ -256,15 +307,12 @@ describe('ClaudeTranscriptObservationProvider', () => {
     );
 
     const provider = new ClaudeTranscriptObservationProvider();
-    const handle = await provider.attach({ nativeSessionId: sessionId, transcriptPath, bootstrap: true });
+    const handle = await provider.attach({ nativeSessionId: sessionId, transcriptPath });
     const events: SemanticObservationEvent[] = [];
     handle.onEvent((event) => events.push(event));
     await handle.poll();
 
     expect(events.filter(({ replay }) => replay).map(({ event }) => event.type)).toEqual([
-      'turn:started',
-      'conversation:assistant-message',
-      'turn:completed',
       'model:updated',
       'workflow:updated',
     ]);
@@ -314,7 +362,7 @@ describe('ClaudeTranscriptObservationProvider', () => {
     writeFileSync(join(subagents, 'agent-foreign.jsonl'), assistant('session-foreign', 'request-foreign', 'intruder'));
 
     const provider = new ClaudeTranscriptObservationProvider();
-    const handle = await provider.attach({ nativeSessionId: sessionId, transcriptPath, bootstrap: true });
+    const handle = await provider.attach({ nativeSessionId: sessionId, transcriptPath });
     const events: SemanticObservationEvent[] = [];
     handle.onEvent((event) => events.push(event));
     await handle.poll();
@@ -345,7 +393,7 @@ describe('ClaudeTranscriptObservationProvider', () => {
       `${JSON.stringify({ type: 'started', agentId: 'worker-a' })}\n`,
     );
     const provider = new ClaudeTranscriptObservationProvider();
-    const handle = await provider.attach({ nativeSessionId: sessionId, transcriptPath, bootstrap: false });
+    const handle = await provider.attach({ nativeSessionId: sessionId, transcriptPath });
     const events: SemanticObservationEvent[] = [];
     const errors: Error[] = [];
     handle.onEvent((event) => events.push(event));

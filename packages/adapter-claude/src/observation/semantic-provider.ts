@@ -33,8 +33,6 @@ export interface SemanticObservationEvent {
 export interface SemanticObservationAttachRequest {
   nativeSessionId: string;
   transcriptPath: string;
-  /** Existing durable history is installed as a no-notification/no-rate baseline. */
-  bootstrap: boolean;
   /** Zero disables polling; an omitted value lets the provider choose its fallback cadence. */
   pollIntervalMs?: number;
 }

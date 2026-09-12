@@ -119,14 +119,15 @@ describe('createClaudeTranscriptReader', () => {
     expect((await reader.read()).map(({ uuid }) => uuid)).toEqual(['recovered']);
   });
 
-  it('commits a stable valid final row even when the file has no trailing newline', async () => {
+  it('includes a stable valid EOF row in the initial snapshot without a trailing newline', async () => {
     const root = mkdtempSync(join(tmpdir(), 'claude-jsonl-final-row-'));
     roots.push(root);
     const path = join(root, 'transcript.jsonl');
     writeFileSync(path, finalRow('final'));
     const reader = createClaudeTranscriptReader(path);
 
-    expect(await reader.read()).toEqual([]);
-    expect((await reader.read()).map(({ uuid }) => uuid)).toEqual(['final']);
+    const first = await reader.read();
+    expect(first.map(({ uuid }) => uuid)).toEqual(['final']);
+    expect(await reader.read()).toBe(first);
   });
 });

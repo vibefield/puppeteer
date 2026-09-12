@@ -1070,7 +1070,7 @@ per tool call in the agentic loop (<code>PreToolUse</code>, <code>PostToolUse</c
   → loopback hook bridge (HTTP + command forwarders)
   → ClaudeHookNormalizer → reduceSessionState
   → statusline forwarder → context-window:* / environment
-  → transcript observer (live: conversation:assistant-message only; resume: turn:* with replay:true)
+  → transcript observer (existing messages: silent baseline; later changes: conversation:assistant-message)
   → submitPrompt = bracketed paste + UserPromptSubmit confirmation</pre>
 
           <h4>Wiring gate</h4>
@@ -1114,8 +1114,10 @@ per tool call in the agentic loop (<code>PreToolUse</code>, <code>PostToolUse</c
           patterns → invalidation (or 0% on brand-new empty window).</p>
 
           <h4>Transcript</h4>
-          <p>Path from hook <code>transcript_path</code>. Live path keeps assistant records only (no double-count with hooks).
-          <code>turn:*</code> projected on resume with <code>replay: true</code>.</p>
+          <p>Path from hook <code>transcript_path</code>. Existing assistant messages form a silent baseline on every
+          attachment, including native resume and picker rebinds. Later assistant changes remain observable;
+          historical prompts, replies and <code>turn:*</code> are never replayed. Model, diagnostic and workflow
+          snapshots remain available. Hooks do not wait for the initial transcript read.</p>
 
           <h4>Observation level</h4>
           <p><code>terminal-only</code> until the first hook arrives, then <code>native-hooks</code>.</p>
@@ -1195,8 +1197,7 @@ stateDiagram-v2
 flowchart LR
   H["hook bridge<br/>29 of 31 default"] --> N["ClaudeHookNormalizer"]
   SL["statusline"] --> CW["context-window:*<br/>environment"]
-  TR["transcript observer"] -->|"conversation:assistant-message only<br/>(live)"| RED
-  TR -.->|"turn:* only on resume<br/>replay: true"| RED
+  TR["transcript observer<br/>existing messages: silent baseline"] -->|"conversation:assistant-message<br/>(later changes)"| RED
   N --> RED["reduceSessionState"]
   CW --> RED
   GIT["runtime git observer"] --> RED

@@ -52,7 +52,7 @@ function userPrompt(record: ClaudeTranscriptRecord): string | undefined {
 function observation(
   event: AgentEvent,
   source: ClaudeTranscriptRecord,
-  options: { turnId?: string; replay?: boolean } = {},
+  options: { turnId?: string } = {},
 ): SemanticObservationEvent {
   return {
     event,
@@ -60,7 +60,6 @@ function observation(
     ...(options.turnId ? { promptId: options.turnId, turnId: options.turnId } : {}),
     ...(source.agentId ? { agentId: source.agentId } : {}),
     ...(source.agentType ? { agentType: source.agentType } : {}),
-    ...(options.replay ? { replay: true } : {}),
     nativeEvent: safeTranscriptEvidence(source),
   };
 }
@@ -150,80 +149,27 @@ function causalOrder(records: readonly ClaudeTranscriptRecord[]): ClaudeTranscri
   return ordered;
 }
 
-export interface ClaudeTranscriptConversationProjection {
-  history: readonly SemanticObservationEvent[];
-  assistants: ReadonlyMap<string, SemanticObservationEvent>;
-}
-
-/** Project only the root human conversation; sidechains remain usage/workflow evidence, not chat messages. */
-export function projectClaudeTranscriptConversation(
+/** Extract root assistant messages for live observation without synthesizing historical turns. */
+export function projectClaudeTranscriptAssistants(
   records: readonly ClaudeTranscriptRecord[],
-): ClaudeTranscriptConversationProjection {
-  const history: SemanticObservationEvent[] = [];
+): ReadonlyMap<string, SemanticObservationEvent> {
   const assistants = new Map<string, SemanticObservationEvent>();
-  let current:
-    | {
-        turnId: string;
-        prompt: string;
-        source: ClaudeTranscriptRecord;
-        assistants: Array<{ key: string; observation: SemanticObservationEvent; source: ClaudeTranscriptRecord }>;
-      }
-    | undefined;
-
-  const flush = (boundary: 'next-prompt' | 'snapshot-end'): void => {
-    if (!current) return;
-    history.push(
-      observation({ type: 'turn:started', turnId: current.turnId, prompt: current.prompt }, current.source, {
-        turnId: current.turnId,
-        replay: true,
-      }),
-    );
-    for (const item of current.assistants) history.push({ ...item.observation, replay: true });
-    const last = current.assistants.at(-1);
-    history.push(
-      observation(
-        last
-          ? {
-              type: 'turn:completed',
-              turnId: current.turnId,
-              ...(last?.observation.event.type === 'conversation:assistant-message'
-                ? { lastAssistantMessage: last.observation.event.text }
-                : {}),
-            }
-          : {
-              type: 'turn:failed',
-              turnId: current.turnId,
-              error:
-                boundary === 'next-prompt'
-                  ? 'superseded by a newer user prompt before an assistant response'
-                  : 'interrupted before an assistant response',
-            },
-        last?.source ?? current.source,
-        { turnId: current.turnId, replay: true },
-      ),
-    );
-    current = undefined;
-  };
+  let turnId: string | undefined;
 
   for (const record of causalOrder(records)) {
     if (record.isSidechain) continue;
     const role = record.message?.role;
     if (record.type === 'user' || role === 'user') {
-      const prompt = userPrompt(record);
-      if (!prompt) continue;
-      flush('next-prompt');
-      current = { turnId: transcriptRecordId(record), prompt, source: record, assistants: [] };
+      if (userPrompt(record)) turnId = transcriptRecordId(record);
       continue;
     }
     if (record.type !== 'assistant' && role !== 'assistant') continue;
-    const projected = assistant(record, current?.turnId);
+    const projected = assistant(record, turnId);
     if (!projected) continue;
     const key = transcriptRecordId(record);
     assistants.set(key, projected);
-    if (current) current.assistants.push({ key, observation: projected, source: record });
   }
-  flush('snapshot-end');
-  return { history, assistants };
+  return assistants;
 }
 
 export function claudeTranscriptConversationFingerprint(value: SemanticObservationEvent): string {

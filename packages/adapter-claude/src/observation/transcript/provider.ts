@@ -8,7 +8,7 @@ import type {
   SemanticObservationProvider,
 } from '../semantic-provider.js';
 import { createClaudeWorkflowJournalObserver } from '../workflow/journal.js';
-import { claudeTranscriptConversationFingerprint, projectClaudeTranscriptConversation } from './conversation.js';
+import { claudeTranscriptConversationFingerprint, projectClaudeTranscriptAssistants } from './conversation.js';
 import { projectClaudeTranscriptModel } from './model.js';
 import {
   createClaudeSessionTranscriptReader,
@@ -79,23 +79,17 @@ export class ClaudeTranscriptObservationProvider implements SemanticObservationP
       if (disposed || records === lastTranscript) return;
       const yieldIfNeeded = createTranscriptYield();
       const pending: SemanticObservationEvent[] = [];
-      const conversation = projectClaudeTranscriptConversation(records.root);
+      const assistants = projectClaudeTranscriptAssistants(records.root);
 
-      if (firstTranscriptPoll && request.bootstrap) {
-        pending.push(...conversation.history);
-      } else {
-        for (const [key, event] of conversation.assistants) {
-          const fingerprint = claudeTranscriptConversationFingerprint(event);
-          if (assistantFingerprints.get(key) === fingerprint) continue;
-          assistantFingerprints.set(key, fingerprint);
-          pending.push(event);
-        }
-      }
-      for (const [key, event] of conversation.assistants) {
-        assistantFingerprints.set(key, claudeTranscriptConversationFingerprint(event));
+      // Existing messages form a silent baseline on every attachment,
+      // including picker rebinds. Only later changes are live observations.
+      for (const [key, event] of assistants) {
+        const fingerprint = claudeTranscriptConversationFingerprint(event);
+        if (!firstTranscriptPoll && assistantFingerprints.get(key) !== fingerprint) pending.push(event);
+        assistantFingerprints.set(key, fingerprint);
       }
 
-      const activeAssistantKeys = new Set(conversation.assistants.keys());
+      const activeAssistantKeys = new Set(assistants.keys());
       // Compare the final evidence for each identity, not every historical
       // revision against the previous poll's final value (A -> B -> A -> B).
       // Moving replacements to the end retains final-occurrence order.
@@ -132,7 +126,7 @@ export class ClaudeTranscriptObservationProvider implements SemanticObservationP
         const fingerprint = JSON.stringify([value.event, value.agentId ?? null, value.agentType ?? null]);
         if (evidenceFingerprints.get(key) === fingerprint) continue;
         evidenceFingerprints.set(key, fingerprint);
-        pending.push(firstTranscriptPoll && request.bootstrap ? { ...value, replay: true } : value);
+        pending.push(firstTranscriptPoll ? { ...value, replay: true } : value);
       }
       retainMapKeys(assistantFingerprints, activeAssistantKeys);
       retainMapKeys(evidenceFingerprints, new Set(latest.keys()));
@@ -158,7 +152,7 @@ export class ClaudeTranscriptObservationProvider implements SemanticObservationP
         emitEvent({
           event: workflow.event,
           timestamp: workflow.timestamp,
-          ...(firstWorkflowPoll && request.bootstrap ? { replay: true } : {}),
+          ...(firstWorkflowPoll ? { replay: true } : {}),
           nativeEvent: workflow.nativeEvent,
         });
         const pause = yieldIfNeeded();

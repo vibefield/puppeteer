@@ -1024,7 +1024,7 @@ describe('createClaudeSession (full loop, test-as-Claude)', () => {
     ).rejects.toThrow();
   });
 
-  it('resume spawns with the resumed id and its bridge accepts only that session', async () => {
+  it('resumes the native session without replaying historical conversation', async () => {
     const resumeId = '64a61b19-f4d8-4f96-ba56-07024b470813';
     const transcriptDirectory = mkdtempSync(join(tmpdir(), 'driver-resume-history-'));
     const projectDirectory = join(transcriptDirectory, '.claude', 'projects', '-driver-resume');
@@ -1110,26 +1110,90 @@ describe('createClaudeSession (full loop, test-as-Claude)', () => {
     await session.pollTranscript();
     expect(session.observationLevel()).toBe('native-hooks');
     expect(historyEvents.filter((event) => event.replay).map((event) => event.event)).toEqual([
-      { type: 'turn:started', turnId: 'history-prompt', prompt: 'What did we decide?' },
-      {
-        type: 'conversation:assistant-message',
-        messageId: 'history-assistant',
-        turnId: 'history-prompt',
-        text: 'Use the native resume path.',
-        final: true,
-        displayOnly: false,
-      },
-      {
-        type: 'turn:completed',
-        turnId: 'history-prompt',
-        lastAssistantMessage: 'Use the native resume path.',
-      },
       {
         type: 'model:updated',
         intent: 'observed',
         model: { id: 'claude-sonnet-local', provider: 'anthropic' },
       },
     ]);
+    expect(
+      historyEvents.some(({ event }) => event.type.startsWith('turn:') || event.type.startsWith('conversation:')),
+    ).toBe(false);
+  });
+
+  it('delivers live hooks during resume while the first durable read is still pending', async () => {
+    let release!: () => void;
+    const initialRead = new Promise<void>((resolve) => {
+      release = resolve;
+    });
+    let reads = 0;
+    const provider: SemanticObservationProvider = {
+      capabilities: () => Promise.resolve([]),
+      attach: () =>
+        Promise.resolve({
+          onEvent: () => () => undefined,
+          onBatch: () => () => undefined,
+          onError: () => () => undefined,
+          poll: () => (++reads === 1 ? initialRead : Promise.resolve()),
+          readArtifact: () => Promise.resolve({ status: 'unavailable', message: 'not exposed' }),
+          dispose: () => Promise.resolve(),
+        }),
+    };
+    const prepared = await prepareClaudeTuiSession({
+      cwd: '/tmp',
+      resumeInvocation: ['--resume'],
+      semanticProviderFactory: () => provider,
+      automate: async () => ({ accepted: true }),
+    });
+    const session = await prepared.adopt('slow-transcript-pane');
+    sessions.push(session);
+    const projection = projectAgentEvents(session);
+    const settings = JSON.parse(readFileSync(prepared.launch.settingsPath, 'utf8'));
+    const endpoint = settings.hooks.UserPromptSubmit[0].hooks[0].url;
+    const post = (name: string, fields: Record<string, unknown> = {}) =>
+      fetch(endpoint, {
+        method: 'POST',
+        headers: {
+          'content-type': 'application/json',
+          authorization: `Bearer ${prepared.launch.env.PUPPETEER_HOOK_TOKEN}`,
+        },
+        body: JSON.stringify({
+          session_id: '64a61b19-f4d8-4f96-ba56-07024b470891',
+          transcript_path: '/tmp/slow-transcript.jsonl',
+          cwd: '/tmp',
+          hook_event_name: name,
+          ...fields,
+        }),
+      });
+    try {
+      expect((await post('SessionStart', { source: 'resume' })).status).toBe(200);
+      await vi.waitFor(() => expect(reads).toBe(1));
+      expect((await post('UserPromptSubmit', { prompt_id: 'live-prompt', prompt: 'New prompt' })).status).toBe(200);
+      expect(projection.state.lifecycle).toBe('running');
+      expect(
+        (
+          await post('MessageDisplay', {
+            prompt_id: 'live-prompt',
+            turn_id: 'live-cycle',
+            message_id: 'live-reply',
+            delta: 'New reply',
+            index: 0,
+            final: true,
+          })
+        ).status,
+      ).toBe(200);
+      expect((await post('Stop', { prompt_id: 'live-prompt', last_assistant_message: 'New reply' })).status).toBe(200);
+      expect(projection.state.lifecycle).toBe('ready');
+      expect(projection.state.lastAssistantMessage).toBe('New reply');
+      expect(projection.envelopes.filter(({ event }) => event.type === 'conversation:assistant-message')).toHaveLength(
+        1,
+      );
+      expect(reads).toBe(1);
+    } finally {
+      release();
+      await session.pollTranscript();
+      projection.dispose();
+    }
   });
 
   it('keeps the native resume picker and adopts the session selected after launch', async () => {
@@ -1151,6 +1215,23 @@ describe('createClaudeSession (full loop, test-as-Claude)', () => {
       hooks: Record<string, Array<{ hooks: Array<{ url?: string }> }>>;
     };
     const endpoint = settings.hooks.UserPromptSubmit[0].hooks[0].url!;
+    const transcriptDirectory = mkdtempSync(join(tmpdir(), 'driver-picker-baselines-'));
+    const previewTranscript = join(transcriptDirectory, `${previewId}.jsonl`);
+    const selectedTranscript = join(transcriptDirectory, `${selectedId}.jsonl`);
+    for (const [path, id] of [
+      [previewTranscript, previewId],
+      [selectedTranscript, selectedId],
+    ]) {
+      writeFileSync(
+        path!,
+        JSON.stringify({
+          type: 'assistant',
+          uuid: `old-${id}`,
+          sessionId: id,
+          message: { role: 'assistant', content: 'Old picker conversation' },
+        }) + '\n',
+      );
+    }
     // Claude can start the highlighted picker preview before the user commits
     // the final selection. A later SessionStart must be allowed to rebind.
     const previewStart = await fetch(endpoint, {
@@ -1159,10 +1240,17 @@ describe('createClaudeSession (full loop, test-as-Claude)', () => {
         'content-type': 'application/json',
         authorization: `Bearer ${prepared.launch.env.PUPPETEER_HOOK_TOKEN}`,
       },
-      body: JSON.stringify({ session_id: previewId, cwd: '/preview', hook_event_name: 'SessionStart' }),
+      body: JSON.stringify({
+        session_id: previewId,
+        cwd: '/preview',
+        hook_event_name: 'SessionStart',
+        transcript_path: previewTranscript,
+      }),
     });
     expect(previewStart.status).toBe(200);
     expect(session.sessionId).toBe(previewId);
+    await session.pollTranscript();
+    expect(projection.envelopes.some(({ event }) => event.type === 'conversation:assistant-message')).toBe(false);
 
     const preview = await fetch(prepared.launch.env.PUPPETEER_STATUSLINE_ENDPOINT, {
       method: 'POST',
@@ -1185,11 +1273,18 @@ describe('createClaudeSession (full loop, test-as-Claude)', () => {
         'content-type': 'application/json',
         authorization: `Bearer ${prepared.launch.env.PUPPETEER_HOOK_TOKEN}`,
       },
-      body: JSON.stringify({ session_id: selectedId, cwd: '/tmp', hook_event_name: 'SessionStart' }),
+      body: JSON.stringify({
+        session_id: selectedId,
+        cwd: '/tmp',
+        hook_event_name: 'SessionStart',
+        transcript_path: selectedTranscript,
+      }),
     });
     expect(response.status).toBe(200);
     expect(session.sessionId).toBe(selectedId);
     expect(projection.state.lifecycle).toBe('ready');
+    await session.pollTranscript();
+    expect(projection.envelopes.some(({ event }) => event.type === 'conversation:assistant-message')).toBe(false);
 
     const selectedStatus = await fetch(prepared.launch.env.PUPPETEER_STATUSLINE_ENDPOINT, {
       method: 'POST',
@@ -1210,9 +1305,6 @@ describe('createClaudeSession (full loop, test-as-Claude)', () => {
     });
     expect(projection.state.contextWindow?.usedPercent).toBe(16);
 
-    const selectedTranscriptDirectory = mkdtempSync(join(tmpdir(), 'driver-picker-history-'));
-    const selectedTranscript = join(selectedTranscriptDirectory, `${selectedId}.jsonl`);
-    writeFileSync(selectedTranscript, '');
     const confirmed = await fetch(endpoint, {
       method: 'POST',
       headers: {

@@ -23,7 +23,7 @@ The repository keeps current decisions, active work, and history in separate pla
 
 Unfinished vendor adaptation plans live in [`../draft/`](../draft/). Canonical guides move here; completed designs and rollout plans move to [`archive/`](archive/).
 
-- [`../draft/CLAUDE-TRANSCRIPT-DEPENDENCIES.md`](../draft/CLAUDE-TRANSCRIPT-DEPENDENCIES.md) tracks the Claude transcript dependency audit and removal of transcript-derived live usage.
+- [`../draft/CLAUDE-TRANSCRIPT-DEPENDENCIES.md`](../draft/CLAUDE-TRANSCRIPT-DEPENDENCIES.md) tracks the Claude transcript dependency audit and removal of transcript-derived live usage and conversation replay.
 
 ## Historical material
 

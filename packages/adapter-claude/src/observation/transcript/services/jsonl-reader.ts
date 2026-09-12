@@ -130,6 +130,13 @@ export function createClaudeTranscriptReader(
             discardLeadingPartial = true;
           }
         }
+        // A complete EOF row already present at attachment belongs to the
+        // initial snapshot. Delaying it to the next poll would misclassify
+        // an old assistant reply as a new live message.
+        if (pending && !discardLeadingPartial) {
+          const settled = await handle.stat();
+          if (settled.size === metadata.size && settled.mtimeMs === metadata.mtimeMs) commitStableFinalRow();
+        }
       } finally {
         await handle.close();
       }

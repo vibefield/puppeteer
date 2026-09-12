@@ -82,17 +82,13 @@ async function claudeHarness(resume?: string): Promise<ClaudeConformanceHarness>
   };
 
   await hook('SessionStart', {}); // -> ready, native-hooks
-  if (resume) {
-    // A resumed native session replays its durable transcript before new input.
-    // This in-memory harness supplies the equivalent final historical message.
-    await hook('Stop', { prompt_id: 'history', last_assistant_message: REPLY });
-  }
 
   let turn = 0;
   return {
     binding: session,
     reply: REPLY,
     resume: () => claudeHarness(session.sessionId),
+    resumeHistory: 'identity-only',
     closeObservationRail: () => closeObservationRail(),
     assertNoOrphans: async () => {
       if (existsSync(prepared!.settingsPath)) throw new Error('Claude generated settings survived dispose()');

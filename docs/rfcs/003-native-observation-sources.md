@@ -26,7 +26,7 @@ provider hook / OTLP log / transcript / journal / status
 
 | Category     | Primary live source                      | Durable or degraded source                                     |
 | ------------ | ---------------------------------------- | -------------------------------------------------------------- |
-| conversation | complete assistant transcript rows       | resume replay from the same transcript                         |
+| conversation | `MessageDisplay` and `Stop` hooks        | live assistant transcript changes; no conversation replay      |
 | interaction  | permission/question hooks                | transcript is not lifecycle truth                              |
 | tool         | tool hooks                               | none required for lifecycle                                    |
 | model        | status channel and OTLP request model    | transcript assistant model                                     |
@@ -39,6 +39,8 @@ provider hook / OTLP log / transcript / journal / status
 | workflow     | OTLP `workflow.run_id` / `workflow.name` | per-run `journal.jsonl` for member ids and completion          |
 
 These categories do not require a general semantic database. Search, cross-session history, and analytics can remain a separate data product that indexes provider files without being in the live process dependency graph.
+
+Claude's native TUI owns resumed conversation history. The adapter silently baselines existing assistant messages on every transcript attachment, including resume-picker rebinds. It does not publish historical prompts, replies or synthetic turn outcomes. Later assistant changes remain observable while that dependency is audited separately. Hooks never wait for the initial transcript read; model, diagnostic and workflow snapshots retain their independent observation paths.
 
 ## Usage rules learned from the burn-rate probe
 
@@ -71,7 +73,7 @@ packages/adapter-claude/src/observation/
     capability.ts       # supported-version gate
   transcript/
     wire.ts             # tolerant transcript rows
-    conversation.ts     # conversation:assistant-message + resume history
+    conversation.ts     # live conversation:assistant-message changes
     model.ts            # durable model fallback
     provider.ts         # polling service
     services/

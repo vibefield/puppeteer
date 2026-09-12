@@ -160,14 +160,30 @@ describe.runIf(live)('Claude adapter through real native TUI (live)', () => {
         await waitFor(() => resumed!.transcriptPath() !== undefined, 'resumed transcript attachment', 30_000);
         await resumed.pollTranscript();
         await waitFor(
-          () => (resumedProjection!.state.lastAssistantMessage ?? '').includes(CLAUDE_LIVE_RESPONSE_MARKER),
-          'resumed normalized transcript history',
-          15_000,
-        );
-        await waitFor(
           () => host.output(resumed!.runtimeSessionId).includes(CLAUDE_LIVE_RESPONSE_MARKER),
           'resumed history in the real native TUI',
         );
+        expect(resumedProjection.state.lastAssistantMessage).toBeUndefined();
+        expect(
+          resumedProjection.envelopes.filter(
+            ({ event }) => event.type.startsWith('turn:') || event.type.startsWith('conversation:'),
+          ),
+        ).toEqual([]);
+
+        const resumedReceipt = await resumed.services.prompt.submit({
+          text: prompt,
+          confirmationTimeoutMs: 15_000,
+        });
+        expect(resumedReceipt, host.output(resumed.runtimeSessionId)).toEqual({
+          status: 'confirmed',
+          turnId: expect.any(String),
+        });
+        await waitFor(
+          () => resumedProjection!.envelopes.some(({ event }) => event.type === 'turn:completed'),
+          'new native-hook turn completion after resume',
+          60_000,
+        );
+        expect(resumedProjection.state.lastAssistantMessage).toContain(CLAUDE_LIVE_RESPONSE_MARKER);
       } catch (cause) {
         throw new Error(
           `Claude resume diagnostics: events=${JSON.stringify(
@@ -180,7 +196,7 @@ describe.runIf(live)('Claude adapter through real native TUI (live)', () => {
       }
 
       const turnRequests = provider.requests.filter(({ kind }) => kind === 'turn');
-      expect(turnRequests, `unexpected loopback requests: ${JSON.stringify(provider.requests)}`).toHaveLength(1);
+      expect(turnRequests, `unexpected loopback requests: ${JSON.stringify(provider.requests)}`).toHaveLength(2);
       expect(turnRequests[0]).toMatchObject({ method: 'POST', url: expect.stringMatching(/^\/v1\/messages/) });
       expect(
         provider.requests.every(({ kind }) => kind !== 'unsupported'),

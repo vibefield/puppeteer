@@ -10,7 +10,7 @@
  *     → ports.spawn (the host carries the hook token in its explicit env grant)
  *     → hook bridge (loopback HTTP; the ONLY session it accepts is ours)
  *     → category normalizers → candidate event source → runtime ingress
- *     → transcript/history + workflow-journal provider (lazy: attached at the
+ *     → live transcript + workflow-journal provider (lazy: attached at the
  *       first hook payload that hands us transcript_path)
  *     → authenticated OTLP logs (settled request usage, when available)
  *     → prompt injector (uses ports.automate; confirmation and
@@ -158,7 +158,7 @@ export interface CreateClaudeSessionOptions {
    * semantic transcript observer alive. Never set this for product sessions.
    */
   hookRailFaultInjection?: ClaudeHookRailFaultInjection;
-  /** Injectable history source; defaults to Claude transcript + workflow journal adapters. */
+  /** Injectable durable observer; defaults to live transcript updates + workflow journals. */
   semanticProviderFactory?: () => SemanticObservationProvider;
   /** Enable authenticated Claude OTLP request-completion logs. Defaults to true when no exporter conflict exists. */
   observeOtlpUsage?: boolean;
@@ -341,8 +341,6 @@ function createPreparedClaudeSession(
   let semanticHandle: SemanticObservationHandle | undefined;
   let semanticAttachment: Promise<SemanticObservationHandle | undefined> | undefined;
   let semanticGeneration = 0;
-  let hasSemanticAttachment = false;
-  let historyBootstrap: Promise<void> | undefined;
   let adoptedRuntimeSessionId: string | undefined;
   let adoptedSession: ClaudeSession | undefined;
   let disposed = false;
@@ -605,8 +603,6 @@ function createPreparedClaudeSession(
     semanticGeneration += 1;
     const generation = semanticGeneration;
     const priorAttachment = semanticAttachment;
-    const bootstrap =
-      !hasSemanticAttachment && (options.resume !== undefined || options.resumeInvocation !== undefined);
     transcriptPath = path;
     const nextAttachment = (async (): Promise<SemanticObservationHandle | undefined> => {
       const prior = await priorAttachment?.catch(() => undefined);
@@ -616,7 +612,6 @@ function createPreparedClaudeSession(
       const handle = await semanticProvider.attach({
         nativeSessionId: nativeSessionId(),
         transcriptPath: path,
-        bootstrap,
         pollIntervalMs: options.transcriptPollIntervalMs,
       });
       if (disposed || generation !== semanticGeneration) {
@@ -666,12 +661,10 @@ function createPreparedClaudeSession(
         await handle.dispose();
         throw error;
       }
-      hasSemanticAttachment = true;
       return handle;
     })().catch((error: unknown) => {
       if (!disposed && generation === semanticGeneration) {
         if (semanticAttachment === nextAttachment) semanticAttachment = undefined;
-        historyBootstrap = undefined;
         apply(
           { type: 'adapter:native-event', adapter: 'claude-code', nativeType: 'semantic-observer.unavailable' },
           {
@@ -684,7 +677,6 @@ function createPreparedClaudeSession(
       return undefined;
     });
     semanticAttachment = nextAttachment;
-    historyBootstrap = bootstrap ? nextAttachment.then(() => undefined) : undefined;
   }
 
   function pollSemantic(hint?: SemanticObservationPollHint): void {
@@ -710,73 +702,59 @@ function createPreparedClaudeSession(
     // transcript path to arrive is that session's durable history — on a
     // native resume, the path its SessionStart announces.
     if (normalized.transcriptPath) ensureSemanticProvider(normalized.transcriptPath);
-    const deliver = (): void => {
-      const hookEventName = typeof body.hook_event_name === 'string' ? body.hook_event_name : 'unknown';
-      if (normalized.sessionId) monitorEvidence.observeNativeSession(normalized.sessionId);
-      if (normalized.agentId) {
-        if (hookEventName === 'SubagentStart') {
-          monitorEvidence.observeNativeAgentStarted(normalized.agentId, normalized.agentType);
-        } else if (hookEventName === 'SubagentStop') {
-          monitorEvidence.observeNativeAgentStopped(normalized.agentId, normalized.agentType);
-        } else {
-          monitorEvidence.observeNativeAgent(normalized.agentId, normalized.agentType);
-        }
+    const hookEventName = typeof body.hook_event_name === 'string' ? body.hook_event_name : 'unknown';
+    if (normalized.sessionId) monitorEvidence.observeNativeSession(normalized.sessionId);
+    if (normalized.agentId) {
+      if (hookEventName === 'SubagentStart') {
+        monitorEvidence.observeNativeAgentStarted(normalized.agentId, normalized.agentType);
+      } else if (hookEventName === 'SubagentStop') {
+        monitorEvidence.observeNativeAgentStopped(normalized.agentId, normalized.agentType);
+      } else {
+        monitorEvidence.observeNativeAgent(normalized.agentId, normalized.agentType);
       }
-      for (const event of normalized.events) {
-        if (event.type === 'context-window:invalidated') {
-          emitMonitorBatch(
-            monitorEvidence.rootContextInvalidationBatch(hookEnvelope.receivedAt, hookEnvelope.requestId),
-          );
-        }
-        apply(event, {
-          source: 'native-hook',
-          timestamp: hookEnvelope.receivedAt,
-          promptId: normalized.promptId,
-          turnId: normalized.turnId,
-          agentId: normalized.agentId,
-          agentType: normalized.agentType,
-          providerVersion: normalized.providerVersion,
-          confidence: hookEventConfidence(hookEventName, event, body),
-          native: body,
-        });
+    }
+    for (const event of normalized.events) {
+      if (event.type === 'context-window:invalidated') {
+        emitMonitorBatch(monitorEvidence.rootContextInvalidationBatch(hookEnvelope.receivedAt, hookEnvelope.requestId));
       }
-      // Hooks fire near transcript appends — poke the semantic source instead
-      // of waiting out its fallback interval.
-      pollSemantic({
-        hookEventName,
-        nativeSessionId: normalized.sessionId,
+      apply(event, {
+        source: 'native-hook',
+        timestamp: hookEnvelope.receivedAt,
         promptId: normalized.promptId,
+        turnId: normalized.turnId,
         agentId: normalized.agentId,
         agentType: normalized.agentType,
+        providerVersion: normalized.providerVersion,
+        confidence: hookEventConfidence(hookEventName, event, body),
+        native: body,
       });
-
-      const fault = options.hookRailFaultInjection;
-      if (!fault || hookRailFaultInjected || hookEventName !== fault.afterHookEvent) return;
-      matchingFaultHooks += 1;
-      if (matchingFaultHooks < (fault.occurrence ?? 1)) return;
-      hookRailFaultInjected = true;
-      const reason = fault.reason ?? `Claude hook bridge canary fault after ${hookEventName}`;
-      // The current hook has already been acknowledged by HookBridge. Close
-      // the real listener on the next microtask, then publish rail degradation
-      // directly because intentional disposal correctly suppresses the
-      // bridge's unexpected-close callback.
-      queueMicrotask(() => {
-        void bridge.dispose().then(
-          () => reportHookRailUnavailable(reason),
-          () => reportHookRailUnavailable(reason),
-        );
-      });
-    };
-
-    // SessionStart establishes identity, then durable history must be
-    // projected before any newer hook mutates state. Promise callbacks retain
-    // bridge arrival order, forming the Claude equivalent of Codex's replay
-    // barrier.
-    if (historyBootstrap && body.hook_event_name !== 'SessionStart') {
-      void historyBootstrap.then(deliver);
-    } else {
-      deliver();
     }
+    // Hooks fire near transcript appends — poke the semantic source instead
+    // of waiting out its fallback interval.
+    pollSemantic({
+      hookEventName,
+      nativeSessionId: normalized.sessionId,
+      promptId: normalized.promptId,
+      agentId: normalized.agentId,
+      agentType: normalized.agentType,
+    });
+
+    const fault = options.hookRailFaultInjection;
+    if (!fault || hookRailFaultInjected || hookEventName !== fault.afterHookEvent) return;
+    matchingFaultHooks += 1;
+    if (matchingFaultHooks < (fault.occurrence ?? 1)) return;
+    hookRailFaultInjected = true;
+    const reason = fault.reason ?? `Claude hook bridge canary fault after ${hookEventName}`;
+    // The current hook has already been acknowledged by HookBridge. Close
+    // the real listener on the next microtask, then publish rail degradation
+    // directly because intentional disposal correctly suppresses the
+    // bridge's unexpected-close callback.
+    queueMicrotask(() => {
+      void bridge.dispose().then(
+        () => reportHookRailUnavailable(reason),
+        () => reportHookRailUnavailable(reason),
+      );
+    });
   });
 
   bridge.onStatusLine((statusEnvelope) => {
@@ -874,7 +852,6 @@ function createPreparedClaudeSession(
           artifacts: createClaudeArtifactService(() => semanticAttachment),
         },
         pollTranscript: async () => {
-          await historyBootstrap;
           const handle = await semanticAttachment;
           await handle?.poll();
         },
