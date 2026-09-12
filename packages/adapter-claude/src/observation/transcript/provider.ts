@@ -10,7 +10,11 @@ import type {
 import { createClaudeWorkflowJournalObserver } from '../workflow/journal.js';
 import { claudeTranscriptConversationFingerprint, projectClaudeTranscriptConversation } from './conversation.js';
 import { projectClaudeTranscriptModel } from './model.js';
-import { createClaudeSessionTranscriptReader } from './services/session-reader.js';
+import {
+  createClaudeSessionTranscriptReader,
+  type ClaudeSessionTranscriptSnapshot,
+} from './services/session-reader.js';
+import { createTranscriptYield } from './services/yield.js';
 import { projectClaudeTranscriptUsage } from './usage.js';
 import { safeTranscriptEvidence, transcriptRecordId } from './wire.js';
 
@@ -55,12 +59,6 @@ function retainMapKeys<Key, Value>(map: Map<Key, Value>, active: ReadonlySet<Key
   }
 }
 
-function retainSetKeys<Key>(set: Set<Key>, active: ReadonlySet<Key>): void {
-  for (const key of set) {
-    if (!active.has(key)) set.delete(key);
-  }
-}
-
 export class ClaudeTranscriptObservationProvider implements SemanticObservationProvider {
   capabilities(): Promise<readonly ObservationCapability[]> {
     return Promise.resolve(TRANSCRIPT_CAPABILITIES);
@@ -71,15 +69,15 @@ export class ClaudeTranscriptObservationProvider implements SemanticObservationP
     const batchListeners = new Set<(batch: AdapterMonitorObservationBatch) => void>();
     const errorListeners = new Set<(error: Error) => void>();
     const assistantFingerprints = new Map<string, string>();
-    const usageFingerprints = new Map<string, string>();
-    const modelFingerprints = new Map<string, string>();
+    const evidenceFingerprints = new Map<string, string>();
     const workflowFingerprints = new Map<string, string>();
-    const unknownFingerprints = new Set<string>();
+    let lastTranscript: ClaudeSessionTranscriptSnapshot | undefined;
     let firstTranscriptPoll = true;
     let firstWorkflowPoll = true;
     let disposed = false;
     let timer: ReturnType<typeof setInterval> | undefined;
-    let pollQueue = Promise.resolve();
+    let activePoll: Promise<void> | undefined;
+    let pendingPoll: Promise<void> | undefined;
     const transcriptReader = createClaudeSessionTranscriptReader(request.transcriptPath, request.nativeSessionId);
     const workflowObserver = createClaudeWorkflowJournalObserver(request.transcriptPath, request.nativeSessionId);
 
@@ -87,16 +85,19 @@ export class ClaudeTranscriptObservationProvider implements SemanticObservationP
 
     const projectTranscript = async (): Promise<void> => {
       const records = await transcriptReader.read();
+      if (disposed || records === lastTranscript) return;
+      const yieldIfNeeded = createTranscriptYield();
+      const pending: SemanticObservationEvent[] = [];
       const conversation = projectClaudeTranscriptConversation(records.root);
 
       if (firstTranscriptPoll && request.bootstrap) {
-        for (const event of conversation.history) emitEvent(event);
+        pending.push(...conversation.history);
       } else {
         for (const [key, event] of conversation.assistants) {
           const fingerprint = claudeTranscriptConversationFingerprint(event);
           if (assistantFingerprints.get(key) === fingerprint) continue;
           assistantFingerprints.set(key, fingerprint);
-          emitEvent(event);
+          pending.push(event);
         }
       }
       for (const [key, event] of conversation.assistants) {
@@ -104,62 +105,75 @@ export class ClaudeTranscriptObservationProvider implements SemanticObservationP
       }
 
       const activeAssistantKeys = new Set(conversation.assistants.keys());
-      const activeUsageKeys = new Set<string>();
-      const activeModelKeys = new Set<string>();
-      const activeUnknownKeys = new Set<string>();
+      // Compare the final evidence for each identity, not every historical
+      // revision against the previous poll's final value (A -> B -> A -> B).
+      // Moving replacements to the end retains final-occurrence order.
+      const latest = new Map<string, SemanticObservationEvent>();
+      const select = (key: string, value: SemanticObservationEvent): void => {
+        latest.delete(key);
+        latest.set(key, value);
+      };
 
       for (const record of records.all) {
         const usage = projectClaudeTranscriptUsage(record);
         if (usage?.event.type === 'usage:tokens-used') {
-          activeUsageKeys.add(usage.event.usageId);
-          const fingerprint = JSON.stringify([usage.event, usage.agentId ?? null, usage.agentType ?? null]);
-          if (usageFingerprints.get(usage.event.usageId) !== fingerprint) {
-            usageFingerprints.set(usage.event.usageId, fingerprint);
-            emitEvent(firstTranscriptPoll && request.bootstrap ? { ...usage, replay: true } : usage);
+          const key = `usage:${usage.event.usageId}`;
+          const prior = latest.get(key);
+          // A later root copy of a request may omit the actor recorded by its
+          // child sidecar. Keep exact attribution while accepting corrections.
+          if (!usage.agentId && prior?.agentId) {
+            usage.agentId = prior.agentId;
+            usage.agentType = prior.agentType;
+          } else if (usage.agentId === prior?.agentId && !usage.agentType) {
+            usage.agentType = prior?.agentType;
           }
+          select(key, usage);
         }
 
         const model = projectClaudeTranscriptModel(record);
-        if (model) {
-          const key = model.agentId ?? 'root';
-          activeModelKeys.add(key);
-          const fingerprint = JSON.stringify(model.event);
-          if (modelFingerprints.get(key) !== fingerprint) {
-            modelFingerprints.set(key, fingerprint);
-            emitEvent(firstTranscriptPoll && request.bootstrap ? { ...model, replay: true } : model);
-          }
-        }
+        if (model) select(`model:${JSON.stringify(model.agentId ?? null)}`, model);
 
         const role = record.message?.role;
         const knownConversation =
           record.type === 'user' || record.type === 'assistant' || role === 'user' || role === 'assistant';
         if (!knownConversation && !usage && !model) {
-          const key = `${record.sourceId}:${transcriptRecordId(record)}:${record.type ?? 'record'}`;
-          activeUnknownKeys.add(key);
-          if (!unknownFingerprints.has(key)) {
-            unknownFingerprints.add(key);
-            emitEvent({
-              event: {
-                type: 'adapter:native-event',
-                adapter: 'claude-code',
-                nativeType: `transcript:${record.type ?? 'record'}`,
-              },
-              timestamp: record.timestamp,
-              ...(firstTranscriptPoll && request.bootstrap ? { replay: true } : {}),
-              nativeEvent: safeTranscriptEvidence(record),
-            });
-          }
+          const key = `native:${record.sourceId}:${transcriptRecordId(record)}:${record.type ?? 'record'}`;
+          select(key, {
+            event: {
+              type: 'adapter:native-event',
+              adapter: 'claude-code',
+              nativeType: `transcript:${record.type ?? 'record'}`,
+            },
+            timestamp: record.timestamp,
+            nativeEvent: safeTranscriptEvidence(record),
+          });
         }
+        const pause = yieldIfNeeded();
+        if (pause) await pause;
+        if (disposed) return;
+      }
+      for (const [key, value] of latest) {
+        const fingerprint = JSON.stringify([value.event, value.agentId ?? null, value.agentType ?? null]);
+        if (evidenceFingerprints.get(key) === fingerprint) continue;
+        evidenceFingerprints.set(key, fingerprint);
+        pending.push(firstTranscriptPoll && request.bootstrap ? { ...value, replay: true } : value);
       }
       retainMapKeys(assistantFingerprints, activeAssistantKeys);
-      retainMapKeys(usageFingerprints, activeUsageKeys);
-      retainMapKeys(modelFingerprints, activeModelKeys);
-      retainSetKeys(unknownFingerprints, activeUnknownKeys);
+      retainMapKeys(evidenceFingerprints, new Set(latest.keys()));
+      for (const event of pending) {
+        if (disposed) return;
+        emitEvent(event);
+        const pause = yieldIfNeeded();
+        if (pause) await pause;
+      }
+      lastTranscript = records;
       firstTranscriptPoll = false;
     };
 
     const projectWorkflows = async (): Promise<void> => {
       const workflows = await workflowObserver.read();
+      if (disposed) return;
+      const yieldIfNeeded = createTranscriptYield();
       const activeWorkflowIds = new Set(workflows.map(({ event }) => event.workflowId));
       for (const workflow of workflows) {
         const fingerprint = JSON.stringify(workflow.event);
@@ -171,6 +185,9 @@ export class ClaudeTranscriptObservationProvider implements SemanticObservationP
           ...(firstWorkflowPoll && request.bootstrap ? { replay: true } : {}),
           nativeEvent: workflow.nativeEvent,
         });
+        const pause = yieldIfNeeded();
+        if (pause) await pause;
+        if (disposed) return;
       }
       retainMapKeys(workflowFingerprints, activeWorkflowIds);
       firstWorkflowPoll = false;
@@ -191,11 +208,25 @@ export class ClaudeTranscriptObservationProvider implements SemanticObservationP
     };
 
     const poll = (_hint?: SemanticObservationPollHint): Promise<void> => {
-      const run = async (): Promise<void> => {
-        await project();
-      };
-      pollQueue = pollQueue.then(run, run);
-      return pollQueue;
+      if (disposed) return Promise.resolve();
+      if (!activePoll) {
+        activePoll = Promise.resolve()
+          .then(project)
+          .finally(() => {
+            activePoll = undefined;
+          });
+        return activePoll;
+      }
+      // A hint received during a read may describe a newer append. Keep one
+      // follow-up read and let every such caller await it, without a backlog.
+      if (!pendingPoll) {
+        const followUp = (): Promise<void> => {
+          pendingPoll = undefined;
+          return poll();
+        };
+        pendingPoll = activePoll.then(followUp, followUp);
+      }
+      return pendingPoll;
     };
 
     const pollIntervalMs = request.pollIntervalMs ?? DEFAULT_TRANSCRIPT_POLL_INTERVAL_MS;
@@ -226,7 +257,7 @@ export class ClaudeTranscriptObservationProvider implements SemanticObservationP
         eventListeners.clear();
         batchListeners.clear();
         errorListeners.clear();
-        await pollQueue.catch(() => undefined);
+        await (pendingPoll ?? activePoll)?.catch(() => undefined);
       },
     });
   }

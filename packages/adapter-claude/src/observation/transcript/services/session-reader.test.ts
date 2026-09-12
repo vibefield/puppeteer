@@ -20,6 +20,34 @@ function row(uuid: string, sessionId?: string): string {
 }
 
 describe('createClaudeSessionTranscriptReader', () => {
+  it('reuses unchanged snapshots and notices appended, added, and removed descendants', async () => {
+    const root = mkdtempSync(join(tmpdir(), 'claude-session-snapshots-'));
+    roots.push(root);
+    const path = join(root, 'session-1.jsonl');
+    writeFileSync(path, row('root', 'session-1'));
+    const reader = createClaudeSessionTranscriptReader(path, 'session-1');
+    const first = await reader.read();
+    expect(await reader.read()).toBe(first);
+    const children = join(root, 'session-1', 'subagents');
+    mkdirSync(children, { recursive: true });
+    const child = join(children, 'agent-worker.jsonl');
+    writeFileSync(child, row('child'));
+    const second = await reader.read();
+    expect(second).not.toBe(first);
+    expect(second.all.map(({ uuid }) => uuid)).toContain('child');
+    expect(await reader.read()).toBe(second);
+    appendFileSync(child, row('child-append'));
+    const third = await reader.read();
+    expect(third.all.map(({ uuid }) => uuid)).toContain('child-append');
+    expect(await reader.read()).toBe(third);
+    rmSync(child);
+    const fourth = await reader.read();
+    expect(fourth.all.map(({ uuid }) => uuid)).toEqual(['root']);
+    expect(await reader.read()).toBe(fourth);
+    appendFileSync(path, row('root-append', 'session-1'));
+    expect((await reader.read()).root.map(({ uuid }) => uuid)).toEqual(['root', 'root-append']);
+  });
+
   it('accepts exact-directory rows without repeated session ids and keeps shared source identities distinct', async () => {
     const root = mkdtempSync(join(tmpdir(), 'claude-session-reader-'));
     roots.push(root);

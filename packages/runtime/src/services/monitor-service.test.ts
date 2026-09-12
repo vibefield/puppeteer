@@ -6,9 +6,32 @@ import type {
   ObservationLevel,
 } from '@vibecook/puppeteer-core';
 import type { AdapterMonitorObservationBatch, MonitorFamilyUpdate } from '@vibecook/puppeteer-core/monitor-spi';
-import { describe, expect, it, vi } from 'vitest';
+import { agentEventCategory, type AgentEvent } from '@vibecook/puppeteer-core';
+import * as monitorProjection from '@vibecook/puppeteer-core/monitor-spi';
+import { afterEach, describe, expect, it, vi } from 'vitest';
+import type { RuntimeAgentEventEnvelope } from '../types.js';
 import type { MonitorClock, MonitorScheduledTask } from '../monitor/clock.js';
 import { AgentMonitorService, MONITOR_ARTIFACT_HARD_MAX_BYTES, type MonitorArtifactAudit } from './monitor-service.js';
+
+afterEach(() => vi.restoreAllMocks());
+
+function envelope(event: AgentEvent, sequence: number, replay = false): RuntimeAgentEventEnvelope {
+  return {
+    eventId: `event-${sequence}`,
+    type: event.type,
+    category: agentEventCategory(event),
+    runtimeRunId: 'run-1',
+    runtimeEpoch: 1,
+    sequence,
+    sessionId: 'native-1',
+    timestamp: '2026-08-16T12:00:00.000Z',
+    monotonicTime: sequence,
+    source: 'native-transcript',
+    confidence: 'authoritative',
+    replay,
+    event,
+  };
+}
 
 class FakeClock implements MonitorClock {
   private currentMs = Date.parse('2026-08-16T12:00:00.000Z');
@@ -122,6 +145,111 @@ function semanticSession(
 }
 
 describe('AgentMonitorService', () => {
+  it('calculates a replay baseline once per publication instead of once per historical event', () => {
+    const project = vi.spyOn(monitorProjection, 'projectAgentMonitorState');
+    const states: AgentMonitorState[] = [];
+    const notifications: MonitorNotification[] = [];
+    const { clock, hub: monitor } = hub({ states, notifications });
+    monitor.updateRun('running', { alive: true });
+    const before = monitor.current();
+    project.mockClear();
+    notifications.length = 0;
+    for (let index = 0; index < 1_000; index++) {
+      monitor.acceptAgentEvent(
+        envelope(
+          {
+            type: 'usage:tokens-used',
+            usageId: `request-${index}`,
+            totalTokens: 10,
+            canonical: true,
+            boundary: 'response',
+          },
+          index * 2,
+          true,
+        ),
+      );
+      monitor.acceptAgentEvent(
+        envelope(
+          {
+            type: 'adapter:native-event',
+            adapter: 'claude-code',
+            nativeType: 'transcript:attachment',
+          },
+          index * 2 + 1,
+          true,
+        ),
+      );
+    }
+    expect(monitor.current()).toBe(before);
+    expect(project).not.toHaveBeenCalled();
+    clock.advance(100);
+    expect(project).toHaveBeenCalledTimes(1);
+    expect(monitor.current().usage.cumulativeTokens).toBe(10_000);
+    expect(monitor.current().usage.burnRatePerMin).toBeUndefined();
+    expect(notifications).toEqual([]);
+    monitor.remove();
+  });
+
+  it('ignores metadata for monitor calculation and keeps live permissions urgent during replay', () => {
+    const project = vi.spyOn(monitorProjection, 'projectAgentMonitorState');
+    const { clock, hub: monitor } = hub();
+    monitor.updateRun('running', { alive: true });
+    const before = monitor.current();
+    project.mockClear();
+    for (let index = 0; index < 1_000; index++) {
+      monitor.acceptAgentEvent(
+        envelope(
+          {
+            type: 'adapter:native-event',
+            adapter: 'claude-code',
+            nativeType: 'transcript:attachment',
+          },
+          index,
+        ),
+      );
+    }
+    clock.advance(100);
+    expect(project).not.toHaveBeenCalled();
+    expect(monitor.current()).toBe(before);
+    monitor.acceptAgentEvent(
+      envelope(
+        {
+          type: 'usage:tokens-used',
+          usageId: 'historical',
+          totalTokens: 10,
+          canonical: true,
+          boundary: 'response',
+        },
+        1_001,
+        true,
+      ),
+    );
+    monitor.acceptAgentEvent(
+      envelope(
+        {
+          type: 'interaction:permission-requested',
+          requestId: 'permission-1',
+          tool: 'Bash',
+          presentation: 'native-tui',
+        },
+        1_002,
+      ),
+    );
+    expect(monitor.current()).toMatchObject({ status: 'blocked', usage: { cumulativeTokens: 10 } });
+    monitor.acceptAgentEvent(
+      envelope(
+        {
+          type: 'interaction:permission-resolved',
+          requestId: 'permission-1',
+          outcome: 'allowed',
+        },
+        1_003,
+      ),
+    );
+    expect(monitor.current().status).toBe('idle');
+    monitor.remove();
+  });
+
   it('publishes deeply immutable monitor snapshots', () => {
     const { hub: monitor } = hub();
     const snapshot = monitor.current();

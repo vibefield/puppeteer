@@ -255,6 +255,9 @@ export class AgentMonitorService
         (update) => !(update.family === 'status' && update.operation === 'upsert' && update.value.kind === 'run'),
       );
     }
+    // Transcript metadata remains on the Agent event stream, but carries no
+    // monitor evidence. Do not clone/reproject the whole ledger for each row.
+    if (input.updates.length === 0) return false;
     return this.accept(input);
   }
 
@@ -494,7 +497,13 @@ export class AgentMonitorService
     this.accumulator = reduced.state;
     if (!suppressNotifications) this.queuedNotifications.push(...reduced.notifications);
     this.scheduleLeases(input);
-    this.scheduleRateBoundary();
+
+    // Replayed history establishes a baseline. Coalesce the calculation as
+    // well as publication; live permission/process transitions stay urgent.
+    if (!forceUrgent && input.kind === 'runtime' && input.phase === 'bootstrap') {
+      this.scheduleFlush();
+      return true;
+    }
 
     const candidate = freezeMonitorState(
       projectAgentMonitorState(this.accumulator, {
@@ -536,6 +545,7 @@ export class AgentMonitorService
       const notifications = this.queuedNotifications.splice(0);
       for (const notification of notifications) this.publishNotification(notification);
     }
+    this.scheduleRateBoundary();
     if (scheduleFreshness) this.scheduleFreshnessBoundary();
     return changed;
   }
@@ -596,21 +606,22 @@ export class AgentMonitorService
     this.rateTask?.cancel();
     this.rateTask = undefined;
     const nowMs = this.options.clock.now().getTime();
-    const boundaries = [
-      ...this.accumulator.runtime.entries.values(),
-      ...this.accumulator.semantic.entries.values(),
-      ...this.accumulator.workspace.entries.values(),
-    ]
-      .filter((entry) => entry.value.kind === 'usage' && entry.rateEligible)
-      .map((entry) => Date.parse(entry.rateAt ?? entry.effectiveAt ?? entry.observedAt) + this.burnRateWindowMs + 1)
-      .filter((boundary) => Number.isFinite(boundary) && boundary > nowMs)
-      .sort((left, right) => left - right);
-    const nextBoundary = boundaries[0];
-    if (nextBoundary === undefined) return;
+    let nextBoundary = Infinity;
+    for (const entries of [
+      this.accumulator.runtime.entries,
+      this.accumulator.semantic.entries,
+      this.accumulator.workspace.entries,
+    ]) {
+      for (const entry of entries.values()) {
+        if (entry.value.kind !== 'usage' || !entry.rateEligible) continue;
+        const boundary = Date.parse(entry.rateAt ?? entry.effectiveAt ?? entry.observedAt) + this.burnRateWindowMs + 1;
+        if (boundary > nowMs && boundary < nextBoundary) nextBoundary = boundary;
+      }
+    }
+    if (!Number.isFinite(nextBoundary)) return;
     this.rateTask = this.options.clock.schedule(nextBoundary - nowMs, () => {
       this.rateTask = undefined;
       this.flush();
-      this.scheduleRateBoundary();
     });
   }
 

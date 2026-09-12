@@ -1,11 +1,14 @@
 import { open, stat } from 'node:fs/promises';
 import { StringDecoder } from 'node:string_decoder';
 import { decodeClaudeTranscript, type ClaudeTranscriptRecord } from '../wire.js';
+import { createTranscriptYield } from './yield.js';
 
 const DEFAULT_MAX_TRANSCRIPT_BYTES = 64 * 1024 * 1024;
 const DEFAULT_MAX_TRANSCRIPT_RECORDS = 20_000;
+const READ_CHUNK_BYTES = 256 * 1024;
 
 export interface ClaudeTranscriptReader {
+  /** The same immutable snapshot reference is returned until decoded records change. */
   read(): Promise<readonly ClaudeTranscriptRecord[]>;
 }
 
@@ -35,8 +38,10 @@ export function createClaudeTranscriptReader(
   let discardLeadingPartial = false;
   let retainedBytes = 0;
   const records: RetainedRecord[] = [];
+  let cachedSnapshot: readonly ClaudeTranscriptRecord[] | undefined;
 
   const retain = (record: ClaudeTranscriptRecord, wireBytes: number): void => {
+    cachedSnapshot = undefined;
     records.push({ value: record, wireBytes });
     retainedBytes += wireBytes;
     while (records.length > maxRecords || retainedBytes > maxBytes) {
@@ -46,7 +51,7 @@ export function createClaudeTranscriptReader(
     }
   };
 
-  const snapshot = (): readonly ClaudeTranscriptRecord[] => records.map(({ value }) => value);
+  const snapshot = (): readonly ClaudeTranscriptRecord[] => (cachedSnapshot ??= records.map(({ value }) => value));
 
   const commitStableFinalRow = (): void => {
     if (!pending || discardLeadingPartial) return;
@@ -66,6 +71,7 @@ export function createClaudeTranscriptReader(
     discardLeadingPartial = nextOffset > 0;
     records.length = 0;
     retainedBytes = 0;
+    cachedSnapshot = undefined;
   };
 
   return {
@@ -92,30 +98,37 @@ export function createClaudeTranscriptReader(
 
       const handle = await open(path, 'r');
       try {
-        const length = metadata.size - offset;
-        const buffer = Buffer.allocUnsafe(length);
-        const { bytesRead } = await handle.read(buffer, 0, length, offset);
-        offset += bytesRead;
-        const parts = (pending + decoder.write(buffer.subarray(0, bytesRead))).split('\n');
-        pending = parts.pop() ?? '';
-        const completeLineCount = parts.length;
-        let firstLineIndex = nextLineIndex;
-        if (discardLeadingPartial && parts.length > 0) {
-          parts.shift();
-          discardLeadingPartial = false;
-          firstLineIndex += 1;
-        }
-        for (const [index, line] of parts.entries()) {
-          const complete = decodeClaudeTranscript(line, firstLineIndex + index, options.sourceId);
-          if (complete.length === 1) retain(complete[0]!, Buffer.byteLength(line) + 1);
-        }
-        nextLineIndex += completeLineCount;
-        if (Buffer.byteLength(pending) > maxBytes) {
-          // One malformed or giant unterminated row must not bypass the byte
-          // retention cap. Ignore it through its next newline, then recover.
-          pending = '';
-          decoder = new StringDecoder('utf8');
-          discardLeadingPartial = true;
+        const buffer = Buffer.allocUnsafe(Math.min(READ_CHUNK_BYTES, metadata.size - offset));
+        const yieldIfNeeded = createTranscriptYield();
+        // Capture this poll's end offset: continuous appends belong to the
+        // next poll, and must not keep a bootstrap read running indefinitely.
+        while (offset < metadata.size) {
+          const length = Math.min(buffer.length, metadata.size - offset);
+          const { bytesRead } = await handle.read(buffer, 0, length, offset);
+          if (bytesRead === 0) break;
+          offset += bytesRead;
+          const parts = (pending + decoder.write(buffer.subarray(0, bytesRead))).split('\n');
+          pending = parts.pop() ?? '';
+          const completeLineCount = parts.length;
+          let firstLineIndex = nextLineIndex;
+          if (discardLeadingPartial && parts.length > 0) {
+            parts.shift();
+            discardLeadingPartial = false;
+            firstLineIndex += 1;
+          }
+          for (const [index, line] of parts.entries()) {
+            const complete = decodeClaudeTranscript(line, firstLineIndex + index, options.sourceId);
+            if (complete.length === 1) retain(complete[0]!, Buffer.byteLength(line) + 1);
+            const pause = yieldIfNeeded();
+            if (pause) await pause;
+          }
+          nextLineIndex += completeLineCount;
+          if (discardLeadingPartial || Buffer.byteLength(pending) > maxBytes) {
+            // Do not keep rebuilding a discarded row across read chunks.
+            pending = '';
+            decoder = new StringDecoder('utf8');
+            discardLeadingPartial = true;
+          }
         }
       } finally {
         await handle.close();

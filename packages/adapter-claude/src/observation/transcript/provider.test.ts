@@ -1,16 +1,223 @@
-import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
+import { appendFileSync, mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import { afterEach, describe, expect, it } from 'vitest';
-import type { SemanticObservationEvent } from '../semantic-provider.js';
+import { afterEach, describe, expect, it, vi } from 'vitest';
+import type { SemanticObservationEvent, SemanticObservationHandle } from '../semantic-provider.js';
 import { ClaudeTranscriptObservationProvider } from './provider.js';
+import * as sessionReader from './services/session-reader.js';
+import { decodeClaudeTranscript } from './wire.js';
 
 const roots: string[] = [];
-afterEach(() => {
+const handles: SemanticObservationHandle[] = [];
+afterEach(async () => {
+  await Promise.all(handles.splice(0).map((handle) => handle.dispose()));
+  vi.restoreAllMocks();
   for (const root of roots.splice(0)) rmSync(root, { recursive: true, force: true });
 });
 
+function usageRow(
+  sequence: number,
+  options: { requestId?: string; tokens?: number; model?: string; agentId?: string; agentType?: string } = {},
+): string {
+  return (
+    JSON.stringify({
+      type: 'assistant',
+      uuid: `message-${sequence}`,
+      sessionId: 'session-1',
+      requestId: options.requestId ?? 'request-1',
+      timestamp: new Date(Date.parse('2026-08-25T16:30:00.000Z') + sequence * 1_000).toISOString(),
+      agentId: options.agentId,
+      agentType: options.agentType,
+      message: {
+        role: 'assistant',
+        model: options.model ?? 'model-a',
+        content: [],
+        usage: { input_tokens: 10, output_tokens: options.tokens ?? sequence },
+      },
+    }) + '\n'
+  );
+}
+
+async function fixture(contents: string) {
+  const root = mkdtempSync(join(tmpdir(), 'claude-transcript-regression-'));
+  roots.push(root);
+  const path = join(root, 'session-1.jsonl');
+  writeFileSync(path, contents);
+  const handle = await new ClaudeTranscriptObservationProvider().attach({
+    nativeSessionId: 'session-1',
+    transcriptPath: path,
+    bootstrap: true,
+    pollIntervalMs: 0,
+  });
+  handles.push(handle);
+  const events: SemanticObservationEvent[] = [];
+  handle.onEvent((event) => events.push(event));
+  return { root, path, handle, events };
+}
+
 describe('ClaudeTranscriptObservationProvider', () => {
+  it('compares final request usage and actor models once, while accepting appended corrections', async () => {
+    const { path, handle, events } = await fixture(
+      usageRow(1) + usageRow(2, { model: 'model-b' }) + usageRow(3, { requestId: 'request-2' }),
+    );
+    await handle.poll();
+    expect(events.map(({ event }) => event)).toEqual([
+      expect.objectContaining({ type: 'usage:tokens-used', usageId: 'claude-request:request-1', totalTokens: 12 }),
+      expect.objectContaining({ type: 'usage:tokens-used', usageId: 'claude-request:request-2', totalTokens: 13 }),
+      expect.objectContaining({ type: 'model:updated', model: { id: 'model-a', provider: 'anthropic' } }),
+    ]);
+    expect(events.every(({ replay }) => replay)).toBe(true);
+    events.length = 0;
+    await handle.poll();
+    await handle.poll();
+    expect(events).toEqual([]);
+
+    // Force a new snapshot too: silence must come from correct deduplication,
+    // not only the reader's unchanged-file shortcut.
+    appendFileSync(path, JSON.stringify({ type: 'attachment', uuid: 'metadata' }) + '\n');
+    await handle.poll();
+    expect(events.map(({ event }) => event.type)).toEqual(['adapter:native-event']);
+    events.length = 0;
+
+    appendFileSync(path, usageRow(4, { tokens: 1, model: 'model-c' }));
+    await handle.poll();
+    expect(events.map(({ event }) => event)).toEqual([
+      expect.objectContaining({ type: 'usage:tokens-used', usageId: 'claude-request:request-1', totalTokens: 11 }),
+      expect.objectContaining({ type: 'model:updated', model: { id: 'model-c', provider: 'anthropic' } }),
+    ]);
+    expect(events.every(({ replay }) => !replay)).toBe(true);
+    events.length = 0;
+    await handle.poll();
+    expect(events).toEqual([]);
+  });
+
+  it('keeps child attribution through later root copies and publishes newly learned attribution', async () => {
+    const { root, path, handle, events } = await fixture(usageRow(2));
+    await handle.poll();
+    events.length = 0;
+    const children = join(root, 'session-1', 'subagents');
+    mkdirSync(children, { recursive: true });
+    writeFileSync(
+      join(children, 'agent-worker.jsonl'),
+      usageRow(1, {
+        tokens: 2,
+        agentId: 'worker',
+        agentType: 'researcher',
+        model: 'child-model',
+      }),
+    );
+    await handle.poll();
+    expect(events.filter(({ event }) => event.type === 'usage:tokens-used')).toEqual([
+      expect.objectContaining({
+        agentId: 'worker',
+        agentType: 'researcher',
+        event: expect.objectContaining({ totalTokens: 12 }),
+      }),
+    ]);
+    expect(events.filter(({ event }) => event.type === 'model:updated')).toEqual([
+      expect.objectContaining({
+        agentId: 'worker',
+        event: expect.objectContaining({ model: { id: 'child-model', provider: 'anthropic' } }),
+      }),
+    ]);
+    events.length = 0;
+    appendFileSync(path, usageRow(3, { tokens: 4 }));
+    await handle.poll();
+    expect(events).toEqual([
+      expect.objectContaining({
+        agentId: 'worker',
+        agentType: 'researcher',
+        event: expect.objectContaining({ totalTokens: 14 }),
+      }),
+    ]);
+    events.length = 0;
+    await handle.poll();
+    expect(events).toEqual([]);
+  });
+
+  it('continues workflow polling while the transcript snapshot is unchanged', async () => {
+    const { root, handle, events } = await fixture(usageRow(1));
+    await handle.poll();
+    events.length = 0;
+    const directory = join(root, 'session-1', 'subagents', 'workflows', 'workflow-1');
+    mkdirSync(directory, { recursive: true });
+    const journal = join(directory, 'journal.jsonl');
+    writeFileSync(journal, JSON.stringify({ type: 'started', agentId: 'worker' }) + '\n');
+    await handle.poll();
+    appendFileSync(journal, JSON.stringify({ type: 'result', agentId: 'worker' }) + '\n');
+    await handle.poll();
+    expect(events.map(({ event }) => event)).toEqual([
+      expect.objectContaining({ type: 'workflow:updated', active: true }),
+      expect.objectContaining({ type: 'workflow:updated', active: false }),
+    ]);
+  });
+
+  it('allows other event-loop work to run before a large replay finishes', async () => {
+    const count = 2_000;
+    const { handle, events } = await fixture(
+      Array.from({ length: count }, (_, index) =>
+        JSON.stringify({ type: 'attachment', uuid: `metadata-${index}` }),
+      ).join('\n') + '\n',
+    );
+    let deliveredAtYield = 0;
+    handle.onEvent(() => {
+      if (events.length === 1)
+        setImmediate(() => {
+          deliveredAtYield = events.length;
+        });
+    });
+    await handle.poll();
+    expect(events).toHaveLength(count);
+    expect(deliveredAtYield).toBeGreaterThan(0);
+    expect(deliveredAtYield).toBeLessThan(count);
+    expect(events.every(({ replay }) => replay)).toBe(true);
+  });
+
+  it('stops replay delivery when disposed during a yielded batch', async () => {
+    const { handle, events } = await fixture(
+      Array.from({ length: 2_000 }, (_, index) =>
+        JSON.stringify({ type: 'attachment', uuid: `metadata-${index}` }),
+      ).join('\n') + '\n',
+    );
+    let disposal: Promise<void> | undefined;
+    handle.onEvent(() => {
+      if (events.length === 1)
+        setImmediate(() => {
+          disposal = handle.dispose();
+        });
+    });
+    await handle.poll();
+    await disposal;
+    const delivered = events.length;
+    expect(delivered).toBeGreaterThan(0);
+    expect(delivered).toBeLessThan(2_000);
+    await handle.poll();
+    expect(events).toHaveLength(delivered);
+  });
+
+  it('merges concurrent hints into one follow-up read and waits for its newer data', async () => {
+    let release!: (snapshot: sessionReader.ClaudeSessionTranscriptSnapshot) => void;
+    const updated = decodeClaudeTranscript(usageRow(1));
+    const read = vi
+      .fn()
+      .mockImplementationOnce(
+        () =>
+          new Promise((resolve) => {
+            release = resolve;
+          }),
+      )
+      .mockResolvedValue({ root: updated, all: updated });
+    vi.spyOn(sessionReader, 'createClaudeSessionTranscriptReader').mockReturnValue({ read });
+    const { handle, events } = await fixture('');
+    const first = handle.poll();
+    await Promise.resolve();
+    const hinted = Array.from({ length: 100 }, () => handle.poll({ hookEventName: 'Stop' }));
+    release({ root: [], all: [] });
+    await Promise.all([first, ...hinted]);
+    expect(read).toHaveBeenCalledTimes(2);
+    expect(events.some(({ event }) => event.type === 'usage:tokens-used')).toBe(true);
+  });
+
   it('replays root conversation, projects fallback usage, and reads exact workflow members', async () => {
     const root = mkdtempSync(join(tmpdir(), 'claude-transcript-provider-'));
     roots.push(root);

@@ -23,6 +23,45 @@ function finalRow(uuid: string): string {
 }
 
 describe('createClaudeTranscriptReader', () => {
+  it('reuses unchanged snapshots and invalidates them for complete appends and truncation', async () => {
+    const root = mkdtempSync(join(tmpdir(), 'claude-jsonl-snapshots-'));
+    roots.push(root);
+    const path = join(root, 'transcript.jsonl');
+    writeFileSync(path, row('one'));
+    const reader = createClaudeTranscriptReader(path);
+    const first = await reader.read();
+    expect(await reader.read()).toBe(first);
+    appendFileSync(path, finalRow('two').slice(0, 40));
+    expect(await reader.read()).toBe(first);
+    appendFileSync(path, finalRow('two').slice(40) + '\n');
+    const second = await reader.read();
+    expect(second).not.toBe(first);
+    expect(second.map(({ uuid }) => uuid)).toEqual(['one', 'two']);
+    expect(first.map(({ uuid }) => uuid)).toEqual(['one']);
+    expect(await reader.read()).toBe(second);
+    writeFileSync(path, row('new'));
+    const replaced = await reader.read();
+    expect(replaced.map(({ uuid }) => uuid)).toEqual(['new']);
+    expect(await reader.read()).toBe(replaced);
+  });
+
+  it('decodes multibyte text and line identities across bounded read chunks', async () => {
+    const root = mkdtempSync(join(tmpdir(), 'claude-jsonl-chunks-'));
+    roots.push(root);
+    const path = join(root, 'transcript.jsonl');
+    const text = '🙂'.repeat(100_000);
+    writeFileSync(
+      path,
+      JSON.stringify({ type: 'assistant', uuid: 'large', message: { content: text } }) + '\n' + row('tail'),
+    );
+    const result = await createClaudeTranscriptReader(path).read();
+    expect(result.map(({ uuid, index }) => ({ uuid, index }))).toEqual([
+      { uuid: 'large', index: 0 },
+      { uuid: 'tail', index: 1 },
+    ]);
+    expect(result[0]?.message?.content).toBe(text);
+  });
+
   it('tails an oversized append-only transcript instead of disabling observation', async () => {
     const root = mkdtempSync(join(tmpdir(), 'claude-jsonl-reader-'));
     roots.push(root);

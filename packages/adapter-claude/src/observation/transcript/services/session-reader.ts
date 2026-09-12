@@ -16,6 +16,7 @@ export interface ClaudeSessionTranscriptSnapshot {
 }
 
 export interface ClaudeSessionTranscriptReader {
+  /** Stable by reference while the root and selected descendants are unchanged. */
   read(): Promise<ClaudeSessionTranscriptSnapshot>;
 }
 
@@ -148,6 +149,8 @@ export function createClaudeSessionTranscriptReader(
   const rootReader = createClaudeTranscriptReader(transcriptPath, { sourceId: 'root' });
   const descendantReaders = new Map<string, { reader: ClaudeTranscriptReader; maxBytes: number }>();
   const sharedProbes = new Map<string, SharedProbeState>();
+  let previousSources: readonly (readonly ClaudeTranscriptRecord[])[] = [];
+  let previousSnapshot: ClaudeSessionTranscriptSnapshot | undefined;
 
   return {
     async read() {
@@ -166,10 +169,7 @@ export function createClaudeSessionTranscriptReader(
         if (!activePaths.has(path)) descendantReaders.delete(path);
       }
 
-      const root = (await rootReader.read()).filter(
-        (record) => !record.sessionId || record.sessionId === nativeSessionId,
-      );
-      const descendants: ClaudeTranscriptRecord[] = [];
+      const sources = [await rootReader.read()];
       for (const { file, maxBytes } of selected) {
         let state = descendantReaders.get(file.path);
         if (!state || state.maxBytes !== maxBytes) {
@@ -182,18 +182,32 @@ export function createClaudeSessionTranscriptReader(
           };
           descendantReaders.set(file.path, state);
         }
-        descendants.push(
-          ...(await state.reader.read()).filter((record) => !record.sessionId || record.sessionId === nativeSessionId),
-        );
+        sources.push(await state.reader.read());
       }
 
-      const all = [...root, ...descendants].sort(
-        (left, right) =>
-          Date.parse(left.timestamp) - Date.parse(right.timestamp) ||
-          left.sourceId.localeCompare(right.sourceId) ||
-          left.index - right.index,
-      );
-      return { root, all };
+      if (
+        previousSnapshot &&
+        sources.length === previousSources.length &&
+        sources.every((source, index) => source === previousSources[index])
+      )
+        return previousSnapshot;
+
+      const belongs = (record: ClaudeTranscriptRecord): boolean =>
+        !record.sessionId || record.sessionId === nativeSessionId;
+      const root = sources[0]!.filter(belongs);
+      const all = sources
+        .flatMap((source) => source.filter(belongs))
+        .map((record) => ({ record, at: Date.parse(record.timestamp) }))
+        .sort(
+          (left, right) =>
+            left.at - right.at ||
+            left.record.sourceId.localeCompare(right.record.sourceId) ||
+            left.record.index - right.record.index,
+        )
+        .map(({ record }) => record);
+      previousSources = sources;
+      previousSnapshot = { root, all };
+      return previousSnapshot;
     },
   };
 }
