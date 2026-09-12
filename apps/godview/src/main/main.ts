@@ -48,6 +48,8 @@ import type {
   AgentSessionInfo,
   AgentSessionSnapshot,
   CheckReleasesRequest,
+  UsageHistoryKey,
+  UsageLedgerRecord,
   CreateAgentSessionOptions,
   CreateAgentSessionResult,
   CreateProfileRequest,
@@ -70,6 +72,7 @@ import type {
 import { createAccountUsageMonitor, type AccountUsageProfileRef } from './account-usage-monitor.js';
 import { createProfileDefaultsStore, profileDefaultIds, retainKnownProfileDefaults } from './agent-profile-defaults.js';
 import { createProjectRegistry } from './project-registry.js';
+import { appCacheDirectory, createUsageHistoryStore } from './usage-history-store.js';
 import {
   createHistorySearchService,
   defaultAnnounceDirectory,
@@ -685,6 +688,8 @@ const monitorConnection = connectMonitorIpcRelay(agentRuntime, monitorRelay, (er
 const profileDefaultsStore = createProfileDefaultsStore(join(app.getPath('userData'), 'agent-profile-defaults.json'));
 /** The projects agents have run in, each dealt a colour sequence for life (record §02). */
 const projectRegistry = createProjectRegistry(join(app.getPath('userData'), 'projects.json'));
+/** The renderer's usage ledgers per conversation, kept in the app's cache so a resumed session opens with its numbers. */
+const usageHistoryStore = createUsageHistoryStore(join(appCacheDirectory(app.name), 'usage-history.json'));
 /** Login terminals awaiting their exit, so the account is verified from native evidence afterwards. */
 const pendingProfileLogins = new Map<string, { profileId: string; timer: NodeJS.Timeout }>();
 /** Where the transcript history daemon lives; hand-edited, never written by Godview. */
@@ -1855,6 +1860,15 @@ function registerIpc(): void {
       final: record.final,
     })),
   );
+  ipcMain.handle('puppeteer:load-usage-history', (_event, key: unknown): UsageLedgerRecord | null => {
+    if (!key || typeof key !== 'object') return null;
+    const { providerId, nativeSessionId } = key as Partial<UsageHistoryKey>;
+    if (typeof providerId !== 'string' || typeof nativeSessionId !== 'string') return null;
+    return usageHistoryStore.load({ providerId, nativeSessionId }) ?? null;
+  });
+  ipcMain.handle('puppeteer:save-usage-history', (_event, records: unknown): void => {
+    usageHistoryStore.save(records);
+  });
   ipcMain.handle('puppeteer:list-agent-monitors', (event) => {
     const window = BrowserWindow.fromWebContents(event.sender);
     return window && tabs.get(window) ? monitorRelay.snapshot() : [];

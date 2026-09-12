@@ -251,6 +251,35 @@ export interface HistorySearchResponse {
   clipped: boolean;
 }
 
+/** One series of the UI's usage ledger as persisted: the held number and its step snapshots. */
+export interface UsageSeriesRecord {
+  held?: number;
+  snapshots: number[];
+}
+
+/**
+ * The UI's usage ledger for one conversation, persisted by main in the app's
+ * cache folder so a resumed session opens with the total and the burn it
+ * had. Keyed by the provider and its native session id, the identity a
+ * resume continues.
+ */
+export interface UsageLedgerRecord {
+  providerId: string;
+  nativeSessionId: string;
+  /** ISO time of the save. */
+  savedAt: string;
+  /** The last step boundary snapshotted, in steps since the epoch. */
+  boundary: number;
+  total: UsageSeriesRecord;
+  output?: UsageSeriesRecord;
+  input?: UsageSeriesRecord;
+}
+
+export interface UsageHistoryKey {
+  providerId: string;
+  nativeSessionId: string;
+}
+
 export interface PuppeteerBridge {
   createAgentSession(opts: CreateAgentSessionOptions): Promise<CreateAgentSessionResult>;
   listAgentSessions(): Promise<AgentSessionSnapshot[]>;
@@ -298,4 +327,8 @@ export interface PuppeteerBridge {
   historyFacts(nativeSessionIds: string[]): Promise<HistorySessionFacts[]>;
   /** Words said or heard in live sessions, joined back to their runs. */
   historySearch(request: HistorySearchRequest): Promise<HistorySearchResponse>;
+  /** The persisted usage ledger for a conversation, or null when none was saved. */
+  loadUsageHistory(key: UsageHistoryKey): Promise<UsageLedgerRecord | null>;
+  /** Persist the live agents' usage ledgers; main merges them into the cache. */
+  saveUsageHistory(records: UsageLedgerRecord[]): Promise<void>;
 }

@@ -42,6 +42,8 @@ import type {
   TerminalSessionHandoff,
   UpdateInstallationRequest,
   UpdateReceipt,
+  UsageHistoryKey,
+  UsageLedgerRecord,
   WorkspaceDiff,
   WorkspaceFinalEvent,
 } from '../protocol.js';
@@ -103,6 +105,10 @@ const puppeteer: PuppeteerBridge = {
   resumeAgentSession: (runtimeSessionId: string): Promise<CreateAgentSessionResult> =>
     ipcRenderer.invoke('puppeteer:resume-agent-session', runtimeSessionId),
   listAgentMonitors: (): Promise<AgentMonitorStateMessage[]> => ipcRenderer.invoke('puppeteer:list-agent-monitors'),
+  loadUsageHistory: (key: UsageHistoryKey): Promise<UsageLedgerRecord | null> =>
+    ipcRenderer.invoke('puppeteer:load-usage-history', key),
+  saveUsageHistory: (records: UsageLedgerRecord[]): Promise<void> =>
+    ipcRenderer.invoke('puppeteer:save-usage-history', records),
   onAgentMonitorState: (callback: (message: AgentMonitorStateMessage) => void): (() => void) =>
     onIpcMessage('puppeteer:agent-monitor-state', callback),
   onAgentMonitorNotification: (callback: (message: AgentMonitorNotificationMessage) => void): (() => void) =>

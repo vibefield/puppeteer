@@ -134,3 +134,70 @@ describe('reconcileUsage', () => {
     expect(history(sampled).sides).toBeDefined();
   });
 });
+
+describe('usage persistence', () => {
+  const start = T0 - (T0 % USAGE_STEP_MS);
+  const key = { id: 'a', providerId: 'claude', nativeSessionId: 'native-a' };
+
+  it('exports one record per conversation with a number to keep, and seeds it back rebased to now', async () => {
+    const { exportUsage, seedUsage } = await import('./usage-ledger.js');
+    let ledger = fold(EMPTY_USAGE_LEDGER, start, 1_000, { inputTokens: 800, outputTokens: 200 });
+    ledger = fold(ledger, start + USAGE_STEP_MS, 1_600, { inputTokens: 1_300, outputTokens: 300 });
+    ledger = fold(ledger, start + 2 * USAGE_STEP_MS, 1_900, { inputTokens: 1_500, outputTokens: 400 });
+    const records = exportUsage(ledger, [key, { id: 'ghost', providerId: 'claude', nativeSessionId: 'x' }], start);
+    expect(records).toHaveLength(1);
+    expect(records[0]).toMatchObject({
+      providerId: 'claude',
+      nativeSessionId: 'native-a',
+      boundary: Math.floor((start + 2 * USAGE_STEP_MS) / USAGE_STEP_MS),
+      total: { held: 1_900, snapshots: [1_000, 1_600, 1_900] },
+      output: { held: 400 },
+      input: { held: 1_500 },
+    });
+
+    // Resumed three steps later with the same number: the old bars shift left, the gap is silent.
+    const later = start + 5 * USAGE_STEP_MS;
+    const seeded = seedUsage(EMPTY_USAGE_LEDGER, 'b', records[0]!, later);
+    expect(history({ ...seeded, histories: new Map([['a', seeded.histories.get('b')!]]) }).total).toBe(1_900);
+    expect(seeded.histories.get('b')!.steps.slice(-5)).toEqual([600, 300, 0, 0, 0]);
+    expect(seeded.histories.get('b')!.sides?.output.slice(-5)).toEqual([100, 100, 0, 0, 0]);
+
+    // Resumed with a live number already higher: the growth is spread over the gap.
+    const live = fold(EMPTY_USAGE_LEDGER, later, 2_200);
+    const grown = seedUsage(live, 'a', records[0]!, later);
+    expect(grown.histories.get('a')!.total).toBe(2_200);
+    expect(grown.histories.get('a')!.steps.slice(-5)).toEqual([600, 300, 100, 100, 100]);
+  });
+
+  it('reads a lower live number through the hold rule and leaves a ledger that already has its own steps alone', async () => {
+    const { exportUsage, seedUsage } = await import('./usage-ledger.js');
+    let ledger = fold(EMPTY_USAGE_LEDGER, start, 1_000);
+    ledger = fold(ledger, start + USAGE_STEP_MS, 1_600);
+    const [record] = exportUsage(ledger, [key], start + USAGE_STEP_MS);
+    // A source still catching up reports less than was shown: the saved figure stands.
+    const partial = fold(EMPTY_USAGE_LEDGER, start + 3 * USAGE_STEP_MS, 900);
+    const seeded = seedUsage(partial, 'a', record!, start + 3 * USAGE_STEP_MS);
+    expect(seeded.histories.get('a')!.total).toBe(1_600);
+    // A ledger that has recorded a burn of its own is already the record; one
+    // that has only sat through silent boundaries still takes the seed.
+    let settled = fold(EMPTY_USAGE_LEDGER, start + 3 * USAGE_STEP_MS, 5_000);
+    settled = fold(settled, start + 4 * USAGE_STEP_MS, 5_500);
+    expect(seedUsage(settled, 'a', record!, start + 4 * USAGE_STEP_MS)).toBe(settled);
+    let silent = fold(EMPTY_USAGE_LEDGER, start + 3 * USAGE_STEP_MS, 1_600);
+    silent = fold(silent, start + 4 * USAGE_STEP_MS, 1_600);
+    expect(
+      seedUsage(silent, 'a', record!, start + 4 * USAGE_STEP_MS)
+        .histories.get('a')!
+        .steps.slice(-4),
+    ).toEqual([600, 0, 0, 0]);
+  });
+
+  it('survives a resume hours later without walking every step in between', async () => {
+    const { exportUsage, seedUsage } = await import('./usage-ledger.js');
+    const ledger = fold(EMPTY_USAGE_LEDGER, start, 1_000);
+    const [record] = exportUsage(ledger, [key], start);
+    const seeded = seedUsage(EMPTY_USAGE_LEDGER, 'a', record!, start + 6 * 60 * 60_000);
+    expect(seeded.histories.get('a')!.steps).toHaveLength(USAGE_STEP_COUNT);
+    expect(seeded.histories.get('a')!.total).toBe(1_000);
+  });
+});

@@ -1,4 +1,5 @@
 import type { MonitorUsageState } from '@vibecook/puppeteer-core';
+import type { UsageLedgerRecord, UsageSeriesRecord } from '../../protocol.js';
 
 /**
  * The UI's own account of each agent's token usage.
@@ -108,8 +109,12 @@ function snapshot(series: Series, passed: number): Series {
   const last = series.snapshots[series.snapshots.length - 1];
   if (last === undefined) return { ...series, snapshots: [series.held] };
   if (passed <= 0) return series;
+  // Only the last window of steps can survive, so a long absence (a
+  // conversation resumed hours later) costs a bounded loop, not one per step.
   const next = [...series.snapshots];
-  for (let step = 1; step <= passed; step += 1) next.push(last + ((series.held - last) * step) / passed);
+  for (let step = Math.max(1, passed - USAGE_STEP_COUNT); step <= passed; step += 1) {
+    next.push(last + ((series.held - last) * step) / passed);
+  }
   return { ...series, snapshots: next.slice(-(USAGE_STEP_COUNT + 1)) };
 }
 
@@ -164,5 +169,69 @@ export function reconcileUsage(previous: UsageLedger, readings: readonly UsageRe
     entries.set(reading.id, entry);
     histories.set(reading.id, historyOf(entry));
   }
+  return { entries, histories };
+}
+
+export interface UsageLedgerKey {
+  /** The agent's stable monitor identity, the ledger's key. */
+  id: string;
+  providerId: string;
+  nativeSessionId: string;
+}
+
+function seriesRecord(series: Series): UsageSeriesRecord {
+  return { ...(series.held !== undefined ? { held: series.held } : {}), snapshots: [...series.snapshots] };
+}
+
+/** The ledgers worth keeping, one record per conversation that has a number to keep. */
+export function exportUsage(ledger: UsageLedger, keys: readonly UsageLedgerKey[], nowMs: number): UsageLedgerRecord[] {
+  const savedAt = new Date(nowMs).toISOString();
+  const records: UsageLedgerRecord[] = [];
+  for (const key of keys) {
+    const entry = ledger.entries.get(key.id);
+    if (!entry || entry.total.held === undefined) continue;
+    records.push({
+      providerId: key.providerId,
+      nativeSessionId: key.nativeSessionId,
+      savedAt,
+      boundary: entry.boundary,
+      total: seriesRecord(entry.total),
+      ...(entry.output ? { output: seriesRecord(entry.output) } : {}),
+      ...(entry.input ? { input: seriesRecord(entry.input) } : {}),
+    });
+  }
+  return records;
+}
+
+/**
+ * Give a resumed conversation the ledger it had. The saved series are
+ * rebased to now: the steps since the save are silent unless the live
+ * number has moved, in which case the growth is spread over them as for any
+ * missed boundary, and the live number itself is read through the hold rule
+ * so a partial figure from a source still catching up cannot lower what was
+ * shown. A ledger that has already recorded a burn of its own is left alone:
+ * by then it is the record.
+ */
+export function seedUsage(previous: UsageLedger, id: string, record: UsageLedgerRecord, nowMs: number): UsageLedger {
+  const existing = previous.entries.get(id);
+  if (existing && stepsOf(existing.total).some((step) => step > 0)) return previous;
+  const boundary = Math.floor(nowMs / USAGE_STEP_MS);
+  const passed = Math.max(0, boundary - record.boundary);
+  const rebase = (saved: UsageSeriesRecord | undefined, live: Series | undefined): Series | undefined => {
+    if (!saved && !live) return undefined;
+    const base: Series = {
+      ...(saved?.held !== undefined ? { held: saved.held } : {}),
+      snapshots: saved?.snapshots ?? [],
+    };
+    return snapshot(hold(base, live?.held, nowMs), passed);
+  };
+  const total = rebase(record.total, existing?.total) ?? { snapshots: [] };
+  const output = rebase(record.output, existing?.output);
+  const input = rebase(record.input, existing?.input);
+  const entry: UsageEntry = { boundary, total, ...(output ? { output } : {}), ...(input ? { input } : {}) };
+  const entries = new Map(previous.entries);
+  const histories = new Map(previous.histories);
+  entries.set(id, entry);
+  histories.set(id, historyOf(entry));
   return { entries, histories };
 }
