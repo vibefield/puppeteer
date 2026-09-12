@@ -43,6 +43,10 @@ export function createCopilotProfileService(options: CopilotProfileServiceOption
   return {
     provider,
     bindingEnvironment,
+    // COPILOT_HOME names the layout root itself: unlike Pi and OpenCode, the
+    // bound root is the directory an indexer applies Copilot's layout to.
+    observationRoot: (profile: AgentProfile): string =>
+      profile.kind === 'native-default' ? (provider.support.nativeDefaultRoot ?? profile.dataRoot) : profile.dataRoot,
     loginInvocation(profile: AgentProfile, { cwd }: { cwd: string }): TerminalSpec {
       // `copilot login` is the native interactive device flow; it must run in a
       // real terminal so the host never observes the credential exchange.

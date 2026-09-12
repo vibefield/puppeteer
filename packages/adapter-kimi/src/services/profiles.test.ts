@@ -41,6 +41,13 @@ describe('Kimi profiles', () => {
     ).toEqual({});
   });
 
+  it('names the history layout root for an indexer', () => {
+    expect(service.observationRoot(profile())).toBe('/home/tester/.puppeteer/profiles/kimi/1d0f77aa');
+    expect(service.observationRoot(profile({ kind: 'native-default', dataRoot: '/home/tester/.kimi-code' }))).toBe(
+      '/home/tester/.kimi-code',
+    );
+  });
+
   it('runs the native device-code login inside the profile binding', () => {
     expect(service.loginInvocation(profile(), { cwd: '/work/repo' })).toEqual({
       command: 'kimi',

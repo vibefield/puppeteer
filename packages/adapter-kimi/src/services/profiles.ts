@@ -40,6 +40,10 @@ export function createKimiProfileService(options: KimiProfileServiceOptions = {}
   return {
     provider,
     bindingEnvironment,
+    // KIMI_CODE_HOME names the layout root itself: unlike Pi and OpenCode, the
+    // bound root is the directory an indexer applies Kimi's layout to.
+    observationRoot: (profile: AgentProfile): string =>
+      profile.kind === 'native-default' ? (provider.support.nativeDefaultRoot ?? profile.dataRoot) : profile.dataRoot,
     loginInvocation(profile: AgentProfile, { cwd }: { cwd: string }): TerminalSpec {
       // `kimi login` runs the native device-code flow; it must own a real
       // terminal so the host never observes the credential exchange.

@@ -43,6 +43,10 @@ export function createGrokProfileService(options: GrokProfileServiceOptions = {}
   return {
     provider,
     bindingEnvironment,
+    // GROK_HOME names the layout root itself: unlike Pi and OpenCode, the
+    // bound root is the directory an indexer applies Grok's layout to.
+    observationRoot: (profile: AgentProfile): string =>
+      profile.kind === 'native-default' ? (provider.support.nativeDefaultRoot ?? profile.dataRoot) : profile.dataRoot,
     loginInvocation(profile: AgentProfile, { cwd }: { cwd: string }): TerminalSpec {
       // `grok login` is the native interactive flow; it must run in a real
       // terminal so the host never sees the credential exchange.

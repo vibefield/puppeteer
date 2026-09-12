@@ -32,6 +32,7 @@ function registryProvider(provider: ProfileProvider): ProfileRegistryProvider {
     provider,
     bindingEnvironment: (profile): Record<string, string> =>
       profile.kind === 'native-default' ? {} : { EXAMPLE_HOME: profile.dataRoot },
+    observationRoot: (profile): string => profile.dataRoot,
     loginInvocation: (_profile, options) => ({ command: provider.id, args: ['login'], cwd: options.cwd }),
     async verify() {
       return {

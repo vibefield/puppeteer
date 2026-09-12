@@ -39,6 +39,13 @@ describe('OpenCode profiles', () => {
     ).toEqual({});
   });
 
+  it('names the history layout root one opencode level below the bound data home', () => {
+    expect(service.observationRoot(profile())).toBe('/home/tester/.puppeteer/profiles/opencode/77c5b0ad/data/opencode');
+    expect(
+      service.observationRoot(profile({ kind: 'native-default', dataRoot: '/home/tester/.local/share/opencode' })),
+    ).toBe('/home/tester/.local/share/opencode');
+  });
+
   it('runs the native interactive login inside the profile binding', () => {
     expect(service.loginInvocation(profile(), { cwd: '/work/repo' })).toEqual({
       command: 'opencode',

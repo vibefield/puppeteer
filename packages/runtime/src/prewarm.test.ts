@@ -29,6 +29,7 @@ describe('runtime cache prewarming', () => {
     const profiles: ProfileService = {
       provider: { id: 'example', label: 'Example', support: { supported: true, identity: 'none', sharedSurfaces: [] } },
       bindingEnvironment: () => ({}),
+      observationRoot: (target) => target.dataRoot,
       loginInvocation: () => ({ command: 'example', args: ['login'], cwd: '/unused' }),
       verify: vi.fn(),
     };

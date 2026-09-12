@@ -41,6 +41,13 @@ describe('Copilot profiles', () => {
     );
   });
 
+  it('names the history layout root for an indexer', () => {
+    expect(service.observationRoot(profile())).toBe('/home/tester/.puppeteer/profiles/copilot/4f21b0c9');
+    expect(service.observationRoot(profile({ kind: 'native-default', dataRoot: '/home/tester/.copilot' }))).toBe(
+      '/home/tester/.copilot',
+    );
+  });
+
   it('runs the native interactive login inside the profile binding', () => {
     expect(service.loginInvocation(profile(), { cwd: '/work/repo' })).toEqual({
       command: 'copilot',

@@ -38,6 +38,13 @@ describe('Hermes profiles', () => {
     );
   });
 
+  it('names the history layout root for an indexer', () => {
+    expect(service.observationRoot(profile())).toBe('/home/tester/.puppeteer/profiles/hermes/5b7c31de');
+    expect(service.observationRoot(profile({ kind: 'native-default', dataRoot: '/home/tester/.hermes' }))).toBe(
+      '/home/tester/.hermes',
+    );
+  });
+
   it('runs the native interactive login inside the profile binding', () => {
     expect(service.loginInvocation(profile(), { cwd: '/work/repo' })).toEqual({
       command: 'hermes',

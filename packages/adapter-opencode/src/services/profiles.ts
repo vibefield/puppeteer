@@ -58,6 +58,12 @@ export function createOpenCodeProfileService(options: OpenCodeProfileServiceOpti
   return {
     provider,
     bindingEnvironment,
+    // History lives at $XDG_DATA_HOME/opencode, so a managed profile's layout
+    // root is one `opencode` level below the data home the binding names.
+    observationRoot: (profile: AgentProfile): string =>
+      profile.kind === 'native-default'
+        ? (provider.support.nativeDefaultRoot ?? profile.dataRoot)
+        : join(openCodeDataHome(profile), 'opencode'),
     loginInvocation(profile: AgentProfile, { cwd }: { cwd: string }): TerminalSpec {
       // `opencode auth login` is the native interactive flow; it must own a real
       // terminal so the host never observes the credential exchange.

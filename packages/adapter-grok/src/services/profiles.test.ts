@@ -34,6 +34,13 @@ describe('Grok profiles', () => {
     expect(service.bindingEnvironment(profile({ kind: 'native-default', dataRoot: '/home/tester/.grok' }))).toEqual({});
   });
 
+  it('names the history layout root for an indexer', () => {
+    expect(service.observationRoot(profile())).toBe('/home/tester/.puppeteer/profiles/grok/8c8c0a1e');
+    expect(service.observationRoot(profile({ kind: 'native-default', dataRoot: '/home/tester/.grok' }))).toBe(
+      '/home/tester/.grok',
+    );
+  });
+
   it('runs the native interactive login inside the profile binding', () => {
     expect(service.loginInvocation(profile(), { cwd: '/work/repo' })).toEqual({
       command: 'grok',

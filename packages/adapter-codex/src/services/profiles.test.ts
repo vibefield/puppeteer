@@ -100,6 +100,12 @@ describe('Codex profile provider', () => {
     expect(profiles.bindingEnvironment(nativeDefault)).toEqual({});
   });
 
+  it('names the bound root as the history layout root for an indexer', () => {
+    const profiles = service(fakeAppServer({ account: null }));
+    expect(profiles.observationRoot(managed)).toBe('/Users/test/.puppeteer/profiles/codex/7a10');
+    expect(profiles.observationRoot(nativeDefault)).toBe('/Users/test/.codex');
+  });
+
   it('describes the native interactive login as a terminal spec', () => {
     const spec = service(fakeAppServer({ account: null })).loginInvocation(managed, { cwd: '/work/repo' });
     expect(spec).toEqual({

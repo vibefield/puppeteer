@@ -492,6 +492,13 @@ export interface AgentRuntime {
   removeProfile(profileId: string): Promise<boolean>;
   /** Merged binding variables for a set of profiles, at most one per provider, for seeding a host terminal. */
   profileBindingEnvironment(profileIds: readonly string[]): Promise<Record<string, string>>;
+  /**
+   * The directory an external history indexer applies the provider's own layout
+   * to for this profile. It is the adapter's rule, not `dataRoot`: Pi and
+   * OpenCode bind a level away from the layout root. Undefined when the profile
+   * or its provider is unknown.
+   */
+  profileObservationRoot(profileId: string): Promise<string | undefined>;
   /** Spawn the native login in a host terminal bound to the profile root. */
   startProfileLogin(options: StartProfileLoginOptions): Promise<ProfileLoginResult>;
   /** Re-read native identity for a profile and persist it on the registry entry. */

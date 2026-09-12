@@ -51,6 +51,7 @@ function fakeProvider(
   const service: ProfileService = {
     provider,
     bindingEnvironment: (profile) => (profile.kind === 'native-default' ? {} : { [variable]: profile.dataRoot }),
+    observationRoot: (profile) => profile.dataRoot,
     loginInvocation: (_profile, invocation) => ({
       command: id,
       args: ['login'],

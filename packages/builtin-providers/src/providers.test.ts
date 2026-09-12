@@ -20,6 +20,7 @@ const adapters = vi.hoisted(() => {
   const fakeProfiles = (id: string, label: string) => ({
     provider: { id, label, support: { supported: true, identity: 'none' as const, sharedSurfaces: [] } },
     bindingEnvironment: vi.fn(() => ({})),
+    observationRoot: vi.fn((profile: { dataRoot: string }) => profile.dataRoot),
     loginInvocation: vi.fn(() => ({ command: id, args: ['login'], cwd: '/work' })),
     verify: vi.fn(async () => ({
       status: 'unsupported' as const,

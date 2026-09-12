@@ -37,6 +37,13 @@ describe('Antigravity profiles', () => {
     ).toEqual({});
   });
 
+  it('names the history layout root for an indexer', () => {
+    expect(service.observationRoot(profile())).toBe('/home/tester/.puppeteer/profiles/antigravity/0b12ce77');
+    expect(
+      service.observationRoot(profile({ kind: 'native-default', dataRoot: '/home/tester/.gemini/antigravity-cli' })),
+    ).toBe('/home/tester/.gemini/antigravity-cli');
+  });
+
   it('opens the agent itself because no login subcommand exists on 1.1.21', () => {
     expect(service.loginInvocation(profile(), { cwd: '/work/repo' })).toEqual({
       command: 'agy',

@@ -2394,6 +2394,15 @@ export function createAgentRuntime(options: AgentRuntimeOptions): AgentRuntime {
       return (await profileRuntime()).onboarding.bindingEnvironment(profileIds);
     },
 
+    async profileObservationRoot(profileId: string): Promise<string | undefined> {
+      if (disposed) throw new Error('agent runtime is disposed');
+      const profile = await (await profileRuntime()).registry.get(profileId);
+      if (!profile) return undefined;
+      // The mapping from a profile to its history layout root is provider
+      // specific, so it comes from the adapter's own service, never from here.
+      return profileRegistryProviders.get(profile.provider)?.service.observationRoot(profile);
+    },
+
     async startProfileLogin(request: StartProfileLoginOptions): Promise<ProfileLoginResult> {
       if (disposed) throw new Error('agent runtime is disposed');
       return (await profileRuntime()).onboarding.startLogin(request);

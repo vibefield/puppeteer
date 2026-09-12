@@ -73,6 +73,12 @@ describe('Claude profile provider', () => {
     expect(profiles.bindingEnvironment(nativeDefault)).toEqual({});
   });
 
+  it('names the bound root as the history layout root for an indexer', () => {
+    const profiles = service(LOGGED_IN);
+    expect(profiles.observationRoot(managed)).toBe('/Users/test/.puppeteer/profiles/claude/9f2b');
+    expect(profiles.observationRoot(nativeDefault)).toBe('/Users/test/.claude');
+  });
+
   it('describes the native interactive login as a terminal spec', () => {
     const spec = service(LOGGED_IN).loginInvocation(managed, { cwd: '/work/repo' });
     expect(spec).toEqual({

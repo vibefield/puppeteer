@@ -217,6 +217,49 @@ Two new modules beside `observation/` and `services/`; nothing here imports an a
   because continuations already record the root. `runtime.accountUsage(providerId, profile)` fans out per profile;
   the host's usage monitor polls per (provider, profile).
 
+### Observation roots (2026-09-12)
+
+A sibling product runs an external history indexer (Rosetta's `rosettad`, the daemon RFC 007 queries) that applies
+each provider's own on-disk layout to one directory per runtime and reads transcripts from it. Handing that indexer
+a profile's `dataRoot` is right for seven of the nine providers and wrong for two, silently: Rosetta's Pi layout
+root is `~/.pi` with the transcript glob `agent/sessions/*/*.jsonl`, while the managed binding pointed
+`PI_CODING_AGENT_DIR` at `dataRoot` itself; and OpenCode's history lives at `$XDG_DATA_HOME/opencode`, one level
+below the `XDG_DATA_HOME=<dataRoot>/data` the managed binding sets. A host that passed `dataRoot` would index the
+wrong directory and report an empty history rather than a failure.
+
+The mapping is provider-specific, so it belongs where every other provider-specific rule lives: the adapter.
+
+- Contract: `ProfileService.observationRoot(profile): string` — the directory whose provider-native layout holds
+  that profile's durable history. A native-default profile answers with the provider's own layout root; a managed
+  profile answers with a path derived from `dataRoot` by the same binding rule `bindingEnvironment` applies. It is
+  a plain adapter-owned method, not a schema field a host could fill in, and not always `dataRoot`.
+- Runtime: `AgentRuntime.profileObservationRoot(profileId): Promise<string | undefined>`, beside
+  `profileBindingEnvironment`. It resolves the profile through the registry and delegates to that provider's
+  service, and answers `undefined` when the profile or its provider is unknown. Runtime still imports no adapter.
+- Hosts pass the observation root to a history indexer, never `dataRoot`.
+
+| Provider    | Managed                    | Native default              |
+| ----------- | -------------------------- | --------------------------- |
+| Claude Code | `dataRoot`                 | `~/.claude`                 |
+| Codex       | `dataRoot`                 | `~/.codex`                  |
+| Copilot CLI | `dataRoot`                 | `~/.copilot`                |
+| Grok        | `dataRoot`                 | `~/.grok`                   |
+| Kimi Code   | `dataRoot`                 | `~/.kimi-code`              |
+| Hermes      | `dataRoot`                 | `~/.hermes`                 |
+| Antigravity | `dataRoot`                 | `~/.gemini/antigravity-cli` |
+| OpenCode    | `<dataRoot>/data/opencode` | `~/.local/share/opencode`   |
+| Pi          | `dataRoot`                 | `~/.pi`                     |
+
+Pi's managed binding changed with this: `PI_CODING_AGENT_DIR` is now `<dataRoot>/agent`, one `agent` level inside
+the profile root, on OpenCode's exact precedent — the binding never collides with the profile's own metadata, and
+the profile root becomes the layout root. Pi holds its credentials in `auth.json` under that root rather than
+deriving a keyring key from the path the way Codex does, so nothing breaks if the path moves: the change costs a
+one-time move of an existing managed root's contents into `<dataRoot>/agent`, and no managed Pi profile existed on
+the development machine when the binding changed. The adapter's own observation resolves the same variable, so it
+finds sessions under the new binding without a second rule. Antigravity's managed answer is nominal: support is
+`false`, no managed root is ever onboarded, and were that to change the answer would have to follow the HOME
+redirection down to `<root>/.gemini/antigravity-cli`.
+
 ### Host and Godview
 
 - Composition: `createBuiltinProviders` wires the three services beside `accountUsage`. A persisted per-provider
@@ -272,7 +315,7 @@ next step (see "Resolved questions" for the probes they must capture).
 - Runtime: `packages/runtime/src/distribution/{inventory,releases,update}.ts` and
   `profiles/{registry,roots,onboarding}.ts`; `AgentRuntime` gained `distributionProviders`, `inspectInstallations`,
   `checkReleases`, `updateInstallation`, `profileProviders`, `profiles`, `profile`, `createProfile`,
-  `removeProfile`, `profileBindingEnvironment`, `startProfileLogin`, `verifyProfile`, `onProfilesChanged`, and
+  `removeProfile`, `profileBindingEnvironment`, `profileObservationRoot`, `startProfileLogin`, `verifyProfile`, `onProfilesChanged`, and
   `accountUsage(providerId, profileId?)`; `spawn({ profile })`, `resume({ profile })`, and spawn-through attribution
   of `AgentSessionInfo.profileId` from the forwarded environment. Registry `~/.puppeteer/profiles.json` (0600,
   atomic), roots `~/.puppeteer/profiles/<provider>/<uuid>` (0700), transcripts `~/.puppeteer/updates` (0600).

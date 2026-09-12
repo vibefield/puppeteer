@@ -149,6 +149,11 @@ export function createClaudeProfileService(options: ClaudeProfileOptions = {}): 
     provider,
     bindingEnvironment,
 
+    // Claude Code writes its transcripts under the config root it was bound
+    // to, so the profile root is itself the layout root an indexer reads.
+    observationRoot: (profile: AgentProfile): string =>
+      profile.kind === 'managed' ? profile.dataRoot : (provider.support.nativeDefaultRoot ?? profile.dataRoot),
+
     loginInvocation(profile: AgentProfile, loginOptions: { cwd: string }): TerminalSpec {
       // The interactive vendor login. It must run in a real terminal; there is
       // no print mode whose output Puppeteer would be allowed to interpret.

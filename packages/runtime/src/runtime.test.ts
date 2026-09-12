@@ -234,6 +234,7 @@ function exampleProfileService(id = 'example', label = 'Example'): ProfileServic
       },
     },
     bindingEnvironment: (profile) => (profile.kind === 'native-default' ? {} : { [variable]: profile.dataRoot }),
+    observationRoot: (profile) => (profile.kind === 'native-default' ? `/home/user/.${id}` : profile.dataRoot),
     loginInvocation: (_profile, options) => ({ command: id, args: ['login'], cwd: options.cwd }),
     async verify() {
       return {
@@ -2979,6 +2980,43 @@ describe('createAgentRuntime', () => {
     await expect(runtime.profileBindingEnvironment([created.id])).resolves.toEqual({
       EXAMPLE_HOME: created.dataRoot,
     });
+    await runtime.dispose();
+    await rm(root, { recursive: true, force: true });
+  });
+
+  it('answers the observation root from the adapter and says nothing about profiles it cannot resolve', async () => {
+    const root = await mkdtemp(join(tmpdir(), 'puppeteer-runtime-profile-observation-'));
+    const provider: AgentProvider = {
+      ...preparableProvider('example', { prepareCount: 0, adoptCount: 0, disposeCount: 0 }),
+      descriptor: { id: 'example', label: 'Example' },
+      profiles: exampleProfileService(),
+    };
+    // A managed row whose provider composes no profile service at all: the
+    // runtime has no rule to apply, so it answers undefined rather than guess.
+    const foreign: AgentProfile = {
+      id: 'foreign',
+      provider: 'other',
+      label: 'Foreign',
+      kind: 'managed',
+      dataRoot: '/roots/other/foreign',
+      createdAt: '2026-09-11T00:00:00.000Z',
+    };
+    const runtime = createAgentRuntime({
+      host,
+      defaultCwd: root,
+      providers: [provider],
+      profiles: {
+        store: { load: async () => ({ version: 1, profiles: [foreign] }), save: async () => undefined },
+        rootsDirectory: join(root, 'profiles'),
+      },
+    });
+
+    const created = await runtime.createProfile({ providerId: 'example', label: 'Work' });
+    if ('status' in created) throw new Error(created.message);
+    await expect(runtime.profileObservationRoot(created.id)).resolves.toBe(created.dataRoot);
+    await expect(runtime.profileObservationRoot('example:native-default')).resolves.toBe('/home/user/.example');
+    await expect(runtime.profileObservationRoot('foreign')).resolves.toBeUndefined();
+    await expect(runtime.profileObservationRoot('ghost')).resolves.toBeUndefined();
     await runtime.dispose();
     await rm(root, { recursive: true, force: true });
   });

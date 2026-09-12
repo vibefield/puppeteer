@@ -47,6 +47,10 @@ export function createHermesProfileService(options: HermesProfileServiceOptions 
   return {
     provider,
     bindingEnvironment,
+    // HERMES_HOME names the layout root itself: unlike Pi and OpenCode, the
+    // bound root is the directory an indexer applies Hermes's layout to.
+    observationRoot: (profile: AgentProfile): string =>
+      profile.kind === 'native-default' ? (provider.support.nativeDefaultRoot ?? profile.dataRoot) : profile.dataRoot,
     loginInvocation(profile: AgentProfile, { cwd }: { cwd: string }): TerminalSpec {
       // `hermes login` is the native interactive flow; it must own a real
       // terminal so the host never observes the credential exchange.

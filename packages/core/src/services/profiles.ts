@@ -94,6 +94,20 @@ export interface ProfileService {
    * subset of the provider's launch allow-list; empty for the native default.
    */
   bindingEnvironment(profile: AgentProfile): Record<string, string>;
+  /**
+   * The directory whose provider-native layout holds this profile's durable
+   * history — transcripts and session stores — and therefore the directory an
+   * external history indexer applies the provider's layout to.
+   *
+   * A native-default profile answers with the provider's own layout root; a
+   * managed profile answers with a path derived from `dataRoot` by the same
+   * binding rule `bindingEnvironment` applies. It is not always `dataRoot`:
+   * Pi binds one level inside it and OpenCode's history sits under the
+   * `opencode` directory of the XDG data home it binds. The mapping is
+   * provider-specific, so it is an adapter-owned rule rather than a schema
+   * field a host could fill in.
+   */
+  observationRoot(profile: AgentProfile): string;
   /** Prepare a freshly allocated managed root, for example by writing a minimal native config. */
   initializeRoot?(profile: AgentProfile): Promise<void>;
   /**

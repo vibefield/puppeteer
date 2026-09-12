@@ -49,6 +49,12 @@ export function createAntigravityProfileService(options: AntigravityProfileServi
   return {
     provider,
     bindingEnvironment,
+    // Only the native default is real here. Support is false, so no managed
+    // root is ever onboarded; were that to change, the managed answer would
+    // have to follow the HOME redirection down to <root>/.gemini/antigravity-cli
+    // rather than name the bound root.
+    observationRoot: (profile: AgentProfile): string =>
+      profile.kind === 'native-default' ? (provider.support.nativeDefaultRoot ?? profile.dataRoot) : profile.dataRoot,
     loginInvocation(profile: AgentProfile, { cwd }: { cwd: string }): TerminalSpec {
       // No native login exists, so the agent itself runs in the bound root and
       // whatever it writes on first authentication lands there.

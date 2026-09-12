@@ -141,6 +141,11 @@ export function createCodexProfileService(options: CodexProfileOptions = {}): Pr
     provider,
     bindingEnvironment,
 
+    // CODEX_HOME names the layout root itself: unlike Pi and OpenCode, the
+    // bound root is the directory an indexer applies Codex's layout to.
+    observationRoot: (profile: AgentProfile): string =>
+      profile.kind === 'managed' ? profile.dataRoot : (provider.support.nativeDefaultRoot ?? profile.dataRoot),
+
     async initializeRoot(profile: AgentProfile): Promise<void> {
       if (profile.kind !== 'managed') return;
       const path = join(profile.dataRoot, 'config.toml');
