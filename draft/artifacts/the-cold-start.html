@@ -1,0 +1,398 @@
+<!doctype html><html><head><meta charset=utf8><meta name=viewport content="width=device-width,initial-scale=1"><style>:root{color-scheme:light}body{margin:0;padding:0;font:14px -apple-system,BlinkMacSystemFont,sans-serif;background:#faf9f5;color:#141413}img{max-width:100%}</style></head><body>
+<title>The Cold Start</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Spline+Sans:wght@400;500;600;700&family=Spline+Sans+Mono:wght@400;500;600&display=swap">
+<style>
+  :root {
+    --paper: #f6f7f8;
+    --panel: #ffffff;
+    --ink: #20262b;
+    --muted: #5d6a74;
+    --line: #d9dee2;
+    --line-soft: #e7ebee;
+    --cold: #3d7ab8;
+    --cold-soft: #e3edf6;
+    --warm: #c2621f;
+    --warm-soft: #f7ead9;
+    --code-bg: #eef1f3;
+    --mark: #20262b;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --paper: #15181a;
+      --panel: #1b1f22;
+      --ink: #e4e8ea;
+      --muted: #8b969e;
+      --line: #2a3035;
+      --line-soft: #22272b;
+      --cold: #7db3e8;
+      --cold-soft: #1d2936;
+      --warm: #e89a52;
+      --warm-soft: #33261a;
+      --code-bg: #101315;
+      --mark: #e4e8ea;
+    }
+  }
+  :root[data-theme="dark"] {
+    --paper: #15181a;
+    --panel: #1b1f22;
+    --ink: #e4e8ea;
+    --muted: #8b969e;
+    --line: #2a3035;
+    --line-soft: #22272b;
+    --cold: #7db3e8;
+    --cold-soft: #1d2936;
+    --warm: #e89a52;
+    --warm-soft: #33261a;
+    --code-bg: #101315;
+    --mark: #e4e8ea;
+  }
+  * { box-sizing: border-box; }
+  body {
+    background: var(--paper);
+    color: var(--ink);
+    font-family: "Spline Sans", "Segoe UI", system-ui, sans-serif;
+    font-size: 16px;
+    line-height: 1.65;
+    margin: 0;
+  }
+  .wrap { max-width: 880px; margin: 0 auto; padding: 56px 28px 96px; }
+  .col { max-width: 68ch; }
+  .mono { font-family: "Spline Sans Mono", ui-monospace, SFMono-Regular, Menlo, monospace; }
+
+  header { margin-bottom: 56px; }
+  .eyebrow {
+    font-family: "Spline Sans Mono", ui-monospace, monospace;
+    font-size: 12px; letter-spacing: 0.14em; text-transform: uppercase;
+    color: var(--muted); margin-bottom: 14px;
+  }
+  h1 {
+    font-size: clamp(38px, 6vw, 56px); font-weight: 700; letter-spacing: -0.02em;
+    line-height: 1.05; margin: 0 0 18px; text-wrap: balance;
+  }
+  .stand { font-size: 18px; color: var(--muted); max-width: 62ch; margin: 0; }
+  .stand strong { color: var(--ink); font-weight: 600; }
+
+  .thermo { display: flex; gap: 6px; margin: 26px 0 0; align-items: center; }
+  .thermo i { display: block; height: 8px; border-radius: 4px; }
+  .thermo .t-label { font-family: "Spline Sans Mono", monospace; font-size: 11px; color: var(--muted); letter-spacing: 0.08em; }
+
+  section { margin: 0 0 52px; }
+  h2 {
+    font-size: 15px; font-weight: 600; letter-spacing: 0.12em; text-transform: uppercase;
+    font-family: "Spline Sans Mono", ui-monospace, monospace;
+    color: var(--muted); margin: 0 0 6px;
+    padding-top: 20px; border-top: 1px solid var(--line);
+  }
+  h3 { font-size: 17px; font-weight: 600; margin: 26px 0 8px; letter-spacing: -0.01em; }
+  p { margin: 10px 0; max-width: 68ch; }
+  li { margin: 6px 0; max-width: 64ch; }
+  code {
+    font-family: "Spline Sans Mono", ui-monospace, monospace; font-size: 0.86em;
+    background: var(--code-bg); border-radius: 4px; padding: 1px 5px;
+  }
+  pre {
+    background: var(--code-bg); border: 1px solid var(--line-soft); border-radius: 8px;
+    padding: 16px 18px; overflow-x: auto; font-size: 13px; line-height: 1.55; margin: 14px 0;
+  }
+  pre code { background: none; padding: 0; font-size: inherit; }
+  .cm { color: var(--muted); }
+
+  .chip {
+    display: inline-block; font-family: "Spline Sans Mono", monospace; font-size: 11.5px;
+    padding: 1px 8px 2px; border-radius: 999px; vertical-align: 1px; white-space: nowrap;
+  }
+  .chip.cold { background: var(--cold-soft); color: var(--cold); }
+  .chip.warm { background: var(--warm-soft); color: var(--warm); }
+
+  .fact-list { border-top: 1px solid var(--line-soft); margin: 18px 0; }
+  .fact { display: grid; grid-template-columns: 220px 1fr; gap: 18px; padding: 11px 0; border-bottom: 1px solid var(--line-soft); }
+  .fact dt { font-family: "Spline Sans Mono", monospace; font-size: 12.5px; color: var(--muted); padding-top: 2px; }
+  .fact dd { margin: 0; font-size: 14.5px; }
+  @media (max-width: 620px) { .fact { grid-template-columns: 1fr; gap: 2px; } }
+
+  figure { margin: 26px 0; }
+  figure svg { max-width: 100%; height: auto; display: block; }
+  figcaption { font-size: 13px; color: var(--muted); margin-top: 10px; max-width: 68ch; }
+
+  .opt { border-left: 3px solid var(--line); padding: 2px 0 2px 18px; margin: 16px 0; }
+  .opt.pick { border-left-color: var(--warm); }
+  .opt h4 { margin: 0 0 4px; font-size: 15px; font-weight: 600; }
+  .opt p { margin: 4px 0; font-size: 14.5px; color: var(--muted); }
+  .opt p strong { color: var(--ink); }
+
+  .law {
+    background: var(--panel); border: 1px solid var(--line); border-radius: 10px;
+    padding: 16px 20px; margin: 18px 0; font-size: 15px;
+  }
+  .law .mono { font-size: 12px; color: var(--warm); letter-spacing: 0.1em; text-transform: uppercase; display: block; margin-bottom: 4px; }
+
+  .timeline { border-left: 2px solid var(--line); margin: 20px 0 20px 6px; padding-left: 0; list-style: none; }
+  .timeline li { position: relative; padding: 2px 0 18px 26px; margin: 0; }
+  .timeline li::before {
+    content: ""; position: absolute; left: -7px; top: 8px; width: 12px; height: 12px;
+    border-radius: 50%; background: var(--paper); border: 3px solid var(--cold);
+  }
+  .timeline li.hot::before { border-color: var(--warm); }
+  .timeline .t { font-family: "Spline Sans Mono", monospace; font-size: 12px; color: var(--muted); display: block; }
+  .timeline b { font-weight: 600; }
+
+  .slice { display: grid; grid-template-columns: 44px 1fr; gap: 16px; padding: 16px 0; border-bottom: 1px solid var(--line-soft); }
+  .slice .n {
+    font-family: "Spline Sans Mono", monospace; font-size: 20px; font-weight: 600;
+    color: var(--muted); padding-top: 1px;
+  }
+  .slice h4 { margin: 0 0 3px; font-size: 15.5px; }
+  .slice p { margin: 3px 0; font-size: 14.5px; color: var(--muted); }
+  .slice p strong { color: var(--ink); }
+  .who { font-family: "Spline Sans Mono", monospace; font-size: 11.5px; color: var(--cold); }
+
+  .footer { margin-top: 60px; padding-top: 18px; border-top: 1px solid var(--line); font-size: 13px; color: var(--muted); font-family: "Spline Sans Mono", monospace; }
+</style>
+
+<div class="wrap">
+<header>
+  <div class="eyebrow">rosetta · agent-history · design record supplement</div>
+  <h1>The Cold Start</h1>
+  <p class="stand">First open, the archive is frozen. Today the daemon thaws it in private and hands over a finished room five minutes later. This design makes the thaw <strong>public</strong>: consent first, lists in seconds, and every project and session warming at its own pace — with a state grammar the whole room shares.</p>
+  <div class="thermo" aria-hidden="true">
+    <span class="t-label">pending</span>
+    <i style="width:38px;background:var(--cold)"></i>
+    <i style="width:38px;background:color-mix(in oklab, var(--cold), var(--warm) 33%)"></i>
+    <i style="width:38px;background:color-mix(in oklab, var(--cold), var(--warm) 66%)"></i>
+    <i style="width:38px;background:var(--warm)"></i>
+    <span class="t-label">ready</span>
+  </div>
+</header>
+
+<section>
+  <h2>Where the machine already is</h2>
+  <p class="col">More of this exists than it looks. The pipeline was rebuilt into exactly the right three phases, and the readiness fact the UI needs is already on the wire:</p>
+  <dl class="fact-list">
+    <div class="fact"><dt>discovery</dt><dd><code>discover()</code> probes every adapter's data root and reports a census — installed, file count, total bytes, newest touch. It deliberately leaves <code>enabled = false</code>: "the app shows the result and the USER decides." Consent is designed in; nothing surfaces it yet.</dd></div>
+    <div class="fact"><dt>meta ingest (skim)</dt><dd><code>meta_ingest</code> reads bounded head/tail windows only — project and session lists exist <em>before any transcript body is read</em>. Seconds, not minutes.</dd></div>
+    <div class="fact"><dt>stream ingest</dt><dd>Per-file transactions, <strong>newest-modified first</strong>. The commit granularity for per-session progressive reveal already exists.</dd></div>
+    <div class="fact"><dt>readiness on the wire</dt><dd><code>SessionRow.stream_state</code> — <span class="chip cold">pending</span> → <span class="chip cold">streaming</span> → <span class="chip warm">indexed</span> — is in the protocol <em>and</em> the generated TS bindings. The app just never reads it.</dd></div>
+    <div class="fact"><dt>the blocker</dt><dd><code>rosettad serve</code> binds its HTTP listener only <em>after</em> the whole backfill publishes; a fresh install cold-loads into a private temp projection, invisible until an atomic swap. <code>/api/status</code> itself 500s while the projection file doesn't exist. List endpoints serve from the hub's meta mirror, which warms only after publish. So on the one run that matters — the first — the app can't even connect.</dd></div>
+  </dl>
+</section>
+
+<section>
+  <h2>The decision — the thaw goes public</h2>
+  <p class="col">Three ways to spend the first five minutes:</p>
+  <div class="opt">
+    <h4>A · Atomic publish + a progress screen</h4>
+    <p>Bind early, report phase and counters, reveal everything at the end. Honest, cheap — and it is a loading bar, not an experience. Ships first as the floor (slice 1), never the ceiling.</p>
+  </div>
+  <div class="opt">
+    <h4>B · Meta-first, swap at the end</h4>
+    <p>Lists in seconds, transcripts and figures all at once later. The section-level states work; the per-session "every second something new" does not.</p>
+  </div>
+  <div class="opt pick">
+    <h4>C · Progressive publication — recommended</h4>
+    <p>First-run backfill writes the <strong>public</strong> projection: skims land in seconds, then per-file stream commits flip sessions <span class="chip cold">pending</span> → <span class="chip warm">indexed</span> one by one, newest first, <strong>with FTS deferred to the async search worker</strong> (the <code>search_dirty</code> queue the conventions already reserve). Search readiness stays the separate, already-surfaced fact. <code>rebuild</code> keeps its private atomic path — it is a repair tool; correctness over liveness.</p>
+  </div>
+  <p class="col">The honest cost of C: per-batch index maintenance and per-file commits lose to the bulk private load on <em>total</em> time. But the bulk path's five minutes buy nothing visible until minute five; C buys a usable room at second ten. Per the repo's own perf convention this is settled by a frozen before/after pair on ingest-bench, against acceptance gates rather than hope:</p>
+  <div class="law"><span class="mono">gates for slice 3</span>
+    time-to-lists &lt; 10 s · time-to-first-readable-session &lt; 15 s · total wall time ≤ 1.5× the private path — measured on the frozen checksummed snapshot, logical counts equal. Misses the last gate → batch N files per transaction until it doesn't.
+  </div>
+
+  <figure>
+    <svg viewBox="0 0 860 332" role="img" aria-label="Serve topology before and after: today the HTTP listener binds only after backfill and publish, so the app sees connection refused for minutes; after the change the listener binds at t0, the mirror re-warms during backfill, and the app watches sessions flip to indexed one by one." style="color:var(--ink)">
+      <!-- BEFORE lane -->
+      <text x="0" y="16" font-size="12" font-weight="600" fill="var(--muted)" font-family="Spline Sans Mono, monospace" letter-spacing="1">TODAY</text>
+      <rect x="0"   y="28" width="70"  height="30" rx="4" fill="var(--cold-soft)"/>
+      <rect x="74"  y="28" width="90"  height="30" rx="4" fill="var(--cold-soft)"/>
+      <rect x="168" y="28" width="380" height="30" rx="4" fill="var(--cold-soft)"/>
+      <rect x="552" y="28" width="80"  height="30" rx="4" fill="var(--cold-soft)"/>
+      <rect x="660" y="28" width="200" height="30" rx="4" fill="var(--warm-soft)"/>
+      <text x="8"   y="47" font-size="11.5" fill="currentColor" font-family="Spline Sans Mono, monospace">walk</text>
+      <text x="82"  y="47" font-size="11.5" fill="currentColor" font-family="Spline Sans Mono, monospace">skim</text>
+      <text x="176" y="47" font-size="11.5" fill="currentColor" font-family="Spline Sans Mono, monospace">stream · minutes, private projection</text>
+      <text x="560" y="47" font-size="11.5" fill="currentColor" font-family="Spline Sans Mono, monospace">publish</text>
+      <text x="668" y="47" font-size="11.5" fill="currentColor" font-family="Spline Sans Mono, monospace">bind · serve · live</text>
+      <line x1="648" y1="22" x2="648" y2="92" stroke="var(--warm)" stroke-width="2" stroke-dasharray="3 3"/>
+      <text x="654" y="20" font-size="10.5" fill="var(--warm)" font-family="Spline Sans Mono, monospace">listener binds here</text>
+      <rect x="0" y="70" width="644" height="24" rx="4" fill="none" stroke="var(--line)" stroke-dasharray="4 3"/>
+      <text x="8" y="86" font-size="11" fill="var(--muted)" font-family="Spline Sans Mono, monospace">app: connection refused</text>
+      <rect x="660" y="70" width="200" height="24" rx="4" fill="none" stroke="var(--line)"/>
+      <text x="668" y="86" font-size="11" fill="var(--muted)" font-family="Spline Sans Mono, monospace">everything at once</text>
+
+      <!-- AFTER lane -->
+      <text x="0" y="150" font-size="12" font-weight="600" fill="var(--muted)" font-family="Spline Sans Mono, monospace" letter-spacing="1">AFTER SLICES 1 + 3</text>
+      <line x1="12" y1="156" x2="12" y2="290" stroke="var(--warm)" stroke-width="2" stroke-dasharray="3 3"/>
+      <text x="18" y="168" font-size="10.5" fill="var(--warm)" font-family="Spline Sans Mono, monospace">listener binds at t0 · /api/status always answers</text>
+      <rect x="24"  y="176" width="66"  height="30" rx="4" fill="var(--cold-soft)"/>
+      <rect x="94"  y="176" width="110" height="30" rx="4" fill="var(--cold-soft)"/>
+      <rect x="208" y="176" width="452" height="30" rx="4" fill="var(--cold-soft)"/>
+      <rect x="664" y="176" width="196" height="30" rx="4" fill="var(--warm-soft)"/>
+      <text x="32"  y="195" font-size="11.5" fill="currentColor" font-family="Spline Sans Mono, monospace">census</text>
+      <text x="102" y="195" font-size="11.5" fill="currentColor" font-family="Spline Sans Mono, monospace">skim → lists</text>
+      <text x="216" y="195" font-size="11.5" fill="currentColor" font-family="Spline Sans Mono, monospace">stream, public · newest first · FTS deferred</text>
+      <text x="672" y="195" font-size="11.5" fill="currentColor" font-family="Spline Sans Mono, monospace">live · index warms</text>
+      <path d="M 300 214 L 300 228" stroke="var(--cold)" stroke-width="1.5" marker-end="url(#arr)"/>
+      <path d="M 430 214 L 430 228" stroke="var(--cold)" stroke-width="1.5" marker-end="url(#arr)"/>
+      <path d="M 560 214 L 560 228" stroke="var(--cold)" stroke-width="1.5" marker-end="url(#arr)"/>
+      <text x="308" y="226" font-size="10" fill="var(--muted)" font-family="Spline Sans Mono, monospace">mirror re-warm → /ws/meta, every 2s</text>
+      <rect x="24" y="234" width="180" height="24" rx="4" fill="none" stroke="var(--line)"/>
+      <text x="32" y="250" font-size="11" fill="var(--muted)" font-family="Spline Sans Mono, monospace">room veiled, filling</text>
+      <rect x="208" y="234" width="452" height="24" rx="4" fill="none" stroke="var(--line)"/>
+      <text x="216" y="250" font-size="11" fill="var(--muted)" font-family="Spline Sans Mono, monospace">cards flip indexed one by one · boost jumps the queue</text>
+      <rect x="664" y="234" width="196" height="24" rx="4" fill="none" stroke="var(--line)"/>
+      <text x="672" y="250" font-size="11" fill="var(--muted)" font-family="Spline Sans Mono, monospace">plain room</text>
+      <defs>
+        <marker id="arr" markerWidth="7" markerHeight="7" refX="5" refY="3.5" orient="auto">
+          <polygon points="0 0, 6 3.5, 0 7" fill="var(--cold)"/>
+        </marker>
+      </defs>
+    </svg>
+    <figcaption>The one edge that moves: where the listener binds. Everything else — the phases, the ledger, the checkpoints — stays what it is. Slice 1 moves the bind; slice 3 makes the stream lane write where readers can see it.</figcaption>
+  </figure>
+</section>
+
+<section>
+  <h2>The wire contract · L3</h2>
+  <p class="col">Additive; protocol stays v1. <code>DaemonStatus</code> grows an <code>ingest</code> block fed from the pipeline's always-on atomic counters (the <code>Instrument</code>), so the transport reads live numbers even while the writer thread is deep inside a blocking backfill call:</p>
+<pre><code>IngestPhase        = discovering | backfilling | live
+BackfillState      = queued | skimming | streaming | done
+
+IngestProgress     { phase: IngestPhase, runtimes: RuntimeBackfill[] }
+RuntimeBackfill    { kind:            string,
+                     state:           BackfillState,
+                     files_total:     number,   <span class="cm">// census denominators, from discovery</span>
+                     bytes_total:     number,
+                     files_skimmed:   number,   <span class="cm">// skim meter:   files_skimmed / files_total</span>
+                     bytes_streamed:  number,   <span class="cm">// stream meter: bytes_streamed / bytes_total</span>
+                     sessions_total:  number,   <span class="cm">// known once skimmed; 0 before</span>
+                     records:         number }  <span class="cm">// transcript records parsed so far</span></code></pre>
+  <ul>
+    <li><code>/api/status</code> answers <strong>from process start</strong>, projection file or none (<code>canonical_ready: false</code> until then). It is the app's connectivity truth.</li>
+    <li>During backfill the hub mirror re-warms from the projection every ~2s and fans the diffs to <code>/ws/meta</code> subscribers — the app's existing meta feed sees sessions appear and <code>stream_state</code> flip with no new endpoint.</li>
+    <li>Slice 4 adds <code>GET /api/discoveries</code> (the census) and <code>POST /api/runtimes/enable</code> (consent, persisted in the runtimes table — serve stops force-enabling everything it finds). Phase grows <code>awaiting_consent</code>.</li>
+    <li>Slice 5 adds <code>POST /api/ingest/boost {session_id}</code>.</li>
+  </ul>
+</section>
+
+<section>
+  <h2>Onboarding · the roll call</h2>
+  <p class="col">One screen, not a wizard. Discovery is a read-only walk that finishes in about a second — the user never watches it; they arrive at its results:</p>
+  <ul>
+    <li>A column of agent rows: mark, kind, data root in mono tilde form, and the census — <span class="mono" style="font-size:13px">1,209 files · 2.1 GB · touched 3h ago</span>. Checkbox, pre-checked for every installed agent.</li>
+    <li>Agents not found on this machine sit below the fold, quiet and unchecked — honest, and doubles as "here is what rosetta speaks."</li>
+    <li>One primary action — <strong>Begin ingest</strong> — and one reassurance line under it, because this screen is where trust is decided: <em>"Everything stays on this machine. Nothing is uploaded."</em> The literal truth of the localhost-only daemon, stated exactly once, here.</li>
+    <li>The button doesn't lead to a spinner; it leads to the room, veiled. Re-runnable from settings when a new agent appears.</li>
+  </ul>
+</section>
+
+<section>
+  <h2>The veil system · a readiness grammar</h2>
+  <div class="law"><span class="mono">law 1 — readiness is data, never a timer</span>
+    Every scope derives <code>pending | partial | ready</code> from wire facts: <code>stream_state</code>, the ingest phase, and nothing else.
+  </div>
+  <div class="law"><span class="mono">law 2 — only the ready may claim emptiness</span>
+    "No sessions" while ingest runs is a lie. A scope that isn't ready shows its veil; the empty state is reserved for a truth. The flash-of-empty-state bug dies by construction.
+  </div>
+  <div class="law"><span class="mono">law 3 — a veil overlays, geometry holds (H-2)</span>
+    Cards render at final size from day one — placeholder digits in fixed tabular slots — so nothing reflows when figures land. And a veil never descends on a scope that has already been ready: a new agent's sessions join a live room as cooking cards, not as a re-frost.
+  </div>
+
+  <h3>Item scope — the cooking card</h3>
+  <p class="col">Meta facts are real from the first skim: title, agent chips, timestamps render as themselves. Only the quantitative slots are unknown, and <em>those slots</em> carry the state — never a spinner per card (forty spinners is noise, and a spinner says "blocked," which is false).</p>
+  <figure>
+    <svg viewBox="0 0 860 208" role="img" aria-label="Session readiness state machine: pending shows placeholder dashes with a shimmer, streaming adds a pulsing tint hairline, indexed settles the real figures; project readiness folds over its sessions and the summary blocks veil until their scope is ready." style="color:var(--ink)">
+      <rect x="0"   y="20" width="230" height="96" rx="8" fill="none" stroke="var(--cold)"/>
+      <rect x="300" y="20" width="230" height="96" rx="8" fill="none" stroke="var(--cold)"/>
+      <rect x="600" y="20" width="230" height="96" rx="8" fill="none" stroke="var(--warm)"/>
+      <text x="14"  y="44" font-size="13" font-weight="600" fill="var(--cold)" font-family="Spline Sans Mono, monospace">pending</text>
+      <text x="314" y="44" font-size="13" font-weight="600" fill="var(--cold)" font-family="Spline Sans Mono, monospace">streaming</text>
+      <text x="614" y="44" font-size="13" font-weight="600" fill="var(--warm)" font-family="Spline Sans Mono, monospace">indexed</text>
+      <text x="14"  y="66" font-size="12" fill="currentColor">fix the branch · 3h ago</text>
+      <text x="314" y="66" font-size="12" fill="currentColor">fix the branch · 3h ago</text>
+      <text x="614" y="66" font-size="12" fill="currentColor">fix the branch · 3h ago</text>
+      <text x="14"  y="88" font-size="12" fill="var(--muted)" font-family="Spline Sans Mono, monospace">—··— tok · —— msgs</text>
+      <text x="314" y="88" font-size="12" fill="var(--muted)" font-family="Spline Sans Mono, monospace">—··— tok · —— msgs</text>
+      <text x="614" y="88" font-size="12" fill="currentColor" font-family="Spline Sans Mono, monospace">1.2M tok · 214 msgs</text>
+      <line x1="300" y1="108" x2="530" y2="108" stroke="var(--cold)" stroke-width="3" stroke-dasharray="10 6"/>
+      <text x="14"  y="134" font-size="10.5" fill="var(--muted)" font-family="Spline Sans Mono, monospace">stat slots shimmer</text>
+      <text x="314" y="134" font-size="10.5" fill="var(--muted)" font-family="Spline Sans Mono, monospace">+ tint hairline pulses</text>
+      <text x="614" y="134" font-size="10.5" fill="var(--muted)" font-family="Spline Sans Mono, monospace">figures settle in, ~250ms</text>
+      <path d="M 234 68 L 294 68" stroke="currentColor" stroke-width="1.5" marker-end="url(#arr2)"/>
+      <path d="M 534 68 L 594 68" stroke="currentColor" stroke-width="1.5" marker-end="url(#arr2)"/>
+      <text x="240" y="60" font-size="10" fill="var(--muted)" font-family="Spline Sans Mono, monospace">file opens</text>
+      <text x="536" y="60" font-size="10" fill="var(--muted)" font-family="Spline Sans Mono, monospace">commit lands</text>
+      <text x="0" y="176" font-size="11.5" fill="var(--muted)" font-family="Spline Sans Mono, monospace">project ready  =  every session indexed          summary blocks  =  veiled until their scope is ready          search  =  its own readiness, already surfaced</text>
+      <line x1="0" y1="188" x2="830" y2="188" stroke="var(--line)"/>
+      <defs>
+        <marker id="arr2" markerWidth="7" markerHeight="7" refX="5" refY="3.5" orient="auto">
+          <polygon points="0 0, 6 3.5, 0 7" fill="currentColor"/>
+        </marker>
+      </defs>
+    </svg>
+    <figcaption>The card is on the stove, not behind a curtain: identity renders immediately, quantities cook in place, and the flip to indexed — shimmer stops, digits settle with a short count-in (respecting <code>prefers-reduced-motion</code>) — is the moment of delight, firing card after card down the column.</figcaption>
+  </figure>
+
+  <h3>Section scope — the veil</h3>
+  <p class="col">One component wraps any section: a frost (backdrop blur ~5px over the panel tone at ~0.55 alpha) with the room's slim meter and a single label line — <span class="mono" style="font-size:13px">preparing · 2,314 of 5,912 sessions</span>. The critical choice: content underneath <strong>keeps rendering and updating</strong>. Watching cards populate and figures climb behind frost <em>is</em> the progress animation; the meter is just the caption. Meters are determinate — the skim reports files, the stream reports bytes against the census.</p>
+
+  <h3>Scope map</h3>
+  <dl class="fact-list">
+    <div class="fact"><dt>projects column</dt><dd>Veiled during the skim, then partial — a field of cooking cards. Card readiness folds over its own sessions.</dd></div>
+    <div class="fact"><dt>sessions column</dt><dd>Same, keyed to the selected project.</dd></div>
+    <div class="fact"><dt>project summary panel</dt><dd>Veiled until <em>that project's</em> sessions are all indexed. Under the veil the charts render partial sums growing — the heatmap ribbon filling in behind frost is the best animation in the app, for free.</dd></div>
+    <div class="fact"><dt>portfolio panel</dt><dd>Veiled until every enabled runtime drains — it unveils last, which reads as the finale, not a delay.</dd></div>
+    <div class="fact"><dt>transcript</dt><dd>A pending session shows its own veil — and the boost affordance.</dd></div>
+    <div class="fact"><dt>search</dt><dd>Already handled: the scope line's <span class="mono" style="font-size:12px">index warming</span> is this same system, pre-existing.</dd></div>
+  </dl>
+</section>
+
+<section>
+  <h2>Choreography · the first five minutes</h2>
+  <ol class="timeline">
+    <li><span class="t">t+0s</span><b>The daemon binds instantly; the app connects on first paint.</b> Fresh install → the roll call. Returning user → the room, already warm from the last projection.</li>
+    <li><span class="t">t+2s</span><b>Begin.</b> The room mounts veiled; project cards materialize behind the projects frost within a second or two. Skims land runtime by runtime — the shuffle-in is <em>wanted</em> motion, and it happens under frost where reordering can't disorient.</li>
+    <li><span class="t">t+10s</span><b>All skims done; the projects veil lifts</b> — one dissolve, ~300ms. The crown (default selection) keeps its spend rule; newest-first ingest means the figures that decide it are the freshest ones, and the crown is sticky once placed.</li>
+    <li class="hot"><span class="t">t+10s → done</span><b>Figures resolve newest-first, interleaved across runtimes.</b> Your most recent project is typically fully lit inside the first minute; its summary panel unveils then. Anything you click is boosted to the front of the queue.</li>
+    <li class="hot"><span class="t">the end</span><b>The portfolio panel unveils; phase flips live.</b> The room is plain again; the veil system goes dormant until a new agent is enrolled.</li>
+  </ol>
+  <p class="col">Restarts skip nearly all of this: the projection already exists, the mirror warms from it before the listener even answers, and only changed sessions cook.</p>
+</section>
+
+<section>
+  <h2>Boost · attention-directed ingestion</h2>
+  <p class="col">The queue is priority-ordered anyway — let the user's gaze reorder it. Click a pending session and the app posts <code>boost</code>; the daemon moves that file to the head; one transcript parses in well under a second, so the transcript veil lifts about as fast as a normal load. Same for a pending project (boost its newest N sessions). The subjective effect is disproportionate: <strong>nothing you actually reach for is ever not-ready</strong>, so the backfill stops being a wait at all — it's ambient warming of things you haven't looked at yet. One endpoint, one queue hop, one line on the transcript veil: <span class="mono" style="font-size:13px">in line — 214 ahead · reading now ↵</span>.</p>
+</section>
+
+<section>
+  <h2>Slices</h2>
+  <div class="slice"><div class="n">1</div><div>
+    <h4>Bind early, answer always <span class="who">· L3 — ✓ landed (37e3459)</span></h4>
+    <p>Serve binds the listener and answers <code>/api/status</code> from process start; warms the mirror from an existing projection <em>before</em> backfill; re-warms it on a 2s cadence during backfill, fanning precise diffs to <code>/ws/meta</code>; reports the <code>ingest</code> progress block from shared atomic counters. Verified live: status answered with climbing byte meters while the projection file did not yet exist.</p>
+  </div></div>
+  <div class="slice"><div class="n">2</div><div>
+    <h4>The veil system in the room <span class="who">· L3 / app — ✓ landed (913b734)</span></h4>
+    <p>Readiness derivation from <code>stream_state</code> + phase; the veil, the cooking card; empty-vs-pending law enforced in every column and panel; adaptive polling while the phase isn't live; the fresh-install warming room. Photographed: warming at 86%, mid-backfill veils over growing charts, the settled room with no veil anywhere. Degrades cleanly against an old daemon.</p>
+  </div></div>
+  <div class="slice"><div class="n">3</div><div>
+    <h4>Progressive first-run publication <span class="who">· L2 — ✓ landed (041e905)</span></h4>
+    <p>First-run backfill writes the public projection per-file with FTS deferred to the async search worker (<code>search_dirty</code> lands with its consumer, per the repo rule); effects or mirror re-warm keep readers current; <code>rebuild</code> stays atomic. <strong>Ordering:</strong> interleave runtimes round-robin, newest-first within each — 5,912 claude-code sessions must not starve grok's 131. Judged by the three gates above on the frozen ingest-bench pair. <em>Note for the implementer: serve's stream loop is already per-file (slice 5), so the unit of publication is already in place — this slice is "point it at the public projection and defer FTS."</em></p>
+    <p><strong>As landed (schema v7):</strong> the FTS index moved <em>out</em> of the projection entirely — a disposable detached FTS5 sidecar built by an async worker that reads one canonical snapshot and acks the single writer; same columns and tokenizer, so BM25 and snippets are unchanged. All three gates passed on the frozen six-adapter pair: <span class="mono" style="font-size:13px">lists 5.82 s · first readable 13.86 s · total 1.349×</span> (canonical alone 1.03×; search finishes warming after). Re-verified live on a fresh db: sessions flipped pending → indexed through the ordinary endpoints while <code>canonical_ready</code> was still false, canonical and search readiness surfacing independently — the veil UI lit up with zero app changes. Interrupted backfills now resume instead of discarding.</p>
+  </div></div>
+  <div class="slice"><div class="n">4</div><div>
+    <h4>Consent — the roll call <span class="who">· L3 + app — ✓ landed (192ac9d, d54fe26)</span></h4>
+    <p><code>GET /api/discoveries</code> (census only, never content), <code>POST /api/runtimes/enable</code> (one-shot, installed kinds only, local-origin-guarded), phase <code>awaiting_consent</code>; serve no longer force-enables — the projection's <code>enabled</code> flags ARE the consent record, so enrollment happens exactly once and restarts skip the roll call. <code>--agent</code>/<code>--all-agents</code> are the headless stand-ins. The screen: census rows pre-checked, absent agents quiet below, one Begin act, the trust line stated exactly once.</p>
+  </div></div>
+  <div class="slice"><div class="n">5</div><div>
+    <h4>Boost <span class="who">· L3 + app — ✓ landed (192ac9d, d54fe26)</span></h4>
+    <p>The stream queue is driven one file per call; <code>POST /api/ingest/boost</code> drains between files and moves the opened session's file to the front. The audit lane is disabled per-file and runs once over the full roster at the end — checkpoints make that exactly the single rotating forced replay it always was. The app boosts automatically on selecting a pending session. Verified live: a boosted queue-tail session indexed while 32 newer sessions were still pending. Bonus: graceful ctrl-c now lands between files, not minutes away.</p>
+  </div></div>
+
+  <h3>Open questions</h3>
+  <ul>
+    <li><strong>The total-time budget.</strong> Is 1.5× the right ceiling for slice 3, given time-to-useful falls from ~5 minutes to ~10 seconds? (Owner: James.)</li>
+    <li><strong>Skim cost at scale.</strong> The census meter assumes discovery's walk is cheap on 100k-file roots; if a cold NFS-ish disk breaks that, the roll call needs its own indeterminate moment. (Owner: measure in slice 1.)</li>
+  </ul>
+</section>
+
+<div class="footer">rosetta · the cold start · 2026-08-28 · grounded in crates/pipeline{discover,meta,stream}.rs, rosettad/serve.rs, server/{http,hub,health}.rs at working tree of this date</div>
+</div>
+
+</body></html>

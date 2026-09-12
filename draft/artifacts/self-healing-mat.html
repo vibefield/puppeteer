@@ -1,0 +1,1739 @@
+<!doctype html><html><head><meta charset=utf8><meta name=viewport content="width=device-width,initial-scale=1"><style>:root{color-scheme:light}body{margin:0;padding:0;font:14px -apple-system,BlinkMacSystemFont,sans-serif;background:#faf9f5;color:#141413}img{max-width:100%}[hidden]:not([hidden=until-found i]){display:none!important}</style></head><body>
+<title>Self-Healing Mat</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght,SOFT,WONK@9..144,300..900,0..100,0..1&family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+/* ==========================================================================
+   Self-Healing Mat — design tokens + components
+   For UI that sits on the cutting-mat canvas (prototype/src/shaders.js:
+   cuttingMatAlbedo / eliSoftShadow / heroFrag).
+
+   Layer model, by height above the mat:
+     print  — cream ≤ 28% (55% for digits), flush on the vinyl, passive only
+     paper  — cream / paper / kraft, ink text, 3px corners, rests at lift-1
+     ink    — 94% ink, cream text, 10px corners, hovers at lift-3, never scales
+     hot    — burnt orange as a mark (selection, focus, live), never as text on the mat
+   ========================================================================== */
+
+:root {
+  /* — the world (read-only). Evaluated from the shader; never paint UI with these. */
+  --mat-lit: #3d5a30;
+  --mat-penumbra: #344f28;
+  --mat-shade: #2b4220;
+  --mat-line: #5b7042;
+  --mat-src-sage: #86a078;
+  --mat-src-cream: #e8dcbe;
+
+  /* — materials */
+  --cream: #ffedd7;
+  --paper: #f6e0c6;
+  --kraft: #d9b57c;
+  --ink: #100904;
+  --ink-2: #382416;
+  --ink-3: #6c5f51;
+  --brass: #c4a574;
+  --brass-mute: #9a7f55;
+  --cork: #c48a52;
+  --hot: #dc5000;
+
+  --cream-rgb: 255 237 215;
+  --ink-rgb: 16 9 4;
+  --brass-rgb: 196 165 116;
+  --hot-rgb: 220 80 0;
+  --cast-rgb: 14 26 10;      /* shadow cast on the mat: the world's darkest value */
+  --ink-a: .94;              /* ink surface opacity — below .9 the mat bleeds through and it goes olive */
+
+  /* — print alphas (cream over the mat). .28 is the shader's coarse-line coverage. */
+  --print-soft: .14;
+  --print: .28;
+  --print-strong: .55;
+
+  /* — type */
+  --f-display: "Fraunces", "Iowan Old Style", Georgia, serif;
+  --f-ui: "IBM Plex Sans", system-ui, -apple-system, "Helvetica Neue", sans-serif;
+  --f-mono: "IBM Plex Mono", ui-monospace, "SF Mono", Menlo, monospace;
+  --t-kicker: 10px;
+  --t-mono-s: 11px;
+  --t-mono: 12px;
+  --t-ui: 13px;
+  --t-body: 15px;
+  --t-lead: 18px;
+  --t-title: 22px;
+  --t-h2: 30px;
+  --t-h1: 44px;
+  --t-hero: 72px;
+
+  /* — space: the mat's cell and module */
+  --cell: 8px;
+  --module: 80px;
+  --s1: 8px;  --s2: 16px; --s3: 24px; --s4: 32px; --s5: 40px;
+  --s6: 48px; --s8: 64px; --s10: 80px;
+
+  /* — radius by material */
+  --r-paper: 3px;
+  --r-tool: 10px;
+  --r-ctl: 6px;
+  --r-pill: 999px;
+
+  /* — elevation. Light is upper-right (1.2, 0.8, −1.2): shadows fall lower-left
+       and the penumbra widens with height, as the gobo blur widens with distance. */
+  --lift-0: none;
+  --lift-1: -1px 2px 0 rgb(var(--cast-rgb) / .22), -3px 5px 10px rgb(var(--cast-rgb) / .18);
+  --lift-2: -2px 3px 1px rgb(var(--cast-rgb) / .16), -6px 10px 20px rgb(var(--cast-rgb) / .26);
+  --lift-3: -1px 2px 3px rgb(var(--cast-rgb) / .25), -8px 14px 32px rgb(var(--cast-rgb) / .38);
+  --lift-4: -2px 4px 6px rgb(var(--cast-rgb) / .30), -14px 26px 64px rgb(var(--cast-rgb) / .55);
+
+  /* — rules. Solid lines belong to the mat; everything else is dashed. */
+  --hair: 1px solid rgb(var(--brass-rgb) / .22);
+  --hair-dash: 1px dashed rgb(var(--brass-rgb) / .28);
+  --hair-paper: 1px dashed rgb(var(--ink-rgb) / .28);
+  --print-rule: 1px solid rgb(var(--cream-rgb) / var(--print));
+
+  /* — focus: a cream halo so the hot ring reads on the mat too */
+  --focus-ring: 0 0 0 2px var(--cream), 0 0 0 4px var(--hot);
+
+  /* — motion. The projector spring is f = 1 Hz, ζ = 0.3: underdamped. */
+  --dur-1: 140ms;
+  --dur-2: 320ms;
+  --dur-3: 520ms;
+  --ease-out: cubic-bezier(.2, .7, .2, 1);
+  --spring: cubic-bezier(.3, 1.45, .45, 1);
+}
+
+/* --------------------------------------------------------------------------
+   base
+   -------------------------------------------------------------------------- */
+*, *::before, *::after { box-sizing: border-box; }
+.mat-body {
+  /* no background here: the live mat canvas sits behind this element */
+  margin: 0;
+  color: var(--cream);
+  font: 400 var(--t-body) / 1.5 var(--f-ui);
+  -webkit-font-smoothing: antialiased;
+}
+.mat-body :focus-visible { outline: 2px solid var(--hot); outline-offset: 3px; box-shadow: 0 0 0 2px var(--cream); }
+.mat-body ::selection { background: rgb(var(--hot-rgb) / .35); }
+.tabular { font-variant-numeric: tabular-nums; }
+
+/* --------------------------------------------------------------------------
+   print layer — flush on the vinyl
+   -------------------------------------------------------------------------- */
+.print {
+  color: rgb(var(--cream-rgb) / var(--print-strong));
+  font: 500 var(--t-kicker) / 1.4 var(--f-mono);
+  letter-spacing: .16em;
+  text-transform: uppercase;
+}
+.print--soft { color: rgb(var(--cream-rgb) / var(--print)); }
+.print-rule { border: var(--print-rule); }
+.print-text {
+  color: rgb(var(--cream-rgb) / var(--print-strong));
+  font: 500 var(--t-title) / 1.3 var(--f-display);
+  font-variation-settings: "opsz" 22, "SOFT" 40;
+}
+/* ruler: ticks every cell, longer every 5, longest with a digit every module */
+.ruler {
+  position: relative;
+  height: 24px;
+  --tick: rgb(var(--cream-rgb) / var(--print-strong));
+  background-image:
+    repeating-linear-gradient(to right, var(--tick) 0 1px, transparent 1px var(--module)),
+    repeating-linear-gradient(to right, var(--tick) 0 1px, transparent 1px 40px),
+    repeating-linear-gradient(to right, var(--tick) 0 1px, transparent 1px var(--cell));
+  background-size: 100% 14px, 100% 9px, 100% 5px;
+  background-position: left bottom;
+  background-repeat: repeat-x;
+  border-bottom: var(--print-rule);
+  font: 500 var(--t-kicker) / 1 var(--f-mono);
+  color: var(--tick);
+  font-variant-numeric: tabular-nums;
+}
+.ruler > span { position: absolute; top: 2px; transform: translateX(3px); }
+.ruler--v {
+  width: 24px; height: auto;
+  background-image:
+    repeating-linear-gradient(to bottom, var(--tick) 0 1px, transparent 1px var(--module)),
+    repeating-linear-gradient(to bottom, var(--tick) 0 1px, transparent 1px 40px),
+    repeating-linear-gradient(to bottom, var(--tick) 0 1px, transparent 1px var(--cell));
+  background-size: 14px 100%, 9px 100%, 5px 100%;
+  background-position: right top;
+  background-repeat: repeat-y;
+  border-bottom: 0;
+  border-right: var(--print-rule);
+}
+.ruler--v > span { top: auto; left: 2px; transform: translateY(3px); writing-mode: vertical-rl; }
+/* guides and marquee are hot marks with a cream halo */
+.guide { position: absolute; background: var(--hot); box-shadow: 0 0 0 1px rgb(var(--cream-rgb) / .35); }
+.guide--h { height: 1px; left: 0; right: 0; }
+.guide--v { width: 1px; top: 0; bottom: 0; }
+.marquee { position: absolute; border: 1px dashed rgb(var(--hot-rgb) / .85); background: rgb(var(--hot-rgb) / .08); }
+
+/* --------------------------------------------------------------------------
+   paper layer — what the user makes
+   -------------------------------------------------------------------------- */
+.sheet, .card, .dialog {
+  background: var(--cream);
+  color: var(--ink);
+  border-radius: var(--r-paper);
+  box-shadow: var(--lift-1);
+}
+.sheet { padding: var(--s5) var(--s6); }
+.card { padding: var(--s2) var(--s3); position: relative; }
+.card--paper { background: var(--paper); }
+.card--kraft { background: var(--kraft); }
+.card--lifted { box-shadow: var(--lift-2); }
+.card.is-selected { box-shadow: 0 0 0 2px var(--cream), 0 0 0 3.5px var(--hot), var(--lift-1); }
+.card--taped::before {
+  content: "";
+  position: absolute; top: -9px; left: 50%; width: 72px; height: 18px;
+  transform: translateX(-50%) rotate(-2deg);
+  background: rgb(var(--cream-rgb) / .62);
+  border-left: 1px dashed rgb(var(--ink-rgb) / .18);
+  border-right: 1px dashed rgb(var(--ink-rgb) / .18);
+}
+.card__kicker, .sheet__kicker {
+  margin: 0 0 4px;
+  font: 500 var(--t-kicker) / 1.4 var(--f-mono);
+  letter-spacing: .16em; text-transform: uppercase;
+  color: var(--ink-3);
+}
+.card__title {
+  margin: 0 0 6px;
+  font: 600 var(--t-title) / 1.15 var(--f-display);
+  font-variation-settings: "opsz" 22, "SOFT" 20;
+  letter-spacing: -.01em;
+  text-wrap: balance;
+}
+.card__body { margin: 0; font-size: 14px; line-height: 1.5; color: var(--ink-2); }
+.card__meta {
+  margin: var(--s1) 0 0;
+  display: flex; justify-content: space-between; gap: var(--s2);
+  font: 400 var(--t-mono-s) / 1.4 var(--f-mono);
+  color: var(--ink-3);
+  font-variant-numeric: tabular-nums;
+}
+/* rows on paper: dashed leaders, never solid */
+.rows { margin: 0; padding: 0; list-style: none; }
+.rows > li, .rows > div {
+  display: flex; justify-content: space-between; gap: var(--s2);
+  padding: 5px 0;
+  border-bottom: var(--hair-paper);
+  font: 400 var(--t-mono) / 1.4 var(--f-mono);
+  font-variant-numeric: tabular-nums;
+}
+.rows > :last-child { border-bottom: 0; }
+.rows b { font-weight: 500; color: var(--ink); }
+.rows span:first-child { color: var(--ink-3); }
+.field--paper {
+  width: 100%;
+  border: 0; border-bottom: var(--hair-paper);
+  background: transparent; color: var(--ink);
+  font: 400 var(--t-ui) / 1.4 var(--f-ui);
+  padding: 4px 0;
+}
+.field--paper:focus { border-bottom-color: var(--ink); outline: none; box-shadow: none; }
+
+/* --------------------------------------------------------------------------
+   ink layer — the tools
+   -------------------------------------------------------------------------- */
+.tool {
+  background: rgb(var(--ink-rgb) / var(--ink-a));
+  color: var(--cream);
+  border: var(--hair);
+  border-radius: var(--r-tool);
+  box-shadow: var(--lift-3);
+  font: 400 var(--t-mono) / 1.45 var(--f-mono);
+  font-variant-numeric: tabular-nums;
+}
+.tool--glass { backdrop-filter: blur(10px) saturate(.85); -webkit-backdrop-filter: blur(10px) saturate(.85); }
+.tool .kicker { color: var(--brass); }
+.kicker {
+  margin: 0;
+  font: 500 var(--t-kicker) / 1.4 var(--f-mono);
+  letter-spacing: .16em; text-transform: uppercase;
+}
+.muted { color: var(--brass-mute); }
+.readout {
+  display: flex; justify-content: space-between; gap: var(--s2);
+  padding: 4px 0;
+  border-bottom: var(--hair-dash);
+}
+.readout:last-child { border-bottom: 0; }
+.readout span:first-child { color: var(--brass-mute); }
+
+/* toolbar */
+.toolbar {
+  display: flex; align-items: center; gap: 2px;
+  padding: 6px 8px;
+}
+.toolbar--float { border-radius: var(--r-tool); }
+.toolbar--bar { border-radius: 0; border-width: 0 0 1px; box-shadow: none; padding: 8px var(--s2); }
+.toolbar__group { display: flex; align-items: center; gap: 2px; padding: 0 6px; }
+.toolbar__group + .toolbar__group { border-left: var(--hair); }
+.toolbar__brand {
+  display: flex; align-items: center; gap: 10px;
+  padding: 0 10px 0 4px;
+  font: 500 var(--t-ui) / 1 var(--f-ui);
+  color: var(--cream);
+  white-space: nowrap;
+}
+.toolbar__brand .mark { color: var(--brass); font-size: 18px; line-height: 1; }
+.toolbar__spacer { flex: 1; }
+.tb {
+  appearance: none; border: 0; margin: 0;
+  width: 28px; height: 28px; border-radius: 7px;
+  background: transparent; color: var(--cream);
+  display: inline-grid; place-items: center;
+  cursor: pointer;
+  transition: background var(--dur-1) var(--ease-out), color var(--dur-1) var(--ease-out);
+}
+.tb svg { width: 16px; height: 16px; stroke: currentColor; fill: none; stroke-width: 1.5; stroke-linecap: round; stroke-linejoin: round; }
+.tb:hover { background: rgb(var(--cream-rgb) / .08); }
+.tb:active { background: rgb(var(--cream-rgb) / .04); }
+.tb.is-on { background: rgb(var(--hot-rgb) / .16); color: var(--hot); }
+.tb.is-on::after { content: ""; position: absolute; }
+.tb[disabled] { opacity: .35; cursor: default; }
+
+/* buttons: pills. Hover lifts, press settles. */
+.btn {
+  appearance: none; margin: 0;
+  display: inline-flex; align-items: center; gap: 8px;
+  padding: 8px 14px;
+  border-radius: var(--r-pill);
+  border: 1px solid transparent;
+  font: 500 var(--t-ui) / 1.2 var(--f-ui);
+  cursor: pointer;
+  white-space: nowrap;
+  transition: transform var(--dur-1) var(--ease-out), box-shadow var(--dur-1) var(--ease-out),
+              background var(--dur-1) var(--ease-out), color var(--dur-1) var(--ease-out);
+}
+.btn:hover, .btn.is-hover { transform: translateY(-1px); box-shadow: var(--lift-1); }
+.btn:active, .btn.is-active { transform: translateY(0); box-shadow: none; }
+.btn[disabled], .btn.is-disabled { opacity: .4; cursor: default; transform: none; box-shadow: none; }
+.btn--paper { background: var(--cream); color: var(--ink); }
+.btn--paper:active, .btn--paper.is-active { background: var(--paper); }
+.btn--ink { background: var(--ink); color: var(--cream); border-color: rgb(var(--brass-rgb) / .28); }
+.btn--ink:hover, .btn--ink.is-hover { box-shadow: var(--lift-2); border-color: rgb(var(--brass-rgb) / .45); }
+.btn--ink:active, .btn--ink.is-active { background: var(--ink-2); }
+.btn--hot { background: var(--hot); color: var(--ink); }
+.btn--hot:active, .btn--hot.is-active { background: #c44600; }
+.btn--ghost { background: transparent; color: var(--cream); border-color: rgb(var(--cream-rgb) / .35); }
+.btn--ghost:hover, .btn--ghost.is-hover { background: rgb(var(--cream-rgb) / .06); box-shadow: none; }
+.btn--cut { background: transparent; color: var(--ink); border: 1px dashed rgb(var(--ink-rgb) / .5); }
+.btn--cut:hover, .btn--cut.is-hover { box-shadow: none; border-style: solid; transform: none; }
+.btn--s { padding: 5px 10px; font: 500 var(--t-mono-s) / 1.2 var(--f-mono); letter-spacing: .06em; text-transform: uppercase; }
+.btn .key { font: 400 var(--t-kicker) / 1 var(--f-mono); opacity: .6; letter-spacing: .04em; }
+
+/* fields on ink */
+.field {
+  width: 100%;
+  padding: 6px 10px;
+  background: rgb(var(--cream-rgb) / .06);
+  border: var(--hair);
+  border-radius: var(--r-ctl);
+  color: var(--cream);
+  font: 400 var(--t-mono) / 1.4 var(--f-mono);
+  transition: border-color var(--dur-1) var(--ease-out), background var(--dur-1) var(--ease-out);
+}
+.field::placeholder { color: var(--brass-mute); }
+.field:hover { border-color: rgb(var(--brass-rgb) / .4); }
+.field:focus { outline: none; border-color: var(--hot); box-shadow: 0 0 0 2px rgb(var(--cream-rgb) / .12); background: rgb(var(--cream-rgb) / .08); }
+.field--lg { padding: 10px 12px; font: 400 var(--t-body) / 1.4 var(--f-ui); }
+.select { position: relative; }
+.select .field { padding-right: 28px; appearance: none; }
+.select::after {
+  content: ""; position: absolute; right: 11px; top: 50%;
+  width: 6px; height: 6px; margin-top: -5px;
+  border-right: 1.5px solid var(--brass); border-bottom: 1.5px solid var(--brass);
+  transform: rotate(45deg); pointer-events: none;
+}
+.label { display: grid; gap: 6px; }
+.label > .kicker { display: flex; justify-content: space-between; }
+.label > .kicker output { color: var(--cream); letter-spacing: 0; text-transform: none; }
+
+/* slider: brass track, cream thumb */
+.slider { -webkit-appearance: none; appearance: none; width: 100%; height: 20px; background: transparent; margin: 0; cursor: pointer; }
+.slider::-webkit-slider-runnable-track { height: 2px; background: linear-gradient(var(--brass), var(--brass)) 0 0 / var(--fill, 33%) 100% no-repeat, rgb(var(--brass-rgb) / .3); border-radius: 1px; }
+.slider::-webkit-slider-thumb { -webkit-appearance: none; width: 12px; height: 12px; margin-top: -5px; border-radius: 50%; background: var(--cream); border: 1px solid var(--ink); box-shadow: var(--lift-1); }
+.slider::-moz-range-track { height: 2px; background: rgb(var(--brass-rgb) / .3); }
+.slider::-moz-range-progress { height: 2px; background: var(--brass); }
+.slider::-moz-range-thumb { width: 10px; height: 10px; border-radius: 50%; background: var(--cream); border: 1px solid var(--ink); }
+
+/* toggle */
+.toggle {
+  appearance: none; margin: 0; cursor: pointer;
+  width: 30px; height: 17px; border-radius: var(--r-pill);
+  background: var(--ink-2); border: var(--hair);
+  position: relative; vertical-align: middle;
+  transition: background var(--dur-1) var(--ease-out);
+}
+.toggle::after {
+  content: ""; position: absolute; top: 2px; left: 2px;
+  width: 11px; height: 11px; border-radius: 50%;
+  background: var(--cream);
+  transition: transform var(--dur-2) var(--spring);
+}
+.toggle:checked { background: var(--hot); border-color: transparent; }
+.toggle:checked::after { transform: translateX(13px); }
+.check { display: inline-flex; align-items: center; gap: 8px; cursor: pointer; }
+
+/* segmented: paper keys pressed into an ink tray */
+.seg { display: inline-flex; padding: 2px; gap: 2px; border-radius: var(--r-ctl); background: rgb(var(--ink-rgb) / .6); border: var(--hair); }
+.seg__item {
+  appearance: none; border: 0; margin: 0; cursor: pointer;
+  padding: 4px 10px; border-radius: 4px;
+  background: transparent; color: var(--brass-mute);
+  font: 500 var(--t-mono-s) / 1.2 var(--f-mono); letter-spacing: .06em; text-transform: uppercase;
+  transition: background var(--dur-1) var(--ease-out), color var(--dur-1) var(--ease-out);
+}
+.seg__item:hover { color: var(--cream); }
+.seg__item.is-on { background: var(--cream); color: var(--ink); }
+/* tabs on paper */
+.tabs { display: flex; gap: var(--s2); border-bottom: var(--hair-paper); }
+.tabs__item { appearance: none; background: none; border: 0; margin: 0 0 -1px; padding: 6px 2px; cursor: pointer; color: var(--ink-3); font: 500 var(--t-ui) / 1.2 var(--f-ui); border-bottom: 2px solid transparent; }
+.tabs__item.is-on { color: var(--ink); border-bottom-color: var(--ink); }
+
+/* panel / inspector */
+.panel { width: 320px; padding: 0; overflow: hidden; }
+.panel__head { display: flex; align-items: center; justify-content: space-between; padding: 10px 12px 10px 14px; }
+.panel__section { padding: 12px 14px 14px; border-top: var(--hair); display: grid; gap: 8px; }
+.panel__section > .kicker { margin-bottom: 2px; }
+.panel__foot { display: flex; justify-content: flex-end; gap: 8px; padding: 12px 14px; border-top: var(--hair); }
+
+/* menus */
+.menu { min-width: 208px; padding: 6px; }
+.menu__item {
+  display: flex; align-items: center; justify-content: space-between; gap: var(--s3);
+  width: 100%; padding: 6px 10px; border-radius: var(--r-ctl);
+  appearance: none; border: 0; margin: 0; background: transparent; color: var(--cream);
+  font: 400 var(--t-ui) / 1.3 var(--f-ui); text-align: left; cursor: pointer;
+}
+.menu__item:hover, .menu__item.is-active { background: rgb(var(--cream-rgb) / .08); }
+.menu__item .kbd, .menu__item .key { color: var(--brass-mute); }
+.menu__item.is-active::before { content: ""; width: 5px; height: 5px; border-radius: 50%; background: var(--hot); margin-right: -14px; margin-left: -2px; flex: none; }
+.menu__sep { height: 1px; margin: 4px 6px; border-top: var(--hair-dash); }
+.menu__item--danger { color: var(--cream); }
+.menu__item--danger:hover { background: rgb(var(--hot-rgb) / .18); }
+
+/* command palette */
+.palette { width: min(560px, 100%); padding: 8px; box-shadow: var(--lift-4); }
+.palette .field--lg { background: transparent; border: 0; border-bottom: var(--hair); border-radius: 0; padding: 10px 8px 12px; }
+.palette .field--lg:focus { box-shadow: none; border-bottom-color: var(--hot); }
+.palette__list { display: grid; gap: 1px; padding-top: 6px; }
+.palette__hint { display: flex; gap: var(--s2); padding: 8px 10px 4px; color: var(--brass-mute); font-size: var(--t-mono-s); }
+
+/* tooltip, toast, hud, chips, keycaps */
+.tip { display: inline-flex; align-items: center; gap: 8px; padding: 4px 8px; border-radius: var(--r-ctl); box-shadow: var(--lift-2); font-size: var(--t-mono-s); }
+.toast { display: inline-flex; align-items: center; gap: 10px; padding: 8px 14px 8px 12px; border-radius: var(--r-pill); }
+.hud { display: inline-flex; align-items: center; gap: 10px; padding: 5px 12px; border-radius: var(--r-pill); font-size: var(--t-mono-s); }
+.hud span { color: var(--brass-mute); }
+.hud b { font-weight: 400; color: var(--cream); }
+.dot { width: 7px; height: 7px; border-radius: 50%; background: var(--hot); box-shadow: 0 0 0 2px rgb(var(--cream-rgb) / .18); flex: none; }
+.kbd { display: inline-block; padding: 1px 5px; border: var(--hair); border-radius: 4px; font: 400 var(--t-kicker) / 1.4 var(--f-mono); color: var(--brass-mute); }
+.chip { display: inline-flex; align-items: center; gap: 6px; padding: 2px 8px; border-radius: var(--r-pill); font: 500 var(--t-mono-s) / 1.4 var(--f-mono); letter-spacing: .04em; }
+.chip--brass { border: 1px solid rgb(var(--brass-rgb) / .45); color: var(--brass); }
+.chip--cork { background: var(--cork); color: var(--ink); }
+.chip--paper { background: var(--paper); color: var(--ink-2); }
+
+/* nodes and wires */
+.node { width: 208px; padding: 10px 12px 12px; }
+.node__ports { position: absolute; inset: 0; pointer-events: none; }
+.port { position: absolute; width: 9px; height: 9px; border-radius: 50%; background: var(--brass); border: 1px solid var(--ink); top: 50%; margin-top: -5px; }
+.port--in { left: -5px; }
+.port--out { right: -5px; }
+.node--ghost { background: transparent; color: rgb(var(--cream-rgb) / var(--print-strong)); border: var(--print-rule); box-shadow: none; }
+.node--ghost .card__kicker, .node--ghost .card__title { color: inherit; }
+.wire { fill: none; stroke: rgb(var(--cream-rgb) / .6); stroke-width: 1.5; }
+.wire--pending { stroke-dasharray: 4 5; stroke: rgb(var(--cream-rgb) / .45); }
+
+/* selection handles, cursors */
+.handle { position: absolute; width: 8px; height: 8px; background: var(--cream); border: 1px solid var(--hot); }
+.handle--nw { left: -6px; top: -6px; } .handle--ne { right: -6px; top: -6px; }
+.handle--sw { left: -6px; bottom: -6px; } .handle--se { right: -6px; bottom: -6px; }
+.cursor { position: absolute; pointer-events: none; }
+.cursor svg { width: 14px; height: 18px; fill: var(--cream); stroke: var(--ink); stroke-width: 1; }
+.cursor__tag { position: absolute; left: 12px; top: 14px; padding: 2px 6px; background: var(--cream); color: var(--ink); border-radius: 2px; font: 500 var(--t-kicker) / 1.4 var(--f-mono); letter-spacing: .06em; white-space: nowrap; box-shadow: var(--lift-1); }
+
+/* scrim + dialog */
+.scrim { background: rgb(var(--cast-rgb) / .45); backdrop-filter: saturate(1.1); -webkit-backdrop-filter: saturate(1.1); }
+.dialog { width: min(480px, 100%); padding: var(--s3) var(--s4) var(--s3); box-shadow: var(--lift-4); }
+.dialog__title { margin: 0 0 8px; font: 600 var(--t-h2) / 1.1 var(--f-display); font-variation-settings: "opsz" 30, "SOFT" 20; letter-spacing: -.015em; text-wrap: balance; }
+.dialog__body { margin: 0; color: var(--ink-2); font-size: var(--t-body); }
+.dialog__actions { display: flex; justify-content: flex-end; gap: 8px; margin-top: var(--s3); }
+
+/* empty state lives in print */
+.empty { color: rgb(var(--cream-rgb) / var(--print-strong)); font: 500 var(--t-title) / 1.3 var(--f-display); font-variation-settings: "opsz" 22, "SOFT" 40; text-wrap: balance; }
+.empty small { display: block; margin-top: 6px; font: 500 var(--t-kicker) / 1.4 var(--f-mono); letter-spacing: .16em; text-transform: uppercase; }
+
+@media (prefers-reduced-motion: reduce) {
+  .mat-body *, .mat-body *::before, .mat-body *::after { transition-duration: 0ms !important; animation: none !important; }
+}
+
+</style>
+<style>
+  html { scroll-behavior: smooth; }
+  body { margin: 0; background: var(--ink); }
+  #mat { position: fixed; inset: 0; width: 100%; height: 100%; display: block; z-index: 0; }
+  .no-webgl #mat { display: none; }
+  .no-webgl .page {
+    background:
+      repeating-linear-gradient(to right, rgb(232 220 190 / .22) 0 1px, transparent 1px 80px),
+      repeating-linear-gradient(to bottom, rgb(232 220 190 / .22) 0 1px, transparent 1px 80px),
+      repeating-linear-gradient(to right, rgb(232 220 190 / .10) 0 1px, transparent 1px 8px),
+      repeating-linear-gradient(to bottom, rgb(232 220 190 / .10) 0 1px, transparent 1px 8px),
+      var(--mat-lit);
+  }
+  .page { position: relative; z-index: 1; min-height: 100vh; background: transparent; }
+  .doc-bar { position: fixed; top: 0; left: 0; right: 0; z-index: 30; }
+  .doc-bar .nav { display: flex; gap: 2px; overflow-x: auto; scrollbar-width: none; }
+  .doc-bar .nav a {
+    padding: 6px 9px; border-radius: 6px; white-space: nowrap;
+    color: var(--brass-mute); text-decoration: none;
+    font: 500 var(--t-mono-s) / 1 var(--f-mono); letter-spacing: .08em; text-transform: uppercase;
+  }
+  .doc-bar .nav a:hover { color: var(--cream); background: rgb(var(--cream-rgb) / .06); }
+  .doc-hud { position: fixed; right: 24px; bottom: 20px; z-index: 30; }
+  .doc-ruler { position: absolute; top: 0; left: 0; bottom: 0; z-index: 1; }
+
+  .desk { position: relative; margin-left: clamp(56px, 12vw, 200px); margin-right: 32px; max-width: 1120px; padding: 96px 0 160px; }
+  .desk > section { margin-top: 160px; scroll-margin-top: 80px; }
+  .desk > section:first-child { margin-top: 0; }
+  .zone { display: flex; align-items: center; gap: 16px; margin-bottom: 24px; }
+  .zone::after { content: ""; flex: 1; border-top: var(--print-rule); }
+  .zone--sub { margin: 56px 0 20px; }
+  .sheet--prose { max-width: 720px; }
+  .sheet--wide { max-width: 960px; }
+  .sheet__h { margin: 0 0 12px; font: 500 var(--t-h2) / 1.1 var(--f-display); font-variation-settings: "opsz" 30, "SOFT" 20; letter-spacing: -.015em; text-wrap: balance; }
+  .sheet p { max-width: 62ch; margin: 0 0 12px; color: var(--ink-2); }
+  .sheet p:last-child { margin-bottom: 0; }
+  .sheet code, .reading code { font: 400 .92em / 1.4 var(--f-mono); color: var(--ink); }
+  .sheet .lead { font-size: var(--t-lead); line-height: 1.45; color: var(--ink); max-width: 30ch; }
+  .on-mat { color: var(--cream); font-size: var(--t-ui); line-height: 1.5; }
+
+  /* hero */
+  .hero { display: grid; grid-template-columns: minmax(0, 620px) 1fr; gap: 48px; align-items: start; }
+  .hero h1 { margin: 6px 0 14px; font: 500 var(--t-hero) / .98 var(--f-display); font-variation-settings: "opsz" 144, "SOFT" 30, "WONK" 1; letter-spacing: -.025em; text-wrap: balance; }
+  .hero__side { position: relative; min-height: 520px; }
+  #coaster-anchor { position: absolute; right: 0; top: 140px; width: 350px; height: 350px; }
+  .hero__card { position: absolute; left: 0; top: 0; width: 320px; }
+  .hero__caption { position: absolute; right: 0; top: 508px; text-align: right; }
+
+  /* readings */
+  .readings { display: grid; grid-template-columns: 1fr 1fr; gap: 28px 40px; margin-top: 24px; }
+  .reading code { display: block; margin-bottom: 6px; color: var(--ink-3); font-size: var(--t-mono-s); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .reading h3 { margin: 0 0 6px; font: 600 var(--t-title) / 1.15 var(--f-display); font-variation-settings: "opsz" 22, "SOFT" 20; letter-spacing: -.01em; text-wrap: balance; }
+  .reading p { margin: 0; font-size: 14px; max-width: 40ch; }
+
+  /* directions */
+  .directions { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 24px; }
+  .dir__head { display: flex; gap: 10px; margin-bottom: 12px; }
+  .dir__head b { font-weight: 500; color: rgb(var(--cream-rgb) / .9); }
+  .dir__verdict { color: var(--cream); font-size: 12px; line-height: 1.5; margin: 12px 0 0; }
+  .mini { padding: 12px 14px; font: 400 var(--t-mono) / 1.45 var(--f-mono); font-variant-numeric: tabular-nums; display: grid; gap: 6px; }
+  .mini .rows > div { padding: 3px 0; font-size: 11px; }
+  .mini .btn { justify-self: start; margin-top: 4px; }
+  .mini--glass { background: rgba(20, 16, 12, .72); backdrop-filter: blur(16px); -webkit-backdrop-filter: blur(16px); border: 1px solid rgba(196, 165, 116, .18); border-radius: 12px; color: var(--cream); }
+  .mini--glass .rows > div { border-bottom-color: rgb(var(--brass-rgb) / .28); }
+  .mini--glass .rows span:first-child, .mini--ink .rows span:first-child { color: var(--brass-mute); }
+  .mini--glass .rows b, .mini--ink .rows b { color: var(--cream); }
+  .mini--ink .rows > div { border-bottom-color: rgb(var(--brass-rgb) / .28); }
+  .mini--float { color: var(--cream); padding-left: 0; padding-right: 0; }
+  .mini--float .rows > div { border-bottom: 1px dashed rgb(var(--cream-rgb) / .3); }
+  .mini--float .rows span:first-child { color: rgb(var(--cream-rgb) / .6); }
+  .mini--float .rows b { color: var(--cream); }
+  .mini--print { border: var(--print-rule); color: rgb(var(--cream-rgb) / var(--print-strong)); }
+  .mini--print .rows > div { border-bottom: 1px dashed rgb(var(--cream-rgb) / .28); }
+  .mini--print .rows span:first-child, .mini--print .rows b { color: inherit; font-weight: 400; }
+  .mini--print .btn { background: transparent; color: inherit; border: 1px dashed rgb(var(--cream-rgb) / .45); box-shadow: none; }
+
+  /* layer model */
+  .layer-fig { display: block; width: 100%; height: auto; margin: 8px 0 20px; }
+  .layer-table { width: 100%; border-collapse: collapse; font: 400 var(--t-ui) / 1.45 var(--f-ui); }
+  .layer-table th, .layer-table td { text-align: left; vertical-align: top; padding: 8px 12px 8px 0; border-bottom: var(--hair-paper); }
+  .layer-table th { font: 500 var(--t-kicker) / 1.4 var(--f-mono); letter-spacing: .14em; text-transform: uppercase; color: var(--ink-3); }
+  .layer-table td:first-child { font: 600 var(--t-body) / 1.4 var(--f-display); font-variation-settings: "opsz" 16; }
+  .layer-table code { white-space: nowrap; }
+  .layer-table tr:last-child td { border-bottom: 0; }
+
+  /* tokens */
+  .swatches { display: flex; flex-wrap: wrap; gap: 16px 12px; }
+  .swatch { width: 104px; }
+  .swatch__block { height: 64px; border-radius: var(--r-paper); box-shadow: var(--lift-1); display: grid; align-content: end; padding: 7px 8px; font: 500 var(--t-kicker) / 1.3 var(--f-mono); letter-spacing: .06em; }
+  .swatch__block--mat { box-shadow: none; border: var(--print-rule); }
+  .swatch__role { margin-top: 6px; color: var(--cream); font-size: 11px; line-height: 1.4; }
+  .ct { border-collapse: collapse; font: 400 var(--t-mono) / 1.4 var(--f-mono); font-variant-numeric: tabular-nums; }
+  .ct th, .ct td { padding: 6px 14px 6px 0; text-align: right; border-bottom: var(--hair-paper); white-space: nowrap; }
+  .ct th { font-weight: 500; color: var(--ink-3); font-size: var(--t-kicker); letter-spacing: .12em; text-transform: uppercase; }
+  .ct td:first-child, .ct th:first-child { text-align: left; }
+  .ct tr:last-child td { border-bottom: 0; }
+  .ct .no { color: var(--ink-3); }
+  .spec { display: grid; grid-template-columns: 200px 1fr; gap: 18px 24px; align-items: baseline; }
+  .spec > span { font: 400 var(--t-mono-s) / 1.4 var(--f-mono); color: var(--ink-3); }
+  .spec .hero-line { font: 500 56px / 1 var(--f-display); font-variation-settings: "opsz" 144, "SOFT" 30, "WONK" 1; letter-spacing: -.025em; }
+  .spec .h2-line { font: 500 var(--t-h2) / 1.1 var(--f-display); font-variation-settings: "opsz" 30, "SOFT" 20; letter-spacing: -.015em; }
+  .spec .title-line { font: 600 var(--t-title) / 1.15 var(--f-display); font-variation-settings: "opsz" 22, "SOFT" 20; }
+  .spec .body-line { font: 400 var(--t-body) / 1.5 var(--f-ui); max-width: 60ch; color: var(--ink-2); }
+  .spec .ui-line { font: 500 var(--t-ui) / 1.4 var(--f-ui); display: flex; gap: 24px; }
+  .spec .mono-line { font: 400 var(--t-mono) / 1.45 var(--f-mono); font-variant-numeric: tabular-nums; }
+  .spec .kick-line { font: 500 var(--t-kicker) / 1.4 var(--f-mono); letter-spacing: .16em; text-transform: uppercase; color: var(--ink-3); }
+  .space-demo { position: relative; height: 232px; }
+  .space-demo .card { position: absolute; left: 0; top: 40px; width: 320px; height: 160px; outline: 1px dashed rgb(var(--ink-rgb) / .3); outline-offset: -16px; }
+  .dim { position: absolute; color: rgb(var(--cream-rgb) / var(--print-strong)); font: 500 var(--t-kicker) / 1 var(--f-mono); letter-spacing: .12em; text-transform: uppercase; }
+  .dim--h { border-top: 1px solid rgb(var(--cream-rgb) / var(--print-strong)); padding-top: 6px; }
+  .dim--h::before, .dim--h::after { content: ""; position: absolute; top: -4px; width: 1px; height: 8px; background: rgb(var(--cream-rgb) / var(--print-strong)); }
+  .dim--h::before { left: 0; } .dim--h::after { right: 0; }
+  .dim--v { border-left: 1px solid rgb(var(--cream-rgb) / var(--print-strong)); padding-left: 8px; display: flex; align-items: center; }
+  .lifts { display: flex; gap: 48px; align-items: flex-start; flex-wrap: wrap; }
+  .lift { width: 112px; }
+  .lift__block { width: 96px; height: 96px; border-radius: var(--r-paper); background: var(--cream); color: var(--ink-3); display: grid; place-items: end start; padding: 8px; font: 500 var(--t-kicker) / 1.3 var(--f-mono); letter-spacing: .1em; }
+  .lift__block--ink { background: rgb(var(--ink-rgb) / var(--ink-a)); color: var(--brass-mute); border: var(--hair); border-radius: var(--r-tool); }
+  .lift .print { margin-top: 14px; }
+  .motion-table { border-collapse: collapse; font: 400 var(--t-mono) / 1.5 var(--f-mono); }
+  .motion-table td { padding: 5px 20px 5px 0; border-bottom: var(--hair-paper); vertical-align: top; }
+  .motion-table td:first-child { color: var(--ink-3); }
+  .motion-table tr:last-child td { border-bottom: 0; }
+  .settle { position: relative; height: 150px; display: flex; gap: 32px; align-items: flex-start; }
+  .settle .tool { width: 260px; padding: 12px 14px; opacity: 0; transform: translateY(-28px); transition: transform var(--dur-3) var(--spring), opacity var(--dur-2) var(--ease-out); }
+  .settle .tool.is-in { opacity: 1; transform: translateY(0); }
+  .tokens-pre { margin: 0; padding: 0; font: 400 var(--t-mono-s) / 1.55 var(--f-mono); color: var(--ink-2); white-space: pre; overflow-x: auto; max-height: 420px; overflow-y: auto; }
+  .tokens-head { display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; }
+
+  /* components */
+  .stage { position: relative; display: flex; flex-wrap: wrap; gap: 32px 40px; align-items: flex-start; }
+  .stage .print { align-self: center; }
+  .stack { display: grid; gap: 12px; }
+  .stack--row { display: flex; flex-wrap: wrap; gap: 12px; align-items: center; }
+  .ctl-panel { width: 300px; padding: 14px; display: grid; gap: 14px; }
+  .paper-form { width: 280px; display: grid; gap: 10px; }
+  .nodes { position: relative; width: 760px; height: 190px; }
+  .nodes .node { position: absolute; }
+  .nodes svg { position: absolute; inset: 0; width: 100%; height: 100%; pointer-events: none; }
+  .sel-demo { position: relative; width: 640px; height: 240px; }
+  .sel-demo .card { position: absolute; }
+  .scrim-demo { position: relative; width: 100%; max-width: 760px; height: 300px; display: grid; place-items: center; border-radius: var(--r-paper); }
+  .screen { position: relative; aspect-ratio: 16 / 9; border: var(--print-rule); overflow: hidden; }
+  .screen > * { position: absolute; }
+  .screen .ruler { left: 24px; right: 0; top: 0; }
+  .screen .ruler--v { left: 0; top: 24px; bottom: 0; right: auto; }
+  .screen__corner { left: 0; top: 0; width: 24px; height: 24px; border-right: var(--print-rule); border-bottom: var(--print-rule); }
+  .rules { display: grid; grid-template-columns: 1fr 1fr; gap: 24px 40px; }
+  .rules h3 { margin: 0 0 8px; font: 600 var(--t-title) / 1.15 var(--f-display); font-variation-settings: "opsz" 22, "SOFT" 20; }
+  .rules ul { margin: 0; padding: 0; list-style: none; display: grid; gap: 8px; font-size: 14px; color: var(--ink-2); }
+  .rules li { padding-left: 18px; position: relative; }
+  .rules li::before { content: "—"; position: absolute; left: 0; color: var(--ink-3); }
+  .foot { margin-top: 120px; display: grid; gap: 6px; }
+  .foot .print { text-transform: none; letter-spacing: .06em; }
+
+  @media (max-width: 1100px) {
+    .directions { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+    .hero { grid-template-columns: 1fr; }
+    .hero__side { min-height: 0; height: 300px; }
+    #coaster-anchor { display: none; }
+    .hero__caption { display: none; }
+    .nodes { width: 100%; }
+  }
+  @media (max-width: 800px) {
+    .desk { margin-left: 16px; margin-right: 16px; padding-top: 88px; }
+    .doc-ruler, .doc-hud { display: none; }
+    .doc-bar .toolbar__brand span { display: none; }
+    .sheet { padding: var(--s3) var(--s3); }
+    .hero h1 { font-size: 48px; }
+    .readings, .rules, .directions { grid-template-columns: 1fr; }
+    .spec { grid-template-columns: 1fr; gap: 6px 0; }
+    .spec > span { margin-top: 12px; }
+    .screen { aspect-ratio: 3 / 4; }
+    .screen .panel, .screen .menu, .screen .node, .screen .nodes-wire { display: none; }
+    .sel-demo, .nodes { width: 100%; }
+  }
+</style>
+<canvas id="mat" aria-hidden="true"></canvas>
+<div class="mat-body page">
+
+  <header class="tool tool--glass toolbar toolbar--bar doc-bar">
+    <div class="toolbar__brand"><span class="mark">◎</span><span>Self-Healing Mat</span></div>
+    <nav class="nav toolbar__group" aria-label="Sections">
+      <a href="#readings">Readings</a>
+      <a href="#directions">Directions</a>
+      <a href="#layers">Layers</a>
+      <a href="#tokens">Tokens</a>
+      <a href="#components">Components</a>
+      <a href="#screen">Screen</a>
+      <a href="#rules">Rules</a>
+    </nav>
+    <div class="toolbar__spacer"></div>
+    <div class="toolbar__group">
+      <label class="check kicker" for="wind">Wind <input class="toggle" type="checkbox" id="wind" checked></label>
+    </div>
+    <div class="toolbar__group"><span class="chip chip--brass">gobo_c · procedural stand-in</span></div>
+  </header>
+
+  <aside class="ruler ruler--v doc-ruler" id="doc-ruler" aria-hidden="true"></aside>
+
+  <main class="desk">
+
+    <section id="hero" class="hero">
+      <div class="sheet">
+        <p class="sheet__kicker">Design system · hero desk · tree-shadow</p>
+        <h1>Self-Healing Mat</h1>
+        <p class="lead">A UI system for the cutting-mat canvas. The mat is a desk under a tree: mid-green, faintly gridded, with leaf shadow moving across it.</p>
+        <p>Everything placed on it is one of three things: printed on the vinyl, laid on it as paper, or held over it as a tool. One hot orange marks the state that matters right now. The rules below come from the shader itself, not from a template.</p>
+        <p class="card__meta" style="justify-content:flex-start;gap:14px"><span>cuttingMatAlbedo</span><span>eliSoftShadow</span><span>heroFrag</span><span>prototype/src/shaders.js</span></p>
+      </div>
+      <div class="hero__side">
+        <div class="card hero__card">
+          <p class="card__kicker">Pass A · wind render target</p>
+          <h2 class="card__title">Sample the RGBA plate, add three sines, write 512²</h2>
+          <p class="card__body">R is the silhouette, G the first amplitude, B the phase, A the second and third amplitudes. Strength 0.3885 for the palm plate.</p>
+          <p class="card__meta"><span>gobo_c · palm</span><span>WGSL · WebGPU</span></p>
+        </div>
+        <div id="coaster-anchor" aria-hidden="true"></div>
+        <p class="print hero__caption">Cork coaster · eliSoftShadow · light (1.2, 0.8, −1.2)</p>
+      </div>
+    </section>
+
+    <section id="readings">
+      <p class="print zone">Readings · shaders.js 142–228</p>
+      <div class="sheet sheet--wide">
+        <h2 class="sheet__h">What the shader already decided</h2>
+        <p>Six constants in the hero-desk pass fix most of the design before any UI exists. Each one below is quoted, then turned into a rule.</p>
+        <div class="readings">
+          <div class="reading">
+            <code>lightDir = normalize(vec3f(1.2, 0.8, -1.2))</code>
+            <h3>Light sits upper-right</h3>
+            <p>Screen-up is world −z, so every cast shadow falls lower-left. The system's elevation shadows all offset (−x, +y).</p>
+          </div>
+          <div class="reading">
+            <code>hsb.g = min(hsb.g + (1.0 − shade) × 0.1, 1.0)</code>
+            <h3>Shadows get richer, not greyer</h3>
+            <p>Darkening adds saturation. Hover and press deepen a colour; nothing in the system goes grey, and there is no neutral grey to reach for.</p>
+          </div>
+          <div class="reading">
+            <code>cover = max(cover, coarse × 0.28)</code>
+            <h3>The mat is printed at 28%</h3>
+            <p>The heaviest grid line is cream at 28% over sage. Anything meant to look printed on the vinyl uses cream at 28% or less, 55% for ruler digits.</p>
+          </div>
+          <div class="reading">
+            <code>pow(color, 2.2) … pow(color, 1/2.2) → LinearSRGB output</code>
+            <h3>The mat renders darker than its swatch</h3>
+            <p>Sage #86a078 in the source lands on screen as #3d5a30, and #2b4220 under leaves. Cream clears 6.8:1 in full light; ink fails at 2.5:1. Text on the mat is always cream.</p>
+          </div>
+          <div class="reading">
+            <code>cell = matSize.x / 350 → 8.3 px at default zoom</code>
+            <h3>Eight pixels a cell, eighty a module</h3>
+            <p>On a 900px-tall viewport a cell is 8.3 px and the heavy line repeats every 83 px. Spacing runs on 8, layout on 80, so components sit on the mat's own lines.</p>
+          </div>
+          <div class="reading">
+            <code>SecondOrderDynamics(f = 1, z = 0.3, r = 2)</code>
+            <h3>The world moves; the tools don't</h3>
+            <p>Leaves breathe at three harmonics and the projector follows the mouse on an underdamped spring. That spring is the only easing the UI borrows; nothing else animates on its own.</p>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section id="directions">
+      <p class="print zone">Five ways to sit on a mat · same panel, five treatments</p>
+      <div class="directions">
+        <div class="dir">
+          <p class="print dir__head"><b>A</b> Dark glass · today's HUD</p>
+          <div class="mini mini--glass">
+            <p class="kicker">Projector</p>
+            <div class="rows"><div><span>plate</span><b>gobo_c</b></div><div><span>sharp</span><b>0.3730</b></div><div><span>soft</span><b>0.7906</b></div></div>
+            <button class="btn btn--paper btn--s" type="button">Re-bake plate</button>
+          </div>
+          <p class="dir__verdict">Recedes, but the 16px blur drags the green in and the panel goes olive. Reads as a debug overlay, not something on the desk.</p>
+        </div>
+        <div class="dir">
+          <p class="print dir__head"><b>B</b> Ink, tightened</p>
+          <div class="mini mini--ink tool">
+            <p class="kicker">Projector</p>
+            <div class="rows"><div><span>plate</span><b>gobo_c</b></div><div><span>sharp</span><b>0.3730</b></div><div><span>soft</span><b>0.7906</b></div></div>
+            <button class="btn btn--paper btn--s" type="button">Re-bake plate</button>
+          </div>
+          <p class="dir__verdict">94% ink, blur only when it passes over content. Stays ink, stays warm. A pen on the desk: the tools live here.</p>
+        </div>
+        <div class="dir">
+          <p class="print dir__head"><b>C</b> Paper</p>
+          <div class="mini card">
+            <p class="card__kicker">Projector</p>
+            <div class="rows"><div><span>plate</span><b>gobo_c</b></div><div><span>sharp</span><b>0.3730</b></div><div><span>soft</span><b>0.7906</b></div></div>
+            <button class="btn btn--ink btn--s" type="button">Re-bake plate</button>
+          </div>
+          <p class="dir__verdict">Belongs to the desk and gives 17:1. What the user makes lives here. Too much of it and the mat disappears.</p>
+        </div>
+        <div class="dir">
+          <p class="print dir__head"><b>D</b> Floating type</p>
+          <div class="mini mini--float">
+            <p class="kicker" style="color:rgb(var(--cream-rgb) / .6)">Projector</p>
+            <div class="rows"><div><span>plate</span><b>gobo_c</b></div><div><span>sharp</span><b>0.3730</b></div><div><span>soft</span><b>0.7906</b></div></div>
+            <button class="btn btn--paper btn--s" type="button">Re-bake plate</button>
+          </div>
+          <p class="dir__verdict">Lusion's hero move. Right for a headline and a call to action, wrong for a form: nothing holds the fields together.</p>
+        </div>
+        <div class="dir">
+          <p class="print dir__head"><b>E</b> Printed on the vinyl</p>
+          <div class="mini mini--print">
+            <p class="kicker" style="color:inherit">Projector</p>
+            <div class="rows"><div><span>plate</span><b>gobo_c</b></div><div><span>sharp</span><b>0.3730</b></div><div><span>soft</span><b>0.7906</b></div></div>
+            <button class="btn btn--s" type="button">Re-bake plate</button>
+          </div>
+          <p class="dir__verdict">Part of the mat by construction, 2.5:1 by construction. Passive marks only: rulers, hints, zone labels, empty states.</p>
+        </div>
+      </div>
+      <div class="sheet sheet--prose" style="margin-top:48px">
+        <h2 class="sheet__h">Verdict: a desk, not a dashboard</h2>
+        <p>No single treatment survives every job. The system is four of them assigned by role. Print for what the mat says on its own. Paper for what the user makes. Ink for the tools that act on it. Floating cream type for the few words that need no container.</p>
+        <p>Height sorts them: print is flush, paper rests, tools hover. Ink stays at 94% because anything more transparent turns olive over green, and it never scales with zoom because it is not on the desk. One burnt orange is reserved for state: the selection, the focus ring, the live dot, the active tool. It is never used as text on the mat, where it reads at 1.9:1.</p>
+      </div>
+    </section>
+
+    <section id="layers">
+      <p class="print zone">The layer model · four heights</p>
+      <div class="sheet sheet--wide">
+        <h2 class="sheet__h">Four layers by height above the mat</h2>
+        <svg class="layer-fig" viewBox="0 0 900 240" role="img" aria-label="Cross-section of the mat with print flush on it, paper resting just above, and an ink tool hovering higher; light from the upper right casts shadows to the lower left that widen with height">
+          <defs>
+            <filter id="soft1" x="-20%" y="-50%" width="140%" height="200%"><feGaussianBlur stdDeviation="2"/></filter>
+            <filter id="soft3" x="-20%" y="-50%" width="140%" height="200%"><feGaussianBlur stdDeviation="6"/></filter>
+          </defs>
+          <rect x="0" y="0" width="900" height="240" fill="#f6e0c6"/>
+          <rect x="40" y="186" width="820" height="26" fill="#3d5a30"/>
+          <rect x="40" y="186" width="300" height="26" fill="#2b4220"/>
+          <g stroke="#e8dcbe" stroke-opacity=".28" stroke-width="1">
+            <line x1="120" y1="186" x2="120" y2="212"/><line x1="200" y1="186" x2="200" y2="212"/><line x1="280" y1="186" x2="280" y2="212"/><line x1="360" y1="186" x2="360" y2="212"/><line x1="440" y1="186" x2="440" y2="212"/><line x1="520" y1="186" x2="520" y2="212"/><line x1="600" y1="186" x2="600" y2="212"/><line x1="680" y1="186" x2="680" y2="212"/><line x1="760" y1="186" x2="760" y2="212"/><line x1="840" y1="186" x2="840" y2="212"/>
+          </g>
+          <text x="56" y="204" font-family="IBM Plex Mono, monospace" font-size="11" fill="#e8dcbe" fill-opacity=".55" letter-spacing="1.5">10  20  30</text>
+          <polygon points="236,186 386,186 372,192 222,192" fill="#16230f" fill-opacity=".35" filter="url(#soft1)"/>
+          <rect x="240" y="166" width="150" height="18" rx="2" fill="#ffedd7" stroke="#100904" stroke-opacity=".12"/>
+          <polygon points="472,186 652,186 622,206 442,206" fill="#16230f" fill-opacity=".38" filter="url(#soft3)"/>
+          <rect x="480" y="104" width="180" height="20" rx="6" fill="#100904" stroke="#c4a574" stroke-opacity=".35"/>
+          <g stroke="#dc5000" stroke-width="1.5" fill="none"><rect x="272" y="160" width="86" height="30" rx="2"/></g>
+          <g fill="#ffedd7" stroke="#dc5000" stroke-width="1"><rect x="269" y="157" width="6" height="6"/><rect x="355" y="157" width="6" height="6"/><rect x="269" y="187" width="6" height="6"/><rect x="355" y="187" width="6" height="6"/></g>
+          <g stroke="#c4a574" stroke-width="1.5" stroke-linecap="round">
+            <line x1="836" y1="44" x2="800" y2="72"/><line x1="850" y1="58" x2="814" y2="86"/><line x1="822" y1="30" x2="786" y2="58"/>
+          </g>
+          <circle cx="852" cy="36" r="9" fill="none" stroke="#c4a574" stroke-width="1.5"/>
+          <g font-family="IBM Plex Mono, monospace" font-size="11" fill="#6c5f51">
+            <text x="48" y="176">print · flush · cream ≤ 28%</text>
+            <text x="240" y="156">paper · lift-1 · 3px corners</text>
+            <text x="480" y="94">ink · lift-3 · 10px corners · never scales</text>
+            <text x="366" y="226" fill="#dc5000">hot · marks only</text>
+            <text x="700" y="26" text-anchor="end">light (1.2, 0.8, −1.2)</text>
+            <text x="860" y="232" text-anchor="end">shadow offset −x +y, penumbra widens with height</text>
+          </g>
+          <g font-family="IBM Plex Mono, monospace" font-size="10" fill="#6c5f51" letter-spacing="1.5">
+            <text x="40" y="232">MAT · #3d5a30 LIT · #2b4220 UNDER LEAVES</text>
+          </g>
+        </svg>
+        <table class="layer-table">
+          <thead><tr><th>Layer</th><th>Material</th><th>Text</th><th>Corners</th><th>Shadow</th><th>Scales with zoom</th><th>Lives here</th></tr></thead>
+          <tbody>
+            <tr><td>Print</td><td>cream ≤ 28%, 55% for digits</td><td>cream, sub-AA by design</td><td>none</td><td>none</td><td>yes</td><td>rulers, snap guides, zone labels, coordinates, empty states</td></tr>
+            <tr><td>Paper</td><td>cream, paper, kraft</td><td>ink, ink-2, ink-3</td><td><code>3px</code></td><td><code>lift-1</code>, <code>lift-2</code> when dragged</td><td>yes</td><td>cards, notes, nodes, media, dialogs, the document itself</td></tr>
+            <tr><td>Ink</td><td>ink at 94%, blur only for chrome that passes over content</td><td>cream, brass, brass-mute</td><td><code>10px</code>, pills for actions</td><td><code>lift-3</code>, <code>lift-4</code> for the palette</td><td>no</td><td>toolbar, inspector, menus, command palette, toasts, zoom HUD</td></tr>
+            <tr><td>Hot</td><td>burnt orange as a mark, with a cream halo on the mat</td><td>never on the mat; ink on a hot fill</td><td>inherits</td><td>none</td><td>with its object</td><td>selection, focus ring, marquee, snap guides, live dot, the active tool</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <section id="tokens">
+      <p class="print zone">Tokens · colour</p>
+      <div class="swatches">
+        <div class="swatch"><div class="swatch__block" style="background:var(--cream);color:var(--ink-3)">cream<br>#ffedd7</div><p class="swatch__role">Text on the mat. Primary paper.</p></div>
+        <div class="swatch"><div class="swatch__block" style="background:var(--paper);color:var(--ink-3)">paper<br>#f6e0c6</div><p class="swatch__role">Index card. Secondary paper.</p></div>
+        <div class="swatch"><div class="swatch__block" style="background:var(--kraft);color:var(--ink-2)">kraft<br>#d9b57c</div><p class="swatch__role">Notes to self. Taped.</p></div>
+        <div class="swatch"><div class="swatch__block" style="background:var(--ink);color:var(--brass-mute);border:var(--hair)">ink<br>#100904</div><p class="swatch__role">Tools. Text on paper.</p></div>
+        <div class="swatch"><div class="swatch__block" style="background:var(--ink-2);color:var(--brass)">ink-2<br>#382416</div><p class="swatch__role">Pressed ink. Body on paper.</p></div>
+        <div class="swatch"><div class="swatch__block" style="background:var(--brass);color:var(--ink)">brass<br>#c4a574</div><p class="swatch__role">Instrument markings. Large labels on the mat.</p></div>
+        <div class="swatch"><div class="swatch__block" style="background:var(--brass-mute);color:var(--ink)">brass-mute<br>#9a7f55</div><p class="swatch__role">Secondary text on ink, 5.1:1.</p></div>
+        <div class="swatch"><div class="swatch__block" style="background:var(--cork);color:var(--ink)">cork<br>#c48a52</div><p class="swatch__role">Objects. Chips on paper.</p></div>
+        <div class="swatch"><div class="swatch__block" style="background:var(--hot);color:var(--ink)">hot<br>#dc5000</div><p class="swatch__role">State. Never text on the mat.</p></div>
+      </div>
+      <p class="print zone zone--sub">Measured mat · evaluated from the shader · read-only</p>
+      <div class="swatches">
+        <div class="swatch"><div class="swatch__block swatch__block--mat" style="background:#3d5a30;color:rgb(255 237 215 / .7)">mat-lit<br>#3d5a30</div><p class="swatch__role">Full light, shade 1.0</p></div>
+        <div class="swatch"><div class="swatch__block swatch__block--mat" style="background:#344f28;color:rgb(255 237 215 / .7)">penumbra<br>#344f28</div><p class="swatch__role">shade 0.75</p></div>
+        <div class="swatch"><div class="swatch__block swatch__block--mat" style="background:#2b4220;color:rgb(255 237 215 / .7)">mat-shade<br>#2b4220</div><p class="swatch__role">Under a leaf, shade 0.51</p></div>
+        <div class="swatch"><div class="swatch__block swatch__block--mat" style="background:#5b7042;color:rgb(255 237 215 / .8)">mat-line<br>#5b7042</div><p class="swatch__role">Coarse line, cover 0.28</p></div>
+        <div class="swatch"><div class="swatch__block swatch__block--mat" style="background:#16230f;color:rgb(255 237 215 / .6)">cast<br>#16230f</div><p class="swatch__role">Coaster + leaf. All shadows are this colour.</p></div>
+      </div>
+      <div class="sheet sheet--prose" style="margin-top:40px">
+        <h2 class="sheet__h">Contrast against the rendered mat</h2>
+        <p>WCAG ratios computed against the measured swatches. ✓ passes 4.5:1, ◐ passes 3:1 for large text and UI edges only, ✗ fails.</p>
+        <div style="overflow-x:auto">
+          <table class="ct">
+            <thead><tr><th>Foreground</th><th>Lit mat</th><th>Under leaves</th><th>On ink</th><th>On cream</th></tr></thead>
+            <tbody>
+              <tr><td>cream</td><td>6.8 ✓</td><td>9.6 ✓</td><td>17.3 ✓</td><td class="no">—</td></tr>
+              <tr><td>paper</td><td>6.1 ✓</td><td>8.6 ✓</td><td>15.4 ✓</td><td class="no">—</td></tr>
+              <tr><td>brass</td><td>3.3 ◐</td><td>4.7 ✓</td><td>8.5 ✓</td><td class="no">1.9 ✗</td></tr>
+              <tr><td>brass-mute</td><td class="no">2.1 ✗</td><td class="no">2.9 ✗</td><td>5.1 ✓</td><td class="no">—</td></tr>
+              <tr><td>ink</td><td class="no">2.5 ✗</td><td class="no">1.8 ✗</td><td class="no">—</td><td>17.3 ✓</td></tr>
+              <tr><td>ink-3</td><td class="no">1.3 ✗</td><td class="no">—</td><td class="no">—</td><td>5.4 ✓</td></tr>
+              <tr><td>cork</td><td class="no">2.6 ✗</td><td>3.7 ◐</td><td>6.5 ✓</td><td class="no">2.6 ✗</td></tr>
+              <tr><td>hot</td><td class="no">1.9 ✗</td><td class="no">2.7 ✗</td><td>4.9 ✓</td><td>3.5 ◐</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <p class="print zone zone--sub">Tokens · type</p>
+      <div class="sheet sheet--wide">
+        <div class="spec">
+          <span>hero · Fraunces 72 · wonk</span><div class="hero-line">Self-Healing</div>
+          <span>h2 · Fraunces 30 · soft 20</span><div class="h2-line">Cookie / gobo tree shadows</div>
+          <span>title · Fraunces 22 · 600</span><div class="title-line">Pass C · linearize NDC z, golden-angle six-tap blur</div>
+          <span>body · Plex Sans 15</span><div class="body-line">Each scene has a baked 60° projector camera. Receivers take world position to clip space to UV, then blur with a radius taken from the linearized depth. Not a shadow map. Not a 3D tree.</div>
+          <span>ui · Plex Sans 13 · 500</span><div class="ui-line"><span>Re-bake plate</span><span>Export mat</span><span>Reset view</span></div>
+          <span>mono · Plex Mono 12</span><div class="mono-line">strength 0.3885 · time 12.40 · 60 fps · k0=0 · z 1.00</div>
+          <span>kicker · Plex Mono 10</span><div class="kick-line">gobo_c · palm · WebGPU</div>
+        </div>
+      </div>
+
+      <p class="print zone zone--sub">Tokens · space · the card sits on the mat's own lines</p>
+      <div class="space-demo">
+        <div class="dim dim--h" style="left:0;top:8px;width:320px">4 modules · 320 px</div>
+        <div class="card"><p class="card__kicker">Pass B</p><h3 class="card__title">World position → gobo clip → UV</h3><p class="card__body">Padding is two cells. Width is four modules.</p></div>
+        <div class="dim dim--v" style="left:336px;top:40px;height:16px">2 cells · 16 px</div>
+        <div class="dim dim--v" style="left:336px;top:56px;height:144px;border-left-style:dashed">module 80 · cell 8 · space 8 16 24 32 40 48 64 80</div>
+      </div>
+
+      <p class="print zone zone--sub">Tokens · elevation · every shadow falls lower-left</p>
+      <div class="lifts">
+        <div class="lift"><div class="lift__block" style="box-shadow:var(--lift-1)">lift-1</div><p class="print">paper, resting</p></div>
+        <div class="lift"><div class="lift__block" style="box-shadow:var(--lift-2)">lift-2</div><p class="print">paper, dragged</p></div>
+        <div class="lift"><div class="lift__block lift__block--ink" style="box-shadow:var(--lift-3)">lift-3</div><p class="print">ink tool</p></div>
+        <div class="lift"><div class="lift__block" style="box-shadow:var(--lift-4)">lift-4</div><p class="print">dialog, palette</p></div>
+        <p class="on-mat" style="max-width:34ch;align-self:center">Offset (−x, +y). The penumbra widens as the object rises, the way <code style="font-family:var(--f-mono);font-size:12px">getGoboBlurRatio</code> widens the leaf blur with distance from the receiver.</p>
+      </div>
+
+      <p class="print zone zone--sub">Tokens · motion</p>
+      <div class="stage">
+        <div class="sheet" style="width:min(420px,100%)">
+          <table class="motion-table">
+            <tr><td>dur-1</td><td>140 ms · hover, press, toggles</td></tr>
+            <tr><td>dur-2</td><td>320 ms · menus, panels</td></tr>
+            <tr><td>dur-3</td><td>520 ms · sheets, dialogs, the palette</td></tr>
+            <tr><td>ease-out</td><td>cubic-bezier(.2, .7, .2, 1)</td></tr>
+            <tr><td>spring</td><td>cubic-bezier(.3, 1.45, .45, 1) · the projector's ζ 0.3 overshoot</td></tr>
+            <tr><td>ambient</td><td>none. The leaves are the motion.</td></tr>
+          </table>
+        </div>
+        <div class="settle">
+          <button class="btn btn--ghost" type="button" id="settle-btn">Drop a panel</button>
+          <div class="tool" id="settle-panel">
+            <p class="kicker">Projector</p>
+            <div class="readout"><span>sharp</span><b>0.3730</b></div>
+            <div class="readout"><span>soft</span><b>0.7906</b></div>
+          </div>
+        </div>
+      </div>
+
+      <p class="print zone zone--sub">Tokens · CSS · prototype/design/mat.css</p>
+      <div class="sheet sheet--wide">
+        <div class="tokens-head"><h2 class="sheet__h" style="margin:0">The root block</h2><button class="btn btn--cut" type="button" id="copy-tokens">Copy tokens</button></div>
+        <pre class="tokens-pre" id="tokens-pre">:root {
+  /* — the world (read-only). Evaluated from the shader; never paint UI with these. */
+  --mat-lit: #3d5a30;
+  --mat-penumbra: #344f28;
+  --mat-shade: #2b4220;
+  --mat-line: #5b7042;
+  --mat-src-sage: #86a078;
+  --mat-src-cream: #e8dcbe;
+
+  /* — materials */
+  --cream: #ffedd7;
+  --paper: #f6e0c6;
+  --kraft: #d9b57c;
+  --ink: #100904;
+  --ink-2: #382416;
+  --ink-3: #6c5f51;
+  --brass: #c4a574;
+  --brass-mute: #9a7f55;
+  --cork: #c48a52;
+  --hot: #dc5000;
+
+  --cream-rgb: 255 237 215;
+  --ink-rgb: 16 9 4;
+  --brass-rgb: 196 165 116;
+  --hot-rgb: 220 80 0;
+  --cast-rgb: 14 26 10;      /* shadow cast on the mat: the world&#x27;s darkest value */
+  --ink-a: .94;              /* ink surface opacity — below .9 the mat bleeds through and it goes olive */
+
+  /* — print alphas (cream over the mat). .28 is the shader&#x27;s coarse-line coverage. */
+  --print-soft: .14;
+  --print: .28;
+  --print-strong: .55;
+
+  /* — type */
+  --f-display: &quot;Fraunces&quot;, &quot;Iowan Old Style&quot;, Georgia, serif;
+  --f-ui: &quot;IBM Plex Sans&quot;, system-ui, -apple-system, &quot;Helvetica Neue&quot;, sans-serif;
+  --f-mono: &quot;IBM Plex Mono&quot;, ui-monospace, &quot;SF Mono&quot;, Menlo, monospace;
+  --t-kicker: 10px;
+  --t-mono-s: 11px;
+  --t-mono: 12px;
+  --t-ui: 13px;
+  --t-body: 15px;
+  --t-lead: 18px;
+  --t-title: 22px;
+  --t-h2: 30px;
+  --t-h1: 44px;
+  --t-hero: 72px;
+
+  /* — space: the mat&#x27;s cell and module */
+  --cell: 8px;
+  --module: 80px;
+  --s1: 8px;  --s2: 16px; --s3: 24px; --s4: 32px; --s5: 40px;
+  --s6: 48px; --s8: 64px; --s10: 80px;
+
+  /* — radius by material */
+  --r-paper: 3px;
+  --r-tool: 10px;
+  --r-ctl: 6px;
+  --r-pill: 999px;
+
+  /* — elevation. Light is upper-right (1.2, 0.8, −1.2): shadows fall lower-left
+       and the penumbra widens with height, as the gobo blur widens with distance. */
+  --lift-0: none;
+  --lift-1: -1px 2px 0 rgb(var(--cast-rgb) / .22), -3px 5px 10px rgb(var(--cast-rgb) / .18);
+  --lift-2: -2px 3px 1px rgb(var(--cast-rgb) / .16), -6px 10px 20px rgb(var(--cast-rgb) / .26);
+  --lift-3: -1px 2px 3px rgb(var(--cast-rgb) / .25), -8px 14px 32px rgb(var(--cast-rgb) / .38);
+  --lift-4: -2px 4px 6px rgb(var(--cast-rgb) / .30), -14px 26px 64px rgb(var(--cast-rgb) / .55);
+
+  /* — rules. Solid lines belong to the mat; everything else is dashed. */
+  --hair: 1px solid rgb(var(--brass-rgb) / .22);
+  --hair-dash: 1px dashed rgb(var(--brass-rgb) / .28);
+  --hair-paper: 1px dashed rgb(var(--ink-rgb) / .28);
+  --print-rule: 1px solid rgb(var(--cream-rgb) / var(--print));
+
+  /* — focus: a cream halo so the hot ring reads on the mat too */
+  --focus-ring: 0 0 0 2px var(--cream), 0 0 0 4px var(--hot);
+
+  /* — motion. The projector spring is f = 1 Hz, ζ = 0.3: underdamped. */
+  --dur-1: 140ms;
+  --dur-2: 320ms;
+  --dur-3: 520ms;
+  --ease-out: cubic-bezier(.2, .7, .2, 1);
+  --spring: cubic-bezier(.3, 1.45, .45, 1);
+}</pre>
+      </div>
+    </section>
+
+    <section id="components">
+      <p class="print zone">Components · toolbar</p>
+      <div class="stage">
+        <div class="tool toolbar toolbar--float">
+          <div class="toolbar__brand"><span class="mark">◎</span></div>
+          <div class="toolbar__group">
+            <button class="tb is-on" type="button" aria-label="Select, V" aria-pressed="true"><svg viewBox="0 0 16 16"><path d="M3 2l8 5.5-3.5 1L6 13z"/></svg></button>
+            <button class="tb" type="button" aria-label="Hand, H"><svg viewBox="0 0 16 16"><path d="M4 7v5a4 4 0 0 0 8 0V5M4 7V4M6.7 6V2.5M9.3 6V3M12 5V4"/></svg></button>
+            <button class="tb" type="button" aria-label="Pen, P"><svg viewBox="0 0 16 16"><path d="M3 13l1-4 7-7 3 3-7 7zM10 3l3 3"/></svg></button>
+            <button class="tb" type="button" aria-label="Knife, K"><svg viewBox="0 0 16 16"><path d="M2 14l7-7M9 7l5-5v3L9 10z"/></svg></button>
+            <button class="tb" type="button" aria-label="Text, T"><svg viewBox="0 0 16 16"><path d="M3 3h10M8 3v10M6 13h4"/></svg></button>
+            <button class="tb" type="button" aria-label="Ruler, R"><svg viewBox="0 0 16 16"><rect x="1.5" y="5.5" width="13" height="5" rx="1"/><path d="M4 5.5v2M6.5 5.5v3M9 5.5v2M11.5 5.5v3"/></svg></button>
+            <button class="tb" type="button" aria-label="Tape, M"><svg viewBox="0 0 16 16"><rect x="2" y="5" width="12" height="6" rx="1" stroke-dasharray="2 2"/></svg></button>
+          </div>
+          <div class="toolbar__group">
+            <div class="seg" role="group" aria-label="Blur"><button class="seg__item is-on" type="button">Sharp</button><button class="seg__item" type="button">Soft</button><button class="seg__item" type="button">Auto</button></div>
+          </div>
+          <div class="toolbar__group">
+            <button class="btn btn--paper btn--s" type="button">Re-bake</button>
+          </div>
+        </div>
+        <p class="on-mat" style="max-width:34ch">Ink, floating, never scales. The active tool is the only hot thing on it. Groups divide with a brass hairline; the tray of segments is paper keys pressed into ink.</p>
+      </div>
+
+      <p class="print zone zone--sub">Components · buttons</p>
+      <div class="stage">
+        <div class="stack">
+          <div class="stack--row">
+            <button class="btn btn--paper" type="button">Re-bake plate</button>
+            <button class="btn btn--ink" type="button">Export mat</button>
+            <button class="btn btn--hot" type="button">Bake now</button>
+            <button class="btn btn--ghost" type="button">Reset view <span class="key">DBL-CLICK</span></button>
+            <button class="btn btn--paper btn--s" type="button">gobo_b</button>
+            <button class="btn btn--paper" type="button" disabled>Baking…</button>
+          </div>
+          <div class="stack--row">
+            <button class="btn btn--paper is-hover" type="button">hover lifts</button>
+            <button class="btn btn--paper is-active" type="button">press settles</button>
+            <button class="btn btn--ink is-hover" type="button">hover lifts</button>
+            <button class="btn btn--ink is-active" type="button">press deepens</button>
+          </div>
+        </div>
+        <div class="card" style="width:300px">
+          <p class="card__kicker">On paper</p>
+          <h3 class="card__title">Ink is primary, the cut line is secondary</h3>
+          <p class="card__body">A dashed outline on paper reads as cut here. Hot buttons take ink text: cream on orange is 3.5:1.</p>
+          <div class="stack--row" style="margin-top:12px"><button class="btn btn--ink" type="button">Bake</button><button class="btn btn--cut" type="button">Not now</button></div>
+        </div>
+      </div>
+
+      <p class="print zone zone--sub">Components · fields · on ink and on paper</p>
+      <div class="stage">
+        <div class="tool ctl-panel">
+          <label class="label"><span class="kicker">Plate</span><span class="select"><select class="field" aria-label="Plate"><option>gobo_c · palm</option><option>gobo_b · canopy</option></select></span></label>
+          <label class="label"><span class="kicker">Projector name</span><input class="field" type="text" value="hero desk" aria-label="Projector name"></label>
+          <label class="label"><span class="kicker">Wind speed <output id="speed-out">4.00</output></span><input class="slider" id="speed" type="range" min="0" max="12" step="0.1" value="4" style="--fill:33%" aria-label="Wind speed"></label>
+          <div class="stack--row" style="justify-content:space-between">
+            <label class="check kicker">Wind <input class="toggle" type="checkbox" checked></label>
+            <label class="check kicker">Orbit <input class="toggle" type="checkbox"></label>
+            <div class="seg" role="group" aria-label="Blur"><button class="seg__item is-on" type="button">Sharp</button><button class="seg__item" type="button">Soft</button></div>
+          </div>
+        </div>
+        <div class="card paper-form">
+          <div class="tabs" role="tablist"><button class="tabs__item is-on" type="button" role="tab" aria-selected="true">Note</button><button class="tabs__item" type="button" role="tab" aria-selected="false">Measurements</button><button class="tabs__item" type="button" role="tab" aria-selected="false">History</button></div>
+          <label class="card__kicker" for="pf-title">Title</label>
+          <input class="field--paper" id="pf-title" type="text" value="Thermal fade on the canopy table">
+          <label class="card__kicker" for="pf-body">Body</label>
+          <input class="field--paper" id="pf-body" type="text" placeholder="Fields on paper are a line, not a box">
+          <p class="card__meta"><span>edited 12:40</span><span class="chip chip--cork">gobo_b</span></p>
+        </div>
+      </div>
+
+      <p class="print zone zone--sub">Components · inspector</p>
+      <div class="stage">
+        <div class="tool panel">
+          <div class="panel__head"><p class="kicker">Projector · gobo_c</p><button class="tb" type="button" aria-label="Close"><svg viewBox="0 0 16 16"><path d="M4 4l8 8M12 4l-8 8"/></svg></button></div>
+          <div class="panel__section">
+            <p class="kicker">Position</p>
+            <div class="readout"><span>x</span><b>−0.0106</b></div>
+            <div class="readout"><span>y</span><b>0.7471</b></div>
+            <div class="readout"><span>z</span><b>−0.0485</b></div>
+          </div>
+          <div class="panel__section">
+            <p class="kicker">Plate</p>
+            <div class="readout"><span>strength</span><b>0.3885</b></div>
+            <div class="readout"><span>sharp</span><b>0.3730</b></div>
+            <div class="readout"><span>soft</span><b>0.7906</b></div>
+            <div class="readout"><span>near · far</span><b>0.01 · 20</b></div>
+          </div>
+          <div class="panel__section">
+            <p class="kicker">Wind</p>
+            <label class="label"><span class="kicker">Speed <output>4.00</output></span><input class="slider" type="range" min="0" max="12" step="0.1" value="4" style="--fill:33%" aria-label="Wind speed"></label>
+            <label class="check kicker">Mouse tilt 0.003 <input class="toggle" type="checkbox" checked></label>
+          </div>
+          <div class="panel__foot"><button class="btn btn--ghost btn--s" type="button">Reset</button><button class="btn btn--paper btn--s" type="button">Re-bake</button></div>
+        </div>
+        <p class="on-mat" style="max-width:32ch">Four modules wide. Sections divide with a brass hairline; rows are dashed leaders with tabular values. Readouts are cream, labels brass-mute.</p>
+      </div>
+
+      <p class="print zone zone--sub">Components · paper · cards, index card, kraft note</p>
+      <div class="stage">
+        <div class="card" style="width:320px">
+          <p class="card__kicker">Pass D · scene grade</p>
+          <h3 class="card__title">HSB lift, warm multiply, diagonal penumbra</h3>
+          <p class="card__body">The palm wall blurs along a diagonal instead of by depth: linearstep on the dot product with (−1, −1), squared, times three.</p>
+          <p class="card__meta"><span>sustainabilityFrag</span><span>edited 11:12</span></p>
+        </div>
+        <div class="card card--paper" style="width:280px">
+          <p class="card__kicker">Index card · plates</p>
+          <ul class="rows">
+            <li><span>gobo_c</span><b>palm · 0.3885</b></li>
+            <li><span>gobo_b</span><b>canopy · 0.4631</b></li>
+            <li><span>mobile variants</span><b>26</b></li>
+            <li><span>plate size</span><b>512 × 512 RGBA</b></li>
+          </ul>
+        </div>
+        <div class="card card--kraft card--taped" style="width:240px">
+          <p class="card__kicker" style="color:var(--ink-2)">Note to self</p>
+          <p class="card__body" style="color:var(--ink)">Bake a 4096² plate for the desktop tier. The 2560 cap on textures is why the fronds soften at z 5.</p>
+        </div>
+      </div>
+
+      <p class="print zone zone--sub">Components · nodes and wires · the pipeline as a graph</p>
+      <div class="nodes">
+        <svg viewBox="0 0 760 190" preserveAspectRatio="none" aria-hidden="true">
+          <path class="wire" d="M208 60 C 250 60, 250 96, 292 96"/>
+          <path class="wire" d="M500 96 C 540 96, 540 60, 580 60"/>
+          <path class="wire wire--pending" d="M500 96 C 540 96, 540 150, 580 150"/>
+        </svg>
+        <div class="card node" style="left:0;top:24px"><p class="card__kicker">Plate</p><h3 class="card__title" style="font-size:16px">gobo_c · 512²</h3><p class="card__meta"><span>RGBA</span><span>0.3885</span></p><span class="port port--out"></span></div>
+        <div class="card node" style="left:292px;top:60px"><p class="card__kicker">Pass A</p><h3 class="card__title" style="font-size:16px">Wind · s + Σ amp·sin</h3><p class="card__meta"><span>512² RT</span><span>4.00</span></p><span class="port port--in"></span><span class="port port--out"></span></div>
+        <div class="card node" style="left:580px;top:24px"><p class="card__kicker">Pass B · C</p><h3 class="card__title" style="font-size:16px">Project, blur 6 taps</h3><p class="card__meta"><span>golden angle</span><span>×2</span></p><span class="port port--in"></span></div>
+        <div class="card node node--ghost" style="left:580px;top:120px"><p class="card__kicker">Drop a receiver</p><h3 class="card__title" style="font-size:16px">Palm wall, desk, or table</h3></div>
+      </div>
+
+      <p class="print zone zone--sub">Components · selection, guides, cursors</p>
+      <div class="stage">
+        <div class="sel-demo">
+          <div class="guide guide--h" style="top:40px"></div>
+          <div class="guide guide--v" style="left:352px"></div>
+          <div class="card is-selected" style="left:32px;top:40px;width:320px">
+            <p class="card__kicker">Selected</p>
+            <h3 class="card__title">Hot ring, cream halo, four handles</h3>
+            <p class="card__body">The halo is what lets 1.9:1 orange read against green.</p>
+            <span class="handle handle--nw"></span><span class="handle handle--ne"></span><span class="handle handle--sw"></span><span class="handle handle--se"></span>
+          </div>
+          <div class="marquee" style="left:400px;top:120px;width:200px;height:96px"></div>
+          <div class="cursor" style="left:420px;top:96px"><svg viewBox="0 0 14 18"><path d="M1 1l12 7-5 1.5L5.5 17z"/></svg><span class="cursor__tag">james</span></div>
+        </div>
+        <p class="on-mat" style="max-width:30ch">Snap guides are hot with a one-pixel cream halo. The marquee is hot at 85%, filled at 8%. Cursors carry a paper tag.</p>
+      </div>
+
+      <p class="print zone zone--sub">Components · menus, tooltip, keycaps</p>
+      <div class="stage">
+        <div class="tool menu" role="menu">
+          <button class="menu__item" type="button" role="menuitem">Bring to front <span class="key">⌘ ]</span></button>
+          <button class="menu__item" type="button" role="menuitem">Send to back <span class="key">⌘ [</span></button>
+          <div class="menu__sep"></div>
+          <button class="menu__item is-active" type="button" role="menuitem">Duplicate <span class="key">⌘ D</span></button>
+          <button class="menu__item" type="button" role="menuitem">Lock <span class="key">⌘ L</span></button>
+          <button class="menu__item" type="button" role="menuitem">Tape to mat <span class="key">M</span></button>
+          <div class="menu__sep"></div>
+          <button class="menu__item menu__item--danger" type="button" role="menuitem">Delete <span class="key">⌫</span></button>
+        </div>
+        <div class="stack">
+          <span class="tool tip">Knife <span class="kbd">K</span></span>
+          <span class="tool tip">Reset view <span class="kbd">double-click</span></span>
+          <span class="tool tip"><span class="dot"></span>Baking gobo_c · 40 s</span>
+        </div>
+        <p class="on-mat" style="max-width:28ch">The hot dot sits on the item under the keyboard. Shortcuts are brass-mute. A destructive item warms on hover instead of turning red; there is no red.</p>
+      </div>
+
+      <p class="print zone zone--sub">Components · command palette</p>
+      <div class="stage">
+        <div class="tool tool--glass palette" role="dialog" aria-label="Command palette">
+          <input class="field field--lg" type="text" value="reset" aria-label="Search commands">
+          <div class="palette__list">
+            <button class="menu__item is-active" type="button">Reset view <span class="key">double-click</span></button>
+            <button class="menu__item" type="button">Reset wind phase <span class="key">⇧ W</span></button>
+            <button class="menu__item" type="button">Re-bake plate gobo_c <span class="key">⌘ B</span></button>
+            <button class="menu__item" type="button">Export mat · 4096² <span class="key">⌘ E</span></button>
+          </div>
+          <div class="palette__hint"><span><span class="kbd">↑↓</span> move</span><span><span class="kbd">↵</span> run</span><span><span class="kbd">esc</span> close</span></div>
+        </div>
+      </div>
+
+      <p class="print zone zone--sub">Components · status · toast, zoom HUD, chips</p>
+      <div class="stage">
+        <div class="tool toast"><span class="dot"></span>Plate gobo_c loaded · 512² wind RT</div>
+        <div class="tool hud"><span>z</span><b>1.00</b><span>k0</span><b>0</b><span>cell</span><b>8 px</b><span>fps</span><b>60</b></div>
+        <div class="stack--row"><span class="chip chip--brass">WebGPU</span><span class="chip chip--cork">gobo_b</span><span class="chip chip--paper">draft</span></div>
+      </div>
+
+      <p class="print zone zone--sub">Components · print · ruler and empty state</p>
+      <div class="stage">
+        <div class="ruler" style="width:560px"><span style="left:0">0</span><span style="left:80px">10</span><span style="left:160px">20</span><span style="left:240px">30</span><span style="left:320px">40</span><span style="left:400px">50</span><span style="left:480px">60</span></div>
+        <p class="empty" style="max-width:24ch">Nothing on the mat yet.<small>Drop a plate, or press N</small></p>
+      </div>
+
+      <p class="print zone zone--sub">Components · dialog · a sheet laid over a dimmed desk</p>
+      <div class="scrim-demo scrim">
+        <div class="dialog" role="dialog" aria-labelledby="dlg-title">
+          <p class="card__kicker">Re-bake</p>
+          <h3 class="dialog__title" id="dlg-title">Bake gobo_c at 4096²?</h3>
+          <p class="dialog__body">Replaces the 512² plate for the desktop tier. Takes about 40 seconds on WebGPU, and the palm wall re-renders while it runs.</p>
+          <div class="dialog__actions"><button class="btn btn--cut" type="button">Not now</button><button class="btn btn--ink" type="button">Bake</button></div>
+        </div>
+      </div>
+    </section>
+
+    <section id="screen">
+      <p class="print zone">Composed · the hero desk as a working canvas</p>
+      <div class="screen">
+        <div class="screen__corner"></div>
+        <div class="ruler"><span style="left:0">0</span><span style="left:80px">10</span><span style="left:160px">20</span><span style="left:240px">30</span><span style="left:320px">40</span><span style="left:400px">50</span><span style="left:480px">60</span><span style="left:560px">70</span><span style="left:640px">80</span><span style="left:720px">90</span><span style="left:800px">100</span><span style="left:880px">110</span><span style="left:960px">120</span></div>
+        <div class="ruler ruler--v"><span style="top:0">0</span><span style="top:80px">10</span><span style="top:160px">20</span><span style="top:240px">30</span><span style="top:320px">40</span><span style="top:400px">50</span><span style="top:480px">60</span></div>
+
+        <div class="tool tool--glass toolbar toolbar--float" style="left:50%;top:40px;transform:translateX(-50%)">
+          <div class="toolbar__brand"><span class="mark">◎</span></div>
+          <div class="toolbar__group">
+            <button class="tb is-on" type="button" aria-label="Select"><svg viewBox="0 0 16 16"><path d="M3 2l8 5.5-3.5 1L6 13z"/></svg></button>
+            <button class="tb" type="button" aria-label="Hand"><svg viewBox="0 0 16 16"><path d="M4 7v5a4 4 0 0 0 8 0V5M4 7V4M6.7 6V2.5M9.3 6V3M12 5V4"/></svg></button>
+            <button class="tb" type="button" aria-label="Pen"><svg viewBox="0 0 16 16"><path d="M3 13l1-4 7-7 3 3-7 7zM10 3l3 3"/></svg></button>
+            <button class="tb" type="button" aria-label="Knife"><svg viewBox="0 0 16 16"><path d="M2 14l7-7M9 7l5-5v3L9 10z"/></svg></button>
+            <button class="tb" type="button" aria-label="Text"><svg viewBox="0 0 16 16"><path d="M3 3h10M8 3v10M6 13h4"/></svg></button>
+            <button class="tb" type="button" aria-label="Tape"><svg viewBox="0 0 16 16"><rect x="2" y="5" width="12" height="6" rx="1" stroke-dasharray="2 2"/></svg></button>
+          </div>
+          <div class="toolbar__group"><button class="btn btn--paper btn--s" type="button">Re-bake</button></div>
+        </div>
+
+        <div class="card is-selected" style="left:120px;top:150px;width:300px">
+          <p class="card__kicker">Pass A · wind render target</p>
+          <h3 class="card__title">Sample the plate, add three sines</h3>
+          <p class="card__body">Strength 0.3885 for the palm. The sway is a density modulation, not a displacement.</p>
+          <p class="card__meta"><span>gobo_c</span><span>edited 12:40</span></p>
+          <span class="handle handle--nw"></span><span class="handle handle--ne"></span><span class="handle handle--sw"></span><span class="handle handle--se"></span>
+        </div>
+        <div class="guide guide--h" style="top:150px"></div>
+        <div class="card card--kraft card--taped" style="left:660px;top:460px;width:220px">
+          <p class="card__kicker" style="color:var(--ink-2)">Note to self</p>
+          <p class="card__body" style="color:var(--ink)">Try the canopy plate on the desk. The looking-up cookie might read as a lamp.</p>
+        </div>
+        <svg class="nodes-wire" style="left:0;top:0;width:100%;height:100%;pointer-events:none" viewBox="0 0 1120 630" preserveAspectRatio="none" aria-hidden="true">
+          <path class="wire" d="M328 505 C 380 505, 380 475, 432 475"/>
+        </svg>
+        <div class="card node" style="left:120px;top:470px"><p class="card__kicker">Plate</p><h3 class="card__title" style="font-size:16px">gobo_c · 512²</h3><span class="port port--out"></span></div>
+        <div class="card node" style="left:432px;top:440px"><p class="card__kicker">Pass A</p><h3 class="card__title" style="font-size:16px">Wind · 4.00</h3><span class="port port--in"></span><span class="port port--out"></span></div>
+        <div class="cursor" style="left:470px;top:300px"><svg viewBox="0 0 14 18"><path d="M1 1l12 7-5 1.5L5.5 17z"/></svg><span class="cursor__tag">lusion</span></div>
+
+        <div class="tool menu" role="menu" style="left:552px;top:250px">
+          <button class="menu__item" type="button">Bring to front <span class="key">⌘ ]</span></button>
+          <button class="menu__item is-active" type="button">Duplicate <span class="key">⌘ D</span></button>
+          <button class="menu__item" type="button">Tape to mat <span class="key">M</span></button>
+          <div class="menu__sep"></div>
+          <button class="menu__item menu__item--danger" type="button">Delete <span class="key">⌫</span></button>
+        </div>
+
+        <div class="tool panel" style="right:24px;top:100px">
+          <div class="panel__head"><p class="kicker">Projector · gobo_c</p><button class="tb" type="button" aria-label="Close"><svg viewBox="0 0 16 16"><path d="M4 4l8 8M12 4l-8 8"/></svg></button></div>
+          <div class="panel__section">
+            <p class="kicker">Plate</p>
+            <div class="readout"><span>strength</span><b>0.3885</b></div>
+            <div class="readout"><span>sharp</span><b>0.3730</b></div>
+            <div class="readout"><span>soft</span><b>0.7906</b></div>
+          </div>
+          <div class="panel__section">
+            <p class="kicker">Wind</p>
+            <label class="label"><span class="kicker">Speed <output>4.00</output></span><input class="slider" type="range" min="0" max="12" step="0.1" value="4" style="--fill:33%" aria-label="Wind speed"></label>
+            <label class="check kicker">Mouse tilt 0.003 <input class="toggle" type="checkbox" checked></label>
+          </div>
+          <div class="panel__foot"><button class="btn btn--ghost btn--s" type="button">Reset</button><button class="btn btn--paper btn--s" type="button">Re-bake</button></div>
+        </div>
+
+        <div class="tool toast" style="left:50%;bottom:24px;transform:translateX(-50%)"><span class="dot"></span>Plate gobo_c loaded · 512² wind RT</div>
+        <div class="tool hud" style="right:24px;bottom:24px"><span>z</span><b>1.00</b><span>k0</span><b>0</b><span>cell</span><b>8 px</b><span>fps</span><b>60</b></div>
+      </div>
+    </section>
+
+    <section id="rules">
+      <p class="print zone">Rules</p>
+      <div class="sheet sheet--wide">
+        <div class="rules">
+          <div>
+            <h3>Do</h3>
+            <ul>
+              <li>Set text on the mat in cream. Brass only for mono labels at 12px and up.</li>
+              <li>Cast every shadow lower-left, and widen the penumbra as things rise.</li>
+              <li>Snap paper to the 80px module and pad on 8. The mat is the layout grid.</li>
+              <li>Use dashed rules on paper and on ink. Solid lines belong to the mat.</li>
+              <li>Keep hot orange for state: selection, focus, live, the active tool.</li>
+              <li>Put anything that must be read on paper or ink. Print is passive by definition.</li>
+              <li>Let ink chrome stay fixed while the desk zooms underneath it.</li>
+            </ul>
+          </div>
+          <div>
+            <h3>Don't</h3>
+            <ul>
+              <li>No pure white, pure black, or neutral grey anywhere. Whites are cream, blacks are ink, greys are grey-brown.</li>
+              <li>No ink, orange, or brass-mute text on the mat.</li>
+              <li>No ink panel below 90% opacity over the mat. Glass goes olive.</li>
+              <li>No corners above 3px on paper, no square tools. Actions are pills.</li>
+              <li>No ambient UI animation. The leaves are the motion; a live dot may pulse, nothing else.</li>
+              <li>No grid lines inside UI. Tables use dashed leaders so they never compete with the mat.</li>
+              <li>No red. A destructive item warms on hover and the dialog says what it will do.</li>
+            </ul>
+          </div>
+        </div>
+      </div>
+      <div class="foot">
+        <p class="print">Self-Healing Mat · prototype/design/mat.css · mat-bg.js · derived from prototype/src/shaders.js 142–228</p>
+        <p class="print">The live mat here is a WebGL2 port of cuttingMatAlbedo, eliSoftShadow and heroFrag. The leaf shadow is a procedural stand-in for the gobo_c plate, which is a Lusion texture and stays in the repo.</p>
+      </div>
+    </section>
+
+  </main>
+
+  <div class="tool tool--glass hud doc-hud" id="doc-hud"><span>z</span><b>1.00</b><span>k0</span><b>0</b><span>cell</span><b>8 px</b><span>fps</span><b id="fps">—</b></div>
+</div>
+
+<script>
+/* Self-Healing Mat — live background.
+ * WebGL2 port of cuttingMatAlbedo / eliSoftShadow / heroFrag from prototype/src/shaders.js,
+ * with a procedural stand-in for the gobo plate (the real one needs the oryzo texture).
+ * World unit = one mat cell (matSize.x / 350). 1 cell = 8 CSS px, so the coarse line
+ * (10 cells) is the 80px module every component in mat.css is sized against.
+ */
+(function () {
+  const CELL_PX = 8;
+  const MODULE_PX = 80;
+  const METERS_PER_CELL = 0.72 / 350;
+
+  const VERT = `#version 300 es
+in vec2 p;
+void main() { gl_Position = vec4(p, 0.0, 1.0); }`;
+
+  const FRAG = `#version 300 es
+precision highp float;
+out vec4 o;
+uniform vec2  uRes;       // device px
+uniform float uTime;      // wind clock (matches gobo.time)
+uniform float uDrift;     // paper-fibre clock (heroFrag u_time)
+uniform vec2  uOffset;    // world offset in cells (scroll + phase)
+uniform vec2  uTilt;      // springed mouse, -1..1
+uniform vec2  uTiltVel;   // spring velocity
+uniform float uSeed;      // per-frame noise offset (blue-noise stand-in)
+uniform vec2  uCoaster;   // coaster centre, cells
+uniform float uCoasterOn;
+uniform float uCellPx;    // device px per cell
+
+// ---- verbatim ports -------------------------------------------------------
+float hash12(vec2 p) {
+  float n = sin(dot(p, vec2(127.1, 311.7))) * 43758.5453;
+  return n - floor(n);
+}
+float valueNoise(vec2 p) {
+  vec2 i = floor(p);
+  vec2 f = fract(p);
+  f = f * f * (3.0 - 2.0 * f);
+  return mix(
+    mix(hash12(i), hash12(i + vec2(1.0, 0.0)), f.x),
+    mix(hash12(i + vec2(0.0, 1.0)), hash12(i + vec2(1.0, 1.0)), f.x),
+    f.y);
+}
+vec3 srgbToLinear(vec3 c) {
+  return mix(c / 12.92, pow((c + 0.055) / 1.055, vec3(2.4)), step(vec3(0.04045), c));
+}
+float lineCoverage(float x, float spacing, float halfWidth, float px) {
+  float d = abs(fract(x / spacing - 0.5) - 0.5) * spacing;
+  return 1.0 - smoothstep(max(halfWidth - px, 0.0), halfWidth + px, d);
+}
+float grid2(vec2 p, float spacing, float halfWidth, float px) {
+  return max(lineCoverage(p.x, spacing, halfWidth, px), lineCoverage(p.y, spacing, halfWidth, px));
+}
+vec3 rgb2hsb(vec3 c) {
+  vec4 K = vec4(0.0, -1.0 / 3.0, 2.0 / 3.0, -1.0);
+  vec4 p = mix(vec4(c.bg, K.wz), vec4(c.gb, K.xy), step(c.b, c.g));
+  vec4 q = mix(vec4(p.xyw, c.r), vec4(c.r, p.yzx), step(p.x, c.r));
+  float d = q.x - min(q.w, q.y);
+  float e = 1.0e-10;
+  return vec3(abs(q.z + (q.w - q.y) / (6.0 * d + e)), d / (q.x + e), q.x);
+}
+vec3 hsb2rgb(vec3 c) {
+  vec4 K = vec4(1.0, 2.0 / 3.0, 1.0 / 3.0, 3.0);
+  vec3 p = abs(fract(K.xyz + c.x) * 6.0 - K.w);
+  return c.z * mix(K.xxx, clamp(p - K.x, vec3(0.0), vec3(1.0)), c.y);
+}
+// cuttingMatAlbedo — cell = matSize.x / 350 = 1.0 in this world
+vec3 cuttingMatAlbedo(vec2 world, float px, float time, vec3 bn, vec2 fragCoord) {
+  vec3 cream = vec3(232.0, 220.0, 190.0) / 255.0;
+  vec3 sage  = vec3(134.0, 160.0, 120.0) / 255.0;
+  float g = (hash12(fragCoord * vec2(0.73, 0.91)) - 0.5) * 8.0;
+  g += (valueNoise(fragCoord * 0.45 + vec2(time * 0.9, -time * 0.6)) - 0.5) * 8.0;
+  g += (bn.x - 0.5) * 4.0;
+  sage += vec3(g * 0.4, g, g * 0.35) / 255.0;
+
+  float cell = 1.0;
+  float screenCell = cell / max(px, 1e-20);
+  float logc = log(max(screenCell, 1e-20) / 6.0) / 2.302585;
+  float k0 = clamp(-floor(logc), -12.0, 8.0);
+  float fade = fract(logc);
+  float midSp = cell * pow(10.0, k0);
+  float fineSp = midSp * 0.1;
+  float coarseSp = midSp * 10.0;
+  float thinW = 0.5 * px;
+  float thickW = 0.75 * px;
+  float fine = grid2(world, fineSp, thinW, px);
+  float mid = grid2(world, midSp, mix(thinW, thickW, fade), px);
+  float coarse = grid2(world, coarseSp, thickW, px);
+  float cover = fine * 0.14 * fade;
+  cover = max(cover, mid * mix(0.14, 0.28, fade));
+  cover = max(cover, coarse * 0.28);
+  return srgbToLinear(clamp(mix(sage, cream, cover), vec3(0.0), vec3(1.0)));
+}
+// eliSoftShadow — metres, exactly as the hero desk
+float eliSoftShadow(vec3 ro, vec3 rd, vec3 cen, vec3 rad, float k) {
+  vec3 oc = ro - cen;
+  vec3 ocn = oc / rad;
+  vec3 rdn = rd / rad;
+  float a = dot(rdn, rdn);
+  float b = dot(ocn, rdn);
+  float c = dot(ocn, ocn);
+  float h = b * b - a * (c - 1.0);
+  float t = (-b - sqrt(max(h, 0.0))) / a;
+  if (h > 0.0) { return t <= 0.0 ? 1.0 : 0.0; }
+  return smoothstep(0.0, 1.0, -k * h / max(t, 0.0));
+}
+
+// ---- procedural gobo (stand-in for the gobo_c palm plate) -----------------
+float fbm(vec2 p) {
+  float a = 0.5, s = 0.0;
+  for (int i = 0; i < 5; i++) { s += a * valueNoise(p); p = p * 2.03 + vec2(17.3, 9.1); a *= 0.5; }
+  return s;
+}
+float gobo(vec2 world, float time, vec2 tilt, vec2 tvel) {
+  // projector frame: fronds run along a 35deg axis, 3.6:1 anisotropy
+  float ang = 0.62 + (tvel.x + tvel.y) * 0.012;
+  float c = cos(ang), s = sin(ang);
+  vec2 p = mat2(c, s, -s, c) * (world + tilt * vec2(2.4, 1.6));
+  vec2 q = p / vec2(36.0, 12.0);
+  // wind: 3 harmonics with a spatial phase (goboWind: s + amp*sin) — density modulation
+  float ph = valueNoise(world * 0.012) * 6.2832;
+  vec3 w = sin(time * vec3(1.0, 2.0, 3.0) + ph * vec3(1.0, 2.0, 0.5));
+  float amp = valueNoise(world * 0.03 + 3.0);
+  float breathe = (0.055 * w.x + 0.025 * w.y + 0.015 * w.z) * amp;
+  q += vec2(0.5, 1.0) * breathe * 0.35;
+  vec2 warp = vec2(fbm(q * 1.7 + vec2(3.1, 7.7)), fbm(q * 1.7 + vec2(9.2, 1.3))) - 0.5;
+  float n = fbm(q + warp * 0.8);
+  float ridge = 1.0 - abs(2.0 * fbm(q * 2.2 + warp * 0.5 + 5.0) - 1.0);
+  n = 0.7 * n + 0.3 * (1.0 - ridge);
+  float sky = smoothstep(0.44, 0.62, valueNoise(world * 0.0065 + vec2(2.0, 5.0)));
+  float blur = mix(0.035, 0.20, valueNoise(world * 0.004 + 9.0));
+  float tau = 0.40 + breathe;
+  float lit = smoothstep(tau - blur, tau + blur, n);
+  return mix(lit, 1.0, sky);
+}
+
+void main() {
+  vec2 fc = gl_FragCoord.xy;
+  vec2 screen = vec2(fc.x, uRes.y - fc.y);
+  float px = 1.0 / uCellPx;
+  vec2 world = screen * px + uOffset;
+  vec3 bn = vec3(hash12(fc * 0.37 + uSeed), hash12(fc * 1.3 + uSeed * 7.1), hash12(fc * 0.7 + uSeed * 3.3));
+  vec3 color = pow(cuttingMatAlbedo(world, px, uDrift, bn, fc), vec3(2.2));
+
+  vec3 wp  = vec3(world.x * ${METERS_PER_CELL}, 0.0, world.y * ${METERS_PER_CELL});
+  vec3 cen = vec3(uCoaster.x * ${METERS_PER_CELL}, 0.0, uCoaster.y * ${METERS_PER_CELL});
+  float cs = 1.0;
+  if (uCoasterOn > 0.5) {
+    cs = eliSoftShadow(wp, normalize(vec3(1.2, 0.8, -1.2)), cen, vec3(0.045, 0.01, 0.045), 0.00001);
+    cs = cs * 0.8 + 0.2;
+  }
+  float g = gobo(world, uTime, uTilt, uTiltVel);
+  float shade = mix(1.0, cs * (0.5 + 0.5 * g), 0.975);
+  vec3 hsb = rgb2hsb(color);
+  hsb.y = min(hsb.y + (1.0 - shade) * 0.1, 1.0);
+  hsb.z = hsb.z * shade;
+  color = hsb2rgb(hsb);
+  color = pow(color, vec3(1.0 / 2.2));
+
+  if (uCoasterOn > 0.5) {
+    float d = length(wp.xz - cen.xz);
+    float pxm = px * ${METERS_PER_CELL};
+    float inside = smoothstep(0.045 + pxm, 0.045 - pxm, d);
+    if (inside > 0.0) {
+      vec3 cork = srgbToLinear(vec3(196.0, 138.0, 82.0) / 255.0);
+      float rim = smoothstep(0.045, 0.0415, d);
+      float grain = 1.0 + 0.10 * (valueNoise(world * 0.6) - 0.5) + 0.05 * (hash12(fc * 0.9) - 0.5);
+      vec3 cc = cork * 0.72 * (0.6 + 0.4 * g) * mix(0.55, 1.0, rim) * grain;
+      color = mix(color, cc, inside);
+    }
+  }
+  o = vec4(color, 1.0);
+}`;
+
+  // SecondOrderDynamics — the mouse spring from gobo.js (f=1, z=0.3, r=2)
+  class Spring {
+    constructor(f, z, r) {
+      const w = Math.PI * 2 * f;
+      this.k1 = z / (Math.PI * f); this.k2 = 1 / (w * w); this.k3 = (r * z) / w;
+      this.w = w; this.z = z; this.d = w * Math.sqrt(Math.abs(z * z - 1));
+      this.x = [0, 0]; this.px = [0, 0]; this.y = [0, 0]; this.v = [0, 0];
+    }
+    update(dt, tx, ty) {
+      if (dt <= 0) return;
+      const target = [tx, ty];
+      const tv = [(tx - this.px[0]) / dt, (ty - this.px[1]) / dt];
+      this.px = target.slice();
+      let k1s, k2s;
+      if (this.w * dt < this.z) {
+        k1s = this.k1;
+        k2s = Math.max(this.k2, (dt * dt) / 2 + (dt * this.k1) / 2, dt * this.k1);
+      } else {
+        const t = Math.exp(-this.z * this.w * dt);
+        const i = 2 * t * (this.z <= 1 ? Math.cos(dt * this.d) : Math.cosh(dt * this.d));
+        const rr = t * t; const o = dt / (1 + rr - i);
+        k1s = (1 - rr) * o; k2s = dt * o;
+      }
+      for (let a = 0; a < 2; a++) {
+        this.y[a] += this.v[a] * dt;
+        this.v[a] += ((target[a] + tv[a] * this.k3) - this.y[a] - this.v[a] * k1s) * (dt / k2s);
+      }
+    }
+  }
+
+  function init(opts) {
+    opts = opts || {};
+    const canvas = document.getElementById(opts.canvas || 'mat');
+    if (!canvas) return null;
+    const gl = canvas.getContext('webgl2', { antialias: false, alpha: false, depth: false, powerPreference: 'high-performance', preserveDrawingBuffer: true });
+    if (!gl) { document.documentElement.classList.add('no-webgl'); return null; }
+
+    const compile = (type, src) => {
+      const sh = gl.createShader(type); gl.shaderSource(sh, src); gl.compileShader(sh);
+      if (!gl.getShaderParameter(sh, gl.COMPILE_STATUS)) { console.error(gl.getShaderInfoLog(sh)); throw new Error('shader'); }
+      return sh;
+    };
+    const prog = gl.createProgram();
+    gl.attachShader(prog, compile(gl.VERTEX_SHADER, VERT));
+    gl.attachShader(prog, compile(gl.FRAGMENT_SHADER, FRAG));
+    gl.linkProgram(prog);
+    if (!gl.getProgramParameter(prog, gl.LINK_STATUS)) { console.error(gl.getProgramInfoLog(prog)); document.documentElement.classList.add('no-webgl'); return null; }
+    gl.useProgram(prog);
+    const buf = gl.createBuffer();
+    gl.bindBuffer(gl.ARRAY_BUFFER, buf);
+    gl.bufferData(gl.ARRAY_BUFFER, new Float32Array([-1, -1, 3, -1, -1, 3]), gl.STATIC_DRAW);
+    const loc = gl.getAttribLocation(prog, 'p');
+    gl.enableVertexAttribArray(loc);
+    gl.vertexAttribPointer(loc, 2, gl.FLOAT, false, 0, 0);
+    const U = {};
+    ['uRes', 'uTime', 'uDrift', 'uOffset', 'uTilt', 'uTiltVel', 'uSeed', 'uCoaster', 'uCoasterOn', 'uCellPx']
+      .forEach((n) => { U[n] = gl.getUniformLocation(prog, n); });
+
+    const reduced = matchMedia('(prefers-reduced-motion: reduce)').matches;
+    const state = {
+      wind: opts.wind !== false && !reduced,
+      speed: opts.speed || 2.4,
+      time: 1.7, drift: 0,
+      dpr: Math.min(devicePixelRatio || 1, 1.5),
+      phase: [0, 0], coaster: [0, 0], coasterOn: 0,
+      fps: 0, dirty: true,
+    };
+    const spring = new Spring(1, 0.3, 2);
+    const mouse = [0, 0];
+    const alignEl = opts.align ? document.querySelector(opts.align) : null;
+    const coasterEl = opts.coaster ? document.querySelector(opts.coaster) : null;
+
+    function measure() {
+      const sy = window.scrollY || 0;
+      if (alignEl) {
+        const r = alignEl.getBoundingClientRect();
+        const left = r.left; const top = r.top + sy;
+        state.phase = [-(((left % MODULE_PX) + MODULE_PX) % MODULE_PX) / CELL_PX, -(((top % MODULE_PX) + MODULE_PX) % MODULE_PX) / CELL_PX];
+      }
+      if (coasterEl) {
+        const r = coasterEl.getBoundingClientRect();
+        const visible = r.width > 0 && getComputedStyle(coasterEl).visibility !== 'hidden';
+        state.coasterOn = visible ? 1 : 0;
+        state.coaster = [(r.left + r.width / 2) / CELL_PX + state.phase[0], (r.top + sy + r.height / 2) / CELL_PX + state.phase[1]];
+      }
+      state.dirty = true;
+    }
+    function resize() {
+      state.dpr = Math.min(devicePixelRatio || 1, 1.5);
+      const w = Math.max(1, Math.floor(innerWidth * state.dpr));
+      const h = Math.max(1, Math.floor(innerHeight * state.dpr));
+      if (canvas.width !== w || canvas.height !== h) { canvas.width = w; canvas.height = h; }
+      gl.viewport(0, 0, w, h);
+      measure();
+    }
+    function render() {
+      const sy = window.scrollY || 0;
+      gl.uniform2f(U.uRes, canvas.width, canvas.height);
+      gl.uniform1f(U.uTime, state.time);
+      gl.uniform1f(U.uDrift, state.drift);
+      gl.uniform2f(U.uOffset, state.phase[0], sy / CELL_PX + state.phase[1]);
+      gl.uniform2f(U.uTilt, spring.y[0], spring.y[1]);
+      gl.uniform2f(U.uTiltVel, spring.v[0], spring.v[1]);
+      gl.uniform1f(U.uSeed, state.wind ? Math.random() * 100 : 7.0);
+      gl.uniform2f(U.uCoaster, state.coaster[0], state.coaster[1]);
+      gl.uniform1f(U.uCoasterOn, state.coasterOn);
+      gl.uniform1f(U.uCellPx, CELL_PX * state.dpr);
+      gl.drawArrays(gl.TRIANGLES, 0, 3);
+      state.dirty = false;
+    }
+
+    let last = performance.now(); let frames = 0; let stamp = last;
+    function frame(now) {
+      const dt = Math.min(0.05, (now - last) / 1000); last = now;
+      if (!document.hidden) {
+        if (state.wind) {
+          spring.update(dt, mouse[0], mouse[1]);
+          const r = (spring.v[0] + spring.v[1]) * 0.5;
+          state.time += dt * (state.speed + (1 + r) * 0.4);
+          state.drift = now * 0.001;
+          render();
+        } else if (state.dirty) {
+          render();
+        }
+        frames++;
+        if (now - stamp >= 500) { state.fps = (frames * 1000) / (now - stamp); frames = 0; stamp = now; }
+      }
+      requestAnimationFrame(frame);
+    }
+
+    addEventListener('resize', resize);
+    addEventListener('scroll', () => { state.dirty = true; }, { passive: true });
+    addEventListener('pointermove', (e) => { mouse[0] = (e.clientX / innerWidth) * 2 - 1; mouse[1] = -((e.clientY / innerHeight) * 2 - 1); });
+    if (document.fonts && document.fonts.ready) document.fonts.ready.then(measure);
+    new ResizeObserver(measure).observe(document.documentElement);
+    resize();
+    render();
+    requestAnimationFrame(frame);
+
+    return {
+      state,
+      setWind(on) { state.wind = !!on && !reduced; state.dirty = true; },
+      get fps() { return state.fps; },
+      measure,
+      CELL_PX, MODULE_PX,
+    };
+  }
+
+  window.MatBackground = { init, CELL_PX, MODULE_PX };
+})();
+
+</script>
+<script>
+(function () {
+  const mat = window.MatBackground && MatBackground.init({
+    canvas: 'mat', align: '.desk', coaster: '#coaster-anchor',
+    wind: !/still/.test(location.search), speed: 2.4,
+  });
+
+  // ?y=<px> scrolls on load (used for still captures)
+  const y0 = Number(new URLSearchParams(location.search).get('y'));
+  if (y0 > 0) addEventListener('load', () => { scrollTo(0, y0); if (mat) mat.measure(); });
+
+  // wind toggle
+  const wind = document.getElementById('wind');
+  if (mat && wind) wind.addEventListener('change', () => mat.setWind(wind.checked));
+
+  // live fps in the HUD
+  const fps = document.getElementById('fps');
+  setInterval(() => { if (mat && fps) fps.textContent = Math.round(mat.fps || 0) || '—'; }, 500);
+
+  // the desk ruler: one digit per module, in cells
+  const ruler = document.getElementById('doc-ruler');
+  function labelRuler() {
+    if (!ruler) return;
+    const h = document.documentElement.scrollHeight;
+    const n = Math.floor(h / 80);
+    let html = '';
+    for (let i = 0; i <= n; i++) html += `<span style="top:${i * 80}px">${i * 10}</span>`;
+    ruler.innerHTML = html;
+  }
+  labelRuler();
+  new ResizeObserver(labelRuler).observe(document.body);
+
+  // sliders: fill follows value
+  document.querySelectorAll('.slider').forEach((s) => {
+    const sync = () => {
+      const v = (s.value - s.min) / (s.max - s.min);
+      s.style.setProperty('--fill', (v * 100).toFixed(1) + '%');
+      const out = s.closest('.label') && s.closest('.label').querySelector('output');
+      if (out) out.textContent = Number(s.value).toFixed(2);
+    };
+    s.addEventListener('input', sync); sync();
+  });
+  // segments and tabs
+  document.querySelectorAll('.seg').forEach((g) => g.addEventListener('click', (e) => {
+    const b = e.target.closest('.seg__item'); if (!b) return;
+    g.querySelectorAll('.seg__item').forEach((x) => x.classList.toggle('is-on', x === b));
+  }));
+  document.querySelectorAll('.tabs').forEach((g) => g.addEventListener('click', (e) => {
+    const b = e.target.closest('.tabs__item'); if (!b) return;
+    g.querySelectorAll('.tabs__item').forEach((x) => { x.classList.toggle('is-on', x === b); x.setAttribute('aria-selected', x === b); });
+  }));
+  // toolbar tools: one hot at a time
+  document.querySelectorAll('.toolbar__group').forEach((g) => g.addEventListener('click', (e) => {
+    const b = e.target.closest('.tb'); if (!b || !g.querySelector('.tb.is-on')) return;
+    g.querySelectorAll('.tb').forEach((x) => { x.classList.toggle('is-on', x === b); x.setAttribute('aria-pressed', x === b); });
+  }));
+  // settle demo
+  const sb = document.getElementById('settle-btn'); const sp = document.getElementById('settle-panel');
+  if (sb && sp) sb.addEventListener('click', () => { sp.classList.remove('is-in'); void sp.offsetWidth; sp.classList.add('is-in'); });
+  // copy tokens
+  const cp = document.getElementById('copy-tokens'); const pre = document.getElementById('tokens-pre');
+  if (cp && pre) cp.addEventListener('click', async () => {
+    try { await navigator.clipboard.writeText(pre.textContent); cp.textContent = 'Copied'; }
+    catch (e) { cp.textContent = 'Select and copy'; }
+    setTimeout(() => { cp.textContent = 'Copy tokens'; }, 1600);
+  });
+})();
+</script>
+
+</body></html>

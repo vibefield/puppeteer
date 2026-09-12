@@ -1,0 +1,836 @@
+<!doctype html><html><head><meta charset=utf8><meta name=viewport content="width=device-width,initial-scale=1"><style>:root{color-scheme:light}body{margin:0;padding:0;font:14px -apple-system,BlinkMacSystemFont,sans-serif;background:#faf9f5;color:#141413}img{max-width:100%}[hidden]:not([hidden=until-found i]){display:none!important}</style></head><body>
+<title>Agents in Settings</title>
+<style>
+:root { 
+  --vf-font-sans: -apple-system, BlinkMacSystemFont, "Segoe UI", system-ui, sans-serif;
+  --vf-font-mono: ui-monospace, "SF Mono", SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  --vf-green: #30d158; --vf-orange: #ff9f0a; --vf-red: #ff453a; --vf-yellow: #ffd60a; --vf-cyan: #5ac8fa; --vf-select: #4a90d9;
+  --vf-accent-1: #6366f1; --vf-accent-2: #ec4899; --vf-accent-3: #22c55e; --vf-accent-4: #f59e0b;
+  --vf-accent-5: #06b6d4; --vf-accent-6: #8b5cf6; --vf-accent-7: #ef4444; --vf-accent-8: #3b82f6;
+  --vf-radius-card: 22px; --vf-radius-island: 32px; --vf-radius-sheet: 40px; --vf-radius-control: 9px;
+  --vf-ease-island: cubic-bezier(.25,1,.3,1); --vf-ease-lift: cubic-bezier(.2,.9,.3,1.2); --vf-ease-pop: cubic-bezier(.34,1.45,.64,1);
+ 
+  --ink: 0 0 0;
+  --vf-canvas-bg: #fafafa; --vf-canvas-dot: rgba(0,0,0,.16);
+  --vf-card: #1c1c1e; --vf-card-ink: #ffffff;
+  --vf-fill: #f2f2f7; --vf-fill-hover: #e5e5ea;
+  --vf-foreground: #1c1c1e; --vf-foreground-inverse: #ffffff;
+  --vf-text-primary: rgb(28 28 30 / 85%); --vf-text-secondary: rgb(28 28 30 / 70%);
+  --vf-text-tertiary: rgb(28 28 30 / 45%); --vf-text-faint: rgb(28 28 30 / 30%);
+  --vf-hairline: rgb(0 0 0 / 5%); --vf-hairline-strong: rgb(0 0 0 / 10%);
+  --vf-chrome-solid: #ffffff; --vf-chrome-surface: rgb(255 255 255 / 90%);
+  --vf-sheet-surface: rgb(255 255 255 / 96%); --vf-chrome-surface-soft: rgb(255 255 255 / 58%);
+  --vf-field-surface: rgb(255 255 255 / 60%); --vf-wizard-surface: rgb(255 255 255 / 55%);
+  --vf-backdrop-dim: rgb(0 0 0 / 10%);
+  --vf-sec-bg: rgb(0 0 0 / 1.8%); --vf-art-bg: rgb(255 255 255 / 60%);
+  --vf-nav-on: rgb(0 0 0 / 7.5%); --vf-nav-hover: rgb(0 0 0 / 4%); --vf-hist-bg: rgb(0 0 0 / 4.5%);
+  --vf-shadow-dialog: 0 42px 100px rgb(0 0 0 / 18%), 0 12px 36px rgb(0 0 0 / 10%);
+  --vf-shadow-wizard: 0 8px 30px rgb(0 0 0 / 8%);
+  --vf-shadow-island: 0 8px 30px rgb(0 0 0 / 8%);
+  --vf-shadow-card: 0 20px 40px rgb(0 0 0 / 15%), 0 0 0 1px rgb(0 0 0 / 5%);
+  --vf-term-bg: #ece8dc; --vf-term-divider: #d2cec3; --vf-term-ink: #383a42;
+ }
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) { 
+  --ink: 255 255 255;
+  --vf-canvas-bg: #171717; --vf-canvas-dot: rgba(255,255,255,.08);
+  --vf-fill: #2c2c2e; --vf-fill-hover: #2c2c2e;
+  --vf-foreground: #f5f5f7; --vf-foreground-inverse: #1c1c1e;
+  --vf-text-primary: rgb(245 245 247 / 85%); --vf-text-secondary: rgb(245 245 247 / 70%);
+  --vf-text-tertiary: rgb(245 245 247 / 45%); --vf-text-faint: rgb(245 245 247 / 30%);
+  --vf-hairline: rgb(255 255 255 / 10%); --vf-hairline-strong: rgb(255 255 255 / 15%);
+  --vf-chrome-solid: #1c1c1e; --vf-chrome-surface: rgb(28 28 30 / 90%);
+  --vf-sheet-surface: rgb(28 28 30 / 96%); --vf-chrome-surface-soft: rgb(255 255 255 / 5%);
+  --vf-field-surface: rgb(255 255 255 / 6%); --vf-wizard-surface: rgb(28 28 30 / 55%);
+  --vf-backdrop-dim: rgb(0 0 0 / 40%);
+  --vf-sec-bg: rgb(255 255 255 / 2.5%); --vf-art-bg: rgb(255 255 255 / 2.5%);
+  --vf-nav-on: rgb(255 255 255 / 12%); --vf-nav-hover: rgb(255 255 255 / 7%); --vf-hist-bg: rgb(255 255 255 / 8%);
+  --vf-shadow-dialog: 0 48px 120px rgb(0 0 0 / 48%), 0 14px 40px rgb(0 0 0 / 30%);
+  --vf-shadow-wizard: 0 8px 30px rgb(0 0 0 / 40%);
+  --vf-shadow-island: 0 8px 30px rgb(0 0 0 / 40%);
+  --vf-shadow-card: 0 20px 40px rgb(0 0 0 / 35%), 0 0 0 1px rgb(255 255 255 / 6%);
+  --vf-term-bg: #282c34; --vf-term-divider: #414650; --vf-term-ink: #abb2bf;
+ } }
+:root[data-theme="dark"] { 
+  --ink: 255 255 255;
+  --vf-canvas-bg: #171717; --vf-canvas-dot: rgba(255,255,255,.08);
+  --vf-fill: #2c2c2e; --vf-fill-hover: #2c2c2e;
+  --vf-foreground: #f5f5f7; --vf-foreground-inverse: #1c1c1e;
+  --vf-text-primary: rgb(245 245 247 / 85%); --vf-text-secondary: rgb(245 245 247 / 70%);
+  --vf-text-tertiary: rgb(245 245 247 / 45%); --vf-text-faint: rgb(245 245 247 / 30%);
+  --vf-hairline: rgb(255 255 255 / 10%); --vf-hairline-strong: rgb(255 255 255 / 15%);
+  --vf-chrome-solid: #1c1c1e; --vf-chrome-surface: rgb(28 28 30 / 90%);
+  --vf-sheet-surface: rgb(28 28 30 / 96%); --vf-chrome-surface-soft: rgb(255 255 255 / 5%);
+  --vf-field-surface: rgb(255 255 255 / 6%); --vf-wizard-surface: rgb(28 28 30 / 55%);
+  --vf-backdrop-dim: rgb(0 0 0 / 40%);
+  --vf-sec-bg: rgb(255 255 255 / 2.5%); --vf-art-bg: rgb(255 255 255 / 2.5%);
+  --vf-nav-on: rgb(255 255 255 / 12%); --vf-nav-hover: rgb(255 255 255 / 7%); --vf-hist-bg: rgb(255 255 255 / 8%);
+  --vf-shadow-dialog: 0 48px 120px rgb(0 0 0 / 48%), 0 14px 40px rgb(0 0 0 / 30%);
+  --vf-shadow-wizard: 0 8px 30px rgb(0 0 0 / 40%);
+  --vf-shadow-island: 0 8px 30px rgb(0 0 0 / 40%);
+  --vf-shadow-card: 0 20px 40px rgb(0 0 0 / 35%), 0 0 0 1px rgb(255 255 255 / 6%);
+  --vf-term-bg: #282c34; --vf-term-divider: #414650; --vf-term-ink: #abb2bf;
+ }
+.t-light { 
+  --ink: 0 0 0;
+  --vf-canvas-bg: #fafafa; --vf-canvas-dot: rgba(0,0,0,.16);
+  --vf-card: #1c1c1e; --vf-card-ink: #ffffff;
+  --vf-fill: #f2f2f7; --vf-fill-hover: #e5e5ea;
+  --vf-foreground: #1c1c1e; --vf-foreground-inverse: #ffffff;
+  --vf-text-primary: rgb(28 28 30 / 85%); --vf-text-secondary: rgb(28 28 30 / 70%);
+  --vf-text-tertiary: rgb(28 28 30 / 45%); --vf-text-faint: rgb(28 28 30 / 30%);
+  --vf-hairline: rgb(0 0 0 / 5%); --vf-hairline-strong: rgb(0 0 0 / 10%);
+  --vf-chrome-solid: #ffffff; --vf-chrome-surface: rgb(255 255 255 / 90%);
+  --vf-sheet-surface: rgb(255 255 255 / 96%); --vf-chrome-surface-soft: rgb(255 255 255 / 58%);
+  --vf-field-surface: rgb(255 255 255 / 60%); --vf-wizard-surface: rgb(255 255 255 / 55%);
+  --vf-backdrop-dim: rgb(0 0 0 / 10%);
+  --vf-sec-bg: rgb(0 0 0 / 1.8%); --vf-art-bg: rgb(255 255 255 / 60%);
+  --vf-nav-on: rgb(0 0 0 / 7.5%); --vf-nav-hover: rgb(0 0 0 / 4%); --vf-hist-bg: rgb(0 0 0 / 4.5%);
+  --vf-shadow-dialog: 0 42px 100px rgb(0 0 0 / 18%), 0 12px 36px rgb(0 0 0 / 10%);
+  --vf-shadow-wizard: 0 8px 30px rgb(0 0 0 / 8%);
+  --vf-shadow-island: 0 8px 30px rgb(0 0 0 / 8%);
+  --vf-shadow-card: 0 20px 40px rgb(0 0 0 / 15%), 0 0 0 1px rgb(0 0 0 / 5%);
+  --vf-term-bg: #ece8dc; --vf-term-divider: #d2cec3; --vf-term-ink: #383a42;
+ } .t-dark { 
+  --ink: 255 255 255;
+  --vf-canvas-bg: #171717; --vf-canvas-dot: rgba(255,255,255,.08);
+  --vf-fill: #2c2c2e; --vf-fill-hover: #2c2c2e;
+  --vf-foreground: #f5f5f7; --vf-foreground-inverse: #1c1c1e;
+  --vf-text-primary: rgb(245 245 247 / 85%); --vf-text-secondary: rgb(245 245 247 / 70%);
+  --vf-text-tertiary: rgb(245 245 247 / 45%); --vf-text-faint: rgb(245 245 247 / 30%);
+  --vf-hairline: rgb(255 255 255 / 10%); --vf-hairline-strong: rgb(255 255 255 / 15%);
+  --vf-chrome-solid: #1c1c1e; --vf-chrome-surface: rgb(28 28 30 / 90%);
+  --vf-sheet-surface: rgb(28 28 30 / 96%); --vf-chrome-surface-soft: rgb(255 255 255 / 5%);
+  --vf-field-surface: rgb(255 255 255 / 6%); --vf-wizard-surface: rgb(28 28 30 / 55%);
+  --vf-backdrop-dim: rgb(0 0 0 / 40%);
+  --vf-sec-bg: rgb(255 255 255 / 2.5%); --vf-art-bg: rgb(255 255 255 / 2.5%);
+  --vf-nav-on: rgb(255 255 255 / 12%); --vf-nav-hover: rgb(255 255 255 / 7%); --vf-hist-bg: rgb(255 255 255 / 8%);
+  --vf-shadow-dialog: 0 48px 120px rgb(0 0 0 / 48%), 0 14px 40px rgb(0 0 0 / 30%);
+  --vf-shadow-wizard: 0 8px 30px rgb(0 0 0 / 40%);
+  --vf-shadow-island: 0 8px 30px rgb(0 0 0 / 40%);
+  --vf-shadow-card: 0 20px 40px rgb(0 0 0 / 35%), 0 0 0 1px rgb(255 255 255 / 6%);
+  --vf-term-bg: #282c34; --vf-term-divider: #414650; --vf-term-ink: #abb2bf;
+ }
+
+* { box-sizing: border-box; }
+html { -webkit-text-size-adjust: 100%; }
+body {
+  margin: 0; font-family: var(--vf-font-sans); font-size: 14px; line-height: 1.45;
+  color: var(--vf-text-secondary); background-color: var(--vf-canvas-bg);
+  background-image: radial-gradient(circle, color-mix(in srgb, var(--vf-canvas-dot) 55%, transparent) 1px, transparent 1.2px);
+  background-size: 25px 25px; background-position: 12px 12px;
+  -webkit-font-smoothing: antialiased;
+}
+a { color: inherit; }
+.wrap { max-width: 1120px; margin: 0 auto; padding: 56px 32px 120px; }
+.prose { max-width: 66ch; }
+.prose p { margin: 0 0 14px; }
+.prose p:last-child { margin-bottom: 0; }
+.prose strong { color: var(--vf-text-primary); font-weight: 600; }
+.prose em { font-style: normal; color: var(--vf-text-primary); }
+.prose ul { margin: 0 0 14px; padding-left: 18px; }
+.prose li { margin: 0 0 6px; }
+.prose li::marker { color: var(--vf-text-faint); }
+code, .mono { font-family: var(--vf-font-mono); font-size: .92em; }
+.prose code { padding: 1px 5px; border-radius: 5px; background: color-mix(in srgb, var(--vf-foreground) 6%, transparent); color: var(--vf-text-primary); font-size: 12px; }
+.eyebrow { font-size: 10px; font-weight: 500; letter-spacing: .08em; text-transform: uppercase; color: var(--vf-text-tertiary); }
+h1.page { margin: 10px 0 12px; font-size: 34px; font-weight: 300; letter-spacing: -.02em; line-height: 1.12; color: var(--vf-foreground); text-wrap: balance; max-width: 22ch; }
+.lede { font-size: 16px; line-height: 1.5; color: var(--vf-text-secondary); max-width: 62ch; }
+.meta { display: flex; flex-wrap: wrap; gap: 6px 14px; margin-top: 22px; font-size: 12px; color: var(--vf-text-tertiary); }
+.meta b { font-weight: 500; color: var(--vf-text-secondary); }
+section.part { margin-top: 84px; }
+section.part > .eyebrow { display: block; margin-bottom: 6px; }
+h2 { margin: 0 0 14px; font-size: 22px; font-weight: 500; letter-spacing: -.02em; line-height: 1.2; color: var(--vf-foreground); text-wrap: balance; max-width: 30ch; }
+h3.sub { margin: 36px 0 10px; font-size: 14px; font-weight: 600; color: var(--vf-text-primary); }
+.cap { margin-top: 12px; font-size: 12px; line-height: 1.5; color: var(--vf-text-tertiary); max-width: 70ch; }
+.cap b { font-weight: 500; color: var(--vf-text-secondary); }
+.cite { font-size: 11px; color: var(--vf-text-faint); white-space: nowrap; }
+.two { display: grid; grid-template-columns: minmax(0,1fr) minmax(0,1fr); gap: 28px 40px; align-items: start; }
+@media (max-width: 860px) { .two { grid-template-columns: 1fr; } }
+
+/* tables — reader surface, hairlines only */
+table.spec { width: 100%; border-collapse: collapse; font-size: 13px; margin-top: 8px; }
+table.spec th { text-align: left; font-size: 10px; font-weight: 500; letter-spacing: .08em; text-transform: uppercase; color: var(--vf-text-tertiary); padding: 0 12px 8px 0; border-bottom: 1px solid var(--vf-hairline-strong); }
+table.spec td { padding: 9px 12px 9px 0; border-bottom: 1px solid var(--vf-hairline); vertical-align: top; color: var(--vf-text-secondary); }
+table.spec td:first-child { color: var(--vf-text-primary); font-weight: 500; white-space: nowrap; }
+table.spec td.mono, table.spec td code { font-family: var(--vf-font-mono); font-size: 12px; }
+.tablewrap { overflow-x: auto; }
+
+/* notices */
+.notice { padding: 10px 12px; border-radius: 12px; font-size: 12px; line-height: 1.45; color: var(--vf-text-secondary); background: color-mix(in srgb, var(--vf-foreground) 5%, transparent); }
+.notice[data-tone="attention"] { color: var(--vf-orange); background: color-mix(in srgb, var(--vf-orange) 12%, transparent); }
+
+/* ======================= the settings sheet (from SettingsDialog.tsx + settings.css) */
+.stage { margin-top: 22px; padding: 28px; border-radius: 28px; background-color: var(--vf-canvas-bg); background-image: radial-gradient(circle, var(--vf-canvas-dot) 1px, transparent 1.2px); background-size: 25px 25px; overflow-x: auto; color: var(--vf-text-secondary); }
+.stage.dim { position: relative; }
+.stage.dim::before { content: ""; position: absolute; inset: 0; border-radius: 28px; background: var(--vf-backdrop-dim); pointer-events: none; }
+.vfs { position: relative; display: grid; grid-template-columns: 224px minmax(0,1fr); width: 100%; max-width: 1080px; min-height: 540px; margin: 0 auto; border-radius: 22px; overflow: hidden; border: 1px solid var(--vf-hairline-strong); background: var(--vf-sheet-surface); box-shadow: var(--vf-shadow-dialog); backdrop-filter: blur(36px) saturate(1.1); font-size: 13px; color: var(--vf-text-primary); }
+.vfs-side { display: flex; flex-direction: column; min-height: 0; padding: 12px; border-right: 1px solid var(--vf-hairline); background: var(--vf-chrome-surface-soft); }
+.vfs-brand { display: flex; align-items: center; gap: 10px; height: 58px; padding: 0 8px; }
+.vfs-gear { display: flex; align-items: center; justify-content: center; width: 32px; height: 32px; border-radius: 10px; background: var(--vf-foreground); color: var(--vf-foreground-inverse); box-shadow: 0 1px 2px rgb(0 0 0 / 8%); }
+.vfs-gear svg { width: 16px; height: 16px; fill: none; stroke: currentColor; stroke-width: 1.6; stroke-linecap: round; stroke-linejoin: round; }
+.vfs-title { font-size: 15px; font-weight: 600; letter-spacing: -.02em; color: rgb(var(--ink) / .85); }
+.vfs-nav { flex: 1; padding: 8px 0; }
+.vfs-group { margin-bottom: 16px; }
+.vfs-group:last-child { margin-bottom: 0; }
+.vfs-glabel { margin: 0 0 4px; padding: 0 12px; font-size: 10px; font-weight: 600; letter-spacing: .08em; text-transform: uppercase; color: rgb(var(--ink) / .3); }
+.vfs-item { display: flex; align-items: center; gap: 10px; height: 36px; padding: 0 12px; margin-bottom: 2px; border-radius: 10px; font-size: 12px; font-weight: 500; color: rgb(var(--ink) / .5); }
+.vfs-item.is-on { background: var(--vf-nav-on); color: rgb(var(--ink) / 1); }
+.vfs-item svg { width: 18px; height: 18px; flex: none; fill: none; stroke: currentColor; stroke-width: 1.5; stroke-linecap: round; stroke-linejoin: round; }
+.vfs-item .new { margin-left: auto; font-size: 9px; font-weight: 600; letter-spacing: .06em; text-transform: uppercase; color: var(--vf-cyan); }
+.vfs-note { padding: 12px 12px 0; border-top: 1px solid var(--vf-hairline); font-size: 10px; line-height: 16px; color: rgb(var(--ink) / .3); }
+.vfs-main { display: flex; flex-direction: column; min-width: 0; }
+.vfs-head { display: flex; align-items: center; justify-content: space-between; gap: 16px; min-height: 76px; padding: 0 32px; border-bottom: 1px solid var(--vf-hairline); }
+.vfs-head h1 { margin: 0; font-size: 17px; font-weight: 600; letter-spacing: -.025em; color: rgb(var(--ink) / .9); }
+.vfs-tools { display: flex; align-items: center; gap: 8px; flex: none; }
+.vfs-hist { display: flex; align-items: center; padding: 4px; border-radius: 999px; background: var(--vf-hist-bg); }
+.vfs-hist span { display: inline-flex; align-items: center; gap: 6px; height: 32px; padding: 0 10px; border-radius: 999px; font-size: 11px; font-weight: 500; color: rgb(var(--ink) / .55); opacity: .3; }
+.vfs-hist svg { width: 16px; height: 16px; fill: none; stroke: currentColor; stroke-width: 1.6; stroke-linecap: round; stroke-linejoin: round; }
+.vfs-x { display: flex; align-items: center; justify-content: center; width: 36px; height: 36px; border-radius: 999px; background: var(--vf-hist-bg); color: rgb(var(--ink) / .45); }
+.vfs-x svg { width: 16px; height: 16px; fill: none; stroke: currentColor; stroke-width: 1.6; stroke-linecap: round; }
+.vfs-body { padding: 24px 32px; }
+.vfs-col { max-width: 760px; margin: 0 auto; display: flex; flex-direction: column; gap: 16px; }
+.lbl { font-size: 12px; line-height: 20px; color: var(--vf-text-tertiary); }
+.sec { border-radius: 18px; border: 1px solid var(--vf-hairline); background: var(--vf-sec-bg); padding: 16px; }
+.sec-h { margin-bottom: 12px; }
+.sec-h h3 { margin: 0; font-size: 13px; font-weight: 600; letter-spacing: -.01em; color: rgb(var(--ink) / .85); }
+.sec-h .lbl { margin-top: 2px; }
+.row { display: flex; align-items: center; gap: 20px; min-height: 56px; padding: 12px 0; border-bottom: 1px solid var(--vf-hairline); }
+.row:last-child { border-bottom: 0; }
+.row.start { align-items: flex-start; }
+.row-copy { min-width: 0; flex: 1; }
+.row-t { font-size: 13px; font-weight: 500; line-height: 20px; color: rgb(var(--ink) / .8); }
+.row-d { margin-top: 2px; max-width: 56ch; }
+.row-c { display: flex; align-items: center; justify-content: flex-end; gap: 8px; flex: none; }
+.pill { display: inline-flex; align-items: center; padding: 2px 8px; border-radius: 999px; font-size: 10px; font-weight: 500; color: var(--vf-text-tertiary); background: color-mix(in srgb, var(--vf-foreground) 5%, transparent); white-space: nowrap; }
+.btn { display: inline-flex; align-items: center; justify-content: center; height: 36px; padding: 0 14px; border: 0; border-radius: 999px; font: inherit; font-size: 12px; font-weight: 500; color: var(--vf-text-secondary); background: color-mix(in srgb, var(--vf-foreground) 5%, transparent); white-space: nowrap; cursor: default; }
+.btn.primary { height: 40px; padding: 0 20px; font-size: 13px; color: var(--vf-foreground-inverse); background: var(--vf-foreground); box-shadow: 0 4px 10px rgb(0 0 0 / 14%); }
+.btn.danger { color: var(--vf-red); }
+.btn.quiet { background: transparent; color: var(--vf-text-tertiary); padding: 0 8px; }
+.btn.sm { height: 30px; padding: 0 11px; font-size: 11px; }
+.tbtn { font-size: 12px; color: var(--vf-text-tertiary); }
+.dot { display: inline-block; width: 6px; height: 6px; flex: none; border-radius: 999px; background: var(--vf-text-faint); }
+.dot.lg { width: 8px; height: 8px; }
+.dot.healthy { background: var(--vf-green); } .dot.attention { background: var(--vf-orange); } .dot.error { background: var(--vf-red); }
+.sw { position: relative; display: inline-block; width: 40px; height: 24px; flex: none; border-radius: 999px; background: color-mix(in srgb, var(--vf-foreground) 15%, transparent); }
+.sw::after { content: ""; position: absolute; top: 3px; left: 3px; width: 18px; height: 18px; border-radius: 50%; background: var(--vf-foreground-inverse); box-shadow: 0 1px 3px rgb(0 0 0 / 18%); }
+.sw.on { background: var(--vf-foreground); } .sw.on::after { transform: translateX(16px); }
+.sw.sm { width: 32px; height: 20px; } .sw.sm::after { width: 14px; height: 14px; } .sw.sm.on::after { transform: translateX(12px); }
+.seg { display: inline-grid; grid-auto-flow: column; grid-auto-columns: minmax(0,1fr); gap: 3px; padding: 3px; border-radius: 999px; background: var(--vf-fill); }
+.seg span { display: inline-flex; align-items: center; justify-content: center; min-height: 28px; padding: 0 12px; border: 1px solid transparent; border-radius: 999px; font-size: 12px; font-weight: 600; color: var(--vf-text-tertiary); }
+.seg span.on { border-color: var(--vf-hairline); color: var(--vf-foreground); background: var(--vf-chrome-solid); box-shadow: 0 2px 6px rgb(0 0 0 / 8%); }
+.chip { display: inline-flex; align-items: center; gap: 6px; height: 24px; padding: 0 10px; border-radius: 999px; font-size: 12px; font-weight: 500; background: color-mix(in srgb, var(--a) 12%, transparent); border: 1px solid color-mix(in srgb, var(--a) 35%, transparent); color: var(--a); white-space: nowrap; }
+.chip.plain { --a: currentColor; background: var(--vf-fill); border-color: var(--vf-hairline); color: var(--vf-text-primary); }
+.chip .sw-dot { width: 7px; height: 7px; border-radius: 50%; background: var(--a); }
+.ring { outline: 1.5px solid var(--vf-select); outline-offset: -1.5px; }
+.ring2 { outline: 1.5px solid var(--vf-select); outline-offset: 2px; }
+
+/* agent monogram tile — vendor-neutral, the muted ramp, no artwork */
+.tile { display: inline-flex; align-items: center; justify-content: center; width: 28px; height: 28px; flex: none; border-radius: 8px; background: var(--vf-fill); font-family: var(--vf-font-mono); font-size: 10px; font-weight: 600; letter-spacing: .04em; color: var(--vf-text-tertiary); }
+
+/* profile card */
+.prof { padding: 16px; }
+.prof-h { display: flex; align-items: center; gap: 8px; }
+.prof-h .grow { flex: 1; }
+.prof-path { margin-top: 6px; }
+.prow { display: flex; align-items: center; gap: 12px; min-height: 52px; padding: 10px 0; border-bottom: 1px solid var(--vf-hairline); }
+.prow:last-child { border-bottom: 0; }
+.prow .who { min-width: 0; flex: 1; }
+.prow .who .n { font-size: 13px; font-weight: 500; line-height: 18px; color: rgb(var(--ink) / .8); }
+.prow .who .f { font-size: 12px; line-height: 18px; color: var(--vf-text-tertiary); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.prow .st { display: inline-flex; align-items: center; gap: 6px; font-size: 12px; color: var(--vf-text-tertiary); white-space: nowrap; }
+.prow .st.attn { color: var(--vf-orange); }
+.prow .st.err { color: var(--vf-red); }
+.prow .ctl { display: flex; align-items: center; gap: 6px; flex: none; }
+.prow.open { display: block; }
+.prow.open .prow-line { display: flex; align-items: center; gap: 12px; }
+.confirm { margin-top: 10px; padding: 12px; border-radius: 14px; border: 1px solid var(--vf-hairline); background: color-mix(in srgb, var(--vf-foreground) 2%, transparent); }
+.confirm p { margin: 0; }
+.confirm .acts { display: flex; gap: 8px; margin-top: 10px; }
+.newform { display: grid; grid-template-columns: minmax(0,1fr) auto; gap: 10px 16px; align-items: center; margin-top: 12px; padding: 14px; border-radius: 14px; border: 1px solid var(--vf-hairline); }
+.field { height: 36px; padding: 0 12px; border: 1px solid var(--vf-hairline-strong); border-radius: var(--vf-radius-control); background: var(--vf-chrome-solid); color: var(--vf-text-primary); font-size: 13px; display: flex; align-items: center; }
+.t-dark .field, :root[data-theme="dark"] .field { background: var(--vf-field-surface); }
+.field.ph { color: var(--vf-text-faint); }
+.swatches { display: flex; flex-wrap: wrap; gap: 6px; }
+.swatches i { display: block; width: 28px; height: 28px; border-radius: 50%; }
+
+/* terminal card inside the sheet — content surface (Godview deck palette) */
+.term { margin-top: 10px; border-radius: 14px; overflow: hidden; border: 1px solid var(--vf-term-divider); background: var(--vf-term-bg); color: var(--vf-term-ink); font-family: var(--vf-font-mono); font-size: 11.5px; line-height: 1.55; }
+.term .tb { display: flex; align-items: center; justify-content: space-between; padding: 6px 12px; border-bottom: 1px solid var(--vf-term-divider); font-family: var(--vf-font-sans); font-size: 10px; letter-spacing: .06em; text-transform: uppercase; opacity: .7; }
+.term pre { margin: 0; padding: 10px 12px 12px; white-space: pre-wrap; word-break: break-all; }
+.term .cur { display: inline-block; width: 7px; height: 13px; vertical-align: -2px; background: currentColor; opacity: .7; }
+
+/* agents page rows (PluginRow shape) */
+.art { border-radius: 16px; border: 1px solid var(--vf-hairline); background: var(--vf-art-bg); padding: 16px; }
+.art-top { display: flex; align-items: flex-start; justify-content: space-between; gap: 20px; }
+.art-id { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; min-width: 0; }
+.art-id h3 { margin: 0; font-size: 13px; font-weight: 600; color: rgb(var(--ink) / .85); }
+.art-side { display: flex; align-items: center; gap: 8px; flex: none; }
+.art-path { margin-top: 4px; font-family: var(--vf-font-mono); font-size: 11.5px; color: var(--vf-text-tertiary); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.art-acts { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin-top: 12px; padding-top: 12px; border-top: 1px solid var(--vf-hairline); }
+.art-more { margin-top: 12px; padding-top: 12px; border-top: 1px solid var(--vf-hairline); }
+.art .line { display: flex; align-items: center; justify-content: space-between; gap: 10px; font-size: 12px; }
+.disc { border-left: 1px solid var(--vf-hairline-strong); padding-left: 10px; margin-top: 6px; display: flex; flex-direction: column; gap: 6px; font-size: 12px; }
+.disc .line { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
+.disc .line .k { color: var(--vf-text-primary); }
+.disc .line .v { display: flex; align-items: center; gap: 6px; color: var(--vf-text-tertiary); font-variant-numeric: tabular-nums; }
+.disc .line .v b { font-weight: 500; color: var(--vf-text-secondary); }
+.disc .sub { padding-left: 8px; color: var(--vf-text-tertiary); }
+.ext { display: grid; gap: 14px; }
+.ext .grp .eyebrow { display: block; margin-bottom: 4px; }
+.ext .xrow { display: flex; align-items: center; gap: 10px; min-height: 34px; padding: 4px 0; border-bottom: 1px solid var(--vf-hairline); font-size: 12px; }
+.ext .xrow:last-child { border-bottom: 0; }
+.ext .xrow .n { color: var(--vf-text-primary); font-weight: 500; }
+.ext .xrow .f { flex: 1; min-width: 0; color: var(--vf-text-tertiary); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.ext .xrow .f code { color: inherit; }
+.inst { display: flex; align-items: center; gap: 10px; padding: 8px 0; border-bottom: 1px solid var(--vf-hairline); font-size: 12px; }
+.inst:last-child { border-bottom: 0; }
+.inst .p { flex: 1; min-width: 0; font-family: var(--vf-font-mono); font-size: 11.5px; color: var(--vf-text-secondary); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+
+/* wizard */
+.wizstage { margin-top: 22px; padding: 28px 16px; border-radius: 28px; background-color: var(--vf-canvas-bg); background-image: radial-gradient(circle, var(--vf-canvas-dot) 1px, transparent 1.2px); background-size: 25px 25px; display: flex; justify-content: center; overflow-x: auto; color: var(--vf-text-secondary); }
+.wiz { position: relative; width: min(100%, 44rem); min-height: 32rem; overflow: hidden; border: 1px solid var(--vf-hairline); border-radius: var(--vf-radius-island); background: var(--vf-wizard-surface); box-shadow: var(--vf-shadow-wizard); padding: clamp(2rem, 5vw, 4rem); backdrop-filter: blur(32px) saturate(1.12); display: flex; align-items: center; justify-content: center; }
+.wiz .theme { position: absolute; top: 20px; right: 20px; width: 40px; height: 40px; border-radius: 999px; background: var(--vf-chrome-solid); box-shadow: 0 10px 15px -3px rgb(0 0 0 / 10%), 0 4px 6px -4px rgb(0 0 0 / 10%); display: flex; align-items: center; justify-content: center; color: var(--vf-text-tertiary); }
+.wiz .theme svg { width: 16px; height: 16px; fill: none; stroke: currentColor; stroke-width: 1.5; stroke-linecap: round; }
+.pane { width: 100%; max-width: 30rem; display: flex; flex-direction: column; gap: 20px; }
+.pane .eyebrow { color: rgb(var(--ink) / .5); }
+.pane h1 { margin: 6px 0 0; font-size: 28px; font-weight: 300; line-height: 1.15; letter-spacing: -.02em; color: var(--vf-foreground); text-wrap: balance; }
+.pane .voice { margin: 8px 0 0; font-size: 14px; line-height: 1.45; color: rgb(var(--ink) / .7); }
+.pane .fact { font-size: 12px; line-height: 20px; color: rgb(var(--ink) / .45); }
+.pane .acts { display: flex; flex-wrap: wrap; align-items: flex-start; gap: 8px; padding-top: 4px; }
+.pane .skip { display: flex; flex-direction: column; gap: 4px; }
+.pane .prim { display: inline-flex; align-items: center; justify-content: center; height: 40px; padding: 0 20px; border-radius: 999px; font-size: 13px; font-weight: 500; color: var(--vf-foreground-inverse); background: var(--vf-foreground); box-shadow: 0 4px 10px rgb(0 0 0 / 14%); }
+.pane .qt { display: inline-flex; align-items: center; justify-content: center; height: 40px; padding: 0 16px; border-radius: 999px; font-size: 13px; font-weight: 500; color: rgb(var(--ink) / .65); background: rgb(var(--ink) / .05); }
+.pane ul.checks { margin: 0; padding: 0; list-style: none; display: flex; flex-direction: column; gap: 6px; }
+.pane ul.checks li { display: flex; align-items: center; gap: 8px; font-size: 12px; line-height: 20px; color: rgb(var(--ink) / .45); }
+.pane ul.checks li .ok { color: var(--vf-green); }
+.pane ul.checks li .n { color: rgb(var(--ink) / .8); font-weight: 500; }
+.pane .bigfield { height: 44px; padding: 0 14px; border-radius: 12px; border: 1px solid var(--vf-hairline-strong); background: var(--vf-chrome-solid); display: flex; align-items: center; font-size: 15px; color: rgb(var(--ink) / .85); }
+.t-dark .pane .bigfield { background: rgb(255 255 255 / 6%); }
+.pane .wrows { display: flex; flex-direction: column; }
+.pane .wrows .prow { padding: 8px 0; min-height: 44px; }
+
+/* small mocks */
+.mini { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 24px; margin-top: 18px; }
+.mini > div { display: flex; flex-direction: column; gap: 10px; }
+.palette { border-radius: 22px; border: 1px solid var(--vf-hairline-strong); background: var(--vf-sheet-surface); box-shadow: var(--vf-shadow-island); padding: 10px 14px; font-size: 13px; }
+.palette .q { display: flex; align-items: center; gap: 8px; padding: 6px 4px 10px; border-bottom: 1px solid var(--vf-hairline); color: var(--vf-text-primary); }
+.palette .q i { color: var(--vf-text-faint); font-style: normal; }
+.palette .r { display: flex; align-items: center; gap: 10px; padding: 8px 6px; border-radius: 10px; }
+.palette .r.on { background: var(--vf-nav-on); }
+.palette .r .grow { flex: 1; }
+.card { width: 155px; height: 155px; border-radius: 22px; background: var(--vf-card); color: var(--vf-card-ink); box-shadow: var(--vf-shadow-card); padding: 16px; display: flex; flex-direction: column; }
+.card .eb { display: flex; justify-content: space-between; font-size: 10px; font-weight: 500; letter-spacing: .06em; text-transform: uppercase; color: rgb(255 255 255 / .6); }
+.card .eb .pf { color: var(--a); }
+.card .t { margin-top: auto; font-size: 12px; font-weight: 600; }
+.card .b { margin-top: 4px; display: flex; align-items: center; gap: 6px; font-size: 11px; color: rgb(255 255 255 / .7); font-variant-numeric: tabular-nums; }
+
+/* decisions */
+.q { display: grid; grid-template-columns: 44px minmax(0,1fr); gap: 12px; padding: 18px 0; border-top: 1px solid var(--vf-hairline); }
+.q:first-child { border-top: 0; }
+.q-id { font-family: var(--vf-font-mono); font-size: 11px; color: var(--vf-text-faint); padding-top: 4px; }
+.q h4 { margin: 0 0 10px; font-size: 13px; font-weight: 600; color: var(--vf-text-primary); }
+.q-opts { display: flex; flex-wrap: wrap; gap: 6px; }
+.q-opt { display: inline-flex; align-items: center; gap: 6px; height: 30px; padding: 0 12px; border: 0; border-radius: 999px; font: inherit; font-size: 12px; font-weight: 500; color: var(--vf-text-secondary); background: var(--vf-fill); cursor: pointer; transition: transform 160ms ease, background-color 160ms ease; }
+.q-opt:hover { background: var(--vf-fill-hover); }
+.q-opt:active { transform: scale(.95); }
+.q-opt:focus-visible { outline: 2px solid var(--vf-select); outline-offset: 2px; }
+.q-opt.is-rec::after { content: "rec"; font-size: 9px; letter-spacing: .06em; text-transform: uppercase; color: var(--vf-text-faint); }
+.q-opt.is-on { color: var(--vf-foreground-inverse); background: var(--vf-foreground); box-shadow: 0 4px 10px rgb(0 0 0 / 14%); }
+.q-opt.is-on.is-rec::after { color: color-mix(in srgb, var(--vf-foreground-inverse) 55%, transparent); }
+.q-note { display: block; width: 100%; margin-top: 10px; padding: 8px 12px; border: 1px solid var(--vf-hairline-strong); border-radius: 9px; background: var(--vf-chrome-solid); color: var(--vf-text-primary); font: inherit; font-size: 12px; resize: vertical; min-height: 34px; }
+.t-dark .q-note, :root[data-theme="dark"] .q-note { background: var(--vf-field-surface); }
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) .q-note { background: var(--vf-field-surface); } }
+.q-note::placeholder { color: var(--vf-text-faint); }
+.q-note:focus { outline: none; border-color: color-mix(in srgb, var(--vf-foreground) 25%, transparent); box-shadow: 0 0 0 3px color-mix(in srgb, var(--vf-foreground) 5%, transparent); }
+.q-state { margin-top: 6px; font-size: 11px; color: var(--vf-text-faint); font-variant-numeric: tabular-nums; }
+#savebar { position: sticky; bottom: 16px; margin-top: 24px; width: fit-content; padding: 8px 14px; border-radius: 999px; font-size: 11px; color: var(--vf-text-secondary); background: var(--vf-chrome-surface); border: 1px solid var(--vf-hairline); box-shadow: var(--vf-shadow-island); backdrop-filter: blur(16px); }
+
+@media (max-width: 760px) {
+  .vfs { grid-template-columns: 68px minmax(0,1fr); }
+  .vfs-side { padding-inline: 8px; }
+  .vfs-title, .vfs-glabel, .vfs-item span, .vfs-note { display: none; }
+  .vfs-item { justify-content: center; padding-inline: 0; }
+  .vfs-head, .vfs-body { padding-inline: 20px; }
+  .vfs-hist span { padding-inline: 8px; }
+  .vfs-hist span em { display: none; }
+  .wrap { padding: 40px 18px 100px; }
+  .stage, .wizstage { padding: 16px; border-radius: 22px; }
+}
+@media (max-width: 620px) {
+  .row { flex-direction: column; align-items: stretch; gap: 10px; }
+  .row-c { justify-content: flex-start; }
+  .newform { grid-template-columns: 1fr; }
+}
+@media (prefers-reduced-motion: reduce) { .q-opt { transition: none; } }
+</style>
+<div class="wrap">
+
+<header>
+  <span class="eyebrow">VibeField · Settings · design proposals · pass 1</span>
+  <h1 class="page">Agents in Settings</h1>
+  <p class="lede">Installed agents, their versions and updates, what each one has loaded, and the accounts they sign in with — designed as two pages of the VibeField Settings sheet, under <code>DESIGN.md</code>, with a first-run that follows the Setup Assistant's laws.</p>
+  <div class="meta"><span><b>Record</b> protos/vibefield-proto/agents-settings-proposals.html</span><span><b>Supersedes</b> the Godview drawer proposals (pass 2) for everything that is management, not monitoring</span><span><b>Runtime</b> puppeteer RFC 006, phase 1</span><span><b>Date</b> 2026-09-09</span></div>
+</header>
+
+<section class="part">
+  <span class="eyebrow">The move</span>
+  <h2>Godview watches. Settings manages.</h2>
+  <div class="two">
+    <div class="prose">
+      <p>The Godview drawer put installs, updates and accounts inside the control room. That was the right place to <em>see</em> them and the wrong place to <em>change</em> them: Godview is a stage, free in its looks, and it covers the window. Management is a document, and VibeField already has the document — the Settings sheet, where plugins get their source badge, their user-initiated updates and their two-step uninstall, and where the Account page keeps the user, the users on this machine, the link and the switcher.</p>
+      <p>So this pass moves the whole drawer into Settings and keeps only the marks in Godview. Two pages: <strong>Profiles</strong>, which sits under Account because it is about who you are signed in as, and <strong>Agents</strong>, which sits under Workspace beside Plugins because it is about what is installed. Every element below is one of the sheet's existing pieces, cited by section; nothing is styled fresh.</p>
+    </div>
+    <div class="prose">
+      <p><strong>What stays true from pass 2.</strong> A profile holds one account per agent, and several profiles run at once. Nothing signs in by typing — every sign-in is the agent's own command, run in that profile's folder, and the row believes only what the agent reports back. Updates are the agent's own updater. This Mac is the first profile: the agents' own folders, adopted as they are.</p>
+      <p><strong>What changes.</strong> The bar, the crate, the overlay and the initials are gone; the sheet's sidebar, header and sections replace them. A profile is a §2.6 tint, the same eight slots the user picks from, so the mark that reaches a card or a bubble is the one grammar VibeField already has for grouping. The first run is not a three-step sheet but two or three Setup Assistant panes, one decision each, every skip naming its later home.</p>
+    </div>
+  </div>
+</section>
+
+<section class="part">
+  <span class="eyebrow">Inherited</span>
+  <h2>What DESIGN.md already decides for these pages</h2>
+  <p class="prose">Onboarding to the system first. These are the recipes the pages are made of; the mockups cite them and add nothing outside this table.</p>
+  <div class="tablewrap"><table class="spec">
+    <thead><tr><th>Piece</th><th>Recipe in the sheet today</th><th>Where</th></tr></thead>
+    <tbody>
+      <tr><td>The sheet</td><td>Window-level, centered, 224 px sidebar + content; hairline and opacity ramp make the hierarchy; colour only for honest state inside sections. Undo · redo in the header for synced settings.</td><td class="cite">settings.css · SettingsDialog.tsx · D29′</td></tr>
+      <tr><td>Section and row</td><td><code>SettingsSection</code>: rounded-18 hairline box, 13 px semibold title, label description. <code>SettingsRow</code>: 56 px min, title 13 px medium, control at the right end.</td><td class="cite">settings-ui.tsx</td></tr>
+      <tr><td>Fact pill</td><td>A source or a version is a fact in the muted ramp, never a warning — <code>UiPill</code>, no hue.</td><td class="cite">§8 plugin source badge</td></tr>
+      <tr><td>Updates</td><td>A disclosure that never checks on its own; "check for updates" is the sole fetch; results honest: id · installed → latest, why not, "everything current", "checked HH:MM:SS".</td><td class="cite">§8 updates flow · P7</td></tr>
+      <tr><td>Destructive act</td><td>Two verbs, the destructive one red text before any confirm; two-step; the confirm names the object and what dies.</td><td class="cite">§8 uninstall affordance</td></tr>
+      <tr><td>Who is current</td><td>On the Account page the attached user wears the 1.5 px <code>--vf-select</code> ring: current is the selection. A location, by contrast, wears <code>--vf-fill</code>.</td><td class="cite">UserSwitcher · §7 · §8 file tree</td></tr>
+      <tr><td>Grouping colour</td><td>Eight accent slots, assigned per object as tint (12% body, 35% hairline, label at full). They group and label; they never signal state.</td><td class="cite">§2.6 · AccentPicker</td></tr>
+      <tr><td>State colour</td><td>green healthy · orange needs attention · red failed · muted for idle, offline and unknown. Loading is colourless.</td><td class="cite">§2.5</td></tr>
+      <tr><td>Setup Assistant</td><td>W1 one decision per pane · W3 every skip names its later home · W4 honest progress · W5 ends inside the product · W6 back always works; the wizard and the settings page are two skins of one machinery.</td><td class="cite">users-and-accounts §6 · wizard-ui.tsx</td></tr>
+      <tr><td>Voice</td><td>Sentence case; buttons say what they do; states carry numbers and provenance; errors say what happened and what next.</td><td class="cite">§9</td></tr>
+    </tbody>
+  </table></div>
+</section>
+
+<section class="part">
+  <span class="eyebrow">The map</span>
+  <h2>Two pages, and where a profile sits in the model</h2>
+  <div class="two">
+    <div class="prose">
+      <p>VibeField already has a persona: the <strong>user</strong>, minted on first run, with a name, an accent and one optional tailnet. Users are switched, never run side by side. That is exactly the wrong grain for subscriptions — the point of a second Claude Max is to use it <em>at the same time</em> as the first.</p>
+      <p>So an agent profile lives <strong>inside</strong> a user. One user, several profiles, each a named set with one account per agent, each with its own folder under the user's root, each usable at once. The machine's own agent folders appear as the first profile, <strong>This Mac</strong>, shared by every user on the machine because they are the same OS home.</p>
+      <p>The word collides once: the Account page already has a "Profile" block for the user's name and colour. The recommendation keeps the user's word for the agent thing, because it is the word James uses, and retitles that block "You".</p>
+    </div>
+    <div>
+      <div class="tablewrap"><table class="spec">
+        <thead><tr><th>Layer</th><th>Holds</th><th>Switched or concurrent</th></tr></thead>
+        <tbody>
+          <tr><td>Machine</td><td>installed agents · This Mac</td><td>—</td></tr>
+          <tr><td>User</td><td>name · accent · tailnet · docs · profiles</td><td>switched</td></tr>
+          <tr><td>Profile</td><td>one account per agent · that agent's folder</td><td>concurrent</td></tr>
+          <tr><td>Session</td><td>one agent, one profile, one project</td><td>concurrent</td></tr>
+        </tbody>
+      </table></div>
+      <p class="cap"><b>Nav placement.</b> Profiles joins the Account group as its second item; Agents leads the Workspace group, ahead of Plugins, because an agent is what a plugin plugs into. Both marked <span style="color:var(--vf-cyan)">new</span> in the sidebar below only for this page — the shipped sidebar carries no such mark.</p>
+    </div>
+  </div>
+</section>
+
+<section class="part">
+  <span class="eyebrow">Page one · Settings → Profiles</span>
+  <h2>Profiles: one card per profile, one row per agent, one verb</h2>
+  <p class="prose">Three cards on this Mac: the adopted folders, a Personal profile that is the default, and Work. Each row is an installed agent, its identity as the agent reported it, a status word, and the single verb that fits. Agents without a sign-in command say so in the muted ramp and carry no verb. The New profile form is what "New profile…" opens in place.</p>
+  <div class="stage dim"><div class="vfs " role="img" aria-label="Settings sheet, Profiles page">
+    <aside class="vfs-side">
+    <div class="vfs-brand"><span class="vfs-gear"><svg viewBox="0 0 20 20" aria-hidden="true"><circle cx="10" cy="10" r="2.3"/><path d="M15.8 11.8a1.3 1.3 0 0 0 .3 1.4l.1.1-2.3 2.3-.1-.1a1.3 1.3 0 0 0-1.4-.3 1.3 1.3 0 0 0-.8 1.2v.2H8.4v-.2a1.3 1.3 0 0 0-.8-1.2 1.3 1.3 0 0 0-1.4.3l-.1.1-2.3-2.3.1-.1a1.3 1.3 0 0 0 .3-1.4A1.3 1.3 0 0 0 3 11H2.8V8H3a1.3 1.3 0 0 0 1.2-.8 1.3 1.3 0 0 0-.3-1.4l-.1-.1 2.3-2.3.1.1a1.3 1.3 0 0 0 1.4.3A1.3 1.3 0 0 0 8.4 3v-.2h3.2V3a1.3 1.3 0 0 0 .8 1.2 1.3 1.3 0 0 0 1.4-.3l.1-.1 2.3 2.3-.1.1a1.3 1.3 0 0 0-.3 1.4 1.3 1.3 0 0 0 1.2.8h.2v3H17a1.3 1.3 0 0 0-1.2.8Z"/></svg></span><span class="vfs-title">Settings</span></div>
+    <nav class="vfs-nav" aria-label="Settings categories">
+      <div class="vfs-group"><div class="vfs-glabel">Account</div><div class="vfs-item"><svg viewBox="0 0 20 20" aria-hidden="true"><circle cx="10" cy="6.8" r="3.3"/><path d="M3.8 16.8a6.2 6.2 0 0 1 12.4 0"/></svg><span>Account</span></div><div class="vfs-item is-on" aria-current="page"><svg viewBox="0 0 20 20" aria-hidden="true"><circle cx="7.2" cy="7.2" r="3.9"/><path d="m10 10 6.6 6.6M13.6 13.6l1.7-1.7M16.1 16.1l1.5-1.5"/></svg><span>Profiles</span><span class="new">new</span></div></div>
+      <div class="vfs-group"><div class="vfs-glabel">Preferences</div><div class="vfs-item"><svg viewBox="0 0 20 20" aria-hidden="true"><path d="M4 5h12M4 10h12M4 15h12M7 3v4M13 8v4M9 13v4"/></svg><span>General</span></div><div class="vfs-item"><svg viewBox="0 0 20 20" aria-hidden="true"><circle cx="10" cy="10" r="3.1"/><path d="M10 2.5v2M10 15.5v2M2.5 10h2M15.5 10h2M4.7 4.7l1.4 1.4M13.9 13.9l1.4 1.4M4.7 15.3l1.4-1.4M13.9 6.1l1.4-1.4"/></svg><span>Appearance</span></div><div class="vfs-item"><svg viewBox="0 0 20 20" aria-hidden="true"><rect x="3" y="3" width="14" height="14" rx="2.5"/><path d="M7 3v14M13 3v14M3 7h14M3 13h14"/></svg><span>Canvas</span></div></div>
+      <div class="vfs-group"><div class="vfs-glabel">Workspace</div><div class="vfs-item"><svg viewBox="0 0 20 20" aria-hidden="true"><circle cx="10" cy="10.5" r="2.7"/><circle cx="4.6" cy="5.6" r="1.7"/><circle cx="15.4" cy="5.6" r="1.7"/><circle cx="10" cy="16.6" r="1.4"/></svg><span>Agents</span><span class="new">new</span></div><div class="vfs-item"><svg viewBox="0 0 20 20" aria-hidden="true"><path d="M8 3h4v3a2 2 0 1 0 0 4v7H8v-3a2 2 0 1 0-4 0v-4h3a2 2 0 1 0 0-4H4V3h4Z"/></svg><span>Plugins</span></div><div class="vfs-item"><svg viewBox="0 0 20 20" aria-hidden="true"><circle cx="5" cy="5" r="2"/><circle cx="15" cy="6" r="2"/><circle cx="10" cy="15" r="2"/><path d="m6.8 5.4 6.2.4M6.2 6.8l2.7 6.3M13.9 7.7l-2.8 5.5"/></svg><span>Mesh</span></div><div class="vfs-item"><svg viewBox="0 0 20 20" aria-hidden="true"><rect x="2.5" y="4" width="15" height="12" rx="2.5"/><path d="m6 8.5 2.5 2L6 13M10.5 13h3.5"/></svg><span>Terminal</span></div></div>
+      <div class="vfs-group"><div class="vfs-glabel">Support</div><div class="vfs-item"><svg viewBox="0 0 20 20" aria-hidden="true"><path d="M2.5 10h3l1.6-4.5 3.2 9 2.2-6 1.3 1.5h3.7"/></svg><span>Diagnostics</span></div><div class="vfs-item"><svg viewBox="0 0 20 20" aria-hidden="true"><path d="m7 5-4 5 4 5M13 5l4 5-4 5M11.5 3.5l-3 13"/></svg><span>Advanced</span></div></div>
+    </nav>
+    <div class="vfs-note">Synced settings keep a local undo history.</div>
+  </aside>
+    <main class="vfs-main">
+      <header class="vfs-head">
+        <div><h1>Profiles</h1><p class="lbl" style="margin:0">The accounts your agents sign in with. Several can run at once.</p></div>
+        <div class="vfs-tools">
+          <div class="vfs-hist"><span><svg viewBox="0 0 20 20" aria-hidden="true"><path d="M7.2 5.2 3.5 8.8l3.7 3.7M4 8.8h6.3a5.2 5.2 0 0 1 5.2 5.2v.5"/></svg><em>Undo</em></span><span><svg viewBox="0 0 20 20" aria-hidden="true" style="transform:scaleX(-1)"><path d="M7.2 5.2 3.5 8.8l3.7 3.7M4 8.8h6.3a5.2 5.2 0 0 1 5.2 5.2v.5"/></svg><em>Redo</em></span></div>
+          <span class="vfs-x"><svg viewBox="0 0 20 20" aria-hidden="true"><path d="m5 5 10 10M15 5 5 15"/></svg></span>
+        </div>
+      </header>
+      <div class="vfs-body"><div class="vfs-col"><section class="sec prof"><div class="prof-h"><span class="chip plain">This Mac</span><span class="grow"></span></div>
+    <div class="lbl prof-path">the agents' own folders · What each agent already had before VibeField. Your own terminal uses these sign-ins too.</div><div style="margin-top:8px"><div class="prow"><span class="tile" aria-hidden="true">CC</span><div class="who"><div class="n">Claude Code</div><div class="f">james@vibecook.dev · Max 20× · verified 09:41:12</div></div><span class="st"><span class="dot healthy"></span>signed in</span><div class="ctl"><span class="btn sm">Switch account…</span></div></div><div class="prow"><span class="tile" aria-hidden="true">CX</span><div class="who"><div class="n">Codex</div><div class="f">james@vibecook.dev · Pro · verified 09:41:13</div></div><span class="st"><span class="dot healthy"></span>signed in</span><div class="ctl"><span class="btn sm">Switch account…</span></div></div><div class="prow"><span class="tile" aria-hidden="true">GK</span><div class="who"><div class="n">Grok</div><div class="f">signed in · verified 09:41:13</div></div><span class="st"><span class="dot healthy"></span>signed in</span><div class="ctl"><span class="btn sm">Switch account…</span></div></div><div class="prow"><span class="tile" aria-hidden="true">KI</span><div class="who"><div class="n">Kimi Code</div><div class="f">signed in · verified 09:41:14</div></div><span class="st"><span class="dot healthy"></span>signed in</span><div class="ctl"><span class="btn sm">Switch account…</span></div></div><div class="prow"><span class="tile" aria-hidden="true">CP</span><div class="who"><div class="n">GitHub Copilot CLI</div><div class="f">jamesyong · GitHub · verified 09:41:14</div></div><span class="st"><span class="dot healthy"></span>signed in</span><div class="ctl"><span class="btn sm">Switch account…</span></div></div><div class="prow"><span class="tile" aria-hidden="true">OC</span><div class="who"><div class="n">OpenCode</div><div class="f">anthropic via opencode auth · verified 09:41:15</div></div><span class="st"><span class="dot healthy"></span>signed in</span><div class="ctl"><span class="btn sm">Switch account…</span></div></div><div class="prow"><span class="tile" aria-hidden="true">PI</span><div class="who"><div class="n">Pi</div><div class="f">not signed in</div></div><span class="st">keys live in its own config · no sign-in command</span><div class="ctl"></div></div><div class="prow"><span class="tile" aria-hidden="true">HM</span><div class="who"><div class="n">Hermes Agent</div><div class="f">not signed in</div></div><span class="st">not signed in</span><div class="ctl"><span class="btn sm">Sign in</span></div></div><div class="prow"><span class="tile" aria-hidden="true">AG</span><div class="who"><div class="n">Antigravity</div><div class="f">not signed in</div></div><span class="st">signs in inside the app</span><div class="ctl"></div></div></div></section><section class="sec prof"><div class="prof-h"><span class="chip" style="--a:var(--vf-accent-1)"><span class="sw-dot"></span>Personal</span><span class="pill">default</span><span class="grow"></span><span class="btn sm quiet" aria-label="More">···</span></div>
+    <div class="lbl prof-path"><span class="mono">~/…/users/1/agents/profiles/personal</span> · New sessions start here unless you choose another profile.</div><div style="margin-top:8px"><div class="prow"><span class="tile" aria-hidden="true">CC</span><div class="who"><div class="n">Claude Code</div><div class="f">jamesyong@me.com · Max 5× · verified 09:41:16</div></div><span class="st"><span class="dot healthy"></span>signed in</span><div class="ctl"><span class="btn sm">Switch account…</span></div></div><div class="prow"><span class="tile" aria-hidden="true">CX</span><div class="who"><div class="n">Codex</div><div class="f">jamesyong@me.com · sign-in expired</div></div><span class="st attn"><span class="dot attention"></span>needs attention</span><div class="ctl"><span class="btn sm">Sign in again</span></div></div><div class="prow"><span class="tile" aria-hidden="true">GK</span><div class="who"><div class="n">Grok</div><div class="f">not signed in</div></div><span class="st">not signed in</span><div class="ctl"><span class="btn sm">Sign in</span></div></div><div class="prow"><span class="tile" aria-hidden="true">KI</span><div class="who"><div class="n">Kimi Code</div><div class="f">not signed in</div></div><span class="st">not signed in</span><div class="ctl"><span class="btn sm">Sign in</span></div></div><div class="prow"><span class="tile" aria-hidden="true">CP</span><div class="who"><div class="n">GitHub Copilot CLI</div><div class="f">not signed in</div></div><span class="st">not signed in</span><div class="ctl"><span class="btn sm">Sign in</span></div></div><div class="prow"><span class="tile" aria-hidden="true">OC</span><div class="who"><div class="n">OpenCode</div><div class="f">not signed in</div></div><span class="st">not signed in</span><div class="ctl"><span class="btn sm">Sign in</span></div></div><div class="prow"><span class="tile" aria-hidden="true">HM</span><div class="who"><div class="n">Hermes Agent</div><div class="f">not signed in</div></div><span class="st">not signed in</span><div class="ctl"><span class="btn sm">Sign in</span></div></div></div></section><section class="sec prof"><div class="prof-h"><span class="chip" style="--a:var(--vf-accent-4)"><span class="sw-dot"></span>Work</span><span class="grow"></span><span class="btn sm">Use as default</span><span class="btn sm quiet" aria-label="More">···</span></div>
+    <div class="lbl prof-path"><span class="mono">~/…/users/1/agents/profiles/work</span></div><div style="margin-top:8px"><div class="prow"><span class="tile" aria-hidden="true">CC</span><div class="who"><div class="n">Claude Code</div><div class="f">james@northlight.studio · Max 20× · verified 09:41:17</div></div><span class="st"><span class="dot healthy"></span>signed in</span><div class="ctl"><span class="btn sm">Switch account…</span></div></div><div class="prow"><span class="tile" aria-hidden="true">CX</span><div class="who"><div class="n">Codex</div><div class="f">james@northlight.studio · Pro · verified 09:41:18</div></div><span class="st"><span class="dot healthy"></span>signed in</span><div class="ctl"><span class="btn sm">Switch account…</span></div></div><div class="prow"><span class="tile" aria-hidden="true">GK</span><div class="who"><div class="n">Grok</div><div class="f">not signed in</div></div><span class="st">not signed in</span><div class="ctl"><span class="btn sm">Sign in</span></div></div><div class="prow"><span class="tile" aria-hidden="true">KI</span><div class="who"><div class="n">Kimi Code</div><div class="f">not signed in</div></div><span class="st">not signed in</span><div class="ctl"><span class="btn sm">Sign in</span></div></div><div class="prow"><span class="tile" aria-hidden="true">CP</span><div class="who"><div class="n">GitHub Copilot CLI</div><div class="f">not signed in</div></div><span class="st">not signed in</span><div class="ctl"><span class="btn sm">Sign in</span></div></div><div class="prow"><span class="tile" aria-hidden="true">OC</span><div class="who"><div class="n">OpenCode</div><div class="f">not signed in</div></div><span class="st">not signed in</span><div class="ctl"><span class="btn sm">Sign in</span></div></div><div class="prow"><span class="tile" aria-hidden="true">HM</span><div class="who"><div class="n">Hermes Agent</div><div class="f">not signed in</div></div><span class="st">not signed in</span><div class="ctl"><span class="btn sm">Sign in</span></div></div></div></section><section class="sec"><div class="sec-h"><h3>New profile</h3><div class="lbl">A profile starts empty. Sign each agent in when you need it — nothing is copied from another profile, and nothing signs in on its own.</div></div>
+  <div class="newform"><div class="field">Client demo</div><div class="swatches"><i style="background:var(--vf-accent-1)"></i><i style="background:var(--vf-accent-2)"></i><i style="background:var(--vf-accent-3)"></i><i style="background:var(--vf-accent-4)"></i><i style="background:var(--vf-accent-5)"></i><i style="background:var(--vf-accent-6)" class="ring2"></i><i style="background:var(--vf-accent-7)"></i><i style="background:var(--vf-accent-8)"></i></div><div><span class="chip" style="--a:var(--vf-accent-6)"><span class="sw-dot"></span>Client demo</span></div><div style="display:flex;gap:8px;justify-content:flex-end"><span class="btn primary" style="height:36px;font-size:12px;padding:0 16px">Create profile</span><span class="btn quiet">Cancel</span></div></div>
+</section></div></div>
+    </main>
+  </div></div>
+  <p class="cap"><b>Reading it.</b> The default profile wears a fact pill, not the selection ring — a default is a location, not the thing you are pointing at. The green dot is §2.5 healthy: the agent reported an identity and the read is fresh; the time is the freshness claim. Orange is a sign-in that expired: the one row you must act on. "Not signed in" has no dot at all, because quiet is the honesty. Identities and times are example values; versions are this Mac's.</p>
+
+  <h3 class="sub">Signing in, switching, and what really happens</h3>
+  <p class="prose">A sign-in is the agent's own login command, started in this profile's folder. The row opens and the terminal appears beneath it — one element, in place, inside the sheet — with the agent's real prompt. When the agent reports an identity the terminal closes and the row wears it. Switching an account is the same pair in reverse: a two-step confirm, the agent's sign-out, then its sign-in, on the same folder, so plugins, skills and history stay.</p>
+  <div class="stage dim"><div class="vfs " role="img" aria-label="Settings sheet, Profiles page">
+    <aside class="vfs-side">
+    <div class="vfs-brand"><span class="vfs-gear"><svg viewBox="0 0 20 20" aria-hidden="true"><circle cx="10" cy="10" r="2.3"/><path d="M15.8 11.8a1.3 1.3 0 0 0 .3 1.4l.1.1-2.3 2.3-.1-.1a1.3 1.3 0 0 0-1.4-.3 1.3 1.3 0 0 0-.8 1.2v.2H8.4v-.2a1.3 1.3 0 0 0-.8-1.2 1.3 1.3 0 0 0-1.4.3l-.1.1-2.3-2.3.1-.1a1.3 1.3 0 0 0 .3-1.4A1.3 1.3 0 0 0 3 11H2.8V8H3a1.3 1.3 0 0 0 1.2-.8 1.3 1.3 0 0 0-.3-1.4l-.1-.1 2.3-2.3.1.1a1.3 1.3 0 0 0 1.4.3A1.3 1.3 0 0 0 8.4 3v-.2h3.2V3a1.3 1.3 0 0 0 .8 1.2 1.3 1.3 0 0 0 1.4-.3l.1-.1 2.3 2.3-.1.1a1.3 1.3 0 0 0-.3 1.4 1.3 1.3 0 0 0 1.2.8h.2v3H17a1.3 1.3 0 0 0-1.2.8Z"/></svg></span><span class="vfs-title">Settings</span></div>
+    <nav class="vfs-nav" aria-label="Settings categories">
+      <div class="vfs-group"><div class="vfs-glabel">Account</div><div class="vfs-item"><svg viewBox="0 0 20 20" aria-hidden="true"><circle cx="10" cy="6.8" r="3.3"/><path d="M3.8 16.8a6.2 6.2 0 0 1 12.4 0"/></svg><span>Account</span></div><div class="vfs-item is-on" aria-current="page"><svg viewBox="0 0 20 20" aria-hidden="true"><circle cx="7.2" cy="7.2" r="3.9"/><path d="m10 10 6.6 6.6M13.6 13.6l1.7-1.7M16.1 16.1l1.5-1.5"/></svg><span>Profiles</span></div></div>
+      <div class="vfs-group"><div class="vfs-glabel">Preferences</div><div class="vfs-item"><svg viewBox="0 0 20 20" aria-hidden="true"><path d="M4 5h12M4 10h12M4 15h12M7 3v4M13 8v4M9 13v4"/></svg><span>General</span></div><div class="vfs-item"><svg viewBox="0 0 20 20" aria-hidden="true"><circle cx="10" cy="10" r="3.1"/><path d="M10 2.5v2M10 15.5v2M2.5 10h2M15.5 10h2M4.7 4.7l1.4 1.4M13.9 13.9l1.4 1.4M4.7 15.3l1.4-1.4M13.9 6.1l1.4-1.4"/></svg><span>Appearance</span></div><div class="vfs-item"><svg viewBox="0 0 20 20" aria-hidden="true"><rect x="3" y="3" width="14" height="14" rx="2.5"/><path d="M7 3v14M13 3v14M3 7h14M3 13h14"/></svg><span>Canvas</span></div></div>
+      <div class="vfs-group"><div class="vfs-glabel">Workspace</div><div class="vfs-item"><svg viewBox="0 0 20 20" aria-hidden="true"><circle cx="10" cy="10.5" r="2.7"/><circle cx="4.6" cy="5.6" r="1.7"/><circle cx="15.4" cy="5.6" r="1.7"/><circle cx="10" cy="16.6" r="1.4"/></svg><span>Agents</span></div><div class="vfs-item"><svg viewBox="0 0 20 20" aria-hidden="true"><path d="M8 3h4v3a2 2 0 1 0 0 4v7H8v-3a2 2 0 1 0-4 0v-4h3a2 2 0 1 0 0-4H4V3h4Z"/></svg><span>Plugins</span></div><div class="vfs-item"><svg viewBox="0 0 20 20" aria-hidden="true"><circle cx="5" cy="5" r="2"/><circle cx="15" cy="6" r="2"/><circle cx="10" cy="15" r="2"/><path d="m6.8 5.4 6.2.4M6.2 6.8l2.7 6.3M13.9 7.7l-2.8 5.5"/></svg><span>Mesh</span></div><div class="vfs-item"><svg viewBox="0 0 20 20" aria-hidden="true"><rect x="2.5" y="4" width="15" height="12" rx="2.5"/><path d="m6 8.5 2.5 2L6 13M10.5 13h3.5"/></svg><span>Terminal</span></div></div>
+      <div class="vfs-group"><div class="vfs-glabel">Support</div><div class="vfs-item"><svg viewBox="0 0 20 20" aria-hidden="true"><path d="M2.5 10h3l1.6-4.5 3.2 9 2.2-6 1.3 1.5h3.7"/></svg><span>Diagnostics</span></div><div class="vfs-item"><svg viewBox="0 0 20 20" aria-hidden="true"><path d="m7 5-4 5 4 5M13 5l4 5-4 5M11.5 3.5l-3 13"/></svg><span>Advanced</span></div></div>
+    </nav>
+    <div class="vfs-note">Synced settings keep a local undo history.</div>
+  </aside>
+    <main class="vfs-main">
+      <header class="vfs-head">
+        <div><h1>Profiles</h1><p class="lbl" style="margin:0">The accounts your agents sign in with. Several can run at once.</p></div>
+        <div class="vfs-tools">
+          <div class="vfs-hist"><span><svg viewBox="0 0 20 20" aria-hidden="true"><path d="M7.2 5.2 3.5 8.8l3.7 3.7M4 8.8h6.3a5.2 5.2 0 0 1 5.2 5.2v.5"/></svg><em>Undo</em></span><span><svg viewBox="0 0 20 20" aria-hidden="true" style="transform:scaleX(-1)"><path d="M7.2 5.2 3.5 8.8l3.7 3.7M4 8.8h6.3a5.2 5.2 0 0 1 5.2 5.2v.5"/></svg><em>Redo</em></span></div>
+          <span class="vfs-x"><svg viewBox="0 0 20 20" aria-hidden="true"><path d="m5 5 10 10M15 5 5 15"/></svg></span>
+        </div>
+      </header>
+      <div class="vfs-body"><div class="vfs-col"><section class="sec prof"><div class="prof-h"><span class="chip" style="--a:var(--vf-accent-1)"><span class="sw-dot"></span>Personal</span><span class="pill">default</span><span class="grow"></span><span class="btn sm quiet" aria-label="More">···</span></div>
+    <div class="lbl prof-path"><span class="mono">~/…/users/1/agents/profiles/personal</span> · New sessions start here unless you choose another profile.</div><div style="margin-top:8px"><div class="prow"><span class="tile" aria-hidden="true">CC</span><div class="who"><div class="n">Claude Code</div><div class="f">jamesyong@me.com · Max 5× · verified 09:41:16</div></div><span class="st"><span class="dot healthy"></span>signed in</span><div class="ctl"><span class="btn sm">Switch account…</span></div></div><div class="prow open"><div class="prow-line"><span class="tile" aria-hidden="true">CX</span><div class="who"><div class="n">Codex</div><div class="f">jamesyong@me.com · signing in</div></div><span class="st">signing in…</span><div class="ctl"><span class="btn sm quiet">Cancel</span></div></div><div class="term" role="img" aria-label="Terminal running the agent's own sign-in"><div class="tb"><span>Codex · sign in · Personal</span><span>esc closes when done</span></div><pre>$ codex login
+
+Starting local login server on http://localhost:1455.
+If your browser did not open, navigate to this URL to authenticate:
+
+https://auth.openai.com/oauth/authorize?response_type=code&amp;client_id=app_EMoamEEZ73f0CkXaXp7hrann&amp;redirect_uri=http%3A%2F%2Flocalhost%3A1455%2Fauth%2Fcallback&amp;…
+
+<span class="cur"></span></pre></div>
+<p class="lbl" style="margin:8px 0 0">Finish in the browser. The sign-in runs in this profile's own folder, so it lands here and nowhere else. This row names the account as soon as the agent reports it.</p></div><div class="prow"><span class="tile" aria-hidden="true">GK</span><div class="who"><div class="n">Grok</div><div class="f">not signed in</div></div><span class="st">not signed in</span><div class="ctl"><span class="btn sm">Sign in</span></div></div><div class="prow"><span class="tile" aria-hidden="true">KI</span><div class="who"><div class="n">Kimi Code</div><div class="f">not signed in</div></div><span class="st">not signed in</span><div class="ctl"><span class="btn sm">Sign in</span></div></div><div class="prow"><span class="tile" aria-hidden="true">CP</span><div class="who"><div class="n">GitHub Copilot CLI</div><div class="f">not signed in</div></div><span class="st">not signed in</span><div class="ctl"><span class="btn sm">Sign in</span></div></div><div class="prow"><span class="tile" aria-hidden="true">OC</span><div class="who"><div class="n">OpenCode</div><div class="f">not signed in</div></div><span class="st">not signed in</span><div class="ctl"><span class="btn sm">Sign in</span></div></div><div class="prow"><span class="tile" aria-hidden="true">HM</span><div class="who"><div class="n">Hermes Agent</div><div class="f">not signed in</div></div><span class="st">not signed in</span><div class="ctl"><span class="btn sm">Sign in</span></div></div></div></section><section class="sec prof"><div class="prof-h"><span class="chip" style="--a:var(--vf-accent-4)"><span class="sw-dot"></span>Work</span><span class="grow"></span><span class="btn sm">Use as default</span><span class="btn sm quiet" aria-label="More">···</span></div>
+    <div class="lbl prof-path"><span class="mono">~/…/users/1/agents/profiles/work</span></div><div style="margin-top:8px"><div class="prow open"><div class="prow-line"><span class="tile" aria-hidden="true">CC</span><div class="who"><div class="n">Claude Code</div><div class="f">james@northlight.studio · Max 20× · verified 09:41:17</div></div><span class="st"><span class="dot healthy"></span>signed in</span><div class="ctl"><span class="btn sm">Switch account…</span></div></div><div class="confirm"><p class="row-t">Sign out of jamesyong@me.com and sign in as someone else?</p><p class="lbl">The profile's folder stays. Sessions already running under it keep going until they next need a token, then ask to sign in.</p><div class="acts"><span class="btn">Switch</span><span class="btn quiet">Cancel</span></div></div></div><div class="prow"><span class="tile" aria-hidden="true">CX</span><div class="who"><div class="n">Codex</div><div class="f">james@northlight.studio · Pro · verified 09:41:18</div></div><span class="st"><span class="dot healthy"></span>signed in</span><div class="ctl"><span class="btn sm">Switch account…</span></div></div><div class="prow"><span class="tile" aria-hidden="true">GK</span><div class="who"><div class="n">Grok</div><div class="f">not signed in</div></div><span class="st">not signed in</span><div class="ctl"><span class="btn sm">Sign in</span></div></div><div class="prow"><span class="tile" aria-hidden="true">KI</span><div class="who"><div class="n">Kimi Code</div><div class="f">not signed in</div></div><span class="st">not signed in</span><div class="ctl"><span class="btn sm">Sign in</span></div></div><div class="prow"><span class="tile" aria-hidden="true">CP</span><div class="who"><div class="n">GitHub Copilot CLI</div><div class="f">not signed in</div></div><span class="st">not signed in</span><div class="ctl"><span class="btn sm">Sign in</span></div></div><div class="prow"><span class="tile" aria-hidden="true">OC</span><div class="who"><div class="n">OpenCode</div><div class="f">not signed in</div></div><span class="st">not signed in</span><div class="ctl"><span class="btn sm">Sign in</span></div></div><div class="prow"><span class="tile" aria-hidden="true">HM</span><div class="who"><div class="n">Hermes Agent</div><div class="f">not signed in</div></div><span class="st">not signed in</span><div class="ctl"><span class="btn sm">Sign in</span></div></div></div></section></div></div>
+    </main>
+  </div></div>
+  <p class="cap"><b>The terminal card</b> is content, not chrome: it carries the Godview deck's parchment in light and graphite in dark (§2.7), never the sheet material. Nothing on this page takes an email. Removing a profile follows the uninstall canon: "Forget profile" keeps its folder, "Delete profile and its data" is red text before any confirm and names what dies.</p>
+  <div class="two" style="margin-top:18px">
+    <div><div class="confirm"><div class="acts" style="margin-top:0"><span class="btn">Rename</span><span class="btn">Forget profile</span><span class="btn danger" style="background:transparent">Delete profile and its data</span></div></div><p class="cap">The overflow behind "···", opened.</p></div>
+    <div><div class="confirm"><p class="row-t">Delete Work and its data?</p><p class="lbl">Deletes this profile's folder — the agents' settings, extensions and history under it, and their sign-ins on this Mac. Nothing under This Mac or any other profile changes. Sessions running under Work end.</p><div class="acts"><span class="btn danger">Delete data</span><span class="btn quiet">Cancel</span></div></div><p class="cap">The destructive confirm. Sessions running under the profile are named as a casualty because they are one.</p></div>
+  </div>
+</section>
+
+<section class="part">
+  <span class="eyebrow">Page two · Settings → Agents</span>
+  <h2>Agents: what is installed, how far behind, and what it has loaded</h2>
+  <p class="prose">The Plugins page's shape, applied to agents. One article per agent: status dot, name, a fact pill for who installed it and one for the version, the path in mono beneath. The updates disclosure at the top is the Plugins one verbatim — it never checks on its own. Two articles are shown open: Claude Code mid-update, and Codex with its extensions unfolded. This mockup runs in the other theme, as the review ritual asks.</p>
+  <div class="stage t-dark"><div class="vfs t-dark" role="img" aria-label="Settings sheet, Agents page">
+    <aside class="vfs-side">
+    <div class="vfs-brand"><span class="vfs-gear"><svg viewBox="0 0 20 20" aria-hidden="true"><circle cx="10" cy="10" r="2.3"/><path d="M15.8 11.8a1.3 1.3 0 0 0 .3 1.4l.1.1-2.3 2.3-.1-.1a1.3 1.3 0 0 0-1.4-.3 1.3 1.3 0 0 0-.8 1.2v.2H8.4v-.2a1.3 1.3 0 0 0-.8-1.2 1.3 1.3 0 0 0-1.4.3l-.1.1-2.3-2.3.1-.1a1.3 1.3 0 0 0 .3-1.4A1.3 1.3 0 0 0 3 11H2.8V8H3a1.3 1.3 0 0 0 1.2-.8 1.3 1.3 0 0 0-.3-1.4l-.1-.1 2.3-2.3.1.1a1.3 1.3 0 0 0 1.4.3A1.3 1.3 0 0 0 8.4 3v-.2h3.2V3a1.3 1.3 0 0 0 .8 1.2 1.3 1.3 0 0 0 1.4-.3l.1-.1 2.3 2.3-.1.1a1.3 1.3 0 0 0-.3 1.4 1.3 1.3 0 0 0 1.2.8h.2v3H17a1.3 1.3 0 0 0-1.2.8Z"/></svg></span><span class="vfs-title">Settings</span></div>
+    <nav class="vfs-nav" aria-label="Settings categories">
+      <div class="vfs-group"><div class="vfs-glabel">Account</div><div class="vfs-item"><svg viewBox="0 0 20 20" aria-hidden="true"><circle cx="10" cy="6.8" r="3.3"/><path d="M3.8 16.8a6.2 6.2 0 0 1 12.4 0"/></svg><span>Account</span></div><div class="vfs-item"><svg viewBox="0 0 20 20" aria-hidden="true"><circle cx="7.2" cy="7.2" r="3.9"/><path d="m10 10 6.6 6.6M13.6 13.6l1.7-1.7M16.1 16.1l1.5-1.5"/></svg><span>Profiles</span><span class="new">new</span></div></div>
+      <div class="vfs-group"><div class="vfs-glabel">Preferences</div><div class="vfs-item"><svg viewBox="0 0 20 20" aria-hidden="true"><path d="M4 5h12M4 10h12M4 15h12M7 3v4M13 8v4M9 13v4"/></svg><span>General</span></div><div class="vfs-item"><svg viewBox="0 0 20 20" aria-hidden="true"><circle cx="10" cy="10" r="3.1"/><path d="M10 2.5v2M10 15.5v2M2.5 10h2M15.5 10h2M4.7 4.7l1.4 1.4M13.9 13.9l1.4 1.4M4.7 15.3l1.4-1.4M13.9 6.1l1.4-1.4"/></svg><span>Appearance</span></div><div class="vfs-item"><svg viewBox="0 0 20 20" aria-hidden="true"><rect x="3" y="3" width="14" height="14" rx="2.5"/><path d="M7 3v14M13 3v14M3 7h14M3 13h14"/></svg><span>Canvas</span></div></div>
+      <div class="vfs-group"><div class="vfs-glabel">Workspace</div><div class="vfs-item is-on" aria-current="page"><svg viewBox="0 0 20 20" aria-hidden="true"><circle cx="10" cy="10.5" r="2.7"/><circle cx="4.6" cy="5.6" r="1.7"/><circle cx="15.4" cy="5.6" r="1.7"/><circle cx="10" cy="16.6" r="1.4"/></svg><span>Agents</span><span class="new">new</span></div><div class="vfs-item"><svg viewBox="0 0 20 20" aria-hidden="true"><path d="M8 3h4v3a2 2 0 1 0 0 4v7H8v-3a2 2 0 1 0-4 0v-4h3a2 2 0 1 0 0-4H4V3h4Z"/></svg><span>Plugins</span></div><div class="vfs-item"><svg viewBox="0 0 20 20" aria-hidden="true"><circle cx="5" cy="5" r="2"/><circle cx="15" cy="6" r="2"/><circle cx="10" cy="15" r="2"/><path d="m6.8 5.4 6.2.4M6.2 6.8l2.7 6.3M13.9 7.7l-2.8 5.5"/></svg><span>Mesh</span></div><div class="vfs-item"><svg viewBox="0 0 20 20" aria-hidden="true"><rect x="2.5" y="4" width="15" height="12" rx="2.5"/><path d="m6 8.5 2.5 2L6 13M10.5 13h3.5"/></svg><span>Terminal</span></div></div>
+      <div class="vfs-group"><div class="vfs-glabel">Support</div><div class="vfs-item"><svg viewBox="0 0 20 20" aria-hidden="true"><path d="M2.5 10h3l1.6-4.5 3.2 9 2.2-6 1.3 1.5h3.7"/></svg><span>Diagnostics</span></div><div class="vfs-item"><svg viewBox="0 0 20 20" aria-hidden="true"><path d="m7 5-4 5 4 5M13 5l4 5-4 5M11.5 3.5l-3 13"/></svg><span>Advanced</span></div></div>
+    </nav>
+    <div class="vfs-note">Synced settings keep a local undo history.</div>
+  </aside>
+    <main class="vfs-main">
+      <header class="vfs-head">
+        <div><h1>Agents</h1><p class="lbl" style="margin:0">The coding agents installed on this Mac, their versions, and what each one has loaded.</p></div>
+        <div class="vfs-tools">
+          <div class="vfs-hist"><span><svg viewBox="0 0 20 20" aria-hidden="true"><path d="M7.2 5.2 3.5 8.8l3.7 3.7M4 8.8h6.3a5.2 5.2 0 0 1 5.2 5.2v.5"/></svg><em>Undo</em></span><span><svg viewBox="0 0 20 20" aria-hidden="true" style="transform:scaleX(-1)"><path d="M7.2 5.2 3.5 8.8l3.7 3.7M4 8.8h6.3a5.2 5.2 0 0 1 5.2 5.2v.5"/></svg><em>Redo</em></span></div>
+          <span class="vfs-x"><svg viewBox="0 0 20 20" aria-hidden="true"><path d="m5 5 10 10M15 5 5 15"/></svg></span>
+        </div>
+      </header>
+      <div class="vfs-body"><div class="vfs-col"><section class="sec"><div class="sec-h"><h3>Installed agents</h3><div class="lbl">Every coding agent on this Mac, read from its own files. Nothing here checks the network unless you ask.</div></div>
+  <div style="margin-bottom:12px"><div>
+    <div class="tbtn">updates ▾</div>
+    <div class="disc">
+      <div class="line"><span class="k">check again</span><span class="v">checked 09:41:20</span></div>
+      <div class="line"><span class="k mono">claude</span><span class="v"><b>2.1.266 → 2.1.270</b><span class="tbtn">update</span></span></div><div class="line"><span class="k mono">codex</span><span class="v"><b>0.153.4 → 0.154.0</b><span class="tbtn">update</span></span></div><div class="line"><span class="k mono">grok</span><span class="v">current</span></div><div class="sub">asked its own checker</div><div class="line"><span class="k mono">opencode</span><span class="v">current</span></div><div class="line"><span class="k mono">hermes</span><span class="v">current</span></div><div class="line"><span class="k mono">copilot</span><span class="v">current</span></div><div class="line"><span class="k mono">pi</span><span class="v">current</span></div><div class="line"><span class="k mono">kimi</span><span class="v">unknown</span></div><div class="sub">no release feed to ask</div><div class="line"><span class="k mono">antigravity</span><span class="v">not from here</span></div><div class="sub">the app checks itself</div>
+    </div>
+  </div></div>
+  <div style="display:flex;flex-direction:column;gap:12px">
+    <article class="art">
+    <div class="art-top">
+      <div><div class="art-id"><span class="dot lg attention"></span><h3>Claude Code</h3><span class="pill">native installer</span><span class="pill">v2.1.266</span></div><div class="art-path">~/.local/bin/claude → ~/.local/share/claude/versions/2.1.266</div></div>
+      <div class="art-side"><span class="lbl">2.1.270 available</span><span class="btn sm">Update</span></div>
+    </div>
+    <div class="art-acts"><span class="btn sm">Extensions +</span><span class="btn sm">Installs · 2 +</span><span class="btn sm">More +</span></div>
+    <div class="art-more">
+      <div class="line"><span>Updating with the agent's own updater</span><span class="lbl">started 09:42:01</span></div>
+      <div class="term" role="img" aria-label="Terminal running the agent's own updater"><div class="tb"><span>Claude Code · update</span><span>closes when the version is re-read</span></div><pre>$ claude update
+Current version: 2.1.266
+Checking for updates...
+New version available: 2.1.270 (current: 2.1.266)
+Installing update...
+Successfully updated from 2.1.266 to 2.1.270<span class="cur"></span></pre></div>
+      <p class="lbl" style="margin:8px 0 0">The row believes the version it reads back afterwards, not the updater's own last line. Sessions already running keep the binary they started with.</p>
+    </div>
+  </article>
+    <article class="art">
+    <div class="art-top">
+      <div><div class="art-id"><span class="dot lg attention"></span><h3>Codex</h3><span class="pill">npm · global</span><span class="pill">v0.153.4</span></div><div class="art-path">~/.nvm/versions/node/v26.5.0/bin/codex → @openai/codex</div></div>
+      <div class="art-side"><span class="lbl">0.154.0 available</span><span class="btn sm">Update</span></div>
+    </div>
+    <div class="art-acts"><span class="btn sm">Extensions +</span><span class="btn sm">More +</span></div>
+    <div class="art-more ext">
+      <div class="line"><span class="lbl">what this agent has loaded, per profile</span><span class="seg" aria-label="Profile scope"><span>This Mac</span><span class="on">Personal</span><span>Work</span></span></div>
+      <div class="grp"><span class="eyebrow">Plugins · 3</span>
+        <div class="xrow"><span class="dot healthy"></span><span class="n">frontend-design</span><span class="f">marketplace anthropics · user</span><span class="sw sm on"></span></div>
+        <div class="xrow"><span class="dot healthy"></span><span class="n">context7</span><span class="f">marketplace upstash · user</span><span class="sw sm on"></span></div>
+        <div class="xrow"><span class="dot"></span><span class="n">figma</span><span class="f">marketplace figma · user · disabled</span><span class="sw sm"></span></div>
+      </div>
+      <div class="grp"><span class="eyebrow">MCP servers · 2</span>
+        <div class="xrow"><span class="dot healthy"></span><span class="n">github</span><span class="f">stdio · user · <code>~/.claude.json</code></span><span class="tbtn">···</span></div>
+        <div class="xrow"><span class="dot attention"></span><span class="n">linear</span><span class="f">http · user · needs sign-in</span><span class="tbtn">···</span></div>
+      </div>
+      <div class="grp"><span class="eyebrow">Skills · 12</span>
+        <div class="xrow"><span class="dot"></span><span class="n">artifact-design</span><span class="f">bundled with the agent · <code>2.1.266</code></span></div>
+        <div class="xrow"><span class="dot"></span><span class="n">release-notes</span><span class="f"><code>~/…/profiles/personal/claude/skills</code> · user</span><span class="tbtn">open folder</span></div>
+        <div class="xrow"><span class="lbl">10 more · project skills appear on the card that opened them</span></div>
+      </div>
+      <div class="line"><span class="lbl">Every switch runs the agent's own enable, disable or remove command, then re-reads the file. Skills have no command, so they are read only here.</span><span class="btn sm">Also install in…</span></div>
+    </div>
+  </article>
+    <article class="art">
+    <div class="art-top">
+      <div><div class="art-id"><span class="dot lg healthy"></span><h3>Grok</h3><span class="pill">native installer</span><span class="pill">v1.0.13</span></div><div class="art-path">~/.local/bin/grok → ~/.grok/bin/grok</div></div>
+      <div class="art-side"><span class="lbl">current</span></div>
+    </div>
+    <div class="art-acts"><span class="btn sm">Extensions +</span><span class="btn sm">More +</span></div>
+    
+  </article><article class="art">
+    <div class="art-top">
+      <div><div class="art-id"><span class="dot lg healthy"></span><h3>Kimi Code</h3><span class="pill">native installer</span><span class="pill">v0.37.1</span></div><div class="art-path">~/.kimi-code/bin/kimi</div></div>
+      <div class="art-side"><span class="lbl">current</span></div>
+    </div>
+    <div class="art-acts"><span class="btn sm">Extensions +</span><span class="btn sm">More +</span></div>
+    
+  </article><article class="art">
+    <div class="art-top">
+      <div><div class="art-id"><span class="dot lg healthy"></span><h3>GitHub Copilot CLI</h3><span class="pill">native installer</span><span class="pill">v1.0.80</span></div><div class="art-path">~/.local/bin/copilot</div></div>
+      <div class="art-side"><span class="lbl">current</span></div>
+    </div>
+    <div class="art-acts"><span class="btn sm">Extensions +</span><span class="btn sm">More +</span></div>
+    
+  </article><article class="art">
+    <div class="art-top">
+      <div><div class="art-id"><span class="dot lg healthy"></span><h3>OpenCode</h3><span class="pill">native installer</span><span class="pill">v1.18.23</span></div><div class="art-path">~/.opencode/bin/opencode</div></div>
+      <div class="art-side"><span class="lbl">current</span></div>
+    </div>
+    <div class="art-acts"><span class="btn sm">Extensions +</span><span class="btn sm">More +</span></div>
+    
+  </article><article class="art">
+    <div class="art-top">
+      <div><div class="art-id"><span class="dot lg healthy"></span><h3>Pi</h3><span class="pill">npm · global</span><span class="pill">v0.84.3</span></div><div class="art-path">~/.nvm/versions/node/v26.5.0/bin/pi → @earendil-works/pi-coding-agent</div></div>
+      <div class="art-side"><span class="lbl">current</span></div>
+    </div>
+    <div class="art-acts"><span class="btn sm">Extensions +</span><span class="btn sm">More +</span></div>
+    
+  </article><article class="art">
+    <div class="art-top">
+      <div><div class="art-id"><span class="dot lg healthy"></span><h3>Hermes Agent</h3><span class="pill">native installer</span><span class="pill">v0.20.5</span></div><div class="art-path">~/.local/bin/hermes · release 2026.8.19</div></div>
+      <div class="art-side"><span class="lbl">current</span></div>
+    </div>
+    <div class="art-acts"><span class="btn sm">Extensions +</span><span class="btn sm">More +</span></div>
+    
+  </article><article class="art">
+    <div class="art-top">
+      <div><div class="art-id"><span class="dot lg healthy"></span><h3>Antigravity</h3><span class="pill">app</span><span class="pill">v1.1.21</span></div><div class="art-path">~/.local/bin/agy → Antigravity.app</div></div>
+      <div class="art-side"><span class="lbl">updates through the app</span></div>
+    </div>
+    <div class="art-acts"><span class="btn sm">Extensions +</span><span class="btn sm">More +</span></div>
+    
+  </article>
+  </div>
+  <p class="lbl" style="margin:12px 0 0">Removing an agent stays with its installer. The row says which one.</p>
+</section></div></div>
+    </main>
+  </div></div>
+  <p class="cap"><b>Update results are three kinds of honest.</b> A release feed answers with a number; the agent's own checker answers "current"; an app that updates itself, or an agent with no feed, says so instead of pretending. The orange dot marks only the rows with a newer release, which is the one thing here that asks for an act. The update itself is the agent's updater in a terminal beneath the row, and the version the row shows afterwards is the one it read back, never the updater's last line. Latest versions are example values.</p>
+
+  <h3 class="sub">Two installs of one agent</h3>
+  <p class="prose">A common mess on a developer's Mac: a native install and an old npm global of the same agent. The row shows the one the shell would run and folds the rest under "Installs". The shadowed copy is a fact, not a warning; its updater is a different program, and the row says which.</p>
+  <div class="stage dim"><div class="vfs " role="img" aria-label="Settings sheet, Agents page">
+    <aside class="vfs-side">
+    <div class="vfs-brand"><span class="vfs-gear"><svg viewBox="0 0 20 20" aria-hidden="true"><circle cx="10" cy="10" r="2.3"/><path d="M15.8 11.8a1.3 1.3 0 0 0 .3 1.4l.1.1-2.3 2.3-.1-.1a1.3 1.3 0 0 0-1.4-.3 1.3 1.3 0 0 0-.8 1.2v.2H8.4v-.2a1.3 1.3 0 0 0-.8-1.2 1.3 1.3 0 0 0-1.4.3l-.1.1-2.3-2.3.1-.1a1.3 1.3 0 0 0 .3-1.4A1.3 1.3 0 0 0 3 11H2.8V8H3a1.3 1.3 0 0 0 1.2-.8 1.3 1.3 0 0 0-.3-1.4l-.1-.1 2.3-2.3.1.1a1.3 1.3 0 0 0 1.4.3A1.3 1.3 0 0 0 8.4 3v-.2h3.2V3a1.3 1.3 0 0 0 .8 1.2 1.3 1.3 0 0 0 1.4-.3l.1-.1 2.3 2.3-.1.1a1.3 1.3 0 0 0-.3 1.4 1.3 1.3 0 0 0 1.2.8h.2v3H17a1.3 1.3 0 0 0-1.2.8Z"/></svg></span><span class="vfs-title">Settings</span></div>
+    <nav class="vfs-nav" aria-label="Settings categories">
+      <div class="vfs-group"><div class="vfs-glabel">Account</div><div class="vfs-item"><svg viewBox="0 0 20 20" aria-hidden="true"><circle cx="10" cy="6.8" r="3.3"/><path d="M3.8 16.8a6.2 6.2 0 0 1 12.4 0"/></svg><span>Account</span></div><div class="vfs-item"><svg viewBox="0 0 20 20" aria-hidden="true"><circle cx="7.2" cy="7.2" r="3.9"/><path d="m10 10 6.6 6.6M13.6 13.6l1.7-1.7M16.1 16.1l1.5-1.5"/></svg><span>Profiles</span></div></div>
+      <div class="vfs-group"><div class="vfs-glabel">Preferences</div><div class="vfs-item"><svg viewBox="0 0 20 20" aria-hidden="true"><path d="M4 5h12M4 10h12M4 15h12M7 3v4M13 8v4M9 13v4"/></svg><span>General</span></div><div class="vfs-item"><svg viewBox="0 0 20 20" aria-hidden="true"><circle cx="10" cy="10" r="3.1"/><path d="M10 2.5v2M10 15.5v2M2.5 10h2M15.5 10h2M4.7 4.7l1.4 1.4M13.9 13.9l1.4 1.4M4.7 15.3l1.4-1.4M13.9 6.1l1.4-1.4"/></svg><span>Appearance</span></div><div class="vfs-item"><svg viewBox="0 0 20 20" aria-hidden="true"><rect x="3" y="3" width="14" height="14" rx="2.5"/><path d="M7 3v14M13 3v14M3 7h14M3 13h14"/></svg><span>Canvas</span></div></div>
+      <div class="vfs-group"><div class="vfs-glabel">Workspace</div><div class="vfs-item is-on" aria-current="page"><svg viewBox="0 0 20 20" aria-hidden="true"><circle cx="10" cy="10.5" r="2.7"/><circle cx="4.6" cy="5.6" r="1.7"/><circle cx="15.4" cy="5.6" r="1.7"/><circle cx="10" cy="16.6" r="1.4"/></svg><span>Agents</span></div><div class="vfs-item"><svg viewBox="0 0 20 20" aria-hidden="true"><path d="M8 3h4v3a2 2 0 1 0 0 4v7H8v-3a2 2 0 1 0-4 0v-4h3a2 2 0 1 0 0-4H4V3h4Z"/></svg><span>Plugins</span></div><div class="vfs-item"><svg viewBox="0 0 20 20" aria-hidden="true"><circle cx="5" cy="5" r="2"/><circle cx="15" cy="6" r="2"/><circle cx="10" cy="15" r="2"/><path d="m6.8 5.4 6.2.4M6.2 6.8l2.7 6.3M13.9 7.7l-2.8 5.5"/></svg><span>Mesh</span></div><div class="vfs-item"><svg viewBox="0 0 20 20" aria-hidden="true"><rect x="2.5" y="4" width="15" height="12" rx="2.5"/><path d="m6 8.5 2.5 2L6 13M10.5 13h3.5"/></svg><span>Terminal</span></div></div>
+      <div class="vfs-group"><div class="vfs-glabel">Support</div><div class="vfs-item"><svg viewBox="0 0 20 20" aria-hidden="true"><path d="M2.5 10h3l1.6-4.5 3.2 9 2.2-6 1.3 1.5h3.7"/></svg><span>Diagnostics</span></div><div class="vfs-item"><svg viewBox="0 0 20 20" aria-hidden="true"><path d="m7 5-4 5 4 5M13 5l4 5-4 5M11.5 3.5l-3 13"/></svg><span>Advanced</span></div></div>
+    </nav>
+    <div class="vfs-note">Synced settings keep a local undo history.</div>
+  </aside>
+    <main class="vfs-main">
+      <header class="vfs-head">
+        <div><h1>Agents</h1><p class="lbl" style="margin:0">The coding agents installed on this Mac, their versions, and what each one has loaded.</p></div>
+        <div class="vfs-tools">
+          <div class="vfs-hist"><span><svg viewBox="0 0 20 20" aria-hidden="true"><path d="M7.2 5.2 3.5 8.8l3.7 3.7M4 8.8h6.3a5.2 5.2 0 0 1 5.2 5.2v.5"/></svg><em>Undo</em></span><span><svg viewBox="0 0 20 20" aria-hidden="true" style="transform:scaleX(-1)"><path d="M7.2 5.2 3.5 8.8l3.7 3.7M4 8.8h6.3a5.2 5.2 0 0 1 5.2 5.2v.5"/></svg><em>Redo</em></span></div>
+          <span class="vfs-x"><svg viewBox="0 0 20 20" aria-hidden="true"><path d="m5 5 10 10M15 5 5 15"/></svg></span>
+        </div>
+      </header>
+      <div class="vfs-body"><div class="vfs-col"><section class="sec"><div class="sec-h"><h3>Installed agents</h3><div class="lbl">Every coding agent on this Mac, read from its own files. Nothing here checks the network unless you ask.</div></div>
+  <div style="margin-bottom:12px"><div class="tbtn">updates ▸</div></div>
+  <div style="display:flex;flex-direction:column;gap:12px"><article class="art">
+    <div class="art-top">
+      <div><div class="art-id"><span class="dot lg attention"></span><h3>Claude Code</h3><span class="pill">native installer</span><span class="pill">v2.1.266</span></div><div class="art-path">~/.local/bin/claude → ~/.local/share/claude/versions/2.1.266</div></div>
+      <div class="art-side"><span class="lbl">2.1.270 available</span><span class="btn sm">Update</span></div>
+    </div>
+    <div class="art-acts"><span class="btn sm">Extensions +</span><span class="btn sm">Installs · 2 +</span><span class="btn sm">More +</span></div>
+    <div class="art-more">
+      <div class="inst"><span class="dot healthy"></span><span class="p">~/.local/bin/claude → ~/.local/share/claude/versions/2.1.266</span><span class="pill">native installer</span><span class="lbl">on your PATH · used</span></div>
+      <div class="inst"><span class="dot"></span><span class="p">~/.nvm/versions/node/v26.5.0/bin/claude → @anthropic-ai/claude-code 2.1.221</span><span class="pill">npm · global</span><span class="lbl">shadowed</span></div>
+      <p class="lbl" style="margin:8px 0 0">Two installs of the same agent. VibeField runs the one your shell would run. The npm copy is 45 releases behind and never used — its updater is <span class="mono">npm</span>, not the row's.</p>
+    </div>
+  </article></div></section></div></div>
+    </main>
+  </div></div>
+  <p class="cap"><b>Extensions</b> (plugins, MCP servers, skills) are per profile, because they live in the agent's folder and each profile has its own. The segmented control scopes the list; "Also install in…" runs the agent's own install command in another profile rather than copying files, since an MCP definition can carry a secret. Skills have no command on any agent today, so they are inventory with an "open folder". This part is designed ahead of the runtime: RFC 006 track C is still open.</p>
+</section>
+
+<section class="part">
+  <span class="eyebrow">First run</span>
+  <h2>Onboarding: three Setup Assistant panes</h2>
+  <p class="prose">The assistant already runs between splash and warm: Welcome · Your field · Setting up · Connect your devices · Ready. The agent panes slot in after Connect your devices, and they obey the same laws. Each asks one thing. Each skip says where it lives later. The third pane is the Profiles page's own rows in the wizard's skin — two skins, one machinery — so a sign-in started here is the same sign-in Settings would start.</p>
+
+  <h3 class="sub">1 · Your agents</h3>
+  <div class="wizstage"><div class="wiz "><span class="theme"><svg viewBox="0 0 20 20" aria-hidden="true"><path d="M15.5 12.2A6.2 6.2 0 0 1 7.8 4.5a6.2 6.2 0 1 0 7.7 7.7Z"/></svg></span><div class="pane">
+  <div><span class="eyebrow">Your agents</span><h1>Nine agents already live on this Mac.</h1><p class="voice">VibeField reads their own folders to know versions and who is signed in. Nothing is copied, moved or changed.</p></div>
+  <ul class="checks">
+    <li><span class="ok">✓</span><span class="n">Claude Code</span> 2.1.266 · signed in as james@vibecook.dev</li>
+    <li><span class="ok">✓</span><span class="n">Codex</span> 0.153.4 · signed in as james@vibecook.dev</li>
+    <li><span class="ok">✓</span><span class="n">Grok</span> 1.0.13 · signed in</li>
+    <li><span class="ok">✓</span><span class="n">Kimi Code, Copilot CLI, OpenCode</span> signed in</li>
+    <li><span class="ok">✓</span><span class="n">Pi, Hermes Agent, Antigravity</span> installed</li>
+  </ul>
+  <div class="acts"><span class="prim">Continue</span><div class="skip"><span class="qt">Skip</span><span class="fact">Set up later — Settings → Agents</span></div><span class="qt">Back</span></div>
+</div></div></div>
+  <p class="cap">The one decision is consent: let VibeField read these folders. The list is what the scan found, with the sign-ins it could read — honest progress, not a synthetic checklist. Skipping parks the step in the setup ledger and Settings → Agents shows it pending.</p>
+
+  <h3 class="sub">2 · A profile of your own</h3>
+  <div class="wizstage"><div class="wiz t-dark"><span class="theme"><svg viewBox="0 0 20 20" aria-hidden="true"><path d="M15.5 12.2A6.2 6.2 0 0 1 7.8 4.5a6.2 6.2 0 1 0 7.7 7.7Z"/></svg></span><div class="pane">
+  <div><span class="eyebrow">Profiles</span><h1>Keep a second set of accounts?</h1><p class="voice">A profile holds one account per agent. Sessions can run under several at once — a work Claude next to a personal one, with no signing out.</p></div>
+  <div style="display:flex;flex-direction:column;gap:16px">
+    <label style="display:flex;flex-direction:column;gap:6px"><span class="eyebrow">Name</span><div class="bigfield">Work</div></label>
+    <div style="display:flex;flex-direction:column;gap:8px"><span class="eyebrow">Color</span><div class="swatches"><i style="background:var(--vf-accent-1)"></i><i style="background:var(--vf-accent-2)"></i><i style="background:var(--vf-accent-3)"></i><i style="background:var(--vf-accent-4)" class="ring2"></i><i style="background:var(--vf-accent-5)"></i><i style="background:var(--vf-accent-6)"></i><i style="background:var(--vf-accent-7)"></i><i style="background:var(--vf-accent-8)"></i></div><div><span class="chip" style="--a:var(--vf-accent-4)"><span class="sw-dot"></span>Work</span></div></div>
+  </div>
+  <div class="acts"><span class="prim">Create profile</span><div class="skip"><span class="qt">Skip</span><span class="fact">Set up later — Settings → Profiles</span></div><span class="qt">Back</span></div>
+</div></div></div>
+  <p class="cap">Name and accent, exactly the Your field pane's shape. Creating makes an empty folder set and nothing more. Skipping is the common case for a one-subscription user, and it says "Settings → Profiles" verbatim.</p>
+
+  <h3 class="sub">3 · Sign in</h3>
+  <div class="wizstage"><div class="wiz "><span class="theme"><svg viewBox="0 0 20 20" aria-hidden="true"><path d="M15.5 12.2A6.2 6.2 0 0 1 7.8 4.5a6.2 6.2 0 1 0 7.7 7.7Z"/></svg></span><div class="pane">
+  <div><span class="eyebrow">Work</span><h1>Sign in when you're ready.</h1><p class="voice">Each row opens that agent's own sign-in. Do one now or all of them later — Settings → Profiles keeps exactly these rows.</p></div>
+  <div class="wrows">
+    <div class="prow"><span class="tile" aria-hidden="true">CC</span><div class="who"><div class="n">Claude Code</div><div class="f">james@northlight.studio · Max 20×</div></div><span class="st"><span class="dot healthy"></span>signed in</span><div class="ctl"><span class="btn sm">Switch account…</span></div></div>
+    <div class="prow"><span class="tile" aria-hidden="true">CX</span><div class="who"><div class="n">Codex</div><div class="f">not signed in</div></div><span class="st">not signed in</span><div class="ctl"><span class="btn sm">Sign in</span></div></div>
+    <div class="prow"><span class="tile" aria-hidden="true">GK</span><div class="who"><div class="n">Grok</div><div class="f">not signed in</div></div><span class="st">not signed in</span><div class="ctl"><span class="btn sm">Sign in</span></div></div>
+    <div class="prow"><span class="fact">Kimi Code, Copilot CLI, OpenCode, Hermes Agent — from Settings → Profiles</span></div>
+  </div>
+  <div class="acts"><span class="prim">Continue</span><span class="qt">Back</span></div>
+</div></div></div>
+  <p class="cap">Only reached when a profile was created. The rows are the Profiles page's rows; a Sign in opens the same terminal beneath the row. Continue is never blocked — a profile with nothing signed in is a fact, not an error, and the Ready pane follows as usual.</p>
+</section>
+
+<section class="part">
+  <span class="eyebrow">Elsewhere</span>
+  <h2>Where a profile shows outside Settings</h2>
+  <p class="prose">Two places in the shell, both using the §2.6 tint the profile was given, and one place that is free. At spawn, the palette preselects the default profile and lets you pick another without leaving the row. On the agent card, the eyebrow carries the profile beside the agent, in its tint. In Godview, pass 2's marks stand: the views are free, and the record there decides.</p>
+  <div class="mini">
+    <div><div class="palette" role="img" aria-label="Command palette, spawn row"><div class="q"><i>›</i>spawn claude</div><div class="r on"><span class="tile">CC</span><span>Spawn Claude Code</span><span class="grow"></span><span class="seg" aria-label="Profile"><span class="on">Personal</span><span>Work</span><span>This Mac</span></span></div><div class="r"><span class="tile">CX</span><span>Spawn Codex</span></div></div><p class="cap">The palette row. The segmented control is the sheet's own; the default is preselected.</p></div>
+    <div><div class="card" style="--a:var(--vf-accent-4)"><div class="eb"><span>Claude · <span class="pf">Work</span></span><span>2m</span></div><div class="t">refactor auth middleware</div><div class="b"><span class="dot healthy"></span>working · 00:02:14</div></div><p class="cap">The agent card's eyebrow: agent, then profile in its tint. State stays a dot; the tint never signals state.</p></div>
+  </div>
+</section>
+
+<section class="part">
+  <span class="eyebrow">Spec sheet</span>
+  <h2>Every element, by recipe</h2>
+  <div class="tablewrap"><table class="spec">
+    <thead><tr><th>Element</th><th>Recipe</th><th>Cites</th></tr></thead>
+    <tbody>
+      <tr><td>Profile chip</td><td>§2.6 tint: 12% body, 35% hairline, label at full, 7 px dot of the slot; This Mac wears <code>--vf-fill</code> and the text ramp, no slot</td><td class="cite">§2.6 · AccentChip</td></tr>
+      <tr><td>Default</td><td><code>UiPill</code> "default" beside the chip; "Use as default" as a quiet 30 px button on the others</td><td class="cite">§8 pill · §7 location vs selection</td></tr>
+      <tr><td>Agent tile</td><td>28 px, radius 8, <code>--vf-fill</code>, two-letter mono at 10 px 600 in the tertiary ramp — vendor-neutral by AR-L1; Godview's artwork map may reappear here if wanted</td><td class="cite">RFC 004 · AR-L1</td></tr>
+      <tr><td>Agent row</td><td>52 px min; name 13 px 500 at 80%; identity line 12 px tertiary, one line, truncates; status word with §2.5 dot; one verb, 30 px pill button</td><td class="cite">SettingsRow · §2.5 · §9</td></tr>
+      <tr><td>Sign-in terminal</td><td>14 px radius inside the card, deck palette (light <code>#ECE8DC</code> / <code>#D2CEC3</code>, dark <code>#282C34</code> / <code>#414650</code>), 11.5 px mono; caption 12 px tertiary; closes itself on identity</td><td class="cite">§2.7 · M1 · M4</td></tr>
+      <tr><td>Confirm box</td><td>14 px radius, hairline, 2% fill; title 13 px 500; the act on the left, Cancel quiet; red text only for the destructive variant</td><td class="cite">§8 uninstall · AccountSection unlink</td></tr>
+      <tr><td>Article</td><td>rounded-16 hairline card, 60% white / 2.5% white; dot 8 px; pills for source and version; path 11.5 px mono tertiary; actions row above a hairline</td><td class="cite">PluginRow</td></tr>
+      <tr><td>Updates disclosure</td><td>"updates ▸" in the label ramp; a left hairline list; id mono, installed → latest in <code>tabular-nums</code>, "update" as a text verb; "checked HH:MM:SS"</td><td class="cite">§8 updates flow · PluginUpdates</td></tr>
+      <tr><td>Extensions</td><td>Eyebrow per kind with a count; rows 34 px; enable as the 32 px switch; MCP overflow "···"; skills read-only with "open folder"; segmented control for profile scope</td><td class="cite">§3 eyebrow · §8 segmented · UiSwitch</td></tr>
+      <tr><td>Wizard pane</td><td>30 rem, eyebrow 10 px, headline 28 px light −0.02 em, voice 14 px at 70%, primary 40 px inverted with shadow-md, quiet 40 px 5% fill, skip caption 12 px at 45%</td><td class="cite">wizard-ui.tsx · W1–W6</td></tr>
+      <tr><td>Motion</td><td>Row opens on the island ease (240 ms); the terminal is the row's own content, never a second element; reduced motion halves and fades</td><td class="cite">§6 M1 · M6</td></tr>
+    </tbody>
+  </table></div>
+</section>
+
+<section class="part">
+  <span class="eyebrow">Not designed here</span>
+  <h2>Open items</h2>
+  <div class="prose">
+    <ul>
+      <li><strong>Uninstalling an agent.</strong> Left with its installer on purpose. A "More" overflow could show the exact command; a one-click removal that runs npm or brew is a decision for a later pass.</li>
+      <li><strong>Project-scope extensions.</strong> A project's <code>.claude</code> or <code>.agents/skills</code> belongs to the card that opened the project, not to this page. Only user scope lists here.</li>
+      <li><strong>Windows and Linux paths.</strong> The rows print whatever the agent's own files say; the WIN track's path grammar applies unchanged.</li>
+      <li><strong>Usage and quota per account.</strong> Pass 2 put it on the Godview usage column. Whether the Profiles row should also carry the plan's remaining quota is unresolved; it would be a §2.5-coloured number and belongs to monitoring.</li>
+      <li><strong>The runtime.</strong> Everything on the Profiles page exists in puppeteer's phase 1 (profiles, roots, login invocations, verify). The Agents page's extensions block is designed ahead of track C, and the "Also install in…" verb needs each adapter's install command.</li>
+    </ul>
+  </div>
+</section>
+
+<section class="part">
+  <span class="eyebrow">Decisions</span>
+  <h2>Twelve picks</h2>
+  <p class="prose">One pick per line. The recommended one is marked. Picks save to this page when it is opened from claude.ai; otherwise they stay in this browser.</p>
+  <div id="questions" style="margin-top:12px"></div>
+  <div id="savebar">picks kept in this browser only</div>
+</section>
+
+</div>
+<script>
+(() => {
+  const QUESTIONS = [{"id":"s0","t":"Where it lives in Settings","o":[["split","Profiles under Account · Agents under Workspace"],["one","one Agents page, profiles as its first section"],["ws","both pages under Workspace"]],"rec":"split"},{"id":"s1","t":"The word for a set of accounts","o":[["profiles","Profiles · the Account page's own \"Profile\" block becomes \"You\""],["accounts","Accounts"],["seats","Seats"]],"rec":"profiles"},{"id":"s2","t":"A profile's mark","o":[["accent","a §2.6 accent slot, picked like the user's"],["initial","an initial in the muted ramp, no colour"],["none","the name only"]],"rec":"accent"},{"id":"s3","t":"The profile card","o":[["rows","one row per installed agent, one verb each"],["signed","only signed-in agents as rows; an Add row for the rest"],["chips","agents as chips, a sheet per agent"]],"rec":"rows"},{"id":"s4","t":"Where a sign-in runs","o":[["inline","a terminal opens under the row, inside the sheet"],["deck","a Godview deck pane; Settings closes"],["window","a separate small window"]],"rec":"inline"},{"id":"s5","t":"Switching an account","o":[["inplace","in place: sign out, sign in, the folder stays"],["newroot","a fresh folder each time, the old one kept"],["ask","ask each time"]],"rec":"inplace"},{"id":"s6","t":"Reading who is signed in","o":[["open","quietly when the page opens and after each sign-in"],["manual","only on request"]],"rec":"open"},{"id":"s7","t":"Checking for releases","o":[["ask","only when asked, like plugins"],["open","also when the Agents page opens"],["daily","also once a day in the background"]],"rec":"ask"},{"id":"s8","t":"Running an update","o":[["inline","the agent's own updater in a terminal under the row"],["handoff","open a terminal and stop watching"],["show","only show the command to run"]],"rec":"inline"},{"id":"s9","t":"Extensions scope","o":[["profile","per profile, with \"Also install in…\""],["mac","This Mac only in v1"],["shared","one shared set, folders linked between profiles"]],"rec":"profile"},{"id":"s10","t":"Onboarding","o":[["three","three panes: your agents · a profile · sign in"],["two","two panes; sign in later from Settings"],["none","no agent panes; everything in Settings"]],"rec":"three"},{"id":"s11","t":"The default profile","o":[["one","one default wears the pill; spawn preselects it"],["ask","no default; spawn always asks"],["last","the last one used"]],"rec":"one"}];
+  const root = document.getElementById('questions');
+  const savebar = document.getElementById('savebar');
+  const state = {};
+  let db = null;
+  const LS = 'vf-agents-settings-picks';
+  try { Object.assign(state, JSON.parse(localStorage.getItem(LS) || '{}')); } catch {}
+  function render() {
+    root.replaceChildren(...QUESTIONS.map((q) => {
+      const cur = state[q.id] || {};
+      const wrap = document.createElement('div'); wrap.className = 'q';
+      const id = document.createElement('span'); id.className = 'q-id'; id.textContent = q.id.toUpperCase();
+      const body = document.createElement('div');
+      const h = document.createElement('h4'); h.textContent = q.t;
+      const opts = document.createElement('div'); opts.className = 'q-opts'; opts.setAttribute('role', 'radiogroup'); opts.setAttribute('aria-label', q.t);
+      for (const [k, label] of q.o) {
+        const b = document.createElement('button'); b.type = 'button'; b.className = 'q-opt' + (k === q.rec ? ' is-rec' : '') + (cur.choice === k ? ' is-on' : '');
+        b.setAttribute('role', 'radio'); b.setAttribute('aria-checked', String(cur.choice === k)); b.textContent = label;
+        b.addEventListener('click', () => save(q.id, { choice: cur.choice === k ? null : k }));
+        opts.appendChild(b);
+      }
+      const note = document.createElement('textarea'); note.className = 'q-note'; note.rows = 1; note.placeholder = 'a note, if the picks miss'; note.value = cur.note || '';
+      note.setAttribute('aria-label', 'Note for ' + q.t);
+      note.addEventListener('change', () => save(q.id, { note: note.value.trim() }));
+      const st = document.createElement('div'); st.className = 'q-state'; st.textContent = cur.at ? 'saved ' + new Date(cur.at).toLocaleString() : '';
+      body.append(h, opts, note, st); wrap.append(id, body); return wrap;
+    }));
+  }
+  async function save(id, patch) {
+    const next = { ...(state[id] || {}), ...patch, at: new Date().toISOString() };
+    if (next.choice === null) delete next.choice;
+    state[id] = next;
+    try { localStorage.setItem(LS, JSON.stringify(state)); } catch {}
+    render();
+    if (db) {
+      try { await db.doc('decisions/' + id).set({ question: QUESTIONS.find((q) => q.id === id).t, ...next }); savebar.textContent = 'picks saved to this page · ' + new Date().toLocaleTimeString(); }
+      catch (e) { savebar.textContent = 'could not save · ' + (e && e.message ? e.message : 'unknown'); }
+    } else {
+      savebar.textContent = 'picks kept in this browser only';
+    }
+  }
+  render();
+  (async () => {
+    if (!window.claude || typeof window.claude.use !== 'function') { savebar.textContent = 'picks kept in this browser only'; return; }
+    db = await window.claude.use('db');
+    if (!db) { savebar.textContent = 'picks kept in this browser only'; return; }
+    savebar.textContent = 'picks save to this page';
+    db.collection('decisions').onSnapshot((snap) => {
+      let changed = false;
+      for (const doc of snap.docs) { const d = doc.data(); if (!d) continue; state[doc.id] = { choice: d.choice, note: d.note, at: d.at }; changed = true; }
+      if (changed) { try { localStorage.setItem(LS, JSON.stringify(state)); } catch {} render(); }
+    }, () => { savebar.textContent = 'picks kept in this browser only'; });
+  })();
+})();
+</script>
+
+</body></html>

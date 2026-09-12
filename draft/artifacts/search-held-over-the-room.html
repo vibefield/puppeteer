@@ -1,0 +1,615 @@
+<!doctype html><html><head><meta charset=utf8><meta name=viewport content="width=device-width,initial-scale=1"><style>:root{color-scheme:light}body{margin:0;padding:0;font:14px -apple-system,BlinkMacSystemFont,sans-serif;background:#faf9f5;color:#141413}img{max-width:100%}[hidden]:not([hidden=until-found i]){display:none!important}</style></head><body>
+<title>Search, Held Over the Room</title>
+<style>
+/* ═══ tokens — transcribed from clients/app/renderer/src/styles/tokens.css (vibe-field design-kit) ═══ */
+:root {
+  --vf-font-sans: -apple-system, BlinkMacSystemFont, "Segoe UI", system-ui, sans-serif;
+  --vf-font-mono: ui-monospace, "SF Mono", SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  --vf-canvas-bg: #fafafa; --vf-canvas-dot: rgba(0,0,0,0.16);
+  --vf-fill: #f2f2f7; --vf-fill-hover: #e5e5ea;
+  --vf-foreground: #1c1c1e; --vf-foreground-inverse: #ffffff;
+  --vf-text-primary: rgb(28 28 30 / 85%); --vf-text-secondary: rgb(28 28 30 / 70%);
+  --vf-text-tertiary: rgb(28 28 30 / 45%); --vf-text-faint: rgb(28 28 30 / 30%);
+  --vf-hairline: rgb(0 0 0 / 5%); --vf-hairline-strong: rgb(0 0 0 / 10%);
+  --vf-chrome-solid: #ffffff; --vf-chrome-surface: rgb(255 255 255 / 90%); --vf-sheet-surface: rgb(255 255 255 / 96%);
+  --vf-backdrop-dim: rgb(0 0 0 / 10%);
+  --vf-green: #30d158; --vf-orange: #ff9f0a; --vf-red: #ff453a; --vf-select: #4a90d9;
+  --tint-l: 0.60; --tint-c: 0.15;
+  --vf-radius-card: 22px; --vf-radius-control: 9px;
+  --vf-shadow-island: 0 8px 30px rgb(0 0 0 / 8%);
+  --vf-shadow-sheet-top: 0 20px 40px rgb(0 0 0 / 8%);
+  --vf-ease-island: cubic-bezier(0.25, 1, 0.3, 1); --vf-ease-pop: cubic-bezier(0.34, 1.45, 0.64, 1);
+  color-scheme: light;
+}
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) {
+  --tint-l: 0.74; --vf-canvas-bg: #171717; --vf-canvas-dot: rgba(255,255,255,0.08);
+  --vf-fill: #2c2c2e; --vf-fill-hover: #3a3a3c; --vf-foreground: #f5f5f7; --vf-foreground-inverse: #1c1c1e;
+  --vf-text-primary: rgb(245 245 247 / 85%); --vf-text-secondary: rgb(245 245 247 / 70%);
+  --vf-text-tertiary: rgb(245 245 247 / 45%); --vf-text-faint: rgb(245 245 247 / 30%);
+  --vf-hairline: rgb(255 255 255 / 10%); --vf-hairline-strong: rgb(255 255 255 / 15%);
+  --vf-chrome-solid: #1c1c1e; --vf-chrome-surface: rgb(28 28 30 / 90%); --vf-sheet-surface: rgb(28 28 30 / 96%);
+  --vf-backdrop-dim: rgb(0 0 0 / 40%);
+  --vf-shadow-island: 0 8px 30px rgb(0 0 0 / 40%); --vf-shadow-sheet-top: 0 20px 40px rgb(0 0 0 / 40%); color-scheme: dark;
+} }
+:root[data-theme="dark"] {
+  --tint-l: 0.74; --vf-canvas-bg: #171717; --vf-canvas-dot: rgba(255,255,255,0.08);
+  --vf-fill: #2c2c2e; --vf-fill-hover: #3a3a3c; --vf-foreground: #f5f5f7; --vf-foreground-inverse: #1c1c1e;
+  --vf-text-primary: rgb(245 245 247 / 85%); --vf-text-secondary: rgb(245 245 247 / 70%);
+  --vf-text-tertiary: rgb(245 245 247 / 45%); --vf-text-faint: rgb(245 245 247 / 30%);
+  --vf-hairline: rgb(255 255 255 / 10%); --vf-hairline-strong: rgb(255 255 255 / 15%);
+  --vf-chrome-solid: #1c1c1e; --vf-chrome-surface: rgb(28 28 30 / 90%); --vf-sheet-surface: rgb(28 28 30 / 96%);
+  --vf-backdrop-dim: rgb(0 0 0 / 40%);
+  --vf-shadow-island: 0 8px 30px rgb(0 0 0 / 40%); --vf-shadow-sheet-top: 0 20px 40px rgb(0 0 0 / 40%); color-scheme: dark;
+}
+
+/* ═══ the record page ═══ */
+* { box-sizing: border-box; }
+html, body { margin: 0; }
+body { background: var(--vf-canvas-bg); color: var(--vf-text-primary); font-family: var(--vf-font-sans); font-size: 15px; line-height: 1.6; -webkit-font-smoothing: antialiased; }
+.page { max-width: 1120px; margin: 0 auto; padding: 56px 40px 120px; }
+.rec { max-width: 720px; }
+.rec p { margin: 0 0 14px; color: var(--vf-text-secondary); max-width: 68ch; }
+.rec p strong, .rec li strong, td strong { color: var(--vf-text-primary); font-weight: 600; }
+.rec .lead { font-size: 17px; color: var(--vf-text-primary); }
+.rec ul, .rec ol { margin: 0 0 14px; padding-left: 22px; color: var(--vf-text-secondary); max-width: 68ch; }
+.rec li { margin-bottom: 6px; }
+code { font-family: var(--vf-font-mono); font-size: 0.88em; color: var(--vf-text-primary); background: var(--vf-fill); padding: 1px 5px; border-radius: 4px; }
+h1 { margin: 6px 0 10px; font-size: 32px; font-weight: 600; letter-spacing: -0.015em; line-height: 1.15; text-wrap: balance; }
+h2 { margin: 64px 0 14px; font-size: 22px; font-weight: 600; letter-spacing: -0.01em; display: flex; align-items: baseline; gap: 12px; }
+h2 .n { font-family: var(--vf-font-mono); font-size: 12px; color: var(--vf-text-faint); font-weight: 500; }
+h3 { margin: 28px 0 8px; font-size: 15px; font-weight: 600; }
+.eyebrow { color: var(--vf-text-tertiary); font-size: 10.5px; font-weight: 500; text-transform: uppercase; letter-spacing: 0.08em; }
+.meta { margin: 0 0 30px; color: var(--vf-text-faint); font-size: 12px; }
+.meta b { color: var(--vf-text-tertiary); font-weight: 500; }
+table { border-collapse: collapse; width: 100%; margin: 12px 0 22px; font-size: 13px; }
+th, td { text-align: left; vertical-align: top; padding: 9px 12px 9px 0; border-bottom: 1px solid var(--vf-hairline); color: var(--vf-text-secondary); line-height: 1.5; }
+th { color: var(--vf-text-tertiary); font-weight: 500; font-size: 11px; text-transform: uppercase; letter-spacing: 0.06em; }
+td:first-child { color: var(--vf-text-primary); font-weight: 500; white-space: nowrap; }
+td.take { color: var(--vf-text-primary); }
+kbd { font-family: var(--vf-font-sans); font-size: 10.5px; padding: 1px 6px; border: 1px solid var(--vf-hairline-strong); border-radius: 6px; color: var(--vf-text-tertiary); background: var(--vf-chrome-solid); }
+.cap { margin: 8px 0 0; color: var(--vf-text-faint); font-size: 12px; }
+.cap b { color: var(--vf-text-tertiary); font-weight: 500; }
+.spec { margin: 18px 0 26px; border: 1px solid var(--vf-hairline-strong); border-radius: 14px; overflow: hidden; background: var(--vf-chrome-solid); }
+.spec__bar { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 8px 14px; border-bottom: 1px solid var(--vf-hairline); color: var(--vf-text-tertiary); font-size: 11px; font-weight: 500; }
+.spec__bar .note { color: var(--vf-text-faint); font-weight: 400; }
+.spec__body { padding: 16px; }
+.fab { position: fixed; top: 16px; right: 16px; z-index: 20; width: 40px; height: 40px; border: 0; border-radius: 999px; background: var(--vf-chrome-solid); box-shadow: var(--vf-shadow-island), 0 0 0 1px var(--vf-hairline); color: var(--vf-text-tertiary); cursor: pointer; display: grid; place-items: center; }
+.fab svg { width: 16px; height: 16px; }
+.toc { display: flex; flex-wrap: wrap; gap: 6px 14px; margin: 0 0 36px; font-size: 12px; }
+.toc a { color: var(--vf-text-tertiary); text-decoration: none; }
+.toc a span { color: var(--vf-text-faint); font-family: var(--vf-font-mono); font-size: 10px; margin-right: 4px; }
+.toc a:hover { color: var(--vf-text-primary); }
+.rules { counter-reset: r; padding-left: 0; list-style: none; }
+.rules li { counter-increment: r; display: grid; grid-template-columns: 28px 1fr; gap: 10px; margin-bottom: 8px; }
+.rules li::before { content: counter(r, decimal-leading-zero); font-family: var(--vf-font-mono); font-size: 11px; color: var(--vf-text-faint); padding-top: 4px; }
+.two { display: grid; grid-template-columns: 1fr 1fr; gap: 18px; }
+@media (max-width: 900px) { .two { grid-template-columns: 1fr; } }
+.bad { color: var(--vf-red); }
+.ok { color: var(--vf-green); }
+
+/* ═══ the drawings — transcribed from clients/app/renderer/src/styles/search.css ═══ */
+.room { position: relative; height: 560px; border-radius: 22px; overflow: hidden; border: 1px solid var(--vf-hairline-strong); background: var(--vf-canvas-bg); background-image: radial-gradient(var(--vf-canvas-dot) 1.2px, transparent 1.2px); background-size: 25px 25px; color: var(--vf-text-primary); font-size: 12px; }
+.room__sheet { position: absolute; inset: 0; display: flex; flex-direction: column; background: var(--vf-sheet-surface); transition: transform 240ms var(--vf-ease-island); }
+.room[data-open] .room__sheet { transform: scale(0.98); }
+.strip { display: flex; align-items: center; justify-content: center; flex: none; min-height: 50px; padding: 9px 84px; border-bottom: 1px solid var(--vf-hairline); }
+.lights { position: absolute; left: 13px; top: 19px; display: flex; gap: 8px; }
+.lights i { width: 12px; height: 12px; border-radius: 999px; background: var(--vf-fill-hover); }
+.cols { display: grid; grid-template-columns: 200px 220px minmax(0, 1fr); flex: 1; min-height: 0; }
+.col { min-width: 0; border-right: 1px solid var(--vf-hairline); display: flex; flex-direction: column; }
+.col:last-child { border-right: 0; }
+.col > header { display: flex; align-items: center; justify-content: space-between; gap: 8px; min-height: 46px; padding: 0 14px; border-bottom: 1px solid var(--vf-hairline); }
+.colhead { display: flex; align-items: center; gap: 8px; min-width: 0; }
+.colhead > i { flex: none; width: 3px; height: 14px; border-radius: 999px; background: var(--tint); }
+.colhead > strong { font-size: 11.5px; font-weight: 500; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.bubble { display: inline-flex; align-items: center; justify-content: center; min-width: 19px; height: 16px; padding: 0 5px; border-radius: 999px; background: var(--vf-fill); color: var(--vf-text-tertiary); font-size: 9.5px; font-weight: 500; font-variant-numeric: tabular-nums; }
+.eb { color: var(--vf-text-tertiary); font-size: 10px; font-weight: 500; text-transform: uppercase; letter-spacing: 0.07em; }
+.caption { color: var(--vf-text-faint); font-size: 10px; white-space: nowrap; }
+.tnum { font-variant-numeric: tabular-nums; }
+.quietcol { flex: 1; display: grid; place-items: center; color: var(--vf-text-faint); font-size: 11px; text-align: center; padding: 20px; }
+.quietcol strong { display: block; color: var(--vf-text-secondary); font-size: 12.5px; font-weight: 500; margin-bottom: 4px; }
+.prow { display: grid; grid-template-columns: 3px 1fr; gap: 0 11px; padding: 9px 12px; margin: 3px 6px; border-radius: 12px; }
+.prow i { border-radius: 999px; background: var(--tint); }
+.prow b { font-weight: 500; font-size: 12px; display: block; }
+.prow small { color: var(--vf-text-faint); font-family: var(--vf-font-mono); font-size: 9.5px; }
+.prow.is-selected { background: var(--vf-fill); box-shadow: inset 0 0 0 1.5px var(--vf-select); }
+.srow { display: grid; grid-template-columns: 8px 1fr; gap: 0 9px; padding: 8px 10px; margin: 2px 6px; border-radius: 11px; }
+.srow i { width: 8px; height: 8px; margin-top: 4px; border-radius: 999px; background: var(--vf-text-faint); }
+.srow b { display: block; font-weight: 500; font-size: 12px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.srow small { color: var(--vf-text-faint); font-size: 10px; }
+.srow.is-selected { background: var(--vf-fill); box-shadow: inset 0 0 0 1.5px var(--vf-select); }
+
+.ah-kbd { flex: none; padding: 2px 6px; border: 1px solid var(--vf-hairline-strong); border-radius: 6px; color: var(--vf-text-faint); font-family: var(--vf-font-sans); font-size: 10px; line-height: 1.4; background: transparent; }
+.ah-launcher { position: relative; display: flex; align-items: center; width: min(460px, 100%); height: 32px; border-radius: 999px; background: var(--vf-fill); transition: background-color 160ms ease, box-shadow 160ms ease; }
+.ah-launcher:hover { background: var(--vf-fill-hover); }
+.ah-launcher__open { display: flex; align-items: center; gap: 8px; flex: 1; min-width: 0; height: 100%; padding: 0 10px 0 11px; border: 0; border-radius: 999px; background: transparent; color: var(--vf-text-tertiary); font-size: 12px; font-family: inherit; text-align: left; cursor: default; }
+.ah-launcher__open svg { width: 13px; height: 13px; flex: none; }
+.ah-launcher__text { flex: 1; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.ah-launcher[data-active] .ah-launcher__text { color: var(--vf-text-primary); font-weight: 500; }
+.ah-launcher .ah-kbd { margin-left: auto; }
+.ah-launcher__clear { display: grid; place-items: center; width: 18px; height: 18px; flex: none; margin-right: 7px; border: 0; border-radius: 999px; background: transparent; color: var(--vf-text-tertiary); font-size: 13px; line-height: 1; }
+
+.ah-sheet__backdrop { position: absolute; inset: 0; z-index: 5; background: var(--vf-backdrop-dim); backdrop-filter: blur(2px); }
+.ah-sheet { position: absolute; z-index: 6; top: 0; left: 50%; transform: translateX(-50%); display: flex; flex-direction: column; width: min(760px, calc(100% - 100px)); max-height: 78%; border-radius: 0 0 var(--vf-radius-card) var(--vf-radius-card); background: var(--vf-sheet-surface); backdrop-filter: blur(40px); box-shadow: var(--vf-shadow-sheet-top), 0 0 0 1px var(--vf-hairline-strong); overflow: hidden; transform-origin: top center; animation: ah-sheet-in 240ms var(--vf-ease-island); }
+@keyframes ah-sheet-in { from { opacity: 0; transform: translateX(-50%) translateY(-6px) scale(0.985); } to { opacity: 1; transform: translateX(-50%) translateY(0) scale(1); } }
+.ah-sheet__field { display: flex; align-items: center; gap: 10px; flex: none; min-height: 50px; padding: 9px 12px 9px 16px; border-bottom: 1px solid var(--vf-hairline); }
+.ah-sheet__field > svg { width: 14px; height: 14px; flex: none; color: var(--vf-text-tertiary); }
+.ah-sheet__field input { flex: 1; min-width: 0; border: 0; outline: none; background: transparent; color: var(--vf-text-primary); font: inherit; font-size: 14px; }
+.ah-sheet__field input::placeholder { color: var(--vf-text-tertiary); }
+.ah-sheet__clear { display: grid; place-items: center; width: 20px; height: 20px; flex: none; border: 0; border-radius: 999px; background: transparent; color: var(--vf-text-tertiary); font-size: 14px; line-height: 1; }
+.ah-sheet__scope { display: flex; align-items: center; flex-wrap: wrap; gap: 6px 10px; flex: none; padding: 7px 14px; border-bottom: 1px solid var(--vf-hairline); }
+.ah-seg { display: inline-flex; padding: 2px; border-radius: 999px; background: var(--vf-fill); }
+.ah-seg button { height: 20px; padding: 0 8px; border: 0; border-radius: 999px; background: transparent; color: var(--vf-text-tertiary); font-size: 10px; font-family: inherit; transition: color 160ms ease, background-color 300ms var(--vf-ease-island); }
+.ah-seg button.is-on { color: var(--vf-foreground); background: var(--vf-chrome-solid); box-shadow: 0 1px 3px rgb(0 0 0 / 8%); font-weight: 500; }
+:root[data-theme="dark"] .ah-seg button.is-on { background: color-mix(in srgb, var(--vf-foreground) 20%, transparent); box-shadow: none; }
+.ah-seg button i { display: inline-block; width: 6px; height: 6px; margin-right: 5px; border-radius: 999px; background: var(--tint); }
+.ah-chipselect { appearance: none; height: 24px; padding: 0 22px 0 10px; border: 0; border-radius: 999px; background: var(--vf-fill) no-repeat right 8px center / 8px 8px url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 8 8'%3E%3Cpath d='M1.5 3l2.5 2.5L6.5 3' fill='none' stroke='%23888' stroke-width='1.2' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E"); color: var(--vf-text-tertiary); font: inherit; font-size: 10.5px; }
+.ah-sheet__list { flex: 1; min-height: 0; overflow-y: auto; padding: 2px 8px 8px; scrollbar-width: thin; transition: opacity 160ms ease 140ms; }
+.ah-sheet__list[data-stale] { opacity: 0.55; }
+.ah-sheet__head { position: sticky; top: 0; z-index: 2; display: flex; align-items: center; gap: 8px; padding: 10px 8px 5px; margin-top: 2px; background: linear-gradient(var(--vf-sheet-surface) 80%, transparent); }
+.ah-sheet__head > i { flex: none; width: 3px; height: 12px; border-radius: 999px; background: var(--tint); }
+.ah-sheet__crumb { display: flex; align-items: baseline; gap: 5px; min-width: 0; color: var(--vf-text-tertiary); font-size: 11px; white-space: nowrap; }
+.ah-sheet__crumb > b { flex: none; font-weight: 500; color: var(--vf-text-primary); }
+.ah-sheet__crumb > i { flex: none; font-style: normal; color: var(--vf-text-faint); }
+.ah-sheet__crumb > span { min-width: 0; overflow: hidden; text-overflow: ellipsis; color: var(--vf-text-secondary); }
+.ah-sheet__crumb > span[data-mono] { font-family: var(--vf-font-mono); font-size: 10.5px; }
+.ah-agent { display: inline-flex; width: 11px; height: 11px; flex: none; color: var(--vf-text-primary); opacity: 0.55; }
+.ah-agent svg { width: 100%; height: 100%; display: block; }
+.ah-sheet__headmeta { margin-left: auto; flex: none; display: flex; align-items: center; gap: 6px; color: var(--vf-text-faint); font-size: 9.5px; font-variant-numeric: tabular-nums; white-space: nowrap; }
+.ah-sheet__row { display: grid; grid-template-columns: 16px minmax(0, 1fr) auto; gap: 0 10px; align-items: start; width: 100%; padding: 7px 10px; margin-bottom: 1px; border: 0; border-radius: 9px; background: transparent; text-align: left; cursor: default; font-family: inherit; }
+.ah-sheet__row:hover { background: var(--vf-fill); }
+.ah-sheet__row[aria-selected="true"] { background: var(--vf-fill); box-shadow: inset 0 0 0 1.5px var(--vf-select); }
+.ah-sheet__who { display: inline-flex; align-items: center; justify-content: center; width: 16px; height: 18px; color: var(--vf-text-faint); }
+.ah-sheet__who svg { width: 12px; height: 12px; display: block; }
+.ah-sheet__who .ah-agent { width: 12px; height: 12px; color: var(--vf-text-tertiary); opacity: 1; }
+.ah-sheet__you { width: 9px; height: 9px; border-radius: 3px; background: var(--vf-text-tertiary); }
+.ah-sheet__dot { width: 5px; height: 5px; border-radius: 999px; background: var(--vf-text-faint); }
+.ah-sheet__snippet { margin: 0; color: var(--vf-text-secondary); font-size: 12.5px; line-height: 1.45; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; overflow-wrap: anywhere; }
+.ah-sheet__snippet mark { padding: 1px 2px; margin: 0 -1px; border-radius: 3px; background: var(--vf-fill-hover); color: var(--vf-text-primary); font-weight: 500; }
+.ah-sheet__row:hover mark, .ah-sheet__row[aria-selected="true"] mark { background: color-mix(in srgb, var(--vf-select) 20%, transparent); }
+.ah-sheet__when { padding-top: 2px; color: var(--vf-text-faint); font-size: 10px; font-variant-numeric: tabular-nums; white-space: nowrap; }
+.ah-sheet__quiet { padding: 18px 16px 8px; }
+.ah-sheet__quiet strong { display: block; font-size: 12.5px; font-weight: 500; color: var(--vf-text-secondary); }
+.ah-sheet__quiet p { margin: 5px 0 0; color: var(--vf-text-faint); font-size: 11px; line-height: 1.6; }
+.ah-sheet__recent-head { padding: 12px 10px 4px; color: var(--vf-text-faint); font-size: 9.5px; font-weight: 500; text-transform: uppercase; letter-spacing: 0.08em; }
+.ah-sheet__recent { display: flex; align-items: center; gap: 10px; width: 100%; padding: 6px 10px; border: 0; border-radius: 9px; background: transparent; color: var(--vf-text-secondary); font-size: 12.5px; font-family: inherit; text-align: left; cursor: default; }
+.ah-sheet__recent:hover, .ah-sheet__recent[aria-selected="true"] { background: var(--vf-fill); }
+.ah-sheet__recent[aria-selected="true"] { box-shadow: inset 0 0 0 1.5px var(--vf-select); }
+.ah-sheet__recent > svg { width: 12px; height: 12px; flex: none; color: var(--vf-text-faint); }
+.ah-sheet__recent > span { flex: 1; }
+.ah-sheet__foot { display: flex; align-items: center; gap: 12px; flex: none; min-height: 30px; padding: 6px 14px; border-top: 1px solid var(--vf-hairline); color: var(--vf-text-faint); font-size: 10px; line-height: 1.4; }
+.ah-sheet__count { flex: none; font-variant-numeric: tabular-nums; color: var(--vf-text-tertiary); }
+.ah-sheet__count[data-tone="warn"] { color: var(--vf-orange); }
+.ah-sheet__scopeline { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.ah-sheet__keys { margin-left: auto; display: flex; gap: 10px; flex: none; }
+.ah-sheet__keys span { display: inline-flex; align-items: center; gap: 4px; }
+.ah-meter { width: 96px; height: 3px; border-radius: 999px; background: var(--vf-fill-hover); overflow: hidden; flex: none; }
+.ah-meter i { display: block; height: 100%; border-radius: 999px; background: var(--vf-text-tertiary); }
+.ah-stepper { display: inline-flex; align-items: center; gap: 2px; height: 24px; padding: 0 3px 0 10px; border-radius: 999px; background: var(--vf-fill); color: var(--vf-text-secondary); font-size: 10.5px; }
+.ah-stepper > b { max-width: 180px; margin-right: 6px; font-weight: 500; color: var(--vf-text-primary); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.ah-stepper > .tnum { margin-right: 4px; color: var(--vf-text-tertiary); white-space: nowrap; }
+.ah-stepper > button { display: grid; place-items: center; width: 20px; height: 20px; border: 0; border-radius: 999px; background: transparent; color: var(--vf-text-tertiary); }
+.ah-stepper > button:hover { background: var(--vf-fill-hover); color: var(--vf-text-primary); }
+.ah-stepper > button svg { width: 11px; height: 11px; display: block; }
+
+/* the mini transcript the demo lands in */
+.tr { flex: 1; min-height: 0; overflow-y: auto; padding: 14px 24px 40px; font-size: 13px; scrollbar-width: none; }
+.tr__prompt { margin: 14px 0; padding: 10px 14px; border-radius: 12px; background: var(--vf-fill); color: var(--vf-text-primary); line-height: 1.5; }
+.tr__head { display: flex; align-items: center; gap: 8px; margin: 18px 0 6px; color: var(--vf-text-tertiary); font-size: 10px; font-weight: 500; text-transform: uppercase; letter-spacing: 0.07em; }
+.tr__head .t { margin-left: auto; text-transform: none; letter-spacing: 0; font-variant-numeric: tabular-nums; font-weight: 400; }
+.tr__prose { margin: 0 -8px 10px; padding: 4px 8px; color: var(--vf-text-secondary); line-height: 1.55; max-width: 62ch; border-radius: 10px; }
+.tr__line { display: grid; grid-template-columns: 16px auto 1fr auto; gap: 0 10px; align-items: center; padding: 4px 10px; margin: 2px 0; border-radius: 8px; color: var(--vf-text-tertiary); font-size: 12px; }
+.tr__line .v { color: var(--vf-text-secondary); }
+.tr__line code { background: transparent; padding: 0; color: var(--vf-text-secondary); }
+.tr__line .r { font-variant-numeric: tabular-nums; color: var(--vf-text-faint); font-size: 10.5px; }
+[data-landed] { animation: ah-land 1400ms ease; }
+@keyframes ah-land { 0%, 62% { box-shadow: inset 0 0 0 1.5px var(--vf-select); border-radius: 10px; } 100% { box-shadow: inset 0 0 0 1.5px transparent; border-radius: 10px; } }
+
+/* options */
+.opts { display: grid; grid-template-columns: 1fr; gap: 14px; margin: 14px 0 6px; }
+.opt { display: block; width: 100%; padding: 0; border: 1px solid var(--vf-hairline-strong); border-radius: 14px; background: var(--vf-chrome-solid); text-align: left; font: inherit; color: inherit; overflow: hidden; }
+.opt[aria-checked="true"] { box-shadow: inset 0 0 0 1.5px var(--vf-select); }
+.opt__spec { padding: 12px 14px 8px; background: var(--vf-canvas-bg); }
+.opt__foot { display: flex; align-items: center; justify-content: space-between; gap: 14px; padding: 10px 14px; border-top: 1px solid var(--vf-hairline); font-size: 12.5px; }
+.opt__foot b { display: block; font-weight: 600; color: var(--vf-text-primary); }
+.opt__foot b em { font-style: normal; color: var(--vf-select); font-weight: 500; }
+.opt__foot span { color: var(--vf-text-tertiary); }
+.opt__pick { flex: none; color: var(--vf-text-faint); font-size: 11px; }
+.opt[aria-checked="true"] .opt__pick { color: var(--vf-select); }
+.flat { display: grid; grid-template-columns: 16px minmax(0,1fr) auto; gap: 0 10px; padding: 7px 10px; border-radius: 9px; }
+.flat__crumb { grid-column: 2; display: flex; gap: 5px; color: var(--vf-text-faint); font-size: 10px; margin-top: 2px; }
+.flat__crumb b { color: var(--vf-text-tertiary); font-weight: 500; }
+.flatr { display: grid; grid-template-columns: 16px minmax(0,1fr) minmax(0, 200px) auto; gap: 0 10px; align-items: center; padding: 6px 10px; border-radius: 9px; }
+.flatr .path { color: var(--vf-text-faint); font-size: 10.5px; font-family: var(--vf-font-mono); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; direction: rtl; text-align: left; }
+.ah-visually-hidden { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); }
+@media (prefers-reduced-motion: reduce) { * { animation-duration: 1ms !important; transition-duration: 1ms !important; } }
+</style>
+
+<svg width="0" height="0" style="position:absolute" aria-hidden="true">
+  <symbol id="g-search" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><circle cx="7" cy="7" r="4.2"/><path d="m10.2 10.2 3.3 3.3"/></symbol>
+  <symbol id="g-act" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M2.5 8h2.5l2-4.5 2 9 2-4.5h2.5"/></symbol>
+  <symbol id="g-think" viewBox="0 0 16 16" fill="currentColor"><circle cx="3.5" cy="8" r="1.4"/><circle cx="8" cy="8" r="1.4"/><circle cx="12.5" cy="8" r="1.4"/></symbol>
+  <symbol id="g-up" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M4 10l4-4 4 4"/></symbol>
+  <symbol id="g-down" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M4 6l4 4 4-4"/></symbol>
+  <symbol id="g-x" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"><path d="m4.5 4.5 7 7M11.5 4.5l-7 7"/></symbol>
+  <symbol id="m-claude" viewBox="0 0 24 24" fill="currentColor" fill-rule="evenodd"><path clip-rule="evenodd" d="M20.998 10.949H24v3.102h-3v3.028h-1.487V20H18v-2.921h-1.487V20H15v-2.921H9V20H7.488v-2.921H6V20H4.487v-2.921H3V14.05H0V10.95h3V5h17.998v5.949zM6 10.949h1.488V8.102H6v2.847zm10.51 0H18V8.102h-1.49v2.847z"/></symbol>
+  <symbol id="m-codex" viewBox="0 0 24 24" fill="currentColor" fill-rule="evenodd"><path clip-rule="evenodd" d="M8.086.457a6.105 6.105 0 013.046-.415c1.333.153 2.521.72 3.564 1.7a.117.117 0 00.107.029c1.408-.346 2.762-.224 4.061.366l.063.03.154.076c1.357.703 2.33 1.77 2.918 3.198.278.679.418 1.388.421 2.126a5.655 5.655 0 01-.18 1.631.167.167 0 00.04.155 5.982 5.982 0 011.578 2.891c.385 1.901-.01 3.615-1.183 5.14l-.182.22a6.063 6.063 0 01-2.934 1.851.162.162 0 00-.108.102c-.255.736-.511 1.364-.987 1.992-1.199 1.582-2.962 2.462-4.948 2.451-1.583-.008-2.986-.587-4.21-1.736a.145.145 0 00-.14-.032c-.518.167-1.04.191-1.604.185a5.924 5.924 0 01-2.595-.622 6.058 6.058 0 01-2.146-1.781c-.203-.269-.404-.522-.551-.821a7.74 7.74 0 01-.495-1.283 6.11 6.11 0 01-.017-3.064.166.166 0 00.008-.074.115.115 0 00-.037-.064 5.958 5.958 0 01-1.38-2.202 5.196 5.196 0 01-.333-1.589 6.915 6.915 0 01.188-2.132c.45-1.484 1.309-2.648 2.577-3.493.282-.188.55-.334.802-.438.286-.12.573-.22.861-.304a.129.129 0 00.087-.087A6.016 6.016 0 015.635 2.31C6.315 1.464 7.132.846 8.086.457zm-.804 7.85a.848.848 0 00-1.473.842l1.694 2.965-1.688 2.848a.849.849 0 001.46.864l1.94-3.272a.849.849 0 00.007-.854l-1.94-3.393zm5.446 6.24a.849.849 0 000 1.695h4.848a.849.849 0 000-1.696h-4.848z"/></symbol>
+</svg>
+
+<button class="fab" type="button" id="theme" aria-label="Toggle light and dark" title="Toggle theme"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="8" cy="8" r="3.2"/><path d="M8 1.5v2M8 12.5v2M1.5 8h2M12.5 8h2M3.4 3.4l1.4 1.4M11.2 11.2l1.4 1.4M3.4 12.6l1.4-1.4M11.2 4.8l1.4-1.4" stroke-linecap="round"/></svg></button>
+
+<div class="page">
+<div class="rec">
+<p class="eyebrow">agent-history-proto · search · one level down from design-agent-history.md §6</p>
+<h1>Search, held over the room</h1>
+<p class="meta"><b>Proposed 2026-09-09</b> · built the same day in <code>clients/app</code> · protocol v17 · deltas applied to <code>design-agent-history.md</code> §6 · Q5 answered · DESIGN.md unchanged (no new token, recipe or easing)</p>
+<nav class="toc">
+  <a href="#stance"><span>00</span>Stance</a><a href="#before"><span>01</span>What the strip did</a><a href="#research"><span>02</span>The research</a><a href="#sheet"><span>03</span>The sheet, working</a><a href="#anatomy"><span>04</span>Anatomy</a><a href="#keys"><span>05</span>Keyboard</a><a href="#states"><span>06</span>Honest states</a><a href="#landing"><span>07</span>Landing and the stepper</a><a href="#options"><span>08</span>Options</a><a href="#deltas"><span>09</span>Deltas</a><a href="#evidence"><span>10</span>Evidence and what is open</a>
+</nav>
+
+<h2 id="stance"><span class="n">00</span>Stance</h2>
+<p class="lead">Search is a tool held over the room, not a mode that replaces it.</p>
+<p>The room's own record says it: <em>you do not browse your history, you go and get something out of it, and search is the front door</em>. A front door is a thing you pass through and forget. The search that shipped was a corridor that rearranged the house: type a word and every column changed what it held; the transcript being read vanished under a list; press a hit and the query was gone, so the second hit cost a retype. The editors got this right two decades ago and never looked back. In WebStorm, VS Code, Spotlight and Raycast, search is <strong>summoned</strong> (one chord, from anywhere), it <strong>floats</strong> (the work stays visible and untouched beneath it), it <strong>takes one pick</strong> and leaves, and it <strong>remembers</strong> what you asked. That is the whole design, and everything below is those four verbs drawn in this room's material.</p>
+<p>Three consequences are worth stating up front. <strong>H-2 gets stronger.</strong> The record forbade the columns changing geometry under search; the sheet means they change nothing at all, content included. <strong>Q5 is answered — both, each with one job.</strong> The strip keeps a launcher that states the scope and never takes text; the sheet is the surface. <strong>The protocol grows by two fields and the canonical model by none.</strong> A hit now carries the row's kind and time, both already in the detached index's own table.</p>
+
+<h2 id="before"><span class="n">01</span>What the strip did, read against a real query</h2>
+<p>Drawn against the running daemon (a 145-project, 1,405-thread corpus; the query was one word every engineer types) the shipped search had five faults, and only one of them was cosmetic.</p>
+<table>
+<tr><th>Fault</th><th>What happened</th><th>Why it matters</th></tr>
+<tr><td>A mode, not a tool</td><td>Typing transformed all three columns. The transcript under the reader's eye was replaced by the hit list.</td><td>Search destroyed the state it was supposed to serve. Nothing in the IDE canon does this.</td></tr>
+<tr><td>Forgetful</td><td>Pressing a hit cleared the field. To see the second hit: retype.</td><td>The most common act after one landing is the next landing. It cost a full round trip.</td></tr>
+<tr><td>Unlabelled rows</td><td>A hit row was the snippet alone. Its session and project lived in a group head that scrolled away; its time and speaker were absent.</td><td>Real data made this decisive: some hits came back as a bare <code>[debounce]</code> — the whole snippet was the matched word. A row must carry who, where and when, or it says nothing.</td></tr>
+<tr><td>A UUID for a name</td><td>An untitled session headed its group as <code>DF0C11EA-95C7-4FD4-8CAE-…</code>.</td><td>Thirty-six characters of noise where a day and eight characters would place the conversation.</td></tr>
+<tr><td>Landing leaked</td><td>The landing called <code>scrollIntoView</code>, which walks every ancestor; the room's overflow-hidden frame scrolled by 51px and the strip left the window.</td><td>Pre-existing, measured in this round, fixed with a scroller-relative scroll.</td></tr>
+</table>
+
+<h2 id="research"><span class="n">02</span>The research — what transfers</h2>
+<p>Ten products, read for the facts a designer can lift rather than the vibe. The full digest with its sources sits beside this page as <code>research-digest.md</code>; it marks what it could not verify, and so does this table. The rows keep only the facts that shaped a decision here, each paired with what it became in this room.</p>
+<table>
+<tr><th>Product</th><th>The fact</th><th class="take">Taken as</th></tr>
+<tr><td>WebStorm · Search Everywhere</td><td>Double-Shift summons a top-anchored popup; Tab cycles its tabs; an empty field shows recent files; the list ends in a <em>more…</em> row reached with Ctrl+↓; the editor beneath is untouched. Whether the last query is restored on reopen is <em>unverified</em>.</td><td class="take">Summon, float, recents under an empty field. Restoring the query is this room's own choice (below).</td></tr>
+<tr><td>WebStorm · Find in Files</td><td>Scope options (module, directory, named scopes) above the list; several hits on one line merge into one row; the popup shows the top 100 and Ctrl+Enter opens the rest in a tool window; Alt+↓ shows previous searches.</td><td class="take">The scope row; the honest cap: <code>first 200 matches · narrow the search to see the rest</code>. This room has no second window, so the stepper is the walk through the rest.</td></tr>
+<tr><td>VS Code · Command Center · Quick Search</td><td>The 1.69 Command Center is a centred title-bar pill that opens Quick Open. Quick Search (GA 1.89) lists one row per matching line under file-name separators that 1.88 made <em>sticky</em>, with ⌘↑/⌘↓ jumping between them. Rows are label · description · detail. Restoring the last input is opt-in and off by default.</td><td class="take">The launcher's seat — centred, where DESIGN.md §10 seats the file pill. The sticky session head. ⌘↑/⌘↓ to jump a session.</td></tr>
+<tr><td>Spotlight · Raycast</td><td>Spotlight lists top matches first and Return opens the top one. Raycast: ↵ runs the primary action, ⌘↑/⌘↓ jump sections, Esc goes back and closes from the root, favourites and recents fill the empty view, and the placeholder says what can be searched here. Scrim and placement: <em>unverified</em>.</td><td class="take">The first row is the cursor; ⌘↑/⌘↓ jump; the launcher's placeholder states the scope. The scrim is a system decision here (§08).</td></tr>
+<tr><td>Slack</td><td>⌘G opens search and ⌘F searches the current conversation; the empty field offers recent searches; typed modifiers (<code>in:</code> <code>from:</code> <code>before:</code>) combine; a result opens the message in its channel with context. The result row's anatomy and any landing flash are <em>unverified</em> in Slack's own text.</td><td class="take">Recent searches under an empty field. This room keeps ⌘G for the platform's find-next, not for opening search.</td></tr>
+<tr><td>Notion</td><td>⌘K or ⌘P; recently viewed pages under an empty field; <em>Best matches</em> by default with recently edited pages ranked higher, or <em>Last edited</em>; filters for creator, teamspace, location and date; a preview column beside results. The breadcrumb row and the hints foot are <em>unverified</em>.</td><td class="take">A recency sort is the natural second chip (left open, §10). The project › session breadcrumb is this room's own answer to "where".</td></tr>
+<tr><td>Discord · Linear</td><td>Discord lists results in a side pane with a <em>Jump</em> on each card; the chat never re-flows. Linear opens search on <code>/</code>, shows recent searches and items under an empty field, caps at 500, and since 2024 shows results in a split view "so that you can jump through them without losing context".</td><td class="take">The room never re-flows; <code>/</code> opens the sheet; the stepper is the jump-through that keeps context.</td></tr>
+<tr><td>Obsidian · Omnisearch</td><td>The quick switcher shows recent notes under an empty field; ⌘↵ opens in a new tab; Omnisearch's in-file search lands on Enter and "automatically scroll[s] to the right place", ranked by BM25 over body, name and headings.</td><td class="take">Landing scrolls to the row; the path's rule from the ledger (home-relative). A ⌘↵ variant is left open.</td></tr>
+<tr><td>Browser find bar · the landing</td><td><code>3 of 18</code>, next and previous on ⌘G / ⇧⌘G, the match marked in place, dismissable. No product documents a landing-flash duration; the "yellow fade" convention is about two seconds, and a permalink should queue its target until the row mounts.</td><td class="take">The stepper the sheet leaves in the transcript head; the 1.4 s ring; the exact-row read before any walk.</td></tr>
+<tr><td>WAI-ARIA APG · cmdk</td><td>"DOM Focus is maintained on the combobox and the assistive technology focus is moved within the listbox using aria-activedescendant"; Escape dismisses; the automatic-selection variant preselects the first match. cmdk (on Radix Dialog) auto-selects the first item and exposes each group by a labelled heading.</td><td class="take">Exactly this. The field is the combobox, the rows are options, each session's rows are a group labelled by its head, and the whole sheet is a dialog.</td></tr>
+</table>
+<h3>The rules that generalise</h3>
+<ol class="rules">
+<li>Summon from anywhere with one chord; the launcher is the pointer's door to the same place.</li>
+<li>Float over the work. The work changes nothing — not content, not geometry, not scroll.</li>
+<li>The first row is the cursor the moment rows exist, so Enter lands at once.</li>
+<li>Restore the last query only if it is instantly replaceable: preselect its text so typing replaces it and the arrows edit it. (VS Code leaves restore off by default; JetBrains keeps history on a key. This room restores, because the second landing is the commonest act.)</li>
+<li>An empty field shows what was searched before, most recent first, forgettable one by one.</li>
+<li>Every row is self-labelling: who said it, what matched, when — and a head that never scrolls away places it.</li>
+<li>Group by the unit the reader navigates to (a conversation), never by the unit the index ranks (a message) — and give the keyboard a way past a whole group.</li>
+<li>The match is drawn as hierarchy, not as a highlighter.</li>
+<li>The count replaces the word "results", and a full page says it is the first page.</li>
+<li>Filters are chips that say what they narrow, in the reader's words, mapped one-to-one onto the API.</li>
+<li>A new keystroke dims the old list; it never blanks it.</li>
+<li>The pointer moves the cursor without scrolling the list; the keyboard moves it and scrolls.</li>
+<li>Landing is a continuation: the sheet leaves, the work opens, the target is ringed once, and a stepper offers the rest.</li>
+<li>Degraded is a sentence with a number, in the foot, never a spinner.</li>
+</ol>
+
+<h2 id="sheet"><span class="n">03</span>The sheet, working</h2>
+<p>Press the launcher or <kbd>⌘K</kbd> inside the frame. Type <code>tokens</code>, <code>row</code>, <code>ramp</code> or <code>debounce</code> — the demo corpus is real-shaped and small. Walk with <kbd>↑</kbd><kbd>↓</kbd>, open with <kbd>↵</kbd>, then <kbd>⌘G</kbd> to the next match. <kbd>Esc</kbd> closes and the room is exactly as you left it.</p>
+</div>
+
+<div class="spec"><div class="spec__bar">The room · the launcher · the sheet · the landing<span class="note">every class name is the app's; the stylesheet above is search.css transcribed</span></div>
+<div class="room" id="room" tabindex="0">
+  <div class="room__sheet">
+    <div class="lights" aria-hidden="true"><i></i><i></i><i></i></div>
+    <div class="strip">
+      <div class="ah-launcher" id="launcher">
+        <button type="button" class="ah-launcher__open" id="launch" aria-haspopup="dialog"><svg><use href="#g-search"/></svg><span class="ah-launcher__text" id="launch-text">Search 1,405 sessions across 9 agents</span><kbd class="ah-kbd">⌘K</kbd></button>
+        <button type="button" class="ah-launcher__clear" id="launch-clear" aria-label="Clear the search" hidden>×</button>
+      </div>
+    </div>
+    <div class="cols">
+      <div class="col"><header><span class="colhead"><i style="--tint: oklch(var(--tint-l) var(--tint-c) 285)"></i><strong>Projects</strong><span class="bubble">145</span></span></header>
+        <div id="projects"></div></div>
+      <div class="col"><header><span class="eb" id="sessions-head">Sessions</span><span class="caption tnum" id="sessions-count">0 sessions</span></header>
+        <div id="sessions"><div class="quietcol"><div><strong>No project selected</strong>Pick a project to browse its sessions.</div></div></div></div>
+      <div class="col"><header><span class="colhead" id="tr-head"><span class="eb">Transcript</span></span><span id="headacts"><span class="caption tnum" id="range"></span></span></header>
+        <div class="tr" id="tr"><div class="quietcol"><div><strong>No session open</strong>Pick a session — or press ⌘K to search, which is the front door.</div></div></div></div>
+    </div>
+  </div>
+  <div id="sheet-mount"></div>
+</div>
+<p class="cap" style="padding: 0 16px 14px"><b>Two things to notice.</b> The launcher after a landing carries the query in primary ink until it is cleared — a filtered room never looks like an unfiltered one. And reopening with ⌘K restores the same rows: the sheet remembers.</p>
+</div>
+
+<div class="rec">
+<h2 id="anatomy"><span class="n">04</span>Anatomy, part by part</h2>
+<table>
+<tr><th>Part</th><th>What it is</th><th class="take">The rule it obeys</th></tr>
+<tr><td>The launcher</td><td>A 32px pill, centred in the 50px drag strip, clear of the traffic lights: glyph, the scope in a breath (<code>Search 1,405 sessions across 9 agents</code>), <kbd>⌘K</kbd>. Never takes text. Carries the active query in primary ink with a × to clear.</td><td class="take">DESIGN.md §10 placement — <em>the file pill center</em>; §09 of the room — the scope is not the reader's to guess.</td></tr>
+<tr><td>The sheet</td><td>Top-attached, 760px wide (<code>min(760px, 100vw − 168px)</code>), at most <code>min(68vh, 640px)</code> tall, square where it meets the window and card-radius (22) where it meets the room. Sheet material (<code>--vf-sheet-surface</code>, blur 40), the §5 sheet shadow sign-flipped, a hairline ring. Backdrop dim; the room recedes to <code>scale(0.98)</code>.</td><td class="take">DESIGN.md §8's docs explorer, one level wider (its 34rem cannot seat a breadcrumb, a two-line snippet and a time). §5 materials; §6 M5.</td></tr>
+<tr><td>The field</td><td>The launcher grown one size: 14px text, the × when non-empty, <kbd>esc</kbd> at the right. Text preselected on open. <code>type="text"</code>, not <code>search</code>: Chrome clears a search input on Escape, and the sheet must remember.</td><td class="take">§6 M1 — one element morphs; the strip's pill becomes the sheet's field at the same x-centre.</td></tr>
+<tr><td>The scope row</td><td>Chips: <em>everywhere / ● project</em> (only while a project is selected), <em>prompts and replies / prompts / replies</em>, <em>any agent ▾</em>. Each maps to one API selector (<code>project</code>, <code>kind</code>, <code>agent</code>). A chip press returns focus to the field. Search covers prompts and replies only (decided 2026-09-09), so there is no activity chip: a chip that can never match would be a lie the API already refuses to tell.</td><td class="take">The room's segmented control (§03), unchanged; the words are the reader's, not the wire's.</td></tr>
+<tr><td>The head</td><td><code>▎tint · project › session · agent mark · N hits · day</code>, sticky over its rows on a sheet-surface gradient. An untitled session names itself by eight characters of its id, in mono, with the full id in the tooltip.</td><td class="take">The column-head component at one more depth (<code>tint marker · name · count</code>) — the record's "one class, neither column may move without the other".</td></tr>
+<tr><td>The row</td><td><code>who · snippet · when</code>. Who: the prompt's filled square or the agent's mark (the glyphs for activity, thinking and the rest remain drawn for the day coverage widens). The snippet: whitespace collapsed, home paths as <code>~/…</code>, two lines at most, the match in hierarchy. When: <code>14:22</code> today, <code>2 Sep · 14:22</code> this year, <code>22 Apr 2025</code> beyond.</td><td class="take">§2.4 the ramp, §2.5 no hue for a match, §3 tabular numerals; the ledger's path rule.</td></tr>
+<tr><td>The cursor</td><td>Fill plus the 1.5px inside ring in <code>--vf-select</code>; the match under it takes select at 20%.</td><td class="take">§7 selection, sole — the same ring the session row wears.</td></tr>
+<tr><td>The foot</td><td>The state sentence (<code>43 matches · 12 sessions · 4 projects</code>, or the building/failed/paused sentence with its number), the vendor scope (<code>across claude-code · codex · …</code>), the key caps.</td><td class="take">§09 honest states; PP6 at the surface.</td></tr>
+</table>
+
+<h2 id="keys"><span class="n">05</span>The keyboard</h2>
+<table>
+<tr><th>Key</th><th>Does</th><th class="take">Note</th></tr>
+<tr><td><kbd>⌘K</kbd></td><td>Opens the sheet from anywhere; toggles when open.</td><td class="take"><kbd>Ctrl K</kbd> elsewhere; the label follows the modifier the handler listens for.</td></tr>
+<tr><td><kbd>/</kbd></td><td>Opens the sheet when nothing is being typed and no file is open.</td><td class="take">GitHub, Slack and the IDEs share it; it never fires inside an input.</td></tr>
+<tr><td><kbd>↑</kbd> <kbd>↓</kbd> <kbd>Home</kbd> <kbd>End</kbd> <kbd>PgUp</kbd> <kbd>PgDn</kbd></td><td>Move the cursor; no wrap; a page is eight.</td><td class="take">APG listbox arithmetic; heads are skipped because they are not options.</td></tr>
+<tr><td><kbd>⌘↑</kbd> <kbd>⌘↓</kbd></td><td>Jump to the previous / next session's first row.</td><td class="take">VS Code's separator keys and Raycast's section keys; a forty-three-head list needs it.</td></tr>
+<tr><td><kbd>↵</kbd></td><td>Opens the cursor's row (or replays a recent search under an empty field).</td><td class="take">The first row is the cursor as soon as rows exist.</td></tr>
+<tr><td><kbd>Esc</kbd></td><td>Closes. The query is kept.</td><td class="take">One Esc, always; the × clears.</td></tr>
+<tr><td><kbd>Tab</kbd></td><td>Walks field → chips → field inside the trap.</td><td class="take">The list is never tabbable; it is driven by <code>aria-activedescendant</code>.</td></tr>
+<tr><td><kbd>⌘G</kbd> / <kbd>⇧⌘G</kbd></td><td>Next / previous match in the landed session, wrapping.</td><td class="take">The platform's own find-next; the stepper's arrows are the same acts with a pointer.</td></tr>
+</table>
+
+<h2 id="states"><span class="n">06</span>Honest states</h2>
+<table>
+<tr><th>When</th><th>The sheet says</th><th class="take">Not</th></tr>
+<tr><td>Empty field</td><td><em>Recent searches</em> (eight, forgettable) and the grammar in one line: every word must match; quote a phrase.</td><td class="take">A blank box.</td></tr>
+<tr><td>Typing</td><td>The previous list, dimmed to 55% after 140ms, until the new one lands; the foot says <code>searching…</code> only when there is nothing to dim.</td><td class="take">A list that blanks on every keystroke.</td></tr>
+<tr><td>Nothing matched</td><td><code>Nothing matched</code> · <em>No indexed message contains every word of</em> <code>q</code>. <em>Try fewer words, or a phrase in quotes.</em></td><td class="take">"No results."</td></tr>
+<tr><td>Index building</td><td><code>indexing · 61% · 8,400 of 13,700 messages · results are partial</code>, with the meter.</td><td class="take">A spinner.</td></tr>
+<tr><td>Import paused</td><td><code>transcript import paused · search covers what was read</code></td><td class="take">Silence.</td></tr>
+<tr><td>Search failed</td><td><code>search failed · &lt;what the daemon said&gt;</code>, in the foot's warning tone.</td><td class="take">An empty list claiming nothing matched.</td></tr>
+<tr><td>Full first page</td><td><code>first 200 matches · narrow the search to see the rest</code></td><td class="take">"200 results", which hides its own reach.</td></tr>
+</table>
+
+<h2 id="landing"><span class="n">07</span>Landing, and the stepper</h2>
+<p><strong>A hit is a continuation, not a navigation</strong> — unchanged from the record. Pressing a row closes the sheet, opens the project and the thread, and lands the transcript on that message, ringed once in <code>--vf-select</code>. Two things are new.</p>
+<p><strong>The landing asks for its row exactly.</strong> The work index already resolves an anchor with one session-scoped read (<code>GET …/timeline/{id}</code>); search now takes the same read before any blind page-walk, so a hit forty pages up lands in one request instead of eight. The scroll is the transcript scroller's own, rect-relative, never <code>scrollIntoView</code>.</p>
+<p><strong>The stepper.</strong> What the sheet leaves behind is a pill in the transcript head where the range caption stood: <code>debounce · 3 of 18 ‹ › ×</code>. Its list is that session's hits in reading order (by time, then id); <kbd>⌘G</kbd> and the arrows walk it with the same landing; × dismisses; changing session dismisses. The launcher keeps the query in primary ink meanwhile, and <kbd>⌘K</kbd> reopens the same rows for the other sessions.</p>
+<div class="spec"><div class="spec__bar">The stepper, at rest and pressed<span class="note">ah-stepper · 24px · in the head band's right slot</span></div><div class="spec__body" style="display:flex; gap: 24px; align-items:center; flex-wrap: wrap">
+  <div class="ah-stepper" role="group" aria-label="18 matches for debounce in this session"><b>debounce</b><span class="tnum">3 of 18</span><button type="button" aria-label="Previous match"><svg><use href="#g-up"/></svg></button><button type="button" aria-label="Next match"><svg><use href="#g-down"/></svg></button><button type="button" aria-label="Stop stepping"><svg><use href="#g-x"/></svg></button></div>
+  <div class="ah-stepper"><b>"vertex pulling" webgpu</b><span class="tnum">1 of 1</span><button type="button" disabled style="opacity:.4"><svg><use href="#g-up"/></svg></button><button type="button" disabled style="opacity:.4"><svg><use href="#g-down"/></svg></button><button type="button"><svg><use href="#g-x"/></svg></button></div>
+  <span class="caption">a single match keeps the pill: it still says what the room is filtered by</span>
+</div></div>
+
+<h2 id="options"><span class="n">08</span>Options, drawn</h2>
+<p>Three row anatomies at real width, then the two chrome questions. <strong>A is built.</strong> The cards remain as the record; pressing one only marks a preference.</p>
+</div>
+
+<div class="opts" role="radiogroup" aria-label="Row anatomy">
+  <button class="opt" type="button" role="radio" aria-checked="true" data-opt="A"><div class="opt__spec">
+    <div class="ah-sheet__head" role="presentation" style="--tint: oklch(var(--tint-l) var(--tint-c) 160)"><i></i><span class="ah-sheet__crumb"><b>vibe-field</b><i>›</i><span>Design ultimate product vibe-field</span></span><span class="ah-agent"><svg><use href="#m-codex"/></svg></span><span class="ah-sheet__headmeta"><span>2 hits</span><span>·</span><span>Mon 24 Aug</span></span></div>
+    <div class="ah-sheet__row" role="option" aria-selected="true"><span class="ah-sheet__who"><span class="ah-agent"><svg><use href="#m-codex"/></svg></span></span><p class="ah-sheet__snippet">…the wash is scaled to the busiest project, so filtering never rescales a <mark>row</mark>'s width — H-4 read one level down…</p><span class="ah-sheet__when">2 Sep · 14:22</span></div>
+    <div class="ah-sheet__row" role="option"><span class="ah-sheet__who"><i class="ah-sheet__you"></i></span><p class="ah-sheet__snippet">Make the ledger <mark>row</mark> three lines: identity, location, quantity. Nothing else.</p><span class="ah-sheet__when">2 Sep · 14:31</span></div>
+    <div class="ah-sheet__head" role="presentation" style="--tint: oklch(var(--tint-l) var(--tint-c) 40)"><i></i><span class="ah-sheet__crumb"><b>mille</b><i>›</i><span data-mono>a733c7a5</span></span><span class="ah-agent"><svg><use href="#m-claude"/></svg></span><span class="ah-sheet__headmeta"><span>2 hits</span><span>·</span><span>Yesterday</span></span></div>
+    <div class="ah-sheet__row" role="option"><span class="ah-sheet__who"><span class="ah-agent"><svg><use href="#m-claude"/></svg></span></span><p class="ah-sheet__snippet">…one <mark>row</mark> component serves the session list and the search results alike…</p><span class="ah-sheet__when">09:05</span></div>
+  </div><div class="opt__foot"><div><b>A · Grouped under a sticky session head <em>chosen</em></b><span>The head is the column head at one more depth and pins while its rows scroll; a row is never on screen without the two facts that place it. Reads as a table of contents of conversations.</span></div><span class="opt__pick">chosen</span></div></button>
+
+  <button class="opt" type="button" role="radio" aria-checked="false" data-opt="B"><div class="opt__spec">
+    <div class="flat" role="option" aria-selected="true" style="background: var(--vf-fill); box-shadow: inset 0 0 0 1.5px var(--vf-select)"><span class="ah-sheet__who"><span class="ah-agent"><svg><use href="#m-codex"/></svg></span></span><p class="ah-sheet__snippet">…the wash is scaled to the busiest project, so filtering never rescales a <mark>row</mark>'s width — H-4 read one level down…</p><span class="ah-sheet__when">2 Sep · 14:22</span><span class="flat__crumb"><b>vibe-field</b> › Design ultimate product vibe-field</span></div>
+    <div class="flat" role="option"><span class="ah-sheet__who"><span class="ah-agent"><svg><use href="#m-claude"/></svg></span></span><p class="ah-sheet__snippet">…one <mark>row</mark> component serves the session list and the search results alike…</p><span class="ah-sheet__when">09:05</span><span class="flat__crumb"><b>mille</b> › a733c7a5</span></div>
+    <div class="flat" role="option"><span class="ah-sheet__who"><i class="ah-sheet__you"></i></span><p class="ah-sheet__snippet">Make the ledger <mark>row</mark> three lines: identity, location, quantity. Nothing else.</p><span class="ah-sheet__when">2 Sep · 14:31</span><span class="flat__crumb"><b>vibe-field</b> › Design ultimate product vibe-field</span></div>
+  </div><div class="opt__foot"><div><b>B · Flat, a breadcrumb under every row</b><span>Notion's anatomy. Every row self-labels, so a pure relevance order is possible — but three rows from one conversation repeat its name three times, and the reader loses the count-per-conversation that says where the answer probably is.</span></div><span class="opt__pick">choose</span></div></button>
+
+  <button class="opt" type="button" role="radio" aria-checked="false" data-opt="C"><div class="opt__spec">
+    <div class="flatr" role="option" aria-selected="true" style="background: var(--vf-fill); box-shadow: inset 0 0 0 1.5px var(--vf-select)"><span class="ah-sheet__who"><span class="ah-agent"><svg><use href="#m-codex"/></svg></span></span><p class="ah-sheet__snippet" style="-webkit-line-clamp:1">…filtering never rescales a <mark>row</mark>'s width — H-4 read one level down…</p><span class="path">vibe-field › Design ultimate product vibe-field</span><span class="ah-sheet__when">2 Sep · 14:22</span></div>
+    <div class="flatr" role="option"><span class="ah-sheet__who"><span class="ah-agent"><svg><use href="#m-claude"/></svg></span></span><p class="ah-sheet__snippet" style="-webkit-line-clamp:1">…one <mark>row</mark> component serves the session list and the search results alike…</p><span class="path">mille › a733c7a5</span><span class="ah-sheet__when">09:05</span></div>
+    <div class="flatr" role="option"><span class="ah-sheet__who"><i class="ah-sheet__you"></i></span><p class="ah-sheet__snippet" style="-webkit-line-clamp:1">Make the ledger <mark>row</mark> three lines: identity, location, quantity.</p><span class="path">vibe-field › Design ultimate product vibe-field</span><span class="ah-sheet__when">2 Sep · 14:31</span></div>
+  </div><div class="opt__foot"><div><b>C · Match first, the place on the right</b><span>Find in Files. Densest; one line per hit; the breadcrumb truncates from the left like a path. Right for code, where the line is the answer — wrong for prose, where the second line of a snippet is usually the one that says whether this is the message.</span></div><span class="opt__pick">choose</span></div></button>
+</div>
+
+<div class="rec">
+<h3>Two chrome questions</h3>
+<table>
+<tr><th>Question</th><th>Chosen</th><th class="take">The counter, and why it lost</th></tr>
+<tr><td>Scrim or none</td><td>Dim (<code>--vf-backdrop-dim</code>, blur 2px) and the room recedes to 0.98 — the file viewer's exact backdrop.</td><td class="take">Spotlight and Raycast have no scrim, so the reader keeps their bearings. But two things already open over this room (a file, a commit) and they dim it; a third that did not would be a second dialect. The dim is 10% in light and the room stays legible beneath.</td></tr>
+<tr><td>Where the launcher sits</td><td>Centred in the strip.</td><td class="take">Left, where the field was, keeps muscle memory. But DESIGN.md §10 names the centre slot (<em>the file pill center</em>), the top-attached sheet must be centred to clear the traffic lights at 980px, and M1 wants the pill to become the field without travelling.</td></tr>
+</table>
+
+<h2 id="deltas"><span class="n">09</span>Deltas</h2>
+<p><strong>DESIGN.md — none.</strong> The sheet is §8's top-attached sheet with a stated width exception; the material, shadow, easing, ring and backdrop are all §5–§7 as written. The width exception is recorded in the room's own record, where the room's geometry lives.</p>
+<p><strong>design-agent-history.md — applied 2026-09-09.</strong> §6 rewritten from "designed, not promised" to "a tool held over the room" (the transformation retired, the sheet, the head, the row, the stepper, memory); "Search, and where it lives" gains the launcher; §9's scope row now names the launcher and the foot; Q5 answered — both, each with one job.</p>
+<p><strong>Coverage — prompts and replies only (decided 2026-09-09, after the first build).</strong> Only <code>user</code> and <code>agent</code> rows become search documents; the policy is one predicate in the store, shared by the document visitor, the build denominator and the legacy path, and the sidecar schema bumps to 4 so an existing index rebuilds. The API refuses any other <code>kind</code> and a set <code>is_error</code> rather than answering with nothing. The extractor keeps its lanes for the other kinds, so widening later is one edit.</p>
+<p><strong>Protocol v17 — one addition.</strong> <code>SearchHit</code> carries <code>kind</code> (the canonical wire vocabulary) and <code>at</code> (milliseconds, or null when the source never said). Both were already columns of the detached index's own document table; the query selects them and the canonical projection gains no column, no table, no journal — iron rule 5 untouched. The wire golden and the TypeScript bindings were regenerated; the app checks the version and asks for a restart.</p>
+<p><strong>The app.</strong> <code>components/search/</code> (the sheet, the launcher, the stepper, the shortcut helper), <code>lib/search-sheet.ts</code> (the pure model: lines, cursor, snippet, sentences, memory — 16 tests), <code>styles/search.css</code>, <code>useSearch</code> with facets and a kept previous response, the transcript's exact-anchor landing and rect-relative scroll, and the removal of every column's search mode (projects-with-hits, sessions-with-hits, the hit list, their props and CSS).</p>
+
+<h2 id="evidence"><span class="n">10</span>What the running daemon showed, and what is open</h2>
+<ul>
+<li><strong>Verified against a cloned projection on protocol 17.</strong> Launcher → sheet → 200 rows under 43 heads → cursor → prompts-only → Enter landed on the exact reply with the ring and <code>1 of 18</code> in the head → ⌘G walked to the next → ⌘K reopened with the query preselected and the project chip present → dark → 980px. The frame's scroll stays at 0 after a landing.</li>
+<li><strong>Coverage, then and now.</strong> Before the decision, one ordinary query returned 111 activity rows, 62 replies, 15 thinking rows, 11 team rows and one prompt — four documents in five were machinery, and the index build paid for all of them. Search now indexes prompts and replies only: on a copy of the same corpus, 584,002 rows became 151,705 documents, the index shrank from 1.04 GB to 340 MB, and the forced rebuild reported live progress and was ready 35 seconds after the daemon started.</li>
+<li><strong>Open — the match markers.</strong> FTS5 wraps a match in <code>[</code> <code>]</code>, and code has brackets of its own; a literal <code>arr[0]</code> reads as a match. The fix is private-use markers on the wire, which changes every consumer's snippet parse and the frozen search campaigns' digests — a deliberate, separate change.</li>
+<li><strong>Open — literal <code>\n</code>.</strong> Some Codex prompts arrive with escaped newlines as text; the sheet shows them as written. Rewriting content is not the sheet's job; if it is anyone's, it is the adapter's.</li>
+<li><strong>Open — recency.</strong> Sessions rank by hit count then last activity. A <em>recent</em> sort is one chip away and was left out to keep the row of chips to three.</li>
+<li><strong>Open — modifier-Enter.</strong> Obsidian's ⌘↵ (new tab), JetBrains' Ctrl+↵ (full window) and VS Code's → (open in the background) all give a second way to open. The natural one here is ⌘↵ to open the session without landing on a message; not built.</li>
+<li><strong>Open — the unassigned pseudo-project.</strong> It names no project the index can select by, so the <em>this project</em> chip is withheld there rather than offered and silently ignored.</li>
+</ul>
+</div>
+</div>
+
+<script>
+(() => {
+  /* theme */
+  const root = document.documentElement;
+  const dark = () => root.dataset.theme === 'dark' || (root.dataset.theme !== 'light' && matchMedia('(prefers-color-scheme: dark)').matches);
+  document.getElementById('theme').addEventListener('click', () => { root.dataset.theme = dark() ? 'light' : 'dark'; });
+  /* option cards */
+  document.querySelectorAll('.opt').forEach((card) => card.addEventListener('click', () => {
+    document.querySelectorAll('.opt').forEach((c) => c.setAttribute('aria-checked', String(c === card)));
+  }));
+
+  /* ── real-shaped demo corpus (never daemon content) ── */
+  const projects = [
+    { id: 'vf', name: 'vibe-field', hue: 160 },
+    { id: 'mi', name: 'mille', hue: 40 },
+    { id: 'ro', name: 'rosetta', hue: 285 },
+  ];
+  const sessions = [
+    { id: 's1', project: 'vf', title: 'Design ultimate product vibe-field', agent: 'codex', day: 'Mon 24 Aug' },
+    { id: 's2', project: 'mi', title: null, native: 'a733c7a5-7f40-4477', agent: 'claude', day: 'Yesterday' },
+    { id: 's3', project: 'ro', title: 'Ledger compression', agent: 'claude', day: 'Today' },
+  ];
+  const T = (h, m, d = '2 Sep') => ({ d, h, m });
+  const rows = [
+    { s: 's1', k: 'user', t: T(14, 31), text: 'Make the ledger row three lines: identity, location, quantity. Nothing else. The tokens figure is exact; the bar is the ramp.' },
+    { s: 's1', k: 'agent', t: T(14, 22), text: 'The wash is scaled to the busiest project, so filtering never rescales a row’s width — H-4 read one level down. Lifetime tokens stay the figure.' },
+    { s: 's1', k: 'tool_use', t: T(14, 40), text: '--- ~/Projects/vibe-field/src/ledger/row.tsx +++ ~/Projects/vibe-field/src/ledger/row.tsx' },
+    { s: 's1', k: 'thinking', t: T(14, 21), text: 'A log axis renders a 295× difference as roughly 2.5×; linear with a floor keeps a nonzero row from rendering as nothing.' },
+    { s: 's2', k: 'agent', t: T(9, 5, 'Yesterday') , text: 'One row component serves the session list and the search results alike; search only adds a hit count to the facts line.' },
+    { s: 's2', k: 'tool_use', t: T(9, 12, 'Yesterday'), text: 'chokidar awaitWriteFinish debounce trailing edge configuration streaming logs' },
+    { s: 's3', k: 'user', t: T(23, 4, 'Today'), text: 'Compress the raw ledger with zstd; keep tokens counts exact and the segment index small.' },
+    { s: 's3', k: 'agent', t: T(23, 9, 'Today'), text: 'RLZ1 segments are zstd streams; plain RLG1 is read forever. The debounce window for the watcher stays at 150 ms.' },
+    { s: 's3', k: 'collaboration', t: T(23, 20, 'Today'), text: 'Teammate reports: tokens budget held; the ramp reads at 45% on the dark surface.' },
+  ];
+  const agentSvg = (a) => `<span class="ah-agent"><svg><use href="#m-${a}"/></svg></span>`;
+  const who = (k, a) => k === 'user' ? '<i class="ah-sheet__you"></i>' : k === 'agent' ? agentSvg(a) : k === 'tool_use' ? '<svg><use href="#g-act"/></svg>' : k === 'thinking' ? '<svg><use href="#g-think"/></svg>' : '<i class="ah-sheet__dot"></i>';
+  const when = (t) => t.d === 'Today' ? `${String(t.h).padStart(2,'0')}:${String(t.m).padStart(2,'0')}` : `${t.d} · ${String(t.h).padStart(2,'0')}:${String(t.m).padStart(2,'0')}`;
+  const esc = (s) => s.replace(/[&<>]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;' }[c]));
+  const crumbOf = (s) => s.title ? `<span>${esc(s.title)}</span>` : `<span data-mono title="Native session ${s.native}">${s.native.slice(0, 8)}</span>`;
+
+  /* grammar: whitespace-separated required terms, quoted phrases */
+  function clauses(q) {
+    const out = []; const re = /"([^"]*)"|(\S+)/g; let m;
+    while ((m = re.exec(q))) { const c = (m[1] ?? m[2]).trim(); if (c) out.push(c.toLowerCase()); }
+    return out;
+  }
+  function search(q) {
+    const cs = clauses(q); if (!cs.length) return [];
+    // coverage: prompts and replies only (2026-09-09)
+    return rows.filter((r) => (r.k === 'user' || r.k === 'agent') && cs.every((c) => r.text.toLowerCase().includes(c))).map((r) => ({ row: r, cs }));
+  }
+  function markup(text, cs) {
+    let html = esc(text);
+    cs.forEach((c) => { html = html.replace(new RegExp(c.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'ig'), (m) => `<mark>${m}</mark>`); });
+    return html;
+  }
+
+  /* ── state ── */
+  const S = { query: '', open: false, active: 0, kind: 'any', recent: ['tokens', '"segment index"'], landed: null, stepper: null, project: null, session: null };
+  const $ = (id) => document.getElementById(id);
+  const room = $('room');
+
+  function grouped() {
+    const hits = search(S.query).filter((h) => S.kind === 'any' || h.row.k === S.kind);
+    const by = new Map();
+    hits.forEach((h) => { const list = by.get(h.row.s) ?? []; list.push(h); by.set(h.row.s, list); });
+    const groups = [...by.entries()].map(([sid, list]) => ({ session: sessions.find((s) => s.id === sid), hits: list.sort((a, b) => a.row.t.h * 60 + a.row.t.m - (b.row.t.h * 60 + b.row.t.m)) }));
+    groups.sort((a, b) => b.hits.length - a.hits.length);
+    return groups;
+  }
+  function options(groups) { return groups.flatMap((g) => g.hits.map((h) => ({ g, h }))); }
+
+  function renderSheet() {
+    const mount = $('sheet-mount');
+    if (!S.open) { mount.innerHTML = ''; room.removeAttribute('data-open'); return; }
+    room.setAttribute('data-open', '');
+    // The field survives re-renders: rebuilding it on every keystroke would
+    // re-select its text and the next character would replace the last.
+    const existing = $('q');
+    const caret = existing ? [existing.selectionStart, existing.selectionEnd] : null;
+    const empty = S.query.trim() === '';
+    const groups = empty ? [] : grouped();
+    const opts = options(groups);
+    const project = S.project ? projects.find((p) => p.id === S.project) : null;
+    let body = '';
+    if (empty) {
+      body = (S.recent.length ? `<div class="ah-sheet__recent-head">Recent searches</div>` + S.recent.map((q, i) => `<div class="ah-sheet__recent" role="option" aria-selected="${i === S.active}" data-recent="${esc(q)}"><svg><use href="#g-search"/></svg><span>${esc(q)}</span></div>`).join('') : '')
+        + `<div class="ah-sheet__quiet"><strong>${S.recent.length ? 'Or search for something new' : 'Search your whole agentic past'}</strong><p>Every word must match. Put a phrase in quotes to match it exactly — <code>"cargo test"</code>. Opening a result lands the transcript on that message.</p></div>`;
+    } else if (!opts.length) {
+      body = `<div class="ah-sheet__quiet"><strong>Nothing matched</strong><p>No indexed message contains every word of <code>${esc(S.query)}</code>. Try fewer words, or a phrase in quotes.</p></div>`;
+    } else {
+      let i = 0;
+      body = groups.map((g) => {
+        const p = projects.find((x) => x.id === g.session.project);
+        const head = `<div class="ah-sheet__head" role="presentation" style="--tint: oklch(var(--tint-l) var(--tint-c) ${p.hue})"><i></i><span class="ah-sheet__crumb"><b>${p.name}</b><i>›</i>${crumbOf(g.session)}</span>${agentSvg(g.session.agent)}<span class="ah-sheet__headmeta"><span>${g.hits.length} ${g.hits.length === 1 ? 'hit' : 'hits'}</span><span>·</span><span>${g.session.day}</span></span></div>`;
+        return head + g.hits.map((h) => { const idx = i++; return `<div class="ah-sheet__row" role="option" id="opt-${idx}" aria-selected="${idx === S.active}" data-idx="${idx}"><span class="ah-sheet__who">${who(h.row.k, g.session.agent)}</span><p class="ah-sheet__snippet">${markup(h.row.text, h.cs)}</p><span class="ah-sheet__when">${when(h.row.t)}</span></div>`; }).join('');
+      }).join('');
+    }
+    const count = opts.length ? `${opts.length} ${opts.length === 1 ? 'match' : 'matches'} · ${groups.length} ${groups.length === 1 ? 'session' : 'sessions'} · ${new Set(groups.map((g) => g.session.project)).size} ${new Set(groups.map((g) => g.session.project)).size === 1 ? 'project' : 'projects'}` : '';
+    mount.innerHTML = `<div class="ah-sheet__backdrop" id="backdrop"></div>
+      <div class="ah-sheet" role="dialog" aria-label="Search your whole agentic past">
+        <div class="ah-sheet__field"><svg><use href="#g-search"/></svg><input id="q" type="text" role="combobox" aria-expanded="true" aria-controls="lb" aria-autocomplete="list" placeholder="Search your whole agentic past" autocomplete="off" spellcheck="false" value="${esc(S.query)}">${S.query ? '<button type="button" class="ah-sheet__clear" id="clear" aria-label="Clear the search">×</button>' : ''}<kbd class="ah-kbd">esc</kbd></div>
+        <div class="ah-sheet__scope">${project ? `<div class="ah-seg" role="group"><button type="button" class="is-on">everywhere</button><button type="button"><i style="--tint: oklch(var(--tint-l) var(--tint-c) ${project.hue})"></i>${project.name}</button></div>` : ''}<div class="ah-seg" role="group" id="kinds">${[['any','prompts and replies'],['user','prompts'],['agent','replies']].map(([v,l]) => `<button type="button" data-kind="${v}" class="${S.kind === v ? 'is-on' : ''}">${l}</button>`).join('')}</div><select class="ah-chipselect" aria-label="Which agent"><option>any agent</option><option>Claude Code</option><option>Codex</option></select></div>
+        <div class="ah-sheet__list" id="lb" role="listbox">${body}</div>
+        <div class="ah-sheet__foot"><span class="ah-sheet__count">${count}</span><span class="ah-sheet__scopeline">across claude-code · codex · grok · antigravity · hermes</span><span class="ah-sheet__keys"><span><kbd class="ah-kbd">↑↓</kbd> move</span><span><kbd class="ah-kbd">↵</kbd> open</span><span><kbd class="ah-kbd">esc</kbd> close</span></span></div>
+      </div>`;
+    const input = $('q'); input.focus();
+    if (caret === null) input.select(); else input.setSelectionRange(caret[0], caret[1]);
+    input.addEventListener('input', () => { S.query = input.value; S.active = 0; renderSheet(); });
+    input.addEventListener('keydown', (e) => {
+      const n = empty ? S.recent.length : opts.length;
+      if (e.key === 'ArrowDown' || e.key === 'ArrowUp' || e.key === 'Home' || e.key === 'End') {
+        if (!n) return; e.preventDefault();
+        if ((e.metaKey || e.ctrlKey) && !empty && (e.key === 'ArrowDown' || e.key === 'ArrowUp')) {
+          const sid = (i) => opts[i].g.session.id; const cur = sid(S.active);
+          if (e.key === 'ArrowDown') { let i = S.active; while (i < n - 1 && sid(i) === cur) i += 1; S.active = i; }
+          else { let h = S.active; while (h > 0 && sid(h - 1) === cur) h -= 1; if (h !== S.active) S.active = h; else if (h > 0) { const prev = sid(h - 1); let st = h - 1; while (st > 0 && sid(st - 1) === prev) st -= 1; S.active = st; } }
+        } else {
+          S.active = e.key === 'ArrowDown' ? Math.min(n - 1, S.active + 1) : e.key === 'ArrowUp' ? Math.max(0, S.active - 1) : e.key === 'Home' ? 0 : n - 1;
+        }
+        mount.querySelectorAll('[role="option"]').forEach((el, i) => el.setAttribute('aria-selected', String(i === S.active)));
+        const row = mount.querySelectorAll('[role="option"]')[S.active]; const list = $('lb');
+        if (row) { const f = list.getBoundingClientRect(), r = row.getBoundingClientRect(), top = r.top - f.top + list.scrollTop; if (r.top < f.top + 30) list.scrollTop = top - 30; else if (r.bottom > f.bottom) list.scrollTop = top - (list.clientHeight - r.height) + 4; }
+        return;
+      }
+      if (e.key === 'Enter') { e.preventDefault(); if (empty) { const q = S.recent[S.active]; if (q !== undefined) { S.query = q; S.active = 0; renderSheet(); } } else if (opts[S.active]) land(opts, S.active); }
+      if (e.key === 'Escape') { e.preventDefault(); close(); }
+    });
+    mount.querySelectorAll('.ah-sheet__row').forEach((el) => {
+      el.addEventListener('pointermove', () => { const i = +el.dataset.idx; if (i !== S.active) { S.active = i; mount.querySelectorAll('.ah-sheet__row').forEach((r) => r.setAttribute('aria-selected', String(+r.dataset.idx === S.active))); } });
+      el.addEventListener('click', () => land(opts, +el.dataset.idx));
+    });
+    mount.querySelectorAll('.ah-sheet__recent').forEach((el) => el.addEventListener('click', () => { S.query = el.dataset.recent; S.active = 0; renderSheet(); }));
+    mount.querySelectorAll('#kinds button').forEach((b) => b.addEventListener('click', () => { S.kind = b.dataset.kind; S.active = 0; renderSheet(); }));
+    $('clear')?.addEventListener('click', () => { S.query = ''; S.active = 0; renderSheet(); });
+    $('backdrop').addEventListener('click', close);
+  }
+
+  function open() { S.open = true; renderSheet(); }
+  function close() { S.open = false; renderSheet(); room.focus({ preventScroll: true }); }
+
+  /* ── the room beneath ── */
+  function renderRoom() {
+    $('projects').innerHTML = projects.map((p) => `<div class="prow ${S.project === p.id ? 'is-selected' : ''}" style="--tint: oklch(var(--tint-l) var(--tint-c) ${p.hue})"><i></i><div><b>${p.name}</b><small>~/Projects/${p.name}</small></div></div>`).join('');
+    const list = S.project ? sessions.filter((s) => s.project === S.project) : [];
+    $('sessions-count').textContent = `${list.length} ${list.length === 1 ? 'session' : 'sessions'}`;
+    $('sessions').innerHTML = list.length ? list.map((s) => `<div class="srow ${S.session === s.id ? 'is-selected' : ''}"><i></i><div><b>${s.title ?? s.native}</b><small>${s.day}</small></div></div>`).join('') : `<div class="quietcol"><div><strong>No project selected</strong>Pick a project to browse its sessions.</div></div>`;
+    const s = S.session ? sessions.find((x) => x.id === S.session) : null;
+    if (!s) { $('tr-head').innerHTML = '<span class="eb">Transcript</span>'; $('headacts').innerHTML = '<span class="caption tnum"></span>'; $('tr').innerHTML = '<div class="quietcol"><div><strong>No session open</strong>Pick a session — or press ⌘K to search, which is the front door.</div></div>'; return; }
+    const p = projects.find((x) => x.id === s.project);
+    $('tr-head').innerHTML = `<i style="--tint: oklch(var(--tint-l) var(--tint-c) ${p.hue})"></i><strong>${esc(s.title ?? s.native)}</strong><span class="bubble">${rows.filter((r) => r.s === s.id).length}</span>`;
+    $('headacts').innerHTML = S.stepper ? `<div class="ah-stepper" role="group"><b>${esc(S.query)}</b><span class="tnum">${S.stepper.at + 1} of ${S.stepper.hits.length}</span><button type="button" id="prev" aria-label="Previous match"><svg><use href="#g-up"/></svg></button><button type="button" id="next" aria-label="Next match"><svg><use href="#g-down"/></svg></button><button type="button" id="dismiss" aria-label="Stop stepping"><svg><use href="#g-x"/></svg></button></div>` : `<span class="caption tnum">14:21 → 14:40</span>`;
+    const sessionRows = rows.filter((r) => r.s === s.id).sort((a, b) => a.t.h * 60 + a.t.m - (b.t.h * 60 + b.t.m));
+    $('tr').innerHTML = sessionRows.map((r) => {
+      const id = `row-${r.s}-${r.t.h}-${r.t.m}`; const landed = S.landed === id ? ' data-landed' : '';
+      if (r.k === 'user') return `<div class="tr__prompt" id="${id}"${landed}>${esc(r.text)}</div>`;
+      if (r.k === 'tool_use') return `<div class="tr__line" id="${id}"${landed}><svg width="12" height="12"><use href="#g-act"/></svg><span class="v">Edited</span><code>${esc(r.text.split(' ')[1])}</code><span class="r">${when(r.t)}</span></div>`;
+      if (r.k === 'thinking') return `<div class="tr__prose" id="${id}"${landed} style="color: var(--vf-text-faint); font-style: italic">${esc(r.text)}</div>`;
+      return `<div class="tr__head">${agentSvg(s.agent)} ${s.agent === 'claude' ? 'Claude Code' : 'Codex'}<span class="t">${when(r.t)}</span></div><div class="tr__prose" id="${id}"${landed}>${esc(r.text)}</div>`;
+    }).join('');
+    $('prev')?.addEventListener('click', () => step(-1)); $('next')?.addEventListener('click', () => step(1)); $('dismiss')?.addEventListener('click', () => { S.stepper = null; renderRoom(); });
+    if (S.landed) { const el = $(S.landed), tr = $('tr'); if (el) { const f = tr.getBoundingClientRect(), r = el.getBoundingClientRect(); tr.scrollTop = r.top - f.top + tr.scrollTop - Math.max(0, (tr.clientHeight - r.height) / 2); } }
+  }
+  function landOn(row) { S.landed = `row-${row.s}-${row.t.h}-${row.t.m}`; renderRoom(); setTimeout(() => { S.landed = null; }, 1400); }
+  function land(opts, idx) {
+    const { g, h } = opts[idx];
+    if (!S.recent.includes(S.query)) S.recent = [S.query, ...S.recent].slice(0, 8);
+    S.open = false; renderSheet();
+    S.project = g.session.project; S.session = g.session.id;
+    const hits = g.hits.map((x) => x.row); S.stepper = { hits, at: Math.max(0, hits.indexOf(h.row)) };
+    $('launch-text').textContent = S.query; $('launcher').setAttribute('data-active', ''); $('launch-clear').hidden = false;
+    landOn(h.row);
+  }
+  function step(d) { if (!S.stepper) return; const n = S.stepper.hits.length; S.stepper.at = (S.stepper.at + d + n) % n; landOn(S.stepper.hits[S.stepper.at]); }
+
+  $('launch').addEventListener('click', open);
+  $('launch-clear').addEventListener('click', () => { S.query = ''; S.stepper = null; $('launch-text').textContent = 'Search 1,405 sessions across 9 agents'; $('launcher').removeAttribute('data-active'); $('launch-clear').hidden = true; renderRoom(); });
+  room.addEventListener('keydown', (e) => {
+    if ((e.metaKey || e.ctrlKey) && (e.key === 'k' || e.key === 'K')) { e.preventDefault(); S.open ? close() : open(); return; }
+    if ((e.metaKey || e.ctrlKey) && (e.key === 'g' || e.key === 'G') && S.stepper && !S.open) { e.preventDefault(); step(e.shiftKey ? -1 : 1); return; }
+    if (e.key === '/' && !S.open && e.target.tagName !== 'INPUT') { e.preventDefault(); open(); }
+  });
+  renderRoom();
+})();
+</script>
+
+</body></html>

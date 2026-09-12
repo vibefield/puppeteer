@@ -1,0 +1,1146 @@
+<!doctype html><html><head><meta charset=utf8><meta name=viewport content="width=device-width,initial-scale=1"><style>:root{color-scheme:light}body{margin:0;padding:0;font:14px -apple-system,BlinkMacSystemFont,sans-serif;background:#faf9f5;color:#141413}img{max-width:100%}[hidden]:not([hidden=until-found]){display:none!important}</style></head><body>
+<title>mille-git Round Four</title>
+<style>
+  /* Palette, type and radii are lifted from the project's own vibefield tokens
+     (protos/agent-history-proto §--vf-*) so this review sits beside the app it
+     reviews. Colour carries severity only — the proto's own rule: state gets a
+     colour, everything else stays on the text ramp. */
+  :root {
+    --canvas:        #fafafa;
+    --surface:       #ffffff;
+    --surface-sunk:  #f2f2f7;
+    --fg:            #1c1c1e;
+    --fg-primary:    rgb(28 28 30 / 85%);
+    --fg-secondary:  rgb(28 28 30 / 55%);
+    --fg-faint:      rgb(28 28 30 / 32%);
+    --hairline:      rgb(0 0 0 / 8%);
+    --hairline-firm: rgb(0 0 0 / 14%);
+
+    --sev-block:  #ff453a;
+    --sev-high:   #ff9f0a;
+    --sev-med:    #0a84c8;
+    --sev-low:    rgb(28 28 30 / 30%);
+    --sev-holds:  #1a9e42;
+
+    --shadow-card: 0 1px 2px rgb(0 0 0 / 4%), 0 8px 24px rgb(0 0 0 / 5%);
+
+    --sans: -apple-system, BlinkMacSystemFont, "Segoe UI", system-ui, sans-serif;
+    --mono: ui-monospace, "SF Mono", SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+
+    --r-control: 9px;
+    --r-card: 14px;
+
+    --measure: 68ch;
+    color-scheme: light;
+  }
+
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --canvas:        #171717;
+      --surface:       #1c1c1e;
+      --surface-sunk:  #232325;
+      --fg:            #f5f5f7;
+      --fg-primary:    rgb(245 245 247 / 85%);
+      --fg-secondary:  rgb(245 245 247 / 55%);
+      --fg-faint:      rgb(245 245 247 / 32%);
+      --hairline:      rgb(255 255 255 / 10%);
+      --hairline-firm: rgb(255 255 255 / 18%);
+
+      --sev-block:  #ff6961;
+      --sev-high:   #ffb340;
+      --sev-med:    #5ac8fa;
+      --sev-low:    rgb(245 245 247 / 30%);
+      --sev-holds:  #30d158;
+
+      --shadow-card: 0 1px 2px rgb(0 0 0 / 30%), 0 8px 24px rgb(0 0 0 / 24%);
+      color-scheme: dark;
+    }
+  }
+
+  :root[data-theme="dark"] {
+    --canvas:        #171717;
+    --surface:       #1c1c1e;
+    --surface-sunk:  #232325;
+    --fg:            #f5f5f7;
+    --fg-primary:    rgb(245 245 247 / 85%);
+    --fg-secondary:  rgb(245 245 247 / 55%);
+    --fg-faint:      rgb(245 245 247 / 32%);
+    --hairline:      rgb(255 255 255 / 10%);
+    --hairline-firm: rgb(255 255 255 / 18%);
+
+    --sev-block:  #ff6961;
+    --sev-high:   #ffb340;
+    --sev-med:    #5ac8fa;
+    --sev-low:    rgb(245 245 247 / 30%);
+    --sev-holds:  #30d158;
+
+    --shadow-card: 0 1px 2px rgb(0 0 0 / 30%), 0 8px 24px rgb(0 0 0 / 24%);
+    color-scheme: dark;
+  }
+
+  * { box-sizing: border-box; }
+
+  body {
+    margin: 0;
+    background: var(--canvas);
+    color: var(--fg-primary);
+    font-family: var(--sans);
+    font-size: 15px;
+    line-height: 1.62;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  .wrap {
+    max-width: 940px;
+    margin: 0 auto;
+    padding: 56px 28px 120px;
+  }
+
+  /* ── masthead ─────────────────────────────────────────────────── */
+
+  .eyebrow {
+    font-family: var(--mono);
+    font-size: 10.5px;
+    letter-spacing: 0.09em;
+    text-transform: uppercase;
+    color: var(--fg-faint);
+    margin: 0 0 14px;
+  }
+
+  h1 {
+    font-size: clamp(30px, 4.6vw, 42px);
+    line-height: 1.1;
+    letter-spacing: -0.022em;
+    font-weight: 640;
+    color: var(--fg);
+    margin: 0 0 18px;
+    text-wrap: balance;
+  }
+
+  .standfirst {
+    max-width: var(--measure);
+    font-size: 17px;
+    line-height: 1.6;
+    color: var(--fg-primary);
+    margin: 0 0 10px;
+  }
+
+  .standfirst strong { font-weight: 620; color: var(--fg); }
+
+  .dateline {
+    font-family: var(--mono);
+    font-size: 11.5px;
+    color: var(--fg-faint);
+    margin: 26px 0 0;
+    padding-top: 18px;
+    border-top: 1px solid var(--hairline);
+  }
+
+  /* ── verdict tally ────────────────────────────────────────────── */
+
+  .tally {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(128px, 1fr));
+    gap: 10px;
+    margin: 34px 0 0;
+  }
+
+  .tally-cell {
+    background: var(--surface);
+    border: 1px solid var(--hairline);
+    border-top: 3px solid var(--stripe, var(--fg-faint));
+    border-radius: var(--r-control);
+    padding: 13px 14px 14px;
+  }
+
+  .tally-n {
+    font-size: 27px;
+    font-weight: 660;
+    letter-spacing: -0.02em;
+    font-variant-numeric: tabular-nums;
+    color: var(--fg);
+    line-height: 1.05;
+  }
+
+  .tally-label {
+    font-family: var(--mono);
+    font-size: 10px;
+    letter-spacing: 0.07em;
+    text-transform: uppercase;
+    color: var(--fg-secondary);
+    margin-top: 5px;
+  }
+
+  /* ── section rhythm ───────────────────────────────────────────── */
+
+  section { margin-top: 62px; }
+
+  h2 {
+    font-size: 12px;
+    font-family: var(--mono);
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    font-weight: 600;
+    color: var(--fg-secondary);
+    margin: 0 0 8px;
+    padding-bottom: 12px;
+    border-bottom: 1px solid var(--hairline-firm);
+  }
+
+  .sec-note {
+    max-width: var(--measure);
+    color: var(--fg-secondary);
+    font-size: 14.5px;
+    margin: 16px 0 26px;
+  }
+
+  /* ── finding cards ────────────────────────────────────────────── */
+
+  .finding {
+    background: var(--surface);
+    border: 1px solid var(--hairline);
+    border-left: 3px solid var(--stripe);
+    border-radius: var(--r-card);
+    box-shadow: var(--shadow-card);
+    padding: 20px 22px 22px;
+    margin-bottom: 16px;
+  }
+
+  .f-head {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: baseline;
+    gap: 10px;
+    margin-bottom: 11px;
+  }
+
+  .f-id {
+    font-family: var(--mono);
+    font-size: 12px;
+    font-weight: 600;
+    color: var(--stripe);
+    letter-spacing: 0.02em;
+  }
+
+  .f-refs {
+    font-family: var(--mono);
+    font-size: 11px;
+    color: var(--fg-faint);
+    margin-left: auto;
+    text-align: right;
+  }
+
+  h3 {
+    font-size: 18.5px;
+    font-weight: 620;
+    letter-spacing: -0.012em;
+    line-height: 1.32;
+    color: var(--fg);
+    margin: 0 0 12px;
+    text-wrap: balance;
+  }
+
+  .finding p {
+    max-width: var(--measure);
+    margin: 0 0 12px;
+  }
+
+  .finding p:last-child { margin-bottom: 0; }
+
+  /* the true shape of every finding: what the spec asserts, what is actually so */
+  .claim {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+    gap: 1px;
+    background: var(--hairline-firm);
+    border: 1px solid var(--hairline-firm);
+    border-radius: var(--r-control);
+    overflow: hidden;
+    margin: 0 0 14px;
+  }
+
+  @media (max-width: 620px) {
+    .claim { grid-template-columns: minmax(0, 1fr); }
+  }
+
+  .claim > div {
+    background: var(--surface);
+    padding: 12px 14px 13px;
+  }
+
+  .claim dt {
+    font-family: var(--mono);
+    font-size: 9.5px;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--fg-faint);
+    margin: 0 0 6px;
+  }
+
+  .claim dd {
+    margin: 0;
+    font-size: 14px;
+    line-height: 1.55;
+    color: var(--fg-primary);
+  }
+
+  .claim .real dd { color: var(--fg); font-weight: 500; }
+
+  pre {
+    background: var(--surface-sunk);
+    border: 1px solid var(--hairline);
+    border-radius: var(--r-control);
+    padding: 13px 15px;
+    overflow-x: auto;
+    margin: 0 0 13px;
+    font-family: var(--mono);
+    font-size: 12px;
+    line-height: 1.62;
+    color: var(--fg-primary);
+    tab-size: 2;
+  }
+
+  pre .out { color: var(--fg-secondary); }
+  pre .hit { color: var(--sev-block); font-weight: 600; }
+  pre .ok  { color: var(--sev-holds); font-weight: 600; }
+  pre .cmt { color: var(--fg-faint); }
+
+  code {
+    font-family: var(--mono);
+    font-size: 0.875em;
+    background: var(--surface-sunk);
+    border-radius: 5px;
+    padding: 0.1em 0.36em;
+  }
+
+  pre code { background: none; padding: 0; font-size: inherit; }
+
+  .fix {
+    border-top: 1px solid var(--hairline);
+    margin-top: 15px;
+    padding-top: 13px;
+    max-width: var(--measure);
+    font-size: 14px;
+    color: var(--fg-primary);
+  }
+
+  .fix b {
+    font-family: var(--mono);
+    font-size: 9.5px;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--fg-faint);
+    font-weight: 500;
+    display: block;
+    margin-bottom: 5px;
+  }
+
+  /* ── compact list findings ────────────────────────────────────── */
+
+  .minor {
+    background: var(--surface);
+    border: 1px solid var(--hairline);
+    border-left: 3px solid var(--sev-low);
+    border-radius: var(--r-card);
+    padding: 6px 22px 8px;
+  }
+
+  .minor dl { margin: 0; }
+
+  .minor dt {
+    font-weight: 580;
+    color: var(--fg);
+    font-size: 14.5px;
+    margin-top: 15px;
+  }
+
+  .minor dd {
+    margin: 3px 0 15px;
+    max-width: var(--measure);
+    font-size: 14px;
+    color: var(--fg-secondary);
+  }
+
+  /* ── what holds ───────────────────────────────────────────────── */
+
+  .holds {
+    background: var(--surface);
+    border: 1px solid var(--hairline);
+    border-left: 3px solid var(--sev-holds);
+    border-radius: var(--r-card);
+    padding: 20px 22px 22px;
+  }
+
+  .holds ul { margin: 0; padding-left: 20px; }
+  .holds li { margin-bottom: 9px; max-width: var(--measure); }
+  .holds li:last-child { margin-bottom: 0; }
+
+  /* ── verdict close ────────────────────────────────────────────── */
+
+  .verdict {
+    background: var(--surface);
+    border: 1px solid var(--hairline-firm);
+    border-radius: var(--r-card);
+    padding: 26px 26px 28px;
+    box-shadow: var(--shadow-card);
+  }
+
+  .verdict p { max-width: var(--measure); margin: 0 0 14px; }
+  .verdict p:last-child { margin-bottom: 0; }
+  .verdict strong { color: var(--fg); font-weight: 620; }
+
+  ol.seq { max-width: var(--measure); padding-left: 22px; margin: 0 0 16px; }
+  ol.seq li { margin-bottom: 10px; }
+
+  a { color: inherit; text-decoration-color: var(--fg-faint); text-underline-offset: 2px; }
+  a:focus-visible, [tabindex]:focus-visible {
+    outline: 2px solid var(--sev-med);
+    outline-offset: 2px;
+    border-radius: 3px;
+  }
+</style>
+
+<div class="wrap">
+
+  <p class="eyebrow">Spec review · round four</p>
+  <h1>mille-git: two blockers, and a product mismatch</h1>
+
+  <p class="standfirst">
+    The engineering in this draft is unusually good — the merge rule, the header-before-load
+    diff refusal, the <code>takePendingChanges</code> prohibition and the TSFN-only EventBus
+    catch are all real, hard-won findings. Two of its normative rules, though, are
+    <strong>provably wrong against real git</strong>, and the product it is an engine for
+    <strong>does not exist in the design source</strong>.
+  </p>
+
+  <p class="dateline">
+    Reviewed 2026-08-29 · target <code>mille/draft/mille-git-spec.md</code> v1.0 (rev. 2026-08-28, round 3)
+    · git 2.50.1 · gix 0.87.1 confirmed published 2026-08-25
+  </p>
+
+  <div class="tally">
+    <div class="tally-cell" style="--stripe: var(--sev-block)">
+      <div class="tally-n">2</div>
+      <div class="tally-label">Blocking</div>
+    </div>
+    <div class="tally-cell" style="--stripe: var(--sev-high)">
+      <div class="tally-n">6</div>
+      <div class="tally-label">High</div>
+    </div>
+    <div class="tally-cell" style="--stripe: var(--sev-med)">
+      <div class="tally-n">5</div>
+      <div class="tally-label">Medium</div>
+    </div>
+    <div class="tally-cell" style="--stripe: var(--sev-low)">
+      <div class="tally-n">5</div>
+      <div class="tally-label">Reference</div>
+    </div>
+    <div class="tally-cell" style="--stripe: var(--sev-holds)">
+      <div class="tally-n">41</div>
+      <div class="tally-label">Claims verified</div>
+    </div>
+  </div>
+
+  <!-- ═══════════════════════════════════════════════════════════ -->
+  <section>
+    <h2>Blocking — normative rules that cannot be satisfied</h2>
+    <p class="sec-note">
+      Both were reproduced against git 2.50.1 in a scratch repo. Each contradicts a rule the
+      spec marks MUST, and one of them is the mitigation for the spec's own highest-rated risk.
+    </p>
+
+    <article class="finding" style="--stripe: var(--sev-block)">
+      <div class="f-head">
+        <span class="f-id">B1</span>
+        <span class="f-refs">§10.6 · §11.2.1 · T-MERGE-RENAME · §26 “Path-limited replace wipes dirty list”</span>
+      </div>
+      <h3>The rename merge rule can never fire, so the phantom row it exists to prevent survives</h3>
+
+      <div class="claim">
+        <div>
+          <dt>Spec says</dt>
+          <dd>
+            “Always drop any <code>prev</code> row whose path equals any <code>run</code> row's
+            <code>origPath</code>… whether <code>H</code> is <code>{b.ts}</code> or
+            <code>{a.ts,b.ts}</code>.”
+          </dd>
+        </div>
+        <div class="real">
+          <dt>Real git</dt>
+          <dd>
+            A pathspec-limited status that sees only one side of a rename reports
+            <code>D</code> or <code>A</code> — never <code>R</code>, and never an
+            <code>origPath</code> at all.
+          </dd>
+        </div>
+      </div>
+
+      <p>
+        Rename detection is a pairing over the whole change set. Constrain the pathspec to one
+        side and there is nothing left to pair with, so git degrades to the unpaired letter:
+      </p>
+
+      <pre><code><span class="cmt">$ git mv a.ts b.ts</span>
+
+<span class="cmt">$ git status --porcelain=v2</span>            <span class="cmt"># full</span>
+<span class="out">2 R. N... R100 b.ts</span><span class="ok">\ta.ts</span>          <span class="cmt">← origPath present</span>
+
+<span class="cmt">$ git status --porcelain=v2 -- b.ts</span>     <span class="cmt"># hint = {b.ts}</span>
+<span class="hit">1 A. N... b.ts</span>                          <span class="cmt">← no origPath. ever.</span>
+
+<span class="cmt">$ git status --porcelain=v2 -- a.ts</span>     <span class="cmt"># hint = {a.ts}</span>
+<span class="hit">1 D. N... a.ts</span></code></pre>
+
+      <p>
+        Walk T-MERGE-RENAME with that: <code>prev</code> holds <code>a.ts</code>; the run returns
+        <code>A b.ts</code> with no <code>origPath</code>; the drop rule never triggers;
+        <code>a.ts</code> is not in <code>H</code> so the keep rule preserves it. The published
+        snapshot lists <strong>both</strong> <code>a.ts</code> and <code>b.ts</code> — a file
+        that no longer exists, sitting in the Changes list until something forces a full status.
+      </p>
+
+      <p>
+        This is reachable on the ordinary path, not a corner. §11.2.1 routes renames by
+        recovering <code>from</code> via <code>pathForId(old_parent_id) + old_name</code>, and
+        then says that when <code>old_parent_id</code> is missing — lazy or unwalked folders,
+        which is most of a large tree — “hint only <code>to</code> and rely on §10.6 dropping
+        <code>origPath</code> when gix reports the rename.” That is precisely the case proven
+        above to report no rename.
+      </p>
+
+      <div class="fix">
+        <b>Suggested fix</b>
+        A rename hint must never be path-limited. Either route both sides and escalate to a full
+        status whenever <code>from</code> is unrecoverable, or — simpler and cheaper than it
+        sounds — treat every <code>kind: 'renamed'</code> event as a full-status trigger. Renames
+        are rare next to writes, and this buys back the merge rule's correctness outright. Then
+        rewrite T-MERGE-RENAME to assert the escalation, because as written it asserts behaviour
+        git does not have.
+      </div>
+    </article>
+
+    <article class="finding" style="--stripe: var(--sev-block)">
+      <div class="f-head">
+        <span class="f-id">B2</span>
+        <span class="f-refs">§15.3 · §15.4 step 4 · §9.2 step 6 · AC-006</span>
+      </div>
+      <h3>The commit flow breaks on a repository with no commits yet</h3>
+
+      <div class="claim">
+        <div>
+          <dt>Spec says</dt>
+          <dd>
+            <code>unstage</code> is “<code>git restore --staged --</code> then
+            <code>git reset HEAD --</code>”; commit step 4 unstages the excluded set with
+            <code>git restore --staged</code>.
+          </dd>
+        </div>
+        <div class="real">
+          <dt>Real git</dt>
+          <dd>
+            On an unborn HEAD, <code>git restore --staged</code> exits 128 with
+            <em>fatal: could not resolve HEAD</em>. Plain <code>git reset -- &lt;paths&gt;</code>
+            succeeds.
+          </dd>
+        </div>
+      </div>
+
+      <pre><code><span class="cmt">$ git init &amp;&amp; git add a.txt b.txt</span>   <span class="cmt"># no commits yet</span>
+
+<span class="cmt">$ git restore --staged b.txt</span>
+<span class="hit">fatal: could not resolve HEAD</span>          <span class="cmt">rc=128</span>
+
+<span class="cmt">$ git reset -q -- b.txt</span>
+<span class="ok">rc=0</span>                                   <span class="cmt">→ A a.txt / ?? b.txt</span>
+
+<span class="cmt">$ git rev-parse --abbrev-ref HEAD</span>
+<span class="hit">fatal: ambiguous argument 'HEAD'</span>       <span class="cmt">rc=128, prints "HEAD"</span></code></pre>
+
+      <p>
+        The failure lands exactly where an ADE lives: an agent scaffolds a project, the room
+        offers an include-set that is a subset of what is staged, and the first commit —
+        the very first commit of the repository — fails at step 4. §15.3's fallback ordering
+        makes it worse: <code>restore --staged</code> runs first and aborts before
+        <code>reset HEAD</code> is reached, and <code>reset HEAD</code> would fail on unborn too.
+        The working form is <code>reset</code> with no revision.
+      </p>
+
+      <p>
+        §9.2 step 6's CLI identity fallback has the same hole: <code>rev-parse --abbrev-ref
+        HEAD</code> exits 128 and prints the literal string <code>HEAD</code> to stdout, so a
+        naive read yields branch <code>"HEAD"</code> and <code>detached: true</code> for a fresh
+        <code>main</code>. Use <code>git symbolic-ref --short HEAD</code>, which is correct on
+        unborn.
+      </p>
+
+      <p>
+        None of the 18 acceptance criteria and none of the ~40 test IDs exercise a repository
+        without commits.
+      </p>
+
+      <div class="fix">
+        <b>Suggested fix</b>
+        Detect unborn HEAD once at <code>open()</code> (<code>git rev-parse --verify HEAD</code>
+        fails, or gix reports an unborn ref) and carry it on the session. Branch the unstage
+        path on it: <code>reset -- &lt;paths&gt;</code> when unborn, <code>restore --staged</code>
+        otherwise. Read the branch with <code>symbolic-ref --short</code>. Add T-UNBORN to §28.2
+        covering identity, first commit of a subset, and unstage.
+      </div>
+    </article>
+  </section>
+
+  <!-- ═══════════════════════════════════════════════════════════ -->
+  <section>
+    <h2>High — the engine and the product are aimed at different targets</h2>
+    <p class="sec-note">
+      The spec is disciplined about what it is not building. The problem is that what it does
+      build has no consumer in the design source, and the consumer that does exist needs
+      something the engine cannot express.
+    </p>
+
+    <article class="finding" style="--stripe: var(--sev-high)">
+      <div class="f-head">
+        <span class="f-id">H1</span>
+        <span class="f-refs">agent-history-proto §03 col ⑤ · design-agent-history.md §8, Q4</span>
+      </div>
+      <h3>The design source contains no GitHub Desktop replacement — it explicitly refuses one</h3>
+
+      <p>
+        The proto's git column is read-only. There is no click handler on <code>#ah-foot</code>
+        at all; the only wired control is the Changes / History segmented switch. No diff view,
+        no staging or discard buttons, no include checkboxes, no commit box. The refusal is
+        stated verbatim, twice — in <code>index.html:806</code> and again in the design doc:
+      </p>
+
+      <pre><code>"Not pressable — this proposal has no diff view,
+ and a hover fill would be promising one."</code></pre>
+
+      <p>
+        And the whole column is an open question, not settled design:
+        <em>“Q4 — the footprint rail, keep or kill. §8. The one idea here most worth arguing
+        about.”</em> The doc's own build order excludes it: <em>“Not the footprint rail until
+        Q4 is answered — it is the only item here that asks the index for something new.”</em>
+      </p>
+
+      <p>
+        So the spec's §32.5 deferral — “where the Changes/History room lives … MUST NOT block
+        mille-git” — understates it. It is not that the room's location is open; it is that the
+        room as designed needs roughly a fifth of this engine, and the room you actually want
+        (repo-scoped, with diffs and commits, replacing GitHub Desktop) has never been designed.
+        Nine PRs of engine would land against a UI brief that does not exist.
+      </p>
+
+      <div class="fix">
+        <b>Suggested fix</b>
+        Settle Q4 and draw the repo-scoped Changes/History/Diff room before PR 5. The engine's
+        diff protocol in particular is unfalsifiable without it: §13's hunk shape, the 256 KiB
+        auto-render cap and the <code>tooLarge</code> contract are all guesses until a design
+        says whether the view is unified or split, virtualized, and syntax-highlighted.
+      </div>
+    </article>
+
+    <article class="finding" style="--stripe: var(--sev-high)">
+      <div class="f-head">
+        <span class="f-id">H2</span>
+        <span class="f-refs">§17.1 GitService · proto col ⑤ footprint contract</span>
+      </div>
+      <h3>The panel the design <em>does</em> specify is session-scoped, and nothing can answer it</h3>
+
+      <div class="claim">
+        <div>
+          <dt>GitService offers</dt>
+          <dd><code>status(worktreePath)</code> — everything dirty in the repository, right now.</dd>
+        </div>
+        <div class="real">
+          <dt>The design asks</dt>
+          <dd>
+            “what <em>this session</em> changed, and what it committed” — files attributed to one
+            agent session, partitioned into committed / staged / unstaged.
+          </dd>
+        </div>
+      </div>
+
+      <p>
+        The proto is explicit that the scoping <em>is</em> the idea: <em>“Both are scoped to the
+        session rather than to the repository — that scoping IS the proposition.”</em> Answering
+        it needs a join between a session's touched-file set and git's status — and that join
+        exists nowhere. Rosetta's daemon has the session data and no git surface at all (no git
+        route in <code>crates/server/src/http.rs</code>, no git type in <code>protocol</code>);
+        mille would have the git data and no notion of a session.
+      </p>
+
+      <p>
+        Worth deciding deliberately rather than discovering in PR 8: either the room becomes
+        repo-scoped (which is what a GitHub Desktop replacement means anyway, and drops the
+        requirement), or something must own that join — most naturally rosettad, which already
+        ingests per-session file-touch events.
+      </p>
+    </article>
+
+    <article class="finding" style="--stripe: var(--sev-high)">
+      <div class="f-head">
+        <span class="f-id">H3</span>
+        <span class="f-refs">§10.2 · §4.2 · §21.6 · proto <code>subtree()</code></span>
+      </div>
+      <h3>This is a git status engine, not the git <em>tree</em> backend the goal calls for</h3>
+
+      <div class="claim">
+        <div>
+          <dt>Engine emits</dt>
+          <dd><code>entries: readonly StatusEntry[]</code> — a flat array of repo-relative paths, up to 10,000.</dd>
+        </div>
+        <div class="real">
+          <dt>The view draws</dt>
+          <dd>
+            two mille <em>trees</em> — “Staged” and “Unstaged” — each a real subtree with indent
+            guides, chevrons, and directories kept when any descendant survives.
+          </dd>
+        </div>
+      </div>
+
+      <p>
+        Between those two sits work nobody has assigned: reconstruct the parent chain from flat
+        paths, prune to a subtree per group, drop the root and decrement every depth, reconcile
+        against <code>EntryStore</code> ids so rows can share the shipped component's selection
+        and decoration state, then window it for virtualization. The spec pushes all of it to
+        JavaScript — §4.2 makes “replacing the FileTree with a Changes list” a non-goal and
+        §21.6 assigns virtualization to “ADE UI, not this spec.”
+      </p>
+
+      <p>
+        That is the one place the stated goal — a state-of-the-art git file tree backend, in
+        Rust, because multi-agent churn is relentless — is not met. Under sustained churn the
+        renderer re-shapes up to 10,000 flat paths into a tree on every publish, per worktree, in
+        the one process that must not stutter. And mille <em>already has the tree</em>:
+        <code>EntryStore</code> holds parents, children, ids and depths, and the walker keeps
+        them current.
+      </p>
+
+      <div class="fix">
+        <b>Suggested fix</b>
+        Add a tree projection to the engine: emit status pre-shaped as grouped subtrees with
+        parent ids and depths, joined to <code>EntryStore</code> ids where they exist, and diff
+        it generationally so the renderer applies a delta rather than rebuilding. This is the
+        piece that makes it a git <em>tree</em> backend rather than a porcelain parser with a
+        watcher, and it is where the Rust actually earns its place.
+      </div>
+    </article>
+
+    <article class="finding" style="--stripe: var(--sev-high)">
+      <div class="f-head">
+        <span class="f-id">H4</span>
+        <span class="f-refs">§21.5 · §6.2 · AC-008</span>
+      </div>
+      <h3>No bench covers the workload the engine exists for</h3>
+
+      <p>
+        All three planned benches are quiet-repo benches: warm path-limited 50 files, cold full
+        status on a generated 5k-file repo, and a diff fixture. The reason this engine is being
+        built — eight worktrees under continuous multi-agent write pressure — has no bench, no
+        budget line, and no regression gate.
+      </p>
+
+      <p>
+        §6.2's closest row, “Agent writes 40 files in 1 s → one coalesced status,” describes a
+        <em>burst</em>. Steady state is the hard case: at a 75 ms debounce, sustained churn
+        yields on the order of 13 status runs per second per worktree, and eight worktrees put
+        ~100 gix status runs per second into the same process as the explorer's walker and
+        watcher — which are saturated by the same file events, by construction. AC-008 only
+        asserts that two statuses can overlap in time; it measures nothing under load.
+      </p>
+
+      <div class="fix">
+        <b>Suggested fix</b>
+        Add the campaign bench the workload deserves, and make it the merge gate: N worktrees ×
+        a synthetic agent writing at a fixed rate, reporting p50/p95/p99 for status latency
+        <em>and</em> for explorer delta latency, so contention between the two subsystems is
+        visible. Rosetta's own convention already demands this shape — frozen before/after pairs
+        from one checksummed snapshot, with campaign ID and machine recorded.
+      </div>
+    </article>
+
+    <article class="finding" style="--stripe: var(--sev-high)">
+      <div class="f-head">
+        <span class="f-id">H5</span>
+        <span class="f-refs">§21.2 · §21.1 · <code>advisePerformanceConfig</code></span>
+      </div>
+      <h3>The two recommended accelerators do not accelerate the primary read path</h3>
+
+      <div class="claim">
+        <div>
+          <dt>Spec says</dt>
+          <dd>
+            Set <code>core.untrackedCache</code> and <code>core.fsmonitor</code> on ADE-created
+            worktrees — “it makes gix/CLI status cheap.”
+          </dd>
+        </div>
+        <div class="real">
+          <dt>gitoxide</dt>
+          <dd>
+            lists fsmonitor and untracked-cache among <em>planned</em> big-repo accelerators, not
+            shipped ones.
+          </dd>
+        </div>
+      </div>
+
+      <p>
+        Since gix is the primary read path and the CLI is the fallback that §21.1 explicitly
+        exempts from the 80 ms warm budget, the advice only speeds up the path that has no
+        budget. Worse, there is prior art pointing the other way: starship's gix migration falls
+        back to the git CLI whenever <code>core.fsmonitor</code> is set. Following §21.2 on
+        ADE-created worktrees could push you off gix on exactly the repositories the ADE
+        controls.
+      </p>
+
+      <p>
+        Keep <code>advisePerformanceConfig</code> — it is right for the CLI fallback and for
+        whatever the user runs in a terminal — but stop describing it as a gix optimization, and
+        re-verify against the gix release you pin before relying on it.
+      </p>
+    </article>
+
+    <article class="finding" style="--stripe: var(--sev-high)">
+      <div class="f-head">
+        <span class="f-id">H6</span>
+        <span class="f-refs">§21 (absent)</span>
+      </div>
+      <h3>Nothing reuses the parsed index between status runs</h3>
+
+      <p>
+        Every status run — path-limited included — re-reads and re-parses the index. In a
+        100k-file repository that is a multi-megabyte parse, and under the steady state in H4 it
+        happens ~100 times a second across eight sessions. It is the single largest available win
+        for this workload and the spec does not mention it.
+      </p>
+
+      <p>
+        The invalidation signal is already being built: the gitdir watch in §11.3 fires on
+        <code>index</code>. Confirmed empirically that a commit rewrites the index file (mtime
+        and size both change), so the watch is a sound cache key.
+      </p>
+
+      <div class="fix">
+        <b>Suggested fix</b>
+        Hold a warm parsed index per session, invalidated by the gitdir <code>index</code> watch
+        plus an mtime/size check. Land it in PR 3 alongside the watch that invalidates it, and
+        bench cold vs. warm as part of H4's campaign.
+      </div>
+    </article>
+  </section>
+
+  <!-- ═══════════════════════════════════════════════════════════ -->
+  <section>
+    <h2>Medium — wrong premises and undercounted blast radius</h2>
+
+    <article class="finding" style="--stripe: var(--sev-med)">
+      <div class="f-head">
+        <span class="f-id">M1</span>
+        <span class="f-refs">§20.4 · §15.1 · T-ALIAS · T-ALIAS-ADD</span>
+      </div>
+      <h3>The alias hardening blocks an attack git already blocks, and misses the two that work</h3>
+
+      <p>
+        §20.4 makes an eleven-pair <code>-c alias.&lt;verb&gt;=&lt;verb&gt;</code> prefix
+        normative on <em>every</em> spawn, and adds a standing rule that new verbs must ship
+        their alias override in the same PR. Git does not need it — an alias that shadows a
+        builtin is ignored:
+      </p>
+
+      <pre><code><span class="cmt">$ git config alias.status '!touch PWNED'</span>
+<span class="cmt">$ git status --porcelain</span>
+<span class="ok">ls: PWNED: No such file or directory</span>    <span class="cmt">← alias never ran</span>
+
+<span class="cmt">$ git config core.fsmonitor "$PWD/fsmon.sh"</span>
+<span class="cmt">$ git status --porcelain</span>
+<span class="hit">FSMON_RAN</span>                             <span class="cmt">← executed, on a read</span>
+
+<span class="cmt">$ git config diff.external "$PWD/extdiff.sh"</span>
+<span class="cmt">$ git diff</span>
+<span class="hit">EXTDIFF_RAN</span>                           <span class="cmt">← executed</span>
+<span class="cmt">$ git diff --no-ext-diff</span>
+<span class="ok">ls: EXTDIFF_RAN: No such file or directory</span></code></pre>
+
+      <p>
+        T-ALIAS and T-ALIAS-ADD therefore pass with the mitigation deleted — they do not test
+        what they claim to test. Meanwhile the two keys that <em>do</em> execute are unmentioned,
+        and §15.1's argv sets no <code>--no-ext-diff</code>. This matters more here than in a
+        normal editor: an ADE opens worktrees that agents created and repositories that were
+        just cloned, so repo-local config is attacker-adjacent by default.
+      </p>
+
+      <div class="fix">
+        <b>Suggested fix</b>
+        Drop the alias prefix (keep one test documenting <em>why</em> it is unnecessary). Add
+        <code>--no-ext-diff</code> to every diff spawn, and neutralize the keys that actually run
+        commands: <code>core.fsmonitor</code>, <code>diff.external</code>,
+        <code>core.pager</code>, <code>core.hooksPath</code>, <code>credential.helper</code>,
+        and the <code>*.textconv</code> / <code>*.process</code> filter family. Rewrite T-ALIAS
+        as T-CONFIG-EXEC against those.
+      </div>
+    </article>
+
+    <article class="finding" style="--stripe: var(--sev-med)">
+      <div class="f-head">
+        <span class="f-id">M2</span>
+        <span class="f-refs">§11.5 · §3.1 watcher row · §11.2.1</span>
+      </div>
+      <h3>“<code>.git</code> is ignored by the walker” is not true, which changes the watcher plan</h3>
+
+      <div class="claim">
+        <div>
+          <dt>Spec says</dt>
+          <dd>
+            “Explorer <code>respectIgnore: true</code> skips <code>.git</code> content. That is
+            why gitdir watch is mandatory even with path hints.”
+          </dd>
+        </div>
+        <div class="real">
+          <dt>mille-core</dt>
+          <dd>
+            <code>include_hidden: true</code> and empty <code>exclude_globs</code> — the walker
+            descends into <code>.git</code>. Only <code>snapshot.rs:49-51</code>'s
+            <code>is_os_or_vcs_noise</code> hides it, at projection time.
+          </dd>
+        </div>
+      </div>
+
+      <p>
+        Two consequences. First, <code>.git</code> entries are walked, ID-allocated and resident
+        in <code>EntryStore</code> — in a repository with many loose objects that is real memory
+        and real walk time, and it is a mille-core question worth raising separately. Second, and
+        more useful here: if the walker descends into <code>.git</code> then the watcher covers
+        it too, so the explorer's <code>'event'</code> channel is probably already delivering
+        <code>HEAD</code> and <code>index</code> writes — which §11.2.1 then filters out, just
+        before the spec adds a second notify watcher to observe the same files.
+      </p>
+
+      <div class="fix">
+        <b>Suggested fix</b>
+        Measure before building: log <code>'event'</code> paths during a <code>git add</code> and
+        a commit. If gitdir events arrive, the second watcher becomes a fallback for the
+        unbound case rather than a mandatory component, and §11.5's rationale needs rewriting
+        either way.
+      </div>
+    </article>
+
+    <article class="finding" style="--stripe: var(--sev-med)">
+      <div class="f-head">
+        <span class="f-id">M3</span>
+        <span class="f-refs">§11.1 · §11.3 · §11.4</span>
+      </div>
+      <h3>In a linked worktree, branch refs live where nothing is watching</h3>
+
+      <p>
+        §11.1 assigns “gitdir <code>HEAD</code>, <code>index</code>, <code>refs/</code>,
+        <code>packed-refs</code>” to the gitdir watch, and §11.4 watches
+        <code>&lt;common&gt;/worktrees/</code>. For a primary checkout gitdir equals commonDir
+        and refs are covered. For a linked worktree they are different directories — and branch
+        refs are not in the per-worktree one:
+      </p>
+
+      <pre><code><span class="cmt">$ ls .git/worktrees/r3-wt2/</span>
+<span class="out">commondir  gitdir  HEAD  index  logs  ORIG_HEAD  refs</span>
+
+<span class="cmt">$ ls .git/worktrees/r3-wt2/refs/</span>
+<span class="hit">(empty)</span>
+
+<span class="cmt">$ ls .git/refs/heads/</span>
+<span class="out">main  wt2branch</span>                       <span class="cmt">← both live in commonDir</span></code></pre>
+
+        <p>
+          So <code>&lt;common&gt;/refs/</code> and <code>&lt;common&gt;/packed-refs</code> are
+          watched by nobody. Local commits still refresh, because they rewrite the per-worktree
+          <code>index</code> — but a <code>fetch</code>, a ref update from a sibling worktree, or
+          any branch move made outside this session goes unseen until something else forces a
+          status. Given that the spec rates linked-worktree watch silence a High risk already
+          burned once, it is worth closing.
+        </p>
+    </article>
+
+    <article class="finding" style="--stripe: var(--sev-med)">
+      <div class="f-head">
+        <span class="f-id">M4</span>
+        <span class="f-refs">§3.5 · §10.3 · rosetta <code>WorktreeHeader.tsx</code></span>
+      </div>
+      <h3>The Rosetta projection silently changes the number the header shows</h3>
+
+      <p>
+        §3.5 presents the <code>GitFacts</code> projection as a faithful drop-in. It is not:
+        Rosetta counts lines from plain <code>git status --porcelain</code>, which collapses
+        untracked directories, while §10.3 mandates <code>UntrackedFiles::Files</code> to match
+        <code>-uall</code>. Same tree, different number:
+      </p>
+
+      <pre><code><span class="cmt">$ git status --porcelain</span>          <span class="cmt"># rosetta today</span>
+<span class="out">?? loose.txt
+?? newdir/</span>                          <span class="ok">count: 2</span>
+
+<span class="cmt">$ git status --porcelain -uall</span>    <span class="cmt"># engine</span>
+<span class="out">?? loose.txt
+?? newdir/a
+?? newdir/sub/b</span>                     <span class="hit">count: 3</span></code></pre>
+
+      <p>
+        Any repository with an untracked directory changes what <code>branch · n dirty</code>
+        reads after the swap. The engine's number is the more honest one — and the proto argues
+        for exactly that, insisting the dirty count be “not the number of letters this tree
+        happens to be drawing.” It just needs saying in §3.5 rather than being discovered as a
+        regression.
+      </p>
+    </article>
+
+    <article class="finding" style="--stripe: var(--sev-med)">
+      <div class="f-head">
+        <span class="f-id">M5</span>
+        <span class="f-refs">§19.5 · PR 8 · rosetta <code>clients/app/electron/fx-host.mjs</code></span>
+      </div>
+      <h3>Rosetta is not a downstream consumer to notify later — it already runs the migrated topology</h3>
+
+      <p>
+        §19.5 puts Rosetta “out of mille's PRs.” But Rosetta already runs the exact arrangement
+        PR 8 exists to migrate: a UtilityProcess host importing
+        <code>createFileExplorerHost</code>, <code>registerGitDecorations</code> and
+        <code>createShellGitClient</code>, wired over <code>MessageChannelMain</code> — with
+        both mille packages symlinked from this working copy via <code>file:</code>
+        dependencies, so it consumes the crate at head rather than a published version.
+      </p>
+
+      <p>
+        Two consumers, then, not one: the playground and Rosetta, plus Rosetta's separate
+        <code>execFile</code> git in <code>electron/main.mjs</code>. Sequence PR 8 knowing that,
+        and the shell-client deprecation window in §24 has to cover both.
+      </p>
+    </article>
+  </section>
+
+  <!-- ═══════════════════════════════════════════════════════════ -->
+  <section>
+    <h2>Reference errors — cheap to fix, load-bearing in a normative document</h2>
+
+    <div class="minor">
+      <dl>
+        <dt><code>shell-history.ts</code> is cited at the wrong path, roughly ten times</dt>
+        <dd>
+          It lives at <code>packages/mille-ui/src/git/shell-history.ts</code>, not
+          <code>src/history/</code>. Every claim <em>inside</em> those citations verified correct
+          — the log format, the <code>show &lt;rev&gt;:&lt;path&gt;</code> comment, limit 50,
+          cap 10,000, the three containment helpers, the SIGTERM abort path. Affects §3.2,
+          §14.1, §15.3, §20.1 and Appendix D.
+        </dd>
+
+        <dt><code>research/git-worktree/</code> is not in the repository</dt>
+        <dd>
+          It sits at <code>project100/research/git-worktree/</code>, outside mille and not under
+          version control. All four cited documents exist, but the spec's normative
+          “Companion research” reference resolves to nothing for anyone who clones mille.
+          Vendor it into <code>docs/</code> or drop the citations to informative.
+        </dd>
+
+        <dt><code>ChangeSet</code> has three fields the §3.1 table omits</dt>
+        <dd>
+          <code>projection_changed</code>, <code>from_version</code> and <code>to_version</code>
+          (<code>changes.rs:38-42</code>). <code>from_version</code>/<code>to_version</code> look
+          directly useful for the generation bookkeeping in §22.4.
+        </dd>
+
+        <dt>The <code>tree_version</code> gate covers <code>Change</code>, not only <code>ChangeTree</code></dt>
+        <dd>
+          <code>watch_runtime.rs:164</code> guards both emits. The F3 argument is unaffected —
+          <code>'event'</code> is genuinely unguarded, which is the load-bearing half — but §11.1
+          and Appendix D state the narrower version.
+        </dd>
+
+        <dt>“Absolute POSIX” map keys are a contract, not a behaviour</dt>
+        <dd>
+          <code>createShellGitClient</code> keys with <code>path.resolve</code>, which emits
+          backslashes on Windows. §10.4 and Appendix A repeat the doc comment as if it were
+          enforced. Worth either normalizing in the adapter or softening the wording.
+        </dd>
+      </dl>
+    </div>
+  </section>
+
+  <!-- ═══════════════════════════════════════════════════════════ -->
+  <section>
+    <h2>What holds up</h2>
+    <div class="holds">
+      <ul>
+        <li>
+          <strong>gix 0.87.1 is real and correctly characterized.</strong> Published 2026-08-25;
+          every named feature exists; <code>Repository</code> is <code>Send</code> only with
+          <code>parallel</code> and is not <code>Sync</code>, so §9.2's
+          <code>ThreadSafeRepository</code> + <code>to_thread_local()</code> requirement is
+          right, and it is the kind of thing that costs a week when missed.
+        </li>
+        <li>
+          <strong><code>UntrackedFiles</code> and the collapse concern are real.</strong> The
+          enum has <code>None</code> / <code>Collapsed</code> / <code>Files</code> exactly as
+          §10.3 assumes, and the nested-untracked failure it guards against is a genuine trap.
+        </li>
+        <li>
+          <strong>The EventBus finding is correct and non-obvious.</strong>
+          <code>events.rs</code> really does hold only <code>ThreadsafeFunction</code> slots, so
+          <code>bindExplorer</code> genuinely cannot be built without adding native subscribers.
+          The snapshot-and-drop emit pattern is there for a documented re-entrancy deadlock, and
+          §11.2's insistence that the callback may only arm a timer under <code>policy_gate</code>
+          is the right read of a real hazard.
+        </li>
+        <li>
+          <strong>The <code>takePendingChanges</code> prohibition is exactly right</strong> — the
+          host coalescer drains it once per tick, and a second drainer would silently empty
+          explorer deltas. Rating it High and giving it a regression test is good judgment.
+        </li>
+        <li>
+          <strong>Header-before-load in §13.2</strong> is the correct shape for diff refusal, and
+          T-HEADER-SIZE tests it the right way, by injecting a failing reader rather than trusting
+          a large fixture.
+        </li>
+        <li>
+          <strong>Every checked claim about the current codebase held</strong> except the three
+          noted above — 41 verified across mille's Rust and TypeScript and Rosetta's app,
+          including exact line numbers. The spec also correctly identifies two repo-doc bugs
+          (the stale unknown-glyph comment, the false warn-once promise) and chooses the code
+          over the comment.
+        </li>
+      </ul>
+    </div>
+  </section>
+
+  <!-- ═══════════════════════════════════════════════════════════ -->
+  <section>
+    <h2>Verdict</h2>
+    <div class="verdict">
+      <p>
+        <strong>The engineering is sound; the sequencing is not.</strong> B1 and B2 are ordinary
+        bugs in a draft — an afternoon each, and both belong in PR 2 and PR 4 respectively rather
+        than being discovered in integration. The structural problem is that PRs 1 through 9 build
+        a repo-scoped status, diff and log engine for a room that the design source explicitly
+        declines to draw, while the room it <em>does</em> draw asks a session-scoped question no
+        component can currently answer.
+      </p>
+      <p>
+        And on the stated goal — speed under multi-agent churn — the draft stops one layer short.
+        It specifies a fast way to <em>compute</em> status and hands back a flat array, leaving
+        tree-shaping, id reconciliation and windowing to JavaScript in the process that must not
+        stutter, with no bench for the workload and no warm index. H3, H4 and H6 are where the
+        Rust would actually earn its keep.
+      </p>
+      <p>Order I would put on it:</p>
+      <ol class="seq">
+        <li>Fix B1 and B2 in the spec now — both change normative text and one invalidates a named test.</li>
+        <li>Settle Q4 and draw the repo-scoped room, before PR 5 freezes a diff protocol against nothing.</li>
+        <li>Decide H2 deliberately: repo-scoped room, or give rosettad the session↔file join.</li>
+        <li>Add the tree projection (H3) to the crate's charter — it is the difference between a git tree backend and a porcelain parser with a watcher.</li>
+        <li>Write the churn bench (H4) before PR 3, so the queue and debounce are tuned against the real workload rather than a quiet repo.</li>
+        <li>Sweep M1's config-execution keys into §20 while the security section is still being edited.</li>
+      </ol>
+      <p>
+        None of this argues against building it in mille, in Rust, with gix for reads and the CLI
+        for writes. That call looks right, and the draft defends it well.
+      </p>
+    </div>
+  </section>
+
+</div>
+
+</body></html>
