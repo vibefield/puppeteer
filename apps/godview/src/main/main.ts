@@ -2969,6 +2969,7 @@ app
           createWindow: () => createWindow({ slotId: 'godview-links-smoke', freshWorkspace: true }),
           opened: openedSmokeLinks,
           profile: app.getPath('userData'),
+          cwd: repoRoot,
         });
       } else if (SPAWN_THROUGH_SMOKE) await runSpawnThroughSmoke(SPAWN_THROUGH_SMOKE);
       else if (RESTORE_SMOKE_PHASE === 'seed') {

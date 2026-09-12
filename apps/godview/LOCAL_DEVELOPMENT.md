@@ -28,11 +28,18 @@ the rebuilt daemon (or setting `GHOSTTEAD_BIN`), run `pnpm godview:local:build`
 and restart Godview. Command-hover and Command-click on macOS (Ctrl elsewhere)
 support plain URLs and OSC 8 links, including wrapped links. `link-url = false`
 disables automatic URL matching while keeping explicit OSC 8 links available.
+File and folder paths also match, including Codex's `~/…` footer, absolute paths,
+and relative source references such as `src/main.rs:42`. Relative paths use the
+terminal's working directory; `~` uses the terminal process's home directory.
+File destinations open in the desktop's default application.
 
 Run `pnpm --filter godview links-smoke` to exercise the complete link path in an
 isolated Godview profile with a mouse-reporting TUI fixture. It records URL
-opening requests without launching a browser. Set `GODVIEW_KEEP_LINK_SMOKE=1`
+opening requests without launching a browser or opening a file. Set `GODVIEW_KEEP_LINK_SMOKE=1`
 to retain the screenshot and fixture artifacts.
+With Codex installed, run `GODVIEW_LINK_SMOKE_CODEX=1 pnpm --filter godview links-smoke`
+to verify Command-hover and Command-click on the real Codex footer directory.
+This launches an idle Codex session without submitting an agent prompt.
 
 The local command uses Ghosttea's standard `build:sdk` script. It does not
 compile Rust or native addons.

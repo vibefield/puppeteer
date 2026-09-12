@@ -1,27 +1,44 @@
 import { readFileSync, writeFileSync } from 'node:fs';
+import { homedir } from 'node:os';
 import { basename, join } from 'node:path';
+import { pathToFileURL } from 'node:url';
 import type { BrowserWindow } from 'electron';
 import type { GhostteaAutomationClient } from '@vibecook/ghosttea-electron/main';
+import { buildAgentEnvironment } from '@vibecook/puppeteer-runtime';
 
-/** Exercise real PTY output, worker frames, React pointer handling, preload and main IPC. */
-export async function runTerminalLinksSmoke(options: {
+interface LinkSmokeOptions {
   client: GhostteaAutomationClient;
   createWindow: () => Promise<BrowserWindow>;
   opened: string[];
   profile: string;
-}): Promise<void> {
+  cwd: string;
+}
+
+/** Exercise real PTY output, worker frames, React pointer handling, preload and main IPC. */
+export async function runTerminalLinksSmoke(options: LinkSmokeOptions): Promise<void> {
   const { client, opened, profile } = options;
   if (!basename(profile).startsWith('godview-links-smoke-')) {
     throw new Error('link smoke requires its isolated temporary user-data profile');
   }
+  if (process.env.GODVIEW_LINK_SMOKE_CODEX === '1') return runCodexFooterLinksSmoke(options);
+  const displayedCwd = options.cwd.startsWith(`${homedir()}/`)
+    ? `~${options.cwd.slice(homedir().length)}`
+    : options.cwd;
   const inputLog = join(profile, 'terminal-input.log');
   writeFileSync(inputLog, '');
+  const sourcePath = join(profile, 'link source.ts');
+  writeFileSync(sourcePath, '// Terminal file-link fixture.\n');
+  const sourceUrl = `${pathToFileURL(sourcePath).href}#L1`;
   const fixture = [
     'import os, sys, tty',
     'tty.setraw(0)',
     `log = ${JSON.stringify(inputLog)}`,
+    `source_url = ${JSON.stringify(sourceUrl)}`,
+    `footer = ${JSON.stringify(`gpt-6 xhigh · ${displayedCwd} · Ready`)}`,
     'def paint():',
-    String.raw`  sys.stdout.write('\x1b[2J\x1b[Hhttps://example.com/plain\r\n界e\u0301 https://example.com/wide\r\n\x1b]8;;https://example.com/actual\x1b\\Open documentation\x1b]8;;\x1b\\\r\nhttps://example.com/' + 'a' * 230 + '\r\n\x1b[?1000h\x1b[?1006h')`,
+    String.raw`  sys.stdout.write('\x1b[2J\x1b[Hhttps://example.com/plain\r\n界e\u0301 https://example.com/wide\r\n\x1b]8;;https://example.com/actual\x1b\\Open documentation\x1b]8;;\x1b\\\r\n')`,
+    String.raw`  sys.stdout.write('\x1b]8;;' + source_url + '\x1b\\link source.ts:1\x1b]8;;\x1b\\\r\nhttps://example.com/' + 'a' * 230 + '\r\n\x1b[?1000h\x1b[?1006h')`,
+    String.raw`  sys.stdout.write(f'\x1b[{os.get_terminal_size().lines};1H' + footer)`,
     '  sys.stdout.flush()',
     'paint()',
     'while True:',
@@ -35,6 +52,7 @@ export async function runTerminalLinksSmoke(options: {
   const session = await client.createSession({
     executable: '/usr/bin/python3',
     args: ['-u', '-c', fixture],
+    cwd: options.cwd,
     environment: { mode: 'inherit' },
     cols: 100,
     rows: 24,
@@ -50,6 +68,15 @@ export async function runTerminalLinksSmoke(options: {
       if (value !== undefined) return value;
       await new Promise((resolve) => setTimeout(resolve, 40));
     }
+    writeFileSync(join(profile, 'links-failure.png'), (await contents.capturePage()).toPNG());
+    console.error(
+      'Link smoke state:',
+      await contents.executeJavaScript(`JSON.stringify({
+      input: document.querySelector('.terminal-input')?.getBoundingClientRect(),
+      hover: document.querySelector('.terminal-input')?.getAttribute('data-terminal-link'),
+      events: window.__linkSmokeEvents,
+    })`),
+    );
     throw new Error(`Link smoke timed out: ${label}`);
   };
   const bounds = await wait('terminal input', async () =>
@@ -59,6 +86,17 @@ export async function runTerminalLinksSmoke(options: {
       return r?.width > 100 && r.height > 150 ? { left: r.left, top: r.top } : undefined;
     })()`),
   );
+  await contents.executeJavaScript(`(() => {
+    window.__linkSmokeEvents = [];
+    for (const type of ['pointermove', 'pointerdown', 'pointerup', 'pointerleave', 'keydown', 'keyup', 'blur']) {
+      window.addEventListener(type, event => {
+        window.__linkSmokeEvents.push({type, x: event.clientX, y: event.clientY,
+          buttons: event.buttons, meta: event.metaKey, ctrl: event.ctrlKey,
+          target: event.target?.className});
+        if (window.__linkSmokeEvents.length > 20) window.__linkSmokeEvents.shift();
+      }, true);
+    }
+  })()`);
   window.show();
   window.focus();
   await client.sendText(session.id, 'r');
@@ -105,6 +143,11 @@ export async function runTerminalLinksSmoke(options: {
   click(5, 2);
   await wait('OSC 8 opener', async () => (opened.length === 2 ? true : undefined));
   if (opened[1] !== 'https://example.com/actual') throw new Error('OSC 8 label was opened instead of its destination');
+  move(5, 3);
+  await expectHover(sourceUrl);
+  click(5, 3);
+  await wait('OSC 8 file opener', async () => (opened.length === 3 ? true : undefined));
+  if (opened[2] !== sourceUrl) throw new Error('Wrong source file URL opened');
   let document = await client.getConfigDocument();
   const originalConfig = document.contents;
   ({ document } = await client.replaceConfigDocument(document.revision, `${originalConfig}\nlink-url = false\n`));
@@ -112,8 +155,10 @@ export async function runTerminalLinksSmoke(options: {
   await expectHover(null);
   move(5, 2);
   await expectHover('https://example.com/actual');
+  move(5, 3);
+  await expectHover(sourceUrl);
   await client.replaceConfigDocument(document.revision, `${originalConfig}\nlink-url = true\n`);
-  move(3, 4);
+  move(3, 5);
   await expectHover(`https://example.com/${'a'.repeat(230)}`);
   const wrappedSpans: number = await contents.executeJavaScript(
     `document.querySelectorAll('.terminal-link-overlay > span').length`,
@@ -142,7 +187,7 @@ export async function runTerminalLinksSmoke(options: {
   await contents.executeJavaScript('new Promise(resolve => requestAnimationFrame(resolve))');
   contents.sendInputEvent({ type: 'mouseUp', ...point(8, 0), button: 'left', modifiers: [modifier] });
   await new Promise((resolve) => setTimeout(resolve, 100));
-  if (opened.length !== 2) throw new Error('Dragging a link opened it');
+  if (opened.length !== 3) throw new Error('Dragging a link opened it');
   if (readFileSync(inputLog).includes(Buffer.from('\x1b[<')))
     throw new Error('Command-click leaked a mouse report to the TUI');
 
@@ -154,8 +199,94 @@ export async function runTerminalLinksSmoke(options: {
   await expectHover('https://example.com/plain');
   await client.sendText(session.id, 'c');
   await expectHover(null);
-  if (opened.length !== 2) throw new Error('An extra URL was opened');
+  if (opened.length !== 3) throw new Error('An extra URL was opened');
+  await client.sendText(session.id, 'r');
+  const footerRow = (await client.getSession(session.id)).rows - 1;
+  move(16, footerRow);
+  await expectHover(pathToFileURL(options.cwd).href);
+  writeFileSync(join(profile, 'folder-link.png'), (await contents.capturePage()).toPNG());
+  click(16, footerRow);
+  await wait('plain folder path opener', async () => (opened.length === 4 ? true : undefined));
+  if (opened[3] !== pathToFileURL(options.cwd).href) throw new Error('Wrong folder path opened');
   console.log(
-    'LINKS SMOKE OK: plain URL, OSC 8, Unicode, wrapping, live config, modifiers, drag, TUI capture, clearing',
+    'LINKS SMOKE OK: plain URL, folder paths, OSC 8 web/file links, Unicode, wrapping, live config, modifiers, drag, TUI capture, clearing',
   );
+}
+
+/** Opt-in check against the installed Codex TUI; no agent prompt is submitted. */
+async function runCodexFooterLinksSmoke(options: LinkSmokeOptions): Promise<void> {
+  const { client, cwd, opened, profile } = options;
+  const session = await client.createSession({
+    executable: 'codex',
+    args: ['-c', 'tui.status_line=["model-with-reasoning","current-dir"]'],
+    cwd,
+    environment: { mode: 'clean', variables: buildAgentEnvironment() },
+    cols: 120,
+    rows: 30,
+    persistence: 'terminate-with-app',
+    programKind: 'application',
+  });
+  const window = await options.createWindow();
+  window.show();
+  window.focus();
+  const contents = window.webContents;
+  const modifier = process.platform === 'darwin' ? 'meta' : 'control';
+  const destination = pathToFileURL(cwd).href;
+  const observed = new Set<string>();
+  const deadline = Date.now() + 40_000;
+  while (Date.now() < deadline) {
+    const bounds = await contents.executeJavaScript(`(() => {
+      const r = document.querySelector('.terminal-input')?.getBoundingClientRect();
+      return r && {left:r.left, top:r.top, width:r.width, height:r.height};
+    })()`);
+    const current = await client.getSession(session.id);
+    if (current.exited) throw new Error(`Codex exited before its footer could be tested: ${current.exitCode}`);
+    if (
+      bounds?.width > 100 &&
+      bounds.height > 100 &&
+      current.cols === Math.floor((bounds.width - 4) / 7.83) &&
+      current.rows === Math.floor((bounds.height - 4) / 19)
+    ) {
+      // Codex's inline mode leaves blank rows below its footer. Search upward
+      // so the status-bar directory wins over the duplicate in its header.
+      for (let row = current.rows - 1; row >= Math.floor(current.rows / 2); row--) {
+        for (let column = 0; column < current.cols; column += 5) {
+          const point = {
+            x: Math.round(bounds.left + 2 + (column + 0.5) * 7.83),
+            y: Math.round(bounds.top + 2 + (row + 0.5) * 19),
+          };
+          contents.sendInputEvent({ type: 'mouseMove', ...point, modifiers: [modifier] });
+          await new Promise((resolve) => setTimeout(resolve, 15));
+          const hovered = await contents.executeJavaScript(
+            `document.querySelector('.terminal-input')?.getAttribute('data-terminal-link')`,
+          );
+          if (hovered && !observed.has(hovered)) {
+            observed.add(hovered);
+            console.log('Codex footer candidate:', { row, column, rows: current.rows, hovered });
+          }
+          if (hovered !== destination) continue;
+          const underline = await contents.executeJavaScript(
+            `document.querySelectorAll('.terminal-link-overlay > span').length`,
+          );
+          if (underline === 0) throw new Error('Codex footer path has no underline');
+          writeFileSync(join(profile, 'codex-folder-link.png'), (await contents.capturePage()).toPNG());
+          for (const type of ['mouseDown', 'mouseUp'] as const) {
+            contents.sendInputEvent({ type, ...point, button: 'left', clickCount: 1, modifiers: [modifier] });
+          }
+          const openDeadline = Date.now() + 3000;
+          while (Date.now() < openDeadline && opened.length === 0) {
+            await new Promise((resolve) => setTimeout(resolve, 20));
+          }
+          if (opened[0] !== destination) throw new Error('Codex footer click did not open its working directory');
+          console.log(
+            'CODEX LINKS SMOKE OK: Command-hover underline and Command-click on the real Codex footer directory',
+          );
+          return;
+        }
+      }
+    }
+    await new Promise((resolve) => setTimeout(resolve, 100));
+  }
+  writeFileSync(join(profile, 'codex-links-failure.png'), (await contents.capturePage()).toPNG());
+  throw new Error('Codex footer directory did not become a hoverable link');
 }
