@@ -1,0 +1,141 @@
+{
+  "source": {
+    "repository": "rosetta",
+    "revision": "feb1f4cad42ba259a983b4a9b6e7591fe6955e19",
+    "path": "crates/protocol/tests/golden/wire.json",
+    "sha256": "c1d8a62c5e6e00ed180fd1ed0a95cf2d52c226e05bbe65b681fb73f6628abad3"
+  },
+  "protocol_version": 20,
+  "status": {
+    "canonical_ready": true,
+    "daemon": {
+      "hub": {
+        "meta_events": 4,
+        "overflow_rewarms": 0,
+        "resyncs": 1,
+        "rings": 1,
+        "rings_evicted": 0,
+        "session_mutations": 12,
+        "subscribers": 2
+      },
+      "ingest": {
+        "phase": "backfilling",
+        "projects": [
+          {
+            "bytes_streamed": 88080384,
+            "bytes_total": 536870912,
+            "project_id": "p1",
+            "sessions_done": 33,
+            "sessions_total": 214
+          },
+          {
+            "bytes_streamed": 1048576,
+            "bytes_total": 1048576,
+            "project_id": null,
+            "sessions_done": 12,
+            "sessions_total": 12
+          }
+        ],
+        "runtimes": [
+          {
+            "bytes_streamed": 1073741824,
+            "bytes_total": 2147483648,
+            "files_skimmed": 1209,
+            "files_total": 1209,
+            "kind": "claude-code",
+            "records": 214032,
+            "sessions_total": 5912,
+            "state": "streaming"
+          }
+        ]
+      },
+      "runtimes": [
+        {
+          "admissions": 2,
+          "events": 5,
+          "kind": "claude-code",
+          "last_activity_ms": 50000,
+          "live_rows": 12,
+          "polls": 20,
+          "rescans": 1,
+          "ticks": 100
+        }
+      ],
+      "started_at": 1000,
+      "uptime_ms": 60000
+    },
+    "protocol_version": 20,
+    "schema_version": 16,
+    "search": {
+      "progress": null,
+      "projection_epoch": "epoch-1",
+      "readiness": "catching-up",
+      "revision": 42
+    }
+  },
+  "sessions": {
+    "sessions": [
+      {
+        "activity": {
+          "first_at": 11000,
+          "last_at": 19000
+        },
+        "cwd": "/w/rosetta",
+        "delegation": null,
+        "id": "s1",
+        "native_session_id": "native-s1",
+        "parent_session_id": "s0",
+        "project_id": "p1",
+        "role": "subagent",
+        "root_session_id": "s0",
+        "runtime_id": "rt1",
+        "started_at": 10000,
+        "stream_state": "streaming",
+        "summary": "A summary",
+        "title": "Named",
+        "updated_at": 20000
+      }
+    ]
+  },
+  "session": {
+    "session": {
+      "activity": {
+        "first_at": 11000,
+        "last_at": 19000
+      },
+      "cwd": "/w/rosetta",
+      "delegation": null,
+      "id": "s1",
+      "native_session_id": "native-s1",
+      "parent_session_id": "s0",
+      "project_id": "p1",
+      "role": "subagent",
+      "root_session_id": "s0",
+      "runtime_id": "rt1",
+      "started_at": 10000,
+      "stream_state": "streaming",
+      "summary": "A summary",
+      "title": "Named",
+      "updated_at": 20000
+    }
+  },
+  "search_response": {
+    "hits": [
+      {
+        "at": 1,
+        "kind": "user",
+        "score": -1.5,
+        "session_id": "s1",
+        "snippet": "[needle] in a haystack",
+        "timeline_id": "t1"
+      }
+    ],
+    "state": {
+      "progress": null,
+      "projection_epoch": "epoch-1",
+      "readiness": "catching-up",
+      "revision": 42
+    }
+  },
+  "search_readiness": ["ready", "building", "catching-up", "stale", "failed"]
+}

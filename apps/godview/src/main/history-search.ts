@@ -18,11 +18,13 @@ import type {
  * provider-native session id both sides already hold. Provider names never
  * appear here; the daemon's runtime kinds pass through as opaque data.
  *
- * Two daemon generations are spoken. Protocol 18 answers one question for a
+ * Protocols 17 through 20 are supported. Protocol 18 answers one question for a
  * whole set of sessions, widens word fragments, and resolves native ids
  * directly. Protocol 17 has none of that, so the same questions are asked the
  * long way: a time-bounded search filtered here, and a listing of recent
- * sessions filtered here. A non-ready daemon answer is reported as
+ * sessions filtered here. Protocols 19 (activity) and 20 (authored images)
+ * preserve the status, session identity, and search fields consumed here.
+ * A non-ready daemon answer is reported as
  * unanswered, never as "no matches", so a sheet can hold what it last showed.
  *
  * The daemon has no authentication; its loopback bind and origin policy are
@@ -31,7 +33,7 @@ import type {
  */
 
 export const HISTORY_PROTOCOL_MIN = 17;
-export const HISTORY_PROTOCOL_MAX = 18;
+export const HISTORY_PROTOCOL_MAX = 20;
 export const DEFAULT_HISTORY_ORIGIN = 'http://127.0.0.1:4640';
 export const HISTORY_ANNOUNCEMENT_SCHEMA = 'rosetta-daemon/1';
 
@@ -172,18 +174,29 @@ export interface HistoryOriginSources {
   announced: readonly HistoryAnnouncement[];
 }
 
+export interface ResolvedHistoryOrigin {
+  origin: string;
+  source: HistoryOriginSource;
+  /** Distinguishes announced processes even when they reuse the same port. */
+  generation?: string;
+}
+
 /** A setting wins over the environment, which wins over what a daemon announced, which wins over the app default. */
-export function resolveHistoryOrigin(sources: HistoryOriginSources): { origin: string; source: HistoryOriginSource } {
+export function resolveHistoryOrigin(sources: HistoryOriginSources): ResolvedHistoryOrigin {
   const configured = validateHistoryOrigin(sources.configured);
-  if (configured) return { origin: configured, source: 'setting' };
   const environment = validateHistoryOrigin(sources.environment);
-  if (environment) return { origin: environment, source: 'environment' };
   const announced = sources.announced.find(
     (candidate) =>
       candidate.protocolVersion >= HISTORY_PROTOCOL_MIN && candidate.protocolVersion <= HISTORY_PROTOCOL_MAX,
   );
-  if (announced) return { origin: announced.origin, source: 'announcement' };
-  return { origin: DEFAULT_HISTORY_ORIGIN, source: 'default' };
+  const origin = configured ?? environment ?? announced?.origin ?? DEFAULT_HISTORY_ORIGIN;
+  const source = configured ? 'setting' : environment ? 'environment' : announced ? 'announcement' : 'default';
+  const process = sources.announced.find((candidate) => candidate.origin === origin);
+  return {
+    origin,
+    source,
+    ...(process ? { generation: JSON.stringify([process.pid, process.startedAt, process.db]) } : {}),
+  };
 }
 
 /* ── requests ──────────────────────────────────────────────────────────── */
@@ -278,9 +291,15 @@ function decodeSessionRow(value: unknown): DaemonSessionRow | undefined {
   };
 }
 
-function decodeSessionRows(body: unknown): DaemonSessionRow[] {
-  if (!isRecord(body) || !Array.isArray(body.sessions)) return [];
-  return body.sessions.map(decodeSessionRow).filter((row): row is DaemonSessionRow => row !== undefined);
+function decodeSessionRows(body: unknown): DaemonSessionRow[] | undefined {
+  if (!isRecord(body) || !Array.isArray(body.sessions)) return undefined;
+  const rows: DaemonSessionRow[] = [];
+  for (const value of body.sessions) {
+    const row = decodeSessionRow(value);
+    if (!row) return undefined;
+    rows.push(row);
+  }
+  return rows;
 }
 
 interface DaemonHit {
@@ -291,14 +310,14 @@ interface DaemonHit {
   snippet: string;
 }
 
-function decodeHits(body: unknown): DaemonHit[] {
-  if (!isRecord(body) || !Array.isArray(body.hits)) return [];
+function decodeHits(body: unknown): DaemonHit[] | undefined {
+  if (!isRecord(body) || !Array.isArray(body.hits)) return undefined;
   const hits: DaemonHit[] = [];
   for (const value of body.hits) {
-    if (!isRecord(value)) continue;
+    if (!isRecord(value)) return undefined;
     const timelineId = asString(value.timeline_id);
     const sessionId = asString(value.session_id);
-    if (!timelineId || !sessionId) continue;
+    if (!timelineId || !sessionId) return undefined;
     const at = asFiniteNumber(value.at);
     hits.push({
       timelineId,
@@ -340,8 +359,8 @@ function answers(readiness: HistorySearchReadiness): boolean {
 
 export interface HistorySearchServiceOptions {
   fetch: typeof fetch;
-  /** Resolved on every call, so a daemon that restarts on another port is followed. */
-  origin(): { origin: string; source: HistoryOriginSource } | undefined;
+  /** Rechecked across awaits; one operation never mixes daemon generations. */
+  origin(): ResolvedHistoryOrigin | undefined;
   now?: () => number;
   requestTimeoutMs?: number;
 }
@@ -353,7 +372,13 @@ export interface HistorySearchService {
   search(request: HistorySearchRequest): Promise<HistorySearchResponse>;
 }
 
-type Call = { ok: true; version: number; body: unknown } | { ok: false; failure: string; status?: number };
+type Failure = { ok: false; failure: string; reachable: boolean };
+type Result<T> = { ok: true; value: T } | Failure;
+type Call = Result<{ version: number; body: unknown }>;
+
+function failure(message: string, reachable = true): Failure {
+  return { ok: false, failure: message, reachable };
+}
 
 function describeFailure(error: unknown): string {
   if (error instanceof Error) {
@@ -369,80 +394,167 @@ function describeFailure(error: unknown): string {
 export function createHistorySearchService(options: HistorySearchServiceOptions): HistorySearchService {
   const now = options.now ?? Date.now;
   const timeoutMs = options.requestTimeoutMs ?? REQUEST_TIMEOUT_MS;
-  const versionByOrigin = new Map<string, { version: number; at: number }>();
-  const rowsByCanonicalId = new Map<string, DaemonSessionRow>();
-  const factsByNativeId = new Map<string, { row?: DaemonSessionRow; at: number }>();
 
-  async function call(path: string): Promise<Call & { origin?: string; source?: HistoryOriginSource }> {
-    const resolved = options.origin();
-    if (!resolved) return { ok: false, failure: 'no history daemon is configured' };
-    const { origin, source } = resolved;
+  interface SessionCache {
+    canonical: Map<string, DaemonSessionRow>;
+    native: Map<string, { row?: DaemonSessionRow; at: number }>;
+  }
+  interface DaemonContext {
+    target: ResolvedHistoryOrigin;
+    version?: { value: number; at: number };
+    startedAt?: number | null;
+    projectionEpoch?: string | null;
+    canonicalReady?: boolean;
+    search?: DaemonSearchState;
+    cache: SessionCache;
+  }
+
+  function emptyCache(): SessionCache {
+    return { canonical: new Map(), native: new Map() };
+  }
+
+  let active: DaemonContext | undefined;
+
+  /** A new selection owns fresh caches; late requests retain only their old context. */
+  function selectedDaemon(): DaemonContext | undefined {
+    const target = options.origin();
+    const origin = validateHistoryOrigin(target?.origin);
+    if (!target || !origin) {
+      active = undefined;
+      return undefined;
+    }
+    if (!active || active.target.origin !== origin || active.target.generation !== target.generation) {
+      active = { target: { ...target, origin }, cache: emptyCache() };
+    } else {
+      active.target = { ...target, origin };
+    }
+    return active;
+  }
+
+  function invalidated(daemon: DaemonContext, cache?: SessionCache): Failure | undefined {
+    if (selectedDaemon() !== daemon) return failure('the history daemon changed during the request; try again', false);
+    if (cache && daemon.cache !== cache) return failure('the history index changed during the request; try again');
+    return undefined;
+  }
+
+  /** A restart or projection rebuild also invalidates identities at an unchanged origin. */
+  function observe(daemon: DaemonContext, version: number, body: unknown): void {
+    const record = isRecord(body) ? body : {};
+    const state = isRecord(record.search) ? record.search : isRecord(record.state) ? record.state : undefined;
+    const epoch =
+      typeof state?.projection_epoch === 'string' || state?.projection_epoch === null
+        ? state.projection_epoch
+        : undefined;
+    const startedAt = isRecord(record.daemon)
+      ? asFiniteNumber(record.daemon.started_at)
+      : record.daemon === null
+        ? null
+        : undefined;
+    const changed =
+      (daemon.version !== undefined && daemon.version.value !== version) ||
+      (epoch !== undefined && daemon.projectionEpoch !== undefined && epoch !== daemon.projectionEpoch) ||
+      (startedAt !== undefined && daemon.startedAt !== undefined && startedAt !== daemon.startedAt);
+    if (changed) {
+      daemon.cache = emptyCache();
+      daemon.search = undefined;
+      daemon.canonicalReady = undefined;
+    }
+    daemon.version = { value: version, at: now() };
+    if (epoch !== undefined) daemon.projectionEpoch = epoch;
+    if (startedAt !== undefined) daemon.startedAt = startedAt;
+    if (typeof record.canonical_ready === 'boolean') daemon.canonicalReady = record.canonical_ready;
+    const search = decodeSearchState(state);
+    if (search) daemon.search = search;
+  }
+
+  /** All legs of an operation use the selected origin, never a newly resolved one. */
+  async function call(daemon: DaemonContext, path: string, cache?: SessionCache): Promise<Call> {
+    const startingCache = cache ?? daemon.cache;
+    const obsolete = invalidated(daemon, startingCache);
+    if (obsolete) return obsolete;
     try {
-      const response = await options.fetch(`${origin}${path}`, {
+      const response = await options.fetch(daemon.target.origin + path, {
         signal: AbortSignal.timeout(timeoutMs),
+        redirect: 'error',
         headers: { accept: 'application/json' },
       });
-      const version = Number(response.headers.get(PROTOCOL_HEADER));
+      const superseded = invalidated(daemon, startingCache);
+      if (superseded) return superseded;
+      const header = response.headers.get(PROTOCOL_HEADER);
+      const version = header === null || header.trim() === '' ? Number.NaN : Number(header);
       if (!Number.isInteger(version) || version < HISTORY_PROTOCOL_MIN || version > HISTORY_PROTOCOL_MAX) {
-        return {
-          ok: false,
-          origin,
-          source,
-          failure: `the history daemon speaks protocol ${Number.isNaN(version) ? 'unknown' : version}; this Godview understands ${HISTORY_PROTOCOL_MIN} to ${HISTORY_PROTOCOL_MAX}`,
-        };
+        daemon.version = undefined;
+        daemon.cache = emptyCache();
+        daemon.search = undefined;
+        daemon.canonicalReady = undefined;
+        return failure(
+          `the history daemon speaks protocol ${Number.isNaN(version) ? 'unknown' : version}; this Godview understands ${HISTORY_PROTOCOL_MIN} to ${HISTORY_PROTOCOL_MAX}`,
+          false,
+        );
       }
-      versionByOrigin.set(origin, { version, at: now() });
+      let body: unknown;
+      try {
+        body = await response.json();
+      } catch (error) {
+        if (response.ok) return failure('the history daemon returned invalid JSON: ' + describeFailure(error));
+      }
+      const replaced = invalidated(daemon, startingCache);
+      if (replaced) return replaced;
+      observe(daemon, version, response.ok ? body : undefined);
+      const changed = invalidated(daemon, cache);
+      if (changed) return changed;
       if (!response.ok) {
-        let message = `the history daemon answered ${response.status}`;
-        try {
-          const body = (await response.json()) as unknown;
-          if (isRecord(body) && isRecord(body.error) && typeof body.error.message === 'string') {
-            message = body.error.message;
-          }
-        } catch {
-          // The status line is the message.
-        }
-        return { ok: false, origin, source, failure: message, status: response.status };
+        const message = isRecord(body) && isRecord(body.error) ? asString(body.error.message) : undefined;
+        return failure(message ?? 'the history daemon answered ' + response.status);
       }
-      return { ok: true, origin, source, version, body: (await response.json()) as unknown };
+      return { ok: true, value: { version, body } };
     } catch (error) {
-      return { ok: false, origin, source, failure: describeFailure(error) };
+      return invalidated(daemon, startingCache) ?? failure(describeFailure(error), false);
     }
   }
 
-  interface DaemonIdentity {
-    origin: string;
-    source: HistoryOriginSource;
-    version: number;
-  }
-
-  /** The daemon generation behind the current origin, from any answer within the TTL, else one status call. */
-  async function identity(): Promise<DaemonIdentity | undefined> {
-    const resolved = options.origin();
-    if (!resolved) return undefined;
-    const known = versionByOrigin.get(resolved.origin);
-    if (known && now() - known.at < VERSION_TTL_MS) return { ...resolved, version: known.version };
-    const result = await call('/api/status');
-    return result.ok ? { ...resolved, version: result.version } : undefined;
-  }
-
-  async function protocolVersion(): Promise<number | undefined> {
-    return (await identity())?.version;
-  }
-
-  function statusOf(who: DaemonIdentity): HistorySearchStatus {
+  function statusOf(daemon?: DaemonContext, error?: Failure): HistorySearchStatus {
     return {
-      origin: who.origin,
-      source: who.source,
-      reachable: true,
-      protocolVersion: who.version,
-      capabilities: { sessionScope: who.version >= 18, prefix: who.version >= 18 },
+      ...(daemon ? { origin: daemon.target.origin, source: daemon.target.source } : {}),
+      reachable: error ? error.reachable : daemon !== undefined,
+      ...(daemon?.version
+        ? {
+            protocolVersion: daemon.version.value,
+            capabilities: { sessionScope: daemon.version.value >= 18, prefix: daemon.version.value >= 18 },
+          }
+        : {}),
+      ...(daemon?.canonicalReady !== undefined ? { canonicalReady: daemon.canonicalReady } : {}),
+      ...(daemon?.search ? { readiness: daemon.search.readiness } : {}),
+      ...(daemon?.search?.progress ? { progress: daemon.search.progress } : {}),
+      ...(error ? { detail: error.failure } : !daemon ? { detail: 'no history daemon is configured' } : {}),
       checkedAt: new Date(now()).toISOString(),
     };
   }
 
-  function rememberRow(row: DaemonSessionRow): void {
-    rowsByCanonicalId.set(row.id, row);
+  function unanswered(daemon?: DaemonContext, error?: Failure): HistorySearchResponse {
+    return { status: statusOf(daemon, error), answered: false, hits: [], clipped: false };
+  }
+
+  async function readStatus(daemon: DaemonContext): Promise<Result<number>> {
+    const result = await call(daemon, '/api/status');
+    if (!result.ok) return result;
+    const { body, version } = result.value;
+    if (!isRecord(body) || typeof body.canonical_ready !== 'boolean' || !decodeSearchState(body.search)) {
+      return failure('the history daemon returned an invalid status response');
+    }
+    return { ok: true, value: version };
+  }
+
+  async function identity(daemon: DaemonContext): Promise<Result<number>> {
+    const known = daemon.version;
+    return known && now() - known.at < VERSION_TTL_MS ? { ok: true, value: known.value } : readStatus(daemon);
+  }
+
+  async function status(): Promise<HistorySearchStatus> {
+    const daemon = selectedDaemon();
+    if (!daemon) return statusOf();
+    const result = await readStatus(daemon);
+    return statusOf(daemon, result.ok ? undefined : result);
   }
 
   function factsOf(row: DaemonSessionRow): HistorySessionFacts {
@@ -458,140 +570,141 @@ export function createHistorySearchService(options: HistorySearchServiceOptions)
     };
   }
 
-  async function status(): Promise<HistorySearchStatus> {
-    const checkedAt = new Date(now()).toISOString();
-    const result = await call('/api/status');
-    if (!result.ok) {
-      return {
-        ...(result.origin ? { origin: result.origin, source: result.source } : {}),
-        reachable: false,
-        detail: result.failure,
-        checkedAt,
-      };
+  async function lookupRows(
+    daemon: DaemonContext,
+    cache: SessionCache,
+    version: number,
+    nativeSessionIds: readonly string[],
+  ): Promise<Result<Map<string, DaemonSessionRow>>> {
+    const found = new Map<string, DaemonSessionRow>();
+    const wanted = new Set(nativeSessionIds);
+    const chunkSize = version >= 18 ? NATIVE_LOOKUP_CHUNK : nativeSessionIds.length;
+    for (let start = 0; start < nativeSessionIds.length; start += chunkSize) {
+      const chunk = nativeSessionIds.slice(start, start + chunkSize);
+      const path =
+        version >= 18
+          ? `/api/sessions?native_session_id=${encodeURIComponent(chunk.join(','))}&limit=${V17_LIST_LIMIT}`
+          : `/api/sessions?limit=${V17_LIST_LIMIT}`;
+      const result = await call(daemon, path, cache);
+      if (!result.ok) return result;
+      const rows = decodeSessionRows(result.value.body);
+      if (!rows) return failure('the history daemon returned an invalid session list');
+      for (const row of rows) {
+        if (!wanted.has(row.nativeSessionId)) continue;
+        const existing = found.get(row.nativeSessionId);
+        // A native id can name a child; the root's own row wins for the join.
+        if (!existing || (existing.parentSessionId && !row.parentSessionId)) found.set(row.nativeSessionId, row);
+      }
     }
-    const body = isRecord(result.body) ? result.body : {};
-    const search = decodeSearchState(body.search);
-    return {
-      origin: result.origin,
-      source: result.source,
-      reachable: true,
-      protocolVersion: result.version,
-      capabilities: { sessionScope: result.version >= 18, prefix: result.version >= 18 },
-      ...(typeof body.canonical_ready === 'boolean' ? { canonicalReady: body.canonical_ready } : {}),
-      ...(search ? { readiness: search.readiness } : {}),
-      ...(search?.progress ? { progress: search.progress } : {}),
-      checkedAt,
-    };
+    return { ok: true, value: found };
   }
 
-  async function lookupRows(nativeSessionIds: readonly string[]): Promise<Map<string, DaemonSessionRow>> {
-    const found = new Map<string, DaemonSessionRow>();
-    if (nativeSessionIds.length === 0) return found;
-    const version = await protocolVersion();
-    if (version === undefined) return found;
-    if (version >= 18) {
-      for (let start = 0; start < nativeSessionIds.length; start += NATIVE_LOOKUP_CHUNK) {
-        const chunk = nativeSessionIds.slice(start, start + NATIVE_LOOKUP_CHUNK);
-        const result = await call(
-          `/api/sessions?native_session_id=${encodeURIComponent(chunk.join(','))}&limit=${V17_LIST_LIMIT}`,
-        );
-        if (!result.ok) continue;
-        for (const row of decodeSessionRows(result.body)) {
-          rememberRow(row);
-          // A native id can name a child; the root's own row wins for the join.
-          const existing = found.get(row.nativeSessionId);
-          if (!existing || (existing.parentSessionId && !row.parentSessionId)) found.set(row.nativeSessionId, row);
+  /** Failed refreshes retain previous facts and never become cached misses. */
+  async function cachedRows(
+    daemon: DaemonContext,
+    cache: SessionCache,
+    version: number,
+    nativeSessionIds: readonly string[],
+  ): Promise<{ rows: Map<string, DaemonSessionRow>; error?: Failure }> {
+    const stale = nativeSessionIds.filter((id) => {
+      const cached = cache.native.get(id);
+      return !cached || now() - cached.at >= (cached.row ? FACTS_TTL_MS : MISS_TTL_MS);
+    });
+    let error: Failure | undefined;
+    if (stale.length > 0) {
+      const result = await lookupRows(daemon, cache, version, stale);
+      error = result.ok ? invalidated(daemon, cache) : result;
+      if (result.ok && !error) {
+        const at = now();
+        for (const id of stale) {
+          const row = result.value.get(id);
+          if (row) cache.canonical.set(row.id, row);
+          // A cold projection has not proved that an absent session is missing.
+          if (row || daemon.canonicalReady === true) cache.native.set(id, { ...(row ? { row } : {}), at });
         }
       }
-      return found;
     }
-    const result = await call(`/api/sessions?limit=${V17_LIST_LIMIT}`);
-    if (!result.ok) return found;
-    const wanted = new Set(nativeSessionIds);
-    for (const row of decodeSessionRows(result.body)) {
-      rememberRow(row);
-      if (wanted.has(row.nativeSessionId)) found.set(row.nativeSessionId, row);
-    }
-    return found;
-  }
-
-  /** Rows for live runs, through a short cache so a keystroke never relists sessions. */
-  async function cachedRows(nativeSessionIds: readonly string[]): Promise<Map<string, DaemonSessionRow>> {
-    const at = now();
-    const stale = nativeSessionIds.filter((id) => {
-      const cached = factsByNativeId.get(id);
-      return !cached || at - cached.at >= (cached.row ? FACTS_TTL_MS : MISS_TTL_MS);
-    });
-    if (stale.length > 0) {
-      const rows = await lookupRows(stale);
-      for (const id of stale) {
-        const row = rows.get(id);
-        factsByNativeId.set(id, { ...(row ? { row } : {}), at });
-      }
-    }
-    const result = new Map<string, DaemonSessionRow>();
+    const rows = new Map<string, DaemonSessionRow>();
     for (const id of nativeSessionIds) {
-      const row = factsByNativeId.get(id)?.row;
-      if (row) result.set(id, row);
+      const row = cache.native.get(id)?.row;
+      if (row) rows.set(id, row);
     }
-    return result;
+    return { rows, ...(error ? { error } : {}) };
   }
 
   async function facts(nativeSessionIds: readonly string[]): Promise<HistorySessionFacts[]> {
-    const rows = await cachedRows(nativeSessionIds);
+    const daemon = selectedDaemon();
+    if (!daemon || nativeSessionIds.length === 0) return [];
+    const who = await identity(daemon);
+    const cache = daemon.cache;
+    if (who.ok) await cachedRows(daemon, cache, who.value, nativeSessionIds);
+    if (invalidated(daemon, cache)) return [];
     return nativeSessionIds.flatMap((id) => {
-      const row = rows.get(id);
+      const row = cache.native.get(id)?.row;
       return row ? [factsOf(row)] : [];
     });
   }
 
-  async function rootOf(sessionId: string, budget: { remaining: number }): Promise<DaemonSessionRow | undefined> {
-    const known = rowsByCanonicalId.get(sessionId);
-    if (known) return known.rootSessionId === known.id ? known : (rowsByCanonicalId.get(known.rootSessionId) ?? known);
-    if (budget.remaining <= 0) return undefined;
+  async function sessionRow(
+    daemon: DaemonContext,
+    cache: SessionCache,
+    sessionId: string,
+    budget: { remaining: number },
+  ): Promise<Result<DaemonSessionRow | undefined>> {
+    const known = cache.canonical.get(sessionId);
+    if (known) return { ok: true, value: known };
+    if (budget.remaining <= 0) return { ok: true, value: undefined };
     budget.remaining -= 1;
-    const result = await call(`/api/sessions/${encodeURIComponent(sessionId)}`);
-    if (!result.ok || !isRecord(result.body)) return undefined;
-    const row = decodeSessionRow(result.body.session);
-    if (!row) return undefined;
-    rememberRow(row);
-    if (row.rootSessionId === row.id) return row;
-    const root = rowsByCanonicalId.get(row.rootSessionId);
-    if (root) return root;
-    if (budget.remaining <= 0) return row;
-    budget.remaining -= 1;
-    const rootResult = await call(`/api/sessions/${encodeURIComponent(row.rootSessionId)}`);
-    if (rootResult.ok && isRecord(rootResult.body)) {
-      const rootRow = decodeSessionRow(rootResult.body.session);
-      if (rootRow) {
-        rememberRow(rootRow);
-        return rootRow;
-      }
-    }
-    return row;
+    const result = await call(daemon, '/api/sessions/' + encodeURIComponent(sessionId), cache);
+    if (!result.ok) return result;
+    const row = isRecord(result.value.body) ? decodeSessionRow(result.value.body.session) : undefined;
+    if (!row || row.id !== sessionId) return failure('the history daemon returned an invalid session');
+    cache.canonical.set(row.id, row);
+    return { ok: true, value: row };
+  }
+
+  async function rootOf(
+    daemon: DaemonContext,
+    cache: SessionCache,
+    sessionId: string,
+    budget: { remaining: number },
+  ): Promise<Result<DaemonSessionRow | undefined>> {
+    const result = await sessionRow(daemon, cache, sessionId, budget);
+    if (!result.ok || !result.value || result.value.rootSessionId === result.value.id) return result;
+    return sessionRow(daemon, cache, result.value.rootSessionId, budget);
   }
 
   async function search(request: HistorySearchRequest): Promise<HistorySearchResponse> {
+    const daemon = selectedDaemon();
+    if (!daemon) return unanswered();
+    const who = await identity(daemon);
+    if (!who.ok) return unanswered(daemon, who);
+    const cache = daemon.cache;
+    const version = who.value;
     const query = normalizeHistoryQuery(request.query);
-    // One question per keystroke means no separate status round trip: the
-    // daemon's generation is remembered from its last answer, and the search
-    // answer itself carries readiness.
-    const who = await identity();
-    if (!who) return { status: await status(), answered: false, hits: [], clipped: false };
-    const current = statusOf(who);
-    if (query === '') return { status: current, answered: true, hits: [], clipped: false };
+    if (query === '') return { status: statusOf(daemon), answered: true, hits: [], clipped: false };
 
-    // The live runs' canonical roots, when the caller scoped to live runs.
     const scoped = request.nativeSessionIds.length > 0;
-    const liveRows = scoped ? await cachedRows(request.nativeSessionIds) : new Map<string, DaemonSessionRow>();
+    const live = scoped
+      ? await cachedRows(daemon, cache, version, request.nativeSessionIds)
+      : { rows: new Map<string, DaemonSessionRow>() };
+    if (live.error) return unanswered(daemon, live.error);
+    const obsolete = invalidated(daemon, cache);
+    if (obsolete) return unanswered(daemon, obsolete);
     const roots = new Map<string, DaemonSessionRow>();
-    for (const row of liveRows.values()) {
-      const root = row.rootSessionId === row.id ? row : (rowsByCanonicalId.get(row.rootSessionId) ?? row);
+    for (const row of live.rows.values()) {
+      const root = row.rootSessionId === row.id ? row : (cache.canonical.get(row.rootSessionId) ?? row);
       roots.set(root.id, root);
     }
     if (scoped && roots.size === 0) {
+      // Session lists carry no readiness. Probe before calling an empty list a real answer.
+      const checked = await readStatus(daemon);
+      if (!checked.ok) return unanswered(daemon, checked);
+      const changed = invalidated(daemon, cache);
+      if (changed) return unanswered(daemon, changed);
+      if (!daemon.canonicalReady || !daemon.search || !answers(daemon.search.readiness)) return unanswered(daemon);
       return {
-        status: { ...current, detail: 'none of the live sessions are in the history index yet' },
+        status: { ...statusOf(daemon), detail: 'none of the live sessions are in the history index yet' },
         answered: true,
         hits: [],
         clipped: false,
@@ -601,49 +714,36 @@ export function createHistorySearchService(options: HistorySearchServiceOptions)
     const limit = request.limit ?? DEFAULT_SEARCH_LIMIT;
     const params = new URLSearchParams({ q: query });
     let effectiveLimit = limit;
-    if (who.version >= 18) {
+    if (version >= 18) {
       if (scoped) params.set('sessions', [...roots.keys()].join(','));
       params.set('prefix', String(request.prefix ?? true));
       params.set('limit', String(limit));
     } else {
-      // Protocol 17 knows one session at a time and no prefix: ask once,
-      // bounded by the earliest live start, and keep only the sessions asked
-      // for. Delegated children cannot be attributed without the expansion.
+      // Protocol 17 cannot scope a set or expand delegated children.
       if (request.afterMs !== undefined) params.set('after_ts', String(request.afterMs));
       effectiveLimit = scoped ? V17_SEARCH_LIMIT : limit;
       params.set('limit', String(effectiveLimit));
     }
-    const result = await call(`/api/search?${params.toString()}`);
-    if (!result.ok) {
-      // An HTTP answer means the daemon is there and refused the question; no
-      // answer at all means it is gone.
-      const reachable = result.status !== undefined;
-      return {
-        status: { ...current, reachable, detail: result.failure },
-        answered: false,
-        hits: [],
-        clipped: false,
-      };
-    }
-    const body = isRecord(result.body) ? result.body : {};
-    const state = decodeSearchState(body.state);
-    const readiness = state?.readiness ?? 'failed';
-    const statusNow: HistorySearchStatus = {
-      ...current,
-      readiness,
-      ...(state?.progress ? { progress: state.progress } : {}),
-    };
-    if (!answers(readiness)) return { status: statusNow, answered: false, hits: [], clipped: false };
-
+    const result = await call(daemon, '/api/search?' + params.toString(), cache);
+    if (!result.ok) return unanswered(daemon, result);
+    const body = result.value.body;
+    const state = isRecord(body) ? decodeSearchState(body.state) : undefined;
+    if (!state) return unanswered(daemon, failure('the history daemon returned an invalid search state'));
+    if (!answers(state.readiness)) return unanswered(daemon);
     const raw = decodeHits(body);
-    const clipped = raw.length >= effectiveLimit;
+    if (!raw) return unanswered(daemon, failure('the history daemon returned invalid search hits'));
+
+    let clipped = raw.length >= effectiveLimit;
     const hits: HistorySearchHit[] = [];
     const budget = { remaining: MAX_CHILD_LOOKUPS_PER_SEARCH };
     for (const hit of raw) {
       let root = roots.get(hit.sessionId);
       if (!root) {
-        if (scoped && who.version < 18) continue;
-        root = await rootOf(hit.sessionId, budget);
+        if (scoped && version < 18) continue;
+        const resolved = await rootOf(daemon, cache, hit.sessionId, budget);
+        if (!resolved.ok) return unanswered(daemon, resolved);
+        root = resolved.value;
+        if (!root) clipped = true;
         if (scoped && (!root || !roots.has(root.id))) continue;
       }
       hits.push({
@@ -657,7 +757,9 @@ export function createHistorySearchService(options: HistorySearchServiceOptions)
         snippet: hit.snippet,
       });
     }
-    return { status: statusNow, answered: true, hits, clipped };
+    const changed = invalidated(daemon, cache);
+    if (changed) return unanswered(daemon, changed);
+    return { status: statusOf(daemon), answered: true, hits, clipped };
   }
 
   return { status, facts, search };

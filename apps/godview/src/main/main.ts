@@ -696,21 +696,21 @@ const pendingProfileLogins = new Map<string, { profileId: string; timer: NodeJS.
 /** Where the transcript history daemon lives; hand-edited, never written by Godview. */
 const historySettingsStore = createHistorySettingsStore(join(app.getPath('userData'), 'history-search.json'));
 const historyAnnounceDirectory = defaultAnnounceDirectory(process.platform, process.env);
-const HISTORY_ORIGIN_TTL_MS = 10_000;
-let historyOriginCache: { at: number; value: ReturnType<typeof resolveHistoryOrigin> } | undefined;
+const HISTORY_ANNOUNCEMENT_TTL_MS = 10_000;
+let historyAnnouncementCache: { at: number; value: ReturnType<typeof discoverAnnouncedDaemons> } | undefined;
 /** Resolved per call so a daemon that restarts on another port is followed; the announce directory is read at most every few seconds. */
 function currentHistoryOrigin(): ReturnType<typeof resolveHistoryOrigin> | undefined {
   const settings = historySettingsStore.read();
   if (!settings.enabled) return undefined;
   const now = Date.now();
-  if (historyOriginCache && now - historyOriginCache.at < HISTORY_ORIGIN_TTL_MS) return historyOriginCache.value;
-  const value = resolveHistoryOrigin({
+  if (!historyAnnouncementCache || now - historyAnnouncementCache.at >= HISTORY_ANNOUNCEMENT_TTL_MS) {
+    historyAnnouncementCache = { at: now, value: discoverAnnouncedDaemons(historyAnnounceDirectory) };
+  }
+  return resolveHistoryOrigin({
     ...(settings.origin ? { configured: settings.origin } : {}),
     ...(process.env.GODVIEW_HISTORY_DAEMON ? { environment: process.env.GODVIEW_HISTORY_DAEMON } : {}),
-    announced: discoverAnnouncedDaemons(historyAnnounceDirectory),
+    announced: historyAnnouncementCache.value,
   });
-  historyOriginCache = { at: now, value };
-  return value;
 }
 // Loopback only, and only ever the daemon the user's own settings or the
 // daemon's own announcement point at; the service refuses any other origin.

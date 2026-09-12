@@ -46,12 +46,25 @@ view already uses.
 
 ## Protocol
 
-Two daemon protocol generations are spoken. Protocol 18 answers one question for a whole set of sessions
+Daemon protocols 17 through 20 are supported. Protocol 18 answers one question for a whole set of sessions
 (`sessions=`), widens word fragments (`prefix=true`), resolves native ids directly
 (`/api/sessions?native_session_id=`), keeps hits under a consistent snapshot while the index is catching up, and
 announces its origin (`serve --announce`). Protocol 17 has none of that, so the same questions are asked the long
-way: a time-bounded search filtered in main, and a listing of recent sessions filtered in main. A non-ready answer
-is reported as unanswered, never as "no matches", so the sheet holds what it last showed.
+way: a time-bounded search filtered in main, and a listing of recent sessions filtered in main. Protocol 19 adds
+recorded session activity and protocol 20 adds authored images; both preserve the status, session identity, and
+search fields consumed here. The compatibility test uses selected responses from Rosetta's version 20 wire golden,
+committed under `apps/godview/src/main/fixtures/rosetta-protocol-20.json` with the source revision and digest. Normal
+builds and tests do not require a sibling checkout. Unknown protocol versions remain unsupported until reviewed.
+
+A non-ready answer, failed lookup (including any chunk or delegated child), or malformed response is reported as
+unanswered, so the sheet holds what it last showed. Failed facts refreshes preserve existing facts and are retried
+on the next request; only successful lookups cache missing sessions. Empty session lists require a ready canonical
+projection before they can answer "no matches".
+
+Each operation stays with one daemon and projection. Caches are discarded when the origin, announced process,
+reported process start, protocol, or projection epoch changes, and when history is disabled. Late responses from a
+previous selection cannot populate the current caches. Settings are read on every operation; only announcement
+discovery has a ten-second cache.
 
 ## Not in this phase
 
