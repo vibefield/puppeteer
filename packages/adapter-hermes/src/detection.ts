@@ -54,7 +54,9 @@ export async function probeHermesVersion(executable = resolveHermesExecutable())
   return parsed;
 }
 
-export function buildHermesTuiArgs(options: { resume?: string; yolo?: boolean } = {}): string[] {
+export function buildHermesTuiArgs(
+  options: { resume?: string | undefined; yolo?: boolean | undefined } = {},
+): string[] {
   const args: string[] = [HERMES_LAUNCH_FLAGS.tui];
   if (options.yolo) args.push(HERMES_LAUNCH_FLAGS.yolo);
   if (options.resume) args.push(HERMES_LAUNCH_FLAGS.resume, options.resume);

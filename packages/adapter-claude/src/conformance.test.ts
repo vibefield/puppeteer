@@ -69,7 +69,7 @@ async function claudeHarness(resume?: string): Promise<ClaudeConformanceHarness>
   const settings = JSON.parse(readFileSync(prepared!.settingsPath, 'utf8')) as {
     hooks: Record<string, Array<{ hooks: Array<{ url?: string }> }>>;
   };
-  const endpoint = settings.hooks.UserPromptSubmit[0].hooks[0].url!;
+  const endpoint = settings.hooks.UserPromptSubmit![0]!.hooks[0]!.url!;
   const token = prepared!.env.PUPPETEER_HOOK_TOKEN;
 
   const hook = async (name: string, fields: Record<string, unknown> = {}): Promise<void> => {

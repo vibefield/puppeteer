@@ -83,10 +83,10 @@ interface ChildSample {
 
 export interface ClaudeMonitorEvidenceOptions {
   nativeSessionId: () => string;
-  epoch?: string;
-  otelUsageEnabled?: boolean;
-  otelUsageUnavailableReason?: string;
-  otelUsageVerified?: boolean;
+  epoch?: string | undefined;
+  otelUsageEnabled?: boolean | undefined;
+  otelUsageUnavailableReason?: string | undefined;
+  otelUsageVerified?: boolean | undefined;
 }
 
 /** Stateful root/child status batch builder; the original payload stays on the native envelope. */

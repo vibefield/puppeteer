@@ -16,7 +16,10 @@ export class HermesConversationNormalizer {
     return [{ type: 'conversation:assistant-message', turnId, text: this.assistantText, final: false }];
   }
 
-  complete(payload: Record<string, unknown>, turnId?: string): { text?: string; events: ConversationEvent[] } {
+  complete(
+    payload: Record<string, unknown>,
+    turnId?: string,
+  ): { text?: string | undefined; events: ConversationEvent[] } {
     const finalText = hermesString(payload.text) ?? this.assistantText;
     this.assistantText = '';
     const events: ConversationEvent[] = [];

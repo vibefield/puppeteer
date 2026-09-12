@@ -19,18 +19,18 @@ const ClaudeContinuationStateSchema = z.union([
 ]);
 
 export interface ClaudeNativeInvocationOptions {
-  model?: string;
-  effort?: string;
-  permissionMode?: string;
-  settingSources?: ClaudeSettingSource[];
-  configDir?: string;
-  resumeInvocation?: string[];
-  executable?: string;
-  env?: Record<string, string>;
+  model?: string | undefined;
+  effort?: string | undefined;
+  permissionMode?: string | undefined;
+  settingSources?: ClaudeSettingSource[] | undefined;
+  configDir?: string | undefined;
+  resumeInvocation?: string[] | undefined;
+  executable?: string | undefined;
+  env?: Record<string, string> | undefined;
 }
 
 export interface RestoreClaudeContinuationOptions {
-  imposterExecutable?: string;
+  imposterExecutable?: string | undefined;
 }
 
 /** Claude owns its CLI grammar, config-root semantics, and imposter mapping. */

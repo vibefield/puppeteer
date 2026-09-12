@@ -8,7 +8,9 @@ export interface AntigravitySessionLocation {
   sessionDir: string;
   transcriptPath: string;
 }
-export function resolveAntigravityDataRoot(options: { home?: string; dataRoot?: string } = {}): string {
+export function resolveAntigravityDataRoot(
+  options: { home?: string | undefined; dataRoot?: string | undefined } = {},
+): string {
   return resolve(
     options.dataRoot ??
       join(options.home ?? process.env.PUPPETEER_ANTIGRAVITY_HOME ?? homedir(), '.gemini', 'antigravity-cli'),

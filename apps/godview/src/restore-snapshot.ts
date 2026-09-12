@@ -105,7 +105,7 @@ export interface RestoreSnapshotAgentInput {
 export interface BuildRestoreSnapshotInput {
   windows: readonly RestoreSnapshotWindowInput[];
   agents: ReadonlyMap<string, RestoreSnapshotAgentInput>;
-  activeWindowId?: string;
+  activeWindowId?: string | undefined;
   /** Old persisted pane session id -> newly recovered runtime session id. */
   sessionAliases?: ReadonlyMap<string, string>;
   updatedAtMs: number;

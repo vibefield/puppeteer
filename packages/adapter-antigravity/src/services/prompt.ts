@@ -7,7 +7,7 @@ export class AntigravityPromptService {
       host: AgentHost;
       runtimeSessionId: string;
       observer: AntigravitySessionObserver;
-      confirmationTimeoutMs?: number;
+      confirmationTimeoutMs?: number | undefined;
       isDisposed(): boolean;
     },
   ) {}

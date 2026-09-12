@@ -122,54 +122,54 @@ export interface ClaudeSessionPorts {
 export interface CreateClaudeSessionOptions {
   cwd: string;
   ports: ClaudeSessionPorts;
-  title?: string;
-  executable?: string;
+  title?: string | undefined;
+  executable?: string | undefined;
   /** Adapter-normalized launch environment; runtime consumers do not configure this directly. */
-  env?: Record<string, string>;
-  permissionMode?: string;
+  env?: Record<string, string> | undefined;
+  permissionMode?: string | undefined;
   /** Model alias or full model id passed through to Claude Code. */
-  model?: string;
+  model?: string | undefined;
   /** Claude Code binary version detected before launch, when available. */
-  providerVersion?: string;
+  providerVersion?: string | undefined;
   /** Open-ended effort intent passed through to Claude Code. */
-  effort?: string;
+  effort?: string | undefined;
   /** Native settings layers loaded by Claude and considered for status-line delegation. */
-  settingSources?: readonly import('./observation/status-channel.js').ClaudeSettingSource[];
+  settingSources?: readonly import('./observation/status-channel.js').ClaudeSettingSource[] | undefined;
   /** Claude user configuration root when the launching environment relocates it. */
-  configDir?: string;
+  configDir?: string | undefined;
   /** Opt into Claude FileChanged observation with its native filename matcher syntax. */
-  fileChangeMatcher?: string;
+  fileChangeMatcher?: string | undefined;
   /**
    * Resume an existing session by id (native `--resume`; the session keeps its
    * transcript and id—packages/surface/vendors/claude/findings.md §6). Omit to start fresh.
    */
-  resume?: string;
+  resume?: string | undefined;
   /** Preserve Claude's native resume picker/continue selection after launch. */
-  resumeInvocation?: string[];
+  resumeInvocation?: string[] | undefined;
   /** Observer fallback cadence; hook envelopes are the primary poll signal. */
-  transcriptPollIntervalMs?: number;
+  transcriptPollIntervalMs?: number | undefined;
   /** Non-blocking reports for malformed known hooks retained as native evidence. */
-  onDiagnostic?: (diagnostic: ClaudeHookDiagnostic) => void;
+  onDiagnostic?: ((diagnostic: ClaudeHookDiagnostic) => void) | undefined;
   /** Injectable bridge factory for deterministic transport-failure tests. */
-  hookBridgeFactory?: (options: HookBridgeOptions) => HookBridge;
+  hookBridgeFactory?: ((options: HookBridgeOptions) => HookBridge) | undefined;
   /**
    * Explicit fault injection for native canaries. After the selected accepted
    * hook, close only the observation bridge while leaving Claude and its
    * semantic transcript observer alive. Never set this for product sessions.
    */
-  hookRailFaultInjection?: ClaudeHookRailFaultInjection;
+  hookRailFaultInjection?: ClaudeHookRailFaultInjection | undefined;
   /** Injectable durable observer; defaults to live transcript updates. */
-  semanticProviderFactory?: () => SemanticObservationProvider;
+  semanticProviderFactory?: (() => SemanticObservationProvider) | undefined;
   /** Enable authenticated Claude OTLP request-completion logs. Defaults to true when no exporter conflict exists. */
-  observeOtlpUsage?: boolean;
+  observeOtlpUsage?: boolean | undefined;
   /** Install and consume Claude's child status channel. Defaults to true for direct adapter callers. */
-  observeSubagentStatus?: boolean;
+  observeSubagentStatus?: boolean | undefined;
 }
 
 export interface ClaudeHookRailFaultInjection {
   afterHookEvent: string;
-  occurrence?: number;
-  reason?: string;
+  occurrence?: number | undefined;
+  reason?: string | undefined;
 }
 
 /**

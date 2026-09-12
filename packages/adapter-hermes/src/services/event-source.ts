@@ -9,8 +9,8 @@ import {
 } from '@vibecook/puppeteer-core';
 
 export interface HermesEventPublication {
-  nativeSessionId?: string;
-  turnId?: string;
+  nativeSessionId?: string | undefined;
+  turnId?: string | undefined;
   timestamp: string;
   source: AgentEventSource;
   confidence: AgentEventConfidence;

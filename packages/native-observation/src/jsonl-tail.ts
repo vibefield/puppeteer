@@ -25,11 +25,11 @@ export interface JsonlTailPoll {
 
 export interface AppendOnlyJsonlTailOptions {
   /** Existing byte boundary. Earlier records are bounded replay; later records are live. */
-  replayBoundary?: number;
-  maxReplayBytes?: number;
-  readChunkBytes?: number;
-  maxBytesPerPoll?: number;
-  maxRecordBytes?: number;
+  replayBoundary?: number | undefined;
+  maxReplayBytes?: number | undefined;
+  readChunkBytes?: number | undefined;
+  maxBytesPerPoll?: number | undefined;
+  maxRecordBytes?: number | undefined;
 }
 
 export interface AppendOnlyJsonlTail {

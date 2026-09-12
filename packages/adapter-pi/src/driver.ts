@@ -13,16 +13,16 @@ import { PiEventSource } from './services/event-source.js';
 import { PiPromptService } from './services/prompt.js';
 
 export interface CreatePiTuiSessionOptions extends AgentTuiSessionOptions {
-  executable?: string;
-  env?: Record<string, string>;
-  piAgentDir?: string;
-  sessionDir?: string;
-  provider?: string;
-  model?: string;
-  thinking?: string;
-  name?: string;
-  pollIntervalMs?: number;
-  maxReplayBytes?: number;
+  executable?: string | undefined;
+  env?: Record<string, string> | undefined;
+  piAgentDir?: string | undefined;
+  sessionDir?: string | undefined;
+  provider?: string | undefined;
+  model?: string | undefined;
+  thinking?: string | undefined;
+  name?: string | undefined;
+  pollIntervalMs?: number | undefined;
+  maxReplayBytes?: number | undefined;
 }
 export interface PiTuiSession extends AgentAdapterBinding {
   sessionFile(): string | undefined;

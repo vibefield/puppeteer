@@ -79,7 +79,7 @@ describe('reduceSessionState properties (DESIGN §26.5)', () => {
         fc.pre(events.length > 0);
         const envelopes = stampAll(events);
         const i = pick % envelopes.length;
-        const withDuplicate = [...envelopes.slice(0, i + 1), envelopes[i], ...envelopes.slice(i + 1)];
+        const withDuplicate = [...envelopes.slice(0, i + 1), envelopes[i]!, ...envelopes.slice(i + 1)];
         expect(replay(withDuplicate)).toEqual(replay(envelopes));
       }),
     );
@@ -92,7 +92,7 @@ describe('reduceSessionState properties (DESIGN §26.5)', () => {
         fc.pre(envelopes.length > 0);
         let state = createInitialSessionState();
         for (const n of order) {
-          state = reduceSessionState(state, envelopes[n % envelopes.length]);
+          state = reduceSessionState(state, envelopes[n % envelopes.length]!);
         }
       }),
     );
@@ -110,7 +110,7 @@ describe('reduceSessionState transitions', () => {
       },
       { type: 'context-window:invalidated', reason: 'compacted' },
     ]);
-    const updated = { ...baseUpdated, source: 'native-log' as const };
+    const updated = { ...baseUpdated!, source: 'native-log' as const };
 
     const measured = reduceSessionState(createInitialSessionState(), updated);
     expect(measured.contextWindow).toMatchObject({
@@ -122,7 +122,7 @@ describe('reduceSessionState transitions', () => {
       confidence: 'authoritative',
     });
     expect(measured.contextWindow?.usedPercent).toBeCloseTo(3.683);
-    expect(reduceSessionState(measured, invalidated).contextWindow).toBeUndefined();
+    expect(reduceSessionState(measured, invalidated!).contextWindow).toBeUndefined();
   });
 
   it('preserves a valid provider-calculated context percentage', () => {
@@ -135,7 +135,7 @@ describe('reduceSessionState transitions', () => {
         percentageSource: 'provider',
       },
     ]);
-    expect(reduceSessionState(createInitialSessionState(), updated).contextWindow).toMatchObject({
+    expect(reduceSessionState(createInitialSessionState(), updated!).contextWindow).toMatchObject({
       usedTokens: 15_000,
       capacityTokens: 200_000,
       usedPercent: 19.5,
@@ -154,11 +154,11 @@ describe('reduceSessionState transitions', () => {
       },
       { type: 'context-window:updated', usedTokens: 10, capacityTokens: 0 },
     ]);
-    const measured = reduceSessionState(createInitialSessionState(), over);
+    const measured = reduceSessionState(createInitialSessionState(), over!);
     expect(measured.contextWindow?.usedPercent).toBe(100);
     expect(measured.contextWindow?.percentageSource).toBe('derived');
 
-    const rejected = reduceSessionState(measured, invalid);
+    const rejected = reduceSessionState(measured, invalid!);
     expect(rejected.contextWindow).toBe(measured.contextWindow);
     expect(rejected.diagnostics.at(-1)?.code).toBe('context-window-invalid');
   });
@@ -174,10 +174,10 @@ describe('reduceSessionState transitions', () => {
       { type: 'environment:updated', currentCwd: '/repo/two' },
       { type: 'environment:updated', git: null },
     ]);
-    const initial = { ...baseInitial, source: 'native-protocol' as const };
-    const model = { ...baseModel, source: 'native-protocol' as const };
-    const moved = { ...baseMoved, source: 'native-hook' as const };
-    const resolved = { ...baseResolved, source: 'runtime' as const, confidence: 'derived' as const };
+    const initial = { ...baseInitial!, source: 'native-protocol' as const };
+    const model = { ...baseModel!, source: 'native-protocol' as const };
+    const moved = { ...baseMoved!, source: 'native-hook' as const };
+    const resolved = { ...baseResolved!, source: 'runtime' as const, confidence: 'derived' as const };
 
     const first = replay([initial, model]);
     expect(first.environment.currentCwd).toMatchObject({ value: '/repo/one', source: 'native-protocol' });
@@ -198,7 +198,7 @@ describe('reduceSessionState transitions', () => {
       { type: 'model:updated', model: { id: 'grok-4.5', displayName: 'Grok 4.5' } },
       { type: 'model:updated', model: { id: 'grok-4.5', provider: 'xai' } },
     ]);
-    const state = replay([catalog, provider]);
+    const state = replay([catalog!, provider!]);
     expect(state.environment.model?.value).toEqual({ id: 'grok-4.5', displayName: 'Grok 4.5', provider: 'xai' });
   });
 
@@ -208,10 +208,10 @@ describe('reduceSessionState transitions', () => {
       { type: 'model:updated', model: { id: 'child-model' } },
       { type: 'context-window:updated', usedTokens: 50, capacityTokens: 100 },
     ]);
-    const childModel = { ...baseChildModel, actorKey: 'workflow:worker', actorRole: 'child' as const };
-    const childContext = { ...baseChildContext, agentId: 'worker-1' };
+    const childModel = { ...baseChildModel!, actorKey: 'workflow:worker', actorRole: 'child' as const };
+    const childContext = { ...baseChildContext!, agentId: 'worker-1' };
 
-    const state = replay([root, childModel, childContext]);
+    const state = replay([root!, childModel, childContext]);
 
     expect(state.environment.model?.value.id).toBe('root-model');
     expect(state.contextWindow).toBeUndefined();
@@ -283,8 +283,8 @@ describe('reduceSessionState transitions', () => {
       { type: 'environment:updated', currentCwd: ' ' },
       { type: 'model:updated', model: { id: '' } },
     ]);
-    const first = replay([validEnvironment, validModel]);
-    const second = replay([invalidEnvironment, invalidModel], first);
+    const first = replay([validEnvironment!, validModel!]);
+    const second = replay([invalidEnvironment!, invalidModel!], first);
     expect(second.environment.currentCwd).toBe(first.environment.currentCwd);
     expect(second.environment.model).toBe(first.environment.model);
     expect(second.diagnostics.slice(-2).map((diagnostic) => diagnostic.code)).toEqual([

@@ -112,8 +112,8 @@ function modeUpdate(modes: SessionModeState | null | undefined): MonitorFamilyUp
 
 export interface AcpMonitorBootstrap {
   cwd: string;
-  modes?: SessionModeState | null;
-  configOptions?: readonly SessionConfigOption[] | null;
+  modes?: SessionModeState | null | undefined;
+  configOptions?: readonly SessionConfigOption[] | null | undefined;
 }
 
 export interface AcpMonitorEvidenceOptions {

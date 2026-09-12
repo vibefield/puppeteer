@@ -41,13 +41,13 @@ export type OpenCodeDistributionExec = (
 export type OpenCodeDistributionReadFile = (path: string) => Promise<string>;
 
 export interface OpenCodeDistributionServiceOptions {
-  executable?: string;
-  exec?: OpenCodeDistributionExec;
-  readConfigFile?: OpenCodeDistributionReadFile;
+  executable?: string | undefined;
+  exec?: OpenCodeDistributionExec | undefined;
+  readConfigFile?: OpenCodeDistributionReadFile | undefined;
   /** Injected so tests never read the developer's own environment. */
-  env?: NodeJS.ProcessEnv;
+  env?: NodeJS.ProcessEnv | undefined;
   /** Injected so tests never read the real home directory. */
-  home?: string;
+  home?: string | undefined;
 }
 
 export const OPENCODE_DISTRIBUTION_PROVIDER: DistributionProvider = {

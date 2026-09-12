@@ -41,8 +41,8 @@ describe('createHookBridge', () => {
     const res = await post(b.endpoint(), b.token, JSON.stringify(payload));
     expect(res.status).toBe(200);
     expect(events).toHaveLength(1);
-    expect(events[0].body).toEqual(payload);
-    expect(Date.parse(events[0].receivedAt)).toBeGreaterThan(0);
+    expect(events[0]!.body).toEqual(payload);
+    expect(Date.parse(events[0]!.receivedAt)).toBeGreaterThan(0);
   });
 
   it('routes authenticated status-line payloads separately from hooks', async () => {
@@ -57,7 +57,7 @@ describe('createHookBridge', () => {
     expect(res.status).toBe(200);
     expect(hooks).toEqual([]);
     expect(statuses).toHaveLength(1);
-    expect(statuses[0].body).toEqual(payload);
+    expect(statuses[0]!.body).toEqual(payload);
   });
 
   it('routes the full child-status snapshot on its own authenticated channel', async () => {
@@ -79,7 +79,7 @@ describe('createHookBridge', () => {
     expect(hooks).toEqual([]);
     expect(roots).toEqual([]);
     expect(children).toHaveLength(1);
-    expect(children[0].body).toEqual(payload);
+    expect(children[0]!.body).toEqual(payload);
   });
 
   it('routes authenticated OTLP log batches without requiring a hook-shaped session field', async () => {
@@ -93,7 +93,7 @@ describe('createHookBridge', () => {
     const res = await post(b.otelLogsEndpoint(), b.token, JSON.stringify(payload));
     expect(res.status).toBe(200);
     expect(logs).toHaveLength(1);
-    expect(logs[0].body).toEqual(payload);
+    expect(logs[0]!.body).toEqual(payload);
   });
 
   it('rejects a missing or wrong bearer token with 401 and emits nothing', async () => {
@@ -110,7 +110,7 @@ describe('createHookBridge', () => {
     const foreign = fakeClaudeHookPayload('Stop', { session_id: 'someone-elses-session' });
     expect((await post(b.endpoint(), b.token, JSON.stringify(foreign))).status).toBe(403);
     expect(events).toHaveLength(0);
-    expect(errors[0].kind).toBe('unknown-session');
+    expect(errors[0]!.kind).toBe('unknown-session');
   });
 
   it('acknowledges and drops events its owner asks it to ignore', async () => {

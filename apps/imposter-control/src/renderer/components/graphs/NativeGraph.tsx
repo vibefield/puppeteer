@@ -48,7 +48,7 @@ export interface NativeGraphState {
   observed: ReadonlySet<string>;
   latest: ReadonlySet<string>;
   traversed: ReadonlySet<string>;
-  last?: EmittedEntry;
+  last?: EmittedEntry | undefined;
 }
 
 export function deriveNativeGraphState(

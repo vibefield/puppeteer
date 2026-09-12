@@ -52,7 +52,7 @@ function userPrompt(record: ClaudeTranscriptRecord): string | undefined {
 function observation(
   event: AgentEvent,
   source: ClaudeTranscriptRecord,
-  options: { turnId?: string } = {},
+  options: { turnId?: string | undefined } = {},
 ): SemanticObservationEvent {
   return {
     event,
@@ -137,7 +137,10 @@ function causalOrder(records: readonly ClaudeTranscriptRecord[]): ClaudeTranscri
     emitted[index] = 1;
     ordered.push(records[index]!);
     for (const child of children[index]!) {
-      indegree[child] -= 1;
+      // `children` and `indegree` are both sized from `records`, so a child index is always in range.
+      const degree = indegree[child];
+      if (degree === undefined) continue;
+      indegree[child] = degree - 1;
       if (indegree[child] === 0) pushReady(child);
     }
   }

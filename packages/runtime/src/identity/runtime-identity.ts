@@ -14,7 +14,7 @@ export interface RuntimeRunIdentity {
   readonly runtimeEpoch: number;
   readonly providerId: string;
   readonly externalRefs: readonly ExternalRef[];
-  readonly creationRequestId?: string;
+  readonly creationRequestId?: string | undefined;
 }
 
 export interface RevisionedNativeSessionClaim {
@@ -78,10 +78,10 @@ export function validateExternalRefs(externalRefs: readonly ExternalRef[] | unde
 
 export function allocateRuntimeRunIdentity(input: {
   providerId: string;
-  creationRequestId?: string;
-  externalRefs?: readonly ExternalRef[];
-  runtimeRunId?: RuntimeRunId;
-  runtimeEpoch?: number;
+  creationRequestId?: string | undefined;
+  externalRefs?: readonly ExternalRef[] | undefined;
+  runtimeRunId?: RuntimeRunId | undefined;
+  runtimeEpoch?: number | undefined;
 }): RuntimeRunIdentity {
   const creationRequestId =
     input.creationRequestId === undefined ? undefined : validateCreationRequestId(input.creationRequestId);

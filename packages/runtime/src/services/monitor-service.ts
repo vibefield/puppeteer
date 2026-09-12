@@ -190,7 +190,7 @@ export class AgentMonitorService
     return !this.closed && !this.frozen;
   }
 
-  consume(envelope: RuntimeAgentEventEnvelope, options: { hostProcessEvidence?: boolean } = {}): void {
+  consume(envelope: RuntimeAgentEventEnvelope, options: { hostProcessEvidence?: boolean | undefined } = {}): void {
     if (!this.accepts(envelope)) return;
     if (envelope.event.type === 'monitor:batch') {
       this.acceptSemantic(envelope.event.batch);
@@ -238,7 +238,10 @@ export class AgentMonitorService
     this.artifactSession = undefined;
   }
 
-  acceptAgentEvent(envelope: RuntimeAgentEventEnvelope, options: { hostProcessEvidence?: boolean } = {}): boolean {
+  acceptAgentEvent(
+    envelope: RuntimeAgentEventEnvelope,
+    options: { hostProcessEvidence?: boolean | undefined } = {},
+  ): boolean {
     const input = translateAgentEventEnvelope({
       runtimeRunId: this.options.runtimeRunId,
       runtimeEpoch: this.options.runtimeEpoch,
@@ -373,7 +376,10 @@ export class AgentMonitorService
     return this.accept(this.runtimeInput(`failure-acknowledged:${blockerId}`, [update]), true);
   }
 
-  async readArtifact(artifactId: string, options: { maxBytes?: number } = {}): Promise<MonitorArtifactReadResult> {
+  async readArtifact(
+    artifactId: string,
+    options: { maxBytes?: number | undefined } = {},
+  ): Promise<MonitorArtifactReadResult> {
     const requested = options.maxBytes ?? DEFAULT_MONITOR_ARTIFACT_MAX_BYTES;
     if (!Number.isSafeInteger(requested) || requested <= 0) {
       return { status: 'denied', message: 'maxBytes must be positive' };

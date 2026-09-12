@@ -3,13 +3,13 @@ import { buildHermesTuiArgs, resolveHermesExecutable } from '../detection.js';
 import { HERMES_GATEWAY_URL_ENV, HERMES_HOME_ENV } from '../generated/detection.js';
 
 export interface HermesLaunchRecipeOptions {
-  executable?: string;
+  executable?: string | undefined;
   cwd: string;
   hermesHome: string;
   gatewayUrl: string;
-  resume?: string;
-  yolo?: boolean;
-  env?: Record<string, string>;
+  resume?: string | undefined;
+  yolo?: boolean | undefined;
+  env?: Record<string, string> | undefined;
 }
 
 export function buildHermesAttachLaunch(options: HermesLaunchRecipeOptions): TerminalSpec {

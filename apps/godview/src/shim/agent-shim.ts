@@ -103,7 +103,8 @@ function execEnvironment(extra: Record<string, string> = {}): Record<string, str
 
 function exec(command: string, args: string[], cwd: string, extraEnvironment?: Record<string, string>): never {
   const environment = execEnvironment(extraEnvironment);
-  const executable = executableOnPath(command, environment.PATH) ?? command;
+  // `execEnvironment` always assigns PATH; the index signature is what cannot say so.
+  const executable = executableOnPath(command, environment.PATH ?? cleanPath()) ?? command;
   process.chdir(cwd);
   const execve = process.execve;
   if (!execve) throw new Error('this Node.js version does not provide process.execve');

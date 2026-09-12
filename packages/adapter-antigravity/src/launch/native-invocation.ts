@@ -16,18 +16,18 @@ const StateSchema = z
     path: ['dataRoot'],
   });
 export interface AntigravityNativeInvocationOptions {
-  executable?: string;
-  env?: Record<string, string>;
-  antigravityHome?: string;
-  dataRoot?: string;
-  model?: string;
-  effort?: 'low' | 'medium' | 'high';
-  mode?: 'default' | 'accept-edits' | 'plan';
-  skipPermissions?: boolean;
-  sandbox?: boolean;
-  agent?: string;
-  project?: string;
-  addDirs?: string[];
+  executable?: string | undefined;
+  env?: Record<string, string> | undefined;
+  antigravityHome?: string | undefined;
+  dataRoot?: string | undefined;
+  model?: string | undefined;
+  effort?: 'low' | 'medium' | 'high' | undefined;
+  mode?: 'default' | 'accept-edits' | 'plan' | undefined;
+  skipPermissions?: boolean | undefined;
+  sandbox?: boolean | undefined;
+  agent?: string | undefined;
+  project?: string | undefined;
+  addDirs?: string[] | undefined;
 }
 export function normalizeAntigravityNativeInvocation(
   invocation: AgentNativeInvocation,
@@ -111,7 +111,7 @@ export function captureAntigravityContinuationState(
 }
 export function restoreAntigravityContinuationState(
   state: string | undefined,
-  options: { imposterExecutable?: string } = {},
+  options: { imposterExecutable?: string | undefined } = {},
 ): AntigravityNativeInvocationOptions | undefined {
   if (!state) return undefined;
   let decoded: unknown;

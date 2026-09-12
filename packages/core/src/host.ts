@@ -18,10 +18,10 @@ export interface TerminalSpec {
   args: string[];
   cwd: string;
   /** Extra environment for the spawned process (merged over the host's base). */
-  env?: Record<string, string>;
+  env?: Record<string, string> | undefined;
   /** Initial geometry; the host may substitute its own default when omitted. */
-  cols?: number;
-  rows?: number;
+  cols?: number | undefined;
+  rows?: number | undefined;
 }
 
 /**
@@ -56,7 +56,7 @@ export interface AgentHost {
 export interface AgentTuiSessionOptions {
   cwd: string;
   /** Resume an existing session by its native/join id. */
-  resume?: string;
+  resume?: string | undefined;
   /** The host capability the adapter spawns/writes its terminal through. */
   host: AgentHost;
 }

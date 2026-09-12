@@ -7,8 +7,8 @@ export const OPENCODE_LIVE_MODEL = 'puppeteer-opencode-live';
 export const OPENCODE_LIVE_RESPONSE_MARKER = 'SURFACE_OPENCODE_TUI_OK';
 
 export interface OpenCodeLiveModelRequest {
-  readonly method?: string;
-  readonly url?: string;
+  readonly method?: string | undefined;
+  readonly url?: string | undefined;
   readonly body: unknown;
 }
 

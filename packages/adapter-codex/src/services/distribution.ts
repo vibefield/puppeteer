@@ -60,10 +60,10 @@ function posixish(path: string): string {
 }
 
 export interface CodexDistributionOptions {
-  executable?: string;
-  exec?: CodexExec;
-  env?: NodeJS.ProcessEnv;
-  now?: () => Date;
+  executable?: string | undefined;
+  exec?: CodexExec | undefined;
+  env?: NodeJS.ProcessEnv | undefined;
+  now?: (() => Date) | undefined;
 }
 
 /**

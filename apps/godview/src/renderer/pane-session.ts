@@ -7,9 +7,9 @@ function usableCwd(value: string | null | undefined): string | undefined {
 }
 
 export interface PaneSessionCwdSources {
-  agent?: string;
-  process?: string;
-  fallback?: string;
+  agent?: string | undefined;
+  process?: string | undefined;
+  fallback?: string | undefined;
 }
 
 /** Resolve a split from live agent/process cwd before terminal metadata and stable launch fallbacks. */

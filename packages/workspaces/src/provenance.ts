@@ -145,15 +145,15 @@ interface CaptureBaselineInput {
   root: string;
   sourcePath: string;
   mode: WorkspaceAllocationMode;
-  options?: WorkspaceProvenanceOptions;
+  options?: WorkspaceProvenanceOptions | undefined;
 }
 
 interface CaptureFinalizationInput {
   root: string;
   sourcePath: string;
   baseline: WorkspaceBaselineRecord;
-  options?: WorkspaceProvenanceOptions;
-  knownConcurrentClaims?: number;
+  options?: WorkspaceProvenanceOptions | undefined;
+  knownConcurrentClaims?: number | undefined;
 }
 
 function emptySummary(): WorkspaceChangeSummary {

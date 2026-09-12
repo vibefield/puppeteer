@@ -33,9 +33,9 @@ export interface CopilotSessionObserver {
 }
 export function createCopilotSessionObserver(options: {
   location: CopilotSessionLocation;
-  replayBoundary?: number;
-  pollIntervalMs?: number;
-  maxReplayBytes?: number;
+  replayBoundary?: number | undefined;
+  pollIntervalMs?: number | undefined;
+  maxReplayBytes?: number | undefined;
 }): CopilotSessionObserver {
   const normalizer = new CopilotSessionNormalizer();
   const tail = createAppendOnlyJsonlTail(options.location.eventsPath, {

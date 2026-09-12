@@ -31,21 +31,21 @@ export type KimiPermissionMode = 'manual' | 'yolo' | 'auto';
 
 export interface CreateKimiTuiSessionOptions extends AgentTuiSessionOptions {
   /** Kimi executable (default `kimi`). */
-  executable?: string;
+  executable?: string | undefined;
   /** Extra environment for the native process. */
-  env?: Record<string, string>;
+  env?: Record<string, string> | undefined;
   /** Explicit Kimi data root. Must agree with env.KIMI_CODE_HOME when both are supplied. */
-  kimiHome?: string;
-  model?: string;
-  permissionMode?: KimiPermissionMode;
-  plan?: boolean;
+  kimiHome?: string | undefined;
+  model?: string | undefined;
+  permissionMode?: KimiPermissionMode | undefined;
+  plan?: boolean | undefined;
   /** Profile selection is valid only for a new session. */
-  agent?: string;
+  agent?: string | undefined;
   /** Agent markdown selection is valid only for a new session. */
-  agentFile?: string;
-  pollIntervalMs?: number;
-  maxReplayBytes?: number;
-  promptConfirmationTimeoutMs?: number;
+  agentFile?: string | undefined;
+  pollIntervalMs?: number | undefined;
+  maxReplayBytes?: number | undefined;
+  promptConfirmationTimeoutMs?: number | undefined;
 }
 
 export interface KimiTuiSession extends AgentAdapterBinding {
@@ -155,7 +155,10 @@ export async function prepareKimiTuiSession(options: CreateKimiTuiSessionOptions
         host: options.host,
         runtimeSessionId,
         observer,
-        confirmationTimeoutMs: options.promptConfirmationTimeoutMs,
+        // An absent timeout means "use the service default"; passing undefined would not.
+        ...(options.promptConfirmationTimeoutMs !== undefined
+          ? { confirmationTimeoutMs: options.promptConfirmationTimeoutMs }
+          : {}),
         isDisposed: () => sessionDisposed,
       });
 

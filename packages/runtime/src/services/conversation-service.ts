@@ -4,14 +4,14 @@ import type { AgentProjectionService } from './projection-service.js';
 export interface ConversationUserMessage {
   id: string;
   kind: 'user';
-  turnId?: string;
+  turnId?: string | undefined;
   text: string;
 }
 
 export interface ConversationAssistantMessage {
   id: string;
   kind: 'assistant';
-  turnId?: string;
+  turnId?: string | undefined;
   markdown: string;
   streaming: boolean;
 }
@@ -21,13 +21,13 @@ export type ConversationActivityKind = 'reasoning' | ToolActivityKind | 'permiss
 export interface ConversationActivity {
   id: string;
   kind: 'activity';
-  turnId?: string;
+  turnId?: string | undefined;
   activity: ConversationActivityKind;
   status: 'requested' | 'running' | 'completed' | 'failed';
   title: string;
-  detail?: string;
+  detail?: string | undefined;
   /** Only protocol-designated, user-displayable reasoning summaries land here. */
-  summary?: string;
+  summary?: string | undefined;
   confidence: AgentEventEnvelope['confidence'];
 }
 

@@ -256,12 +256,12 @@ export type AntigravityAccountUsageExec = (
 ) => Promise<{ stdout: string; stderr: string }>;
 
 export interface FetchAntigravityAccountUsageOptions {
-  executable?: string;
-  env?: NodeJS.ProcessEnv;
-  timeoutMs?: number;
-  now?: () => Date;
-  exec?: AntigravityAccountUsageExec;
-  cwd?: string;
+  executable?: string | undefined;
+  env?: NodeJS.ProcessEnv | undefined;
+  timeoutMs?: number | undefined;
+  now?: (() => Date) | undefined;
+  exec?: AntigravityAccountUsageExec | undefined;
+  cwd?: string | undefined;
 }
 
 function defaultExec(

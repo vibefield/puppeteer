@@ -70,26 +70,26 @@ export interface ClaudeDetection {
   /** The resolved command (an absolute path, or a bare name left to PATH). */
   executable: string;
   /** Parsed `x.y.z` from `--version`; undefined when it could not be read. */
-  version?: string;
+  version?: string | undefined;
   flags: ClaudeFlagSupport;
   /** Non-fatal capability gaps (missing flags, unreadable version). */
   warnings: string[];
 }
 
 export interface DetectClaudeOptions {
-  executable?: string;
-  exec?: ClaudeExec;
+  executable?: string | undefined;
+  exec?: ClaudeExec | undefined;
 }
 
 export interface ClaudeLaunchRequirements {
   /** Fresh sessions need the native UUID join contract. */
   freshSession: boolean;
   /** The adapter will add `--resume`; caller-owned resume picker argv stays caller-owned. */
-  resume?: boolean;
-  title?: boolean;
-  model?: boolean;
-  effort?: boolean;
-  settingSources?: boolean;
+  resume?: boolean | undefined;
+  title?: boolean | undefined;
+  model?: boolean | undefined;
+  effort?: boolean | undefined;
+  settingSources?: boolean | undefined;
 }
 
 export interface PreflightClaudeLaunchOptions extends ClaudeLaunchRequirements {

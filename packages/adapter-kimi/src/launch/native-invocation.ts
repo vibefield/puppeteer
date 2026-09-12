@@ -19,18 +19,18 @@ const KimiContinuationStateSchema = z.union([
 ]);
 
 export interface KimiNativeInvocationOptions {
-  model?: string;
-  permissionMode?: KimiPermissionMode;
-  plan?: boolean;
-  agent?: string;
-  agentFile?: string;
-  executable?: string;
-  env?: Record<string, string>;
-  kimiHome?: string;
+  model?: string | undefined;
+  permissionMode?: KimiPermissionMode | undefined;
+  plan?: boolean | undefined;
+  agent?: string | undefined;
+  agentFile?: string | undefined;
+  executable?: string | undefined;
+  env?: Record<string, string> | undefined;
+  kimiHome?: string | undefined;
 }
 
 export interface RestoreKimiContinuationOptions {
-  imposterExecutable?: string;
+  imposterExecutable?: string | undefined;
 }
 
 export function normalizeKimiNativeInvocation(

@@ -119,9 +119,9 @@ function preparableProvider(
     prepareCount: number;
     adoptCount: number;
     disposeCount: number;
-    preparedCwd?: string;
-    preparedRuntimeRunId?: string;
-    adoptionGate?: Promise<void>;
+    preparedCwd?: string | undefined;
+    preparedRuntimeRunId?: string | undefined;
+    adoptionGate?: Promise<void> | undefined;
   },
 ): AgentProvider {
   const handles = new Map<string, { emit: (event: AgentEventEnvelope) => void }>();

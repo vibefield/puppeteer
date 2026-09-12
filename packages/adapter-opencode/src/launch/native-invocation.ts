@@ -21,12 +21,12 @@ const OpenCodeContinuationStateSchema = z.union([
 ]);
 
 export interface OpenCodeNativeInvocationOptions {
-  executable?: string;
-  env?: Record<string, string>;
+  executable?: string | undefined;
+  env?: Record<string, string> | undefined;
 }
 
 export interface RestoreOpenCodeContinuationOptions {
-  imposterExecutable?: string;
+  imposterExecutable?: string | undefined;
 }
 
 /** OpenCode maps native session selection onto its private HTTP/SSE backend and exact attach. */

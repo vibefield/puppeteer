@@ -26,37 +26,37 @@ import {
 
 export interface PrepareClaudeSessionOptions {
   cwd: string;
-  title?: string;
+  title?: string | undefined;
   /** Reuse a caller-chosen session UUID; otherwise one is generated. */
-  sessionId?: string;
+  sessionId?: string | undefined;
   endpoint: string;
   /** Optional authenticated endpoint enabling exact context-window telemetry. */
-  statusLineEndpoint?: string;
+  statusLineEndpoint?: string | undefined;
   /** Optional authenticated endpoint enabling visible child/task telemetry. */
-  subagentStatusLineEndpoint?: string;
+  subagentStatusLineEndpoint?: string | undefined;
   /** Optional authenticated OTLP/HTTP JSON log endpoint for settled request usage. */
-  otelLogsEndpoint?: string;
+  otelLogsEndpoint?: string | undefined;
   tokenEnvVar: string;
   /** The bearer token VALUE — placed in `env`, never written to disk. */
   token: string;
-  executable?: string;
+  executable?: string | undefined;
   /** Adapter-normalized additions; generated hook/auth values always win. */
-  env?: Record<string, string>;
-  permissionMode?: string;
+  env?: Record<string, string> | undefined;
+  permissionMode?: string | undefined;
   /** Model alias or full model id passed to Claude Code's `--model`. */
-  model?: string;
+  model?: string | undefined;
   /** Open-ended Claude effort value passed to `--effort`. */
-  effort?: string;
+  effort?: string | undefined;
   /** Native settings layers passed to `--setting-sources` and used for delegate discovery. */
-  settingSources?: readonly ClaudeSettingSource[];
+  settingSources?: readonly ClaudeSettingSource[] | undefined;
   /** Override Claude's user configuration root; defaults to `CLAUDE_CONFIG_DIR` when set. */
-  configDir?: string;
+  configDir?: string | undefined;
   /** Override auto-resolution of the user/project status line; null means no delegate. */
-  existingStatusLine?: ClaudeStatusLineConfig | null;
+  existingStatusLine?: ClaudeStatusLineConfig | null | undefined;
   /** Override auto-resolution of the user/project child line; null means no delegate. */
-  existingSubagentStatusLine?: ClaudeStatusLineConfig | null;
+  existingSubagentStatusLine?: ClaudeStatusLineConfig | null | undefined;
   /** Claude FileChanged matcher (for example `.envrc|.env`); omitted means no file watcher is installed. */
-  fileChangeMatcher?: string;
+  fileChangeMatcher?: string | undefined;
   /**
    * Resume an existing session by its id instead of starting fresh. Probed
    * (packages/surface/vendors/claude/findings.md §6): `--resume <id>` continues the SAME session and
@@ -64,11 +64,11 @@ export interface PrepareClaudeSessionOptions {
    * `--session-id` is NOT passed alongside it. When set, `sessionId` is
    * ignored in favor of this id.
    */
-  resume?: string;
+  resume?: string | undefined;
   /** Native resume/continue argv when Claude must choose the session after launch. */
-  resumeInvocation?: string[];
+  resumeInvocation?: string[] | undefined;
   /** Override the settings-file directory (tests); default is an mkdtemp dir. */
-  settingsDir?: string;
+  settingsDir?: string | undefined;
 }
 
 /** DESIGN §11 PreparedNativeSession, narrowed to what this adapter fills. */
@@ -80,7 +80,7 @@ export interface PreparedClaudeSession {
   env: Record<string, string>;
   settingsPath: string;
   hookForwarderPath: string;
-  statusLineForwarderPath?: string;
+  statusLineForwarderPath?: string | undefined;
   filesToCleanup: string[];
 }
 

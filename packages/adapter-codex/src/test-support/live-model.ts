@@ -7,8 +7,8 @@ export const CODEX_LIVE_RESPONSE_MARKER = 'SURFACE_CODEX_TUI_OK';
 export const CODEX_LIVE_API_KEY = 'sk-puppeteer-not-a-real-key';
 
 export interface CodexLiveModelRequest {
-  readonly method?: string;
-  readonly url?: string;
+  readonly method?: string | undefined;
+  readonly url?: string | undefined;
   readonly body: unknown;
   readonly kind: 'turn' | 'thread-title';
 }

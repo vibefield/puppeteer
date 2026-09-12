@@ -201,7 +201,7 @@ interface JoinedSession {
   projectionClosed: boolean;
   projectedThroughSequence: number;
   projectionSnapshots: Map<string, string>;
-  reconcileTimer?: NodeJS.Timeout;
+  reconcileTimer?: NodeJS.Timeout | undefined;
 }
 
 const sessionKey = (vendor: string, sessionId: string): string => `${vendor}\0${sessionId}`;

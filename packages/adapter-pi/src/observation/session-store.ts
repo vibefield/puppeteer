@@ -8,7 +8,7 @@ export interface PiSessionLocation {
   sessionId: string;
   path: string;
   sessionDir: string;
-  cwd?: string;
+  cwd?: string | undefined;
 }
 
 export function resolvePiAgentDir(explicit?: string): string {
@@ -55,11 +55,12 @@ export async function listPiSessions(sessionDir: string): Promise<PiSessionLocat
     const body = await header(path);
     const sessionId = piString(body?.id);
     if (body?.type !== 'session' || !sessionId) continue;
+    const cwd = piString(body.cwd);
     sessions.push({
       sessionId,
       path,
       sessionDir,
-      ...(piString(body.cwd) ? { cwd: piString(body.cwd) } : {}),
+      ...(cwd ? { cwd } : {}),
       mtimeMs: (await stat(path)).mtimeMs,
     });
   }

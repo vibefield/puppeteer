@@ -74,8 +74,8 @@ export class ClaudeHookNormalizer {
   private permissionCounter = 0;
   private toolCounters = new Map<string, number>();
   private compactionCounter = 0;
-  private activeCompaction: { id: string; promptId?: string; trigger?: string } | undefined;
-  private lastClosedCompaction: { id: string; promptId?: string } | undefined;
+  private activeCompaction: { id: string; promptId?: string | undefined; trigger?: string | undefined } | undefined;
+  private lastClosedCompaction: { id: string; promptId?: string | undefined } | undefined;
   private readonly effort = new ClaudeEffortNormalizer();
   private readonly mode = new ClaudeModeNormalizer();
 

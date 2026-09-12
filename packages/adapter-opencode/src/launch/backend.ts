@@ -5,11 +5,11 @@ import { spawn, type ChildProcess } from 'node:child_process';
 import { OPENCODE_LAUNCH_FLAGS, resolveOpenCodeExecutable } from '../detection.js';
 
 export interface StartOpenCodeBackendOptions {
-  executable?: string;
-  env?: Record<string, string>;
-  hostname?: string;
-  startupTimeoutMs?: number;
-  shutdownTimeoutMs?: number;
+  executable?: string | undefined;
+  env?: Record<string, string> | undefined;
+  hostname?: string | undefined;
+  startupTimeoutMs?: number | undefined;
+  shutdownTimeoutMs?: number | undefined;
 }
 
 export interface OpenCodeBackend {

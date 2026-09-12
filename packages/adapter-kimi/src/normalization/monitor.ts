@@ -84,10 +84,10 @@ function questions(value: unknown): MonitorStructuredQuestion[] | undefined {
 }
 
 export interface KimiConfiguredIntent {
-  cwd?: string;
-  model?: string;
-  permissionMode?: string;
-  plan?: boolean;
+  cwd?: string | undefined;
+  model?: string | undefined;
+  permissionMode?: string | undefined;
+  plan?: boolean | undefined;
 }
 
 export interface KimiMonitorEvidenceOptions {
@@ -150,17 +150,17 @@ export class KimiMonitorEvidence {
     observedAt: string,
     updates: MonitorFamilyUpdate[],
     options: {
-      phase?: AdapterMonitorObservationBatch['phase'];
-      effectiveAt?: string;
-      quality?: AdapterMonitorObservationBatch['quality'];
-      completeness?: AdapterMonitorObservationBatch['completeness'];
-      provisional?: boolean;
-      readiness?: AdapterMonitorObservationBatch['readiness'];
-      agentId?: string;
-      evidence?: EvidenceRef[];
-      capabilities?: ObservationCapability[];
-      coverage?: ObservationCoverage[];
-      cursorEnd?: number;
+      phase?: AdapterMonitorObservationBatch['phase'] | undefined;
+      effectiveAt?: string | undefined;
+      quality?: AdapterMonitorObservationBatch['quality'] | undefined;
+      completeness?: AdapterMonitorObservationBatch['completeness'] | undefined;
+      provisional?: boolean | undefined;
+      readiness?: AdapterMonitorObservationBatch['readiness'] | undefined;
+      agentId?: string | undefined;
+      evidence?: EvidenceRef[] | undefined;
+      capabilities?: ObservationCapability[] | undefined;
+      coverage?: ObservationCoverage[] | undefined;
+      cursorEnd?: number | undefined;
     } = {},
   ): AdapterMonitorObservationBatch {
     this.sequence += 1;

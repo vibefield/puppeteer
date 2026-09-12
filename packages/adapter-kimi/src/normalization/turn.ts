@@ -2,8 +2,8 @@ import type { AgentEvent } from '@vibecook/puppeteer-core';
 import { MAX_KIMI_CORRELATIONS, boundedKimiSetAdd, kimiInputText, kimiOriginKind, kimiNativeTurnId } from './types.js';
 
 interface PendingPrompt {
-  text?: string;
-  origin?: string;
+  text?: string | undefined;
+  origin?: string | undefined;
 }
 
 /** Owns Kimi prompt/turn correlation and immutable terminal tombstones. */

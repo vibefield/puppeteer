@@ -2,10 +2,10 @@ import type { AgentEvent, AgentEventConfidence, AgentEventSource, AgentEventSour
 
 export interface CopilotNormalizedRecord {
   events: AgentEvent[];
-  promptId?: string;
-  turnId?: string;
-  agentId?: string;
-  timestamp?: string;
+  promptId?: string | undefined;
+  turnId?: string | undefined;
+  agentId?: string | undefined;
+  timestamp?: string | undefined;
   source: AgentEventSource;
   confidence: AgentEventConfidence;
   nativeEvent: unknown;

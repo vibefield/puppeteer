@@ -30,10 +30,10 @@ export interface PiSessionObserver {
 export function createPiSessionObserver(options: {
   sessionDir: string;
   sessionId: string;
-  location?: PiSessionLocation;
-  replayBoundary?: number;
-  pollIntervalMs?: number;
-  maxReplayBytes?: number;
+  location?: PiSessionLocation | undefined;
+  replayBoundary?: number | undefined;
+  pollIntervalMs?: number | undefined;
+  maxReplayBytes?: number | undefined;
 }): PiSessionObserver {
   const eventListeners = new Set<(event: PiObservedEvent) => void>();
   const errorListeners = new Set<(error: Error) => void>();

@@ -203,7 +203,7 @@ export class HermesMonitorEvidence {
       completeness?: AdapterMonitorObservationBatch['completeness'];
       provisional?: boolean;
       readiness?: AdapterMonitorObservationBatch['readiness'];
-      actor?: ActorRunRef;
+      actor?: ActorRunRef | undefined;
       evidence?: EvidenceRef[];
       capabilities?: ObservationCapability[];
       coverage?: ObservationCoverage[];

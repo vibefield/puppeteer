@@ -38,9 +38,9 @@ export interface StdioAcpConnectorOptions {
   /** Agent-specific executable. There is deliberately no protocol-level default. */
   executable: string;
   /** Agent-specific arguments. Defaults to none. */
-  args?: readonly string[];
-  cwd?: string;
-  env?: NodeJS.ProcessEnv;
+  args?: readonly string[] | undefined;
+  cwd?: string | undefined;
+  env?: NodeJS.ProcessEnv | undefined;
 }
 
 /** Spawn an explicitly selected ACP agent and speak ND-JSON over stdio. */

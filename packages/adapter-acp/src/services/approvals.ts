@@ -5,13 +5,13 @@ export type AcpApprovalDecision = 'approved' | 'denied';
 
 export interface AcpApprovalRequest {
   toolCallId: string;
-  tool?: string;
+  tool?: string | undefined;
   input?: unknown;
   options: PermissionOption[];
 }
 
 export interface AcpApprovalServiceOptions {
-  decide?: (request: AcpApprovalRequest) => AcpApprovalDecision | Promise<AcpApprovalDecision>;
+  decide?: ((request: AcpApprovalRequest) => AcpApprovalDecision | Promise<AcpApprovalDecision>) | undefined;
   publish(event: AgentEvent, nativeEvent: unknown): void;
 }
 

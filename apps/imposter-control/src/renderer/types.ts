@@ -55,8 +55,8 @@ export interface EventChoice {
   label: string;
   match: Record<string, string | number | boolean>;
   confidence: string;
-  description?: string;
-  descriptor?: NativeEventDescriptor;
+  description?: string | undefined;
+  descriptor?: NativeEventDescriptor | undefined;
 }
 
 export interface RequestStatus {

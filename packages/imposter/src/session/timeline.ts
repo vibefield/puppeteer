@@ -53,7 +53,7 @@ export interface OpTimelineOptions {
   /** Publish a blocker over SSE and await its later HTTP reply. */
   requestSse?: (event: string, properties: Record<string, unknown>) => Promise<unknown>;
   /** Presentation sink: the headless log, or the Ink TUI once it lands. */
-  present?: (frame: PresentationFrame) => void;
+  present?: ((frame: PresentationFrame) => void) | undefined;
   /**
    * Every op invocation, bound or not, before any channel work.
    *

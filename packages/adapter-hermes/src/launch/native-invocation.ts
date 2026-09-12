@@ -9,8 +9,8 @@ const HermesContinuationStateSchema = z.strictObject({
 });
 
 export interface HermesNativeInvocationOptions {
-  yolo?: boolean;
-  hermesHome?: string;
+  yolo?: boolean | undefined;
+  hermesHome?: string | undefined;
 }
 
 /** Hermes owns gateway creation and native `--tui` attachment. */

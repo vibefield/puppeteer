@@ -27,7 +27,7 @@ describe('ClaudeHookNormalizer against captured fixtures', () => {
   });
 
   it('maps the turn lifecycle: prompt → turn:started, Stop → turn:completed', () => {
-    const [prompt] = loadHookFixtures('UserPromptSubmit');
+    const prompt = loadHookFixtures('UserPromptSubmit')[0]!;
     const started = normalizeOne(prompt as ClaudeHookPayload);
     expect(started.events[0]).toMatchObject({ type: 'turn:started', turnId: prompt.prompt_id, prompt: prompt.prompt });
 
@@ -193,7 +193,7 @@ describe('ClaudeHookNormalizer against captured fixtures', () => {
   });
 
   it('surfaces MessageDisplay turn_id for envelope stamping', () => {
-    const [display] = loadHookFixtures('MessageDisplay');
+    const display = loadHookFixtures('MessageDisplay')[0]!;
     const result = normalizeOne(display as ClaudeHookPayload);
     expect(result.turnId).toBe(display.turn_id);
     expect(result.promptId).toBe(display.prompt_id);

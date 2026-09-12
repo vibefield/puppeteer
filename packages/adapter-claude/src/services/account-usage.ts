@@ -674,7 +674,7 @@ export function resetClaudeAccountUsageObserversForTests(): void {
 }
 
 export interface FetchClaudeAccountUsageOptions {
-  timeoutMs?: number;
+  timeoutMs?: number | undefined;
 }
 
 /** @internal Dependency-injection surface for adapter tests; intentionally omitted from the package barrel. */

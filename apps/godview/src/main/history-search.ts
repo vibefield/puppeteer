@@ -401,11 +401,11 @@ export function createHistorySearchService(options: HistorySearchServiceOptions)
   }
   interface DaemonContext {
     target: ResolvedHistoryOrigin;
-    version?: { value: number; at: number };
+    version?: { value: number; at: number } | undefined;
     startedAt?: number | null;
     projectionEpoch?: string | null;
-    canonicalReady?: boolean;
-    search?: DaemonSearchState;
+    canonicalReady?: boolean | undefined;
+    search?: DaemonSearchState | undefined;
     cache: SessionCache;
   }
 

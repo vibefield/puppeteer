@@ -13,12 +13,12 @@ import {
 
 export interface KimiObservedEvent {
   event: AgentEvent;
-  promptId?: string;
-  turnId?: string;
-  timestamp?: string;
+  promptId?: string | undefined;
+  turnId?: string | undefined;
+  timestamp?: string | undefined;
   source: AgentEventSource;
   confidence: AgentEventConfidence;
-  replay?: boolean;
+  replay?: boolean | undefined;
   nativeEvent: unknown;
 }
 
@@ -26,7 +26,7 @@ export interface KimiObservedEvent {
 export interface KimiObservedRecord {
   agentId: string;
   record: unknown;
-  timestamp?: string;
+  timestamp?: string | undefined;
   replay: boolean;
   /** Byte range in the agent-local journal, including the trailing newline. */
   cursorStart: number;
@@ -57,17 +57,17 @@ export interface KimiSessionObserverOptions {
   kimiHome: string;
   cwd: string;
   /** Known resume location. Fresh lazy sessions omit this and use discovery. */
-  location?: KimiSessionLocation;
+  location?: KimiSessionLocation | undefined;
   /** Session ids visible before the fresh native process was launched. */
-  baselineSessionIds?: ReadonlySet<string>;
+  baselineSessionIds?: ReadonlySet<string> | undefined;
   /** Per-journal sizes captured before a resumed TUI launch. */
-  replayOffsets?: KimiJournalOffsets;
-  pollIntervalMs?: number;
-  readChunkBytes?: number;
-  maxRecordBytes?: number;
-  maxBytesPerPoll?: number;
-  maxReplayBytes?: number;
-  maxDiscoveryBytes?: number;
+  replayOffsets?: KimiJournalOffsets | undefined;
+  pollIntervalMs?: number | undefined;
+  readChunkBytes?: number | undefined;
+  maxRecordBytes?: number | undefined;
+  maxBytesPerPoll?: number | undefined;
+  maxReplayBytes?: number | undefined;
+  maxDiscoveryBytes?: number | undefined;
 }
 
 interface JournalState {

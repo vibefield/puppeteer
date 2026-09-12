@@ -39,9 +39,9 @@ export type HermesDistributionExec = (
 export type HermesDistributionReadHead = (path: string) => Promise<string>;
 
 export interface HermesDistributionServiceOptions {
-  executable?: string;
-  exec?: HermesDistributionExec;
-  readHead?: HermesDistributionReadHead;
+  executable?: string | undefined;
+  exec?: HermesDistributionExec | undefined;
+  readHead?: HermesDistributionReadHead | undefined;
 }
 
 export const HERMES_DISTRIBUTION_PROVIDER: DistributionProvider = {

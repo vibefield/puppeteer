@@ -31,19 +31,19 @@ export interface WorkspaceRequest {
   path: string;
   mode: WorkspaceMode;
   /** New worktree: ref to branch from; default HEAD. */
-  baseRef?: string;
+  baseRef?: string | undefined;
   /** New worktree: branch name; default puppeteer/<id>. */
-  branchName?: string;
+  branchName?: string | undefined;
   /** Resume a previously created worktree branch. */
-  resumeBranch?: string;
+  resumeBranch?: string | undefined;
   /** Adopt a retained worktree instead of materializing it again. */
-  resumeRoot?: string;
+  resumeRoot?: string | undefined;
   /** Where worktrees/copies materialize; default ~/.puppeteer/workspaces. */
-  workspacesRoot?: string;
+  workspacesRoot?: string | undefined;
   /** Stable identity supplied only when reconstructing an already allocated workspace. */
-  workspaceInstanceId?: string;
+  workspaceInstanceId?: string | undefined;
   /** Evidence policy supplied by the runtime; never serialized into provider options. */
-  provenance?: WorkspaceProvenanceOptions;
+  provenance?: WorkspaceProvenanceOptions | undefined;
 }
 
 export interface WorkspaceDiff {
@@ -61,11 +61,11 @@ export interface WorkspaceSessionMetadata {
   root: string;
   sourcePath: string;
   mode: WorkspaceMode;
-  branch?: string;
-  initialCommit?: string;
+  branch?: string | undefined;
+  initialCommit?: string | undefined;
   /** Files already dirty at creation, excluded from best-effort attribution. */
   initialDirtyFiles: string[];
-  finalCommit?: string;
+  finalCommit?: string | undefined;
   finalDiff: WorkspaceDiff;
   filesTouched: string[];
   provenance: WorkspaceFinalizationRecord;
@@ -73,7 +73,7 @@ export interface WorkspaceSessionMetadata {
 
 export interface WorkspaceFinalizationOptions {
   /** Other cooperative runtime claims still live at the final observation boundary. */
-  knownConcurrentClaims?: number;
+  knownConcurrentClaims?: number | undefined;
 }
 
 export interface Workspace {
@@ -86,14 +86,14 @@ export interface Workspace {
   readonly identity: string;
   readonly mode: WorkspaceMode;
   readonly sourcePath: string;
-  readonly branch?: string;
-  readonly initialCommit?: string;
+  readonly branch?: string | undefined;
+  readonly initialCommit?: string | undefined;
   readonly initialDirtyFiles: readonly string[];
   readonly baseline: WorkspaceBaselineRecord;
   diff(): Promise<WorkspaceDiff>;
   /** Idempotent: every caller receives the same first finalization attempt. */
   finalize(options?: WorkspaceFinalizationOptions): Promise<WorkspaceSessionMetadata>;
-  destroy(options?: { force?: boolean; deleteBranch?: boolean }): Promise<void>;
+  destroy(options?: { force?: boolean | undefined; deleteBranch?: boolean | undefined }): Promise<void>;
 }
 
 export type WorkspaceErrorCode = 'WORKSPACE_CREATE_FAILED' | 'WORKSPACE_CONFLICT' | 'WORKSPACE_DIRTY';

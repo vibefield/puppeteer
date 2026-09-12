@@ -7,8 +7,8 @@ export const GROK_LIVE_MODEL = 'puppeteer-grok-live';
 export const GROK_LIVE_RESPONSE_MARKER = 'SURFACE_GROK_TUI_OK';
 
 export interface GrokLiveProviderRequest {
-  readonly method?: string;
-  readonly url?: string;
+  readonly method?: string | undefined;
+  readonly url?: string | undefined;
   readonly body: unknown;
 }
 

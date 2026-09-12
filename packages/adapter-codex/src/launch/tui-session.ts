@@ -41,9 +41,9 @@ import {
 
 export interface CreateCodexTuiSessionOptions extends AgentTuiSessionOptions {
   /** Codex executable (default `codex`). */
-  executable?: string;
+  executable?: string | undefined;
   /** Extra environment for the user-visible TUI process. */
-  env?: Record<string, string>;
+  env?: Record<string, string> | undefined;
   /**
    * Extra environment for the PRIVATE app-server, merged over this process's.
    *
@@ -51,19 +51,19 @@ export interface CreateCodexTuiSessionOptions extends AgentTuiSessionOptions {
    * to configure only the backing service. Native-invocation normalization
    * supplies both when the complete recipe must share a profile or persona.
    */
-  appServerEnv?: Record<string, string>;
+  appServerEnv?: Record<string, string> | undefined;
   /** Override the private app-server endpoint kind (normally selected by platform). */
-  appServerTransport?: AppServerTransportKind;
+  appServerTransport?: AppServerTransportKind | undefined;
   /** Choose which thread to attach to when several appear (passive observer only). */
-  selectThread?: (threadId: string) => boolean;
+  selectThread?: ((threadId: string) => boolean) | undefined;
   /** Model id applied when starting a fresh thread. */
-  model?: string;
-  sandbox?: 'read-only' | 'workspace-write' | 'danger-full-access';
-  approvalPolicy?: 'never' | 'on-request' | 'untrusted';
+  model?: string | undefined;
+  sandbox?: 'read-only' | 'workspace-write' | 'danger-full-access' | undefined;
+  approvalPolicy?: 'never' | 'on-request' | 'untrusted' | undefined;
   /** Decide structured approval requests from the controller-owned app-server connection. Default: deny. */
-  onApproval?: (req: CodexApprovalRequest) => CodexApprovalDecision | Promise<CodexApprovalDecision>;
+  onApproval?: ((req: CodexApprovalRequest) => CodexApprovalDecision | Promise<CodexApprovalDecision>) | undefined;
   /** Preserve a native `codex resume ...` selection flow on the private app-server. */
-  resumeInvocation?: string[];
+  resumeInvocation?: string[] | undefined;
 }
 
 /** A Codex native-TUI session — {@link AgentAdapterBinding} plus the rollout path. */

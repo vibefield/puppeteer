@@ -17,7 +17,7 @@ export interface GrokLeaderService {
 
 export interface CreateGrokLeaderServiceOptions {
   executable: string;
-  env?: NodeJS.ProcessEnv;
+  env?: NodeJS.ProcessEnv | undefined;
 }
 
 /**

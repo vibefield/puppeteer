@@ -22,12 +22,12 @@ export type BuiltinAgentKind =
 export type BuiltinExecutableAgentKind = Exclude<BuiltinAgentKind, 'acp'>;
 
 export interface ClaudeAgentOptions {
-  permissionMode?: string;
-  model?: string;
-  effort?: string;
-  settingSources?: readonly ClaudeSettingSource[];
-  fileChangeMatcher?: string;
-  onDiagnostic?: (diagnostic: ClaudeHookDiagnostic) => void;
+  permissionMode?: string | undefined;
+  model?: string | undefined;
+  effort?: string | undefined;
+  settingSources?: readonly ClaudeSettingSource[] | undefined;
+  fileChangeMatcher?: string | undefined;
+  onDiagnostic?: ((diagnostic: ClaudeHookDiagnostic) => void) | undefined;
 }
 
 export type CodexAgentOptions = Pick<

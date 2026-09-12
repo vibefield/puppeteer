@@ -7,7 +7,7 @@ const isRecord = (value: unknown): value is Record<string, unknown> =>
 export interface HermesPromptServiceOptions {
   transport: HermesGatewayTransport;
   liveSessionId: string;
-  confirmationTimeoutMs?: number;
+  confirmationTimeoutMs?: number | undefined;
   isDisposed(): boolean;
 }
 

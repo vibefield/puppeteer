@@ -3,7 +3,7 @@ import { boundedOpenCodeMapSet, isOpenCodeRecord, openCodeError, openCodeNumber,
 
 export interface OpenCodeToolResult {
   event?: AgentEvent;
-  join?: { childId: string; agentType?: string };
+  join?: { childId: string; agentType?: string | undefined } | undefined;
   retainNative?: boolean;
 }
 

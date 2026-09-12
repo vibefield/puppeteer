@@ -16,7 +16,7 @@ import { substitute } from '../template.ts';
 export interface NativeSessionStore {
   readonly directory: string;
   readonly updatesPath: string;
-  readonly indexPath?: string;
+  readonly indexPath?: string | undefined;
   append(method: string, params: Record<string, unknown>): void;
   appendIndex(payload: Record<string, unknown>): void;
   write(name: string, payload: Record<string, unknown>): void;

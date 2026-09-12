@@ -48,30 +48,32 @@ const rec = (v: unknown): Record<string, unknown> | undefined =>
 export interface CreateCodexObserverOptions {
   transport: Transport;
   /** Decide structured approval requests. Default: deny. */
-  onApproval?: (req: CodexApprovalRequest) => CodexApprovalDecision | Promise<CodexApprovalDecision>;
+  onApproval?: ((req: CodexApprovalRequest) => CodexApprovalDecision | Promise<CodexApprovalDecision>) | undefined;
   /** Choose which thread to attach to when several appear. Default: the first. */
-  selectThread?: (threadId: string) => boolean;
+  selectThread?: ((threadId: string) => boolean) | undefined;
   /**
    * Attach immediately to this existing thread (resume path) instead of waiting
    * for `thread/started`. The thread must already be materializable (has a
    * rollout) — real Codex resumes always do.
    */
-  threadId?: string;
+  threadId?: string | undefined;
   /**
    * Create + materialize a fresh thread on this connection so the session is
    * ready before any TUI attaches. Mutually exclusive with {@link threadId}.
    */
-  start?: {
-    cwd: string;
-    model?: string;
-    sandbox?: 'read-only' | 'workspace-write' | 'danger-full-access';
-    approvalPolicy?: 'never' | 'on-request' | 'untrusted';
-  };
+  start?:
+    | {
+        cwd: string;
+        model?: string | undefined;
+        sandbox?: 'read-only' | 'workspace-write' | 'danger-full-access' | undefined;
+        approvalPolicy?: 'never' | 'on-request' | 'untrusted' | undefined;
+      }
+    | undefined;
 }
 
 export interface CodexThreadInfo {
   threadId: string;
-  path?: string;
+  path?: string | undefined;
 }
 
 export interface CodexObserver {

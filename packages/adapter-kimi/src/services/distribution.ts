@@ -32,8 +32,8 @@ export type KimiDistributionExec = (
 ) => Promise<{ stdout: string; stderr: string }>;
 
 export interface KimiDistributionServiceOptions {
-  executable?: string;
-  exec?: KimiDistributionExec;
+  executable?: string | undefined;
+  exec?: KimiDistributionExec | undefined;
 }
 
 export const KIMI_DISTRIBUTION_PROVIDER: DistributionProvider = {

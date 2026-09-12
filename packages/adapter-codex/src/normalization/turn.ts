@@ -2,13 +2,13 @@ import type { TurnEvent } from '@vibecook/puppeteer-core';
 import { type CategoryNormalization, type CodexNormalizationInput, itemText, rec, str } from './types.js';
 
 export interface CodexTurnNormalization extends CategoryNormalization<TurnEvent> {
-  turnId?: string;
+  turnId?: string | undefined;
   userMessageClientId?: string | null;
 }
 
 /** Codex turn boundaries and deferred prompt correlation -> Core turn events. */
 export class CodexTurnNormalizer {
-  private pendingTurn: { turnId?: string; emitted: boolean } | undefined;
+  private pendingTurn: { turnId?: string | undefined; emitted: boolean } | undefined;
 
   currentTurnId(): string | undefined {
     return this.pendingTurn?.turnId;

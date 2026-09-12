@@ -12,14 +12,14 @@ const StateSchema = z.strictObject({
 });
 
 export interface PiNativeInvocationOptions {
-  executable?: string;
-  env?: Record<string, string>;
-  piAgentDir?: string;
-  sessionDir?: string;
-  provider?: string;
-  model?: string;
-  thinking?: string;
-  name?: string;
+  executable?: string | undefined;
+  env?: Record<string, string> | undefined;
+  piAgentDir?: string | undefined;
+  sessionDir?: string | undefined;
+  provider?: string | undefined;
+  model?: string | undefined;
+  thinking?: string | undefined;
+  name?: string | undefined;
 }
 
 export function normalizePiNativeInvocation(
@@ -95,7 +95,7 @@ export function capturePiContinuationState(
 
 export function restorePiContinuationState(
   state: string | undefined,
-  options: { imposterExecutable?: string } = {},
+  options: { imposterExecutable?: string | undefined } = {},
 ): PiNativeInvocationOptions | undefined {
   if (!state) return undefined;
   let decoded: unknown;

@@ -14,14 +14,14 @@ import type {
 export interface ClaudeStatusLineConfig {
   type: 'command';
   command: string;
-  padding?: number;
-  refreshInterval?: number;
-  hideVimModeIndicator?: boolean;
+  padding?: number | undefined;
+  refreshInterval?: number | undefined;
+  hideVimModeIndicator?: boolean | undefined;
 }
 
 export interface ClaudeStatusChannelSettings {
-  statusLine?: ClaudeStatusLineConfig;
-  subagentStatusLine?: ClaudeStatusLineConfig;
+  statusLine?: ClaudeStatusLineConfig | undefined;
+  subagentStatusLine?: ClaudeStatusLineConfig | undefined;
 }
 
 /** Native Claude settings layers accepted by `--setting-sources`. */
@@ -29,11 +29,11 @@ export type ClaudeSettingSource = 'user' | 'project' | 'local';
 
 export interface ResolveClaudeStatusChannelsOptions {
   /** Testable override for Claude's user-settings home. */
-  home?: string;
+  home?: string | undefined;
   /** Claude's relocated user configuration root (`CLAUDE_CONFIG_DIR`). */
-  configDir?: string;
+  configDir?: string | undefined;
   /** Omitted means Claude's normal user + project + local source set. */
-  settingSources?: readonly ClaudeSettingSource[];
+  settingSources?: readonly ClaudeSettingSource[] | undefined;
 }
 
 interface ClaudeStatusLinePayload {
@@ -65,25 +65,25 @@ interface ClaudeSubagentStatusLinePayload extends ClaudeStatusLinePayload {
 
 export interface ClaudeSubagentStatusTask {
   id: string;
-  name?: string;
-  type?: string;
-  status?: string;
-  description?: string;
-  label?: string;
-  startTime?: number;
-  model?: string;
+  name?: string | undefined;
+  type?: string | undefined;
+  status?: string | undefined;
+  description?: string | undefined;
+  label?: string | undefined;
+  startTime?: number | undefined;
+  model?: string | undefined;
   /** Claude reports either an effort level or a numeric token budget. */
-  effort?: string;
-  contextWindowSize?: number;
-  tokenCount?: number;
+  effort?: string | undefined;
+  contextWindowSize?: number | undefined;
+  tokenCount?: number | undefined;
   tokenSamples: number[];
-  cwd?: string;
+  cwd?: string | undefined;
 }
 
 export interface ClaudeStatusChannelMetadata {
-  nativeSessionId?: string;
-  promptId?: string;
-  providerVersion?: string;
+  nativeSessionId?: string | undefined;
+  promptId?: string | undefined;
+  providerVersion?: string | undefined;
 }
 
 function finiteNumber(value: unknown): number | undefined {

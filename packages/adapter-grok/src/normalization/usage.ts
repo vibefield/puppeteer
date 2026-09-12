@@ -2,8 +2,8 @@ import { createHash } from 'node:crypto';
 import type { MonitorFamilyUpdate } from '@vibecook/puppeteer-core/monitor-spi';
 
 interface Usage {
-  inputTokens?: number;
-  outputTokens?: number;
+  inputTokens?: number | undefined;
+  outputTokens?: number | undefined;
   deltaTokens: number;
 }
 

@@ -109,7 +109,7 @@ describe('Kimi native persona', () => {
     for (const name of required) {
       const root = mkdtempSync(join(tmpdir(), `puppeteer-kimi-${name}-`));
       roots.push(root);
-      const emitted: Array<{ event: string; channel?: string }> = [];
+      const emitted: Array<{ event: string; channel?: string | undefined }> = [];
       const runner = createScenarioRunner({
         emit: async (event, _payload, channel) => void emitted.push({ event, channel }),
         transcript: createTranscriptWriter(join(root, 'unused.jsonl')),

@@ -15,7 +15,9 @@ export async function api<T extends object>(path: string, body?: object): Promis
       'content-type': 'application/json',
       authorization: `Bearer ${controlToken()}`,
     },
-    body: body === undefined ? undefined : JSON.stringify(body),
+    // `RequestInit` is lib.dom's, so it distinguishes an absent `body` from an
+    // explicit `undefined`; omit the key entirely for the GET shape.
+    ...(body === undefined ? {} : { body: JSON.stringify(body) }),
   });
   return (await response.json()) as ApiResponse<T>;
 }

@@ -207,8 +207,8 @@ export interface OpenCodeConfiguredIntent {
 
 export interface OpenCodeMonitorEvidenceOptions {
   nativeSessionId: () => string | undefined;
-  contextWindowCapacityTokens?: number;
-  epoch?: string;
+  contextWindowCapacityTokens?: number | undefined;
+  epoch?: string | undefined;
 }
 
 interface PendingInteraction {
@@ -220,7 +220,7 @@ interface PendingInteraction {
 export class OpenCodeMonitorEvidence {
   private readonly epoch: string;
   private sequence = 0;
-  private readonly children = new Map<string, { agent?: string }>();
+  private readonly children = new Map<string, { agent?: string | undefined }>();
   private readonly interactions = new Map<string, PendingInteraction>();
 
   constructor(private readonly options: OpenCodeMonitorEvidenceOptions) {
@@ -281,12 +281,12 @@ export class OpenCodeMonitorEvidence {
     updates: MonitorFamilyUpdate[],
     options: {
       phase?: AdapterMonitorObservationBatch['phase'];
-      effectiveAt?: string;
+      effectiveAt?: string | undefined;
       quality?: AdapterMonitorObservationBatch['quality'];
       completeness?: AdapterMonitorObservationBatch['completeness'];
       provisional?: boolean;
       readiness?: AdapterMonitorObservationBatch['readiness'];
-      actor?: ActorRunRef;
+      actor?: ActorRunRef | undefined;
       evidence?: EvidenceRef[];
       capabilities?: ObservationCapability[];
       coverage?: ObservationCoverage[];

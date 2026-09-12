@@ -15,7 +15,7 @@ import type { UsageHistory } from './usage-ledger.js';
 
 export interface MonitorAgentRecord {
   info: AgentSessionInfo;
-  monitor?: AgentMonitorStateMessage;
+  monitor?: AgentMonitorStateMessage | undefined;
 }
 
 /** A terminal the user opened that no agent has claimed. */
@@ -32,7 +32,7 @@ export interface MergeMonitorTerminalsInput {
   explicit: readonly MonitorTerminalRecord[];
   workspaceSessions: readonly SessionSummary[];
   exitedSessionIds?: ReadonlySet<string>;
-  identities?: ReadonlyMap<string, string>;
+  identities?: ReadonlyMap<string, string> | undefined;
 }
 
 /** Mounted workspace sessions are terminal resources even when no UI gesture created a placeholder for them. */
@@ -62,9 +62,9 @@ export interface AssembleMonitorAgentsInput {
   sessions?: ReadonlyMap<string, SessionSummary>;
   attachments?: ReadonlyMap<string, PaneAttachment>;
   /** Live terminal id -> stable monitor identity. */
-  identities?: ReadonlyMap<string, string>;
+  identities?: ReadonlyMap<string, string> | undefined;
   activeSessionId?: string;
-  nowMs?: number;
+  nowMs?: number | undefined;
   /** The theme's tint for project colours and the ramp for sessions with no project (record §02). */
   colours?: MonitorColours;
   /** The UI's usage ledger, by stable monitor identity. */
@@ -96,9 +96,9 @@ export function monitorAgentFromSession(
   record: MonitorAgentRecord,
   options: {
     allMonitorStates?: readonly AgentMonitorState[];
-    nowMs?: number;
+    nowMs?: number | undefined;
     colours?: MonitorColours;
-    usage?: UsageHistory;
+    usage?: UsageHistory | undefined;
   } = {},
 ): MonitorAgent | undefined {
   const { info, monitor } = record;

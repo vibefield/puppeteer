@@ -43,7 +43,7 @@ interface PromptWaiter {
 interface SessionDiscovery {
   baseline: Set<string>;
   waiters: Map<number, PromptWaiter>;
-  boundSessionId?: string;
+  boundSessionId?: string | undefined;
 }
 
 // Observers sharing a native store must not claim each other's conversations.
@@ -53,11 +53,11 @@ const discoveriesByRoot = new Map<string, Set<SessionDiscovery>>();
 
 export function createAntigravitySessionObserver(options: {
   root: string;
-  location?: AntigravitySessionLocation;
-  replayBoundary?: number;
-  baselineSessionIds?: ReadonlySet<string>;
-  pollIntervalMs?: number;
-  maxReplayBytes?: number;
+  location?: AntigravitySessionLocation | undefined;
+  replayBoundary?: number | undefined;
+  baselineSessionIds?: ReadonlySet<string> | undefined;
+  pollIntervalMs?: number | undefined;
+  maxReplayBytes?: number | undefined;
 }): AntigravitySessionObserver {
   const normalizer = new AntigravityTranscriptNormalizer();
   const events = new Set<(event: AntigravityObservedEvent) => void>();

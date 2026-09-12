@@ -73,14 +73,14 @@ function posixish(path: string): string {
 
 export interface ClaudeDistributionOptions {
   /** Executable the runtime launches; only used to answer version probes for a configured candidate. */
-  executable?: string;
-  exec?: ClaudeExec;
+  executable?: string | undefined;
+  exec?: ClaudeExec | undefined;
   /** Injected reader so unit tests never touch a real home directory. */
-  readFile?: (path: string) => Promise<string>;
+  readFile?: ((path: string) => Promise<string>) | undefined;
   /** Home directory the native layouts hang off; defaults to the process home. */
-  home?: string;
-  env?: NodeJS.ProcessEnv;
-  now?: () => Date;
+  home?: string | undefined;
+  env?: NodeJS.ProcessEnv | undefined;
+  now?: (() => Date) | undefined;
 }
 
 /** Adapter-declared distribution facts. Detectors mirror packages/surface/vendors/claude/upstream.json. */

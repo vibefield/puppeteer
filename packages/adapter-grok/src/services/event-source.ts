@@ -9,12 +9,12 @@ import {
 } from '@vibecook/puppeteer-core';
 
 export interface GrokEventPublication {
-  promptId?: string;
-  turnId?: string;
-  timestamp?: string;
-  source?: AgentEventSource;
-  confidence?: AgentEventConfidence;
-  replay?: boolean;
+  promptId?: string | undefined;
+  turnId?: string | undefined;
+  timestamp?: string | undefined;
+  source?: AgentEventSource | undefined;
+  confidence?: AgentEventConfidence | undefined;
+  replay?: boolean | undefined;
   nativeEvent?: unknown;
 }
 

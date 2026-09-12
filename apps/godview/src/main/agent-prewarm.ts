@@ -3,7 +3,7 @@ import type { AgentRuntime } from '@vibecook/puppeteer-runtime';
 interface AgentPrewarmOptions {
   runtime: Pick<AgentRuntime, 'launchProviders' | 'profiles' | 'prewarm'>;
   defaults: Readonly<Record<string, string>>;
-  profileIds?: readonly string[];
+  profileIds?: readonly string[] | undefined;
   available(executable: string): boolean;
 }
 

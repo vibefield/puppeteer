@@ -648,7 +648,11 @@ const host: AgentHost = {
       executable: spec.command,
       args: spec.args,
       cwd: spec.cwd,
-      environment: { mode: 'clean', variables: buildAgentEnvironment({ allowed: spec.env }) },
+      environment: {
+        mode: 'clean',
+        // `AgentEnvironmentRequest` is runtime-owned: omit `allowed` rather than granting it an explicit undefined.
+        variables: buildAgentEnvironment(spec.env === undefined ? {} : { allowed: spec.env }),
+      },
       cols: spec.cols ?? DEFAULT_COLS,
       rows: spec.rows ?? DEFAULT_ROWS,
       persistence: 'terminate-with-app',
@@ -2392,7 +2396,7 @@ function focusRelativeTab(window: BrowserWindow, offset: -1 | 1): void {
 
 interface CreateWindowOptions {
   tabOf?: BrowserWindow;
-  initialCwd?: string;
+  initialCwd?: string | undefined;
   claimExistingSessions?: boolean;
   /** Show this viewport without letting its load completion steal focus. */
   activateOnReady?: boolean;

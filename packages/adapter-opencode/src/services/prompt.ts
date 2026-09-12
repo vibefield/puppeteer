@@ -64,7 +64,7 @@ export interface OpenCodePromptServiceOptions {
   sessionId(): string;
   agent(): string;
   model(): OpenCodeModelSelection | undefined;
-  confirmationTimeoutMs?: number;
+  confirmationTimeoutMs?: number | undefined;
   isDisposed(): boolean;
 }
 

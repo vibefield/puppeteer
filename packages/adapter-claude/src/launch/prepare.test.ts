@@ -161,7 +161,7 @@ describe('prepareClaudeSession', () => {
         hook_event_name: 'SessionStart',
         source: 'startup',
       });
-      const handler = settings.hooks.SessionStart[0].hooks[0];
+      const handler = settings.hooks.SessionStart![0]!.hooks[0]!;
       await expect(runExecutable(handler.command, handler.args, payload, p.env)).resolves.toBe('');
       expect(received).toEqual([JSON.parse(payload)]);
     } finally {

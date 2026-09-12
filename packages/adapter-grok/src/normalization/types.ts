@@ -29,11 +29,11 @@ export interface GrokUpdateRecord {
 
 export interface GrokObservedEvent {
   event: AgentEvent;
-  promptId?: string;
-  timestamp?: string;
-  phase?: 'bootstrap' | 'live';
-  source?: AgentEventSource;
-  confidence?: AgentEventConfidence;
+  promptId?: string | undefined;
+  timestamp?: string | undefined;
+  phase?: 'bootstrap' | 'live' | undefined;
+  source?: AgentEventSource | undefined;
+  confidence?: AgentEventConfidence | undefined;
   nativeEvent: unknown;
 }
 

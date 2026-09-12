@@ -7,7 +7,7 @@ export class GrokTurnNormalizer {
   private readonly completedPrompts = new Set<string>();
   private activePrompt: string | undefined;
   private pendingPrompt: string | undefined;
-  private pendingUser: { text: string; timestamp?: string; nativeEvent: unknown } | undefined;
+  private pendingUser: { text: string; timestamp?: string | undefined; nativeEvent: unknown } | undefined;
   private fallbackPromptCounter = 0;
 
   normalizeHook(update: GrokUpdate): GrokObservedEvent[] {

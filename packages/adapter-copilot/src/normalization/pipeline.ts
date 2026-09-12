@@ -24,7 +24,7 @@ function boundedSet<K, V>(map: Map<K, V>, key: K, value: V) {
 }
 
 interface CopilotActorState {
-  currentInteractionId?: string;
+  currentInteractionId?: string | undefined;
   readonly internalTurns: Map<string, string>;
   readonly terminalInternalTurns: Set<string>;
   readonly tools: Map<string, CopilotToolFact>;

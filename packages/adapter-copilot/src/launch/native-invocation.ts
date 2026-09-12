@@ -6,16 +6,16 @@ const SAFE_ID = /^[A-Za-z0-9._-]+$/u;
 const REJECTED = 'custom arguments are not compatible with the managed Copilot launch';
 const StateSchema = z.strictObject({ version: z.literal(1), home: z.string(), imposterRoot: z.string().optional() });
 export interface CopilotNativeInvocationOptions {
-  executable?: string;
-  env?: Record<string, string>;
-  copilotHome?: string;
-  model?: string;
-  effort?: string;
-  mode?: 'interactive' | 'plan' | 'autopilot';
-  allowAll?: boolean;
-  agent?: string;
-  context?: string;
-  name?: string;
+  executable?: string | undefined;
+  env?: Record<string, string> | undefined;
+  copilotHome?: string | undefined;
+  model?: string | undefined;
+  effort?: string | undefined;
+  mode?: 'interactive' | 'plan' | 'autopilot' | undefined;
+  allowAll?: boolean | undefined;
+  agent?: string | undefined;
+  context?: string | undefined;
+  name?: string | undefined;
 }
 
 export function normalizeCopilotNativeInvocation(
@@ -92,7 +92,7 @@ export function captureCopilotContinuationState(
 }
 export function restoreCopilotContinuationState(
   state: string | undefined,
-  options: { imposterExecutable?: string } = {},
+  options: { imposterExecutable?: string | undefined } = {},
 ): CopilotNativeInvocationOptions | undefined {
   if (!state) return undefined;
   let decoded: unknown;

@@ -14,7 +14,7 @@ export interface OpenCodeEventStreamOptions {
   onRecord: (record: OpenCodeSseRecord) => void | Promise<void>;
   onMalformed?: (data: string, error: Error) => void;
   onError?: (error: Error) => void;
-  reconnectDelayMs?: number;
+  reconnectDelayMs?: number | undefined;
   maxEventBytes?: number;
   fetchImpl?: typeof fetch;
 }

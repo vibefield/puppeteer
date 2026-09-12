@@ -12,11 +12,11 @@ export interface HermesGatewayHost {
 }
 
 export interface StartHermesGatewayHostOptions {
-  python?: string;
+  python?: string | undefined;
   hermesHome: string;
   cwd: string;
-  env?: Record<string, string>;
-  startupTimeoutMs?: number;
+  env?: Record<string, string> | undefined;
+  startupTimeoutMs?: number | undefined;
 }
 
 async function terminateChild(child: ChildProcess, timeoutMs = 2_000): Promise<void> {

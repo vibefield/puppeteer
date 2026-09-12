@@ -58,8 +58,8 @@ export type GrokDistributionExec = (
 
 export interface GrokDistributionServiceOptions {
   /** Executable the runtime launches, when the host configured one. */
-  executable?: string;
-  exec?: GrokDistributionExec;
+  executable?: string | undefined;
+  exec?: GrokDistributionExec | undefined;
 }
 
 export const GROK_DISTRIBUTION_PROVIDER: DistributionProvider = {

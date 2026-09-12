@@ -107,6 +107,7 @@ function npmPackageExecutable(packageRoot: string, manifest: unknown, commands: 
   );
   if (entries.length === 0) return undefined;
   const preferred = entries.find(([name]) => commands.includes(name)) ?? entries[0];
+  if (preferred === undefined) return undefined;
   return resolve(packageRoot, preferred[1]);
 }
 

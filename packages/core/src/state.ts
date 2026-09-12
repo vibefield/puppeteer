@@ -30,26 +30,26 @@ export type SessionLifecycle =
 
 export interface ToolRuntimeState {
   toolCallId: string;
-  tool?: string;
+  tool?: string | undefined;
   state: 'requested' | 'running';
   input?: unknown;
-  presentation?: ToolPresentation;
+  presentation?: ToolPresentation | undefined;
 }
 
 export interface ReasoningRuntimeState {
-  reasoningId?: string;
+  reasoningId?: string | undefined;
   startedAt: string;
 }
 
 export interface PermissionRuntimeState {
   requestId: string;
-  toolCallId?: string;
-  tool?: string;
+  toolCallId?: string | undefined;
+  tool?: string | undefined;
 }
 
 export interface SubagentRuntimeState {
   subagentId: string;
-  agentType?: string;
+  agentType?: string | undefined;
 }
 
 export interface ReducerDiagnostic {
@@ -64,8 +64,8 @@ export interface ContextWindowRuntimeState {
   capacityTokens: number;
   /** Exact, unrounded percentage in the inclusive range 0..100. */
   usedPercent: number;
-  percentageSource?: 'provider' | 'derived';
-  modelId?: string;
+  percentageSource?: 'provider' | 'derived' | undefined;
+  modelId?: string | undefined;
   updatedAt: string;
   source: AgentEventSource;
   confidence: AgentEventConfidence;
@@ -79,17 +79,17 @@ export interface ObservedEnvironmentValue<T> {
 }
 
 export interface SessionEnvironmentRuntimeState {
-  currentCwd?: ObservedEnvironmentValue<string>;
-  model?: ObservedEnvironmentValue<AgentModelIdentity>;
+  currentCwd?: ObservedEnvironmentValue<string> | undefined;
+  model?: ObservedEnvironmentValue<AgentModelIdentity> | undefined;
   /** A null value authoritatively means the current cwd is not in a Git repo. */
-  git?: ObservedEnvironmentValue<AgentGitState | null>;
+  git?: ObservedEnvironmentValue<AgentGitState | null> | undefined;
 }
 
 export interface SessionRuntimeState {
   lifecycle: SessionLifecycle;
-  activeTurn?: { id?: string; startedAt: string };
+  activeTurn?: { id?: string | undefined; startedAt: string } | undefined;
   /** Present only for providers with an explicit reasoning signal. */
-  activeReasoning?: ReasoningRuntimeState;
+  activeReasoning?: ReasoningRuntimeState | undefined;
   /** Tools currently in flight. Completed/failed tools LEAVE this map. */
   tools: Map<string, ToolRuntimeState>;
   /**
@@ -102,11 +102,13 @@ export interface SessionRuntimeState {
   permissions: Map<string, PermissionRuntimeState>;
   subagents: Map<string, SubagentRuntimeState>;
   /** Absent until measured, and while invalidated after compaction/history changes. */
-  contextWindow?: ContextWindowRuntimeState;
+  contextWindow?: ContextWindowRuntimeState | undefined;
   /** Live provider/runtime facts about where and how the agent is executing. */
   environment: SessionEnvironmentRuntimeState;
-  lastAssistantMessage?: string;
-  exit?: { exitCode?: number; signal?: string; reason?: ProcessExitReason | string };
+  lastAssistantMessage?: string | undefined;
+  exit?:
+    | { exitCode?: number | undefined; signal?: string | undefined; reason?: ProcessExitReason | string | undefined }
+    | undefined;
   counters: {
     toolsCompleted: number;
     toolsFailed: number;

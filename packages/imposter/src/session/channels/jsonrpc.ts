@@ -36,13 +36,13 @@ export interface AppServerChannelOptions {
   input: Readable;
   output: Writable;
   /** Include a strict JSON-RPC version field when the vendor does (ACP). */
-  jsonrpc?: '2.0';
+  jsonrpc?: '2.0' | undefined;
   /** Vendor-specific fields added to agent notifications (e.g. emittedAtMs). */
   notificationFields?(): Record<string, unknown>;
   /** Validate the complete agent-originated request/notification carrier. */
-  validateOutbound?(method: string, record: Record<string, unknown>): string[];
+  validateOutbound?: ((method: string, record: Record<string, unknown>) => string[]) | undefined;
   /** Validate a client result for an agent-originated request. */
-  validateResult?(method: string, result: unknown): string[];
+  validateResult?: ((method: string, result: unknown) => string[]) | undefined;
   /** Serve one inbound client request. Throw `RpcError` to answer with a code. */
   serve(method: string, params: Record<string, unknown>): Promise<unknown>;
   /** Inbound notifications (`initialized`); nothing is ever replied. */

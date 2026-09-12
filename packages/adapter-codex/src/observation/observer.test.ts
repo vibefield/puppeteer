@@ -614,7 +614,7 @@ describe('createCodexObserver controller-owned bootstrap', () => {
 
     t.releaseRead();
     const obs = await creating;
-    const events: Array<{ replay?: boolean; event: { type: string; text?: string } }> = [];
+    const events: Array<{ replay?: boolean | undefined; event: { type: string; text?: string | undefined } }> = [];
     obs.events.onCandidate((envelope) => events.push(envelope));
 
     expect(

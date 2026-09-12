@@ -32,10 +32,10 @@ export type AntigravityDistributionExec = (
 ) => Promise<{ stdout: string; stderr: string }>;
 
 export interface AntigravityDistributionServiceOptions {
-  executable?: string;
-  exec?: AntigravityDistributionExec;
+  executable?: string | undefined;
+  exec?: AntigravityDistributionExec | undefined;
   /** Injected so tests never read the developer's own environment. */
-  env?: NodeJS.ProcessEnv;
+  env?: NodeJS.ProcessEnv | undefined;
 }
 
 export const ANTIGRAVITY_DISTRIBUTION_PROVIDER: DistributionProvider = {

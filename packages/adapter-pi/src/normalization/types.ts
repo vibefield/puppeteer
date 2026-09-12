@@ -4,9 +4,9 @@ export type PiNormalizationDisposition = 'mapped' | 'retained-native' | 'no-outp
 
 export interface PiNormalizedRecord {
   events: AgentEvent[];
-  promptId?: string;
-  turnId?: string;
-  timestamp?: string;
+  promptId?: string | undefined;
+  turnId?: string | undefined;
+  timestamp?: string | undefined;
   source: AgentEventSource;
   confidence: AgentEventConfidence;
   nativeEvent: unknown;

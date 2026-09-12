@@ -15,22 +15,22 @@ import { agentEventType, type AgentEvent, type AgentEventTypeFor } from '../even
  * never needs to infer a category from provider-native evidence.
  */
 export interface AdapterEventCandidateFields<T extends AgentEvent> {
-  eventId?: string;
-  sourceEventRef?: AgentEventSourceRef;
+  eventId?: string | undefined;
+  sourceEventRef?: AgentEventSourceRef | undefined;
   sessionId: string;
-  nativeSessionId?: string;
-  promptId?: string;
-  turnId?: string;
-  agentId?: string;
-  agentType?: string;
-  actorKey?: string;
-  actorRole?: 'child' | 'auxiliary' | 'unknown';
-  providerVersion?: string;
+  nativeSessionId?: string | undefined;
+  promptId?: string | undefined;
+  turnId?: string | undefined;
+  agentId?: string | undefined;
+  agentType?: string | undefined;
+  actorKey?: string | undefined;
+  actorRole?: 'child' | 'auxiliary' | 'unknown' | undefined;
+  providerVersion?: string | undefined;
   timestamp: string;
   monotonicTime: number;
   source: AgentEventSource;
   confidence: AgentEventConfidence;
-  replay?: boolean;
+  replay?: boolean | undefined;
   event: T;
   nativeEvent?: unknown;
 }
@@ -95,7 +95,7 @@ export class BufferedAdapterEventSource {
   #candidateAttached = false;
   #closed = false;
 
-  constructor(options: { pendingCapacity?: number } = {}) {
+  constructor(options: { pendingCapacity?: number | undefined } = {}) {
     this.#pendingCapacity = options.pendingCapacity ?? 256;
     if (!Number.isSafeInteger(this.#pendingCapacity) || this.#pendingCapacity < 1) {
       throw new RangeError('adapter event pendingCapacity must be a positive safe integer');

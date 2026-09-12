@@ -19,9 +19,9 @@ export interface NormalizeOpenCodeOptions {
 
 export interface OpenCodeNormalizerOptions {
   sessionID: string;
-  contextWindowCapacityTokens?: number;
-  maxSeenEventIds?: number;
-  maxCorrelationEntries?: number;
+  contextWindowCapacityTokens?: number | undefined;
+  maxSeenEventIds?: number | undefined;
+  maxCorrelationEntries?: number | undefined;
 }
 
 export interface OpenCodeTextPartState {

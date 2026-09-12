@@ -11,7 +11,7 @@ import {
 } from '@vibecook/puppeteer-core';
 
 export interface AgentEventBusOptions {
-  onListenerError?: (error: unknown, envelope: AgentEventEnvelope) => void;
+  onListenerError?: ((error: unknown, envelope: AgentEventEnvelope) => void) | undefined;
 }
 
 /** Freeze schema-owned payload structure while leaving opaque tool data alone. */

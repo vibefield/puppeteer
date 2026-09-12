@@ -25,7 +25,7 @@ export interface AgentOptions {
   info: AgentSessionInfo;
   monitor: AgentMonitorService;
   submitPrompt: (submission: PromptSubmission) => Promise<PromptReceipt>;
-  onListenerError?: (error: unknown, envelope: AgentEventEnvelope) => void;
+  onListenerError?: ((error: unknown, envelope: AgentEventEnvelope) => void) | undefined;
 }
 
 export interface AgentIngestResult {
@@ -152,7 +152,10 @@ export class Agent {
     return internals(this).monitor.observe();
   }
 
-  readMonitorArtifact(artifactId: string, options?: { maxBytes?: number }): Promise<MonitorArtifactReadResult> {
+  readMonitorArtifact(
+    artifactId: string,
+    options?: { maxBytes?: number | undefined },
+  ): Promise<MonitorArtifactReadResult> {
     return internals(this).monitor.readArtifact(artifactId, options);
   }
 
@@ -166,11 +169,11 @@ export interface AgentController {
   accept(
     envelope: RuntimeAgentEventEnvelope,
     options?: {
-      projectMonitor?: boolean;
-      projectState?: boolean;
-      projectConversation?: boolean;
-      publish?: boolean;
-      hostProcessEvidence?: boolean;
+      projectMonitor?: boolean | undefined;
+      projectState?: boolean | undefined;
+      projectConversation?: boolean | undefined;
+      publish?: boolean | undefined;
+      hostProcessEvidence?: boolean | undefined;
     },
   ): AgentIngestResult;
   dispose(): Promise<void>;

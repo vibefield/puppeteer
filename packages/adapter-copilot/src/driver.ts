@@ -13,19 +13,19 @@ import { CopilotEventSource } from './services/event-source.js';
 import { CopilotPromptService } from './services/prompt.js';
 
 export interface CreateCopilotTuiSessionOptions extends AgentTuiSessionOptions {
-  executable?: string;
-  env?: Record<string, string>;
-  copilotHome?: string;
-  model?: string;
-  effort?: string;
-  title?: string;
-  mode?: 'interactive' | 'plan' | 'autopilot';
-  allowAll?: boolean;
-  agent?: string;
-  context?: string;
-  pollIntervalMs?: number;
-  maxReplayBytes?: number;
-  promptConfirmationTimeoutMs?: number;
+  executable?: string | undefined;
+  env?: Record<string, string> | undefined;
+  copilotHome?: string | undefined;
+  model?: string | undefined;
+  effort?: string | undefined;
+  title?: string | undefined;
+  mode?: 'interactive' | 'plan' | 'autopilot' | undefined;
+  allowAll?: boolean | undefined;
+  agent?: string | undefined;
+  context?: string | undefined;
+  pollIntervalMs?: number | undefined;
+  maxReplayBytes?: number | undefined;
+  promptConfirmationTimeoutMs?: number | undefined;
 }
 export interface CopilotTuiSession extends AgentAdapterBinding {
   sessionDirectory(): string;

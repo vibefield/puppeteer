@@ -121,14 +121,14 @@ export interface NormalizationUpdate {
 
 interface NormalizerResult {
   events: AgentEvent[];
-  promptId?: string;
-  turnId?: string;
+  promptId?: string | undefined;
+  turnId?: string | undefined;
   source: AgentEventSource;
-  confidence?: AgentEventConfidence;
-  timestamp?: string;
+  confidence?: AgentEventConfidence | undefined;
+  timestamp?: string | undefined;
   nativeEvent: unknown;
-  disposition?: NormalizationDisposition;
-  explanation?: string;
+  disposition?: NormalizationDisposition | undefined;
+  explanation?: string | undefined;
 }
 
 interface NativeNormalizer {

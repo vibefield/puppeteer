@@ -4,17 +4,17 @@ export interface ClaudeTranscriptRecord {
   /** Stable local identity used only when the provider row has no native id. */
   sourceId: string;
   index: number;
-  type?: string;
-  uuid?: string;
-  parentUuid?: string;
+  type?: string | undefined;
+  uuid?: string | undefined;
+  parentUuid?: string | undefined;
   timestamp: string;
-  sessionId?: string;
-  promptId?: string;
-  requestId?: string;
-  agentId?: string;
-  agentType?: string;
+  sessionId?: string | undefined;
+  promptId?: string | undefined;
+  requestId?: string | undefined;
+  agentId?: string | undefined;
+  agentType?: string | undefined;
   isSidechain: boolean;
-  message?: Record<string, unknown>;
+  message?: Record<string, unknown> | undefined;
 }
 
 export function transcriptObject(value: unknown): Record<string, unknown> | undefined {

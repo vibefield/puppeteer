@@ -7,7 +7,7 @@ export class CopilotPromptService {
       host: AgentHost;
       runtimeSessionId: string;
       observer: CopilotSessionObserver;
-      confirmationTimeoutMs?: number;
+      confirmationTimeoutMs?: number | undefined;
       isDisposed(): boolean;
     },
   ) {}

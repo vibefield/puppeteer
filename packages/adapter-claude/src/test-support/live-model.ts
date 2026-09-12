@@ -7,8 +7,8 @@ export const CLAUDE_LIVE_RESPONSE_MARKER = 'SURFACE_CLAUDE_TUI_OK';
 export const CLAUDE_LIVE_AUTH_TOKEN = 'puppeteer-not-a-real-token';
 
 export interface ClaudeLiveModelRequest {
-  readonly method?: string;
-  readonly url?: string;
+  readonly method?: string | undefined;
+  readonly url?: string | undefined;
   readonly body: unknown;
   readonly kind: 'turn' | 'auxiliary' | 'count-tokens' | 'hello' | 'unsupported';
 }

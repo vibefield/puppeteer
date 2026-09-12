@@ -11,21 +11,21 @@ import type { MonitorArtifactReadResult } from '@vibecook/puppeteer-core';
 import type { AdapterMonitorObservationBatch, ObservationCapability } from '@vibecook/puppeteer-core/monitor-spi';
 
 export interface SemanticObservationPollHint {
-  hookEventName?: string;
-  nativeSessionId?: string;
-  promptId?: string;
-  agentId?: string;
-  agentType?: string;
+  hookEventName?: string | undefined;
+  nativeSessionId?: string | undefined;
+  promptId?: string | undefined;
+  agentId?: string | undefined;
+  agentType?: string | undefined;
 }
 
 export interface SemanticObservationEvent {
   event: AgentEvent;
   timestamp: string;
-  promptId?: string;
-  turnId?: string;
-  agentId?: string;
-  agentType?: string;
-  replay?: boolean;
+  promptId?: string | undefined;
+  turnId?: string | undefined;
+  agentId?: string | undefined;
+  agentType?: string | undefined;
+  replay?: boolean | undefined;
   /** Retained as candidate evidence and later on the runtime envelope; never monitor state. */
   nativeEvent?: unknown;
 }
@@ -34,7 +34,7 @@ export interface SemanticObservationAttachRequest {
   nativeSessionId: string;
   transcriptPath: string;
   /** Zero disables polling; an omitted value lets the provider choose its fallback cadence. */
-  pollIntervalMs?: number;
+  pollIntervalMs?: number | undefined;
 }
 
 export interface SemanticObservationHandle {

@@ -27,7 +27,7 @@ export interface UnreadCandidate {
   /** Whether an agent is behind this row; a bare terminal never earns the dot. */
   hasAgent: boolean;
   /** Core's `statusSince`, epoch ms; absent for a terminal. */
-  statusSinceMs?: number;
+  statusSinceMs?: number | undefined;
 }
 
 export function reconcileUnread(

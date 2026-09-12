@@ -4,9 +4,9 @@ export type HermesNormalizationDisposition = 'mapped' | 'retained-native' | 'buf
 
 export interface HermesNormalizedRecord {
   events: AgentEvent[];
-  nativeSessionId?: string;
-  liveSessionId?: string;
-  turnId?: string;
+  nativeSessionId?: string | undefined;
+  liveSessionId?: string | undefined;
+  turnId?: string | undefined;
   source: AgentEventSource;
   confidence: AgentEventConfidence;
   nativeEvent: unknown;
@@ -37,8 +37,8 @@ export function boundedHermesMapSet<K, V>(target: Map<K, V>, key: K, value: V): 
 }
 
 export function parseHermesFrame(frame: unknown): {
-  type?: string;
-  liveSessionId?: string;
+  type?: string | undefined;
+  liveSessionId?: string | undefined;
   payload: Record<string, unknown>;
 } {
   const body = hermesRecord(frame);

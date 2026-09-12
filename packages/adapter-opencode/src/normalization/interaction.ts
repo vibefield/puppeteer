@@ -5,7 +5,7 @@ import { boundedOpenCodeMapSet, isOpenCodeRecord, openCodeText } from './wire.js
 
 export interface OpenCodeInteractionResult {
   event: AgentEvent;
-  messageId?: string;
+  messageId?: string | undefined;
 }
 
 /** OpenCode permission/question records → interaction state events. */

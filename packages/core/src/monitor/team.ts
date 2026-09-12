@@ -2,8 +2,8 @@ import type { AgentMonitorState, AgentMonitorStatus, RuntimeRunId } from './type
 import { isNewerMonitorRevision } from './ordering.js';
 
 export interface AgentMonitorTeamUsageAggregate {
-  cumulativeTokens?: number;
-  burnRatePerMin?: number;
+  cumulativeTokens?: number | undefined;
+  burnRatePerMin?: number | undefined;
   cumulativeObservedRuns: number;
   burnRateObservedRuns: number;
   totalRuns: number;
@@ -13,7 +13,7 @@ export interface AgentMonitorTeamUsageAggregate {
 
 export interface AgentMonitorTeamAggregate {
   runtimeRunIds: RuntimeRunId[];
-  status?: AgentMonitorStatus;
+  status?: AgentMonitorStatus | undefined;
   statusCounts: Record<AgentMonitorStatus, number>;
   aliveRuns: number;
   totalRuns: number;

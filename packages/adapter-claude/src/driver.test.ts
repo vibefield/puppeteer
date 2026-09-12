@@ -77,7 +77,7 @@ async function startSession(
   const settings = JSON.parse(readFileSync(prepared!.settingsPath, 'utf8')) as {
     hooks: Record<string, Array<{ hooks: Array<{ type: string; url?: string }> }>>;
   };
-  const endpoint = settings.hooks.UserPromptSubmit[0].hooks[0].url!;
+  const endpoint = settings.hooks.UserPromptSubmit![0]!.hooks[0]!.url!;
   const token = prepared!.env.PUPPETEER_HOOK_TOKEN;
 
   const events = projection.envelopes;
@@ -98,7 +98,7 @@ async function startSession(
   };
 
   const statusLine = async (fields: Record<string, unknown>) => {
-    const res = await fetch(prepared!.env.PUPPETEER_STATUSLINE_ENDPOINT, {
+    const res = await fetch(prepared!.env.PUPPETEER_STATUSLINE_ENDPOINT!, {
       method: 'POST',
       headers: { 'content-type': 'application/json', authorization: `Bearer ${token}` },
       body: JSON.stringify({ session_id: session.sessionId, ...fields }),
@@ -107,7 +107,7 @@ async function startSession(
   };
 
   const subagentStatusLine = async (fields: Record<string, unknown>) => {
-    const res = await fetch(prepared!.env.PUPPETEER_SUBAGENT_STATUSLINE_ENDPOINT, {
+    const res = await fetch(prepared!.env.PUPPETEER_SUBAGENT_STATUSLINE_ENDPOINT!, {
       method: 'POST',
       headers: { 'content-type': 'application/json', authorization: `Bearer ${token}` },
       body: JSON.stringify({ session_id: session.sessionId, ...fields }),
@@ -186,7 +186,7 @@ describe('createClaudeSession (full loop, test-as-Claude)', () => {
     const settings = JSON.parse(readFileSync(prepared.launch.settingsPath, 'utf8')) as {
       hooks: Record<string, Array<{ hooks: Array<{ url?: string }> }>>;
     };
-    const endpoint = settings.hooks.UserPromptSubmit[0].hooks[0].url!;
+    const endpoint = settings.hooks.UserPromptSubmit![0]!.hooks[0]!.url!;
     const response = await fetch(endpoint, {
       method: 'POST',
       headers: {
@@ -487,12 +487,12 @@ describe('createClaudeSession (full loop, test-as-Claude)', () => {
       ],
     });
     const postOtlp = (body = otlpBody) =>
-      fetch(prepared.env.OTEL_EXPORTER_OTLP_LOGS_ENDPOINT, {
+      fetch(prepared.env.OTEL_EXPORTER_OTLP_LOGS_ENDPOINT!, {
         method: 'POST',
         headers: { 'content-type': 'application/json', authorization: `Bearer ${token}` },
         body,
       });
-    const foreignResponse = await fetch(prepared.env.OTEL_EXPORTER_OTLP_LOGS_ENDPOINT, {
+    const foreignResponse = await fetch(prepared.env.OTEL_EXPORTER_OTLP_LOGS_ENDPOINT!, {
       method: 'POST',
       headers: { 'content-type': 'application/json', authorization: `Bearer ${token}` },
       body: otlpBody.replace(session.sessionId, 'foreign-session'),
@@ -501,7 +501,7 @@ describe('createClaudeSession (full loop, test-as-Claude)', () => {
     expect(session.observationLevel()).toBe('terminal-only');
     expect(events.some(({ event }) => event.type === 'usage:tokens-used')).toBe(false);
 
-    const emptyResponse = await fetch(prepared.env.OTEL_EXPORTER_OTLP_LOGS_ENDPOINT, {
+    const emptyResponse = await fetch(prepared.env.OTEL_EXPORTER_OTLP_LOGS_ENDPOINT!, {
       method: 'POST',
       headers: { 'content-type': 'application/json', authorization: `Bearer ${token}` },
       body: JSON.stringify({ resourceLogs: [] }),
@@ -610,7 +610,7 @@ describe('createClaudeSession (full loop, test-as-Claude)', () => {
       expect(workflows()).toEqual([]);
 
       const post = (nativeSessionId = session.sessionId, name = 'research') =>
-        fetch(prepared.env.OTEL_EXPORTER_OTLP_LOGS_ENDPOINT, {
+        fetch(prepared.env.OTEL_EXPORTER_OTLP_LOGS_ENDPOINT!, {
           method: 'POST',
           headers: { 'content-type': 'application/json', authorization: `Bearer ${token}` },
           body: JSON.stringify({
@@ -1273,7 +1273,7 @@ describe('createClaudeSession (full loop, test-as-Claude)', () => {
       JSON.parse(readFileSync(prepared!.settingsPath, 'utf8')) as {
         hooks: Record<string, Array<{ hooks: Array<{ url?: string }> }>>;
       }
-    ).hooks.UserPromptSubmit[0].hooks[0].url!;
+    ).hooks.UserPromptSubmit![0]!.hooks[0]!.url!;
     const res = await fetch(endpoint, {
       method: 'POST',
       headers: { 'content-type': 'application/json', authorization: `Bearer ${prepared!.env.PUPPETEER_HOOK_TOKEN}` },
@@ -1394,7 +1394,7 @@ describe('createClaudeSession (full loop, test-as-Claude)', () => {
     const settings = JSON.parse(readFileSync(prepared.launch.settingsPath, 'utf8')) as {
       hooks: Record<string, Array<{ hooks: Array<{ url?: string }> }>>;
     };
-    const endpoint = settings.hooks.UserPromptSubmit[0].hooks[0].url!;
+    const endpoint = settings.hooks.UserPromptSubmit![0]!.hooks[0]!.url!;
     const transcriptDirectory = mkdtempSync(join(tmpdir(), 'driver-picker-baselines-'));
     const previewTranscript = join(transcriptDirectory, `${previewId}.jsonl`);
     const selectedTranscript = join(transcriptDirectory, `${selectedId}.jsonl`);
@@ -1432,7 +1432,7 @@ describe('createClaudeSession (full loop, test-as-Claude)', () => {
     await session.pollTranscript();
     expect(projection.envelopes.some(({ event }) => event.type === 'conversation:assistant-message')).toBe(false);
 
-    const preview = await fetch(prepared.launch.env.PUPPETEER_STATUSLINE_ENDPOINT, {
+    const preview = await fetch(prepared.launch.env.PUPPETEER_STATUSLINE_ENDPOINT!, {
       method: 'POST',
       headers: {
         'content-type': 'application/json',
@@ -1466,7 +1466,7 @@ describe('createClaudeSession (full loop, test-as-Claude)', () => {
     await session.pollTranscript();
     expect(projection.envelopes.some(({ event }) => event.type === 'conversation:assistant-message')).toBe(false);
 
-    const selectedStatus = await fetch(prepared.launch.env.PUPPETEER_STATUSLINE_ENDPOINT, {
+    const selectedStatus = await fetch(prepared.launch.env.PUPPETEER_STATUSLINE_ENDPOINT!, {
       method: 'POST',
       headers: {
         'content-type': 'application/json',
@@ -1513,7 +1513,7 @@ describe('createClaudeSession (full loop, test-as-Claude)', () => {
     expect(stalePreviewStart.status).toBe(403);
     expect(session.sessionId).toBe(selectedId);
 
-    const stalePreview = await fetch(prepared.launch.env.PUPPETEER_STATUSLINE_ENDPOINT, {
+    const stalePreview = await fetch(prepared.launch.env.PUPPETEER_STATUSLINE_ENDPOINT!, {
       method: 'POST',
       headers: {
         'content-type': 'application/json',
@@ -1579,7 +1579,7 @@ describe('createClaudeSession (full loop, test-as-Claude)', () => {
     const settings = JSON.parse(readFileSync(prepared.launch.settingsPath, 'utf8')) as {
       hooks: Record<string, Array<{ hooks: Array<{ url?: string }> }>>;
     };
-    const endpoint = settings.hooks.UserPromptSubmit[0].hooks[0].url!;
+    const endpoint = settings.hooks.UserPromptSubmit![0]!.hooks[0]!.url!;
     const headers = {
       'content-type': 'application/json',
       authorization: `Bearer ${prepared.launch.env.PUPPETEER_HOOK_TOKEN}`,
@@ -1630,7 +1630,7 @@ describe('createClaudeSession (full loop, test-as-Claude)', () => {
     await session.pollTranscript();
     expect(session.transcriptPath()).toBe(selectedTranscript);
 
-    const status = await post(prepared.launch.env.PUPPETEER_STATUSLINE_ENDPOINT, {
+    const status = await post(prepared.launch.env.PUPPETEER_STATUSLINE_ENDPOINT!, {
       session_id: selectedId,
       model: { id: 'claude-fable-5-1', display_name: 'Fable 5.1' },
       effort: { level: 'max' },

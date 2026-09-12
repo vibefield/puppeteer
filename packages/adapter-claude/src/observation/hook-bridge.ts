@@ -47,12 +47,13 @@ export interface HookBridgeOptions {
     kind: HookBridgeRequestKind,
     body: Readonly<Record<string, unknown>>,
   ) => HookBridgeSessionVerdict;
-  port?: number;
-  token?: string;
-  maxBodyBytes?: number;
+  port?: number | undefined;
+  token?: string | undefined;
+  maxBodyBytes?: number | undefined;
   /** OTLP batches can be larger than hooks; defaults to 2 MiB. */
-  maxOtlpBodyBytes?: number;
-  onProtocolError?: (kind: 'auth' | 'too-large' | 'malformed' | 'unknown-session', detail: string) => void;
+  maxOtlpBodyBytes?: number | undefined;
+  onProtocolError?:
+    ((kind: 'auth' | 'too-large' | 'malformed' | 'unknown-session', detail: string) => void) | undefined;
 }
 
 export interface HookBridge {

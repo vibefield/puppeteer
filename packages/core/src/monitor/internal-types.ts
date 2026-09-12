@@ -16,23 +16,23 @@ import type {
 export interface EvidenceRef {
   namespace: string;
   id: string;
-  revisionKey?: string;
-  sourceInstanceId?: string;
-  sourceObjectId?: string;
-  sourceGeneration?: number;
-  cursorStart?: number;
-  cursorEnd?: number;
+  revisionKey?: string | undefined;
+  sourceInstanceId?: string | undefined;
+  sourceObjectId?: string | undefined;
+  sourceGeneration?: number | undefined;
+  cursorStart?: number | undefined;
+  cursorEnd?: number | undefined;
 }
 
 export interface EvidenceSource {
   id: string;
   kind: string;
-  contractVersion?: string;
+  contractVersion?: string | undefined;
 }
 
 export interface ObservationProvenance {
   observedAt: string;
-  effectiveAt?: string;
+  effectiveAt?: string | undefined;
   source: EvidenceSource;
   quality: EvidenceQuality;
   completeness: EvidenceCompleteness;
@@ -56,7 +56,7 @@ export interface ObservationCapability {
   actorScope: 'root' | 'current-actors' | 'session';
   latency: 'hook' | 'sample' | 'response' | 'file-flush' | 'historical';
   source: string;
-  contractVersion?: string;
+  contractVersion?: string | undefined;
   limitations: string[];
 }
 
@@ -64,16 +64,16 @@ export interface ObservationCoverage {
   family: MonitorMetricFamily;
   completeness: EvidenceCompleteness;
   asOf: string;
-  actor?: ActorRunRef;
-  reason?: string;
+  actor?: ActorRunRef | undefined;
+  reason?: string | undefined;
 }
 
 export interface SourceWatermark {
   sourceId: string;
   sourceEpoch: string;
-  sequence?: number;
-  cursor?: string;
-  observedThrough?: string;
+  sequence?: number | undefined;
+  cursor?: string | undefined;
+  observedThrough?: string | undefined;
 }
 
 export type MonitorRunLifecycle = 'allocated' | 'preparing' | 'starting' | 'running' | 'stopping' | 'exited' | 'failed';
@@ -82,19 +82,19 @@ export interface MonitorRunStatusObservation {
   kind: 'run';
   lifecycle: MonitorRunLifecycle;
   alive: boolean;
-  nativeSession?: NativeSessionRef;
-  failure?: { code?: string; detail?: string; recoverable?: boolean };
+  nativeSession?: NativeSessionRef | undefined;
+  failure?: { code?: string | undefined; detail?: string | undefined; recoverable?: boolean | undefined } | undefined;
 }
 
 export interface MonitorActivityObservation {
   kind: 'activity';
   activityKind: MonitorActivityKind;
   active: boolean;
-  line?: string;
-  since?: string;
-  actor?: ActorRunRef;
+  line?: string | undefined;
+  since?: string | undefined;
+  actor?: ActorRunRef | undefined;
   /** Runtime-scheduled expiry closes pulse-only activity; reducers never read the clock. */
-  leaseId?: string;
+  leaseId?: string | undefined;
 }
 
 export type MonitorInteractionKind = 'permission' | 'choice' | 'multi-choice' | 'free-form' | 'mixed';
@@ -105,19 +105,19 @@ export interface MonitorInteractionObservation {
   interactionId: string;
   interactionKind: MonitorInteractionKind;
   state: MonitorInteractionState;
-  actor?: ActorRunRef;
-  questions?: MonitorStructuredQuestion[];
-  permission?: { requestId: string; tool?: string };
-  detail?: string;
+  actor?: ActorRunRef | undefined;
+  questions?: MonitorStructuredQuestion[] | undefined;
+  permission?: { requestId: string; tool?: string | undefined } | undefined;
+  detail?: string | undefined;
 }
 
 export interface MonitorFailureObservation {
   kind: 'failure';
   failureId: string;
   state: 'active' | 'resolved' | 'dismissed';
-  actor?: ActorRunRef;
-  detail?: string;
-  code?: string;
+  actor?: ActorRunRef | undefined;
+  detail?: string | undefined;
+  code?: string | undefined;
   recoverable: boolean;
 }
 
@@ -129,85 +129,85 @@ export type MonitorUsageBoundary = 'response' | 'sample';
 export interface MonitorUsageFamilyValue {
   kind: 'usage';
   usageId: string;
-  actor?: ActorRunRef;
+  actor?: ActorRunRef | undefined;
   boundary: MonitorUsageBoundary;
   /** Response usage is canonical; samples are compatible low-latency estimates/cross-checks. */
   canonical: boolean;
-  totalTokens?: number;
-  meterTokens?: number;
-  cumulativeTokens?: number;
-  deltaTokens?: number;
-  inputTokens?: number;
-  freshInputTokens?: number;
-  outputTokens?: number;
-  cacheReadTokens?: number;
-  cacheCreationTokens?: number;
-  reasoningTokens?: number;
-  costUsd?: number;
+  totalTokens?: number | undefined;
+  meterTokens?: number | undefined;
+  cumulativeTokens?: number | undefined;
+  deltaTokens?: number | undefined;
+  inputTokens?: number | undefined;
+  freshInputTokens?: number | undefined;
+  outputTokens?: number | undefined;
+  cacheReadTokens?: number | undefined;
+  cacheCreationTokens?: number | undefined;
+  reasoningTokens?: number | undefined;
+  costUsd?: number | undefined;
 }
 
 export interface MonitorMessageFamilyValue {
   kind: 'message';
-  actor?: ActorRunRef;
+  actor?: ActorRunRef | undefined;
   /** Bounded at the reducer; the accumulated text so far, not a delta. */
   text: string;
   final: boolean;
-  messageId?: string;
+  messageId?: string | undefined;
 }
 
 export interface MonitorContextFamilyValue {
   kind: 'context';
-  actor?: ActorRunRef;
-  usedTokens?: number;
-  capacityTokens?: number;
-  usedPercentage?: number;
+  actor?: ActorRunRef | undefined;
+  usedTokens?: number | undefined;
+  capacityTokens?: number | undefined;
+  usedPercentage?: number | undefined;
   percentageSource: 'provider' | 'derived' | 'unavailable';
 }
 
 export interface MonitorModelFamilyValue {
   kind: 'model';
-  actor?: ActorRunRef;
+  actor?: ActorRunRef | undefined;
   providerModelId: string;
-  displayName?: string;
+  displayName?: string | undefined;
   intent: 'configured' | 'observed';
 }
 
 export interface MonitorEffortFamilyValue {
   kind: 'effort';
-  actor?: ActorRunRef;
+  actor?: ActorRunRef | undefined;
   value: string;
   intent: 'configured' | 'observed';
 }
 
 export interface MonitorModeFamilyValue {
   kind: 'mode';
-  actor?: ActorRunRef;
+  actor?: ActorRunRef | undefined;
   modeKind: 'execution' | 'provider-session' | 'provider-permission';
   raw: string;
-  normalized?: string;
-  executionMode?: AgentExecutionMode;
+  normalized?: string | undefined;
+  executionMode?: AgentExecutionMode | undefined;
   /** Omitted legacy values are treated as observed. */
-  intent?: 'configured' | 'observed';
+  intent?: 'configured' | 'observed' | undefined;
 }
 
 export interface AffiliationRef {
   kind: 'team' | 'workflow';
   id: string;
-  name?: string;
+  name?: string | undefined;
 }
 
 export interface MonitorActorFamilyValue {
   kind: 'actor';
   actor: ActorRunRef;
   state: 'active' | 'idle' | 'stopped' | 'unknown';
-  activity?: string;
+  activity?: string | undefined;
 }
 
 export interface MonitorAffiliationFamilyValue {
   kind: 'affiliation';
   actor: ActorRunRef;
   affiliation: AffiliationRef;
-  role?: string;
+  role?: string | undefined;
 }
 
 export interface MonitorTeamFamilyValue {
@@ -215,8 +215,8 @@ export interface MonitorTeamFamilyValue {
   /** Provider-neutral/canonical identity used for durable affiliation joins. */
   teamId: string;
   /** Provider-native identity used to reconcile low-latency hook claims. */
-  nativeTeamId?: string;
-  name?: string;
+  nativeTeamId?: string | undefined;
+  name?: string | undefined;
 }
 
 export interface MonitorTeamMemberFamilyValue {
@@ -224,13 +224,13 @@ export interface MonitorTeamMemberFamilyValue {
   membershipId: string;
   teamId: string;
   /** Provider-native aliases used only to reconcile complementary evidence rails. */
-  nativeTeamId?: string;
-  nativeMemberId?: string;
-  actor?: ActorRunRef;
-  runtimeRunId?: RuntimeRunId;
-  name?: string;
+  nativeTeamId?: string | undefined;
+  nativeMemberId?: string | undefined;
+  actor?: ActorRunRef | undefined;
+  runtimeRunId?: RuntimeRunId | undefined;
+  name?: string | undefined;
   /** Membership presence is independent from the member's current activity. */
-  membershipState?: 'present' | 'removed' | 'unknown';
+  membershipState?: 'present' | 'removed' | 'unknown' | undefined;
   state: 'active' | 'idle' | 'removed' | 'unknown';
 }
 
@@ -240,7 +240,7 @@ export type MonitorDelegationFamilyValue =
 export interface MonitorWorkflowFamilyValue {
   kind: 'workflow';
   workflowId: string;
-  name?: string;
+  name?: string | undefined;
   active: boolean;
   actorRunKeys: string[];
   artifactRefs: ArtifactRef[];
@@ -248,19 +248,19 @@ export interface MonitorWorkflowFamilyValue {
 
 export interface MonitorCompactionFamilyValue {
   kind: 'compaction';
-  actor?: ActorRunRef;
+  actor?: ActorRunRef | undefined;
   active: boolean;
-  trigger?: string;
-  outcome?: 'completed' | 'cancelled' | 'failed' | 'superseded' | 'unknown';
+  trigger?: string | undefined;
+  outcome?: 'completed' | 'cancelled' | 'failed' | 'superseded' | 'unknown' | undefined;
 }
 
 export interface MonitorEnvironmentFamilyValue {
   kind: 'environment';
-  actor?: ActorRunRef;
+  actor?: ActorRunRef | undefined;
   /** Null explicitly clears the current cwd; omission leaves the prior fact unchanged. */
-  cwd?: string | null;
-  git?: AgentGitState | null;
-  worktrees?: string[];
+  cwd?: string | null | undefined;
+  git?: AgentGitState | null | undefined;
+  worktrees?: string[] | undefined;
 }
 
 export interface MonitorFamilyValueMap {
@@ -313,25 +313,27 @@ export interface AdapterMonitorObservationBatch {
     id: string;
     epoch: string;
     /** Optional source ordering. When present, lower/equal late deliveries are rejected. */
-    sequence?: number;
-    contractVersion?: string;
+    sequence?: number | undefined;
+    contractVersion?: string | undefined;
   };
   phase: MonitorObservationPhase;
   observedAt: string;
-  effectiveAt?: string;
+  effectiveAt?: string | undefined;
   quality: EvidenceQuality;
   completeness: EvidenceCompleteness;
   provisional: boolean;
-  readiness?: 'loading' | 'ready' | 'degraded';
-  scope?: {
-    nativeSessionId?: string;
-    actorRunKey?: string;
-  };
+  readiness?: 'loading' | 'ready' | 'degraded' | undefined;
+  scope?:
+    | {
+        nativeSessionId?: string | undefined;
+        actorRunKey?: string | undefined;
+      }
+    | undefined;
   updates: MonitorFamilyUpdate[];
   sourceWatermarks: SourceWatermark[];
   evidence: EvidenceRef[];
-  capabilities?: ObservationCapability[];
-  coverage?: ObservationCoverage[];
+  capabilities?: ObservationCapability[] | undefined;
+  coverage?: ObservationCoverage[] | undefined;
 }
 
 /** Runtime wrapper that supplies the process-run continuity domain. */
@@ -351,7 +353,7 @@ export interface RuntimeMonitorInput {
   runtimeEpoch: number;
   phase: 'bootstrap' | 'live';
   observedAt: string;
-  effectiveAt?: string;
+  effectiveAt?: string | undefined;
   source: EvidenceSource;
   quality: EvidenceQuality;
   completeness: EvidenceCompleteness;
@@ -367,7 +369,7 @@ export type WorkspaceMonitorObservation = {
   runtimeRunId: RuntimeRunId;
   runtimeEpoch: number;
   observedAt: string;
-  effectiveAt?: string;
+  effectiveAt?: string | undefined;
   source: EvidenceSource;
   quality: EvidenceQuality;
   completeness: EvidenceCompleteness;
@@ -391,7 +393,7 @@ export type WorkspaceMonitorObservation = {
 export interface MonitorWorkspaceInterferenceObservation {
   kind: 'known-concurrent-claim' | 'baseline-dirty-overlap' | 'repository-identity-changed' | 'observation-gap';
   observedAt: string;
-  count?: number;
+  count?: number | undefined;
 }
 
 export interface MonitorWorkspaceChangeSummary {
@@ -408,13 +410,13 @@ export interface MonitorWorkspaceChangeSummary {
 
 export interface MonitorWorkspaceGitObservation {
   state: 'attached' | 'detached' | 'unborn' | 'non-git' | 'unavailable';
-  headCommit?: string;
-  headRef?: string;
+  headCommit?: string | undefined;
+  headRef?: string | undefined;
   index: MonitorWorkspaceChangeSummary;
   worktree: MonitorWorkspaceChangeSummary;
   conflicts: number;
-  indexFingerprint?: { algorithm: 'hmac-sha256'; value: string };
-  worktreeFingerprint?: { algorithm: 'hmac-sha256'; value: string };
+  indexFingerprint?: { algorithm: 'hmac-sha256'; value: string } | undefined;
+  worktreeFingerprint?: { algorithm: 'hmac-sha256'; value: string } | undefined;
 }
 
 /**
@@ -427,7 +429,7 @@ export interface MonitorWorkspaceProvenanceState {
   allocation: {
     mode: 'direct' | 'exclusive' | 'worktree' | 'copy';
     repositoryKind: 'git' | 'directory';
-    repositoryDigest?: { algorithm: 'hmac-sha256'; value: string };
+    repositoryDigest?: { algorithm: 'hmac-sha256'; value: string } | undefined;
   };
   baseline: {
     capturedAt: string;
@@ -439,33 +441,39 @@ export interface MonitorWorkspaceProvenanceState {
     git: MonitorWorkspaceGitObservation;
     initialDirtyFileCount: number;
   };
-  finalization?: {
-    finalizedAt: string;
-    outcome: 'complete' | 'partial' | 'failed' | 'unavailable';
-    repositoryKind: 'git' | 'directory';
-    repositoryDigest?: { algorithm: 'hmac-sha256'; value: string };
-    git?: MonitorWorkspaceGitObservation;
-    reachableCommits?: {
-      relation: 'unchanged' | 'fast-forward' | 'rewritten' | 'created' | 'removed' | 'unavailable';
-      initialCommit?: string;
-      finalCommit?: string;
-      commits: string[];
-      totalCount: number;
-      truncated: boolean;
-    };
-    changes?: {
-      filesTouchedCount: number;
-      filesFingerprint?: { algorithm: 'hmac-sha256'; value: string };
-      insertions: number;
-      deletions: number;
-    };
-    knownConcurrentClaims?: number;
-    cleanupOutcome: 'not-applicable' | 'removed' | 'retained-dirty' | 'failed';
-    retained: boolean;
-    quality: EvidenceQuality;
-    completeness: EvidenceCompleteness;
-    limitations: string[];
-  };
+  finalization?:
+    | {
+        finalizedAt: string;
+        outcome: 'complete' | 'partial' | 'failed' | 'unavailable';
+        repositoryKind: 'git' | 'directory';
+        repositoryDigest?: { algorithm: 'hmac-sha256'; value: string } | undefined;
+        git?: MonitorWorkspaceGitObservation | undefined;
+        reachableCommits?:
+          | {
+              relation: 'unchanged' | 'fast-forward' | 'rewritten' | 'created' | 'removed' | 'unavailable';
+              initialCommit?: string | undefined;
+              finalCommit?: string | undefined;
+              commits: string[];
+              totalCount: number;
+              truncated: boolean;
+            }
+          | undefined;
+        changes?:
+          | {
+              filesTouchedCount: number;
+              filesFingerprint?: { algorithm: 'hmac-sha256'; value: string } | undefined;
+              insertions: number;
+              deletions: number;
+            }
+          | undefined;
+        knownConcurrentClaims?: number | undefined;
+        cleanupOutcome: 'not-applicable' | 'removed' | 'retained-dirty' | 'failed';
+        retained: boolean;
+        quality: EvidenceQuality;
+        completeness: EvidenceCompleteness;
+        limitations: string[];
+      }
+    | undefined;
   interference: MonitorWorkspaceInterferenceObservation[];
   completeness: EvidenceCompleteness;
 }
@@ -494,7 +502,7 @@ export interface MonitorStoredEntry {
   key: string;
   value: MonitorFamilyValue;
   observedAt: string;
-  effectiveAt?: string;
+  effectiveAt?: string | undefined;
   source: EvidenceSource;
   quality: EvidenceQuality;
   completeness: EvidenceCompleteness;
@@ -503,20 +511,20 @@ export interface MonitorStoredEntry {
   evidence: EvidenceRef[];
   /** Original live boundary retained when a later correction replaces this entry. */
   rateEligible: boolean;
-  rateAt?: string;
+  rateAt?: string | undefined;
 }
 
 export interface MonitorRuntimeSlice {
   seenEventIds: ReadonlySet<string>;
   entries: ReadonlyMap<string, MonitorStoredEntry>;
-  lastAcceptedAt?: string;
+  lastAcceptedAt?: string | undefined;
 }
 
 export interface MonitorSemanticProducerState {
   id: string;
   activeEpoch: string;
   retiredEpochs: ReadonlySet<string>;
-  lastSequence?: number;
+  lastSequence?: number | undefined;
   readiness: 'loading' | 'ready' | 'degraded';
   capabilities: ReadonlyMap<MonitorMetricFamily, ObservationCapability>;
   coverage: ReadonlyMap<string, ObservationCoverage>;
@@ -537,7 +545,7 @@ export interface MonitorSemanticSlice {
       producer: MonitorSemanticProducerState;
     }
   >;
-  lastAcceptedAt?: string;
+  lastAcceptedAt?: string | undefined;
 }
 
 export interface MonitorWorkspaceSlice {
@@ -545,9 +553,9 @@ export interface MonitorWorkspaceSlice {
   entries: ReadonlyMap<string, MonitorStoredEntry>;
   provenance: ReadonlyMap<string, MonitorWorkspaceProvenanceState>;
   /** Most recent private workspace-plane input, including provenance-only records. */
-  lastAcceptedAt?: string;
+  lastAcceptedAt?: string | undefined;
   /** Most recent workspace input that can change the public monitor projection. */
-  lastPublicAcceptedAt?: string;
+  lastPublicAcceptedAt?: string | undefined;
 }
 
 export interface CreateMonitorAccumulatorOptions {
@@ -556,8 +564,8 @@ export interface CreateMonitorAccumulatorOptions {
   executionMode: AgentExecutionMode;
   observationLevel: ObservationLevel;
   allocatedAt: string;
-  providerId?: string;
-  terminalSessionId?: string;
+  providerId?: string | undefined;
+  terminalSessionId?: string | undefined;
 }
 
 /**
@@ -571,8 +579,8 @@ export interface MonitorAccumulatorState {
   executionMode: AgentExecutionMode;
   observationLevel: ObservationLevel;
   allocatedAt: string;
-  providerId?: string;
-  terminalSessionId?: string;
+  providerId?: string | undefined;
+  terminalSessionId?: string | undefined;
   runtime: MonitorRuntimeSlice;
   semantic: MonitorSemanticSlice;
   workspace: MonitorWorkspaceSlice;

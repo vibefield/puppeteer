@@ -67,15 +67,15 @@ export interface PreparedProviderSession {
 
 export interface AgentProviderSessionOptions {
   /** Runtime-owned join identity for private diagnostics; adapters must not reinterpret it. */
-  runtimeRunId?: RuntimeRunId;
+  runtimeRunId?: RuntimeRunId | undefined;
   cwd: string;
-  resume?: string;
-  title?: string;
+  resume?: string | undefined;
+  title?: string | undefined;
   host: AgentHost;
   /** Provider-owned launch options. Built-in callers get a discriminated typed facade below. */
   agentOptions?: unknown;
   /** Registered account profile whose root the adapter binds through its own variable. */
-  profile?: AgentProfile;
+  profile?: AgentProfile | undefined;
 }
 
 /** Provider-private continuation codec. Its state is opaque above the adapter boundary. */
@@ -113,45 +113,45 @@ export interface AgentProvider {
 }
 
 export interface AgentWorkspaceRequest {
-  mode?: WorkspaceMode;
-  path?: string;
-  baseRef?: string;
-  branchName?: string;
-  resumeBranch?: string;
-  resumeRoot?: string;
-  workspacesRoot?: string;
+  mode?: WorkspaceMode | undefined;
+  path?: string | undefined;
+  baseRef?: string | undefined;
+  branchName?: string | undefined;
+  resumeBranch?: string | undefined;
+  resumeRoot?: string | undefined;
+  workspacesRoot?: string | undefined;
 }
 
 export interface AgentWorkspaceInfo {
-  workspaceInstanceId?: string;
+  workspaceInstanceId?: string | undefined;
   /** @deprecated Use workspaceInstanceId. */
-  id?: string;
+  id?: string | undefined;
   mode: WorkspaceMode;
   root: string;
   sourcePath: string;
-  branch?: string;
-  initialCommit?: string;
-  isolation?: 'managed-isolated' | 'cooperative-exclusive' | 'shared' | 'unknown';
-  baselineCompleteness?: 'complete' | 'partial' | 'unavailable';
-  repositoryDigest?: WorkspaceKeyedFingerprint;
+  branch?: string | undefined;
+  initialCommit?: string | undefined;
+  isolation?: 'managed-isolated' | 'cooperative-exclusive' | 'shared' | 'unknown' | undefined;
+  baselineCompleteness?: 'complete' | 'partial' | 'unavailable' | undefined;
+  repositoryDigest?: WorkspaceKeyedFingerprint | undefined;
 }
 
 export interface CreateAgentSessionOptions {
   agent: string;
-  cwd?: string;
+  cwd?: string | undefined;
   /** @deprecated Consumer resume uses runtime.resume({ continuation }); retained for provider/compatibility calls. */
-  resume?: string;
-  title?: string;
+  resume?: string | undefined;
+  title?: string | undefined;
   /** Caller-scoped idempotency key. Requires a durable creation registry. */
-  creationRequestId?: string;
+  creationRequestId?: string | undefined;
   /** Opaque caller correlation; transported but never interpreted as policy. */
-  externalRefs?: readonly ExternalRef[];
+  externalRefs?: readonly ExternalRef[] | undefined;
   /** Defaults to direct mode rooted at cwd/defaultCwd. */
-  workspace?: AgentWorkspaceRequest;
+  workspace?: AgentWorkspaceRequest | undefined;
   /** Opaque to the runtime; interpreted only by the selected provider. */
   agentOptions?: unknown;
   /** Registered profile id; the runtime resolves it and hands the provider the profile. */
-  profile?: string;
+  profile?: string | undefined;
 }
 
 /** Consumer-facing spawn request. Native resume identity is accepted only through resume(). */
@@ -160,25 +160,25 @@ export type SpawnAgentOptions = Omit<CreateAgentSessionOptions, 'resume'>;
 /** Consumer-facing resume request: no provider argv, environment, or transport knobs. */
 export interface ResumeAgentOptions {
   continuation: AgentContinuation;
-  cwd?: string;
-  title?: string;
-  creationRequestId?: string;
-  externalRefs?: readonly ExternalRef[];
-  workspace?: AgentWorkspaceRequest;
+  cwd?: string | undefined;
+  title?: string | undefined;
+  creationRequestId?: string | undefined;
+  externalRefs?: readonly ExternalRef[] | undefined;
+  workspace?: AgentWorkspaceRequest | undefined;
   /**
    * Registered profile id the host persisted beside the continuation. The
    * continuation already carries the account root for providers that record
    * it, so this re-binds the root explicitly and attributes the resumed run.
    */
-  profile?: string;
+  profile?: string | undefined;
 }
 
 /** Host-only native invocation request. Adapters normalize it before normal preparation. */
 export interface PrepareAgentInvocationOptions extends AgentNativeInvocation {
-  title?: string;
-  creationRequestId?: string;
-  externalRefs?: readonly ExternalRef[];
-  workspace?: AgentWorkspaceRequest;
+  title?: string | undefined;
+  creationRequestId?: string | undefined;
+  externalRefs?: readonly ExternalRef[] | undefined;
+  workspace?: AgentWorkspaceRequest | undefined;
 }
 
 export interface AgentSessionInfo {
@@ -516,7 +516,7 @@ export interface AgentRuntime {
   readMonitorArtifact(
     runtimeRunId: RuntimeRunId,
     artifactId: string,
-    options?: { maxBytes?: number },
+    options?: { maxBytes?: number | undefined },
   ): Promise<MonitorArtifactReadResult>;
   /** Best-effort audit-log health; undefined when recording is not configured. */
   recordingStatus(): ActionRecorderStatus | undefined;

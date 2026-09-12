@@ -13,21 +13,21 @@ import {
 import { AntigravityEventSource } from './services/event-source.js';
 import { AntigravityPromptService } from './services/prompt.js';
 export interface CreateAntigravityTuiSessionOptions extends AgentTuiSessionOptions {
-  executable?: string;
-  env?: Record<string, string>;
-  antigravityHome?: string;
-  dataRoot?: string;
-  model?: string;
-  effort?: 'low' | 'medium' | 'high';
-  mode?: 'default' | 'accept-edits' | 'plan';
-  skipPermissions?: boolean;
-  sandbox?: boolean;
-  agent?: string;
-  project?: string;
-  addDirs?: string[];
-  pollIntervalMs?: number;
-  maxReplayBytes?: number;
-  promptConfirmationTimeoutMs?: number;
+  executable?: string | undefined;
+  env?: Record<string, string> | undefined;
+  antigravityHome?: string | undefined;
+  dataRoot?: string | undefined;
+  model?: string | undefined;
+  effort?: 'low' | 'medium' | 'high' | undefined;
+  mode?: 'default' | 'accept-edits' | 'plan' | undefined;
+  skipPermissions?: boolean | undefined;
+  sandbox?: boolean | undefined;
+  agent?: string | undefined;
+  project?: string | undefined;
+  addDirs?: string[] | undefined;
+  pollIntervalMs?: number | undefined;
+  maxReplayBytes?: number | undefined;
+  promptConfirmationTimeoutMs?: number | undefined;
 }
 export interface AntigravityTuiSession extends AgentAdapterBinding {
   sessionDirectory(): string | undefined;

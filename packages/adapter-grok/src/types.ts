@@ -3,11 +3,11 @@ import type { AgentAdapterBinding, AgentHost, TerminalSpec } from '@vibecook/pup
 
 export interface CreateGrokBackendOptions {
   /** Grok executable (default `grok`). */
-  executable?: string;
+  executable?: string | undefined;
   /** The host terminal capability the TUI is spawned through. */
   host: AgentHost;
   /** Extra environment shared by leader, ACP controller, TUI, and log observer. */
-  appServerEnv?: Record<string, string>;
+  appServerEnv?: Record<string, string> | undefined;
 }
 
 export interface GrokBackend {
@@ -18,14 +18,14 @@ export interface GrokBackend {
 
 export interface CreateGrokSessionOptions {
   cwd: string;
-  resume?: string;
-  resumeLatest?: boolean;
-  model?: string;
-  permissionMode?: string;
-  sandbox?: string;
-  clientCapabilities?: CreateAcpSessionOptions['clientCapabilities'];
-  onApproval?: CreateAcpSessionOptions['onApproval'];
-  onElicitation?: CreateAcpSessionOptions['onElicitation'];
+  resume?: string | undefined;
+  resumeLatest?: boolean | undefined;
+  model?: string | undefined;
+  permissionMode?: string | undefined;
+  sandbox?: string | undefined;
+  clientCapabilities?: CreateAcpSessionOptions['clientCapabilities'] | undefined;
+  onApproval?: CreateAcpSessionOptions['onApproval'] | undefined;
+  onElicitation?: CreateAcpSessionOptions['onElicitation'] | undefined;
 }
 
 export interface PreparedGrokSession {

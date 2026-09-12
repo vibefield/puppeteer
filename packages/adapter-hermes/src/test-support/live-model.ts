@@ -7,8 +7,8 @@ export const HERMES_LIVE_MODEL = 'puppeteer-hermes-live';
 export const HERMES_LIVE_RESPONSE_MARKER = 'SURFACE_HERMES_TUI_OK';
 
 export interface HermesLiveModelRequest {
-  readonly method?: string;
-  readonly url?: string;
+  readonly method?: string | undefined;
+  readonly url?: string | undefined;
   readonly body: unknown;
 }
 

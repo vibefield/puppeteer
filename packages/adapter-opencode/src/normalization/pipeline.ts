@@ -123,7 +123,7 @@ export class OpenCodeNormalizer {
   private readonly textPartsByMessage = new Map<string, Map<string, string>>();
   private readonly pendingParts = new Map<string, OpenCodeSseRecord[]>();
   private activeTurnID: string | undefined;
-  private pendingFailure: { turnID: string; error?: string } | undefined;
+  private pendingFailure: { turnID: string; error?: string | undefined } | undefined;
   private sessionStarted = false;
   private exited = false;
 

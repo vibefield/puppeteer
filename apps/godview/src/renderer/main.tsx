@@ -350,7 +350,8 @@ function Godview() {
           next.set(handoff.session.id, handoff.monitorIdentity);
           return next;
         });
-        if (affected.length === 1 && affected[0]?.id === workspace?.activePaneId) {
+        // `affected` is empty without a workspace, so the early return above already covered that case.
+        if (workspace && affected.length === 1 && affected[0]?.id === workspace.activePaneId) {
           // Ghosttea commits this replacement synchronously through its public
           // workspace context, retaining focus and the pane's split geometry.
           workspace.mountSession(handoff.session);

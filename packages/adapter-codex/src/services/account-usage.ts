@@ -206,14 +206,14 @@ export function normalizeCodexAccountUsage(value: unknown, fetchedAt = new Date(
 
 export interface FetchCodexAccountUsageOptions {
   /** One-shot transport override for tests or embedded app-server routing. It is closed after the fetch. */
-  transport?: Transport;
-  executable?: string;
-  requestTimeoutMs?: number;
-  now?: () => Date;
+  transport?: Transport | undefined;
+  executable?: string | undefined;
+  requestTimeoutMs?: number | undefined;
+  now?: (() => Date) | undefined;
   /** Extra app-server environment, merged over this process's own. Carries the profile binding. */
-  env?: Record<string, string>;
+  env?: Record<string, string> | undefined;
   /** Injected transport factory; the default spawns `codex app-server` over stdio. */
-  spawnTransport?: (options: { executable?: string; env?: Record<string, string> }) => Transport;
+  spawnTransport?: ((options: { executable?: string; env?: Record<string, string> }) => Transport) | undefined;
 }
 
 function codexFailure(error: unknown): AccountUsageFetchResult {

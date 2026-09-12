@@ -25,16 +25,16 @@ import {
 } from './transport/jsonrpc.js';
 
 export interface CreateHermesTuiSessionOptions extends AgentTuiSessionOptions {
-  executable?: string;
-  python?: string;
-  hermesHome?: string;
-  env?: Record<string, string>;
-  yolo?: boolean;
+  executable?: string | undefined;
+  python?: string | undefined;
+  hermesHome?: string | undefined;
+  env?: Record<string, string> | undefined;
+  yolo?: boolean | undefined;
   /** Connect to an already running owned gateway. Tests inject this. */
-  gatewayUrl?: string;
-  transport?: HermesGatewayTransport;
-  gatewayStartupTimeoutMs?: number;
-  promptConfirmationTimeoutMs?: number;
+  gatewayUrl?: string | undefined;
+  transport?: HermesGatewayTransport | undefined;
+  gatewayStartupTimeoutMs?: number | undefined;
+  promptConfirmationTimeoutMs?: number | undefined;
 }
 
 export interface HermesTuiSession extends AgentAdapterBinding {

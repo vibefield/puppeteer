@@ -50,7 +50,7 @@ export class AppServerRequestTimeoutError extends Error {
 
 export interface AppServerClientOptions {
   /** Upper bound for every JSON-RPC request. Default: 30 seconds. */
-  requestTimeoutMs?: number;
+  requestTimeoutMs?: number | undefined;
 }
 
 export interface AppServerRequestOptions {
@@ -212,9 +212,9 @@ function positiveTimeout(value: number): number {
  * the account-profile binding (`CODEX_HOME`) when one is selected.
  */
 export function spawnAppServerTransport(opts?: {
-  executable?: string;
-  args?: string[];
-  env?: Record<string, string>;
+  executable?: string | undefined;
+  args?: string[] | undefined;
+  env?: Record<string, string> | undefined;
 }): Transport {
   const child = spawn(resolveCodexExecutable(opts?.executable), ['app-server', ...(opts?.args ?? [])], {
     stdio: ['pipe', 'pipe', 'pipe'],

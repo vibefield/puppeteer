@@ -27,8 +27,8 @@ const PI_VERSION_FLAG = '--version';
 export type PiDistributionExec = (file: string, args: readonly string[]) => Promise<{ stdout: string; stderr: string }>;
 
 export interface PiDistributionServiceOptions {
-  executable?: string;
-  exec?: PiDistributionExec;
+  executable?: string | undefined;
+  exec?: PiDistributionExec | undefined;
 }
 
 export const PI_DISTRIBUTION_PROVIDER: DistributionProvider = {

@@ -32,7 +32,7 @@ export type { PromptSubmission, PromptReceipt };
 
 export interface PromptInjectorOptions {
   automate: (operation: TerminalAutomationOperation) => Promise<TerminalAutomationResult>;
-  defaultConfirmationTimeoutMs?: number;
+  defaultConfirmationTimeoutMs?: number | undefined;
 }
 
 export interface PromptInjector {

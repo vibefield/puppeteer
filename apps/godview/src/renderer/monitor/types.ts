@@ -25,7 +25,7 @@ export interface MonitorAgentFacet {
   /** Label of the account this run is bound to; absent when it is not registered. */
   account?: string;
   branch?: string;
-  contextWindow?: MonitorContextState;
+  contextWindow?: MonitorContextState | undefined;
   monitor: AgentMonitorState;
   /** The UI's own account of the tokens (`usage-ledger.ts`): the held total
    * and the burn per step. Views read this, never `monitor.usage`, which is
@@ -68,7 +68,7 @@ export interface MonitorAgent {
   spawnHint?: { x: number; y: number };
   /** Finished something while another pane was active (`monitor/unread.ts`). */
   unread?: boolean;
-  agent?: MonitorAgentFacet;
+  agent?: MonitorAgentFacet | undefined;
 }
 
 export interface MonitorActions {

@@ -39,18 +39,18 @@ export { OpenCodePromptConfirmationGate } from './services/prompt.js';
 
 export interface CreateOpenCodeTuiSessionOptions extends AgentTuiSessionOptions {
   /** OpenCode executable (default `PUPPETEER_OPENCODE_BIN`, then `opencode`). */
-  executable?: string;
+  executable?: string | undefined;
   /** Extra environment shared by the private backend and attached native TUI. */
-  env?: Record<string, string>;
-  title?: string;
-  agent?: string;
-  model?: OpenCodeModelSelection;
-  permission?: unknown[];
-  contextWindowCapacityTokens?: number;
-  promptConfirmationTimeoutMs?: number;
-  backendStartupTimeoutMs?: number;
-  backendShutdownTimeoutMs?: number;
-  reconnectDelayMs?: number;
+  env?: Record<string, string> | undefined;
+  title?: string | undefined;
+  agent?: string | undefined;
+  model?: OpenCodeModelSelection | undefined;
+  permission?: unknown[] | undefined;
+  contextWindowCapacityTokens?: number | undefined;
+  promptConfirmationTimeoutMs?: number | undefined;
+  backendStartupTimeoutMs?: number | undefined;
+  backendShutdownTimeoutMs?: number | undefined;
+  reconnectDelayMs?: number | undefined;
 }
 
 export interface OpenCodeTuiSession extends AgentAdapterBinding {

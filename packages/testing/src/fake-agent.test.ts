@@ -17,8 +17,9 @@ function startAgent(env: Record<string, string> = {}) {
   child.stdout.on('data', (chunk: Buffer) => {
     output += chunk.toString('utf8');
     for (let i = waiters.length - 1; i >= 0; i--) {
-      if (output.includes(waiters[i].pattern)) {
-        waiters[i].resolve();
+      const waiter = waiters[i]!;
+      if (output.includes(waiter.pattern)) {
+        waiter.resolve();
         waiters.splice(i, 1);
       }
     }
@@ -73,7 +74,8 @@ describe('fake-agent', () => {
       'UserPromptSubmit',
       'SessionEnd',
     ]);
-    const [, promptEvent, stopEvent] = events;
+    const promptEvent = events[1]!;
+    const stopEvent = events[2]!;
     expect(promptEvent.prompt).toBe('hello');
     expect(stopEvent.last_assistant_message).toBe('echo: hello');
     expect(stopEvent.prompt_id).toBe(promptEvent.prompt_id);

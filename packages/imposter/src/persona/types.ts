@@ -109,42 +109,48 @@ export interface HttpServeDocument {
  */
 export interface NativeStoreDocument {
   /** Vendor environment variable used by its real binary (for example GROK_HOME). */
-  rootEnv?: string;
+  rootEnv?: string | undefined;
   /** Relative directory components below the isolated Imposter root. */
   sessionPath: string[];
   /** Append-only JSONL filename used by `native-log` bindings or protocol mirroring. */
-  updatesFile?: string;
+  updatesFile?: string | undefined;
   /** Nested append-only path below the session directory (for example agents/main/wire.jsonl). */
-  updatesPath?: string[];
+  updatesPath?: string[] | undefined;
   /** Append-only JSONL index path below the native root (for example session_index.jsonl). */
-  indexPath?: string[];
+  indexPath?: string[] | undefined;
   /** Native JSONL carrier. Omitted preserves the legacy timestamp/method/params envelope. */
-  recordFormat?: 'method-params' | 'flat-record';
+  recordFormat?: 'method-params' | 'flat-record' | undefined;
   /** Discriminator field for a flat record. Defaults to `type`. */
-  recordTypeField?: string;
+  recordTypeField?: string | undefined;
   /** Optional field that contains the event payload inside the flat carrier. */
-  recordPayloadField?: string;
+  recordPayloadField?: string | undefined;
   /** Optional per-record native clock synthesized only when the op did not supply one. */
-  recordTimestamp?: {
-    field: string;
-    format: 'epoch-ms' | 'iso';
-    omitFor?: string[];
-  };
+  recordTimestamp?:
+    | {
+        field: string;
+        format: 'epoch-ms' | 'iso';
+        omitFor?: string[] | undefined;
+      }
+    | undefined;
   /** Optional append-order ordinal synthesized only when the op did not supply one. */
-  recordSequence?: {
-    field: string;
-    start?: number;
-  };
+  recordSequence?:
+    | {
+        field: string;
+        start?: number | undefined;
+      }
+    | undefined;
   /** Optional fresh record id and previous-record correlation for append-only journals. */
-  recordIdentity?: {
-    idField: string;
-    parentField?: string;
-    omitParentFor?: string[];
-  };
+  recordIdentity?:
+    | {
+        idField: string;
+        parentField?: string | undefined;
+        omitParentFor?: string[] | undefined;
+      }
+    | undefined;
   /** Event types that can occur at most once in one append-only journal. */
-  singletonEvents?: string[];
+  singletonEvents?: string[] | undefined;
   /** Persist validated JSON-RPC notifications so a served thread can replay them on resume. */
-  mirrorJsonRpc?: boolean;
+  mirrorJsonRpc?: boolean | undefined;
 }
 
 /**

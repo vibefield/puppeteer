@@ -12,13 +12,13 @@ export interface ClaudeHookPayload {
 export interface NormalizedHook {
   events: AgentEvent[];
   diagnostics: ClaudeHookDiagnostic[];
-  sessionId?: string;
-  transcriptPath?: string;
-  promptId?: string;
-  turnId?: string;
-  agentId?: string;
-  agentType?: string;
-  providerVersion?: string;
+  sessionId?: string | undefined;
+  transcriptPath?: string | undefined;
+  promptId?: string | undefined;
+  turnId?: string | undefined;
+  agentId?: string | undefined;
+  agentType?: string | undefined;
+  providerVersion?: string | undefined;
 }
 
 export interface ClaudeHookDiagnostic {
@@ -29,24 +29,24 @@ export interface ClaudeHookDiagnostic {
 
 export interface PendingPermission {
   requestId: string;
-  promptId?: string;
+  promptId?: string | undefined;
   toolName: string;
   inputKey: string;
-  toolCallId?: string;
+  toolCallId?: string | undefined;
 }
 
 export interface RecentToolRequest {
   toolCallId: string;
-  promptId?: string;
+  promptId?: string | undefined;
   toolName: string;
   inputKey: string;
   input?: unknown;
-  permissionRequestId?: string;
-  questionRequestId?: string;
+  permissionRequestId?: string | undefined;
+  questionRequestId?: string | undefined;
 }
 
 export interface PendingQuestion {
   requestId: string;
-  promptId?: string;
+  promptId?: string | undefined;
   toolCallId: string;
 }

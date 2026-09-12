@@ -14,21 +14,21 @@ export interface KimiNormalizationContext {
 
 export interface KimiNormalizedRecord {
   events: AgentEvent[];
-  promptId?: string;
-  turnId?: string;
-  timestamp?: string;
+  promptId?: string | undefined;
+  turnId?: string | undefined;
+  timestamp?: string | undefined;
   source: AgentEventSource;
   confidence: AgentEventConfidence;
   nativeEvent: unknown;
   disposition: KimiNormalizationDisposition;
-  explanation?: string;
+  explanation?: string | undefined;
 }
 
 export interface KimiNormalizedFragment {
   events: AgentEvent[];
   disposition: KimiNormalizationDisposition;
-  turnId?: string;
-  explanation?: string;
+  turnId?: string | undefined;
+  explanation?: string | undefined;
 }
 
 export interface KimiToolFact {

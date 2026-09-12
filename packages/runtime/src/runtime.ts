@@ -137,8 +137,8 @@ interface ManagedSession {
   unsubscribe: () => void;
   releaseClaim: () => void;
   currentConcurrentClaims: () => number;
-  gitObserver?: GitStateObserver;
-  preparationId?: string;
+  gitObserver?: GitStateObserver | undefined;
+  preparationId?: string | undefined;
   dispatch(event: AgentEvent, source: AgentEventSource, confidence: AgentEventConfidence, nativeEvent?: unknown): void;
 }
 
@@ -153,10 +153,10 @@ interface WorkspaceLeaseFailure {
 }
 
 interface RuntimeWorkspaceFinalization {
-  metadata?: WorkspaceSessionMetadata;
+  metadata?: WorkspaceSessionMetadata | undefined;
   retained: boolean;
   cleanupOutcome: WorkspaceCleanupOutcomeV2;
-  reason?: string;
+  reason?: string | undefined;
 }
 
 function activeMonitorLifecycle(lifecycle: SessionRuntimeState['lifecycle']): 'starting' | 'running' | 'stopping' {
@@ -177,29 +177,29 @@ interface ManagedPreparation extends WorkspaceLease {
   prepared: PreparedProviderSession;
   status: PreparationStatus;
   timer: ReturnType<typeof setTimeout>;
-  adoptedRuntimeSessionId?: string;
-  adoptedProcessId?: number;
-  adoption?: Promise<AdoptPreparedSessionResult>;
-  adoptedInfo?: AgentSessionInfo;
+  adoptedRuntimeSessionId?: string | undefined;
+  adoptedProcessId?: number | undefined;
+  adoption?: Promise<AdoptPreparedSessionResult> | undefined;
+  adoptedInfo?: AgentSessionInfo | undefined;
 }
 
 interface ManagedRun {
   identity: RuntimeRunIdentity;
   operation: RuntimeCreationOperation;
   status: RuntimeRunInfo['status'];
-  terminalSessionId?: string;
-  nativeSessionClaim?: RevisionedNativeSessionClaim;
-  nativeSessionRecordId?: string;
-  recordedNativeSessionRevision?: number;
-  continuationState?: string;
-  launchImplementation?: AgentContinuation['implementation'];
+  terminalSessionId?: string | undefined;
+  nativeSessionClaim?: RevisionedNativeSessionClaim | undefined;
+  nativeSessionRecordId?: string | undefined;
+  recordedNativeSessionRevision?: number | undefined;
+  continuationState?: string | undefined;
+  launchImplementation?: AgentContinuation['implementation'] | undefined;
   /** Account profile this run is bound to, either selected by the caller or attributed from the launch environment. */
-  profileId?: string;
-  creationClaim?: CreationRequestClaimRef;
-  preparationId?: string;
-  terminalOutcome?: CreationRequestTerminalOutcome;
-  result?: CreateAgentSessionResult | PrepareAgentSessionResult;
-  monitor?: AgentMonitorService;
+  profileId?: string | undefined;
+  creationClaim?: CreationRequestClaimRef | undefined;
+  preparationId?: string | undefined;
+  terminalOutcome?: CreationRequestTerminalOutcome | undefined;
+  result?: CreateAgentSessionResult | PrepareAgentSessionResult | undefined;
+  monitor?: AgentMonitorService | undefined;
 }
 
 interface TerminalFailureEntry {
@@ -1732,14 +1732,16 @@ export function createAgentRuntime(options: AgentRuntimeOptions): AgentRuntime {
     run: ManagedRun,
   ): Promise<WorkspaceLease | WorkspaceLeaseFailure> {
     const cwd = request.cwd ?? options.defaultCwd;
+    // WorkspaceRequest is owned by the workspaces package, so unset caller fields
+    // are spread away rather than sent as explicit undefined.
     const workspaceRequest: WorkspaceRequest = {
       mode: request.workspace?.mode ?? 'direct',
       path: request.workspace?.path ?? cwd,
-      baseRef: request.workspace?.baseRef,
-      branchName: request.workspace?.branchName,
-      resumeBranch: request.workspace?.resumeBranch,
-      resumeRoot: request.workspace?.resumeRoot,
-      workspacesRoot: request.workspace?.workspacesRoot,
+      ...(request.workspace?.baseRef === undefined ? {} : { baseRef: request.workspace.baseRef }),
+      ...(request.workspace?.branchName === undefined ? {} : { branchName: request.workspace.branchName }),
+      ...(request.workspace?.resumeBranch === undefined ? {} : { resumeBranch: request.workspace.resumeBranch }),
+      ...(request.workspace?.resumeRoot === undefined ? {} : { resumeRoot: request.workspace.resumeRoot }),
+      ...(request.workspace?.workspacesRoot === undefined ? {} : { workspacesRoot: request.workspace.workspacesRoot }),
     };
 
     let claim: Pick<WorkspaceLease, 'releaseClaim' | 'currentConcurrentClaims'> = {
@@ -1806,7 +1808,7 @@ export function createAgentRuntime(options: AgentRuntimeOptions): AgentRuntime {
     session: AgentAdapterBinding,
     lease: WorkspaceLease,
     run: ManagedRun,
-    extras: { preparationId?: string; processId?: number; restored?: boolean } = {},
+    extras: { preparationId?: string | undefined; processId?: number | undefined; restored?: boolean | undefined } = {},
   ): AgentSessionInfo {
     if (sessionsByTerminalId.has(session.runtimeSessionId)) {
       throw new Error(`terminal already has an active agent session: ${session.runtimeSessionId}`);

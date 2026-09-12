@@ -44,14 +44,14 @@ describe('generateHookSettings', () => {
     expect(defaultHookEvents().length).toBe(supportedHookEvents().length - 2);
     for (const block of Object.values(settings.hooks)) {
       expect(block).toHaveLength(1);
-      expect(block[0].hooks).toHaveLength(1);
+      expect(block[0]!.hooks).toHaveLength(1);
     }
   });
 
   it('routes each event by its registry transport and carries its timeout', () => {
     const settings = generateHookSettings(OPTS);
     for (const spec of defaultHookEvents()) {
-      const handler = settings.hooks[spec.event][0].hooks[0];
+      const handler = settings.hooks[spec.event]![0]!.hooks[0]!;
       expect(handler.type, spec.event).toBe(spec.transport);
       if (handler.type === 'http') {
         expect(handler.timeout).toBe(spec.timeoutSec);
@@ -82,7 +82,7 @@ describe('generateHookSettings', () => {
       endpoint: probeHandler.url,
       events: [spec],
     });
-    expect(settings.hooks.UserPromptSubmit[0].hooks[0]).toEqual(probeHandler);
+    expect(settings.hooks.UserPromptSubmit![0]!.hooks[0]!).toEqual(probeHandler);
   });
 
   it('command handler nests exactly like the census structure', () => {
@@ -94,11 +94,11 @@ describe('generateHookSettings', () => {
       confidence: 'verified-headless',
       timeoutSec: 5,
     };
-    const block = generateHookSettings({ ...OPTS, events: [spec] }).hooks.SessionStart;
+    const block = generateHookSettings({ ...OPTS, events: [spec] }).hooks.SessionStart!;
     // Same nesting + same handler discriminant as the shape Claude accepted.
-    expect(Object.keys(block[0])).toEqual(Object.keys(censusBlock[0]));
-    expect(block[0].hooks[0].type).toBe(censusBlock[0].hooks[0].type);
-    expect(block[0].hooks[0]).toMatchObject({
+    expect(Object.keys(block[0]!)).toEqual(Object.keys(censusBlock[0]));
+    expect(block[0]!.hooks[0]!.type).toBe(censusBlock[0].hooks[0].type);
+    expect(block[0]!.hooks[0]!).toMatchObject({
       type: 'command',
       command: OPTS.commandExecutable,
       args: [OPTS.commandForwarderPath, OPTS.endpoint, OPTS.tokenEnvVar, '5000'],
@@ -114,7 +114,7 @@ describe('generateHookSettings', () => {
       confidence: 'verified-headless',
       timeoutSec: 5,
     };
-    const handler = generateHookSettings({ ...OPTS, events: [spec] }).hooks.SessionEnd[0].hooks[0];
+    const handler = generateHookSettings({ ...OPTS, events: [spec] }).hooks.SessionEnd![0]!.hooks[0]!;
     expect(handler.type).toBe('command');
     if (handler.type === 'command') {
       expect(handler.command).toBe(OPTS.commandExecutable);
@@ -125,7 +125,7 @@ describe('generateHookSettings', () => {
 
   it('keeps direct settings-generation callers compatible with the current Node executable', () => {
     const { commandExecutable: _commandExecutable, ...legacyOptions } = OPTS;
-    const handler = generateHookSettings(legacyOptions).hooks.SessionStart[0].hooks[0];
+    const handler = generateHookSettings(legacyOptions).hooks.SessionStart![0]!.hooks[0]!;
     expect(handler).toMatchObject({ type: 'command', command: process.execPath });
   });
 
@@ -154,7 +154,7 @@ describe('generateHookSettings', () => {
     const serialized = JSON.stringify(settings);
     expect(serialized).toContain('$SECRET_ENV');
     for (const block of Object.values(settings.hooks)) {
-      const handler = block[0].hooks[0];
+      const handler = block[0]!.hooks[0]!;
       if (handler.type === 'http') {
         expect(handler.headers.Authorization).toBe('Bearer $SECRET_ENV');
         expect(handler.allowedEnvVars).toEqual(['SECRET_ENV']);

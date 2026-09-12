@@ -43,8 +43,8 @@ export interface HookMatcher {
 
 export interface ClaudeHookSettings {
   hooks: Record<string, HookMatcher[]>;
-  statusLine?: ClaudeStatusLineConfig;
-  subagentStatusLine?: ClaudeStatusLineConfig;
+  statusLine?: ClaudeStatusLineConfig | undefined;
+  subagentStatusLine?: ClaudeStatusLineConfig | undefined;
 }
 
 export interface GenerateHookSettingsOptions {
@@ -55,15 +55,15 @@ export interface GenerateHookSettingsOptions {
   /** Per-session, generated Node command-hook forwarder. */
   commandForwarderPath: string;
   /** Absolute Node executable used for shell-free command hooks; defaults to this process's executable. */
-  commandExecutable?: string;
+  commandExecutable?: string | undefined;
   /** Native matcher values. A FileChanged matcher also opts that event in. */
-  matchers?: Readonly<Record<string, string>>;
+  matchers?: Readonly<Record<string, string>> | undefined;
   /** Events to wire; defaults to passively observable events in the pinned Surface. */
-  events?: readonly HookEventSpec[];
+  events?: readonly HookEventSpec[] | undefined;
   /** Internal multiplexer command plus presentation fields copied from the user's line. */
-  statusLine?: ClaudeStatusLineConfig;
+  statusLine?: ClaudeStatusLineConfig | undefined;
   /** Internal child-row multiplexer command plus fields copied from the user's line. */
-  subagentStatusLine?: ClaudeStatusLineConfig;
+  subagentStatusLine?: ClaudeStatusLineConfig | undefined;
 }
 
 export const CLAUDE_HOOK_FORWARDER_SOURCE = `const [endpoint, tokenEnvVar, timeoutText] = process.argv.slice(2);

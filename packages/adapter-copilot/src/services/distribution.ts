@@ -34,10 +34,10 @@ export type CopilotDistributionExec = (
 ) => Promise<{ stdout: string; stderr: string }>;
 
 export interface CopilotDistributionServiceOptions {
-  executable?: string;
-  exec?: CopilotDistributionExec;
+  executable?: string | undefined;
+  exec?: CopilotDistributionExec | undefined;
   /** Injected so tests never read the developer's own environment. */
-  env?: NodeJS.ProcessEnv;
+  env?: NodeJS.ProcessEnv | undefined;
 }
 
 export const COPILOT_DISTRIBUTION_PROVIDER: DistributionProvider = {

@@ -98,7 +98,7 @@ export const KNOWN_SERVER_REQUESTS: readonly string[] = [
 ];
 
 export interface CodexApprovalServiceOptions {
-  decide?: (request: CodexApprovalRequest) => CodexApprovalDecision | Promise<CodexApprovalDecision>;
+  decide?: ((request: CodexApprovalRequest) => CodexApprovalDecision | Promise<CodexApprovalDecision>) | undefined;
   publish(event: InteractionEvent, nativeEvent: unknown): void;
   isDisposed(): boolean;
 }

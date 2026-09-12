@@ -27,7 +27,7 @@ export interface TemplateContext {
   /** `$<name>.<field>` lookups, e.g. `{ op: {...}, stimulus: {...} }`. */
   scopes?: Record<string, Record<string, unknown>>;
   /** Whole-string bindings, e.g. `{ $sessionId: '...' }`. */
-  bindings?: Record<string, unknown>;
+  bindings?: Record<string, unknown> | undefined;
   /**
    * Per-run uuid memo; callers own its lifetime so names stay stable. Optional
    * for templates that cannot contain `$uuid` — the envelope, for instance,

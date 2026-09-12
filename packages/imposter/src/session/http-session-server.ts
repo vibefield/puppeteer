@@ -55,7 +55,7 @@ export interface HttpPersonaServerOptions {
   env: Record<string, string | undefined>;
   cwd: string;
   username: string;
-  password?: string;
+  password?: string | undefined;
   /** Defaults below PUPPETEER_IMPOSTER_HOME, or an owned temporary root. */
   storePath?: string;
   log?: (message: string) => void;

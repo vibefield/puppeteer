@@ -11,21 +11,21 @@ import {
 export interface ClaudeEventPublication {
   source: AgentEventSource;
   timestamp: string;
-  promptId?: string;
-  turnId?: string;
-  agentId?: string;
-  agentType?: string;
-  actorKey?: string;
-  actorRole?: 'child' | 'auxiliary' | 'unknown';
-  providerVersion?: string;
-  confidence?: AgentEventConfidence;
+  promptId?: string | undefined;
+  turnId?: string | undefined;
+  agentId?: string | undefined;
+  agentType?: string | undefined;
+  actorKey?: string | undefined;
+  actorRole?: 'child' | 'auxiliary' | 'unknown' | undefined;
+  providerVersion?: string | undefined;
+  confidence?: AgentEventConfidence | undefined;
   native?: unknown;
-  replay?: boolean;
+  replay?: boolean | undefined;
 }
 
 export interface ClaudeEventSourceOptions {
   sessionId(): string;
-  providerVersion?: string;
+  providerVersion?: string | undefined;
 }
 
 /** Publishes normalized Claude hook/transcript/status events as candidates. */

@@ -42,15 +42,16 @@ export interface CreateAcpSessionOptions {
   /** Agent-specific transport. ACP itself does not define a command to spawn. */
   connector: AcpConnector;
   /** Resume an existing ACP session by id (`session/load`, replays history). */
-  resume?: string;
+  resume?: string | undefined;
   /** Default: filesystem disabled, identified plan notifications enabled. */
-  clientCapabilities?: ClientCapabilities;
+  clientCapabilities?: ClientCapabilities | undefined;
   /** Decide structured permission requests. Default: deny. */
-  onApproval?: (request: AcpApprovalRequest) => AcpApprovalDecision | Promise<AcpApprovalDecision>;
+  onApproval?: ((request: AcpApprovalRequest) => AcpApprovalDecision | Promise<AcpApprovalDecision>) | undefined;
   /** Answer ACP's experimental structured elicitation request. */
-  onElicitation?: (request: AcpElicitationRequest) => CreateElicitationResponse | Promise<CreateElicitationResponse>;
+  onElicitation?:
+    ((request: AcpElicitationRequest) => CreateElicitationResponse | Promise<CreateElicitationResponse>) | undefined;
   /** Agent-specific ACP extension notifications that have stable semantics. */
-  onExtensionNotification?: (method: string, params: Record<string, unknown>) => readonly AgentEvent[];
+  onExtensionNotification?: ((method: string, params: Record<string, unknown>) => readonly AgentEvent[]) | undefined;
 }
 
 /** No adapter-specific extras yet; the shared contract is the whole surface. */
@@ -75,7 +76,7 @@ export async function createAcpSession(options: CreateAcpSessionOptions): Promis
   function apply(
     event: AgentEvent,
     source: AgentEventSource,
-    meta: { confidence?: AgentEventConfidence; nativeEvent?: unknown } = {},
+    meta: { confidence?: AgentEventConfidence | undefined; nativeEvent?: unknown } = {},
   ): void {
     if (disposed) return;
     eventSource.publish(event, source, meta.nativeEvent, meta.confidence);

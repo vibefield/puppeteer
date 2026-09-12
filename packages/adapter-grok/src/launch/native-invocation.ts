@@ -15,16 +15,16 @@ const GrokContinuationStateSchema = z.union([
 ]);
 
 export interface GrokNativeInvocationOptions {
-  model?: string;
-  permissionMode?: string;
-  sandbox?: string;
-  resumeLatest?: boolean;
-  executable?: string;
-  appServerEnv?: Record<string, string>;
+  model?: string | undefined;
+  permissionMode?: string | undefined;
+  sandbox?: string | undefined;
+  resumeLatest?: boolean | undefined;
+  executable?: string | undefined;
+  appServerEnv?: Record<string, string> | undefined;
 }
 
 export interface RestoreGrokContinuationOptions {
-  imposterExecutable?: string;
+  imposterExecutable?: string | undefined;
 }
 
 const REJECTED = 'custom arguments are not compatible with the managed Grok launch';

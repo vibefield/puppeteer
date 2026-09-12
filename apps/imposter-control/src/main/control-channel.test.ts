@@ -39,7 +39,8 @@ const planeApi = (path: string, body?: unknown): Promise<Response> =>
   fetch(`${plane.url}${path}`, {
     method: body === undefined ? 'GET' : 'POST',
     headers: { 'content-type': 'application/json', authorization: `Bearer ${plane.token}` },
-    body: body === undefined ? undefined : JSON.stringify(body),
+    // `RequestInit` is lib.dom's: an absent `body` is not an explicit `undefined`.
+    ...(body === undefined ? {} : { body: JSON.stringify(body) }),
   });
 
 async function spawnImposterSession(): Promise<string> {

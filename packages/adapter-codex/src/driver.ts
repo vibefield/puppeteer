@@ -40,19 +40,19 @@ const CLIENT_INFO = { name: 'puppeteer', version: PUPPETEER_VERSION } as const;
 export interface CreateCodexSessionOptions {
   cwd: string;
   /** Transport override (tests). Defaults to spawning `codex app-server`. */
-  transport?: Transport;
-  executable?: string;
+  transport?: Transport | undefined;
+  executable?: string | undefined;
   /** Model id applied when starting a fresh thread. */
-  model?: string;
-  sandbox?: 'read-only' | 'workspace-write' | 'danger-full-access';
-  approvalPolicy?: 'never' | 'on-request' | 'untrusted';
+  model?: string | undefined;
+  sandbox?: 'read-only' | 'workspace-write' | 'danger-full-access' | undefined;
+  approvalPolicy?: 'never' | 'on-request' | 'untrusted' | undefined;
   /** Resume an existing thread by id (`thread/resume`) instead of starting fresh. */
-  resume?: string;
+  resume?: string | undefined;
   /**
    * Decide structured approval requests. Default: deny (safe) — a runtime that
    * wants the agent to act must supply a policy.
    */
-  onApproval?: (req: CodexApprovalRequest) => CodexApprovalDecision | Promise<CodexApprovalDecision>;
+  onApproval?: ((req: CodexApprovalRequest) => CodexApprovalDecision | Promise<CodexApprovalDecision>) | undefined;
 }
 
 export interface CodexSession extends AgentAdapterBinding {

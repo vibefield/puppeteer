@@ -129,7 +129,7 @@ export interface MonitorHandleSource {
   readonly runtimeRunId: string;
   current(): AgentMonitorState;
   subscribe(subscriber: MonitorHandleSubscriber): () => void;
-  readArtifact(artifactId: string, options?: { maxBytes?: number }): Promise<MonitorArtifactReadResult>;
+  readArtifact(artifactId: string, options?: { maxBytes?: number | undefined }): Promise<MonitorArtifactReadResult>;
 }
 
 export function createMonitorHandle(source: MonitorHandleSource, notificationCapacity: number): AgentMonitorHandle {

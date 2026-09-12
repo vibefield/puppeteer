@@ -27,7 +27,7 @@ export interface HttpSseRequest {
   query: Record<string, string>;
   body?: unknown;
   /** Query parameter wins over the equivalent header, matching OpenCode. */
-  directory?: string;
+  directory?: string | undefined;
   headers: IncomingMessage['headers'];
 }
 

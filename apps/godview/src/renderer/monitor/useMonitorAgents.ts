@@ -26,7 +26,7 @@ import {
 } from './usage-ledger.js';
 
 export interface UseMonitorAgentsOptions {
-  workspace?: GhostteaWorkspaceContext;
+  workspace?: GhostteaWorkspaceContext | undefined;
   attachments: ReadonlyMap<string, PaneAttachment>;
   /** Live terminal id -> stable monitor identity across PTY handoffs. */
   terminalIdentities?: ReadonlyMap<string, string>;

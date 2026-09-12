@@ -155,7 +155,7 @@ export type CreateAgentSessionResult = AgentSessionInfo | AgentSessionFailure;
 
 export interface AgentSessionSnapshot {
   info: AgentSessionInfo;
-  final?: WorkspaceFinalEvent;
+  final?: WorkspaceFinalEvent | undefined;
 }
 
 export interface SubmitPromptOptions {

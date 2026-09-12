@@ -1,9 +1,9 @@
 import type { AgentEvent, AgentEventConfidence, AgentEventSource, AgentEventSourceRef } from '@vibecook/puppeteer-core';
 export interface AntigravityNormalizedRecord {
   events: AgentEvent[];
-  promptId?: string;
-  turnId?: string;
-  timestamp?: string;
+  promptId?: string | undefined;
+  turnId?: string | undefined;
+  timestamp?: string | undefined;
   source: AgentEventSource;
   confidence: AgentEventConfidence;
   nativeEvent: unknown;

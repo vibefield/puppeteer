@@ -16,14 +16,14 @@ const CodexContinuationStateSchema = z.union([
 ]);
 
 export interface CodexNativeInvocationOptions {
-  resumeInvocation?: string[];
-  executable?: string;
-  env?: Record<string, string>;
-  appServerEnv?: Record<string, string>;
+  resumeInvocation?: string[] | undefined;
+  executable?: string | undefined;
+  env?: Record<string, string> | undefined;
+  appServerEnv?: Record<string, string> | undefined;
 }
 
 export interface RestoreCodexContinuationOptions {
-  imposterExecutable?: string;
+  imposterExecutable?: string | undefined;
 }
 
 /** Codex owns resume grammar and the app-server/socket topology behind it. */

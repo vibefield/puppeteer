@@ -9,7 +9,8 @@ export interface AcpElicitationRequest {
 }
 
 export interface AcpElicitationServiceOptions {
-  respond?: (request: AcpElicitationRequest) => CreateElicitationResponse | Promise<CreateElicitationResponse>;
+  respond?:
+    ((request: AcpElicitationRequest) => CreateElicitationResponse | Promise<CreateElicitationResponse>) | undefined;
   publish(event: AgentEvent, nativeEvent: unknown): void;
 }
 

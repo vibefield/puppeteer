@@ -16,7 +16,10 @@ export class HermesTurnNormalizer {
     return { turnId, events: [{ type: 'turn:started', turnId }] };
   }
 
-  complete(payload: Record<string, unknown>, lastAssistantMessage?: string): { turnId?: string; events: TurnEvent[] } {
+  complete(
+    payload: Record<string, unknown>,
+    lastAssistantMessage?: string,
+  ): { turnId?: string | undefined; events: TurnEvent[] } {
     const status = hermesString(payload.status) ?? 'complete';
     const turnId = this.turnId;
     this.turnId = undefined;

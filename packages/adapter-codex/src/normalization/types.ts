@@ -2,13 +2,13 @@ import type { AgentEvent, ToolActivityKind, ToolPresentation } from '@vibecook/p
 
 export interface CodexServerNotification {
   method: string;
-  params?: Record<string, unknown>;
+  params?: Record<string, unknown> | undefined;
 }
 
 export interface NormalizedNotification {
   events: AgentEvent[];
-  threadId?: string;
-  turnId?: string;
+  threadId?: string | undefined;
+  turnId?: string | undefined;
   /** Exact prompt correlation echoed by a completed Codex user-message item. */
   userMessageClientId?: string | null;
 }
@@ -16,8 +16,8 @@ export interface NormalizedNotification {
 export interface CodexNormalizationInput {
   method: string;
   params: Record<string, unknown>;
-  threadId?: string;
-  turnId?: string;
+  threadId?: string | undefined;
+  turnId?: string | undefined;
 }
 
 export interface CategoryNormalization<Event extends AgentEvent> {

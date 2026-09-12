@@ -2,13 +2,13 @@ import { PUPPETEER_VERSION } from '@vibecook/puppeteer-core';
 import { AppServerClient, spawnAppServerTransport, type Transport } from '../transport/app-server-client.js';
 
 export interface PrewarmCodexOptions {
-  executable?: string;
+  executable?: string | undefined;
   /** The same account root the eventual native invocation will use. */
-  env?: Record<string, string>;
-  signal?: AbortSignal;
+  env?: Record<string, string> | undefined;
+  signal?: AbortSignal | undefined;
   /** Total budget for this optional background operation, including initialization. */
-  timeoutMs?: number;
-  spawnTransport?: (options: { executable?: string; env?: Record<string, string> }) => Transport;
+  timeoutMs?: number | undefined;
+  spawnTransport?: ((options: { executable?: string; env?: Record<string, string> }) => Transport) | undefined;
 }
 
 /** Populate Codex's native on-disk model cache without creating a thread or starting a turn. */

@@ -148,11 +148,11 @@ type PiProviderOptions = PiAgentOptions &
   Pick<CreatePiTuiSessionOptions, 'pollIntervalMs' | 'maxReplayBytes'>;
 
 export interface BuiltinProviderOptions {
-  executables?: Partial<Record<BuiltinExecutableAgentKind, string>>;
+  executables?: Partial<Record<BuiltinExecutableAgentKind, string>> | undefined;
   /** Generic executable used only when an opaque continuation records an Imposter implementation. */
-  imposterExecutable?: string;
+  imposterExecutable?: string | undefined;
   /** Default connector for generic ACP sessions; individual sessions may override it. */
-  acpConnector?: AcpConnector;
+  acpConnector?: AcpConnector | undefined;
 }
 
 const BUILTIN_PROVIDER_DESCRIPTORS = {
@@ -175,7 +175,7 @@ const BUILTIN_PROVIDER_DESCRIPTORS = {
  * uses or how it maps to a launch option.
  */
 function withProfileBinding<
-  Options extends { env?: Record<string, string>; appServerEnv?: Record<string, string> },
+  Options extends { env?: Record<string, string> | undefined; appServerEnv?: Record<string, string> | undefined },
   Bound extends Partial<Options>,
 >(
   providerId: string,

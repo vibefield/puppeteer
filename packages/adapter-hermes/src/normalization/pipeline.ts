@@ -95,9 +95,9 @@ export class HermesGatewayNormalizer {
   private record(
     events: AgentEvent[],
     metadata: {
-      nativeSessionId?: string;
-      liveSessionId?: string;
-      turnId?: string;
+      nativeSessionId?: string | undefined;
+      liveSessionId?: string | undefined;
+      turnId?: string | undefined;
       nativeEvent: unknown;
     },
     disposition?: HermesNormalizationDisposition,
