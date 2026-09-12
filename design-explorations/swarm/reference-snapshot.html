@@ -1,0 +1,3415 @@
+<title>Swarm Proposals</title>
+<style id="css-tokens">
+/* Vendored from vibe-field/packages/design-kit/src/tokens.css (2026-09-02). DESIGN.md moves first, then that
+   file, then this copy — nothing here is authored in Puppeteer. Godview reads only the §2.5 state colours,
+   the §2.6 accents, the §2.7 instrument palette and the §6 easings; the rest rides along so the copy stays
+   a transcription rather than an excerpt. */
+
+/* @vibefield/design-kit tokens — transcribed from DESIGN.md; the doc moves first, then this file. */
+
+:root {
+  /* Core type stacks. Components consume these instead of repeating a subtly
+     different system or monospace stack at every call site. */
+  --vf-font-sans: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  --vf-font-mono: ui-monospace, 'SF Mono', SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+
+  /* §2.1 Ground (the canvas) */
+  --vf-canvas-bg: #fafafa;
+  --vf-canvas-dot: rgba(0, 0, 0, 0.16);
+  /* widgetlab-compat aliases */
+  --canvas-bg: var(--vf-canvas-bg);
+  --canvas-dot: var(--vf-canvas-dot);
+
+  /* §2.2 Surfaces */
+  --vf-card: #1c1c1e;
+  --vf-card-deep: #000000;
+  --vf-card-ink: #ffffff;
+  --vf-fill: #f2f2f7;
+  --vf-fill-hover: #e5e5ea;
+
+  /* Semantic chrome projection. These are aliases over the art-direction
+     palette, not a second palette: shared primitives and domain surfaces use
+     the names below so light/dark treatment cannot drift independently. */
+  --vf-foreground: #1c1c1e;
+  --vf-foreground-inverse: #ffffff;
+  --vf-text-primary: rgb(28 28 30 / 85%);
+  --vf-text-secondary: rgb(28 28 30 / 70%);
+  --vf-text-tertiary: rgb(28 28 30 / 45%);
+  --vf-text-faint: rgb(28 28 30 / 30%);
+  --vf-hairline: rgb(0 0 0 / 5%);
+  --vf-hairline-strong: rgb(0 0 0 / 10%);
+  --vf-chrome-solid: #ffffff;
+  --vf-chrome-surface: rgb(255 255 255 / 90%);
+  --vf-sheet-surface: rgb(255 255 255 / 96%);
+  --vf-chrome-surface-soft: rgb(255 255 255 / 58%);
+  --vf-chrome-surface-hover: rgb(255 255 255 / 78%);
+  --vf-field-surface: rgb(255 255 255 / 60%);
+  --vf-wizard-surface: rgb(255 255 255 / 55%);
+  --vf-backdrop-dim: rgb(0 0 0 / 10%);
+
+  /* §2.5 State & system color */
+  --vf-green: #30d158;
+  --vf-orange: #ff9f0a;
+  --vf-red: #ff453a;
+  --vf-yellow: #ffd60a;
+  --vf-cyan: #5ac8fa;
+  --vf-select: #4a90d9;
+  --vf-state-on-attention: #111111;
+  --vf-state-on-solid: #ffffff;
+
+  /* §2.6 Organizational accents — the curated set, assigned per object and used
+     as TINT. They group and label; they never signal state (that is §2.5's job,
+     above). Transcribed here rather than at each use site because this file is
+     the one place transcription is legitimate: the doc moves first, then this. */
+  --vf-accent-1: #6366f1;
+  --vf-accent-2: #ec4899;
+  --vf-accent-3: #22c55e;
+  --vf-accent-4: #f59e0b;
+  --vf-accent-5: #06b6d4;
+  --vf-accent-6: #8b5cf6;
+  --vf-accent-7: #ef4444;
+  --vf-accent-8: #3b82f6;
+
+  /* Domain content colors. These are stable card identities, not app state. */
+  --vf-note-surface: #f6e7a9;
+  --vf-note-ink: #3a3524;
+  --vf-folder-surface: #1d1d2b;
+  --vf-folder-portal: #14141f;
+  --vf-folder-ink: #eaeaf4;
+  --vf-folder-muted: #8b8ba6;
+
+  /* §2.7 Godview instrument palette — exact values from the Chopsticks
+     Godview reference. Both modes live here because Godview owns a local theme
+     switch independent of the field behind it. */
+  --vf-godview-light-monitor-bg: #f7f7f7;
+  --vf-godview-light-panel-bg: #ffffff;
+  --vf-godview-light-panel-border: #e0e0e0;
+  --vf-godview-light-text-main: #111111;
+  --vf-godview-light-text-muted: #888888;
+  --vf-godview-light-text-faint: #b8b8b8;
+  --vf-godview-light-control-hover-border: #777777;
+  --vf-godview-light-control-hover-bg: #f2f2f2;
+  --vf-godview-light-idle-bg: #e5e5e5;
+  --vf-godview-light-idle-text: #666666;
+  --vf-godview-light-working-bg: #222222;
+  --vf-godview-light-working-text: #ffffff;
+  --vf-godview-light-working-border: #111111;
+  --vf-godview-light-terminal-bg: #ece8dc;
+  --vf-godview-light-terminal-divider: #d2cec3;
+
+  --vf-godview-dark-monitor-bg: #0a0a0a;
+  --vf-godview-dark-panel-bg: #111111;
+  --vf-godview-dark-panel-border: #333333;
+  --vf-godview-dark-text-main: #ffffff;
+  --vf-godview-dark-text-muted: #777777;
+  --vf-godview-dark-text-faint: #555555;
+  --vf-godview-dark-control-hover-border: #a8a8a8;
+  --vf-godview-dark-control-hover-bg: #242424;
+  --vf-godview-dark-idle-bg: #2a2a2a;
+  --vf-godview-dark-idle-text: #aaaaaa;
+  --vf-godview-dark-working-bg: #eeeeee;
+  --vf-godview-dark-working-text: #111111;
+  --vf-godview-dark-working-border: #ffffff;
+  --vf-godview-dark-terminal-bg: #282c34;
+  --vf-godview-dark-terminal-divider: #414650;
+
+  --vf-godview-rain-green: #4ade80;
+  --vf-godview-rain-green-focus: #22c55e;
+  --vf-godview-rain-waiting: #fde047;
+  --vf-godview-rain-idle: #cbd5e1;
+  --vf-godview-rain-working-head: #ffffff;
+  --vf-godview-rain-working-tail: #00ff00;
+  --vf-godview-rain-waiting-head: #fef08a;
+  --vf-godview-rain-waiting-tail: #eab308;
+  --vf-godview-rain-idle-head: #94a3b8;
+  --vf-godview-rain-idle-tail: #475569;
+  --vf-godview-rain-hover-tail: #d946ef;
+
+  /* §4 Geometry */
+  --vf-radius-card: 22px;
+  --vf-radius-island: 32px;
+  --vf-radius-sheet: 40px;
+  --vf-radius-control: 9px;
+
+  /* §8 The file tree. Geometry only — every COLOR the tree wears is one of
+     the tokens above. The theme itself ships upstream
+     (`@vibecook/mille-ui/theme/vibefield.css`) and reads these by name with
+     its own published fallbacks, so the numbers stay ours: change one here
+     and the tree follows without a mille release. */
+  --vf-tree-row-height: 26px;
+  --vf-tree-row-height-compact: 22px;
+  --vf-tree-indent: 14px;
+  --vf-tree-gutter: 8px;
+
+  /* §5 canonical material recipes. Keeping the complete shadow in a token is
+     what lets a side panel in a plugin and a side panel in the shell remain the
+     same physical material. */
+  --vf-shadow-card: 0 20px 40px rgb(0 0 0 / 15%), 0 0 0 1px rgb(0 0 0 / 5%);
+  --vf-shadow-card-lifted: 0 30px 60px rgb(0 0 0 / 22%), 0 0 0 1px rgb(0 0 0 / 6%);
+  --vf-shadow-island: 0 8px 30px rgb(0 0 0 / 8%);
+  --vf-shadow-sheet: 0 -20px 40px rgb(0 0 0 / 8%);
+  --vf-shadow-top-sheet: 0 20px 40px rgb(0 0 0 / 8%);
+  --vf-shadow-side-panel: -20px 0 40px rgb(0 0 0 / 8%);
+  --vf-shadow-dialog: 0 42px 100px rgb(0 0 0 / 18%), 0 12px 36px rgb(0 0 0 / 10%);
+  --vf-shadow-wizard: 0 8px 30px rgb(0 0 0 / 8%);
+
+  /* §6 Motion */
+  --vf-ease-island: cubic-bezier(0.25, 1, 0.3, 1);
+  --vf-ease-lift: cubic-bezier(0.2, 0.9, 0.3, 1.2);
+  --vf-ease-pop: cubic-bezier(0.34, 1.45, 0.64, 1);
+
+  /* §7 Interactive states — the engine's P4 union box wraps rounded cards
+     (world px; the chrome reflector zoom-scales it — widgetlab App law) */
+  --ic-selection-radius: 22px;
+
+  /* §7 Interactive states — overlap glow/rim knobs (light defaults) */
+  --ic-glow-color: 255, 255, 255;
+  --ic-glow-size-t: 60px;
+  --ic-glow-size-c: 60px;
+  --ic-glow-alpha-t: 0.5;
+  --ic-glow-alpha-c: 0.25;
+  --ic-rim-color: 224, 224, 224;
+  --ic-rim-alpha-t: 0.85;
+  --ic-rim-alpha-c: 0.55;
+  --ic-rim-width: 1.5px;
+  --ic-rim-radius: 600px;
+}
+
+.dark {
+  /* §2.1 Ground */
+  --vf-canvas-bg: #171717;
+  --vf-canvas-dot: rgba(255, 255, 255, 0.08);
+
+  /* §2.2 Surfaces */
+  --vf-fill: #2c2c2e;
+  --vf-fill-hover: #2c2c2e;
+
+  --vf-foreground: #f5f5f7;
+  --vf-foreground-inverse: #1c1c1e;
+  --vf-text-primary: rgb(245 245 247 / 85%);
+  --vf-text-secondary: rgb(245 245 247 / 70%);
+  --vf-text-tertiary: rgb(245 245 247 / 45%);
+  --vf-text-faint: rgb(245 245 247 / 30%);
+  --vf-hairline: rgb(255 255 255 / 10%);
+  --vf-hairline-strong: rgb(255 255 255 / 15%);
+  --vf-chrome-solid: #1c1c1e;
+  --vf-chrome-surface: rgb(28 28 30 / 90%);
+  --vf-sheet-surface: rgb(28 28 30 / 96%);
+  --vf-chrome-surface-soft: rgb(255 255 255 / 5%);
+  --vf-chrome-surface-hover: rgb(255 255 255 / 8%);
+  --vf-field-surface: rgb(255 255 255 / 6%);
+  --vf-wizard-surface: rgb(28 28 30 / 55%);
+  --vf-backdrop-dim: rgb(0 0 0 / 40%);
+  --vf-shadow-island: 0 8px 30px rgb(0 0 0 / 40%);
+  --vf-shadow-sheet: 0 -20px 40px rgb(0 0 0 / 40%);
+  --vf-shadow-top-sheet: 0 20px 40px rgb(0 0 0 / 40%);
+  --vf-shadow-side-panel: -20px 0 40px rgb(0 0 0 / 40%);
+  --vf-shadow-dialog: 0 48px 120px rgb(0 0 0 / 48%), 0 14px 40px rgb(0 0 0 / 30%);
+  --vf-shadow-wizard: 0 8px 30px rgb(0 0 0 / 40%);
+
+  /* §7 Interactive states — reviewed neutral glow/rim on dark */
+  --ic-glow-color: 110, 110, 110;
+  --ic-rim-color: 92, 92, 92;
+}
+</style>
+<style id="css-godview">
+/* Godview's instrument skin, ported from vibe-field/packages/field-app/src/godview/godview.css
+   (DESIGN.md §1.1, §2.7). The selectors are vibe-field's so the two apps iterate on one skin.
+
+   What differs is host mechanics, not design: the window IS the Godview, so the overlay's open/close
+   transition is gone and the header doubles as the window's drag region; the runtime inspector, the
+   notification feed and the account-usage chrome exist only here and are drawn in the same tokens; the
+   mock/remote chips, the mesh fault faces, the kill affordance, the perf readout and the terminal-mode
+   switch have no counterpart here and are not ported. Status words are Core's — idle · working ·
+   blocked — where vibe-field says waiting for the third. */
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body,
+#root {
+  width: 100%;
+  height: 100%;
+  margin: 0;
+  overflow: hidden;
+  background: transparent;
+}
+
+body {
+  user-select: none;
+}
+
+:root {
+  color-scheme: light;
+}
+
+:root[data-theme='dark'] {
+  color-scheme: dark;
+}
+
+/* ── Godview: exact Chopsticks instrument skin (DESIGN.md §1.1) ─────────────
+   Every visible surface below reads the reference palette through these scoped
+   names; the tokens themselves live in tokens.css. */
+.vf-godview.theme-light,
+.vf-godview-tweak-panel.theme-light {
+  --monitor-bg: var(--vf-godview-light-monitor-bg);
+  --panel-bg: var(--vf-godview-light-panel-bg);
+  --panel-border: var(--vf-godview-light-panel-border);
+  --text-main: var(--vf-godview-light-text-main);
+  --text-muted: var(--vf-godview-light-text-muted);
+  --text-faint: var(--vf-godview-light-text-faint);
+  --control-hover-border: var(--vf-godview-light-control-hover-border);
+  --control-hover-bg: var(--vf-godview-light-control-hover-bg);
+  --grid-line: rgba(0, 0, 0, 0.022);
+  --idle-bg: var(--vf-godview-light-idle-bg);
+  --idle-text: var(--vf-godview-light-idle-text);
+  --working-bg: var(--vf-godview-light-working-bg);
+  --working-text: var(--vf-godview-light-working-text);
+  --working-border: var(--vf-godview-light-working-border);
+  --blocked-bg: var(--vf-card-deep);
+  --blocked-text: var(--vf-godview-light-panel-bg);
+  --blocked-border: var(--vf-card-deep);
+  --terminal-bg: var(--vf-godview-light-terminal-bg);
+  --terminal-divider: var(--vf-godview-light-terminal-divider);
+  --pane-access-text: rgba(20, 20, 20, 0.6);
+  --pane-access-border: rgba(0, 0, 0, 0.12);
+  --pane-access-bg: rgba(247, 247, 247, 0.8);
+  --crt-scanline: rgba(0, 0, 0, 0.08);
+  --crt-vignette: rgba(0, 0, 0, 0.15);
+  color-scheme: light;
+}
+
+.vf-godview.theme-dark,
+.vf-godview-tweak-panel.theme-dark {
+  --monitor-bg: var(--vf-godview-dark-monitor-bg);
+  --panel-bg: var(--vf-godview-dark-panel-bg);
+  --panel-border: var(--vf-godview-dark-panel-border);
+  --text-main: var(--vf-godview-dark-text-main);
+  --text-muted: var(--vf-godview-dark-text-muted);
+  --text-faint: var(--vf-godview-dark-text-faint);
+  --control-hover-border: var(--vf-godview-dark-control-hover-border);
+  --control-hover-bg: var(--vf-godview-dark-control-hover-bg);
+  --grid-line: rgba(255, 255, 255, 0.035);
+  --idle-bg: var(--vf-godview-dark-idle-bg);
+  --idle-text: var(--vf-godview-dark-idle-text);
+  --working-bg: var(--vf-godview-dark-working-bg);
+  --working-text: var(--vf-godview-dark-working-text);
+  --working-border: var(--vf-godview-dark-working-border);
+  --blocked-bg: var(--vf-godview-dark-text-main);
+  --blocked-text: var(--vf-card-deep);
+  --blocked-border: var(--vf-godview-dark-text-main);
+  --terminal-bg: var(--vf-godview-dark-terminal-bg);
+  --terminal-divider: var(--vf-godview-dark-terminal-divider);
+  --pane-access-text: rgba(255, 255, 255, 0.62);
+  --pane-access-border: rgba(255, 255, 255, 0.14);
+  --pane-access-bg: rgba(22, 24, 29, 0.82);
+  --crt-scanline: rgba(0, 0, 0, 0.3);
+  --crt-vignette: rgba(0, 0, 0, 0.75);
+  color-scheme: dark;
+}
+
+/* The whole window. The stage surface controls (color, opacity, blur) paint
+   here, so the deck's renderer-native pane alpha shows this glass through it. */
+.vf-godview {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  min-width: 0;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  color: var(--text-main);
+  background: color-mix(
+    in srgb,
+    var(--vf-godview-stage-color, var(--monitor-bg)) var(--vf-godview-stage-opacity, 100%),
+    transparent
+  );
+  backdrop-filter: blur(var(--vf-godview-stage-blur, 0));
+  font-family: ui-monospace, 'SFMono-Regular', 'SF Mono', Menlo, Monaco, Consolas, monospace;
+  font-synthesis: none;
+  transition:
+    color 240ms ease,
+    background-color 240ms ease;
+  user-select: none;
+}
+
+.vf-godview button,
+.vf-godview kbd,
+.vf-godview select {
+  font: inherit;
+}
+
+.vf-godview-header,
+.vf-godview-monitor-stage,
+.vf-monitor-swarm,
+.vf-godview-terminal-deck,
+.vf-godview-terminal-deck .ghostty-window,
+.vf-godview-terminal-deck .ghosttea-workspace-body,
+.vf-godview-terminal-deck .terminal-host,
+.vf-godview-terminal-deck .ghostty-pane {
+  transition:
+    color 240ms ease,
+    border-color 240ms ease,
+    background-color 240ms ease;
+}
+
+.vf-godview-header {
+  position: relative;
+  z-index: 20;
+  height: 40px;
+  flex: 0 0 40px;
+  display: grid;
+  grid-template-columns: minmax(160px, 1fr) auto minmax(160px, 1fr);
+  align-items: center;
+  padding: 0 15px;
+  border-bottom: 1px solid var(--panel-border);
+  background: var(--panel-bg);
+  -webkit-app-region: drag;
+}
+
+/* The window's own lights, drawn only where the OS does not draw them. */
+.vf-godview-window-controls {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.platform-darwin .vf-godview-window-controls {
+  visibility: hidden;
+}
+
+.vf-godview-window-controls i {
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  box-shadow: inset 0 -1px 1px rgb(0 0 0 / 18%);
+}
+
+.vf-godview-window-controls .is-close {
+  background: #ff5f57;
+}
+
+.vf-godview-window-controls .is-minimize {
+  background: #febc2e;
+}
+
+.vf-godview-window-controls .is-expand {
+  background: #28c840;
+}
+
+.vf-godview-title {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  color: var(--text-main);
+  letter-spacing: 0.12em;
+  white-space: nowrap;
+}
+
+.vf-godview-title span {
+  font-size: 11px;
+  font-weight: 800;
+}
+
+.vf-godview-title small {
+  color: var(--text-muted);
+  font-size: 8px;
+  font-weight: 700;
+}
+
+.vf-godview-header-actions,
+.vf-godview-status-controls {
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  -webkit-app-region: no-drag;
+}
+
+.vf-godview-header-actions {
+  gap: 8px;
+}
+
+.vf-godview-status-controls {
+  gap: 6px;
+}
+
+.vf-godview-status-controls button,
+.vf-godview-view-switch,
+.vf-godview-tweak-toggle {
+  border: 1px solid var(--panel-border);
+  color: var(--text-muted);
+  background: transparent;
+  font-weight: 700;
+  cursor: pointer;
+  transition: 120ms ease;
+}
+
+.vf-godview-status-controls button {
+  min-width: 0;
+  padding: 3px 7px;
+  border-radius: 5px;
+  font-size: 9px;
+  letter-spacing: 0.04em;
+}
+
+.vf-godview-status-controls kbd {
+  margin-left: 5px;
+  color: var(--text-faint);
+  font-size: 8px;
+  font-weight: 400;
+}
+
+.vf-godview-view-switch {
+  height: 22px;
+  padding: 0 4px;
+  border-radius: 5px;
+  font-size: 9px;
+  letter-spacing: 0.04em;
+}
+
+.vf-godview-tweak-toggle {
+  height: 22px;
+  padding: 0 7px;
+  border-radius: 6px;
+  font-size: 8px;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+}
+
+.vf-godview-status-controls button:hover,
+.vf-godview-view-switch:hover,
+.vf-godview-tweak-toggle:hover,
+.vf-godview-tweak-toggle.is-open {
+  border-color: var(--control-hover-border);
+  color: var(--text-main);
+  background: var(--control-hover-bg);
+}
+
+.vf-godview-view-switch:focus-visible,
+.vf-godview-tweak-toggle:focus-visible,
+.vf-godview-status-controls button:focus-visible {
+  outline: 1px solid var(--text-main);
+  outline-offset: 2px;
+}
+
+.vf-godview-theme-switch {
+  height: 22px;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 0 5px;
+  border: 1px solid var(--panel-border);
+  border-radius: 6px;
+  color: var(--text-muted);
+  background: transparent;
+  font-size: 9px;
+  cursor: pointer;
+  transition:
+    color 160ms ease,
+    border-color 160ms ease,
+    background-color 160ms ease;
+}
+
+.vf-godview-theme-switch:hover {
+  border-color: var(--control-hover-border);
+  color: var(--text-main);
+  background: var(--control-hover-bg);
+}
+
+.vf-godview-theme-switch:focus-visible {
+  outline: 1px solid var(--text-main);
+  outline-offset: 2px;
+}
+
+.vf-godview-theme-switch > span:first-child,
+.vf-godview-theme-switch > span:last-child {
+  line-height: 1;
+  opacity: 0.38;
+  transition: opacity 160ms ease;
+}
+
+.vf-godview-theme-switch[aria-checked='false'] > span:first-child,
+.vf-godview-theme-switch[aria-checked='true'] > span:last-child {
+  opacity: 1;
+}
+
+.vf-godview-theme-switch-track {
+  position: relative;
+  width: 22px;
+  height: 12px;
+  flex: 0 0 22px;
+  border: 1px solid var(--panel-border);
+  border-radius: 999px;
+  background: var(--control-hover-bg);
+}
+
+.vf-godview-theme-switch-track i {
+  position: absolute;
+  top: 2px;
+  left: 2px;
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--text-main);
+  transition: transform 180ms ease;
+}
+
+.vf-godview-theme-switch[aria-checked='true'] .vf-godview-theme-switch-track i {
+  transform: translateX(10px);
+}
+
+/* The bounded transition feed. Puppeteer-only: the runtime's attention hints,
+   in the panel's own material. */
+.vf-godview-monitor-feed {
+  position: absolute;
+  z-index: 80;
+  top: 48px;
+  right: 12px;
+  width: min(340px, calc(100% - 24px));
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  pointer-events: none;
+}
+
+.vf-godview-monitor-notice {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 7px 9px;
+  border: 1px solid var(--panel-border);
+  border-radius: 6px;
+  color: var(--text-main);
+  background: var(--panel-bg);
+  box-shadow: 0 8px 22px rgb(0 0 0 / 18%);
+  font-size: 9px;
+  pointer-events: auto;
+}
+
+.vf-godview-monitor-notice span {
+  flex: 1;
+}
+
+.vf-godview-monitor-notice button {
+  border: 0;
+  color: var(--text-muted);
+  background: transparent;
+  cursor: pointer;
+}
+
+/* The system-control panel wears the exact reference TweakPanel shell. It is
+   portalled to the body so it paints above the WebGPU pane compositor. */
+.vf-godview-tweak-panel {
+  position: fixed;
+  z-index: 1000;
+  top: 48px;
+  right: 8px;
+  width: min(280px, calc(100vw - 16px));
+  max-height: calc(100vh - 56px);
+  overflow: auto;
+  border: 1px solid var(--panel-border);
+  border-radius: 7px;
+  color: var(--text-main);
+  background: var(--panel-bg);
+  box-shadow: 0 16px 38px rgba(0, 0, 0, 0.28);
+  font-family: ui-monospace, 'SFMono-Regular', 'SF Mono', Menlo, Monaco, Consolas, monospace;
+  font-size: 10px;
+  font-synthesis: none;
+  user-select: none;
+  -webkit-app-region: no-drag;
+}
+
+.vf-godview-tweak-panel button,
+.vf-godview-tweak-panel select {
+  font: inherit;
+}
+
+.vf-godview-tweak-header {
+  height: 32px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 9px 0 11px;
+  border-bottom: 1px solid var(--panel-border);
+  font-size: 9px;
+  font-weight: 800;
+  letter-spacing: 0.12em;
+}
+
+.vf-godview-tweak-header button {
+  width: 21px;
+  height: 21px;
+  padding: 0;
+  border: 0;
+  border-radius: 4px;
+  color: var(--text-muted);
+  background: transparent;
+  font-size: 17px;
+  line-height: 1;
+  cursor: pointer;
+}
+
+.vf-godview-tweak-header button:hover {
+  color: var(--text-main);
+  background: var(--control-hover-bg);
+}
+
+.vf-godview-tweak-theme {
+  height: 36px;
+  display: grid;
+  grid-template-columns: 1fr 112px;
+  align-items: center;
+  gap: 8px;
+  padding: 0 11px;
+  border-bottom: 1px solid var(--panel-border);
+  color: var(--text-muted);
+}
+
+.vf-godview-tweak-theme select {
+  width: 100%;
+  height: 23px;
+  padding: 0 6px;
+  border: 1px solid var(--panel-border);
+  border-radius: 4px;
+  color: var(--text-main);
+  background: var(--control-hover-bg);
+}
+
+.vf-godview-tweak-group {
+  min-width: 0;
+  margin: 0;
+  padding: 7px 11px 10px;
+  border: 0;
+  border-bottom: 1px solid var(--panel-border);
+}
+
+.vf-godview-tweak-group legend {
+  width: calc(100% + 22px);
+  margin-left: -11px;
+  padding: 7px 11px 4px;
+  color: var(--text-faint);
+  font-size: 8px;
+  font-weight: 800;
+  letter-spacing: 0.1em;
+}
+
+.vf-godview-tweak-control {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 62px;
+  align-items: center;
+  gap: 4px 8px;
+  padding: 4px 0;
+  color: var(--text-muted);
+}
+
+.vf-godview-tweak-control output {
+  overflow: hidden;
+  color: var(--text-main);
+  font-variant-numeric: tabular-nums;
+  text-align: right;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.vf-godview-tweak-control input[type='range'] {
+  width: 100%;
+  height: 12px;
+  grid-column: 1 / -1;
+  margin: 0;
+  accent-color: var(--text-main);
+  cursor: ew-resize;
+}
+
+.vf-godview-tweak-control.is-color input[type='color'] {
+  width: 100%;
+  height: 18px;
+  grid-column: 1 / -1;
+  padding: 0;
+  border: 1px solid var(--panel-border);
+  border-radius: 4px;
+  background: transparent;
+  cursor: pointer;
+}
+
+.vf-godview-tweak-reset {
+  width: calc(100% - 22px);
+  height: 26px;
+  margin: 9px 11px 11px;
+  border: 1px solid var(--panel-border);
+  border-radius: 4px;
+  color: var(--text-muted);
+  background: transparent;
+  font-size: 8px;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  cursor: pointer;
+}
+
+.vf-godview-tweak-reset:hover {
+  border-color: var(--control-hover-border);
+  color: var(--text-main);
+  background: var(--control-hover-bg);
+}
+
+/* The stage is the shell's; whichever view is mounted fills it, and the chrome
+   overlays it. Views inherit no layout beyond these bounds. The window owns the
+   glass, so the stage paints nothing of its own. */
+.vf-godview-monitor-stage {
+  position: relative;
+  width: 100%;
+  height: var(--vf-monitor-stage-height, 35%);
+  min-height: 170px;
+  flex: 0 0 var(--vf-monitor-stage-height, 35%);
+  overflow: hidden;
+  border-bottom: 1px solid var(--panel-border);
+  background: transparent;
+}
+
+.vf-monitor-chrome {
+  position: absolute;
+  z-index: 7;
+  top: 11px;
+  left: 13px;
+  width: min(300px, calc(100% - 26px));
+  color: var(--text-main);
+}
+
+/* The account-usage readout that rides the chrome slot. Puppeteer-only. */
+.vf-account-usage-panel {
+  color: var(--text-main);
+}
+
+.vf-account-usage-providers {
+  display: grid;
+}
+
+.vf-account-usage-provider {
+  min-width: 0;
+  min-height: 27px;
+  display: grid;
+  grid-template-columns: 53px minmax(0, 1fr);
+  align-items: center;
+  gap: 4px;
+  padding: 2px 0;
+}
+
+.vf-account-usage-provider-name {
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  color: var(--text-muted);
+  font-size: 7px;
+  font-weight: 900;
+  letter-spacing: 0.06em;
+}
+
+.vf-account-usage-provider-label {
+  min-width: 0;
+  display: grid;
+  gap: 1px;
+  line-height: 1;
+}
+
+.vf-account-usage-provider-label small {
+  overflow: hidden;
+  color: var(--text-faint);
+  font-size: 5px;
+  font-weight: 800;
+  letter-spacing: 0;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.vf-account-usage-provider-icon {
+  width: 11px;
+  height: 11px;
+  display: grid;
+  place-items: center;
+  flex: 0 0 11px;
+  color: var(--text-main);
+  font-size: 9px;
+}
+
+.vf-account-usage-metrics {
+  min-width: 0;
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 4px;
+}
+
+.vf-account-usage-metric {
+  min-width: 0;
+  display: grid;
+  grid-template-rows: 8px 2px 7px;
+  gap: 1px;
+}
+
+.vf-account-usage-metric:only-child {
+  max-width: 78px;
+}
+
+.vf-account-usage-metric-copy {
+  min-width: 0;
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 2px;
+  line-height: 1;
+}
+
+.vf-account-usage-metric-copy small,
+.vf-account-usage-metric-copy strong,
+.vf-account-usage-reset {
+  overflow: hidden;
+  white-space: nowrap;
+}
+
+.vf-account-usage-metric-copy small {
+  color: var(--text-faint);
+  font-size: 6px;
+  font-weight: 900;
+  letter-spacing: 0.04em;
+  text-overflow: ellipsis;
+}
+
+.vf-account-usage-metric-copy strong {
+  color: var(--text-main);
+  font-size: 7px;
+  font-variant-numeric: tabular-nums;
+}
+
+.vf-account-usage-track {
+  position: relative;
+  height: 2px;
+  overflow: hidden;
+  border-radius: 2px;
+  background: color-mix(in srgb, var(--text-main) 9%, transparent);
+}
+
+.vf-account-usage-track > i {
+  position: absolute;
+  inset: 0 auto 0 0;
+  border-radius: inherit;
+  background: var(--text-main);
+  transition: width 360ms cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.vf-account-usage-reset {
+  color: var(--text-faint);
+  font-size: 6px;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: -0.02em;
+  text-overflow: ellipsis;
+}
+
+.vf-account-usage-status {
+  overflow: hidden;
+  color: var(--text-faint);
+  font-size: 7px;
+  font-weight: 800;
+  letter-spacing: 0.06em;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.vf-account-usage-provider.is-unavailable .vf-account-usage-provider-icon,
+.vf-account-usage-provider.is-rate-limited .vf-account-usage-provider-icon,
+.vf-account-usage-provider.is-unauthenticated .vf-account-usage-provider-icon,
+.vf-account-usage-provider.is-unsupported .vf-account-usage-provider-icon {
+  color: var(--text-faint);
+  background: transparent;
+}
+
+/* The runtime inspector for the active agent. Puppeteer-only; the same panel
+   material and the instrument's type. Blocked takes §2.5's needs-attention
+   orange, the Godview ring-1 colour. */
+.vf-godview-monitor-inspector {
+  position: absolute;
+  z-index: 8;
+  top: 11px;
+  right: 13px;
+  width: min(470px, calc(100% - 340px));
+  max-height: calc(100% - 22px);
+  overflow: auto;
+  padding: 9px 11px;
+  border: 1px solid var(--panel-border);
+  border-radius: 7px;
+  color: var(--text-main);
+  background: color-mix(in srgb, var(--panel-bg) 94%, transparent);
+  box-shadow: 0 8px 30px color-mix(in srgb, #000 18%, transparent);
+  backdrop-filter: blur(18px);
+  font-size: 9px;
+}
+
+.vf-godview-monitor-inspector > header,
+.vf-godview-monitor-inspector section > h4,
+.vf-godview-monitor-inspector li,
+.vf-godview-inspector-blocker,
+.vf-godview-inspector-question {
+  display: flex;
+  align-items: baseline;
+  gap: 7px;
+}
+
+.vf-godview-monitor-inspector > header {
+  justify-content: space-between;
+  padding-bottom: 7px;
+  letter-spacing: 0.08em;
+}
+
+.vf-godview-monitor-inspector > header span,
+.vf-godview-monitor-inspector small {
+  color: var(--text-muted);
+}
+
+.vf-godview-monitor-inspector > header .is-blocked,
+.vf-godview-inspector-blocker.is-failure,
+.vf-godview-inspector-blocker.is-question,
+.vf-godview-inspector-blocker.is-permission {
+  color: var(--vf-orange);
+}
+
+.vf-godview-inspector-metrics {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 4px;
+}
+
+.vf-godview-inspector-metric {
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  padding: 4px 5px;
+  border: 1px solid var(--panel-border);
+  border-radius: 4px;
+}
+
+.vf-godview-inspector-metric strong {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.vf-godview-monitor-inspector section {
+  display: grid;
+  gap: 4px;
+  margin-top: 8px;
+  padding-top: 7px;
+  border-top: 1px solid var(--panel-border);
+}
+
+.vf-godview-monitor-inspector h4,
+.vf-godview-monitor-inspector ol,
+.vf-godview-monitor-inspector ul,
+.vf-godview-monitor-inspector p {
+  margin: 0;
+}
+
+.vf-godview-monitor-inspector ol,
+.vf-godview-monitor-inspector ul {
+  display: grid;
+  gap: 3px;
+  padding-left: 17px;
+}
+
+.vf-godview-monitor-inspector li {
+  justify-content: space-between;
+}
+
+.vf-godview-inspector-blocker,
+.vf-godview-inspector-question {
+  align-items: stretch;
+  flex-direction: column;
+}
+
+.vf-godview-monitor-inspector button {
+  width: fit-content;
+  padding: 2px 6px;
+  border: 1px solid var(--panel-border);
+  border-radius: 3px;
+  color: inherit;
+  background: transparent;
+  cursor: pointer;
+}
+
+.vf-godview-monitor-inspector pre {
+  max-height: 120px;
+  margin: 4px 0 0;
+  overflow: auto;
+  white-space: pre-wrap;
+}
+
+.vf-godview-inspector-readiness {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.vf-monitor-empty {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-content: center;
+  gap: 7px;
+  color: var(--text-muted);
+  text-align: center;
+  pointer-events: none;
+}
+
+.vf-monitor-empty span {
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 0.18em;
+}
+
+.vf-monitor-empty small {
+  color: var(--text-faint);
+  font-size: 9px;
+}
+
+/* List view — the same exact non-spatial reading as the reference. */
+.vf-monitor-list {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  padding-top: calc(var(--vf-monitor-chrome-height, 0px) + 18px);
+  color: var(--text-main);
+}
+
+.vf-monitor-list-toolbar {
+  flex: 0 0 auto;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 0 13px 6px;
+  color: var(--text-faint);
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+}
+
+.vf-monitor-list-new {
+  padding: 3px 7px;
+  border: 1px solid var(--panel-border);
+  border-radius: 5px;
+  color: var(--text-muted);
+  background: transparent;
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  cursor: pointer;
+  transition: 120ms ease;
+}
+
+.vf-monitor-list-new:hover {
+  border-color: var(--control-hover-border);
+  color: var(--text-main);
+  background: var(--control-hover-bg);
+}
+
+.vf-monitor-list-rows {
+  flex: 1 1 auto;
+  margin: 0;
+  padding: 0 13px 13px;
+  overflow-y: auto;
+  list-style: none;
+}
+
+.vf-monitor-list-row {
+  width: 100%;
+  min-height: var(--vf-monitor-row-height, 38px);
+  display: grid;
+  grid-template-columns:
+    10px var(--vf-monitor-project-width, 150px) minmax(0, 0.9fr)
+    minmax(0, 1.4fr) 44px;
+  align-items: center;
+  gap: 10px;
+  padding: 0 9px;
+  border: 1px solid transparent;
+  border-left: 3px solid transparent;
+  border-radius: 6px;
+  color: inherit;
+  background: transparent;
+  text-align: left;
+  cursor: pointer;
+  transition: 120ms ease;
+}
+
+.vf-monitor-list-row:hover {
+  border-color: var(--control-hover-border);
+  background: var(--control-hover-bg);
+}
+
+.vf-monitor-list-row.is-linked {
+  border-left-color: var(--agent-color);
+}
+
+.vf-monitor-list-row.is-active {
+  border-color: var(--agent-color);
+  background: var(--control-hover-bg);
+  outline: none;
+}
+
+.vf-monitor-list-row:focus-visible {
+  outline: 2px solid var(--agent-color);
+  outline-offset: -2px;
+}
+
+.vf-monitor-list-row.is-stale {
+  opacity: 0.58;
+}
+
+.vf-monitor-list-status {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--agent-color);
+}
+
+.vf-monitor-list-row.is-idle .vf-monitor-list-status {
+  opacity: 0.4;
+}
+
+.vf-monitor-list-row.is-blocked .vf-monitor-list-status {
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--agent-color) 30%, transparent);
+}
+
+.vf-monitor-list-project {
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+}
+
+.vf-monitor-list-project strong {
+  overflow: hidden;
+  color: inherit;
+  font-size: 11px;
+  font-weight: 700;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.vf-monitor-list-project small,
+.vf-monitor-list-agent,
+.vf-monitor-list-detail,
+.vf-monitor-list-context,
+.vf-monitor-list-terminal {
+  overflow: hidden;
+  color: var(--text-muted);
+  font-size: 9px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.vf-monitor-list-agent {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+}
+
+.vf-monitor-list-agent i {
+  display: flex;
+  color: inherit;
+  font-size: 11px;
+}
+
+.vf-monitor-list-terminal {
+  color: var(--text-faint);
+  font-style: italic;
+}
+
+.vf-monitor-list-context {
+  color: var(--text-faint);
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+
+.vf-monitor-list > .vf-monitor-empty {
+  position: static;
+  flex: 1 1 auto;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  color: var(--text-faint);
+  font-size: 10px;
+  letter-spacing: 0.08em;
+}
+
+/* Rain view deliberately paints black in both themes. */
+.vf-monitor-rain {
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+  background: var(--vf-card-deep);
+}
+
+.vf-monitor-rain canvas {
+  position: absolute;
+  inset: 0;
+  display: block;
+}
+
+.vf-monitor-rain-surface {
+  position: absolute;
+  inset: 0;
+  cursor: crosshair;
+}
+
+.vf-monitor-rain-tooltip {
+  position: absolute;
+  z-index: 8;
+  width: 224px;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  padding: 9px 11px;
+  border: 1px solid rgba(0, 255, 0, 0.55);
+  border-radius: 4px;
+  color: var(--vf-godview-rain-green);
+  background: rgba(0, 10, 0, 0.95);
+  box-shadow: 0 0 20px rgba(0, 255, 0, 0.25);
+  font-family: 'Courier New', Courier, monospace;
+  font-size: 10px;
+  pointer-events: none;
+}
+
+.vf-monitor-rain-tooltip.is-blocked {
+  border-color: rgba(234, 179, 8, 0.65);
+  color: var(--vf-godview-rain-waiting);
+  box-shadow: 0 0 20px rgba(234, 179, 8, 0.25);
+}
+
+.vf-monitor-rain-tooltip.is-idle {
+  border-color: rgba(148, 163, 184, 0.55);
+  color: var(--vf-godview-rain-idle);
+  box-shadow: none;
+}
+
+.vf-monitor-rain-tooltip-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  margin-bottom: 0;
+  padding-bottom: 4px;
+  border-bottom: 1px solid currentcolor;
+}
+
+.vf-monitor-rain-tooltip-head strong {
+  overflow: hidden;
+  color: var(--vf-godview-dark-text-main);
+  font-size: 11px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.vf-monitor-rain-tooltip-head span {
+  flex: 0 0 auto;
+  color: inherit;
+  font-size: 9px;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+}
+
+.vf-monitor-rain-tooltip dl {
+  margin: 0;
+  display: grid;
+  grid-template-columns: 30px minmax(0, 1fr);
+  gap: 2px 6px;
+}
+
+.vf-monitor-rain-tooltip dt {
+  color: inherit;
+  font: inherit;
+  opacity: 0.6;
+}
+
+.vf-monitor-rain-tooltip dd {
+  margin: 0;
+  overflow: hidden;
+  color: inherit;
+  font-size: inherit;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.vf-monitor-rain-context {
+  margin: 2px 0 0;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  color: inherit;
+  font-size: inherit;
+}
+
+.vf-monitor-rain-context-track {
+  flex: 1 1 auto;
+  height: 4px;
+  overflow: hidden;
+  border: 1px solid currentcolor;
+  border-radius: 2px;
+  background: transparent;
+}
+
+.vf-monitor-rain-context-track i {
+  display: block;
+  height: 100%;
+  border-radius: 0;
+  background: currentcolor;
+}
+
+.vf-monitor-rain-agents {
+  position: absolute;
+  z-index: 9;
+  top: 0;
+  left: 0;
+  width: auto;
+  height: auto;
+  margin: 0;
+  padding: 0;
+  overflow: visible;
+  clip-path: none;
+  list-style: none;
+  white-space: normal;
+}
+
+.vf-monitor-rain-agents button {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  border: 0;
+  padding: 0;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+
+.vf-monitor-rain-agents button:focus-visible {
+  position: static;
+  width: auto;
+  height: auto;
+  padding: 4px 8px;
+  border: 1px solid var(--vf-godview-rain-green-focus);
+  border-radius: 4px;
+  clip-path: none;
+  color: var(--vf-godview-rain-green);
+  background: rgba(0, 10, 0, 0.95);
+  font-family: 'Courier New', Courier, monospace;
+  font-size: 10px;
+}
+
+.vf-monitor-rain > .vf-monitor-empty {
+  z-index: 2;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  color: rgba(74, 222, 128, 0.65);
+  font-family: 'Courier New', Courier, monospace;
+  font-size: 10px;
+  letter-spacing: 0.08em;
+}
+
+/* The deck. Ghosttea draws the terminal tint with renderer-native alpha; an
+   opaque CSS deck would hide both that alpha and the window's glass below it. */
+.vf-godview-terminal-deck {
+  position: relative;
+  min-width: 0;
+  min-height: 0;
+  flex: 1 1 auto;
+  overflow: hidden;
+  background: transparent;
+}
+
+/* A live WebGPU canvas may be promoted above ordinary DOM overlays on macOS.
+   Compositing the deck while the panel is open keeps the body-level panel on
+   top without changing the visible terminal alpha. */
+.vf-godview[data-godview-tuning-open='true'] .vf-godview-terminal-deck {
+  opacity: 0.999;
+}
+
+.vf-godview-terminal-deck .ghostty-window,
+.vf-godview-terminal-deck .ghosttea-workspace-body,
+.vf-godview-terminal-deck .terminal-host,
+.vf-godview-terminal-deck .ghostty-pane {
+  background: transparent;
+}
+
+.vf-godview.theme-light .vf-godview-terminal-deck .ghostty-window {
+  color-scheme: light;
+}
+
+.vf-godview.theme-dark .vf-godview-terminal-deck .ghostty-window {
+  color-scheme: dark;
+}
+
+.vf-godview-terminal-deck .ghostty-window {
+  width: 100%;
+  height: 100%;
+}
+
+.vf-godview .ghosttea-workspace-sidebar {
+  display: none;
+}
+
+.vf-godview-terminal-deck .ghosttea-settings-button {
+  opacity: 0.78;
+}
+
+.vf-godview-terminal-deck .appearance-settings-backdrop {
+  position: fixed;
+}
+
+.vf-godview-terminal-deck .appearance-settings-page .appearance-panel:first-child h2::before {
+  display: inline-block;
+  margin-right: 8px;
+  padding: 2px 6px;
+  border: 1px solid rgb(255 255 255 / 16%);
+  border-radius: 999px;
+  color: rgb(238 241 247 / 72%);
+  background: rgb(255 255 255 / 7%);
+  font-size: 9px;
+  letter-spacing: 0.08em;
+  vertical-align: 2px;
+}
+
+.vf-godview.theme-light .vf-godview-terminal-deck .appearance-settings-page .appearance-panel:first-child h2::before {
+  content: 'LIGHT MODE';
+}
+
+.vf-godview.theme-dark .vf-godview-terminal-deck .appearance-settings-page .appearance-panel:first-child h2::before {
+  content: 'DARK MODE';
+}
+
+.vf-godview-terminal-deck .ghostty-pane-badge {
+  padding: 3px 9px;
+  color: var(--vf-godview-dark-text-main);
+  background: var(--ghostty-pane-color);
+  font-size: 8px;
+  font-weight: 800;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  transition:
+    color 160ms ease,
+    background-color 160ms ease,
+    box-shadow 160ms ease;
+}
+
+.vf-godview-terminal-deck .ghostty-pane:not(.is-active) .ghostty-pane-badge {
+  color: var(--ghostty-pane-color);
+  background: transparent;
+  box-shadow: inset 0 0 0 1px var(--ghostty-pane-color);
+}
+
+.vf-godview-terminal-deck .ghostty-pane.is-active[data-pane-accent]::before {
+  border-color: var(--ghostty-pane-color);
+  box-shadow: inset 0 0 12px color-mix(in srgb, var(--ghostty-pane-color) 18%, transparent);
+}
+
+.vf-godview-terminal-deck .ghostty-split-divider {
+  background: var(--terminal-divider);
+}
+
+.vf-godview-terminal-deck .ghostty-pane-access {
+  top: 24px;
+  color: var(--pane-access-text);
+  border-color: var(--pane-access-border);
+  background: var(--pane-access-bg);
+}
+
+.vf-godview-scanlines,
+.vf-godview-vignette {
+  position: absolute;
+  z-index: 30;
+  inset: 0;
+  pointer-events: none;
+}
+
+.vf-godview-scanlines {
+  background: linear-gradient(to bottom, transparent 50%, var(--crt-scanline) 51%);
+  background-size: 100% var(--vf-scanline-density, 2px);
+  opacity: var(--vf-scanline-opacity, 0.4);
+}
+
+.vf-godview-vignette {
+  background: radial-gradient(circle at center, transparent 52%, var(--crt-vignette) 100%);
+  opacity: var(--vf-vignette-opacity, 1);
+  transition:
+    background 240ms ease,
+    opacity 120ms ease;
+}
+
+@media (max-width: 840px) {
+  .vf-godview-status-controls kbd,
+  .vf-godview-title small {
+    display: none;
+  }
+
+  .vf-godview-status-controls button {
+    padding-inline: 5px;
+    font-size: 8px;
+  }
+
+  .vf-godview-tweak-toggle {
+    padding-inline: 5px;
+  }
+
+  .vf-godview-monitor-inspector {
+    top: 86px;
+    left: 13px;
+    width: calc(100% - 26px);
+    max-height: calc(100% - 97px);
+  }
+}
+
+@media (max-width: 680px) {
+  .vf-godview-header {
+    grid-template-columns: auto 1fr;
+  }
+
+  .vf-godview-status-controls {
+    display: none;
+  }
+
+  .vf-godview-title {
+    justify-self: start;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .vf-account-usage-track > i {
+    transition: none;
+  }
+}
+</style>
+<style id="css-swarm">
+/* Swarm field composition, ported from vibe-field's views/swarm/swarm.css. Individual circle anatomy
+   lives in agent-bubble.css; physics-owned position and size arrive as inline geometry. */
+
+.vf-monitor-swarm {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+  isolation: isolate;
+  touch-action: none;
+}
+
+.vf-monitor-swarm-grid {
+  position: absolute;
+  z-index: -1;
+  background-image:
+    linear-gradient(var(--grid-line) 1px, transparent 1px),
+    linear-gradient(90deg, var(--grid-line) 1px, transparent 1px);
+  background-size: 24px 24px;
+  inset: 0;
+  mask-image: radial-gradient(circle at center, black 20%, transparent 82%);
+  pointer-events: none;
+}
+
+.vf-monitor-long-press {
+  position: absolute;
+  z-index: 8;
+  width: 32px;
+  height: 32px;
+  border: 1px solid var(--text-muted);
+  border-radius: 50%;
+  background: color-mix(in srgb, var(--panel-bg) 74%, transparent);
+  transform: translate(-50%, -50%) scale(0.55);
+  animation: vf-godview-hold-to-create 520ms cubic-bezier(0.22, 1, 0.36, 1) forwards;
+  pointer-events: none;
+}
+
+.vf-monitor-long-press::after {
+  position: absolute;
+  width: 4px;
+  height: 4px;
+  border-radius: 50%;
+  background: var(--text-main);
+  content: '';
+  inset: 50% auto auto 50%;
+  transform: translate(-50%, -50%);
+}
+
+@keyframes vf-godview-hold-to-create {
+  0% {
+    opacity: 0;
+    transform: translate(-50%, -50%) scale(0.55);
+  }
+  20% {
+    opacity: 0.8;
+  }
+  100% {
+    border-color: var(--text-main);
+    opacity: 1;
+    transform: translate(-50%, -50%) scale(1);
+  }
+}
+
+.vf-godview[data-godview-animations='off'] .vf-monitor-long-press {
+  animation: none;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .vf-monitor-long-press {
+    animation: none;
+  }
+}
+</style>
+<style id="css-bubble">
+/* One Godview swarm circle: state bodies, identity layers, pane relationships, and motion. Ported from
+   vibe-field's views/swarm/agent-bubble.css; the third state is Core's `blocked` where vibe-field says
+   `waiting`, and the stale treatment is Puppeteer's own (evidence recency is presentation, never a fourth
+   status). Geometry and placement belong to AgentSwarm's physics controller. */
+
+.vf-godview.theme-light {
+  /* Pre-blurred shadow layers replace animated drop-shadow filters. Their alpha
+     follows the live fill-opacity control, so tuning the body also tunes the
+     silhouette it casts. */
+  --vf-monitor-bubble-working-shadow-rest-blur: 5px;
+  --vf-monitor-bubble-working-shadow-peak-blur: 8.5px;
+  --vf-monitor-bubble-blocked-shadow-rest-blur: 6.5px;
+  --vf-monitor-bubble-blocked-shadow-peak-blur: 12px;
+  --vf-monitor-bubble-working-shadow-rest-fill: rgb(0 0 0 / calc(0.18 * var(--vf-monitor-bubble-fill-opacity, 72%)));
+  --vf-monitor-bubble-working-shadow-peak-fill: rgb(0 0 0 / calc(0.34 * var(--vf-monitor-bubble-fill-opacity, 72%)));
+  --vf-monitor-bubble-blocked-shadow-rest-fill: rgb(0 0 0 / calc(0.24 * var(--vf-monitor-bubble-fill-opacity, 72%)));
+  --vf-monitor-bubble-blocked-shadow-peak-fill: rgb(0 0 0 / calc(0.4 * var(--vf-monitor-bubble-fill-opacity, 72%)));
+}
+
+.vf-godview.theme-dark {
+  --vf-monitor-bubble-working-shadow-rest-blur: 6px;
+  --vf-monitor-bubble-working-shadow-peak-blur: 10px;
+  --vf-monitor-bubble-blocked-shadow-rest-blur: 6.5px;
+  --vf-monitor-bubble-blocked-shadow-peak-blur: 12px;
+  --vf-monitor-bubble-working-shadow-rest-fill: rgb(
+    255 255 255 / calc(0.12 * var(--vf-monitor-bubble-fill-opacity, 72%))
+  );
+  --vf-monitor-bubble-working-shadow-peak-fill: rgb(
+    255 255 255 / calc(0.3 * var(--vf-monitor-bubble-fill-opacity, 72%))
+  );
+  --vf-monitor-bubble-blocked-shadow-rest-fill: rgb(
+    255 255 255 / calc(0.16 * var(--vf-monitor-bubble-fill-opacity, 72%))
+  );
+  --vf-monitor-bubble-blocked-shadow-peak-fill: rgb(
+    255 255 255 / calc(0.25 * var(--vf-monitor-bubble-fill-opacity, 72%))
+  );
+}
+
+.vf-monitor-bubble-positioner {
+  position: absolute;
+  z-index: 3;
+  top: 0;
+  left: 0;
+  will-change: width, height, transform;
+  transition:
+    width 300ms ease,
+    height 300ms ease;
+}
+
+.vf-monitor-bubble-positioner.is-working {
+  z-index: 4;
+}
+
+.vf-monitor-bubble-positioner.is-blocked {
+  z-index: 5;
+}
+
+/* The breathe and blocked shadows are two pre-blurred layers that cross-fade.
+   Nothing re-blurs on an animation frame; only opacity moves. Pseudo-elements
+   live on the positioner because the circle clips its own children. */
+.vf-monitor-bubble-positioner.is-working::before,
+.vf-monitor-bubble-positioner.is-working::after,
+.vf-monitor-bubble-positioner.is-blocked::before,
+.vf-monitor-bubble-positioner.is-blocked::after {
+  position: absolute;
+  z-index: -1;
+  border-radius: 50%;
+  content: '';
+  inset: 0;
+  pointer-events: none;
+}
+
+.vf-monitor-bubble-positioner.is-working::before {
+  background: var(--vf-monitor-bubble-working-shadow-rest-fill);
+  filter: blur(var(--vf-monitor-bubble-working-shadow-rest-blur));
+  transform: translateY(8px);
+  animation: vf-godview-agent-shadow-rest 3s ease-in-out infinite;
+}
+
+.vf-monitor-bubble-positioner.is-working::after {
+  background: var(--vf-monitor-bubble-working-shadow-peak-fill);
+  filter: blur(var(--vf-monitor-bubble-working-shadow-peak-blur));
+  opacity: 0;
+  transform: translateY(12px);
+  animation: vf-godview-agent-shadow-peak 3s ease-in-out infinite;
+}
+
+.vf-monitor-bubble-positioner.is-blocked::before {
+  background: var(--vf-monitor-bubble-blocked-shadow-rest-fill);
+  filter: blur(var(--vf-monitor-bubble-blocked-shadow-rest-blur));
+  transform: translateY(9px);
+  animation: vf-godview-agent-shadow-rest 1.5s cubic-bezier(0.215, 0.61, 0.355, 1) infinite;
+}
+
+.vf-monitor-bubble-positioner.is-blocked::after {
+  background: var(--vf-monitor-bubble-blocked-shadow-peak-fill);
+  filter: blur(var(--vf-monitor-bubble-blocked-shadow-peak-blur));
+  opacity: 0;
+  transform: translateY(17px);
+  animation: vf-godview-agent-shadow-peak 1.5s cubic-bezier(0.215, 0.61, 0.355, 1) infinite;
+}
+
+.vf-monitor-bubble {
+  position: absolute;
+  width: 100%;
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+  padding: 0;
+  border: 1px solid transparent;
+  border-radius: 50%;
+  color: var(--idle-text);
+  background: color-mix(
+    in srgb,
+    var(--vf-godview-bubble-idle, var(--idle-bg)) var(--vf-monitor-bubble-fill-opacity, 72%),
+    transparent
+  );
+  box-shadow: none;
+  text-align: center;
+  cursor: grab;
+  inset: 0;
+  touch-action: none;
+  transform-origin: center;
+  outline: none;
+  will-change: transform, opacity;
+  transition:
+    color 260ms ease,
+    background-color 260ms ease,
+    border-color 260ms ease,
+    box-shadow 180ms ease;
+}
+
+.vf-monitor-bubble:active {
+  cursor: grabbing;
+}
+
+.vf-monitor-bubble:focus-visible {
+  outline: 2px solid var(--agent-color);
+  outline-offset: 4px;
+}
+
+.vf-monitor-bubble.is-working {
+  z-index: 4;
+  border-color: var(--working-border);
+  color: var(--working-text);
+  background: color-mix(
+    in srgb,
+    var(--vf-godview-bubble-working, var(--working-bg)) var(--vf-monitor-bubble-fill-opacity, 72%),
+    transparent
+  );
+  box-shadow: none;
+}
+
+.vf-monitor-bubble.is-blocked {
+  z-index: 5;
+  border-color: var(--blocked-border);
+  color: var(--blocked-text);
+  background: color-mix(
+    in srgb,
+    var(--vf-godview-bubble-blocked, var(--blocked-bg)) var(--vf-monitor-bubble-fill-opacity, 72%),
+    transparent
+  );
+  box-shadow: none;
+}
+
+.vf-monitor-bubble.is-idle,
+.vf-monitor-bubble.is-unassigned {
+  border-color: transparent;
+  color: var(--idle-text);
+  background: color-mix(
+    in srgb,
+    var(--vf-godview-bubble-idle, var(--idle-bg)) var(--vf-monitor-bubble-fill-opacity, 72%),
+    transparent
+  );
+  box-shadow: none;
+}
+
+/* Evidence went quiet: the runtime's `stale` recency, dimmed rather than
+   recoloured, because a monitor that lost its evidence has not changed state. */
+.vf-monitor-bubble.is-stale {
+  opacity: 0.58;
+  filter: grayscale(0.75);
+}
+
+.vf-monitor-bubble.is-linked {
+  border-color: var(--agent-color);
+  box-shadow:
+    0 0 0 4px var(--agent-color),
+    0 0 18px color-mix(in srgb, var(--agent-color) 46%, transparent);
+}
+
+.vf-monitor-bubble-context-fill {
+  position: absolute;
+  right: 0;
+  bottom: 0;
+  left: 0;
+  z-index: 0;
+  max-height: 100%;
+  background: var(--agent-color);
+  opacity: 0.1;
+  pointer-events: none;
+  transition: height 420ms cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.vf-monitor-bubble-ignition,
+.vf-monitor-bubble-particles,
+.vf-monitor-bubble-mirrors {
+  position: absolute;
+  border-radius: inherit;
+  inset: 0;
+  pointer-events: none;
+}
+
+.vf-monitor-bubble-ignition {
+  z-index: 1;
+  overflow: hidden;
+}
+
+.vf-monitor-bubble-core-glow {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 72%;
+  height: 72%;
+  border-radius: 50%;
+  background: var(--agent-color);
+  filter: blur(13px);
+  opacity: 0.12;
+  transform: translate(-50%, -50%) scale(0.35);
+  animation: vf-godview-agent-ignition-core 1.5s ease-in-out infinite;
+  will-change: transform, opacity;
+}
+
+.vf-monitor-bubble-particle {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: var(--ignition-size);
+  height: var(--ignition-size);
+  margin: -1.5px 0 0 -1.5px;
+  border-radius: 50%;
+  background: var(--agent-color);
+  box-shadow: 0 0 7px var(--agent-color);
+  opacity: 0;
+  animation: vf-godview-agent-ignition-particle var(--ignition-duration) cubic-bezier(0.2, 0.8, 0.2, 1) infinite
+    var(--ignition-delay);
+  will-change: transform, opacity;
+}
+
+.vf-monitor-bubble-mirrors {
+  z-index: 1;
+}
+
+.vf-monitor-bubble-mirrors i {
+  position: absolute;
+  border: 1px solid;
+  border-radius: 50%;
+  opacity: 0.9;
+}
+
+.vf-monitor-bubble-glyph {
+  position: absolute;
+  z-index: 1;
+  top: 42%;
+  left: 50%;
+  color: currentcolor;
+  font-size: 58px;
+  font-weight: 800;
+  line-height: 1;
+  opacity: 0.055;
+  transform: translate(-50%, -50%);
+  pointer-events: none;
+}
+
+.vf-monitor-bubble-glyph svg {
+  display: block;
+}
+
+.vf-monitor-bubble.is-working .vf-monitor-bubble-glyph,
+.vf-monitor-bubble.is-blocked .vf-monitor-bubble-glyph {
+  opacity: 0.12;
+}
+
+.vf-monitor-bubble.is-ignited .vf-monitor-bubble-glyph {
+  animation: vf-godview-agent-ignition-glyph 1.5s ease-out infinite;
+  will-change: transform, opacity;
+}
+
+.vf-monitor-bubble-copy {
+  position: relative;
+  z-index: 2;
+  max-width: 78%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  line-height: 1.05;
+  pointer-events: none;
+}
+
+.vf-monitor-bubble-copy strong {
+  max-width: 100%;
+  overflow: hidden;
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: -0.035em;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.vf-monitor-bubble.is-working .vf-monitor-bubble-copy strong {
+  font-size: 14px;
+}
+
+.vf-monitor-bubble.is-blocked .vf-monitor-bubble-copy strong {
+  font-size: 18px;
+}
+
+.vf-monitor-bubble-provider {
+  max-width: 100%;
+  margin-top: 3px;
+  overflow: hidden;
+  color: currentcolor;
+  font-size: 7px;
+  font-weight: 800;
+  letter-spacing: 0.1em;
+  opacity: 0.58;
+  text-overflow: ellipsis;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+
+.vf-monitor-bubble-branch {
+  display: none;
+  max-width: 100%;
+  margin-bottom: 4px;
+  overflow: hidden;
+  color: currentcolor;
+  font-size: 7px;
+  opacity: 0.67;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.vf-monitor-bubble.is-working .vf-monitor-bubble-branch,
+.vf-monitor-bubble.is-blocked .vf-monitor-bubble-branch {
+  display: block;
+}
+
+.vf-monitor-bubble-branch::before {
+  display: inline-block;
+  width: 5px;
+  height: 5px;
+  margin-right: 4px;
+  border-radius: 50%;
+  background: var(--vf-godview-rain-green);
+  box-shadow: 0 0 5px color-mix(in srgb, var(--vf-godview-rain-green) 80%, transparent);
+  content: '';
+}
+
+.vf-monitor-bubble-context {
+  position: absolute;
+  right: 0;
+  bottom: 6px;
+  left: 0;
+  z-index: 2;
+  color: currentcolor;
+  font-size: 6px;
+  font-weight: 800;
+  letter-spacing: 0.05em;
+  opacity: 0.62;
+  pointer-events: none;
+}
+
+@keyframes vf-godview-agent-ignition-core {
+  0%,
+  100% {
+    opacity: 0.1;
+    transform: translate(-50%, -50%) scale(0.35);
+  }
+  50% {
+    opacity: 0.44;
+    transform: translate(-50%, -50%) scale(1);
+  }
+}
+
+@keyframes vf-godview-agent-ignition-particle {
+  0% {
+    opacity: 0;
+    transform: rotate(var(--ignition-angle)) translateY(0) scale(0.65);
+  }
+  12% {
+    opacity: 0.95;
+  }
+  100% {
+    opacity: 0;
+    transform: rotate(calc(var(--ignition-angle) + 20deg)) translateY(calc(0px - var(--ignition-distance))) scale(0);
+  }
+}
+
+@keyframes vf-godview-agent-ignition-glyph {
+  0%,
+  100% {
+    opacity: 0.08;
+    transform: translate(-50%, -50%) scale(0.92);
+  }
+  50% {
+    opacity: 0.24;
+    transform: translate(-50%, -50%) scale(1.08);
+  }
+}
+
+@keyframes vf-godview-agent-shadow-rest {
+  0%,
+  100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0;
+  }
+}
+
+@keyframes vf-godview-agent-shadow-peak {
+  0%,
+  100% {
+    opacity: 0;
+  }
+  50% {
+    opacity: 1;
+  }
+}
+
+/* The stage diagnostic disables every circle loop without changing layout,
+   size, color, or the state anatomy being inspected. */
+.vf-godview[data-godview-animations='off'] .vf-monitor-bubble,
+.vf-godview[data-godview-animations='off'] .vf-monitor-bubble-positioner::before,
+.vf-godview[data-godview-animations='off'] .vf-monitor-bubble-positioner::after,
+.vf-godview[data-godview-animations='off'] .vf-monitor-bubble-core-glow,
+.vf-godview[data-godview-animations='off'] .vf-monitor-bubble-particle,
+.vf-godview[data-godview-animations='off'] .vf-monitor-bubble-glyph {
+  animation: none;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .vf-monitor-bubble,
+  .vf-monitor-bubble-positioner::before,
+  .vf-monitor-bubble-positioner::after,
+  .vf-monitor-bubble-core-glow,
+  .vf-monitor-bubble-particle,
+  .vf-monitor-bubble.is-ignited .vf-monitor-bubble-glyph {
+    animation: none;
+  }
+
+  .vf-monitor-bubble-context-fill {
+    transition: none;
+  }
+
+  .vf-monitor-bubble-particle {
+    opacity: 0;
+  }
+
+  .vf-monitor-bubble-core-glow {
+    opacity: 0.18;
+    transform: translate(-50%, -50%) scale(0.72);
+  }
+}
+</style>
+<style id="css-page">
+/* ═══════════════════════════════════════════════════════════════════════════
+   THE SHEET. Everything above this block is the app's own CSS, inlined byte for
+   byte from apps/godview/src/renderer. This block is the catalog around it:
+   the page's ground, its type, and the few overrides the skin needs to sit in a
+   scrolling document instead of owning a window.
+   ═══════════════════════════════════════════════════════════════════════ */
+:root {
+  --pg-bg: #fafafa;
+  --pg-fill: #f2f2f7;
+  --pg-fill-hover: #e5e5ea;
+  --pg-ink: rgb(28 28 30 / 85%);
+  --pg-ink-2: rgb(28 28 30 / 70%);
+  --pg-ink-3: rgb(28 28 30 / 45%);
+  --pg-ink-4: rgb(28 28 30 / 30%);
+  --pg-hairline: rgb(0 0 0 / 5%);
+  --pg-hairline-strong: rgb(0 0 0 / 10%);
+  --pg-chrome: #ffffff;
+  --pg-chrome-surface: rgb(255 255 255 / 90%);
+  --pg-shadow: 0 8px 30px rgb(0 0 0 / 8%);
+  --pg-shadow-card: 0 20px 40px rgb(0 0 0 / 15%), 0 0 0 1px rgb(0 0 0 / 5%);
+  --pg-shadow-soft: 0 1px 2px rgb(0 0 0 / 4%), 0 16px 36px -20px rgb(0 0 0 / 24%);
+  --pg-select: #4a90d9;
+  /* the tint band — proposed DESIGN.md §2.6 tokens, defined here until the kit carries them */
+  --tint-l: 0.6;
+  --tint-c: 0.15;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme='light']) {
+    --pg-bg: #171717;
+    --pg-fill: #2c2c2e;
+    --pg-fill-hover: #3a3a3c;
+    --pg-ink: rgb(245 245 247 / 85%);
+    --pg-ink-2: rgb(245 245 247 / 70%);
+    --pg-ink-3: rgb(245 245 247 / 45%);
+    --pg-ink-4: rgb(245 245 247 / 30%);
+    --pg-hairline: rgb(255 255 255 / 10%);
+    --pg-hairline-strong: rgb(255 255 255 / 15%);
+    --pg-chrome: #1c1c1e;
+    --pg-chrome-surface: rgb(28 28 30 / 90%);
+    --pg-shadow: 0 8px 30px rgb(0 0 0 / 40%);
+    --pg-shadow-card: 0 20px 40px rgb(0 0 0 / 45%), 0 0 0 1px rgb(255 255 255 / 6%);
+    --pg-shadow-soft: 0 1px 2px rgb(0 0 0 / 30%), 0 16px 36px -20px rgb(0 0 0 / 70%);
+    --tint-l: 0.74;
+  }
+}
+:root[data-theme='dark'] {
+  --tint-l: 0.74;
+  --pg-bg: #171717;
+  --pg-fill: #2c2c2e;
+  --pg-fill-hover: #3a3a3c;
+  --pg-ink: rgb(245 245 247 / 85%);
+  --pg-ink-2: rgb(245 245 247 / 70%);
+  --pg-ink-3: rgb(245 245 247 / 45%);
+  --pg-ink-4: rgb(245 245 247 / 30%);
+  --pg-hairline: rgb(255 255 255 / 10%);
+  --pg-hairline-strong: rgb(255 255 255 / 15%);
+  --pg-chrome: #1c1c1e;
+  --pg-chrome-surface: rgb(28 28 30 / 90%);
+  --pg-shadow: 0 8px 30px rgb(0 0 0 / 40%);
+  --pg-shadow-card: 0 20px 40px rgb(0 0 0 / 45%), 0 0 0 1px rgb(255 255 255 / 6%);
+    --pg-shadow-soft: 0 1px 2px rgb(0 0 0 / 30%), 0 16px 36px -20px rgb(0 0 0 / 70%);
+}
+
+/* The skin assumes it owns the window; a catalog scrolls. */
+html,
+body,
+#root {
+  height: auto;
+  overflow: visible;
+}
+body {
+  margin: 0;
+  background: var(--pg-bg);
+  color: var(--pg-ink);
+  font-family: var(--vf-font-sans);
+  font-size: 14px;
+  line-height: 1.5;
+  user-select: text;
+  -webkit-font-smoothing: antialiased;
+}
+/* A specimen root: the app root's own rules, at the size the specimen asks for,
+   with the app's inherited defaults (16px, normal leading) restored under it. */
+.vf-godview {
+  font-size: 16px;
+  line-height: normal;
+}
+.vf-godview.spec-root {
+  position: relative;
+  height: var(--spec-h, auto);
+  border-radius: 8px;
+  border: 1px solid var(--panel-border);
+}
+.vf-godview.spec-block {
+  display: block;
+  padding: 14px;
+}
+.vf-godview.spec-root > .vf-godview-header {
+  border-radius: 8px 8px 0 0;
+}
+.vf-godview.spec-only-header > .vf-godview-header {
+  border-radius: 8px;
+  border-bottom: 0;
+}
+.vf-godview.spec-root > .vf-godview-scanlines,
+.vf-godview.spec-root > .vf-godview-vignette {
+  border-radius: 8px;
+}
+/* The panel is portalled to the body in the app; here it stands in the flow. */
+.spec-panel .vf-godview-tweak-panel {
+  position: static;
+  width: 280px;
+  max-height: none;
+  flex: none;
+}
+
+a { color: inherit; }
+button { font: inherit; }
+:focus-visible { outline: 1.5px solid var(--pg-select); outline-offset: 2px; }
+
+/* ── the bar: sticky, grouped by part, scroll-spied ─────────────────────── */
+.pg-top {
+  position: sticky; top: 0; z-index: 50;
+  display: flex; align-items: center; gap: 10px; height: 52px; padding: 0 22px;
+  background: var(--pg-chrome-surface); backdrop-filter: blur(20px); -webkit-backdrop-filter: blur(20px);
+  border-bottom: 1px solid var(--pg-hairline);
+}
+.pg-top .name { font-size: 13px; font-weight: 500; white-space: nowrap; }
+.pg-top .name small { margin-left: 8px; font-family: var(--vf-font-mono); font-size: 10.5px; font-weight: 400; color: var(--pg-ink-3); font-variant-numeric: tabular-nums; }
+.pg-top nav { display: flex; align-items: center; gap: 2px; min-width: 0; margin-left: 4px; padding: 0 14px; overflow-x: auto; scrollbar-width: none; -webkit-mask-image: linear-gradient(90deg, transparent, #000 14px, #000 calc(100% - 14px), transparent); mask-image: linear-gradient(90deg, transparent, #000 14px, #000 calc(100% - 14px), transparent); }
+.pg-top nav::-webkit-scrollbar { display: none; }
+.pg-top nav a { flex: none; font-size: 11px; color: var(--pg-ink-3); text-decoration: none; padding: 5px 8px; border-radius: 999px; white-space: nowrap; font-variant-numeric: tabular-nums; transition: background-color 120ms ease, color 120ms ease; }
+.pg-top nav a:hover { background: var(--pg-fill); color: var(--pg-ink); }
+.pg-top nav a.is-current { background: var(--pg-ink); color: var(--pg-bg); }
+.pg-top nav .grp { flex: none; margin-left: 8px; padding-left: 10px; border-left: 1px solid var(--pg-hairline-strong); font-family: var(--vf-font-mono); font-size: 9px; letter-spacing: 0.1em; text-transform: uppercase; color: var(--pg-ink-4); }
+.pg-top .acts { margin-left: auto; display: flex; gap: 8px; align-items: center; flex: none; }
+.pg-switch {
+  height: 30px; padding: 0 12px 0 10px; border-radius: 999px; border: 1px solid var(--pg-hairline-strong);
+  background: var(--pg-chrome); color: var(--pg-ink-3); font-size: 11px; font-weight: 500; cursor: pointer;
+  display: inline-flex; align-items: center; gap: 6px; box-shadow: var(--pg-shadow);
+}
+.pg-switch i { font-style: normal; font-size: 11px; line-height: 1; }
+.pg-switch:hover { color: var(--pg-ink); }
+.pg-switch[aria-pressed='true'] { background: var(--pg-ink); color: var(--pg-bg); border-color: transparent; }
+
+/* ── the sheet's grid: a 64px number gutter, content beside it ──────────── */
+.pg-main { max-width: 1200px; margin: 0 auto; padding: 60px 32px 96px; }
+.pg-measure { max-width: 68ch; }
+.pg-hero { display: grid; gap: 18px; padding-left: 64px; }
+h1 { font-size: clamp(30px, 3.6vw, 42px); font-weight: 300; letter-spacing: -0.022em; line-height: 1.06; margin: 0; max-width: 21ch; text-wrap: balance; }
+.pg-meta { display: grid; gap: 6px; max-width: 92ch; font-family: var(--vf-font-mono); font-size: 10.5px; line-height: 1.7; letter-spacing: 0.01em; color: var(--pg-ink-3); }
+.pg-meta b { font-weight: 500; color: var(--pg-ink-2); }
+.pg-meta .files { display: flex; flex-wrap: wrap; gap: 4px 6px; }
+.pg-meta code { font-size: 10px; padding: 1px 7px; border-radius: 6px; background: var(--pg-fill); color: var(--pg-ink-2); }
+
+/* the rules, up front: four columns, each a numbered clause with its sections */
+.pg-rules { margin: 46px 0 0 64px; padding-top: 16px; border-top: 2px solid var(--pg-ink); }
+.pg-rules > .pg-num { display: block; margin-bottom: 12px; color: var(--pg-ink-3); }
+ol.rules { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 0 28px; counter-reset: rule; }
+ol.rules li { counter-increment: rule; display: grid; grid-template-rows: auto auto auto; gap: 9px 0; margin: 0; padding: 18px 0 16px; border-top: 1px solid var(--pg-hairline-strong); font-size: 13px; line-height: 1.55; align-content: start; }
+ol.rules li::before { content: counter(rule, decimal-leading-zero); font-family: var(--vf-font-mono); font-size: 26px; font-weight: 300; line-height: 1; color: var(--pg-ink-4); font-variant-numeric: tabular-nums; }
+ol.rules li b { font-size: 15px; font-weight: 600; letter-spacing: -0.012em; line-height: 1.25; color: var(--pg-ink); text-wrap: balance; }
+ol.rules li > span { color: var(--pg-ink-2); }
+ol.rules li .refs { display: flex; flex-wrap: wrap; gap: 4px; padding-top: 2px; }
+.ref, .pg-contents a { display: inline-flex; align-items: center; gap: 5px; font-family: var(--vf-font-mono); font-size: 10px; letter-spacing: 0.04em; color: var(--pg-ink-3); text-decoration: none; padding: 3px 8px; border-radius: 999px; border: 1px solid var(--pg-hairline-strong); transition: color 120ms ease, border-color 120ms ease; }
+.ref:hover, .pg-contents a:hover { color: var(--pg-ink); border-color: var(--pg-ink-3); }
+.pg-contents a b { font-weight: 600; color: var(--pg-ink-2); }
+
+/* the two parts */
+.pg-part { display: grid; grid-template-columns: 64px minmax(0, 1fr); margin-top: 108px; padding-top: 22px; border-top: 2px solid var(--pg-ink); scroll-margin-top: 70px; }
+.pg-part > .pg-num { grid-column: 1; padding-top: 13px; color: var(--pg-ink-3); }
+.pg-part > h2 { grid-column: 2; font-size: 28px; font-weight: 400; letter-spacing: -0.02em; margin: 4px 0 8px; }
+.pg-part > p { grid-column: 2; max-width: 68ch; }
+.pg-part > .pg-contents { grid-column: 2; display: flex; flex-wrap: wrap; gap: 6px; margin-top: 4px; }
+.pg-part + section.pg-sec { margin-top: 44px; }
+
+/* a section: its number in the gutter, everything else beside it */
+section.pg-sec { display: grid; grid-template-columns: 64px minmax(0, 1fr); margin-top: 80px; padding-top: 20px; border-top: 1px solid var(--pg-hairline-strong); scroll-margin-top: 70px; }
+section.pg-sec > * { grid-column: 2; min-width: 0; }
+section.pg-sec > .pg-num { grid-column: 1; grid-row: 1; padding-top: 12px; font-size: 12px; color: var(--pg-ink-3); }
+.pg-num { font-family: var(--vf-font-mono); font-size: 10px; letter-spacing: 0.08em; color: var(--pg-ink-4); text-transform: uppercase; font-variant-numeric: tabular-nums; }
+h2 { display: flex; flex-wrap: wrap; align-items: baseline; gap: 10px; font-size: 22px; font-weight: 500; letter-spacing: -0.014em; margin: 6px 0 14px; text-wrap: balance; }
+h2 small { font-family: var(--vf-font-mono); font-size: 9.5px; font-weight: 500; letter-spacing: 0.08em; text-transform: uppercase; color: var(--pg-ink-3); padding: 3px 8px; border-radius: 999px; background: var(--pg-fill); }
+h3 { font-size: 14px; font-weight: 600; margin: 28px 0 8px; color: var(--pg-ink); }
+section.pg-sec > h3 { margin: 36px 0 10px; padding-top: 12px; border-top: 1px solid var(--pg-hairline); font-family: var(--vf-font-mono); font-size: 10.5px; font-weight: 600; letter-spacing: 0.1em; text-transform: uppercase; color: var(--pg-ink-3); }
+h3 + p { margin-top: 0; }
+p { margin: 0 0 12px; font-size: 14px; line-height: 1.55; color: var(--pg-ink-2); }
+.pg-lede { font-size: 16px; line-height: 1.5; color: var(--pg-ink); letter-spacing: -0.005em; }
+p strong, li strong, td strong { color: var(--pg-ink); font-weight: 600; }
+ul, ol { margin: 0 0 12px; padding-left: 20px; color: var(--pg-ink-2); font-size: 14px; line-height: 1.55; }
+li { margin-bottom: 5px; }
+code { font-family: var(--vf-font-mono); font-size: 12px; background: var(--pg-fill); padding: 1px 5px; border-radius: 5px; color: var(--pg-ink); }
+.eyebrow { display: block; font-family: var(--vf-font-mono); font-size: 10px; letter-spacing: 0.08em; text-transform: uppercase; color: var(--pg-ink-3); font-weight: 500; }
+.pg-code { font-family: var(--vf-font-mono); font-size: 11.5px; line-height: 1.55; background: var(--pg-fill); color: var(--pg-ink); padding: 12px 14px; border-radius: 10px; overflow-x: auto; margin: 12px 0 0; }
+
+/* tables: hairlines, a mono header row, a soft hover, numbers that line up */
+table.pg-t { width: 100%; border-collapse: separate; border-spacing: 0; font-size: 13px; margin: 6px 0 12px; }
+table.pg-t.is-narrow { width: auto; min-width: min(100%, 560px); }
+.pg-t th { text-align: left; font-family: var(--vf-font-mono); font-size: 9.5px; text-transform: uppercase; letter-spacing: 0.08em; color: var(--pg-ink-3); font-weight: 500; padding: 0 14px 8px 8px; border-bottom: 1px solid var(--pg-hairline-strong); }
+.pg-t td { padding: 9px 14px 9px 8px; border-bottom: 1px solid var(--pg-hairline); vertical-align: middle; color: var(--pg-ink-2); line-height: 1.45; }
+.pg-t tbody tr:hover td { background: color-mix(in srgb, var(--pg-fill) 60%, transparent); }
+.pg-t td:first-child { border-radius: 6px 0 0 6px; }
+.pg-t td:last-child { border-radius: 0 6px 6px 0; }
+.pg-t tr:last-child td { border-bottom: 0; }
+.pg-t td.k { font-family: var(--vf-font-mono); font-size: 11px; color: var(--pg-ink-3); white-space: nowrap; }
+.pg-t td.n { font-family: var(--vf-font-mono); font-size: 11px; color: var(--pg-ink-2); white-space: nowrap; font-variant-numeric: tabular-nums; }
+.pg-t td[rowspan] { vertical-align: top; }
+.pg-tablewrap { overflow-x: auto; }
+.sw { display: inline-flex; align-items: center; gap: 8px; white-space: nowrap; }
+.sw i { width: 22px; height: 22px; border-radius: 6px; background: var(--c); box-shadow: inset 0 0 0 1px rgb(0 0 0 / 10%); flex: none; }
+.sw.is-round i { border-radius: 50%; width: 12px; height: 12px; }
+.sw code { background: none; padding: 0; font-size: 11px; color: var(--pg-ink-3); }
+
+/* specimen frames: lifted a little from the sheet, captions kept to a measure */
+.spec { margin: 14px 0 6px; padding: 22px; border-radius: 14px; border: 1px solid var(--pg-hairline-strong); background: var(--pg-chrome); box-shadow: var(--pg-shadow-soft); }
+.spec.is-flush { padding: 0; overflow: hidden; }
+.spec-cap { font-size: 11.5px; color: var(--pg-ink-3); margin: 9px 0 0; line-height: 1.5; max-width: 92ch; }
+.spec-cap b { color: var(--pg-ink-2); font-weight: 500; }
+.spec-row { display: flex; gap: 14px; flex-wrap: wrap; align-items: stretch; }
+.spec-row > * { flex: 1 1 320px; min-width: 0; }
+.spec-note { font-size: 11px; color: var(--pg-ink-3); margin-top: 8px; max-width: 92ch; }
+
+.pg-colophon { display: flex; flex-wrap: wrap; gap: 6px 18px; margin: 120px 0 0 64px; padding-top: 16px; border-top: 1px solid var(--pg-hairline-strong); font-family: var(--vf-font-mono); font-size: 10.5px; letter-spacing: 0.02em; color: var(--pg-ink-4); }
+
+/* project colour */
+.vf-godview.theme-light { --tint-l: 0.6; --tint-c: 0.15; }
+.vf-godview.theme-dark { --tint-l: 0.74; --tint-c: 0.15; }
+.wheel-row { display: grid; grid-template-columns: 232px minmax(0, 1fr); gap: 24px; align-items: start; }
+.wheel { display: block; width: 100%; max-width: 232px; margin: 0 auto; }
+.tint-legend { width: 100%; border-collapse: collapse; font-size: 12px; }
+.tint-legend th { text-align: left; font-size: 10px; letter-spacing: 0.07em; text-transform: uppercase; color: var(--pg-ink-3); font-weight: 500; padding: 0 8px 6px 0; border-bottom: 1px solid var(--pg-hairline-strong); }
+.tint-legend td { padding: 7px 8px 7px 0; border-bottom: 1px solid var(--pg-hairline); color: var(--pg-ink-2); }
+.tint-legend td:first-child { color: var(--pg-ink); }
+.tint-legend td.n, .tint-legend th.n { text-align: right; font-variant-numeric: tabular-nums; font-family: var(--vf-font-mono); font-size: 11px; }
+.tint-legend i { display: inline-block; width: 9px; height: 9px; border-radius: 3px; background: var(--tint); margin-right: 8px; vertical-align: -1px; }
+.tint-legend .mono { font-family: var(--vf-font-mono); font-size: 11px; color: var(--pg-ink-3); }
+.inherit { display: grid; grid-template-columns: minmax(0, 1fr) 24px minmax(0, 1.4fr) 24px minmax(0, 1fr); gap: 12px; align-items: center; }
+.inherit .col { display: flex; flex-direction: column; gap: 10px; min-width: 0; }
+.inherit .col > small { font-size: 7px; letter-spacing: 0.06em; text-transform: uppercase; color: var(--text-faint); font-weight: 900; }
+.inherit .arrow { color: var(--text-faint); text-align: center; font-size: 16px; }
+.proj-card { display: flex; align-items: center; gap: 8px; padding: 8px 10px; border-radius: 6px; border: 1px solid var(--panel-border); background: var(--panel-bg); min-width: 0; }
+.proj-card i { width: 10px; height: 10px; border-radius: 3px; background: var(--tint); flex: none; }
+.proj-card b { font-size: 11px; font-weight: 800; color: var(--text-main); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.proj-card code { font-size: 8px; color: var(--text-faint); background: none; padding: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.proj-card em { margin-left: auto; font-style: normal; font-size: 8px; color: var(--text-muted); white-space: nowrap; font-variant-numeric: tabular-nums; }
+.proj-card.is-none i { background: var(--text-faint); }
+.proj-card.is-none b { color: var(--text-muted); font-weight: 700; }
+.inherit .circles { display: flex; gap: 10px; align-items: center; justify-content: center; flex-wrap: wrap; }
+.inherit .circles .vf-monitor-bubble-positioner { position: relative; }
+.inherit .pane { position: relative; height: 54px; border-radius: 4px; background: var(--terminal-bg); overflow: hidden; }
+.inherit .pane::before { content: ''; position: absolute; inset: 0; border: 1px solid transparent; pointer-events: none; }
+.inherit .pane.is-active::before { border-color: var(--ghostty-pane-color); box-shadow: inset 0 0 12px color-mix(in srgb, var(--ghostty-pane-color) 18%, transparent); }
+.inherit .pane .ghostty-pane-badge { position: absolute; top: 0; right: 0; padding: 2px 8px; border-bottom-left-radius: 6px; font: 700 10px/1.4 var(--vf-font-mono); }
+.inherit .pane.is-active .ghostty-pane-badge { color: var(--vf-godview-dark-text-main); background: var(--ghostty-pane-color); }
+.inherit .pane:not(.is-active) .ghostty-pane-badge { color: var(--ghostty-pane-color); background: transparent; box-shadow: inset 0 0 0 1px var(--ghostty-pane-color); }
+.inherit .pane small { position: absolute; left: 8px; bottom: 6px; font: 8px var(--vf-font-mono); color: var(--text-faint); }
+@media (max-width: 900px) { .wheel-row { grid-template-columns: minmax(0, 1fr); } .inherit { grid-template-columns: minmax(0, 1fr); } .inherit .arrow { transform: rotate(90deg); } }
+
+/* the circle inventory */
+.inv-group { margin-top: 26px; }
+.inv-group > .eyebrow { margin-bottom: 4px; }
+.inv-group > h3 { margin-top: 0; }
+.inv-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(212px, 1fr)); gap: 14px; margin-top: 12px; }
+.inv-cell { display: flex; flex-direction: column; gap: 10px; min-width: 0; }
+.inv-stage { position: relative; height: 176px; display: grid; place-items: center; }
+.inv-stage > .vf-monitor-bubble-positioner { position: relative; }
+.inv-cell b { font-size: 12px; font-weight: 600; color: var(--text-main); }
+.inv-cell small { font-size: 11px; color: var(--text-muted); line-height: 1.45; }
+.inv-cell code { font-family: var(--vf-font-mono); font-size: 10px; color: var(--text-faint); background: none; padding: 0; }
+
+/* the window composite */
+.win-stage-field { position: absolute; inset: 0; }
+.win-stage-field .vf-monitor-bubble-positioner { position: absolute; }
+
+/* the rain specimen */
+.rain-spec { position: relative; height: 300px; overflow: hidden; border-radius: 8px; border: 1px solid var(--panel-border); }
+.rain-spec .vf-monitor-rain { position: absolute; }
+
+/* the deck specimen stands in for Ghosttea's pane geometry; the colours are the skin's */
+.deck-spec { position: relative; display: flex; height: 220px; border-radius: 0 0 8px 8px; overflow: hidden; background: var(--terminal-bg); }
+.deck-spec .ghostty-pane { position: relative; flex: 1; min-width: 0; padding: 14px 16px; font: 12px/1.7 var(--vf-font-mono); color: var(--pane-ink); white-space: pre; overflow: hidden; }
+.deck-spec .ghostty-pane[data-pane-accent]::before { position: absolute; z-index: 5; inset: 0; border: 1px solid transparent; content: ''; pointer-events: none; }
+.deck-spec .ghostty-pane-badge { position: absolute; z-index: 6; top: 0; right: 0; max-width: 60%; padding: 2px 8px; overflow: hidden; border-bottom-left-radius: 6px; background: var(--ghostty-pane-color, #111); font: 700 10px/1.4 var(--vf-font-mono); text-overflow: ellipsis; white-space: nowrap; }
+.deck-spec .ghostty-pane-access { position: absolute; top: 8px; right: 10px; z-index: 4; padding: 2px 7px; border: 1px solid rgb(255 255 255 / 12%); border-radius: 999px; color: rgb(255 255 255 / 58%); font: 10px var(--vf-font-mono); }
+.deck-spec .ghostty-split-divider { width: 1px; flex: none; }
+.deck-spec .m { opacity: 0.55; }
+.vf-godview.theme-light .deck-spec { --pane-ink: #1e2227; }
+.vf-godview.theme-dark .deck-spec { --pane-ink: #ffffff; }
+.deck-spec .mode-badge { position: absolute; left: 16px; bottom: 12px; z-index: 6; padding: 2px 6px; border: 1px solid rgb(255 255 255 / 16%); border-radius: 999px; color: rgb(238 241 247 / 72%); background: rgb(255 255 255 / 7%); font: 9px var(--vf-font-mono); letter-spacing: 0.08em; }
+.vf-godview.theme-light .deck-spec .mode-badge { color: rgb(30 34 39 / 72%); border-color: rgb(0 0 0 / 14%); background: rgb(0 0 0 / 5%); }
+
+/* type roles */
+.type-table td.sample { padding-top: 10px; padding-bottom: 10px; }
+.type-table .vf-godview { display: inline-block; padding: 0; border: 0; background: transparent; }
+
+.two { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px; }
+.two > * { min-width: 0; }
+.files { font-size: 13px; }
+.files td.k { width: 46%; }
+
+@media (max-width: 900px) {
+  .two { grid-template-columns: minmax(0, 1fr); }
+  .win .vf-godview-monitor-inspector { display: none; }
+}
+@media (max-width: 1000px) {
+  ol.rules { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
+@media (max-width: 720px) {
+  .pg-hero, .pg-rules, .pg-colophon { padding-left: 0; margin-left: 0; }
+  section.pg-sec, .pg-part { grid-template-columns: minmax(0, 1fr); }
+  section.pg-sec > *, .pg-part > * { grid-column: 1; }
+  section.pg-sec > .pg-num, .pg-part > .pg-num { grid-row: auto; padding-top: 0; }
+  ol.rules { grid-template-columns: minmax(0, 1fr); }
+}
+@media (max-width: 600px) {
+  .pg-main { padding: 28px 16px 100px; }
+  .spec { padding: 14px; border-radius: 12px; }
+}
+@media (prefers-reduced-motion: reduce) {
+  html { scroll-behavior: auto; }
+}
+</style>
+<style id="css-proposals">
+/* ═══════════════════════════════════════════════════════════════════════════
+   SWARM PROPOSALS, second pass. Proposal-only CSS (p- prefix) layered over the
+   production circle's own classes. The rule of this pass: every mark lives
+   inside the body's rim, because in the settled cluster the space outside the
+   rim is a neighbour's body. Where a mark needs room, the body grows.
+   ═══════════════════════════════════════════════════════════════════════ */
+.vf-godview.spec-root.p-root { display: block; overflow: visible; }
+.p-pill { display: inline-block; padding: 2px 7px; border-radius: 999px; background: var(--pg-fill); color: var(--pg-ink-2); font-family: var(--vf-font-mono); font-size: 9.5px; letter-spacing: 0.06em; text-transform: uppercase; }
+.p-pill.is-pick { background: var(--pg-ink); color: var(--pg-bg); }
+.p-pill.is-warn { background: color-mix(in srgb, var(--vf-orange) 18%, var(--pg-fill)); color: var(--pg-ink); }
+.pg-grid-3 { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 14px; }
+.pg-grid-3 > * { min-width: 0; }
+.pg-grid-2 { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 14px; }
+.pg-grid-2 > * { min-width: 0; }
+@media (max-width: 1040px) { .pg-grid-3 { grid-template-columns: minmax(0, 1fr); } }
+@media (max-width: 900px) { .pg-grid-2 { grid-template-columns: minmax(0, 1fr); } }
+.p-design { display: flex; flex-direction: column; min-width: 0; }
+.p-dh { display: flex; align-items: center; gap: 8px; margin: 18px 0 8px; }
+.p-dh h4 { margin: 0; font-size: 13px; font-weight: 600; color: var(--pg-ink); }
+.p-dh .p-pill.is-pick, .p-dh .p-pill.is-warn { margin-left: auto; }
+.p-design > .spec-cap { min-height: 3.2em; }
+
+/* ── stages ─────────────────────────────────────────────────────────────── */
+.p-row { display: flex; flex-wrap: wrap; align-items: flex-start; justify-content: center; gap: 30px 34px; padding: 34px 16px 22px; }
+.p-row.is-roomy { gap: 40px 64px; padding: 40px 16px 28px; }
+.p-unit { display: flex; flex-direction: column; align-items: center; gap: 12px; min-width: 0; }
+.p-unit > .vf-monitor-bubble-positioner { position: relative; flex: none; }
+.p-unit > small { max-width: 150px; font: 500 8.5px/1.45 var(--vf-font-mono); letter-spacing: 0.06em; text-transform: uppercase; color: var(--text-faint); text-align: center; }
+.p-unit > small b { color: var(--text-muted); font-weight: 600; }
+.p-field { position: relative; height: 460px; overflow: hidden; border-radius: 8px; }
+.p-field .vf-monitor-bubble-positioner { transform: translate(-50%, -50%); }
+.p-field .p-fieldnote { position: absolute; left: 14px; bottom: 10px; color: var(--text-faint); font: 500 8.5px/1.4 var(--vf-font-mono); letter-spacing: 0.06em; text-transform: uppercase; }
+.p-layer { position: absolute; inset: 0; border-radius: 50%; pointer-events: none; }
+
+/* Blocked at the working size: the copy keeps the working scale. */
+.p-root .vf-monitor-bubble.is-blocked .vf-monitor-bubble-copy strong { font-size: 14px; }
+.p-root .vf-monitor-bubble.is-unassigned .vf-monitor-bubble-copy { max-width: 86%; }
+.p-root .vf-monitor-bubble.is-working .vf-monitor-bubble-copy, .p-root .vf-monitor-bubble.is-blocked .vf-monitor-bubble-copy { max-width: 82%; }
+
+/* shared copy lines */
+.p-sub { display: block; max-width: 100%; margin-top: 3px; overflow: hidden; font: 800 7px/1 var(--vf-font-mono); letter-spacing: 0.1em; text-transform: uppercase; text-overflow: ellipsis; white-space: nowrap; opacity: 0.55; }
+.p-sub.is-cmd { font-size: 8px; font-weight: 600; letter-spacing: 0; text-transform: none; opacity: 0.85; }
+.p-sub.is-new { opacity: 0.9; }
+.p-kg { width: 10px; height: 10px; flex: none; display: inline-block; vertical-align: -1px; }
+
+/* ── 01 · the empty terminal ───────────────────────────────────────────── */
+.vf-godview .p-hollow .vf-monitor-bubble { border: 1.5px dashed color-mix(in srgb, var(--idle-text) 52%, transparent); background: transparent; color: var(--idle-text); }
+.vf-godview .p-hollow.is-running .vf-monitor-bubble { border-style: solid; border-color: color-mix(in srgb, var(--idle-text) 22%, transparent); }
+.p-comet { z-index: 6; background: conic-gradient(from 0deg, transparent 0 60%, var(--idle-text) 100%); -webkit-mask: radial-gradient(farthest-side, transparent calc(100% - 2.5px), #000 calc(100% - 1.5px)); mask: radial-gradient(farthest-side, transparent calc(100% - 2.5px), #000 calc(100% - 1.5px)); animation: p-spin 1.4s linear infinite; }
+.p-fold { display: block; margin-bottom: 3px; opacity: 0.6; }
+.p-fold svg { display: block; width: 14px; height: 14px; margin: 0 auto; fill: none; stroke: currentColor; stroke-width: 1.6; stroke-linejoin: round; }
+.vf-godview .p-tile .vf-monitor-bubble { border-radius: 27%; }
+.p-pglyph { position: absolute; z-index: 1; top: 38%; left: 50%; font: 800 30px/1 var(--vf-font-mono); opacity: 0.075; transform: translate(-50%, -50%); pointer-events: none; }
+.p-path { display: block; max-width: 100%; margin-top: 3px; overflow: hidden; font: 500 7px/1.2 var(--vf-font-mono); text-overflow: ellipsis; white-space: nowrap; opacity: 0.6; }
+.p-runline { position: absolute; z-index: 2; right: 24%; bottom: 11px; left: 24%; height: 2px; overflow: hidden; border-radius: 1px; background: color-mix(in srgb, var(--idle-text) 22%, transparent); }
+.p-runline i { position: absolute; top: 0; bottom: 0; width: 36%; border-radius: 1px; background: var(--idle-text); animation: p-slide 1.4s ease-in-out infinite; }
+.p-pline { display: block; max-width: 100%; overflow: hidden; font: 600 8.5px/1.3 var(--vf-font-mono); letter-spacing: -0.01em; text-overflow: ellipsis; white-space: nowrap; }
+.p-pline b { font-weight: 800; }
+.p-cur { display: inline-block; width: 5px; height: 9px; margin-left: 1px; vertical-align: -1px; background: currentColor; animation: p-blink 1.1s steps(1) infinite; }
+.p-dots { display: inline-flex; gap: 2px; margin-right: 5px; vertical-align: 1px; }
+.p-dots i { width: 3px; height: 3px; border-radius: 50%; background: currentColor; animation: p-dot 1.2s ease-in-out infinite; }
+.p-dots i:nth-child(2) { animation-delay: 0.2s; }
+.p-dots i:nth-child(3) { animation-delay: 0.4s; }
+
+/* ── 02 · idle, a reply waiting ────────────────────────────────────────── */
+.p-idot { position: absolute; z-index: 3; top: 13px; left: 62px; box-sizing: border-box; min-width: 12px; height: 12px; padding: 0 3px; border-radius: 999px; background: var(--working-text); color: var(--working-bg); font: 800 7.5px/12px var(--vf-font-mono); text-align: center; pointer-events: none; }
+.p-idot.is-one { width: 9px; min-width: 0; height: 9px; padding: 0; top: 13px; left: 65px; }
+.p-uring { position: absolute; z-index: 2; inset: 3px; border-radius: 50%; border: 2px solid var(--working-text); opacity: 0.9; pointer-events: none; }
+.vf-godview .p-ubeat .vf-monitor-bubble { animation: p-beat 2.2s ease-in-out infinite; }
+
+/* ── 03 · working, at its burn ─────────────────────────────────────────── */
+.p-reach .vf-monitor-bubble-core-glow { animation-name: p-core-reach; }
+.p-heat .vf-monitor-bubble-particles { display: none; }
+.p-heat .vf-monitor-bubble-core-glow { background: color-mix(in srgb, var(--agent-color) calc((1 - var(--p-t)) * 100%), #fff); animation-name: p-core-heat; }
+.p-shimmer { position: absolute; z-index: 1; inset: 1px; border-radius: 50%; background: conic-gradient(from 0deg, transparent 0 58%, color-mix(in srgb, var(--agent-color) calc(20% + var(--p-t) * 50%), transparent) 80%, transparent 100%); -webkit-mask: radial-gradient(farthest-side, transparent calc(100% - 7px), #000 calc(100% - 6px)); mask: radial-gradient(farthest-side, transparent calc(100% - 7px), #000 calc(100% - 6px)); animation: p-spin var(--p-spin, 4s) linear infinite; pointer-events: none; }
+.p-heatm { display: inline-flex; gap: 2px; margin-top: 4px; }
+.p-heatm i { width: 6px; height: 3px; border-radius: 1px; background: currentColor; opacity: 0.22; }
+.p-heatm i.on { opacity: 0.95; }
+
+/* ── 04 · blocked, held at size ────────────────────────────────────────── */
+.vf-godview .p-blk-a .vf-monitor-bubble { border: 1.5px solid var(--vf-orange); }
+.p-ihalo { position: absolute; z-index: 2; inset: 4px; border-radius: 50%; border: 2px solid var(--vf-orange); animation: p-halo-in 1.2s ease-in-out infinite; pointer-events: none; }
+.p-kind { display: inline-flex; align-items: center; gap: 3px; max-width: 100%; margin-top: 4px; overflow: hidden; font: 800 7px/1 var(--vf-font-mono); letter-spacing: 0.08em; text-transform: uppercase; white-space: nowrap; color: var(--vf-orange); }
+.p-kind.is-mono { color: currentcolor; opacity: 0.72; }
+.p-kind.is-white { color: #fff; opacity: 0.95; }
+.p-dash { position: absolute; z-index: 2; inset: 2px; border-radius: 50%; border: 2px dashed var(--blocked-text); opacity: 0.85; animation: p-spin 14s linear infinite; pointer-events: none; }
+.p-blk-b .vf-monitor-bubble-glyph { display: none; }
+.p-wm { position: absolute; z-index: 1; top: 44%; left: 50%; font: 800 56px/1 var(--vf-font-mono); opacity: 0.2; transform: translate(-50%, -50%); pointer-events: none; }
+.vf-godview .p-blk-c .vf-monitor-bubble { border-color: var(--vf-orange); color: #fff; background: color-mix(in srgb, var(--vf-orange) var(--vf-monitor-bubble-fill-opacity, 72%), transparent); }
+.vf-godview .p-blk-c .vf-monitor-bubble .vf-monitor-bubble-glyph { opacity: 0.18; }
+.vf-godview .p-blk-c .vf-monitor-bubble .vf-monitor-bubble-branch::before { background: #fff; box-shadow: none; }
+
+/* ── 05 · one line of activity ─────────────────────────────────────────── */
+.p-inner { display: inline-flex; align-items: center; gap: 3px; max-width: 100%; margin-top: 3px; overflow: hidden; font: 500 8px/1.2 var(--vf-font-mono); white-space: nowrap; opacity: 0.8; }
+.p-inner i { min-width: 0; overflow: hidden; text-overflow: ellipsis; font-style: normal; }
+.p-inner .p-kg { width: 9px; height: 9px; opacity: 0.7; }
+.p-inner.is-quiet { opacity: 0.45; }
+.p-arc { position: absolute; z-index: 2; inset: 0; width: 100%; height: 100%; pointer-events: none; }
+.p-arc text { font: 600 6.8px var(--vf-font-mono); letter-spacing: 0.03em; fill: currentcolor; opacity: 0.85; }
+.p-arc.is-quiet text { opacity: 0.45; }
+.p-arc-line .vf-monitor-bubble-context { display: none; }
+.p-arc-line .vf-monitor-bubble-copy { margin-top: -6px; }
+.p-two { display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; max-width: 100%; margin-top: 3px; overflow: hidden; font: 500 7.5px/1.25 var(--vf-font-mono); text-align: center; white-space: normal; opacity: 0.8; }
+.p-two .p-kg { width: 8px; height: 8px; margin-right: 2px; vertical-align: -1px; opacity: 0.7; }
+.p-two.is-quiet { opacity: 0.45; }
+.p-twoline .vf-monitor-bubble-copy strong { font-size: 10.5px; }
+
+/* ── 06 · context, legible ─────────────────────────────────────────────── */
+.p-ring { position: absolute; z-index: 2; inset: 0; width: 100%; height: 100%; pointer-events: none; }
+.p-ring .p-track { fill: none; stroke: currentcolor; stroke-width: 1; opacity: 0.18; }
+.p-ring .p-gauge { fill: none; stroke: var(--agent-color); stroke-width: 3; stroke-linecap: round; transform: rotate(-90deg); transform-origin: 50% 50%; transition: stroke-dasharray 420ms cubic-bezier(0.22, 1, 0.36, 1); }
+.p-ring.is-hot .p-gauge { stroke: var(--vf-orange); }
+.p-ctx-a .vf-monitor-bubble-context-fill, .p-ctx-a .vf-monitor-bubble-context, .p-ctx-b .vf-monitor-bubble-context, .p-ctx-c .vf-monitor-bubble-context, .p-ctx-c .vf-monitor-bubble-context-fill { display: none; }
+.p-fig { position: absolute; right: 0; bottom: 7px; left: 0; z-index: 2; font: 800 8.5px/1 var(--vf-font-mono); letter-spacing: 0.02em; font-variant-numeric: tabular-nums; opacity: 0.9; pointer-events: none; }
+.p-fig.is-hot { color: var(--vf-orange); opacity: 1; }
+.p-fig.is-none { opacity: 0.4; }
+.p-ctx-b .vf-monitor-bubble-context-fill { opacity: 0.2; }
+.p-ctx-b.is-hot .vf-monitor-bubble-context-fill { background: var(--vf-orange); opacity: 0.22; }
+.p-water { position: absolute; z-index: 0; right: 0; left: 0; height: 1px; background: var(--agent-color); opacity: 0.85; pointer-events: none; }
+.p-ctx-b.is-hot .p-water { background: var(--vf-orange); }
+.p-dial { position: absolute; z-index: 2; inset: 0; pointer-events: none; }
+.p-dial .p-track { fill: none; stroke: currentcolor; stroke-width: 2.5; opacity: 0.16; }
+.p-dial .p-gauge { fill: none; stroke: var(--agent-color); stroke-width: 2.5; stroke-linecap: round; }
+.p-dial.is-hot .p-gauge { stroke: var(--vf-orange); }
+.p-ctx-c .p-fig { bottom: 12px; }
+
+/* ── 07 · the microformat ──────────────────────────────────────────────── */
+.p-mf { display: flex; flex-wrap: wrap; gap: 26px 36px; padding: 22px 18px; }
+.p-mfi { display: flex; flex-direction: column; align-items: center; gap: 8px; }
+.p-mfi small { font: 500 8.5px/1.4 var(--vf-font-mono); letter-spacing: 0.06em; text-transform: uppercase; color: var(--text-faint); text-align: center; }
+.p-mtile { display: inline-grid; place-items: center; width: 16px; height: 16px; border-radius: 4px; background: var(--text-main); color: var(--monitor-bg); font: 800 9px/1 var(--vf-font-mono); }
+.p-mtile.is-conf { background: transparent; color: var(--text-main); box-shadow: inset 0 0 0 1px var(--text-main); font-style: italic; }
+.p-mtile svg { width: 10px; height: 10px; display: block; }
+.p-eff { display: inline-flex; gap: 1.5px; align-items: flex-end; }
+.p-eff i { width: 2px; height: 5px; border-radius: 0.5px; background: currentColor; opacity: 0.28; }
+.p-eff i.on { opacity: 1; }
+.p-mfi .p-eff { color: var(--text-main); }
+.p-mfi .p-eff i { width: 3px; height: 8px; }
+.p-mfpair { display: inline-flex; align-items: center; gap: 5px; color: var(--text-main); }
+.p-mini { position: absolute; z-index: 3; box-sizing: border-box; width: 22px; height: 22px; display: grid; justify-items: center; align-content: center; gap: 1.5px; border: 1px solid currentcolor; border-radius: 50%; background: var(--working-text); color: var(--working-bg); font: 800 8px/1 var(--vf-font-mono); pointer-events: none; }
+.p-mini .p-eff i { width: 1.5px; height: 3px; }
+.p-mini.is-done { background: transparent; color: var(--working-text); border-color: color-mix(in srgb, var(--working-text) 45%, transparent); opacity: 0.85; }
+.p-mini.is-mate { border-style: dashed; }
+.p-mini.is-more { background: transparent; color: var(--working-text); border-style: dotted; font-size: 7px; }
+.p-mini.is-live::after { content: ''; position: absolute; top: -2px; right: -2px; width: 5px; height: 5px; border-radius: 50%; background: var(--agent-color); box-shadow: 0 0 5px var(--agent-color); animation: p-live 1.4s ease-in-out infinite; }
+.p-mfi .p-mini { position: relative; color: var(--text-main); background: var(--text-main); }
+.p-mfi .p-mini b { color: var(--monitor-bg); }
+.p-mfi .p-mini .p-eff { color: var(--monitor-bg); }
+.p-mfi .p-mini.is-done { background: transparent; border-color: var(--text-main); }
+.p-mfi .p-mini.is-done b, .p-mfi .p-mini.is-done .p-eff { color: var(--text-main); }
+.p-mfi .p-mini.is-mate { background: var(--text-main); }
+
+/* ── 08 · subagents ────────────────────────────────────────────────────── */
+.p-nest .vf-monitor-bubble-copy { margin-top: 14px; }
+.p-nest.is-eight .vf-monitor-bubble-copy { margin-top: 22px; }
+.p-nest .vf-monitor-bubble-glyph { top: 54%; }
+.p-nestring { position: absolute; z-index: 1; inset: 4px; border-radius: 50%; border: 1px dashed currentcolor; opacity: 0.35; pointer-events: none; }
+.p-cells { position: absolute; z-index: 2; inset: 0; width: 100%; height: 100%; pointer-events: none; }
+.p-cells path { fill: none; stroke-linecap: butt; }
+.p-cells path.is-on { stroke: var(--agent-color); }
+.p-cells path.is-off { stroke: currentcolor; opacity: 0.28; }
+.p-cells text { font: 800 6.5px var(--vf-font-mono); text-anchor: middle; dominant-baseline: central; }
+.p-cells text.is-on { fill: #fff; }
+.p-cells text.is-off { fill: currentcolor; }
+.p-stack { display: inline-flex; gap: 3px; margin-top: 5px; }
+.p-st { display: grid; justify-items: center; align-content: center; gap: 1.5px; box-sizing: border-box; width: 12px; height: 15px; border-radius: 3px; background: var(--working-text); color: var(--working-bg); font: 800 7px/1 var(--vf-font-mono); }
+.p-st .p-eff i { width: 1.5px; height: 3px; }
+.p-st.is-done { background: transparent; color: currentcolor; box-shadow: inset 0 0 0 1px color-mix(in srgb, currentcolor 45%, transparent); opacity: 0.8; }
+.p-st.is-more { background: transparent; color: currentcolor; box-shadow: inset 0 0 0 1px color-mix(in srgb, currentcolor 45%, transparent); font-size: 6.5px; }
+.p-st.is-mate { box-shadow: inset 0 0 0 1px currentcolor; background: transparent; color: currentcolor; }
+.p-st.is-live { position: relative; }
+.p-st.is-live::after { content: ''; position: absolute; top: -2px; right: -2px; width: 4px; height: 4px; border-radius: 50%; background: var(--agent-color); box-shadow: 0 0 4px var(--agent-color); }
+
+/* ── 03 · the graph, the dial, the tach ───────────────────────────────── */
+.p-graph { position: absolute; z-index: 0; inset: 0; width: 100%; height: 100%; pointer-events: none; }
+.p-graph .area { fill: var(--agent-color); opacity: 0.17; }
+.p-graph .line { fill: none; stroke: var(--agent-color); stroke-width: 1.4; stroke-linejoin: round; stroke-linecap: round; opacity: 0.95; }
+.p-graph .redline { stroke: var(--vf-orange); stroke-width: 0.8; stroke-dasharray: 1.5 2; opacity: 0.45; }
+.p-graph .now { fill: var(--agent-color); }
+.p-graph .now.is-hot { fill: var(--vf-orange); }
+.p-graph .halo { fill: var(--agent-color); opacity: 0.3; transform-origin: center; transform-box: fill-box; animation: p-halo2 1.6s ease-in-out infinite; }
+.p-graph .halo.is-hot { fill: var(--vf-orange); }
+.p-graph-body .vf-monitor-bubble-context-fill { display: none; }
+.p-graph-body .vf-monitor-bubble-glyph { opacity: 0.045; }
+/* the soda, kept for reference */
+.p-soda { position: absolute; z-index: 1; inset: 0; border-radius: 50%; overflow: hidden; pointer-events: none; }
+.p-bub { position: absolute; bottom: -10px; left: var(--x); width: var(--s); height: var(--s); margin-left: calc(var(--s) / -2); border-radius: 50%; background: radial-gradient(circle at 34% 32%, rgb(255 255 255 / 0.95) 0 16%, color-mix(in srgb, var(--agent-color) 40%, transparent) 19% 100%); box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--agent-color) 90%, transparent), 0 0 5px color-mix(in srgb, var(--agent-color) 35%, transparent); opacity: 0; animation: p-rise var(--d, 2s) cubic-bezier(0.3, 0.2, 0.6, 1) infinite var(--dl, 0s); }
+.p-tach { position: absolute; z-index: 2; inset: 0; width: 100%; height: 100%; pointer-events: none; }
+.p-tach .tk { stroke: currentcolor; stroke-width: 1; stroke-linecap: round; opacity: 0.42; }
+.p-tach .tk.is-major { stroke-width: 1.5; opacity: 0.75; }
+.p-tach .red { fill: none; stroke: var(--vf-orange); stroke-width: 2; stroke-linecap: round; opacity: 0.9; }
+.p-tach .needle { stroke: currentcolor; stroke-width: 2.4; stroke-linecap: round; transform-origin: 50px 50px; transition: transform 600ms cubic-bezier(0.2, 0.8, 0.2, 1); }
+.p-tach .tip { fill: var(--agent-color); transform-origin: 50px 50px; transition: transform 600ms cubic-bezier(0.2, 0.8, 0.2, 1); }
+.p-tach .seg { fill: none; stroke: currentcolor; stroke-width: 3.5; opacity: 0.16; }
+.p-tach .seg.is-lit { opacity: 0.92; }
+.p-tach .seg.is-red { stroke: var(--vf-orange); }
+.p-tach .seg.is-red.is-lit { opacity: 1; }
+.p-tach-body .vf-monitor-bubble-copy { max-width: 66%; }
+
+/* ── 08 · the peeks: small circles masked by the body ──────────────────── */
+.p-peeks { position: absolute; z-index: 3; inset: 0; width: 100%; height: 100%; pointer-events: none; }
+.p-peeks .pk { fill: var(--working-text); }
+.p-peeks .pk.is-done { fill: none; stroke: var(--working-text); stroke-width: 1; opacity: 0.55; }
+.p-peeks .pk.is-live { stroke: var(--agent-color); stroke-width: 1.2; }
+.p-peeks .pk.is-mate { stroke-dasharray: 2 1.6; }
+.p-peeks .pk.is-more { fill: none; stroke: var(--working-text); stroke-width: 1; stroke-dasharray: 1.2 1.6; opacity: 0.6; }
+.p-peeks text { font: 800 7px var(--vf-font-mono); fill: var(--working-bg); text-anchor: middle; dominant-baseline: central; }
+.p-peeks text.is-done, .p-peeks text.is-more { fill: var(--working-text); }
+.p-peeks text.is-more { font-size: 5.5px; font-weight: 600; }
+.p-peeks .mk { fill: var(--working-bg); }
+.p-peeks .mk.is-done { fill: var(--working-text); }
+.p-peeks .moon { fill: var(--working-text); }
+.p-peeks .moon-dark { fill: var(--working-bg); opacity: 0.9; }
+.p-peeks .mask-off { fill: #000; }
+.p-mfi svg.p-peek1 { display: block; width: 34px; height: 34px; color: var(--text-main); }
+.p-peek1 text { font: 800 7px var(--vf-font-mono); text-anchor: middle; dominant-baseline: central; }
+.p-peek1 text.is-more { font-size: 5.5px; font-weight: 600; }
+.p-mfi svg.p-peek1 .pk { fill: var(--text-main); }
+.p-mfi svg.p-peek1 .pk.is-done, .p-mfi svg.p-peek1 .pk.is-more { fill: none; stroke: var(--text-main); }
+.p-mfi svg.p-peek1 .pk.is-live { stroke: var(--vf-accent-1); }
+.p-mfi svg.p-peek1 text { fill: var(--monitor-bg); }
+.p-mfi svg.p-peek1 text.is-done, .p-mfi svg.p-peek1 text.is-more { fill: var(--text-main); }
+.p-mfi svg.p-peek1 .mk { fill: var(--monitor-bg); }
+.p-mfi svg.p-peek1 .moon { fill: var(--text-main); }
+.p-mfi svg.p-peek1 .moon-dark { fill: var(--monitor-bg); }
+.p-hoverlab { position: absolute; z-index: 4; right: 0; bottom: 18px; left: 0; font: 600 6.5px/1 var(--vf-font-mono); letter-spacing: 0.04em; text-align: center; opacity: 0.75; pointer-events: none; }
+
+/* ── 08 · the cards: a stack at the bottom, masked by the rim ─────────── */
+.p-cards { position: absolute; z-index: 3; inset: 0; width: 100%; height: 100%; pointer-events: none; }
+.p-cards .cd { fill: var(--working-text); stroke: var(--working-bg); stroke-width: 0.9; }
+.p-cards .cd.is-done { fill: var(--working-bg); stroke: var(--working-text); stroke-width: 1; opacity: 0.6; }
+.p-cards .cd.is-live { stroke: var(--agent-color); stroke-width: 1.2; }
+.p-cards .cd.is-mate { stroke-dasharray: 2 1.6; }
+.p-cards .cd.is-more { fill: var(--working-bg); stroke: var(--working-text); stroke-width: 0.9; stroke-dasharray: 1.2 1.6; opacity: 0.7; }
+.p-cards text { font: 800 6.2px var(--vf-font-mono); fill: var(--working-bg); text-anchor: middle; dominant-baseline: central; }
+.p-cards text.is-done, .p-cards text.is-more, .p-cards text.is-count { fill: var(--working-text); }
+.p-cards text.is-more { font-size: 5px; font-weight: 600; }
+.p-cards text.is-count { font-size: 6px; opacity: 0.75; }
+.p-cards .mk { fill: var(--working-bg); }
+.p-cards .mk.is-done { fill: var(--working-text); }
+.p-cards-body .vf-monitor-bubble-context { display: none; }
+.p-topfig { position: absolute; z-index: 2; top: 9px; right: 0; left: 0; font: 800 7px/1 var(--vf-font-mono); letter-spacing: 0.02em; font-variant-numeric: tabular-nums; text-align: center; opacity: 0.7; pointer-events: none; }
+.p-topfig.is-hot { color: var(--vf-orange); opacity: 1; }
+.p-mfi svg.p-card1 { display: block; width: 34px; height: 34px; color: var(--text-main); }
+.p-mfi svg.p-card1 .cd { fill: var(--text-main); stroke: var(--monitor-bg); }
+.p-mfi svg.p-card1 .cd.is-done, .p-mfi svg.p-card1 .cd.is-more { fill: var(--monitor-bg); stroke: var(--text-main); }
+.p-mfi svg.p-card1 .cd.is-live { stroke: var(--vf-accent-1); }
+.p-mfi svg.p-card1 text { font: 800 6.2px var(--vf-font-mono); fill: var(--monitor-bg); text-anchor: middle; dominant-baseline: central; }
+.p-mfi svg.p-card1 text.is-done, .p-mfi svg.p-card1 text.is-more, .p-mfi svg.p-card1 text.is-count { fill: var(--text-main); }
+.p-mfi svg.p-card1 text.is-more { font-size: 5px; font-weight: 600; }
+.p-mfi svg.p-card1 .mk { fill: var(--monitor-bg); }
+.p-mfi svg.p-card1 .rim { fill: none; stroke: var(--text-main); stroke-width: 0.8; opacity: 0.3; }
+.p-mfi svg.p-raise { width: 110px; }
+
+@keyframes p-spin { to { transform: rotate(360deg); } }
+@keyframes p-halo2 { 0%, 100% { transform: scale(1); opacity: 0.3; } 50% { transform: scale(2.2); opacity: 0; } }
+@keyframes p-rise {
+  0% { transform: translate(0, 0) scale(0.5); opacity: 0; }
+  8% { opacity: 0.95; }
+  40% { transform: translate(var(--wx, 3px), -34px) scale(0.85); }
+  84% { transform: translate(calc(var(--wx, 3px) * -0.6), -78px) scale(1); opacity: 0.95; box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--agent-color) 90%, transparent), 0 0 0 0 color-mix(in srgb, var(--agent-color) 70%, transparent); }
+  93% { transform: translate(calc(var(--wx, 3px) * -0.6), -84px) scale(1.7); opacity: 0.6; box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--agent-color) 60%, transparent), 0 0 0 3px color-mix(in srgb, var(--agent-color) 40%, transparent); }
+  100% { transform: translate(calc(var(--wx, 3px) * -0.6), -87px) scale(2.1); opacity: 0; box-shadow: inset 0 0 0 1px transparent, 0 0 0 7px transparent; }
+}
+@keyframes p-blink { 0%, 100% { opacity: 1; } 50% { opacity: 0; } }
+@keyframes p-slide { 0% { left: -36%; } 100% { left: 100%; } }
+@keyframes p-dot { 0%, 100% { opacity: 0.25; } 50% { opacity: 1; } }
+@keyframes p-beat { 0%, 100% { box-shadow: inset 0 0 0 0 var(--working-text); } 50% { box-shadow: inset 0 0 0 3px var(--working-text); } }
+@keyframes p-halo-in { 0%, 100% { opacity: 1; transform: scale(1); } 50% { opacity: 0.3; transform: scale(0.955); } }
+@keyframes p-live { 0%, 100% { opacity: 1; } 50% { opacity: 0.35; } }
+@keyframes p-core-reach { 0%, 100% { opacity: 0.1; transform: translate(-50%, -50%) scale(0.35); } 50% { opacity: var(--p-core-op, 0.44); transform: translate(-50%, -50%) scale(var(--p-core-max, 1)); } }
+@keyframes p-core-heat { 0%, 100% { opacity: 0.12; transform: translate(-50%, -50%) scale(0.4); } 50% { opacity: var(--p-core-op, 0.5); transform: translate(-50%, -50%) scale(1); } }
+@media (prefers-reduced-motion: reduce) {
+  .p-comet, .p-runline i, .p-cur, .p-dots i, .vf-godview .p-ubeat .vf-monitor-bubble, .p-ihalo, .p-dash, .p-shimmer, .p-mini.is-live::after, .p-bub { animation: none; }
+  .p-bub { opacity: 0.8; transform: translateY(-40px); }
+}
+</style>
+
+<div class="pg-top">
+  <div class="name">Swarm Proposals <small>pass 5 · 2026-09-05</small></div>
+  <nav aria-label="Sections" id="pg-nav">
+    <a href="#brief">brief</a>
+    <span class="grp">bodies</span>
+    <a href="#s01">empty</a><a href="#s02">unread</a><a href="#s03">burn</a><a href="#s04">blocked</a>
+    <span class="grp">line</span>
+    <a href="#s05">activity</a>
+    <span class="grp">gauge</span>
+    <a href="#s06">context</a>
+    <span class="grp">brood</span>
+    <a href="#s07">microformat</a><a href="#s08">subagents</a>
+    <span class="grp">together</span>
+    <a href="#s09">the cluster</a><a href="#spec">bindings</a><a href="#pick">decisions</a>
+  </nav>
+  <div class="acts">
+    <button class="pg-switch" id="pg-theme" type="button" aria-label="Toggle light and dark" title="Toggle theme"><i aria-hidden="true">☼</i>theme</button>
+  </div>
+</div>
+
+<main class="pg-main" id="specimens">
+  <div class="pg-hero">
+    <span class="pg-num">Godview · Puppeteer · proposal, fifth pass</span>
+    <h1>Inside the rim: four bodies, one line, a gauge, and the brood.</h1>
+    <div class="pg-meta">
+      <span><b>The field.</b> The swarm is a physics field. Every body is a circle with a four-pixel gap, a force pulls all of them to the centre, and left alone they settle into one touching cluster. They can be dragged, and they collide. The first pass hung marks outside the circle, captions beneath, orbits around, halos and pins and tails; in the cluster that space is a neighbour's body, so those marks would sit on another agent or vanish under it.</span>
+      <span><b>The rule.</b> Everything an agent says, it says inside its own rim. Where a mark needs room, the body itself grows, so the collision circle and the picture stay the same thing. Every design below obeys it; the field at the end is packed the way gravity packs it.</span>
+      <span><b>Fifth pass.</b> The burn becomes a line graph across the whole body: the last ten minutes of the rate, the present at the right edge, so the body says not only how hard it burns but how that has been going. The speed meter stays as the other reading. The brood becomes a stack of small circles at the bottom of the body, overlapped like a hand of cards, masked by the rim, compact and still countable, each raised by its effort and lettered with its model.</span>
+    </div>
+  </div>
+
+  <section class="pg-rules" id="brief" aria-labelledby="brief-h">
+    <span class="pg-num" id="brief-h">What each part has to say, within the rim</span>
+    <ol class="rules">
+      <li><b>Four bodies.</b><span>The terminal holds no agent: empty, and where; a running command is process evidence, so it shows. The three agent states keep their bodies; blocked comes down to the working size and insists from inside the rim.</span><span class="refs"><a class="ref" href="#s01">empty</a><a class="ref" href="#s02">unread</a><a class="ref" href="#s03">burn</a><a class="ref" href="#s04">blocked</a></span></li>
+      <li><b>One line.</b><span>The runtime's activity line: in the model's place, along the inner rim, or as two short lines. Never read off the terminal, never outside the circle.</span><span class="refs"><a class="ref" href="#s05">activity</a></span></li>
+      <li><b>The gauge.</b><span>Context used becomes a mark on the body's own rim, orange from 80%, the way the deck's gauge edge already is.</span><span class="refs"><a class="ref" href="#s06">context</a></span></li>
+      <li><b>The brood.</b><span>Children are small circles stacked at the bottom of the body like a hand of cards, masked by the rim. Counted by counting the edges; the model as a letter, the effort as how far the card is raised. The body never grows.</span><span class="refs"><a class="ref" href="#s07">microformat</a><a class="ref" href="#s08">subagents</a></span></li>
+    </ol>
+  </section>
+
+  <!-- ═══════════════════════════ PART I · THE BODIES ═══════════════════════════ -->
+  <div class="pg-part" id="part-bodies">
+    <span class="pg-num">Part I</span>
+    <h2>The bodies</h2>
+    <p>Three sizes become two. The terminal keeps the smallest body; every agent, whatever its state, takes the working one. State is carried by the body's fill, its rim, its ignition, and what sits inside it.</p>
+    <nav class="pg-contents" aria-label="Body sections"><a href="#s01"><b>01</b>the empty terminal</a><a href="#s02"><b>02</b>idle, a reply waiting</a><a href="#s03"><b>03</b>working, at its burn</a><a href="#s04"><b>04</b>blocked, held at size</a></nav>
+  </div>
+
+  <section class="pg-sec" id="s01">
+    <span class="pg-num">01</span>
+    <h2>The empty terminal</h2>
+    <div class="pg-measure"><p class="pg-lede">No agent yet. The body says two things at rest, that it is empty and which folder it stands in, and a third when a command runs: what is running, and for how long. The folder is the session's working directory; the command is the foreground process the daemon reports, never the screen. All three designs carried forward from the first pass unchanged, because all three already lived inside the rim.</p></div>
+    <div class="pg-grid-3">
+      <div class="p-design">
+        <div class="p-dh"><span class="p-pill">A</span><h4>The hollow</h4><span class="p-pill is-pick">recommended</span></div>
+        <div class="vf-godview spec-root spec-block p-root" data-godview-animations="on" id="s01a"></div>
+        <p class="spec-cap">No fill: a dashed ring, the folder mark, the name, and <b>empty</b> beneath. A running command makes the ring solid and sends one arc round it, and takes the bottom lines with its elapsed time. An agent arriving fills the hollow. In the cluster a hollow reads as a gap in the mass.</p>
+      </div>
+      <div class="p-design">
+        <div class="p-dh"><span class="p-pill">B</span><h4>The tile</h4></div>
+        <div class="vf-godview spec-root spec-block p-root" data-godview-animations="on" id="s01b"></div>
+        <p class="spec-cap">The shape says it: a rounded square is a terminal, a circle is an agent. Physics can carry it as a chamfered rectangle, and it packs differently against circles, which is either the point or the problem. Prompt glyph as watermark, path under the name, a travelling bar when a command runs.</p>
+      </div>
+      <div class="p-design">
+        <div class="p-dh"><span class="p-pill">C</span><h4>The prompt</h4></div>
+        <div class="vf-godview spec-root spec-block p-root" data-godview-animations="on" id="s01c"></div>
+        <p class="spec-cap">The body's copy is a prompt: the folder, a chevron, a blinking cursor. A command completes the line and the cursor becomes three dots with the elapsed time under it. The circle and the grey stay exactly as shipped.</p>
+      </div>
+    </div>
+  </section>
+
+  <section class="pg-sec" id="s02">
+    <span class="pg-num">02</span>
+    <h2>Idle, a reply waiting</h2>
+    <div class="pg-measure"><p class="pg-lede">The idle agent keeps the shipped body and needs a sign that it finished a turn since the pane was last looked at. The tail from the first pass is withdrawn: it stood outside the rim. Three marks inside the body, shown at one reply and at three.</p></div>
+    <div class="pg-grid-3">
+      <div class="p-design">
+        <div class="p-dh"><span class="p-pill">A</span><h4>The badge</h4><span class="p-pill is-pick">recommended</span></div>
+        <div class="vf-godview spec-root spec-block p-root" data-godview-animations="on" id="s02a"></div>
+        <p class="spec-cap">A badge at one o'clock inside the fill, in the body's text colour. One reply is a dot; more carry the count. Familiar, quiet, and in the cluster it sits in the body's own upper right where no neighbour can cover it.</p>
+      </div>
+      <div class="p-design">
+        <div class="p-dh"><span class="p-pill">B</span><h4>The ring</h4></div>
+        <div class="vf-godview spec-root spec-block p-root" data-godview-animations="on" id="s02b"></div>
+        <p class="spec-cap">A 2px ring just inside the rim in the text colour, and the count as a line in the copy. A body holding something for you wears a ring; the terminal's dashed ring and the blocked body's dashed rim are its cousins.</p>
+      </div>
+      <div class="p-design">
+        <div class="p-dh"><span class="p-pill">C</span><h4>The beat</h4></div>
+        <div class="vf-godview spec-root spec-block p-root" data-godview-animations="on" id="s02c"></div>
+        <p class="spec-cap">The rim swells inward and back every two seconds, an inset ring breathing from nothing to 3px, with the count in the copy. Motion carries it; among still idle bodies the one that beats is the one that spoke.</p>
+      </div>
+    </div>
+  </section>
+
+  <section class="pg-sec" id="s03">
+    <span class="pg-num">03</span>
+    <h2>Working, at its burn</h2>
+    <div class="pg-measure"><p class="pg-lede">Three readings of the runtime's tokens per minute on the same log scale, 500 to 50,000, each shown at an ember, a steady burn, and a blaze. The first is a history; the other two are instruments. All live inside the rim, and the ignition retires in all three.</p></div>
+    <div class="p-design">
+      <div class="p-dh"><span class="p-pill">A</span><h4>The graph</h4><span class="p-pill is-pick">recommended</span></div>
+      <div class="vf-godview spec-root spec-block p-root" data-godview-animations="on" id="s03a"></div>
+      <p class="spec-cap">A line across the whole body, behind the copy: the last ten minutes of the burn, one sample every fifteen seconds from the runtime's usage samples, the present at the right edge with a breathing point, the area beneath it washed in the project colour. Height is the rate on the log scale, so an ember lies low and a blaze climbs to the top; the dotted line is the redline, and the point turns orange above it. The body says how hard it burns and how that has been going, in one glance, with nothing that moves but the point.</p>
+    </div>
+    <div class="p-design">
+      <div class="p-dh"><span class="p-pill">B</span><h4>The dial</h4></div>
+      <div class="vf-godview spec-root spec-block p-root" data-godview-animations="on" id="s03b"></div>
+      <p class="spec-cap">A speed meter on the inside of the rim: a 240° scale from eight o'clock over the top to four, ticked every ten degrees, a short needle in the text colour with the project colour at its tip, and a redline in orange over the last fifth. The scale opens at the bottom where the context figure lives. The reading is a position, the way a tachometer is read.</p>
+    </div>
+    <div class="p-design">
+      <div class="p-dh"><span class="p-pill">C</span><h4>The tach</h4></div>
+      <div class="vf-godview spec-root spec-block p-root" data-godview-animations="on" id="s03c"></div>
+      <p class="spec-cap">The same scale as a bar of twenty segments that light from eight o'clock as the rate climbs, the last four in orange. No needle to read against a tick, just how much of the arc is lit. The digital face of the dial.</p>
+    </div>
+  </section>
+
+  <section class="pg-sec" id="s04">
+    <span class="pg-num">04</span>
+    <h2>Blocked, held at size</h2>
+    <div class="pg-measure"><p class="pg-lede">The blocked body comes down from radius 70 to the working 50 and keeps its inversion. Attention has to come from a mark, and the mark has to be inside the rim: the halo moves in, the pin is withdrawn. The runtime knows why it is blocked, permission, a question, or a failure, so the mark says so. Each design shown for the three kinds.</p></div>
+    <div class="p-design">
+      <div class="p-dh"><span class="p-pill">A</span><h4>The inner halo</h4><span class="p-pill is-pick">recommended</span></div>
+      <div class="vf-godview spec-root spec-block p-root" data-godview-animations="on" id="s04a"></div>
+      <p class="spec-cap">The rim in orange, and a 2px orange ring 4px inside it, pulsing at the blocked shadow's tempo. The kind is an orange line in the copy. Orange is already the system's one state colour, for a hot context and a retry; blocked is the third thing that needs the human. Nothing leaves the body.</p>
+    </div>
+    <div class="p-design">
+      <div class="p-dh"><span class="p-pill">B</span><h4>The cut</h4></div>
+      <div class="vf-godview spec-root spec-block p-root" data-godview-animations="on" id="s04b"></div>
+      <p class="spec-cap">No colour. A dashed ring in the text colour turns slowly just inside the rim, and the watermark changes from the provider mark to the question or the exclamation. The kind is the copy line. A held body, read in monochrome.</p>
+    </div>
+    <div class="p-design">
+      <div class="p-dh"><span class="p-pill">C</span><h4>The flare</h4><span class="p-pill is-warn">breaks rule 1</span></div>
+      <div class="vf-godview spec-root spec-block p-root" data-godview-animations="on" id="s04c"></div>
+      <p class="spec-cap">The whole body goes orange, white copy on it, the kind in white. The loudest possible mark and the easiest to find in a cluster of greys. It spends colour as a ground, which the system reserves for identity, so it is here as the honest extreme of the scale, not as a recommendation.</p>
+    </div>
+  </section>
+
+  <!-- ═══════════════════════════ PART II · THE LINE ═══════════════════════════ -->
+  <div class="pg-part" id="part-line">
+    <span class="pg-num">Part II</span>
+    <h2>The line</h2>
+    <p>One line of text per agent, from the runtime's activity: its kind, its line, and when it began. The caption and the callout from the first pass are withdrawn; both stood outside the rim. Three ways to say it inside a 100px circle.</p>
+    <nav class="pg-contents" aria-label="Line sections"><a href="#s05"><b>05</b>one line of activity</a></nav>
+  </div>
+
+  <section class="pg-sec" id="s05">
+    <span class="pg-num">05</span>
+    <h2>One line of activity</h2>
+    <div class="pg-measure"><p class="pg-lede">The kind is a glyph, the line is the text. Shown for a tool call, reasoning, a reply being written, and a blocker's own line. The line brightens when it changes and settles to 45% after six seconds; the full text is the body's title on hover and the inspector's first line.</p></div>
+    <div class="p-design">
+      <div class="p-dh"><span class="p-pill">A</span><h4>The inner line</h4><span class="p-pill is-pick">recommended</span></div>
+      <div class="vf-godview spec-root spec-block p-root" data-godview-animations="on" id="s05a"></div>
+      <p class="spec-cap">In the model line's place while the agent works; the model returns when it rests. Fourteen characters before the clip, so it is a hint, not a sentence, but it costs nothing and reads in the same glance as the name.</p>
+    </div>
+    <div class="p-design">
+      <div class="p-dh"><span class="p-pill">B</span><h4>The arc</h4></div>
+      <div class="vf-godview spec-root spec-block p-root" data-godview-animations="on" id="s05b"></div>
+      <p class="spec-cap">Set along the inner rim's lower half, like the legend on a coin: 160° of arc gives about twenty-six characters at 7px. The context figure moves up above the name. The most text the circle can hold without touching the copy, and the least conventional to read.</p>
+    </div>
+    <div class="p-design">
+      <div class="p-dh"><span class="p-pill">C</span><h4>The two lines</h4></div>
+      <div class="vf-godview spec-root spec-block p-root" data-godview-animations="on" id="s05c"></div>
+      <p class="spec-cap">The name drops to 10.5px and the line wraps to two at 7.5px beneath it, about thirty characters. The model line hides while the agent works. A fuller sentence, at the price of a busier body.</p>
+    </div>
+  </section>
+
+  <!-- ═══════════════════════════ PART III · THE GAUGE ═══════════════════════════ -->
+  <div class="pg-part" id="part-gauge">
+    <span class="pg-num">Part III</span>
+    <h2>The gauge</h2>
+    <p>Context used is the one number the user watches climb. Today it is a 10% wash from the floor and a six-pixel figure. Three ways to make it a mark inside the body, each turning orange at 80% as the deck's gauge edge does.</p>
+    <nav class="pg-contents" aria-label="Gauge sections"><a href="#s06"><b>06</b>context, legible</a></nav>
+  </div>
+
+  <section class="pg-sec" id="s06">
+    <span class="pg-num">06</span>
+    <h2>Context, legible</h2>
+    <div class="pg-measure"><p class="pg-lede">Shown at 12%, 62% and 91%, on a working body. Where the provider reports no percentage the mark is absent and the figure reads two dashes; a derived percentage is drawn the same as a reported one, and the inspector says which it was. The ring from the first pass moves from outside the rim to on it.</p></div>
+    <div class="pg-grid-3">
+      <div class="p-design">
+        <div class="p-dh"><span class="p-pill">A</span><h4>The ring</h4><span class="p-pill is-pick">recommended</span></div>
+        <div class="vf-godview spec-root spec-block p-root" data-godview-animations="on" id="s06a"></div>
+        <p class="spec-cap">The rim is the gauge: a 3px arc from twelve o'clock in the project colour along the inside of the rim, over a hairline track, orange from 80%, the figure at 8.5px on the bottom line. The deck's edge, bent round the body, on the body.</p>
+      </div>
+      <div class="p-design">
+        <div class="p-dh"><span class="p-pill">B</span><h4>The tide</h4></div>
+        <div class="vf-godview spec-root spec-block p-root" data-godview-animations="on" id="s06b"></div>
+        <p class="spec-cap">The shipped fill, doubled to 20% and given a waterline: a one-pixel line across the body at the level. The body fills like a vessel, orange when it nears the brim. Keeps the current idea and makes it visible.</p>
+      </div>
+      <div class="p-design">
+        <div class="p-dh"><span class="p-pill">C</span><h4>The dial</h4></div>
+        <div class="vf-godview spec-root spec-block p-root" data-godview-animations="on" id="s06c"></div>
+        <p class="spec-cap">A 220° arc inside the body, filling from the left like a speedometer, the figure inside it. Stays clear of the rim, so it can share the body with a ring that means something else; it competes a little with the copy.</p>
+      </div>
+    </div>
+  </section>
+
+  <!-- ═══════════════════════════ PART IV · THE BROOD ═══════════════════════════ -->
+  <div class="pg-part" id="part-brood">
+    <span class="pg-num">Part IV</span>
+    <h2>The brood</h2>
+    <p>An agent that delegates has children. Some are subagents that live and die inside its turn; some are teammates, agents in their own right; some belong to a workflow with a name. The user needs the count at a glance and, one step closer, each child's model and effort. The picture is a stack of small circles at the bottom of the body, overlapped like a hand of cards and masked by the rim, so the brood takes one compact strip and is still counted by its edges. Each card is lettered with its model and raised by its effort, a low card tucked at the rim and a max card lifted into the body, the way a chosen card is lifted from a hand. The context figure moves to the top line to make room. What is left to decide is how the hand is held.</p>
+    <nav class="pg-contents" aria-label="Brood sections"><a href="#s07"><b>07</b>model and effort</a><a href="#s08"><b>08</b>subagents</a></nav>
+  </div>
+
+  <section class="pg-sec" id="s07">
+    <span class="pg-num">07</span>
+    <h2>The card, at size</h2>
+    <div class="pg-measure"><p class="pg-lede">One small circle per child, radius nine. Live children are filled in the body's text colour with a rim in the project colour; finished ones are hollow; a teammate's rim is dashed; the last card counts what did not fit. The model is a letter, F, O, S, H, or the provider's mark. The effort is the raise: how far the card lifts above the rim, two pixels for low and eleven for max.</p></div>
+    <div class="vf-godview spec-root spec-block p-root" id="s07a"></div>
+    <p class="spec-cap">The raise, shown against the rim line: low, medium, high, max. A card that is done sinks back to low whatever its effort was, so the raised cards are the ones at work.</p>
+  </section>
+
+  <section class="pg-sec" id="s08">
+    <span class="pg-num">08</span>
+    <h2>Subagents</h2>
+    <div class="pg-measure"><p class="pg-lede">The stack on the same three parents: a working agent with four subagents, two of them live; a workflow with nine children, more than fit; and a team lead with two teammates. Six cards show and the seventh counts the rest; the deck shows them all. The parents burn at the graph; their activity line says they are delegating.</p></div>
+    <div class="p-design">
+      <div class="p-dh"><span class="p-pill">A</span><h4>The hand</h4><span class="p-pill is-pick">recommended</span></div>
+      <div class="vf-godview spec-root spec-block p-root" data-godview-animations="on" id="s08a"></div>
+      <p class="spec-cap">Cards in a row at the bottom, each overlapping the last by half, later cards on top, arrival order left to right. The letter sits in the crescent each card keeps; a live card is raised by its effort and finished cards sit low, so the working children stand up out of the hand. Counted by the edges; forty-four pixels wide at most.</p>
+    </div>
+    <div class="p-design">
+      <div class="p-dh"><span class="p-pill">B</span><h4>The fan</h4></div>
+      <div class="vf-godview spec-root spec-block p-root" data-godview-animations="on" id="s08b"></div>
+      <p class="spec-cap">The same cards fanned round a pivot below the body, so they follow the curve of the rim and the letters tilt with them. Raised cards push out along their own radius. The most like a hand of cards, and it takes a little more of the bottom arc.</p>
+    </div>
+    <div class="p-design">
+      <div class="p-dh"><span class="p-pill">C</span><h4>The deck</h4></div>
+      <div class="vf-godview spec-root spec-block p-root" data-godview-animations="on" id="s08c"></div>
+      <p class="spec-cap">One pile, each card two pixels behind the last, the newest live child on top with its letter and its raise, the rest showing only as edges, and the count beside the pile. The most compact by far, thirty-six pixels for nine children; the model of everything but the top card waits for the deck legend.</p>
+    </div>
+  </section>
+
+  <!-- ═══════════════════════════ PART V · TOGETHER ═══════════════════════════ -->
+  <div class="pg-part" id="part-field">
+    <span class="pg-num">Part V</span>
+    <h2>Together</h2>
+    <p>The recommended set in one field, the hollow, the badge, the graph, the inner halo, the inner line, the ring, the hand, both themes fixed, settled by the same rule the app's physics uses: a pull to the centre and no overlap, with the four-pixel gap. Nothing here is placed by hand.</p>
+    <nav class="pg-contents" aria-label="Field sections"><a href="#s09"><b>09</b>the cluster</a><a href="#spec"><b>10</b>bindings</a><a href="#pick"><b>11</b>decisions</a></nav>
+  </div>
+
+  <section class="pg-sec" id="s09">
+    <span class="pg-num">09</span>
+    <h2>The cluster</h2>
+    <div class="pg-measure"><p class="pg-lede">Two terminals, one running a test. An idle agent with a reply waiting. A working agent at a steady burn, 62% through its context, editing a file. A blocked agent asking for permission. A working agent with a hand of four. A second idle agent, resting, and a second working one. Eight bodies, settled.</p></div>
+    <div class="spec is-flush" style="background:transparent;border:0;padding:0">
+      <div class="vf-godview theme-light spec-root p-root" data-fixed-theme="light" data-godview-animations="on" id="s09l"></div>
+      <p class="spec-cap">☼ Light. The hollow terminals are the gaps in the mass; the working bodies carry their graphs; the blocked body is the only one with colour on it, and it is found in a glance.</p>
+      <div class="vf-godview theme-dark spec-root p-root" data-fixed-theme="dark" data-godview-animations="on" id="s09d" style="margin-top:14px"></div>
+      <p class="spec-cap">◐ Dark. The same settlement. Every mark stays with its body when it is dragged, because every mark is part of it.</p>
+    </div>
+  </section>
+
+  <!-- ═══════════════════════════ SPEC ═══════════════════════════ -->
+  <div class="pg-part" id="spec">
+    <span class="pg-num">Spec</span>
+    <h2>Bindings</h2>
+    <p>What each mark reads, and from where. Nothing here is read from terminal text; the terminal's command is the daemon's foreground process, which is process evidence.</p>
+  </div>
+
+  <section class="pg-sec" id="s10">
+    <span class="pg-num">10</span>
+    <h2>Where each mark comes from</h2>
+    <div class="pg-tablewrap">
+    <table class="pg-t">
+      <thead><tr><th>Mark</th><th>Reads</th><th>Source</th><th>Note</th></tr></thead>
+      <tbody>
+        <tr><td><strong>Terminal, empty</strong></td><td class="k">session.cwd · activity.kind</td><td>Ghosttea SessionSummary</td><td><code>shell-idle</code> is the hollow at rest. The folder name is the cwd's last segment, as the deck's legend.</td></tr>
+        <tr><td><strong>Terminal, running</strong></td><td class="k">activity.foregroundProcessGroupId</td><td>Ghosttea, then the runtime's process observation</td><td><code>foreground-job</code> with the process group's executable name and the activity's observed time for the clock. Heuristic sources draw the arc without the name.</td></tr>
+        <tr><td><strong>A reply waiting</strong></td><td class="k">activity.kind · statusSince</td><td>Core monitor, joined to the pane in Godview</td><td>Set when a <code>responding</code> activity ends and the status turns idle after the pane was last mounted or focused. Cleared on mount. The count is turns since.</td></tr>
+        <tr><td><strong>Burn</strong></td><td class="k">usage.burnRatePerMin</td><td>Core monitor</td><td>Intensity is log₁₀(rate ÷ 500) ÷ 2, clamped to 0–1, so 500/min is an ember and 50k/min a blaze. The graph reads <code>usage.samples</code>, cumulative tokens at each sample, differenced to a rate; forty samples, the last ten minutes. An absent rate draws a flat ember. The redline is 0.8, about 20k/min.</td></tr>
+        <tr><td><strong>Blocked kind</strong></td><td class="k">blockers[0].kind</td><td>Core monitor</td><td><code>permission</code>, <code>question</code>, <code>failure</code>. The copy line names it; the blocker's description feeds the activity line.</td></tr>
+        <tr><td><strong>The line</strong></td><td class="k">activity.kind · activity.line · activity.since</td><td>Core monitor</td><td>Glyph by kind; bright for six seconds from <code>since</code>, then 45%. Idle agents show the model. A blocked agent shows the blocker.</td></tr>
+        <tr><td><strong>Context</strong></td><td class="k">context.usedPercent · percentageSource</td><td>Core monitor</td><td>Orange from 80%. <code>unavailable</code> draws no mark and the figure reads <code>--</code>. When a body has cards, the figure moves to the top line above the branch.</td></tr>
+        <tr><td><strong>Subagents</strong></td><td class="k">subagents[] · omitted.subagents</td><td>Core monitor</td><td>Each with <code>modelId</code>, <code>effort</code>, <code>active</code>. Card order is arrival order, left to right; the deck's top card is the newest live one.</td></tr>
+        <tr><td><strong>Teammates</strong></td><td class="k">team.teammates[]</td><td>Core monitor</td><td>Dashed card. A teammate with a <code>runtimeRunId</code> is also its own body in the field, tinted with the same project colour.</td></tr>
+        <tr><td><strong>Workflow</strong></td><td class="k">workflows[] · actorRunKeys</td><td>Core monitor</td><td>Named in the activity line with the delegating glyph. Children are matched by actor run key.</td></tr>
+        <tr><td><strong>Model letter</strong></td><td class="k">modelId · modelIntent</td><td>Core monitor</td><td>Family from the id: fable F, opus O, sonnet S, haiku H; otherwise the provider mark. <code>configured</code> is hollow italic.</td></tr>
+        <tr><td><strong>Effort ticks</strong></td><td class="k">effort · effortIntent</td><td>Core monitor</td><td>The raise: 2, 5, 8, 11px. Unknown draws low. A finished card sits low.</td></tr>
+      </tbody>
+    </table>
+    </div>
+    <h3>Sizes</h3>
+    <div class="pg-tablewrap">
+    <table class="pg-t is-narrow">
+      <thead><tr><th>Body</th><th>Radius</th><th>Was</th><th>Physics</th></tr></thead>
+      <tbody>
+        <tr><td><strong>Terminal</strong></td><td class="n">40</td><td class="n">40</td><td>circle, radius + 4</td></tr>
+        <tr><td><strong>Agent, idle · working · blocked</strong></td><td class="n">50</td><td class="n">50 · 50 · 70</td><td>circle, radius + 4 · nothing else grows it</td></tr>
+        
+      </tbody>
+    </table>
+    </div>
+    <p class="spec-note">The blocked slider's default moves from 70 to 50 and its range from 60–160 to 40–120, matching the working slider; no size joins the AGENT SIZES group: a body with children is the same body. The blocked copy takes the working scale, 14px, instead of 18px. No mark extends past the rim, so no physics reserve exists beyond the shipped four-pixel gap.</p>
+  </section>
+
+  <!-- ═══════════════════════════ NEXT ═══════════════════════════ -->
+  <div class="pg-part" id="pick">
+    <span class="pg-num">Next</span>
+    <h2>Decisions</h2>
+    <p>Seven choices, one recommendation each. Picks fold into the record's §10 as the swarm's second pass.</p>
+  </div>
+
+  <section class="pg-sec" id="s11">
+    <span class="pg-num">11</span>
+    <h2>What to decide</h2>
+    <div class="pg-measure">
+      <ol class="pg-decisions" style="padding-left:18px;font-size:13px;line-height:1.7">
+        <li><b>The empty terminal.</b> The hollow, the tile, or the prompt. Recommended: the hollow, because an agent arriving fills it, and a hollow reads as a gap in the cluster.</li>
+        <li><b>A reply waiting.</b> The badge, the ring, or the beat. Recommended: the badge, familiar and quiet, in the body's own upper right.</li>
+        <li><b>Burn.</b> The graph, the dial, or the tach. Recommended: the graph, the only reading that carries the history as well as the present.</li>
+        <li><b>Blocked.</b> The inner halo, the cut, or the flare. Recommended: the inner halo, orange being the system's one colour for what needs the human; the cut's watermark glyph could ride along.</li>
+        <li><b>The line.</b> The inner line, the arc, or the two lines. Recommended: the inner line; the arc if the fuller text is worth the reading.</li>
+        <li><b>Context.</b> The ring, the tide, or the dial. Recommended: the ring, on the rim, where the deck's edge already lives.</li>
+        <li><b>Subagents.</b> The hand, the fan, or the deck. Recommended: the hand, compact, countable, every card lettered, the working ones raised.</li>
+      </ol>
+    </div>
+  </section>
+
+  <footer class="pg-colophon">
+    <span>Swarm proposals · pass 5 · 2026-09-05</span>
+    <span>Every stage is the production circle's DOM and CSS with proposal layers added inside the rim. The cluster is settled by a centre pull and separation, as the app's physics settles it.</span>
+  </footer>
+</main>
+
+<script>
+(function () {
+  'use strict';
+  var $ = function (id) { return document.getElementById(id); };
+  function esc(s) { return String(s).replace(/[&<>"]/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]; }); }
+  var root = document.documentElement;
+
+  /* ── theme ──────────────────────────────────────────────────────────── */
+  function currentTheme() {
+    var t = root.getAttribute('data-theme');
+    if (t === 'dark' || t === 'light') return t;
+    return window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
+  }
+  function applyTheme() {
+    var theme = currentTheme();
+    document.querySelectorAll('.vf-godview:not([data-fixed-theme])').forEach(function (el) { el.classList.remove('theme-light', 'theme-dark'); el.classList.add('theme-' + theme); });
+    var glyph = $('pg-theme').querySelector('i'); if (glyph) glyph.textContent = theme === 'dark' ? '◐' : '☼';
+  }
+  function setTheme(theme) { root.setAttribute('data-theme', theme); applyTheme(); }
+  $('pg-theme').addEventListener('click', function () { setTheme(currentTheme() === 'dark' ? 'light' : 'dark'); });
+  if (window.matchMedia) window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', applyTheme);
+
+  /* ── marks ──────────────────────────────────────────────────────────── */
+  var MARKS = {"antigravity": {"label": "Antigravity", "path": "<path d=\"M21.751 22.607c1.34 1.005 3.35.335 1.508-1.508C17.73 15.74 18.904 1 12.037 1 5.17 1 6.342 15.74.815 21.1c-2.01 2.009.167 2.511 1.507 1.506 5.192-3.517 4.857-9.714 9.715-9.714 4.857 0 4.522 6.197 9.714 9.715z\"></path>"}, "claudecode": {"label": "Claude Code", "path": "<path clip-rule=\"evenodd\" d=\"M20.998 10.949H24v3.102h-3v3.028h-1.487V20H18v-2.921h-1.487V20H15v-2.921H9V20H7.488v-2.921H6V20H4.487v-2.921H3V14.05H0V10.95h3V5h17.998v5.949zM6 10.949h1.488V8.102H6v2.847zm10.51 0H18V8.102h-1.49v2.847z\"></path>"}, "codex": {"label": "Codex", "path": "<path clip-rule=\"evenodd\" d=\"M8.086.457a6.105 6.105 0 013.046-.415c1.333.153 2.521.72 3.564 1.7a.117.117 0 00.107.029c1.408-.346 2.762-.224 4.061.366l.063.03.154.076c1.357.703 2.33 1.77 2.918 3.198.278.679.418 1.388.421 2.126a5.655 5.655 0 01-.18 1.631.167.167 0 00.04.155 5.982 5.982 0 011.578 2.891c.385 1.901-.01 3.615-1.183 5.14l-.182.22a6.063 6.063 0 01-2.934 1.851.162.162 0 00-.108.102c-.255.736-.511 1.364-.987 1.992-1.199 1.582-2.962 2.462-4.948 2.451-1.583-.008-2.986-.587-4.21-1.736a.145.145 0 00-.14-.032c-.518.167-1.04.191-1.604.185a5.924 5.924 0 01-2.595-.622 6.058 6.058 0 01-2.146-1.781c-.203-.269-.404-.522-.551-.821a7.74 7.74 0 01-.495-1.283 6.11 6.11 0 01-.017-3.064.166.166 0 00.008-.074.115.115 0 00-.037-.064 5.958 5.958 0 01-1.38-2.202 5.196 5.196 0 01-.333-1.589 6.915 6.915 0 01.188-2.132c.45-1.484 1.309-2.648 2.577-3.493.282-.188.55-.334.802-.438.286-.12.573-.22.861-.304a.129.129 0 00.087-.087A6.016 6.016 0 015.635 2.31C6.315 1.464 7.132.846 8.086.457zm-.804 7.85a.848.848 0 00-1.473.842l1.694 2.965-1.688 2.848a.849.849 0 001.46.864l1.94-3.272a.849.849 0 00.007-.854l-1.94-3.393zm5.446 6.24a.849.849 0 000 1.695h4.848a.849.849 0 000-1.696h-4.848z\"></path>"}, "grok": {"label": "Grok", "path": "<path d=\"M9.27 15.29l7.978-5.897c.391-.29.95-.177 1.137.272.98 2.369.542 5.215-1.41 7.169-1.951 1.954-4.667 2.382-7.149 1.406l-2.711 1.257c3.889 2.661 8.611 2.003 11.562-.953 2.341-2.344 3.066-5.539 2.388-8.42l.006.007c-.983-4.232.242-5.924 2.75-9.383.06-.082.12-.164.179-.248l-3.301 3.305v-.01L9.267 15.292M7.623 16.723c-2.792-2.67-2.31-6.801.071-9.184 1.761-1.763 4.647-2.483 7.166-1.425l2.705-1.25a7.808 7.808 0 00-1.829-1A8.975 8.975 0 005.984 5.83c-2.533 2.536-3.33 6.436-1.962 9.764 1.022 2.487-.653 4.246-2.34 6.022-.599.63-1.199 1.259-1.682 1.925l7.62-6.815\"></path>"}, "hermesagent": {"label": "Hermes Agent", "path": "<path d=\"M5.938 12.835c.127-.039.285.02.373.143.028.038.036.092.046.14.003.014-.02.033-.04.05-.124-.098-.24-.194-.354-.291-.011-.01-.016-.027-.025-.042zM8.396 9.412c.195-.032.39-.06.588-.05a.54.54 0 01.148.026c.202.071.402.147.601.224.028.01.05.036.075.055l-.013.027a9.203 9.203 0 01-.26-.089c-.115-.038-.213-.077-.315-.098-.25-.05-.25-.046-.292-.014l.574.144c.275.139.55.276.823.417.042.022.09.057.107.098.026.06.063.076.117.072.066-.006.132-.017.213-.027l-.04.086c.051.08.142.02.216.064-.074.13-.247.09-.334.199l.061.074-.12.087c0 .106-.038.168-.306.243l.026.085-.196.042.07.124h-.25l-.007.137c-.081-.01-.161-.018-.244-.027l-.053.123c-.027-.008-.052-.011-.073-.023-.067-.038-.128-.056-.195.006-.019.017-.063.014-.093.008-.026-.006-.05-.029-.07-.042-.11.095-.11.095-.208.003-.057.046-.12.074-.186.011-.063.027-.123-.02-.178-.014-.07.007-.097-.035-.133-.07l-.13.033c-.013-.236-.194-.19-.34-.203.005-.072.05-.092.095-.094a.474.474 0 01.159.022c.164.05.32.12.496.138.203.021.405.029.601-.015.265-.059.52-.149.707-.365.049-.056.083-.127.117-.195.019-.038.02-.084-.02-.116a1.397 1.397 0 00-.382-.217c.024.12-.031.182-.115.221 0 .014-.004.025 0 .03.08.115.084.16-.007.267a1.39 1.39 0 01-.218.211.477.477 0 01-.641-.05 1.36 1.36 0 01-.133-.152c-.078-.107-.076-.108-.033-.236-.165-.08-.128-.226-.104-.364.008-.05.028-.096.049-.163-.04.014-.067.017-.087.032a.897.897 0 00-.316.357c-.007.016-.01.034-.02.047-.012.015-.034.038-.045.035-.02-.006-.037-.027-.05-.045-.008-.012-.007-.032-.012-.057h-.126l.053-.172a14.82 14.82 0 00-.039-.049l.11-.284c-.06.026-.091.044-.124.051-.03.007-.064 0-.095 0 0-.031-.01-.07.004-.092.149-.22.305-.428.593-.476z\"></path><path d=\"M8.06 10.788c-.003-.038-.004-.075.037-.062.016.006.034.048.028.067-.01.04-.038.032-.064-.005z\"></path><path clip-rule=\"evenodd\" d=\"M11.981.009c.226-.012.453-.011.679 0 .247.01.495.024.74.062.401.064.798.157 1.19.273.463.138.92.299 1.356.511a7.31 7.31 0 012.948 2.642c.292.469.536.963.739 1.479.219.556.446 1.11.623 1.683.204.654.329 1.326.458 1.997.097.504.182 1.01.29 1.511.156.722.329 1.44.494 2.16.186.812.4 1.615.63 2.415.102.355.193.713.282 1.072.11.436.202.876.254 1.323.031.278.066.557.073.837a7.56 7.56 0 01-.017.88c-.037.413-.1.818-.226 1.212a5.017 5.017 0 01-.915 1.649l-.13.156.018.023c.043-.023.088-.041.127-.068.2-.138.373-.307.531-.49.4-.46.721-.973.975-1.529a3.59 3.59 0 00.325-1.72c-.024-.424-.097-.834-.3-1.213-.013-.027-.015-.06-.03-.121.05.035.082.048.101.072.107.13.22.258.315.398.33.494.46 1.052.486 1.64a3.75 3.75 0 01-.47 1.97c-.36.655-.887 1.14-1.526 1.506-.193.111-.394.21-.595.308-.157.078-.248.211-.318.365a.522.522 0 00-.033.406.359.359 0 01.013.139c-.005.077-.077.155-.14.162-.054.006-.125-.043-.15-.116a1.206 1.206 0 01-.06-.233c-.04-.314-.155-.6-.308-.87a3.906 3.906 0 00-.73-.91 2.129 2.129 0 00-.897-.524 4.093 4.093 0 00-.692-.131c-.075-.008-.15-.04-.22.01.18.06.363.11.538.18.434.173.82.43 1.18.728.308.255.58.543.794.884.098.155.186.315.227.496.027.123.042.25.067.375.013.062-.002.109-.053.144-.047.033-.122.034-.163-.01a.455.455 0 01-.08-.14c-.03-.073-.038-.159-.078-.225a7.314 7.314 0 00-1.423-1.664c-.16-.137-.329-.26-.537-.323-.376-.114-.753-.203-1.15-.154-.213.025-.427.032-.64.053a1.6 1.6 0 00-.736.278 5.14 5.14 0 00-.834.72c-.329.342-.642.699-.955 1.055-.136.155-.264.319-.314.531a5.227 5.227 0 00-.012.051.096.096 0 01-.09.076h-.31c-.046 0-.082-.048-.072-.094.023-.108.045-.216.07-.324.075-.325.19-.635.368-.917.024-.039.04-.088.104-.08l.01.049.027.077c.28-.435.571-.834.996-1.135.283-.204.584-.378.89-.55a.196.196 0 00-.098-.002c-.162.043-.325.084-.485.134-.402.124-.764.33-1.11.566-.147.1-.298.193-.414.333a7.314 7.314 0 00-1.07 1.767.845.845 0 00-.04.12.075.075 0 01-.072.056h-.494c-.04 0-.062-.051-.036-.082.123-.14.246-.282.377-.415.275-.281.58-.532.777-.884.027-.048.063-.09.095-.135.238-.333.54-.607.818-.902.082-.086.175-.16.26-.24.029-.027.053-.057.079-.085l-.018-.025-.135.041c-.034.017-.07.031-.102.05-.248.144-.494.292-.743.433-.408.23-.825.439-1.209.711-.281.2-.591.358-.889.533-.02.012-.044.015-.08.028-.015-.135.143-.201.108-.336-.033.014-.064.02-.085.038-.111.096-.227.19-.328.296-.148.157-.284.325-.425.488-.125.143-.25.286-.373.431A.153.153 0 019.89 24H8.762a.316.316 0 00.016-.042c.028-.09.085-.172.083-.28-.091-.018-.162.001-.212.077a4.45 4.45 0 00-.136.215c-.01.016-.024.03-.042.03h-.093c-.019 0-.029-.022-.017-.037.071-.088.14-.178.209-.268.001-.002-.006-.012-.012-.024-.014.004-.03.006-.045.013-.176.09-.352.181-.527.274a.363.363 0 01-.168.042H5.202c-.026 0-.039-.036-.019-.053.21-.178.402-.374.558-.605.335-.496.538-1.047.667-1.629.004-.02-.003-.043-.006-.091-.037.048-.059.072-.076.1a1.943 1.943 0 01-.334.415c-.28.258-.59.448-.983.464-.297.012-.588 0-.865-.127-.46-.21-.722-.57-.794-1.072-.025-.17-.017-.171-.182-.219A3.513 3.513 0 011.97 20.6a2.286 2.286 0 01-.808-1.13 3.569 3.569 0 01-.16-1.245c.002-.034.016-.067.024-.1.032.023.046.043.05.066.033.153.059.308.096.46.086.355.257.664.516.92.258.256.571.419.91.532.358.118.717.138 1.07-.016a1.89 1.89 0 00.621-.452c.328-.348.533-.76.648-1.223.009-.034.005-.071.007-.11-.015.006-.026.006-.03.011-.031.05-.064.1-.093.152-.284.502-.679.887-1.196 1.135-.351.17-.718.255-1.11.159a1.607 1.607 0 01-.971-.64 2.006 2.006 0 01-.368-.924 2.903 2.903 0 01.02-.886c.05-.439.466-1.17.742-1.271-.02.063-.035.112-.053.16-.043.116-.097.227-.13.345a1.901 1.901 0 00-.05.82c.033.212.09.416.204.6.147.236.346.407.62.465.11.023.225.014.338.018a.576.576 0 00.386-.131c.164-.128.282-.292.366-.481.168-.375.24-.777.309-1.179.05-.296.093-.594.133-.893.039-.281.071-.563.104-.845.026-.232.048-.464.074-.696.024-.228.052-.455.076-.683.024-.227.047-.455.069-.683.013-.14.022-.28.034-.42l.037-.417c.022-.25.041-.5.065-.748.008-.082-.02-.132-.09-.177a2.46 2.46 0 01-.492-.418c-.1-.109-.188-.228-.282-.342-.035-.042-.056-.097-.116-.118a2.084 2.084 0 00.275.597c.06.092.131.176.196.265.063.086.182.115.234.226-.028.003-.046.01-.06.006a4.74 4.74 0 01-.22-.057 2.71 2.71 0 01-1.287-.819c-.435-.487-.656-1.076-.71-1.723a5.206 5.206 0 01.014-1.06c.072-.602.22-1.186.45-1.745.155-.376.338-.741.526-1.102.205-.393.466-.75.765-1.076.512-.559 1.104-1.024 1.726-1.448.717-.49 1.478-.898 2.277-1.233C8.244.828 8.767.632 9.31.494c.655-.166 1.31-.33 1.982-.415.229-.03.458-.058.688-.07zm-1.847 22.82c-.07.06-.147.111-.207.18-.238.27-.464.549-.668.869l-.044.108a.177.177 0 00.093-.057c.174-.19.351-.378.519-.574.104-.122.195-.255.288-.386.024-.034.03-.08.046-.12l-.027-.02zm1.65-3.695a5.51 5.51 0 00-.653.593l-.37.386a.963.963 0 01-.377.25 1.372 1.372 0 01-.467.09c-.044 0-.087.006-.151.012.028.058.043.097.064.131.15.242.301.482.45.724.136.22.276.438.399.666.068.125.105.267.156.404.077.027.14-.018.202-.048.29-.135.579-.274.867-.412.213-.101.437-.186.636-.31.347-.215.68-.455 1.018-.685.015-.01.026-.028.042-.046-.023-.019-.038-.037-.056-.044-.287-.111-.527-.3-.77-.482a5.319 5.319 0 01-.506-.42 1.757 1.757 0 01-.41-.653c-.019-.049-.045-.095-.075-.156zm-5.847.264c-.06.096-.097.194-.132.293a3.38 3.38 0 01-.555 1.01c-.2.25-.455.412-.762.493-.23.06-.464.076-.7.07-.048-.002-.097.002-.158.005.016.04.021.066.035.085.1.145.23.246.4.295.157.046.316.034.498.023.181-.037.343-.115.485-.234.238-.199.402-.454.536-.732.175-.363.264-.751.342-1.144.01-.053.008-.11.011-.164zm14.945-4.586c.008.029.016.057.027.107.024.155.051.31.072.464.03.219.067.437.078.657.017.344.027.689-.014 1.033-.037.315-.063.633-.116.946a6.153 6.153 0 01-.46 1.518c-.008.018-.01.039-.02.082.047-.03.077-.042.098-.064.085-.083.17-.167.248-.255.271-.305.458-.66.596-1.043.18-.498.228-1.011.145-1.531-.103-.65-.33-1.263-.597-1.881a9.055 9.055 0 00-.024-.055l-.033.022zM5.797 8.29a.26.26 0 00.018.153c.124.251.25.501.379.75.025.049.066.09.03.163-.284.06-.578.119-.88.255.059.038.097.06.132.087.042.032.112.058.09.12-.01.033-.075.048-.117.072.017.01.043.021.067.036.166.102.33.207.447.368.138.192.229.404.188.644-.079.469-.306.85-.69 1.132-.054.04-.106.083-.161.122a.243.243 0 00-.103.245.77.77 0 00.055.195c.083.196.22.35.375.492.083.076.159.164.222.257a.37.37 0 01.025.377c-.023.05-.05.099-.076.148-.03.06-.028.111.022.162.041.042.08.089.112.138.038.058.078.079.147.05a.486.486 0 01.333-.006c.16.046.302.126.444.21.13.077.264.149.4.219.067.035.14.05.219.026.071-.022.124.01.145.076.02.064-.003.108-.074.139-.07.03-.137.063-.209.088-.1.035-.201.073-.314.077-.013-.107.11-.088.127-.159-.206-.126-.643-.145-.801-.034.063.112.035.21-.096.313-.13-.1-.025-.202.002-.3a.209.209 0 00-.249.17c-.015.101.067.216.178.224.108.007.218-.005.326-.012.06-.005.12-.027.199 0-.103.123-.248.127-.357.19.002.05.07.086.019.131-.053.048-.095-.001-.132-.03-.08-.063-.16-.126-.231-.197a.474.474 0 01-.157-.311.52.52 0 00-.043-.172c-.032-.074-.032-.137.033-.19-.018-.03-.028-.053-.045-.072a1.222 1.222 0 01-.196-.369c-.053-.137-.046-.264.048-.381.024-.03.05-.06.064-.095a.664.664 0 00.047-.168c.017-.165-.064-.287-.182-.387-.186-.156-.36-.322-.46-.551-.005-.011-.024-.017-.037-.026-.011.017-.024.027-.025.038-.019.185-.045.37-.052.557-.014.377.058.743.162 1.104.118.41.289.798.488 1.173.267.502.537 1.002.812 1.5.055.098.13.189.208.27.198.202.452.272.724.273.202 0 .404-.006.605-.026.295-.03.59-.073.884-.113.183-.025.365-.057.548-.08.21-.026.38.073.522.21.16.156.305.327.447.5.22.265.397.56.554.867.05.098.07.1.147.03.13-.121.26-.242.394-.36.067-.059.088-.12.067-.213a3.535 3.535 0 01-.085-.796c.002-.157.006-.314.018-.471.015-.224.03-.45.06-.672a59.114 59.114 0 01.362-2.298c.087-.493.182-.984.268-1.477.06-.347.118-.694.162-1.043.034-.273.055-.55.063-.825.011-.332.003-.665.002-.998 0-.077.004-.155-.01-.23-.028-.142-.01-.155-.162-.19a5.826 5.826 0 00-.607-.107c-.146-.018-.207-.053-.221-.19-.006-.049-.025-.098-.041-.146-.009-.025-.024-.048-.046-.09l-.025.264c-.009.096-.029.116-.127.115-.055 0-.11-.008-.164-.008-.476 0-.952-.008-1.426.032-.095.008-.173-.015-.226-.103-.04-.066-.088-.126-.134-.186-.063-.084-.086-.093-.182-.06-.195.068-.388.138-.582.21a2.71 2.71 0 00-.675.394.986.986 0 01-.323.168c-.033.01-.07.008-.127.013.02-.066.024-.114.047-.15.064-.105.135-.205.205-.306.023-.033.049-.063.073-.095l-.015-.023-.201.037c-.146.04-.296.07-.437.122-.148.053-.266.023-.386-.072a3.623 3.623 0 01-.733-.786l-.093-.132zm8.592 8.963l-.147.09c-.22.134-.44.266-.659.402-.093.058-.184.12-.27.188-.085.07-.124.161-.072.272.047.1.093.2.147.294.047.08.124.138.213.147.11.01.228.012.336-.012.217-.05.372-.205.528-.357a.291.291 0 00.087-.308c-.046-.18-.079-.365-.118-.547-.011-.052-.027-.103-.045-.169zm-.257-2.409c-.12.291-.205.597-.325.91-.151.433-.294.87-.435 1.323.036-.01.054-.01.067-.018.261-.16.522-.324.785-.484.054-.033.071-.078.065-.138-.012-.13-.024-.262-.034-.393l-.068-.886c-.008-.103-.02-.206-.029-.31-.009 0-.017-.002-.026-.004zm3.081-8.13l.099.285c.08.231.159.463.24.714l.58 1.952c.187.63.372 1.262.558 1.893.114.382.235.762.343 1.146.072.257.126.519.186.799.044.206.087.413.127.64.034.106.023.226.077.325l.025-.006-.068-.362c-.038-.206-.077-.412-.113-.638-.015-.07-.029-.141-.046-.211-.095-.396-.177-.796-.29-1.187-.196-.685-.413-1.364-.618-2.046-.165-.549-.322-1.1-.488-1.648-.069-.227-.15-.45-.226-.695l-.117-.336c-.037-.107-.075-.216-.115-.322-.04-.106-.084-.21-.127-.314a7.558 7.558 0 01-.027.01zM6.225 14.304c-.063-.001-.115.014-.134.083a.35.35 0 00.41.012 4.533 4.533 0 00-.276-.095zM5.23 11.98c-.026-.027-.057-.048-.075.002-.012.032-.007.07-.01.113.082-.037.082-.037.085-.115zm.062-1.189a.135.135 0 00-.088.056.197.197 0 00-.025.11c.005.152.01.306.026.457a.751.751 0 00.066.218c.061.136.157.167.288.101.055-.027.06-.054.025-.11a4.52 4.52 0 01-.129-.211c-.015-.068-.066-.131-.033-.207.04-.09-.076-.116-.074-.19V10.874c-.003-.038-.006-.087-.056-.083zm-.017-.968a.867.867 0 00-.467.127c-.076.045-.084.07-.05.158.034.087.07.173.115.254.064.117.09.125.21.077a.657.657 0 01.336-.053c.202.022.357.136.504.264l.092.077c.007-.006.014-.013.022-.018-.019-.105-.035-.226-.149-.264-.157-.053-.324-.075-.508-.117l-.24-.005c.24-.169.452-.044.687.009-.063-.115-.153-.147-.23-.193-.082-.05-.17-.092-.25-.144-.06-.037-.12-.08-.072-.172zm10.233.325c-.23-.01-.427.08-.608.211-.034.026-.06.065-.105.117.087.026.15.046.232.065.044-.015.088-.03.13-.046.306-.114.61-.115.904.031.126.063.237.04.366-.005-.02-.031-.03-.054-.045-.071a.986.986 0 00-.448-.273c-.14-.044-.284-.024-.426-.03zM7.99 6.483a.308.308 0 00.002.133c.08.321.156.643.242.962.104.387.27.75.456 1.103.02.037.061.08.098.087a.404.404 0 00.253-.051l-.472-.84c-.23-.448-.405-.92-.579-1.394zM10.397.497c-.2-.008-.405.004-.603.034-.236.035-.47.087-.7.152-.287.08-.569.18-.852.273-.04.013-.074.038-.11.058.028.014.05.018.07.014.287-.068.58-.085.873-.09.134-.002.269.009.402.025.19.024.382.048.57.09.456.104.874.3 1.265.556.464.306.888.66 1.257 1.078.205.232.395.475.56.739.17.274.315.561.449.856.273.601.456 1.232.6 1.876.04.173.07.348.1.524.017.104.065.167.17.19.122.028.2.105.22.251-.003.102-.06.174-.129.24a1.065 1.065 0 00-.268.358.164.164 0 00.083-.039c.08-.086.162-.172.235-.265a.56.56 0 00.13-.333c.009-.05.022-.1.024-.15.007-.124-.017-.15-.143-.168-.025-.004-.049-.014-.073-.015-.082-.007-.125-.063-.137-.131-.033-.198-.004-.355.247-.408.086-.018.174-.03.26-.042.158-.023.315-.053.473-.067.14-.012.19.033.226.167.008.029.018.057.021.087.019.179-.008.225-.141.288-.027.013-.055.024-.078.042a.148.148 0 00-.051.067c-.039.144.073.382.206.445l.673.32c.023.011.05.015.075.023l.018-.026c-.015-.008-.032-.013-.044-.024a2.27 2.27 0 00-.544-.32 4.898 4.898 0 00-.173-.075.203.203 0 01-.126-.191c-.003-.085.045-.154.128-.187l.059-.025c.099-.044.118-.076.112-.187a.384.384 0 00-.008-.063c-.067-.294-.123-.59-.205-.88a9.478 9.478 0 00-.826-2.036 7.465 7.465 0 00-1.39-1.805 4.536 4.536 0 00-1.177-.824 3.656 3.656 0 00-1.016-.328 6.155 6.155 0 00-.712-.074zm6.719 5.955c.01.014.018.028.038.034l-.022-.044-.016.01zM4.103 3.917a.062.062 0 01-.03.012.455.455 0 01-.04.039c-.01.01-.02.02-.045.04l-.363.354c-.088.085-.17.178-.266.253-.284.22-.425.53-.544.855a.132.132 0 00-.007.071c.013.055.033.108.052.168l.074.026c-.017.056-.03.105-.047.152-.058.164-.118.327-.175.491-.005.015.008.036.019.077.08-.175.158-.33.225-.489.228-.544.484-1.074.819-1.561.09-.133.182-.266.283-.401.004-.006.007-.013.022-.03.001-.016.003-.032.015-.04l.008-.017zm12.976 2.408a.023.023 0 01.009.019.073.073 0 00-.006.01.188.188 0 00.007.02l.018.022c.002-.007.007-.016.005-.021-.003-.01-.012-.018-.02-.038a1.331 1.331 0 01-.013-.012zM4.199 4.48c-.003.004-.008.008-.027.014-.005.013-.011.025-.031.047a2.085 2.085 0 01-.124.167c-.048.07-.116.055-.181.041-.134-.028-.228.016-.287.143-.089.187-.187.37-.273.56-.049.108-.11.216-.118.36.081.003.154.007.228.008h.228a2.563 2.563 0 01-.079.264c-.01.052-.022.103-.033.155l.02.004c.018-.046.037-.092.067-.153.066-.142.13-.285.2-.426.02-.04.034-.1.116-.092 0 .043.004.084 0 .124-.005.045-.017.09-.028.143.141.043.086.174.115.269.102-.022.104-.195.248-.144v.205l.017.002.439-1.059c-.13 0-.246-.02-.358.033-.024.011-.058-.001-.108-.004.075-.15.139-.278.211-.417a.128.128 0 01.025-.036c0-.015-.001-.03.008-.038l.006-.02c-.005.006-.01.011-.028.017-.004.012-.009.024-.026.045a.085.085 0 01-.032.033c-.123.157-.09.164-.258.106-.079-.027-.078-.028-.047-.144.028-.046.056-.093.098-.15 0-.016-.001-.032.007-.042L4.2 4.48zm2.073-.67c-.003.006-.007.011-.027.016-.094.125-.194.246-.28.377-.155.238-.301.481-.451.723-.14.224-.345.368-.575.481-.017.008-.04.006-.079.011.012-.059.016-.109.033-.153a6.076 6.076 0 01.229-.518l-.007-.02a.138.138 0 01-.035.025c-.028.05-.055.1-.093.164-.26.424-.443.817-.442.95.024.004.048.011.073.013.177.013.188.007.26-.165.03-.07.077-.12.147-.15l.175-.07c.044-.018.085-.057.146-.032.003.05-.01.11.014.145.042.062.044.125.047.193.002.049.017.098.026.147.029-.034.039-.065.05-.097.142-.39.277-.782.428-1.17.1-.256.22-.504.33-.756.013-.03.013-.067.03-.092V3.81zm3.987-.34c0 .045.01.084.021.123.042.16.094.318.124.48.024.133.023.27.028.406 0 .033-.019.067-.032.11-.094-.058-.047-.158-.106-.215h-.125c-.015.072-.01.152-.046.2-.066.085-.155.154-.236.227-.043.038-.078.018-.103-.025l-.046-.087c-.065.035-.117.069-.172.093-.116.051-.235.095-.35.147-.085.038-.09.053-.07.147.014.075.034.148.047.223.013.072.05.109.123.124.233.05.462.115.657.265.058-.102.058-.102.168-.151.03-.014.06-.03.092-.042.08-.03.115-.017.15.06.023.048.041.098.066.158.06-.14-.042-.267.017-.416.157.18.24.39.375.567a.235.235 0 00.022-.098c.002-.124 0-.247.002-.371 0-.034.013-.067.02-.1l.032-.003c.11.155.13.354.226.52a3.036 3.036 0 00-.01-.392c-.004-.045 0-.074.05-.088.08.036.116.14.215.158-.03-.275-.423-1.137-.798-1.635-.114-.127-.2-.28-.34-.386zm-2.667.696c-.019.034-.03.05-.037.067-.061.185-.125.37-.18.556-.031.105-.087.169-.195.19-.09.019-.178.052-.268.073-.038.009-.089.015-.118-.003-.024-.016-.025-.069-.036-.106-.064.076-.082.087-.17.047-.133-.062-.262-.135-.393-.201-.048-.025-.093-.063-.17-.03-.043.12-.091.25-.137.382-.099.28-.087.242.095.453.046.048.102.03.154.023.054-.009.106-.03.16-.036.13-.013.26-.08.367-.015.204-.064.387-.122.571-.178.05-.015.089.005.114.054.022.042.034.093.082.121.038-.056-.013-.128.063-.178l.14.241-.042-1.46zm.278.358c-.096-.01-.107.01-.11.108-.002.038-.003.078.002.115.03.2.099.386.174.57.002.006.012.01.022.015l.078-.05c.052.036.081.088.153.088.205-.002.41.014.616.012.099-.001.158.042.205.12.018.03.024.077.088.066l-.08-.394c-.05-.195-.085-.395-.172-.589-.057.057-.114.068-.18.046a.72.72 0 00-.135-.028c-.22-.028-.44-.059-.66-.08zm10.254-1.727c.089.163.155.316.139.491-.016.168.026.342-.044.516-.047-.033-.088-.082-.112-.075-.117.035-.164-.057-.227-.115a4.772 4.772 0 01-.286-.29l-.104-.113a4.856 4.856 0 01-.023.019c.035.046.07.093.11.156.04.064.084.127.122.193.034.058.065.118.031.205-.082-.01-.164-.019-.246-.032-.06-.01-.101 0-.124.07-.031.098-.037.096-.15.09.02.042.036.08.057.116.041.074.03.138-.03.196-.06.06-.118.122-.178.181a.175.175 0 01-.185.046c-.222-.061-.447-.113-.67-.174-.032-.009-.063-.04-.086-.068-.03-.04-.052-.087-.08-.13-.044-.07-.09-.138-.136-.207a.18.18 0 00-.014.105c.012.127.03.253.035.38.005.1-.024.12-.121.104-.104-.017-.206-.04-.31-.058-.064-.012-.131-.028-.202.03l.081.208c.09 0 .166-.01.237.002a.819.819 0 01.458.251c.078.083.154.168.241.26l.018-.005c-.004-.006-.008-.013-.01-.04.014-.056-.062-.118.018-.178.031.03.064.057.088.09.058.078.111.159.169.257l.089.141.024-.013a2093.819 2093.819 0 01-.427-.934c.055.007.083.007.108.016.193.07.385.142.577.216.074.028.147.06.219.094.062.028.112.018.157-.033.05-.056.102-.112.154-.167.05-.051.095-.046.132.014.016.025.026.053.04.08.071.138.143.277.217.433l.159.308.025-.011c-.044-.106-.07-.218-.138-.334-.057-.182-.168-.346-.206-.545.136.034.362.326.567.732l.057.074.018-.011a1.563 1.563 0 01-.052-.127c-.046-.145-.097-.29-.136-.436-.022-.083-.036-.173.022-.26l.109.058-.026-.207.027-.016c.022.02.05.036.065.06.073.108.143.22.215.33.01.016.029.029.043.043-.036-.217-.2-.38-.229-.626l.155.112c.014-.166.012-.319.042-.465.032-.158-.023-.297-.063-.445.024.004.036.006.055.025.092.124.183.249.277.371.02.027.05.047.069.087l.04.063.019-.015a.293.293 0 01-.053-.082 27.922 27.922 0 01-.332-.49c-.221-.311-.363-.467-.485-.521zm-6.57.327c-.003.161.092.275.069.415l-.368.087c.09.139.032.237-.052.331-.05.057-.092.122-.143.178-.037.04-.046.078-.018.126l.16.275c.029.048.072.066.128.064.076-.003.152 0 .228-.001.116-.003.216.022.275.137.006.014.02.024.044.052.004-.059-.003-.098.01-.13.016-.04.04-.099.072-.108.084-.023.173-.024.26-.03.013-.001.027.018.04.029l.071.065c.019-.11-.082-.198-.024-.31l.126.04c-.026-.123-.07-.245-.071-.366 0-.123.051-.243.115-.36.107.062.16.156.234.253.183.265.36.533.494.834.165-.078.27.068.407.088-.003-.106-.133-.441-.197-.492a.142.142 0 00-.102-.028c-.06.011-.119.039-.191.063-.025-.039-.056-.078-.077-.122a3.936 3.936 0 00-.473-.783c-.076-.094-.16-.182-.228-.26l-.391.285c-.049.035-.094.03-.132-.017l-.169-.207c-.025-.03-.053-.059-.097-.108z\"></path>"}, "kimi": {"label": "Kimi", "path": "<path d=\"M21.846 0a1.923 1.923 0 110 3.846H20.15a.226.226 0 01-.227-.226V1.923C19.923.861 20.784 0 21.846 0z\"></path><path d=\"M11.065 11.199l7.257-7.2c.137-.136.06-.41-.116-.41H14.3a.164.164 0 00-.117.051l-7.82 7.756c-.122.12-.302.013-.302-.179V3.82c0-.127-.083-.23-.185-.23H3.186c-.103 0-.186.103-.186.23V19.77c0 .128.083.23.186.23h2.69c.103 0 .186-.102.186-.23v-3.25c0-.069.025-.135.069-.178l2.424-2.406a.158.158 0 01.205-.023l6.484 4.772a7.677 7.677 0 003.453 1.283c.108.012.2-.095.2-.23v-3.06c0-.117-.07-.212-.164-.227a5.028 5.028 0 01-2.027-.807l-5.613-4.064c-.117-.078-.132-.279-.028-.381z\"></path>"}, "opencode": {"label": "opencode", "path": "<path d=\"M16 6H8v12h8V6zm4 16H4V2h16v20z\"></path>"}, "pi": {"label": "Pi", "path": "<path clip-rule=\"evenodd\" d=\"M1 1h16.5v11H12v5.5H6.5V23H1V1zm5.5 5.5V12H12V6.5H6.5z\"></path><path d=\"M17.5 12H23v11h-5.5V12z\"></path>"}, "githubcopilot": {"label": "GitHub Copilot", "path": "<path d=\"M19.245 5.364c1.322 1.36 1.877 3.216 2.11 5.817.622 0 1.2.135 1.592.654l.73.964c.21.278.323.61.323.955v2.62c0 .339-.173.669-.453.868C20.239 19.602 16.157 21.5 12 21.5c-4.6 0-9.205-2.583-11.547-4.258-.28-.2-.452-.53-.453-.868v-2.62c0-.345.113-.679.321-.956l.73-.963c.392-.517.974-.654 1.593-.654l.029-.297c.25-2.446.81-4.213 2.082-5.52 2.461-2.54 5.71-2.851 7.146-2.864h.198c1.436.013 4.685.323 7.146 2.864zm-7.244 4.328c-.284 0-.613.016-.962.05-.123.447-.305.85-.57 1.108-1.05 1.023-2.316 1.18-2.994 1.18-.638 0-1.306-.13-1.851-.464-.516.165-1.012.403-1.044.996a65.882 65.882 0 00-.063 2.884l-.002.48c-.002.563-.005 1.126-.013 1.69.002.326.204.63.51.765 2.482 1.102 4.83 1.657 6.99 1.657 2.156 0 4.504-.555 6.985-1.657a.854.854 0 00.51-.766c.03-1.682.006-3.372-.076-5.053-.031-.596-.528-.83-1.046-.996-.546.333-1.212.464-1.85.464-.677 0-1.942-.157-2.993-1.18-.266-.258-.447-.661-.57-1.108-.32-.032-.64-.049-.96-.05zm-2.525 4.013c.539 0 .976.426.976.95v1.753c0 .525-.437.95-.976.95a.964.964 0 01-.976-.95v-1.752c0-.525.437-.951.976-.951zm5 0c.539 0 .976.426.976.95v1.753c0 .525-.437.95-.976.95a.964.964 0 01-.976-.95v-1.752c0-.525.437-.951.976-.951zM7.635 5.087c-1.05.102-1.935.438-2.385.906-.975 1.037-.765 3.668-.21 4.224.405.394 1.17.657 1.995.657h.09c.649-.013 1.785-.176 2.73-1.11.435-.41.705-1.433.675-2.47-.03-.834-.27-1.52-.63-1.813-.39-.336-1.275-.482-2.265-.394zm6.465.394c-.36.292-.6.98-.63 1.813-.03 1.037.24 2.06.675 2.47.968.957 2.136 1.104 2.776 1.11h.044c.825 0 1.59-.263 1.995-.657.555-.556.765-3.187-.21-4.224-.45-.468-1.335-.804-2.385-.906-.99-.088-1.875.058-2.265.394zM12 7.615c-.24 0-.525.015-.84.044.03.16.045.336.06.526l-.001.159a2.94 2.94 0 01-.014.25c.225-.022.425-.027.612-.028h.366c.187 0 .387.006.612.028-.015-.146-.015-.277-.015-.409.015-.19.03-.365.06-.526a9.29 9.29 0 00-.84-.044z\"></path>"}, "cursor": {"label": "Cursor", "path": "<path d=\"M22.106 5.68L12.5.135a.998.998 0 00-.998 0L1.893 5.68a.84.84 0 00-.419.726v11.186c0 .3.16.577.42.727l9.607 5.547a.999.999 0 00.998 0l9.608-5.547a.84.84 0 00.42-.727V6.407a.84.84 0 00-.42-.726zm-.603 1.176L12.228 22.92c-.063.108-.228.064-.228-.061V12.34a.59.59 0 00-.295-.51l-9.11-5.26c-.107-.062-.063-.228.062-.228h18.55c.264 0 .428.286.296.514z\"></path>"}, "geminicli": {"label": "Gemini CLI", "path": "<path d=\"M16.793 10.358v3.867L7.236 18.82v-2.8l7.751-3.728-7.75-3.728V5.763l9.556 4.595z\"></path><path clip-rule=\"evenodd\" d=\"M19.608 0A4.392 4.392 0 0124 4.392v15.216A4.392 4.392 0 0119.608 24H4.392A4.392 4.392 0 010 19.608V4.392A4.392 4.392 0 014.392 0h15.216zM4.26 1.444A2.816 2.816 0 001.444 4.26v15.48a2.816 2.816 0 002.816 2.816h15.48a2.816 2.816 0 002.816-2.816V4.26a2.816 2.816 0 00-2.816-2.816H4.26z\"></path>"}, "windsurf": {"label": "Windsurf", "path": "<path clip-rule=\"evenodd\" d=\"M23.78 5.004h-.228a2.187 2.187 0 00-2.18 2.196v4.912c0 .98-.804 1.775-1.76 1.775a1.818 1.818 0 01-1.472-.773L13.168 5.95a2.197 2.197 0 00-1.81-.95c-1.134 0-2.154.972-2.154 2.173v4.94c0 .98-.797 1.775-1.76 1.775-.57 0-1.136-.289-1.472-.773L.408 5.098C.282 4.918 0 5.007 0 5.228v4.284c0 .216.066.426.188.604l5.475 7.889c.324.466.8.812 1.351.938 1.377.316 2.645-.754 2.645-2.117V11.89c0-.98.787-1.775 1.76-1.775h.002c.586 0 1.135.288 1.472.773l4.972 7.163a2.15 2.15 0 001.81.95c1.158 0 2.151-.973 2.151-2.173v-4.939c0-.98.787-1.775 1.76-1.775h.194c.122 0 .22-.1.22-.222V5.225a.221.221 0 00-.22-.222z\"></path>"}, "amp": {"label": "Amp", "path": "<path d=\"M15.087 23.18L12.03 24l-2.097-7.823-5.738 5.738-2.251-2.251 5.718-5.719-7.769-2.082.82-3.057 11.294 3.08 3.08 11.295z\"></path><path d=\"M19.505 18.762l-3.057.82-2.564-9.573-9.572-2.564.819-3.057 11.295 3.079 3.08 11.295z\"></path><path d=\"M23.893 14.374l-3.057.82-2.565-9.572L8.7 3.057 9.52 0l11.295 3.08 3.079 11.294z\"></path>"}, "cline": {"label": "Cline", "path": "<path d=\"M17.035 3.991c2.75 0 4.98 2.24 4.98 5.003v1.667l1.45 2.896a1.01 1.01 0 01-.002.909l-1.448 2.864v1.668c0 2.762-2.23 5.002-4.98 5.002H7.074c-2.751 0-4.98-2.24-4.98-5.002V17.33l-1.48-2.855a1.01 1.01 0 01-.003-.927l1.482-2.887V8.994c0-2.763 2.23-5.003 4.98-5.003h9.962zM8.265 9.6a2.274 2.274 0 00-2.274 2.274v4.042a2.274 2.274 0 004.547 0v-4.042A2.274 2.274 0 008.265 9.6zm7.326 0a2.274 2.274 0 00-2.274 2.274v4.042a2.274 2.274 0 104.548 0v-4.042A2.274 2.274 0 0015.59 9.6z\"></path><path d=\"M12.054 5.558a2.779 2.779 0 100-5.558 2.779 2.779 0 000 5.558z\"></path>"}};
+  var MARK_ID = { claude: 'claudecode', hermes: 'hermesagent', copilot: 'githubcopilot', gemini: 'geminicli' };
+  function agentMark(id) { var def = MARKS[MARK_ID[id] || id]; return def ? '<svg viewBox="0 0 24 24" fill="currentColor" fill-rule="evenodd" width="1em" height="1em" aria-hidden="true">' + def.path + '</svg>' : ''; }
+  var KG = {
+    tool: '<path d="M5 7l5 5-5 5M12 17h7"/>',
+    responding: '<path d="M4 20l4.5-1L19 8.5l-3.5-3.5L5 15.5z"/>',
+    reasoning: '<circle cx="6" cy="12" r="1.6" fill="currentColor" stroke="none"/><circle cx="12" cy="12" r="1.6" fill="currentColor" stroke="none"/><circle cx="18" cy="12" r="1.6" fill="currentColor" stroke="none"/>',
+    delegating: '<circle cx="6" cy="6" r="2"/><circle cx="18" cy="6" r="2"/><circle cx="12" cy="18" r="2"/><path d="M6 8v2c0 3 6 3 6 6M18 8v2c0 3-6 3-6 6"/>',
+    compacting: '<path d="M5 6h14M7 12h10M10 18h4"/>',
+    starting: '<path d="M12 4v4M12 16v4M4 12h4M16 12h4"/>',
+    permission: '<circle cx="8" cy="8" r="3.5"/><path d="M10.5 10.5L19 19M15.5 15.5l2-2M13 13l2-2"/>',
+    question: '<path d="M9 9.5a3 3 0 1 1 4.2 2.7c-.8.4-1.2 1-1.2 1.8v.5"/><circle cx="12" cy="17.5" r="1" fill="currentColor" stroke="none"/>',
+    failure: '<path d="M12 5v9"/><circle cx="12" cy="18" r="1.1" fill="currentColor" stroke="none"/>',
+    folder: '<path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/>'
+  };
+  function kg(kind, cls) { return '<svg class="p-kg' + (cls ? ' ' + cls : '') + '" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">' + (KG[kind] || '') + '</svg>'; }
+
+  /* ── the circle — AgentBubble.tsx's DOM, with hooks for the added layers ── */
+  function noise(i, c) { var v = Math.sin((i + 1) * 12.9898 + (c + 1) * 78.233) * 43758.5453; return v - Math.floor(v); }
+  function partStyles(n, speed, reach) {
+    var out = [], i, lo = reach ? reach[0] : 24, hi = reach ? reach[1] : 58;
+    for (i = 0; i < n; i += 1) out.push('--ignition-angle:' + (noise(i, 0) * 360).toFixed(1) + 'deg;--ignition-delay:' + (-noise(i, 1) * 2.2).toFixed(2) + 's;--ignition-distance:' + (lo + noise(i, 2) * (hi - lo)).toFixed(1) + 'px;--ignition-duration:' + ((1.05 + noise(i, 3) * 1.35) * (1 - 0.62 * (speed || 0))).toFixed(2) + 's;--ignition-size:' + (2 + noise(i, 4) * 1.5).toFixed(2) + 'px');
+    return out;
+  }
+  var PARTICLES = partStyles(24, 0);
+  var RADII = { idle: 40, working: 50, blocked: 50 };
+  function pres(a) {
+    var facet = a.agent;
+    var visual = facet ? (a.status === 'idle' ? 'working' : a.status === 'working' ? 'ignited' : 'blocked') : a.status;
+    var appearance = visual === 'ignited' ? 'working' : visual;
+    var used = facet && facet.contextWindow ? facet.contextWindow.usedPercent : undefined;
+    var pct = used === undefined ? undefined : Math.floor(used);
+    var label = pct === undefined ? 'CTX:--%' : 'CTX:' + String(pct).padStart(2, '0') + '%';
+    var linked = a.attachment && a.attachment.primary;
+    var cls = ['vf-monitor-bubble', 'is-' + appearance, visual === 'ignited' ? 'is-ignited' : '', facet ? '' : 'is-unassigned', linked ? 'is-linked' : '', a.active ? 'is-active' : '', a.stale ? 'is-stale' : ''].filter(Boolean).join(' ');
+    var name = facet ? (facet.model || facet.provider.label) : undefined;
+    return { visual: visual, appearance: appearance, used: used, pct: pct, label: label, accent: linked || a.color, className: cls, positioner: 'vf-monitor-bubble-positioner is-' + appearance,
+      aria: facet ? a.project + ', ' + name + ', ' + a.status + ': ' + (a.detail || '') + ', ' + label : a.project + ', unassigned terminal, ' + a.status,
+      title: facet ? a.project + ' · ' + name + ' · ' + (a.detail || '') : (a.detail || a.project) };
+  }
+  function body(a, o) {
+    o = o || {};
+    var p = pres(a), f = a.agent, r = o.r || RADII[p.appearance], d = r * 2, ign = '';
+    if (p.visual === 'ignited' && !o.noIgnition) {
+      var parts = o.particles === null ? '' : (o.particles || PARTICLES).map(function (s) { return '<i class="vf-monitor-bubble-particle" style="' + s + '"></i>'; }).join('');
+      ign = '<span class="vf-monitor-bubble-ignition" aria-hidden="true"><i class="vf-monitor-bubble-core-glow"' + (o.coreStyle ? ' style="' + o.coreStyle + '"' : '') + '></i><span class="vf-monitor-bubble-particles">' + parts + '</span>' + (o.ignExtra || '') + '</span>';
+    }
+    var copy = o.copy !== undefined ? o.copy :
+      (f && f.branch ? '<span class="vf-monitor-bubble-branch">' + esc(f.branch) + '</span>' : '') + '<strong>' + esc(a.project) + '</strong>' +
+      (f && !o.noModel ? '<span class="vf-monitor-bubble-provider">' + esc(f.model || f.provider.label) + '</span>' : '') + (o.copyExtra || '');
+    var ctx = o.ctxLine !== undefined ? o.ctxLine : (f ? '<span class="vf-monitor-bubble-context">' + p.label + '</span>' : '');
+    var fill = (p.used === undefined || o.noFill) ? '' : '<span class="vf-monitor-bubble-context-fill" style="height:' + p.used + '%" aria-hidden="true"></span>';
+    return '<div class="' + p.positioner + (o.cls ? ' ' + o.cls : '') + '" style="width:' + d + 'px;height:' + d + 'px;--agent-color:' + p.accent + ';' + (o.style || '') + '" data-agent-bubble-source="' + (f ? 'agent' : 'terminal') + '" data-agent-bubble-status="' + a.status + '" data-agent-bubble-visual="' + p.visual + '">' +
+      '<button type="button" class="' + p.className + (o.btnCls ? ' ' + o.btnCls : '') + '" style="--agent-color:' + p.accent + ';' + (o.btnStyle || '') + '"' + (a.active ? ' aria-current="true"' : '') + ' aria-label="' + esc(p.aria) + '" title="' + esc(p.title) + '">' +
+      fill + ign + (o.inBtn || '') +
+      (f && !o.noGlyph ? '<span class="vf-monitor-bubble-glyph" aria-hidden="true"' + (o.glyphStyle ? ' style="' + o.glyphStyle + '"' : '') + '>' + agentMark(f.provider.id) + '</span>' : '') +
+      '<span class="vf-monitor-bubble-copy">' + copy + '</span>' + ctx + (o.inBtnAfter || '') +
+      '</button>' + (o.inPos || '') + '</div>';
+  }
+  function unit(html, label) { return '<div class="p-unit">' + html + (label ? '<small>' + label + '</small>' : '') + '</div>'; }
+  function row(units, cls) { return '<div class="p-row' + (cls ? ' ' + cls : '') + '">' + units.join('') + '</div>'; }
+
+  /* ── sample rows ────────────────────────────────────────────────────── */
+  var A1 = 'var(--vf-accent-1)', A2 = 'var(--vf-accent-2)', A3 = 'var(--vf-accent-3)', A5 = 'var(--vf-accent-5)', A6 = 'var(--vf-accent-6)', A8 = 'var(--vf-accent-8)';
+  function term(over) { return Object.assign({ id: 't1', project: 'puppeteer', cwd: '~/Projects/puppeteer', status: 'idle', detail: 'unassigned terminal', color: A1, active: false }, over || {}); }
+  function agent(over) {
+    var a = Object.assign({ id: 'a1', project: 'puppeteer', status: 'idle', detail: '', color: A1, active: false }, over || {});
+    a.agent = Object.assign({ provider: { id: 'claude', label: 'Claude' }, model: 'Fable 5.1', branch: 'fold', contextWindow: { usedPercent: 62 } }, over && over.agent ? over.agent : {});
+    return a;
+  }
+  var FOLDER = '<span class="p-fold">' + kg('folder') + '</span>';
+
+  /* 01 · the empty terminal */
+  function hollowIdle(a) { return body(a, { cls: 'p-hollow', copy: FOLDER + '<strong>' + esc(a.project) + '</strong><span class="p-sub">empty</span>' }); }
+  function hollowRun(a, cmd, t) { return body(a, { cls: 'p-hollow is-running', copy: FOLDER + '<strong>' + esc(a.project) + '</strong><span class="p-sub is-cmd">' + esc(cmd) + '</span><span class="p-sub">' + t + '</span>', inPos: '<i class="p-layer p-comet"></i>' }); }
+  function r01() {
+    var idle = term(), run = term();
+    $('s01a').innerHTML = row([unit(hollowIdle(idle), 'shell idle'), unit(hollowRun(run, 'pnpm test', '0:42'), 'foreground job · <b>pnpm test</b>')]);
+    $('s01b').innerHTML = row([
+      unit(body(idle, { cls: 'p-tile', inBtn: '<span class="p-pglyph" aria-hidden="true">›_</span>', copy: '<strong>puppeteer</strong><span class="p-path">~/Projects</span>' }), 'shell idle'),
+      unit(body(run, { cls: 'p-tile', inBtn: '<span class="p-pglyph" aria-hidden="true">›_</span><span class="p-runline" aria-hidden="true"><i></i></span>', copy: '<strong>puppeteer</strong><span class="p-sub is-cmd">› pnpm test</span><span class="p-sub">0:42</span>' }), 'foreground job · <b>pnpm test</b>')
+    ]);
+    $('s01c').innerHTML = row([
+      unit(body(idle, { copy: '<span class="p-pline"><b>puppeteer</b> › <i class="p-cur"></i></span><span class="p-sub">empty</span>' }), 'shell idle'),
+      unit(body(run, { copy: '<span class="p-pline"><b>puppeteer</b> ›</span><span class="p-pline">pnpm test</span><span class="p-sub is-cmd"><i class="p-dots"><i></i><i></i><i></i></i>0:42</span>' }), 'foreground job · <b>pnpm test</b>')
+    ]);
+  }
+
+  /* 02 · idle, a reply waiting */
+  function badge(n) { return n === 1 ? '<i class="p-idot is-one" aria-hidden="true"></i>' : '<i class="p-idot" aria-hidden="true">' + n + '</i>'; }
+  function r02() {
+    var one = agent({ project: 'jabali', color: A2, agent: { model: 'Opus 5', branch: 'editor', contextWindow: { usedPercent: 31 } } });
+    var three = agent({ project: 'voyager', color: A5, agent: { model: 'Sonnet 5', branch: 'main', contextWindow: { usedPercent: 48 } } });
+    $('s02a').innerHTML = row([unit(body(one, { inBtn: badge(1) }), '1 reply since last look'), unit(body(three, { inBtn: badge(3) }), '3 replies')]);
+    $('s02b').innerHTML = row([
+      unit(body(one, { inBtn: '<i class="p-uring" aria-hidden="true"></i>', copyExtra: '<span class="p-sub is-new">1 new</span>' }), '1 reply since last look'),
+      unit(body(three, { inBtn: '<i class="p-uring" aria-hidden="true"></i>', copyExtra: '<span class="p-sub is-new">3 new</span>' }), '3 replies')
+    ]);
+    $('s02c').innerHTML = row([
+      unit(body(one, { cls: 'p-ubeat', copyExtra: '<span class="p-sub is-new">1 new</span>' }), '1 reply · the rim beats'),
+      unit(body(three, { cls: 'p-ubeat', copyExtra: '<span class="p-sub is-new">3 new</span>', btnStyle: 'animation-delay:-1.1s' }), '3 replies')
+    ]);
+  }
+
+  /* 03 · working, at its burn — the graph, the dial, the tach */
+  var RATES = [{ v: 1200, s: '1.2k', word: 'ember', shape: 'ember' }, { v: 8100, s: '8.1k', word: 'steady', shape: 'steady' }, { v: 34000, s: '34k', word: 'blaze', shape: 'blaze' }];
+  function tOf(rate) { return Math.max(0, Math.min(1, (Math.log10(rate) - Math.log10(500)) / 2)); }
+  function working(over) { return agent(Object.assign({ status: 'working', detail: 'Editing tokens.css' }, over || {})); }
+  /* forty samples of intensity, ending exactly at the present rate */
+  function series(shape, endT, seed) {
+    var n = 40, out = [], i, v, u, nz;
+    for (i = 0; i < n; i += 1) {
+      u = i / (n - 1); nz = (noise(i + (seed || 0), 7) - 0.5) * 0.08;
+      if (shape === 'ember') v = endT - 0.02 + nz + 0.03 * Math.sin(u * 9);
+      else if (shape === 'steady') v = endT - 0.38 + 0.38 * Math.min(1, u * 1.45) + nz + 0.05 * Math.sin(u * 14);
+      else if (shape === 'ease') v = endT + 0.22 - 0.22 * Math.min(1, u * 1.2) + nz + 0.03 * Math.sin(u * 12);
+      else v = u < 0.72 ? endT - 0.55 + nz + 0.06 * Math.sin(u * 11) : endT - 0.55 + ((u - 0.72) / 0.28) * 0.55 + nz * 0.6;
+      out.push(Math.max(0.03, Math.min(1, v)));
+    }
+    out[n - 1] = endT;
+    return out;
+  }
+  function graphHtml(vals) {
+    var n = vals.length, pts = vals.map(function (v, i) { return [(i / (n - 1) * 100).toFixed(2), (92 - v * 76).toFixed(2)]; });
+    var line = 'M' + pts.map(function (p) { return p[0] + ' ' + p[1]; }).join('L');
+    var last = pts[n - 1], hot = vals[n - 1] >= 0.8 ? ' is-hot' : '', redY = (92 - 0.8 * 76).toFixed(1);
+    return '<svg class="p-graph" viewBox="0 0 100 100" preserveAspectRatio="none" aria-hidden="true"><path class="area" d="' + line + 'L100 100L0 100Z"/><line class="redline" x1="0" y1="' + redY + '" x2="100" y2="' + redY + '"/><path class="line" d="' + line + '"/><circle class="halo' + hot + '" cx="' + last[0] + '" cy="' + last[1] + '" r="2.6"/><circle class="now' + hot + '" cx="' + last[0] + '" cy="' + last[1] + '" r="1.9"/></svg>';
+  }
+  function graphBody(a, shape, endT, extra, seed) { return body(a, Object.assign({ cls: 'p-graph-body', noIgnition: true, inBtn: graphHtml(series(shape, endT, seed)) }, extra || {})); }
+  function polar(cx, cy, r, deg) { var a = deg * Math.PI / 180; return { x: +(cx + r * Math.cos(a)).toFixed(2), y: +(cy + r * Math.sin(a)).toFixed(2) }; }
+  function arcPath(cx, cy, r, a0, a1) { var p0 = polar(cx, cy, r, a0), p1 = polar(cx, cy, r, a1); return 'M' + p0.x + ' ' + p0.y + 'A' + r + ' ' + r + ' 0 ' + (a1 - a0 > 180 ? 1 : 0) + ' 1 ' + p1.x + ' ' + p1.y; }
+  var TACH0 = 150, TACHSPAN = 240;
+  function dial(t) {
+    var out = '', k;
+    for (k = 0; k <= 24; k += 1) { var a = TACH0 + k * 10, major = k % 3 === 0, p0 = polar(50, 50, major ? 40 : 42.5, a), p1 = polar(50, 50, 45.5, a); out += '<line class="tk' + (major ? ' is-major' : '') + '" x1="' + p0.x + '" y1="' + p0.y + '" x2="' + p1.x + '" y2="' + p1.y + '"/>'; }
+    out += '<path class="red" d="' + arcPath(50, 50, 43.5, TACH0 + TACHSPAN * 0.8, TACH0 + TACHSPAN) + '"/>';
+    var rot = (TACH0 + TACHSPAN * t + 90).toFixed(1);
+    out += '<line class="needle" x1="50" y1="13" x2="50" y2="6" style="transform:rotate(' + rot + 'deg)"/><circle class="tip" cx="50" cy="5.2" r="1.7" style="transform:rotate(' + rot + 'deg)"/>';
+    return '<svg class="p-tach" viewBox="0 0 100 100" aria-hidden="true">' + out + '</svg>';
+  }
+  function tach(t) {
+    var out = '', k, n = 20, pitch = TACHSPAN / n, lit = t * TACHSPAN;
+    for (k = 0; k < n; k += 1) { var a0 = TACH0 + k * pitch + 1.5, a1 = TACH0 + (k + 1) * pitch - 1.5; out += '<path class="seg' + (k >= 16 ? ' is-red' : '') + (k * pitch < lit ? ' is-lit' : '') + '" d="' + arcPath(50, 50, 43.5, a0, a1) + '"/>'; }
+    return '<svg class="p-tach" viewBox="0 0 100 100" aria-hidden="true">' + out + '</svg>';
+  }
+  function r03() {
+    $('s03a').innerHTML = row(RATES.map(function (R) { var t = tOf(R.v); return unit(graphBody(working(), R.shape, t), R.s + ' tok/min · <b>' + R.word + '</b> · ten minutes'); }));
+    $('s03b').innerHTML = row(RATES.map(function (R) { var t = tOf(R.v); return unit(body(working(), { cls: 'p-tach-body', noIgnition: true, inBtn: dial(t) }), R.s + ' tok/min · <b>' + R.word + '</b> · needle at ' + Math.round(t * 100) + '%'); }));
+    $('s03c').innerHTML = row(RATES.map(function (R) { var t = tOf(R.v); return unit(body(working(), { cls: 'p-tach-body', noIgnition: true, inBtn: tach(t) }), R.s + ' tok/min · <b>' + R.word + '</b> · ' + Math.round(t * 20) + ' of 20 lit'); }));
+  }
+
+  /* 04 · blocked, held at size */
+  var KINDS = [{ k: 'permission', line: 'permission', wm: '?', detail: 'Allow Bash: pnpm test?' }, { k: 'question', line: 'question', wm: '?', detail: 'Which branch should the fold land on?' }, { k: 'failure', line: 'failed', wm: '!', detail: 'Rate limited · retry in 40s' }];
+  function blocked(K, over) { return agent(Object.assign({ status: 'blocked', detail: K.detail }, over || {})); }
+  function haloBody(a, K, extra) { extra = extra || {}; return body(a, Object.assign({ cls: 'p-blk-a' + (extra.cls ? ' ' + extra.cls : ''), inBtn: '<i class="p-ihalo" aria-hidden="true"></i>' + (extra.inBtn || ''), copyExtra: '<span class="p-kind">' + kg(K.k) + K.line + '</span>' + (extra.copyExtra || '') }, extra.rest || {})); }
+  function r04() {
+    $('s04a').innerHTML = row(KINDS.map(function (K) { return unit(haloBody(blocked(K), K), K.k + ' · <b>' + esc(K.detail) + '</b>'); }));
+    $('s04b').innerHTML = row(KINDS.map(function (K) {
+      return unit(body(blocked(K), { cls: 'p-blk-b', inBtn: '<i class="p-dash" aria-hidden="true"></i><span class="p-wm" aria-hidden="true">' + K.wm + '</span>', copyExtra: '<span class="p-kind is-mono">' + K.line + '</span>' }), K.k + ' · <b>' + esc(K.detail) + '</b>');
+    }));
+    $('s04c').innerHTML = row(KINDS.map(function (K) {
+      return unit(body(blocked(K), { cls: 'p-blk-c', copyExtra: '<span class="p-kind is-white">' + kg(K.k) + K.line + '</span>' }), K.k + ' · <b>' + esc(K.detail) + '</b>');
+    }));
+  }
+
+  /* 05 · one line of activity */
+  var ACTS = [
+    { kind: 'tool', line: 'Editing tokens.css', a: working({ project: 'puppeteer' }) },
+    { kind: 'reasoning', line: 'Thinking about the fold', a: working({ project: 'jabali', color: A2, agent: { model: 'Opus 5', branch: 'editor', contextWindow: { usedPercent: 31 } } }) },
+    { kind: 'responding', line: 'Writing the reply', a: working({ project: 'voyager', color: A5, agent: { model: 'Sonnet 5', branch: 'main', contextWindow: { usedPercent: 48 } } }), quiet: true },
+    { kind: 'permission', line: 'Allow Bash: pnpm test?', a: blocked(KINDS[0], { project: 'duke', color: A6, agent: { model: 'Fable 5.1', branch: 'hw4', contextWindow: { usedPercent: 77 } } }), blocked: true }
+  ];
+  function innerLine(kind, line, quiet) { return '<span class="p-inner' + (quiet ? ' is-quiet' : '') + '">' + kg(kind) + '<i>' + esc(line) + '</i></span>'; }
+  var arcSeq = 0;
+  function arcLine(kind, line, quiet) {
+    var id = 'arc' + (arcSeq += 1);
+    return '<svg class="p-arc' + (quiet ? ' is-quiet' : '') + '" viewBox="0 0 100 100" aria-hidden="true"><defs><path id="' + id + '" d="M8.6 56.3A42 42 0 0 0 91.4 56.3"/></defs><text><textPath href="#' + id + '" startOffset="50%" text-anchor="middle">' + esc(line) + '</textPath></text></svg>';
+  }
+  function twoLines(kind, line, quiet) { return '<span class="p-two' + (quiet ? ' is-quiet' : '') + '">' + kg(kind) + esc(line) + '</span>'; }
+  function lineUnit(X, o) {
+    var opts = Object.assign({}, o);
+    if (X.blocked) { opts.cls = (opts.cls ? opts.cls + ' ' : '') + 'p-blk-a'; opts.inBtn = '<i class="p-ihalo" aria-hidden="true"></i>' + (opts.inBtn || ''); }
+    return unit(body(X.a, opts), X.kind + (X.quiet ? ' · settled after 6s' : ''));
+  }
+  function r05() {
+    $('s05a').innerHTML = row(ACTS.map(function (X) { return lineUnit(X, { noModel: true, copyExtra: innerLine(X.kind, X.line, X.quiet) }); }));
+    $('s05b').innerHTML = row(ACTS.map(function (X) { return lineUnit(X, { cls: 'p-arc-line', inBtn: arcLine(X.kind, X.line, X.quiet), inBtnAfter: '<span class="p-fig" style="bottom:auto;top:9px;font-size:6.5px;opacity:.6">' + X.a.agent.contextWindow.usedPercent + '%</span>' }); }));
+    $('s05c').innerHTML = row(ACTS.map(function (X) { return lineUnit(X, { cls: 'p-twoline', noModel: true, copyExtra: twoLines(X.kind, X.line, X.quiet) }); }));
+  }
+
+  /* 06 · context, legible */
+  var PCTS = [12, 62, 91];
+  function ringHtml(pct) {
+    var hot = pct >= 80;
+    return '<svg class="p-ring' + (hot ? ' is-hot' : '') + '" viewBox="0 0 100 100" aria-hidden="true"><circle class="p-track" cx="50" cy="50" r="48.5"/><circle class="p-gauge" cx="50" cy="50" r="48.5" pathLength="100" style="stroke-dasharray:' + pct + ' 100"/></svg>';
+  }
+  function fig(pct) { return '<span class="p-fig' + (pct === undefined ? ' is-none' : pct >= 80 ? ' is-hot' : '') + '">' + (pct === undefined ? '--' : pct + '%') + '</span>'; }
+  function r06() {
+    $('s06a').innerHTML = row(PCTS.map(function (pct) {
+      return unit(body(working({ agent: { contextWindow: { usedPercent: pct } } }), { cls: 'p-ctx-a', inBtn: ringHtml(pct), inBtnAfter: fig(pct) }), pct + '% used' + (pct >= 80 ? ' · <b>hot</b>' : ''));
+    }));
+    $('s06b').innerHTML = row(PCTS.map(function (pct) {
+      return unit(body(working({ agent: { contextWindow: { usedPercent: pct } } }), { cls: 'p-ctx-b' + (pct >= 80 ? ' is-hot' : ''), inBtn: '<i class="p-water" style="bottom:' + pct + '%" aria-hidden="true"></i>', inBtnAfter: fig(pct) }), pct + '% used' + (pct >= 80 ? ' · <b>hot</b>' : ''));
+    }));
+    $('s06c').innerHTML = row(PCTS.map(function (pct) {
+      var dial = '<svg class="p-dial' + (pct >= 80 ? ' is-hot' : '') + '" viewBox="0 0 100 100" aria-hidden="true"><path class="p-track" d="M11.5 36A41 41 0 1 0 88.5 36"/><path class="p-gauge" d="M11.5 36A41 41 0 1 0 88.5 36" pathLength="100" style="stroke-dasharray:' + pct + ' 100"/></svg>';
+      return unit(body(working({ agent: { contextWindow: { usedPercent: pct } } }), { cls: 'p-ctx-c', inBtn: dial, inBtnAfter: fig(pct) }), pct + '% used' + (pct >= 80 ? ' · <b>hot</b>' : ''));
+    }));
+  }
+
+  /* 07 · the card — a stack at the bottom, masked by the rim */
+  var RAISE = { low: 2, medium: 5, high: 8, max: 11 };
+  var CR = 9;
+  function markPath(id) { var def = MARKS[MARK_ID[id] || id]; return def ? def.path : ''; }
+  /* one card at (cx, cy); rot tilts the letter for the fan; glyph 'corner' keeps the letter in the crescent a later card leaves */
+  function card(s, cx, cy, rot, place) {
+    var live = !!s.live, more = !!s.more, cls = 'cd' + (more ? ' is-more' : live ? ' is-live' : ' is-done') + (s.mate ? ' is-mate' : '');
+    var gx = place === 'corner' ? cx - 2.6 : cx, gy = place === 'corner' ? cy - 2.4 : cy, glyph;
+    if (more) glyph = '<text class="is-more" x="' + gx + '" y="' + gy + '">+' + s.more + '</text>';
+    else if (s.mark) glyph = '<g class="mk' + (live ? '' : ' is-done') + '" transform="translate(' + (gx - 3.6).toFixed(2) + ' ' + (gy - 3.6).toFixed(2) + ') scale(0.3)"><path d="' + markPath(s.mark) + '"/></g>';
+    else glyph = '<text class="' + (live ? '' : 'is-done') + '" x="' + gx + '" y="' + gy + '">' + s.m + '</text>';
+    return '<g transform="rotate(' + (rot || 0) + ' ' + cx + ' ' + cy + ')"><circle class="' + cls + '" cx="' + cx + '" cy="' + cy + '" r="' + CR + '"/>' + glyph + '</g>';
+  }
+  function raiseOf(s) { return s.more ? 2 : s.live ? (RAISE[s.e] || 2) : 2; }
+  function trimTo(subs, max) { return subs.length > max ? subs.slice(0, max - 1).concat([{ more: subs.length - max + 1 }]) : subs; }
+  function handHtml(subs) {
+    var list = trimTo(subs, 7), n = list.length, pitch = n > 1 ? Math.min(9, 44 / (n - 1)) : 0, x0 = 50 - pitch * (n - 1) / 2, out = '', i;
+    for (i = 0; i < n; i += 1) out += card(list[i], +(x0 + i * pitch).toFixed(2), +(96 - raiseOf(list[i])).toFixed(2), 0, i < n - 1 ? 'corner' : 'centre');
+    return '<svg class="p-cards" viewBox="0 0 100 100" aria-hidden="true">' + out + '</svg>';
+  }
+  function fanHtml(subs) {
+    var list = trimTo(subs, 7), n = list.length, step = n > 1 ? Math.min(12, 60 / (n - 1)) : 0, a0 = -step * (n - 1) / 2, px = 50, py = 130, base = 43, out = '', i;
+    for (i = 0; i < n; i += 1) { var deg = a0 + i * step, th = deg * Math.PI / 180, R = base + raiseOf(list[i]); out += card(list[i], +(px + R * Math.sin(th)).toFixed(2), +(py - R * Math.cos(th)).toFixed(2), deg, i < n - 1 ? 'corner' : 'centre'); }
+    return '<svg class="p-cards" viewBox="0 0 100 100" aria-hidden="true">' + out + '</svg>';
+  }
+  function deckHtml(subs) {
+    var n = subs.length, top = -1, i, out = '', order = [];
+    for (i = 0; i < n; i += 1) if (subs[i].live) top = i;
+    if (top < 0) top = n - 1;
+    for (i = 0; i < n; i += 1) if (i !== top) order.push(i);
+    order.push(top);
+    var cx0 = 50 - (n - 1) * 1.1;
+    for (i = 0; i < order.length; i += 1) { var s = subs[order[i]], isTop = order[i] === top; out += isTop ? card(s, +(cx0 + (n - 1) * 2.2).toFixed(2), +(96 - raiseOf(s)).toFixed(2), 0, 'centre') : '<circle class="cd' + (s.live ? ' is-live' : ' is-done') + (s.mate ? ' is-mate' : '') + '" cx="' + (cx0 + i * 2.2).toFixed(2) + '" cy="94" r="' + CR + '"/>'; }
+    out += '<text class="is-count" x="' + (cx0 + (n - 1) * 2.2 + 14).toFixed(1) + '" y="91">' + n + '</text>';
+    return '<svg class="p-cards" viewBox="0 0 100 100" aria-hidden="true">' + out + '</svg>';
+  }
+  function topFig(pct) { return '<span class="p-topfig' + (pct >= 80 ? ' is-hot' : '') + '">' + pct + '%</span>'; }
+  function card1(s, opts) { return '<svg class="p-card1" viewBox="0 0 34 34" aria-hidden="true">' + card(s, 17, 17, 0, 'centre') + '</svg>'; }
+  function raiseDemo() {
+    var out = '', i, lv = ['low', 'medium', 'high', 'max'];
+    for (i = 0; i < 4; i += 1) out += card({ m: 'S', e: lv[i], live: true }, 16 + i * 26, 31 - RAISE[lv[i]], 0, 'centre');
+    return '<svg class="p-card1 p-raise" viewBox="0 0 110 34" aria-hidden="true"><line class="rim" x1="2" y1="32.5" x2="108" y2="32.5"/>' + out + '</svg>';
+  }
+  function r07() {
+    var items = [];
+    [['F', 'Fable'], ['O', 'Opus'], ['S', 'Sonnet'], ['H', 'Haiku']].forEach(function (x) { items.push('<div class="p-mfi">' + card1({ m: x[0], e: 'high', live: true }) + '<small>' + x[1] + '<br>live</small></div>'); });
+    items.push('<div class="p-mfi">' + card1({ m: 'S', e: 'medium', live: false }) + '<small>finished<br>hollow</small></div>');
+    items.push('<div class="p-mfi">' + card1({ m: 'O', e: 'high', live: true, mate: true }) + '<small>teammate<br>dashed</small></div>');
+    items.push('<div class="p-mfi">' + card1({ mark: 'codex', e: 'medium', live: true }) + '<small>codex<br>the mark</small></div>');
+    items.push('<div class="p-mfi">' + card1({ more: 3 }) + '<small>three more</small></div>');
+    items.push('<div class="p-mfi">' + raiseDemo() + '<small>the raise · low, medium, high, max<br>against the rim</small></div>');
+    $('s07a').innerHTML = '<div class="p-mf">' + items.join('') + '</div>';
+  }
+
+  /* 08 · subagents */
+  var SUBS4 = [{ m: 'F', e: 'high', live: true }, { m: 'S', e: 'medium', live: true }, { m: 'H', e: 'low', live: false }, { m: 'S', e: 'max', live: false }];
+  var SUBS9 = [{ m: 'S', e: 'medium', live: true }, { m: 'S', e: 'medium', live: true }, { m: 'H', e: 'low', live: true }, { m: 'F', e: 'high', live: false }, { m: 'S', e: 'medium', live: false }, { m: 'H', e: 'low', live: false }, { m: 'S', e: 'medium', live: false }, { m: 'H', e: 'low', live: false }, { m: 'S', e: 'high', live: false }];
+  var MATES = [{ m: 'O', e: 'high', live: true, mate: true, name: 'reviewer' }, { m: 'S', e: 'medium', live: false, mate: true, name: 'tester' }];
+  function r08() {
+    var P = working({ project: 'puppeteer' }), W = working({ project: 'jabali', color: A2, agent: { model: 'Opus 5', branch: 'editor', contextWindow: { usedPercent: 44 } } });
+    var T = working({ project: 'study', color: A8, detail: 'Leading the team', agent: { model: 'Fable 5.1', branch: 'portfolio', contextWindow: { usedPercent: 38 } } });
+    function base(a, pct, subs, make, line) { return graphBody(a, 'steady', tOf(8100), { cls: 'p-graph-body p-cards-body', noModel: true, inBtn: graphHtml(series('steady', tOf(8100))) + make(subs), inBtnAfter: topFig(pct), copyExtra: innerLine('delegating', line) }); }
+    $('s08a').innerHTML = row([
+      unit(base(P, 62, SUBS4, handHtml, 'Waiting on 2'), '4 subagents · 2 live, raised'),
+      unit(base(W, 44, SUBS9, handHtml, 'review-changes'), 'workflow · 9 children · 6 cards, the seventh counts 3'),
+      unit(base(T, 38, MATES, handHtml, 'Leading 2'), 'team lead · 2 teammates, dashed')
+    ], 'is-roomy');
+    $('s08b').innerHTML = row([
+      unit(base(P, 62, SUBS4, fanHtml, 'Waiting on 2'), '4 subagents · fanned'),
+      unit(base(W, 44, SUBS9, fanHtml, 'review-changes'), 'workflow · 9 children'),
+      unit(base(T, 38, MATES, fanHtml, 'Leading 2'), 'team lead · 2 teammates')
+    ], 'is-roomy');
+    $('s08c').innerHTML = row([
+      unit(base(P, 62, SUBS4, deckHtml, 'Waiting on 2'), '4 in the pile · S on top, the newest live'),
+      unit(base(W, 44, SUBS9, deckHtml, 'review-changes'), 'workflow · 9 in the pile · 36px'),
+      unit(base(T, 38, MATES, deckHtml, 'Leading 2'), 'team lead · 2 in the pile')
+    ], 'is-roomy');
+  }
+
+  /* 09 · the cluster — settled by a centre pull and separation, as the app's physics settles it */
+  var GAP = 4;
+  function settle(items, W, H) {
+    var cx = W / 2, cy = H / 2, i, j, k, n = items.length;
+    for (i = 0; i < n; i += 1) { var a0 = (i / n) * Math.PI * 2 + 0.7; items[i].x = cx + Math.cos(a0) * 200; items[i].y = cy + Math.sin(a0) * 140; }
+    for (k = 0; k < 600; k += 1) {
+      for (i = 0; i < n; i += 1) { items[i].x += (cx - items[i].x) * 0.02; items[i].y += (cy - items[i].y) * 0.02; }
+      for (i = 0; i < n; i += 1) for (j = i + 1; j < n; j += 1) {
+        var dx = items[j].x - items[i].x, dy = items[j].y - items[i].y, d = Math.sqrt(dx * dx + dy * dy) || 0.01, min = items[i].r + items[j].r + GAP * 2;
+        if (d < min) { var push = (min - d) / 2, ux = dx / d, uy = dy / d; items[i].x -= ux * push; items[i].y -= uy * push; items[j].x += ux * push; items[j].y += uy * push; }
+      }
+      for (i = 0; i < n; i += 1) { var m = items[i].r + GAP; items[i].x = Math.max(m, Math.min(W - m, items[i].x)); items[i].y = Math.max(m, Math.min(H - m, items[i].y)); }
+    }
+    return items;
+  }
+  function clusterHtml(W, H) {
+    var items = [
+      { r: 40, html: hollowIdle(term({ project: 'voyager', color: A5 })) },
+      { r: 40, html: hollowRun(term({ project: 'study', color: A8 }), 'pnpm test', '0:42') },
+      { r: 50, html: body(agent({ project: 'jabali', color: A2, agent: { model: 'Opus 5', branch: 'editor', contextWindow: { usedPercent: 31 } } }), { inBtn: badge(1) }) },
+      { r: 50, html: graphBody(working({ project: 'puppeteer', active: true }), 'steady', tOf(8100), { cls: 'p-graph-body p-ctx-a', noModel: true, inBtn: graphHtml(series('steady', tOf(8100))) + ringHtml(62), inBtnAfter: fig(62), copyExtra: innerLine('tool', 'Editing tokens.css') }) },
+      { r: 50, html: haloBody(blocked(KINDS[0], { project: 'duke', color: A6, agent: { model: 'Fable 5.1', branch: 'hw4', contextWindow: { usedPercent: 84 } } }), KINDS[0], { cls: 'p-ctx-a', inBtn: ringHtml(84), rest: { inBtnAfter: fig(84) } }) },
+      { r: 50, html: graphBody(working({ project: 'puppeteer', agent: { model: 'Fable 5.1', branch: 'swarm', contextWindow: { usedPercent: 27 } } }), 'blaze', tOf(20000), { cls: 'p-graph-body p-ctx-a p-cards-body', noModel: true, inBtn: graphHtml(series('blaze', tOf(20000), 3)) + ringHtml(27) + handHtml(SUBS4), inBtnAfter: topFig(27), copyExtra: innerLine('delegating', 'Waiting on 2') }) },
+      { r: 50, html: body(agent({ project: 'ref', color: A3, agent: { model: 'Sonnet 5', branch: 'main', contextWindow: { usedPercent: 9 } } }), { cls: 'p-ctx-a', inBtn: ringHtml(9), inBtnAfter: fig(9) }) },
+      { r: 50, html: graphBody(working({ project: 'duke', color: A6, agent: { model: 'Haiku 4.5', branch: 'hw3', contextWindow: { usedPercent: 55 } } }), 'ease', tOf(2000), { cls: 'p-graph-body p-ctx-a', noModel: true, inBtn: graphHtml(series('ease', tOf(2000), 5)) + ringHtml(55), inBtnAfter: fig(55), copyExtra: innerLine('responding', 'Writing the reply', true) }, 5) }
+    ];
+    settle(items, W, H);
+    return '<section class="vf-monitor-swarm p-field" aria-label="Running agent status field"><div class="vf-monitor-swarm-grid" aria-hidden="true"></div>' +
+      items.map(function (it) { return it.html.replace('style="', 'style="left:' + it.x.toFixed(1) + 'px;top:' + it.y.toFixed(1) + 'px;'); }).join('') +
+      '<span class="p-fieldnote">settled · centre pull 0.02 · gap 4px · eight bodies · no body grown</span></section>';
+  }
+  function r09() { var W = $('s09l').clientWidth || 1000, H = 460; $('s09l').innerHTML = clusterHtml(W, H); $('s09d').innerHTML = clusterHtml(W, H); }
+
+  r01(); r02(); r03(); r04(); r05(); r06(); r07(); r08(); r09();
+  applyTheme();
+  var resizeTimer; window.addEventListener('resize', function () { clearTimeout(resizeTimer); resizeTimer = setTimeout(r09, 120); });
+})();
+</script>

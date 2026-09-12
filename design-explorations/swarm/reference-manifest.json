@@ -1,0 +1,13 @@
+{
+  "reference": "/private/tmp/claude-501/-Users-jamesyong-Projects-project100-puppeteer/196684d5-f97d-4c4e-858c-03be7fb3e05a/scratchpad/swarm-proposals.html",
+  "snapshot": "/Users/jamesyong/Projects/project100/puppeteer/design-explorations/swarm/reference-snapshot.html",
+  "css": {
+    "css-tokens": "dea39ec6653e2bac502e7d2486c3b8fda5192682423a87feb7204d95541da773",
+    "css-godview": "dba16ef3576ee89bb0f4b0f09cddd049b08993266dda2f1d26c7bfc2cc44765b",
+    "css-swarm": "d22ed90187b12c96b00b5f4bdcee2037103f9f6301a882f386bf592ed55858ea",
+    "css-bubble": "58f6a799bda79ee86a98844972146b3a578bb8d3b7c4323c0e83a30bb09fe246",
+    "css-page": "e26d4e6cd285b8670a9257fdd2b88dff20ef6d60e0b9a4f5c1d6067a4c710749",
+    "css-proposals": "3ce2a0223aeee8884631d9ef2bb58f20cbecb8c8ad81d2928d1c52baf8352eb5"
+  },
+  "bodyFunction": "95d5c67ad12b93f82782a74e820fbbc6eff9da5794626c254dfead4de96dad8e"
+}

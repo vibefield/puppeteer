@@ -1,0 +1,286 @@
+<style>
+/* Study geometry and proposed marks only. All color/type/material roles come
+   from the reference's vf- and pg- tokens and native circle classes. */
+#swarm-design-lab { width: 100%; height: auto; overflow: visible; min-width: 0; }
+#swarm-design-lab [hidden] { display: none !important; }
+#swarm-design-lab .pg-top { position: relative; height: auto; min-height: 52px; flex-wrap: wrap; padding-top: 10px; padding-bottom: 10px; }
+#swarm-design-lab .pg-top .q-tabs { display: flex; gap: 6px; flex-wrap: wrap; }
+#swarm-design-lab .pg-top .acts { flex-wrap: wrap; }
+#swarm-design-lab .pg-main { padding-top: 34px; padding-bottom: 30px; }
+#swarm-design-lab .pg-hero { gap: 12px; }
+#swarm-design-lab .pg-hero h1 { max-width: 28ch; }
+#swarm-design-lab section.pg-sec { margin-top: 30px; }
+#swarm-design-lab .q-options { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px 20px; }
+#swarm-design-lab .q-options .p-dh { min-height: 28px; }
+#swarm-design-lab .q-options .p-dh .pg-switch { margin-left: auto; }
+#swarm-design-lab .q-options .p-row { padding: 30px 12px 22px; gap: 26px 20px; }
+#swarm-design-lab .q-options .p-unit > small { max-width: 112px; }
+#swarm-design-lab .q-option-meta { display: flex; flex-wrap: wrap; gap: 7px 15px; margin-top: 8px; }
+#swarm-design-lab .q-option-meta span { font: 500 10px/1.5 var(--vf-font-mono); letter-spacing: .02em; color: var(--pg-ink-3); }
+#swarm-design-lab .q-baseline { display: flex; align-items: center; gap: 25px; padding: 20px 26px; flex-wrap: wrap; }
+#swarm-design-lab .q-baseline .vf-monitor-bubble-positioner { position: relative; flex: none; }
+#swarm-design-lab .q-baseline-label { display: flex; flex-direction: column; gap: 6px; }
+#swarm-design-lab .q-baseline-label .p-pill { align-self: start; }
+#swarm-design-lab .q-metered:not(.q-parent) .vf-monitor-bubble-copy { transform: translateY(-3px); }
+#swarm-design-lab .q-rate { position: absolute; z-index: 3; bottom: 25px; left: 0; right: 0; font: 800 7px/1 var(--vf-font-mono); letter-spacing: .06em; opacity: .8; pointer-events: none; }
+#swarm-design-lab .q-comb .seg.is-lit { stroke: var(--agent-color); }
+#swarm-design-lab .q-twin .vf-monitor-bubble-particles.q-self { right: 50%; }
+#swarm-design-lab .q-twin .vf-monitor-bubble-particles.q-subs { left: 50%; }
+#swarm-design-lab .q-twin .q-subs .vf-monitor-bubble-particle { background: transparent; box-shadow: inset 0 0 0 1px var(--agent-color), 0 0 7px var(--agent-color); }
+#swarm-design-lab .q-count { position: absolute; top: 11px; left: 0; right: 0; z-index: 3; pointer-events: none; font: 800 7px/1 var(--vf-font-mono); letter-spacing: .04em; opacity: .75; }
+#swarm-design-lab .q-count.is-attention { color: var(--vf-orange); opacity: 1; }
+#swarm-design-lab .q-brood-crown .p-mini { width: 16px; height: 16px; font-size: 7px; }
+#swarm-design-lab .q-brood-crown .p-mini .p-eff i { width: 1px; height: 2px; }
+#swarm-design-lab .q-brood-crown .p-mini.is-live::after { width: 3px; height: 3px; right: -1px; top: 0; }
+#swarm-design-lab .q-brood-crown .p-mini.is-blocked { background: var(--vf-orange); color: var(--vf-state-on-attention); }
+#swarm-design-lab .q-brood-crown .p-mini.is-blocked::after { display: none; }
+#swarm-design-lab .q-crown-count { position: absolute; bottom: 19px; left: 0; right: 0; font: 800 7px/1 var(--vf-font-mono); opacity: .7; }
+#swarm-design-lab .q-crown-count.is-attention { color: var(--vf-orange); opacity: 1; }
+#swarm-design-lab .q-shelf { position: absolute; bottom: 15px; left: 50%; transform: translateX(-50%); margin: 0; z-index: 3; }
+#swarm-design-lab .q-shelf .p-st.is-blocked { background: var(--vf-orange); color: var(--vf-state-on-attention); }
+#swarm-design-lab .q-brood-quiet .q-shelf { bottom: 15px; align-items: center; height: 15px; }
+#swarm-design-lab .q-brood-quiet .q-shelf .p-st { width: 7px; height: 7px; border-radius: 50%; transition: width 180ms var(--vf-ease-island), height 180ms var(--vf-ease-island), border-radius 180ms var(--vf-ease-island); }
+#swarm-design-lab .q-brood-quiet .q-shelf .p-st b, #swarm-design-lab .q-brood-quiet .q-shelf .p-st .p-eff { display: none; }
+#swarm-design-lab .q-brood-quiet .q-shelf .p-st.is-live::after { display: none; }
+#swarm-design-lab .q-brood-quiet .q-shelf .p-st.is-more { width: 15px; height: 12px; background: transparent; box-shadow: none; border-radius: 0; }
+#swarm-design-lab .q-brood-quiet .q-shelf .p-st.is-more b { display: block; }
+#swarm-design-lab .q-brood-quiet .vf-monitor-bubble:hover .p-st, #swarm-design-lab .q-brood-quiet .vf-monitor-bubble:focus-visible .p-st, #swarm-design-lab .q-brood-quiet .vf-monitor-bubble[aria-current='true'] .p-st { width: 12px; height: 15px; border-radius: 3px; }
+#swarm-design-lab .q-brood-quiet .vf-monitor-bubble:hover .p-st b, #swarm-design-lab .q-brood-quiet .vf-monitor-bubble:focus-visible .p-st b, #swarm-design-lab .q-brood-quiet .vf-monitor-bubble[aria-current='true'] .p-st b, #swarm-design-lab .q-brood-quiet .vf-monitor-bubble:hover .p-eff, #swarm-design-lab .q-brood-quiet .vf-monitor-bubble:focus-visible .p-eff, #swarm-design-lab .q-brood-quiet .vf-monitor-bubble[aria-current='true'] .p-eff { display: inline-flex; }
+#swarm-design-lab .q-fan { position: absolute; z-index: 2; left: calc(50% - 34px); bottom: 15px; width: 68px; height: 19px; }
+#swarm-design-lab .q-brood-fan .vf-monitor-bubble-copy { transform: translateY(-4px); }
+#swarm-design-lab .q-brood-crown .vf-monitor-bubble-copy { transform: translateY(-2px); }
+#swarm-design-lab .q-fan path { fill: none; stroke: currentColor; stroke-width: .7; opacity: .35; }
+#swarm-design-lab .q-fan-nodes { position: absolute; left: 50%; bottom: 15px; transform: translateX(-50%); display: flex; gap: 4px; z-index: 3; }
+#swarm-design-lab .q-fan-nodes .p-mini { position: relative; width: 14px; height: 14px; font-size: 7px; }
+#swarm-design-lab .q-fan-nodes .p-mini .p-eff { display: none; }
+#swarm-design-lab .q-fan-nodes .p-mini.is-live::after { width: 3px; height: 3px; top: -1px; right: 0; }
+#swarm-design-lab .q-fan-nodes .p-mini.is-blocked { background: var(--vf-orange); color: var(--vf-state-on-attention); }
+#swarm-design-lab .q-parent .q-rate { top: 19px; bottom: auto; font-size: 6.5px; }
+#swarm-design-lab .q-parent.q-brood-crown .q-rate { top: auto; bottom: 24px; }
+#swarm-design-lab .q-parent.q-brood-crown .q-crown-count { bottom: 15px; }
+#swarm-design-lab .q-field-controls { display: flex; flex-wrap: wrap; gap: 8px 16px; align-items: center; margin: 8px 0 16px; }
+#swarm-design-lab .q-field-controls label { display: flex; align-items: center; flex-wrap: wrap; gap: 7px; font: 11px var(--vf-font-mono); color: var(--pg-ink-3); }
+#swarm-design-lab .q-field-controls select { font: 11px var(--vf-font-mono); background: var(--pg-chrome); color: var(--pg-ink-2); border: 1px solid var(--pg-hairline-strong); border-radius: 6px; padding: 5px 8px; max-width: 100%; }
+#swarm-design-lab .p-field { height: var(--q-field-height, 400px); }
+#swarm-design-lab .q-detail { margin-top: 18px; }
+#swarm-design-lab .q-detail .pg-meta { margin: 5px 0 12px; }
+#swarm-design-lab .q-detail table { margin-bottom: 0; }
+#swarm-design-lab .pg-colophon { margin-top: 30px; }
+#swarm-design-lab .q-sr { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
+#swarm-design-lab[data-motion='off'] .vf-monitor-bubble-positioner::before, #swarm-design-lab[data-motion='off'] .vf-monitor-bubble-positioner::after, #swarm-design-lab[data-motion='off'] .vf-monitor-bubble-glyph, #swarm-design-lab[data-motion='off'] .vf-monitor-bubble-ignition *, #swarm-design-lab[data-motion='off'] .p-mini::after, #swarm-design-lab[data-motion='off'] .p-ihalo, #swarm-design-lab[data-motion='off'] .p-graph .halo { animation-play-state: paused; }
+@media (max-width: 1000px) { #swarm-design-lab .q-options { grid-template-columns: minmax(0, 1fr); } }
+@media (max-width: 720px) { #swarm-design-lab .pg-main { padding-top: 25px; } #swarm-design-lab .pg-top .acts { margin-left: 0; } #swarm-design-lab .pg-hero h1 { font-size: 30px; } }
+@media (max-width: 400px) { #swarm-design-lab .q-options .p-row { gap: 22px 16px; } #swarm-design-lab .pg-top { padding: 12px 16px; } #swarm-design-lab .q-baseline { padding: 22px 15px; gap: 18px; } }
+@media (pointer: coarse) { #swarm-design-lab .pg-switch { min-height: 44px; } #swarm-design-lab .q-field-controls select { min-height: 44px; font-size: 16px; } }
+@media (prefers-reduced-motion: reduce) { #swarm-design-lab .vf-monitor-bubble-positioner::before, #swarm-design-lab .vf-monitor-bubble-positioner::after, #swarm-design-lab .vf-monitor-bubble-ignition *, #swarm-design-lab .vf-monitor-bubble-glyph, #swarm-design-lab .p-mini::after, #swarm-design-lab .p-ihalo, #swarm-design-lab .p-graph .halo { animation-play-state: paused; } #swarm-design-lab .q-brood-quiet .p-st { transition: none; } }
+</style>
+
+<div id="swarm-design-lab" aria-label="Godview swarm studies in the reference art direction" data-motion="on">
+  <div class="pg-top">
+    <span class="name">Swarm proposals <small>further studies</small></span>
+    <div class="q-tabs" role="tablist" aria-label="Proposal sections">
+      <button class="pg-switch" id="q-tab-burn" role="tab" aria-controls="q-burn" aria-selected="true" aria-pressed="true" data-tab="burn" type="button">token burn</button>
+      <button class="pg-switch" id="q-tab-brood" role="tab" aria-controls="q-brood" aria-selected="false" aria-pressed="false" data-tab="brood" type="button">subagents</button>
+      <button class="pg-switch" id="q-tab-field" role="tab" aria-controls="q-field-panel" aria-selected="false" aria-pressed="false" data-tab="field" type="button">together</button>
+    </div>
+    <div class="acts">
+      <button class="pg-switch" id="q-theme" type="button" aria-label="Toggle light and dark theme"><i aria-hidden="true">☼</i>theme</button>
+      <button class="pg-switch" id="q-motion" type="button" aria-pressed="true">motion on</button>
+    </div>
+  </div>
+  <main class="pg-main">
+    <div class="pg-hero">
+      <span class="pg-num">Godview · Puppeteer · same body, further readings</span>
+      <h1>Inside the rim, in the same language.</h1>
+      <div class="pg-meta"><span>The provider mark · branch, project, model · project tint · context wash</span><span>100px agents · every mark inside the rim · illustrative data</span></div>
+    </div>
+
+    <section class="pg-sec" id="q-burn" role="tabpanel" aria-labelledby="q-tab-burn">
+      <span class="pg-num">01</span><h2>Working, at its burn</h2>
+      <div class="vf-godview spec-root spec-block p-root" id="q-reference-burn"></div>
+      <div class="q-options" id="q-burn-options"></div>
+    </section>
+
+    <section class="pg-sec" id="q-brood" role="tabpanel" aria-labelledby="q-tab-brood" hidden>
+      <span class="pg-num">02</span><h2>The brood, within the body</h2>
+      <div class="vf-godview spec-root spec-block p-root" id="q-reference-brood"></div>
+      <div class="q-options" id="q-brood-options"></div>
+    </section>
+
+    <section class="pg-sec" id="q-field-panel" role="tabpanel" aria-labelledby="q-tab-field" hidden>
+      <span class="pg-num">03</span><h2>Together <small id="q-combination"></small></h2>
+      <div class="q-field-controls">
+        <label>State <select id="q-scenario"><option value="steady">Steady work</option><option value="quiet">Burst, then quiet</option><option value="many">Nine children</option><option value="blocked">One child blocked</option><option value="unknown">Usage unavailable</option></select></label>
+        <span class="pg-num">select a body to inspect</span>
+      </div>
+      <div class="vf-godview spec-root p-root" id="q-field"></div>
+      <div class="q-detail" id="q-detail" aria-label="Selected agent details"></div>
+    </section>
+    <footer class="pg-colophon"><span id="q-selection"></span><span>All proposal marks are clipped by the native circle.</span></footer>
+  </main>
+  <div class="q-sr" id="q-status" aria-live="polite"></div>
+</div>
+
+<script>
+(() => {
+  const root = document.getElementById('swarm-design-lab');
+  const $ = id => root.querySelector('#' + id);
+  const esc = s => String(s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+  /*__REFERENCE_HELPERS__*/
+  const state = {tab:'burn',burn:'emission',brood:'quiet',scenario:'steady',selected:'lead',motion:!matchMedia('(prefers-reduced-motion: reduce)').matches,context:62};
+  const schemes = matchMedia('(prefers-color-scheme: dark)');
+  let fieldWidth = 0, explicitTheme = null, fieldAgents = [];
+  const burnChoices = [
+    {id:'emission',letter:'A',name:'Emission, counted',reads:'Particle count + an exact figure',trade:'The existing ignition, metered'},
+    {id:'trace',letter:'B',name:'The afterglow',reads:'The reference graph + a present-rate figure',trade:'60s history · retains a recent burst'},
+    {id:'comb',letter:'C',name:'The lower comb',reads:'12 teeth = the burn band · log scale',trade:'A quiet gauge beneath the copy'},
+    {id:'twin',letter:'D',name:'The twin current',reads:'Solid sparks: self · hollow: subagents',trade:'Requires exclusive token accounting'}
+  ];
+  const broodChoices = [
+    {id:'crown',letter:'A',name:'The inner crown',reads:'Five places above the branch · +N overflow',trade:'The body keeps its native size'},
+    {id:'shelf',letter:'B',name:'The lower shelf',reads:'The model letter and effort ticks',trade:'Four children, then an overflow tile'},
+    {id:'quiet',letter:'C',name:'The quiet brood',reads:'Dots at rest · tiles on hover or focus',trade:'The detail appears on approach'},
+    {id:'fan',letter:'D',name:'The small fan',reads:'A parent joint and three child marks',trade:'A visible delegation relationship'}
+  ];
+  const childBase = [
+    {m:'F',e:'high',live:true,name:'implementation',model:'Fable 5.1',rate:3600},
+    {m:'S',e:'medium',live:true,name:'review',model:'Sonnet 5',rate:2000},
+    {m:'H',e:'low',live:false,name:'tests',model:'Haiku 4.5',rate:0},
+    {m:'S',e:'max',live:false,name:'types',model:'Sonnet 5',rate:0}
+  ];
+  const shortRate = n => n == null ? '--' : n >= 1000 ? (n/1000).toFixed(n%1000?1:0)+'k' : String(Math.round(n));
+  const burnIntensity = n => n == null ? .4 : n <= 0 ? 0 : tOf(n);
+  const liveCount = subs => subs.filter(s=>s.live).length;
+  const blockedCount = subs => subs.filter(s=>s.blocked).length;
+  const historyFor = rate => [0.3,0.5,0.25,0.65,0.8,1.15,0.75,0.6,0.9,1.25,0.95,1].map(v=>rate==null?null:Math.round(v*rate));
+  function subsFor(count=4,scenario='steady') {
+    return Array.from({length:count},(_,i)=>{
+      const s={...childBase[i%4],index:i+1};
+      if(scenario==='quiet'){s.live=false;s.rate=0;}
+      if(scenario==='blocked'&&i===1){s.blocked=true;s.live=true;s.rate=0;}
+      if(scenario==='unknown')s.rate=null;
+      return s;
+    });
+  }
+  function specimen(rate=8100,over={}) {
+    return {...working({project:'puppeteer',agent:{contextWindow:{usedPercent:state.context}}}),rate,history:historyFor(rate),selfRate:rate==null?null:Math.round(rate*.3),subsRate:rate==null?null:rate-Math.round(rate*.3),subs:[],...over};
+  }
+  function rateFigure(a) {return '<span class="q-rate">'+shortRate(a.rate)+' / MIN</span>';}
+  function combMark(a) {
+    if(a.rate==null)return '';
+    let mark='';const level=burnIntensity(a.rate)*12;
+    for(let i=0;i<12;i++){const angle=i<6?160-i*8:60-(i-6)*8;mark+='<path class="seg'+(a.rate>0&&i<level?' is-lit':'')+'" d="'+arcPath(50,50,44,angle-2,angle+2)+'"/>';}
+    return '<svg class="p-tach q-comb" viewBox="0 0 100 100" aria-hidden="true">'+mark+'</svg>';
+  }
+  function countedParticles(rate) {return partStyles(rate==null?24:rate===0?0:6+Math.round(38*burnIntensity(rate)),burnIntensity(rate),[14,46]);}
+  function twinParticles(a) {
+    const count=a.rate==null?24:a.rate===0?0:8+Math.round(34*burnIntensity(a.rate));
+    const left=a.rate?Math.round(count*a.selfRate/a.rate):Math.round(count/2),right=count-left;
+    const particles=(n,kind)=>'<span class="vf-monitor-bubble-particles '+kind+'">'+partStyles(n,burnIntensity(a.rate),[9,32]).map(s=>'<i class="vf-monitor-bubble-particle" style="'+s+'"></i>').join('')+'</span>';
+    return particles(left,'q-self')+particles(right,'q-subs');
+  }
+  function burnOptions(a,mode) {
+    const t=burnIntensity(a.rate);
+    if(mode==='trace')return {cls:'q-metered p-graph-body',noIgnition:true,inBtn:a.rate==null?'':graphHtml((a.history||historyFor(a.rate)).map(burnIntensity)),inBtnAfter:rateFigure(a)};
+    if(mode==='comb')return {cls:'q-metered',noIgnition:true,inBtnAfter:rateFigure(a)+combMark(a)};
+    return {cls:'q-metered'+(mode==='twin'?' q-twin':''),particles:mode==='twin'&&a.rate!=null?null:countedParticles(a.rate),
+      noIgnition:a.rate===0,coreStyle:'animation-duration:'+(2.4-1.25*t).toFixed(2)+'s',
+      glyphStyle:'animation-duration:'+(2.4-1.25*t).toFixed(2)+'s',
+      ignExtra:mode==='twin'&&a.rate!=null?twinParticles(a):'',inBtnAfter:rateFigure(a)};
+  }
+  function ticks(e){const count={low:1,medium:2,high:3,max:4}[e]||0;return '<span class="p-eff" aria-hidden="true">'+[0,1,2,3].map(i=>'<i class="'+(i<count?'on':'')+'"></i>').join('')+'</span>';}
+  function childList(subs,limit){return subs.length>limit?subs.slice(0,limit-1).concat([{more:subs.length-limit+1}]):subs;}
+  function childClass(s){return s.more?' is-more':s.blocked?' is-blocked':s.live?' is-live':' is-done';}
+  function smallCircle(s,style=''){return '<span class="p-mini'+childClass(s)+(s.mate?' is-mate':'')+'" style="'+style+'"><b>'+(s.more?'+'+s.more:s.m)+'</b>'+(s.more?'':ticks(s.e))+'</span>';}
+  function shelf(subs,limit=5){return '<span class="p-stack q-shelf">'+childList(subs,limit).map(s=>'<span class="p-st'+childClass(s)+'"><b>'+(s.more?'+'+s.more:s.m)+'</b>'+(s.more?'':ticks(s.e))+'</span>').join('')+'</span>';}
+  function countMark(subs,extra='') {const blocked=blockedCount(subs);return '<span class="q-count '+extra+(blocked?' is-attention':'')+'">'+(blocked?blocked+' BLOCKED':liveCount(subs)+' LIVE / '+subs.length)+'</span>';}
+  function broodOptions(a,mode) {
+    const subs=a.subs, list=childList(subs,5);let mark='',count=countMark(subs);
+    if(mode==='crown') {
+      mark=list.map((s,i)=>{const angle=list.length===1?270:210+i*120/(list.length-1);const p=polar(50,50,33,angle);return smallCircle(s,'left:'+(p.x-8)+'px;top:'+(p.y-8)+'px');}).join('');
+      count='<span class="q-crown-count'+(blockedCount(subs)?' is-attention':'')+'">'+(blockedCount(subs)?blockedCount(subs)+' BLOCKED':liveCount(subs)+' LIVE / '+subs.length)+'</span>';
+    } else if(mode==='shelf'||mode==='quiet')mark=shelf(subs);
+    else {
+      const fan=childList(subs,3),w=fan.length*14+(fan.length-1)*4,start=34-w/2;
+      const paths=fan.map((s,i)=>{const x=start+i*18+7;return '<path d="M34 0V5H'+x+'V10"/>';}).join('');
+      mark='<svg class="q-fan" viewBox="0 0 68 19" aria-hidden="true">'+paths+'</svg><span class="q-fan-nodes">'+fan.map(s=>smallCircle(s)).join('')+'</span>';
+    }
+    return {cls:'q-parent q-brood-'+mode,r:50,inBtn:mark+count};
+  }
+  function drawBody(a,{burn=state.burn,brood=state.brood,meter=true}={}) {
+    const options=a.status==='working'&&meter?burnOptions(a,burn):{};
+    if(a.subs&&a.subs.length){const more=broodOptions(a,brood);options.r=more.r;options.cls=(options.cls||'')+' '+more.cls;options.inBtn=(options.inBtn||'')+more.inBtn;}
+    if(a.status==='blocked'){options.cls=(options.cls||'')+' p-blk-a';options.inBtn=(options.inBtn||'')+'<i class="p-ihalo" aria-hidden="true"></i>';options.copyExtra='<span class="p-kind">permission</span>';}
+    let html=body(a,options);
+    const full=a.project+', '+a.status+', '+(a.rate==null?'usage unavailable':a.rate+' tokens per minute')+(a.subs?.length?', '+liveCount(a.subs)+' live of '+a.subs.length+' children':'');
+    html=html.replace(/aria-label="[^"]*"/,'aria-label="'+esc(full)+'"');
+    html=html.replace(/data-tooltip="[^"]*"/,'data-tooltip="'+esc(full)+'"');
+    return html;
+  }
+  function decorateTheme() {
+    const theme=explicitTheme||(schemes.matches?'dark':'light');root.dataset.theme=theme;
+    root.querySelectorAll('.vf-godview').forEach(el=>{el.classList.remove('theme-light','theme-dark');el.classList.add('theme-'+theme);el.dataset.godviewAnimations=state.motion?'on':'off';});
+    root.dataset.motion=state.motion?'on':'off';$('q-motion').textContent=state.motion?'motion on':'motion off';$('q-motion').setAttribute('aria-pressed',String(state.motion));
+  }
+  function choicesHtml(choices,category) {
+    return choices.map(choice=>{
+      const chosen=state[category]===choice.id;
+      const stage=category==='burn'?row(RATES.map(R=>unit(drawBody(specimen(R.v),{burn:choice.id}),R.s+' tok/min · <b>'+R.word+'</b>'))):row([
+        unit(drawBody(specimen(8100,{subs:subsFor(4)}),{brood:choice.id,meter:false}),'4 children · <b>2 live</b>'),
+        unit(drawBody(specimen(8100,{subs:subsFor(9)}),{brood:choice.id,meter:false}),'9 children · <b>5 live</b>')
+      ]);
+      return '<div class="p-design"><div class="p-dh"><span class="p-pill">'+choice.letter+'</span><h4>'+choice.name+'</h4><button type="button" class="pg-switch" data-category="'+category+'" data-choice="'+choice.id+'" aria-pressed="'+chosen+'" aria-label="Use '+choice.name+' in the cluster">'+(chosen?'selected':'use in cluster')+'</button></div><div class="vf-godview spec-root spec-block p-root">'+stage+'</div><div class="q-option-meta"><span>'+choice.reads+'</span><span>'+choice.trade+'</span></div></div>';
+    }).join('');
+  }
+  function buildAgents() {
+    const rate=state.scenario==='quiet'?0:state.scenario==='unknown'?null:8100;
+    const lead=specimen(rate,{id:'lead',subs:subsFor(state.scenario==='many'?9:4,state.scenario),active:state.selected==='lead'});
+    if(state.scenario==='quiet')lead.history=[800,3200,18000,34000,29000,21000,8000,0,0,0,0,0];
+    if(state.scenario==='unknown')lead.agent.contextWindow={};
+    lead.subsRate=rate==null?null:lead.subs.reduce((sum,s)=>sum+(s.rate||0),0);lead.selfRate=rate==null?null:rate-lead.subsRate;
+    if(lead.selfRate<0){lead.subs.forEach(s=>s.rate=s.live?Math.floor(5600/liveCount(lead.subs)):0);lead.subsRate=lead.subs.reduce((sum,s)=>sum+s.rate,0);lead.selfRate=rate-lead.subsRate;}
+    const make=(id,project,rate,color,status='working',pct=42)=>specimen(rate,{id,project,color,status,selfRate:rate,subsRate:0,active:state.selected===id,agent:{provider:{id:'claude',label:'Claude'},model:'Sonnet 5',branch:id,contextWindow:{usedPercent:pct}}});
+    return [lead,make('editor','jabali',1400,A2),make('main','voyager',18000,A5),make('review','puppeteer',0,A1,'idle',28),make('hw4','duke',0,A6,'blocked',84),make('tests','study',4200,A8),make('ref','ref',0,A3,'idle',9),{...term({id:'shell',project:'voyager',color:A5}),rate:0,subs:[],active:state.selected==='shell'}];
+  }
+  function settleField(items,W,H) {
+    const angle=Math.PI*(3-Math.sqrt(5));items.forEach((it,i)=>{it.x=W/2+Math.cos(i*angle)*Math.sqrt(i)*48;it.y=H/2+Math.sin(i*angle)*Math.sqrt(i)*48;});
+    for(let k=0;k<650;k++){
+      const attraction=k<400?.004*(1-k/400):0;items.forEach(it=>{it.x+=(W/2-it.x)*attraction;it.y+=(H/2-it.y)*attraction;});
+      for(let i=0;i<items.length;i++)for(let j=i+1;j<items.length;j++){const a=items[i],b=items[j];let dx=b.x-a.x,dy=b.y-a.y,d=Math.hypot(dx,dy);if(d<.001){dx=.01;dy=.01;d=Math.hypot(dx,dy);}const min=a.r+b.r+4.5;if(d<min){const p=(min-d)/2;a.x-=dx/d*p;a.y-=dy/d*p;b.x+=dx/d*p;b.y+=dy/d*p;}}
+      items.forEach(it=>{it.x=Math.max(it.r+12,Math.min(W-it.r-12,it.x));it.y=Math.max(it.r+15,Math.min(H-it.r-27,it.y));});
+    }return items;
+  }
+  function renderDetail() {
+    const a=fieldAgents.find(a=>a.id===state.selected)||fieldAgents[0],subs=a.subs||[];
+    $('q-detail').innerHTML='<span class="pg-num">'+esc(a.project)+' · '+(a.agent?esc(a.agent.model):'empty terminal')+'</span><div class="pg-meta"><span>'+esc(a.status)+' · '+(a.rate==null?'usage unavailable':shortRate(a.rate)+' tok/min')+(subs.length?' · '+liveCount(subs)+' live / '+subs.length+' children':'')+'</span>'+(subs.length?'<span>self '+shortRate(a.selfRate)+' /min · subagents '+shortRate(a.subsRate)+' /min</span>':'')+'</div>'+(subs.length?'<div class="pg-tablewrap"><table class="pg-t"><thead><tr><th>Child</th><th>Model</th><th>Effort</th><th>State</th><th>Burn /min</th></tr></thead><tbody>'+subs.map(s=>'<tr><td>'+s.index+' · '+s.name+'</td><td>'+s.model+'</td><td>'+s.e+'</td><td>'+(s.blocked?'blocked':s.live?'working':'done')+'</td><td class="n">'+shortRate(s.rate)+'</td></tr>').join('')+'</tbody></table></div>':'');
+  }
+  function renderField() {
+    if(state.tab!=='field')return;const W=$('q-field').clientWidth;if(!W)return;fieldWidth=W;const H=W<350?480:W<500?420:360;
+    fieldAgents=buildAgents();const items=settleField(fieldAgents.map(a=>({a,r:a.agent?50:40})),W,H);
+    $('q-field').innerHTML='<section class="vf-monitor-swarm p-field" style="--q-field-height:'+H+'px" aria-label="Eight agents in a packed field"><div class="vf-monitor-swarm-grid" aria-hidden="true"></div>'+items.map(it=>drawBody(it.a).replace('style="','style="left:'+it.x.toFixed(2)+'px;top:'+it.y.toFixed(2)+'px;').replace('<button ','<button data-agent="'+it.a.id+'" ')).join('')+'<span class="p-fieldnote">eight bodies · native sizes · 4px minimum gap</span></section>';renderDetail();decorateTheme();
+  }
+  function render() {
+    $('q-reference-burn').innerHTML='<div class="q-baseline">'+graphBody(working(),'steady',tOf(8100))+'<div class="q-baseline-label"><span class="p-pill">your reference</span><span class="pg-num">the graph · 8.1k tok/min</span></div></div>';
+    $('q-reference-brood').innerHTML='<div class="q-baseline">'+graphBody(working(),'steady',tOf(8100),{cls:'p-graph-body p-cards-body',noModel:true,inBtn:graphHtml(series('steady',tOf(8100)))+handHtml(subsFor(4)),inBtnAfter:topFig(62),copyExtra:innerLine('delegating','Waiting on 2')})+'<div class="q-baseline-label"><span class="p-pill">your reference</span><span class="pg-num">the hand · 4 children</span></div></div>';
+    $('q-burn-options').innerHTML=choicesHtml(burnChoices,'burn');$('q-brood-options').innerHTML=choicesHtml(broodChoices,'brood');
+    root.querySelectorAll('[data-tab]').forEach(b=>{b.setAttribute('aria-selected',String(b.dataset.tab===state.tab));b.setAttribute('aria-pressed',String(b.dataset.tab===state.tab));});
+    $('q-burn').hidden=state.tab!=='burn';$('q-brood').hidden=state.tab!=='brood';$('q-field-panel').hidden=state.tab!=='field';
+    const combination=burnChoices.find(b=>b.id===state.burn).name+' + '+broodChoices.find(b=>b.id===state.brood).name;$('q-selection').textContent=combination;$('q-combination').textContent=combination;
+    renderField();decorateTheme();
+  }
+  root.addEventListener('click',e=>{
+    const b=e.target.closest('button');if(!b)return;
+    if(b.dataset.tab){state.tab=b.dataset.tab;render();}
+    if(b.dataset.choice){state[b.dataset.category]=b.dataset.choice;render();root.querySelector('[data-category="'+b.dataset.category+'"][data-choice="'+b.dataset.choice+'"]').focus({preventScroll:true});$('q-status').textContent=$('q-selection').textContent;}
+    if(b.id==='q-theme'){explicitTheme=root.dataset.theme==='dark'?'light':'dark';decorateTheme();}
+    if(b.id==='q-motion'){state.motion=!state.motion;decorateTheme();}
+    if(b.dataset.agent){state.selected=b.dataset.agent;renderField();root.querySelector('[data-agent="'+state.selected+'"]').focus({preventScroll:true});$('q-status').textContent='Selected '+state.selected;}
+  });
+  root.addEventListener('keydown',e=>{if(!e.target.matches('[data-tab]')||!['ArrowLeft','ArrowRight','Home','End'].includes(e.key))return;e.preventDefault();const tabs=['burn','brood','field'],i=tabs.indexOf(state.tab);state.tab=e.key==='Home'?'burn':e.key==='End'?'field':tabs[(i+(e.key==='ArrowRight'?1:2))%3];render();$('q-tab-'+state.tab).focus({preventScroll:true});});
+  $('q-scenario').addEventListener('change',e=>{state.scenario=e.target.value;renderField();$('q-status').textContent='Scenario changed';});
+  schemes.addEventListener('change',()=>{if(!explicitTheme)decorateTheme();});
+  render();
+  const resize=new ResizeObserver(()=>{if(state.tab==='field'&&Math.abs($('q-field').clientWidth-fieldWidth)>1)renderField();});resize.observe($('q-field'));
+  if(globalThis.Tweak){const tweak=new Tweak({container:root,onChange:render});tweak.addSelect(state,'burn',{label:'Burn mark',options:burnChoices.map(c=>({label:c.name,value:c.id}))});tweak.addSelect(state,'brood',{label:'Subagent mark',options:broodChoices.map(c=>({label:c.name,value:c.id}))});tweak.addSlider(state,'context',{label:'Context used',min:0,max:100,unit:'%'});tweak.addToggle(state,'motion',{label:'Reference motion'});}
+})();
+</script>
