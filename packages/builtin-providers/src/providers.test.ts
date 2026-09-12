@@ -43,6 +43,8 @@ const adapters = vi.hoisted(() => {
     createGrokProfileService: vi.fn(() => fakeProfiles('grok', 'Grok')),
     createKimiDistributionService: vi.fn(() => fakeDistribution('kimi', 'Kimi', 'kimi')),
     createKimiProfileService: vi.fn(() => fakeProfiles('kimi', 'Kimi')),
+    createKimiAccountUsageService: vi.fn(),
+    fetchKimiAccountUsage: vi.fn(),
     createOpenCodeDistributionService: vi.fn(() => fakeDistribution('opencode', 'OpenCode', 'opencode')),
     createOpenCodeProfileService: vi.fn(() => fakeProfiles('opencode', 'OpenCode')),
     createHermesDistributionService: vi.fn(() => fakeDistribution('hermes', 'Hermes', 'hermes')),
@@ -172,6 +174,7 @@ vi.mock('@vibecook/puppeteer-adapter-grok', () => ({
 vi.mock('@vibecook/puppeteer-adapter-kimi', () => ({
   createKimiDistributionService: adapters.createKimiDistributionService,
   createKimiProfileService: adapters.createKimiProfileService,
+  createKimiAccountUsageService: adapters.createKimiAccountUsageService,
   createKimiTuiSession: adapters.createKimiTuiSession,
   prepareKimiTuiSession: adapters.prepareKimiTuiSession,
   normalizeKimiNativeInvocation: adapters.normalizeKimiNativeInvocation,
@@ -270,14 +273,18 @@ describe('createBuiltinProviders launch options', () => {
       provider: { id: 'codex', label: 'Codex', refresh: { pollIntervalMs: 60_000 } },
       fetch: () => adapters.fetchCodexAccountUsage(options),
     }));
-    adapters.createGrokAccountUsageService.mockReturnValue({
+    adapters.createGrokAccountUsageService.mockImplementation((options: { executable?: string } = {}) => ({
       provider: { id: 'grok', label: 'Grok', refresh: { pollIntervalMs: 15 * 60_000 } },
-      fetch: adapters.fetchGrokAccountUsage,
-    });
+      fetch: () => adapters.fetchGrokAccountUsage(options),
+    }));
     adapters.createAntigravityAccountUsageService.mockImplementation((options: { executable?: string } = {}) => ({
       provider: { id: 'antigravity', label: 'Antigravity', refresh: { pollIntervalMs: 5 * 60_000 } },
       fetch: () => adapters.fetchAntigravityAccountUsage(options),
     }));
+    adapters.createKimiAccountUsageService.mockReturnValue({
+      provider: { id: 'kimi', label: 'Kimi', refresh: { pollIntervalMs: 5 * 60_000 } },
+      fetch: adapters.fetchKimiAccountUsage,
+    });
     adapters.createAcpSession.mockResolvedValue(fakeSession('acp'));
     adapters.createAntigravityTuiSession.mockResolvedValue(fakeSession('antigravity'));
     adapters.prepareAntigravityTuiSession.mockResolvedValue(fakePreparation('antigravity'));
@@ -328,6 +335,12 @@ describe('createBuiltinProviders launch options', () => {
     adapters.fetchAntigravityAccountUsage.mockResolvedValue({
       status: 'unauthenticated',
       provider: 'antigravity',
+      message: 'missing',
+      retryable: false,
+    });
+    adapters.fetchKimiAccountUsage.mockResolvedValue({
+      status: 'unauthenticated',
+      provider: 'kimi',
       message: 'missing',
       retryable: false,
     });
@@ -529,26 +542,32 @@ describe('createBuiltinProviders launch options', () => {
   });
 
   it('exposes provider-level account usage independently of sessions', async () => {
-    const providers = createBuiltinProviders({ executables: { codex: '/opt/codex', antigravity: '/opt/agy' } });
+    const providers = createBuiltinProviders({
+      executables: { codex: '/opt/codex', antigravity: '/opt/agy', grok: '/opt/grok' },
+    });
     const claude = providers.find((provider) => provider.descriptor.id === 'claude')!;
     const codex = providers.find((provider) => provider.descriptor.id === 'codex')!;
     const acp = providers.find((provider) => provider.descriptor.id === 'acp')!;
     const grok = providers.find((provider) => provider.descriptor.id === 'grok')!;
     const antigravity = providers.find((provider) => provider.descriptor.id === 'antigravity')!;
+    const kimi = providers.find((provider) => provider.descriptor.id === 'kimi')!;
 
     await claude.accountUsage!.fetch();
     await codex.accountUsage!.fetch();
     await grok.accountUsage!.fetch();
     await antigravity.accountUsage!.fetch();
+    await kimi.accountUsage!.fetch();
 
     expect(adapters.fetchClaudeAccountUsage).toHaveBeenCalledWith();
     expect(adapters.fetchCodexAccountUsage).toHaveBeenCalledWith({ executable: '/opt/codex' });
-    expect(adapters.fetchGrokAccountUsage).toHaveBeenCalledWith();
+    expect(adapters.fetchGrokAccountUsage).toHaveBeenCalledWith({ executable: '/opt/grok' });
     expect(adapters.fetchAntigravityAccountUsage).toHaveBeenCalledWith({ executable: '/opt/agy' });
+    expect(adapters.fetchKimiAccountUsage).toHaveBeenCalledWith();
     expect(acp.accountUsage).toBeUndefined();
     expect(claude.accountUsage?.subscribe).toEqual(expect.any(Function));
     expect(codex.accountUsage?.subscribe).toBeUndefined();
     expect(antigravity.accountUsage?.subscribe).toBeUndefined();
+    expect(kimi.accountUsage?.subscribe).toBeUndefined();
   });
 
   it('advertises only durable Imposter routes and resolves opaque continuation topology in adapters', () => {
@@ -716,7 +735,7 @@ describe('createBuiltinProviders launch options', () => {
         pollIntervalMs: 25,
       }),
     );
-    expect(kimi.accountUsage).toBeUndefined();
+    expect(kimi.accountUsage?.provider.id).toBe('kimi');
   });
 
   it('forwards OpenCode private-backend, model, and permission options', async () => {

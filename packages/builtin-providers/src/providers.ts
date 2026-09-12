@@ -68,6 +68,7 @@ import {
 } from '@vibecook/puppeteer-adapter-grok';
 import {
   captureKimiContinuationState,
+  createKimiAccountUsageService,
   createKimiDistributionService,
   createKimiProfileService,
   createKimiTuiSession,
@@ -497,7 +498,7 @@ export function createBuiltinProviders(options: BuiltinProviderOptions = {}): Ag
       executionMode: 'native-tui',
       distribution: services.grok.distribution,
       profiles: services.grok.profiles,
-      accountUsage: createGrokAccountUsageService(),
+      accountUsage: createGrokAccountUsageService({ executable: resolved.grok }),
       launch: {
         provider: {
           ...BUILTIN_PROVIDER_DESCRIPTORS.grok,
@@ -567,6 +568,7 @@ export function createBuiltinProviders(options: BuiltinProviderOptions = {}): Ag
       executionMode: 'native-tui',
       distribution: services.kimi.distribution,
       profiles: services.kimi.profiles,
+      accountUsage: createKimiAccountUsageService(),
       launch: {
         provider: {
           ...BUILTIN_PROVIDER_DESCRIPTORS.kimi,

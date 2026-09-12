@@ -9,17 +9,18 @@
     "session/update"
   ],
   "observedOrControlledEvents": [
+    "initialize",
     "signals.json",
     "summary.json"
   ],
   "unmapped": {
-    "count": 12,
-    "sha256": "9a420a9fb9c330d977f67c70f67812a8cf9e52efe360a1eb5a93c3dce5028099",
+    "count": 11,
+    "sha256": "f1918010332d92e07b2778e2da79b3a3573c898061c3a9f64c59f4f7009880e8",
     "policy": "Not consumed by this adapter version. They remain provider-native ground truth and require explicit review when this lock changes."
   },
   "totals": {
     "groundTruth": 16,
     "semantic": 2,
-    "observedOrControlled": 2
+    "observedOrControlled": 3
   }
 }
