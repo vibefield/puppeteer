@@ -3,7 +3,7 @@ import { type CategoryNormalization, type CodexNormalizationInput, itemText, rec
 
 export interface CodexTurnNormalization extends CategoryNormalization<TurnEvent> {
   turnId?: string | undefined;
-  userMessageClientId?: string | null;
+  userMessageClientId?: string | null | undefined;
 }
 
 /** Codex turn boundaries and deferred prompt correlation -> Core turn events. */

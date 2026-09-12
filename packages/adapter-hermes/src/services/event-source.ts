@@ -14,7 +14,7 @@ export interface HermesEventPublication {
   timestamp: string;
   source: AgentEventSource;
   confidence: AgentEventConfidence;
-  replay?: boolean;
+  replay?: boolean | undefined;
   nativeEvent?: unknown;
 }
 

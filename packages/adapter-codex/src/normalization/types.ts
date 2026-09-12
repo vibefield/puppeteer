@@ -10,7 +10,7 @@ export interface NormalizedNotification {
   threadId?: string | undefined;
   turnId?: string | undefined;
   /** Exact prompt correlation echoed by a completed Codex user-message item. */
-  userMessageClientId?: string | null;
+  userMessageClientId?: string | null | undefined;
 }
 
 export interface CodexNormalizationInput {

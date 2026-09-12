@@ -29,13 +29,13 @@ export interface UseMonitorAgentsOptions {
   workspace?: GhostteaWorkspaceContext | undefined;
   attachments: ReadonlyMap<string, PaneAttachment>;
   /** Live terminal id -> stable monitor identity across PTY handoffs. */
-  terminalIdentities?: ReadonlyMap<string, string>;
+  terminalIdentities?: ReadonlyMap<string, string> | undefined;
   /** Terminal-runtime exits, so a placeholder for a closed terminal stops being shown. */
   onSessionExited(listener: (sessionId: string) => void): () => void;
   /** The live tokens; a row's colour is its project's tint, or the ramp with no project. */
   palette: MonitorPalette;
   /** Account id -> label, so a row can name the account its session was launched under. */
-  profileLabels?: ReadonlyMap<string, string>;
+  profileLabels?: ReadonlyMap<string, string> | undefined;
 }
 
 export interface MonitorAgentsResult {

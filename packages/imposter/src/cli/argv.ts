@@ -26,7 +26,7 @@ export interface PersonaSelection {
 export interface SelectPersonaOptions {
   /** process.argv[1] (or argv[0] under a shim). */
   argv0?: string | undefined;
-  env?: Record<string, string | undefined>;
+  env?: Record<string, string | undefined> | undefined;
   /** Shim name → vendor, from `shimNameMap()`. */
   shims: ReadonlyMap<string, string>;
 }

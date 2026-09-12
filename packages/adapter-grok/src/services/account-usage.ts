@@ -52,13 +52,14 @@ export interface GrokBillingTransport {
 
 export interface FetchGrokAccountUsageOptions {
   /** One-shot transport override for tests. Closed after the fetch. */
-  transport?: GrokBillingTransport;
-  executable?: string;
-  requestTimeoutMs?: number;
-  now?: () => Date;
+  transport?: GrokBillingTransport | undefined;
+  executable?: string | undefined;
+  requestTimeoutMs?: number | undefined;
+  now?: (() => Date) | undefined;
   /** Extra process environment; carries the profile binding (`GROK_HOME`). */
-  env?: Record<string, string>;
-  spawnTransport?: (options: { executable?: string; env?: Record<string, string> }) => GrokBillingTransport;
+  env?: Record<string, string> | undefined;
+  spawnTransport?:
+    ((options: { executable?: string; env?: Record<string, string> }) => GrokBillingTransport) | undefined;
 }
 
 const rec = (value: unknown): Record<string, unknown> | undefined =>
@@ -470,6 +471,8 @@ export async function fetchGrokAccountUsage(
   try {
     transport =
       options.transport ??
+      // The transport factory's parameter stays narrow: test doubles annotate it
+      // explicitly, and widening it would reject those implementations.
       (options.spawnTransport ?? spawnGrokBillingTransport)({
         ...(options.executable !== undefined ? { executable: options.executable } : {}),
         ...(options.env ? { env: options.env } : {}),

@@ -1732,16 +1732,14 @@ export function createAgentRuntime(options: AgentRuntimeOptions): AgentRuntime {
     run: ManagedRun,
   ): Promise<WorkspaceLease | WorkspaceLeaseFailure> {
     const cwd = request.cwd ?? options.defaultCwd;
-    // WorkspaceRequest is owned by the workspaces package, so unset caller fields
-    // are spread away rather than sent as explicit undefined.
     const workspaceRequest: WorkspaceRequest = {
       mode: request.workspace?.mode ?? 'direct',
       path: request.workspace?.path ?? cwd,
-      ...(request.workspace?.baseRef === undefined ? {} : { baseRef: request.workspace.baseRef }),
-      ...(request.workspace?.branchName === undefined ? {} : { branchName: request.workspace.branchName }),
-      ...(request.workspace?.resumeBranch === undefined ? {} : { resumeBranch: request.workspace.resumeBranch }),
-      ...(request.workspace?.resumeRoot === undefined ? {} : { resumeRoot: request.workspace.resumeRoot }),
-      ...(request.workspace?.workspacesRoot === undefined ? {} : { workspacesRoot: request.workspace.workspacesRoot }),
+      baseRef: request.workspace?.baseRef,
+      branchName: request.workspace?.branchName,
+      resumeBranch: request.workspace?.resumeBranch,
+      resumeRoot: request.workspace?.resumeRoot,
+      workspacesRoot: request.workspace?.workspacesRoot,
     };
 
     let claim: Pick<WorkspaceLease, 'releaseClaim' | 'currentConcurrentClaims'> = {

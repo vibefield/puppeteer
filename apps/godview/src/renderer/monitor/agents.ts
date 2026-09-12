@@ -31,7 +31,7 @@ export interface MonitorTerminalRecord {
 export interface MergeMonitorTerminalsInput {
   explicit: readonly MonitorTerminalRecord[];
   workspaceSessions: readonly SessionSummary[];
-  exitedSessionIds?: ReadonlySet<string>;
+  exitedSessionIds?: ReadonlySet<string> | undefined;
   identities?: ReadonlyMap<string, string> | undefined;
 }
 
@@ -59,16 +59,16 @@ export interface AssembleMonitorAgentsInput {
   agents: readonly MonitorAgentRecord[];
   terminals: readonly MonitorTerminalRecord[];
   /** Live summaries, so a terminal placeholder reflects current activity rather than launch state. */
-  sessions?: ReadonlyMap<string, SessionSummary>;
-  attachments?: ReadonlyMap<string, PaneAttachment>;
+  sessions?: ReadonlyMap<string, SessionSummary> | undefined;
+  attachments?: ReadonlyMap<string, PaneAttachment> | undefined;
   /** Live terminal id -> stable monitor identity. */
   identities?: ReadonlyMap<string, string> | undefined;
-  activeSessionId?: string;
+  activeSessionId?: string | undefined;
   nowMs?: number | undefined;
   /** The theme's tint for project colours and the ramp for sessions with no project (record §02). */
-  colours?: MonitorColours;
+  colours?: MonitorColours | undefined;
   /** The UI's usage ledger, by stable monitor identity. */
-  usage?: ReadonlyMap<string, UsageHistory>;
+  usage?: ReadonlyMap<string, UsageHistory> | undefined;
 }
 
 /** The identity views key on: stable across PTY handoffs when the shell knows one, else the live terminal id. */
@@ -95,9 +95,9 @@ function sessionColour(project: { seq: number } | undefined, colours: MonitorCol
 export function monitorAgentFromSession(
   record: MonitorAgentRecord,
   options: {
-    allMonitorStates?: readonly AgentMonitorState[];
+    allMonitorStates?: readonly AgentMonitorState[] | undefined;
     nowMs?: number | undefined;
-    colours?: MonitorColours;
+    colours?: MonitorColours | undefined;
     usage?: UsageHistory | undefined;
   } = {},
 ): MonitorAgent | undefined {

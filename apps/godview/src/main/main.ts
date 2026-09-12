@@ -650,8 +650,7 @@ const host: AgentHost = {
       cwd: spec.cwd,
       environment: {
         mode: 'clean',
-        // `AgentEnvironmentRequest` is runtime-owned: omit `allowed` rather than granting it an explicit undefined.
-        variables: buildAgentEnvironment(spec.env === undefined ? {} : { allowed: spec.env }),
+        variables: buildAgentEnvironment({ allowed: spec.env }),
       },
       cols: spec.cols ?? DEFAULT_COLS,
       rows: spec.rows ?? DEFAULT_ROWS,
@@ -2395,17 +2394,17 @@ function focusRelativeTab(window: BrowserWindow, offset: -1 | 1): void {
 }
 
 interface CreateWindowOptions {
-  tabOf?: BrowserWindow;
+  tabOf?: BrowserWindow | undefined;
   initialCwd?: string | undefined;
-  claimExistingSessions?: boolean;
+  claimExistingSessions?: boolean | undefined;
   /** Show this viewport without letting its load completion steal focus. */
-  activateOnReady?: boolean;
+  activateOnReady?: boolean | undefined;
   /** A user asking for a new window or tab wants an empty one, not whatever the reused slot still holds. */
-  freshWorkspace?: boolean;
+  freshWorkspace?: boolean | undefined;
   /** Reopen a specific slot, so its saved layout document is the one this window loads. */
-  slotId?: string;
+  slotId?: string | undefined;
   /** Complete V2 document seeded before Ghosttea reads localStorage. */
-  restoreWorkspace?: RestoreWorkspaceDocument;
+  restoreWorkspace?: RestoreWorkspaceDocument | undefined;
 }
 
 async function createWindow(options: CreateWindowOptions = {}): Promise<BrowserWindow> {

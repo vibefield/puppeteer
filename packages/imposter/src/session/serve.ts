@@ -109,9 +109,9 @@ export interface ServeDispatcherOptions {
   runOps(invocations: readonly OpInvocation[]): Promise<void>;
   /** The persona's behavior pack, for `then: "$behavior"`. */
   runBehavior(stimulus: Record<string, unknown>): Promise<void>;
-  validateParams?(method: string, params: Record<string, unknown>): string[];
-  validateResult?(method: string, result: unknown): string[];
-  log?(message: string): void;
+  validateParams?: ((method: string, params: Record<string, unknown>) => string[]) | undefined;
+  validateResult?: ((method: string, result: unknown) => string[]) | undefined;
+  log?: ((message: string) => void) | undefined;
 }
 
 export interface ServeRequestContext {

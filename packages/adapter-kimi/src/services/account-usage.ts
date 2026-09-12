@@ -79,9 +79,9 @@ export function kimiUsageUrl(env: NodeJS.ProcessEnv = process.env): string {
 }
 
 export interface KimiCredentialOptions {
-  env?: NodeJS.ProcessEnv;
-  credentialsPath?: string;
-  now?: () => Date;
+  env?: NodeJS.ProcessEnv | undefined;
+  credentialsPath?: string | undefined;
+  now?: (() => Date) | undefined;
 }
 
 function expiresAtMs(value: unknown): number | undefined {
@@ -289,13 +289,13 @@ export function normalizeKimiAccountUsage(
 }
 
 export interface FetchKimiAccountUsageOptions {
-  timeoutMs?: number;
-  env?: NodeJS.ProcessEnv;
-  credentialsPath?: string;
-  endpoint?: string;
-  fetchImpl?: typeof fetch;
-  resolveAccessToken?: () => Promise<string | undefined>;
-  now?: () => Date;
+  timeoutMs?: number | undefined;
+  env?: NodeJS.ProcessEnv | undefined;
+  credentialsPath?: string | undefined;
+  endpoint?: string | undefined;
+  fetchImpl?: typeof fetch | undefined;
+  resolveAccessToken?: (() => Promise<string | undefined>) | undefined;
+  now?: (() => Date) | undefined;
 }
 
 function failure(
@@ -321,7 +321,7 @@ export async function fetchKimiAccountUsage(
       ? await options.resolveAccessToken()
       : await resolveKimiAccessToken({
           env,
-          ...(options.credentialsPath !== undefined ? { credentialsPath: options.credentialsPath } : {}),
+          credentialsPath: options.credentialsPath,
           now: options.now,
         });
   } catch {

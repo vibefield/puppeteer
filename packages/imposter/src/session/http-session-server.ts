@@ -57,8 +57,8 @@ export interface HttpPersonaServerOptions {
   username: string;
   password?: string | undefined;
   /** Defaults below PUPPETEER_IMPOSTER_HOME, or an owned temporary root. */
-  storePath?: string;
-  log?: (message: string) => void;
+  storePath?: string | undefined;
+  log?: ((message: string) => void) | undefined;
 }
 
 export interface HttpPersonaServer extends HttpSseServer {

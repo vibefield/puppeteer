@@ -2,9 +2,9 @@ import type { AgentEvent, ToolPresentation } from '@vibecook/puppeteer-core';
 import { boundedOpenCodeMapSet, isOpenCodeRecord, openCodeError, openCodeNumber, openCodeText } from './wire.js';
 
 export interface OpenCodeToolResult {
-  event?: AgentEvent;
+  event?: AgentEvent | undefined;
   join?: { childId: string; agentType?: string | undefined } | undefined;
-  retainNative?: boolean;
+  retainNative?: boolean | undefined;
 }
 
 function presentation(tool: string, input: unknown): ToolPresentation {

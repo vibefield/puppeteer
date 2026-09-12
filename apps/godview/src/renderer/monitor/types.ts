@@ -21,17 +21,17 @@ import type { UsageHistory } from './usage-ledger.js';
 /** The agent half of a monitored session; absent while a terminal holds no agent. */
 export interface MonitorAgentFacet {
   provider: AgentProviderDescriptor;
-  model?: string;
+  model?: string | undefined;
   /** Label of the account this run is bound to; absent when it is not registered. */
-  account?: string;
-  branch?: string;
+  account?: string | undefined;
+  branch?: string | undefined;
   contextWindow?: MonitorContextState | undefined;
   monitor: AgentMonitorState;
   /** The UI's own account of the tokens (`usage-ledger.ts`): the held total
    * and the burn per step. Views read this, never `monitor.usage`, which is
    * Core's corrected estimate and moves with every source. */
-  usage?: UsageHistory;
-  teamAggregate?: AgentMonitorTeamAggregate;
+  usage?: UsageHistory | undefined;
+  teamAggregate?: AgentMonitorTeamAggregate | undefined;
   recency: MonitorRecency;
   /** The runtime identity and canonical monitor projection behind this view row. */
   info: AgentSessionInfo;
@@ -56,18 +56,18 @@ export interface MonitorAgent {
    * and labels; it never signals state. */
   color: string;
   /** Evidence recency is presentation metadata, never a fourth status. */
-  stale?: boolean;
+  stale?: boolean | undefined;
   /** Mounted in the pane the user is working in. */
   active: boolean;
   /** The panes showing this session and the colour of the one it is worked
    * in; absent when it is mounted nowhere. A pane owns its colour, and the
    * session wears it while mounted there. */
-  attachment?: PaneAttachment;
-  cwd?: string;
+  attachment?: PaneAttachment | undefined;
+  cwd?: string | undefined;
   /** Where the user asked for it, for views that place new arrivals spatially. */
-  spawnHint?: { x: number; y: number };
+  spawnHint?: { x: number; y: number } | undefined;
   /** Finished something while another pane was active (`monitor/unread.ts`). */
-  unread?: boolean;
+  unread?: boolean | undefined;
   agent?: MonitorAgentFacet | undefined;
 }
 

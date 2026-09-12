@@ -5,7 +5,7 @@ export interface KimiPromptServiceOptions {
   host: AgentHost;
   runtimeSessionId: string;
   observer: KimiSessionObserver;
-  confirmationTimeoutMs?: number;
+  confirmationTimeoutMs?: number | undefined;
   isDisposed(): boolean;
 }
 

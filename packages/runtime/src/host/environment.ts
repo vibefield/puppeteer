@@ -12,14 +12,14 @@ import { userInfo } from 'node:os';
  * user-scoped native credentials.
  */
 export interface AgentEnvironmentRequest {
-  path?: string;
-  home?: string;
-  locale?: string;
+  path?: string | undefined;
+  home?: string | undefined;
+  locale?: string | undefined;
   /** POSIX login identity used by native credential stores such as macOS Keychain. */
-  username?: string;
-  allowed?: Record<string, string>;
+  username?: string | undefined;
+  allowed?: Record<string, string> | undefined;
   /** Defaults to process.platform; injectable for tests. */
-  platform?: NodeJS.Platform;
+  platform?: NodeJS.Platform | undefined;
 }
 
 export function buildAgentEnvironment(request: AgentEnvironmentRequest = {}): Record<string, string> {

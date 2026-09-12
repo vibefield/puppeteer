@@ -155,10 +155,7 @@ export async function prepareKimiTuiSession(options: CreateKimiTuiSessionOptions
         host: options.host,
         runtimeSessionId,
         observer,
-        // An absent timeout means "use the service default"; passing undefined would not.
-        ...(options.promptConfirmationTimeoutMs !== undefined
-          ? { confirmationTimeoutMs: options.promptConfirmationTimeoutMs }
-          : {}),
+        confirmationTimeoutMs: options.promptConfirmationTimeoutMs,
         isDisposed: () => sessionDisposed,
       });
 

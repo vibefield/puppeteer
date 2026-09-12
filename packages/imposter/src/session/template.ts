@@ -25,7 +25,7 @@ import { posix, resolve, win32 } from 'node:path';
 
 export interface TemplateContext {
   /** `$<name>.<field>` lookups, e.g. `{ op: {...}, stimulus: {...} }`. */
-  scopes?: Record<string, Record<string, unknown>>;
+  scopes?: Record<string, Record<string, unknown>> | undefined;
   /** Whole-string bindings, e.g. `{ $sessionId: '...' }`. */
   bindings?: Record<string, unknown> | undefined;
   /**
@@ -33,7 +33,7 @@ export interface TemplateContext {
    * for templates that cannot contain `$uuid` — the envelope, for instance,
    * where a per-emission uuid would be meaningless.
    */
-  uuids?: Map<string, string>;
+  uuids?: Map<string, string> | undefined;
 }
 
 function workdirKey(value: string): string {

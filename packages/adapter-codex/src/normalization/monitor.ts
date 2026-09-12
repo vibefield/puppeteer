@@ -99,7 +99,7 @@ function childActivity(itemType: string | undefined): { kind: 'responding' | 're
 export interface CodexMonitorEvidenceOptions {
   nativeSessionId: () => string | undefined;
   modelDisplayName?: (modelId: string) => string | undefined;
-  epoch?: string;
+  epoch?: string | undefined;
 }
 
 export interface CodexConfiguredIntent {

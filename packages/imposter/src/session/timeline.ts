@@ -38,20 +38,20 @@ export interface OpTimelineOptions {
    */
   emitHook: (event: string, payload: Record<string, unknown>) => Promise<void>;
   transcript: TranscriptWriter;
-  statusline?: (payload: Record<string, unknown>) => Promise<void>;
-  emitJsonRpc?: (method: string, params: Record<string, unknown>) => Promise<void>;
+  statusline?: ((payload: Record<string, unknown>) => Promise<void>) | undefined;
+  emitJsonRpc?: ((method: string, params: Record<string, unknown>) => Promise<void>) | undefined;
   /** Publish one native server-sent event. */
-  emitSse?: (event: string, properties: Record<string, unknown>) => Promise<void>;
+  emitSse?: ((event: string, properties: Record<string, unknown>) => Promise<void>) | undefined;
   /** Append one vendor-native durable update envelope. */
-  emitNativeLog?: (method: string, params: Record<string, unknown>) => Promise<void>;
+  emitNativeLog?: ((method: string, params: Record<string, unknown>) => Promise<void>) | undefined;
   /** Replace one vendor-native JSON state file. */
-  emitNativeState?: (name: string, payload: Record<string, unknown>) => Promise<void>;
+  emitNativeState?: ((name: string, payload: Record<string, unknown>) => Promise<void>) | undefined;
   /** Append one record to a vendor-native global session index. */
-  emitNativeIndex?: (event: string, payload: Record<string, unknown>) => Promise<void>;
+  emitNativeIndex?: ((event: string, payload: Record<string, unknown>) => Promise<void>) | undefined;
   /** Server-initiated request; resolves with the client's reply (§9.3). */
-  requestJsonRpc?: (method: string, params: Record<string, unknown>) => Promise<unknown>;
+  requestJsonRpc?: ((method: string, params: Record<string, unknown>) => Promise<unknown>) | undefined;
   /** Publish a blocker over SSE and await its later HTTP reply. */
-  requestSse?: (event: string, properties: Record<string, unknown>) => Promise<unknown>;
+  requestSse?: ((event: string, properties: Record<string, unknown>) => Promise<unknown>) | undefined;
   /** Presentation sink: the headless log, or the Ink TUI once it lands. */
   present?: ((frame: PresentationFrame) => void) | undefined;
   /**
@@ -62,12 +62,12 @@ export interface OpTimelineOptions {
    * scenario driver advances on the op because the authored flow reached that
    * phase, while the emitted log stays empty because nothing native was said.
    */
-  observe?: (invocation: OpInvocation, bound: boolean) => void;
+  observe?: ((invocation: OpInvocation, bound: boolean) => void) | undefined;
   /** Session-scoped bindings ($sessionId, $cwd, $permissionMode, …). */
-  bindings?: Record<string, unknown>;
+  bindings?: Record<string, unknown> | undefined;
   /** Payload for a `usage.refresh` op whose binding carries no template. */
-  statusPayload?: () => Record<string, unknown>;
-  log?: (message: string) => void;
+  statusPayload?: (() => Record<string, unknown>) | undefined;
+  log?: ((message: string) => void) | undefined;
 }
 
 export interface OpTimeline {

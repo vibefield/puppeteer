@@ -402,8 +402,8 @@ export function createHistorySearchService(options: HistorySearchServiceOptions)
   interface DaemonContext {
     target: ResolvedHistoryOrigin;
     version?: { value: number; at: number } | undefined;
-    startedAt?: number | null;
-    projectionEpoch?: string | null;
+    startedAt?: number | null | undefined;
+    projectionEpoch?: string | null | undefined;
     canonicalReady?: boolean | undefined;
     search?: DaemonSearchState | undefined;
     cache: SessionCache;

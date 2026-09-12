@@ -10,13 +10,13 @@ export interface OpenCodeSseRecord {
 
 export interface OpenCodeEventStreamOptions {
   client: OpenCodeClient;
-  onOpen?: (context: { reconnect: boolean }) => void | Promise<void>;
+  onOpen?: ((context: { reconnect: boolean }) => void | Promise<void>) | undefined;
   onRecord: (record: OpenCodeSseRecord) => void | Promise<void>;
-  onMalformed?: (data: string, error: Error) => void;
-  onError?: (error: Error) => void;
+  onMalformed?: ((data: string, error: Error) => void) | undefined;
+  onError?: ((error: Error) => void) | undefined;
   reconnectDelayMs?: number | undefined;
-  maxEventBytes?: number;
-  fetchImpl?: typeof fetch;
+  maxEventBytes?: number | undefined;
+  fetchImpl?: typeof fetch | undefined;
 }
 
 const DEFAULT_MAX_EVENT_BYTES = 1024 * 1024;

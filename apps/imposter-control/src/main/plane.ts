@@ -84,16 +84,16 @@ export interface ControlPlaneProjection {
 }
 
 export interface ControlPlaneOptions {
-  socketPath?: string;
-  tokenPath?: string;
+  socketPath?: string | undefined;
+  tokenPath?: string | undefined;
   /** HTML served at GET / — `{TOKEN}` is replaced with the plane token. */
-  uiHtml?: string;
+  uiHtml?: string | undefined;
   /** Lazily resolve a bundled renderer asset by its absolute URL path. */
   uiAsset?: (path: string) => { body: string | Uint8Array; contentType: string } | undefined;
-  spawners?: EmulatorSpawner[];
+  spawners?: EmulatorSpawner[] | undefined;
   /** Downstream devtools; never part of native Surface truth. */
-  projections?: ControlPlaneProjection[];
-  log?: (message: string) => void;
+  projections?: ControlPlaneProjection[] | undefined;
+  log?: ((message: string) => void) | undefined;
 }
 
 export interface ControlPlane {

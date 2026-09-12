@@ -280,16 +280,16 @@ export class OpenCodeMonitorEvidence {
     observedAt: string,
     updates: MonitorFamilyUpdate[],
     options: {
-      phase?: AdapterMonitorObservationBatch['phase'];
+      phase?: AdapterMonitorObservationBatch['phase'] | undefined;
       effectiveAt?: string | undefined;
-      quality?: AdapterMonitorObservationBatch['quality'];
-      completeness?: AdapterMonitorObservationBatch['completeness'];
-      provisional?: boolean;
-      readiness?: AdapterMonitorObservationBatch['readiness'];
+      quality?: AdapterMonitorObservationBatch['quality'] | undefined;
+      completeness?: AdapterMonitorObservationBatch['completeness'] | undefined;
+      provisional?: boolean | undefined;
+      readiness?: AdapterMonitorObservationBatch['readiness'] | undefined;
       actor?: ActorRunRef | undefined;
-      evidence?: EvidenceRef[];
-      capabilities?: ObservationCapability[];
-      coverage?: ObservationCoverage[];
+      evidence?: EvidenceRef[] | undefined;
+      capabilities?: ObservationCapability[] | undefined;
+      coverage?: ObservationCoverage[] | undefined;
     } = {},
   ): AdapterMonitorObservationBatch {
     this.sequence += 1;
