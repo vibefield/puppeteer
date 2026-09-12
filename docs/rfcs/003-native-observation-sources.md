@@ -24,25 +24,27 @@ provider hook / OTLP log / transcript / journal / status
 
 ## Claude source ownership
 
-| Category     | Primary live source                      | Durable or degraded source                                     |
-| ------------ | ---------------------------------------- | -------------------------------------------------------------- |
-| conversation | `MessageDisplay` and `Stop` hooks        | live assistant transcript changes; no conversation replay      |
-| interaction  | permission/question hooks                | transcript is not lifecycle truth                              |
-| tool         | tool hooks                               | none required for lifecycle                                    |
-| model        | status channel and OTLP request model    | transcript assistant model                                     |
-| effort       | hooks and status channel                 | configured launch intent                                       |
-| mode         | hooks and status channel                 | configured launch intent                                       |
-| usage        | authenticated OTLP log `api_request`     | child status samples are estimates; no transcript token import |
-| compaction   | native compact hooks                     | none; transcript history is re-read after invalidation         |
-| reasoning    | reasoning hooks and child status         | provider-specific activity evidence                            |
-| delegation   | subagent hooks and child status          | no file-based workflow membership                              |
-| workflow     | OTLP `workflow.run_id` / `workflow.name` | worker membership and completion unavailable                   |
+| Category     | Primary live source                                   | Durable or degraded source                                     |
+| ------------ | ----------------------------------------------------- | -------------------------------------------------------------- |
+| conversation | `MessageDisplay` and `Stop` hooks                     | live assistant transcript changes; no conversation replay      |
+| interaction  | permission/question hooks                             | transcript is not lifecycle truth                              |
+| tool         | tool hooks                                            | none required for lifecycle                                    |
+| model        | session hooks, status channels and OTLP request model | configured launch intent; no transcript model import           |
+| effort       | hooks and status channel                              | configured launch intent                                       |
+| mode         | hooks and status channel                              | configured launch intent                                       |
+| usage        | authenticated OTLP log `api_request`                  | child status samples are estimates; no transcript token import |
+| compaction   | native compact hooks                                  | none; transcript history is re-read after invalidation         |
+| reasoning    | reasoning hooks and child status                      | provider-specific activity evidence                            |
+| delegation   | subagent hooks and child status                       | no file-based workflow membership                              |
+| workflow     | OTLP `workflow.run_id` / `workflow.name`              | worker membership and completion unavailable                   |
 
 These categories do not require a general semantic database. Search, cross-session history, and analytics can remain a separate data product that indexes provider files without being in the live process dependency graph.
 
-Claude's native TUI owns resumed conversation history. The adapter silently baselines existing assistant messages on every transcript attachment, including resume-picker rebinds. It does not publish historical prompts, replies or synthetic turn outcomes. Later assistant changes remain observable while that dependency is audited separately. Hooks never wait for the initial transcript read; model snapshots retain their observation path.
+Claude's native TUI owns resumed conversation history. The adapter silently baselines existing assistant messages on every transcript attachment, including resume-picker rebinds. It does not publish historical prompts, replies or synthetic turn outcomes. Later assistant changes remain observable while that dependency is audited separately. Hooks never wait for the initial transcript read.
 
-The transcript provider emits only live assistant changes and model observations. Unknown transcript metadata is not converted into diagnostic events or replayed on attachment. Native hook diagnostics and observer failures remain observable through their own paths.
+The transcript provider reads only the root transcript and emits only live assistant changes. Unknown transcript metadata is not converted into diagnostic events or replayed on attachment. Native hook diagnostics and observer failures remain observable through their own paths.
+
+Transcript model projection and child transcript discovery, probes and reads were removed on 2026-09-12. `SessionStart` supplies the root model on launch/resume, root status supplies its current ID and display name, child status supplies visible task models, and OTLP supplies observed request models. Configured launch intent remains separate from observed models. Historical models are not imported; missing native evidence leaves the observed model unknown. Exact child attribution still requires matching native identity; OTLP keeps derived actor groups when exact IDs are absent. Model capabilities describe the available hook/status/OTLP sources, including unavailable or unverified OTLP.
 
 Workflow journal observation was removed on 2026-09-11. The adapter does not discover or read workflow journals, reconstruct membership, or infer completion from idle time. OTLP supplies only observed run IDs and names. Workflow capability reporting states these limits and reports unsupported when the OTLP route is unavailable.
 
@@ -78,11 +80,9 @@ packages/adapter-claude/src/observation/
   transcript/
     wire.ts             # tolerant transcript rows
     conversation.ts     # live conversation:assistant-message changes
-    model.ts            # durable model fallback
     provider.ts         # polling service
     services/
       jsonl-reader.ts   # append-aware, reset-aware, bounded reader
-      session-reader.ts # bounded root + exact-session child sidecars
   hook-bridge.ts        # authenticated loopback transport service
 ```
 

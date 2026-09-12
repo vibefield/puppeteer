@@ -1060,7 +1060,7 @@ per tool call in the agentic loop (<code>PreToolUse</code>, <code>PostToolUse</c
               <p>Composition path, wiring gate, normalizer map, and secondary sources. Code ground truth:
                 <code>registry.ts</code>, <code>settings.ts</code>, <code>prepare.ts</code>, <code>hook-bridge.ts</code>,
                 <code>normalization/</code>, <code>driver.ts</code>, <code>prompt.ts</code>, <code>status-channel.ts</code>,
-                <code>transcript-observer.ts</code>.</p>
+                <code>observation/transcript/provider.ts</code>.</p>
             </div>
           </div>
 
@@ -1116,8 +1116,10 @@ per tool call in the agentic loop (<code>PreToolUse</code>, <code>PostToolUse</c
           <h4>Transcript</h4>
           <p>Path from hook <code>transcript_path</code>. Existing assistant messages form a silent baseline on every
           attachment, including native resume and picker rebinds. Later assistant changes remain observable;
-          historical prompts, replies and <code>turn:*</code> are never replayed. Model snapshots remain available;
+          historical prompts, replies and <code>turn:*</code> are never replayed. Model values are not extracted;
           unknown transcript metadata produces no events. Hooks do not wait for the initial transcript read.
+          Only the root transcript is read; child transcript discovery, probes and reads are removed.
+          Session hooks, root/child status channels and OTLP request telemetry supply model observations.
           Workflow journals are not read;
           OTLP supplies workflow run IDs and names, with membership and completion unavailable.</p>
 
@@ -1388,14 +1390,12 @@ flowchart LR
               <td>CTX badge, swarm bubble fill height, rain tail length. <strong>Claude's only context source</strong> — with no statusline configured it shows <code>CTX:--%</code> forever</td>
             </tr>
             <tr>
-              <td class="m">transcript-observer.ts</td>
-              <td class="m">turn:started / turn:completed / turn:failed<br />conversation:assistant-message</td>
+              <td class="m">observation/transcript/provider.ts</td>
+              <td class="m">conversation:assistant-message</td>
               <td>
-                <strong>Verified: no double-count.</strong> The live path (<code>driver.ts:263</code>) keeps only
-                assistant records — “transcript is enrichment, not lifecycle”. <code>turn:*</code> is projected solely by
-                <code>projectTranscriptHistory</code>, which runs only when resuming and is stamped
-                <code>replay: true</code>. <code>isCanonicalApplicationEvent</code> naming just
-                <code>conversation:assistant-message</code> is correct: that is the only live event the transcript produces
+                Existing root assistant messages form a silent baseline on every attachment. Only later assistant
+                changes produce events. Transcript history does not publish turns, models, usage or metadata events,
+                and child transcripts are not discovered or read.
               </td>
             </tr>
             <tr>

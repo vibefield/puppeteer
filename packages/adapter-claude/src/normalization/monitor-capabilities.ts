@@ -36,8 +36,11 @@ const CLAUDE_MONITOR_CAPABILITY_BASE: readonly ObservationCapability[] = [
     support: 'degraded',
     actorScope: 'current-actors',
     latency: 'sample',
-    source: 'claude-status-and-transcript',
-    limitations: ['Child model is unavailable until Claude resolves it.'],
+    source: 'claude-hooks-status-and-otlp',
+    limitations: [
+      'Models depend on session hooks, visible status tasks or observed API requests; historical models are not imported.',
+      'Per-child models require native actor identity; otherwise OTLP retains a derived actor group.',
+    ],
   },
   {
     family: 'effort',
@@ -96,6 +99,18 @@ export function claudeMonitorCapabilities(
 ): readonly ObservationCapability[] {
   if (otelUsageEnabled && otelUsageVerified) return CLAUDE_MONITOR_CAPABILITY_BASE;
   return CLAUDE_MONITOR_CAPABILITY_BASE.map((capability) => {
+    if (capability.family === 'model') {
+      return {
+        ...capability,
+        source: otelUsageEnabled ? 'claude-hooks-status-and-otlp-probe' : 'claude-hooks-and-status',
+        limitations: [
+          ...capability.limitations,
+          otelUsageEnabled
+            ? 'The provider version is unknown; OTLP request models are safely probed.'
+            : unavailableReason,
+        ],
+      };
+    }
     if (capability.family === 'workflow') {
       return {
         ...capability,

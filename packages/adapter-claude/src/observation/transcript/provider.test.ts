@@ -5,12 +5,18 @@ import { join } from 'node:path';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import type { SemanticObservationEvent, SemanticObservationHandle } from '../semantic-provider.js';
 import { ClaudeTranscriptObservationProvider } from './provider.js';
-import * as sessionReader from './services/session-reader.js';
-import { decodeClaudeTranscript } from './wire.js';
+import * as jsonlReader from './services/jsonl-reader.js';
+import { decodeClaudeTranscript, type ClaudeTranscriptRecord } from './wire.js';
 
 vi.mock('node:fs/promises', async (importOriginal) => {
   const actual = await importOriginal<typeof import('node:fs/promises')>();
-  return { ...actual, readdir: vi.fn(actual.readdir), open: vi.fn(actual.open) };
+  return {
+    ...actual,
+    readdir: vi.fn(actual.readdir),
+    lstat: vi.fn(actual.lstat),
+    stat: vi.fn(actual.stat),
+    open: vi.fn(actual.open),
+  };
 });
 
 const roots: string[] = [];
@@ -21,15 +27,23 @@ afterEach(async () => {
   for (const root of roots.splice(0)) rmSync(root, { recursive: true, force: true });
 });
 
-function usageRow(
+function assistantRow(
   sequence: number,
-  options: { requestId?: string; tokens?: number; model?: string; agentId?: string; agentType?: string } = {},
+  options: {
+    requestId?: string;
+    tokens?: number;
+    model?: string;
+    agentId?: string;
+    agentType?: string;
+    text?: string;
+    sessionId?: string | null;
+  } = {},
 ): string {
   return (
     JSON.stringify({
       type: 'assistant',
       uuid: `message-${sequence}`,
-      sessionId: 'session-1',
+      sessionId: options.sessionId === null ? undefined : (options.sessionId ?? 'session-1'),
       requestId: options.requestId ?? 'request-1',
       timestamp: new Date(Date.parse('2026-08-25T16:30:00.000Z') + sequence * 1_000).toISOString(),
       agentId: options.agentId,
@@ -37,7 +51,7 @@ function usageRow(
       message: {
         role: 'assistant',
         model: options.model ?? 'model-a',
-        content: [],
+        content: options.text ?? [],
         usage: { input_tokens: 10, output_tokens: options.tokens ?? sequence },
       },
     }) + '\n'
@@ -113,72 +127,97 @@ describe('ClaudeTranscriptObservationProvider', () => {
     expect(reboundEvents).toEqual([]);
   });
 
-  it('compares final actor models once without publishing transcript usage', async () => {
+  it('ignores transcript models and usage during attachment and later changes', async () => {
     const { path, handle, events } = await fixture(
-      usageRow(1) + usageRow(2, { model: 'model-b' }) + usageRow(3, { requestId: 'request-2' }),
+      assistantRow(1) + assistantRow(2, { model: 'model-b' }) + assistantRow(3, { requestId: 'request-2' }),
     );
     await handle.poll();
-    expect(events.map(({ event }) => event)).toEqual([
-      expect.objectContaining({ type: 'model:updated', model: { id: 'model-a', provider: 'anthropic' } }),
-    ]);
-    expect(events.every(({ replay }) => replay)).toBe(true);
-    events.length = 0;
     await handle.poll();
     await handle.poll();
     expect(events).toEqual([]);
 
-    // Force a new snapshot too: silence must come from correct deduplication,
-    // not only the reader's unchanged-file shortcut.
-    appendFileSync(path, JSON.stringify({ type: 'attachment', uuid: 'metadata' }) + '\n');
+    appendFileSync(path, assistantRow(4, { tokens: 1, model: 'model-c' }));
     await handle.poll();
     expect(events).toEqual([]);
-    events.length = 0;
 
-    appendFileSync(path, usageRow(4, { tokens: 1, model: 'model-c' }));
+    appendFileSync(path, assistantRow(5, { model: 'model-d', text: 'New reply' }));
     await handle.poll();
     expect(events.map(({ event }) => event)).toEqual([
-      expect.objectContaining({ type: 'model:updated', model: { id: 'model-c', provider: 'anthropic' } }),
+      expect.objectContaining({ type: 'conversation:assistant-message', text: 'New reply' }),
     ]);
     expect(events.every(({ replay }) => !replay)).toBe(true);
     events.length = 0;
+    // Model/usage changes cannot republish an unchanged assistant message.
+    appendFileSync(path, assistantRow(5, { model: 'model-e', tokens: 50, text: 'New reply' }));
     await handle.poll();
     expect(events).toEqual([]);
   });
 
-  it('retains child models without publishing usage from child sidecars or later root copies', async () => {
-    const { root, path, handle, events } = await fixture(usageRow(2));
+  it('never discovers, probes or reads child transcripts, including later additions and malformed paths', async () => {
+    const { root, path, handle, events } = await fixture(assistantRow(1));
+    const children = [join(root, 'session-1', 'subagents'), join(root, 'subagents')];
+    for (const directory of children) {
+      mkdirSync(directory, { recursive: true });
+      writeFileSync(
+        join(directory, 'agent-worker.jsonl'),
+        assistantRow(2, { agentId: 'worker', model: 'child-model' }),
+      );
+    }
+    const listings = vi.mocked(fsPromises.readdir).mockClear();
+    const probes = vi.mocked(fsPromises.lstat).mockClear();
+    const stats = vi.mocked(fsPromises.stat).mockClear();
+    const opens = vi.mocked(fsPromises.open).mockClear();
+    const errors: Error[] = [];
+    handle.onError((error) => errors.push(error));
+
     await handle.poll();
-    events.length = 0;
-    const children = join(root, 'session-1', 'subagents');
-    mkdirSync(children, { recursive: true });
-    writeFileSync(
-      join(children, 'agent-worker.jsonl'),
-      usageRow(1, {
-        tokens: 2,
-        agentId: 'worker',
-        agentType: 'researcher',
-        model: 'child-model',
-      }),
+    expect(events).toEqual([]);
+    for (const directory of children) {
+      appendFileSync(
+        join(directory, 'agent-worker.jsonl'),
+        assistantRow(3, { agentId: 'worker', model: 'new-child-model' }),
+      );
+      writeFileSync(join(directory, 'agent-new.jsonl'), assistantRow(4, { agentId: 'new', text: 'Child reply' }));
+    }
+    await handle.poll();
+    appendFileSync(path, assistantRow(3, { agentId: 'worker', model: 'copied-child-model' }));
+    await handle.poll();
+    expect(events).toEqual([]);
+
+    for (const directory of children) {
+      rmSync(directory, { recursive: true });
+      writeFileSync(directory, 'not a directory');
+    }
+    appendFileSync(path, assistantRow(5, { text: 'Root reply' }));
+    await handle.poll();
+    expect(events.map(({ event }) => event)).toEqual([
+      expect.objectContaining({ type: 'conversation:assistant-message', text: 'Root reply' }),
+    ]);
+    expect(errors).toEqual([]);
+    expect(listings).not.toHaveBeenCalled();
+    expect(probes).not.toHaveBeenCalled();
+    expect(stats.mock.calls.every(([file]) => file === path)).toBe(true);
+    expect(opens.mock.calls.every(([file]) => file === path)).toBe(true);
+  });
+
+  it('keeps root session filtering while accepting rows without a repeated session id', async () => {
+    const { path, handle, events } = await fixture(assistantRow(1, { text: 'Old root reply' }));
+    await handle.poll();
+    appendFileSync(
+      path,
+      assistantRow(2, { sessionId: 'foreign-session', text: 'Foreign reply' }) +
+        assistantRow(3, { text: 'Root reply' }) +
+        assistantRow(4, { sessionId: null, text: 'Root reply without repeated identity' }),
     );
     await handle.poll();
-    expect(events.filter(({ event }) => event.type === 'usage:tokens-used')).toEqual([]);
-    expect(events.filter(({ event }) => event.type === 'model:updated')).toEqual([
-      expect.objectContaining({
-        agentId: 'worker',
-        event: expect.objectContaining({ model: { id: 'child-model', provider: 'anthropic' } }),
-      }),
+    expect(events.map(({ event }) => event)).toEqual([
+      expect.objectContaining({ type: 'conversation:assistant-message', text: 'Root reply' }),
+      expect.objectContaining({ type: 'conversation:assistant-message', text: 'Root reply without repeated identity' }),
     ]);
-    events.length = 0;
-    appendFileSync(path, usageRow(3, { tokens: 4 }));
-    await handle.poll();
-    expect(events).toEqual([]);
-    events.length = 0;
-    await handle.poll();
-    expect(events).toEqual([]);
   });
 
   it('does not read workflow journals at attachment or on later polls', async () => {
-    const { root, path, handle, events } = await fixture(usageRow(1));
+    const { root, path, handle, events } = await fixture(assistantRow(1));
     const workflowRoot = join(root, 'session-1', 'subagents', 'workflows');
     const directory = join(workflowRoot, 'workflow-1');
     mkdirSync(directory, { recursive: true });
@@ -190,8 +229,7 @@ describe('ClaudeTranscriptObservationProvider', () => {
     handle.onError((error) => errors.push(error));
 
     await handle.poll();
-    expect(events.map(({ event }) => event.type)).toEqual(['model:updated']);
-    events.length = 0;
+    expect(events).toEqual([]);
     appendFileSync(journal, JSON.stringify({ type: 'result', agentId: 'worker' }) + '\n');
     await handle.poll();
     expect(events).toEqual([]);
@@ -199,10 +237,10 @@ describe('ClaudeTranscriptObservationProvider', () => {
     // An invalid workflow directory cannot affect transcript observation.
     rmSync(workflowRoot, { recursive: true });
     writeFileSync(workflowRoot, 'not a directory');
-    appendFileSync(path, usageRow(2, { model: 'new-model' }));
+    appendFileSync(path, assistantRow(2, { model: 'new-model', text: 'New reply' }));
     await handle.poll();
     expect(events.map(({ event }) => event)).toEqual([
-      expect.objectContaining({ type: 'model:updated', model: { id: 'new-model', provider: 'anthropic' } }),
+      expect.objectContaining({ type: 'conversation:assistant-message', text: 'New reply' }),
     ]);
     expect(errors).toEqual([]);
     expect(
@@ -210,10 +248,13 @@ describe('ClaudeTranscriptObservationProvider', () => {
     ).toEqual([]);
   });
 
-  it('allows other event-loop work to run before a large model snapshot finishes', async () => {
+  it('allows other event-loop work to run before a large live assistant batch finishes', async () => {
     const count = 2_000;
-    const { handle, events } = await fixture(
-      Array.from({ length: count }, (_, index) => usageRow(index, { agentId: `worker-${index}` })).join(''),
+    const { path, handle, events } = await fixture('');
+    await handle.poll();
+    appendFileSync(
+      path,
+      Array.from({ length: count }, (_, index) => assistantRow(index, { text: `Reply ${index}` })).join(''),
     );
     let deliveredAtYield = 0;
     handle.onEvent(() => {
@@ -226,12 +267,15 @@ describe('ClaudeTranscriptObservationProvider', () => {
     expect(events).toHaveLength(count);
     expect(deliveredAtYield).toBeGreaterThan(0);
     expect(deliveredAtYield).toBeLessThan(count);
-    expect(events.every(({ replay }) => replay)).toBe(true);
+    expect(events.every(({ event, replay }) => event.type === 'conversation:assistant-message' && !replay)).toBe(true);
   });
 
-  it('stops model delivery when disposed during a yielded batch', async () => {
-    const { handle, events } = await fixture(
-      Array.from({ length: 2_000 }, (_, index) => usageRow(index, { agentId: `worker-${index}` })).join(''),
+  it('stops live assistant delivery when disposed during a yielded batch', async () => {
+    const { path, handle, events } = await fixture('');
+    await handle.poll();
+    appendFileSync(
+      path,
+      Array.from({ length: 2_000 }, (_, index) => assistantRow(index, { text: `Reply ${index}` })).join(''),
     );
     let disposal: Promise<void> | undefined;
     handle.onEvent(() => {
@@ -250,8 +294,8 @@ describe('ClaudeTranscriptObservationProvider', () => {
   });
 
   it('merges concurrent hints into one follow-up read and waits for its newer data', async () => {
-    let release!: (snapshot: sessionReader.ClaudeSessionTranscriptSnapshot) => void;
-    const updated = decodeClaudeTranscript(usageRow(1));
+    let release!: (snapshot: readonly ClaudeTranscriptRecord[]) => void;
+    const updated = decodeClaudeTranscript(assistantRow(1, { text: 'New reply' }));
     const read = vi
       .fn()
       .mockImplementationOnce(
@@ -260,21 +304,21 @@ describe('ClaudeTranscriptObservationProvider', () => {
             release = resolve;
           }),
       )
-      .mockResolvedValue({ root: updated, all: updated });
-    vi.spyOn(sessionReader, 'createClaudeSessionTranscriptReader').mockReturnValue({ read });
+      .mockResolvedValue(updated);
+    vi.spyOn(jsonlReader, 'createClaudeTranscriptReader').mockReturnValue({ read });
     const { handle, events } = await fixture('');
     const first = handle.poll();
     await Promise.resolve();
     const hinted = Array.from({ length: 100 }, () => handle.poll({ hookEventName: 'Stop' }));
-    release({ root: [], all: [] });
+    release([]);
     await Promise.all([first, ...hinted]);
     expect(read).toHaveBeenCalledTimes(2);
     expect(events.map(({ event }) => event)).toEqual([
-      expect.objectContaining({ type: 'model:updated', model: { id: 'model-a', provider: 'anthropic' } }),
+      expect.objectContaining({ type: 'conversation:assistant-message', text: 'New reply' }),
     ]);
   });
 
-  it('observes model snapshots without importing conversation, usage or workflow history', async () => {
+  it('silently baselines transcript history including model, usage and workflow records', async () => {
     const root = mkdtempSync(join(tmpdir(), 'claude-transcript-provider-'));
     roots.push(root);
     const sessionId = 'session-1';
@@ -330,60 +374,12 @@ describe('ClaudeTranscriptObservationProvider', () => {
     handle.onEvent((event) => events.push(event));
     await handle.poll();
 
-    expect(events.map(({ event }) => event.type)).toEqual(['model:updated']);
-    expect(events.every(({ replay }) => replay)).toBe(true);
+    expect(events).toEqual([]);
     expect(await provider.capabilities()).toEqual([]);
 
     const count = events.length;
     await handle.poll();
     expect(events).toHaveLength(count);
-    await handle.dispose();
-  });
-
-  it('reads exact-session child models without replaying child conversation or usage', async () => {
-    const root = mkdtempSync(join(tmpdir(), 'claude-transcript-descendants-'));
-    roots.push(root);
-    const sessionId = 'session-1';
-    const transcriptPath = join(root, `${sessionId}.jsonl`);
-    writeFileSync(transcriptPath, '');
-    const subagents = join(root, 'subagents');
-    mkdirSync(subagents);
-    const assistant = (recordSessionId: string, requestId: string, agentId: string) =>
-      `${JSON.stringify({
-        type: 'assistant',
-        uuid: `${requestId}-message`,
-        requestId,
-        timestamp: '2026-08-25T16:30:01.000Z',
-        sessionId: recordSessionId,
-        agentId,
-        agentType: 'researcher',
-        isSidechain: true,
-        message: {
-          role: 'assistant',
-          model: 'claude-haiku-4-5',
-          content: [{ type: 'text', text: 'Child-only answer' }],
-          usage: { input_tokens: 7, output_tokens: 3, cache_read_input_tokens: 20 },
-        },
-      })}\n`;
-    writeFileSync(join(subagents, 'agent-worker.jsonl'), assistant(sessionId, 'request-child', 'worker'));
-    writeFileSync(join(subagents, 'agent-foreign.jsonl'), assistant('session-foreign', 'request-foreign', 'intruder'));
-
-    const provider = new ClaudeTranscriptObservationProvider();
-    const handle = await provider.attach({ nativeSessionId: sessionId, transcriptPath });
-    const events: SemanticObservationEvent[] = [];
-    handle.onEvent((event) => events.push(event));
-    await handle.poll();
-
-    expect(events.filter(({ event }) => event.type === 'conversation:assistant-message')).toHaveLength(0);
-    expect(events).toEqual([
-      expect.objectContaining({
-        agentId: 'worker',
-        agentType: 'researcher',
-        replay: true,
-        event: { type: 'model:updated', intent: 'observed', model: { id: 'claude-haiku-4-5', provider: 'anthropic' } },
-      }),
-    ]);
-    expect(JSON.stringify(events)).not.toContain('request-foreign');
     await handle.dispose();
   });
 
@@ -406,9 +402,15 @@ describe('ClaudeTranscriptObservationProvider', () => {
     expect(errors).toHaveLength(1);
     expect(events).toEqual([]);
     rmSync(transcriptPath, { recursive: true });
-    writeFileSync(transcriptPath, usageRow(1));
+    writeFileSync(transcriptPath, assistantRow(1, { text: 'Old reply' }));
     await handle.poll();
     expect(errors).toHaveLength(1);
-    expect(events.map(({ event }) => event.type)).toEqual(['model:updated']);
+    expect(events).toEqual([]);
+    appendFileSync(transcriptPath, assistantRow(2, { text: 'New reply' }));
+    await handle.poll();
+    expect(errors).toHaveLength(1);
+    expect(events.map(({ event }) => event)).toEqual([
+      expect.objectContaining({ type: 'conversation:assistant-message', text: 'New reply' }),
+    ]);
   });
 });

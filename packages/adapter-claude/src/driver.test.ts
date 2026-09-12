@@ -439,7 +439,7 @@ describe('createClaudeSession (full loop, test-as-Claude)', () => {
     expect((await receipt).status).toBe('confirmed');
   });
 
-  it('uses only OTLP request values and actor corrections despite conflicting transcript records', async () => {
+  it('uses only OTLP request usage, models and actor corrections despite conflicting transcript records', async () => {
     const { session, prepared, events, token, hook } = await startSession({ providerVersion: '2.1.245' });
     expect(prepared.env).toMatchObject({
       OTEL_LOGS_EXPORTER: 'otlp',
@@ -534,6 +534,8 @@ describe('createClaudeSession (full loop, test-as-Claude)', () => {
     await hook('SessionStart', { transcript_path: transcript });
     await session.pollTranscript();
     expect(events.filter(({ event }) => event.type === 'usage:tokens-used')).toEqual([]);
+    const models = () => events.filter(({ event }) => event.type === 'model:updated');
+    expect(models()).toEqual([]);
 
     const response = await postOtlp();
 
@@ -554,11 +556,20 @@ describe('createClaudeSession (full loop, test-as-Claude)', () => {
     expect(JSON.stringify(usage?.nativeEvent)).not.toContain('must-not-cross@example.com');
     expect(usage?.agentId).toBeUndefined();
     expect(safeParseAgentEvent('usage:tokens-used', usage!.event).success).toBe(true);
+    expect(models()).toEqual([
+      expect.objectContaining({
+        source: 'native-telemetry',
+        event: { type: 'model:updated', intent: 'observed', model: { id: 'claude-haiku-4-5', provider: 'anthropic' } },
+      }),
+    ]);
+    expect(models()[0]?.agentId).toBeUndefined();
 
     appendFileSync(childTranscript, transcriptRow(3, 'later-transcript-worker'));
+    appendFileSync(transcript, transcriptRow(4));
     await session.pollTranscript();
     expect((await postOtlp()).status).toBe(200);
     expect(events.filter(({ event }) => event.type === 'usage:tokens-used')).toHaveLength(1);
+    expect(models()).toHaveLength(1);
 
     const corrected = JSON.parse(otlpBody);
     const attributes = corrected.resourceLogs[0].scopeLogs[0].logRecords[0].attributes;
@@ -566,6 +577,13 @@ describe('createClaudeSession (full loop, test-as-Claude)', () => {
     attributes.push(attribute('agent.id', 'api-worker'), attribute('agent.type', 'researcher'));
     expect((await postOtlp(JSON.stringify(corrected))).status).toBe(200);
     expect(events.filter(({ event }) => event.type === 'usage:tokens-used')).toHaveLength(2);
+    expect(models()).toHaveLength(2);
+    expect(models().at(-1)).toMatchObject({
+      source: 'native-telemetry',
+      agentId: 'api-worker',
+      agentType: 'researcher',
+      event: { type: 'model:updated', model: { id: 'claude-haiku-4-5' } },
+    });
     expect(events.filter(({ event }) => event.type === 'usage:tokens-used').at(-1)).toMatchObject({
       source: 'native-telemetry',
       agentId: 'api-worker',
@@ -644,7 +662,7 @@ describe('createClaudeSession (full loop, test-as-Claude)', () => {
     }
   });
 
-  it('ignores root and child transcript metadata while observing live text and models', async () => {
+  it('ignores root and child transcript metadata and models while observing live root text', async () => {
     const { session, projection, events, hook } = await startSession();
     const dir = mkdtempSync(join(tmpdir(), 'driver-no-transcript-metadata-'));
     try {
@@ -691,16 +709,10 @@ describe('createClaudeSession (full loop, test-as-Claude)', () => {
         }),
       );
       await session.pollTranscript();
-      expect(transcriptEvents().map(({ event }) => event.type)).toEqual([
-        'conversation:assistant-message',
-        'model:updated',
-        'model:updated',
-      ]);
+      expect(transcriptEvents().map(({ event }) => event.type)).toEqual(['conversation:assistant-message']);
       expect(projection.state.lastAssistantMessage).toBe('New reply');
-      expect(transcriptEvents().find(({ agentId }) => agentId === 'worker')?.event).toMatchObject({
-        type: 'model:updated',
-        model: { id: 'child-model' },
-      });
+      expect(events.filter(({ event }) => event.type === 'model:updated')).toEqual([]);
+      expect(projection.state.environment.model).toBeUndefined();
       expect(projection.state.counters.unknownEvents).toBe(unknownEvents);
     } finally {
       projection.dispose();
@@ -709,67 +721,99 @@ describe('createClaudeSession (full loop, test-as-Claude)', () => {
     }
   });
 
-  it.each([true, false])('observes transcript text without token usage when OTLP is enabled=%s', async (enabled) => {
-    const { session, projection, events, hook } = await startSession({
-      providerVersion: '2.1.245',
-      observeOtlpUsage: enabled,
-    });
-    const dir = mkdtempSync(join(tmpdir(), 'driver-transcript-'));
-    const project = join(dir, '.claude', 'projects', '-driver-test');
-    mkdirSync(project, { recursive: true });
-    const transcript = join(project, `${session.sessionId}.jsonl`);
-    writeFileSync(transcript, '');
+  it.each([true, false])(
+    'keeps hook/status models independent of transcript text when OTLP is enabled=%s',
+    async (enabled) => {
+      const { session, projection, events, hook, statusLine, subagentStatusLine } = await startSession({
+        providerVersion: '2.1.245',
+        observeOtlpUsage: enabled,
+      });
+      const dir = mkdtempSync(join(tmpdir(), 'driver-transcript-'));
+      const project = join(dir, '.claude', 'projects', '-driver-test');
+      mkdirSync(project, { recursive: true });
+      const transcript = join(project, `${session.sessionId}.jsonl`);
+      writeFileSync(transcript, '');
 
-    await hook('SessionStart', { transcript_path: transcript });
-    expect(session.transcriptPath()).toBe(transcript);
-    await session.pollTranscript();
+      await hook('SessionStart', { transcript_path: transcript, model: 'hook-model' });
+      expect(session.transcriptPath()).toBe(transcript);
+      await session.pollTranscript();
+      expect(projection.state.environment.model?.value.id).toBe('hook-model');
 
-    writeFileSync(
-      transcript,
-      `${JSON.stringify({
-        parentUuid: null,
-        type: 'assistant',
-        uuid: 'u1',
-        timestamp: '2026-07-13T00:00:00.000Z',
-        sessionId: session.sessionId,
-        cwd: '/tmp',
-        version: '1',
-        gitBranch: 'main',
-        isSidechain: false,
-        userType: 'external',
-        requestId: 'request-1',
-        message: {
-          id: 'msg_real',
-          type: 'message',
-          role: 'assistant',
-          model: 'm',
-          content: [{ type: 'text', text: 'authoritative answer' }],
-          stop_reason: null,
-          usage: {
-            input_tokens: 12,
-            output_tokens: 4,
-            cache_creation_input_tokens: 2,
-            cache_read_input_tokens: 3,
+      writeFileSync(
+        transcript,
+        `${JSON.stringify({
+          parentUuid: null,
+          type: 'assistant',
+          uuid: 'u1',
+          timestamp: '2026-07-13T00:00:00.000Z',
+          sessionId: session.sessionId,
+          cwd: '/tmp',
+          version: '1',
+          gitBranch: 'main',
+          isSidechain: false,
+          userType: 'external',
+          requestId: 'request-1',
+          message: {
+            id: 'msg_real',
+            type: 'message',
+            role: 'assistant',
+            model: 'm',
+            content: [{ type: 'text', text: 'authoritative answer' }],
+            stop_reason: null,
+            usage: {
+              input_tokens: 12,
+              output_tokens: 4,
+              cache_creation_input_tokens: 2,
+              cache_read_input_tokens: 3,
+            },
           },
-        },
-      })}\n`,
-    );
-    await session.pollTranscript();
+        })}\n`,
+      );
+      await session.pollTranscript();
 
-    await vi.waitFor(
-      () => {
-        const fromTranscript = events.find((e) => e.source === 'native-transcript');
-        expect(fromTranscript?.event).toMatchObject({
-          type: 'conversation:assistant-message',
-          text: 'authoritative answer',
-          displayOnly: false,
-        });
-        expect(projection.state.lastAssistantMessage).toBe('authoritative answer');
-        expect(events.filter(({ event }) => event.type === 'usage:tokens-used')).toEqual([]);
-      },
-      { timeout: 10_000, interval: 20 },
-    );
-  });
+      await vi.waitFor(
+        () => {
+          const fromTranscript = events.find((e) => e.source === 'native-transcript');
+          expect(fromTranscript?.event).toMatchObject({
+            type: 'conversation:assistant-message',
+            text: 'authoritative answer',
+            displayOnly: false,
+          });
+          expect(projection.state.lastAssistantMessage).toBe('authoritative answer');
+          expect(events.filter(({ event }) => event.type === 'usage:tokens-used')).toEqual([]);
+          expect(events.filter(({ event }) => event.type === 'model:updated')).toEqual([
+            expect.objectContaining({
+              source: 'native-hook',
+              event: expect.objectContaining({ model: { id: 'hook-model', provider: 'anthropic' } }),
+            }),
+          ]);
+          expect(projection.state.environment.model?.value.id).toBe('hook-model');
+        },
+        { timeout: 10_000, interval: 20 },
+      );
+
+      await statusLine({ model: { id: 'status-model', display_name: 'Status Model' } });
+      await hook('SubagentStart', { agent_id: 'worker', agent_type: 'researcher' });
+      await subagentStatusLine({ tasks: [{ id: 'worker', model: 'child-status-model' }] });
+      await session.pollTranscript();
+      expect(projection.state.environment.model?.value).toEqual({
+        id: 'status-model',
+        displayName: 'Status Model',
+        provider: 'anthropic',
+      });
+      expect(projection.monitorBatches.at(-1)?.updates).toContainEqual(
+        expect.objectContaining({
+          family: 'model',
+          values: [
+            expect.objectContaining({ value: expect.objectContaining({ providerModelId: 'child-status-model' }) }),
+          ],
+        }),
+      );
+      expect(
+        events.filter(({ source, event }) => source === 'native-transcript' && event.type === 'model:updated'),
+      ).toEqual([]);
+    },
+  );
 
   it('rejects token usage from an injected durable observer during replay and live delivery', async () => {
     let deliver: ((event: SemanticObservationEvent) => void) | undefined;
@@ -1157,7 +1201,7 @@ describe('createClaudeSession (full loop, test-as-Claude)', () => {
     ).rejects.toThrow();
   });
 
-  it('resumes the native session without replaying historical conversation', async () => {
+  it('resumes with the hook model without replaying historical conversation or models', async () => {
     const resumeId = '64a61b19-f4d8-4f96-ba56-07024b470813';
     const transcriptDirectory = mkdtempSync(join(tmpdir(), 'driver-resume-history-'));
     const projectDirectory = join(transcriptDirectory, '.claude', 'projects', '-driver-resume');
@@ -1238,17 +1282,19 @@ describe('createClaudeSession (full loop, test-as-Claude)', () => {
         transcript_path: transcript,
         cwd: '/tmp',
         hook_event_name: 'SessionStart',
+        model: 'resumed-model',
       }),
     });
     expect(res.status).toBe(200);
     await session.pollTranscript();
     expect(session.observationLevel()).toBe('native-hooks');
-    expect(historyEvents.filter((event) => event.replay).map((event) => event.event)).toEqual([
-      {
-        type: 'model:updated',
-        intent: 'observed',
-        model: { id: 'claude-sonnet-local', provider: 'anthropic' },
-      },
+    expect(historyEvents.filter((event) => event.replay)).toEqual([]);
+    expect(historyEvents.filter(({ source }) => source === 'native-transcript')).toEqual([]);
+    expect(historyEvents.filter(({ event }) => event.type === 'model:updated')).toEqual([
+      expect.objectContaining({
+        source: 'native-hook',
+        event: { type: 'model:updated', model: { id: 'resumed-model', provider: 'anthropic' } },
+      }),
     ]);
     expect(
       historyEvents.some(({ event }) => event.type.startsWith('turn:') || event.type.startsWith('conversation:')),

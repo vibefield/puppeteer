@@ -130,7 +130,7 @@ const CLAUDE_OTEL_CONFLICT_KEYS = [
   'OTEL_LOGS_EXPORT_INTERVAL',
 ] as const;
 
-/** Do not hijack a caller's exporter. The driver falls back to the transcript when any route is already configured. */
+/** Preserve a caller's exporter; conflicting routes disable Puppeteer's OTLP observation. */
 export function hasClaudeOtelExporterConflict(environment: NodeJS.ProcessEnv = process.env): boolean {
   return CLAUDE_OTEL_CONFLICT_KEYS.some((key) => Boolean(environment[key]?.trim()));
 }

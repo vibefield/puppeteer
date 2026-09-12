@@ -34,6 +34,10 @@ describe('ClaudeMonitorEvidence', () => {
       source: 'claude-otlp-logs',
       limitations: ['OTLP identifies workflow runs and names only; worker membership and completion are unavailable.'],
     });
+    expect(capabilities.find(({ family }) => family === 'model')).toMatchObject({
+      support: 'degraded',
+      source: 'claude-hooks-status-and-otlp',
+    });
   });
 
   it('reports only child status estimates when OTLP request usage is unavailable', () => {
@@ -57,6 +61,11 @@ describe('ClaudeMonitorEvidence', () => {
       source: 'none',
       limitations: expect.arrayContaining(['known old provider version']),
     });
+    expect(evidence.capabilitiesBatch(AT).capabilities?.find(({ family }) => family === 'model')).toMatchObject({
+      support: 'degraded',
+      source: 'claude-hooks-and-status',
+      limitations: expect.arrayContaining(['known old provider version']),
+    });
   });
 
   it.each([
@@ -77,6 +86,10 @@ describe('ClaudeMonitorEvidence', () => {
       support: 'degraded',
       source,
       latency: 'response',
+    });
+    expect(evidence.capabilitiesBatch(AT).capabilities?.find(({ family }) => family === 'model')).toMatchObject({
+      support: 'degraded',
+      source: verified ? 'claude-hooks-status-and-otlp' : 'claude-hooks-status-and-otlp-probe',
     });
   });
 

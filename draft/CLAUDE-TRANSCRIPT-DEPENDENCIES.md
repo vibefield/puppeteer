@@ -1,7 +1,7 @@
 # Claude transcript dependency cleanup
 
 - Started: 2026-09-11
-- Status: Steps 1, 5, 7 and 8 complete; remaining items tracked below
+- Status: Steps 1, 5, 6, 7 and 8 complete; remaining items tracked below
 - Context: Resuming large Claude sessions caused repeated transcript projection and expensive monitor updates. Commit `0296565` fixed that processing. This follow-up removes unnecessary dependencies one at a time.
 - Current source contract: [RFC 003](../docs/rfcs/003-native-observation-sources.md)
 
@@ -14,9 +14,9 @@
 | 3. Exact child usage attribution    | Audit native API identity coverage. Step 1 removes transcript corrections of usage actor IDs; requests keep their exact or derived telemetry identity.                                       | Pending         |
 | 4. Live assistant messages          | Evaluate removing duplicate transcript delivery: `MessageDisplay` and `Stop.last_assistant_message` already provide live text.                                                               | Pending         |
 | 5. Conversation replay              | Deleted historical prompt/reply and synthetic turn replay, resume bootstrap selection and the hook wait. Existing assistant messages form a silent baseline on every attachment.             | Complete        |
-| 6. Model identification             | Evaluate removing transcript fallback in favor of session hooks, status callbacks and request telemetry.                                                                                     | Pending         |
+| 6. Model identification             | Deleted transcript model projection, replay, fingerprints and child transcript discovery/reads. Models come from session hooks, root/child status callbacks and request telemetry.           | Complete        |
 | 7. Workflow membership/completion   | Deleted workflow journal discovery, reads, membership/completion projection and idle-timeout inference. Native OTLP retains run identity and name only.                                      | Complete        |
-| 8. Unknown transcript metadata      | Deleted the metadata event catch-all, initial replay and per-record fingerprints. The transcript provider emits only live assistant changes and model observations.                          | Complete        |
+| 8. Unknown transcript metadata      | Deleted the metadata event catch-all, initial replay and per-record fingerprints. The remaining model projection was removed in step 6.                                                      | Complete        |
 | 9. Resume existence check           | Retain the file-existence check; it does not parse transcript content.                                                                                                                       | Audited; retain |
 | 10. Child status usage estimates    | Decide separately whether callback-time `tokenCount` estimates should remain eligible for burn rate. They are not transcript data.                                                           | Pending         |
 | 11. Godview burn bars               | Align the bars' source/timing policy with the intended meter. They currently use 30-second cumulative-total differences, including cache tokens, without event source or replay eligibility. | Pending         |
@@ -73,6 +73,45 @@ The native Claude TUI continues to resume the same session and display its histo
 - Claude, Runtime and Godview typechecks passed.
 - Godview bundle passed; restart the app to load the rebuilt main process.
 - Formatting, whitespace, the generated agent support ledger and all nine adapter ground-truth maps passed.
+
+## Step 6: remove transcript model identification
+
+Audited on 2026-09-11; completed on 2026-09-12. Deleted the transcript model projector and export, initial model replay, model fingerprints, the session reader and its public exports/tests, child directory discovery, file probes, child readers and merged-record sorting.
+
+The adapter already identifies models without transcript content:
+
+| Native source           | Model evidence                                                | Current wiring                                                                                                                  |
+| ----------------------- | ------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------- |
+| `SessionStart` hook     | Root session `model`, including resume                        | [Session model normalizer](../packages/adapter-claude/src/normalization/model.ts), invoked by the hook pipeline                 |
+| Root status line        | Current `model.id` and `model.display_name`                   | [Status channel](../packages/adapter-claude/src/observation/status-channel.ts) emits model events and root monitor evidence     |
+| Child status line       | Visible `tasks[].model`                                       | [Child monitor normalization](../packages/adapter-claude/src/normalization/monitor.ts) publishes actor model observations       |
+| OTLP `api_request` logs | Actual request `model`, with native or derived actor identity | [OTLP model normalizer](../packages/adapter-claude/src/observation/otel/model.ts), published by the driver when OTLP is enabled |
+
+These sources feed the model state displayed by Godview. Configured launch options also publish a separate configured model; they do not establish the actual observed model.
+
+The [transcript provider](../packages/adapter-claude/src/observation/transcript/provider.ts) now reads only the root transcript through the existing bounded, append-aware reader. Session filtering, silent attachment baselines, assistant deduplication, cooperative yielding, disposal and coalesced polling remain for item 4. Root or child transcript model values cannot publish model observations, including during resume and later appends. Model-only changes cannot republish unchanged assistant text.
+
+Historical last-used models are no longer imported. Child status covers visible tasks with a model and joins a native child only when its ID matches an observed hook identity. OTLP may be disabled or unavailable, or may identify only a derived actor group rather than an exact child. Missing observations remain unknown until suitable native evidence arrives; a historical response model is not proof of the model selected for the resumed session. Model capabilities now name the native sources and report unavailable or unverified OTLP explicitly.
+
+The observer never scans exact-session or shared child transcript directories, including when child files change or those paths are malformed. API usage attribution and the resume file-existence check retain their existing behavior.
+
+### Acceptance checks
+
+- [x] Delete transcript model projection, replay, fingerprints and public exports.
+- [x] Delete child transcript discovery, probes, reads and merged-record sorting.
+- [x] Verify attachment and later transcript changes cannot publish model observations or alter native model state.
+- [x] Verify `SessionStart`, root/child status and OTLP request models; hook/status models work with OTLP disabled.
+- [x] Verify native resume uses the hook model, with no historical conversation or model replay.
+- [x] Preserve root session filtering, live assistant delivery, cooperative yielding, disposal, error recovery and concurrent poll coalescing.
+- [x] Run Claude tests, relevant typechecks, Godview bundle and repository consistency checks; the unrelated package-layout failure is recorded below.
+
+### Validation
+
+- Claude adapter: **243 tests passed**, three opt-in/live tests skipped. Regression coverage checks both exact-session and shared child paths for zero discovery/probe/read calls, transcript model changes before/after native observations, OTLP model attribution and deduplication, and hook/status models with OTLP enabled or disabled.
+- Resume, live root messages, session filtering, error recovery and cooperative polling regressions pass. The four tests specific to the deleted child reader were removed; the live observer retains the relevant isolation and responsiveness coverage.
+- Claude, Runtime and Godview typechecks passed; Godview bundle passed. Restart the app to load the rebuilt main process.
+- Formatting, whitespace, the generated agent support ledger and all nine adapter ground-truth maps passed.
+- The repository package-layout check reports the existing provider-specific `codex` token in `apps/godview/src/main/terminal-links-smoke.ts`. That file and the layout checker are unchanged by this step.
 
 ## Step 7: remove workflow journal observation
 
