@@ -41,6 +41,14 @@ export function projectHue(seq: number): number {
   return position < TINT_SKIP_AT ? position : position + TINT_SKIP_WIDTH;
 }
 
+/** The pane wheel starts half a golden turn on, so the first pane and the first project never share a hue. */
+const PANE_WHEEL_OFFSET = 0.5;
+
+/** The pane wheel: the same walk as the projects', a parallel sequence, offset so the two never start together. */
+export function paneHue(seq: number): number {
+  return projectHue(seq + PANE_WHEEL_OFFSET);
+}
+
 function linearToSrgb(channel: number): number {
   return channel <= 0.0031308 ? 12.92 * channel : 1.055 * Math.pow(channel, 1 / 2.4) - 0.055;
 }
@@ -99,6 +107,11 @@ export function oklchToHex(l: number, c: number, hueDegrees: number): string {
 }
 
 /** The colour of project `seq` under the theme's tint. */
+/** A pane's colour, dealt from its sequence on the pane wheel under the theme's tint. */
+export function paneTint(seq: number, tint: ProjectTint): string {
+  return oklchToHex(tint.l, tint.c, paneHue(seq));
+}
+
 export function projectTint(seq: number, tint: ProjectTint): string {
   return oklchToHex(tint.l, tint.c, projectHue(seq));
 }

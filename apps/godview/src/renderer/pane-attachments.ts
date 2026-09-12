@@ -1,13 +1,16 @@
 /**
- * Which panes show a session. Panes carry no colour of their own (record §02,
- * P-4): a pane wears the project colour of the agent mounted in it, so the
- * only pane fact a view needs is where a session is mounted.
+ * Which panes show a session, and the colour of the one it is worked in. A
+ * pane owns its colour (record §02, revised 2026-09-12, `pane-colours.ts`);
+ * the session wears it while mounted there, as the band and, in the selected
+ * pane, the light. The project's colour stays the session's own mark.
  */
 export interface PaneAttachment {
   /** The pane the session is worked in: the active pane when it shows this session, else its first pane. */
   primaryPaneId: string;
   /** Every pane showing the session, the primary first, the rest in tree order. */
   paneIds: readonly string[];
+  /** The primary pane's colour; absent only for a pane no colour has been dealt to. */
+  color?: string;
 }
 
 interface MountedPane {
@@ -18,6 +21,7 @@ interface MountedPane {
 export function buildPaneAttachments(
   panes: readonly MountedPane[],
   activePaneId?: string,
+  colours?: ReadonlyMap<string, string>,
 ): ReadonlyMap<string, PaneAttachment> {
   const panesBySession = new Map<string, string[]>();
   for (const pane of panes) {
@@ -30,9 +34,11 @@ export function buildPaneAttachments(
   for (const [sessionId, paneIds] of panesBySession) {
     const activeIndex = activePaneId === undefined ? -1 : paneIds.indexOf(activePaneId);
     const primaryPaneId = paneIds[activeIndex >= 0 ? activeIndex : 0]!;
+    const color = colours?.get(primaryPaneId);
     result.set(sessionId, {
       primaryPaneId,
       paneIds: [primaryPaneId, ...paneIds.filter((paneId) => paneId !== primaryPaneId)],
+      ...(color ? { color } : {}),
     });
   }
   return result;

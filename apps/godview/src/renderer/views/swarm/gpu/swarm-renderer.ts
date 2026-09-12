@@ -4,7 +4,14 @@ import { BURN_BAR_COUNT } from '../burn-bars.js';
 
 /** Each body's samples: the completion side, then the prompt side. */
 const BODY_SAMPLES = BURN_BAR_COUNT * 2;
-import { layoutCopy, type CopyLayout, type CopyTone, type TextStyle } from '../text-layout.js';
+import {
+  layoutCopy,
+  leadAdvance,
+  type CopyLayout,
+  type CopyLead,
+  type CopyTone,
+  type TextStyle,
+} from '../text-layout.js';
 import { luminance, type Rgba } from './color.js';
 import { GlyphAtlas } from './glyph-atlas.js';
 import bodyShader from './shaders/body.wgsl';
@@ -164,6 +171,9 @@ function iconSvg(name: string): string | undefined {
 
 const DOT_SVG =
   '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><circle cx="12" cy="12" r="12" fill="currentColor"/></svg>';
+/** The project's tag: a rounded bar a quarter as wide as it is tall, standing in a square sprite. */
+const BAR_SVG =
+  '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><rect x="9" y="0" width="6" height="24" rx="3" fill="currentColor"/></svg>';
 
 async function compile(device: GPUDevice, label: string, source: string): Promise<GPUShaderModule> {
   const module = device.createShaderModule({ label, code: `${commonShader}\n${source}` });
@@ -566,24 +576,26 @@ export async function createSwarmRenderer(canvas: HTMLCanvasElement): Promise<Sw
       const alpha = line.opacity * dim;
       const lineY = body.y + line.y;
       let pen = body.x - line.width / 2;
-      if (line.lead) {
-        const leadColour = toneColour(line.lead.tone ?? line.tone, body, ink, theme);
-        const leadAlpha = (line.lead.opacity ?? line.opacity) * dim;
-        const leadCentreX = pen + line.lead.size / 2;
-        if (line.lead.kind === 'dot')
-          pushSprite('dot', DOT_SVG, line.lead.size, leadCentreX, lineY - 0.5, leadColour, leadAlpha);
+      const mark = (lead: CopyLead): void => {
+        const leadColour = toneColour(lead.tone ?? line.tone, body, ink, theme);
+        const leadAlpha = (lead.opacity ?? line.opacity) * dim;
+        const leadCentreX = pen + leadAdvance(lead) / 2;
+        if (lead.kind === 'dot') pushSprite('dot', DOT_SVG, lead.size, leadCentreX, lineY - 0.5, leadColour, leadAlpha);
+        else if (lead.kind === 'bar') pushSprite('bar', BAR_SVG, lead.size, leadCentreX, lineY, leadColour, leadAlpha);
         else
           pushSprite(
-            `icon:${line.lead.icon}`,
-            iconSvg(line.lead.icon ?? ''),
-            line.lead.size,
+            `icon:${lead.icon}`,
+            iconSvg(lead.icon ?? ''),
+            lead.size,
             leadCentreX,
             lineY,
             leadColour,
             leadAlpha,
           );
-        pen += line.lead.size + line.lead.gap;
-      }
+        pen += leadAdvance(lead) + lead.gap;
+      };
+      if (line.tag) mark(line.tag);
+      if (line.lead) mark(line.lead);
       if (line.text.length === 0) continue;
       const metrics = atlas.fontMetrics(line.style);
       const baseline = lineY + (metrics.ascent - metrics.descent) / 2;

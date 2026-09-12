@@ -2,7 +2,7 @@ import type { AgentVisualStatus } from '../../agent-status.js';
 import type { MonitorAgent } from '../../monitor/types.js';
 import { burnBars, type BurnBars } from './burn-bars.js';
 import { radiusForStatus, type SwarmParameters } from './swarm-parameters.js';
-import type { CopyLine, TextStyle } from './text-layout.js';
+import type { CopyLead, CopyLine, TextStyle } from './text-layout.js';
 
 // The complete, controller-free reading of one swarm body: which of the five
 // drawn states it is in, how big it is, what it says, and which marks it
@@ -29,7 +29,7 @@ export interface SwarmBubbleModel {
   /** The three-way reading that picks the body's colours and size. */
   appearance: AgentVisualStatus;
   radius: number;
-  /** The project's colour (record §02): the pane light when mounted, the flood, the centre light. */
+  /** The project's colour (record §02): the tag before the name, the flood, the centre light. */
   accent: string;
   copy: CopyLine[];
   copyMaxWidthRatio: number;
@@ -48,8 +48,8 @@ export interface SwarmBubbleModel {
   unread: boolean;
   stale: boolean;
   active: boolean;
-  /** A mounted body's band, in its own colour since the pane wears the session's and never its own; the
-   * outer light joins it only while `active`, that is, while its pane is the selected one. */
+  /** A mounted body's band, in the colour of the pane it is worked in (revised 2026-09-12: a pane owns its
+   * colour); the outer light joins it only while `active`, that is, while its pane is the selected one. */
   linked?: string;
   /** The provider mark, watermarked behind the copy. */
   watermark?: { sprite: string; opacity: number };
@@ -82,6 +82,12 @@ const BRANCH: TextStyle = { size: 7, weight: 500 };
 /** The latest reply, one line. */
 const MESSAGE: TextStyle = { size: 8, weight: 500 };
 const KIND: TextStyle = { size: 7, weight: 800, transform: 'uppercase', letterSpacing: 0.08 };
+
+/** The project's tag before the name: a rounded bar in the project's colour, the name's height, a quarter as wide. */
+function projectTag(style: TextStyle): CopyLead {
+  const size = Math.round(style.size * 0.8);
+  return { kind: 'bar', size, width: Math.max(2, Math.round(size / 4)), gap: 4, tone: 'accent' };
+}
 
 const BLOCKER_LINE: Record<SwarmBlockerKind, string> = {
   permission: 'permission',
@@ -168,7 +174,7 @@ export function bubbleModel(input: BubbleModelInput): SwarmBubbleModel {
     accent: agent.color,
     stale: agent.stale === true,
     active: agent.active,
-    ...(agent.attachment ? { linked: agent.color } : {}),
+    ...(agent.attachment?.color ? { linked: agent.attachment.color } : {}),
   };
 
   if (!facet) {
@@ -252,6 +258,7 @@ export function bubbleModel(input: BubbleModelInput): SwarmBubbleModel {
         style: WORKING_NAME,
         opacity: 1,
         tone: 'ink',
+        tag: projectTag(WORKING_NAME),
         ...(facet.branch ? { gapBefore: 1 } : {}),
       },
       modelLine,
@@ -321,6 +328,7 @@ export function bubbleModel(input: BubbleModelInput): SwarmBubbleModel {
       style: SMALL_NAME,
       opacity: 1,
       tone: 'ink',
+      tag: projectTag(SMALL_NAME),
       ...(input.unread && !message ? { lead: { kind: 'dot' as const, size: 5, gap: 4, tone: 'blue' as const } } : {}),
     },
     modelLine,

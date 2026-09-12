@@ -59,8 +59,9 @@ export interface MonitorAgent {
   stale?: boolean;
   /** Mounted in the pane the user is working in. */
   active: boolean;
-  /** The panes showing this session; absent when it is mounted nowhere. A pane
-   * wears this session's colour, never one of its own. */
+  /** The panes showing this session and the colour of the one it is worked
+   * in; absent when it is mounted nowhere. A pane owns its colour, and the
+   * session wears it while mounted there. */
   attachment?: PaneAttachment;
   cwd?: string;
   /** Where the user asked for it, for views that place new arrivals spatially. */

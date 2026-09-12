@@ -15,6 +15,16 @@ describe('pane attachments', () => {
     });
   });
 
+  it('carries the colour of the pane the session is worked in', () => {
+    const colours = new Map([
+      ['pane-a', '#aaaaaa'],
+      ['pane-b', '#bbbbbb'],
+    ]);
+    expect(buildPaneAttachments(panes, 'pane-b', colours).get('shared-session')?.color).toBe('#bbbbbb');
+    expect(buildPaneAttachments(panes, 'pane-c', colours).get('shared-session')?.color).toBe('#aaaaaa');
+    expect(buildPaneAttachments(panes, 'pane-c', colours).get('other-session')?.color).toBeUndefined();
+  });
+
   it('uses the first pane when that session is not selected', () => {
     const attachments = buildPaneAttachments(panes, 'pane-c');
     expect(attachments.get('shared-session')).toEqual({ primaryPaneId: 'pane-a', paneIds: ['pane-a', 'pane-b'] });

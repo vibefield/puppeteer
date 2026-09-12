@@ -63,6 +63,21 @@ describe('layoutCopy', () => {
     expect(line.textWidth).toBeLessThanOrEqual(0.84 * 40);
   });
 
+  it('reserves room for a tag ahead of the lead, a narrow mark taking only its width', () => {
+    const measure: TextMeasure = (text) => text.length * 6;
+    const line: CopyLine = {
+      key: 'name',
+      text: 'abc',
+      style: { size: 12, weight: 800 },
+      opacity: 1,
+      tone: 'ink',
+      tag: { kind: 'bar', size: 10, width: 3, gap: 4, tone: 'accent' },
+      lead: { kind: 'dot', size: 5, gap: 4 },
+    };
+    const [placed] = layoutCopy([line], { radius: 60, measure, maxWidthRatio: 0.9 }).lines;
+    expect(placed?.width).toBe(18 + 3 + 4 + 5 + 4);
+  });
+
   it('reserves room for a lead mark and reports the full width', () => {
     const layout = layoutCopy(
       [{ key: 'name', text: 'jabali', style: name, opacity: 1, tone: 'ink', lead: { kind: 'dot', size: 5, gap: 4 } }],

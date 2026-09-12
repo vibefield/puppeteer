@@ -37,8 +37,10 @@ export interface LabStage {
 const PROJECT = (seq: number): string => `var(--lab-project-${seq})`;
 /** A bare terminal belongs to no project and wears the ramp. */
 const NEUTRAL = 'var(--text-faint)';
-/** The one pane a mounted fixture is shown in. */
-const MOUNTED = { primaryPaneId: 'pane', paneIds: ['pane'] } as const;
+/** A pane's colour, dealt from its sequence on the pane wheel: the lab sets these on its root per theme (`main.ts`). */
+const PANE = (seq: number): string => `var(--lab-pane-${seq})`;
+/** The one pane a mounted fixture is shown in, wearing its own colour. */
+const mountedIn = (seq: number) => ({ primaryPaneId: 'pane', paneIds: ['pane'], color: PANE(seq) }) as const;
 
 function session(id: string, activityKind: 'shell-idle' | 'foreground-job', nowMs: number): SessionSummary {
   return {
@@ -171,7 +173,7 @@ export function agentFixture(spec: AgentSpec, nowMs: number): MonitorAgent {
     color: PROJECT((spec.accent ?? 1) - 1),
     active: spec.active === true,
     ...(spec.stale ? { stale: true } : {}),
-    ...(spec.mounted || spec.active ? { attachment: MOUNTED } : {}),
+    ...(spec.mounted || spec.active ? { attachment: mountedIn((spec.accent ?? 1) - 1) } : {}),
     agent: facet,
   };
 }
@@ -278,7 +280,7 @@ export function stateStages(nowMs: number): LabStage[] {
     {
       id: 'idle-mounted',
       title: 'Idle, mounted in a pane',
-      note: 'The project colour as a band a thirtieth of the radius wide outside the rim, the gutter, and nothing beyond it; the gauge a twelfth of the radius wide, in the ink. At 60 that is 2px and 5px.',
+      note: 'The pane’s own colour as a band a thirtieth of the radius wide outside the rim, the gutter, and nothing beyond it; the project’s colour stays the tag before the name. The gauge a twelfth of the radius wide, in the ink. At 60 that is 2px and 5px.',
       agent: agentFixture(
         {
           id: 'a5',

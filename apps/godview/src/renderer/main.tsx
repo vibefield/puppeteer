@@ -62,6 +62,7 @@ import {
 import { FindSheet } from './find/FindSheet.js';
 import { useMonitorAgents } from './monitor/useMonitorAgents.js';
 import { buildPaneAttachments } from './pane-attachments.js';
+import { dealPaneColours, EMPTY_PANE_COLOUR_LEDGER, paneColours } from './pane-colours.js';
 import { paneSessionLaunchSource } from './pane-session.js';
 import { DeckFrames } from './deck/DeckFrames.js';
 import { useTerminalGround } from './deck/terminal-ground.js';
@@ -191,7 +192,7 @@ function Godview() {
   const [findOpen, setFindOpen] = useState(false);
   const [workspace, setWorkspace] = useState<GhostteaWorkspaceContext>();
   const [terminalIdentities, setTerminalIdentities] = useState<ReadonlyMap<string, string>>(() => new Map());
-  const [paneColors, setPaneColors] = useState<ReadonlyMap<string, string>>(() => new Map());
+  const paneLedgerRef = useRef(EMPTY_PANE_COLOUR_LEDGER);
   const stageRef = useRef<HTMLElement>(null);
   const chromeRef = useRef<HTMLDivElement>(null);
   const deckRef = useRef<HTMLElement>(null);
@@ -306,9 +307,19 @@ function Godview() {
     return () => observer.disconnect();
   }, []);
 
+  // Each pane owns a colour (record §02, revised 2026-09-12): dealt as panes
+  // open, on the wheel parallel to the projects', retired with the pane. The
+  // session in a pane wears it while mounted there.
+  const paneColors = useMemo(() => {
+    paneLedgerRef.current = dealPaneColours(
+      paneLedgerRef.current,
+      (workspace?.panes ?? []).map((pane) => pane.id),
+    );
+    return paneColours(paneLedgerRef.current, palette.tint);
+  }, [palette.tint, workspace?.panes]);
   const paneAttachments = useMemo(
-    () => buildPaneAttachments(workspace?.panes ?? [], workspace?.activePaneId),
-    [workspace?.activePaneId, workspace?.panes],
+    () => buildPaneAttachments(workspace?.panes ?? [], workspace?.activePaneId, paneColors),
+    [paneColors, workspace?.activePaneId, workspace?.panes],
   );
 
   const onSessionExited = useCallback((listener: (sessionId: string) => void) => {
@@ -362,21 +373,6 @@ function Godview() {
   const agentsBySession = useMemo(() => new Map(agents.map((agent) => [agent.session.id, agent] as const)), [agents]);
   const activeAgent = agents.find((agent) => agent.active);
 
-  // A pane owns no colour (record §02, P-4): it wears the project colour of
-  // the agent mounted in it, and nothing while it shows a bare shell. Held as
-  // state with an equality check so Ghosttea's workspace is not redrawn on
-  // every monitor tick.
-  useEffect(() => {
-    const next = new Map<string, string>();
-    for (const pane of workspace?.panes ?? []) {
-      const agent = agentsBySession.get(pane.session.id);
-      if (agent?.agent) next.set(pane.id, agent.color);
-    }
-    setPaneColors((current) => {
-      if (current.size === next.size && [...next].every(([id, color]) => current.get(id) === color)) return current;
-      return next;
-    });
-  }, [agentsBySession, workspace?.panes]);
   const counts = useMemo(() => monitorAgentCounts(agents), [agents]);
 
   const selectNextStatus = useCallback(
@@ -482,9 +478,8 @@ function Godview() {
     return () => window.clearInterval(timer);
   }, []);
 
-  // Only the colour, and only for a pane holding an agent: the badge and the
-  // rest of the frame are the deck's own (`deck/PaneFrame.tsx`), drawn into
-  // the pane Ghosttea lays out.
+  // Only the pane's own colour: the badge and the rest of the frame are the
+  // deck's own (`deck/PaneFrame.tsx`), drawn into the pane Ghosttea lays out.
   const decoratePane = useCallback(
     (_session: SessionSummary, paneId: string): GhostteaWorkspacePaneDecoration => {
       const color = paneColors.get(paneId);

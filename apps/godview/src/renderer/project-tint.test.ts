@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { DEFAULT_PROJECT_TINT, oklchToHex, projectHue, projectTint } from './project-tint.js';
+import { DEFAULT_PROJECT_TINT, oklchToHex, paneHue, paneTint, projectHue, projectTint } from './project-tint.js';
 
 describe('project tint', () => {
   it('deals hues along the golden ratio, from just past the withheld band', () => {
@@ -20,6 +20,17 @@ describe('project tint', () => {
         expect(Math.min(distance, 360 - distance)).toBeGreaterThan(20);
       }
     }
+  });
+
+  it('runs the pane wheel parallel to the project wheel, half a turn on, off the withheld band', () => {
+    const distance = (left: number, right: number): number =>
+      Math.min(Math.abs(left - right), 360 - Math.abs(left - right));
+    for (let seq = 0; seq < 12; seq += 1) {
+      expect(distance(paneHue(seq), projectHue(seq))).toBeGreaterThan(40);
+      expect(paneHue(seq) < 238 || paneHue(seq) >= 265).toBe(true);
+    }
+    expect(paneTint(0, DEFAULT_PROJECT_TINT.light)).toMatch(/^#[0-9a-f]{6}$/u);
+    expect(paneTint(0, DEFAULT_PROJECT_TINT.light)).not.toBe(projectTint(0, DEFAULT_PROJECT_TINT.light));
   });
 
   it('is the same hue in both themes; only lightness moves', () => {

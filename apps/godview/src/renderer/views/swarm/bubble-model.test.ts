@@ -270,15 +270,19 @@ describe('bubbleModel', () => {
 
   it('carries the pane link, the stale flag, and the accessible copy', () => {
     const model = bubbleModel({
-      agent: agent({ stale: true, color: '#ec4899', attachment: { primaryPaneId: 'pane', paneIds: ['pane'] } }, {}),
+      agent: agent(
+        { stale: true, color: '#ec4899', attachment: { primaryPaneId: 'pane', paneIds: ['pane'], color: '#22cc88' } },
+        {},
+      ),
       parameters,
       nowMs: NOW,
       unread: false,
     });
     expect(model.stale).toBe(true);
-    // The pane light is the body's own colour: a pane wears the session's, never one of its own.
-    expect(model.linked).toBe('#ec4899');
+    // The band is the pane's colour; the project's colour is the body's accent and the tag before its name.
+    expect(model.linked).toBe('#22cc88');
     expect(model.accent).toBe('#ec4899');
+    expect(model.copy.find((line) => line.key === 'name')?.tag).toMatchObject({ kind: 'bar', tone: 'accent' });
     expect(
       bubbleModel({ agent: agent({ color: '#ec4899' }, {}), parameters, nowMs: NOW, unread: false }).linked,
     ).toBeUndefined();

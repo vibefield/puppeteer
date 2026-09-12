@@ -59,34 +59,6 @@
     inset 0 0 5px -1px color-mix(in srgb, var(--ghostty-pane-color) 30%, transparent);
 }
 
-/* A pane owns no colour (record §02): it wears the project colour of the agent
-   mounted in it, and a pane showing a bare shell has none. Ghosttea draws its
-   accent layer only for a coloured pane, so the neutral pane gets one of its
-   own here: the line and the glow in the ink, quieter than a colour would be. */
-.vf-godview-terminal-deck .ghostty-pane:not([data-pane-accent])::before {
-  position: absolute;
-  z-index: 5;
-  inset: 0;
-  border: 1px solid transparent;
-  box-shadow:
-    inset 0 0 34px -8px transparent,
-    inset 0 0 5px -1px transparent;
-  content: '';
-  pointer-events: none;
-  transition:
-    border-color 240ms ease,
-    box-shadow 320ms ease,
-    border-radius 240ms ease;
-}
-
-.vf-godview-terminal-deck .ghostty-pane.is-active:not([data-pane-accent])::before {
-  border-color: color-mix(in srgb, var(--vf-godview-terminal-ink) 30%, transparent);
-  border-radius: 8px;
-  box-shadow:
-    inset 0 0 34px -8px color-mix(in srgb, var(--vf-godview-terminal-ink) 20%, transparent),
-    inset 0 0 5px -1px color-mix(in srgb, var(--vf-godview-terminal-ink) 10%, transparent);
-}
-
 /* Two resting panes meet with no visible edge; the divider keeps its grip. */
 .vf-godview-terminal-deck .ghostty-split-divider {
   background: transparent;
@@ -102,8 +74,9 @@
 
 /* ── the frame ─────────────────────────────────────────────────────────── */
 
-/* `--ghostty-pane-color` is the mounted agent's project colour, set on the
-   pane by Ghosttea; a neutral pane's verbs and badge fall back to the ink. */
+/* `--ghostty-pane-color` is the pane's own colour (record §02, revised
+   2026-09-12), set on the pane by Ghosttea; the ink is only a fallback for a
+   pane no colour has reached yet. */
 .vf-pane-frame {
   --ink: var(--vf-godview-terminal-ink, currentColor);
   --pane-color: var(--ghostty-pane-color, color-mix(in srgb, var(--ink) 70%, transparent));
@@ -297,11 +270,6 @@
    outline on the badge: the tab is marked, the pane stays quiet. */
 .vf-godview-terminal-deck .ghostty-pane[data-pane-accent]:not(.is-active) .vf-pane-badge {
   box-shadow: inset 0 0 0 1px var(--pane-color);
-}
-
-/* The neutral badge fills in the ink and writes in the ground: a name with no colour. */
-.vf-godview-terminal-deck .ghostty-pane.is-active:not([data-pane-accent]) .vf-pane-badge {
-  color: var(--vf-godview-terminal-bg, #fff);
 }
 
 /* the meter: a 6px track along the whole bottom edge, filled from the left to

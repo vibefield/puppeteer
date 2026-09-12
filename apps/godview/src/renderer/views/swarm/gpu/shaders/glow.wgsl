@@ -28,5 +28,7 @@ fn fs(in: BodyVertex) -> @location(0) vec4f {
   let rim = exp(-outer / 6.0);
   let halo = pow(clamp(1.0 - outer / reach, 0.0, 1.0), 2.65);
   let a = clamp(strength * (0.45 * rim + 0.6 * halo), 0.0, 1.0) * breathe * outside;
-  return premul(vec4f(body.accent.rgb, a));
+  // The light beyond the band is the pane's, like the band: the colour of the
+  // pane the body is worked in, not the project's.
+  return premul(vec4f(body.link.rgb, a));
 }

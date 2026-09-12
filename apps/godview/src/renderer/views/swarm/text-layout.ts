@@ -19,14 +19,22 @@ export type TextMeasure = (text: string, style: TextStyle) => number;
 export type CopyTone = 'ink' | 'orange' | 'green' | 'blue' | 'accent';
 
 export interface CopyLead {
-  /** A dot is the unread mark; an icon names a sprite in the atlas. */
-  kind: 'dot' | 'icon';
+  /** A dot is the unread mark; an icon names a sprite in the atlas; a bar is the project's tag before the name. */
+  kind: 'dot' | 'icon' | 'bar';
   icon?: string;
+  /** The sprite's height, and its width unless `width` narrows it. */
   size: number;
+  /** The horizontal room the lead takes, for a mark narrower than it is tall. */
+  width?: number;
   /** Space between the lead and the text. */
   gap: number;
   opacity?: number;
   tone?: CopyTone;
+}
+
+/** The room a lead takes along the line. */
+export function leadAdvance(lead: CopyLead): number {
+  return lead.width ?? lead.size;
 }
 
 export interface CopyLine {
@@ -39,6 +47,8 @@ export interface CopyLine {
   gapBefore?: number;
   /** Line box height as a multiple of the size; the copy's `line-height: 1.05`. */
   lineHeight?: number;
+  /** A mark before the lead: the project's bar stands ahead of the unread dot. */
+  tag?: CopyLead;
   lead?: CopyLead;
 }
 
@@ -120,7 +130,8 @@ export function layoutCopy(lines: readonly CopyLine[], options: CopyLayoutOption
     cursor += line.gapBefore ?? 0;
     const y = cursor + height / 2;
     cursor += height;
-    const leadWidth = line.lead ? line.lead.size + line.lead.gap : 0;
+    const leadWidth =
+      (line.tag ? leadAdvance(line.tag) + line.tag.gap : 0) + (line.lead ? leadAdvance(line.lead) + line.lead.gap : 0);
     const available = Math.min(
       maxWidthRatio * radius * 2,
       chordWidth(radius, y - height / 2, y + height / 2) - inset * 2,
@@ -131,7 +142,7 @@ export function layoutCopy(lines: readonly CopyLine[], options: CopyLayoutOption
       ...line,
       text,
       textWidth,
-      width: textWidth + (text.length === 0 && line.lead ? line.lead.size : leadWidth),
+      width: textWidth + (text.length === 0 && line.lead && !line.tag ? leadAdvance(line.lead) : leadWidth),
       y,
       height,
     };
