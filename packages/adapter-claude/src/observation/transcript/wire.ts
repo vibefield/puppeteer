@@ -27,10 +27,6 @@ export function transcriptString(value: unknown): string | undefined {
   return typeof value === 'string' && value.length > 0 ? value : undefined;
 }
 
-export function transcriptNonNegativeNumber(value: unknown): number | undefined {
-  return typeof value === 'number' && Number.isFinite(value) && value >= 0 ? value : undefined;
-}
-
 function timestamp(value: unknown): string {
   if (typeof value === 'string' && Number.isFinite(Date.parse(value))) return new Date(value).toISOString();
   return new Date(0).toISOString();

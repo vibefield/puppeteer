@@ -18,7 +18,7 @@ function laneKey(parts: readonly string[]): string {
 
 /**
  * Classify Claude requests without treating a missing native agent id as root.
- * Derived lanes are replaced when transcript sidecars provide exact identity.
+ * Derived lanes preserve telemetry scope when an exact native id is absent.
  */
 export function claudeOtelActor(record: ClaudeOtelLogRecord): ClaudeOtelActorAttribution {
   const agentId = otelString(record, 'agent.id') ?? otelString(record, 'agent_id');

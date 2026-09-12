@@ -53,7 +53,6 @@ import {
   supportsClaudeOtelLogs,
 } from './observation/otel/index.js';
 import { ClaudeTranscriptObservationProvider } from './observation/transcript/provider.js';
-import { ClaudeUsageReconciler, type ClaudeUsageEvidence } from './observation/usage-reconciler.js';
 import { claudePermissionMode } from './normalization/mode.js';
 import { ClaudeEventSource, type ClaudeEventPublication } from './services/event-source.js';
 import type {
@@ -63,6 +62,7 @@ import type {
 } from './observation/semantic-provider.js';
 
 const TOKEN_ENV_VAR = 'PUPPETEER_HOOK_TOKEN';
+const MAX_OTEL_USAGE_FINGERPRINTS = 20_000;
 const MAX_OTEL_ACTOR_FINGERPRINTS = 4_096;
 const MAX_OTEL_WORKFLOW_FINGERPRINTS = 1_024;
 
@@ -359,7 +359,7 @@ function createPreparedClaudeSession(
   let configuredIntentPublished = false;
   let observedStatusEnvironmentKey: string | undefined;
   let observedStatusContextKey: string | undefined;
-  const usageReconciler = new ClaudeUsageReconciler();
+  const observedOtelUsage = new Map<string, string>();
   const observedOtelModels = new Map<string, string>();
   const observedOtelWorkflows = new Map<string, string>();
 
@@ -410,6 +410,8 @@ function createPreparedClaudeSession(
   }
 
   function apply(event: AgentEvent, meta: ClaudeEventPublication): void {
+    // Settled request usage belongs exclusively to authenticated API telemetry.
+    if (event.type === 'usage:tokens-used' && meta.source !== 'native-telemetry') return;
     // Injector wiring rides the normalized stream, not raw payloads.
     switch (event.type) {
       case 'turn:started':
@@ -451,11 +453,6 @@ function createPreparedClaudeSession(
     }
 
     events.publish(event, meta);
-  }
-
-  function publishUsageEvidence(kind: 'otel' | 'transcript', evidence: ClaudeUsageEvidence): void {
-    const reconciled = usageReconciler.accept(kind, evidence);
-    if (reconciled) apply(reconciled.event, reconciled.publication);
   }
 
   function publishConfiguredIntent(): void {
@@ -537,9 +534,18 @@ function createPreparedClaudeSession(
       if (observation === 'terminal-only') observation = 'native-log';
 
       if (usage) {
-        publishUsageEvidence('otel', {
-          event: usage.event,
-          publication: {
+        const key = usage.event.usageId;
+        const fingerprint = JSON.stringify([
+          usage.event,
+          usage.agentId ?? null,
+          usage.agentType ?? null,
+          usage.actorKey ?? null,
+          usage.actorRole ?? null,
+        ]);
+        const previous = observedOtelUsage.get(key);
+        rememberFingerprint(observedOtelUsage, key, fingerprint, MAX_OTEL_USAGE_FINGERPRINTS);
+        if (previous !== fingerprint) {
+          apply(usage.event, {
             source: 'native-telemetry',
             timestamp: usage.timestamp,
             promptId: usage.promptId,
@@ -550,8 +556,8 @@ function createPreparedClaudeSession(
             providerVersion: usage.providerVersion ?? options.providerVersion,
             confidence: 'authoritative',
             native: usage.nativeEvent,
-          },
-        });
+          });
+        }
       }
 
       if (model) {
@@ -622,22 +628,6 @@ function createPreparedClaudeSession(
       semanticHandle = handle;
       handle.onEvent((semantic) => {
         if (disposed || generation !== semanticGeneration) return;
-        if (semantic.event.type === 'usage:tokens-used') {
-          publishUsageEvidence('transcript', {
-            event: semantic.event,
-            publication: {
-              source: 'native-transcript',
-              timestamp: semantic.timestamp,
-              promptId: semantic.promptId,
-              turnId: semantic.turnId,
-              agentId: semantic.agentId,
-              agentType: semantic.agentType,
-              native: semantic.nativeEvent,
-              replay: semantic.replay,
-            },
-          });
-          return;
-        }
         apply(semantic.event, {
           source: 'native-transcript',
           timestamp: semantic.timestamp,

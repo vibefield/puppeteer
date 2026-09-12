@@ -14,10 +14,11 @@ const CLAUDE_MONITOR_CAPABILITY_BASE: readonly ObservationCapability[] = [
     support: 'supported',
     actorScope: 'current-actors',
     latency: 'response',
-    source: 'claude-otlp-logs-with-transcript-fallback',
+    source: 'claude-otlp-logs',
     contractVersion: 'claude-code-api-request@1',
     limitations: [
       'Settled requests are exact; Claude exposes no sanctioned intra-response token delta.',
+      'Request totals cover observed API completions; historical transcript usage is not imported.',
       'Per-child attribution is present only when Claude emits a native agent id.',
       'Claude tokenSamples omit timestamps, so only callback-time tokenCount is used for child burn rate.',
     ],
@@ -109,13 +110,17 @@ export function claudeMonitorCapabilities(
       ? {
           ...capability,
           support: 'degraded' as const,
-          latency: otelUsageEnabled ? ('response' as const) : ('historical' as const),
-          source: otelUsageEnabled ? 'claude-otlp-probe-with-transcript-fallback' : 'claude-transcript-jsonl',
+          latency: otelUsageEnabled ? ('response' as const) : ('sample' as const),
+          source: otelUsageEnabled ? 'claude-otlp-probe' : 'claude-child-status-samples',
+          contractVersion: otelUsageEnabled ? capability.contractVersion : 'claude-status-channel@1',
           limitations: [
             ...capability.limitations,
             otelUsageEnabled
-              ? 'The provider version is unknown; OTLP is safely probed and transcript usage remains the fallback.'
+              ? 'The provider version is unknown; OTLP request logs are safely probed.'
               : unavailableReason,
+            ...(!otelUsageEnabled
+              ? ['Settled request usage is unavailable; only visible child status estimates may be observed.']
+              : []),
           ],
         }
       : capability,

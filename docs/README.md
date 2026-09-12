@@ -23,6 +23,8 @@ The repository keeps current decisions, active work, and history in separate pla
 
 Unfinished vendor adaptation plans live in [`../draft/`](../draft/). Canonical guides move here; completed designs and rollout plans move to [`archive/`](archive/).
 
+- [`../draft/CLAUDE-TRANSCRIPT-DEPENDENCIES.md`](../draft/CLAUDE-TRANSCRIPT-DEPENDENCIES.md) tracks the Claude transcript dependency audit and removal of transcript-derived live usage.
+
 ## Historical material
 
 [`archive/`](archive/) preserves rationale that is useful for archaeology but is not an implementation contract. Git history, rather than a permanent live document, retains obsolete operational runbooks and one-off migration instructions.

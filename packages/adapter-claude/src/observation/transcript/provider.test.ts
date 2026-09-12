@@ -56,14 +56,12 @@ async function fixture(contents: string) {
 }
 
 describe('ClaudeTranscriptObservationProvider', () => {
-  it('compares final request usage and actor models once, while accepting appended corrections', async () => {
+  it('compares final actor models once without publishing transcript usage', async () => {
     const { path, handle, events } = await fixture(
       usageRow(1) + usageRow(2, { model: 'model-b' }) + usageRow(3, { requestId: 'request-2' }),
     );
     await handle.poll();
     expect(events.map(({ event }) => event)).toEqual([
-      expect.objectContaining({ type: 'usage:tokens-used', usageId: 'claude-request:request-1', totalTokens: 12 }),
-      expect.objectContaining({ type: 'usage:tokens-used', usageId: 'claude-request:request-2', totalTokens: 13 }),
       expect.objectContaining({ type: 'model:updated', model: { id: 'model-a', provider: 'anthropic' } }),
     ]);
     expect(events.every(({ replay }) => replay)).toBe(true);
@@ -82,7 +80,6 @@ describe('ClaudeTranscriptObservationProvider', () => {
     appendFileSync(path, usageRow(4, { tokens: 1, model: 'model-c' }));
     await handle.poll();
     expect(events.map(({ event }) => event)).toEqual([
-      expect.objectContaining({ type: 'usage:tokens-used', usageId: 'claude-request:request-1', totalTokens: 11 }),
       expect.objectContaining({ type: 'model:updated', model: { id: 'model-c', provider: 'anthropic' } }),
     ]);
     expect(events.every(({ replay }) => !replay)).toBe(true);
@@ -91,7 +88,7 @@ describe('ClaudeTranscriptObservationProvider', () => {
     expect(events).toEqual([]);
   });
 
-  it('keeps child attribution through later root copies and publishes newly learned attribution', async () => {
+  it('retains child models without publishing usage from child sidecars or later root copies', async () => {
     const { root, path, handle, events } = await fixture(usageRow(2));
     await handle.poll();
     events.length = 0;
@@ -107,13 +104,7 @@ describe('ClaudeTranscriptObservationProvider', () => {
       }),
     );
     await handle.poll();
-    expect(events.filter(({ event }) => event.type === 'usage:tokens-used')).toEqual([
-      expect.objectContaining({
-        agentId: 'worker',
-        agentType: 'researcher',
-        event: expect.objectContaining({ totalTokens: 12 }),
-      }),
-    ]);
+    expect(events.filter(({ event }) => event.type === 'usage:tokens-used')).toEqual([]);
     expect(events.filter(({ event }) => event.type === 'model:updated')).toEqual([
       expect.objectContaining({
         agentId: 'worker',
@@ -123,13 +114,7 @@ describe('ClaudeTranscriptObservationProvider', () => {
     events.length = 0;
     appendFileSync(path, usageRow(3, { tokens: 4 }));
     await handle.poll();
-    expect(events).toEqual([
-      expect.objectContaining({
-        agentId: 'worker',
-        agentType: 'researcher',
-        event: expect.objectContaining({ totalTokens: 14 }),
-      }),
-    ]);
+    expect(events).toEqual([]);
     events.length = 0;
     await handle.poll();
     expect(events).toEqual([]);
@@ -215,10 +200,12 @@ describe('ClaudeTranscriptObservationProvider', () => {
     release({ root: [], all: [] });
     await Promise.all([first, ...hinted]);
     expect(read).toHaveBeenCalledTimes(2);
-    expect(events.some(({ event }) => event.type === 'usage:tokens-used')).toBe(true);
+    expect(events.map(({ event }) => event)).toEqual([
+      expect.objectContaining({ type: 'model:updated', model: { id: 'model-a', provider: 'anthropic' } }),
+    ]);
   });
 
-  it('replays root conversation, projects fallback usage, and reads exact workflow members', async () => {
+  it('replays root conversation and reads exact workflow members without importing historical usage', async () => {
     const root = mkdtempSync(join(tmpdir(), 'claude-transcript-provider-'));
     roots.push(root);
     const sessionId = 'session-1';
@@ -278,15 +265,10 @@ describe('ClaudeTranscriptObservationProvider', () => {
       'turn:started',
       'conversation:assistant-message',
       'turn:completed',
-      'usage:tokens-used',
       'model:updated',
       'workflow:updated',
     ]);
-    expect(events.find(({ event }) => event.type === 'usage:tokens-used')?.event).toMatchObject({
-      usageId: 'claude-request:request-1',
-      totalTokens: 48,
-      meterTokens: 16,
-    });
+    expect((await provider.capabilities()).some(({ family }) => family === 'usage')).toBe(false);
     expect(events.find(({ event }) => event.type === 'workflow:updated')?.event).toEqual({
       type: 'workflow:updated',
       workflowId: 'workflow-1',
@@ -303,7 +285,7 @@ describe('ClaudeTranscriptObservationProvider', () => {
     await handle.dispose();
   });
 
-  it('includes exact-session child sidecars in fallback usage without replaying them as root conversation', async () => {
+  it('reads exact-session child models without replaying child conversation or usage', async () => {
     const root = mkdtempSync(join(tmpdir(), 'claude-transcript-descendants-'));
     roots.push(root);
     const sessionId = 'session-1';
@@ -338,14 +320,14 @@ describe('ClaudeTranscriptObservationProvider', () => {
     await handle.poll();
 
     expect(events.filter(({ event }) => event.type === 'conversation:assistant-message')).toHaveLength(0);
-    expect(events.filter(({ event }) => event.type === 'usage:tokens-used').map(({ event }) => event)).toEqual([
-      expect.objectContaining({ usageId: 'claude-request:request-child', totalTokens: 30, meterTokens: 10 }),
+    expect(events).toEqual([
+      expect.objectContaining({
+        agentId: 'worker',
+        agentType: 'researcher',
+        replay: true,
+        event: { type: 'model:updated', intent: 'observed', model: { id: 'claude-haiku-4-5', provider: 'anthropic' } },
+      }),
     ]);
-    expect(events.find(({ event }) => event.type === 'usage:tokens-used')).toMatchObject({
-      agentId: 'worker',
-      agentType: 'researcher',
-      replay: true,
-    });
     expect(JSON.stringify(events)).not.toContain('request-foreign');
     await handle.dispose();
   });

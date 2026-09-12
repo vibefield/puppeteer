@@ -6,7 +6,7 @@
  * POSTs fixture-shaped hook payloads with the env-carried token.
  */
 
-import { existsSync, mkdirSync, mkdtempSync, readFileSync, writeFileSync } from 'node:fs';
+import { appendFileSync, existsSync, mkdirSync, mkdtempSync, readFileSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { afterEach, describe, expect, it, vi } from 'vitest';
@@ -20,7 +20,7 @@ import { createClaudeSession, prepareClaudeTuiSession, type ClaudeSession } from
 import type { PreparedClaudeSession } from './launch/prepare.js';
 import type { ClaudeHookDiagnostic } from './normalization/index.js';
 import type { HookBridge, NativeHookEnvelope } from './observation/hook-bridge.js';
-import type { SemanticObservationProvider } from './observation/semantic-provider.js';
+import type { SemanticObservationEvent, SemanticObservationProvider } from './observation/semantic-provider.js';
 
 let sessions: ClaudeSession[] = [];
 afterEach(async () => {
@@ -37,6 +37,7 @@ async function startSession(
     effort?: string;
     settingSources?: Parameters<typeof createClaudeSession>[0]['settingSources'];
     providerVersion?: string;
+    observeOtlpUsage?: boolean;
     observeSubagentStatus?: boolean;
     hookRailFaultInjection?: Parameters<typeof createClaudeSession>[0]['hookRailFaultInjection'];
     semanticProviderFactory?: () => SemanticObservationProvider;
@@ -54,6 +55,7 @@ async function startSession(
     effort: options.effort,
     settingSources: options.settingSources,
     providerVersion: options.providerVersion,
+    observeOtlpUsage: options.observeOtlpUsage,
     observeSubagentStatus: options.observeSubagentStatus,
     hookRailFaultInjection: options.hookRailFaultInjection,
     semanticProviderFactory: options.semanticProviderFactory,
@@ -437,8 +439,8 @@ describe('createClaudeSession (full loop, test-as-Claude)', () => {
     expect((await receipt).status).toBe('confirmed');
   });
 
-  it('ingests authenticated OTLP request completions as primary exact usage', async () => {
-    const { session, prepared, events, token } = await startSession({ providerVersion: '2.1.245' });
+  it('uses only OTLP request values and actor corrections despite conflicting transcript records', async () => {
+    const { session, prepared, events, token, hook } = await startSession({ providerVersion: '2.1.245' });
     expect(prepared.env).toMatchObject({
       OTEL_LOGS_EXPORTER: 'otlp',
       OTEL_EXPORTER_OTLP_PROTOCOL: 'http/json',
@@ -446,7 +448,12 @@ describe('createClaudeSession (full loop, test-as-Claude)', () => {
     });
     const attribute = (key: string, value: unknown) => ({
       key,
-      value: typeof value === 'number' ? { intValue: String(value) } : { stringValue: value },
+      value:
+        typeof value === 'number'
+          ? Number.isInteger(value)
+            ? { intValue: String(value) }
+            : { doubleValue: value }
+          : { stringValue: value },
     });
     const otlpBody = JSON.stringify({
       resourceLogs: [
@@ -463,11 +470,13 @@ describe('createClaudeSession (full loop, test-as-Claude)', () => {
                     attribute('session.id', session.sessionId),
                     attribute('prompt.id', 'prompt-otel'),
                     attribute('request_id', 'request-otel'),
+                    attribute('query_source', 'main'),
                     attribute('model', 'claude-haiku-4-5'),
                     attribute('input_tokens', 10),
                     attribute('output_tokens', 5),
                     attribute('cache_read_tokens', 100),
                     attribute('cache_creation_tokens', 20),
+                    attribute('cost_usd', 0.125),
                     attribute('user.email', 'must-not-cross@example.com'),
                   ],
                 },
@@ -477,11 +486,11 @@ describe('createClaudeSession (full loop, test-as-Claude)', () => {
         },
       ],
     });
-    const postOtlp = () =>
+    const postOtlp = (body = otlpBody) =>
       fetch(prepared.env.OTEL_EXPORTER_OTLP_LOGS_ENDPOINT, {
         method: 'POST',
         headers: { 'content-type': 'application/json', authorization: `Bearer ${token}` },
-        body: otlpBody,
+        body,
       });
     const foreignResponse = await fetch(prepared.env.OTEL_EXPORTER_OTLP_LOGS_ENDPOINT, {
       method: 'POST',
@@ -500,10 +509,36 @@ describe('createClaudeSession (full loop, test-as-Claude)', () => {
     expect(emptyResponse.status).toBe(200);
     expect(session.observationLevel()).toBe('terminal-only');
 
+    const dir = mkdtempSync(join(tmpdir(), 'driver-otel-only-'));
+    const transcript = join(dir, `${session.sessionId}.jsonl`);
+    const children = join(dir, session.sessionId, 'subagents');
+    mkdirSync(children, { recursive: true });
+    const childTranscript = join(children, 'agent-worker.jsonl');
+    const transcriptRow = (sequence: number, agentId?: string) =>
+      JSON.stringify({
+        type: 'assistant',
+        uuid: `transcript-${sequence}`,
+        requestId: 'request-otel',
+        sessionId: session.sessionId,
+        timestamp: `2026-08-25T16:30:${10 + sequence}.000Z`,
+        agentId,
+        message: {
+          role: 'assistant',
+          model: 'transcript-model',
+          content: [],
+          usage: { input_tokens: 900, output_tokens: 800, cost_usd: 500 },
+        },
+      }) + '\n';
+    writeFileSync(transcript, transcriptRow(1));
+    writeFileSync(childTranscript, transcriptRow(2, 'transcript-worker'));
+    await hook('SessionStart', { transcript_path: transcript });
+    await session.pollTranscript();
+    expect(events.filter(({ event }) => event.type === 'usage:tokens-used')).toEqual([]);
+
     const response = await postOtlp();
 
     expect(response.status).toBe(200);
-    expect(session.observationLevel()).toBe('native-log');
+    expect(session.observationLevel()).toBe('native-hooks');
     const usage = events.find(({ event }) => event.type === 'usage:tokens-used');
     expect(usage).toMatchObject({
       source: 'native-telemetry',
@@ -512,18 +547,40 @@ describe('createClaudeSession (full loop, test-as-Claude)', () => {
         usageId: 'claude-request:request-otel',
         totalTokens: 135,
         meterTokens: 15,
+        costUsd: 0.125,
         breakdown: { freshInputTokens: 10, cacheReadTokens: 100 },
       },
     });
     expect(JSON.stringify(usage?.nativeEvent)).not.toContain('must-not-cross@example.com');
+    expect(usage?.agentId).toBeUndefined();
     expect(safeParseAgentEvent('usage:tokens-used', usage!.event).success).toBe(true);
+
+    appendFileSync(childTranscript, transcriptRow(3, 'later-transcript-worker'));
+    await session.pollTranscript();
     expect((await postOtlp()).status).toBe(200);
     expect(events.filter(({ event }) => event.type === 'usage:tokens-used')).toHaveLength(1);
+
+    const corrected = JSON.parse(otlpBody);
+    const attributes = corrected.resourceLogs[0].scopeLogs[0].logRecords[0].attributes;
+    attributes.find(({ key }: { key: string }) => key === 'output_tokens').value = { intValue: '9' };
+    attributes.push(attribute('agent.id', 'api-worker'), attribute('agent.type', 'researcher'));
+    expect((await postOtlp(JSON.stringify(corrected))).status).toBe(200);
+    expect(events.filter(({ event }) => event.type === 'usage:tokens-used')).toHaveLength(2);
+    expect(events.filter(({ event }) => event.type === 'usage:tokens-used').at(-1)).toMatchObject({
+      source: 'native-telemetry',
+      agentId: 'api-worker',
+      agentType: 'researcher',
+      event: { usageId: 'claude-request:request-otel', totalTokens: 139, meterTokens: 19, costUsd: 0.125 },
+    });
+    expect((await postOtlp(JSON.stringify(corrected))).status).toBe(200);
+    expect(events.filter(({ event }) => event.type === 'usage:tokens-used')).toHaveLength(2);
   });
 
-  it('feeds authoritative assistant text and fallback usage from the transcript observer', async () => {
-    const { session, projection, events, hook } = await startSession();
-    const batches = projection.monitorBatches;
+  it.each([true, false])('observes transcript text without token usage when OTLP is enabled=%s', async (enabled) => {
+    const { session, projection, events, hook } = await startSession({
+      providerVersion: '2.1.245',
+      observeOtlpUsage: enabled,
+    });
     const dir = mkdtempSync(join(tmpdir(), 'driver-transcript-'));
     const project = join(dir, '.claude', 'projects', '-driver-test');
     mkdirSync(project, { recursive: true });
@@ -575,17 +632,48 @@ describe('createClaudeSession (full loop, test-as-Claude)', () => {
           displayOnly: false,
         });
         expect(projection.state.lastAssistantMessage).toBe('authoritative answer');
-        expect(events.find(({ event }) => event.type === 'usage:tokens-used')?.event).toMatchObject({
-          type: 'usage:tokens-used',
-          usageId: 'claude-request:request-1',
-          canonical: true,
-          totalTokens: 21,
-          meterTokens: 16,
-          breakdown: { inputTokens: 12, freshInputTokens: 12, outputTokens: 4 },
-        });
+        expect(events.filter(({ event }) => event.type === 'usage:tokens-used')).toEqual([]);
       },
       { timeout: 10_000, interval: 20 },
     );
+  });
+
+  it('rejects token usage from an injected durable observer during replay and live delivery', async () => {
+    let deliver: ((event: SemanticObservationEvent) => void) | undefined;
+    const provider: SemanticObservationProvider = {
+      capabilities: () => Promise.resolve([]),
+      attach: () =>
+        Promise.resolve({
+          onEvent(listener) {
+            deliver = listener;
+            return () => undefined;
+          },
+          onBatch: () => () => undefined,
+          onError: () => () => undefined,
+          poll: () => Promise.resolve(),
+          readArtifact: () => Promise.resolve({ status: 'unavailable', message: 'not exposed' }),
+          dispose: () => Promise.resolve(),
+        }),
+    };
+    const { session, events, hook } = await startSession({ semanticProviderFactory: () => provider });
+    await hook('SessionStart', { transcript_path: '/tmp/claude-no-durable-usage.jsonl' });
+    await session.pollTranscript();
+    expect(deliver).toBeTypeOf('function');
+    for (const replay of [true, false]) {
+      deliver!({
+        timestamp: new Date().toISOString(),
+        replay,
+        event: {
+          type: 'usage:tokens-used',
+          usageId: `durable-usage-${replay}`,
+          boundary: 'response',
+          canonical: true,
+          totalTokens: 100,
+          meterTokens: 100,
+        },
+      });
+    }
+    expect(events.filter(({ event }) => event.type === 'usage:tokens-used')).toEqual([]);
   });
 
   it('retries a transient semantic attachment failure on the next native hook', async () => {
@@ -976,6 +1064,7 @@ describe('createClaudeSession (full loop, test-as-Claude)', () => {
             role: 'assistant',
             model: 'claude-sonnet-local',
             content: [{ type: 'text', text: 'Use the native resume path.' }],
+            usage: { input_tokens: 1_000, output_tokens: 100, cache_read_input_tokens: 5_000 },
           },
         }),
       ].join('\n') + '\n',

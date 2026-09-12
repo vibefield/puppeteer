@@ -12,7 +12,7 @@ function knownVersionSupportsClaudeOtelLogs(providerVersion: string | undefined)
   return true;
 }
 
-/** Unknown/new versions are probed safely; a known older binary stays on the transcript fallback. */
+/** Unknown/new versions are probed safely; known older binaries have no settled request usage. */
 export function supportsClaudeOtelLogs(providerVersion: string | undefined): boolean {
   return knownVersionSupportsClaudeOtelLogs(providerVersion) ?? true;
 }

@@ -34,7 +34,7 @@ describe('ClaudeMonitorEvidence', () => {
     });
   });
 
-  it('reports transcript-only usage honestly when OTLP is unavailable', () => {
+  it('reports only child status estimates when OTLP request usage is unavailable', () => {
     const evidence = new ClaudeMonitorEvidence({
       nativeSessionId: () => SESSION_ID,
       otelUsageEnabled: false,
@@ -42,9 +42,29 @@ describe('ClaudeMonitorEvidence', () => {
     });
     expect(evidence.capabilitiesBatch(AT).capabilities?.find(({ family }) => family === 'usage')).toMatchObject({
       support: 'degraded',
-      latency: 'historical',
-      source: 'claude-transcript-jsonl',
-      limitations: expect.arrayContaining(['known old provider version']),
+      latency: 'sample',
+      source: 'claude-child-status-samples',
+      contractVersion: 'claude-status-channel@1',
+      limitations: expect.arrayContaining([
+        'known old provider version',
+        'Settled request usage is unavailable; only visible child status estimates may be observed.',
+      ]),
+    });
+  });
+
+  it.each([
+    { verified: true, source: 'claude-otlp-logs', support: 'supported' },
+    { verified: false, source: 'claude-otlp-probe', support: 'degraded' },
+  ])('declares $source as the sole request usage source', ({ verified, source, support }) => {
+    const evidence = new ClaudeMonitorEvidence({
+      nativeSessionId: () => SESSION_ID,
+      otelUsageEnabled: true,
+      otelUsageVerified: verified,
+    });
+    expect(evidence.capabilitiesBatch(AT).capabilities?.find(({ family }) => family === 'usage')).toMatchObject({
+      support,
+      source,
+      latency: 'response',
     });
   });
 

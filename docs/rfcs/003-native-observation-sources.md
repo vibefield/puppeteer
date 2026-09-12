@@ -24,26 +24,26 @@ provider hook / OTLP log / transcript / journal / status
 
 ## Claude source ownership
 
-| Category     | Primary live source                      | Durable or degraded source                                                              |
-| ------------ | ---------------------------------------- | --------------------------------------------------------------------------------------- |
-| conversation | complete assistant transcript rows       | resume replay from the same transcript                                                  |
-| interaction  | permission/question hooks                | transcript is not lifecycle truth                                                       |
-| tool         | tool hooks                               | none required for lifecycle                                                             |
-| planning     | plan/task hooks                          | journal/transcript evidence may enrich later                                            |
-| model        | status channel and OTLP request model    | transcript assistant model                                                              |
-| effort       | hooks and status channel                 | configured launch intent                                                                |
-| mode         | hooks and status channel                 | configured launch intent                                                                |
-| usage        | authenticated OTLP log `api_request`     | root and exact-session child transcript `message.usage` using the same request identity |
-| compaction   | native compact hooks                     | none; transcript history is re-read after invalidation                                  |
-| reasoning    | reasoning hooks and child status         | provider-specific activity evidence                                                     |
-| delegation   | subagent hooks and child status          | workflow journals for exact workflow members                                            |
-| workflow     | OTLP `workflow.run_id` / `workflow.name` | per-run `journal.jsonl` for member ids and completion                                   |
+| Category     | Primary live source                      | Durable or degraded source                                     |
+| ------------ | ---------------------------------------- | -------------------------------------------------------------- |
+| conversation | complete assistant transcript rows       | resume replay from the same transcript                         |
+| interaction  | permission/question hooks                | transcript is not lifecycle truth                              |
+| tool         | tool hooks                               | none required for lifecycle                                    |
+| planning     | plan/task hooks                          | journal/transcript evidence may enrich later                   |
+| model        | status channel and OTLP request model    | transcript assistant model                                     |
+| effort       | hooks and status channel                 | configured launch intent                                       |
+| mode         | hooks and status channel                 | configured launch intent                                       |
+| usage        | authenticated OTLP log `api_request`     | child status samples are estimates; no transcript token import |
+| compaction   | native compact hooks                     | none; transcript history is re-read after invalidation         |
+| reasoning    | reasoning hooks and child status         | provider-specific activity evidence                            |
+| delegation   | subagent hooks and child status          | workflow journals for exact workflow members                   |
+| workflow     | OTLP `workflow.run_id` / `workflow.name` | per-run `journal.jsonl` for member ids and completion          |
 
 These categories do not require a general semantic database. Search, cross-session history, and analytics can remain a separate data product that indexes provider files without being in the live process dependency graph.
 
 ## Usage rules learned from the burn-rate probe
 
-Claude OTLP logs are the primary settled-usage plane. Metrics and traces duplicate the same token facts and are not ingested. `api_request` arrives at request completion; there is no sanctioned intra-response output-token stream.
+Claude OTLP logs are the sole settled-request usage source. Metrics and traces duplicate the same token facts and are not ingested. `api_request` arrives at request completion; there is no sanctioned intra-response output-token stream. Transcript token extraction and mixed-source usage reconciliation were removed on 2026-09-11; [the cleanup tracker](../../draft/CLAUDE-TRANSCRIPT-DEPENDENCIES.md) records the remaining work.
 
 For each request the adapter retains separate values:
 
@@ -53,9 +53,11 @@ For each request the adapter retains separate values:
 
 Every request is counted, including workflow/subagent requests. Actor attribution is added only when Claude emits an exact native agent id; derived actor lanes use `actorKey` and `actorRole` without pretending they are exact native identities.
 
-OTLP is enabled only in the spawned process environment. The adapter does not mutate user configuration, does not use the console exporter, and does not overwrite an existing OTLP route. Known versions older than the locally proven Claude `2.1.245` remain on transcript fallback; unknown versions are safely probed. The collector accepts logs on a loopback-only bearer-authenticated endpoint and drops all attributes outside an explicit operational allow-list, including email and account identifiers.
+OTLP is enabled only in the spawned process environment. The adapter does not mutate user configuration, does not use the console exporter, and does not overwrite an existing OTLP route. Known versions older than the locally proven Claude `2.1.245` do not provide settled request usage; unknown versions are safely probed. Disabled or conflicting exporters also leave settled request usage unavailable. The collector accepts logs on a loopback-only bearer-authenticated endpoint and drops all attributes outside an explicit operational allow-list, including email and account identifiers.
 
-Transcript and OTLP observations share `claude-request:<request_id>`, so the usage reconciler corrects or suppresses the durable duplicate rather than double-counting it.
+OTLP requests use `claude-request:<request_id>`. A bounded fingerprint cache suppresses duplicate telemetry and permits corrections from the same source. Transcript records cannot contribute token amounts, historical totals or actor corrections to this stream. Request totals cover completions observed since attachment; full historical accounting is a separate follow-up.
+
+Child status callbacks still supply non-canonical `tokenCount` samples, which Core may use for estimated rates. Godview's burn bars separately track changes in cumulative totals. Their rate policy is tracked independently from transcript removal.
 
 ## Package layout
 
@@ -71,7 +73,6 @@ packages/adapter-claude/src/observation/
   transcript/
     wire.ts             # tolerant transcript rows
     conversation.ts     # conversation:assistant-message + resume history
-    usage.ts            # usage fallback
     model.ts            # durable model fallback
     provider.ts         # polling service
     services/
@@ -79,7 +80,6 @@ packages/adapter-claude/src/observation/
       session-reader.ts # bounded root + exact-session child sidecars
   workflow/
     journal.ts          # append-aware, bounded exact membership reader
-  usage-reconciler.ts   # source-identity correction and deduplication
   hook-bridge.ts        # authenticated loopback transport service
 ```
 

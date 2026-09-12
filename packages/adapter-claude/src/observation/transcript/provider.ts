@@ -15,18 +15,9 @@ import {
   type ClaudeSessionTranscriptSnapshot,
 } from './services/session-reader.js';
 import { createTranscriptYield } from './services/yield.js';
-import { projectClaudeTranscriptUsage } from './usage.js';
 import { safeTranscriptEvidence, transcriptRecordId } from './wire.js';
 
 const TRANSCRIPT_CAPABILITIES: readonly ObservationCapability[] = [
-  {
-    family: 'usage',
-    support: 'degraded',
-    actorScope: 'current-actors',
-    latency: 'historical',
-    source: 'claude-transcript-jsonl',
-    limitations: ['Durable response usage is a fallback when the authenticated OTLP log exporter is unavailable.'],
-  },
   {
     family: 'workflow',
     support: 'degraded',
@@ -115,28 +106,13 @@ export class ClaudeTranscriptObservationProvider implements SemanticObservationP
       };
 
       for (const record of records.all) {
-        const usage = projectClaudeTranscriptUsage(record);
-        if (usage?.event.type === 'usage:tokens-used') {
-          const key = `usage:${usage.event.usageId}`;
-          const prior = latest.get(key);
-          // A later root copy of a request may omit the actor recorded by its
-          // child sidecar. Keep exact attribution while accepting corrections.
-          if (!usage.agentId && prior?.agentId) {
-            usage.agentId = prior.agentId;
-            usage.agentType = prior.agentType;
-          } else if (usage.agentId === prior?.agentId && !usage.agentType) {
-            usage.agentType = prior?.agentType;
-          }
-          select(key, usage);
-        }
-
         const model = projectClaudeTranscriptModel(record);
         if (model) select(`model:${JSON.stringify(model.agentId ?? null)}`, model);
 
         const role = record.message?.role;
         const knownConversation =
           record.type === 'user' || record.type === 'assistant' || role === 'user' || role === 'assistant';
-        if (!knownConversation && !usage && !model) {
+        if (!knownConversation && !model) {
           const key = `native:${record.sourceId}:${transcriptRecordId(record)}:${record.type ?? 'record'}`;
           select(key, {
             event: {
