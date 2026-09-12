@@ -17,20 +17,25 @@
 /* ── the ground and the safe areas ─────────────────────────────────────── */
 
 /* Ghosttea sizes its grid from the pane's content box and keeps a 2px origin
-   inside the surface, so the inset is padding here; it lands the grid at
-   36 · 30 · 32 · 32 (top · right · bottom · left) and nothing a TUI draws ever
-   meets the frame. Under 220px the sides tighten to 16px and 14px; the
-   bands keep their height. */
+   inside the surface, so the inset is padding here. The bands, revised
+   2026-09-12: nothing at the sides, 24px above for the badge and the readout,
+   30px below for the meter and its figure, so the grid lands at
+   26 · 2 · 32 · 2 (top · right · bottom · left) and only the top and bottom
+   chrome ever meets a TUI's edge. Each side is a tunable in the system control
+   panel (monitor/stage-parameters.ts), fed in as a variable; the fallbacks are
+   the bands, and a test keeps the two in step. Under 220px the sides tighten
+   to 16px and 14px, or to the tuned inset when that is tighter still. */
 .vf-godview-terminal-deck .ghostty-pane {
-  padding: 34px 28px 30px 30px;
+  padding: var(--vf-terminal-safe-top, 24px) var(--vf-terminal-safe-right, 0px) var(--vf-terminal-safe-bottom, 30px)
+    var(--vf-terminal-safe-left, 0px);
   transition:
     border-radius 240ms ease,
     padding 160ms ease;
 }
 
 .vf-godview-terminal-deck .ghostty-pane[data-vf-narrow] {
-  padding-right: 12px;
-  padding-left: 14px;
+  padding-right: min(var(--vf-terminal-safe-right, 0px), 12px);
+  padding-left: min(var(--vf-terminal-safe-left, 0px), 14px);
 }
 
 /* Only the selected pane rounds; the line, the glow, the badge and the

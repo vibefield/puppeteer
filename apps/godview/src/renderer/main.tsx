@@ -53,6 +53,10 @@ import {
 import { MONITOR_VIEWS, monitorViewFor } from './monitor/registry.js';
 import type { AgentMonitorView } from './monitor/types.js';
 import {
+  SAFE_AREA_BOTTOM_KEY,
+  SAFE_AREA_LEFT_KEY,
+  SAFE_AREA_RIGHT_KEY,
+  SAFE_AREA_TOP_KEY,
   SCANLINE_DENSITY_KEY,
   SCANLINE_OPACITY_KEY,
   STAGE_HEIGHT_KEY,
@@ -538,6 +542,10 @@ function Godview() {
   const screenStyle = {
     ...godviewTuningStyle(tuning),
     '--vf-monitor-stage-height': `${stageParameters[STAGE_HEIGHT_KEY] ?? 35}%`,
+    '--vf-terminal-safe-top': `${stageParameters[SAFE_AREA_TOP_KEY] ?? 34}px`,
+    '--vf-terminal-safe-right': `${stageParameters[SAFE_AREA_RIGHT_KEY] ?? 28}px`,
+    '--vf-terminal-safe-bottom': `${stageParameters[SAFE_AREA_BOTTOM_KEY] ?? 30}px`,
+    '--vf-terminal-safe-left': `${stageParameters[SAFE_AREA_LEFT_KEY] ?? 30}px`,
     '--vf-scanline-density': `${stageParameters[SCANLINE_DENSITY_KEY] ?? 2}px`,
     '--vf-scanline-opacity': stageParameters[SCANLINE_OPACITY_KEY] ?? 0.4,
     '--vf-vignette-opacity': stageParameters[VIGNETTE_OPACITY_KEY] ?? 1,

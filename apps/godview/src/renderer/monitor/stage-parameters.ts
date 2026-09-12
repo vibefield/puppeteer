@@ -10,11 +10,27 @@ import type { MonitorParameterGroup } from './parameters.js';
  * project, branch, model and context down its column and needs enough rows to
  * finish a cycle; the swarm needs room for a field of 60px working bodies not
  * to be wall-to-wall. The default splits the window roughly a third/two-thirds.
+ *
+ * The terminal safe area is the deck's, not a view's: the inset, per side,
+ * between a pane's edge and the terminal grid inside it (record §07). The
+ * defaults are the frame's bands as revised 2026-09-12: the sides closed, a
+ * 24px band above for the badge and the readout, 30px below for the meter and
+ * its figure. The deck stylesheet carries the same numbers as its fallbacks;
+ * Ghosttea keeps a 2px origin of its own inside whatever inset is set.
  */
 export const STAGE_PARAMETER_GROUPS: readonly MonitorParameterGroup[] = [
   {
     title: 'STAGE',
     controls: [{ key: 'stageHeight', label: 'Monitor height', min: 20, max: 80, step: 1, defaultValue: 35 }],
+  },
+  {
+    title: 'TERMINAL SAFE AREA',
+    controls: [
+      { key: 'safeAreaLeft', label: 'Left', min: 0, max: 120, step: 1, defaultValue: 0 },
+      { key: 'safeAreaTop', label: 'Top', min: 0, max: 120, step: 1, defaultValue: 24 },
+      { key: 'safeAreaRight', label: 'Right', min: 0, max: 120, step: 1, defaultValue: 0 },
+      { key: 'safeAreaBottom', label: 'Bottom', min: 0, max: 120, step: 1, defaultValue: 30 },
+    ],
   },
   {
     title: 'CRT OVERLAYS',
@@ -27,6 +43,10 @@ export const STAGE_PARAMETER_GROUPS: readonly MonitorParameterGroup[] = [
 ];
 
 export const STAGE_HEIGHT_KEY = 'stageHeight';
+export const SAFE_AREA_LEFT_KEY = 'safeAreaLeft';
+export const SAFE_AREA_TOP_KEY = 'safeAreaTop';
+export const SAFE_AREA_RIGHT_KEY = 'safeAreaRight';
+export const SAFE_AREA_BOTTOM_KEY = 'safeAreaBottom';
 export const SCANLINE_DENSITY_KEY = 'scanlineDensity';
 export const SCANLINE_OPACITY_KEY = 'scanlineOpacity';
 export const VIGNETTE_OPACITY_KEY = 'vignetteOpacity';
