@@ -29,6 +29,7 @@ import {
 import type { SessionSummary } from '@vibecook/ghosttea-protocol';
 import type { AgentHost } from '@vibecook/puppeteer-core';
 import { createBuiltinAgentRuntime } from '@vibecook/puppeteer-builtin-providers';
+import { prewarmTerminalAgents } from './agent-prewarm.js';
 import { createActionRecorder } from '@vibecook/puppeteer-record';
 import type { GodviewTheme } from '../appearance-themes.js';
 import {
@@ -1729,6 +1730,16 @@ async function profileBindingEnvironment(profileIds?: readonly string[]): Promis
   }
 }
 
+function prewarmForTerminal(profileIds?: readonly string[]): void {
+  if (quitting) return;
+  void prewarmTerminalAgents({
+    runtime: agentRuntime,
+    defaults: profileDefaultsStore.read(),
+    profileIds,
+    available: (executable) => executableOnOriginalPath(executable) !== undefined,
+  }).catch(() => undefined); // A cold cache must never prevent a pane from opening.
+}
+
 /**
  * A new tab whose pane carries the selected accounts.
  *
@@ -1739,6 +1750,7 @@ async function profileBindingEnvironment(profileIds?: readonly string[]): Promis
 async function openTerminalTab(request: NewTerminalTabRequest, owner?: BrowserWindow): Promise<boolean> {
   const cwd = usableCwd(request.cwd);
   const overrides = await profileBindingEnvironment(request.profileIds);
+  prewarmForTerminal(request.profileIds);
   if (Object.keys(overrides).length === 0) {
     await createWindow({
       ...(owner ? { tabOf: owner } : {}),
@@ -2990,6 +3002,7 @@ app
     void accountUsageMonitor
       .refreshProfiles()
       .catch((error: unknown) => process.stderr.write(`[main] account usage profiles: ${String(error)}\n`));
+    prewarmForTerminal();
     await openInitialWindows();
     // Development flow: create only provider ids advertised by Runtime. The
     // shim spawn-through path is POSIX-only, so this also supports Windows.

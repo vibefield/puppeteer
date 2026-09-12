@@ -105,6 +105,8 @@ export interface AgentProvider {
   readonly profiles?: ProfileService;
   /** Adapter-owned CLI grammar, transport topology, and continuation semantics. */
   readonly launch?: AgentProviderLaunchService;
+  /** Optional cache warming only: no sessions/model input; must stop promptly when the signal aborts. */
+  prewarm?(options: { profile?: AgentProfile; signal: AbortSignal }): Promise<void>;
   /** Optional split-phase launch for caller-owned terminals. Generic ACP intentionally omits this capability. */
   prepareSession?(options: AgentProviderSessionOptions): Promise<PreparedProviderSession>;
   dispose?(): void | Promise<void>;
@@ -469,6 +471,8 @@ export interface AgentRuntime {
   accountUsage(providerId: string, profileId?: string): Promise<AccountUsageFetchResult>;
   /** Enumerate adapter-declared launch capabilities for terminal hosts and product discovery. */
   launchProviders(): readonly AgentLaunchProvider[];
+  /** Warm a provider's native caches in the background; unsupported providers are a no-op. */
+  prewarm(providerId: string, profileId?: string): Promise<void>;
   /** Enumerate every adapter that advertises distribution facts. */
   distributionProviders(): readonly DistributionProvider[];
   /** Discover and classify installed executables; cached until refresh. */

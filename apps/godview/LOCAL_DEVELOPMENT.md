@@ -23,6 +23,14 @@ Reload the Godview window after renderer changes. Restart Godview after changes
 to main/preload, the terminal daemon, or native addons. Builds do not reload or
 restart running sessions automatically.
 
+Godview warms Codex's native model cache in the background on startup and when
+opening a new terminal tab, using that pane's selected account profile. The
+probe creates no thread or model turn and closes its helper process afterwards.
+Repeated requests for the same account are coalesced and throttled for one minute;
+failed probes can be retried. Probes have a five-second request budget and are
+cancelled on shutdown. A launch that races prewarming still uses the normal
+Codex startup path, and per-thread initialization still happens at launch.
+
 The terminal link feature needs both the updated SDK and daemon. After staging
 the rebuilt daemon (or setting `GHOSTTEAD_BIN`), run `pnpm godview:local:build`
 and restart Godview. Command-hover and Command-click on macOS (Ctrl elsewhere)

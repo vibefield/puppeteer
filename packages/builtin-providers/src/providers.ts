@@ -40,6 +40,7 @@ import {
   createCodexTuiSession,
   normalizeCodexNativeInvocation,
   prepareCodexTuiSession,
+  prewarmCodex,
   restoreCodexContinuationState,
   type CodexNativeInvocationOptions,
 } from '@vibecook/puppeteer-adapter-codex';
@@ -401,6 +402,12 @@ export function createBuiltinProviders(options: BuiltinProviderOptions = {}): Ag
       distribution: services.codex.distribution,
       profiles: services.codex.profiles,
       accountUsage: createCodexAccountUsageService({ executable: resolved.codex }),
+      prewarm: ({ profile, signal }) =>
+        prewarmCodex({
+          executable: resolved.codex,
+          ...(profile ? { env: services.codex.profiles.bindingEnvironment(profile) } : {}),
+          signal,
+        }),
       launch: {
         provider: {
           ...BUILTIN_PROVIDER_DESCRIPTORS.codex,

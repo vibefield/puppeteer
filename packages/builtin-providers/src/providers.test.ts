@@ -68,6 +68,7 @@ const adapters = vi.hoisted(() => {
     createCodexTuiSession: vi.fn(),
     fetchCodexAccountUsage: vi.fn(),
     prepareCodexTuiSession: vi.fn(),
+    prewarmCodex: vi.fn(),
     normalizeCodexNativeInvocation: vi.fn(() => ({ status: 'accepted' })),
     captureCodexContinuationState: vi.fn(),
     restoreCodexContinuationState: vi.fn(),
@@ -141,6 +142,7 @@ vi.mock('@vibecook/puppeteer-adapter-codex', () => ({
   createCodexTuiSession: adapters.createCodexTuiSession,
   fetchCodexAccountUsage: adapters.fetchCodexAccountUsage,
   prepareCodexTuiSession: adapters.prepareCodexTuiSession,
+  prewarmCodex: adapters.prewarmCodex,
   normalizeCodexNativeInvocation: adapters.normalizeCodexNativeInvocation,
   captureCodexContinuationState: adapters.captureCodexContinuationState,
   restoreCodexContinuationState: adapters.restoreCodexContinuationState,
@@ -350,6 +352,32 @@ describe('createBuiltinProviders launch options', () => {
       expect(provider.distribution?.provider.label).toBe(provider.descriptor.label);
       expect(provider.profiles?.provider.id).toBe(provider.descriptor.id);
     }
+  });
+
+  it('prewarms Codex with the configured executable and selected account, without launching a session', async () => {
+    const codex = createBuiltinProviders({ executables: { codex: '/opt/codex' } }).find(
+      (provider) => provider.descriptor.id === 'codex',
+    )!;
+    const signal = new AbortController().signal;
+    const profile: AgentProfile = {
+      id: 'work',
+      provider: 'codex',
+      label: 'Work',
+      kind: 'managed',
+      dataRoot: '/roots/codex/work',
+      createdAt: '2026-09-11T00:00:00.000Z',
+    };
+    vi.mocked(codex.profiles!.bindingEnvironment).mockReturnValue({ CODEX_HOME: profile.dataRoot });
+    await codex.prewarm!({ profile, signal });
+    expect(adapters.prewarmCodex).toHaveBeenCalledWith({
+      executable: '/opt/codex',
+      env: { CODEX_HOME: profile.dataRoot },
+      signal,
+    });
+    await codex.prewarm!({ signal });
+    expect(adapters.prewarmCodex).toHaveBeenLastCalledWith({ executable: '/opt/codex', signal });
+    expect(adapters.createCodexTuiSession).not.toHaveBeenCalled();
+    expect(adapters.prepareCodexTuiSession).not.toHaveBeenCalled();
   });
 
   it('binds a selected profile through the adapter normalizer, never through a consumer-side recipe', async () => {

@@ -569,6 +569,9 @@ export function createAgentRuntime(options: AgentRuntimeOptions): AgentRuntime {
   const workspaceFinalizations = new WeakMap<Workspace, Promise<RuntimeWorkspaceFinalization>>();
   const inflightCreations = new Map<string, InflightCreation>();
   const pendingCreations = new Set<Promise<CreateAgentSessionResult | PrepareAgentSessionResult>>();
+  const prewarmAbort = new AbortController();
+  const pendingPrewarms = new Map<string, Promise<void>>();
+  const warmedAt = new Map<string, number>();
   const claims = new Map<string, Map<symbol, 'direct' | 'exclusive'>>();
   const listeners = new Set<(terminalSessionId: string, envelope: RuntimeAgentEventEnvelope) => void>();
   const monitorStateListeners = new Set<(state: AgentMonitorState) => void>();
@@ -2191,6 +2194,35 @@ export function createAgentRuntime(options: AgentRuntimeOptions): AgentRuntime {
       return launchProviders.map(cloneLaunchProvider);
     },
 
+    async prewarm(providerId, profileId) {
+      if (disposed) throw new Error('agent runtime is disposed');
+      const provider = providers.get(providerId);
+      if (!provider?.prewarm) return;
+      const key = JSON.stringify([providerId, profileId ?? null]);
+      const pending = pendingPrewarms.get(key);
+      if (pending) return pending;
+      // Opening several panes must not repeatedly spawn cache probes. The
+      // vendor still owns cache freshness when an actual session is launched.
+      if (Date.now() - (warmedAt.get(key) ?? -Infinity) < 60_000) return;
+      const operation = Promise.resolve().then(async () => {
+        let profile: AgentProfile | undefined;
+        if (profileId !== undefined) {
+          const resolved = await resolveSessionProfile(providerId, profileId);
+          if ('error' in resolved) throw new Error(resolved.error);
+          profile = resolved.profile;
+        }
+        prewarmAbort.signal.throwIfAborted();
+        await provider.prewarm!({ ...(profile ? { profile } : {}), signal: prewarmAbort.signal });
+        warmedAt.set(key, Date.now());
+      });
+      pendingPrewarms.set(key, operation);
+      try {
+        await operation;
+      } finally {
+        pendingPrewarms.delete(key);
+      }
+    },
+
     async accountUsage(providerId, profileId): Promise<AccountUsageFetchResult> {
       if (disposed) throw new Error('agent runtime is disposed');
       // One account has one quota, so reads coalesce per provider and profile.
@@ -3047,6 +3079,8 @@ export function createAgentRuntime(options: AgentRuntimeOptions): AgentRuntime {
     async dispose() {
       if (disposed) return [];
       disposed = true;
+      prewarmAbort.abort();
+      await Promise.allSettled([...pendingPrewarms.values()]);
       await Promise.allSettled([...pendingCreations]);
       const pendingAdoptions = [...preparations.values()]
         .filter((preparation) => preparation.status === 'adopting')
