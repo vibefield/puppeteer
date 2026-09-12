@@ -16,7 +16,6 @@ const DETAIL_FAMILIES: readonly MonitorMetricFamily[] = [
   'model',
   'effort',
   'mode',
-  'planning',
   'delegation',
   'workflow',
   'compaction',
@@ -223,32 +222,6 @@ export function AgentMonitorInspector({
           ))}
         </section>
       ) : null}
-
-      <section>
-        <h4>Plan &amp; tasks</h4>
-        {state.plan?.steps.length ? (
-          <ol>
-            {state.plan.steps.map((step, index) => (
-              <li key={`${step.text}:${index}`}>
-                <span>{step.text}</span>
-                <small>{step.status}</small>
-              </li>
-            ))}
-          </ol>
-        ) : (
-          <small>No plan observed</small>
-        )}
-        {state.tasks.length ? (
-          <ul>
-            {state.tasks.map((task) => (
-              <li key={task.id}>
-                <span>{task.description ?? task.id}</span>
-                <small>{task.status}</small>
-              </li>
-            ))}
-          </ul>
-        ) : null}
-      </section>
 
       <section>
         <h4>Actors &amp; team</h4>

@@ -21,7 +21,6 @@ function state(revision: number): AgentMonitorState {
       : {}),
     usage: { samples: [] },
     modes: { execution: 'native-tui' },
-    tasks: [],
     subagents: [],
     workflows: [],
     compaction: { active: false, count: 0 },
@@ -37,7 +36,7 @@ function notification(index: number): MonitorNotification {
     notificationId: `notice-${index}`,
     runtimeRunId: 'run-1',
     at: '2026-08-16T12:00:00.000Z',
-    type: 'delegation:task-created',
+    type: 'delegation:subagent-started',
   };
 }
 

@@ -61,12 +61,20 @@ function semantic(
   };
 }
 
+function observedChild(id: string, state: 'active' | 'stopped') {
+  return {
+    kind: 'actor' as const,
+    actor: { rootSessionKey: 'session-1', runKey: `session-1:actor:${id}`, role: 'child' as const, nativeAgentId: id },
+    state,
+  };
+}
+
 describe('monitor notifications', () => {
   it('uses stable IDs and does not repeat a duplicate transition', () => {
-    const input = runtime({ type: 'delegation:task-created', taskId: 'task-1', description: 'Build it' }, 1);
+    const input = runtime({ type: 'delegation:subagent-started', subagentId: 'child-1', agentType: 'reviewer' }, 1);
     const first = reduceMonitorAccumulator(initial(), input);
     expect(first.notifications).toHaveLength(1);
-    expect(first.notifications[0]).toMatchObject({ type: 'delegation:task-created', summary: 'Build it' });
+    expect(first.notifications[0]).toMatchObject({ type: 'delegation:subagent-started', summary: 'reviewer' });
 
     const duplicate = reduceMonitorAccumulator(first.state, input);
     expect(duplicate.notifications).toEqual([]);
@@ -74,25 +82,6 @@ describe('monitor notifications', () => {
 
     const replayed = reduceMonitorAccumulator(initial(), input);
     expect(replayed.notifications[0]?.notificationId).toBe(first.notifications[0]?.notificationId);
-  });
-
-  it('does not announce a blockable task transition until confirmation', () => {
-    const provisional = reduceMonitorAccumulator(
-      initial(),
-      runtime(
-        { type: 'delegation:task-updated', taskId: 'task-p', status: 'proposed', provisional: true },
-        1,
-        false,
-        'inferred',
-      ),
-    );
-    expect(provisional.notifications).toEqual([]);
-
-    const confirmed = reduceMonitorAccumulator(
-      provisional.state,
-      runtime({ type: 'delegation:task-updated', taskId: 'task-p', status: 'pending', provisional: false }, 2),
-    );
-    expect(confirmed.notifications).toEqual([expect.objectContaining({ type: 'delegation:task-created' })]);
   });
 
   it('confirms team membership without promoting a provisional idle hook', () => {
@@ -189,42 +178,46 @@ describe('monitor notifications', () => {
   });
 
   it('derives entity transitions from unbounded logical state at the public collection cap', () => {
-    const values = Array.from({ length: 513 }, (_, index) => {
-      const id = `task-${index.toString().padStart(3, '0')}`;
+    const values = Array.from({ length: 257 }, (_, index) => {
+      const id = `child-${index.toString().padStart(3, '0')}`;
       return {
         key: id,
-        value: { kind: 'task' as const, taskId: id, status: 'pending' as const, provisional: false },
+        value: observedChild(id, 'active'),
       };
     });
     const installed = reduceMonitorAccumulator(
       initial(),
-      semantic('task-snapshot', 'live', [{ family: 'planning', operation: 'replace', coverage: 'complete', values }]),
+      semantic('child-snapshot', 'live', [
+        { family: 'delegation', operation: 'replace', coverage: 'complete', values },
+      ]),
     );
     const completed = reduceMonitorAccumulator(
       installed.state,
-      semantic('task-completed', 'live', [
+      semantic('child-completed', 'live', [
         {
-          family: 'planning',
+          family: 'delegation',
           operation: 'upsert',
-          key: 'task-000',
-          value: { kind: 'task', taskId: 'task-000', status: 'completed', provisional: false },
+          key: 'child-000',
+          value: observedChild('child-000', 'stopped'),
         },
       ]),
     );
-    expect(completed.notifications.map(({ type }) => type)).toEqual(['delegation:task-completed']);
+    expect(completed.notifications.map(({ type }) => type)).toEqual(['delegation:subagent-stopped']);
   });
 
   it('suppresses bootstrap, correction, resync, and replacement installation', () => {
     expect(
-      reduceMonitorAccumulator(initial(), runtime({ type: 'delegation:task-created', taskId: 'history' }, 1, true))
-        .notifications,
+      reduceMonitorAccumulator(
+        initial(),
+        runtime({ type: 'delegation:subagent-started', subagentId: 'history' }, 1, true),
+      ).notifications,
     ).toEqual([]);
 
     const update: MonitorFamilyUpdate = {
-      family: 'planning',
+      family: 'delegation',
       operation: 'upsert',
-      key: 'task:1',
-      value: { kind: 'task', taskId: '1', status: 'pending', provisional: false },
+      key: 'actor:1',
+      value: observedChild('1', 'active'),
     };
     expect(reduceMonitorAccumulator(initial(), semantic('correction', 'correction', [update])).notifications).toEqual(
       [],
@@ -234,10 +227,10 @@ describe('monitor notifications', () => {
         initial(),
         semantic('replace', 'live', [
           {
-            family: 'planning',
+            family: 'delegation',
             operation: 'replace',
             coverage: 'complete',
-            values: [{ key: 'task:1', value: update.value }],
+            values: [{ key: 'actor:1', value: update.value }],
           },
         ]),
       ).notifications,

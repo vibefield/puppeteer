@@ -3,9 +3,9 @@ import type { ObservationCapability } from '@vibecook/puppeteer-core/monitor-spi
 export const OPENCODE_CONTRACT = 'opencode@1.18.16:http-sse';
 
 /**
- * Claims are bounded by the pinned 1.18.16 Surface captures. Generated-only
- * todo shapes stay degraded, and provider model variants are not asserted to
- * be literal reasoning effort for every custom model configuration.
+ * Claims are bounded by the pinned 1.18.16 Surface captures. Provider model
+ * variants are not asserted to be literal reasoning effort for every custom
+ * model configuration.
  */
 export const OPENCODE_MONITOR_CAPABILITIES: readonly ObservationCapability[] = [
   {
@@ -75,19 +75,6 @@ export const OPENCODE_MONITOR_CAPABILITIES: readonly ObservationCapability[] = [
     limitations: [
       'Provider modes such as build, plan, explore, and compaction remain provider-native strings.',
       'Configured permission policy is not collapsed into a misleading Auto/Manual label.',
-    ],
-  },
-  {
-    family: 'planning',
-    support: 'degraded',
-    actorScope: 'current-actors',
-    latency: 'response',
-    source: 'opencode-todo-updated',
-    contractVersion: OPENCODE_CONTRACT,
-    limitations: [
-      'todo.updated is generated-schema-backed but has no pinned runtime capture in 1.18.16.',
-      'Todo snapshots have statuses but no stable native todo IDs, so they are plans rather than independently identified task lifecycles.',
-      'The verified reconciliation recipe has no captured durable todo endpoint response, so an SSE gap can lose a plan revision.',
     ],
   },
   {

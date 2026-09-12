@@ -75,15 +75,6 @@ export const GROK_MONITOR_CAPABILITIES: readonly ObservationCapability[] = [
     ],
   },
   {
-    family: 'planning',
-    support: 'degraded',
-    actorScope: 'root',
-    latency: 'response',
-    source: 'acp-plan',
-    contractVersion: GROK_CONTRACT,
-    limitations: ['ACP plans are complete snapshots, but Grok plan emission was not exercised in the pinned census.'],
-  },
-  {
     family: 'delegation',
     support: 'degraded',
     actorScope: 'current-actors',

@@ -42,8 +42,6 @@ const arbitraryEvent: fc.Arbitrary<AgentEvent> = fc.oneof(
   id.map((requestId): AgentEvent => ({ type: 'interaction:permission-resolved', requestId, outcome: 'allowed' })),
   id.map((subagentId): AgentEvent => ({ type: 'delegation:subagent-started', subagentId })),
   id.map((subagentId): AgentEvent => ({ type: 'delegation:subagent-stopped', subagentId })),
-  id.map((taskId): AgentEvent => ({ type: 'delegation:task-created', taskId })),
-  id.map((taskId): AgentEvent => ({ type: 'delegation:task-completed', taskId })),
   fc.constant<AgentEvent>({ type: 'conversation:assistant-message', text: 'hello' }),
   fc.tuple(fc.nat(), fc.integer({ min: 1, max: 1_000_000 })).map(([usedTokens, capacityTokens]): AgentEvent => ({
     type: 'context-window:updated',
@@ -401,7 +399,6 @@ describe('reduceSessionState transitions', () => {
     const state = replay(
       stampAll([
         { type: 'usage:tokens-used', usageId: 'response-1', boundary: 'response', canonical: true, deltaTokens: 20 },
-        { type: 'planning:updated', steps: [{ text: 'Ship it', status: 'pending' }] },
         { type: 'compaction:started', compactionId: 'c1' },
         { type: 'compaction:completed', compactionId: 'c1' },
         { type: 'delegation:teammate-idle', teammateName: 'researcher' },
@@ -445,7 +442,6 @@ describe('reduceSessionState transitions', () => {
         { type: 'tool:started', toolCallId: 'tool-1' },
         { type: 'interaction:permission-requested', requestId: 'permission-1', presentation: 'host-ui' },
         { type: 'delegation:subagent-started', subagentId: 'subagent-1' },
-        { type: 'delegation:task-created', taskId: 'task-1' },
         { type: 'process:exited', reason: 'crash', exitCode: 137 },
       ]),
     );
@@ -456,14 +452,12 @@ describe('reduceSessionState transitions', () => {
     expect(state.tools.size).toBe(0);
     expect(state.permissions.size).toBe(0);
     expect(state.subagents.size).toBe(0);
-    expect(state.tasks.size).toBe(0);
     expect(state.diagnostics.map((diagnostic) => diagnostic.code)).toEqual([
       'turn-orphaned-on-exit',
       'reasoning-orphaned-on-exit',
       'tools-orphaned-on-exit',
       'permissions-orphaned-on-exit',
       'subagents-orphaned-on-exit',
-      'tasks-orphaned-on-exit',
     ]);
   });
 
@@ -475,7 +469,6 @@ describe('reduceSessionState transitions', () => {
         { type: 'tool:started', toolCallId: 'late-tool' },
         { type: 'interaction:permission-requested', requestId: 'late-permission', presentation: 'host-ui' },
         { type: 'delegation:subagent-started', subagentId: 'late-subagent' },
-        { type: 'delegation:task-created', taskId: 'late-task' },
       ]),
     );
 
@@ -484,9 +477,7 @@ describe('reduceSessionState transitions', () => {
     expect(state.tools.size).toBe(0);
     expect(state.permissions.size).toBe(0);
     expect(state.subagents.size).toBe(0);
-    expect(state.tasks.size).toBe(0);
     expect(state.diagnostics.map((diagnostic) => diagnostic.code)).toEqual([
-      'resource-after-exit',
       'resource-after-exit',
       'resource-after-exit',
       'resource-after-exit',

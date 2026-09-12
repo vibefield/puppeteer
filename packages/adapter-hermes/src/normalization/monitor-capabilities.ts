@@ -4,7 +4,7 @@ export const HERMES_CONTRACT = 'hermes@0.20.0:tui-gateway';
 
 /**
  * Runtime-verified claims come from the pinned 0.20.0 captures. Claims for
- * context, todos, clarification, compaction, and subagents are deliberately
+ * context, clarification, compaction, and subagents are deliberately
  * degraded because only the exact release source establishes those branches.
  */
 export const HERMES_MONITOR_CAPABILITIES: readonly ObservationCapability[] = [
@@ -82,19 +82,6 @@ export const HERMES_MONITOR_CAPABILITIES: readonly ObservationCapability[] = [
     limitations: [
       'Hermes exposes effective manual/off/YOLO approval posture, not Claude-style Plan or Accept Edit modes.',
       'YOLO and approvals.mode=off normalize to auto while the provider-native value remains visible.',
-    ],
-  },
-  {
-    family: 'planning',
-    support: 'degraded',
-    actorScope: 'root',
-    latency: 'response',
-    source: 'hermes-tool-complete-todo-snapshot',
-    contractVersion: HERMES_CONTRACT,
-    limitations: [
-      'tool.complete carries the authoritative full todo list only when Hermes tool lifecycle display is enabled.',
-      'The todo branch is exact-release-source-backed but not pinned-runtime captured.',
-      'Stable task lifecycle is reported only for todo entries that carry native IDs.',
     ],
   },
   {

@@ -134,7 +134,6 @@ describe('GrokMonitorEvidence', () => {
         'model',
         'effort',
         'mode',
-        'planning',
         'delegation',
         'workflow',
         'compaction',
@@ -300,7 +299,7 @@ describe('GrokMonitorEvidence', () => {
     expect(context?.updates.some(({ family }) => family === 'usage')).toBe(false);
   });
 
-  it('maps configured intent and defensive ACP plan, mode, model, and effort updates', () => {
+  it('maps configured intent and ACP mode, model, and effort while leaving plans native', () => {
     const projector = evidence();
     expect(
       projector.configuredBatch(
@@ -334,24 +333,8 @@ describe('GrokMonitorEvidence', () => {
         ],
       }),
     );
-    expect(plan).toMatchObject({
-      updates: [
-        {
-          family: 'planning',
-          operation: 'upsert',
-          value: {
-            kind: 'plan',
-            steps: [
-              { text: 'Inspect evidence', status: 'in_progress' },
-              { text: 'Implement', status: 'pending' },
-            ],
-          },
-        },
-      ],
-    });
-    expect(projector.controlCandidateBatch(candidate({ sessionUpdate: 'plan', entries: [] }))).toMatchObject({
-      updates: [{ family: 'planning', operation: 'retract', key: 'plan:root' }],
-    });
+    expect(plan).toBeNull();
+    expect(projector.controlCandidateBatch(candidate({ sessionUpdate: 'plan', entries: [] }))).toBeNull();
 
     expect(
       projector.controlCandidateBatch(candidate({ sessionUpdate: 'current_mode_update', currentModeId: 'ask' })),

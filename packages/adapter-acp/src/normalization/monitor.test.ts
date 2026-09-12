@@ -49,7 +49,6 @@ describe('AcpMonitorEvidence', () => {
         'model',
         'effort',
         'mode',
-        'planning',
         'delegation',
         'workflow',
         'compaction',
@@ -59,9 +58,6 @@ describe('AcpMonitorEvidence', () => {
     expect(ACP_MONITOR_CAPABILITIES.find(({ family }) => family === 'context')).toMatchObject({
       support: 'supported',
       actorScope: 'root',
-    });
-    expect(ACP_MONITOR_CAPABILITIES.find(({ family }) => family === 'planning')).toMatchObject({
-      support: 'degraded',
     });
     for (const family of ['usage', 'delegation', 'workflow', 'compaction'] as const) {
       expect(ACP_MONITOR_CAPABILITIES.find((capability) => capability.family === family)).toMatchObject({
@@ -167,7 +163,7 @@ describe('AcpMonitorEvidence', () => {
     });
   });
 
-  it('maps complete standard and identified item plans but not file or markdown guesses', () => {
+  it('leaves standard, identified, removed, and file plans outside monitor state', () => {
     const projector = evidence();
     const root = projector.sessionUpdateBatch(
       notification({
@@ -199,26 +195,9 @@ describe('AcpMonitorEvidence', () => {
       T0,
     );
 
-    expect(root?.updates).toMatchObject([
-      {
-        family: 'planning',
-        operation: 'upsert',
-        key: 'plan:root',
-        value: {
-          planId: 'acp:root-plan',
-          steps: [
-            { text: 'Inspect', status: 'completed' },
-            { text: 'Implement', status: 'in_progress' },
-          ],
-        },
-      },
-    ]);
-    expect(identified?.updates[0]).toMatchObject({
-      operation: 'upsert',
-      key: 'plan:plan-2',
-      value: { planId: 'plan-2', steps: [{ text: 'Verify', status: 'pending' }] },
-    });
-    expect(removed?.updates).toEqual([{ family: 'planning', operation: 'retract', key: 'plan:plan-2' }]);
+    expect(root).toBeNull();
+    expect(identified).toBeNull();
+    expect(removed).toBeNull();
     expect(file).toBeNull();
   });
 

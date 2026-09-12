@@ -79,19 +79,6 @@ export const ACP_MONITOR_CAPABILITIES: readonly ObservationCapability[] = [
     ],
   },
   {
-    family: 'planning',
-    support: 'degraded',
-    actorScope: 'root',
-    latency: 'response',
-    source: 'acp-plan-and-experimental-plan-update',
-    contractVersion: ACP_CONTRACT,
-    limitations: [
-      'Standard plan notifications are exact complete snapshots but have no provider plan ID.',
-      'Experimental item-plan updates and removals have stable plan IDs; file and markdown plans remain raw.',
-      'Plan entries are not promoted to independently identified task lifecycles.',
-    ],
-  },
-  {
     family: 'delegation',
     support: 'unsupported',
     actorScope: 'root',

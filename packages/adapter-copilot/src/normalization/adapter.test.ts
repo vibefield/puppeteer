@@ -43,10 +43,13 @@ describe('Copilot session normalization', () => {
       ).events,
     ).toEqual([{ type: 'workspace:file-changed', changes: [{ path: 'a.ts', kind: 'modify' }] }]);
   });
-  it('does not misrepresent a plan mutation as an empty portable plan', () => {
-    expect(
-      new CopilotSessionNormalizer().normalize(record('session.plan_changed', { operation: 'write' })).events,
-    ).toEqual([{ type: 'adapter:native-event', adapter: 'copilot', nativeType: 'session.plan_changed' }]);
+  it('retains plan mutations on the native rail without a portable plan', () => {
+    const nativeEvent = record('session.plan_changed', { operation: 'write' });
+    expect(new CopilotSessionNormalizer().normalize(nativeEvent)).toMatchObject({
+      disposition: 'retained-native',
+      nativeEvent,
+      events: [{ type: 'adapter:native-event', adapter: 'copilot', nativeType: 'session.plan_changed' }],
+    });
   });
   it('projects effective model and effort from the session header', () => {
     expect(

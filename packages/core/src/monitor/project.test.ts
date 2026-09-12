@@ -68,6 +68,10 @@ describe('projectAgentMonitorState', () => {
   it('increments revisions only when the public full state changes', () => {
     const accumulator = initial();
     const first = projectAgentMonitorState(accumulator);
+    expect(first.schemaVersion).toBe(2);
+    expect(first).not.toHaveProperty('plan');
+    expect(first).not.toHaveProperty('tasks');
+    expect(first.freshness.families).not.toHaveProperty('planning');
     const unchanged = projectAgentMonitorState(accumulator, { previous: first });
     expect(unchanged).toBe(first);
 
@@ -495,14 +499,6 @@ describe('projectAgentMonitorState', () => {
     let state = reduceMonitorAccumulator(
       initial(),
       runtimeEnvelope(
-        { type: 'delegation:task-updated', taskId: 'task-p', status: 'proposed', provisional: true },
-        1,
-        'inferred',
-      ),
-    ).state;
-    state = reduceMonitorAccumulator(
-      state,
-      runtimeEnvelope(
         { type: 'delegation:teammate-idle', teamName: 'alpha', teammateName: 'researcher' },
         2,
         'inferred',
@@ -513,7 +509,6 @@ describe('projectAgentMonitorState', () => {
       runtimeEnvelope({ type: 'compaction:started', compactionId: 'compact-p' }, 3, 'inferred'),
     ).state;
     expect(projectAgentMonitorState(state)).toMatchObject({
-      tasks: [{ id: 'task-p', status: 'proposed', provisional: true }],
       team: { teammates: [{ id: 'researcher', idle: true, provisional: true }] },
       compaction: { active: true, provisional: true },
     });

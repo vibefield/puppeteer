@@ -34,7 +34,6 @@ function monitorState(
       : {}),
     usage: { samples: [] },
     modes: { execution: 'native-tui' },
-    tasks: [],
     subagents: [],
     workflows: [],
     compaction: { active: false, count: 0 },
@@ -246,10 +245,9 @@ describe('monitor agent assembly', () => {
     expect(monitorAgentCounts(assembled)).toEqual({ idle: 0, working: 0, blocked: 2 });
   });
 
-  it('uses the core v2 status directly, so an open task at rest remains idle', () => {
+  it('uses core status directly, so recent token usage at rest remains idle', () => {
     const record = agentRecord('runtime-a', 'terminal-a');
     const monitor = monitorState('run-runtime-a', 'idle', {
-      tasks: [{ id: 'task-1', description: 'Open task', status: 'pending' }],
       usage: { cumulativeTokens: 120, burnRatePerMin: 12, burnRateWindowMs: 60_000, samples: [] },
     });
     record.monitor = monitorMessage(monitor, 'terminal-a');

@@ -88,8 +88,6 @@ function hookEventConfidence(
 ): AgentEventConfidence {
   if (
     event.type === 'interaction:question-requested' ||
-    (event.type === 'planning:updated' && event.provisional) ||
-    (event.type === 'delegation:task-updated' && event.provisional) ||
     event.type === 'delegation:teammate-idle' ||
     (hookEventName === 'PreCompact' && event.type === 'compaction:started') ||
     (['Stop', 'StopFailure', 'SessionEnd', 'PreCompact', 'UserPromptSubmit'].includes(hookEventName) &&

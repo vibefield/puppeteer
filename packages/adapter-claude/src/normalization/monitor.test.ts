@@ -21,7 +21,6 @@ describe('ClaudeMonitorEvidence', () => {
         'model',
         'effort',
         'mode',
-        'planning',
         'delegation',
         'workflow',
         'compaction',
@@ -86,7 +85,7 @@ describe('ClaudeMonitorEvidence', () => {
     expect(unavailable.capabilities?.find(({ family }) => family === 'workflow')).toMatchObject({
       support: 'degraded',
     });
-    expect(unavailable.coverage).toHaveLength(11);
+    expect(unavailable.coverage).toHaveLength(10);
     expect(unavailable.coverage?.every(({ completeness }) => completeness === 'unavailable')).toBe(true);
   });
 

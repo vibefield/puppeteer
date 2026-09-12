@@ -1,7 +1,7 @@
 import type { AgentExecutionMode, AgentGitState, ObservationLevel } from '../events/index.js';
 
 /** Current wire/schema generation for the JSON-plain monitor projection. */
-export const AGENT_MONITOR_SCHEMA_VERSION = 1 as const;
+export const AGENT_MONITOR_SCHEMA_VERSION = 2 as const;
 
 /** One Puppeteer-managed provider invocation. */
 export type RuntimeRunId = string;
@@ -138,7 +138,6 @@ export type MonitorMetricFamily =
   | 'model'
   | 'effort'
   | 'mode'
-  | 'planning'
   | 'delegation'
   | 'workflow'
   | 'compaction'
@@ -148,8 +147,6 @@ export type MonitorMetricFamily =
 export type MonitorBoundedCollection =
   | 'blockers'
   | 'usageSamples'
-  | 'planSteps'
-  | 'tasks'
   | 'subagents'
   | 'teammates'
   | 'workflows'
@@ -235,28 +232,6 @@ export interface MonitorModesState {
   providerSession?: MonitorProviderMode;
   providerPermission?: MonitorProviderMode;
   asOf?: string;
-}
-
-export interface MonitorPlanStep {
-  text: string;
-  status: string;
-}
-
-export interface MonitorPlanState {
-  updatedAt: string;
-  actorRunKey?: string;
-  steps: MonitorPlanStep[];
-  provisional?: boolean;
-}
-
-export interface MonitorTaskState {
-  id: string;
-  actorRunKey?: string;
-  description?: string;
-  status: string;
-  teamName?: string;
-  teammateName?: string;
-  provisional?: boolean;
 }
 
 export interface MonitorSubagentState {
@@ -372,8 +347,6 @@ export interface AgentMonitorState {
   effort?: MonitorEffortState;
   modes: MonitorModesState;
 
-  plan?: MonitorPlanState;
-  tasks: MonitorTaskState[];
   subagents: MonitorSubagentState[];
   team?: MonitorTeamState;
   workflows: MonitorWorkflowState[];
@@ -390,10 +363,6 @@ export interface AgentMonitorState {
 
 export type MonitorNotificationType =
   | 'blocked.entered'
-  | 'plan.created'
-  | 'planning:updated'
-  | 'delegation:task-created'
-  | 'delegation:task-completed'
   | 'delegation:subagent-started'
   | 'delegation:subagent-stopped'
   | 'team.observed'

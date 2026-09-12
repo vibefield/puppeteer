@@ -70,18 +70,6 @@ export const KIMI_MONITOR_CAPABILITIES: readonly ObservationCapability[] = [
     ],
   },
   {
-    family: 'planning',
-    support: 'degraded',
-    actorScope: 'current-actors',
-    latency: 'file-flush',
-    source: 'kimi-task-and-plan-revision-records',
-    contractVersion: KIMI_CONTRACT,
-    limitations: [
-      'Process-task lifecycle is runtime verified; agent and question task variants are source-backed.',
-      'Plan revisions prove that a plan changed but expose no plan steps or bounded plan artifact.',
-    ],
-  },
-  {
     family: 'delegation',
     support: 'degraded',
     actorScope: 'current-actors',

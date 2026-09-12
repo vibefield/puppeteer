@@ -1,11 +1,9 @@
 import type { MonitorBoundedCollection } from './types.js';
 
-/** Hard public-state caps from RFC-001's implementation plan. */
+/** Hard public-state caps defined by RFC-001. */
 export const AGENT_MONITOR_COLLECTION_LIMITS: Readonly<Record<MonitorBoundedCollection, number>> = Object.freeze({
   blockers: 64,
   usageSamples: 256,
-  planSteps: 256,
-  tasks: 512,
   subagents: 256,
   teammates: 256,
   workflows: 128,
@@ -24,7 +22,7 @@ export interface BoundedMonitorCollection<T> {
 /**
  * Applies the public cap after a projector has put values in canonical order.
  * Keeping ordering and bounding separate lets source order remain meaningful
- * for plans/questions while entity collections use identity-based ordering.
+ * for questions while entity collections use identity-based ordering.
  */
 export function boundMonitorCollection<T>(
   collection: MonitorBoundedCollection,

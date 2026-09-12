@@ -80,6 +80,29 @@ interface AgentAdapterBinding {
 
 Strict Zod schemas validate runtime data at the Core boundary. TypeScript defines callback narrowing and internal composition. Provider-native decoding stays tolerant because upstream wire formats are versioned evidence, not trusted Core values.
 
+### Task-management boundary
+
+Godview and Puppeteer do not own todos, task progress, or plan contents. Native
+agents or a separate product own that domain. Adapters retain provider evidence
+on the existing `adapter:native-event` and generic tool rails without parsing
+todo lists, extracting Markdown plan steps, or producing a portable task model.
+
+Agent/subagent lifecycle, team and workflow membership, permission requests, and
+provider plan-mode controls remain in scope. Native names do not determine this
+boundary: Claude's `subagentStatusLine.tasks` carries child usage/context facts,
+Kimi's agent-task records carry child lifecycle, and OpenCode's task tool metadata
+can identify a child session. Those execution facts still feed agent monitoring.
+Provider-native schemas, captures, generated registries, and Imposter behavior
+continue to describe the vendor's full surface.
+
+This is a breaking contract reduction. Consumers must remove subscriptions to
+`planning:updated` and `delegation:task-{created,updated,completed}`, uses of
+`SessionRuntimeState.tasks`, and monitor `plan`, `tasks`, planning-family freshness,
+task/plan bounds, and notifications. Monitor snapshots now report schema
+generation 2. All Puppeteer packages remain version-locked; no compatibility
+task store or replacement package is added. External task tools may interpret
+retained native evidence independently of the live runtime.
+
 ### Workspace mutation boundary
 
 File mutation is represented by two facts rather than one ambiguous “workspace changed” signal:

@@ -31,7 +31,6 @@ function monitorState(overrides: Partial<AgentMonitorState> = {}): AgentMonitorS
     blockers: [],
     usage: { samples: [] },
     modes: { execution: 'native-tui' },
-    tasks: [],
     subagents: [],
     workflows: [],
     compaction: { active: false, count: 0 },
@@ -48,7 +47,7 @@ function notice(overrides: Partial<MonitorNotification> = {}): MonitorNotificati
     notificationId: 'notice-1',
     runtimeRunId: 'run-1',
     at: '2026-08-17T00:00:00.000Z',
-    type: 'delegation:task-created',
+    type: 'delegation:subagent-started',
     ...overrides,
   };
 }

@@ -44,12 +44,14 @@ There is no shared semantic-database or external observer dependency in the live
 - status, blockers, and current activity;
 - usage and short-window burn rate;
 - context, model, effort, and provider modes;
-- plans, tasks, subagents, teams, and workflows;
+- subagents, teams, and workflows;
 - compaction, environment, native-session identity, freshness, and liveness.
 
 Source epochs, corrections, replacement ledgers, raw provider records, and privacy-safe workspace provenance remain private. Content-bearing artifacts cross the boundary only through a bounded `readArtifact()` capability.
 
 `MonitorNotification` reports notification-worthy transitions. It is not another state store and cannot be replayed to reconstruct the complete monitor.
+
+Monitor schema generation 2 removes plan steps and task collections, their bounded-collection counters, and task/plan notifications. Task management belongs to native agents or an external product; provider plan-mode and agent/subagent execution remain operational observations. See RFC 004 for the boundary and consumer migration.
 
 `AgentMonitorHandle` provides a race-free initial snapshot, ordered state and notification iterables, current state, bounded artifact reads, and consumer-local closure. Closing a handle never closes the Agent.
 

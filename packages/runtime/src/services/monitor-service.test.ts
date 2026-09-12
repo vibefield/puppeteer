@@ -286,17 +286,17 @@ describe('AgentMonitorService', () => {
     monitor.acceptSemantic(
       batch('batch-2', [
         {
-          family: 'planning',
+          family: 'model',
           operation: 'upsert',
-          key: 'task:1',
-          value: { kind: 'task', taskId: '1', status: 'pending', provisional: false },
+          key: 'root',
+          value: { kind: 'model', providerModelId: 'model-1', intent: 'observed' },
         },
       ]),
     );
     expect(states).toHaveLength(2);
     clock.advance(100);
     expect(states).toHaveLength(3);
-    expect(states[2]).toMatchObject({ revision: 3, status: 'idle', tasks: [{ id: '1' }] });
+    expect(states[2]).toMatchObject({ revision: 3, status: 'idle', model: { id: 'model-1' } });
   });
 
   it('shares one semantic source across independent race-free handles', async () => {

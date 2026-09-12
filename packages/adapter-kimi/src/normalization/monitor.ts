@@ -83,26 +83,6 @@ function questions(value: unknown): MonitorStructuredQuestion[] | undefined {
   return result.length > 0 ? result : undefined;
 }
 
-function taskStatus(
-  value: string | undefined,
-  terminal: boolean,
-): 'in-progress' | 'completed' | 'failed' | 'cancelled' | 'unknown' {
-  switch (value?.toLowerCase()) {
-    case 'running':
-      return 'in-progress';
-    case 'completed':
-      return 'completed';
-    case 'failed':
-    case 'timed_out':
-    case 'lost':
-      return 'failed';
-    case 'killed':
-      return 'cancelled';
-    default:
-      return terminal ? 'unknown' : 'in-progress';
-  }
-}
-
 export interface KimiConfiguredIntent {
   cwd?: string;
   model?: string;
@@ -153,7 +133,7 @@ export class KimiMonitorEvidence {
     return actor ? `actor:${actor.runKey}` : 'root';
   }
 
-  private evidence(observed: KimiObservedRecord, revisionKey?: string): EvidenceRef[] {
+  private evidence(observed: KimiObservedRecord): EvidenceRef[] {
     return [
       {
         namespace: 'kimi:wire-record',
@@ -161,7 +141,6 @@ export class KimiMonitorEvidence {
         sourceObjectId: observed.agentId,
         cursorStart: observed.cursorStart,
         cursorEnd: observed.cursorEnd,
-        ...(revisionKey ? { revisionKey } : {}),
       },
     ];
   }
@@ -282,7 +261,6 @@ export class KimiMonitorEvidence {
     let quality: AdapterMonitorObservationBatch['quality'] = 'exact';
     let completeness: AdapterMonitorObservationBatch['completeness'] = 'complete';
     let provisional = false;
-    let revisionKey: string | undefined;
 
     const markSourceOnly = (): void => {
       quality = 'unknown';
@@ -452,24 +430,10 @@ export class KimiMonitorEvidence {
       case 'task.started':
       case 'task.terminated': {
         const info = rec(body.info);
-        const taskId = text(info?.taskId ?? info?.task_id ?? info?.id);
         const taskKind = text(info?.kind);
         const terminal = type === 'task.terminated';
-        if (taskId) {
-          if (taskKind !== 'process') markSourceOnly();
-          const providerStatus = text(info?.status);
-          updates.push(
-            upsert('planning', `task:${taskId}`, {
-              kind: 'task',
-              taskId,
-              ...(actor ? { actor } : {}),
-              status: taskStatus(providerStatus, terminal),
-              ...(providerStatus ? { providerStatus } : {}),
-              provisional: taskKind !== 'process',
-            }),
-          );
-        }
         if (taskKind === 'agent') {
+          markSourceOnly();
           const childId = text(info?.agentId);
           if (childId) {
             this.parentAgents.set(childId, observed.agentId);
@@ -561,25 +525,6 @@ export class KimiMonitorEvidence {
         break;
       }
 
-      case 'plan.revision': {
-        markSourceOnly();
-        const planId = text(body.id);
-        const version = finiteNonNegative(body.version);
-        const sha256 = text(body.sha256);
-        if (!planId || version === undefined || !sha256) break;
-        revisionKey = `${planId}:${version}:${sha256}`;
-        updates.push(
-          upsert('planning', `plan:${planId}`, {
-            kind: 'plan',
-            planId,
-            ...(actor ? { actor } : {}),
-            steps: [],
-            provisional: true,
-          }),
-        );
-        break;
-      }
-
       case 'plan_mode.enter':
         if (observed.agentId !== 'main') break;
         markSourceOnly();
@@ -653,7 +598,7 @@ export class KimiMonitorEvidence {
       completeness,
       provisional,
       agentId: observed.agentId,
-      evidence: this.evidence(observed, revisionKey),
+      evidence: this.evidence(observed),
       cursorEnd: observed.cursorEnd,
     });
   }

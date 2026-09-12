@@ -15,7 +15,7 @@ envelope.type === envelope.event.type;
 
 Provider-native names belong only in retained source evidence. Dotted aliases and a synthetic `state` event namespace are not public identities.
 
-The catalog currently contains 42 routes in 21 categories: `session`, `turn`, `reasoning`, `tool`, `interaction`, `delegation`, `planning`, `compaction`, `context-window`, `conversation`, `usage`, `workflow`, `environment`, `model`, `effort`, `mode`, `workspace`, `process`, `notification`, `monitor`, and `adapter`.
+The catalog currently contains 39 routes in 20 categories: `session`, `turn`, `reasoning`, `tool`, `interaction`, `delegation`, `compaction`, `context-window`, `conversation`, `usage`, `workflow`, `environment`, `model`, `effort`, `mode`, `workspace`, `process`, `notification`, `monitor`, and `adapter`.
 
 ## Vocabulary and ownership
 
@@ -92,7 +92,6 @@ packages/core/src/
     tool.ts
     interaction.ts
     delegation.ts
-    planning.ts
     compaction.ts
     context-window.ts
     conversation.ts
@@ -140,7 +139,7 @@ packages/runtime/src/
   runtime.ts
 ```
 
-There is no `events/state/` umbrella. Session lifecycle, turns, reasoning, tools, interactions, delegation, planning, and compaction are peer domains. Environment contains only cwd and Git facts; model, effort, and provider mode have independent events so unrelated evidence does not overwrite one another.
+There is no `events/state/` umbrella. Session lifecycle, turns, reasoning, tools, interactions, delegation, and compaction are peer domains. Environment contains only cwd and Git facts; model, effort, and provider mode have independent events so unrelated evidence does not overwrite one another.
 
 ## Adapter convention
 
@@ -155,7 +154,6 @@ src/
     tool.ts
     interaction.ts
     delegation.ts
-    planning.ts
     compaction.ts
     context-window.ts
     conversation.ts

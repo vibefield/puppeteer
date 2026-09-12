@@ -16,7 +16,7 @@ export interface ConversationAssistantMessage {
   streaming: boolean;
 }
 
-export type ConversationActivityKind = 'reasoning' | ToolActivityKind | 'permission' | 'subagent' | 'task';
+export type ConversationActivityKind = 'reasoning' | ToolActivityKind | 'permission' | 'subagent';
 
 export interface ConversationActivity {
   id: string;
@@ -205,21 +205,6 @@ export class AgentConversationService implements AgentProjectionService<AgentCon
           activity.status = 'completed';
           activity.title = 'Delegated work completed';
         }
-        break;
-      }
-
-      case 'delegation:task-created':
-        this.activity(`task:${event.taskId}`, correlatedTurn, {
-          activity: 'task',
-          status: 'running',
-          title: event.description || 'Working on task',
-          confidence: envelope.confidence,
-        });
-        break;
-
-      case 'delegation:task-completed': {
-        const activity = this.activities.get(`task:${event.taskId}`);
-        if (activity) activity.status = 'completed';
         break;
       }
 

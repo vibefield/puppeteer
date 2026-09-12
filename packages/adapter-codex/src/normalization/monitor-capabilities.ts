@@ -72,18 +72,6 @@ export const CODEX_MONITOR_CAPABILITIES: readonly ObservationCapability[] = [
     ],
   },
   {
-    family: 'planning',
-    support: 'degraded',
-    actorScope: 'current-actors',
-    latency: 'response',
-    source: 'codex-turn-plan-updated',
-    contractVersion: CODEX_CONTRACT,
-    limitations: [
-      'Plan snapshots are vendor-schema-backed but not present in the pinned runtime census.',
-      'Codex exposes no verified durable task lifecycle on this surface.',
-    ],
-  },
-  {
     family: 'delegation',
     support: 'degraded',
     actorScope: 'current-actors',

@@ -29,7 +29,6 @@
     "thread/status/changed",
     "thread/tokenUsage/updated",
     "turn/completed",
-    "turn/plan/updated",
     "turn/started"
   ],
   "observedOrControlledEvents": [
@@ -56,13 +55,13 @@
     "turn/start"
   ],
   "unmapped": {
-    "count": 197,
-    "sha256": "89de76d07580603b415f7339400ae00ddbdd64cee888bd1eff11f61406d5e240",
+    "count": 198,
+    "sha256": "805b90cd6a6593199c90d7844ba64f83b9019cce476a4bb68dc2101cff480e37",
     "policy": "Not consumed by this adapter version. They remain provider-native ground truth and require explicit review when this lock changes."
   },
   "totals": {
     "groundTruth": 244,
-    "semantic": 26,
+    "semantic": 25,
     "observedOrControlled": 21
   }
 }

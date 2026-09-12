@@ -9,7 +9,6 @@ export * from './reasoning.js';
 export * from './tool.js';
 export * from './workspace.js';
 export * from './interaction.js';
-export * from './planning.js';
 export * from './compaction.js';
 export * from './usage.js';
 export * from './delegation.js';

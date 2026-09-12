@@ -110,20 +110,6 @@ function modeUpdate(modes: SessionModeState | null | undefined): MonitorFamilyUp
   });
 }
 
-function planSteps(entries: unknown): Array<{ text: string; status: string }> | undefined {
-  if (!Array.isArray(entries)) return undefined;
-  const result: Array<{ text: string; status: string }> = [];
-  for (const candidate of entries) {
-    const entry = rec(candidate);
-    if (typeof entry?.content !== 'string' || typeof entry.status !== 'string') return undefined;
-    result.push({
-      text: entry.content.slice(0, MAX_TEXT_LENGTH),
-      status: entry.status.slice(0, MAX_TEXT_LENGTH),
-    });
-  }
-  return result;
-}
-
 export interface AcpMonitorBootstrap {
   cwd: string;
   modes?: SessionModeState | null;
@@ -255,48 +241,11 @@ export class AcpMonitorEvidence {
           }),
         );
       }
-    } else if (kind === 'plan') {
-      const steps = planSteps(update.entries);
-      if (steps) {
-        if (steps.length === 0) updates.push(retract('planning', 'plan:root'));
-        else {
-          updates.push(
-            upsert('planning', 'plan:root', {
-              kind: 'plan',
-              planId: 'acp:root-plan',
-              steps,
-              provisional: false,
-            }),
-          );
-        }
-      }
-    } else if (kind === 'plan_update') {
-      if (update.plan.type === 'items') {
-        const steps = planSteps(update.plan.entries);
-        if (steps) {
-          const key = `plan:${update.plan.planId}`;
-          if (steps.length === 0) updates.push(retract('planning', key));
-          else {
-            updates.push(
-              upsert('planning', key, {
-                kind: 'plan',
-                planId: update.plan.planId,
-                steps,
-                provisional: false,
-              }),
-            );
-          }
-        }
-      }
-    } else if (kind === 'plan_removed') {
-      updates.push(retract('planning', `plan:${update.planId}`));
     }
 
     if (updates.length === 0) return null;
     const object = rec(update);
-    const sourceObjectId = boundedText(
-      object?.planId ?? rec(object?.plan)?.planId ?? object?.messageId ?? object?.toolCallId,
-    );
+    const sourceObjectId = boundedText(object?.messageId ?? object?.toolCallId);
     return this.batch(kind.replaceAll('_', '-'), observedAt, updates, {
       phase,
       evidence: this.evidence(

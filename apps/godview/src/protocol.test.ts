@@ -20,7 +20,6 @@ function state(): AgentMonitorState {
     blockers: [{ id: 'failure-1', kind: 'failure', since: '2026-08-17T00:00:00.000Z' }],
     usage: { samples: [] },
     modes: { execution: 'native-tui' },
-    tasks: [],
     subagents: [],
     workflows: [],
     compaction: { active: false, count: 0 },

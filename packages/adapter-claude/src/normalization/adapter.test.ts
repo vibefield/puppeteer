@@ -409,7 +409,7 @@ describe('structured AskUserQuestion lifecycle', () => {
   });
 });
 
-describe('fast plan/task/team/compaction semantics', () => {
+describe('tool, team, and compaction semantics', () => {
   it('uses collision-safe fallback tool ids for repeated same-name calls in one prompt', () => {
     const normalizer = new ClaudeHookNormalizer();
     const call = () =>
@@ -424,151 +424,43 @@ describe('fast plan/task/team/compaction semantics', () => {
     expect(call().toolCallId).not.toBe(call().toolCallId);
   });
 
-  it('projects TodoWrite provisionally and confirms the same snapshot after success', () => {
+  it.each([
+    ['TodoWrite', { todos: [{ content: 'Inspect code', status: 'in_progress' }] }],
+    ['ExitPlanMode', { plan: '# Plan\n1. Inspect code', planFilePath: '/private/plan.md' }],
+    ['TaskCreate', { subject: 'Research', description: 'Inspect provider' }],
+    ['TaskUpdate', { taskId: 'task-1', status: 'completed' }],
+  ])('retains %s as generic tool activity without task or plan projection', (toolName, input) => {
     const normalizer = new ClaudeHookNormalizer();
-    const tool = {
-      prompt_id: 'p-plan',
-      agent_id: 'planner',
-      tool_name: 'TodoWrite',
-      tool_use_id: 'todo-1',
-      tool_input: {
-        todos: [
-          { content: 'Inspect code', status: 'in_progress', activeForm: 'Inspecting code' },
-          { content: 'Write tests', status: 'pending', activeForm: 'Writing tests' },
-        ],
-      },
-    };
-    expect(normalizer.normalize(fakeClaudeHookPayload('PreToolUse', tool)).events.at(-1)).toEqual({
-      type: 'planning:updated',
-      planId: 'claude-todos:planner',
-      steps: [
-        { text: 'Inspect code', status: 'in_progress' },
-        { text: 'Write tests', status: 'pending' },
-      ],
-      provisional: true,
-    });
-    expect(
-      normalizer.normalize(fakeClaudeHookPayload('PostToolUse', { ...tool, tool_response: { ok: true } })).events,
-    ).toContainEqual({
-      type: 'planning:updated',
-      planId: 'claude-todos:planner',
-      steps: [
-        { text: 'Inspect code', status: 'in_progress' },
-        { text: 'Write tests', status: 'pending' },
-      ],
-      provisional: false,
-    });
-  });
-
-  it('projects the injected ExitPlanMode Markdown before approval without exposing its native path', () => {
-    const normalizer = new ClaudeHookNormalizer();
-    const tool = {
-      prompt_id: 'p-plan-mode',
-      tool_name: 'ExitPlanMode',
-      tool_use_id: 'exit-plan-1',
-      tool_input: {
-        plan: '# Canary plan\n\n1. Inspect runtime evidence\n2. [x] Keep native paths private\n- Verify projection',
-        planFilePath: '/Users/private/.claude/plans/secret-slug.md',
-        allowedPrompts: [],
-      },
-    };
-
+    const tool = { prompt_id: 'p-1', tool_name: toolName, tool_use_id: 'call-1', tool_input: input };
     const requested = normalizer.normalize(fakeClaudeHookPayload('PreToolUse', tool));
-    expect(requested.events.at(-1)).toEqual({
-      type: 'planning:updated',
-      planId: 'claude-plan:root',
-      steps: [
-        { text: 'Inspect runtime evidence', status: 'pending' },
-        { text: 'Keep native paths private', status: 'completed' },
-        { text: 'Verify projection', status: 'pending' },
-      ],
-      provisional: true,
-    });
-    expect(JSON.stringify(requested.events.at(-1))).not.toContain('secret-slug');
-
-    const completed = normalizer.normalize(
-      fakeClaudeHookPayload('PostToolUse', {
-        ...tool,
-        tool_response: { plan: tool.tool_input.plan, filePath: tool.tool_input.planFilePath },
-      }),
-    );
-    expect(completed.events).toContainEqual({
-      type: 'planning:updated',
-      planId: 'claude-plan:root',
-      steps: [
-        { text: 'Inspect runtime evidence', status: 'pending' },
-        { text: 'Keep native paths private', status: 'completed' },
-        { text: 'Verify projection', status: 'pending' },
-      ],
-      provisional: false,
-    });
+    expect(requested.events).toEqual([
+      expect.objectContaining({ type: 'tool:requested', toolCallId: 'call-1', tool: toolName, input }),
+    ]);
+    const output = { ok: true };
+    const completed = normalizer.normalize(fakeClaudeHookPayload('PostToolUse', { ...tool, tool_response: output }));
+    expect(completed.events).toEqual([
+      expect.objectContaining({ type: 'tool:completed', toolCallId: 'call-1', tool: toolName, output }),
+    ]);
   });
 
-  it('uses a bounded first-line fallback for a prose-only ExitPlanMode plan', () => {
+  it.each(['TaskCreated', 'TaskCompleted'])('retains %s as native evidence', (nativeType) => {
     const normalizer = new ClaudeHookNormalizer();
-    const plan = normalizer
-      .normalize(
-        fakeClaudeHookPayload('PreToolUse', {
-          tool_name: 'ExitPlanMode',
-          tool_use_id: 'exit-plan-prose',
-          tool_input: { plan: `# ${'x'.repeat(600)}` },
-        }),
-      )
-      .events.at(-1);
-
-    expect(plan).toMatchObject({ type: 'planning:updated', planId: 'claude-plan:root', provisional: true });
-    expect((plan as { steps: Array<{ text: string }> }).steps[0]?.text.length).toBeLessThanOrEqual(512);
+    const payload = fakeClaudeHookPayload(nativeType, {
+      task_id: 'task-1',
+      task_subject: 'Research',
+      task_description: 'Inspect provider',
+    });
+    expect(normalizer.normalize(payload).events).toEqual([
+      { type: 'adapter:native-event', adapter: 'claude-code', nativeType },
+    ]);
   });
 
-  it('keeps blockable task and teammate hooks provisional until post-tool confirmation', () => {
+  it('continues to observe teammate lifecycle independently of task tracking', () => {
     const normalizer = new ClaudeHookNormalizer();
-    normalizer.normalize(
-      fakeClaudeHookPayload('PreToolUse', {
-        prompt_id: 'p-task',
-        tool_name: 'TaskCreate',
-        tool_use_id: 'task-tool',
-        tool_input: { subject: 'Research', description: 'Inspect provider', team_name: 'alpha' },
-      }),
-    );
-    const proposed = normalizer.normalize(
-      fakeClaudeHookPayload('TaskCreated', {
-        prompt_id: 'p-task',
-        task_id: 'task-7',
-        task_subject: 'Research',
-        task_description: 'Inspect provider',
-        team_name: 'alpha',
-        teammate_name: 'researcher',
-      }),
-    );
-    expect(proposed.events[0]).toMatchObject({
-      type: 'delegation:task-updated',
-      taskId: 'task-7',
-      status: 'proposed',
-      provisional: true,
-      teamName: 'alpha',
-      teammateName: 'researcher',
-    });
-    const confirmed = normalizer.normalize(
-      fakeClaudeHookPayload('PostToolUse', {
-        prompt_id: 'p-task',
-        tool_name: 'TaskCreate',
-        tool_use_id: 'task-tool',
-        tool_response: { task_id: 'task-7' },
-      }),
-    );
-    expect(confirmed.events).toContainEqual(
-      expect.objectContaining({
-        type: 'delegation:task-updated',
-        taskId: 'task-7',
-        status: 'pending',
-        provisional: false,
-      }),
-    );
-
     expect(
       normalizer.normalize(fakeClaudeHookPayload('TeammateIdle', { team_name: 'alpha', teammate_name: 'researcher' }))
-        .events[0],
-    ).toEqual({ type: 'delegation:teammate-idle', teamName: 'alpha', teammateName: 'researcher' });
+        .events,
+    ).toEqual([{ type: 'delegation:teammate-idle', teamName: 'alpha', teammateName: 'researcher' }]);
   });
 
   it('correlates PreCompact and PostCompact and closes a blocked attempt at the turn boundary', () => {
@@ -838,26 +730,6 @@ describe('Claude 2.1.226 hook additions', () => {
     ).toEqual([
       expect.objectContaining({ type: 'compaction:completed', trigger: 'auto', outcome: 'completed' }),
       { type: 'context-window:invalidated', reason: 'compacted' },
-    ]);
-  });
-
-  it('uses the current TaskCreated subject/description fields', () => {
-    expect(
-      normalizeOne(
-        fakeClaudeHookPayload('TaskCreated', {
-          task_id: 'task-1',
-          task_subject: 'Short subject',
-          task_description: 'Detailed description',
-        }),
-      ).events,
-    ).toEqual([
-      {
-        type: 'delegation:task-updated',
-        taskId: 'task-1',
-        description: 'Detailed description',
-        status: 'proposed',
-        provisional: true,
-      },
     ]);
   });
 

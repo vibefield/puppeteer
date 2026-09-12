@@ -63,11 +63,6 @@ function stateFixture(): AgentMonitorState {
       providerPermission: { raw: 'accept-edits', configured: { raw: 'manual' }, intent: 'observed' },
       asOf: '2026-08-16T12:00:00.000Z',
     },
-    plan: {
-      updatedAt: '2026-08-16T11:58:00.000Z',
-      steps: [{ text: 'Implement contracts', status: 'in_progress' }],
-    },
-    tasks: [{ id: 'task-1', description: 'Implement contracts', status: 'in_progress' }],
     subagents: [
       {
         id: 'child-1',

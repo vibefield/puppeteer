@@ -16,7 +16,6 @@ function monitorState(runtimeRunId: string, overrides: Partial<AgentMonitorState
     blockers: [],
     usage: { samples: [] },
     modes: { execution: 'native-tui' },
-    tasks: [],
     subagents: [],
     workflows: [],
     compaction: { active: false, count: 0 },
@@ -96,8 +95,6 @@ describe('AgentMonitorInspector', () => {
           intent: 'observed',
         },
       },
-      plan: { updatedAt: OBSERVED_AT, steps: [{ text: 'Implement monitor', status: 'in_progress' }] },
-      tasks: [{ id: 'task-1', description: 'Verify adapter', status: 'working' }],
       subagents: [
         {
           id: 'child-1',
@@ -162,7 +159,7 @@ describe('AgentMonitorInspector', () => {
           workflow: { support: 'unsupported', availability: 'unavailable' },
         },
       },
-      omitted: { tasks: 3 },
+      omitted: { subagents: 3 },
     });
     const peer = monitorState('run-peer', {
       status: 'working',
@@ -188,7 +185,8 @@ describe('AgentMonitorInspector', () => {
     expect(content).toContain('Database Choose a database SQLite Local and simple');
     expect(content).toContain('permission · Bash');
     expect(content).toContain('failure · crash ACKNOWLEDGE');
-    expect(content).toContain('Implement monitor in_progress Verify adapter working');
+    expect(content).not.toContain('Plan & tasks');
+    expect(content).not.toContain('No plan observed');
     expect(content).toContain('run total · blocked 12,345 tokens · 321 tok/min');
     expect(content).toContain('root agent 10,345 tokens · 271 tok/min');
     expect(content).toContain(
@@ -204,7 +202,7 @@ describe('AgentMonitorInspector', () => {
     expect(content).toContain('status loading');
     expect(content).toContain('context partial');
     expect(content).toContain('workflow unsupported');
-    expect(content).toContain('tasks: 3 omitted');
+    expect(content).toContain('subagents: 3 omitted');
   });
 
   it('keeps unavailable usage unknown instead of presenting zero', () => {

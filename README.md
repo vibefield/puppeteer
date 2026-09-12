@@ -8,6 +8,10 @@ The agent owns its terminal UI. Puppeteer owns the process environment around
 that UI and derives semantic state from native hooks or structured protocols,
 never by scraping terminal text.
 
+Todos, task progress, and plan contents belong to the native agent or a separate
+task-management product. Puppeteer observes agent execution, subagents, provider
+modes, and generic tool activity without maintaining a task or plan model.
+
 See the [layered runtime RFC](docs/rfcs/004-layered-agent-runtime.md) for the
 current architecture and the [documentation map](docs/README.md) for active
 specifications versus historical material.

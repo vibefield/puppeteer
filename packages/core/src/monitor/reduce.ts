@@ -970,48 +970,6 @@ export function translateAgentEventEnvelope(options: TranslateAgentEventOptions)
       updates.push(upsert('delegation', `actor:${child.runKey}`, { kind: 'actor', actor: child, state: 'stopped' }));
       break;
     }
-    case 'delegation:task-created':
-      updates.push(
-        upsert('planning', actorScopedKey(`task:${event.taskId}`, actor), {
-          kind: 'task',
-          taskId: event.taskId,
-          description: event.description,
-          status: 'pending',
-          teamName: event.teamName,
-          teammateName: event.teammateName,
-          provisional: false,
-          ...(actor ? { actor } : {}),
-        }),
-      );
-      break;
-    case 'delegation:task-updated':
-      updates.push(
-        upsert('planning', actorScopedKey(`task:${event.taskId}`, actor), {
-          kind: 'task',
-          taskId: event.taskId,
-          description: event.description,
-          status: event.status,
-          providerStatus: event.providerStatus,
-          teamName: event.teamName,
-          teammateName: event.teammateName,
-          provisional: event.provisional ?? false,
-          ...(actor ? { actor } : {}),
-        }),
-      );
-      break;
-    case 'delegation:task-completed':
-      updates.push(
-        upsert('planning', actorScopedKey(`task:${event.taskId}`, actor), {
-          kind: 'task',
-          taskId: event.taskId,
-          status: 'completed',
-          teamName: event.teamName,
-          teammateName: event.teammateName,
-          provisional: false,
-          ...(actor ? { actor } : {}),
-        }),
-      );
-      break;
     case 'usage:tokens-used':
       updates.push(
         upsert('usage', event.usageId, {
@@ -1063,17 +1021,6 @@ export function translateAgentEventEnvelope(options: TranslateAgentEventOptions)
     }
     case 'context-window:invalidated':
       updates.push(retract('context', actor ? `actor:${actor.runKey}` : 'root'));
-      break;
-    case 'planning:updated':
-      updates.push(
-        upsert('planning', actorScopedKey(`plan:${event.planId ?? 'current'}`, actor), {
-          kind: 'plan',
-          planId: event.planId ?? 'current',
-          steps: event.steps,
-          provisional: event.provisional ?? false,
-          ...(actor ? { actor } : {}),
-        }),
-      );
       break;
     case 'compaction:started':
     case 'compaction:completed':

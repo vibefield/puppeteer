@@ -13,7 +13,6 @@ function state(runtimeEpoch: number, revision: number, runtimeRunId = 'run-1'): 
     blockers: [],
     usage: { samples: [] },
     modes: { execution: 'native-tui' },
-    tasks: [],
     subagents: [],
     workflows: [],
     compaction: { active: false, count: 0 },
@@ -29,7 +28,7 @@ function notification(index: number): MonitorNotification {
     runtimeRunId: 'run-1',
     notificationId: `notice-${index}`,
     at: '2026-08-26T00:00:00.000Z',
-    type: 'planning:updated',
+    type: 'delegation:subagent-started',
   };
 }
 

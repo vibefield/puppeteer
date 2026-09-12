@@ -7,7 +7,6 @@ import type {
   MonitorActivityKind,
   MonitorMetricFamily,
   MonitorNotification,
-  MonitorPlanStep,
   MonitorStructuredQuestion,
   NativeSessionRef,
   RuntimeRunId,
@@ -191,31 +190,6 @@ export interface MonitorModeFamilyValue {
   intent?: 'configured' | 'observed';
 }
 
-export type MonitorTaskLifecycle =
-  'proposed' | 'pending' | 'in-progress' | 'completed' | 'failed' | 'cancelled' | 'removed' | 'unknown';
-
-export interface MonitorPlanFamilyValue {
-  kind: 'plan';
-  planId: string;
-  actor?: ActorRunRef;
-  steps: MonitorPlanStep[];
-  provisional: boolean;
-}
-
-export interface MonitorTaskFamilyValue {
-  kind: 'task';
-  taskId: string;
-  actor?: ActorRunRef;
-  description?: string;
-  status: MonitorTaskLifecycle;
-  providerStatus?: string;
-  teamName?: string;
-  teammateName?: string;
-  provisional: boolean;
-}
-
-export type MonitorPlanningFamilyValue = MonitorPlanFamilyValue | MonitorTaskFamilyValue;
-
 export interface AffiliationRef {
   kind: 'team' | 'workflow';
   id: string;
@@ -296,7 +270,6 @@ export interface MonitorFamilyValueMap {
   model: MonitorModelFamilyValue;
   effort: MonitorEffortFamilyValue;
   mode: MonitorModeFamilyValue;
-  planning: MonitorPlanningFamilyValue;
   delegation: MonitorDelegationFamilyValue;
   workflow: MonitorWorkflowFamilyValue;
   compaction: MonitorCompactionFamilyValue;

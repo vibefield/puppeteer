@@ -1328,7 +1328,7 @@ flowchart LR
 
       <h2>Portable projections added for the complete passive hook set</h2>
       <p>
-        These formerly dead paths are now registered by default and fold into shared state when Claude emits them.
+        Operational hooks fold into shared state; task hooks are retained as native evidence without a portable task model.
       </p>
       <div class="scroll">
         <table>
@@ -1341,12 +1341,12 @@ flowchart LR
               <td>failed turns no longer masquerade as successful completion</td>
             </tr>
             <tr>
-              <td class="m">TaskCreated</td><td class="m">delegation:task-created</td><td>tasks +=</td>
+              <td class="m">TaskCreated</td><td class="m">adapter:native-event</td><td>native evidence</td>
               <td rowspan="2">
-                native task lifecycle now reaches the shared task state
+                task management remains outside Puppeteer and Godview
               </td>
             </tr>
-            <tr><td class="m">TaskCompleted</td><td class="m">delegation:task-completed</td><td>tasks −=</td></tr>
+            <tr><td class="m">TaskCompleted</td><td class="m">adapter:native-event</td><td>native evidence</td></tr>
             <tr>
               <td class="m">CwdChanged</td><td class="m">environment:updated</td><td>environment.currentCwd</td>
               <td>a native <code>cd</code> updates the shared current working directory</td>

@@ -22,7 +22,6 @@
     "session.mode_changed",
     "session.model_change",
     "session.permissions_changed",
-    "session.plan_changed",
     "session.resume",
     "session.shutdown",
     "session.start",
@@ -38,13 +37,13 @@
   ],
   "observedOrControlledEvents": [],
   "unmapped": {
-    "count": 69,
-    "sha256": "1460cb948112493b07f8022e00a8f11bd93fa6307e42ac8b5d2d944be5d01053",
+    "count": 70,
+    "sha256": "f264f790ea9c4f303607b74b1a66076f9a02fef8a66b24c57c422a661ef4b3d7",
     "policy": "Not consumed by this adapter version. They remain provider-native ground truth and require explicit review when this lock changes."
   },
   "totals": {
     "groundTruth": 99,
-    "semantic": 30,
+    "semantic": 29,
     "observedOrControlled": 0
   }
 }

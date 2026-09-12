@@ -70,25 +70,6 @@ function compareState(
     result.push(notification(runtimeRunId, input, 'blocked.entered', next.blockers[0]?.id ?? 'blocked'));
   }
 
-  if (!provisionalInput && (!previous.plan || (previous.plan.provisional && !next.plan?.provisional)) && next.plan) {
-    result.push(notification(runtimeRunId, input, 'plan.created', 'plan'));
-  } else if (!provisionalInput && previous.plan && next.plan && !same(previous.plan, next.plan)) {
-    result.push(notification(runtimeRunId, input, 'planning:updated', 'plan'));
-  }
-
-  const priorTasks = byId(previous.tasks);
-  for (const task of next.tasks) {
-    const prior = priorTasks.get(task.id);
-    if (provisionalInput) continue;
-    if ((!prior || prior.provisional) && task.status === 'completed' && !task.provisional) {
-      result.push(notification(runtimeRunId, input, 'delegation:task-completed', task.id, task.description));
-    } else if (!prior || (prior.provisional && !task.provisional)) {
-      result.push(notification(runtimeRunId, input, 'delegation:task-created', task.id, task.description));
-    } else if (prior.status !== 'completed' && task.status === 'completed') {
-      result.push(notification(runtimeRunId, input, 'delegation:task-completed', task.id, task.description));
-    }
-  }
-
   const priorSubagents = byId(previous.subagents);
   const nextSubagents = byId(next.subagents);
   for (const subagent of next.subagents) {

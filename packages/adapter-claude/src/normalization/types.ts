@@ -1,4 +1,4 @@
-import type { AgentEvent, PlanUpdatedEvent, TaskUpdatedEvent } from '@vibecook/puppeteer-core';
+import type { AgentEvent } from '@vibecook/puppeteer-core';
 
 export interface ClaudeHookPayload {
   session_id?: string;
@@ -43,8 +43,6 @@ export interface RecentToolRequest {
   input?: unknown;
   permissionRequestId?: string;
   questionRequestId?: string;
-  plan?: Pick<PlanUpdatedEvent, 'planId' | 'steps'>;
-  task?: Omit<TaskUpdatedEvent, 'type' | 'provisional'>;
 }
 
 export interface PendingQuestion {

@@ -59,15 +59,6 @@ export const PI_MONITOR_CAPABILITIES: readonly ObservationCapability[] = [
     limitations: ['No durable provider-session or permission-mode transition is recorded.'],
   },
   {
-    family: 'planning',
-    support: 'unsupported',
-    actorScope: 'root',
-    latency: 'historical',
-    source: 'none-in-pi-session-v3',
-    contractVersion: PI_CONTRACT,
-    limitations: ['No normalized plan-step lifecycle is present in the session format.'],
-  },
-  {
     family: 'delegation',
     support: 'unsupported',
     actorScope: 'root',

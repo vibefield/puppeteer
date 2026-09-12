@@ -520,32 +520,6 @@ export class CodexMonitorEvidence {
         break;
       }
 
-      case 'turn/plan/updated': {
-        const plan = Array.isArray(params.plan) ? params.plan : undefined;
-        if (!plan) break;
-        const key = actor ? `actor:${actor.runKey}` : 'root';
-        const steps = plan.flatMap((value) => {
-          const step = rec(value);
-          const text = str(step?.step);
-          const status = str(step?.status);
-          return text && status ? [{ text, status }] : [];
-        });
-        if (steps.length === 0) updates.push(retract('planning', `plan:${key}`));
-        else {
-          updates.push(
-            upsert('planning', `plan:${key}`, {
-              kind: 'plan',
-              planId: `codex-plan:${key}`,
-              ...(actor ? { actor } : {}),
-              steps,
-              provisional: false,
-            }),
-          );
-        }
-        quality = 'strong';
-        break;
-      }
-
       case 'turn/started':
         if (actor) {
           updates.push(

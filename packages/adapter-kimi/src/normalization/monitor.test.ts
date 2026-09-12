@@ -84,7 +84,6 @@ describe('KimiMonitorEvidence', () => {
         'model',
         'effort',
         'mode',
-        'planning',
         'delegation',
         'workflow',
         'compaction',
@@ -433,7 +432,7 @@ describe('KimiMonitorEvidence', () => {
     expect(JSON.stringify([profile, request, ended])).not.toContain('/private/cwd');
   });
 
-  it('projects verified process tasks and source-only plan revisions without private content', () => {
+  it('leaves process tasks and plan revisions outside monitor state', () => {
     const projector = evidence();
     const started = projector.recordBatch(
       observed({
@@ -474,30 +473,9 @@ describe('KimiMonitorEvidence', () => {
       AT,
     );
 
-    expect(started).toMatchObject({
-      quality: 'exact',
-      provisional: false,
-      updates: [
-        expect.objectContaining({ family: 'planning', value: expect.objectContaining({ status: 'in-progress' }) }),
-      ],
-    });
-    expect(terminated).toMatchObject({
-      quality: 'exact',
-      provisional: false,
-      updates: [expect.objectContaining({ family: 'planning', value: expect.objectContaining({ status: 'failed' }) })],
-    });
-    expect(plan).toMatchObject({
-      quality: 'unknown',
-      completeness: 'partial',
-      provisional: true,
-      evidence: [{ revisionKey: 'plan-1:2:safe-content-hash' }],
-      updates: [
-        expect.objectContaining({
-          family: 'planning',
-          value: expect.objectContaining({ kind: 'plan', planId: 'plan-1', steps: [], provisional: true }),
-        }),
-      ],
-    });
+    expect(started).toBeNull();
+    expect(terminated).toBeNull();
+    expect(plan).toBeNull();
     const serialized = JSON.stringify([started, terminated, plan]);
     expect(serialized).not.toContain('private');
     expect(serialized).not.toContain('output tail');

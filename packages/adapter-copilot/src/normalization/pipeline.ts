@@ -8,7 +8,6 @@ import { normalizeCopilotEnvironment } from './environment.js';
 import { normalizeCopilotInteraction } from './interaction.js';
 import { normalizeCopilotMode } from './mode.js';
 import { normalizeCopilotModel } from './model.js';
-import { normalizeCopilotPlanning } from './planning.js';
 import { normalizeCopilotReasoning } from './reasoning.js';
 import { normalizeCopilotSession } from './session.js';
 import { copilotToolCompleted, copilotToolRequested, copilotToolStarted, type CopilotToolFact } from './tool.js';
@@ -92,7 +91,6 @@ export class CopilotSessionNormalizer {
       normalizeCopilotMode(type, data) ??
       normalizeCopilotWorkspace(type, data) ??
       normalizeCopilotInteraction(type, entryId, data) ??
-      normalizeCopilotPlanning(type) ??
       normalizeCopilotCompaction(type, data) ??
       normalizeCopilotDelegation(type, data) ??
       normalizeCopilotWorkflow(type, data);

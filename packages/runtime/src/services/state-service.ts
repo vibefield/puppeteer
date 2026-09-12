@@ -42,7 +42,6 @@ function cloneSessionRuntimeState(state: SessionRuntimeState): SessionRuntimeSta
     settledTools: new Map(state.settledTools),
     permissions: new Map([...state.permissions].map(([id, permission]) => [id, { ...permission }])),
     subagents: new Map([...state.subagents].map(([id, subagent]) => [id, { ...subagent }])),
-    tasks: new Map([...state.tasks].map(([id, task]) => [id, { ...task }])),
     ...(state.contextWindow ? { contextWindow: { ...state.contextWindow } } : {}),
     environment: {
       ...(state.environment.currentCwd ? { currentCwd: { ...state.environment.currentCwd } } : {}),

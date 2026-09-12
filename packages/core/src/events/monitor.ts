@@ -16,7 +16,6 @@ const MonitorMetricFamilySchema = z.enum([
   'model',
   'effort',
   'mode',
-  'planning',
   'delegation',
   'workflow',
   'compaction',
@@ -171,26 +170,6 @@ const MonitorModeValueSchema = z.strictObject({
   intent: z.enum(['configured', 'observed']).optional(),
 });
 
-const MonitorPlanValueSchema = z.strictObject({
-  kind: z.literal('plan'),
-  planId: NonEmptyStringSchema,
-  actor: ActorRunRefSchema.optional(),
-  steps: z.array(z.strictObject({ text: z.string(), status: z.string() })),
-  provisional: z.boolean(),
-});
-const MonitorTaskValueSchema = z.strictObject({
-  kind: z.literal('task'),
-  taskId: NonEmptyStringSchema,
-  actor: ActorRunRefSchema.optional(),
-  description: z.string().optional(),
-  status: z.enum(['proposed', 'pending', 'in-progress', 'completed', 'failed', 'cancelled', 'removed', 'unknown']),
-  providerStatus: z.string().optional(),
-  teamName: z.string().optional(),
-  teammateName: z.string().optional(),
-  provisional: z.boolean(),
-});
-const MonitorPlanningValueSchema = z.discriminatedUnion('kind', [MonitorPlanValueSchema, MonitorTaskValueSchema]);
-
 const MonitorActorValueSchema = z.strictObject({
   kind: z.literal('actor'),
   actor: ActorRunRefSchema,
@@ -302,7 +281,6 @@ const MonitorFamilyUpdateSchema = z.union([
   familyUpdateSchema(z.literal('model'), MonitorModelValueSchema),
   familyUpdateSchema(z.literal('effort'), MonitorEffortValueSchema),
   familyUpdateSchema(z.literal('mode'), MonitorModeValueSchema),
-  familyUpdateSchema(z.literal('planning'), MonitorPlanningValueSchema),
   familyUpdateSchema(z.literal('delegation'), MonitorDelegationValueSchema),
   familyUpdateSchema(z.literal('workflow'), MonitorWorkflowValueSchema),
   familyUpdateSchema(z.literal('compaction'), MonitorCompactionValueSchema),

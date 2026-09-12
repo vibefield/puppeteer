@@ -86,7 +86,6 @@ describe('OpenCodeMonitorEvidence', () => {
         'model',
         'effort',
         'mode',
-        'planning',
         'delegation',
         'workflow',
         'compaction',
@@ -97,7 +96,7 @@ describe('OpenCodeMonitorEvidence', () => {
       support: 'supported',
       actorScope: 'current-actors',
     });
-    for (const family of ['context', 'effort', 'planning', 'delegation'] as const) {
+    for (const family of ['context', 'effort', 'delegation'] as const) {
       expect(OPENCODE_MONITOR_CAPABILITIES.find((capability) => capability.family === family)).toMatchObject({
         support: 'degraded',
       });
@@ -267,7 +266,7 @@ describe('OpenCodeMonitorEvidence', () => {
     ).toMatchObject([{ allowMultiple: false, allowFreeForm: false }]);
   });
 
-  it('maps generated-only todo snapshots as provisional plans rather than inventing task IDs', () => {
+  it('leaves todo snapshots outside monitor state', () => {
     const evidence = projector('ses_root');
     const batch = evidence.recordBatch(
       {
@@ -283,27 +282,7 @@ describe('OpenCodeMonitorEvidence', () => {
       },
       T0,
     )!;
-    expect(batch).toMatchObject({ quality: 'inferred', provisional: true });
-    expect(batch.updates).toMatchObject([
-      {
-        family: 'planning',
-        operation: 'upsert',
-        value: {
-          kind: 'plan',
-          planId: 'opencode:todos:ses_root',
-          steps: [
-            { text: 'Inspect', status: 'completed' },
-            { text: 'Implement', status: 'in_progress' },
-          ],
-          provisional: true,
-        },
-      },
-    ]);
-    expect(
-      batch.updates.some(
-        (update) => update.family === 'planning' && update.operation === 'upsert' && update.value.kind === 'task',
-      ),
-    ).toBe(false);
+    expect(batch).toBeNull();
   });
 
   it('reports raw model variants as degraded effort and observes mid-session changes', () => {

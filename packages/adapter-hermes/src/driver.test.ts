@@ -112,7 +112,7 @@ describe('Hermes TUI session driver', () => {
       expect(batches.length).toBeGreaterThan(1);
       expect(batches.every(({ phase }) => phase === 'bootstrap')).toBe(true);
       expect(batches.flatMap(({ capabilities }) => capabilities ?? []).map(({ family }) => family)).toEqual(
-        expect.arrayContaining(['status', 'usage', 'context', 'model', 'effort', 'mode', 'planning', 'delegation']),
+        expect.arrayContaining(['status', 'usage', 'context', 'model', 'effort', 'mode', 'delegation']),
       );
 
       const receipt = await session.services.prompt.submit({ text: 'observe this' });

@@ -479,7 +479,6 @@
       .category-tool,
       .category-interaction,
       .category-delegation,
-      .category-planning,
       .category-compaction {
         background: var(--copper-bg);
         color: var(--copper);
@@ -935,8 +934,8 @@
 
         <div class="stats" aria-label="API summary">
           <div class="stat"><strong>1</strong><span>Agent object per runtime run</span></div>
-          <div class="stat"><strong>21</strong><span>top-level event categories</span></div>
-          <div class="stat"><strong>43</strong><span>normalized event routes</span></div>
+          <div class="stat"><strong>20</strong><span>top-level event categories</span></div>
+          <div class="stat"><strong>39</strong><span>normalized event routes</span></div>
           <div class="stat"><strong>3</strong><span>selector forms</span></div>
         </div>
       </header>
@@ -1765,7 +1764,7 @@ unsubscribe();</code></pre>
           <section id="catalog">
             <h2>Complete event catalog</h2>
             <p class="section-note">
-              All 43 public routes are listed below. Expand a row to see the exact normalized payload. Search matches
+              All 39 public routes are listed below. Expand a row to see the exact normalized payload. Search matches
               routes, native payload types, descriptions, and field names.
             </p>
 
@@ -1785,17 +1784,17 @@ unsubscribe();</code></pre>
               <button class="filter-button" type="button" data-filter="other">Other</button>
               <button class="small-button" id="expand-visible" type="button">Expand visible</button>
               <button class="small-button" id="collapse-all" type="button">Collapse</button>
-              <span class="result-count" id="event-count">43 / 43 routes</span>
+              <span class="result-count" id="event-count">39 / 39 routes</span>
             </div>
 
             <div id="event-sections">
               <section class="category-section" id="category-behavior" data-section-category="behavior">
                 <div class="category-header">
                   <h3>Behavior event domains</h3>
-                  <span class="badge category-session">27 routes</span>
+                  <span class="badge category-session">23 routes</span>
                   <p>
-                    Eight independent categories for lifecycle, turns, reasoning, tools, interactions, delegation,
-                    planning, and compaction.
+                    Seven independent categories for lifecycle, turns, reasoning, tools, interactions, delegation,
+                    and compaction.
                   </p>
                 </div>
                 <div class="event-list">
@@ -2159,99 +2158,9 @@ unsubscribe();</code></pre>
                     </div>
                   </details>
 
-                  <details class="event-card" data-category="delegation">
-                    <summary>
-                      <span class="event-title"
-                        ><span class="route">delegation:task-created</span
-                        ><span class="native-type">delegation:task-created</span></span
-                      ><span class="badge category-delegation">delegation</span>
-                    </summary>
-                    <div class="event-body">
-                      <p>A provider task entered the active task set.</p>
-                      <pre><code>interface TaskCreatedEvent {
-  type: 'delegation:task-created';
-  taskId: string;
-  description?: string;
-  teamName?: string;
-  teammateName?: string;
-}</code></pre>
-                      <div class="projection-row">
-                        <span class="chip">tasks map</span><span class="chip">task activity</span>
-                      </div>
-                    </div>
-                  </details>
 
-                  <details class="event-card" data-category="delegation">
-                    <summary>
-                      <span class="event-title"
-                        ><span class="route">delegation:task-completed</span
-                        ><span class="native-type">delegation:task-completed</span></span
-                      ><span class="badge category-delegation">delegation</span>
-                    </summary>
-                    <div class="event-body">
-                      <p>A provider task completed and leaves the active task set.</p>
-                      <pre><code>interface TaskCompletedEvent {
-  type: 'delegation:task-completed';
-  taskId: string;
-  teamName?: string;
-  teammateName?: string;
-}</code></pre>
-                      <div class="projection-row">
-                        <span class="chip">task removed</span><span class="chip">activity completed</span>
-                      </div>
-                    </div>
-                  </details>
 
-                  <details class="event-card" data-category="delegation">
-                    <summary>
-                      <span class="event-title"
-                        ><span class="route">delegation:task-updated</span
-                        ><span class="native-type">delegation:task-updated</span></span
-                      ><span class="badge category-delegation">delegation</span>
-                    </summary>
-                    <div class="event-body">
-                      <p>A provider task reported a lifecycle outside the legacy create/complete pair.</p>
-                      <pre><code>interface TaskUpdatedEvent {
-  type: 'delegation:task-updated';
-  taskId: string;
-  description?: string;
-  status: 'proposed' | 'pending' | 'in-progress'
-    | 'completed' | 'failed' | 'cancelled'
-    | 'removed' | 'unknown';
-  providerStatus?: string;
-  teamName?: string;
-  teammateName?: string;
-  provisional?: boolean;
-}</code></pre>
-                      <div class="projection-row">
-                        <span class="chip">planning state</span><span class="chip">monitor projection</span>
-                      </div>
-                    </div>
-                  </details>
 
-                  <details class="event-card" data-category="planning">
-                    <summary>
-                      <span class="event-title"
-                        ><span class="route">planning:updated</span
-                        ><span class="native-type">planning:updated</span></span
-                      ><span class="badge category-planning">planning</span>
-                    </summary>
-                    <div class="event-body">
-                      <p>The provider published or replaced its current plan.</p>
-                      <pre><code>interface PlanUpdatedEvent {
-  type: 'planning:updated';
-  planId?: string;
-  steps: Array&lt;{
-    text: string;
-    status: string;
-  }&gt;;
-  provisional?: boolean;
-}</code></pre>
-                      <div class="projection-row">
-                        <span class="chip">planning state</span><span class="chip">monitor projection</span>
-                      </div>
-                    </div>
-                  </details>
 
                   <details class="event-card" data-category="compaction">
                     <summary>
@@ -2976,8 +2885,6 @@ interface AgentMonitorState {
   usage: MonitorUsageState;
   context?: MonitorContextState;
   model?: MonitorModelState;
-  plan?: MonitorPlanState;
-  tasks: MonitorTaskState[];
   subagents: MonitorSubagentState[];
   workflows: MonitorWorkflowState[];
   compaction: MonitorCompactionState;
@@ -3024,7 +2931,6 @@ interface SessionRuntimeState {
     tool?: string;
   }&gt;;
   subagents: Map&lt;string, { subagentId: string; agentType?: string }&gt;;
-  tasks: Map&lt;string, { taskId: string; description?: string }&gt;;
   contextWindow?: {
     usedTokens: number;
     capacityTokens: number;
@@ -3087,7 +2993,7 @@ type ConversationItem =
       kind: 'activity';
       turnId?: string;
       activity: 'reasoning' | ToolActivityKind
-        | 'permission' | 'subagent' | 'task';
+        | 'permission' | 'subagent';
       status: 'requested' | 'running' | 'completed' | 'failed';
       title: string;
       detail?: string;
@@ -3309,7 +3215,7 @@ interface AgentProviderMode {
             </p>
             <pre><code>type MonitorMetricFamily =
   | 'status' | 'usage' | 'context' | 'model' | 'effort' | 'mode'
-  | 'planning' | 'delegation' | 'workflow' | 'compaction' | 'environment';
+  | 'delegation' | 'workflow' | 'compaction' | 'environment';
 
 type MonitorFamilyUpdate =
   | {
@@ -3369,11 +3275,6 @@ type MonitorFamilyUpdate =
                     <td class="route">mode</td>
                     <td>mode</td>
                     <td><p>Execution/provider-session/provider-permission kind, raw/normalized value.</p></td>
-                  </tr>
-                  <tr>
-                    <td class="route">planning</td>
-                    <td>plan · task</td>
-                    <td><p>Plan steps or task lifecycle, ownership, team metadata, provisionality.</p></td>
                   </tr>
                   <tr>
                     <td class="route">delegation</td>
@@ -3541,7 +3442,6 @@ type MonitorFamilyUpdate =
           'tool',
           'interaction',
           'delegation',
-          'planning',
           'compaction',
         ];
 

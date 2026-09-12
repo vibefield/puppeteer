@@ -7,6 +7,7 @@ import {
   agentEventPayloadSchema,
   agentEventCategory,
   agentEventType,
+  isAgentEventType,
   parseAgentEvent,
   safeParseAgentEvent,
   type AgentEventForType,
@@ -19,13 +20,50 @@ describe('agentEventCatalog', () => {
       [AgentEventType, (typeof agentEventCatalog)[AgentEventType]]
     >;
 
-    expect(entries).toHaveLength(43);
+    expect(entries).toHaveLength(39);
     expect(new Set(entries.map(([, definition]) => definition.eventType)).size).toBe(entries.length);
 
     for (const [type, definition] of entries) {
       expect(type).toMatch(/^[a-z][a-z-]*:[a-z][a-z-]*$/);
       expect(type.startsWith(`${definition.category}:`)).toBe(true);
       expect(definition.schema.shape.type.safeParse(definition.eventType).success).toBe(true);
+    }
+  });
+
+  it('excludes task management from public routes and monitor batches', () => {
+    for (const route of [
+      'planning:updated',
+      'delegation:task-created',
+      'delegation:task-updated',
+      'delegation:task-completed',
+    ]) {
+      expect(isAgentEventType(route)).toBe(false);
+    }
+    expect(isAgentEventType('delegation:subagent-started')).toBe(true);
+    expect(isAgentEventType('mode:updated')).toBe(true);
+
+    for (const value of [
+      { kind: 'plan', planId: 'plan-1', steps: [], provisional: false },
+      { kind: 'task', taskId: 'task-1', status: 'pending', provisional: false },
+    ]) {
+      expect(
+        safeParseAgentEvent('monitor:batch', {
+          type: 'monitor:batch',
+          batch: {
+            schemaVersion: 1,
+            batchId: 'out-of-scope',
+            producer: { id: 'test', epoch: 'one' },
+            phase: 'live',
+            observedAt: '2026-09-11T00:00:00.000Z',
+            quality: 'exact',
+            completeness: 'complete',
+            provisional: false,
+            updates: [{ family: 'planning', operation: 'upsert', key: 'current', value }],
+            sourceWatermarks: [],
+            evidence: [],
+          },
+        }).success,
+      ).toBe(false);
     }
   });
 

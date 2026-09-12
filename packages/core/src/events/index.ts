@@ -5,7 +5,6 @@ export * from './reasoning.js';
 export * from './tool.js';
 export * from './interaction.js';
 export * from './delegation.js';
-export * from './planning.js';
 export * from './compaction.js';
 export * from './context-window.js';
 export * from './conversation.js';

@@ -194,7 +194,7 @@ describe('KimiWireNormalizer', () => {
     ]);
   });
 
-  it('maps approval, compaction, task, and subagent lifecycles conservatively', () => {
+  it('maps approval, compaction, and subagent lifecycles conservatively', () => {
     const normalizer = new KimiWireNormalizer();
     expect(
       normalizer.normalize({
@@ -229,13 +229,21 @@ describe('KimiWireNormalizer', () => {
       subagentType: 'Explore',
     };
     expect(normalizer.normalize({ type: 'task.started', info }).events).toEqual([
-      { type: 'delegation:task-created', taskId: 'task-1', description: 'delegate' },
       { type: 'delegation:subagent-started', subagentId: 'agent-1', agentType: 'Explore' },
     ]);
     expect(normalizer.normalize({ type: 'task.terminated', info: { ...info, status: 'completed' } }).events).toEqual([
-      { type: 'delegation:task-completed', taskId: 'task-1' },
       { type: 'delegation:subagent-stopped', subagentId: 'agent-1' },
     ]);
+  });
+
+  it.each(['task.started', 'task.terminated', 'plan.revision'])('retains %s without task tracking', (type) => {
+    const normalizer = new KimiWireNormalizer();
+    const record = { type, id: 'plan-1', info: { taskId: 'task-1', kind: 'process', status: 'running' } };
+    expect(normalizer.normalize(record)).toMatchObject({
+      disposition: 'retained-native',
+      nativeEvent: record,
+      events: [{ type: 'adapter:native-event', adapter: 'kimi', nativeType: type }],
+    });
   });
 
   it('retains unknown records and isolates non-main journals', () => {

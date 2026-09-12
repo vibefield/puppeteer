@@ -199,19 +199,6 @@ function interactionKind(
   return questions.some((question) => question.allowMultiple) ? 'multi-choice' : 'choice';
 }
 
-function planSteps(value: unknown): Array<{ text: string; status: string }> | undefined {
-  if (!Array.isArray(value)) return undefined;
-  const steps: Array<{ text: string; status: string }> = [];
-  for (const candidate of value) {
-    const todo = rec(candidate);
-    const content = text(todo?.content);
-    const status = text(todo?.status);
-    if (!content || !status) return undefined;
-    steps.push({ text: content, status });
-  }
-  return steps;
-}
-
 export interface OpenCodeConfiguredIntent {
   cwd: string;
   agent?: string;
@@ -779,28 +766,6 @@ export class OpenCodeMonitorEvidence {
             ...(pending?.actor ? { actor: pending.actor } : actor ? { actor } : {}),
           }),
         );
-        break;
-      }
-
-      case 'todo.updated': {
-        const steps = planSteps(record.properties.todos);
-        if (!steps) break;
-        quality = 'inferred';
-        completeness = 'partial';
-        provisional = true;
-        const planId = `opencode:todos:${sessionID}`;
-        if (steps.length === 0) updates.push(retract('planning', `plan:${planId}`));
-        else {
-          updates.push(
-            upsert('planning', `plan:${planId}`, {
-              kind: 'plan',
-              planId,
-              ...(actor ? { actor } : {}),
-              steps,
-              provisional: true,
-            }),
-          );
-        }
         break;
       }
 

@@ -6,6 +6,7 @@ import {
   reduceMonitorAccumulator,
 } from '@vibecook/puppeteer-core/monitor-spi';
 import { CodexMonitorEvidence } from './monitor.js';
+import { CodexNotificationNormalizer } from './pipeline.js';
 
 const THREAD = 'a11a5ed0-838b-4c6d-b976-2f0ffe968c93';
 const CHILD = 'a11a5ed0-child-4c6d-b976-2f0ffe968c93';
@@ -47,7 +48,6 @@ describe('CodexMonitorEvidence', () => {
         'model',
         'effort',
         'mode',
-        'planning',
         'delegation',
         'workflow',
         'compaction',
@@ -55,7 +55,6 @@ describe('CodexMonitorEvidence', () => {
       ].sort(),
     );
     expect(capabilities.find(({ family }) => family === 'usage')).toMatchObject({ support: 'supported' });
-    expect(capabilities.find(({ family }) => family === 'planning')).toMatchObject({ support: 'degraded' });
     expect(capabilities.find(({ family }) => family === 'workflow')).toMatchObject({ support: 'unsupported' });
   });
 
@@ -112,7 +111,7 @@ describe('CodexMonitorEvidence', () => {
     });
   });
 
-  it('maps observed settings, plan replacement, reroute, and compaction without closing the run', () => {
+  it('maps observed settings, reroute, and compaction without closing the run', () => {
     const evidence = new CodexMonitorEvidence({
       nativeSessionId: () => THREAD,
       epoch: 'test-epoch',
@@ -152,20 +151,6 @@ describe('CodexMonitorEvidence', () => {
       )!,
       evidence.notificationBatch(
         {
-          method: 'turn/plan/updated',
-          params: {
-            threadId: THREAD,
-            turnId: 'turn-1',
-            plan: [
-              { step: 'Inspect evidence', status: 'completed' },
-              { step: 'Implement adapter', status: 'inProgress' },
-            ],
-          },
-        },
-        '2026-08-16T12:00:02.000Z',
-      )!,
-      evidence.notificationBatch(
-        {
           method: 'model/rerouted',
           params: { threadId: THREAD, turnId: 'turn-1', fromModel: 'gpt-5.6-sol', toModel: 'gpt-5.6-fast' },
         },
@@ -193,12 +178,6 @@ describe('CodexMonitorEvidence', () => {
       modes: {
         providerSession: { raw: 'plan' },
         providerPermission: { raw: 'approval:never; sandbox:readOnly' },
-      },
-      plan: {
-        steps: [
-          { text: 'Inspect evidence', status: 'completed' },
-          { text: 'Implement adapter', status: 'inProgress' },
-        ],
       },
       compaction: { active: false, count: 1, lastAt: '2026-08-16T12:00:05.000Z' },
       environment: { cwd: '/workspace/packages/app' },
@@ -289,7 +268,7 @@ describe('CodexMonitorEvidence', () => {
     expect(JSON.stringify([spawned, childUsage, correctedChildUsage])).not.toContain('private child');
   });
 
-  it('tracks child activity to idle/stop and removes an explicitly empty plan', () => {
+  it('tracks child activity to idle and stop', () => {
     const evidence = new CodexMonitorEvidence({ nativeSessionId: () => THREAD, epoch: 'test-epoch' });
     const capabilities = evidence.capabilitiesBatch(T0);
     const spawned = evidence.notificationBatch(
@@ -310,13 +289,7 @@ describe('CodexMonitorEvidence', () => {
       },
       '2026-08-16T12:00:01.000Z',
     )!;
-    const plan = evidence.notificationBatch(
-      {
-        method: 'turn/plan/updated',
-        params: { threadId: THREAD, turnId: 'turn-1', plan: [{ step: 'One', status: 'pending' }] },
-      },
-      '2026-08-16T12:00:02.000Z',
-    )!;
+
     const childTurn = evidence.notificationBatch(
       { method: 'turn/started', params: { threadId: CHILD, turn: { id: 'child-turn' } } },
       '2026-08-16T12:00:03.000Z',
@@ -328,7 +301,7 @@ describe('CodexMonitorEvidence', () => {
       },
       '2026-08-16T12:00:04.000Z',
     )!;
-    const running = project([capabilities, spawned, plan, childTurn, childReasoning], '2026-08-16T12:00:04.000Z');
+    const running = project([capabilities, spawned, childTurn, childReasoning], '2026-08-16T12:00:04.000Z');
     expect(running).toMatchObject({ status: 'working', activity: { kind: 'reasoning' } });
     expect(running.subagents).toMatchObject([{ id: CHILD, active: true, activity: 'Subagent reasoning' }]);
 
@@ -343,19 +316,15 @@ describe('CodexMonitorEvidence', () => {
       { method: 'turn/completed', params: { threadId: CHILD, turn: { id: 'child-turn', status: 'completed' } } },
       '2026-08-16T12:00:06.000Z',
     )!;
-    const emptyPlan = evidence.notificationBatch(
-      { method: 'turn/plan/updated', params: { threadId: THREAD, turnId: 'turn-2', plan: [] } },
-      '2026-08-16T12:00:07.000Z',
-    )!;
+
     const closed = evidence.notificationBatch(
       { method: 'thread/closed', params: { threadId: CHILD } },
       '2026-08-16T12:00:08.000Z',
     )!;
     const final = project(
-      [capabilities, spawned, plan, childTurn, childReasoning, reasoningDone, turnDone, emptyPlan, closed],
+      [capabilities, spawned, childTurn, childReasoning, reasoningDone, turnDone, closed],
       '2026-08-16T12:00:08.000Z',
     );
-    expect(final.plan).toBeUndefined();
     expect(final.subagents).toMatchObject([{ id: CHILD, active: false }]);
   });
 
@@ -377,22 +346,27 @@ describe('CodexMonitorEvidence', () => {
       },
       T0,
     )!;
-    const plan = evidence.notificationBatch(
-      {
-        method: 'turn/plan/updated',
-        params: { threadId: THREAD, turnId: 'turn-1', plan: [{ step: 'Future step', status: 'paused' }] },
-      },
-      '2026-08-16T12:00:01.000Z',
-    )!;
-    const monitor = project([capabilities, settings, plan], '2026-08-16T12:00:01.000Z');
+
+    const monitor = project([capabilities, settings], '2026-08-16T12:00:01.000Z');
 
     expect(monitor.effort?.value).toBe('ultra-plus');
     expect(monitor.modes.providerSession?.raw).toBe('future-mode');
     expect(monitor.modes.providerPermission?.raw).toBe('approval:ask-every-time; sandbox:containerized');
-    expect(monitor.plan?.steps).toEqual([{ text: 'Future step', status: 'paused' }]);
     expect(monitor.usage.cumulativeTokens).toBeUndefined();
     expect(monitor.context).toBeUndefined();
   });
+
+  it.each([[], [{ step: 'Inspect evidence', status: 'inProgress' }]])(
+    'retains native plan updates without a monitor projection (%j)',
+    (...steps) => {
+      const evidence = new CodexMonitorEvidence({ nativeSessionId: () => THREAD, epoch: 'test-epoch' });
+      const notification = { method: 'turn/plan/updated', params: { threadId: THREAD, turnId: 'turn-1', plan: steps } };
+      expect(evidence.notificationBatch(notification, T0)).toBeNull();
+      expect(new CodexNotificationNormalizer().normalize(notification).events).toEqual([
+        { type: 'adapter:native-event', adapter: 'codex', nativeType: 'turn/plan/updated' },
+      ]);
+    },
+  );
 
   it('degrades every observable family on rail loss without inventing lifecycle evidence', () => {
     const evidence = new CodexMonitorEvidence({ nativeSessionId: () => THREAD, epoch: 'test-epoch' });

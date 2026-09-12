@@ -45,13 +45,6 @@ function retract(family: MonitorMetricFamily, key: string): MonitorFamilyUpdate 
   return { family, operation: 'retract', key } as MonitorFamilyUpdate;
 }
 
-function replace<F extends MonitorMetricFamily>(
-  family: F,
-  values: Array<{ key: string; value: MonitorFamilyValueMap[F] }>,
-): MonitorFamilyUpdate {
-  return { family, operation: 'replace', values, coverage: 'complete' } as MonitorFamilyUpdate;
-}
-
 function digest(value: unknown): string {
   let serialized: string;
   try {
@@ -75,31 +68,6 @@ function modelCard(provider: unknown, model: unknown): string | undefined {
   if (!modelId) return undefined;
   const providerId = text(provider);
   return providerId ? `${providerId}/${modelId}` : modelId;
-}
-
-function todoStatus(value: unknown): 'pending' | 'in-progress' | 'completed' | 'failed' | 'cancelled' | 'unknown' {
-  switch (text(value)?.toLowerCase()) {
-    case 'pending':
-    case 'not_started':
-    case 'todo':
-      return 'pending';
-    case 'in_progress':
-    case 'running':
-    case 'active':
-      return 'in-progress';
-    case 'done':
-    case 'completed':
-    case 'complete':
-      return 'completed';
-    case 'failed':
-    case 'error':
-      return 'failed';
-    case 'cancelled':
-    case 'canceled':
-      return 'cancelled';
-    default:
-      return 'unknown';
-  }
 }
 
 interface UsageSnapshot {
@@ -311,7 +279,6 @@ export class HermesMonitorEvidence {
     const updates: MonitorFamilyUpdate[] = [];
     let actor: ActorRunRef | undefined;
     let quality: AdapterMonitorObservationBatch['quality'] = 'exact';
-    let completeness: AdapterMonitorObservationBatch['completeness'] = 'partial';
 
     const appendUsage = (usageValue: unknown): void => {
       const usage = usageSnapshot(usageValue);
@@ -552,40 +519,6 @@ export class HermesMonitorEvidence {
           this.pendingQuestions.clear();
           quality = 'strong';
         }
-        if (toolName?.toLowerCase().includes('todo') && Array.isArray(payload.todos)) {
-          const steps: Array<{ text: string; status: string }> = [];
-          const values: Array<{ key: string; value: MonitorFamilyValueMap['planning'] }> = [];
-          for (const candidate of payload.todos) {
-            const todo = record(candidate);
-            const description = text(todo?.content ?? todo?.title ?? todo?.text);
-            if (!description) continue;
-            const providerStatus = text(todo?.status) ?? 'unknown';
-            steps.push({ text: description, status: providerStatus });
-            const taskId = text(todo?.id);
-            if (taskId) {
-              values.push({
-                key: `task:${taskId}`,
-                value: {
-                  kind: 'task',
-                  taskId,
-                  description,
-                  status: todoStatus(providerStatus),
-                  providerStatus,
-                  provisional: false,
-                },
-              });
-            }
-          }
-          if (steps.length > 0) {
-            values.unshift({
-              key: 'plan:root',
-              value: { kind: 'plan', planId: 'hermes-todos:root', steps, provisional: false },
-            });
-          }
-          updates.push(replace('planning', values));
-          quality = 'strong';
-          completeness = 'complete';
-        }
         break;
       }
 
@@ -722,7 +655,6 @@ export class HermesMonitorEvidence {
     return this.batch(nativeType.replaceAll('.', '-'), observedAt, updates, {
       phase,
       quality,
-      completeness,
       actor,
       evidence: this.evidence(frame, nativeType),
     });

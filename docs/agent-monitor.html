@@ -2605,7 +2605,7 @@ interface AgentMonitorViewDefinition&lt;Item, Actions, Parameters&gt; {
                   <span class="ui-chip">BLOCK 1 · WORK 2 · IDLE 3</span>
                   <span class="ui-chip">TUNE · THEME</span>
                 </div>
-                <div class="ui-notice">planning:updated · bounded notification feed ×</div>
+                <div class="ui-notice">delegation:subagent-started · bounded notification feed ×</div>
                 <div class="ui-stage">
                   <div class="ui-usage">ACCOUNT USAGE · separate provider rail</div>
                   <div class="ui-view">
@@ -2617,7 +2617,7 @@ interface AgentMonitorViewDefinition&lt;Item, Actions, Parameters&gt; {
                     <strong>RUNTIME OBSERVATION</strong>
                     <span>metrics · model · effort · modes</span>
                     <span>blockers · questions · failure ack</span>
-                    <span>plan · tasks · actors · team</span>
+                    <span>actors · team</span>
                     <span>workflows · artifact preview</span>
                     <span>environment · readiness · omitted</span>
                   </aside>
@@ -2743,7 +2743,7 @@ interface AgentMonitorViewDefinition&lt;Item, Actions, Parameters&gt; {
                 </p>
                 <h3>inspector</h3>
                 <p>
-                  Shell-owned detail for the active agent: metrics, blockers and structured questions, tasks, actors,
+                  Shell-owned detail for the active agent: metrics, blockers and structured questions, actors,
                   teams, workflows, artifact previews, environment, readiness, and bounded omissions.
                 </p>
               </article>
@@ -2798,8 +2798,6 @@ const MONITOR_VIEWS = [swarmMonitorView, listMonitorView];</code></pre>
   effort?: MonitorEffortState;
   modes: MonitorModesState;
 
-  plan?: MonitorPlanState;
-  tasks: MonitorTaskState[];
   subagents: MonitorSubagentState[];
   team?: MonitorTeamState;
   workflows: MonitorWorkflowState[];
@@ -2852,11 +2850,6 @@ const MONITOR_VIEWS = [swarmMonitorView, listMonitorView];</code></pre>
                     <td class="route">mode</td>
                     <td>execution · provider-session · provider-permission</td>
                     <td><p>Runtime execution mode plus raw/normalized provider modes.</p></td>
-                  </tr>
-                  <tr>
-                    <td class="route">planning</td>
-                    <td>plan · task</td>
-                    <td><p>Steps, task lifecycle, actor/team ownership, provisionality.</p></td>
                   </tr>
                   <tr>
                     <td class="route">delegation</td>
@@ -2927,12 +2920,6 @@ const MONITOR_VIEWS = [swarmMonitorView, listMonitorView];</code></pre>
                     <td>256</td>
                   </tr>
                   <tr>
-                    <td class="route">planSteps</td>
-                    <td>256</td>
-                    <td class="route">tasks</td>
-                    <td>512</td>
-                  </tr>
-                  <tr>
                     <td class="route">subagents</td>
                     <td>256</td>
                     <td class="route">teammates</td>
@@ -2968,8 +2955,8 @@ const MONITOR_VIEWS = [swarmMonitorView, listMonitorView];</code></pre>
 
             <h3>Transition notifications</h3>
             <p class="section-note">
-              Notifications are attention hints, not a second source of truth. Current types cover blocker entry, plan
-              and task transitions, subagents, teams, workflows, compaction, cwd/worktrees, and session end.
+              Notifications are attention hints, not a second source of truth. Current types cover blocker entry,
+              subagents, teams, workflows, compaction, cwd/worktrees, and session end.
             </p>
             <pre><code>type MonitorNotification = {
   notificationId: string; // stable from run + input identity + type + entity key
@@ -2977,8 +2964,6 @@ const MONITOR_VIEWS = [swarmMonitorView, listMonitorView];</code></pre>
   at: string;
   type:
     | 'blocked.entered'
-    | 'plan.created' | 'planning:updated'
-    | 'delegation:task-created' | 'delegation:task-completed'
     | 'delegation:subagent-started' | 'delegation:subagent-stopped'
     | 'team.observed' | 'team.member-added' | 'team.member-removed' | 'team.member-idle'
     | 'workflow.started' | 'workflow.completed'

@@ -56,14 +56,6 @@ const CLAUDE_MONITOR_CAPABILITY_BASE: readonly ObservationCapability[] = [
     limitations: ['Provider permission/session modes remain separate open strings.'],
   },
   {
-    family: 'planning',
-    support: 'degraded',
-    actorScope: 'current-actors',
-    latency: 'hook',
-    source: 'claude-hooks',
-    limitations: ['TodoWrite/ExitPlanMode and pre-transition task facts may remain provisional.'],
-  },
-  {
     family: 'delegation',
     support: 'degraded',
     actorScope: 'current-actors',

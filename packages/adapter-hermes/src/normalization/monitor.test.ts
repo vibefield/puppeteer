@@ -50,7 +50,6 @@ describe('HermesMonitorEvidence', () => {
         'model',
         'effort',
         'mode',
-        'planning',
         'delegation',
         'workflow',
         'compaction',
@@ -137,7 +136,7 @@ describe('HermesMonitorEvidence', () => {
     expect(second.updates).toContainEqual({ family: 'status', operation: 'retract', key: 'root-activity' });
   });
 
-  it('detects structured questions, native approvals, and authoritative todo snapshots', () => {
+  it('detects structured questions and native approvals while todo tools remain ordinary activity', () => {
     const projector = evidence();
     const capabilities = projector.capabilitiesBatch(T0);
     const question = projector.recordBatch(
@@ -195,25 +194,12 @@ describe('HermesMonitorEvidence', () => {
         value: expect.objectContaining({ interactionId: 'clarify-1', state: 'resolved' }),
       }),
     );
-    expect(todos.updates).toContainEqual(
-      expect.objectContaining({
-        family: 'planning',
-        operation: 'replace',
-        coverage: 'complete',
-        values: expect.arrayContaining([
-          expect.objectContaining({ key: 'plan:root', value: expect.objectContaining({ kind: 'plan' }) }),
-          expect.objectContaining({ key: 'task:inspect', value: expect.objectContaining({ status: 'completed' }) }),
-          expect.objectContaining({ key: 'task:ship', value: expect.objectContaining({ status: 'in-progress' }) }),
-        ]),
-      }),
-    );
-
+    expect(todos.updates.every(({ family }) => family === 'status')).toBe(true);
+    expect(todos.updates.length).toBeGreaterThan(0);
     const state = project([capabilities, question, answered, approval, todos]);
-    expect(state.plan?.steps).toHaveLength(3);
-    expect(state.tasks).toMatchObject([
-      { id: 'ship', status: 'in-progress' },
-      { id: 'inspect', status: 'completed' },
-    ]);
+    expect(state).not.toHaveProperty('plan');
+    expect(state).not.toHaveProperty('tasks');
+    expect(state.blockers).toMatchObject([{ kind: 'permission' }]);
   });
 
   it('tracks stable subagent identity, activity, model, and completion totals separately from root usage', () => {

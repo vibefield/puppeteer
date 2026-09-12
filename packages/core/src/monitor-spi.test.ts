@@ -38,17 +38,15 @@ describe('monitor SPI package subpath', () => {
           },
         },
         {
-          family: 'planning',
+          family: 'compaction',
           operation: 'replace',
           coverage: 'complete',
           values: [
             {
-              key: 'plan-1',
+              key: 'compaction-1',
               value: {
-                kind: 'plan',
-                planId: 'plan-1',
-                steps: [{ text: 'Ship contracts', status: 'in_progress' }],
-                provisional: false,
+                kind: 'compaction',
+                active: true,
               },
             },
           ],

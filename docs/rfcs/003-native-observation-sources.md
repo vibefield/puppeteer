@@ -29,7 +29,6 @@ provider hook / OTLP log / transcript / journal / status
 | conversation | complete assistant transcript rows       | resume replay from the same transcript                         |
 | interaction  | permission/question hooks                | transcript is not lifecycle truth                              |
 | tool         | tool hooks                               | none required for lifecycle                                    |
-| planning     | plan/task hooks                          | journal/transcript evidence may enrich later                   |
 | model        | status channel and OTLP request model    | transcript assistant model                                     |
 | effort       | hooks and status channel                 | configured launch intent                                       |
 | mode         | hooks and status channel                 | configured launch intent                                       |

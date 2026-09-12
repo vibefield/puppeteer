@@ -100,6 +100,14 @@ function apply(state: MonitorAccumulatorState, inputs: Parameters<typeof reduceM
   return inputs.reduce((current, input) => reduceMonitorAccumulator(current, input).state, state);
 }
 
+function observedChild(id: string) {
+  return {
+    kind: 'actor' as const,
+    actor: { rootSessionKey: 'native-1', runKey: `native-1:actor:${id}`, role: 'child' as const, nativeAgentId: id },
+    state: 'active' as const,
+  };
+}
+
 describe('monitor accumulator', () => {
   it('keeps root and actor-scoped model and effort claims independently', () => {
     const state = apply(initial(), [
@@ -195,29 +203,14 @@ describe('monitor accumulator', () => {
     expect(projectAgentMonitorState(state).blockers).toEqual([]);
   });
 
-  it('retains actor-local plans, tasks, and compactions with overlapping ids', () => {
+  it('retains actor-local compactions with overlapping ids', () => {
     const child = { actorKey: 'workflow:worker', actorRole: 'child' as const };
     let state = apply(initial(), [
-      runtime({ type: 'planning:updated', planId: 'shared', steps: [{ text: 'Root', status: 'pending' }] }, 1),
-      runtime({ type: 'planning:updated', planId: 'shared', steps: [{ text: 'Child', status: 'pending' }] }, 2, child),
-      runtime({ type: 'delegation:task-created', taskId: 'shared', description: 'Root task' }, 3),
-      runtime({ type: 'delegation:task-created', taskId: 'shared', description: 'Child task' }, 4, child),
       runtime({ type: 'compaction:started', compactionId: 'shared' }, 5),
       runtime({ type: 'compaction:started', compactionId: 'shared' }, 6, child),
       runtime({ type: 'compaction:completed', compactionId: 'shared' }, 7, child),
     ]);
 
-    expect([...state.runtime.entries.values()].filter(({ value }) => value.kind === 'plan')).toHaveLength(2);
-    expect(projectAgentMonitorState(state).tasks).toEqual(
-      expect.arrayContaining([
-        expect.objectContaining({ id: 'shared', description: 'Root task' }),
-        expect.objectContaining({
-          id: 'shared',
-          description: 'Child task',
-          actorRunKey: 'native-1:actor-derived:workflow:worker',
-        }),
-      ]),
-    );
     expect(projectAgentMonitorState(state).compaction.active).toBe(true);
 
     state = apply(state, [runtime({ type: 'compaction:completed', compactionId: 'shared' }, 8)]);
@@ -274,11 +267,11 @@ describe('monitor accumulator', () => {
     ]);
   });
 
-  it('keeps plans and tasks informational while projecting exact activity priority', () => {
+  it('keeps raw native evidence informational while projecting exact activity priority', () => {
     let state = apply(initial(), [
       runtime({ type: 'session:ready' }, 1),
-      runtime({ type: 'planning:updated', steps: [{ text: 'Do it', status: 'pending' }] }, 2),
-      runtime({ type: 'delegation:task-created', taskId: 'task-1' }, 3),
+      runtime({ type: 'adapter:native-event', adapter: 'test', nativeType: 'todo.updated' }, 2),
+      runtime({ type: 'adapter:native-event', adapter: 'test', nativeType: 'turn/plan/updated' }, 3),
     ]);
     const informational = projectAgentMonitorState(state);
     expect(informational.status).toBe('idle');
@@ -347,19 +340,19 @@ describe('monitor accumulator', () => {
         'live',
         [
           {
-            family: 'planning',
+            family: 'delegation',
             operation: 'replace',
             coverage: 'complete',
             values: [
-              { key: 'task:a', value: { kind: 'task', taskId: 'a', status: 'pending', provisional: false } },
-              { key: 'task:b', value: { kind: 'task', taskId: 'b', status: 'pending', provisional: false } },
+              { key: 'actor:a', value: observedChild('a') },
+              { key: 'actor:b', value: observedChild('b') },
             ],
           },
         ],
         { sequence: 1 },
       ),
     ]);
-    expect(projectAgentMonitorState(state).tasks.map((task) => task.id)).toEqual(['a', 'b']);
+    expect(projectAgentMonitorState(state).subagents.map((child) => child.id)).toEqual(['a', 'b']);
 
     state = apply(state, [
       semantic(
@@ -367,12 +360,10 @@ describe('monitor accumulator', () => {
         'live',
         [
           {
-            family: 'planning',
+            family: 'delegation',
             operation: 'replace',
             coverage: 'complete',
-            values: [
-              { key: 'task:b', value: { kind: 'task', taskId: 'b', status: 'in-progress', provisional: false } },
-            ],
+            values: [{ key: 'actor:b', value: observedChild('b') }],
           },
         ],
         { sequence: 2 },
@@ -382,16 +373,16 @@ describe('monitor accumulator', () => {
         'live',
         [
           {
-            family: 'planning',
+            family: 'delegation',
             operation: 'replace',
             coverage: 'partial',
-            values: [{ key: 'task:c', value: { kind: 'task', taskId: 'c', status: 'pending', provisional: false } }],
+            values: [{ key: 'actor:c', value: observedChild('c') }],
           },
         ],
         { sequence: 3, completeness: 'partial' },
       ),
     ]);
-    expect(projectAgentMonitorState(state).tasks.map((task) => task.id)).toEqual(['b', 'c']);
+    expect(projectAgentMonitorState(state).subagents.map((child) => child.id)).toEqual(['b', 'c']);
 
     state = apply(state, [
       semantic(
@@ -399,17 +390,17 @@ describe('monitor accumulator', () => {
         'resync',
         [
           {
-            family: 'planning',
+            family: 'delegation',
             operation: 'replace',
             coverage: 'complete',
-            values: [{ key: 'task:d', value: { kind: 'task', taskId: 'd', status: 'pending', provisional: false } }],
+            values: [{ key: 'actor:d', value: observedChild('d') }],
           },
         ],
         { epoch: 'epoch-2', sequence: 1 },
       ),
     ]);
     const projected = projectAgentMonitorState(state);
-    expect(projected.tasks.map((task) => task.id)).toEqual(['d']);
+    expect(projected.subagents.map((child) => child.id)).toEqual(['d']);
     expect(projected.context?.usedPercent).toBe(20);
     expect(projected.environment).toEqual({ cwd: '/repo', worktrees: ['/repo/wt'] });
 
@@ -420,10 +411,10 @@ describe('monitor accumulator', () => {
         'live',
         [
           {
-            family: 'planning',
+            family: 'delegation',
             operation: 'upsert',
-            key: 'task:e',
-            value: { kind: 'task', taskId: 'e', status: 'pending', provisional: false },
+            key: 'actor:e',
+            value: observedChild('e'),
           },
         ],
         { epoch: 'epoch-1', sequence: 4 },
@@ -434,7 +425,9 @@ describe('monitor accumulator', () => {
   });
 
   it('deduplicates stable runtime and semantic identities', () => {
-    const runtimeEvent = runtime({ type: 'delegation:task-created', taskId: 'task-1' }, 1, { eventId: 'event-1' });
+    const runtimeEvent = runtime({ type: 'delegation:subagent-started', subagentId: 'child-1' }, 1, {
+      eventId: 'event-1',
+    });
     const first = reduceMonitorAccumulator(initial(), runtimeEvent);
     const duplicate = reduceMonitorAccumulator(first.state, runtimeEvent);
     expect(duplicate).toMatchObject({ accepted: false, notifications: [] });
@@ -442,10 +435,10 @@ describe('monitor accumulator', () => {
 
     const batch = semantic('batch-1', 'live', [
       {
-        family: 'planning',
+        family: 'delegation',
         operation: 'upsert',
-        key: 'task:2',
-        value: { kind: 'task', taskId: '2', status: 'pending', provisional: false },
+        key: 'actor:2',
+        value: observedChild('2'),
       },
     ]);
     const semanticFirst = reduceMonitorAccumulator(first.state, batch);
@@ -574,10 +567,10 @@ describe('monitor accumulator', () => {
       'live',
       [
         {
-          family: 'planning',
+          family: 'delegation',
           operation: 'upsert',
-          key: 'old-task',
-          value: { kind: 'task', taskId: 'old-task', status: 'pending', provisional: false },
+          key: 'old-child',
+          value: observedChild('old-child'),
         },
         {
           family: 'model',
@@ -590,7 +583,7 @@ describe('monitor accumulator', () => {
     );
     live.capabilities = [
       {
-        family: 'planning',
+        family: 'delegation',
         support: 'supported',
         actorScope: 'session',
         latency: 'hook',
@@ -598,26 +591,26 @@ describe('monitor accumulator', () => {
         limitations: [],
       },
     ];
-    live.coverage = [{ family: 'planning', completeness: 'complete', asOf: live.observedAt }];
+    live.coverage = [{ family: 'delegation', completeness: 'complete', asOf: live.observedAt }];
     live.sourceWatermarks = [{ sourceId: 'transcript', sourceEpoch: 'generation-1', cursor: '10' }];
     let state = apply(initial(), [live]);
 
     state = apply(state, [semantic('recovering', 'resync', [], { sequence: 2, readiness: 'loading' })]);
     expect(projectAgentMonitorState(state)).toMatchObject({
-      tasks: [{ id: 'old-task' }],
+      subagents: [{ id: 'old-child' }],
       model: { id: 'old-model' },
     });
 
     state = apply(state, [
       semantic(
-        'resync-task',
+        'resync-child',
         'resync',
         [
           {
-            family: 'planning',
+            family: 'delegation',
             operation: 'upsert',
-            key: 'new-task',
-            value: { kind: 'task', taskId: 'new-task', status: 'in-progress', provisional: false },
+            key: 'new-child',
+            value: observedChild('new-child'),
           },
         ],
         { sequence: 3, readiness: 'loading' },
@@ -637,18 +630,18 @@ describe('monitor accumulator', () => {
       ),
     ]);
     expect(projectAgentMonitorState(state)).toMatchObject({
-      tasks: [{ id: 'old-task' }],
+      subagents: [{ id: 'old-child' }],
       model: { id: 'old-model' },
     });
 
     state = apply(state, [semantic('ready', 'resync', [], { sequence: 5, readiness: 'ready' })]);
     expect(projectAgentMonitorState(state)).toMatchObject({
-      tasks: [{ id: 'new-task' }],
+      subagents: [{ id: 'new-child' }],
       model: { id: 'new-model' },
     });
     expect(state.semantic.resyncs.size).toBe(0);
     const producer = state.semantic.producers.get('semantic-1');
-    expect(producer?.capabilities.get('planning')?.support).toBe('supported');
+    expect(producer?.capabilities.get('delegation')?.support).toBe('supported');
     expect(producer?.coverage.size).toBe(1);
     expect(producer?.watermarks.size).toBe(1);
   });
@@ -765,10 +758,10 @@ describe('monitor accumulator', () => {
             'live',
             [
               {
-                family: 'planning',
+                family: 'delegation',
                 operation: 'upsert',
-                key: `task:${id}`,
-                value: { kind: 'task', taskId: id, status: 'pending', provisional: false },
+                key: `actor:${id}`,
+                value: observedChild(id),
               },
             ],
             { observedAt: new Date(Date.parse(T0) + index * 1_000).toISOString() },

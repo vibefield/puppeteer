@@ -13,10 +13,8 @@ import type {
   MonitorFamilySupport,
   MonitorMetricFamily,
   MonitorModelState,
-  MonitorPlanState,
   MonitorProviderMode,
   MonitorSubagentState,
-  MonitorTaskState,
   MonitorTeammateState,
   MonitorTeamState,
   MonitorWorkflowState,
@@ -31,10 +29,8 @@ import type {
   MonitorFamilyValue,
   MonitorInteractionObservation,
   MonitorModeFamilyValue,
-  MonitorPlanFamilyValue,
   MonitorRunStatusObservation,
   MonitorStoredEntry,
-  MonitorTaskFamilyValue,
   MonitorTeamFamilyValue,
   MonitorTeamMemberFamilyValue,
   MonitorWorkflowFamilyValue,
@@ -152,10 +148,6 @@ function logicalEntryKey(entry: MonitorStoredEntry): string {
       return JSON.stringify([entry.family, entry.value.intent, actor || 'root']);
     case 'mode':
       return JSON.stringify([entry.family, entry.value.modeKind, entry.value.intent ?? 'observed', actor || 'root']);
-    case 'plan':
-      return JSON.stringify([entry.family, entry.value.planId, actor]);
-    case 'task':
-      return JSON.stringify([entry.family, entry.value.taskId, actor]);
     case 'actor':
       return JSON.stringify([entry.family, 'actor', entry.value.actor.runKey]);
     case 'affiliation':
@@ -211,8 +203,6 @@ function actorOf(value: MonitorFamilyValue): ActorRunRef | undefined {
     case 'effort':
     case 'mode':
     case 'environment':
-    case 'plan':
-    case 'task':
     case 'compaction':
     case 'message':
       return value.actor;
@@ -544,52 +534,6 @@ function providerMode(entries: readonly MonitorStoredEntry[], modeKind: 'provide
       : {}),
     intent: selected.value.intent ?? 'observed',
   } satisfies MonitorProviderMode;
-}
-
-function projectPlan(
-  entries: readonly MonitorStoredEntry[],
-  omitted: Partial<Record<MonitorBoundedCollection, number>>,
-  unbounded: boolean,
-) {
-  const candidates = entries
-    .filter((entry): entry is MonitorStoredEntry & { value: MonitorPlanFamilyValue } => entry.value.kind === 'plan')
-    .sort((a, b) => Number(!b.value.provisional) - Number(!a.value.provisional) || compareEntryPreference(a, b));
-  const selected = candidates[0];
-  if (!selected) return undefined;
-  const steps = maybeBound('planSteps', selected.value.steps, unbounded);
-  if (steps.omitted > 0) omitted.planSteps = steps.omitted;
-  return {
-    updatedAt: selected.effectiveAt ?? selected.observedAt,
-    ...(selected.value.actor ? { actorRunKey: selected.value.actor.runKey } : {}),
-    steps: steps.values,
-    ...(selected.value.provisional ? { provisional: true } : {}),
-  } satisfies MonitorPlanState;
-}
-
-function projectTasks(
-  entries: readonly MonitorStoredEntry[],
-  omitted: Partial<Record<MonitorBoundedCollection, number>>,
-  unbounded: boolean,
-) {
-  const values = entries
-    .filter((entry): entry is MonitorStoredEntry & { value: MonitorTaskFamilyValue } => entry.value.kind === 'task')
-    .filter((entry) => entry.value.status !== 'removed')
-    .map((entry): MonitorTaskState => ({
-      id: entry.value.taskId,
-      ...(entry.value.actor ? { actorRunKey: entry.value.actor.runKey } : {}),
-      ...(entry.value.description ? { description: entry.value.description } : {}),
-      status: entry.value.status,
-      ...(entry.value.teamName ? { teamName: entry.value.teamName } : {}),
-      ...(entry.value.teammateName ? { teammateName: entry.value.teammateName } : {}),
-      ...(entry.value.provisional ? { provisional: true } : {}),
-    }))
-    .sort((a, b) => {
-      const active = (task: MonitorTaskState) => ['proposed', 'pending', 'in-progress'].includes(task.status);
-      return Number(active(b)) - Number(active(a)) || a.id.localeCompare(b.id);
-    });
-  const bounded = maybeBound('tasks', values, unbounded);
-  if (bounded.omitted > 0) omitted.tasks = bounded.omitted;
-  return bounded.values;
 }
 
 function actorMetric<T extends 'context' | 'model' | 'effort'>(
@@ -1055,8 +999,6 @@ export function projectAgentMonitorState(
   const lastAssistantMessage = projectAssistantMessage(entries);
   const model = projectModel(entries);
   const effort = projectEffort(entries);
-  const plan = projectPlan(entries, omitted, unbounded);
-  const tasks = projectTasks(entries, omitted, unbounded);
   const subagents = projectSubagents(
     entries,
     usageProjection.actorTotals,
@@ -1115,7 +1057,6 @@ export function projectAgentMonitorState(
     'model',
     'effort',
     'mode',
-    'planning',
     'delegation',
     'workflow',
     'compaction',
@@ -1160,8 +1101,6 @@ export function projectAgentMonitorState(
         : {}),
       ...(modeAsOf ? { asOf: modeAsOf } : {}),
     },
-    ...(plan ? { plan } : {}),
-    tasks,
     subagents,
     ...(team ? { team } : {}),
     workflows,

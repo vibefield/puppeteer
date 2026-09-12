@@ -54,18 +54,6 @@ function safeMode(value: unknown): string | undefined {
   return str(object?.id) ?? str(object?.value) ?? str(object?.type);
 }
 
-function rawPlan(update: Record<string, unknown>): Array<{ text: string; status: string }> | undefined {
-  if (str(update.sessionUpdate) !== 'plan') return undefined;
-  const entries = Array.isArray(update.entries) ? update.entries : undefined;
-  if (!entries) return undefined;
-  return entries.flatMap((value) => {
-    const entry = rec(value);
-    const text = str(entry?.content);
-    const status = str(entry?.status);
-    return text && status ? [{ text, status }] : [];
-  });
-}
-
 function interactionKind(value: string | undefined): 'permission' | 'choice' | 'mixed' {
   if (value === 'permission') return 'permission';
   if (value === 'plan_approval') return 'choice';
@@ -291,22 +279,6 @@ export class GrokMonitorEvidence {
         ),
       );
       if (kind === 'turn_completed' && usagePromptId === this.activePromptId) this.activePromptId = undefined;
-    }
-
-    const plan = update ? rawPlan(update) : undefined;
-    if (plan) {
-      if (plan.length === 0) updates.push(retract('planning', 'plan:root'));
-      else {
-        updates.push(
-          upsert('planning', 'plan:root', {
-            kind: 'plan',
-            planId: 'grok-acp-plan:root',
-            steps: plan,
-            provisional: false,
-          }),
-        );
-      }
-      quality = 'strong';
     }
 
     if (kind === 'current_mode_update' && update) {

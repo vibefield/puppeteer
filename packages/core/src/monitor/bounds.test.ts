@@ -6,8 +6,6 @@ describe('monitor collection bounds', () => {
     expect(AGENT_MONITOR_COLLECTION_LIMITS).toEqual({
       blockers: 64,
       usageSamples: 256,
-      planSteps: 256,
-      tasks: 512,
       subagents: 256,
       teammates: 256,
       workflows: 128,
@@ -20,9 +18,9 @@ describe('monitor collection bounds', () => {
   });
 
   it('preserves canonical input order and reports exact omission', () => {
-    const tasks = Array.from({ length: 515 }, (_, index) => `task-${index}`);
-    const bounded = boundMonitorCollection('tasks', tasks);
-    expect(bounded.values).toEqual(tasks.slice(0, 512));
+    const subagents = Array.from({ length: 259 }, (_, index) => `child-${index}`);
+    const bounded = boundMonitorCollection('subagents', subagents);
+    expect(bounded.values).toEqual(subagents.slice(0, 256));
     expect(bounded.omitted).toBe(3);
   });
 

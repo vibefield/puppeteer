@@ -10,9 +10,6 @@ import { AssistantMessageEventSchema, type ConversationEvent } from './conversat
 import {
   SubagentStartedEventSchema,
   SubagentStoppedEventSchema,
-  TaskCompletedEventSchema,
-  TaskCreatedEventSchema,
-  TaskUpdatedEventSchema,
   TeammateIdleEventSchema,
   type DelegationEvent,
 } from './delegation.js';
@@ -30,7 +27,6 @@ import { ModeUpdatedEventSchema, type ModeEvent } from './mode.js';
 import { ModelUpdatedEventSchema, type ModelEvent } from './model.js';
 import { MonitorObservationBatchEventSchema, type MonitorEvent } from './monitor.js';
 import { NativeNotificationEventSchema, type NotificationEvent } from './notification.js';
-import { PlanUpdatedEventSchema, type PlanningEvent } from './planning.js';
 import { ProcessExitedEventSchema, ProcessStartedEventSchema, type ProcessEvent } from './process.js';
 import {
   ReasoningCompletedEventSchema,
@@ -69,7 +65,6 @@ export type AgentEvent =
   | ToolEvent
   | InteractionEvent
   | DelegationEvent
-  | PlanningEvent
   | CompactionEvent
   | ContextWindowEvent
   | ConversationEvent
@@ -93,7 +88,6 @@ export type AgentEventCategory =
   | 'tool'
   | 'interaction'
   | 'delegation'
-  | 'planning'
   | 'compaction'
   | 'context-window'
   | 'conversation'
@@ -224,35 +218,11 @@ export const agentEventCatalog = {
     SubagentStoppedEventSchema,
     'A delegated subagent stopped.',
   ),
-  'delegation:task-created': defineAgentEvent(
-    'delegation',
-    'delegation:task-created',
-    TaskCreatedEventSchema,
-    'A delegated task was created.',
-  ),
-  'delegation:task-completed': defineAgentEvent(
-    'delegation',
-    'delegation:task-completed',
-    TaskCompletedEventSchema,
-    'A delegated task completed.',
-  ),
-  'delegation:task-updated': defineAgentEvent(
-    'delegation',
-    'delegation:task-updated',
-    TaskUpdatedEventSchema,
-    'A delegated task changed state.',
-  ),
   'delegation:teammate-idle': defineAgentEvent(
     'delegation',
     'delegation:teammate-idle',
     TeammateIdleEventSchema,
     'A provider teammate became idle.',
-  ),
-  'planning:updated': defineAgentEvent(
-    'planning',
-    'planning:updated',
-    PlanUpdatedEventSchema,
-    'The active plan changed.',
   ),
   'compaction:started': defineAgentEvent(
     'compaction',

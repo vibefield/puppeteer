@@ -60,17 +60,6 @@ export const COPILOT_MONITOR_CAPABILITIES: readonly ObservationCapability[] = [
     limitations: [],
   },
   {
-    family: 'planning',
-    support: 'unsupported',
-    actorScope: 'root',
-    latency: 'historical',
-    source: 'none-portable-from-events-jsonl',
-    contractVersion: COPILOT_CONTRACT,
-    limitations: [
-      'The event proves plan mutation but carries no steps; this adapter does not claim the separate replace-in-place plan.md as an atomic normalized plan.',
-    ],
-  },
-  {
     family: 'delegation',
     support: 'degraded',
     actorScope: 'current-actors',

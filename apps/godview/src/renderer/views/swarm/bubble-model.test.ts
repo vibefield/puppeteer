@@ -31,7 +31,6 @@ function monitorState(overrides: Partial<AgentMonitorState> = {}): AgentMonitorS
     blockers: [],
     usage: { samples: [] },
     modes: { execution: 'native-tui' },
-    tasks: [],
     subagents: [],
     workflows: [],
     compaction: { active: false, count: 0 },

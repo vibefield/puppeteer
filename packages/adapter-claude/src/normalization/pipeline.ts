@@ -26,12 +26,9 @@ import { normalizeClaudeCompactionCompleted, normalizeClaudeCompactionStarted } 
 import { normalizeClaudeAssistantMessage } from './conversation.js';
 import { normalizeClaudeContextInvalidated } from './context-window.js';
 import {
-  claudeTaskIdFromResponse,
   normalizeClaudeSubagentStarted,
   normalizeClaudeSubagentStopped,
-  normalizeClaudeTaskUpdated,
   normalizeClaudeTeammateIdle,
-  parseClaudeTask,
 } from './delegation.js';
 import { ClaudeEffortNormalizer } from './effort.js';
 import { normalizeClaudeCwd, normalizeClaudeSessionEnvironment } from './environment.js';
@@ -46,7 +43,6 @@ import {
 import { normalizeClaudeNotification } from './notification.js';
 import { normalizeClaudeSessionModel } from './model.js';
 import { ClaudeModeNormalizer } from './mode.js';
-import { normalizeClaudePlanUpdated, parseClaudeExitPlan, parseClaudePlan } from './planning.js';
 import { normalizeClaudeSessionExited, normalizeClaudeSessionReady, normalizeClaudeSessionStarted } from './session.js';
 import {
   normalizeClaudeToolCompleted,
@@ -357,8 +353,6 @@ export class ClaudeHookNormalizer {
           toolName,
           inputKey: canonicalClaudeValue(body.tool_input),
           input: body.tool_input,
-          plan: parseClaudePlan(toolName, body.tool_input, result.agentId),
-          task: parseClaudeTask(toolName, body.tool_input),
         };
         const legacyPending = this.pendingPermissions.find(
           (permission) => permission.toolCallId === undefined && sameClaudeTool(permission, request),
@@ -371,9 +365,6 @@ export class ClaudeHookNormalizer {
         result.events.push(normalizeClaudeToolRequested(toolCallId, toolName, body.tool_input));
         const workspace = normalizeClaudeFileOperation(toolCallId, toolName, body.tool_input, 'proposed');
         if (workspace) result.events.push(workspace);
-        if (request.plan) {
-          result.events.push(normalizeClaudePlanUpdated(request.plan, true));
-        }
         if (toolName.toLowerCase() === 'askuserquestion') {
           const questions = parseClaudeStructuredQuestions(body.tool_input);
           if (questions && !this.pendingQuestions.has(toolCallId)) {
@@ -400,16 +391,6 @@ export class ClaudeHookNormalizer {
           claudeQuestionOutcome(body.tool_response),
           (question) => question.toolCallId === toolCallId,
         );
-        const plan = request?.plan ?? parseClaudeExitPlan(toolName, body.tool_response, result.agentId);
-        if (plan) {
-          result.events.push(normalizeClaudePlanUpdated(plan, false));
-        }
-        if (request?.task) {
-          const taskId = request.task.taskId || claudeTaskIdFromResponse(body.tool_response);
-          if (taskId) {
-            result.events.push(normalizeClaudeTaskUpdated({ ...request.task, taskId, provisional: false }));
-          }
-        }
         this.recentToolRequests.delete(toolCallId);
         result.events.push(
           normalizeClaudeToolCompleted(
@@ -547,69 +528,6 @@ export class ClaudeHookNormalizer {
           this.rememberStoppedSubagent(agentId);
           result.events.push(normalizeClaudeSubagentStopped(agentId));
         }
-        break;
-      }
-
-      case 'TaskCreated': {
-        const taskId = claudeString(body.task_id) ?? `task-${promptId ?? 'unknown'}`;
-        const description =
-          claudeString(body.task_description) ?? claudeString(body.task_subject) ?? claudeString(body.description);
-        const recent = [...this.recentToolRequests.values()]
-          .reverse()
-          .find((request) => request.promptId === promptId && request.toolName.toLowerCase() === 'taskcreate');
-        if (recent?.task) {
-          recent.task.taskId = taskId;
-          recent.task.description ??= description;
-          recent.task.teamName ??= claudeString(body.team_name);
-          recent.task.teammateName ??= claudeString(body.teammate_name);
-        }
-        result.events.push(
-          normalizeClaudeTaskUpdated({
-            taskId,
-            ...(description !== undefined ? { description } : {}),
-            status: 'proposed',
-            ...(claudeString(body.team_name) !== undefined ? { teamName: claudeString(body.team_name) } : {}),
-            ...(claudeString(body.teammate_name) !== undefined
-              ? { teammateName: claudeString(body.teammate_name) }
-              : {}),
-            provisional: true,
-          }),
-        );
-        break;
-      }
-
-      case 'TaskCompleted': {
-        const taskId = claudeString(body.task_id) ?? 'unknown-task';
-        const description = claudeString(body.task_description) ?? claudeString(body.task_subject);
-        const recent = [...this.recentToolRequests.values()]
-          .reverse()
-          .find(
-            (request) =>
-              request.promptId === promptId &&
-              request.toolName.toLowerCase() === 'taskupdate' &&
-              (!request.task?.taskId || request.task.taskId === taskId),
-          );
-        if (recent?.task) {
-          recent.task.taskId = taskId;
-          recent.task.status = 'completed';
-          recent.task.providerStatus ??= 'completed';
-          recent.task.description ??= description;
-          recent.task.teamName ??= claudeString(body.team_name);
-          recent.task.teammateName ??= claudeString(body.teammate_name);
-        }
-        result.events.push(
-          normalizeClaudeTaskUpdated({
-            taskId,
-            ...(description !== undefined ? { description } : {}),
-            status: 'completed',
-            providerStatus: 'completed',
-            ...(claudeString(body.team_name) !== undefined ? { teamName: claudeString(body.team_name) } : {}),
-            ...(claudeString(body.teammate_name) !== undefined
-              ? { teammateName: claudeString(body.teammate_name) }
-              : {}),
-            provisional: true,
-          }),
-        );
         break;
       }
 

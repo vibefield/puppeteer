@@ -58,15 +58,6 @@ export const ANTIGRAVITY_MONITOR_CAPABILITIES: readonly ObservationCapability[] 
     limitations: ['Configured execution and permission modes are known; durable transitions are absent.'],
   },
   {
-    family: 'planning',
-    support: 'unsupported',
-    actorScope: 'root',
-    latency: 'historical',
-    source: 'none-in-antigravity-transcript',
-    contractVersion: ANTIGRAVITY_CONTRACT,
-    limitations: ['PLANNER_RESPONSE names the model role but does not expose a stable plan-step schema.'],
-  },
-  {
     family: 'delegation',
     support: 'unsupported',
     actorScope: 'root',

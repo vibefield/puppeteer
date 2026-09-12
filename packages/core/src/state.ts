@@ -52,11 +52,6 @@ export interface SubagentRuntimeState {
   agentType?: string;
 }
 
-export interface TaskRuntimeState {
-  taskId: string;
-  description?: string;
-}
-
 export interface ReducerDiagnostic {
   sequence: number;
   code: string;
@@ -106,7 +101,6 @@ export interface SessionRuntimeState {
   /** Pending permission requests. Resolved requests leave this map. */
   permissions: Map<string, PermissionRuntimeState>;
   subagents: Map<string, SubagentRuntimeState>;
-  tasks: Map<string, TaskRuntimeState>;
   /** Absent until measured, and while invalidated after compaction/history changes. */
   contextWindow?: ContextWindowRuntimeState;
   /** Live provider/runtime facts about where and how the agent is executing. */
@@ -132,7 +126,6 @@ export function createInitialSessionState(): SessionRuntimeState {
     settledTools: new Map(),
     permissions: new Map(),
     subagents: new Map(),
-    tasks: new Map(),
     environment: {},
     counters: { toolsCompleted: 0, toolsFailed: 0, unknownEvents: 0 },
     lastSequence: 0,
@@ -200,7 +193,6 @@ function diagnoseOrphansOnExit(state: SessionRuntimeState, sequence: number): Se
     [next.tools, 'tools', 'tool(s) in flight'],
     [next.permissions, 'permissions', 'permission request(s) pending'],
     [next.subagents, 'subagents', 'subagent(s) active'],
-    [next.tasks, 'tasks', 'task(s) active'],
   ];
   for (const [collection, code, label] of collections) {
     if (collection.size > 0) {
@@ -248,7 +240,6 @@ export function reduceSessionState(state: SessionRuntimeState, envelope: AgentEv
           settledTools: new Map(),
           permissions: new Map(),
           subagents: new Map(),
-          tasks: new Map(),
           contextWindow: undefined,
           exit: undefined,
         };
@@ -581,41 +572,6 @@ export function reduceSessionState(state: SessionRuntimeState, envelope: AgentEv
       break;
     }
 
-    case 'delegation:task-created': {
-      const rejected = rejectResourceAfterExit(next, seq, event.type);
-      if (rejected) {
-        next = rejected;
-        break;
-      }
-      const tasks = new Map(next.tasks);
-      tasks.set(event.taskId, { taskId: event.taskId, description: event.description });
-      next = { ...next, tasks };
-      break;
-    }
-
-    case 'delegation:task-completed': {
-      if (next.tasks.has(event.taskId)) {
-        const tasks = new Map(next.tasks);
-        tasks.delete(event.taskId);
-        next = { ...next, tasks };
-      }
-      break;
-    }
-
-    case 'delegation:task-updated': {
-      const rejected = rejectResourceAfterExit(next, seq, event.type);
-      if (rejected) {
-        next = rejected;
-        break;
-      }
-      const terminal = ['completed', 'failed', 'cancelled', 'removed'].includes(event.status);
-      const tasks = new Map(next.tasks);
-      if (terminal) tasks.delete(event.taskId);
-      else tasks.set(event.taskId, { taskId: event.taskId, description: event.description });
-      next = { ...next, tasks };
-      break;
-    }
-
     case 'session:exited': {
       next = diagnoseOrphansOnExit(next, seq);
       next = {
@@ -626,7 +582,6 @@ export function reduceSessionState(state: SessionRuntimeState, envelope: AgentEv
         tools: new Map(),
         permissions: new Map(),
         subagents: new Map(),
-        tasks: new Map(),
         exit: next.exit ?? { reason: event.reason },
       };
       break;
@@ -643,7 +598,6 @@ export function reduceSessionState(state: SessionRuntimeState, envelope: AgentEv
         tools: new Map(),
         permissions: new Map(),
         subagents: new Map(),
-        tasks: new Map(),
         exit: { exitCode: event.exitCode, signal: event.signal, reason: event.reason },
       };
       break;
@@ -654,7 +608,6 @@ export function reduceSessionState(state: SessionRuntimeState, envelope: AgentEv
     case 'notification:received':
     case 'usage:tokens-used':
     case 'workflow:updated':
-    case 'planning:updated':
     case 'compaction:started':
     case 'compaction:completed':
     case 'delegation:teammate-idle':
