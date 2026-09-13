@@ -43,6 +43,9 @@ export * from './views/swarm/gpu/swarm-renderer.js';
 // The lab's fixture rows: every drawn state, for a host's own catalog.
 export * from './views/swarm/lab/fixtures.js';
 export * from './views/swarm/physics/index.js';
+// The React provider is the MAIN entry's on purpose: the physics subpath is a
+// worker's import and carries no React (4d734c9).
+export * from './views/swarm/physics/context.js';
 export * from './views/list/index.js';
 export * from './views/list/list-parameters.js';
 export * from './views/rain/index.js';
