@@ -1,4 +1,5 @@
 import type { AgentVisualStatus } from '../../monitor/agent-status.js';
+import { remoteWriteLabel, remoteWriteTitle } from '../../monitor/remote-write.js';
 import type { MonitorAgent } from '../../monitor/types.js';
 import { burnBars, type BurnBars } from './burn-bars.js';
 import { radiusForStatus, type SwarmParameters } from './swarm-parameters.js';
@@ -178,6 +179,7 @@ export function bubbleModel(input: BubbleModelInput): SwarmBubbleModel {
   };
 
   if (!facet) {
+    const remote = agent.remote;
     const running = agent.status === 'working';
     const elapsed = running ? formatElapsed(input.runningSinceMs, nowMs) : undefined;
     const copy: CopyLine[] = [
@@ -196,6 +198,21 @@ export function bubbleModel(input: BubbleModelInput): SwarmBubbleModel {
       ...(elapsed
         ? [{ key: 'elapsed', text: elapsed, style: LABEL_STACKED, opacity: 0.55, tone: 'ink' as const, gapBefore: 3 }]
         : []),
+      // A peer's session wears its host on the body — the name and the
+      // host's write policy, in both directions — so it cannot be read as
+      // one of this machine's terminals (`remote-write.ts`).
+      ...(remote
+        ? [
+            {
+              key: 'host',
+              text: `${remote.deviceName} · ${remoteWriteLabel(remote)}`,
+              style: LABEL_STACKED,
+              opacity: 0.7,
+              tone: 'ink' as const,
+              gapBefore: 3,
+            },
+          ]
+        : []),
     ];
     return {
       ...base,
@@ -208,8 +225,10 @@ export function bubbleModel(input: BubbleModelInput): SwarmBubbleModel {
       hollow: true,
       running,
       unread: false,
-      ariaLabel: `${agent.project}, unassigned terminal, ${agent.status}`,
-      title: agent.detail,
+      ariaLabel: remote
+        ? `on ${remote.deviceName}, ${agent.project}, remote session, ${agent.status}, ${remoteWriteLabel(remote)}`
+        : `${agent.project}, unassigned terminal, ${agent.status}`,
+      title: remote ? `${remote.deviceName} · ${remoteWriteTitle(remote)} · ${agent.detail}` : agent.detail,
     };
   }
 

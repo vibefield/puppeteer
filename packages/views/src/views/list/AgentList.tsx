@@ -1,6 +1,7 @@
 import { useMemo, type CSSProperties } from 'react';
 import { AgentIcon } from '../../icons/AgentIcon.js';
 import type { AgentVisualStatus } from '../../monitor/agent-status.js';
+import { remoteWriteLabel, remoteWriteTitle } from '../../monitor/remote-write.js';
 import type { AgentMonitorProps, MonitorAgent } from '../../monitor/types.js';
 import { normalizeListParameters } from './list-parameters.js';
 
@@ -47,25 +48,34 @@ export function AgentList({ agents, parameters, actions, palette }: AgentMonitor
         <ul className="vf-monitor-list-rows">
           {ordered.map((agent) => {
             const facet = agent.agent;
+            const remote = agent.remote;
             const usedPercent = facet?.contextWindow?.usedPercent;
             const contextPercent = usedPercent === undefined ? undefined : Math.floor(usedPercent);
             const rowStyle = { '--agent-color': agent.color } as CSSProperties;
             const name = facet
               ? [facet.model ?? facet.provider.label, facet.account].filter(Boolean).join(', ')
-              : 'terminal';
+              : remote
+                ? 'remote session'
+                : 'terminal';
             return (
               <li key={agent.id}>
                 <button
                   type="button"
                   className={`vf-monitor-list-row is-${agent.status}${agent.active ? ' is-active' : ''}${
                     agent.stale ? ' is-stale' : ''
-                  }${agent.attachment ? ' is-linked' : ''}`}
+                  }${agent.attachment ? ' is-linked' : ''}${remote ? ' is-remote' : ''}`}
                   style={rowStyle}
                   aria-current={agent.active ? 'true' : undefined}
                   // The status belongs to the ROW's name, not to the dot: a
                   // labelled dot reads out as a bare "blocked" with nothing
                   // attached, while the row is the thing being described.
-                  aria-label={`${agent.project}, ${name}, ${agent.status}: ${agent.detail}`}
+                  // A remote row names its peer FIRST: the machine is the fact
+                  // that changes what the row means, and a screen reader must not
+                  // reach the end of the line to learn it. Its write policy is the
+                  // HOST's, said in both directions (`remote-write.ts`).
+                  aria-label={`${remote ? `on ${remote.deviceName}, ` : ''}${agent.project}, ${name}, ${agent.status}${
+                    remote ? `, ${remoteWriteLabel(remote)}` : ''
+                  }: ${agent.detail}`}
                   onClick={() => actions.select(agent)}
                 >
                   <span className="vf-monitor-list-status" aria-hidden="true" />
@@ -82,6 +92,14 @@ export function AgentList({ agents, parameters, actions, palette }: AgentMonitor
                         {facet.model ?? facet.provider.label}
                         {facet.account ? <small>{facet.account}</small> : null}
                       </>
+                    ) : remote ? (
+                      // THE HOST CHIP. It stands where the model name stands because
+                      // it answers the same question — what is running this row —
+                      // and no local row has one, which is the distinction.
+                      <span className="vf-monitor-list-host">
+                        {remote.deviceName}
+                        <em title={remoteWriteTitle(remote)}>{remoteWriteLabel(remote)}</em>
+                      </span>
                     ) : (
                       <span className="vf-monitor-list-terminal">terminal</span>
                     )}

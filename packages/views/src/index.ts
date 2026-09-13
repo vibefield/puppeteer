@@ -14,6 +14,7 @@ export * from './monitor/palette.js';
 export * from './monitor/unread.js';
 export * from './monitor/usage-ledger.js';
 export * from './monitor/usage-history.js';
+export * from './monitor/remote-write.js';
 export * from './colour/project-tint.js';
 export * from './colour/pane-colours.js';
 export * from './icons/AgentIcon.js';

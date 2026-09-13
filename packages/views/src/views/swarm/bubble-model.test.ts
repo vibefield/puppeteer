@@ -283,3 +283,46 @@ describe('bubbleModel', () => {
     expect(model.title).toBe('puppeteer · Fable 5.1 · Editing tokens.css');
   });
 });
+
+describe("a peer's session (the remote facet)", () => {
+  const remoteRow = (hostWritable: boolean): MonitorAgent => ({
+    id: 'r1',
+    createdAtMs: 0,
+    status: 'idle',
+    project: 'mesh-console',
+    detail: 'studio-mini · /Projects/mesh-console',
+    color: '#6366f1',
+    active: false,
+    remote: {
+      deviceId: 'mini',
+      deviceName: 'studio-mini',
+      remoteSessionId: 's1',
+      attachable: true,
+      hostWritable,
+      cwdLabel: '/Projects/mesh-console',
+    },
+  });
+  const model = (hostWritable: boolean) =>
+    bubbleModel({
+      agent: remoteRow(hostWritable),
+      parameters: DEFAULT_SWARM_PARAMETERS,
+      nowMs: NOW,
+      unread: false,
+      workingShare: 0,
+    });
+
+  it('names the peer FIRST in the accessible name, then the host write policy', () => {
+    expect(model(false).ariaLabel).toBe('on studio-mini, mesh-console, remote session, idle, read-only host');
+    expect(model(true).ariaLabel).toBe('on studio-mini, mesh-console, remote session, idle, writable host');
+  });
+
+  it('wears the host on the body, in both directions, so it cannot read as a local terminal', () => {
+    const refusing = model(false).copy.find((line) => line.key === 'host');
+    const permitting = model(true).copy.find((line) => line.key === 'host');
+    expect(refusing?.text).toBe('studio-mini · read-only host');
+    expect(permitting?.text).toBe('studio-mini · writable host');
+    // …and a host property is never upgraded into a promise to the viewer.
+    expect(permitting?.text).not.toContain('you');
+    expect(model(true).title).toContain('decided when you attach');
+  });
+});

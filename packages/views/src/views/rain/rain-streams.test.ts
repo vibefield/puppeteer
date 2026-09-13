@@ -41,6 +41,32 @@ describe('rainDataString', () => {
     // per cell is what keeps a stream a column rather than a ragged edge.
     expect(rainDataString(row({}))).toBe(' vibe field terminal ');
   });
+
+  it('names the PEER on a remote row, first, so the column cannot be misread', () => {
+    const remote = row({
+      remote: {
+        deviceId: 'mini',
+        deviceName: 'studio-mini',
+        remoteSessionId: 's1',
+        attachable: true,
+        hostWritable: true,
+        cwdLabel: null,
+      },
+    });
+    expect(rainDataString(remote)).toBe(' studio mini vibe field ');
+  });
+
+  it('says a read-only host in the stream, and claims nothing when the host permits writes', () => {
+    const facet = {
+      deviceId: 'mini',
+      deviceName: 'studio-mini',
+      remoteSessionId: 's1',
+      attachable: true,
+      cwdLabel: null,
+    };
+    expect(rainDataString(row({ remote: { ...facet, hostWritable: false } }))).toContain('read only host');
+    expect(rainDataString(row({ remote: { ...facet, hostWritable: true } }))).not.toContain('host');
+  });
 });
 
 describe('rainTailLength', () => {

@@ -77,8 +77,18 @@ export function reconcileRainColumns(input: ReconcileRainColumnsInput): Map<numb
  * spaces so every cell holds one grid-width glyph and the stream stays a
  * column rather than a ragged edge.
  */
+/**
+ * THE HOST IS IN THE STREAM. A remote row carries no agent facet, and without
+ * this branch it fell into the `<project> terminal` text an unclaimed LOCAL
+ * terminal takes — byte-identical on the canvas. The peer's name comes
+ * FIRST, so the column cannot be misread; the read-only mark is a HOST
+ * property and reads as one (nobody types into that peer's sessions). A host
+ * that does permit writes says nothing here: whether this viewer gets them
+ * is decided at the attach, and a stream has no room for the long form.
+ */
 export function rainDataString(agent: MonitorAgent): string {
   const facet = agent.agent;
+  const remote = agent.remote;
   const usedPercent = facet?.contextWindow?.usedPercent;
   const parts = facet
     ? [
@@ -87,7 +97,9 @@ export function rainDataString(agent: MonitorAgent): string {
         facet.model ?? facet.provider.label,
         usedPercent === undefined ? undefined : `CTX:${Math.round(usedPercent).toString().padStart(2, '0')}%`,
       ]
-    : [agent.project, 'terminal'];
+    : remote
+      ? [remote.deviceName, agent.project, remote.hostWritable ? undefined : 'read only host']
+      : [agent.project, 'terminal'];
   return ` ${parts.filter(Boolean).join(' ')} `.replace(/[^a-zA-Z0-9\s%.]/g, ' ');
 }
 
