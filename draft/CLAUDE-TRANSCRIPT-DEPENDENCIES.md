@@ -4,6 +4,7 @@
 - Status: Steps 1, 5, 6, 7 and 8 complete; remaining items tracked below
 - Context: Resuming large Claude sessions caused repeated transcript projection and expensive monitor updates. Commit `0296565` fixed that processing. This follow-up removes unnecessary dependencies one at a time.
 - Current source contract: [RFC 003](../docs/rfcs/003-native-observation-sources.md)
+- Cross-provider integration audit: [Transcript service needs](TRANSCRIPT-SERVICE-NEEDS.md) tracks the shared needs and proposed app-owned service boundary for Godview and Vibefield. This document remains the record of Claude-specific removals.
 
 ## Progress
 
@@ -17,9 +18,11 @@
 | 6. Model identification             | Deleted transcript model projection, replay, fingerprints and child transcript discovery/reads. Models come from session hooks, root/child status callbacks and request telemetry.           | Complete        |
 | 7. Workflow membership/completion   | Deleted workflow journal discovery, reads, membership/completion projection and idle-timeout inference. Native OTLP retains run identity and name only.                                      | Complete        |
 | 8. Unknown transcript metadata      | Deleted the metadata event catch-all, initial replay and per-record fingerprints. The remaining model projection was removed in step 6.                                                      | Complete        |
-| 9. Resume existence check           | Retain the file-existence check; it does not parse transcript content.                                                                                                                       | Audited; retain |
+| 9. Resume/reattach file checks      | Retain file discovery/existence checks for resume, reattachment and native identity recovery after an unheard `/clear`. They do not parse transcript content.                                | Audited; retain |
 | 10. Child status usage estimates    | Decide separately whether callback-time `tokenCount` estimates should remain eligible for burn rate. They are not transcript data.                                                           | Pending         |
 | 11. Godview burn bars               | Align the bars' source/timing policy with the intended meter. They currently use 30-second cumulative-total differences, including cache tokens, without event source or replay eligibility. | Pending         |
+
+Only item 4 still parses transcript content in the Claude adapter. Reattachment locates and starts that same root assistant observer before the next hook arrives. Item 9 also gates recovery of a rotated native session ID on an existing root transcript. Items 2 and 3 remain coverage/product decisions after transcript usage removal; items 10 and 11 concern native status estimates and Godview's rate policy, not transcript reads. Godview Find separately queries Rosetta's transcript-indexing daemon outside the adapter.
 
 ## Step 1: remove transcript usage
 

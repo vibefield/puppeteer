@@ -2861,26 +2861,48 @@ async function runSpawnThroughSmoke(providerId: string): Promise<void> {
 
   const prompt = process.env.PUPPETEER_SPAWN_SMOKE_PROMPT?.trim();
   if (prompt) {
-    const receipt = await smokeAgent.submitPrompt({ text: prompt });
-    if (receipt.status === 'rejected') {
-      throw new Error('spawn-through smoke prompt was rejected: ' + receipt.reason);
-    }
     const expectedReply = process.env.PUPPETEER_SPAWN_SMOKE_EXPECT_REPLY?.trim();
     const waitMs = Number(process.env.PUPPETEER_SPAWN_SMOKE_WAIT_MS ?? 45_000);
     if (!Number.isFinite(waitMs) || waitMs <= 0 || waitMs > 120_000) {
       throw new Error('PUPPETEER_SPAWN_SMOKE_WAIT_MS must be greater than 0 and at most 120000');
     }
-    await until(
-      provider.label + ' to publish a normalized conversation turn',
-      async () => {
-        const conversation = smokeAgent.conversation;
-        const hasPrompt = conversation.items.some((item) => item.kind === 'user' && item.text === prompt);
-        const replies = conversation.items.flatMap((item) => (item.kind === 'assistant' ? [item.markdown.trim()] : []));
-        const hasReply = expectedReply ? replies.includes(expectedReply) : replies.length > 0;
-        return hasPrompt && hasReply && !conversation.responding && smokeAgent.lifecycle === 'ready' ? true : undefined;
-      },
-      waitMs,
-    );
+    let hasPrompt = false;
+    let hasReply = false;
+    let completed = false;
+    let promptTurnId: string | undefined;
+    const matchesReply = (text: string): boolean =>
+      expectedReply ? text.trim() === expectedReply : text.trim().length > 0;
+    const off = smokeAgent.on('*', (envelope) => {
+      if (envelope.replay || envelope.agentId || envelope.actorKey) return;
+      const event = envelope.event;
+      const turnId = envelope.promptId ?? envelope.turnId ?? ('turnId' in event ? event.turnId : undefined);
+      if (event.type === 'turn:started' && event.prompt === prompt) {
+        hasPrompt = true;
+        promptTurnId = turnId;
+        return;
+      }
+      if (!hasPrompt || (promptTurnId && turnId && promptTurnId !== turnId)) return;
+      if (event.type === 'conversation:assistant-message' && event.final !== false) {
+        hasReply ||= matchesReply(event.text);
+      }
+      if (event.type === 'turn:completed') {
+        completed = true;
+        if (event.lastAssistantMessage) hasReply ||= matchesReply(event.lastAssistantMessage);
+      }
+    });
+    try {
+      const receipt = await smokeAgent.submitPrompt({ text: prompt });
+      if (receipt.status === 'rejected') {
+        throw new Error('spawn-through smoke prompt was rejected: ' + receipt.reason);
+      }
+      await until(
+        provider.label + ' to publish normalized prompt, reply and completion events',
+        async () => (hasPrompt && hasReply && completed && smokeAgent.lifecycle === 'ready' ? true : undefined),
+        waitMs,
+      );
+    } finally {
+      off();
+    }
   } else {
     await until(
       provider.label + ' structured control to become ready',

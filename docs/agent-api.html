@@ -919,8 +919,8 @@
             <h1>Agent API &amp; Event Catalog</h1>
             <p class="subtitle">
               One runtime-owned object per provider spawn. Adapters normalize native evidence into a single event rail;
-              the <span class="mono">Agent</span> projects state, conversation, and monitor status, then exposes typed
-              exact, category, and catch-all subscriptions through <span class="mono">.on(…)</span>.
+              the <span class="mono">Agent</span> projects state and monitor status, then exposes typed exact, category,
+              and catch-all subscriptions through <span class="mono">.on(…)</span>.
             </p>
           </div>
           <button class="theme-button" id="theme-toggle" type="button" aria-label="Toggle color theme">Theme</button>
@@ -929,7 +929,7 @@
         <div class="pipeline" aria-label="Agent event pipeline">
           provider-native evidence&nbsp; → &nbsp;<b class="adapter">category normalizers</b>&nbsp; →
           &nbsp;<b>AdapterEventCandidate</b>&nbsp; → &nbsp;<b class="agent">runtime validate + stamp</b>&nbsp; →
-          &nbsp;state · conversation · monitor · <b>agent.on(…)</b>
+          &nbsp;state · monitor · <b>agent.on(…)</b>
         </div>
 
         <div class="stats" aria-label="API summary">
@@ -993,7 +993,7 @@
                 <svg
                   viewBox="0 0 1080 430"
                   role="img"
-                  aria-label="Provider adapters normalize native observations into one event stream. The runtime Agent projects state and conversation, sends monitor batches to the monitor reducer, and publishes typed events to exact, category, and catch-all listeners."
+                  aria-label="Provider adapters normalize native observations into one event stream. The runtime Agent projects state, sends events and monitor batches to the monitor reducer, and publishes typed events to exact, category, and catch-all listeners."
                 >
                   <defs>
                     <marker
@@ -1139,7 +1139,7 @@
                     font-size="11"
                     font-family="JetBrains Mono"
                   >
-                    conversation
+                    monitor
                   </text>
 
                   <line
@@ -1182,10 +1182,10 @@
                     PROJECTIONS
                   </text>
                   <text x="709" y="105" fill="var(--ink)" font-size="14" font-family="Source Sans 3">
-                    agent.state · agent.conversation
+                    agent.state · agent.monitor
                   </text>
                   <text x="709" y="124" fill="var(--muted)" font-size="12" font-family="Source Sans 3">
-                    updated before listeners receive the envelope
+                    state and monitor evidence consume each envelope
                   </text>
 
                   <rect x="685" y="159" width="365" height="92" rx="10" fill="var(--paper)" stroke="var(--teal)" />
@@ -1286,7 +1286,7 @@ offAll();</code></pre>
             <div class="callout warning">
               <strong>Subscription timing.</strong> Adapter bootstrap events are buffered until the runtime attaches the
               owning Agent. Application listeners added after <span class="mono">spawn()</span> observe subsequent live
-              events; use <span class="mono">agent.state</span> and <span class="mono">agent.conversation</span> for the
+              events; use <span class="mono">agent.state</span> and <span class="mono">agent.monitor</span> for the
               already-projected current snapshot.
             </div>
           </section>
@@ -1342,12 +1342,6 @@ offAll();</code></pre>
                 </p>
               </article>
               <article class="card">
-                <span class="badge category-conversation">projection</span>
-                <h3>agent.conversation</h3>
-                <div class="signature">AgentConversationSnapshot</div>
-                <p>Provider-neutral user, assistant, activity, and notice timeline.</p>
-              </article>
-              <article class="card">
                 <span class="badge category-adapter">capability</span>
                 <h3>agent.observationLevel</h3>
                 <div class="signature">ObservationLevel</div>
@@ -1385,7 +1379,6 @@ offAll();</code></pre>
   get alive(): boolean;
   get status(): AgentMonitorStatus;
   get monitor(): AgentMonitorState;
-  get conversation(): AgentConversationSnapshot;
   get observationLevel(): ObservationLevel;
 
   on&lt;Selector extends AgentEventSelector&gt;(
@@ -1559,9 +1552,7 @@ offAll();</code></pre>
                     <td><p>Stops observation/control and finalizes all remaining runtime workspaces.</p></td>
                   </tr>
                   <tr>
-                    <td class="route">
-                      createSession / sessionState / observationLevel / conversationSnapshot / onEvent / submitPrompt
-                    </td>
+                    <td class="route">createSession / sessionState / observationLevel / onEvent / submitPrompt</td>
                     <td class="native-type">compatibility</td>
                     <td><p>Deprecated IPC-oriented surfaces. New application code uses the returned Agent.</p></td>
                   </tr>
@@ -1663,12 +1654,13 @@ const unsubscribe = agent.on('tool:completed', ({ event }) =&gt; {
 unsubscribe();</code></pre>
 
             <div class="callout">
-              <strong>Delivery contract.</strong> Publication is synchronous. The Agent updates its state and
-              conversation projections before invoking listeners. A listener exception is reported through the runtime
-              error hook and does not stop other listeners or adapter ingestion. Do not depend on relative ordering
-              between listeners registered on different selector scopes. Schema-owned event structures are recursively
-              frozen; opaque tool input/output and retained <span class="mono">nativeEvent</span> evidence are not
-              recursively frozen and must be treated as read-only by consumers.
+              <strong>Delivery contract.</strong> Publication is synchronous. The Agent updates its state and feeds
+              monitor evidence before invoking listeners; monitor publication may be coalesced. A listener exception is
+              reported through the runtime error hook and does not stop other listeners or adapter ingestion. Do not
+              depend on relative ordering between listeners registered on different selector scopes. Schema-owned event
+              structures are recursively frozen; opaque tool input/output and retained
+              <span class="mono">nativeEvent</span> evidence are not recursively frozen and must be treated as read-only
+              by consumers.
             </div>
           </section>
 
@@ -1863,15 +1855,14 @@ unsubscribe();</code></pre>
                       ><span class="badge category-turn">turn</span>
                     </summary>
                     <div class="event-body">
-                      <p>A user turn began. When present, the prompt also creates a conversation user item.</p>
+                      <p>A user turn began. Prompt text, when available, is carried on the event.</p>
                       <pre><code>interface TurnStartedEvent {
   type: 'turn:started';
   turnId?: string;
   prompt?: string;
 }</code></pre>
                       <div class="projection-row">
-                        <span class="chip">lifecycle → running</span><span class="chip">activeTurn</span
-                        ><span class="chip">conversation</span>
+                        <span class="chip">lifecycle → running</span><span class="chip">activeTurn</span>
                       </div>
                     </div>
                   </details>
@@ -1891,7 +1882,7 @@ unsubscribe();</code></pre>
   lastAssistantMessage?: string;
 }</code></pre>
                       <div class="projection-row">
-                        <span class="chip">activeTurn cleared</span><span class="chip">conversation sealed</span>
+                        <span class="chip">activeTurn cleared</span><span class="chip">lastAssistantMessage</span>
                       </div>
                     </div>
                   </details>
@@ -1910,7 +1901,7 @@ unsubscribe();</code></pre>
   error?: string;
 }</code></pre>
                       <div class="projection-row">
-                        <span class="chip">activeTurn cleared</span><span class="chip">error notice</span>
+                        <span class="chip">activeTurn cleared</span><span class="chip">failure blocker</span>
                       </div>
                     </div>
                   </details>
@@ -1929,7 +1920,7 @@ unsubscribe();</code></pre>
   reasoningId?: string;
 }</code></pre>
                       <div class="projection-row">
-                        <span class="chip">activeReasoning</span><span class="chip">conversation activity</span>
+                        <span class="chip">activeReasoning</span><span class="chip">monitor activity</span>
                       </div>
                     </div>
                   </details>
@@ -1947,7 +1938,7 @@ unsubscribe();</code></pre>
   type: 'reasoning:progress';
   reasoningId?: string;
 }</code></pre>
-                      <div class="projection-row"><span class="chip">conversation activity</span></div>
+                      <div class="projection-row"><span class="chip">monitor activity</span></div>
                     </div>
                   </details>
 
@@ -1966,7 +1957,7 @@ unsubscribe();</code></pre>
   text: string;
   final?: boolean;
 }</code></pre>
-                      <div class="projection-row"><span class="chip">conversation summary</span></div>
+                      <div class="projection-row"><span class="chip">monitor activity</span></div>
                     </div>
                   </details>
 
@@ -2321,7 +2312,10 @@ unsubscribe();</code></pre>
                 <div class="category-header">
                   <h3>Conversation category</h3>
                   <span class="badge category-conversation">1 route</span>
-                  <p>Accumulated, provider-neutral assistant output.</p>
+                  <p>
+                    Accumulated, provider-neutral assistant output for typed subscribers and the monitor's last
+                    response.
+                  </p>
                 </div>
                 <div class="event-list">
                   <details class="event-card" data-category="conversation">
@@ -2345,8 +2339,7 @@ unsubscribe();</code></pre>
   displayOnly?: boolean; // sourced from display events
 }</code></pre>
                       <div class="projection-row">
-                        <span class="chip">lastAssistantMessage</span
-                        ><span class="chip">conversation assistant item</span>
+                        <span class="chip">lastAssistantMessage</span><span class="chip">monitor response</span>
                       </div>
                     </div>
                   </details>
@@ -2866,8 +2859,8 @@ interface AdapterMonitorObservationBatch {
             <p class="section-note">
               Snapshots are derived views, not alternate event sources. Read them for current state; subscribe for
               subsequent change. State snapshots preserve JavaScript <span class="mono">Map</span> ergonomics but own
-              defensive copies of reducer collections; mutating a returned snapshot cannot alter the Agent. Conversation
-              snapshots follow the same copy-on-read rule, while operational monitor snapshots are deeply frozen.
+              defensive copies of reducer collections; mutating a returned snapshot cannot alter the Agent. Operational
+              monitor snapshots are deeply frozen.
             </p>
 
             <h3>AgentMonitorState</h3>
@@ -2967,45 +2960,6 @@ interface ObservedEnvironmentValue&lt;T&gt; {
   source: AgentEventSource;
   confidence: AgentEventConfidence;
 }</code></pre>
-
-            <h3>AgentConversationSnapshot</h3>
-            <pre><code>interface AgentConversationSnapshot {
-  items: ConversationItem[];
-  responding: boolean;
-}
-
-type ConversationItem =
-  | {
-      id: string;
-      kind: 'user';
-      turnId?: string;
-      text: string;
-    }
-  | {
-      id: string;
-      kind: 'assistant';
-      turnId?: string;
-      markdown: string;
-      streaming: boolean;
-    }
-  | {
-      id: string;
-      kind: 'activity';
-      turnId?: string;
-      activity: 'reasoning' | ToolActivityKind
-        | 'permission' | 'subagent';
-      status: 'requested' | 'running' | 'completed' | 'failed';
-      title: string;
-      detail?: string;
-      summary?: string;
-      confidence: AgentEventConfidence;
-    }
-  | {
-      id: string;
-      kind: 'notice';
-      text: string;
-      tone: 'neutral' | 'error';
-    };</code></pre>
           </section>
 
           <section id="shared-types">
@@ -3435,15 +3389,7 @@ type MonitorFamilyUpdate =
         const filterButtons = [...document.querySelectorAll('[data-filter]')];
         let selectedFilter = 'all';
 
-        const behaviorCategories = [
-          'session',
-          'turn',
-          'reasoning',
-          'tool',
-          'interaction',
-          'delegation',
-          'compaction',
-        ];
+        const behaviorCategories = ['session', 'turn', 'reasoning', 'tool', 'interaction', 'delegation', 'compaction'];
 
         const filterGroup = (category) => {
           if (selectedFilter === 'all') return true;

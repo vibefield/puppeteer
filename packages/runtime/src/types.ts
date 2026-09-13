@@ -49,7 +49,6 @@ import type {
   Workspace,
   WorkspaceSessionMetadata,
 } from '@vibecook/puppeteer-workspaces';
-import type { AgentConversationSnapshot } from './services/conversation-service.js';
 import type {
   CreationRequestClaimRef,
   CreationRequestRegistry,
@@ -613,8 +612,6 @@ export interface AgentRuntime {
   sessionState(terminalSessionId: string): SessionRuntimeState | undefined;
   /** @deprecated Read agent(id)?.observationLevel. */
   observationLevel(terminalSessionId: string): ObservationLevel | undefined;
-  /** @deprecated Read agent(id)?.conversation. */
-  conversationSnapshot(terminalSessionId: string): AgentConversationSnapshot | undefined;
   /** @deprecated Subscribe with agent.on(selector, listener). */
   onEvent(listener: (terminalSessionId: string, envelope: RuntimeAgentEventEnvelope) => void): () => void;
   /**

@@ -22,10 +22,10 @@ The catalog currently contains 39 routes in 20 categories: `session`, `turn`, `r
 Three concepts remain separate:
 
 1. An **event category** is a stable public namespace and owns the schemas for its events.
-2. A **projection service** is an Agent-owned consumer such as state, conversation, or monitor. It may consume several event categories.
+2. A **projection service** is an Agent-owned consumer such as state or monitor. It may consume several event categories.
 3. An **adapter capability service** implements an upper-level port such as event observation, prompt submission, approval handling, or bounded artifact reading.
 
-Category names do not imply exclusive projection ownership. For example, the conversation projection consumes tool and reasoning events, while the state projection consumes session, turn, environment, model, process, and context-window events.
+Category names do not imply exclusive projection ownership. For example, the monitor projection consumes conversation, tool and reasoning events, while the state projection consumes session, turn, environment, model, process, and context-window events.
 
 ## Schema decision
 
@@ -132,7 +132,6 @@ packages/runtime/src/
     git.ts
   services/
     state-service.ts
-    conversation-service.ts
     monitor-service.ts
     projection-service.ts
   agent.ts

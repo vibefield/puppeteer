@@ -743,7 +743,7 @@ native record
   -> update bounded adapter correlation state
   -> emit zero, one, or many AdapterEventCandidate values
   -> Runtime validates and stamps immutable AgentEventEnvelope values
-  -> Runtime-owned Agent projects state, conversation, and monitor views
+  -> Runtime-owned Agent projects state and monitor views
 ```
 
 Rules:

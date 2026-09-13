@@ -439,12 +439,14 @@ describe('createAgentRuntime', () => {
     expect(runtime.agent(spawned.runtimeRunId)).toBe(spawned);
     expect('accept' in spawned).toBe(false);
     expect('dispose' in spawned).toBe(false);
+    expect('conversation' in spawned).toBe(false);
+    expect('conversationSnapshot' in runtime).toBe(false);
 
     const turnEvents: string[] = [];
     const contextEvents: number[] = [];
     const conversationEvents: string[] = [];
     let stateSeenByListener: string | undefined;
-    let conversationSeenByListener: string | undefined;
+    let assistantStateSeenByListener: string | undefined;
     spawned.on('turn:*', (envelope) => turnEvents.push(envelope.type));
     spawned.on('turn:started', () => {
       stateSeenByListener = spawned.state.lifecycle;
@@ -452,10 +454,7 @@ describe('createAgentRuntime', () => {
     spawned.on('context-window:updated', (envelope) => contextEvents.push(envelope.event.usedTokens));
     spawned.on('conversation:*', (envelope) => {
       conversationEvents.push(envelope.event.text);
-      const assistant = spawned.conversation.items.find(
-        (item) => item.kind === 'assistant' && item.markdown === envelope.event.text,
-      );
-      if (assistant?.kind === 'assistant') conversationSeenByListener = assistant.markdown;
+      assistantStateSeenByListener = spawned.state.lastAssistantMessage;
     });
 
     const source = handles.get(spawned.terminalSessionId);
@@ -476,14 +475,11 @@ describe('createAgentRuntime', () => {
     expect(stateSeenByListener).toBe('running');
     expect(contextEvents).toEqual([25]);
     expect(conversationEvents).toEqual(['hi']);
-    expect(conversationSeenByListener).toBe('hi');
+    expect(assistantStateSeenByListener).toBe('hi');
     expect(spawned.state).toMatchObject({ lifecycle: 'ready', lastAssistantMessage: 'hi' });
-    expect(spawned.conversation.items).toEqual(
-      expect.arrayContaining([
-        expect.objectContaining({ kind: 'user', text: 'hello' }),
-        expect.objectContaining({ kind: 'assistant', markdown: 'hi', streaming: false }),
-      ]),
-    );
+    await vi.waitFor(() => {
+      expect(spawned.monitor.lastAssistantMessage).toMatchObject({ text: 'hi', final: true });
+    });
     const exposedState = spawned.state;
     exposedState.counters.toolsCompleted = 99;
     exposedState.tools.set('forged', { toolCallId: 'forged', state: 'running' });
@@ -887,11 +883,13 @@ describe('createAgentRuntime', () => {
       'conversation:assistant-message',
       'turn:completed',
     ]);
-    expect(runtime.conversationSnapshot(runtimeSessionId)?.items).toEqual([
-      expect.objectContaining({ kind: 'activity', activity: 'command', status: 'completed' }),
-      expect.objectContaining({ kind: 'user', text: 'Historical question' }),
-      expect.objectContaining({ kind: 'assistant', markdown: 'Historical answer', streaming: false }),
-    ]);
+    expect(runtime.sessionState(runtimeSessionId)?.lastAssistantMessage).toBe('Historical answer');
+    await vi.waitFor(() => {
+      expect(runtime.monitorState(created.runtimeRunId)?.lastAssistantMessage).toMatchObject({
+        text: 'Historical answer',
+        final: true,
+      });
+    });
     await runtime.dispose();
   });
 
@@ -949,6 +947,8 @@ describe('createAgentRuntime', () => {
     });
     const created = await runtime.createSession({ agent: 'grok-like' });
     if ('error' in created) throw new Error('unexpected create failure');
+    const replies: string[] = [];
+    runtime.agent(created.runtimeRunId)!.on('conversation:assistant-message', ({ event }) => replies.push(event.text));
     const emit = handles.get(created.runtimeSessionId)!.emit;
     const envelope = (sequence: number, event: AgentEventEnvelope['event']): AgentEventEnvelope =>
       testEnvelope(event, {
@@ -972,12 +972,9 @@ describe('createAgentRuntime', () => {
     );
     emit(envelope(3, { type: 'turn:completed', turnId: 'prompt-1' }));
 
-    expect(runtime.conversationSnapshot(created.runtimeSessionId)).toMatchObject({
-      responding: false,
-      items: [
-        { kind: 'user', text: 'hello' },
-        { kind: 'assistant', markdown: 'hi', streaming: false },
-      ],
+    expect(replies).toEqual(['hi']);
+    await vi.waitFor(() => {
+      expect(runtime.monitorState(created.runtimeRunId)?.lastAssistantMessage?.text).toBe('hi');
     });
     expect(runtime.sessionInfo(created.runtimeSessionId)?.sessionId).toBe('selected-native-session');
     expect(runtime.sessionInfo(created.runtimeSessionId)).toMatchObject({
@@ -1083,6 +1080,7 @@ describe('createAgentRuntime', () => {
         ),
       );
     expect(observed).toEqual(['one-runtime-1:session:ready']);
+    expect(runtime.monitorState(first.runtimeRunId)?.lastAssistantMessage).toBeUndefined();
 
     handles.get(first.runtimeSessionId)!.emit(
       testEnvelope(
@@ -1108,12 +1106,11 @@ describe('createAgentRuntime', () => {
         },
       ),
     );
-    expect(runtime.conversationSnapshot(first.runtimeSessionId)).toMatchObject({
-      responding: true,
-      items: [
-        { kind: 'user', text: 'hello' },
-        { kind: 'assistant', markdown: '**hi**', streaming: true },
-      ],
+    await vi.waitFor(() => {
+      expect(runtime.monitorState(first.runtimeRunId)).toMatchObject({
+        status: 'working',
+        lastAssistantMessage: { text: '**hi**', final: false },
+      });
     });
 
     expect(await runtime.submitPrompt(second.runtimeSessionId, { text: 'hello' })).toEqual({

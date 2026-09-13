@@ -1977,7 +1977,6 @@ export function createAgentRuntime(options: AgentRuntimeOptions): AgentRuntime {
         const projected = agentController.accept(envelope, {
           projectMonitor: false,
           projectState: reduceIntoState,
-          projectConversation: false,
           publish: false,
         });
         const currentCwd = projected.state.environment.currentCwd?.value;
@@ -3281,7 +3280,6 @@ export function createAgentRuntime(options: AgentRuntimeOptions): AgentRuntime {
     },
     sessionState: (id) => sessionsByTerminalId.get(id)?.agent.state,
     observationLevel: (id) => sessionsByTerminalId.get(id)?.agent.observationLevel,
-    conversationSnapshot: (id) => sessionsByTerminalId.get(id)?.agent.conversation,
 
     onEvent(listener) {
       listeners.add(listener);

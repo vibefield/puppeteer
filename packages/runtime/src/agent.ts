@@ -16,7 +16,6 @@ import {
   type AdapterDisposeOptions,
 } from '@vibecook/puppeteer-core';
 import { AgentEventBus } from './events/event-bus.js';
-import { AgentConversationService, type AgentConversationSnapshot } from './services/conversation-service.js';
 import type { AgentMonitorService } from './services/monitor-service.js';
 import { AgentStateService } from './services/state-service.js';
 import type { AgentSessionInfo, RuntimeAgentEventEnvelope } from './types.js';
@@ -41,7 +40,6 @@ interface AgentInternals {
   info: AgentSessionInfo;
   events: AgentEventBus;
   state: AgentStateService;
-  conversation: AgentConversationService;
   monitor: AgentMonitorService;
   submitPrompt: (submission: PromptSubmission) => Promise<PromptReceipt>;
   disposed: boolean;
@@ -87,7 +85,6 @@ export class Agent {
       info: options.info,
       events: new AgentEventBus({ onListenerError: options.onListenerError }),
       state: new AgentStateService(),
-      conversation: new AgentConversationService(),
       monitor: options.monitor,
       submitPrompt: options.submitPrompt,
       disposed: false,
@@ -130,10 +127,6 @@ export class Agent {
     return internals(this).monitor.current();
   }
 
-  get conversation(): AgentConversationSnapshot {
-    return internals(this).conversation.snapshot();
-  }
-
   get observationLevel(): ObservationLevel {
     return internals(this).adapter.observationLevel();
   }
@@ -172,7 +165,6 @@ export interface AgentController {
     options?: {
       projectMonitor?: boolean | undefined;
       projectState?: boolean | undefined;
-      projectConversation?: boolean | undefined;
       publish?: boolean | undefined;
       hostProcessEvidence?: boolean | undefined;
     },
@@ -192,7 +184,6 @@ export function createAgentController(options: AgentOptions): AgentController {
         internal.monitor.consume(envelope, { hostProcessEvidence: acceptOptions.hostProcessEvidence });
       }
       if (acceptOptions.projectState !== false) internal.state.consume(envelope);
-      if (acceptOptions.projectConversation !== false) internal.conversation.consume(envelope);
       if (acceptOptions.publish !== false) internal.events.emit(envelope);
       return { previousState, state: internal.state.currentState() };
     },

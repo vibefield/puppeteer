@@ -12,7 +12,7 @@ import type { AgentAdapterEventSource, AgentArtifactService, AgentPromptService 
 /**
  * The low-level handle every adapter returns for one live agent process/thread.
  * It produces only normalized events plus explicit control operations. Derived
- * state, context, conversation, and monitor projections belong to the runtime's
+ * state, context, and monitor projections belong to the runtime's
  * per-spawn Agent instance, never to an adapter.
  *
  * Process lifecycle (spawn/terminate) belongs to the host, not this handle;

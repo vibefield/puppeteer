@@ -158,7 +158,7 @@ The public envelope uses `category`, never `service`, while its route remains `c
 
 Each live `Agent` owns:
 
-- defensive `state` and `conversation` snapshots;
+- a defensive `state` snapshot;
 - detailed `lifecycle` and host-owned `alive` state;
 - the orthogonal three-state operational machine `status: 'idle' | 'working' | 'blocked'`;
 - a deeply immutable `monitor` snapshot and race-free `observeMonitor()` handle;

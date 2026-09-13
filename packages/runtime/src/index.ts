@@ -1,7 +1,6 @@
 export * from './types.js';
 export { Agent } from './agent.js';
 export * from './runtime.js';
-export * from './services/conversation-service.js';
 export * from './host/environment.js';
 export * from './observation/git.js';
 export * from './distribution/inventory.js';

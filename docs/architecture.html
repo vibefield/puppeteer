@@ -1019,8 +1019,8 @@
                 <span class="badge tone-runtime">state</span>
                 <h3>Projection is downstream</h3>
                 <p>
-                  Adapters emit facts, not application state. Runtime projects session state, conversation, and monitor
-                  snapshots from the same validated, ordered envelopes.
+                  Adapters emit facts, not application state. Runtime projects session state and monitor snapshots from
+                  the same validated, ordered envelopes.
                 </p>
               </article>
               <article class="card">
@@ -1603,7 +1603,7 @@
                   <div class="flow-step">
                     <div>
                       <strong>Project and publish</strong>
-                      <p>State, conversation, and monitor consume the same envelope before typed Agent fan-out.</p>
+                      <p>State and monitor consume the same envelope before typed Agent fan-out.</p>
                     </div>
                   </div>
                 </div>
@@ -1612,7 +1612,7 @@
   → route-specific event schema
   → identity + source deduplication
   → RuntimeAgentEventEnvelope { runtimeRunId, runtimeEpoch, sequence }
-  → state · conversation · monitor · private AgentEventBus</code></pre>
+  → state · monitor · private AgentEventBus</code></pre>
                 <div class="callout">
                   <strong>Category is routing, not service ownership.</strong> A projector may consume several event
                   categories. Category modules define fact schemas; Runtime services define the state they project.
@@ -1644,8 +1644,8 @@
                   </article>
                   <article class="api-card">
                     <span class="badge tone-runtime">projection</span>
-                    <h3>state · conversation</h3>
-                    <p>Defensive provider-neutral snapshots derived from the ordered event rail.</p>
+                    <h3>state</h3>
+                    <p>A defensive provider-neutral state snapshot derived from the ordered event rail.</p>
                   </article>
                   <article class="api-card">
                     <span class="badge tone-product">operations</span>
@@ -2458,7 +2458,7 @@ const view: AgentMonitorViewDefinition = {
   → normalization/&lt;category&gt;.ts
   → AdapterEventCandidate
   → Runtime validation + identity + dedup + sequence
-  → state / conversation / monitor projectors
+  → state / monitor projectors
   → private Agent event bus
   → agent.on(…) listeners</code></pre>
 
