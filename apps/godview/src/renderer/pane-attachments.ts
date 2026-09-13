@@ -1,17 +1,6 @@
-/**
- * Which panes show a session, and the colour of the one it is worked in. A
- * pane owns its colour (record §02, revised 2026-09-12, `pane-colours.ts`);
- * the session wears it while mounted there, as the band and, in the selected
- * pane, the light. The project's colour stays the session's own mark.
- */
-export interface PaneAttachment {
-  /** The pane the session is worked in: the active pane when it shows this session, else its first pane. */
-  primaryPaneId: string;
-  /** Every pane showing the session, the primary first, the rest in tree order. */
-  paneIds: readonly string[];
-  /** The primary pane's colour; absent only for a pane no colour has been dealt to. */
-  color?: string;
-}
+import type { PaneAttachment } from '@vibecook/puppeteer-views';
+
+export type { PaneAttachment };
 
 interface MountedPane {
   id: string;

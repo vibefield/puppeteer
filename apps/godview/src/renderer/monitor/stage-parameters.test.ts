@@ -1,6 +1,6 @@
 import { readFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
-import { monitorParameterDefaults } from './parameters.js';
+import { monitorParameterDefaults } from '@vibecook/puppeteer-views';
 import {
   SAFE_AREA_BOTTOM_KEY,
   SAFE_AREA_LEFT_KEY,

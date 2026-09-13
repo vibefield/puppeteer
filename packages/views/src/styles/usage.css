@@ -1,0 +1,368 @@
+/* ── The usage column (record §05) ────────────────────────────────────────
+   Each account is its mark inside its rings, one ring per usage window in a
+   fixed slot, the tightest figure beneath. Tiles stack one wide, sorted by
+   pressure, and scroll when more than fit; the count beneath says how many
+   more. Puppeteer-only. */
+.vf-usage-column {
+  position: relative;
+  width: 46px;
+  height: 100%;
+  font-synthesis: none;
+}
+
+.vf-usage-tiles {
+  display: grid;
+  grid-template-columns: 46px;
+  gap: 5px;
+  align-content: start;
+  height: calc(100% - 14px);
+  overflow-y: auto;
+  scroll-snap-type: y proximity;
+  scrollbar-width: none;
+}
+
+.vf-usage-tiles::-webkit-scrollbar {
+  display: none;
+}
+
+.vf-usage-tile {
+  position: relative;
+  width: 46px;
+  height: 44px;
+  display: grid;
+  justify-items: center;
+  align-content: start;
+  gap: 1px;
+  padding: 0;
+  border: 0;
+  color: var(--text-main);
+  background: transparent;
+  font: inherit;
+  cursor: default;
+  scroll-snap-align: start;
+}
+
+.vf-usage-tile:focus-visible {
+  outline: 1px solid var(--text-main);
+  outline-offset: 2px;
+  border-radius: 6px;
+}
+
+/* The rings: viewBox 36, radii 8.6 · 11.8 · 15, stroke 2.1, round caps, from
+   twelve o'clock; the track at 11% of the ink, the fill in the ink. */
+.vf-usage-rings {
+  position: relative;
+  width: 36px;
+  height: 36px;
+  display: grid;
+  place-items: center;
+}
+
+.vf-usage-rings > svg {
+  position: absolute;
+  inset: 0;
+  width: 36px;
+  height: 36px;
+  transform: rotate(-90deg);
+}
+
+.vf-usage-rings circle {
+  fill: none;
+  stroke-width: 2.1;
+}
+
+.vf-usage-track {
+  stroke: color-mix(in srgb, var(--text-main) 11%, transparent);
+}
+
+.vf-usage-fill {
+  stroke: var(--text-main);
+  stroke-linecap: round;
+  transition: stroke-dasharray 420ms cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.vf-usage-fill.is-hot {
+  stroke: var(--vf-orange);
+}
+
+/* The mark: the provider's own, 9px, in the ink; orange only when rate limited. */
+.vf-usage-mark {
+  position: relative;
+  display: grid;
+  place-items: center;
+  width: 9px;
+  height: 9px;
+  font-size: 9px;
+  font-style: normal;
+  line-height: 1;
+}
+
+.vf-usage-mark svg {
+  display: block;
+  width: 9px;
+  height: 9px;
+}
+
+.vf-usage-tile.is-rate-limited .vf-usage-mark {
+  color: var(--vf-orange);
+}
+
+/* The unmeasured states: one faint track, dashed for sign in, dotted for
+   not exposed, plain for no limit data. */
+.vf-usage-tile.is-unmeasured .vf-usage-track {
+  stroke: var(--text-faint);
+}
+
+.vf-usage-tile.is-unauthenticated .vf-usage-track {
+  stroke-dasharray: 2.2 2.2;
+}
+
+.vf-usage-tile.is-unsupported .vf-usage-track {
+  stroke-dasharray: 0.5 2.6;
+  stroke-linecap: round;
+}
+
+.vf-usage-tile.is-unmeasured:not(.is-rate-limited) .vf-usage-mark {
+  color: var(--text-faint);
+}
+
+.vf-usage-tile > b {
+  font-size: 7px;
+  font-weight: 900;
+  font-variant-numeric: tabular-nums;
+  line-height: 1;
+}
+
+.vf-usage-tile > b.is-faint {
+  color: var(--text-faint);
+  font-size: 5px;
+  letter-spacing: 0.06em;
+}
+
+.vf-usage-tile > b.is-hot {
+  color: var(--vf-orange);
+}
+
+.vf-usage-tile:hover .vf-usage-rings > svg,
+.vf-usage-tile.is-open .vf-usage-rings > svg {
+  filter: drop-shadow(0 0 4px color-mix(in srgb, var(--text-main) 30%, transparent));
+}
+
+.vf-usage-more {
+  position: absolute;
+  z-index: 3;
+  bottom: 0;
+  left: 50%;
+  transform: translateX(-50%);
+  padding: 2px 5px;
+  border: 1px solid var(--panel-border);
+  border-radius: 999px;
+  color: var(--text-muted);
+  background: color-mix(in srgb, var(--panel-bg) 90%, transparent);
+  font-size: 6px;
+  font-weight: 900;
+  letter-spacing: 0.08em;
+  line-height: 8px;
+  white-space: nowrap;
+  pointer-events: none;
+}
+
+/* The popup: the account, every window, in the panel material; a tooltip,
+   not a menu. Placed by the column inside the stage. */
+.vf-usage-popup {
+  position: absolute;
+  z-index: 9;
+  width: 192px;
+  padding: 7px 9px 8px;
+  border: 1px solid var(--panel-border);
+  border-radius: 6px;
+  color: var(--text-main);
+  background: color-mix(in srgb, var(--panel-bg) 96%, transparent);
+  box-shadow: 0 8px 30px color-mix(in srgb, #000 18%, transparent);
+  backdrop-filter: blur(14px);
+  font-size: 8px;
+  pointer-events: none;
+}
+
+.vf-usage-popup::before,
+.vf-usage-popup::after {
+  content: '';
+  position: absolute;
+  top: var(--arrow-y, 14px);
+  border: 5px solid transparent;
+}
+
+.vf-usage-popup.is-right::before {
+  left: -10px;
+  border-right-color: var(--panel-border);
+}
+
+.vf-usage-popup.is-right::after {
+  left: -9px;
+  border-right-color: var(--panel-bg);
+}
+
+.vf-usage-popup.is-left::before {
+  right: -10px;
+  border-left-color: var(--panel-border);
+}
+
+.vf-usage-popup.is-left::after {
+  right: -9px;
+  border-left-color: var(--panel-bg);
+}
+
+.vf-usage-popup-head {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-bottom: 5px;
+  padding-bottom: 5px;
+  border-bottom: 1px solid var(--panel-border);
+}
+
+.vf-usage-popup-head .vf-usage-mark,
+.vf-usage-popup-head .vf-usage-mark svg {
+  width: 11px;
+  height: 11px;
+  font-size: 11px;
+}
+
+.vf-usage-popup-head b {
+  flex: 1 1 auto;
+  overflow: hidden;
+  font-size: 8px;
+  font-weight: 900;
+  letter-spacing: 0.08em;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.vf-usage-popup-head b small {
+  color: var(--text-muted);
+  font-size: 6px;
+  font-weight: 800;
+}
+
+.vf-usage-popup-head span {
+  color: var(--text-faint);
+  font-size: 6px;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  white-space: nowrap;
+}
+
+.vf-usage-popup-head span.is-hot {
+  color: var(--vf-orange);
+  font-weight: 900;
+}
+
+.vf-usage-popup-row {
+  height: 14px;
+  display: grid;
+  grid-template-columns: 54px minmax(0, 1fr) 28px 40px;
+  align-items: center;
+  gap: 6px;
+}
+
+.vf-usage-popup-row > small {
+  display: flex;
+  align-items: center;
+  gap: 3px;
+  overflow: hidden;
+  color: var(--text-muted);
+  font-size: 6px;
+  font-weight: 900;
+  letter-spacing: 0.06em;
+  white-space: nowrap;
+}
+
+.vf-usage-popup-row > i {
+  position: relative;
+  display: block;
+  height: 3px;
+  overflow: hidden;
+  border-radius: 2px;
+  background: color-mix(in srgb, var(--text-main) 11%, transparent);
+}
+
+.vf-usage-popup-row > i::after {
+  content: '';
+  position: absolute;
+  inset: 0 auto 0 0;
+  width: var(--u, 0%);
+  border-radius: inherit;
+  background: var(--text-main);
+}
+
+.vf-usage-popup-row.is-hot > i::after {
+  background: var(--vf-orange);
+}
+
+.vf-usage-popup-row > strong {
+  font-size: 8px;
+  font-weight: 900;
+  font-variant-numeric: tabular-nums;
+  text-align: right;
+}
+
+.vf-usage-popup-row.is-hot > strong {
+  color: var(--vf-orange);
+}
+
+.vf-usage-popup-row > span {
+  color: var(--text-faint);
+  font-size: 6px;
+  font-weight: 800;
+  letter-spacing: 0.04em;
+  text-align: right;
+  white-space: nowrap;
+}
+
+.vf-usage-popup-row.is-note {
+  height: auto;
+  grid-template-columns: minmax(0, 1fr);
+}
+
+.vf-usage-popup-row.is-note > small {
+  color: var(--text-faint);
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  line-height: 1.45;
+  white-space: normal;
+}
+
+.vf-usage-popup-slot {
+  flex: none;
+  display: inline-block;
+  width: 7px;
+  height: 7px;
+  border: 1.5px solid currentColor;
+  border-radius: 50%;
+}
+
+.vf-usage-popup-slot.is-0 {
+  transform: scale(0.6);
+}
+
+.vf-usage-popup-slot.is-1 {
+  transform: scale(0.8);
+}
+
+.vf-usage-popup-foot {
+  display: flex;
+  justify-content: space-between;
+  gap: 8px;
+  margin-top: 5px;
+  padding-top: 5px;
+  border-top: 1px solid var(--panel-border);
+  color: var(--text-faint);
+  font-size: 6px;
+  font-weight: 800;
+  letter-spacing: 0.06em;
+}
+
+.vf-usage-popup-foot b {
+  color: var(--text-muted);
+  font-weight: 900;
+}

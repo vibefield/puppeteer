@@ -32,6 +32,7 @@
     "@vibecook/puppeteer-react": "workspace:*",
     "@vibecook/puppeteer-record": "workspace:*",
     "@vibecook/puppeteer-runtime": "workspace:*",
+    "@vibecook/puppeteer-views": "workspace:*",
     "@vibecook/puppeteer-workspaces": "workspace:*",
     "matter-js": "0.19.0",
     "react": "^19.2.7",

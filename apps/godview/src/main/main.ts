@@ -70,7 +70,7 @@ import type {
   AgentInterruptResult,
   UpdateInstallationRequest,
 } from '../protocol.js';
-import { createAccountUsageMonitor, type AccountUsageProfileRef } from './account-usage-monitor.js';
+import { createAccountUsageMonitor, type AccountUsageProfileRef } from '@vibecook/puppeteer-runtime';
 import { createProfileDefaultsStore, profileDefaultIds, retainKnownProfileDefaults } from './agent-profile-defaults.js';
 import { createProjectRegistry } from './project-registry.js';
 import { appCacheDirectory, createUsageHistoryStore } from './usage-history-store.js';

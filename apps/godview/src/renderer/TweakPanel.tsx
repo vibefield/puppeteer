@@ -1,7 +1,7 @@
 import type { CSSProperties } from 'react';
 import { createPortal } from 'react-dom';
 import type { GodviewTheme } from '../appearance-themes.js';
-import type { MonitorParameterDefinition, MonitorParameterGroup, MonitorParameters } from './monitor/parameters.js';
+import type { MonitorParameterDefinition, MonitorParameterGroup, MonitorParameters } from '@vibecook/puppeteer-views';
 
 // The system-control panel, ported from vibe-field's GodviewTuningPanel.tsx.
 // The stage-surface and bubble-colour controls are a live measuring instrument

@@ -1,0 +1,74 @@
+{
+  "name": "@vibecook/puppeteer-views",
+  "version": "0.1.8",
+  "type": "module",
+  "description": "Godview's monitor views for Puppeteer agents: the swarm on WebGPU, the list, the rain, the instrument bar, the usage column and the find sheet, host-agnostic behind injected ports.",
+  "license": "MIT",
+  "author": "James Yong",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/vibefield/puppeteer.git",
+    "directory": "packages/views"
+  },
+  "main": "./src/index.ts",
+  "types": "./src/index.ts",
+  "exports": {
+    ".": "./src/index.ts",
+    "./physics": "./src/views/swarm/physics/index.ts",
+    "./lab": "./src/views/swarm/lab/main.ts",
+    "./styles/views.css": "./src/styles/views.css",
+    "./styles/lab.css": "./src/views/swarm/lab/lab.css"
+  },
+  "sideEffects": ["*.css"],
+  "publishConfig": {
+    "access": "public",
+    "provenance": true,
+    "main": "./dist/index.js",
+    "types": "./dist/index.d.ts",
+    "exports": {
+      ".": {
+        "types": "./dist/index.d.ts",
+        "import": "./dist/index.js"
+      },
+      "./physics": {
+        "types": "./dist/views/swarm/physics/index.d.ts",
+        "import": "./dist/views/swarm/physics/index.js"
+      },
+      "./lab": {
+        "types": "./dist/views/swarm/lab/main.d.ts",
+        "import": "./dist/views/swarm/lab/main.js"
+      },
+      "./styles/views.css": "./dist/styles/views.css",
+      "./styles/lab.css": "./dist/views/swarm/lab/lab.css"
+    }
+  },
+  "files": ["dist"],
+  "scripts": {
+    "clean": "node -e \"require('node:fs').rmSync('dist',{recursive:true,force:true})\"",
+    "build": "pnpm clean && tsc -p tsconfig.build.json && node scripts/copy-styles.mjs",
+    "prepack": "pnpm build",
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "test": "vitest run --passWithNoTests"
+  },
+  "engines": {
+    "node": ">=22.18.0"
+  },
+  "dependencies": {
+    "@vibecook/puppeteer-core": "workspace:*",
+    "@vibecook/puppeteer-react": "workspace:*",
+    "matter-js": "0.19.0"
+  },
+  "peerDependencies": {
+    "react": ">=18 <20",
+    "react-dom": ">=18 <20"
+  },
+  "devDependencies": {
+    "@types/matter-js": "^0.20.2",
+    "@types/react": "^19.2.17",
+    "@types/react-dom": "^19.2.3",
+    "@webgpu/types": "0.1.72",
+    "react": "^19.2.7",
+    "react-dom": "^19.2.7",
+    "vitest": "^3.0.0"
+  }
+}

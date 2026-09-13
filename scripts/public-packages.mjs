@@ -2,6 +2,7 @@ export const publicPackages = [
   ['packages/core', '@vibecook/puppeteer-core'],
   ['packages/monitor', '@vibecook/puppeteer-monitor'],
   ['packages/react', '@vibecook/puppeteer-react'],
+  ['packages/views', '@vibecook/puppeteer-views'],
   ['packages/surface', '@vibecook/puppeteer-surface'],
   ['packages/imposter', '@vibecook/puppeteer-imposter'],
   ['packages/native-observation', '@vibecook/puppeteer-native-observation'],

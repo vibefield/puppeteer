@@ -84,6 +84,7 @@ const architectureDependencies = new Map([
   ],
   ['packages/monitor', ['@vibecook/puppeteer-core']],
   ['packages/react', ['@vibecook/puppeteer-core', '@vibecook/puppeteer-monitor']],
+  ['packages/views', ['@vibecook/puppeteer-core', '@vibecook/puppeteer-react']],
   [
     'apps/godview',
     [
@@ -93,6 +94,7 @@ const architectureDependencies = new Map([
       '@vibecook/puppeteer-react',
       '@vibecook/puppeteer-record',
       '@vibecook/puppeteer-runtime',
+      '@vibecook/puppeteer-views',
       '@vibecook/puppeteer-workspaces',
     ],
   ],
@@ -224,9 +226,9 @@ const requiredLayerPaths = [
 ];
 
 const providerNeutralAccountUsagePaths = [
-  'apps/godview/src/main/account-usage-monitor.ts',
-  'apps/godview/src/renderer/AccountUsagePanel.tsx',
-  'apps/godview/src/renderer/account-usage.ts',
+  'packages/runtime/src/services/account-usage-monitor.ts',
+  'packages/views/src/usage/account-usage.ts',
+  'packages/views/src/usage/UsageColumn.tsx',
 ];
 
 const forbiddenConsumerUsageTokens = [
@@ -303,7 +305,7 @@ const forbiddenPrivateLaunchTokens = [
   'agentOptions',
 ];
 
-const godviewBrandingPaths = new Set(['apps/godview/src/renderer/AgentIcon.tsx']);
+const godviewBrandingPaths = new Set(['packages/views/src/icons/AgentIcon.tsx']);
 const godviewCompositionRootPaths = new Set(['apps/godview/src/main/main.ts']);
 const forbiddenGodviewWireTokens = [
   'claudeHookRailFaultInjection',
@@ -505,6 +507,8 @@ export function auditPackageLayout(root = scriptRoot) {
     ),
   );
   issues.push(...godviewConsumerBoundaryIssues(productionTypeScriptSources(root, 'apps/godview/src')));
+  // The views package is Godview's consumer surface moved out of the app: the same boundary holds there.
+  issues.push(...godviewConsumerBoundaryIssues(productionTypeScriptSources(root, 'packages/views/src')));
   for (const script of ['emulator', 'emulator:smoke', 'imposter-control', 'imposter-control:smoke', 'surface:detect']) {
     if (rootManifest.scripts?.[script]) issues.push(`root script ${script} is a retired alias`);
   }

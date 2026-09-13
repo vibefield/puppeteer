@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 import type { SessionActivity, SessionSummary } from '@vibecook/ghosttea-protocol';
 import type { AgentMonitorState, AgentMonitorStatus } from '@vibecook/puppeteer-core';
 import type { AgentMonitorStateMessage, AgentSessionInfo } from '../../protocol.js';
-import { projectTint } from '../project-tint.js';
+import { projectTint } from '@vibecook/puppeteer-views';
 import {
   assembleMonitorAgents,
   mergeMonitorTerminals,

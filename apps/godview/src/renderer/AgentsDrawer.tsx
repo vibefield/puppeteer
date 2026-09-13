@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import type { AgentInstallationsSnapshot, ProfileProvider, ReleaseCheckResult, UpdateReceipt } from '../protocol.js';
-import { AgentIcon } from './AgentIcon.js';
+import { AgentIcon } from '@vibecook/puppeteer-views';
 import type { AgentProfilesState } from './agent-profiles.js';
 import {
   installRowViews,

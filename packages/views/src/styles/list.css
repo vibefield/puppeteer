@@ -1,0 +1,183 @@
+/* List view — the same exact non-spatial reading as the reference. */
+.vf-monitor-list {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  padding: 11px 0 0 var(--vf-monitor-chrome-right, 0px);
+  color: var(--text-main);
+}
+
+.vf-monitor-list-toolbar {
+  flex: 0 0 auto;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 0 13px 6px;
+  color: var(--text-faint);
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+}
+
+.vf-monitor-list-new {
+  padding: 3px 7px;
+  border: 1px solid var(--panel-border);
+  border-radius: 5px;
+  color: var(--text-muted);
+  background: transparent;
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  cursor: pointer;
+  transition: 120ms ease;
+}
+
+.vf-monitor-list-new:hover {
+  border-color: var(--control-hover-border);
+  color: var(--text-main);
+  background: var(--control-hover-bg);
+}
+
+.vf-monitor-list-rows {
+  flex: 1 1 auto;
+  margin: 0;
+  padding: 0 13px 13px;
+  overflow-y: auto;
+  list-style: none;
+}
+
+.vf-monitor-list-row {
+  width: 100%;
+  min-height: var(--vf-monitor-row-height, 38px);
+  display: grid;
+  grid-template-columns:
+    10px var(--vf-monitor-project-width, 150px) minmax(0, 0.9fr)
+    minmax(0, 1.4fr) 44px;
+  align-items: center;
+  gap: 10px;
+  padding: 0 9px;
+  border: 1px solid transparent;
+  border-left: 3px solid transparent;
+  border-radius: 6px;
+  color: inherit;
+  background: transparent;
+  text-align: left;
+  cursor: pointer;
+  transition: 120ms ease;
+}
+
+.vf-monitor-list-row:hover {
+  border-color: var(--control-hover-border);
+  background: var(--control-hover-bg);
+}
+
+.vf-monitor-list-row.is-linked {
+  border-left-color: var(--agent-color);
+}
+
+.vf-monitor-list-row.is-active {
+  border-color: var(--agent-color);
+  background: var(--control-hover-bg);
+  outline: none;
+}
+
+.vf-monitor-list-row:focus-visible {
+  outline: 2px solid var(--agent-color);
+  outline-offset: -2px;
+}
+
+.vf-monitor-list-row.is-stale {
+  opacity: 0.58;
+}
+
+.vf-monitor-list-status {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--agent-color);
+}
+
+.vf-monitor-list-row.is-idle .vf-monitor-list-status {
+  opacity: 0.4;
+}
+
+.vf-monitor-list-row.is-blocked .vf-monitor-list-status {
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--agent-color) 30%, transparent);
+}
+
+.vf-monitor-list-project {
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+}
+
+.vf-monitor-list-project strong {
+  overflow: hidden;
+  color: inherit;
+  font-size: 11px;
+  font-weight: 700;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.vf-monitor-list-project small,
+.vf-monitor-list-agent,
+.vf-monitor-list-detail,
+.vf-monitor-list-context,
+.vf-monitor-list-terminal {
+  overflow: hidden;
+  color: var(--text-muted);
+  font-size: 9px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.vf-monitor-list-agent {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+}
+
+.vf-monitor-list-agent i {
+  display: flex;
+  color: inherit;
+  font-size: 11px;
+}
+
+/* The account a run is bound to: an identity ground beside the agent's name,
+   never a state. */
+.vf-monitor-list-agent small {
+  overflow: hidden;
+  color: var(--text-faint);
+  font-size: 8px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.vf-monitor-list-terminal {
+  color: var(--text-faint);
+  font-style: italic;
+}
+
+.vf-monitor-list-context {
+  color: var(--text-faint);
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+
+.vf-monitor-list > .vf-monitor-empty {
+  position: static;
+  flex: 1 1 auto;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  color: var(--text-faint);
+  font-size: 10px;
+  letter-spacing: 0.08em;
+}

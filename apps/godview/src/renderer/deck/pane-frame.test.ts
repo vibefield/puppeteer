@@ -59,6 +59,7 @@ function agent(facetOverrides: Partial<MonitorAgentFacet> = {}, overrides: Parti
   return {
     id: 'term-1',
     session: session(),
+    createdAtMs: 0,
     status: state.status,
     project: 'rosetta',
     detail: '',

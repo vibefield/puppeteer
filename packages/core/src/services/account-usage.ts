@@ -124,6 +124,32 @@ export const AccountUsageProviderSchema = z.strictObject({
 });
 export type AccountUsageProvider = z.infer<typeof AccountUsageProviderSchema>;
 
+/**
+ * One account's reading as a monitor publishes it: the provider, the result,
+ * and which registered account it belongs to. The last good snapshot is kept
+ * (`stale`) when a later refresh fails, with that failure beside it. The
+ * shape every host's usage column reads (`@vibecook/puppeteer-views`), and
+ * what the runtime's monitor (`createAccountUsageMonitor`) produces.
+ */
+export const AccountUsageEntrySchema = z.strictObject({
+  provider: AccountUsageProviderSchema,
+  result: AccountUsageFetchResultSchema,
+  /** The account this reading belongs to; absent while no registry answer exists. */
+  profileId: AgentProfileIdSchema.optional(),
+  /** Registry label for that account, so a row can name it without a second lookup. */
+  profileLabel: NonEmptyStringSchema.optional(),
+  /** The last good snapshot is retained when a later refresh fails. */
+  stale: z.boolean().optional(),
+  refreshFailure: AccountUsageFailureSchema.optional(),
+});
+export type AccountUsageEntry = z.infer<typeof AccountUsageEntrySchema>;
+
+export const AccountUsageBatchSchema = z.strictObject({
+  refreshedAt: TimestampSchema,
+  entries: z.array(AccountUsageEntrySchema),
+});
+export type AccountUsageBatch = z.infer<typeof AccountUsageBatchSchema>;
+
 /** One adapter-owned account-usage service, independent of live sessions. */
 export interface AccountUsageService {
   readonly provider: AccountUsageProvider;

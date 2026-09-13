@@ -1,4 +1,4 @@
-import type { MonitorParameterGroup } from './parameters.js';
+import type { MonitorParameterGroup } from '@vibecook/puppeteer-views';
 
 /**
  * Stage-level tunables — the monitor's share of the window, which belongs to no

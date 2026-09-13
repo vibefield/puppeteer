@@ -1,0 +1,13 @@
+/* The views' own stylesheet: everything the package draws in the DOM, in the
+   instrument skin's vocabulary. It reads the aliases the skin defines on the
+   Godview root (`--panel-bg`, `--text-main`, `--idle-bg` and their kin under
+   `.vf-godview.theme-light` / `.theme-dark`) and the app-level tokens
+   (`--vf-orange`, `--vf-green`, `--vf-select`); a HOST ships those (Godview's
+   `styles/godview.css` + `tokens.css`, VibeField's design kit), never this file.
+   Imported once by the host beside its skin. */
+@import './bar.css';
+@import './usage.css';
+@import './list.css';
+@import './rain.css';
+@import './find-sheet.css';
+@import '../views/swarm/swarm.css';

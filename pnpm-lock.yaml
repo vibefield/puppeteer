@@ -72,6 +72,9 @@ importers:
       '@vibecook/puppeteer-runtime':
         specifier: workspace:*
         version: link:../../packages/runtime
+      '@vibecook/puppeteer-views':
+        specifier: workspace:*
+        version: link:../../packages/views
       '@vibecook/puppeteer-workspaces':
         specifier: workspace:*
         version: link:../../packages/workspaces
@@ -512,7 +515,7 @@ importers:
     devDependencies:
       vitest:
         specifier: ^3.0.0
-        version: 3.2.7(@types/debug@4.1.13)(@types/node@22.20.1)(tsx@4.23.0)
+        version: 3.2.7(@types/debug@4.1.13)(@types/node@24.13.3)(tsx@4.23.0)
 
   packages/surface: {}
 
@@ -524,7 +527,41 @@ importers:
     devDependencies:
       vitest:
         specifier: ^3.0.0
-        version: 3.2.7(@types/debug@4.1.13)(@types/node@22.20.1)(tsx@4.23.0)
+        version: 3.2.7(@types/debug@4.1.13)(@types/node@24.13.3)(tsx@4.23.0)
+
+  packages/views:
+    dependencies:
+      '@vibecook/puppeteer-core':
+        specifier: workspace:*
+        version: link:../core
+      '@vibecook/puppeteer-react':
+        specifier: workspace:*
+        version: link:../react
+      matter-js:
+        specifier: 0.19.0
+        version: 0.19.0
+    devDependencies:
+      '@types/matter-js':
+        specifier: ^0.20.2
+        version: 0.20.2
+      '@types/react':
+        specifier: ^19.2.17
+        version: 19.2.17
+      '@types/react-dom':
+        specifier: ^19.2.3
+        version: 19.2.3(@types/react@19.2.17)
+      '@webgpu/types':
+        specifier: 0.1.72
+        version: 0.1.72
+      react:
+        specifier: ^19.2.7
+        version: 19.2.7
+      react-dom:
+        specifier: ^19.2.7
+        version: 19.2.7(react@19.2.7)
+      vitest:
+        specifier: ^3.0.0
+        version: 3.2.7(@types/debug@4.1.13)(@types/node@24.13.3)(tsx@4.23.0)
 
   packages/workspaces: {}
 

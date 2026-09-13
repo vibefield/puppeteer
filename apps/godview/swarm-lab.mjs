@@ -8,28 +8,36 @@
 
 import { build } from 'esbuild';
 import { mkdir, readFile, writeFile } from 'node:fs/promises';
+import { createRequire } from 'node:module';
+import { createRequire } from 'node:module';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 const root = dirname(fileURLToPath(import.meta.url));
 const dist = join(root, 'dist');
 const renderer = join(root, 'src/renderer');
+// The lab and the views live in @vibecook/puppeteer-views; the app supplies the skin.
+const views = dirname(createRequire(import.meta.url).resolve('@vibecook/puppeteer-views/package.json'));
+// The lab and the views live in @vibecook/puppeteer-views; the app supplies the skin.
+const views = dirname(createRequire(import.meta.url).resolve('@vibecook/puppeteer-views/package.json'));
 
 const bundle = await build({
-  entryPoints: [join(renderer, 'views/swarm/lab/main.ts')],
+  entryPoints: [join(views, 'src/views/swarm/lab/main.ts')],
   bundle: true,
   write: false,
   platform: 'browser',
   format: 'iife',
   target: 'es2022',
-  loader: { '.wgsl': 'text', '.png': 'dataurl' },
   logLevel: 'info',
 });
 const script = bundle.outputFiles[0].text.replaceAll('</script', '<\\/script');
 const css = [
   await readFile(join(renderer, 'styles/tokens.css'), 'utf8'),
   await readFile(join(renderer, 'styles/godview.css'), 'utf8'),
-  await readFile(join(renderer, 'views/swarm/lab/lab.css'), 'utf8'),
+  await readFile(join(views, 'src/styles/bar.css'), 'utf8'),
+  await readFile(join(views, 'src/styles/usage.css'), 'utf8'),
+  await readFile(join(views, 'src/views/swarm/swarm.css'), 'utf8'),
+  await readFile(join(views, 'src/views/swarm/lab/lab.css'), 'utf8'),
 ].join('\n');
 
 const body = `<title>Swarm Lab</title>

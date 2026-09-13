@@ -1,8 +1,14 @@
 import type { SessionSummary } from '@vibecook/ghosttea-protocol';
+import type { AccountUsageBatch } from '@vibecook/puppeteer-core';
 import type {
-  AccountUsageFailure,
-  AccountUsageFetchResult,
-  AccountUsageProvider,
+  HistorySearchRequest,
+  HistorySearchResponse,
+  HistorySearchStatus,
+  HistorySessionFacts,
+  UsageHistoryKey,
+  UsageLedgerRecord,
+} from '@vibecook/puppeteer-views';
+import type {
   AgentInstallation,
   AgentProfile,
   AgentProviderDescriptor,
@@ -51,22 +57,7 @@ export type {
 } from '@vibecook/puppeteer-core';
 export type { ProfileLoginResult, ReleaseCheckResult } from '@vibecook/puppeteer-runtime';
 
-export interface AccountUsageEntry {
-  provider: AccountUsageProvider;
-  result: AccountUsageFetchResult;
-  /** The account this reading belongs to; absent while no registry answer exists. */
-  profileId?: string;
-  /** Registry label for that account, so a row can name it without a second lookup. */
-  profileLabel?: string;
-  /** The last good snapshot is retained when a later refresh fails. */
-  stale?: boolean;
-  refreshFailure?: AccountUsageFailure;
-}
-
-export interface AccountUsageBatch {
-  refreshedAt: string;
-  entries: AccountUsageEntry[];
-}
+export type { AccountUsageBatch, AccountUsageEntry } from '@vibecook/puppeteer-core';
 
 /** One inspection of every executable the host can find, with the descriptors that name them. */
 export interface AgentInstallationsSnapshot {
@@ -179,103 +170,21 @@ export interface TerminalSessionHandoff {
   session: SessionSummary;
 }
 
-/* Transcript history, read from an external loopback daemon that indexes every
-   installed agent's own session records. Godview joins its answers to live runs
-   by the provider-native session id; nothing here names a provider. */
-
-export type HistorySearchReadiness = 'ready' | 'building' | 'catching-up' | 'stale' | 'failed';
-export type HistoryOriginSource = 'setting' | 'environment' | 'announcement' | 'default';
-
-export interface HistorySearchStatus {
-  origin?: string;
-  source?: HistoryOriginSource;
-  reachable: boolean;
-  protocolVersion?: number;
-  /** What this daemon generation can do; older ones are answered the long way. */
-  capabilities?: { sessionScope: boolean; prefix: boolean };
-  canonicalReady?: boolean;
-  readiness?: HistorySearchReadiness;
-  progress?: { done: number; total: number };
-  /** One sentence for the sheet's foot when something is off. */
-  detail?: string;
-  checkedAt: string;
-}
-
-/** What the history daemon knows about one live run, by its provider-native id. */
-export interface HistorySessionFacts {
-  nativeSessionId: string;
-  sessionId: string;
-  rootSessionId: string;
-  title?: string;
-  summary?: string;
-  cwd?: string;
-  updatedAt: number;
-  streamState: string;
-}
-
-export interface HistorySearchRequest {
-  query: string;
-  /** Provider-native ids of the live runs to scope to; empty means everything the daemon knows. */
-  nativeSessionIds: string[];
-  /** Earliest live start, so a daemon without session scope narrows by time instead. */
-  afterMs?: number;
-  limit?: number;
-  /** Widen word fragments; on by default where the daemon supports it. */
-  prefix?: boolean;
-}
-
-/** One transcript row the history daemon matched, attributed to its navigable root. */
-export interface HistorySearchHit {
-  sessionId: string;
-  rootSessionId: string;
-  /** The root's provider-native id: the join key to a live run. */
-  nativeSessionId?: string;
-  title?: string;
-  timelineId: string;
-  /** `user` or `agent`; anything else is shown as itself. */
-  kind: string;
-  at?: number;
-  /** Matches are marked with `[` and `]`. */
-  snippet: string;
-}
-
-export interface HistorySearchResponse {
-  status: HistorySearchStatus;
-  /** False when the daemon had no answer; a sheet keeps what it last showed rather than saying "no matches". */
-  answered: boolean;
-  hits: HistorySearchHit[];
-  /** The daemon clipped at its limit, so some sessions may be under-reported. */
-  clipped: boolean;
-}
-
-/** One series of the UI's usage ledger as persisted: the held number and its step snapshots. */
-export interface UsageSeriesRecord {
-  held?: number;
-  snapshots: number[];
-}
-
-/**
- * The UI's usage ledger for one conversation, persisted by main in the app's
- * cache folder so a resumed session opens with the total and the burn it
- * had. Keyed by the provider and its native session id, the identity a
- * resume continues.
- */
-export interface UsageLedgerRecord {
-  providerId: string;
-  nativeSessionId: string;
-  /** ISO time of the save. */
-  savedAt: string;
-  /** The last step boundary snapshotted, in steps since the epoch. */
-  boundary: number;
-  total: UsageSeriesRecord;
-  output?: UsageSeriesRecord;
-  input?: UsageSeriesRecord;
-}
-
-export interface UsageHistoryKey {
-  providerId: string;
-  nativeSessionId: string;
-}
+/* Transcript history (RFC 007) and the UI's usage ledger records: the shapes
+   live with the views that read them (`@vibecook/puppeteer-views`) and are
+   re-exported here for the main process and the preload. */
+export type {
+  HistoryOriginSource,
+  HistorySearchHit,
+  HistorySearchReadiness,
+  HistorySearchRequest,
+  HistorySearchResponse,
+  HistorySearchStatus,
+  HistorySessionFacts,
+  UsageHistoryKey,
+  UsageLedgerRecord,
+  UsageSeriesRecord,
+} from '@vibecook/puppeteer-views';
 
 export interface PuppeteerBridge {
   createAgentSession(opts: CreateAgentSessionOptions): Promise<CreateAgentSessionResult>;

@@ -1,0 +1,282 @@
+/* ── The instrument bar (record §04) ─────────────────────────────────────
+   40px, no words. Counters on the left where the title was, tools on the
+   right, drag space between. Every control is one recipe: 22px tall, 5px
+   radius, 9px 700 numerals, 12px marks on a 24-unit grid. Tooltips carry the
+   words and the shortcuts. The bar drags the window; the controls do not. */
+.vf-godview-header {
+  position: relative;
+  z-index: 20;
+  height: 40px;
+  flex: 0 0 40px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 0 12px 0 15px;
+  border-bottom: 1px solid var(--panel-border);
+  background: var(--panel-bg);
+  -webkit-app-region: drag;
+}
+
+/* The window's own lights, drawn only where the OS does not draw them. */
+.vf-godview-window-controls {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-right: 6px;
+}
+
+.platform-darwin .vf-godview-window-controls {
+  visibility: hidden;
+}
+
+.vf-godview-window-controls i {
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  box-shadow: inset 0 -1px 1px rgb(0 0 0 / 18%);
+}
+
+.vf-godview-window-controls .is-close {
+  background: #ff5f57;
+}
+
+.vf-godview-window-controls .is-minimize {
+  background: #febc2e;
+}
+
+.vf-godview-window-controls .is-expand {
+  background: #28c840;
+}
+
+.vf-godview-bar-spacer {
+  flex: 1 1 auto;
+  min-width: 12px;
+}
+
+.vf-godview-bar-group,
+.vf-godview-bar-tip-host,
+.vf-godview-bar-control,
+.vf-godview-theme-switch {
+  -webkit-app-region: no-drag;
+}
+
+/* One control: the recipe every tool and counter wears. */
+.vf-godview-bar-control {
+  height: 22px;
+  min-width: 22px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 5px;
+  padding: 0 7px;
+  border: 1px solid var(--panel-border);
+  border-radius: 5px;
+  color: var(--text-muted);
+  background: transparent;
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  line-height: 1;
+  text-transform: uppercase;
+  white-space: nowrap;
+  cursor: pointer;
+  transition: 120ms ease;
+}
+
+.vf-godview-bar-control.is-square {
+  width: 22px;
+  padding: 0;
+}
+
+.vf-godview-bar-control:disabled {
+  opacity: 0.4;
+  pointer-events: none;
+}
+
+.vf-godview-bar-control:hover,
+.vf-godview-bar-control.is-on {
+  border-color: var(--control-hover-border);
+  color: var(--text-main);
+  background: var(--control-hover-bg);
+}
+
+.vf-godview-bar-control:focus-visible {
+  outline: 1px solid var(--text-main);
+  outline-offset: 2px;
+}
+
+/* A segmented group: one bordered box, hairline dividers, 5px radius. The
+   counters and the views are groups. */
+.vf-godview-bar-group {
+  display: inline-flex;
+  height: 22px;
+  border: 1px solid var(--panel-border);
+  border-radius: 5px;
+}
+
+.vf-godview-bar-group > .vf-godview-bar-tip-host {
+  height: 100%;
+  border-left: 1px solid var(--panel-border);
+}
+
+.vf-godview-bar-group > .vf-godview-bar-tip-host:first-child {
+  border-left: 0;
+}
+
+.vf-godview-bar-group .vf-godview-bar-control {
+  height: 100%;
+  border: 0;
+  border-radius: 0;
+}
+
+.vf-godview-bar-group > .vf-godview-bar-tip-host:first-child .vf-godview-bar-control {
+  border-radius: 4px 0 0 4px;
+}
+
+.vf-godview-bar-group > .vf-godview-bar-tip-host:last-child .vf-godview-bar-control {
+  border-radius: 0 4px 4px 0;
+}
+
+.vf-godview-bar-group .vf-godview-bar-control:focus-visible {
+  outline-offset: -2px;
+}
+
+/* The counters keep the dot and the numeral, nothing else. */
+.vf-godview-bar-num {
+  color: var(--text-main);
+  font-variant-numeric: tabular-nums;
+}
+
+.vf-godview-bar-dot {
+  flex: none;
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+  background: var(--text-faint);
+}
+
+.vf-godview-bar-dot.is-blocked {
+  background: var(--vf-orange);
+}
+
+.vf-godview-bar-dot.is-working {
+  background: var(--vf-green);
+}
+
+.vf-godview-bar-mark {
+  display: block;
+  width: 12px;
+  height: 12px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.6;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+/* The tooltip, in the skin's material, hung under its control. */
+.vf-godview-bar-tip-host {
+  position: relative;
+  display: inline-flex;
+}
+
+.vf-godview-bar-tip {
+  position: absolute;
+  z-index: 30;
+  top: calc(100% + 6px);
+  left: 50%;
+  transform: translateX(-50%);
+  padding: 4px 7px;
+  border: 1px solid var(--panel-border);
+  border-radius: 4px;
+  color: var(--text-main);
+  background: var(--panel-bg);
+  font-size: 8px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  white-space: nowrap;
+  box-shadow: 0 6px 18px rgb(0 0 0 / 18%);
+  pointer-events: none;
+}
+
+.vf-godview-bar-tip.is-end {
+  left: auto;
+  right: 0;
+  transform: none;
+}
+
+.vf-godview-bar-tip kbd {
+  margin-left: 6px;
+  color: var(--text-faint);
+  font: inherit;
+  font-weight: 400;
+  letter-spacing: 0;
+}
+
+/* The theme switch: unchanged from the skin. */
+.vf-godview-theme-switch {
+  height: 22px;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 0 5px;
+  border: 1px solid var(--panel-border);
+  border-radius: 6px;
+  color: var(--text-muted);
+  background: transparent;
+  font-size: 9px;
+  cursor: pointer;
+  transition:
+    color 160ms ease,
+    border-color 160ms ease,
+    background-color 160ms ease;
+}
+
+.vf-godview-theme-switch:hover {
+  border-color: var(--control-hover-border);
+  color: var(--text-main);
+  background: var(--control-hover-bg);
+}
+
+.vf-godview-theme-switch:focus-visible {
+  outline: 1px solid var(--text-main);
+  outline-offset: 2px;
+}
+
+.vf-godview-theme-switch > span:first-child,
+.vf-godview-theme-switch > span:last-child {
+  line-height: 1;
+  opacity: 0.38;
+  transition: opacity 160ms ease;
+}
+
+.vf-godview-theme-switch[aria-checked='false'] > span:first-child,
+.vf-godview-theme-switch[aria-checked='true'] > span:last-child {
+  opacity: 1;
+}
+
+.vf-godview-theme-switch-track {
+  position: relative;
+  width: 22px;
+  height: 12px;
+  flex: 0 0 22px;
+  border: 1px solid var(--panel-border);
+  border-radius: 999px;
+  background: var(--control-hover-bg);
+}
+
+.vf-godview-theme-switch-track i {
+  position: absolute;
+  top: 2px;
+  left: 2px;
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--text-main);
+  transition: transform 180ms ease;
+}
+
+.vf-godview-theme-switch[aria-checked='true'] .vf-godview-theme-switch-track i {
+  transform: translateX(10px);
+}

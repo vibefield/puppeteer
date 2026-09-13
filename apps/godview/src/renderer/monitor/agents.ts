@@ -4,9 +4,9 @@ import type { AgentMonitorStateMessage, AgentSessionInfo } from '../../protocol.
 import { classifyTerminalStatus, projectLabel, type AgentVisualStatus } from '../agent-status.js';
 import { folderName } from '../folder-name.js';
 import type { PaneAttachment } from '../pane-attachments.js';
-import { projectTint, type ProjectTint } from '../project-tint.js';
+import { projectTint, type ProjectTint } from '@vibecook/puppeteer-views';
 import type { MonitorAgent } from './types.js';
-import type { UsageHistory } from './usage-ledger.js';
+import type { UsageHistory } from '@vibecook/puppeteer-views';
 
 export interface MonitorAgentRecord {
   info: AgentSessionInfo;
@@ -117,6 +117,7 @@ export function monitorAgentFromSession(
   return {
     id: info.session.id,
     session: info.session,
+    createdAtMs: info.session.createdAtMs,
     status: current.status,
     project: projectLabel(info, currentCwd),
     detail,
@@ -132,6 +133,7 @@ export function monitorAgentFromSession(
       monitor: current,
       ...(options.usage ? { usage: options.usage } : {}),
       recency,
+      ...(info.nativeSession?.id ? { nativeSessionId: info.nativeSession.id } : {}),
       info,
     },
   };
@@ -145,6 +147,7 @@ export function monitorAgentFromTerminal(record: MonitorTerminalRecord, colours?
   return {
     id,
     session,
+    createdAtMs: session.createdAtMs,
     status: classifyTerminalStatus(session.activity),
     project: folderName(path, 'terminal'),
     detail: path || 'Unassigned terminal',

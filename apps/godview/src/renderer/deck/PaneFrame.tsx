@@ -3,7 +3,7 @@ import { createPortal } from 'react-dom';
 import type { SessionSummary } from '@vibecook/ghosttea-protocol';
 import { useGhostteaRuntime } from '@vibecook/ghosttea-react';
 import { useRemoteSessionLifecycle } from '@vibecook/ghosttea-react/workspace';
-import { AgentIcon } from '../AgentIcon.js';
+import { AgentIcon } from '@vibecook/puppeteer-views';
 import type { MonitorAgent } from '../monitor/types.js';
 import { NARROW_PANE_WIDTH, paneFrameModel, zoomKeyEvent } from './pane-frame.js';
 

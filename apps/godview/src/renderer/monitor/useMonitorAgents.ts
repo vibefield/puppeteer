@@ -5,7 +5,7 @@ import { createAgentMonitorStore } from '@vibecook/puppeteer-monitor';
 import { useAgentMonitorStore } from '@vibecook/puppeteer-react';
 import type { AgentMonitorRemovedMessage, AgentMonitorStateMessage, AgentSessionInfo } from '../../protocol.js';
 import type { PaneAttachment } from '../pane-attachments.js';
-import type { MonitorPalette } from './monitor-palette.js';
+import type { MonitorPalette } from '@vibecook/puppeteer-views';
 import {
   assembleMonitorAgents,
   mergeMonitorTerminals,
@@ -14,7 +14,7 @@ import {
   type MonitorTerminalRecord,
 } from './agents.js';
 import type { MonitorActions, MonitorAgent } from './types.js';
-import { EMPTY_UNREAD_LEDGER, reconcileUnread, type UnreadLedger } from './unread.js';
+import { EMPTY_UNREAD_LEDGER, reconcileUnread, type UnreadLedger } from '@vibecook/puppeteer-views';
 import {
   EMPTY_USAGE_LEDGER,
   exportUsage,
@@ -23,7 +23,7 @@ import {
   USAGE_STEP_MS,
   type UsageLedger,
   type UsageLedgerKey,
-} from './usage-ledger.js';
+} from '@vibecook/puppeteer-views';
 
 export interface UseMonitorAgentsOptions {
   workspace?: GhostteaWorkspaceContext | undefined;

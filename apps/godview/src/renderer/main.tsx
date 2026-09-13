@@ -29,8 +29,8 @@ import { paneRecoveryMetadata } from '../restore-snapshot.js';
 import type { TerminalSessionHandoff } from '../protocol.js';
 import { AgentMonitorInspector } from './AgentMonitorInspector.js';
 import { AgentsDrawer } from './AgentsDrawer.js';
-import { InstrumentBar } from './InstrumentBar.js';
-import { UsageColumn } from './UsageColumn.js';
+import { BarControl, InstrumentBar, type AccountUsagePort, type HistoryPort } from '@vibecook/puppeteer-views';
+import { UsageColumn } from '@vibecook/puppeteer-views';
 import { useAgentProfiles } from './agent-profiles.js';
 import {
   TweakPanel,
@@ -40,18 +40,18 @@ import {
   type TweakSection,
 } from './TweakPanel.js';
 import type { AgentVisualStatus } from './agent-status.js';
-import { MONITOR_CHROME_ATTRIBUTE, MONITOR_STAGE_CLASS } from './monitor/chrome.js';
+import { MONITOR_CHROME_ATTRIBUTE, MONITOR_STAGE_CLASS } from '@vibecook/puppeteer-views';
 import { monitorAgentCounts, nextMonitorAgentForStatus } from './monitor/agents.js';
-import { useMonitorPalette } from './monitor/monitor-palette.js';
+import { useMonitorPalette } from '@vibecook/puppeteer-views';
 import {
   loadMonitorParameters,
   monitorParameterDefaults,
   normalizeMonitorParameters,
   saveMonitorParameters,
   type MonitorParameters,
-} from './monitor/parameters.js';
-import { MONITOR_VIEWS, monitorViewFor } from './monitor/registry.js';
-import type { AgentMonitorView } from './monitor/types.js';
+} from '@vibecook/puppeteer-views';
+import { MONITOR_VIEWS, monitorViewFor } from '@vibecook/puppeteer-views';
+import type { AgentMonitorView } from '@vibecook/puppeteer-views';
 import {
   SAFE_AREA_BOTTOM_KEY,
   SAFE_AREA_LEFT_KEY,
@@ -63,10 +63,10 @@ import {
   STAGE_PARAMETER_GROUPS,
   VIGNETTE_OPACITY_KEY,
 } from './monitor/stage-parameters.js';
-import { FindSheet } from './find/FindSheet.js';
+import { FindSheet } from '@vibecook/puppeteer-views';
 import { useMonitorAgents } from './monitor/useMonitorAgents.js';
 import { buildPaneAttachments } from './pane-attachments.js';
-import { dealPaneColours, EMPTY_PANE_COLOUR_LEDGER, paneColours } from './pane-colours.js';
+import { dealPaneColours, EMPTY_PANE_COLOUR_LEDGER, paneColours } from '@vibecook/puppeteer-views';
 import { paneSessionLaunchSource } from './pane-session.js';
 import { DeckFrames } from './deck/DeckFrames.js';
 import { useTerminalGround } from './deck/terminal-ground.js';
@@ -75,9 +75,9 @@ import '@vibecook/ghosttea-react/styles.css';
 import '@vibecook/ghosttea-react/workspace.css';
 import './styles/tokens.css';
 import './styles/godview.css';
+import '@vibecook/puppeteer-views/styles/views.css';
 import './styles/deck.css';
 import './styles/agents-drawer.css';
-import './styles/find-sheet.css';
 
 GHOSTTY_COLOR_THEMES.splice(0, GHOSTTY_COLOR_THEMES.length, ...withGodviewTerminalThemes(GHOSTTY_COLOR_THEMES));
 
@@ -160,6 +160,17 @@ const terminalRuntime = createGhostteaTerminalRuntime({
     reload: () => window.location.reload(),
   },
 });
+
+/** The daemon and the usage monitor reach the views through ports (PU-5): here, the preload bridge. */
+const historyPort: HistoryPort = {
+  status: () => window.puppeteer.historyStatus(),
+  facts: (ids) => window.puppeteer.historyFacts(ids),
+  search: (request) => window.puppeteer.historySearch(request),
+};
+const usagePort: AccountUsagePort = {
+  snapshot: () => window.puppeteer.accountUsage(),
+  subscribe: (listener) => window.puppeteer.onAccountUsage(listener),
+};
 
 const WorkspaceReporterContext = createContext<(workspace: GhostteaWorkspaceContext) => void>(() => undefined);
 
@@ -569,15 +580,55 @@ function Godview() {
         views={MONITOR_VIEWS}
         viewId={view.id}
         onSelectView={selectView}
-        findOpen={findOpen}
-        onToggleFind={() => setFindOpen((current) => !current)}
-        agentsOpen={agentsDrawerOpen}
-        onToggleAgents={() => setAgentsDrawerOpen((current) => !current)}
-        tuneOpen={tweakPanelOpen}
-        onToggleTune={() => setTweakPanelOpen((current) => !current)}
-        settings={settings}
         theme={theme}
         onThemeChange={changeTheme}
+        leading={
+          <div className="vf-godview-window-controls" aria-hidden="true">
+            <i className="is-close" />
+            <i className="is-minimize" />
+            <i className="is-expand" />
+          </div>
+        }
+        trailing={
+          <>
+            <BarControl
+              mark="find"
+              label="FIND"
+              shortcut="⌘F"
+              ariaLabel="Find an agent by what was said"
+              controls="vf-find-sheet"
+              on={findOpen}
+              onClick={() => setFindOpen((current) => !current)}
+            />
+            <BarControl
+              mark="agents"
+              label="AGENTS"
+              ariaLabel="Installed agents and accounts"
+              controls="vf-agents-drawer"
+              on={agentsDrawerOpen}
+              onClick={() => setAgentsDrawerOpen((current) => !current)}
+            />
+            <BarControl
+              mark="tune"
+              label="SYSTEM CONTROL"
+              ariaLabel="System control"
+              controls="vf-godview-tweak-panel"
+              on={tweakPanelOpen}
+              onClick={() => setTweakPanelOpen((current) => !current)}
+            />
+            {settings ? (
+              <BarControl
+                mark="settings"
+                label="SETTINGS"
+                ariaLabel="Open settings"
+                haspopup="dialog"
+                end
+                disabled={!settings.enabled}
+                onClick={settings.open}
+              />
+            ) : null}
+          </>
+        }
       />
 
       {notifications.length ? (
@@ -602,6 +653,7 @@ function Godview() {
       <FindSheet
         open={findOpen}
         agents={agents}
+        history={historyPort}
         onClose={() => setFindOpen(false)}
         onSelect={(agent) => {
           actions.select(agent);
@@ -630,7 +682,7 @@ function Godview() {
       <section ref={stageRef} className={MONITOR_STAGE_CLASS} aria-label="Agent monitor">
         <MonitorView agents={agents} parameters={parameters} actions={actions} palette={palette} />
         <div ref={chromeRef} className="vf-monitor-chrome" {...{ [MONITOR_CHROME_ATTRIBUTE]: '' }}>
-          <UsageColumn />
+          <UsageColumn port={usagePort} />
         </div>
         {activeAgent?.agent?.monitor ? (
           <AgentMonitorInspector

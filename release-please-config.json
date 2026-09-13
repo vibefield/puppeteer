@@ -8,28 +8,120 @@
       "bump-minor-pre-major": true,
       "bump-patch-for-minor-pre-major": true,
       "extra-files": [
-        { "type": "json", "path": "packages/core/package.json", "jsonpath": "$.version" },
-        { "type": "json", "path": "packages/monitor/package.json", "jsonpath": "$.version" },
-        { "type": "json", "path": "packages/react/package.json", "jsonpath": "$.version" },
-        { "type": "json", "path": "packages/surface/package.json", "jsonpath": "$.version" },
-        { "type": "json", "path": "packages/imposter/package.json", "jsonpath": "$.version" },
-        { "type": "json", "path": "packages/native-observation/package.json", "jsonpath": "$.version" },
-        { "type": "json", "path": "packages/record/package.json", "jsonpath": "$.version" },
-        { "type": "json", "path": "packages/workspaces/package.json", "jsonpath": "$.version" },
-        { "type": "json", "path": "packages/adapter-acp/package.json", "jsonpath": "$.version" },
-        { "type": "json", "path": "packages/adapter-antigravity/package.json", "jsonpath": "$.version" },
-        { "type": "json", "path": "packages/adapter-claude/package.json", "jsonpath": "$.version" },
-        { "type": "json", "path": "packages/adapter-codex/package.json", "jsonpath": "$.version" },
-        { "type": "json", "path": "packages/adapter-copilot/package.json", "jsonpath": "$.version" },
-        { "type": "json", "path": "packages/adapter-grok/package.json", "jsonpath": "$.version" },
-        { "type": "json", "path": "packages/adapter-kimi/package.json", "jsonpath": "$.version" },
-        { "type": "json", "path": "packages/adapter-pi/package.json", "jsonpath": "$.version" },
-        { "type": "json", "path": "packages/adapter-opencode/package.json", "jsonpath": "$.version" },
-        { "type": "json", "path": "packages/adapter-hermes/package.json", "jsonpath": "$.version" },
-        { "type": "json", "path": "packages/runtime/package.json", "jsonpath": "$.version" },
-        { "type": "json", "path": "packages/builtin-providers/package.json", "jsonpath": "$.version" },
-        { "type": "json", "path": "packages/testing/package.json", "jsonpath": "$.version" },
-        { "type": "generic", "path": "packages/core/src/version.ts" }
+        {
+          "type": "json",
+          "path": "packages/core/package.json",
+          "jsonpath": "$.version"
+        },
+        {
+          "type": "json",
+          "path": "packages/monitor/package.json",
+          "jsonpath": "$.version"
+        },
+        {
+          "type": "json",
+          "path": "packages/react/package.json",
+          "jsonpath": "$.version"
+        },
+        {
+          "type": "json",
+          "path": "packages/views/package.json",
+          "jsonpath": "$.version"
+        },
+        {
+          "type": "json",
+          "path": "packages/surface/package.json",
+          "jsonpath": "$.version"
+        },
+        {
+          "type": "json",
+          "path": "packages/imposter/package.json",
+          "jsonpath": "$.version"
+        },
+        {
+          "type": "json",
+          "path": "packages/native-observation/package.json",
+          "jsonpath": "$.version"
+        },
+        {
+          "type": "json",
+          "path": "packages/record/package.json",
+          "jsonpath": "$.version"
+        },
+        {
+          "type": "json",
+          "path": "packages/workspaces/package.json",
+          "jsonpath": "$.version"
+        },
+        {
+          "type": "json",
+          "path": "packages/adapter-acp/package.json",
+          "jsonpath": "$.version"
+        },
+        {
+          "type": "json",
+          "path": "packages/adapter-antigravity/package.json",
+          "jsonpath": "$.version"
+        },
+        {
+          "type": "json",
+          "path": "packages/adapter-claude/package.json",
+          "jsonpath": "$.version"
+        },
+        {
+          "type": "json",
+          "path": "packages/adapter-codex/package.json",
+          "jsonpath": "$.version"
+        },
+        {
+          "type": "json",
+          "path": "packages/adapter-copilot/package.json",
+          "jsonpath": "$.version"
+        },
+        {
+          "type": "json",
+          "path": "packages/adapter-grok/package.json",
+          "jsonpath": "$.version"
+        },
+        {
+          "type": "json",
+          "path": "packages/adapter-kimi/package.json",
+          "jsonpath": "$.version"
+        },
+        {
+          "type": "json",
+          "path": "packages/adapter-pi/package.json",
+          "jsonpath": "$.version"
+        },
+        {
+          "type": "json",
+          "path": "packages/adapter-opencode/package.json",
+          "jsonpath": "$.version"
+        },
+        {
+          "type": "json",
+          "path": "packages/adapter-hermes/package.json",
+          "jsonpath": "$.version"
+        },
+        {
+          "type": "json",
+          "path": "packages/runtime/package.json",
+          "jsonpath": "$.version"
+        },
+        {
+          "type": "json",
+          "path": "packages/builtin-providers/package.json",
+          "jsonpath": "$.version"
+        },
+        {
+          "type": "json",
+          "path": "packages/testing/package.json",
+          "jsonpath": "$.version"
+        },
+        {
+          "type": "generic",
+          "path": "packages/core/src/version.ts"
+        }
       ]
     }
   }
